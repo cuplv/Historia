@@ -1,0 +1,8 @@
+android.*
+androidx.*
+com.android.*
+com.google.*
+dalvik.*
+java.*
+javax.*
+junit.*
