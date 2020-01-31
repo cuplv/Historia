@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.executor
 
-import edu.colorado.plv.bounder.ir.JimpleWrapper
-import edu.colorado.plv.bounder.ir.JimpleWrapper.getClass
+import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
+import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper.getClass
 
 import scala.io.Source
 import scala.util.matching.Regex

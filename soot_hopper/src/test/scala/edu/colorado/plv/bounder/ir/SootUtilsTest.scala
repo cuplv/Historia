@@ -1,11 +1,11 @@
 package edu.colorado.plv.bounder.ir
 
-import edu.colorado.plv.bounder.SetupApplication
+import edu.colorado.plv.bounder.BounderSetupApplication
 
 class SootUtilsTest extends org.scalatest.FunSuite {
   val test_interproc_1 = getClass.getResource("/test_interproc_1.apk").getPath()
   assert(test_interproc_1 != null)
-  SetupApplication.loadApk(test_interproc_1)
+  BounderSetupApplication.loadApk(test_interproc_1)
 
   test("findMethodLoc should find a location based on a classname and line number."){
     val res = SootUtils.findMethodLoc(

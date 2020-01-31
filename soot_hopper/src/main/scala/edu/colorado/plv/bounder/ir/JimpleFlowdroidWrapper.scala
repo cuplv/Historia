@@ -4,7 +4,7 @@ import java.io.File
 import java.net.URL
 import java.util
 
-import edu.colorado.plv.bounder.SetupApplication
+import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
 import soot.jimple.internal.{AbstractInstanceInvokeExpr, AbstractNewExpr, JAssignStmt, JInvokeStmt, JReturnStmt, JSpecialInvokeExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
 import soot.{Body, Scene, SootMethod, Value, ValueBox}
@@ -13,12 +13,12 @@ import scala.jdk.CollectionConverters._
 import scala.io.Source
 import scala.util.matching.Regex
 
-object JimpleWrapper{
+object JimpleFlowdroidWrapper{
 
 }
-class JimpleWrapper(apkPath : String) extends IRWrapper[SootMethod, soot.Unit] {
+class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soot.Unit] {
 
-  SetupApplication.loadApk(apkPath)
+  BounderSetupApplication.loadApk(apkPath)
 
   var unitGraphCache : scala.collection.mutable.Map[Body, EnhancedUnitGraphFixed] = scala.collection.mutable.Map()
 
@@ -155,7 +155,11 @@ class JimpleWrapper(apkPath : String) extends IRWrapper[SootMethod, soot.Unit] {
   override def makeInvokeTargets(invoke: InvokeCmd[SootMethod, soot.Unit]): Set[Loc] = {
     var cg = Scene.v().getCallGraph
     var pt = Scene.v().getPointsToAnalysis
-
+    val cmd = invoke.getLoc.line match{
+      case JimpleLineLoc(cmd, _) => cmd
+      case _ => throw new IllegalArgumentException("Bad Location Type")
+    }
+    val edges = cg.edgesOutOf(cmd)
     ???
   }
 }

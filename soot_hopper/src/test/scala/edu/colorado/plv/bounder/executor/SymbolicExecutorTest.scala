@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.executor
 
-import edu.colorado.plv.bounder.SetupApplication
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, JimpleMethodLoc, JimpleWrapper, LineLoc, Loc, LocalWrapper, VirtualInvoke}
+import edu.colorado.plv.bounder.BounderSetupApplication
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, JimpleMethodLoc, JimpleFlowdroidWrapper, LineLoc, Loc, LocalWrapper, VirtualInvoke}
 import edu.colorado.plv.bounder.state.{Equals, LocalPtEdge, NullVal, PureAtomicConstraint, PureVar, Qry, StackVar}
 import soot.{Local, SootMethod}
 import soot.jimple.internal.JAssignStmt
@@ -9,7 +9,7 @@ import soot.jimple.internal.JAssignStmt
 class SymbolicExecutorTest extends org.scalatest.FunSuite {
   val test_interproc_1 = getClass.getResource("/test_interproc_1.apk").getPath()
   assert(test_interproc_1 != null)
-  val w = new JimpleWrapper(test_interproc_1)
+  val w = new JimpleFlowdroidWrapper(test_interproc_1)
   test("Symbolic Executor should prove an intraprocedural deref"){
     val locs = w.findLineInMethod(
       "com.example.test_interproc_1.MainActivity", "java.lang.String objectString()",21)
