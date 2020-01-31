@@ -4,9 +4,9 @@ import java.io.File
 import java.net.URL
 import java.util
 
-import edu.colorado.plv.bounder.Main
+import edu.colorado.plv.bounder.SetupApplication
 import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
-import soot.jimple.internal.{AbstractInstanceInvokeExpr, JAssignStmt, JInvokeStmt, JReturnStmt, JSpecialInvokeExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
+import soot.jimple.internal.{AbstractInstanceInvokeExpr, AbstractNewExpr, JAssignStmt, JInvokeStmt, JReturnStmt, JSpecialInvokeExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
 import soot.{Body, Scene, SootMethod, Value, ValueBox}
 
 import scala.jdk.CollectionConverters._
@@ -18,7 +18,7 @@ object JimpleWrapper{
 }
 class JimpleWrapper(apkPath : String) extends IRWrapper[SootMethod, soot.Unit] {
 
-  Main.loadApk(apkPath)
+  SetupApplication.loadApk(apkPath)
 
   var unitGraphCache : scala.collection.mutable.Map[Body, EnhancedUnitGraphFixed] = scala.collection.mutable.Map()
 
@@ -106,6 +106,10 @@ class JimpleWrapper(apkPath : String) extends IRWrapper[SootMethod, soot.Unit] {
         case _ => ???
       }
     }
+    case n : AbstractNewExpr => {
+      val className = n.getType.toString
+      NewCommand(className)
+    }
     case a =>
       ???
   }
@@ -148,6 +152,12 @@ class JimpleWrapper(apkPath : String) extends IRWrapper[SootMethod, soot.Unit] {
 //      ???
 //    }
 //  }
+  override def makeInvokeTargets(invoke: InvokeCmd[SootMethod, soot.Unit]): Set[Loc] = {
+    var cg = Scene.v().getCallGraph
+    var pt = Scene.v().getPointsToAnalysis
+
+    ???
+  }
 }
 
 case class JimpleMethodLoc(method: SootMethod) extends MethodLoc

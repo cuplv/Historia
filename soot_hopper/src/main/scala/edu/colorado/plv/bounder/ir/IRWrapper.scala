@@ -15,6 +15,7 @@ trait IRWrapper[M,C]{
   def makeMethod(method: M) : MethodWrapper[M,C]
   def makeLoc(cmd: C, method: M): Loc
   def cmdAfterLocation(loc: AppLoc): CmdWrapper[M,C]
+  def makeInvokeTargets(invoke:InvokeCmd[M,C]):Set[Loc]
 }
 
 
@@ -34,7 +35,9 @@ abstract class MethodWrapper[M,C](decalringClass : String,
 
 // Things that can be used as expressions
 trait RVal
-case class NewCommand(className: String, params: List[RVal]) extends RVal
+// New only has type, constructor parameters go to the <init> method
+case class NewCommand(className: String) extends RVal
+
 trait Invoke[M,C] extends RVal {
   def targetClass:String
   def targetMethod:String

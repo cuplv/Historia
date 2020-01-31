@@ -24,7 +24,6 @@ case class CallinMethodReturn(fmwClazz : String, fmwName:String) extends Loc {
 case class CallinMethodInvoke(fmwClazz : String, fmwName:String) extends Loc {
   override def toString:String = "[CI Inv] " + fmwName
 }
-// Can be invoked by application or framework
-case class CallbackMethodReturn(fmwClazz: String, fmwName:String, loc:MethodLoc, returnLoc :LineLoc) extends Loc
+case class CallbackMethodReturn(fmwClazz: String, fmwName:String, loc:MethodLoc) extends Loc
 // Can only be invoked by application
 case class InternalMethodReturn(clazz:String, name:String, loc:MethodLoc) extends Loc

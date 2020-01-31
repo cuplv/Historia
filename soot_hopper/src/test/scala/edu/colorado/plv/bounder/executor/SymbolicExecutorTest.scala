@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder.executor
 
-import edu.colorado.plv.bounder.Main
+import edu.colorado.plv.bounder.SetupApplication
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, JimpleMethodLoc, JimpleWrapper, LineLoc, Loc, LocalWrapper, VirtualInvoke}
 import edu.colorado.plv.bounder.state.{Equals, LocalPtEdge, NullVal, PureAtomicConstraint, PureVar, Qry, StackVar}
 import soot.{Local, SootMethod}
