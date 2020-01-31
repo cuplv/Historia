@@ -1,8 +1,8 @@
 package edu.colorado.plv.bounder.executor
 
 import edu.colorado.plv.bounder.Main
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, JimpleMethodLoc, JimpleWrapper, LineLoc, Loc, LocalWrapper}
-import edu.colorado.plv.bounder.state.{LocalPtEdge, NullVal, Qry, StackVar}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, JimpleMethodLoc, JimpleWrapper, LineLoc, Loc, LocalWrapper, VirtualInvoke}
+import edu.colorado.plv.bounder.state.{Equals, LocalPtEdge, NullVal, PureAtomicConstraint, PureVar, Qry, StackVar}
 import soot.{Local, SootMethod}
 import soot.jimple.internal.JAssignStmt
 
@@ -23,13 +23,16 @@ class SymbolicExecutorTest extends org.scalatest.FunSuite {
     val derefLoc: AppLoc = derefLocs.iterator.next
     // Get name of variable that should not be null
     val varname = w.cmdAfterLocation(derefLoc) match {
-      case AssignCmd(LocalWrapper(name), _, _, _) => name
+      case a@AssignCmd(_, VirtualInvoke(LocalWrapper(name),_,_,_,_), _, _) => name
       case _ => ???
     }
 
-    val query = Qry.make(derefLoc, Set(LocalPtEdge(StackVar(varname),NullVal)))
+    val pureVar = PureVar("")
+    val query = Qry.make(derefLoc, Map((StackVar(varname),pureVar)),
+      Set(PureAtomicConstraint(pureVar, Equals, NullVal)))
+
     val a = new DefaultAppCodeResolver()
-    var transfer = new TransferFunctions[SootMethod,soot.Unit](w)
+    val transfer = new TransferFunctions[SootMethod,soot.Unit](w)
     // Call symbolic executor
     val config = SymbolicExecutorConfig(
       stepLimit = 5, w, new ControlFlowResolver[SootMethod,soot.Unit](w,a),transfer)

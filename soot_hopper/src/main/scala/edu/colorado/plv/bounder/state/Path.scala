@@ -7,7 +7,9 @@ import edu.colorado.plv.bounder.ir.Loc
 
 // Trace explains the proof with either all backward paths or a counter example
 trait Trace
-case class FullTrace(paths: TraceNode) extends Trace
-case class CounterexampleTrace(witness: TraceNode) extends Trace
+case class FullTrace(paths: PathNode) extends Trace
+case class CounterexampleTrace(witness: PathNode) extends Trace
 
-case class TraceNode(qry: Qry, predecessor : Set[TraceNode])
+case class PathNode(qry: Qry, predecessor : Set[PathNode]) {
+  override def toString:String = qry.toString
+}

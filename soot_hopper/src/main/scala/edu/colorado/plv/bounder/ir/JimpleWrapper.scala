@@ -1,12 +1,21 @@
 package edu.colorado.plv.bounder.ir
 
+import java.io.File
+import java.net.URL
+import java.util
+
 import edu.colorado.plv.bounder.Main
 import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
 import soot.jimple.internal.{AbstractInstanceInvokeExpr, JAssignStmt, JInvokeStmt, JReturnStmt, JSpecialInvokeExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
 import soot.{Body, Scene, SootMethod, Value, ValueBox}
 
 import scala.jdk.CollectionConverters._
+import scala.io.Source
+import scala.util.matching.Regex
 
+object JimpleWrapper{
+
+}
 class JimpleWrapper(apkPath : String) extends IRWrapper[SootMethod, soot.Unit] {
 
   Main.loadApk(apkPath)
@@ -36,8 +45,8 @@ class JimpleWrapper(apkPath : String) extends IRWrapper[SootMethod, soot.Unit] {
     method.map(a=> JimpleMethodLoc(a))
   }
   override def makeCmd(cmd: soot.Unit, method: SootMethod,
-                       locOpt:Option[Loc] = None): CmdWrapper[SootMethod, soot.Unit] = {
-    val loc = locOpt.getOrElse(makeLoc(cmd,method))
+                       locOpt:Option[AppLoc] = None): CmdWrapper[SootMethod, soot.Unit] = {
+    val loc:AppLoc = locOpt.getOrElse(makeLoc(cmd,method))
     cmd match{
       case cmd: JAssignStmt => {
         val leftBox = makeVal(cmd.leftBox.getValue).asInstanceOf[LVal]
@@ -49,32 +58,33 @@ class JimpleWrapper(apkPath : String) extends IRWrapper[SootMethod, soot.Unit] {
         ReturnVal(box, loc, this)
       }
       case cmd:JInvokeStmt => {
-        val invokeval = makeVal(cmd.getInvokeExpr).asInstanceOf[Invoke]
-        InvokeCmd(invokeval, loc, this)
+        val invokeval = makeVal(cmd.getInvokeExpr).asInstanceOf[Invoke[SootMethod,soot.Unit]]
+        InvokeCmd[SootMethod,soot.Unit](invokeval, loc, this)
       }
       case _ =>
         ???
     }
   }
 
-  override def preds(cmdWrapper : CmdWrapper[SootMethod,soot.Unit]):Set[CmdWrapper[SootMethod,soot.Unit]] =
+  override def commandPredicessors(cmdWrapper : CmdWrapper[SootMethod,soot.Unit]):List[AppLoc] =
     cmdWrapper.getLoc match{
-    case loc@Loc(_,JimpleLineLoc(cmd,method)) => {
-      val unitGraph = getUnitGraph(method.retrieveActiveBody())
-      unitGraph.getPredsOf(cmd).asScala.map(makeCmd(_, method, Some(loc))).toSet
+    case loc@AppLoc(methodWrapper @ JimpleMethodLoc(_),JimpleLineLoc(cmd,sootMethod)) => {
+      val unitGraph = getUnitGraph(sootMethod.retrieveActiveBody())
+      val predCommands = unitGraph.getPredsOf(cmd).asScala
+      predCommands.map(cmd => AppLoc(methodWrapper,JimpleLineLoc(cmd,sootMethod))).toList
     }
     case _ => ???
   }
 
   override def makeMethod(method: SootMethod): MethodWrapper[SootMethod, soot.Unit] = ???
 
-  override def makeLoc(mcd: soot.Unit, method: SootMethod):Loc = {
+  override def makeLoc(mcd: soot.Unit, method: SootMethod):AppLoc = {
     ???
   }
 
-  override def makeCmd(loc: Loc): CmdWrapper[SootMethod, soot.Unit] = {
+  override def cmdAfterLocation(loc: AppLoc): CmdWrapper[SootMethod, soot.Unit] = {
     loc match{
-      case Loc(_, JimpleLineLoc(cmd,method)) =>{
+      case AppLoc(_, JimpleLineLoc(cmd,method)) =>{
         makeCmd(cmd,method,Some(loc))
       }
       case _ =>
@@ -91,24 +101,11 @@ class JimpleWrapper(apkPath : String) extends IRWrapper[SootMethod, soot.Unit] {
       val targetMethod = a.getMethodRef.getSignature
       val params: List[LocalWrapper] = (0 until a.getArgCount()).map(argPos => ???).toList //TODO: implement parameters
       a match{
-        case _:JVirtualInvokeExpr => VirtualInvoke(target, targetClass, targetMethod, params)
-        case _:JSpecialInvokeExpr => SpecialInvoke(target,targetClass, targetMethod, params)
+        case _:JVirtualInvokeExpr => VirtualInvoke(target, targetClass, targetMethod, params,this)
+        case _:JSpecialInvokeExpr => SpecialInvoke(target,targetClass, targetMethod, params,this)
         case _ => ???
       }
     }
-//    case a:JVirtualInvokeExpr => {
-//      val target = makeVal(a.getBase) match{
-//        case jl@LocalWrapper(name)=>jl
-//        case _ => ???
-//      }
-//      val targetClass = a.getMethodRef.getDeclaringClass.getName
-//      val targetMethod = a.getMethodRef.getSignature
-//      val params:List[LocalWrapper] = (0 until a.getArgCount).map(sloc => ???).toList //TODO: implement parameters
-//      VirtualInvoke(target, targetClass,targetMethod,params)
-//    }
-//    case a:JSpecialInvokeExpr => {
-//
-//    }
     case a =>
       ???
   }
@@ -119,7 +116,7 @@ class JimpleWrapper(apkPath : String) extends IRWrapper[SootMethod, soot.Unit] {
   }
 
   override def isMethodEntry(cmdWrapper: CmdWrapper[SootMethod, soot.Unit]): Boolean = cmdWrapper.getLoc match {
-    case Loc(_, JimpleLineLoc(cmd,method)) => {
+    case AppLoc(_, JimpleLineLoc(cmd,method)) => {
       val unitBoxes = method.retrieveActiveBody().getUnits
       if(unitBoxes.size > 0){
         cmd.equals(unitBoxes.getFirst)
@@ -128,16 +125,33 @@ class JimpleWrapper(apkPath : String) extends IRWrapper[SootMethod, soot.Unit] {
     case _ => ???
   }
 
-  override def findLineInMethod(className: String, methodName: String, line: Int): Iterable[Loc] = {
+  override def findLineInMethod(className: String, methodName: String, line: Int): Iterable[AppLoc] = {
     val loc: Option[JimpleMethodLoc] = findMethodLoc(className, methodName)
     loc.map(loc => {
       val activeBody = loc.method.retrieveActiveBody()
       val units: Iterable[soot.Unit] = activeBody.getUnits.asScala
-      units.filter(a => a.getJavaSourceStartLineNumber == line).map((a:soot.Unit) => Loc(loc, JimpleLineLoc(a,loc.method)))
+      units.filter(a => a.getJavaSourceStartLineNumber == line).map((a:soot.Unit) => AppLoc(loc, JimpleLineLoc(a,loc.method)))
     }).getOrElse(List())
   }
+
+//  /**
+//   * Check if a method is a callback callin or internal application type
+//   * @param method
+//   * @return
+//   */
+//  override def methodType(method: Invoke[SootMethod,soot.Unit]): MethodType = {
+//    val targetClass: String = method.targetClass
+//    if(JimpleWrapper.isFrameworkPackage(targetClass)){
+//      // If the target class is a framework class, then it must be a callin
+//      CallinMethod(targetClass, method.targetMethod)
+//    }else {
+//      ???
+//    }
+//  }
 }
 
 case class JimpleMethodLoc(method: SootMethod) extends MethodLoc
-case class JimpleLineLoc(cmd: soot.Unit, method: SootMethod) extends LineLoc
+case class JimpleLineLoc(cmd: soot.Unit, method: SootMethod) extends LineLoc{
+  override def toString: String = cmd.toString
+}
 

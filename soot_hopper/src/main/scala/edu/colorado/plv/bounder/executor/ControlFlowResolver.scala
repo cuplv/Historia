@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.executor
 
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallinMethodReturn, CmdWrapper, IRWrapper, Invoke, InvokeCmd, Loc, SpecialInvoke, StaticInvoke, VirtualInvoke}
-import edu.colorado.plv.bounder.state.State
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, IRWrapper, Invoke, InvokeCmd, Loc, SpecialInvoke, StaticInvoke, VirtualInvoke}
+import edu.colorado.plv.bounder.state.{CallStackFrame, State}
 
 /**
  * Functions to resolve code targets for call sites and match lifestate rules.
@@ -20,20 +20,25 @@ class ControlFlowResolver[M,C](w:IRWrapper[M,C], a: AppCodeResolver) {
       ???
     }
   }
-  def resolvePredicessors(loc:Loc):List[Loc] = loc match{
-    case l@AppLoc(_,_) => {
+  def resolvePredicessors(loc:Loc, stack: List[CallStackFrame]):List[Loc] = (loc,stack) match{
+    case (l@AppLoc(_,_),_) => {
       val cmd: CmdWrapper[M, C] = w.cmdAfterLocation(l)
       if(w.isMethodEntry(cmd)){
 
         ???
       }else{
         // Delegate control flow within a procedure to the IR wrapper
-        val predecessorCommands: List[Loc] = w.commandPredicessors(cmd)
-        val functionReturns: List[Loc] = resolveReturns(cmd)
-        if(functionReturns.isEmpty)predecessorCommands else functionReturns
+        val predecessorCommands = w.commandPredicessors(cmd)
+        predecessorCommands.flatMap(a => w.cmdAfterLocation(a) match{
+          case i:InvokeCmd[M,C] => resolveReturns(i)
+          case _ => List(a)
+        })
       }
     }
-    case CallinMethodReturn(clazz, name) => ???
+    case (CallinMethodReturn(clazz, name),_) => List(CallinMethodInvoke(clazz,name))
+    case (CallinMethodInvoke(_, _), CallStackFrame(_,Some(returnLoc@AppLoc(_,_)),_)::_) => {
+      w.commandPredicessors(w.cmdAfterLocation(returnLoc))
+    }
     case _ => ???
   }
 }
