@@ -1,22 +1,14 @@
 package edu.colorado.plv.bounder.ir
 
-import java.io.File
-import java.net.URL
-import java.util
-
 import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
 import soot.jimple.ThisRef
-import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceInvokeExpr, AbstractNewExpr, JAssignStmt, JIdentityStmt, JInvokeStmt, JReturnStmt, JSpecialInvokeExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
-import soot.{Body, MethodOrMethodContext, Scene, SootMethod, Value, ValueBox}
+import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceFieldRef, AbstractInstanceInvokeExpr, AbstractNewExpr, JAssignStmt, JIdentityStmt, JInvokeStmt, JReturnStmt, JSpecialInvokeExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
+import soot.{Body, Scene, SootMethod, Value}
 
 import scala.jdk.CollectionConverters._
-import scala.io.Source
-import scala.util.matching.Regex
 
-object JimpleFlowdroidWrapper{
 
-}
 class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soot.Unit] {
 
   BounderSetupApplication.loadApk(apkPath)
@@ -47,11 +39,11 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
   }
   override def makeCmd(cmd: soot.Unit, method: SootMethod,
                        locOpt:Option[AppLoc] = None): CmdWrapper[SootMethod, soot.Unit] = {
-    val loc:AppLoc = locOpt.getOrElse(makeLoc(cmd,method))
+    val loc:AppLoc = locOpt.getOrElse(???)
     cmd match{
       case cmd: AbstractDefinitionStmt => {
         val leftBox = makeVal(cmd.leftBox.getValue).asInstanceOf[LVal]
-        val rightBox = makeRVal(cmd.rightBox.getValue)
+        val rightBox = makeVal(cmd.rightBox.getValue)
         AssignCmd(leftBox, rightBox,loc,this)
       }
       case cmd: JReturnStmt => {
@@ -62,11 +54,6 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
         val invokeval = makeVal(cmd.getInvokeExpr).asInstanceOf[Invoke[SootMethod,soot.Unit]]
         InvokeCmd[SootMethod,soot.Unit](invokeval, loc, this)
       }
-//      case cmd:JIdentityStmt => {
-//        val leftBox = makeVal(cmd.leftBox.getValue).asInstanceOf[LVal]
-//        val rightBox = makeVal(cmd.rightBox.getValue)
-//        AssignCmd(leftBox,rightBox, loc,this)
-//      }
       case _ =>
         ???
     }
@@ -89,11 +76,9 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
     }
   }
 
-  override def makeMethod(method: SootMethod): MethodWrapper[SootMethod, soot.Unit] = ???
-
-  override def makeLoc(mcd: soot.Unit, method: SootMethod):AppLoc = {
-    ???
-  }
+//  override def makeLoc(mcd: soot.Unit, method: SootMethod):AppLoc = {
+//    ???
+//  }
 
   override def cmdAfterLocation(loc: AppLoc): CmdWrapper[SootMethod, soot.Unit] = {
     loc match{
@@ -137,6 +122,13 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
 
   protected def makeVal(box: Value):RVal = box match{
     case a : JimpleLocal=> LocalWrapper(a.getName)
+    case f: AbstractInstanceFieldRef => {
+      val fieldType = f.getType.toString
+      val base = makeVal(f.getBase).asInstanceOf[LocalWrapper]
+      val fieldname = f.getField.toString
+      val fieldDeclType = f.getField.getDeclaringClass.toString
+      FieldRef(base,fieldType, fieldDeclType, fieldname)
+    }
     case a => makeRVal(a)
   }
 

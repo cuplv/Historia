@@ -13,8 +13,6 @@ trait IRWrapper[M,C]{
   def commandPredicessors(cmdWrapper:CmdWrapper[M,C]): List[AppLoc]
   def commandNext(cmdWrapper:CmdWrapper[M,C]):List[AppLoc]
   def isMethodEntry(cmdWrapper: CmdWrapper[M,C]): Boolean
-  def makeMethod(method: M) : MethodWrapper[M,C]
-  def makeLoc(cmd: C, method: M): Loc
   def cmdAfterLocation(loc: AppLoc): CmdWrapper[M,C]
   def cmdBeforeLocation(loc:AppLoc): CmdWrapper[M,C]
   def makeInvokeTargets(invoke:InvokeCmd[M,C]):Set[UnresolvedMethodTarget]
@@ -78,3 +76,4 @@ case class LocalWrapper(name:String) extends LVal
 case class ParamWrapper(name:String) extends LVal
 case class FieldWrapper(name:String) extends LVal
 case class ThisWrapper(className:String) extends LVal
+case class FieldRef(base:LocalWrapper, containsType:String, declType:String, name:String) extends LVal

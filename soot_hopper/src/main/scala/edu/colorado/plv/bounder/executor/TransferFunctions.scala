@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder.executor
 
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, IRWrapper, Invoke, InvokeCmd, Loc, LocalWrapper, NewCommand, SpecialInvoke, StaticInvoke, VirtualInvoke}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldRef, IRWrapper, Invoke, InvokeCmd, Loc, LocalWrapper, NewCommand, SpecialInvoke, StaticInvoke, VirtualInvoke}
 import edu.colorado.plv.bounder.state.{CallStackFrame, ClassVal, Equals, PureAtomicConstraint, StackVar, State}
 
 class TransferFunctions[M,C](w:IRWrapper[M,C]) {
@@ -29,6 +29,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C]) {
           //TODO: Alias Case Split
           ???
       }
+    case (AssignCmd(LocalWrapper(name), FieldRef(base, _, _, fieldName),_,_), s) =>
+      ???
     case _ =>
       ???
   }

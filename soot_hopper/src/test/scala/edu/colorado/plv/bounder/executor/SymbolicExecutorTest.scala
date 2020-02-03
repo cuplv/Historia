@@ -27,4 +27,15 @@ class SymbolicExecutorTest extends org.scalatest.FunSuite {
     assert(result.size === 1)
     assert(result.iterator.next.qry.isInstanceOf[BottomQry])
   }
+  test("Symbolic Executor should prove an inter-callback deref"){
+    val query = Qry.makeReceiverNonNull(w,
+      "com.example.test_interproc_1.MainActivity",
+      "void onResume()",27)
+    val config = SymbolicExecutorConfig(
+      stepLimit = Some(20), w,resolver,transfer)
+    val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
+    val result = symbolicExecutor.executeBackward(query)
+    println(result)
+    println()
+  }
 }
