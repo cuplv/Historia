@@ -12,7 +12,7 @@ sealed trait Loc
 trait MethodLoc
 case class CallinMethodLoc() extends MethodLoc
 trait LineLoc
-case class AppLoc(method: MethodLoc, line: LineLoc) extends Loc {
+case class AppLoc(method: MethodLoc, line: LineLoc, isPre:Boolean) extends Loc {
   override def toString: String = line.toString()
 }
 

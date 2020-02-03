@@ -28,6 +28,9 @@ case class State(callStack: List[CallStackFrame],pureFormula: Set[PureConstraint
     val pureFormulaString = "   pure: " + pureFormula.map(a => a.toString).mkString(" && ")
     s"($stackString   $pureFormulaString)"
   }
+  def simplify:Option[State] = {
+    solver.simplify(this)
+  }
 }
 
 sealed trait Val
@@ -83,18 +86,18 @@ sealed abstract class PureVal(val v : Any) extends PureExpr {
   override def isStringExpr : Boolean = ??? //this.isInstanceOf[StringVal]
   override def getVars(s : Set[PureVar] = Set.empty) : Set[PureVar] = s
 
-  override def hashCode : Int = ???
-  override def equals(other : Any) : Boolean = other match {
-    case p : PureVal => this.v == p.v
-    case _ => false
-  }
+//  override def hashCode : Int = ???
+//  override def equals(other : Any) : Boolean = other match {
+//    case p : PureVal => this.v == p.v
+//    case _ => false
+//  }
   override def toString : String = v.toString
 }
 case object NullVal extends PureVal{
   override def toString:String = "NULL"
 }
 //TODO: do we need type constraints here?
-case class ClassVal() extends PureVal
+case class ClassVal(typ:String) extends PureVal
 
 // pure var is a symbolic var (e.g. this^ from the paper)
 sealed case class PureVar(typ : String) extends PureExpr with Val {

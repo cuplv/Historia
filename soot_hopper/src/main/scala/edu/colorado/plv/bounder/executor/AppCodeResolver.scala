@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder.executor
 
-import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
+import edu.colorado.plv.bounder.ir.{AppLoc, CallinMethodReturn, InternalMethodReturn, JimpleFlowdroidWrapper, Loc, MethodLoc, UnresolvedMethodTarget}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper.getClass
 
 import scala.io.Source
@@ -8,8 +8,7 @@ import scala.util.matching.Regex
 
 trait AppCodeResolver {
   def isFrameworkClass(packageName:String):Boolean
-  def isCallin(packageName:String, methodName:String):Boolean
-  def getCallback(packageName:String, methodName:String): (String,String)
+  def resolveMethodLocation(tgt : UnresolvedMethodTarget): Loc
 }
 
 class DefaultAppCodeResolver () extends AppCodeResolver {
@@ -20,7 +19,8 @@ class DefaultAppCodeResolver () extends AppCodeResolver {
     case _ => false
   }
 
-  override def isCallin(packageName: String, methodName: String): Boolean = ???
-
-  override def getCallback(packageName: String, methodName: String): (String, String) = ???
+  override def resolveMethodLocation(tgt: UnresolvedMethodTarget): Loc = tgt match{
+    case UnresolvedMethodTarget(clazz, method, _) if isFrameworkClass(clazz) => CallinMethodReturn(clazz, method)
+    case UnresolvedMethodTarget(clazz, method, Some(methodloc: MethodLoc)) => InternalMethodReturn(clazz, method, methodloc)
+  }
 }

@@ -24,7 +24,8 @@ class Z3Solver extends Solver[AST] {
 
   override def dispose(): Unit = ???
 
-  override protected def mkEq(lhs: AST, rhs: AST): AST = ctx.mkEq(lhs.asInstanceOf[Expr], rhs.asInstanceOf[Expr])
+  override protected def mkEq(lhs: AST, rhs: AST): AST =
+    ctx.mkEq(lhs.asInstanceOf[Expr], rhs.asInstanceOf[Expr])
 
   override protected def mkNe(lhs: AST, rhs: AST): AST = ???
 
@@ -75,5 +76,16 @@ class Z3Solver extends Solver[AST] {
       throw new IllegalStateException("Z3 decidability or timeout issue--got Status.UNKNOWN")
   }
 
-  override protected def mkObjVar(s: String): AST = ctx.mkIntConst(s + "_object")
+  override protected def mkObjVar(s: String): AST =
+    ctx.mkBoolConst(s + "_object")
+
+  override protected def solverSimplify(t: AST): Option[AST] = {
+    solver.add(t.asInstanceOf[BoolExpr])
+    val status: Status = solver.check()
+    status match{
+      case Status.SATISFIABLE => Some(t)
+      case Status.UNKNOWN => Some(t)
+      case Status.UNSATISFIABLE => None
+    }
+  }
 }

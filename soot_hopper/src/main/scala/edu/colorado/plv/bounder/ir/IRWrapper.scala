@@ -11,19 +11,22 @@ trait IRWrapper[M,C]{
   def findLineInMethod(className:String, methodName:String, line:Int):Iterable[AppLoc]
   def makeCmd(cmd:C, method:M, loc:Option[AppLoc] = None): CmdWrapper[M,C]
   def commandPredicessors(cmdWrapper:CmdWrapper[M,C]): List[AppLoc]
+  def commandNext(cmdWrapper:CmdWrapper[M,C]):List[AppLoc]
   def isMethodEntry(cmdWrapper: CmdWrapper[M,C]): Boolean
   def makeMethod(method: M) : MethodWrapper[M,C]
   def makeLoc(cmd: C, method: M): Loc
   def cmdAfterLocation(loc: AppLoc): CmdWrapper[M,C]
-  def makeInvokeTargets(invoke:InvokeCmd[M,C]):Set[Loc]
+  def cmdBeforeLocation(loc:AppLoc): CmdWrapper[M,C]
+  def makeInvokeTargets(invoke:InvokeCmd[M,C]):Set[UnresolvedMethodTarget]
 }
+sealed case class UnresolvedMethodTarget(clazz: String, methodName:String, loc:Option[MethodLoc])
 
 
-abstract class CmdWrapper[M,C](loc:AppLoc, wrapper: IRWrapper[M,C]){
+sealed abstract class CmdWrapper[M,C](loc:AppLoc, wrapper: IRWrapper[M,C]){
   def getLoc: AppLoc = loc
   def getWrapper = wrapper
 }
-case class ReturnVal[M,C](returnVar: LocalWrapper,loc:AppLoc, wrapper: IRWrapper[M,C]) extends CmdWrapper(loc,wrapper)
+case class ReturnVal[M,C](returnVar: LocalWrapper, loc:AppLoc, wrapper: IRWrapper[M,C]) extends CmdWrapper(loc,wrapper)
 case class AssignCmd[M,C](target: LVal, source: RVal, loc:AppLoc, wrapper: IRWrapper[M,C]) extends CmdWrapper(loc,wrapper)
 case class InvokeCmd[M,C](method: Invoke[M,C], loc:AppLoc, wrapper:IRWrapper[M,C]) extends CmdWrapper(loc,wrapper)
 
@@ -38,7 +41,7 @@ trait RVal
 // New only has type, constructor parameters go to the <init> method
 case class NewCommand(className: String) extends RVal
 
-trait Invoke[M,C] extends RVal {
+sealed trait Invoke[M,C] extends RVal {
   def targetClass:String
   def targetMethod:String
   def params:List[LocalWrapper]
@@ -74,3 +77,4 @@ trait LVal extends RVal
 case class LocalWrapper(name:String) extends LVal
 case class ParamWrapper(name:String) extends LVal
 case class FieldWrapper(name:String) extends LVal
+case class ThisWrapper(className:String) extends LVal

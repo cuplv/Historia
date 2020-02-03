@@ -6,11 +6,7 @@ import soot.SootMethod
 object Qry {
   private var qryIdCounter = 0
   private def getFreshQryId = { qryIdCounter += 1; qryIdCounter }
-  def make(loc:AppLoc, locals : Map[StackVar, Val], pureFormula: Set[PureConstraint]):Qry = {
-//    val localAssertions = locals.flatMap(a => a match {
-//      case lpt@LocalPtEdge(_,_) => Some(lpt)
-//      case _ => None
-//    })
+  def make(loc:AppLoc, locals : Map[StackVar, PureVar], pureFormula: Set[PureConstraint]):Qry = {
     // Note: no return location for arbitrary query
     val queryStack = List(CallStackFrame(loc,None, locals))
     SomeQry(State(queryStack, pureFormula),loc)

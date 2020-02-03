@@ -26,6 +26,6 @@ object SootUtils {
   def findLineInMethod(line:Int, loc:JimpleMethodLoc):Iterable[Loc] = {
     val activeBody = loc.method.retrieveActiveBody()
     val units: Iterable[soot.Unit] = activeBody.getUnits.asScala
-    units.filter(a => a.getJavaSourceStartLineNumber == line).map((a:soot.Unit) => AppLoc(loc, JimpleLineLoc(a,loc.method)))
+    units.filter(a => a.getJavaSourceStartLineNumber == line).map((a:soot.Unit) => AppLoc(loc, JimpleLineLoc(a,loc.method),true))
   }
 }

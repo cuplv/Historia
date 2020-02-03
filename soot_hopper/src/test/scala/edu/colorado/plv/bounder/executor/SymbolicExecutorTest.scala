@@ -35,7 +35,7 @@ class SymbolicExecutorTest extends org.scalatest.FunSuite {
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w)
     // Call symbolic executor
     val config = SymbolicExecutorConfig(
-      stepLimit = 5, w, new ControlFlowResolver[SootMethod,soot.Unit](w,a),transfer)
+      stepLimit = 8, w, new ControlFlowResolver[SootMethod,soot.Unit](w,a),transfer)
     val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
     val result = symbolicExecutor.executeBackwardRec(query, config.stepLimit)
 //    assert(!result.isDefined)

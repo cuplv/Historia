@@ -1,6 +1,8 @@
 package edu.colorado.hopper.solver
 
-import edu.colorado.plv.bounder.state.{CmpOp, PureAtomicConstraint, PureConstraint, PureExpr, PureVar, State}
+import java.lang.ClassValue
+
+import edu.colorado.plv.bounder.state.{ClassVal, CmpOp, Equals, NullVal, PureAtomicConstraint, PureConstraint, PureExpr, PureVar, State}
 
 trait Assumptions
 
@@ -50,6 +52,7 @@ trait Solver[T] {
   protected def mkBoolVar(s : String) : T
   protected def mkObjVar(s:String) : T
   protected def mkAssert(t : T) : Unit
+  protected def solverSimplify(t: T): Option[T]
 
   def toAST(p : PureConstraint) : T = p match {
     case PureAtomicConstraint(lhs, op, rhs) => toAST(toAST(lhs), op, toAST(rhs))
@@ -59,20 +62,32 @@ trait Solver[T] {
 //      case None => Some(toAST(term))
 //    }).get
   }
+  //TODO: can we use z3 to solve cha?
   def toAST(p : PureExpr) : T = p match {
     case PureVar(v) => mkObjVar(v)
+    case NullVal => mkBoolVal(false)
+    case ClassVal(t) => mkBoolVal(true)
     case _ =>
       ???
   }
   def toAST(lhs : T, op : CmpOp, rhs : T) : T = op match {
+    case Equals => mkEq(lhs,rhs)
     case _ =>
       ???
   }
   def isFeasible(state: State):Boolean = state match{
     case State(stackFrame::_, constraints) => {
-//      def ast = constraints.map(toAST(_))
+      def ast = constraints.map(toAST(_))
       //TODO: Implement this later
+      println(ast)
       true
+    }
+  }
+  def simplify(state:State):Option[State] = state match{
+    case State(h::t, pure) => {
+      def ast =  pure.foldLeft(mkBoolVal(true))((acc,v) => mkAnd(acc, toAST(v)))
+      val simpleAst = solverSimplify(ast)
+      simpleAst.map(_ => state) //TODO: actually simplify?
     }
   }
 ////
