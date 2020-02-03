@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder.state
 
-import edu.colorado.plv.bounder.ir.{AppLoc, LineLoc, Loc, MethodWrapper}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, IRWrapper, LineLoc, Loc, LocalWrapper, MethodWrapper, VirtualInvoke}
 import soot.SootMethod
 
 object Qry {
@@ -10,6 +10,25 @@ object Qry {
     // Note: no return location for arbitrary query
     val queryStack = List(CallStackFrame(loc,None, locals))
     SomeQry(State(queryStack, pureFormula),loc)
+  }
+  def makeReceiverNonNull[M,C](w:IRWrapper[M,C], className:String, methodName:String, line:Int):Qry = {
+    val locs = w.findLineInMethod(className, methodName,line)
+
+    val derefLocs: Iterable[AppLoc] = locs.filter(pred = a => {
+      w.cmdAfterLocation(a).isInstanceOf[AssignCmd[SootMethod, soot.Unit]]
+    })
+    assert(derefLocs.size == 1)
+    // Get location of query
+    val derefLoc: AppLoc = derefLocs.iterator.next
+    // Get name of variable that should not be null
+    val varname = w.cmdAfterLocation(derefLoc) match {
+      case a@AssignCmd(_, VirtualInvoke(LocalWrapper(name),_,_,_,_), _, _) => name
+      case _ => ???
+    }
+
+    val pureVar = PureVar("")
+    Qry.make(derefLoc, Map((StackVar(varname),pureVar)),
+      Set(PureAtomicConstraint(pureVar, Equals, NullVal)))
   }
 
 }

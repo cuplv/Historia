@@ -10,6 +10,11 @@ trait Trace
 case class FullTrace(paths: PathNode) extends Trace
 case class CounterexampleTrace(witness: PathNode) extends Trace
 
-case class PathNode(qry: Qry, predecessor : Set[PathNode]) {
-  override def toString:String = qry.toString
+case class PathNode(qry: Qry, succ : Option[PathNode]) {
+  override def toString:String = {
+    val qrystr = qry.toString
+    val succstr = succ.map((a: PathNode) =>
+      a.toString).getOrElse("")
+    qrystr + "\n" + succstr
+  }
 }

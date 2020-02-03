@@ -1,8 +1,8 @@
 package edu.colorado.plv.bounder.executor
 
 import edu.colorado.plv.bounder.BounderSetupApplication
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, JimpleMethodLoc, JimpleFlowdroidWrapper, LineLoc, Loc, LocalWrapper, VirtualInvoke}
-import edu.colorado.plv.bounder.state.{Equals, LocalPtEdge, NullVal, PureAtomicConstraint, PureVar, Qry, StackVar}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, JimpleFlowdroidWrapper, JimpleMethodLoc, LineLoc, Loc, LocalWrapper, VirtualInvoke}
+import edu.colorado.plv.bounder.state.{BottomQry, Equals, LocalPtEdge, NullVal, PathNode, PureAtomicConstraint, PureVar, Qry, StackVar}
 import soot.{Local, SootMethod}
 import soot.jimple.internal.JAssignStmt
 
@@ -10,36 +10,21 @@ class SymbolicExecutorTest extends org.scalatest.FunSuite {
   val test_interproc_1 = getClass.getResource("/test_interproc_1.apk").getPath()
   assert(test_interproc_1 != null)
   val w = new JimpleFlowdroidWrapper(test_interproc_1)
+  val transfer = new TransferFunctions[SootMethod,soot.Unit](w)
+  val a = new DefaultAppCodeResolver()
+  val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
+
   test("Symbolic Executor should prove an intraprocedural deref"){
-    val locs = w.findLineInMethod(
-      "com.example.test_interproc_1.MainActivity", "java.lang.String objectString()",21)
-
-    val derefLocs: Iterable[AppLoc] = locs.filter(pred = a => {
-      w.cmdAfterLocation(a).isInstanceOf[AssignCmd[SootMethod, soot.Unit]]
-      //      a.u.isInstanceOf[JAssignStmt]
-    })
-    assert(derefLocs.size === 1)
-    // Get location of query
-    val derefLoc: AppLoc = derefLocs.iterator.next
-    // Get name of variable that should not be null
-    val varname = w.cmdAfterLocation(derefLoc) match {
-      case a@AssignCmd(_, VirtualInvoke(LocalWrapper(name),_,_,_,_), _, _) => name
-      case _ => ???
-    }
-
-    val pureVar = PureVar("")
-    val query = Qry.make(derefLoc, Map((StackVar(varname),pureVar)),
-      Set(PureAtomicConstraint(pureVar, Equals, NullVal)))
-
-    val a = new DefaultAppCodeResolver()
-    val transfer = new TransferFunctions[SootMethod,soot.Unit](w)
+    val query = Qry.makeReceiverNonNull(w,
+      "com.example.test_interproc_1.MainActivity",
+      "java.lang.String objectString()",21)
     // Call symbolic executor
     val config = SymbolicExecutorConfig(
-      stepLimit = 8, w, new ControlFlowResolver[SootMethod,soot.Unit](w,a),transfer)
+      stepLimit = Some(8), w, resolver,transfer)
     val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
-    val result = symbolicExecutor.executeBackwardRec(query, config.stepLimit)
-//    assert(!result.isDefined)
-    println()
-
+    val result: Set[PathNode] = symbolicExecutor.executeBackward(query)
+    println(result.iterator.next)
+    assert(result.size === 1)
+    assert(result.iterator.next.qry.isInstanceOf[BottomQry])
   }
 }
