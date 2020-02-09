@@ -4,7 +4,12 @@ package edu.colorado.plv.bounder.ir
  * A source code location
  * TODO: find a way to make the type system enforce locations are not used cross wrapper implementations
  */
-sealed trait Loc
+sealed trait Loc{
+  def containingMethod:String = this match{
+    case AppLoc(method, _,_) => method.toString
+    case _ => ""
+  }
+}
 
 /**
  * A method definition overridden by the IR wrapper implementation

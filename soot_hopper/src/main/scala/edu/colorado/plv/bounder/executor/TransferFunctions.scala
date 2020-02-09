@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.executor
 
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldRef, IRWrapper, Invoke, InvokeCmd, LVal, Loc, LocalWrapper, NewCommand, SpecialInvoke, StaticInvoke, VirtualInvoke}
-import edu.colorado.plv.bounder.state.{CallStackFrame, ClassVal, Equals, PureAtomicConstraint, PureVar, StackVar, State, SubClassOf, TypeConstraint}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldRef, IRWrapper, Invoke, InvokeCmd, LVal, Loc, LocalWrapper, NewCommand, SpecialInvoke, StaticInvoke, ThisWrapper, VirtualInvoke}
+import edu.colorado.plv.bounder.state.{CallStackFrame, ClassVal, Equals, FieldPtEdge, PureAtomicConstraint, PureVar, StackVar, State, SubClassOf, TypeConstraint}
 
 class TransferFunctions[M,C](w:IRWrapper[M,C]) {
   def transfer(pre:State, target:Loc, source:Loc):Set[State] = (source,target,pre) match{
@@ -20,7 +20,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C]) {
   }
   def cmdTransfer(cmd:CmdWrapper[M,C], state: State):Set[State] = (cmd,state) match{
     case (AssignCmd(LocalWrapper(name,vartype), NewCommand(className),_,_),
-        s@State(stack@f::tail,heap,typeConstraints,pureFormula)) =>
+        s@State(stack@f::_,heap,typeConstraints,pureFormula)) =>
       f.locals.get(StackVar(name,vartype)) match{
         case Some(purevar: PureVar) =>
           val constraint = PureAtomicConstraint(purevar, Equals, ClassVal(className))
@@ -32,7 +32,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C]) {
           ???
         case _ => throw new IllegalStateException("Assign object to primitive")
       }
-    case (AssignCmd(target, fr@FieldRef(base, containsType, declType, name),_,_), s) =>{
+    case (AssignCmd(target, FieldRef(base, containsType, declType, name),_,_), s) =>{
       if(s.isDefined(target)) {
         val (tgtval, s1) = s.getOrDefine(target)
         if(s.isDefined(base)){
@@ -40,16 +40,31 @@ class TransferFunctions[M,C](w:IRWrapper[M,C]) {
         }else{
           // Case split between aliased or not aliased
           val possibleBaseAliases: Set[PureVar] = s.pureVars()
-            .filter(s.isNull)
-            .filter(a => canAlias(s.typeConstraints(a), base))
+            .filter(!s.isNull(_))
+            .filter(a => s1.typeConstraints.get(a).map(canAlias(_,base)).getOrElse(true))
           //TODO: swap pure vars types
           val aliasSets: Set[State] = possibleBaseAliases.map(pv => ???)
-          aliasSets + s1.copy(heapConstraints = s.heapConstraints + ???)
+          val (basePure, s2) = s1.getOrDefine(base)
+          if(! basePure.isInstanceOf[PureVar]) throw new IllegalStateException(s"Assign to non object purevar.")
+          aliasSets + s2.copy(heapConstraints = s2.heapConstraints +
+            (FieldPtEdge(basePure.asInstanceOf[PureVar],name,containsType,declType)-> tgtval)).clearLVal(target)
         }
       }else{
         Set(s) // No change to state if assignment doesn't affect anything in current state
       }
     }
+    case (AssignCmd(target:LocalWrapper, LocalWrapper(name, localType),_,_),s@State(f::t,_,tc,_)) => {
+      f.locals.get(StackVar(target.name, target.localType)) match {
+        case Some(v) =>
+          val (pval,s1) = s.getOrDefine(target)
+          val s2 = s1.clearLVal(target)
+          Set(s2.copy(callStack = f.copy(locals=f.locals + (StackVar(name,localType) -> pval))::t
+            , typeConstraints = ???))
+        case None => Set(s)
+      }
+    }
+    case (AssignCmd(lw: LocalWrapper, ThisWrapper(thisTypename),a,b), s) =>
+      cmdTransfer(AssignCmd(lw, LocalWrapper("this", thisTypename),a,b),s)
     case _ =>
       ???
   }

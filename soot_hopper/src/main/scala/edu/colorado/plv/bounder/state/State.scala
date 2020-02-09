@@ -15,19 +15,21 @@ object State {
 
 // pureFormula is a conjunction of constraints
 // callStack is the call string from thresher paper
-case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdge, Val], typeConstraints: Map[PureVar, TypeConstraint],pureFormula: Set[PureConstraint]) {
+case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdge, Val],
+                 typeConstraints: Map[PureVar, TypeConstraint],pureFormula: Set[PureConstraint]) {
   val solver = new Z3Solver()
   override def toString:String = {
     val stackString = callStack.headOption match{
       case Some(sf) => {
 
         val locals: Map[StackVar, Val] = sf.locals
-        sf.toString() + " locals: " + locals.map(k => k._1.toString + " -> " + k._2.toString).mkString(",")
+        sf.methodLoc.toString() + " locals: " + locals.map(k => k._1.toString + " -> " + k._2.toString).mkString(",")
       }
       case None => "[nc]"
     }
+    val heapString = s"   heap: ${heapConstraints.map(a => a._1.toString + "->" +  a._2.toString).mkString(" * ")}"
     val pureFormulaString = "   pure: " + pureFormula.map(a => a.toString).mkString(" && ")
-    s"($stackString   $pureFormulaString)"
+    s"($stackString $heapString   $pureFormulaString)"
   }
   def simplify:Option[State] = {
     solver.simplify(this)
@@ -49,7 +51,7 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
           (newident, State(
             callStack = cshead.copy(locals = cshead.locals + (StackVar(name,localType) -> newident)) :: cstail,
             heapConstraints,
-            typeConstraints,
+            typeConstraints + (newident -> TypeConstraint.fromLocalType(localType)),
             pureFormula
           ))
       }
@@ -178,6 +180,12 @@ sealed case class PureVar() extends PureExpr with Val {
   override def toString : String = "p-" + id
 }
 
-
+object TypeConstraint{
+  def fromLocalType(typeName:String):TypeConstraint = typeName match {
+    case v if !v.contains(".") =>
+      throw new IllegalArgumentException(s"unimplemented primitive type $v")
+    case s => SubClassOf(s)
+  }
+}
 sealed trait TypeConstraint
 case class SubClassOf(clazz:String) extends TypeConstraint

@@ -176,8 +176,8 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
       val hierarchy: Hierarchy = Scene.v().getActiveHierarchy
       val type1Soot = Scene.v().getSootClass(type1)
       val type2Soot = Scene.v().getSootClass(type2)
-      val sub1 = hierarchy.getSubclassesOf(type1Soot).asScala
-      val sub2 = hierarchy.getSubclassesOf(type2Soot).asScala.toSet
+      val sub1 = hierarchy.getSubclassesOfIncluding(type1Soot).asScala
+      val sub2 = hierarchy.getSubclassesOfIncluding(type2Soot).asScala.toSet
       sub1.exists(a => sub2.contains(a))
     }
   }
