@@ -9,25 +9,25 @@ object Qry {
   def make(loc:AppLoc, locals : Map[StackVar, PureVar], pureFormula: Set[PureConstraint]):Qry = {
     // Note: no return location for arbitrary query
     val queryStack = List(CallStackFrame(loc,None, locals))
-    SomeQry(State(queryStack, pureFormula),loc)
+    SomeQry(State(queryStack,Map(),Map(), pureFormula),loc)
   }
   def makeReceiverNonNull[M,C](w:IRWrapper[M,C], className:String, methodName:String, line:Int):Qry = {
     val locs = w.findLineInMethod(className, methodName,line)
 
     val derefLocs: Iterable[AppLoc] = locs.filter(pred = a => {
-      w.cmdAfterLocation(a).isInstanceOf[AssignCmd[SootMethod, soot.Unit]]
+      w.cmdAfterLocation(a).isInstanceOf[AssignCmd[_, _]]
     })
     assert(derefLocs.size == 1)
     // Get location of query
     val derefLoc: AppLoc = derefLocs.iterator.next
     // Get name of variable that should not be null
     val varname = w.cmdAfterLocation(derefLoc) match {
-      case a@AssignCmd(_, VirtualInvoke(LocalWrapper(name),_,_,_,_), _, _) => name
+      case a@AssignCmd(_, VirtualInvoke(LocalWrapper(name,_),_,_,_,_), _, _) => name
       case _ => ???
     }
 
-    val pureVar = PureVar("")
-    Qry.make(derefLoc, Map((StackVar(varname),pureVar)),
+    val pureVar = PureVar()
+    Qry.make(derefLoc, Map((StackVar(varname,"java.lang.Object"),pureVar)),
       Set(PureAtomicConstraint(pureVar, Equals, NullVal)))
   }
 

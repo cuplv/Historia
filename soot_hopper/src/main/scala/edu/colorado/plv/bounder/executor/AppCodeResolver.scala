@@ -1,7 +1,6 @@
 package edu.colorado.plv.bounder.executor
 
 import edu.colorado.plv.bounder.ir.{AppLoc, CallinMethodReturn, InternalMethodReturn, JimpleFlowdroidWrapper, Loc, MethodLoc, UnresolvedMethodTarget}
-import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper.getClass
 
 import scala.io.Source
 import scala.util.matching.Regex

@@ -1,6 +1,8 @@
 package edu.colorado.plv.bounder.state
 
+import edu.colorado.plv.bounder.ir.{FieldRef, IRWrapper, LVal, LocalWrapper, ParamWrapper, RVal}
 import edu.colorado.plv.bounder.solver.Z3Solver
+
 
 object State {
   private var id:Int = -1
@@ -13,9 +15,8 @@ object State {
 
 // pureFormula is a conjunction of constraints
 // callStack is the call string from thresher paper
-case class State(callStack: List[CallStackFrame],pureFormula: Set[PureConstraint]) {
+case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdge, Val], typeConstraints: Map[PureVar, TypeConstraint],pureFormula: Set[PureConstraint]) {
   val solver = new Z3Solver()
-  def isFeasible:Boolean = solver.isFeasible(this)
   override def toString:String = {
     val stackString = callStack.headOption match{
       case Some(sf) => {
@@ -31,6 +32,69 @@ case class State(callStack: List[CallStackFrame],pureFormula: Set[PureConstraint
   def simplify:Option[State] = {
     solver.simplify(this)
   }
+  def isDefined(l:LVal):Boolean = l match{
+    case LocalWrapper(name,localType) => {
+      callStack match{
+        case CallStackFrame(_,_,locals)::_ => locals.contains(StackVar(name, localType))
+        case Nil => false
+      }
+    }
+    case _ => ???
+  }
+  def getOrDefine(l : LVal): (Val,State) = (l,callStack) match{
+    case (LocalWrapper(name,localType), cshead::cstail) =>
+      cshead.locals.get(StackVar(name,localType)) match {
+        case Some(v) => (v, this)
+        case None => val newident = PureVar();
+          (newident, State(
+            callStack = cshead.copy(locals = cshead.locals + (StackVar(name,localType) -> newident)) :: cstail,
+            heapConstraints,
+            typeConstraints,
+            pureFormula
+          ))
+      }
+    case _ =>
+      ???
+  }
+
+  /**
+   * When a var is assigned, we remove it from our constraint set
+   * @param l variable being assigned
+   * @return new state
+   */
+  def clearLVal(l : LVal): State = (l,callStack) match {
+    case (LocalWrapper(name,localType), cshead::cstail) =>
+      State(cshead.removeStackVar(StackVar(name, localType))::cstail,heapConstraints, typeConstraints, pureFormula)
+    case _ =>
+      ???
+  }
+
+  def clearPureVar(p:PureVar):State = {
+    ???
+  }
+
+  def addHeapEdge(fr:FieldRef, pv:PureVar): State = {
+    ???
+  }
+  def pureVars():Set[PureVar] = {
+    val pureVarOpt = (a:Val) => a match {
+      case p: PureVar => Some(p)
+      case _ => None
+    }
+    val pureVarFromLocals: Set[PureVar] = callStack.headOption match {
+      case Some(CallStackFrame(_, _, locals)) =>
+
+        locals.flatMap(a => pureVarOpt(a._2)).toSet
+      case None => Set()
+    }
+    val pureVarFromHeap = heapConstraints.flatMap(a => pureVarOpt(a._2)).toSet
+    pureVarFromHeap ++ pureVarFromLocals
+  }
+  def isNull(pv:PureVar):Boolean = {
+    pureFormula.contains(PureAtomicConstraint(pv,Equals,NullVal))
+  }
+  def newPureVarType(p:PureVar,newType:String): State =
+    ???
 }
 
 sealed trait Val
@@ -44,8 +108,8 @@ sealed trait Val
 //  val id = State.getId()
 //}
 
-sealed trait Var // Var in the program
-case class StackVar(name : String) extends Var{
+sealed trait Var
+case class StackVar(name : String, varType:String) extends Var{
   override def toString:String = name
 }
 
@@ -75,8 +139,8 @@ sealed abstract class PureExpr {
 
 
 
-// constant values
-sealed abstract class PureVal(val v : Any) extends PureExpr {
+// primitive values
+sealed abstract class PureVal(val v : Any) extends PureExpr with Val {
   override def substitute(toSub : PureExpr, subFor : PureVar) : PureVal = this
 
   def >(p : PureVal) : Boolean = sys.error("GT for arbitrary PureVal")
@@ -100,20 +164,8 @@ case object NullVal extends PureVal{
 case class ClassVal(typ:String) extends PureVal
 
 // pure var is a symbolic var (e.g. this^ from the paper)
-sealed case class PureVar(typ : String) extends PureExpr with Val {
+sealed case class PureVar() extends PureExpr with Val {
   val id : Int = State.getId()
-
-//  override def isArrayType : Boolean = false
-  override def isStringExpr : Boolean = typ == "java.lang.String"
-  override def isFloatExpr : Boolean = typ == ???
-  override def isLongExpr : Boolean = typ == ???
-  def isReferenceType : Boolean = ???
-
-  // TODO: should we ask Z3 here? may be sound to do something coarser if we are careful about our usage of this
-  def |=(other : Val) : Boolean = other match {
-    case PureVar(oType) => typ == oType // this == other
-    case _ => false
-  }
   override def getVars(s : Set[PureVar]) : Set[PureVar] = s + this
 
   override def substitute(toSub : PureExpr, subFor : PureVar) : PureExpr = if (subFor == this) toSub else this
@@ -125,3 +177,7 @@ sealed case class PureVar(typ : String) extends PureExpr with Val {
   }
   override def toString : String = "p-" + id
 }
+
+
+sealed trait TypeConstraint
+case class SubClassOf(clazz:String) extends TypeConstraint

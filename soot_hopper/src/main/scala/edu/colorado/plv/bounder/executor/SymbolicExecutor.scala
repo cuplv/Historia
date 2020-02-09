@@ -59,7 +59,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
    * @return
    */
   def executeStep(qry:Qry):Set[Qry] = qry match{
-    case SomeQry(state@State(callStack,_), loc) =>
+    case SomeQry(state@State(callStack,_,_,_), loc) =>
       println(s"location: ${loc})")
       println(s"state: $state")
       println("-------------")

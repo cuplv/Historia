@@ -1,5 +1,7 @@
 package edu.colorado.plv.bounder.ir
 
+import edu.colorado.plv.bounder.state.TypeConstraint
+
 // Interface to handle all the messy parts of interacting with the underlying IR representation
 /**
  * A class that translates from the underlying representation to a "cleaned" Ir
@@ -16,6 +18,7 @@ trait IRWrapper[M,C]{
   def cmdAfterLocation(loc: AppLoc): CmdWrapper[M,C]
   def cmdBeforeLocation(loc:AppLoc): CmdWrapper[M,C]
   def makeInvokeTargets(invoke:InvokeCmd[M,C]):Set[UnresolvedMethodTarget]
+  def canAlias(type1:String, type2:String):Boolean
 }
 sealed case class UnresolvedMethodTarget(clazz: String, methodName:String, loc:Option[MethodLoc])
 
@@ -25,7 +28,9 @@ sealed abstract class CmdWrapper[M,C](loc:AppLoc, wrapper: IRWrapper[M,C]){
   def getWrapper = wrapper
 }
 case class ReturnVal[M,C](returnVar: LocalWrapper, loc:AppLoc, wrapper: IRWrapper[M,C]) extends CmdWrapper(loc,wrapper)
-case class AssignCmd[M,C](target: LVal, source: RVal, loc:AppLoc, wrapper: IRWrapper[M,C]) extends CmdWrapper(loc,wrapper)
+case class AssignCmd[M,C](target: LVal, source: RVal, loc:AppLoc, wrapper: IRWrapper[M,C]) extends CmdWrapper(loc,wrapper){
+  override def toString:String = s"$target := $source"
+}
 case class InvokeCmd[M,C](method: Invoke[M,C], loc:AppLoc, wrapper:IRWrapper[M,C]) extends CmdWrapper(loc,wrapper)
 
 
@@ -72,8 +77,12 @@ case class StaticInvoke[M,C](targetClass:String,
 
 // Things that can be assigned to or used as expressins
 trait LVal extends RVal
-case class LocalWrapper(name:String) extends LVal
+case class LocalWrapper(name:String, localType:String) extends LVal {
+  override def toString:String = name
+}
 case class ParamWrapper(name:String) extends LVal
-case class FieldWrapper(name:String) extends LVal
+//case class FieldWrapper(name:String) extends LVal
 case class ThisWrapper(className:String) extends LVal
-case class FieldRef(base:LocalWrapper, containsType:String, declType:String, name:String) extends LVal
+case class FieldRef(base:LocalWrapper, containsType:String, declType:String, name:String) extends LVal{
+  override def toString: String = s"${base}.${name}"
+}

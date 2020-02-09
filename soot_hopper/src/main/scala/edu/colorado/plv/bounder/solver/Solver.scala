@@ -64,7 +64,7 @@ trait Solver[T] {
   }
   //TODO: can we use z3 to solve cha?
   def toAST(p : PureExpr) : T = p match {
-    case PureVar(v) => mkObjVar(v)
+    case p:PureVar => mkObjVar(p.id.toString)
     case NullVal => mkBoolVal(false)
     case ClassVal(t) => mkBoolVal(true)
     case _ =>
@@ -75,84 +75,12 @@ trait Solver[T] {
     case _ =>
       ???
   }
-  def isFeasible(state: State):Boolean = state match{
-    case State(stackFrame::_, constraints) => {
-      def ast = constraints.map(toAST(_))
-      //TODO: Implement this later
-      println(ast)
-      true
-    }
-  }
   def simplify(state:State):Option[State] = state match{
-    case State(h::t, pure) => {
+    case State(h::t, heap,_, pure) => {
       def ast =  pure.foldLeft(mkBoolVal(true))((acc,v) => mkAnd(acc, toAST(v)))
       val simpleAst = solverSimplify(ast)
       simpleAst.map(_ => state) //TODO: actually simplify?
     }
+    case State(Nil,_,_,_) => ???
   }
-////
-////  /**
-////   * Maps a variable to a name that will represent it in the solver.
-////   */
-//  protected def getSolverName(p : PureVar): String = ??? // p match {
-////    case PureVar(typ) =>
-////      val id = p.id
-////      typ match {
-////        case TypeReference.Int => "i" + id.toString
-////        case TypeReference.Byte => "i" + id.toString // we treat bytes, shorts, chars as ints for now
-////        case TypeReference.Short => "i" + id.toString
-////        case TypeReference.Char => "i" + id.toString
-////        case TypeReference.Boolean => "b" + id.toString // TODO: should we allow bools? or convert them all to ints?
-////        case TypeReference.JavaLangObject => "o" + id.toString // objects are bools where false means null and true means non-null
-////        case _ => sys.error("Bad type for pure var " + p + ": type " + typ + " expecting " + TypeReference.Int)
-////      }
-////  }
-////
-////  // conversion from pure expressions to AST type of solver (T)
-//  protected def toAST(p : PureExpr) : T = p match {
-////    case PureBinExpr(lhs, op, rhs) =>
-////      val (_lhs, _rhs) = (toAST(lhs), toAST(rhs))
-////      op match {
-////        case IBinaryOpInstruction.Operator.ADD => mkAdd(_lhs, _rhs)
-////        case IBinaryOpInstruction.Operator.SUB => mkSub(_lhs, _rhs)
-////        case IBinaryOpInstruction.Operator.MUL => mkMul(_lhs, _rhs)
-////        case IBinaryOpInstruction.Operator.DIV => mkDiv(_lhs, _rhs)
-////        case IBinaryOpInstruction.Operator.REM => mkRem(_lhs, _rhs)
-////        case IBinaryOpInstruction.Operator.AND => mkAnd(_lhs, _rhs)
-////        case IBinaryOpInstruction.Operator.OR => mkOr(_lhs, _rhs)
-////        case IBinaryOpInstruction.Operator.XOR => mkXor(_lhs, _rhs)
-////        case _ => sys.error("Unrecognized binary operator " + op)
-////      }
-//    case p@PureVar(typ) =>
-//      val name = getSolverName(p)
-//      typ match {
-//        case _ => ???
-////        case TypeReference.Int
-////             | TypeReference.Byte
-////             | TypeReference.Short
-////             | TypeReference.Char => mkIntVar(name)
-////        case TypeReference.Boolean | TypeReference.JavaLangObject => mkBoolVar(name)
-////        case _ => sys.error("Bad type for pure var " + p + ": type " + typ + " expecting " + TypeReference.Int)
-//      }
-////    case BoolVal(v) => mkBoolVal(v)
-////    case IntVal(v) => mkIntVal(v)
-////    case CharVal(v) => mkIntVal(v.getNumericValue)
-////    // TODO: add simple solver support for non-integer constants
-//    case _ => sys.error("Unexpected pure val " + p + " type " + p.getClass)
-//  }
-////
-////  def toAST(lhs : PureExpr, op : CmpOp, rhs : PureExpr) : T = toAST(toAST(lhs), op, toAST(rhs))
-////  def toAST(lhs : T, op : CmpOp, rhs : T) : T = op match {
-////    case IConditionalBranchInstruction.Operator.EQ => mkEq(lhs, rhs)
-////    case IConditionalBranchInstruction.Operator.NE => mkNe(lhs, rhs)
-////    case IConditionalBranchInstruction.Operator.GT => mkGt(lhs, rhs)
-////    case IConditionalBranchInstruction.Operator.LT => mkLt(lhs, rhs)
-////    case IConditionalBranchInstruction.Operator.GE => mkGe(lhs, rhs)
-////    case IConditionalBranchInstruction.Operator.LE => mkLe(lhs, rhs)
-////    case _ => sys.error("Unrecognized comparison operator " + op)
-////  }
-////  def toConjunct(i : Iterable[PureConstraint]) : T = i.foldLeft (mkBoolVal(true)) ((ast, c) => mkAnd(toAST(c), ast))
-////  // TODO : fix typing issues that make this necessary
-////  def mkNotImpliesAssert(lhs : Iterable[PureConstraint], rhs : Iterable[PureConstraint]) : Unit = mkAssert(mkNot(mkImplies(toConjunct(lhs), toConjunct(rhs))))
-
 }

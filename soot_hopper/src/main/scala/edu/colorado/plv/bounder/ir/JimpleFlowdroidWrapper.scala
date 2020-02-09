@@ -1,10 +1,11 @@
 package edu.colorado.plv.bounder.ir
 
 import edu.colorado.plv.bounder.BounderSetupApplication
+import edu.colorado.plv.bounder.state.TypeConstraint
 import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
 import soot.jimple.ThisRef
 import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceFieldRef, AbstractInstanceInvokeExpr, AbstractNewExpr, JAssignStmt, JIdentityStmt, JInvokeStmt, JReturnStmt, JSpecialInvokeExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
-import soot.{Body, Scene, SootMethod, Value}
+import soot.{Body, Hierarchy, Scene, SootMethod, Value}
 
 import scala.jdk.CollectionConverters._
 
@@ -99,7 +100,7 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
   protected def makeRVal(box:Value):RVal = box match{
     case a: AbstractInstanceInvokeExpr =>{
       val target = makeVal(a.getBase) match{
-        case jl@LocalWrapper(_)=>jl
+        case jl@LocalWrapper(_,_)=>jl
         case _ => ???
       }
       val targetClass = a.getMethodRef.getDeclaringClass.getName
@@ -121,11 +122,12 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
   }
 
   protected def makeVal(box: Value):RVal = box match{
-    case a : JimpleLocal=> LocalWrapper(a.getName)
+    case a : JimpleLocal=>
+      LocalWrapper(a.getName,a.getType.toString)
     case f: AbstractInstanceFieldRef => {
       val fieldType = f.getType.toString
       val base = makeVal(f.getBase).asInstanceOf[LocalWrapper]
-      val fieldname = f.getField.toString
+      val fieldname = f.getField.getName
       val fieldDeclType = f.getField.getDeclaringClass.toString
       FieldRef(base,fieldType, fieldDeclType, fieldname)
     }
@@ -167,6 +169,17 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
       val method = tgt.getName
       UnresolvedMethodTarget(clazz, method, Some(JimpleMethodLoc(tgt)))
     }).toSet
+  }
+
+  override def canAlias(type1: String, type2: String): Boolean = {
+    if(type1 == type2) true else {
+      val hierarchy: Hierarchy = Scene.v().getActiveHierarchy
+      val type1Soot = Scene.v().getSootClass(type1)
+      val type2Soot = Scene.v().getSootClass(type2)
+      val sub1 = hierarchy.getSubclassesOf(type1Soot).asScala
+      val sub2 = hierarchy.getSubclassesOf(type2Soot).asScala.toSet
+      sub1.exists(a => sub2.contains(a))
+    }
   }
 }
 

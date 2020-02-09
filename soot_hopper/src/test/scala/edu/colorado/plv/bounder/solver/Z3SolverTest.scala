@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.state.{Equals, NullVal, PureAtomicConstraint, Pu
 class Z3SolverTest extends org.scalatest.FunSuite {
   test("solve a simple ast") {
     val solver = new Z3Solver()
-    val x = PureVar("")
+    val x = PureVar()
     solver.toAST(PureAtomicConstraint(x, Equals, NullVal))
   }
 
