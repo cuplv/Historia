@@ -9,6 +9,6 @@ class BounderSetupApplicationTest extends org.scalatest.FunSuite {
 
     BounderSetupApplication.loadApk(trikita_apk)
     val gotSize = Scene.v().getClasses().size
-    assert( gotSize === 4871 )
+    assert( gotSize === 2060 )
   }
 }

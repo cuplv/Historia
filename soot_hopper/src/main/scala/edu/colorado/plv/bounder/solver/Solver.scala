@@ -2,7 +2,7 @@ package edu.colorado.hopper.solver
 
 import java.lang.ClassValue
 
-import edu.colorado.plv.bounder.state.{ClassVal, CmpOp, Equals, NullVal, PureAtomicConstraint, PureConstraint, PureExpr, PureVar, State}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassVal, CmpOp, Equals, NullVal, PureAtomicConstraint, PureConstraint, PureExpr, PureVar, State}
 
 trait Assumptions
 

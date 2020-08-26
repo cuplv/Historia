@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.ir
 
 import edu.colorado.plv.bounder.BounderSetupApplication
-import edu.colorado.plv.bounder.state.TypeConstraint
+import edu.colorado.plv.bounder.symbolicexecutor.state.TypeConstraint
 import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
 import soot.jimple.ThisRef
 import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceFieldRef, AbstractInstanceInvokeExpr, AbstractNewExpr, JAssignStmt, JIdentityStmt, JInvokeStmt, JReturnStmt, JSpecialInvokeExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
@@ -37,6 +37,11 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
       case t:Throwable => throw t
     })
     method.map(a=> JimpleMethodLoc(a))
+  }
+  override def getApplicationCallbacks: Seq[MethodLoc] = {
+    val clazzFound = Scene.v().getClasses
+
+    ???
   }
   override def makeCmd(cmd: soot.Unit, method: SootMethod,
                        locOpt:Option[AppLoc] = None): CmdWrapper[SootMethod, soot.Unit] = {
@@ -181,6 +186,7 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
       sub1.exists(a => sub2.contains(a))
     }
   }
+
 }
 
 case class JimpleMethodLoc(method: SootMethod) extends MethodLoc

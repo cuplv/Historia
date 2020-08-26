@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder.solver
 
-import edu.colorado.plv.bounder.state.{Equals, NullVal, PureAtomicConstraint, PureVar}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{Equals, NullVal, PureAtomicConstraint, PureVar}
 
 class Z3SolverTest extends org.scalatest.FunSuite {
   test("solve a simple ast") {

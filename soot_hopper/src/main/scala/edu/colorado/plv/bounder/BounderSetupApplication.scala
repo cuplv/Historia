@@ -49,9 +49,6 @@ object BounderSetupApplication {
       setupApplicationClass.getDeclaredMethod("constructCallgraphInternal")
     constructCg.setAccessible(true)
     constructCg.invoke(setup)
-
-
-    println()
   }
   def loadApkOld(path : String): Unit = {
     G.reset()

@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder.ir
 
-import edu.colorado.plv.bounder.state.TypeConstraint
+import edu.colorado.plv.bounder.symbolicexecutor.state.TypeConstraint
 
 // Interface to handle all the messy parts of interacting with the underlying IR representation
 /**
@@ -9,6 +9,7 @@ import edu.colorado.plv.bounder.state.TypeConstraint
  * @tparam C Command type for the underlying representation
  */
 trait IRWrapper[M,C]{
+  def getApplicationCallbacks : Seq[MethodLoc]
   def findMethodLoc(className: String, methodName: String):Option[MethodLoc]
   def findLineInMethod(className:String, methodName:String, line:Int):Iterable[AppLoc]
   def makeCmd(cmd:C, method:M, loc:Option[AppLoc] = None): CmdWrapper[M,C]
@@ -25,7 +26,6 @@ sealed case class UnresolvedMethodTarget(clazz: String, methodName:String, loc:O
 
 sealed abstract class CmdWrapper[M,C](loc:AppLoc, wrapper: IRWrapper[M,C]){
   def getLoc: AppLoc = loc
-  def getWrapper = wrapper
 }
 case class ReturnVal[M,C](returnVar: LocalWrapper, loc:AppLoc, wrapper: IRWrapper[M,C]) extends CmdWrapper(loc,wrapper)
 case class AssignCmd[M,C](target: LVal, source: RVal, loc:AppLoc, wrapper: IRWrapper[M,C]) extends CmdWrapper(loc,wrapper){
