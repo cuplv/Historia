@@ -1,4 +1,4 @@
-package edu.colorado.plv.bounder.executor
+package edu.colorado.plv.bounder.symbolicexecutor
 
 import edu.colorado.plv.bounder.ir.{AppLoc, CallinMethodReturn, InternalMethodReturn, JimpleFlowdroidWrapper, Loc, MethodLoc, UnresolvedMethodTarget}
 

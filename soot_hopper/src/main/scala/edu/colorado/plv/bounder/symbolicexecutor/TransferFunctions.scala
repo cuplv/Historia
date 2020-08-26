@@ -1,7 +1,7 @@
-package edu.colorado.plv.bounder.executor
+package edu.colorado.plv.bounder.symbolicexecutor
 
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldRef, IRWrapper, Invoke, InvokeCmd, LVal, Loc, LocalWrapper, NewCommand, SpecialInvoke, StaticInvoke, ThisWrapper, VirtualInvoke}
-import edu.colorado.plv.bounder.state.{CallStackFrame, ClassVal, Equals, FieldPtEdge, PureAtomicConstraint, PureVar, StackVar, State, SubClassOf, TypeConstraint}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, ClassVal, Equals, FieldPtEdge, PureAtomicConstraint, PureVar, StackVar, State, SubClassOf, TypeConstraint}
 
 class TransferFunctions[M,C](w:IRWrapper[M,C]) {
   def transfer(pre:State, target:Loc, source:Loc):Set[State] = (source,target,pre) match{

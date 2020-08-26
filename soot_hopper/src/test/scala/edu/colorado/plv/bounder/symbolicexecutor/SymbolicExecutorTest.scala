@@ -1,8 +1,8 @@
-package edu.colorado.plv.bounder.executor
+package edu.colorado.plv.bounder.symbolicexecutor
 
 import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, JimpleFlowdroidWrapper, JimpleMethodLoc, LineLoc, Loc, LocalWrapper, VirtualInvoke}
-import edu.colorado.plv.bounder.state.{BottomQry, PathNode, PureAtomicConstraint, PureVar, Qry, StackVar}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, PureAtomicConstraint, PureVar, Qry, StackVar}
 import soot.{Local, SootMethod}
 import soot.jimple.internal.JAssignStmt
 

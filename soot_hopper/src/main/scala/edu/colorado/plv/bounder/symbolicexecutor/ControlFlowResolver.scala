@@ -1,7 +1,7 @@
-package edu.colorado.plv.bounder.executor
+package edu.colorado.plv.bounder.symbolicexecutor
 
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, IRWrapper, Invoke, InvokeCmd, Loc, SpecialInvoke, StaticInvoke, UnresolvedMethodTarget, VirtualInvoke}
-import edu.colorado.plv.bounder.state.{CallStackFrame, State}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, State}
 
 /**
  * Functions to resolve code targets for call sites and match lifestate rules.

@@ -1,4 +1,4 @@
-package edu.colorado.plv.bounder.state
+package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.ir.{FieldRef, IRWrapper, LVal, LocalWrapper, ParamWrapper, RVal}
 import edu.colorado.plv.bounder.solver.Z3Solver

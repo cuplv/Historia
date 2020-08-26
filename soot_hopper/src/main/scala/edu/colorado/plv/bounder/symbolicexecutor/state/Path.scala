@@ -1,4 +1,4 @@
-package edu.colorado.plv.bounder.state
+package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.ir.Loc
 
