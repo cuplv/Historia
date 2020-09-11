@@ -16,8 +16,7 @@ object State {
 // pureFormula is a conjunction of constraints
 // callStack is the call string from thresher paper
 case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdge, Val],
-                 typeConstraints: Map[PureVar, TypeConstraint],pureFormula: Set[PureConstraint]) {
-  val solver = new Z3Solver()
+                 pureFormula: Set[PureConstraint]) {
   override def toString:String = {
     val stackString = callStack.headOption match{
       case Some(sf) => {
@@ -32,6 +31,7 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
     s"($stackString $heapString   $pureFormulaString)"
   }
   def simplify:Option[State] = {
+    val solver = new Z3Solver()
     solver.simplify(this)
   }
   def isDefined(l:LVal):Boolean = l match{
@@ -51,7 +51,7 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
           (newident, State(
             callStack = cshead.copy(locals = cshead.locals + (StackVar(name,localType) -> newident)) :: cstail,
             heapConstraints,
-            typeConstraints + (newident -> TypeConstraint.fromLocalType(localType)),
+//            typeConstraints + (newident -> TypeConstraint.fromLocalType(localType)),
             pureFormula
           ))
       }
@@ -66,7 +66,7 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
    */
   def clearLVal(l : LVal): State = (l,callStack) match {
     case (LocalWrapper(name,localType), cshead::cstail) =>
-      State(cshead.removeStackVar(StackVar(name, localType))::cstail,heapConstraints, typeConstraints, pureFormula)
+      State(cshead.removeStackVar(StackVar(name, localType))::cstail,heapConstraints, pureFormula)
     case _ =>
       ???
   }
@@ -93,7 +93,7 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
     pureVarFromHeap ++ pureVarFromLocals
   }
   def isNull(pv:PureVar):Boolean = {
-    pureFormula.contains(PureAtomicConstraint(pv,Equals,NullVal))
+    pureFormula.contains(PureConstraint(pv,Equals,NullVal))
   }
   def newPureVarType(p:PureVar,newType:String): State =
     ???
@@ -123,8 +123,7 @@ case object NotEquals extends CmpOp{
   override def toString:String = " != "
 }
 
-sealed trait PureConstraint
-case class PureAtomicConstraint(lhs:PureExpr, op: CmpOp, rhs:PureExpr) extends PureConstraint {
+case class PureConstraint(lhs:PureExpr, op: CmpOp, rhs:PureExpr) {
   override def toString:String = s"$lhs $op $rhs"
 }
 

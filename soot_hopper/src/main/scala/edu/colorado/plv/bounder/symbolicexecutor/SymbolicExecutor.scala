@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import java.util
 
 import edu.colorado.plv.bounder.ir.{CallinMethodReturn, CmdWrapper, IRWrapper, Loc}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, FullTrace, PathNode, Qry, SomeQry, State, Trace}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, Qry, SomeQry, State}
 import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
 import soot.{Body, UnitPatchingChain}
 
@@ -59,7 +59,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
    * @return
    */
   def executeStep(qry:Qry):Set[Qry] = qry match{
-    case SomeQry(state@State(callStack,_,_,_), loc) =>
+    case SomeQry(state@State(callStack,_,_), loc) =>
       println(s"location: ${loc})")
       println(s"state: $state")
       println("-------------")

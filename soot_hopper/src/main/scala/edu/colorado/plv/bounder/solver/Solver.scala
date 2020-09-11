@@ -2,7 +2,7 @@ package edu.colorado.hopper.solver
 
 import java.lang.ClassValue
 
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassVal, CmpOp, Equals, NullVal, PureAtomicConstraint, PureConstraint, PureExpr, PureVar, State}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassVal, CmpOp, Equals, NullVal, PureConstraint, PureExpr, PureVar, State}
 
 trait Assumptions
 
@@ -55,7 +55,7 @@ trait Solver[T] {
   protected def solverSimplify(t: T): Option[T]
 
   def toAST(p : PureConstraint) : T = p match {
-    case PureAtomicConstraint(lhs, op, rhs) => toAST(toAST(lhs), op, toAST(rhs))
+    case PureConstraint(lhs, op, rhs) => toAST(toAST(lhs), op, toAST(rhs))
     case _ => ???
 //    case PureDisjunctiveConstraint(terms) => terms.foldLeft (None : Option[T]) ((combined, term) => combined match {
 //      case Some(combined) => Some(mkOr(toAST(term), combined))
@@ -76,11 +76,11 @@ trait Solver[T] {
       ???
   }
   def simplify(state:State):Option[State] = state match{
-    case State(h::t, heap,_, pure) => {
+    case State(h::t, heap, pure) => {
       def ast =  pure.foldLeft(mkBoolVal(true))((acc,v) => mkAnd(acc, toAST(v)))
       val simpleAst = solverSimplify(ast)
       simpleAst.map(_ => state) //TODO: actually simplify?
     }
-    case State(Nil,_,_,_) => ???
+    case State(Nil,_,_) => ???
   }
 }

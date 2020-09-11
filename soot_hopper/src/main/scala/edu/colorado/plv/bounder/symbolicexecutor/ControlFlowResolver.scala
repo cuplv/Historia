@@ -4,7 +4,7 @@ import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallinMethodInvoke, Calli
 import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, State}
 
 /**
- * Functions to resolve code targets for call sites and match lifestate rules.
+ * Functions to resolve control flow edges while maintaining context sensitivity.
  */
 class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver) {
   def resolvePredicessors(loc:Loc, stack: List[CallStackFrame]):List[Loc] = (loc,stack) match{

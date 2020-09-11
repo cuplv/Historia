@@ -1,14 +1,14 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldRef, IRWrapper, Invoke, InvokeCmd, LVal, Loc, LocalWrapper, NewCommand, SpecialInvoke, StaticInvoke, ThisWrapper, VirtualInvoke}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, ClassVal, Equals, FieldPtEdge, PureAtomicConstraint, PureVar, StackVar, State, SubClassOf, TypeConstraint}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, ClassVal, Equals, FieldPtEdge, PureConstraint, PureVar, StackVar, State, SubClassOf, TypeConstraint}
 
 class TransferFunctions[M,C](w:IRWrapper[M,C]) {
   def transfer(pre:State, target:Loc, source:Loc):Set[State] = (source,target,pre) match{
-    case (source@AppLoc(_,_,false),CallinMethodReturn(fmwClazz, fmwName), State(stack,heap,tc, pure)) =>
-      Set(State(CallStackFrame(target, Some(source.copy(isPre=true)),Map())::stack,heap,tc, pure)) //TODO: lifestate rule transfer
+    case (source@AppLoc(_,_,false),CallinMethodReturn(fmwClazz, fmwName), State(stack,heap, pure)) =>
+      Set(State(CallStackFrame(target, Some(source.copy(isPre=true)),Map())::stack,heap, pure)) //TODO: lifestate rule transfer
     case (CallinMethodReturn(_,_),CallinMethodInvoke(_,_),state) => Set(state)
-    case (CallinMethodInvoke(_,_),loc@AppLoc(_,_,true), s@State(h::t,_,_,_)) => {
+    case (CallinMethodInvoke(_,_),loc@AppLoc(_,_,true), s@State(h::t,_,_)) => {
       //TODO: parameter mapping
       Set(s.copy(callStack = t))
     }
@@ -20,13 +20,13 @@ class TransferFunctions[M,C](w:IRWrapper[M,C]) {
   }
   def cmdTransfer(cmd:CmdWrapper[M,C], state: State):Set[State] = (cmd,state) match{
     case (AssignCmd(LocalWrapper(name,vartype), NewCommand(className),_,_),
-        s@State(stack@f::_,heap,typeConstraints,pureFormula)) =>
+        s@State(stack@f::_,heap,pureFormula)) =>
       f.locals.get(StackVar(name,vartype)) match{
         case Some(purevar: PureVar) =>
-          val constraint = PureAtomicConstraint(purevar, Equals, ClassVal(className))
+          val constraint = PureConstraint(purevar, Equals, ClassVal(className))
           val newpf = pureFormula + constraint
           // TODO: check no fields are required to be non null
-          Set(State(stack,heap,typeConstraints, newpf))
+          Set(State(stack,heap, newpf))
         case None =>
           //TODO: Alias Case Split
           ???
@@ -41,7 +41,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C]) {
           // Case split between aliased or not aliased
           val possibleBaseAliases: Set[PureVar] = s.pureVars()
             .filter(!s.isNull(_))
-            .filter(a => s1.typeConstraints.get(a).map(canAlias(_,base)).getOrElse(true))
+            .filter(a => ???) //TODO: use canAlias from IR
           //TODO: swap pure vars types
           val aliasSets: Set[State] = possibleBaseAliases.map(pv => ???)
           val (basePure, s2) = s1.getOrDefine(base)
@@ -53,13 +53,12 @@ class TransferFunctions[M,C](w:IRWrapper[M,C]) {
         Set(s) // No change to state if assignment doesn't affect anything in current state
       }
     }
-    case (AssignCmd(target:LocalWrapper, LocalWrapper(name, localType),_,_),s@State(f::t,_,tc,_)) => {
+    case (AssignCmd(target:LocalWrapper, LocalWrapper(name, localType),_,_),s@State(f::t,_,_)) => {
       f.locals.get(StackVar(target.name, target.localType)) match {
         case Some(v) =>
           val (pval,s1) = s.getOrDefine(target)
           val s2 = s1.clearLVal(target)
-          Set(s2.copy(callStack = f.copy(locals=f.locals + (StackVar(name,localType) -> pval))::t
-            , typeConstraints = ???))
+          Set(s2.copy(callStack = f.copy(locals=f.locals + (StackVar(name,localType) -> pval))::t))
         case None => Set(s)
       }
     }

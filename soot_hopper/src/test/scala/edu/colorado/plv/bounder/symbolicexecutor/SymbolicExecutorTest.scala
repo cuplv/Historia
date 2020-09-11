@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, JimpleFlowdroidWrapper, JimpleMethodLoc, LineLoc, Loc, LocalWrapper, VirtualInvoke}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, PureAtomicConstraint, PureVar, Qry, StackVar}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, PureVar, Qry, StackVar}
 import soot.{Local, SootMethod}
 import soot.jimple.internal.JAssignStmt
 
@@ -27,15 +27,17 @@ class SymbolicExecutorTest extends org.scalatest.FunSuite {
     assert(result.size === 1)
     assert(result.iterator.next.qry.isInstanceOf[BottomQry])
   }
-  test("Symbolic Executor should prove an inter-callback deref"){
-    val query = Qry.makeReceiverNonNull(w,
-      "com.example.test_interproc_1.MainActivity",
-      "void onResume()",27)
-    val config = SymbolicExecutorConfig(
-      stepLimit = Some(20), w,resolver,transfer)
-    val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
-    val result = symbolicExecutor.executeBackward(query)
-    println(result)
-    println()
-  }
+
+  // TODO: interproc not working yet
+  //test("Symbolic Executor should prove an inter-callback deref"){
+  //  val query = Qry.makeReceiverNonNull(w,
+  //    "com.example.test_interproc_1.MainActivity",
+  //    "void onResume()",27)
+  //  val config = SymbolicExecutorConfig(
+  //    stepLimit = Some(20), w,resolver,transfer)
+  //  val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
+  //  val result = symbolicExecutor.executeBackward(query)
+  //  println(result)
+  //  println()
+  //}
 }

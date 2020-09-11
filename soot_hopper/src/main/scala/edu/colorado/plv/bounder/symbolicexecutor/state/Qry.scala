@@ -9,7 +9,7 @@ object Qry {
   def make(loc:AppLoc, locals : Map[StackVar, PureVar], pureFormula: Set[PureConstraint]):Qry = {
     // Note: no return location for arbitrary query
     val queryStack = List(CallStackFrame(loc,None, locals))
-    SomeQry(State(queryStack,Map(),Map(), pureFormula),loc)
+    SomeQry(State(queryStack,Map(), pureFormula),loc)
   }
   def makeReceiverNonNull[M,C](w:IRWrapper[M,C], className:String, methodName:String, line:Int):Qry = {
     val locs = w.findLineInMethod(className, methodName,line)
@@ -28,7 +28,7 @@ object Qry {
 
     val pureVar = PureVar()
     Qry.make(derefLoc, Map((StackVar(varname,"java.lang.Object"),pureVar)),
-      Set(PureAtomicConstraint(pureVar, Equals, NullVal)))
+      Set(PureConstraint(pureVar, Equals, NullVal)))
   }
 
 }

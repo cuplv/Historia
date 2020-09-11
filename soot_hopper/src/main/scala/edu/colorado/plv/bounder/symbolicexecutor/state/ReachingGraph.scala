@@ -2,14 +2,10 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.ir.Loc
 
-// Result from symbolic executor
-//case class Path(trace: Trace)
-
-// Trace explains the proof with either all backward paths or a counter example
-trait Trace
-case class FullTrace(paths: PathNode) extends Trace
-case class CounterexampleTrace(witness: PathNode) extends Trace
-
+trait ReachingGraph {
+  def getPredecessors(qry:Qry) : Iterable[Qry]
+  def getSuccessors(qry:Qry) : Iterable[Qry]
+}
 case class PathNode(qry: Qry, succ : Option[PathNode]) {
   override def toString:String = {
     val qrystr = qry.toString
