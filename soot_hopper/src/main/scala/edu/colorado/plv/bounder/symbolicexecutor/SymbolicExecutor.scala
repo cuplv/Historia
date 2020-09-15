@@ -59,11 +59,11 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
    * @return
    */
   def executeStep(qry:Qry):Set[Qry] = qry match{
-    case SomeQry(state@State(callStack,_,_), loc) =>
+    case SomeQry(state, loc) =>
       println(s"location: ${loc})")
       println(s"state: $state")
       println("-------------")
-      val predecessorLocations: Seq[Loc] = config.c.resolvePredicessors(loc,callStack)
+      val predecessorLocations: Seq[Loc] = config.c.resolvePredicessors(loc,state)
       predecessorLocations.flatMap(l => {
         val newStates = config.transfer.transfer(state,l,loc)
         newStates.map(state => state.simplify match {

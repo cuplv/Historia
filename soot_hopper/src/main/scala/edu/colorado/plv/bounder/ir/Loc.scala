@@ -15,7 +15,11 @@ trait Loc{
 /**
  * A method definition overridden by the IR wrapper implementation
  */
-trait MethodLoc
+trait MethodLoc {
+  def simpleName: String
+  def classType: String
+  def argTypes: List[String]
+}
 trait LineLoc
 
 /**

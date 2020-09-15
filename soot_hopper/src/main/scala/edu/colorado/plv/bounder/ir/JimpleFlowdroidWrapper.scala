@@ -82,10 +82,6 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
     }
   }
 
-//  override def makeLoc(mcd: soot.Unit, method: SootMethod):AppLoc = {
-//    ???
-//  }
-
   override def cmdAfterLocation(loc: AppLoc): CmdWrapper[SootMethod, soot.Unit] = {
     loc match{
       case AppLoc(_, JimpleLineLoc(cmd,method),true) =>{
@@ -161,7 +157,7 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
 
   override def makeInvokeTargets(invoke: InvokeCmd[SootMethod, soot.Unit]): Set[UnresolvedMethodTarget] = {
     val cg = Scene.v().getCallGraph
-    var pt = Scene.v().getPointsToAnalysis
+    //var pt = Scene.v().getPointsToAnalysis
     val cmd = invoke.getLoc.line match{
       case JimpleLineLoc(cmd, _) => cmd
       case _ => throw new IllegalArgumentException("Bad Location Type")
@@ -187,9 +183,33 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
     }
   }
 
+  override def getOverrideChain(method: MethodLoc): Seq[MethodLoc] = {
+    val m = method.asInstanceOf[JimpleMethodLoc]
+    val methodDeclClass = m.method.getDeclaringClass
+    val methodSignature = m.method.getSubSignature
+    val superclasses = Scene.v().getActiveHierarchy.getSuperclassesOf(methodDeclClass)
+    val methods = superclasses.asScala.filter(sootClass => sootClass.declaresMethod(methodSignature))
+      .map( sootClass=> JimpleMethodLoc(sootClass.getMethod(methodSignature)))
+    methods.toList
+  }
+
+  override def callSites(method: SootMethod): Seq[soot.Unit] = ???
 }
 
-case class JimpleMethodLoc(method: SootMethod) extends MethodLoc
+case class JimpleMethodLoc(method: SootMethod) extends MethodLoc {
+  override def simpleName: String = method.getName
+
+  override def classType: String = {
+    val pkg = method.getDeclaringClass.getJavaPackageName
+    val name = method.getDeclaringClass.getJavaStyleName
+    s"${pkg}.${name}"
+  }
+
+  override def argTypes: List[String] = method.getParameterTypes.asScala.map({
+    case t =>
+      ???
+  }).toList
+}
 case class JimpleLineLoc(cmd: soot.Unit, method: SootMethod) extends LineLoc{
   override def toString: String = cmd.toString
 }

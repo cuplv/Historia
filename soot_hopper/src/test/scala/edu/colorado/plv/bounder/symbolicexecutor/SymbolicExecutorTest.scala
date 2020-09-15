@@ -11,16 +11,17 @@ class SymbolicExecutorTest extends org.scalatest.FunSuite {
   assert(test_interproc_1 != null)
   val w = new JimpleFlowdroidWrapper(test_interproc_1)
   val transfer = new TransferFunctions[SootMethod,soot.Unit](w)
-  val a = new DefaultAppCodeResolver()
+  val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
   val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
 
   test("Symbolic Executor should prove an intraprocedural deref"){
-    val query = Qry.makeReceiverNonNull(w,
+    val config = SymbolicExecutorConfig(
+      stepLimit = Some(8), w, resolver,transfer)
+    val query = Qry.makeReceiverNonNull(config, w,
       "com.example.test_interproc_1.MainActivity",
       "java.lang.String objectString()",21)
     // Call symbolic executor
-    val config = SymbolicExecutorConfig(
-      stepLimit = Some(8), w, resolver,transfer)
+
     val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
     val result: Set[PathNode] = symbolicExecutor.executeBackward(query)
     println(result.iterator.next)
@@ -29,15 +30,17 @@ class SymbolicExecutorTest extends org.scalatest.FunSuite {
   }
 
   // TODO: interproc not working yet
-  //test("Symbolic Executor should prove an inter-callback deref"){
-  //  val query = Qry.makeReceiverNonNull(w,
-  //    "com.example.test_interproc_1.MainActivity",
-  //    "void onResume()",27)
-  //  val config = SymbolicExecutorConfig(
-  //    stepLimit = Some(20), w,resolver,transfer)
-  //  val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
-  //  val result = symbolicExecutor.executeBackward(query)
-  //  println(result)
-  //  println()
-  //}
+  test("Symbolic Executor should prove an inter-callback deref"){
+    println("======= Interproc ======")
+    val config = SymbolicExecutorConfig(
+      stepLimit = Some(20), w,resolver,transfer)
+    val query = Qry.makeReceiverNonNull(config, w,
+      "com.example.test_interproc_1.MainActivity",
+      "void onResume()",27)
+
+    val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
+    val result = symbolicExecutor.executeBackward(query)
+    println(result)
+    println()
+  }
 }

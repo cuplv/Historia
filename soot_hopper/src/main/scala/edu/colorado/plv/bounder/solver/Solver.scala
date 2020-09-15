@@ -81,6 +81,7 @@ trait Solver[T] {
       val simpleAst = solverSimplify(ast)
       simpleAst.map(_ => state) //TODO: actually simplify?
     }
-    case State(Nil,_,_) => ???
+    case State(Nil,_,_) =>
+      ???
   }
 }

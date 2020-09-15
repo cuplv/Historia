@@ -1,17 +1,35 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, IRWrapper, LineLoc, Loc, LocalWrapper, MethodWrapper, VirtualInvoke}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, IRWrapper, InternalMethodReturn, LineLoc, Loc, LocalWrapper, MethodWrapper, VirtualInvoke}
+import edu.colorado.plv.bounder.symbolicexecutor.SymbolicExecutorConfig
 import soot.SootMethod
 
 object Qry {
   private var qryIdCounter = 0
   private def getFreshQryId = { qryIdCounter += 1; qryIdCounter }
-  def make(loc:AppLoc, locals : Map[StackVar, PureVar], pureFormula: Set[PureConstraint]):Qry = {
+  def make[M,C](config: SymbolicExecutorConfig[M,C], loc:AppLoc, locals : Map[StackVar, PureVar], pureFormula: Set[PureConstraint]):Qry = {
     // Note: no return location for arbitrary query
-    val queryStack = List(CallStackFrame(loc,None, locals))
+//    val queryStack = List(CallStackFrame(loc,None, locals))
+
+    val acr = config.c.getResolver
+    val cbexit = acr.resolveCallbackEntry(loc.method) match{
+      case Some(CallbackMethodInvoke(clazz, name, loc)) =>
+        CallbackMethodReturn(clazz,name, loc)
+      case None => {
+
+        InternalMethodReturn(loc.method.classType, loc.method.simpleName, loc.method)
+      }
+      case _ =>
+        throw new IllegalArgumentException
+    }
+    val queryStack = List(CallStackFrame(cbexit, None,locals))
+//    val queryStack = Nil
     SomeQry(State(queryStack,Map(), pureFormula),loc)
   }
-  def makeReceiverNonNull[M,C](w:IRWrapper[M,C], className:String, methodName:String, line:Int):Qry = {
+  def makeReceiverNonNull[M,C](config: SymbolicExecutorConfig[M,C],
+                               w:IRWrapper[M,C],
+                               className:String,
+                               methodName:String, line:Int):Qry = {
     val locs = w.findLineInMethod(className, methodName,line)
 
     val derefLocs: Iterable[AppLoc] = locs.filter(pred = a => {
@@ -27,7 +45,7 @@ object Qry {
     }
 
     val pureVar = PureVar()
-    Qry.make(derefLoc, Map((StackVar(varname,"java.lang.Object"),pureVar)),
+    Qry.make(config, derefLoc, Map((StackVar(varname,"java.lang.Object"),pureVar)),
       Set(PureConstraint(pureVar, Equals, NullVal)))
   }
 

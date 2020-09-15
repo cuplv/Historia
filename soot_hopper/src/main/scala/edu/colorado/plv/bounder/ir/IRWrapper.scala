@@ -10,15 +10,21 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.TypeConstraint
  */
 trait IRWrapper[M,C]{
   def getApplicationCallbacks : Seq[MethodLoc]
+  def getOverrideChain( method : MethodLoc) : Seq[MethodLoc]
   def findMethodLoc(className: String, methodName: String):Option[MethodLoc]
   def findLineInMethod(className:String, methodName:String, line:Int):Iterable[AppLoc]
   def makeCmd(cmd:C, method:M, loc:Option[AppLoc] = None): CmdWrapper[M,C]
   def commandPredicessors(cmdWrapper:CmdWrapper[M,C]): List[AppLoc]
   def commandNext(cmdWrapper:CmdWrapper[M,C]):List[AppLoc]
+
+  /**
+   * Is this the first command in containing method
+   */
   def isMethodEntry(cmdWrapper: CmdWrapper[M,C]): Boolean
   def cmdAfterLocation(loc: AppLoc): CmdWrapper[M,C]
   def cmdBeforeLocation(loc:AppLoc): CmdWrapper[M,C]
   def makeInvokeTargets(invoke:InvokeCmd[M,C]):Set[UnresolvedMethodTarget]
+  def callSites(method : M): Seq[C]
   def canAlias(type1:String, type2:String):Boolean
 }
 sealed case class UnresolvedMethodTarget(clazz: String, methodName:String, loc:Option[MethodLoc])

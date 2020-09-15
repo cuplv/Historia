@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldRef, IRWrapper, Invoke, InvokeCmd, LVal, Loc, LocalWrapper, NewCommand, SpecialInvoke, StaticInvoke, ThisWrapper, VirtualInvoke}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldRef, IRWrapper, Invoke, InvokeCmd, LVal, Loc, LocalWrapper, NewCommand, SpecialInvoke, StaticInvoke, ThisWrapper, VirtualInvoke}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, ClassVal, Equals, FieldPtEdge, PureConstraint, PureVar, StackVar, State, SubClassOf, TypeConstraint}
 
 class TransferFunctions[M,C](w:IRWrapper[M,C]) {
@@ -15,8 +15,13 @@ class TransferFunctions[M,C](w:IRWrapper[M,C]) {
     case (AppLoc(_,_,true),AppLoc(_,_,false), pre) => Set(pre)
     case (appLoc@AppLoc(c1,m1,false),AppLoc(c2,m2,true), prestate) if c1 == c2 && m1 == m2 =>
       cmdTransfer(w.cmdBeforeLocation(appLoc),prestate)
-    case _ =>
-      ???
+    case (AppLoc(_,_,true), CallbackMethodInvoke(fc1, fn1, l1), State(CallStackFrame(CallbackMethodReturn(fc2, fn2, l2), None, locals)::s, heap, pure)) => {
+      // If call doesn't match return on stack, return bottom
+      if (fc1 != fc2 || fn1 != fn2 || l1 != l2) Set() else {
+        Set(State(s,heap, pure))
+      }
+    }
+    case _ => ???
   }
   def cmdTransfer(cmd:CmdWrapper[M,C], state: State):Set[State] = (cmd,state) match{
     case (AssignCmd(LocalWrapper(name,vartype), NewCommand(className),_,_),
