@@ -16,7 +16,7 @@ object State {
 // pureFormula is a conjunction of constraints
 // callStack is the call string from thresher paper
 case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdge, Val],
-                 pureFormula: Set[PureConstraint]) {
+                 pureFormula: Set[PureConstraint], registered: Set[PureVar]) {
   override def toString:String = {
     val stackString = callStack.headOption match{
       case Some(sf) => {
@@ -52,7 +52,7 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
             callStack = cshead.copy(locals = cshead.locals + (StackVar(name,localType) -> newident)) :: cstail,
             heapConstraints,
 //            typeConstraints + (newident -> TypeConstraint.fromLocalType(localType)),
-            pureFormula
+            pureFormula,registered // TODO: reg purevar
           ))
       }
     case _ =>
@@ -66,7 +66,7 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
    */
   def clearLVal(l : LVal): State = (l,callStack) match {
     case (LocalWrapper(name,localType), cshead::cstail) =>
-      State(cshead.removeStackVar(StackVar(name, localType))::cstail,heapConstraints, pureFormula)
+      State(cshead.removeStackVar(StackVar(name, localType))::cstail,heapConstraints, pureFormula, registered)
     case _ =>
       ???
   }

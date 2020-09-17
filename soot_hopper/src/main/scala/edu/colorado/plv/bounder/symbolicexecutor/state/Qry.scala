@@ -24,7 +24,7 @@ object Qry {
     }
     val queryStack = List(CallStackFrame(cbexit, None,locals))
 //    val queryStack = Nil
-    SomeQry(State(queryStack,Map(), pureFormula),loc)
+    SomeQry(State(queryStack,Map(), pureFormula, Set()),loc)
   }
   def makeReceiverNonNull[M,C](config: SymbolicExecutorConfig[M,C],
                                w:IRWrapper[M,C],

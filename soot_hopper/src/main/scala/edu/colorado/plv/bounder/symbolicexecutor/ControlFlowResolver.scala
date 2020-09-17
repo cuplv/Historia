@@ -37,6 +37,9 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
       List(CallinMethodInvoke(clazz,name))
     case (CallinMethodInvoke(_, _), CallStackFrame(_,Some(returnLoc@AppLoc(_,_,true)),_)::_) =>
       List(returnLoc)
+    case (CallbackMethodInvoke(fmwClazz, fmwName, loc), _) =>
+      val callbacks = resolver.getCallbacks
+      ???
     case _ =>
       ???
   }

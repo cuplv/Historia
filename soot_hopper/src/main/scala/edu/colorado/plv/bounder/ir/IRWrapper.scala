@@ -9,7 +9,7 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.TypeConstraint
  * @tparam C Command type for the underlying representation
  */
 trait IRWrapper[M,C]{
-  def getApplicationCallbacks : Seq[MethodLoc]
+  def getAllMethods : Iterable[MethodLoc]
   def getOverrideChain( method : MethodLoc) : Seq[MethodLoc]
   def findMethodLoc(className: String, methodName: String):Option[MethodLoc]
   def findLineInMethod(className:String, methodName:String, line:Int):Iterable[AppLoc]

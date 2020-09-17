@@ -38,11 +38,16 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
     })
     method.map(a=> JimpleMethodLoc(a))
   }
-  override def getApplicationCallbacks: Seq[MethodLoc] = {
-    val clazzFound = Scene.v().getClasses
-
-    ???
+  override def getAllMethods: Iterable[MethodLoc] = {
+    Scene.v().getApplicationClasses.asScala.flatMap(clazz => {
+      if(clazz.getJavaPackageName == "com.example.test_interproc_1" && clazz.getName.contains("MainActivity"))
+        println()
+      clazz.getMethods.asScala
+        .filter(!_.hasTag("SimulatedCodeElementTag")) // Remove simulated code elements from Flowdroid
+        .map(JimpleMethodLoc)
+    })
   }
+
   override def makeCmd(cmd: soot.Unit, method: SootMethod,
                        locOpt:Option[AppLoc] = None): CmdWrapper[SootMethod, soot.Unit] = {
     val loc:AppLoc = locOpt.getOrElse(???)

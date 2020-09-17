@@ -5,33 +5,38 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, ClassVal
 
 class TransferFunctions[M,C](w:IRWrapper[M,C]) {
   def transfer(pre:State, target:Loc, source:Loc):Set[State] = (source,target,pre) match{
-    case (source@AppLoc(_,_,false),CallinMethodReturn(fmwClazz, fmwName), State(stack,heap, pure)) =>
-      Set(State(CallStackFrame(target, Some(source.copy(isPre=true)),Map())::stack,heap, pure)) //TODO: lifestate rule transfer
+    case (source@AppLoc(_,_,false),CallinMethodReturn(fmwClazz, fmwName), State(stack,heap, pure, reg)) =>
+      Set(State(CallStackFrame(target, Some(source.copy(isPre=true)),Map())::stack,heap, pure, reg)) //TODO: lifestate rule transfer
     case (CallinMethodReturn(_,_),CallinMethodInvoke(_,_),state) => Set(state)
-    case (CallinMethodInvoke(_,_),loc@AppLoc(_,_,true), s@State(h::t,_,_)) => {
+    case (CallinMethodInvoke(_,_),loc@AppLoc(_,_,true), s@State(h::t,_,_,_)) => {
       //TODO: parameter mapping
       Set(s.copy(callStack = t))
     }
     case (AppLoc(_,_,true),AppLoc(_,_,false), pre) => Set(pre)
     case (appLoc@AppLoc(c1,m1,false),AppLoc(c2,m2,true), prestate) if c1 == c2 && m1 == m2 =>
       cmdTransfer(w.cmdBeforeLocation(appLoc),prestate)
-    case (AppLoc(_,_,true), CallbackMethodInvoke(fc1, fn1, l1), State(CallStackFrame(CallbackMethodReturn(fc2, fn2, l2), None, locals)::s, heap, pure)) => {
+    case (AppLoc(_,m,true), CallbackMethodInvoke(fc1, fn1, l1), State(CallStackFrame(CallbackMethodReturn(fc2, fn2, l2), None, locals)::s, heap, pure, reg)) => {
       // If call doesn't match return on stack, return bottom
+      val thisEdge = locals.find(l => l._1.name == "this").flatMap(_._2 match {
+        case v@PureVar() => Some(v)
+        case _ => throw new IllegalStateException("this must point to pure var or be unconstrained")
+      })
+      val reg2 = reg ++ thisEdge
       if (fc1 != fc2 || fn1 != fn2 || l1 != l2) Set() else {
-        Set(State(s,heap, pure))
+        Set(State(s,heap, pure, reg2))
       }
     }
     case _ => ???
   }
   def cmdTransfer(cmd:CmdWrapper[M,C], state: State):Set[State] = (cmd,state) match{
     case (AssignCmd(LocalWrapper(name,vartype), NewCommand(className),_,_),
-        s@State(stack@f::_,heap,pureFormula)) =>
+        s@State(stack@f::_,heap,pureFormula, reg)) =>
       f.locals.get(StackVar(name,vartype)) match{
         case Some(purevar: PureVar) =>
           val constraint = PureConstraint(purevar, Equals, ClassVal(className))
           val newpf = pureFormula + constraint
           // TODO: check no fields are required to be non null
-          Set(State(stack,heap, newpf))
+          Set(State(stack,heap, newpf, reg))
         case None =>
           //TODO: Alias Case Split
           ???
@@ -58,7 +63,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C]) {
         Set(s) // No change to state if assignment doesn't affect anything in current state
       }
     }
-    case (AssignCmd(target:LocalWrapper, LocalWrapper(name, localType),_,_),s@State(f::t,_,_)) => {
+    case (AssignCmd(target:LocalWrapper, LocalWrapper(name, localType),_,_),s@State(f::t,_,_,_)) => {
       f.locals.get(StackVar(target.name, target.localType)) match {
         case Some(v) =>
           val (pval,s1) = s.getOrDefine(target)

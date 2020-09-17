@@ -76,12 +76,16 @@ trait Solver[T] {
       ???
   }
   def simplify(state:State):Option[State] = state match{
-    case State(h::t, heap, pure) => {
+    case State(_, heap, pure, reg) => {
       def ast =  pure.foldLeft(mkBoolVal(true))((acc,v) => mkAnd(acc, toAST(v)))
       val simpleAst = solverSimplify(ast)
+      // TODO: garbage collect, if purevar can't be reached from reg or stack var, discard
       simpleAst.map(_ => state) //TODO: actually simplify?
     }
-    case State(Nil,_,_) =>
-      ???
+    //case State(Nil,_,_, reg) => {
+    //  // Top level callback
+
+    //  ???
+    //}
   }
 }
