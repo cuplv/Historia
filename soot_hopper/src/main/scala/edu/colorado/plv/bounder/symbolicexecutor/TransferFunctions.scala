@@ -26,7 +26,13 @@ class TransferFunctions[M,C](w:IRWrapper[M,C]) {
         Set(State(s,heap, pure, reg2))
       }
     }
-    case _ => ???
+    case (CallbackMethodInvoke(clazz, name, loc), AppLoc(m,l,false), pre) => {
+      val newStack: Seq[CallStackFrame] = CallStackFrame(???, None, ???)::pre.callStack
+      ???
+    }
+    case t =>
+      println(t)
+      ???
   }
   def cmdTransfer(cmd:CmdWrapper[M,C], state: State):Set[State] = (cmd,state) match{
     case (AssignCmd(LocalWrapper(name,vartype), NewCommand(className),_,_),

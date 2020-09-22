@@ -26,6 +26,7 @@ trait IRWrapper[M,C]{
   def makeInvokeTargets(invoke:InvokeCmd[M,C]):Set[UnresolvedMethodTarget]
   def callSites(method : M): Seq[C]
   def canAlias(type1:String, type2:String):Boolean
+  def makeMethodRetuns(method: MethodLoc) : List[Loc]
 }
 sealed case class UnresolvedMethodTarget(clazz: String, methodName:String, loc:Option[MethodLoc])
 

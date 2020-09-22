@@ -4,9 +4,10 @@ import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.symbolicexecutor.state.TypeConstraint
 import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
 import soot.jimple.ThisRef
-import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceFieldRef, AbstractInstanceInvokeExpr, AbstractNewExpr, JAssignStmt, JIdentityStmt, JInvokeStmt, JReturnStmt, JSpecialInvokeExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
+import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceFieldRef, AbstractInstanceInvokeExpr, AbstractNewExpr, JAssignStmt, JIdentityStmt, JInvokeStmt, JReturnStmt, JReturnVoidStmt, JSpecialInvokeExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
 import soot.{Body, Hierarchy, Scene, SootMethod, Value}
 
+import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 
 
@@ -199,6 +200,18 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
   }
 
   override def callSites(method: SootMethod): Seq[soot.Unit] = ???
+
+  override def makeMethodRetuns(method: MethodLoc): List[Loc] = {
+    val smethod = method.asInstanceOf[JimpleMethodLoc]
+    val rets = mutable.ListBuffer[AppLoc]()
+    smethod.method.getActiveBody.getUnits.forEach( (u:soot.Unit) =>{
+      if (u.isInstanceOf[JReturnStmt] || u.isInstanceOf[JReturnVoidStmt]) {
+        val lineloc = JimpleLineLoc(u, smethod.method)
+        rets.addOne(AppLoc(smethod, lineloc, false))
+      }
+    })
+    rets.toList
+  }
 }
 
 case class JimpleMethodLoc(method: SootMethod) extends MethodLoc {

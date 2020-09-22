@@ -28,6 +28,8 @@ class TestIR(program: TestProgram) extends IRWrapper[String,String] {
   override def getOverrideChain(method: MethodLoc): Seq[MethodLoc] = ???
 
   override def callSites(method: String): Seq[String] = ???
+
+  override def makeMethodRetuns(method: MethodLoc): List[Loc] = ???
 }
 case class TestIRMethodLoc(name:String) extends MethodLoc {
   override def simpleName: String = ???
