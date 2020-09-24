@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldRef, IRWrapper, Invoke, InvokeCmd, LVal, Loc, LocalWrapper, NewCommand, SpecialInvoke, StaticInvoke, ThisWrapper, VirtualInvoke}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldRef, IRWrapper, Invoke, InvokeCmd, LVal, Loc, LocalWrapper, NewCommand, ReturnCmd, SpecialInvoke, StaticInvoke, ThisWrapper, VirtualInvoke}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, ClassVal, Equals, FieldPtEdge, PureConstraint, PureVar, StackVar, State, SubClassOf, TypeConstraint}
 
 class TransferFunctions[M,C](w:IRWrapper[M,C]) {
@@ -26,8 +26,12 @@ class TransferFunctions[M,C](w:IRWrapper[M,C]) {
         Set(State(s,heap, pure, reg2))
       }
     }
-    case (CallbackMethodInvoke(clazz, name, loc), AppLoc(m,l,false), pre) => {
-      val newStack: Seq[CallStackFrame] = CallStackFrame(???, None, ???)::pre.callStack
+    case (CallbackMethodInvoke(clazz, name, loc), targetLoc@AppLoc(m,l,false), pre) => {
+      val cmd = w.cmdBeforeLocation(targetLoc).asInstanceOf[ReturnCmd[M,C]]
+      val thisId = State.getId()
+//      val newStackVars = if(cmd.returnVar.isDefined) ??? else Map(??? -> ???)
+      val newStack: Seq[CallStackFrame] = CallStackFrame(targetLoc,None, Map())::pre.callStack
+
       ???
     }
     case t =>

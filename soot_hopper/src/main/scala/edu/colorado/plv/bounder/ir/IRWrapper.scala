@@ -34,7 +34,14 @@ sealed case class UnresolvedMethodTarget(clazz: String, methodName:String, loc:O
 sealed abstract class CmdWrapper[M,C](loc:AppLoc, wrapper: IRWrapper[M,C]){
   def getLoc: AppLoc = loc
 }
-case class ReturnVal[M,C](returnVar: LocalWrapper, loc:AppLoc, wrapper: IRWrapper[M,C]) extends CmdWrapper(loc,wrapper)
+
+/**
+ *
+ * @param returnVar None if void return otherwise local returned by cmd
+ * @param loc
+ * @param wrapper
+ */
+case class ReturnCmd[M,C](returnVar: Option[LocalWrapper], loc:AppLoc, wrapper: IRWrapper[M,C]) extends CmdWrapper(loc,wrapper)
 case class AssignCmd[M,C](target: LVal, source: RVal, loc:AppLoc, wrapper: IRWrapper[M,C]) extends CmdWrapper(loc,wrapper){
   override def toString:String = s"$target := $source"
 }

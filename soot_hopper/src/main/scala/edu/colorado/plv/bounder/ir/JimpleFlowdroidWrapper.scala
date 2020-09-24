@@ -60,11 +60,14 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
       }
       case cmd: JReturnStmt => {
         val box = makeVal(cmd.getOpBox.getValue).asInstanceOf[LocalWrapper]
-        ReturnVal(box, loc, this)
+        ReturnCmd(Some(box), loc, this)
       }
       case cmd:JInvokeStmt => {
         val invokeval = makeVal(cmd.getInvokeExpr).asInstanceOf[Invoke[SootMethod,soot.Unit]]
         InvokeCmd[SootMethod,soot.Unit](invokeval, loc, this)
+      }
+      case _ : JReturnVoidStmt => {
+        ReturnCmd(None, loc, this)
       }
       case _ =>
         ???
