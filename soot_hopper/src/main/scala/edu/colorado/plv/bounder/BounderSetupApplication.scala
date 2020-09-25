@@ -1,5 +1,8 @@
 package edu.colorado.plv.bounder
 
+import java.io.{File, FileOutputStream}
+
+import javax.tools.{JavaCompiler, ToolProvider}
 import soot.jimple.infoflow.android.{InfoflowAndroidConfiguration, SetupApplication}
 import soot.jimple.infoflow.android.callbacks.{AndroidCallbackDefinition, DefaultCallbackAnalyzer}
 import soot.jimple.infoflow.android.callbacks.filters.{AlienHostComponentFilter, ApplicationCallbackFilter, UnreachableConstructorFilter}
@@ -15,11 +18,56 @@ object BounderSetupApplication {
 
   val androidHome = sys.env("ANDROID_HOME")
 
+  /**
+   * TODO: implement this
+   * A method to compile and load a class into the soot scene so unit
+   * tests can be written without the full android compile process.
+   * @param path path to .java file
+   */
+  def loadClass(path:String): Unit ={
+
+    val comp: JavaCompiler = ToolProvider.getSystemJavaCompiler
+    val tmpfile = new FileOutputStream("/Users/shawnmeier/Desktop/Test.class")
+    val res = comp.run(null, tmpfile, null, path)
+
+    // load class
+    import java.net.MalformedURLException
+    import java.net.URLClassLoader
+    // Create a File object on the root of the directory containing the class file// Create a File object on the root of the directory containing the class file
+
+    val file = new File("c:\\myclasses\\")
+
+    try { // Convert File to a URL
+      val url = file.toURI.toURL // file:/c:/myclasses/
+      val urls = Array(url)
+      // Create a new class loader with the directory
+      val cl = new URLClassLoader(urls)
+      // Load in the class; MyClass.class should be located in
+      // the directory file:/c:/myclasses/com/mycompany
+      val cls = cl.loadClass("com.mycompany.MyClass")
+    } catch {
+      case e: MalformedURLException =>
+
+      case e: ClassNotFoundException =>
+
+    }
+
+//    Scene.v().loadClass("Test",1)
+    Scene.v().addBasicClass("Test")
+    val testclass =
+      Scene.v().getClasses().asScala.filter(a => a.getName == "Test")
+    println(testclass)
+
+    println()
+    ???
+  }
+
   def loadApk(path:String) : Unit = {
     // Create call graph and pointer analysis with flowdroid main method
     val config = new InfoflowAndroidConfiguration
     val platformsDir = androidHome + "/platforms"
     config.getAnalysisFileConfig.setTargetAPKFile(path)
+    // TODO: attempting to load test classes for unit tests
     config.getAnalysisFileConfig.setAndroidPlatformDir(platformsDir)
     val setup = new SetupApplication(config)
     G.reset()

@@ -1,26 +1,35 @@
 package edu.colorado.plv.bounder.solver
 
 import com.microsoft.z3.{Context, Expr, FiniteDomainSort, FuncDecl, IntSort, Native, Solver, Sort}
+import edu.colorado.plv.bounder.ir.IRWrapper
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, PureVal, SubclassOf, SuperclassOf, TypeConstraint}
 
-sealed trait TypeConstraint
-case class SubclassOf(clazz: String) extends TypeConstraint
-case class SuperclassOf(clazz:String) extends TypeConstraint
 
 /**
+ * Z3 constraints that persist from state to state
  * Adds class hierarchy assertions
  * @param ctx z3 context to add class hierarchy assertions
  * @param types mapping from super types to sub types
  */
-class ClassHierarchy(ctx: Context, solver: Solver, types : Map[String,Set[String]]) {
+class PersistantConstraints(ctx: Context, solver: Solver, types : Map[String,Set[String]]) {
+  def getSolver = solver
+  def getCtx = ctx
 
   val typeToInt: Map[String, Int] = types.keySet.zipWithIndex.toMap
   val intToType: Map[Int, String] = typeToInt.map(a => (a._2, a._1))
 
 
   val tsort: Sort = ctx.mkFiniteDomainSort("Types", typeToInt.size)
+  def getTypeSort = tsort
 
   private def finiteDomVal(t : String):Expr = {
-    ctx.mkNumeral(typeToInt(t), tsort)
+    try {
+      ctx.mkNumeral(typeToInt(t), tsort)
+    }catch{
+      case e =>
+        println(t)
+        ???
+    }
   }
   val subtypeFun: FuncDecl = ctx.mkFuncDecl("subtype", Array(tsort, tsort), ctx.mkBoolSort())
   def mkHirearchyConstraints() {
@@ -49,12 +58,14 @@ class ClassHierarchy(ctx: Context, solver: Solver, types : Map[String,Set[String
 
 
   def addTypeConstraint(vname: String, typeConstraint: TypeConstraint) = {
-    val const = ctx.mkConst(vname, tsort)
+    val const = ctx.mkConst("t_" + vname, tsort)
     typeConstraint match {
       case SubclassOf(c) =>
-        solver.add(ctx.mkEq(subtypeFun.apply(finiteDomVal(c), const), ctx.mkTrue))
+        ctx.mkEq(subtypeFun.apply(finiteDomVal(c), const), ctx.mkTrue)
       case SuperclassOf(c) =>
-        solver.add(ctx.mkEq(subtypeFun.apply(const, finiteDomVal(c)), ctx.mkTrue))
+        ctx.mkEq(subtypeFun.apply(const, finiteDomVal(c)), ctx.mkTrue)
+      case ClassType(c) =>
+        ctx.mkEq(const, finiteDomVal(c))
     }
   }
 }

@@ -5,17 +5,28 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.TypeConstraint
 import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
 import soot.jimple.ThisRef
 import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceFieldRef, AbstractInstanceInvokeExpr, AbstractNewExpr, JAssignStmt, JIdentityStmt, JInvokeStmt, JReturnStmt, JReturnVoidStmt, JSpecialInvokeExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
-import soot.{Body, Hierarchy, Scene, SootMethod, Value}
+import soot.{Body, Hierarchy, Scene, SootClass, SootMethod, Value}
 
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 
+object JimpleFlowdroidWrapper{
+  def stringNameOfClass(m : SootClass): String = {
+    val name = m.getName
+//    s"${m.getPackageName}.${name}"
+    name
+  }
+}
 
 class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soot.Unit] {
 
   BounderSetupApplication.loadApk(apkPath)
 
   var unitGraphCache : scala.collection.mutable.Map[Body, EnhancedUnitGraphFixed] = scala.collection.mutable.Map()
+
+  def addClassFile(path: String): Unit = {
+
+  }
 
   protected def getUnitGraph(body:Body):EnhancedUnitGraphFixed = {
     if(unitGraphCache.contains(body)){
@@ -181,7 +192,7 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
     }).toSet
   }
 
-  override def canAlias(type1: String, type2: String): Boolean = {
+  def canAlias(type1: String, type2: String): Boolean = {
     if(type1 == type2) true else {
       val hierarchy: Hierarchy = Scene.v().getActiveHierarchy
       val type1Soot = Scene.v().getSootClass(type1)
@@ -215,15 +226,28 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
     })
     rets.toList
   }
+
+  override def getClassHierarchy: Map[String, Set[String]] = {
+    val hierarchy: Hierarchy = Scene.v().getActiveHierarchy
+    Scene.v().getClasses().asScala.foldLeft(Map[String, Set[String]]()){ (acc,v) =>
+      val cname = JimpleFlowdroidWrapper.stringNameOfClass(v)
+      val subclasses = if(v.isInterface()) {
+        hierarchy.getImplementersOf(v)
+      }else {
+        hierarchy.getSubclassesOf(v)
+      }
+      val strSubClasses = subclasses.asScala.map(c => JimpleFlowdroidWrapper.stringNameOfClass(c)).toSet + cname
+      acc  + (cname -> strSubClasses)
+    }
+  }
+
 }
 
 case class JimpleMethodLoc(method: SootMethod) extends MethodLoc {
   override def simpleName: String = method.getName
 
   override def classType: String = {
-    val pkg = method.getDeclaringClass.getJavaPackageName
-    val name = method.getDeclaringClass.getJavaStyleName
-    s"${pkg}.${name}"
+    JimpleFlowdroidWrapper.stringNameOfClass(method.getDeclaringClass)
   }
 
   override def argTypes: List[String] = method.getParameterTypes.asScala.map({

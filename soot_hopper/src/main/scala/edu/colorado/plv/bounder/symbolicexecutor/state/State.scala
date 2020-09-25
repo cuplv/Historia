@@ -1,7 +1,8 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
+import edu.colorado.hopper.solver.StateSolver
 import edu.colorado.plv.bounder.ir.{FieldRef, IRWrapper, LVal, LocalWrapper, ParamWrapper, RVal}
-import edu.colorado.plv.bounder.solver.Z3Solver
+import edu.colorado.plv.bounder.solver.Z3StateSolver
 
 
 object State {
@@ -10,7 +11,7 @@ object State {
     id = id + 1
     id
   }
-  val solver = new Z3Solver()
+//  val solver = new Z3StateSolver()
 }
 
 // pureFormula is a conjunction of constraints
@@ -30,9 +31,12 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
     val pureFormulaString = "   pure: " + pureFormula.map(a => a.toString).mkString(" && ")
     s"($stackString $heapString   $pureFormulaString)"
   }
-  def simplify:Option[State] = {
-    val solver = new Z3Solver()
-    solver.simplify(this)
+  def simplify[T](solver : StateSolver[T]):Option[State] = {
+//    val solver = new Z3Solver()
+    solver.push()
+    val simpl = solver.simplify(this)
+    solver.pop()
+    simpl
   }
   def isDefined(l:LVal):Boolean = l match{
     case LocalWrapper(name,localType) => {
@@ -122,6 +126,9 @@ case object Equals extends CmpOp{
 case object NotEquals extends CmpOp{
   override def toString:String = " != "
 }
+case object TypeComp extends CmpOp{
+  override def toString:String = " : "
+}
 
 case class PureConstraint(lhs:PureExpr, op: CmpOp, rhs:PureExpr) {
   override def toString:String = s"$lhs $op $rhs"
@@ -162,7 +169,12 @@ case object NullVal extends PureVal{
   override def toString:String = "NULL"
 }
 //TODO: do we need type constraints here?
-case class ClassVal(typ:String) extends PureVal
+sealed trait TypeConstraint extends PureVal
+case class SubclassOf(clazz: String) extends TypeConstraint
+case class SuperclassOf(clazz:String) extends TypeConstraint
+case class ClassType(typ:String) extends TypeConstraint {
+  override def toString:String = s"ClassIs($typ)"
+}
 
 // pure var is a symbolic var (e.g. this^ from the paper)
 sealed case class PureVar() extends PureExpr with Val {
@@ -179,12 +191,3 @@ sealed case class PureVar() extends PureExpr with Val {
   override def toString : String = "p-" + id
 }
 
-object TypeConstraint{
-  def fromLocalType(typeName:String):TypeConstraint = typeName match {
-    case v if !v.contains(".") =>
-      throw new IllegalArgumentException(s"unimplemented primitive type $v")
-    case s => SubClassOf(s)
-  }
-}
-sealed trait TypeConstraint
-case class SubClassOf(clazz:String) extends TypeConstraint

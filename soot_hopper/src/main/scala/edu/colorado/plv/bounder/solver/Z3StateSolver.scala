@@ -1,17 +1,20 @@
 package edu.colorado.plv.bounder.solver
 
-import com.microsoft.z3.{AST, BoolExpr, Context, Expr, Status}
-import edu.colorado.hopper.solver.Solver
+import com.microsoft.z3.{AST, BoolExpr, Context, Expr, Solver, Status}
+import edu.colorado.hopper.solver.StateSolver
+import edu.colorado.plv.bounder.symbolicexecutor.state.TypeConstraint
 
-class Z3Solver extends Solver[AST] {
-  val ctx : Context = new Context
-  val solver = {
-    val solver = ctx.mkSolver
-    val params = ctx.mkParams()
-    params.add("timeout", 10000)
-    solver.setParameters(params)
-    solver
-  }
+class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateSolver[AST] {
+  val solver = persistentConstraints.getSolver
+  val ctx = persistentConstraints.getCtx
+  //val ctx : Context = new Context
+  //val solver = {
+  //  val solver = ctx.mkSolver
+  //  val params = ctx.mkParams()
+  //  params.add("timeout", 10000)
+  //  solver.setParameters(params)
+  //  solver
+  //}
   override def checkSAT: Boolean = interpretSolverOutput(solver.check)
 
   override def checkSATWithAssumptions(assumes: List[String]): Boolean = ???
@@ -27,7 +30,8 @@ class Z3Solver extends Solver[AST] {
   override protected def mkEq(lhs: AST, rhs: AST): AST =
     ctx.mkEq(lhs.asInstanceOf[Expr], rhs.asInstanceOf[Expr])
 
-  override protected def mkNe(lhs: AST, rhs: AST): AST = ???
+  override protected def mkNe(lhs: AST, rhs: AST): AST =
+    ctx.mkNot(ctx.mkEq(lhs.asInstanceOf[Expr],rhs.asInstanceOf[Expr]))
 
   override protected def mkGt(lhs: AST, rhs: AST): AST = ???
 
@@ -76,8 +80,7 @@ class Z3Solver extends Solver[AST] {
       throw new IllegalStateException("Z3 decidability or timeout issue--got Status.UNKNOWN")
   }
 
-  override protected def mkObjVar(s: String): AST =
-    ctx.mkBoolConst(s + "_object")
+  override protected def mkObjVar(s: String): AST = ctx.mkIntConst("object_addr_" + s)
 
   override protected def solverSimplify(t: AST): Option[AST] = {
     solver.add(t.asInstanceOf[BoolExpr])
@@ -87,5 +90,9 @@ class Z3Solver extends Solver[AST] {
       case Status.UNKNOWN => Some(t)
       case Status.UNSATISFIABLE => None
     }
+  }
+
+  override protected def mkTypeConstraint(s: String, tc: TypeConstraint): AST = {
+    persistentConstraints.addTypeConstraint(s, tc)
   }
 }

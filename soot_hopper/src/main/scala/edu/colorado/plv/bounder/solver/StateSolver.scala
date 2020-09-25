@@ -2,14 +2,14 @@ package edu.colorado.hopper.solver
 
 import java.lang.ClassValue
 
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassVal, CmpOp, Equals, NullVal, PureConstraint, PureExpr, PureVar, State}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, CmpOp, Equals, NotEquals, NullVal, PureConstraint, PureExpr, PureVar, State, TypeComp, TypeConstraint}
 
 trait Assumptions
 
 class UnknownSMTResult(msg : String) extends Exception(msg)
 
 /** SMT solver parameterized by its AST or expression type */
-trait Solver[T] {
+trait StateSolver[T] {
   // checking
   def checkSAT : Boolean
   def checkSATWithAssumptions(assumes : List[String]) : Boolean
@@ -53,9 +53,13 @@ trait Solver[T] {
   protected def mkObjVar(s:String) : T
   protected def mkAssert(t : T) : Unit
   protected def solverSimplify(t: T): Option[T]
+  protected def mkTypeConstraint(s: String, tc: TypeConstraint):T
 
   def toAST(p : PureConstraint) : T = p match {
-    case PureConstraint(lhs, op, rhs) => toAST(toAST(lhs), op, toAST(rhs))
+    case PureConstraint(lhs: PureVar, TypeComp, rhs:TypeConstraint) =>
+      mkTypeConstraint(lhs.id.toString, rhs)
+    case PureConstraint(lhs, op, rhs) =>
+      toAST(toAST(lhs), op, toAST(rhs))
     case _ => ???
 //    case PureDisjunctiveConstraint(terms) => terms.foldLeft (None : Option[T]) ((combined, term) => combined match {
 //      case Some(combined) => Some(mkOr(toAST(term), combined))
@@ -65,19 +69,22 @@ trait Solver[T] {
   //TODO: can we use z3 to solve cha?
   def toAST(p : PureExpr) : T = p match {
     case p:PureVar => mkObjVar(p.id.toString)
-    case NullVal => mkBoolVal(false)
-    case ClassVal(t) => mkBoolVal(true)
+    case NullVal => mkIntVal(0)
+    case ClassType(t) => ??? //handled at a higher level
     case _ =>
       ???
   }
   def toAST(lhs : T, op : CmpOp, rhs : T) : T = op match {
     case Equals => mkEq(lhs,rhs)
+    case NotEquals => mkNe(lhs, rhs)
     case _ =>
       ???
   }
   def simplify(state:State):Option[State] = state match{
     case State(_, heap, pure, reg) => {
-      def ast =  pure.foldLeft(mkBoolVal(true))((acc,v) => mkAnd(acc, toAST(v)))
+      val ast =  pure.foldLeft(mkBoolVal(true))((acc,v) =>
+        mkAnd(acc, toAST(v))
+      )
       val simpleAst = solverSimplify(ast)
       // TODO: garbage collect, if purevar can't be reached from reg or stack var, discard
       simpleAst.map(_ => state) //TODO: actually simplify?

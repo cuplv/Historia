@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldRef, IRWrapper, Invoke, InvokeCmd, LVal, Loc, LocalWrapper, NewCommand, ReturnCmd, SpecialInvoke, StaticInvoke, ThisWrapper, VirtualInvoke}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, ClassVal, Equals, FieldPtEdge, PureConstraint, PureVar, StackVar, State, SubClassOf, TypeConstraint}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldRef, IRWrapper, LVal, Loc, LocalWrapper, NewCommand, ReturnCmd, SpecialInvoke, StaticInvoke, ThisWrapper, VirtualInvoke}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, ClassType, Equals, FieldPtEdge, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, TypeComp, TypeConstraint}
 
 class TransferFunctions[M,C](w:IRWrapper[M,C]) {
   def transfer(pre:State, target:Loc, source:Loc):Set[State] = (source,target,pre) match{
@@ -28,7 +28,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C]) {
     }
     case (CallbackMethodInvoke(clazz, name, loc), targetLoc@AppLoc(m,l,false), pre) => {
       val cmd = w.cmdBeforeLocation(targetLoc).asInstanceOf[ReturnCmd[M,C]]
-      val thisId = State.getId()
+      val thisId = PureVar()
+      val thisTypeUpperBound: String = m.classType
 //      val newStackVars = if(cmd.returnVar.isDefined) ??? else Map(??? -> ???)
       val newStack: Seq[CallStackFrame] = CallStackFrame(targetLoc,None, Map())::pre.callStack
 
@@ -43,8 +44,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C]) {
         s@State(stack@f::_,heap,pureFormula, reg)) =>
       f.locals.get(StackVar(name,vartype)) match{
         case Some(purevar: PureVar) =>
-          val constraint = PureConstraint(purevar, Equals, ClassVal(className))
-          val newpf = pureFormula + constraint
+          val tconstraint = PureConstraint(purevar, TypeComp, ClassType(className))
+          val constraint = PureConstraint(purevar, NotEquals, NullVal)
+          val newpf = pureFormula + tconstraint + constraint
           // TODO: check no fields are required to be non null
           Set(State(stack,heap, newpf, reg))
         case None =>
@@ -87,9 +89,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C]) {
     case _ =>
       ???
   }
-  def canAlias(tc:TypeConstraint, target: LVal):Boolean = (tc,target) match{
-    case (SubClassOf(pureTypeName),LocalWrapper(_,lvalType)) => w.canAlias(pureTypeName, lvalType)
-    case _ =>
-      ???
-  }
+  //def canAlias(tc:TypeConstraint, target: LVal):Boolean = (tc,target) match{
+  //  case (SubClassOf(pureTypeName),LocalWrapper(_,lvalType)) => w.canAlias(pureTypeName, lvalType)
+  //  case _ =>
+  //    ???
+  //}
 }

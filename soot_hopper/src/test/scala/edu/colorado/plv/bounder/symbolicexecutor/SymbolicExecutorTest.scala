@@ -3,6 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, JimpleFlowdroidWrapper, JimpleMethodLoc, LineLoc, Loc, LocalWrapper, VirtualInvoke}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, PureVar, Qry, StackVar}
+import javax.tools.{JavaCompiler, ToolProvider}
 import soot.{Local, SootMethod}
 import soot.jimple.internal.JAssignStmt
 

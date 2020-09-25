@@ -21,8 +21,6 @@ class TestIR(program: TestProgram) extends IRWrapper[String,String] {
 
   override def makeInvokeTargets(invoke: InvokeCmd[String, String]): Set[UnresolvedMethodTarget] = ???
 
-  override def canAlias(type1: String, type2: String): Boolean = ???
-
   override def getAllMethods: Seq[MethodLoc] = ???
 
   override def getOverrideChain(method: MethodLoc): Seq[MethodLoc] = ???
@@ -30,6 +28,8 @@ class TestIR(program: TestProgram) extends IRWrapper[String,String] {
   override def callSites(method: String): Seq[String] = ???
 
   override def makeMethodRetuns(method: MethodLoc): List[Loc] = ???
+
+  override def getClassHierarchy: Map[String, Set[String]] = ???
 }
 case class TestIRMethodLoc(name:String) extends MethodLoc {
   override def simpleName: String = ???

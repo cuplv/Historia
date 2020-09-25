@@ -2,7 +2,9 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import java.util
 
+import com.microsoft.z3.Context
 import edu.colorado.plv.bounder.ir.{CallinMethodReturn, CmdWrapper, IRWrapper, Loc}
+import edu.colorado.plv.bounder.solver.{PersistantConstraints, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, Qry, SomeQry, State}
 import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
 import soot.{Body, UnitPatchingChain}
@@ -17,6 +19,11 @@ case class SymbolicExecutorConfig[M,C](stepLimit: Option[Int],
                                       )
 class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
 //  val controlFlowResolver = new ControlFlowResolver[M,C](w)
+  val ctx = new Context
+  val solver = ctx.mkSolver
+  val persistantConstraints =
+    new PersistantConstraints(ctx, solver, config.w.getClassHierarchy)
+  val stateSolver = new Z3StateSolver(persistantConstraints)
   /**
    *
    * @param qry - a source location and an assertion to prove
@@ -66,7 +73,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       val predecessorLocations: Seq[Loc] = config.c.resolvePredicessors(loc,state)
       predecessorLocations.flatMap(l => {
         val newStates = config.transfer.transfer(state,l,loc)
-        newStates.map(state => state.simplify match {
+        newStates.map(state => state.simplify(stateSolver) match {
           case Some(state) => SomeQry(state, l)
           case None => BottomQry(l)
         })
