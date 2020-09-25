@@ -45,7 +45,7 @@ object Qry {
     }
 
     val pureVar = PureVar()
-    Qry.make(config, derefLoc, Map((StackVar(varname,"java.lang.Object"),pureVar)),
+    Qry.make(config, derefLoc, Map((StackVar(varname),pureVar)),
       Set(PureConstraint(pureVar, Equals, NullVal)))
   }
 

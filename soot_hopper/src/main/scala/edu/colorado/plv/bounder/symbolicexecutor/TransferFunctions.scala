@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldRef, IRWrapper, LVal, Loc, LocalWrapper, NewCommand, ReturnCmd, SpecialInvoke, StaticInvoke, ThisWrapper, VirtualInvoke}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, ClassType, Equals, FieldPtEdge, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, TypeComp, TypeConstraint}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, ClassType, Equals, FieldPtEdge, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, SubclassOf, TypeComp, TypeConstraint, Val}
 
 class TransferFunctions[M,C](w:IRWrapper[M,C]) {
   def transfer(pre:State, target:Loc, source:Loc):Set[State] = (source,target,pre) match{
@@ -30,8 +30,12 @@ class TransferFunctions[M,C](w:IRWrapper[M,C]) {
       val cmd = w.cmdBeforeLocation(targetLoc).asInstanceOf[ReturnCmd[M,C]]
       val thisId = PureVar()
       val thisTypeUpperBound: String = m.classType
-//      val newStackVars = if(cmd.returnVar.isDefined) ??? else Map(??? -> ???)
-      val newStack: Seq[CallStackFrame] = CallStackFrame(targetLoc,None, Map())::pre.callStack
+      val newStackVars:Map[StackVar, Val] = if(cmd.returnVar.isDefined){
+        ???
+      }else Map()
+      val newStack: Seq[CallStackFrame] =
+        CallStackFrame(targetLoc,None, newStackVars + ??? )::pre.callStack
+
 
       ???
     }
@@ -40,9 +44,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C]) {
       ???
   }
   def cmdTransfer(cmd:CmdWrapper[M,C], state: State):Set[State] = (cmd,state) match{
-    case (AssignCmd(LocalWrapper(name,vartype), NewCommand(className),_,_),
+    case (AssignCmd(LocalWrapper(name,_), NewCommand(className),_,_),
         s@State(stack@f::_,heap,pureFormula, reg)) =>
-      f.locals.get(StackVar(name,vartype)) match{
+      f.locals.get(StackVar(name)) match{
         case Some(purevar: PureVar) =>
           val tconstraint = PureConstraint(purevar, TypeComp, ClassType(className))
           val constraint = PureConstraint(purevar, NotEquals, NullVal)
@@ -76,11 +80,12 @@ class TransferFunctions[M,C](w:IRWrapper[M,C]) {
       }
     }
     case (AssignCmd(target:LocalWrapper, LocalWrapper(name, localType),_,_),s@State(f::t,_,_,_)) => {
-      f.locals.get(StackVar(target.name, target.localType)) match {
+      f.locals.get(StackVar(target.name)) match {
         case Some(v) =>
           val (pval,s1) = s.getOrDefine(target)
-          val s2 = s1.clearLVal(target)
-          Set(s2.copy(callStack = f.copy(locals=f.locals + (StackVar(name,localType) -> pval))::t))
+          val s2 = s1.clearLVal(target).copy(pureFormula =
+            s1.pureFormula + PureConstraint(pval, TypeComp, SubclassOf(localType)))
+          Set(s2.copy(callStack = f.copy(locals=f.locals + (StackVar(name) -> pval))::t))
         case None => Set(s)
       }
     }

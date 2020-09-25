@@ -41,19 +41,20 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
   def isDefined(l:LVal):Boolean = l match{
     case LocalWrapper(name,localType) => {
       callStack match{
-        case CallStackFrame(_,_,locals)::_ => locals.contains(StackVar(name, localType))
+        case CallStackFrame(_,_,locals)::_ => locals.contains(StackVar(name))
         case Nil => false
       }
     }
     case _ => ???
   }
-  def getOrDefine(l : LVal): (Val,State) = (l,callStack) match{
+  // TODO: rename getOrDefineClass
+  def getOrDefine(l : LVal): (PureVar,State) = (l,callStack) match{
     case (LocalWrapper(name,localType), cshead::cstail) =>
-      cshead.locals.get(StackVar(name,localType)) match {
-        case Some(v) => (v, this)
+      cshead.locals.get(StackVar(name)) match {
+        case Some(v@PureVar()) => (v, this)
         case None => val newident = PureVar();
           (newident, State(
-            callStack = cshead.copy(locals = cshead.locals + (StackVar(name,localType) -> newident)) :: cstail,
+            callStack = cshead.copy(locals = cshead.locals + (StackVar(name) -> newident)) :: cstail,
             heapConstraints,
 //            typeConstraints + (newident -> TypeConstraint.fromLocalType(localType)),
             pureFormula,registered // TODO: reg purevar
@@ -70,7 +71,7 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
    */
   def clearLVal(l : LVal): State = (l,callStack) match {
     case (LocalWrapper(name,localType), cshead::cstail) =>
-      State(cshead.removeStackVar(StackVar(name, localType))::cstail,heapConstraints, pureFormula, registered)
+      State(cshead.removeStackVar(StackVar(name))::cstail,heapConstraints, pureFormula, registered)
     case _ =>
       ???
   }
@@ -115,7 +116,8 @@ sealed trait Val
 //}
 
 sealed trait Var
-case class StackVar(name : String, varType:String) extends Var{
+
+case class StackVar(name : String) extends Var{
   override def toString:String = name
 }
 
