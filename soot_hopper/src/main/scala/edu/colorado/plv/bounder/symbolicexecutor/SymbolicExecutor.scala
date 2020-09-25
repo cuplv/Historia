@@ -1,16 +1,9 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
-import java.util
-
 import com.microsoft.z3.Context
-import edu.colorado.plv.bounder.ir.{CallinMethodReturn, CmdWrapper, IRWrapper, Loc}
+import edu.colorado.plv.bounder.ir.{IRWrapper, Loc}
 import edu.colorado.plv.bounder.solver.{PersistantConstraints, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, Qry, SomeQry, State}
-import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
-import soot.{Body, UnitPatchingChain}
-
-import scala.collection.mutable
-import scala.jdk.CollectionConverters._
 
 case class SymbolicExecutorConfig[M,C](stepLimit: Option[Int],
                                        w :  IRWrapper[M,C],
@@ -18,7 +11,6 @@ case class SymbolicExecutorConfig[M,C](stepLimit: Option[Int],
                                        transfer : TransferFunctions[M,C]
                                       )
 class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
-//  val controlFlowResolver = new ControlFlowResolver[M,C](w)
   val ctx = new Context
   val solver = ctx.mkSolver
   val persistantConstraints =
@@ -32,13 +24,6 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
    *         // TODO; Config to exclude proven
    */
   def executeBackward(qry: Qry) : Set[PathNode] = {
-//    if(stepLimit > 0) {
-//      val predStates: Set[Qry] = activeqry.map(qry => executeStep(qry))
-//      predStates.map(a => PathNode(a,source))
-//    }else{
-//      // Exceeded number of steps, terminate search
-//      activeQueries.map(a => PathNode(a,source))
-//    }
     config.stepLimit match{
       case Some(limit) => executeBackwardLimitKeepAll(Set(PathNode(qry,None)),limit)
       case None =>
