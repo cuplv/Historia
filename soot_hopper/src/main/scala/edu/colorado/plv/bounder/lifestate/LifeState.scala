@@ -1,5 +1,6 @@
 package edu.colorado.plv.bounder.lifestate
 
+import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.lifestate.LifeState.LSAtom
 
 object LifeState {
@@ -82,10 +83,19 @@ object LifeState {
     case class Edge(src: (Int, String), tgt: (Int, String))
 
     def getEdgeSet(): Set[Edge] = {
-      predicates.foldLeft(Map[String, Set[(Int,String)]]()) { (acc,predicate) => {
-        predicate.lsVar.zipWithIndex.foldLeft(acc){(iacc, v) => iacc + (v._1 -> iacc.getOrElse(v._1, Set())) }
-      }}
-      ???
+      val varmap: Map[String, Set[(Int, String)]] =
+        predicates.foldLeft(Map[String, Set[(Int,String)]]()) { (acc, predicate) => {
+          predicate.lsVar.zipWithIndex.foldLeft(acc){(iacc, v) => {
+            val oldSet: Set[(Int, String)] = iacc.getOrElse(v._1, Set())
+            val newPar: (Int, String) = (v._2, predicate.getAtomSig)
+            iacc + (v._1 -> (oldSet + newPar))
+          }
+         }
+        }}
+      varmap.flatMap(a => {
+        val l = BounderUtil.repeatingPerm(_=> a._2, 2)
+        l.map(b => Edge(b(0), b(1))).toSet
+      }).toSet
     }
   }
 }
