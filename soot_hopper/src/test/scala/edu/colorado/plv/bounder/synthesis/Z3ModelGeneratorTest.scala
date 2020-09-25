@@ -18,7 +18,7 @@ class Z3ModelGeneratorTest extends org.scalatest.FunSuite {
       fmwName="void foo()", TestIRMethodLoc("foo"))
     val pureVar = PureVar()
     val frame = CallStackFrame(dummyLoc, None, Map(StackVar("this", "MainActivity") -> pureVar))
-    val state = State(List(), Map(), Set(), Set())
+    val state = State(List(frame), Map(), Set(), Set())
     val qryR1 = SomeQry(state, dummyLoc)
 
     val barPred = I(Set("[CB Inv] void bar()"), List("a"))
