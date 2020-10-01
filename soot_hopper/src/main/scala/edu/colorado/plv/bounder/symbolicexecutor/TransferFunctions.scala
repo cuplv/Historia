@@ -34,7 +34,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C]) {
         ???
       }else Map()
       val newStack: Seq[CallStackFrame] =
-        CallStackFrame(targetLoc,None, newStackVars + ??? )::pre.callStack
+        CallStackFrame(targetLoc,None, newStackVars + (StackVar("this") -> thisId) )::pre.callStack
 
 
       ???

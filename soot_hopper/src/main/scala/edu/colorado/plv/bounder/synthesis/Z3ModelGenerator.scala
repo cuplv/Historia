@@ -23,23 +23,6 @@ class Z3ModelGenerator extends ModelGenerator {
     solver
   }
 
-  def testSimple(): Unit ={
-    val r1_mident = ctx.mkIntConst("r1_mident")
-    val testbexp = ctx.mkEq(ctx.mkAdd(ctx.mkInt(3), r1_mident), ctx.mkInt(4))
-
-    val solver = ctx.mkSolver()
-    solver.add(testbexp)
-    val checkresult = solver.check()
-    val model = solver.getModel()
-    //    println(model.getConstInterp())
-    println(model.getConstDecls.map(a => {
-      val sexpr = a.getSExpr
-      val name = a.getName
-      val expr: Expr = model.getConstInterp(a)
-      sexpr + " : " + name + " : " + expr
-    } ).mkString(","))
-  }
-
   /**
    *
    * @param reachingGraph graph of queries

@@ -6,11 +6,6 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, PureVar,
 import edu.colorado.plv.bounder.testutils.TestIRMethodLoc
 
 class Z3ModelGeneratorTest extends org.scalatest.FunSuite {
-  test("Simple"){
-    //TODO: Delete this later, just a place to experiment with z3
-    val gen = new Z3ModelGenerator()
-    gen.testSimple()
-  }
 
   test("Encode Node Reachability"){
     val gen = new Z3ModelGenerator()
