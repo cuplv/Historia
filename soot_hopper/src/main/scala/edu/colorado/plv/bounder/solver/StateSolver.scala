@@ -2,7 +2,7 @@ package edu.colorado.hopper.solver
 
 import java.lang.ClassValue
 
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, CmpOp, Equals, NotEquals, NullVal, PureConstraint, PureExpr, PureVar, State, TypeComp, TypeConstraint}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, CmpOp, Equals, HeapPtEdge, NotEquals, NullVal, PureConstraint, PureExpr, PureVar, State, TypeComp, TypeConstraint, Val}
 
 trait Assumptions
 
@@ -55,6 +55,10 @@ trait StateSolver[T] {
   protected def solverSimplify(t: T): Option[T]
   protected def mkTypeConstraint(s: String, tc: TypeConstraint):T
 
+  def mkHeapConstraint(c : (HeapPtEdge, Val)): T = {
+    ???
+  }
+
   def toAST(p : PureConstraint) : T = p match {
     case PureConstraint(lhs: PureVar, TypeComp, rhs:TypeConstraint) =>
       mkTypeConstraint(lhs.id.toString, rhs)
@@ -82,10 +86,12 @@ trait StateSolver[T] {
   }
   def simplify(state:State):Option[State] = state match{
     case State(_, heap, pure, reg) => {
+      push()
       val ast =  pure.foldLeft(mkBoolVal(true))((acc,v) =>
         mkAnd(acc, toAST(v))
       )
       val simpleAst = solverSimplify(ast)
+      pop()
       // TODO: garbage collect, if purevar can't be reached from reg or stack var, discard
       simpleAst.map(_ => state) //TODO: actually simplify?
     }

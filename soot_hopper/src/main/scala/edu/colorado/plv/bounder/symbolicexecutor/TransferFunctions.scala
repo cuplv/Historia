@@ -73,7 +73,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C]) {
           val (basePure, s2) = s1.getOrDefine(base)
           if(! basePure.isInstanceOf[PureVar]) throw new IllegalStateException(s"Assign to non object purevar.")
           aliasSets + s2.copy(heapConstraints = s2.heapConstraints +
-            (FieldPtEdge(basePure.asInstanceOf[PureVar],name,containsType,declType)-> tgtval)).clearLVal(target)
+            (FieldPtEdge(basePure.asInstanceOf[PureVar],name)-> tgtval)).clearLVal(target)
         }
       }else{
         Set(s) // No change to state if assignment doesn't affect anything in current state
