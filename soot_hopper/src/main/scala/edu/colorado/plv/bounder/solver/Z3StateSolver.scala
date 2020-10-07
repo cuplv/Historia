@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder.solver
 
-import com.microsoft.z3.{AST, BoolExpr, Context, Expr, Solver, Status}
+import com.microsoft.z3.{AST, BoolExpr, Context, Expr, FuncDecl, Solver, Status}
 import edu.colorado.hopper.solver.StateSolver
 import edu.colorado.plv.bounder.symbolicexecutor.state.TypeConstraint
 
@@ -71,6 +71,14 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
   override protected def mkBoolVar(s: String): AST = ???
 
   override protected def mkAssert(t: AST): Unit = ???
+
+  override protected def mkFieldFun(n: String): AST = {
+    val fun: FuncDecl = ctx.mkFuncDecl(n, ctx.mkIntSort(), ctx.mkIntSort() )
+    fun
+  }
+  override protected def fieldEquals(f: AST, t1 : AST, t2:AST): AST = {
+    ctx.mkEq(f.asInstanceOf[FuncDecl].apply(t1.asInstanceOf[Expr]), t2.asInstanceOf[Expr])
+  }
 
   private def interpretSolverOutput(status : Status) : Boolean = status match {
     case Status.UNSATISFIABLE => false

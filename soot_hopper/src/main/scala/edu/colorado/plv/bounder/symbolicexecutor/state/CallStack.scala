@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.ir.{Loc, MethodLoc}
 
 sealed case class CallStackFrame(methodLoc : Loc,
                           retLoc: Option[Loc],
-                          locals: Map[StackVar, Val]){
+                          locals: Map[StackVar, PureExpr]){
   override def toString:String = {
     "[" + methodLoc.toString + " locals: " + locals.map(k => k._1.toString + ":" + k._2.toString).mkString(",") + "]"
   }
