@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder.solver
 
-import com.microsoft.z3.{AST, BoolExpr, Context, Expr, FuncDecl, Solver, Status}
+import com.microsoft.z3.{AST, BoolExpr, Context, Expr, FuncDecl, Solver, Sort, Status}
 import edu.colorado.hopper.solver.StateSolver
 import edu.colorado.plv.bounder.symbolicexecutor.state.TypeConstraint
 
@@ -100,7 +100,13 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
     }
   }
 
-  override protected def mkTypeConstraint(s: String, tc: TypeConstraint): AST = {
-    persistentConstraints.addTypeConstraint(s, tc)
+  override protected def mkTypeConstraint(typeFun: AST, addr:AST, tc: TypeConstraint): AST = {
+    persistentConstraints.exprTypeConstraint(
+      typeFun.asInstanceOf[FuncDecl].apply(addr.asInstanceOf[Expr]),tc)
+
+  }
+  override protected def createTypeFun():AST = {
+    val intArgs: Array[Sort] = Array(ctx.mkIntSort())
+    ctx.mkFuncDecl("addressToType", intArgs, persistentConstraints.tsort)
   }
 }

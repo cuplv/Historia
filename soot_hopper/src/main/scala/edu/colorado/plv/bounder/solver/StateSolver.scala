@@ -56,19 +56,16 @@ trait StateSolver[T] {
   protected def mkFieldFun(n: String): T
   protected def fieldEquals(fieldFun: T, t1 : T, t2: T):T
   protected def solverSimplify(t: T): Option[T]
-  protected def mkTypeConstraint(s: String, tc: TypeConstraint):T
+  protected def mkTypeConstraint(typeFun: T, addr: T, tc: TypeConstraint):T
+  protected def createTypeFun():T
 
-  def toAST(p : PureConstraint) : T = p match {
+  def toAST(p : PureConstraint, typeFun: T) : T = p match {
       // TODO: field constraints based on containing object constraints
     case PureConstraint(lhs: PureVar, TypeComp, rhs:TypeConstraint) =>
-      mkTypeConstraint(lhs.id.toString, rhs)
+      mkTypeConstraint(typeFun, toAST(lhs), rhs)
     case PureConstraint(lhs, op, rhs) =>
       toAST(toAST(lhs), op, toAST(rhs))
     case _ => ???
-//    case PureDisjunctiveConstraint(terms) => terms.foldLeft (None : Option[T]) ((combined, term) => combined match {
-//      case Some(combined) => Some(mkOr(toAST(term), combined))
-//      case None => Some(toAST(term))
-//    }).get
   }
   def toAST(p : PureExpr) : T = p match {
     case p:PureVar => mkObjVar("purevar" + p.id.toString)
@@ -88,8 +85,10 @@ trait StateSolver[T] {
     case State(_, heap, pure, reg) => {
       push()
       // TODO: handle static fields
+
+      val typeFun = createTypeFun()
       val pureAst =  pure.foldLeft(mkBoolVal(true))((acc,v) =>
-        mkAnd(acc, toAST(v))
+        mkAnd(acc, toAST(v, typeFun))
       )
 
       // Non static fields are modeled by a function from int to int.
@@ -112,14 +111,10 @@ trait StateSolver[T] {
 
       val ast = mkAnd(pureAst, heapAst)
       val simpleAst = solverSimplify(ast)
+
       pop()
       // TODO: garbage collect, if purevar can't be reached from reg or stack var, discard
       simpleAst.map(_ => state) //TODO: actually simplify?
     }
-    //case State(Nil,_,_, reg) => {
-    //  // Top level callback
-
-    //  ???
-    //}
   }
 }

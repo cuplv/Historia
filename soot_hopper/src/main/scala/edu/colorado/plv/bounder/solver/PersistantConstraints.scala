@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder.solver
 
-import com.microsoft.z3.{Context, Expr, FiniteDomainSort, FuncDecl, IntSort, Native, Solver, Sort}
+import com.microsoft.z3.{AST, Context, Expr, FiniteDomainSort, FuncDecl, IntSort, Native, Solver, Sort}
 import edu.colorado.plv.bounder.ir.IRWrapper
 import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, PureVal, SubclassOf, SuperclassOf, TypeConstraint}
 
@@ -22,6 +22,7 @@ class PersistantConstraints(ctx: Context, solver: Solver, types : Map[String,Set
   val tsort: Sort = ctx.mkFiniteDomainSort("Types", typeToInt.size)
   def getTypeSort = tsort
 
+
   private def finiteDomVal(t : String):Expr = {
     try {
       ctx.mkNumeral(typeToInt(t), tsort)
@@ -32,6 +33,7 @@ class PersistantConstraints(ctx: Context, solver: Solver, types : Map[String,Set
     }
   }
   val subtypeFun: FuncDecl = ctx.mkFuncDecl("subtype", Array(tsort, tsort), ctx.mkBoolSort())
+
   def mkHirearchyConstraints() {
     // Direct subclass function
    //   ctx.mkFreshFuncDecl("directsubtype", Array(tsort, tsort), ctx.mkBoolSort)
@@ -58,14 +60,18 @@ class PersistantConstraints(ctx: Context, solver: Solver, types : Map[String,Set
 
 
   def addTypeConstraint(vname: String, typeConstraint: TypeConstraint) = {
-    val const = ctx.mkConst("t_" + vname, tsort)
+    val const: Expr = ctx.mkConst("t_" + vname, tsort)
+    exprTypeConstraint(const, typeConstraint)
+  }
+
+  def exprTypeConstraint(e: Expr, typeConstraint: TypeConstraint) = {
     typeConstraint match {
       case SubclassOf(c) =>
-        ctx.mkEq(subtypeFun.apply(finiteDomVal(c), const), ctx.mkTrue)
+        ctx.mkEq(subtypeFun.apply(finiteDomVal(c), e), ctx.mkTrue)
       case SuperclassOf(c) =>
-        ctx.mkEq(subtypeFun.apply(const, finiteDomVal(c)), ctx.mkTrue)
+        ctx.mkEq(subtypeFun.apply(e, finiteDomVal(c)), ctx.mkTrue)
       case ClassType(c) =>
-        ctx.mkEq(const, finiteDomVal(c))
+        ctx.mkEq(e, finiteDomVal(c))
     }
   }
 }
