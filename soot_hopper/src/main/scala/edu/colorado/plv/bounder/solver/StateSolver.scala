@@ -1,9 +1,6 @@
 package edu.colorado.hopper.solver
 
-import java.lang.ClassValue
-
-import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, CmpOp, Equals, FieldPtEdge, HeapPtEdge, NotEquals, NullVal, PureConstraint, PureExpr, PureVar, State, TypeComp, TypeConstraint, Val}
+import edu.colorado.plv.bounder.symbolicexecutor.state._
 
 trait Assumptions
 
@@ -80,41 +77,45 @@ trait StateSolver[T] {
     case _ =>
       ???
   }
+  def toAST(state: State): T = {
+    // TODO: make all variables in this encoding unique from other states so multiple states can be run at once
+    // TODO: add ls constraints to state
+    // TODO: mapping from ? constraints to bools that can be retrieved from the model after solving
+    val heap = state.heapConstraints
+    val pure = state.pureFormula
+    // TODO: handle static fields
+    // typeFun is a function from addresses to concrete types in the program
+    val typeFun = createTypeFun()
 
-  def simplify(state:State):Option[State] = state match{
-    case State(_, heap, pure, reg) => {
-      push()
-      // TODO: handle static fields
+    // pure formula are for asserting that two abstract addresses alias each other or not
+    //  as well as asserting upper and lower bounds on concrete types associated with addresses
+    val pureAst = pure.foldLeft(mkBoolVal(true))((acc, v) =>
+      mkAnd(acc, toAST(v, typeFun))
+    )
 
-      val typeFun = createTypeFun()
-      val pureAst =  pure.foldLeft(mkBoolVal(true))((acc,v) =>
-        mkAnd(acc, toAST(v, typeFun))
-      )
-
-      // Non static fields are modeled by a function from int to int.
-      // A function is created for each fieldname.
-      // For a constraint a^.f -> b^, it is asserted that field_f(a^) == b^
-      val fields = heap.groupBy({ case (FieldPtEdge(_, fieldName), _) => fieldName})
-      val heapAst = fields.foldLeft(mkBoolVal(true)){
-        case (acc, (field, heapConstraints)) => {
-          val fieldFun = mkFieldFun(s"field_${field}")
-          heapConstraints.foldLeft(acc){
-            case (acc, (FieldPtEdge(p, _), tgt)) =>
-              mkAnd(acc, fieldEquals(fieldFun,toAST(p), toAST(tgt)))
-            case (acc,v) =>
-              println(v)
-              ???
-          }
+    // Non static fields are modeled by a function from int to int.
+    // A function is created for each fieldname.
+    // For a constraint a^.f -> b^, it is asserted that field_f(a^) == b^
+    val fields = heap.groupBy({ case (FieldPtEdge(_, fieldName), _) => fieldName })
+    val heapAst = fields.foldLeft(mkBoolVal(true)) {
+      case (acc, (field, heapConstraints)) => {
+        val fieldFun = mkFieldFun(s"field_${field}")
+        heapConstraints.foldLeft(acc) {
+          case (acc, (FieldPtEdge(p, _), tgt)) =>
+            mkAnd(acc, fieldEquals(fieldFun, toAST(p), toAST(tgt)))
         }
       }
-
-
-      val ast = mkAnd(pureAst, heapAst)
-      val simpleAst = solverSimplify(ast)
-
-      pop()
-      // TODO: garbage collect, if purevar can't be reached from reg or stack var, discard
-      simpleAst.map(_ => state) //TODO: actually simplify?
     }
+    mkAnd(pureAst, heapAst)
+  }
+
+  def simplify(state: State): Option[State] = {
+    push()
+    val ast = toAST(state)
+    val simpleAst = solverSimplify(ast)
+
+    pop()
+    // TODO: garbage collect, if purevar can't be reached from reg or stack var, discard
+    simpleAst.map(_ => state) //TODO: actually simplify?
   }
 }

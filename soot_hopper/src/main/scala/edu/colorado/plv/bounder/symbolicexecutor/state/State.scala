@@ -122,6 +122,9 @@ case class StackVar(name : String) extends Var{
 }
 
 sealed trait CmpOp
+case object MayEqual extends CmpOp{
+  override def toString:String = "?="
+}
 case object Equals extends CmpOp{
   override def toString:String = " == "
 }

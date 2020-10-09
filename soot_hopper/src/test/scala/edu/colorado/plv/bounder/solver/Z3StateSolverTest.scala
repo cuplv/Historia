@@ -54,7 +54,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val pc = new PersistantConstraints(ctx, solver, hierarchy)
     val statesolver = new Z3StateSolver(pc)
 
-    // aliased and contradictory nullness
+    // aliased but field is not aliased should be infeasible
     val v2 = PureVar()
     val v3 = PureVar()
     val v4 = PureVar()
@@ -65,6 +65,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val simplifyResult = statesolver.simplify(refutableState)
     assert(!simplifyResult.isDefined)
 
+    // aliased with field aliased should be feasilbe
     val unrefutableState = State(List(frame),
       Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),constraints + PureConstraint(v3, Equals, v4), Set())
     val simplifyResult2 = statesolver.simplify(unrefutableState)
@@ -79,7 +80,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val pc = new PersistantConstraints(ctx, solver, hierarchy)
     val statesolver = new Z3StateSolver(pc)
 
-    // aliased and contradictory nullness
+    // aliased and contradictory types of field
     val v2 = PureVar()
     val v3 = PureVar()
     val v4 = PureVar()
@@ -93,6 +94,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val simplifyResult = statesolver.simplify(refutableState)
     assert(!simplifyResult.isDefined)
 
+    // aliased and consistent field type constraints
     val constraints2 = Set(
       PureConstraint(v, Equals, v2),
       PureConstraint(v3, TypeComp, SubclassOf("String")),
@@ -102,6 +104,21 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
       Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),constraints2, Set())
     val simplifyResult2 = statesolver.simplify(state)
     assert(simplifyResult2.isDefined)
+  }
+  test("z3 sandbox") {
+    val ctx = new Context
+    val solver = ctx.mkSolver()
+    val b1 = ctx.mkBoolConst("b1")
+    val b2 = ctx.mkBoolConst("b2")
+    solver.add(ctx.mkEq(b1,b2))
+    solver.check()
+    val m = solver.getModel
+    println(solver.toString())
+    println("---")
+    println(s"b1 ${m.getConstInterp(b1)}")
+    println("---")
+    println(m)
+
   }
 
 }
