@@ -1,6 +1,7 @@
 package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
+import edu.colorado.plv.bounder.ir.MessageType
 import edu.colorado.plv.bounder.lifestate.LifeState.LSAtom
 
 object LifeState {
@@ -25,9 +26,10 @@ object LifeState {
     def getVar(i:Int):String
     def getAtomSig:String
   }
+
   // A method with a signature in "signatures" has been invoed
   // lsVars:
-  case class I(signatures: Set[String], lsVars : List[String]) extends LSAtom {
+  case class I(mt: MessageType, signatures: Set[String], lsVars : List[String]) extends LSAtom {
     override def lsVar: List[String] = lsVars
 
     override def getVar(i: Int): String = lsVars(i)
@@ -72,7 +74,7 @@ object LifeState {
      * @param sig e.g. [CB Inv] void onCreate(Bundle)
      */
     def locateIFromMsgSig(sig: String) : Option[LSAtom] = {
-      predicates.find({ case I(s,_) => s.contains(sig)})
+      predicates.find({ case I(_,s,_) => s.contains(sig)})
     }
 
     /**
