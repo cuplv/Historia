@@ -2,6 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import com.microsoft.z3.Context
 import edu.colorado.plv.bounder.ir.{IRWrapper, Loc}
+import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.{PersistantConstraints, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, Qry, SomeQry, State}
 

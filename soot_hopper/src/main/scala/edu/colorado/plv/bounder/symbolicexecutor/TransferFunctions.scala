@@ -1,9 +1,19 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldRef, IRWrapper, LVal, Loc, LocalWrapper, NewCommand, ReturnCmd, SpecialInvoke, StaticInvoke, ThisWrapper, VirtualInvoke}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, ClassType, Equals, FieldPtEdge, NotEquals, NullVal, PureConstraint, PureExpr, PureVar, StackVar, State, SubclassOf, TypeComp, TypeConstraint, Val}
+import edu.colorado.plv.bounder.BounderUtil
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldRef, IRWrapper, Loc, LocalWrapper, NewCommand, ReturnCmd, ThisWrapper}
+import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
+import edu.colorado.plv.bounder.lifestate.SpecSpace
+import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, ClassType, Equals, FieldPtEdge, LSAbstraction, NotEquals, NullVal, PureConstraint, PureExpr, PureVar, StackVar, State, SubclassOf, TraceAbstraction, TypeComp, TypeConstraint, Val}
 
-class TransferFunctions[M,C](w:IRWrapper[M,C]) {
+class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
+  /**
+   *
+   * @param pre state before target location
+   * @param target predecessor location of source
+   * @param source current location in program
+   * @return set of states that may reach the target state by stepping from target to source
+   */
   def transfer(pre:State, target:Loc, source:Loc):Set[State] = (source,target,pre) match{
     case (source@AppLoc(_,_,false),CallinMethodReturn(fmwClazz, fmwName), State(stack,heap, pure, reg)) =>
       Set(State(CallStackFrame(target, Some(source.copy(isPre=true)),Map())::stack,heap, pure, reg)) //TODO: lifestate rule transfer
@@ -17,16 +27,25 @@ class TransferFunctions[M,C](w:IRWrapper[M,C]) {
       cmdTransfer(w.cmdBeforeLocation(appLoc),prestate)
     case (AppLoc(_,m,true), CallbackMethodInvoke(fc1, fn1, l1), State(CallStackFrame(CallbackMethodReturn(fc2, fn2, l2), None, locals)::s, heap, pure, reg)) => {
       // If call doesn't match return on stack, return bottom
-      val thisEdge = locals.find(l => l._1.name == "this").flatMap(_._2 match {
+      // Target loc of CallbackMethodInvoke means just before callback is invoked
+      val thisEdge: Option[PureVar] = locals.find(l => l._1.name == "this").flatMap(_._2 match {
         case v@PureVar() => Some(v)
         case _ => throw new IllegalStateException("this must point to pure var or be unconstrained")
       })
-      val reg2 = reg ++ thisEdge
       if (fc1 != fc2 || fn1 != fn2 || l1 != l2) Set() else {
-        Set(State(s,heap, pure, reg2))
+        // Update each element in the trace abstraction for the current message
+        val states1 = tracePredTransfer(fc1, fn1, pre)
+        // Since this is a back message, instantiate any new instances of the spec
+        val states2 = states1.flatMap( a => newSpecInstanceTransfer(fc1,fn1, a))
+        // Remove the top call stack frame from each candidate state since we are crossing the entry to a method
+        val out = states2.map(_.copy(callStack = s))
+        out // TODO: check that this output makes sense
       }
     }
-    case (CallbackMethodInvoke(clazz, name, loc), targetLoc@AppLoc(m,l,false), pre) => {
+    case (CallbackMethodInvoke(_, _, _), targetLoc@AppLoc(m,l,false), pre) => {
+      // Case where execution goes to the exit of another callback
+      // TODO: nested callbacks not supported yet, assuming we can't go back to callin entry
+      // TODO: note that the callback method invoke is to be ignored here.
       val cmd = w.cmdBeforeLocation(targetLoc).asInstanceOf[ReturnCmd[M,C]]
       val thisId : PureExpr = PureVar()
       val thisTypeUpperBound: String = m.classType
@@ -42,6 +61,41 @@ class TransferFunctions[M,C](w:IRWrapper[M,C]) {
     case t =>
       println(t)
       ???
+  }
+
+  /**
+   * For a back message with a given package and name, instantiate each rule as a new trace abstraction
+   * @param pkg
+   * @param name
+   * @param postState
+   * @return a new trace abstraction for each possible rule
+   */
+  def newSpecInstanceTransfer(pkg: String, name:String, postState: State): Set[State] = {
+    val applicableSpecs = specSpace.specsBySig(pkg, name)
+    applicableSpecs.map{case LSSpec(pred, target) =>
+      //TODO: find all args in abstract state
+      val lsvars = target.lsVar
+      assert(lsvars(0) == "_") // TODO: temporary assumption of no return val
+      val thisOption = postState.getLocal(LocalWrapper("this", pkg))
+      assert(thisOption.isDefined) // TODO: temporary assumption that this is always defined
+      val newLsAbstraction = LSAbstraction(pred, Map(lsvars(1) -> thisOption.get))
+      postState.copy(traceAbstraction = postState.traceAbstraction + newLsAbstraction)
+    }
+  }
+
+  /**
+   * Update each trace abstraction in an abstract state
+   * @param pkg
+   * @param name
+   * @param postState
+   * @return
+   */
+  def tracePredTransfer(pkg:String, name:String, postState: State):Set[State] = {
+    //TODO: you were here 11/9/20
+    val newTraceAbs: Set[TraceAbstraction] = postState.traceAbstraction.map(a =>
+      ??? // TODO: update each trace abstraction if necessary
+    )
+    Set(postState.copy(traceAbstraction = newTraceAbs))
   }
   def cmdTransfer(cmd:CmdWrapper[M,C], state: State):Set[State] = (cmd,state) match{
     case (AssignCmd(LocalWrapper(name,_), NewCommand(className),_,_),
@@ -59,9 +113,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C]) {
         case _ => throw new IllegalStateException("Assign object to primitive")
       }
     case (AssignCmd(target, FieldRef(base, containsType, declType, name),_,_), s) =>{
-      if(s.isDefined(target)) {
+      if(s.getLocal(target).isDefined) {
         val (tgtval, s1) = s.getOrDefine(target)
-        if(s.isDefined(base)){
+        if(s.getLocal(base).isDefined){
           ??? // no alias between vars possible
         }else{
           // Case split between aliased or not aliased

@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.MessageType
-import edu.colorado.plv.bounder.lifestate.LifeState.LSAtom
+import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
 
 object LifeState {
   var id = 0
@@ -28,8 +28,10 @@ object LifeState {
   }
 
   // A method with a signature in "signatures" has been invoed
-  // lsVars:
-  case class I(mt: MessageType, signatures: Set[String], lsVars : List[String]) extends LSAtom {
+  // lsVars: element 0 is return value, element 1 is reciever, rest of the elements are arguemnts
+  // A string of "_" means "don't care"
+  // primitives are parsed as in java "null", "true", "false", numbers etc.
+  case class I(mt: MessageType, signatures: Set[(String, String)], lsVars : List[String]) extends LSAtom {
     override def lsVar: List[String] = lsVars
 
     override def getVar(i: Int): String = lsVars(i)
@@ -47,6 +49,7 @@ object LifeState {
 
     override def getAtomSig: String = s"NI(${i1.getAtomSig}, ${i2.getAtomSig})"
   }
+  case class LSSpec(pred:LSPred, target: I)
 
   // Class that holds a graph of possible predicates and alias relations between the predicates.
   // Generated from a fast pre analysis of the applications.
@@ -69,13 +72,13 @@ object LifeState {
       })
     }
 
-    /**
-     * Find I predicate that matches sig
-     * @param sig e.g. [CB Inv] void onCreate(Bundle)
-     */
-    def locateIFromMsgSig(sig: String) : Option[LSAtom] = {
-      predicates.find({ case I(_,s,_) => s.contains(sig)})
-    }
+//    /**
+//     * Find I predicate that matches sig
+//     * @param sig e.g. [CB Inv] void onCreate(Bundle)
+//     */
+//    def locateIFromMsgSig(sig: String) : Option[LSAtom] = {
+//      predicates.find({ case I(_,s,_) => s.contains(sig)})
+//    }
 
     /**
      *
@@ -100,5 +103,20 @@ object LifeState {
       }).toSet
     }
   }
+}
+/**
+ * Representation of a set of possible lifestate specs */
+class SpecSpace(specs: Set[LSSpec]) {
+  /**
+   * Find a lifestate spec by
+   * @param pkg
+   * @param name
+   * @return
+   */
+  def specsBySig(pkg:String, name:String):Set[LSSpec] = {
+    // TODO: put specs in hash map or something
+    specs.filter(a => a.target.signatures.contains((pkg,name)))
+  }
+
 }
 

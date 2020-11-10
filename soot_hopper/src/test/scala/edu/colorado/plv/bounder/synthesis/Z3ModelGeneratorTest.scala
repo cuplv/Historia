@@ -16,8 +16,8 @@ class Z3ModelGeneratorTest extends org.scalatest.FunSuite {
     val state = State(List(frame), Map(), Set(), Set())
     val qryR1 = SomeQry(state, dummyLoc)
 
-    val barPred = I(CBEnter,Set("void bar()"), List("a"))
-    val fooPred = I(CBEnter,Set("void foo()"), List("a"))
+    val barPred = I(CBEnter,Set(("","void bar()")), List("a"))
+    val fooPred = I(CBEnter,Set(("","void foo()")), List("a"))
     val pred = barPred
 
     val theta = Map(

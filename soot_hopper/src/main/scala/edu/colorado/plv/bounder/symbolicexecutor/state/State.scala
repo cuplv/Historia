@@ -2,6 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.hopper.solver.StateSolver
 import edu.colorado.plv.bounder.ir.{FieldRef, IRWrapper, LVal, LocalWrapper, ParamWrapper, RVal}
+import edu.colorado.plv.bounder.lifestate.LifeState.LSPred
 import edu.colorado.plv.bounder.solver.Z3StateSolver
 
 
@@ -16,8 +17,13 @@ object State {
 
 // pureFormula is a conjunction of constraints
 // callStack is the call string from thresher paper
+sealed trait TraceAbstraction
+case class LSAbstraction(pred: LSPred, bind : Map[String, PureExpr]) extends TraceAbstraction
+case class Reg(v: PureVar) extends TraceAbstraction
+case object TopTraceAbstraction extends TraceAbstraction
+
 case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdge, PureExpr],
-                 pureFormula: Set[PureConstraint], registered: Set[PureVar]) {
+                 pureFormula: Set[PureConstraint], traceAbstraction: Set[TraceAbstraction]) {
   override def toString:String = {
     val stackString = callStack.headOption match{
       case Some(sf) => {
@@ -38,11 +44,11 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
     solver.pop()
     simpl
   }
-  def isDefined(l:LVal):Boolean = l match{
+  def getLocal(l:LVal):Option[PureExpr] = l match {
     case LocalWrapper(name,localType) => {
       callStack match{
-        case CallStackFrame(_,_,locals)::_ => locals.contains(StackVar(name))
-        case Nil => false
+        case CallStackFrame(_,_,locals)::_ => locals.get(StackVar(name))
+        case Nil => None
       }
     }
     case _ => ???
@@ -57,7 +63,7 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
             callStack = cshead.copy(locals = cshead.locals + (StackVar(name) -> newident)) :: cstail,
             heapConstraints,
 //            typeConstraints + (newident -> TypeConstraint.fromLocalType(localType)),
-            pureFormula,registered // TODO: reg purevar
+            pureFormula,traceAbstraction // TODO: reg purevar
           ))
       }
     case _ =>
@@ -71,7 +77,7 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
    */
   def clearLVal(l : LVal): State = (l,callStack) match {
     case (LocalWrapper(name,localType), cshead::cstail) =>
-      State(cshead.removeStackVar(StackVar(name))::cstail,heapConstraints, pureFormula, registered)
+      State(cshead.removeStackVar(StackVar(name))::cstail,heapConstraints, pureFormula, traceAbstraction)
     case _ =>
       ???
   }
