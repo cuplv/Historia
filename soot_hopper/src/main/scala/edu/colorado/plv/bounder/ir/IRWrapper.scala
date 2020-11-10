@@ -13,16 +13,16 @@ trait IRWrapper[M,C]{
   def getOverrideChain( method : MethodLoc) : Seq[MethodLoc]
   def findMethodLoc(className: String, methodName: String):Option[MethodLoc]
   def findLineInMethod(className:String, methodName:String, line:Int):Iterable[AppLoc]
-  def makeCmd(cmd:C, method:M, loc:Option[AppLoc] = None): CmdWrapper[M,C]
-  def commandPredicessors(cmdWrapper:CmdWrapper[M,C]): List[AppLoc]
-  def commandNext(cmdWrapper:CmdWrapper[M,C]):List[AppLoc]
+  def makeCmd(cmd:C, method:M, loc:Option[AppLoc] = None): CmdWrapper
+  def commandPredicessors(cmdWrapper:CmdWrapper): List[AppLoc]
+  def commandNext(cmdWrapper:CmdWrapper):List[AppLoc]
 
   /**
    * Is this the first command in containing method
    */
-  def isMethodEntry(cmdWrapper: CmdWrapper[M,C]): Boolean
-  def cmdAfterLocation(loc: AppLoc): CmdWrapper[M,C]
-  def cmdBeforeLocation(loc:AppLoc): CmdWrapper[M,C]
+  def isMethodEntry(cmdWrapper: CmdWrapper): Boolean
+  def cmdAfterLocation(loc: AppLoc): CmdWrapper
+  def cmdBeforeLocation(loc:AppLoc): CmdWrapper
   def makeInvokeTargets(invoke:InvokeCmd[M,C]):Set[UnresolvedMethodTarget]
   def callSites(method : M): Seq[C]
   def makeMethodRetuns(method: MethodLoc) : List[Loc]
@@ -31,7 +31,7 @@ trait IRWrapper[M,C]{
 sealed case class UnresolvedMethodTarget(clazz: String, methodName:String, loc:Option[MethodLoc])
 
 
-sealed abstract class CmdWrapper[M,C](loc:AppLoc, wrapper: IRWrapper[M,C]){
+sealed abstract class CmdWrapper(loc:AppLoc){
   def getLoc: AppLoc = loc
 }
 
@@ -41,11 +41,11 @@ sealed abstract class CmdWrapper[M,C](loc:AppLoc, wrapper: IRWrapper[M,C]){
  * @param loc
  * @param wrapper
  */
-case class ReturnCmd[M,C](returnVar: Option[LocalWrapper], loc:AppLoc, wrapper: IRWrapper[M,C]) extends CmdWrapper(loc,wrapper)
-case class AssignCmd[M,C](target: LVal, source: RVal, loc:AppLoc, wrapper: IRWrapper[M,C]) extends CmdWrapper(loc,wrapper){
+case class ReturnCmd[M,C](returnVar: Option[LocalWrapper], loc:AppLoc, wrapper: IRWrapper[M,C]) extends CmdWrapper(loc)
+case class AssignCmd[M,C](target: LVal, source: RVal, loc:AppLoc, wrapper: IRWrapper[M,C]) extends CmdWrapper(loc){
   override def toString:String = s"$target := $source"
 }
-case class InvokeCmd[M,C](method: Invoke[M,C], loc:AppLoc, wrapper:IRWrapper[M,C]) extends CmdWrapper(loc,wrapper)
+case class InvokeCmd[M,C](method: Invoke[M,C], loc:AppLoc, wrapper:IRWrapper[M,C]) extends CmdWrapper(loc)
 
 
 abstract class MethodWrapper[M,C](decalringClass : String,

@@ -10,7 +10,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
   def getResolver = resolver
   def resolvePredicessors(loc:Loc, state: State):List[Loc] = (loc,state.callStack) match{
     case (l@AppLoc(method,_,true),_) => {
-      val cmd: CmdWrapper[M, C] = wrapper.cmdAfterLocation(l)
+      val cmd: CmdWrapper = wrapper.cmdAfterLocation(l)
       if(wrapper.isMethodEntry(cmd)) {
         //TODO: resolve app call sites
         val callback = resolver.resolveCallbackEntry(method)
@@ -22,7 +22,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
       }
     }
     case (l@AppLoc(_,_,false),_) => {
-      val cmd: CmdWrapper[M, C] = wrapper.cmdBeforeLocation(l)
+      val cmd: CmdWrapper = wrapper.cmdBeforeLocation(l)
       cmd match{
         case i:InvokeCmd[M,C] => {
           val unresolvedTargets = wrapper.makeInvokeTargets(i)
@@ -39,7 +39,11 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
       List(returnLoc)
     case (CallbackMethodInvoke(fmwClazz, fmwName, loc), _) =>
       val callbacks = resolver.getCallbacks
-      callbacks.flatMap(wrapper.makeMethodRetuns(_)).toList
+      callbacks.flatMap(callback => {
+        val locCb = wrapper.makeMethodRetuns(callback)
+        locCb.map{case AppLoc(method,line,isPre) => CallbackMethodReturn(method.classType,fmwName, callback,Some(line))}
+      }).toList
+    case (CallbackMethodReturn(fmwClazz,fmwName, loc, Some(line)),_) => AppLoc(loc, line, true)::Nil
     case _ =>
       ???
   }

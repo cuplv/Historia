@@ -61,7 +61,7 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
   }
 
   override def makeCmd(cmd: soot.Unit, method: SootMethod,
-                       locOpt:Option[AppLoc] = None): CmdWrapper[SootMethod, soot.Unit] = {
+                       locOpt:Option[AppLoc] = None): CmdWrapper = {
     val loc:AppLoc = locOpt.getOrElse(???)
     cmd match{
       case cmd: AbstractDefinitionStmt => {
@@ -85,7 +85,7 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
     }
   }
 
-  override def commandPredicessors(cmdWrapper : CmdWrapper[SootMethod,soot.Unit]):List[AppLoc] =
+  override def commandPredicessors(cmdWrapper : CmdWrapper):List[AppLoc] =
     cmdWrapper.getLoc match{
     case AppLoc(methodWrapper @ JimpleMethodLoc(_),JimpleLineLoc(cmd,sootMethod), true) => {
       val unitGraph = getUnitGraph(sootMethod.retrieveActiveBody())
@@ -94,7 +94,7 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
     }
     case _ => ???
   }
-  override def commandNext(cmdWrapper: CmdWrapper[SootMethod, soot.Unit]):List[AppLoc] = {
+  override def commandNext(cmdWrapper: CmdWrapper):List[AppLoc] = {
     cmdWrapper.getLoc match{
       case AppLoc(method, line, _) => List(AppLoc(method,line,true))
       case _ =>
@@ -102,7 +102,7 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
     }
   }
 
-  override def cmdAfterLocation(loc: AppLoc): CmdWrapper[SootMethod, soot.Unit] = {
+  override def cmdAfterLocation(loc: AppLoc): CmdWrapper = {
     loc match{
       case AppLoc(_, JimpleLineLoc(cmd,method),true) =>{
         makeCmd(cmd,method,Some(loc))
@@ -112,7 +112,7 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
     }
   }
 
-  override def cmdBeforeLocation(loc: AppLoc): CmdWrapper[SootMethod, soot.Unit] = loc match{
+  override def cmdBeforeLocation(loc: AppLoc): CmdWrapper = loc match{
     case AppLoc(_, JimpleLineLoc(cmd, method), false) =>
       makeCmd(cmd,method,Some(loc))
     case _ =>
@@ -155,7 +155,7 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
     case a => makeRVal(a)
   }
 
-  override def isMethodEntry(cmdWrapper: CmdWrapper[SootMethod, soot.Unit]): Boolean = cmdWrapper.getLoc match {
+  override def isMethodEntry(cmdWrapper: CmdWrapper): Boolean = cmdWrapper.getLoc match {
     case AppLoc(_, JimpleLineLoc(cmd,method),true) => {
       val unitBoxes = method.retrieveActiveBody().getUnits
       if(unitBoxes.size > 0){

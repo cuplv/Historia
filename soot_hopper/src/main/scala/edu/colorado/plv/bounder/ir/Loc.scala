@@ -46,7 +46,8 @@ case class CallinMethodInvoke(fmwClazz : String, fmwName:String) extends Loc {
 case class CallbackMethodInvoke(fmwClazz: String, fmwName: String, loc:MethodLoc) extends Loc {
   override def msgSig: Option[String] = Some(s"[CB Inv] ${fmwClazz} ${fmwName}")
 }
-case class CallbackMethodReturn(fmwClazz: String, fmwName:String, loc:MethodLoc) extends Loc {
+// post state of return on callback
+case class CallbackMethodReturn(fmwClazz: String, fmwName:String, loc:MethodLoc, line:Option[LineLoc]) extends Loc {
   override def msgSig: Option[String] = Some(s"")
 }
 

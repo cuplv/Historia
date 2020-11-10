@@ -14,7 +14,7 @@ object Qry {
     val acr = config.c.getResolver
     val cbexit = acr.resolveCallbackEntry(loc.method) match{
       case Some(CallbackMethodInvoke(clazz, name, loc)) =>
-        CallbackMethodReturn(clazz,name, loc)
+        CallbackMethodReturn(clazz,name, loc, None) //get an arbitrary return location
       case None => {
 
         InternalMethodReturn(loc.method.classType, loc.method.simpleName, loc.method)

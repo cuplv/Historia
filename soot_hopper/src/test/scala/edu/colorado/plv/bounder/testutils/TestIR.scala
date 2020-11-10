@@ -1,23 +1,23 @@
 package edu.colorado.plv.bounder.testutils
 
-import edu.colorado.plv.bounder.ir.{AppLoc, CmdWrapper, IRWrapper, InvokeCmd, Loc, MethodLoc, UnresolvedMethodTarget}
+import edu.colorado.plv.bounder.ir.{AppLoc, CmdWrapper, IRWrapper, InvokeCmd, LineLoc, Loc, MethodLoc, UnresolvedMethodTarget}
 
-class TestIR(program: TestProgram) extends IRWrapper[String,String] {
+class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] {
   override def findMethodLoc(className: String, methodName: String): Option[MethodLoc] = ???
 
   override def findLineInMethod(className: String, methodName: String, line: Int): Iterable[AppLoc] = ???
 
-  override def makeCmd(cmd: String, method: String, loc: Option[AppLoc]): CmdWrapper[String, String] = ???
+  override def makeCmd(cmd: String, method: String, loc: Option[AppLoc]): CmdWrapper = ???
 
-  override def commandPredicessors(cmdWrapper: CmdWrapper[String, String]): List[AppLoc] = ???
+  override def commandPredicessors(cmdWrapper: CmdWrapper): List[AppLoc] = ???
 
-  override def commandNext(cmdWrapper: CmdWrapper[String, String]): List[AppLoc] = ???
+  override def commandNext(cmdWrapper: CmdWrapper): List[AppLoc] = ???
 
-  override def isMethodEntry(cmdWrapper: CmdWrapper[String, String]): Boolean = ???
+  override def isMethodEntry(cmdWrapper: CmdWrapper): Boolean = ???
 
-  override def cmdAfterLocation(loc: AppLoc): CmdWrapper[String, String] = ???
+  override def cmdAfterLocation(loc: AppLoc): CmdWrapper = ???
 
-  override def cmdBeforeLocation(loc: AppLoc): CmdWrapper[String, String] = ???
+  override def cmdBeforeLocation(loc: AppLoc): CmdWrapper = ???
 
   override def makeInvokeTargets(invoke: InvokeCmd[String, String]): Set[UnresolvedMethodTarget] = ???
 
@@ -46,5 +46,8 @@ case class TestIRLineLoc(line:Int) extends MethodLoc {
   override def argTypes: List[String] = ???
 }
 
-case class TestProgram(methods:List[TestMethod])
-case class TestMethod(methodLoc: TestIRMethodLoc, cmds: List[CmdWrapper[String,String]])
+sealed trait TestTransition
+case class CmdTransition(loc1: Loc, cmd:CmdWrapper , loc2:Loc) extends TestTransition
+case class MethodTransition(loc1:Loc, loc2:Loc) extends TestTransition
+
+case class TestMethod(methodLoc: TestIRMethodLoc, cmds: List[CmdWrapper])
