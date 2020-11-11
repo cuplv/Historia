@@ -39,10 +39,9 @@ sealed abstract class CmdWrapper(loc:AppLoc){
  *
  * @param returnVar None if void return otherwise local returned by cmd
  * @param loc
- * @param wrapper
  */
-case class ReturnCmd[M,C](returnVar: Option[LocalWrapper], loc:AppLoc, wrapper: IRWrapper[M,C]) extends CmdWrapper(loc)
-case class AssignCmd[M,C](target: LVal, source: RVal, loc:AppLoc, wrapper: IRWrapper[M,C]) extends CmdWrapper(loc){
+case class ReturnCmd(returnVar: Option[LocalWrapper], loc:AppLoc) extends CmdWrapper(loc)
+case class AssignCmd(target: LVal, source: RVal, loc:AppLoc) extends CmdWrapper(loc){
   override def toString:String = s"$target := $source"
 }
 case class InvokeCmd[M,C](method: Invoke[M,C], loc:AppLoc, wrapper:IRWrapper[M,C]) extends CmdWrapper(loc)

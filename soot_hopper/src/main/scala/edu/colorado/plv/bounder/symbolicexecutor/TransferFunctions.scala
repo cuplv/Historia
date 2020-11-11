@@ -47,7 +47,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       // TODO: note that the callback method invoke is to be ignored here.
       // Control flow resolver is responsible for the
       val appLoc = AppLoc(targetLoc.loc, targetLoc.line.get,false)
-      val cmd = w.cmdBeforeLocation(appLoc).asInstanceOf[ReturnCmd[M, C]]
+      val cmd = w.cmdBeforeLocation(appLoc).asInstanceOf[ReturnCmd]
       val thisId: PureExpr = PureVar()
       val thisTypeUpperBound: String = mloc.classType
       val newStackVars: Map[StackVar, PureExpr] = if (cmd.returnVar.isDefined) {
@@ -117,7 +117,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     Set(postState.copy(traceAbstraction = newTraceAbs))
   }
   def cmdTransfer(cmd:CmdWrapper, state: State):Set[State] = (cmd,state) match{
-    case (AssignCmd(LocalWrapper(name,_), NewCommand(className),_,_),
+    case (AssignCmd(LocalWrapper(name,_), NewCommand(className),_),
         s@State(stack@f::_,heap,pureFormula, reg)) =>
       f.locals.get(StackVar(name)) match{
         case Some(purevar: PureVar) =>
@@ -131,7 +131,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
           ???
         case _ => throw new IllegalStateException("Assign object to primitive")
       }
-    case (AssignCmd(target, FieldRef(base, containsType, declType, name),_,_), s) =>{
+    case (AssignCmd(target, FieldRef(base, containsType, declType, name),_), s) =>{
       if(s.getLocal(target).isDefined) {
         val (tgtval, s1) = s.getOrDefine(target)
         if(s.getLocal(base).isDefined){
@@ -152,7 +152,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         Set(s) // No change to state if assignment doesn't affect anything in current state
       }
     }
-    case (AssignCmd(target:LocalWrapper, LocalWrapper(name, localType),_,_),s@State(f::t,_,_,_)) => {
+    case (AssignCmd(target:LocalWrapper, LocalWrapper(name, localType),_),s@State(f::t,_,_,_)) => {
       f.locals.get(StackVar(target.name)) match {
         case Some(v) =>
           val (pval,s1) = s.getOrDefine(target)
@@ -162,8 +162,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         case None => Set(s)
       }
     }
-    case (AssignCmd(lw: LocalWrapper, ThisWrapper(thisTypename),a,b), s) =>
-      cmdTransfer(AssignCmd(lw, LocalWrapper("this", thisTypename),a,b),s)
+    case (AssignCmd(lw: LocalWrapper, ThisWrapper(thisTypename),a), s) =>
+      cmdTransfer(AssignCmd(lw, LocalWrapper("this", thisTypename),a),s)
     case _ =>
       ???
   }

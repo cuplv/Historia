@@ -38,12 +38,8 @@ case class TestIRMethodLoc(name:String) extends MethodLoc {
 
   override def argTypes: List[String] = ???
 }
-case class TestIRLineLoc(line:Int) extends MethodLoc {
-  override def simpleName: String = ???
+case class TestIRLineLoc(line:Int) extends LineLoc {
 
-  override def classType: String = ???
-
-  override def argTypes: List[String] = ???
 }
 
 sealed trait TestTransition
