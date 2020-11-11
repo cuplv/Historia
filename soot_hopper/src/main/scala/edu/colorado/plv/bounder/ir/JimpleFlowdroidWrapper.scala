@@ -74,8 +74,8 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
         ReturnCmd(Some(box), loc)
       }
       case cmd:JInvokeStmt => {
-        val invokeval = makeVal(cmd.getInvokeExpr).asInstanceOf[Invoke[SootMethod,soot.Unit]]
-        InvokeCmd[SootMethod,soot.Unit](invokeval, loc, this)
+        val invokeval = makeVal(cmd.getInvokeExpr).asInstanceOf[Invoke]
+        InvokeCmd(invokeval, loc)
       }
       case _ : JReturnVoidStmt => {
         ReturnCmd(None, loc)
@@ -128,8 +128,8 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
       val targetMethod = a.getMethodRef.getSignature
       val params: List[LocalWrapper] = (0 until a.getArgCount()).map(argPos => ???).toList //TODO: implement parameters
       a match{
-        case _:JVirtualInvokeExpr => VirtualInvoke(target, targetClass, targetMethod, params,this)
-        case _:JSpecialInvokeExpr => SpecialInvoke(target,targetClass, targetMethod, params,this)
+        case _:JVirtualInvokeExpr => VirtualInvoke(target, targetClass, targetMethod, params)
+        case _:JSpecialInvokeExpr => SpecialInvoke(target,targetClass, targetMethod, params)
         case _ => ???
       }
     }
@@ -175,7 +175,7 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
     }).getOrElse(List())
   }
 
-  override def makeInvokeTargets(invoke: InvokeCmd[SootMethod, soot.Unit]): Set[UnresolvedMethodTarget] = {
+  override def makeInvokeTargets(invoke: InvokeCmd): Set[UnresolvedMethodTarget] = {
     val cg = Scene.v().getCallGraph
     //var pt = Scene.v().getPointsToAnalysis
     val cmd = invoke.getLoc.line match{

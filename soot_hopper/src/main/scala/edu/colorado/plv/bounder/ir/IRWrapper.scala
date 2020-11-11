@@ -23,7 +23,7 @@ trait IRWrapper[M,C]{
   def isMethodEntry(cmdWrapper: CmdWrapper): Boolean
   def cmdAfterLocation(loc: AppLoc): CmdWrapper
   def cmdBeforeLocation(loc:AppLoc): CmdWrapper
-  def makeInvokeTargets(invoke:InvokeCmd[M,C]):Set[UnresolvedMethodTarget]
+  def makeInvokeTargets(invoke:InvokeCmd):Set[UnresolvedMethodTarget]
   def callSites(method : M): Seq[C]
   def makeMethodRetuns(method: MethodLoc) : List[Loc]
   def getClassHierarchy : Map[String, Set[String]]
@@ -31,6 +31,10 @@ trait IRWrapper[M,C]{
 sealed case class UnresolvedMethodTarget(clazz: String, methodName:String, loc:Option[MethodLoc])
 
 
+/**
+ *
+ * @param loc location in app after command //TODO: it seems there should be a cleaner way to implement this
+ */
 sealed abstract class CmdWrapper(loc:AppLoc){
   def getLoc: AppLoc = loc
 }
@@ -44,24 +48,23 @@ case class ReturnCmd(returnVar: Option[LocalWrapper], loc:AppLoc) extends CmdWra
 case class AssignCmd(target: LVal, source: RVal, loc:AppLoc) extends CmdWrapper(loc){
   override def toString:String = s"$target := $source"
 }
-case class InvokeCmd[M,C](method: Invoke[M,C], loc:AppLoc, wrapper:IRWrapper[M,C]) extends CmdWrapper(loc)
+case class InvokeCmd(method: Invoke, loc:AppLoc) extends CmdWrapper(loc)
 
 
-abstract class MethodWrapper[M,C](decalringClass : String,
-                                  returnType: String,
-                                  simpleName:String,
-                                  params:List[String], wrapper:IRWrapper[M,C])
+//abstract class MethodWrapper[M,C](decalringClass : String,
+//                                  returnType: String,
+//                                  simpleName:String,
+//                                  params:List[String], wrapper:IRWrapper[M,C])
 
 // Things that can be used as expressions
 trait RVal
 // New only has type, constructor parameters go to the <init> method
 case class NewCommand(className: String) extends RVal
 
-sealed trait Invoke[M,C] extends RVal {
+sealed trait Invoke extends RVal {
   def targetClass:String
   def targetMethod:String
   def params:List[LocalWrapper]
-  def wrapper:IRWrapper[M,C]
   def targetOptional: Option[LocalWrapper]
   def receiverType:String =
     ???
@@ -69,22 +72,22 @@ sealed trait Invoke[M,C] extends RVal {
     ???
 }
 /*VirtualInvoke is used when dynamic dispatch can change target*/
-case class VirtualInvoke[M,C](target:LocalWrapper,
+case class VirtualInvoke(target:LocalWrapper,
                          targetClass:String,
                          targetMethod:String,
-                         params:List[LocalWrapper], wrapper: IRWrapper[M,C]) extends Invoke[M,C] {
+                         params:List[LocalWrapper]) extends Invoke {
   override def targetOptional: Option[LocalWrapper] = Some(target)
 }
 /*SpecialInvoke is used when the exact class target is known*/
-case class SpecialInvoke[M,C](target:LocalWrapper,
+case class SpecialInvoke(target:LocalWrapper,
                          targetClass:String,
                          targetMethod:String,
-                         params:List[LocalWrapper], wrapper:IRWrapper[M,C]) extends Invoke[M,C] {
+                         params:List[LocalWrapper]) extends Invoke {
   override def targetOptional: Option[LocalWrapper] = Some(target)
 }
-case class StaticInvoke[M,C](targetClass:String,
+case class StaticInvoke(targetClass:String,
                         targetMethod:String,
-                        params:List[LocalWrapper], wrapper:IRWrapper[M,C])extends Invoke[M,C] {
+                        params:List[LocalWrapper])extends Invoke {
   override def targetOptional: Option[LocalWrapper] = None
 }
 

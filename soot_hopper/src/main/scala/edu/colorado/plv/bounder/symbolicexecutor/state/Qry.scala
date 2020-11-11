@@ -40,7 +40,7 @@ object Qry {
     val derefLoc: AppLoc = derefLocs.iterator.next
     // Get name of variable that should not be null
     val varname = w.cmdAfterLocation(derefLoc) match {
-      case AssignCmd(_, VirtualInvoke(LocalWrapper(name,_),_,_,_,_), _) => name
+      case AssignCmd(_, VirtualInvoke(LocalWrapper(name,_),_,_,_), _) => name
       case _ => ???
     }
 

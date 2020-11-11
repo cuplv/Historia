@@ -21,6 +21,12 @@ object LifeState {
   case class Not(l: LSPred) extends LSPred {
     override def lsVar: List[String] = ???
   }
+  case object LSTrue extends LSPred {
+    override def lsVar: List[String] = ???
+  }
+  case object LSFalse extends LSPred {
+    override def lsVar: List[String] = ???
+  }
 
   sealed trait LSAtom extends LSPred {
     def getVar(i:Int):String

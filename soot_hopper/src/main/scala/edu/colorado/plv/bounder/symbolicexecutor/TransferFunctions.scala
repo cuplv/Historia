@@ -27,6 +27,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     case (AppLoc(_, m, true), CallbackMethodInvoke(fc1, fn1, l1), State(CallStackFrame(cmloc@CallbackMethodReturn(fc2, fn2, l2, _), None, locals) :: s, heap, pure, reg)) => {
       // If call doesn't match return on stack, return bottom
       // Target loc of CallbackMethodInvoke means just before callback is invoked
+      // TODO: if
       val thisEdge: Option[PureVar] = locals.find(l => l._1.name == "this").flatMap(_._2 match {
         case v@PureVar() => Some(v)
         case _ => throw new IllegalStateException("this must point to pure var or be unconstrained")
@@ -129,7 +130,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         case None =>
           //TODO: Alias Case Split
           ???
-        case _ => throw new IllegalStateException("Assign object to primitive")
+        case c =>
+          println(c)
+          throw new IllegalStateException("Assign object to primitive")
       }
     case (AssignCmd(target, FieldRef(base, containsType, declType, name),_), s) =>{
       if(s.getLocal(target).isDefined) {

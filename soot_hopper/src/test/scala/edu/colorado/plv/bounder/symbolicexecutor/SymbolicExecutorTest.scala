@@ -5,9 +5,7 @@ import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, JimpleFlowdroidWrapper, J
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NI}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, PureVar, Qry, StackVar}
-import javax.tools.{JavaCompiler, ToolProvider}
-import soot.{Local, SootMethod}
-import soot.jimple.internal.JAssignStmt
+import soot.SootMethod
 
 class SymbolicExecutorTest extends org.scalatest.FunSuite {
 

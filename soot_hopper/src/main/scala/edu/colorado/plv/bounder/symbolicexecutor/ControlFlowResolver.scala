@@ -24,7 +24,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
     case (l@AppLoc(_,_,false),_) => {
       val cmd: CmdWrapper = wrapper.cmdBeforeLocation(l)
       cmd match{
-        case i:InvokeCmd[M,C] => {
+        case i:InvokeCmd => {
           val unresolvedTargets = wrapper.makeInvokeTargets(i)
           val resolved = unresolvedTargets.map(resolver.resolveCallLocation).toList
           resolved

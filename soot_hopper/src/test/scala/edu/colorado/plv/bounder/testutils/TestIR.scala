@@ -17,9 +17,12 @@ class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] 
 
   override def cmdAfterLocation(loc: AppLoc): CmdWrapper = ???
 
-  override def cmdBeforeLocation(loc: AppLoc): CmdWrapper = ???
+  override def cmdBeforeLocation(loc: AppLoc): CmdWrapper = transitions.find(t => t match{
+    case CmdTransition(_,_,l2) if (l2 == loc) => true
+    case _ => false
+  }).map(_.asInstanceOf[CmdTransition].cmd).get
 
-  override def makeInvokeTargets(invoke: InvokeCmd[String, String]): Set[UnresolvedMethodTarget] = ???
+  override def makeInvokeTargets(invoke: InvokeCmd): Set[UnresolvedMethodTarget] = ???
 
   override def getAllMethods: Seq[MethodLoc] = ???
 
