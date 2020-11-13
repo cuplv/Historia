@@ -1,8 +1,9 @@
 package edu.colorado.plv.bounder.solver
 
-import com.microsoft.z3.{AST, BoolExpr, Context, Expr, FuncDecl, Solver, Sort, Status}
+import com.microsoft.z3.{AST, BoolExpr, Context, Expr, FuncDecl, IntSort, Solver, Sort, Status}
 import edu.colorado.hopper.solver.StateSolver
-import edu.colorado.plv.bounder.symbolicexecutor.state.TypeConstraint
+import edu.colorado.plv.bounder.lifestate.LifeState.LSPred
+import edu.colorado.plv.bounder.symbolicexecutor.state.{PureVar, TraceAbstraction, TypeConstraint}
 
 class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateSolver[AST] {
   val solver = persistentConstraints.getSolver
@@ -41,9 +42,7 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
 
   override protected def mkLe(lhs: AST, rhs: AST): AST = ???
 
-  override protected def mkNot(o: AST): AST = ???
-
-  override protected def mkImplies(lhs: AST, rhs: AST): AST = ???
+  override protected def mkNot(o: AST): AST = ctx.mkNot(o.asInstanceOf[BoolExpr])
 
   override protected def mkAdd(lhs: AST, rhs: AST): AST = ???
 
@@ -58,7 +57,8 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
   override protected def mkAnd(lhs: AST, rhs: AST): AST =
     ctx.mkAnd(lhs.asInstanceOf[BoolExpr], rhs.asInstanceOf[BoolExpr])
 
-  override protected def mkOr(lhs: AST, rhs: AST): AST = ???
+  override protected def mkOr(lhs: AST, rhs: AST): AST =
+    ctx.mkOr(lhs.asInstanceOf[BoolExpr], rhs.asInstanceOf[BoolExpr])
 
   override protected def mkXor(lhs: AST, rhs: AST): AST = ???
 
@@ -88,7 +88,7 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
       throw new IllegalStateException("Z3 decidability or timeout issue--got Status.UNKNOWN")
   }
 
-  override protected def mkObjVar(s: String): AST = ctx.mkIntConst("object_addr_" + s)
+  override protected def mkObjVar(s: PureVar): AST = ctx.mkIntConst("object_addr_" + s.id.toString)
 
   override protected def solverSimplify(t: AST): Option[AST] = {
     solver.add(t.asInstanceOf[BoolExpr])
@@ -108,5 +108,19 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
   override protected def createTypeFun():AST = {
     val intArgs: Array[Sort] = Array(ctx.mkIntSort())
     ctx.mkFuncDecl("addressToType", intArgs, persistentConstraints.tsort)
+  }
+
+  override protected def mkINIFun(arity: Int, sig: String): AST = {
+    val argtypes: Array[Sort] = (1 to arity).map(_ => ctx.mkIntSort()).toArray
+    ctx.mkFuncDecl(sig, argtypes, ctx.mkBoolSort())
+  }
+
+  // Model vars have the pred identity hash code appended since they are unique to each pred
+  override protected def mkModelVar(s: String, pred:TraceAbstraction): AST =
+    ctx.mkIntConst("model_var_" + s + "_" + System.identityHashCode(pred))
+
+  override protected def mkINIConstraint(ifun: AST, modelVars: List[AST]): AST = {
+    val args: Array[Expr] = modelVars.map(_.asInstanceOf[Expr]).toArray
+    ifun.asInstanceOf[FuncDecl].apply(args:_*)
   }
 }

@@ -48,22 +48,22 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
     val stack = prestate.head.callStack
     assert(stack.size == 0)
   }
-  //test("Discharge NI(m1^,m2^) phi abstraction when post state must generate m1^ for previous transition") {
-  //  val fooMethod = TestIRMethodLoc("foo")
-  //  val preloc = CallbackMethodInvoke("","foo", fooMethod) // Transition to just before foo is invoked
-  //  val postloc = AppLoc(fooMethod,TestIRLineLoc(1), isPre=true)
-  //  val ir = new TestIR(Set(MethodTransition(preloc, postloc)))
-  //  val tr = new TransferFunctions(ir, new SpecSpace(Set()))
-  //  val recPv = PureVar()
-  //  val post = State(
-  //    CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("this") -> recPv))::Nil,
-  //    heapConstraints = Map(),
-  //    pureFormula = Set(),
-  //    traceAbstraction = Set())
-  //  val prestate: Set[State] = tr.transfer(post,preloc, postloc)
-  //  assert(prestate.size == 1)
-  //  val formula = prestate.head.traceAbstraction
-  //  assert(formula.contains(LSAbstraction(I(CBEnter, Set(("","bar")), "_"::"a"::Nil), Map("a"->recPv))))
+  test("Discharge I(m1^) phi abstraction when post state must generate m1^ for previous transition") {
+    val fooMethod = TestIRMethodLoc("foo")
+    val preloc = CallbackMethodInvoke("","foo", fooMethod) // Transition to just before foo is invoked
+    val postloc = AppLoc(fooMethod,TestIRLineLoc(1), isPre=true)
+    val ir = new TestIR(Set(MethodTransition(preloc, postloc)))
+    val tr = new TransferFunctions(ir, new SpecSpace(Set()))
+    val recPv = PureVar()
+    val post = State(
+      CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("this") -> recPv))::Nil,
+      heapConstraints = Map(),
+      pureFormula = Set(),
+      traceAbstraction = Set(LSAbstraction(I(CBEnter, Set(("","foo")), "_"::"a"::Nil), Map("a"->recPv))))
+    val prestate: Set[State] = tr.transfer(post,preloc, postloc)
+    //assert(prestate.size == 1)
+    val formula = prestate.head.traceAbstraction
+    println(formula)
 
-  //}
+  }
 }

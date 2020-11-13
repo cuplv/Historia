@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.TypeConstraint
 import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
 import soot.jimple.ThisRef
 import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceFieldRef, AbstractInstanceInvokeExpr, AbstractNewExpr, JAssignStmt, JIdentityStmt, JInvokeStmt, JReturnStmt, JReturnVoidStmt, JSpecialInvokeExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
-import soot.{Body, Hierarchy, Scene, SootClass, SootMethod, Value}
+import soot.{Body, Hierarchy, Scene, SootClass, SootMethod, Type, Value}
 
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
@@ -244,13 +244,19 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
 }
 
 case class JimpleMethodLoc(method: SootMethod) extends MethodLoc {
+  def string(clazz: SootClass):String = JimpleFlowdroidWrapper.stringNameOfClass(clazz)
+  def string(t:Type) :String = t match {
+    case t =>
+      ???
+  }
   override def simpleName: String = method.getName
 
-  override def classType: String = {
-    JimpleFlowdroidWrapper.stringNameOfClass(method.getDeclaringClass)
-  }
+  override def classType: String = string(method.getDeclaringClass)
 
-  override def argTypes: List[String] = method.getParameterTypes.asScala.map({
+  // return type, receiver type, arg1, arg2 ...
+  override def argTypes: List[String] = string(method.getReturnType)::
+    classType::
+    method.getParameterTypes.asScala.map({
     case t =>
       ???
   }).toList

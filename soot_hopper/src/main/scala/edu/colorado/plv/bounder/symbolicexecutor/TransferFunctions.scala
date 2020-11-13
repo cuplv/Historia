@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSSpec}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, LSPred, LSSpec, LSTrue, Or}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 
@@ -34,12 +34,17 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       })
       if (fc1 != fc2 || fn1 != fn2 || l1 != l2) Set() else {
         // Update each element in the trace abstraction for the current message
-        val states1 = tracePredTransfer(cmloc, pre)
+        val (pkg, name, invar, outvar) = msgCmdToMsg(cmloc)
+        // TODO: add all input vars to abs state, currently only considering this
+        //update existing spec instantiations
+        val state1 = tracePredTransfer(CBEnter, (pkg,name),invar,outvar,pre)
         // Since this is a back message, instantiate any new instances of the spec
-        val states2 = states1.flatMap(a => newSpecInstanceTransfer(cmloc, a))
+        //add new instantiations of specs
+        //TODO: get rid of theta hat
+        val states2 = newSpecInstanceTransfer(cmloc, state1)
         // Remove the top call stack frame from each candidate state since we are crossing the entry to a method
-        val out = states2.map(_.copy(callStack = s))
-        out // TODO: check that this output makes sense
+        val out = states2.copy(callStack = s)
+        Set(out) // TODO: check that this output makes sense
       }
     }
     case (CallbackMethodInvoke(_, _, _), targetLoc@CallbackMethodReturn(_,_,mloc, _), pre) => {
@@ -57,10 +62,12 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       val newStack =
         CallStackFrame(targetLoc, None, newStackVars + (StackVar("this") -> thisId)) :: pre.callStack
 
-      val newStates = tracePredTransfer(targetLoc, pre)
+      // TODO: symbolic trace transfer like above
+//      val newStates = tracePredTransfer(targetLoc, pre)
 
-      val out = newStates.map(a => a.copy(callStack = newStack))
-      out
+//      val out = newStates.map(a => a.copy(callStack = newStack))
+//      out
+      ???
     }
     case t =>
       println(t)
@@ -73,49 +80,94 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
    * @param postState
    * @return a new trace abstraction for each possible rule
    */
-  def newSpecInstanceTransfer(loc: Loc, postState: State): Set[State] = {
-    val (pkg,name) = loc match {
-      case CallbackMethodReturn(pkg,name, _,_) => (pkg,name)
-      case _ =>
-        ???
-    }
+  def newSpecInstanceTransfer(loc: Loc, postState: State): State = {
+    //TODO: last element is list of varnames, should probably use that
+    val (pkg: String, name: String,_,_) = msgCmdToMsg(loc)
     val applicableSpecs = specSpace.specsBySig(pkg, name)
-    applicableSpecs.map{case LSSpec(pred, target) =>
+    val newLsAbstractions:Set[TraceAbstraction] = applicableSpecs.map{case LSSpec(pred, target) =>
       //TODO: find all args in abstract state
-      val lsvars = target.lsVar
+      val lsvars = target.lsVars
       assert(lsvars(0) == "_") // TODO: temporary assumption of no return val
       val thisOption = postState.getLocal(LocalWrapper("this", pkg))
       assert(thisOption.isDefined) // TODO: temporary assumption that this is always defined
       val newLsAbstraction = LSAbstraction(pred, Map(lsvars(1) -> thisOption.get))
-      postState.copy(traceAbstraction = postState.traceAbstraction + newLsAbstraction)
+      newLsAbstraction
     }
+    postState.copy(traceAbstraction = postState.traceAbstraction.union(newLsAbstractions))
   }
-//  def locToAbsMsg(loc:Loc, postState:State, tgt: I):TraceAbstraction = loc match {
-//    case CallbackMethodReturn(clazz, name, _,_) =>
-//      // TODO: handle return value
-//      assert(tgt.lsVar(0) == "_")
-//      // TODO: handle arguments
-//      assert(tgt.lsVar.size == 2)
-//      val absTheta: Map[String,PureExpr] = Map()
-//      val absTheta1 =
-//        postState.getLocal(LocalWrapper("this",clazz)).foldLeft(absTheta){(acc,v) => acc + (tgt.lsVar(1) -> v) }
-//      LSAbstraction()
+
+  /**
+   *
+   * @param loc
+   * @return (pkg, function name, app vars from pre state used, app vars assigned by cmd
+   */
+  private def msgCmdToMsg(loc: Loc): (String, String, List[Option[LocalWrapper]], List[Option[LocalWrapper]]) = loc match {
+    case CallbackMethodReturn(pkg, name, _, None) => (pkg, name, List(None, Some(LocalWrapper("this",pkg))), List()) //TODO: first element return var
+    case CallbackMethodReturn(pkg, name, m, Some(l)) =>
+      val retvar:Option[LocalWrapper] = w.cmdBeforeLocation(AppLoc(m,l,false)) match {
+        case v =>
+          ???
+      }
+      (pkg, name, List(retvar, Some(LocalWrapper("this",pkg))), List()) //TODO: first element return var
+    case _ =>
+      ???
+  }
+
+//  /**
+//   * Update trace abstraction for command message
+//   * @param pred
+//   * @param state
+//   *
+//   * @param fname
+//   * @param fpkg
+//   * @param args
+//   * @return
+//   */
+//  def updatePredForMsg(pred:LSPred, state:State, signature: (String,String), args: List[String]):LSPred = pred match {
 //    case _ =>
 //      ???
 //  }
+//  // introduce all variable bindings that could affect trace abstraction
+//  def updateAbsStateForMsg(pred:LSPred, state:State,cmd:CmdWrapper,
+//                           signature:(String,String), m:MethodLoc):Map[StackVar,PureExpr] =
+//    pred match{
+//      case I(CBExit, signatures, bind) if ( signatures.contains(signature)) =>
+//        ???
+//      case _ =>
+//        ???
+//    }
+  def predTransferTrace(pred:LSPred, mt:MessageType,
+                        sig:(String,String), variables:List[Option[LocalWrapper]], postState:State):LSPred = pred match{
+    case i@I(mtp, sigset, vars) if sigset.contains(sig) && mtp == mt =>
+      Or(i, (variables zip vars).foldLeft(LSTrue:LSPred)((acc, v) => v match{
+        case (None,_) => acc
+        case (Some(sv),mv) => And(acc,LSAbsBind(mv, postState.getLocal(sv).get))
+      }))
+    case i@I(_,_,_) => i
+    case v =>
+      println(v)
+      ???
+  }
   /**
    * Update each trace abstraction in an abstract state
-   * @param loc
    * @param postState
    * @return
    */
-  def tracePredTransfer(loc:Loc, postState: State):Set[State] = {
+  def tracePredTransfer(mt: MessageType,
+                        sig:(String,String), invar:List[Option[LocalWrapper]], outvar:List[Option[LocalWrapper]],
+                        postState: State):State = {
     //TODO: you were here 11/9/20
-    val newTraceAbs: Set[TraceAbstraction] = postState.traceAbstraction.map(a =>
-
-      ??? // TODO: update each trace abstraction if necessary
-    )
-    Set(postState.copy(traceAbstraction = newTraceAbs))
+    // update state for
+    val newTraceAbs: Set[TraceAbstraction] = postState.traceAbstraction.map {
+      case TopTraceAbstraction => TopTraceAbstraction
+      case LSAbstraction(pred,bind) => {
+        val combvar = invar.zipAll(outvar,None,None)
+          .map( a => if(a._1 == None) a._2 else a._1)
+        LSAbstraction(predTransferTrace(pred, mt, sig, combvar, postState), bind)
+      }
+      case Reg(v) => ???
+    }
+    postState.copy(traceAbstraction = newTraceAbs)
   }
   def cmdTransfer(cmd:CmdWrapper, state: State):Set[State] = (cmd,state) match{
     case (AssignCmd(LocalWrapper(name,_), NewCommand(className),_),

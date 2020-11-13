@@ -18,7 +18,9 @@ object State {
 // pureFormula is a conjunction of constraints
 // callStack is the call string from thresher paper
 sealed trait TraceAbstraction
-case class LSAbstraction(pred: LSPred, bind : Map[String, PureExpr]) extends TraceAbstraction
+case class LSAbstraction(pred: LSPred, bind : Map[String, PureExpr]) extends TraceAbstraction {
+  override def toString: String = s"[${pred.toString} , ${bind.toString}]"
+}
 case class Reg(v: PureVar) extends TraceAbstraction
 case object TopTraceAbstraction extends TraceAbstraction
 
@@ -35,14 +37,49 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
     }
     val heapString = s"   heap: ${heapConstraints.map(a => a._1.toString + "->" +  a._2.toString).mkString(" * ")}"
     val pureFormulaString = "   pure: " + pureFormula.map(a => a.toString).mkString(" && ")
-    s"($stackString $heapString   $pureFormulaString)"
+    val traceString = s"   trace: ${traceAbstraction.mkString(" * ")}"
+    s"($stackString $heapString   $pureFormulaString $traceString)"
   }
   def simplify[T](solver : StateSolver[T]):Option[State] = {
 //    val solver = new Z3Solver()
+    //TODO: garbage collect abstract variables and heap cells not reachable from the trace abstraction or spec
     solver.push()
     val simpl = solver.simplify(this)
     solver.pop()
     simpl
+  }
+
+  // helper functions to find pure variable
+  private def expressionContains(expr: PureExpr, pureVar: PureVar):Boolean = expr match {
+    case p2@PureVar() => pureVar == p2
+    case _ => false
+  }
+  private def callStackContains(p :PureVar):Boolean = {
+    callStack.exists({
+      case CallStackFrame(_,_,locals) => locals.exists(r => expressionContains(r._2,p))
+    })
+  }
+
+  private def ptEdgeContains(edge: HeapPtEdge, p: PureVar): Boolean = edge match{
+    case FieldPtEdge(p2, _) => p == p2
+    case _ => ???
+  }
+
+  private def heapContains(p:PureVar):Boolean =
+    heapConstraints.exists(r => expressionContains(r._2,p) || ptEdgeContains(r._1,p))
+
+  private def pureFormulaContains(p: PureVar): Boolean =
+    pureFormula.exists(c => expressionContains(c.lhs,p) || expressionContains(c.rhs,p))
+
+  def traceAbstractionContains(p: PureVar): Boolean =
+    traceAbstraction.exists({
+      case TopTraceAbstraction => false
+      case LSAbstraction(_,bind) => bind.exists(b => expressionContains(b._2,p))
+      case Reg(v) => v == p
+    })
+
+  def contains(p:PureVar):Boolean = {
+     callStackContains(p) || heapContains(p) || pureFormulaContains(p) || traceAbstractionContains(p)
   }
   def getLocal(l:LVal):Option[PureExpr] = l match {
     case LocalWrapper(name,localType) => {

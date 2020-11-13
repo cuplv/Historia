@@ -1,5 +1,7 @@
 package edu.colorado.hopper.solver
 
+import edu.colorado.plv.bounder.lifestate.LifeState
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, LSPred, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 
 trait Assumptions
@@ -32,8 +34,6 @@ trait StateSolver[T] {
 
   // logical and arithmetic operations
   protected def mkNot(o : T) : T
-  protected def mkImplies(lhs : T, rhs : T) : T
-
   protected def mkAdd(lhs : T, rhs : T) : T
   protected def mkSub(lhs : T, rhs : T) : T
   protected def mkMul(lhs : T, rhs : T) : T
@@ -48,13 +48,16 @@ trait StateSolver[T] {
   protected def mkBoolVal(b : Boolean) : T
   protected def mkIntVar(s : String) : T
   protected def mkBoolVar(s : String) : T
-  protected def mkObjVar(s:String) : T
+  protected def mkObjVar(s:PureVar) : T //Symbolic variable
+  protected def mkModelVar(s:String, pred:TraceAbstraction):T // variable in ls rule
   protected def mkAssert(t : T) : Unit
   protected def mkFieldFun(n: String): T
   protected def fieldEquals(fieldFun: T, t1 : T, t2: T):T
   protected def solverSimplify(t: T): Option[T]
   protected def mkTypeConstraint(typeFun: T, addr: T, tc: TypeConstraint):T
   protected def createTypeFun():T
+  protected def mkINIFun(arity:Int, sig:String):T
+  protected def mkINIConstraint(fun: T, modelVars: List[T]):T
 
   def toAST(p : PureConstraint, typeFun: T) : T = p match {
       // TODO: field constraints based on containing object constraints
@@ -65,7 +68,7 @@ trait StateSolver[T] {
     case _ => ???
   }
   def toAST(p : PureExpr) : T = p match {
-    case p:PureVar => mkObjVar("purevar" + p.id.toString)
+    case p:PureVar => mkObjVar(p)
     case NullVal => mkIntVal(0)
     case ClassType(t) => ??? //handled at a higher level
     case _ =>
@@ -77,6 +80,25 @@ trait StateSolver[T] {
     case _ =>
       ???
   }
+
+  def encodePred(combinedPred: LifeState.LSPred, abs: TraceAbstraction): T = combinedPred match{
+    case And(l1,l2) => mkAnd(encodePred(l1,abs),encodePred(l2,abs))
+    case LSAbsBind(k,v:PureVar) => mkEq(mkModelVar(k,abs), mkObjVar(v))
+    case Or(l1, l2) => mkOr(encodePred(l1,abs), encodePred(l2,abs))
+    case Not(l) => mkNot(encodePred(l,abs))
+    case i@I(_,_, lsVars) => {
+      val ifun = mkINIFun(lsVars.count(_ != "_"), i.identitySignature)
+      mkINIConstraint(ifun, lsVars.map(mkModelVar(_,abs)))
+    }
+    case ni@NI(i1, i2) => {
+      val args = i1.lsVar.union(i2.lsVar).toList.sorted
+      val ifun = mkINIFun(args.size, ni.identitySignature)
+      mkINIConstraint(ifun, args.map(mkModelVar(_,abs)))
+    }
+    case _ =>
+      ???
+  }
+
   def toAST(state: State): T = {
     // TODO: make all variables in this encoding unique from other states so multiple states can be run at once
     // TODO: add ls constraints to state
@@ -106,12 +128,22 @@ trait StateSolver[T] {
         }
       }
     }
-    mkAnd(pureAst, heapAst)
+
+    val trace = state.traceAbstraction.foldLeft(mkBoolVal(true)) {
+      case (acc, abs@LSAbstraction(pred, bind)) => {
+        val combinedPred = bind.foldLeft(pred) { case (acc2, (k, v)) => And(LSAbsBind(k, v),acc2) }
+        mkAnd(acc,encodePred(combinedPred,abs))
+      }
+      case _ =>
+        ???
+    }
+    mkAnd(mkAnd(pureAst, heapAst),trace)
   }
 
   def simplify(state: State): Option[State] = {
     push()
     val ast = toAST(state)
+    println(ast.toString)
     val simpleAst = solverSimplify(ast)
 
     pop()

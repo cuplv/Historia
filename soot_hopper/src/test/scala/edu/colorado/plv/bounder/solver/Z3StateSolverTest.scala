@@ -1,8 +1,9 @@
 package edu.colorado.plv.bounder.solver
 
 import com.microsoft.z3.{Context, Solver}
-import edu.colorado.plv.bounder.ir.CallbackMethodInvoke
-import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, Equals, FieldPtEdge, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, SubclassOf, TypeComp}
+import edu.colorado.plv.bounder.ir.{CBEnter, CallbackMethodInvoke}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, NI, Not, Or}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, Equals, FieldPtEdge, LSAbstraction, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, SubclassOf, TypeComp}
 import edu.colorado.plv.bounder.testutils.TestIRMethodLoc
 
 class Z3StateSolverTest extends org.scalatest.FunSuite {
@@ -105,20 +106,34 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val simplifyResult2 = statesolver.simplify(state)
     assert(simplifyResult2.isDefined)
   }
-  test("z3 sandbox") {
+  test("Trace abstraction solving") {
     val ctx = new Context
-    val solver = ctx.mkSolver()
-    val b1 = ctx.mkBoolConst("b1")
-    val b2 = ctx.mkBoolConst("b2")
-    solver.add(ctx.mkEq(b1,b2))
-    solver.check()
-    val m = solver.getModel
-    println(solver.toString())
-    println("---")
-    println(s"b1 ${m.getConstInterp(b1)}")
-    println("---")
-    println(m)
+    val solver: Solver = ctx.mkSolver()
+    val hierarchy : Map[String, Set[String]] =
+      Map("Object" -> Set("String", "Foo", "Bar", "Object"),
+        "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
+    val pc = new PersistantConstraints(ctx, solver, hierarchy)
+    val statesolver = new Z3StateSolver(pc)
 
+    // Lifestate atoms for next few tests
+    val i = I(CBEnter, Set(("foo", "bar")), "a" :: Nil)
+    val i2 = I(CBEnter, Set(("foo", "baz")), "a" :: Nil)
+
+    // pure vars for next few tests
+    val p1 = PureVar()
+    val p2 = PureVar()
+
+    // I(a.bar()) AND (NOT (a |-> a^)) AND (a |->a^) => FALSE
+    val pred1 = And(i, Not(LSAbsBind("a",p1)))
+    val state1 = State(Nil, Map(),Set(), Set(LSAbstraction(pred1, Map("a"-> p1))))
+    val res1 = statesolver.simplify(state1)
+    assert(!res1.isDefined)
+
+    // [NI(m1^,m2^) OR (NOT NI(m1^,m2^)) ] AND (a |->a^) => TRUE
+    val pred2 = Or(NI(i,i2),Not(NI(i,i2)))
+    val state2 = State(Nil, Map(),Set(), Set(LSAbstraction(pred2, Map("a"-> p1))))
+    val res2 = statesolver.simplify(state2)
+    assert(res2.isDefined)
   }
 
 }

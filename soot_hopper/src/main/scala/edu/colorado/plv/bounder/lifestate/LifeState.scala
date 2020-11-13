@@ -3,6 +3,7 @@ package edu.colorado.plv.bounder.lifestate
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.MessageType
 import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
+import edu.colorado.plv.bounder.symbolicexecutor.state.PureExpr
 
 object LifeState {
   var id = 0
@@ -13,24 +14,30 @@ object LifeState {
   }
 
   sealed trait LSPred {
-    def lsVar: List[String]
+    def lsVar: Set[String]
   }
-  case class AND(l1 : LSPred, l2 : LSPred) extends LSPred {
-    override def lsVar: List[String] = ???
+  case class And(l1 : LSPred, l2 : LSPred) extends LSPred {
+    override def lsVar: Set[String] = l1.lsVar.union(l2.lsVar)
+    override def toString:String = s"(${l1.toString} AND ${l2.toString})"
   }
   case class Not(l: LSPred) extends LSPred {
-    override def lsVar: List[String] = ???
+    override def lsVar: Set[String] = l.lsVar
+    override def toString:String = s"(NOT ${l.toString})"
+  }
+  case class Or(l1:LSPred, l2:LSPred) extends LSPred {
+    override def lsVar: Set[String] = l1.lsVar.union(l2.lsVar)
+    override def toString:String = s"(${l1.toString} OR ${l2.toString})"
   }
   case object LSTrue extends LSPred {
-    override def lsVar: List[String] = ???
+    override def lsVar: Set[String] = Set.empty
   }
   case object LSFalse extends LSPred {
-    override def lsVar: List[String] = ???
+    override def lsVar: Set[String] = Set.empty
   }
 
   sealed trait LSAtom extends LSPred {
-    def getVar(i:Int):String
     def getAtomSig:String
+    def identitySignature:String
   }
 
   // A method with a signature in "signatures" has been invoed
@@ -38,24 +45,37 @@ object LifeState {
   // A string of "_" means "don't care"
   // primitives are parsed as in java "null", "true", "false", numbers etc.
   case class I(mt: MessageType, signatures: Set[(String, String)], lsVars : List[String]) extends LSAtom {
-    override def lsVar: List[String] = lsVars
+    private val sortedSig = signatures.toList.sorted
+    override def lsVar: Set[String] = lsVars.filter(_!="_").toSet
 
-    override def getVar(i: Int): String = lsVars(i)
+    def getVar(i: Int): String = lsVars(i)
+
 
     override def getAtomSig: String = {
-      val sortedSig = signatures.toList.sorted
       s"I(${sortedSig.mkString(":")})"
     }
+
+    // Uesed for naming uninterpreted functions in z3 solver
+    override def identitySignature: String = {
+      s"I_${mt.toString}_${sortedSig.head._1}_${sortedSig.head._2}"
+    }
+    override def toString:String = s"I($mt $identitySignature ( ${lsVars.mkString(",")} )"
   }
   // Since i1 has been invoked, i2 has not been invoked.
   case class NI(i1:I, i2:I) extends LSAtom{
-    def lsVar = i1.lsVars
-
-    override def getVar(i: Int): String = i1.lsVar(i)
+    def lsVar = i1.lsVar.union(i2.lsVar)
 
     override def getAtomSig: String = s"NI(${i1.getAtomSig}, ${i2.getAtomSig})"
+
+    override def identitySignature: String = s"${i1.identitySignature}_${i2.identitySignature}"
+    override def toString:String = s"NI( ${i1.toString} , ${i2.toString} )"
   }
   case class LSSpec(pred:LSPred, target: I)
+
+  // Used for abstract state
+  case class LSAbsBind(modelVar:String, pureExpr: PureExpr) extends LSPred {
+    override def lsVar: Set[String] = Set()
+  }
 
   // Class that holds a graph of possible predicates and alias relations between the predicates.
   // Generated from a fast pre analysis of the applications.
@@ -66,17 +86,18 @@ object LifeState {
       v.lsVar.foldLeft(acc){ (iacc, varname) => iacc + (varname -> (iacc.getOrElse(varname, Set()) + v) )}
     }
 
-    /**
-     *
-     * @param atom to find predecessor aliases for
-     * @return (var that can be aliased, atom that can alias)
-     */
-    def sliceBackStep(atom: LSAtom, index: Int) : Set[(Int, LSAtom)] = {
-      val targetVar = atom.getVar(index)
-      predicates.flatMap(a => {
-        a.lsVar.zipWithIndex.flatMap( {case (varname, index) => if(varname == targetVar) Some(index,a) else None})
-      })
-    }
+    //TODO: stale back slicing function, is it still needed?
+//    /**
+//     *
+//     * @param atom to find predecessor aliases for
+//     * @return (var that can be aliased, atom that can alias)
+//     */
+//    def sliceBackStep(atom: LSAtom, index: Int) : Set[(Int, LSAtom)] = {
+//      val targetVar = atom.getVar(index)
+//      predicates.flatMap(a => {
+//        a.lsVar.zipWithIndex.flatMap( {case (varname, index) => if(varname == targetVar) Some(index,a) else None})
+//      })
+//    }
 
 //    /**
 //     * Find I predicate that matches sig

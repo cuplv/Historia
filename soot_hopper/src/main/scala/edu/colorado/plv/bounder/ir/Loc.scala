@@ -19,6 +19,8 @@ trait MethodLoc {
   def simpleName: String
   def classType: String
   def argTypes: List[String]
+  // TODO: handle params
+  // def argNames:List[String]
 }
 trait LineLoc
 
