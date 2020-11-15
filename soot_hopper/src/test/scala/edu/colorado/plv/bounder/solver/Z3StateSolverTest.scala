@@ -131,7 +131,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
       i3
     )
     val state1 = State(Nil, Map(),Set(), Set(abs1))
-    val res1 = statesolver.simplify(state1)
+    val res1 = statesolver.simplify(state1,true)
     assert(!res1.isDefined)
 
     //TODO: more tests

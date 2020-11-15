@@ -62,12 +62,12 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
     ctx.mkAnd(tb:_*)
   }
 
-  //    ctx.mkAnd(lhs.asInstanceOf[BoolExpr], rhs.asInstanceOf[BoolExpr])
-
   override protected def mkOr(lhs: AST, rhs: AST): AST =
     ctx.mkOr(lhs.asInstanceOf[BoolExpr], rhs.asInstanceOf[BoolExpr])
 
-  override protected def mkXor(lhs: AST, rhs: AST): AST = ???
+  override protected def mkXor(l:List[AST]): AST = l.tail.foldLeft(l.head.asInstanceOf[BoolExpr]){
+    (acc,v) => ctx.mkXor(acc,v.asInstanceOf[BoolExpr])
+  }
 
   override protected def mkIntVal(i: Int): AST = ctx.mkInt(i)
 
@@ -97,11 +97,15 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
 
   override protected def mkObjVar(s: PureVar): AST = ctx.mkIntConst("object_addr_" + s.id.toString)
 
-  override protected def solverSimplify(t: AST): Option[AST] = {
+  override protected def solverSimplify(t: AST, logDbg:Boolean): Option[AST] = {
     solver.add(t.asInstanceOf[BoolExpr])
     val status: Status = solver.check()
     status match{
-      case Status.SATISFIABLE => Some(t)
+      case Status.SATISFIABLE => {
+        if (logDbg)
+          println(s"Model: ${solver.getModel}")
+        Some(t)
+      }
       case Status.UNKNOWN => Some(t)
       case Status.UNSATISFIABLE => None
     }

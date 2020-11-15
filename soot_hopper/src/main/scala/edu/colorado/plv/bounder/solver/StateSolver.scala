@@ -51,7 +51,7 @@ trait StateSolver[T] {
   protected def mkAnd(lhs:T, rhs:T):T
   protected def mkAnd(t : List[T]) : T
   protected def mkOr(lhs : T, rhs : T) : T
-  protected def mkXor(lhs : T, rhs : T) : T
+  protected def mkXor(l:List[T]) : T
 
   // creation of variables, constants, assertions
   protected def mkIntVal(i : Int) : T
@@ -64,7 +64,7 @@ trait StateSolver[T] {
   protected def mkAssert(t : T) : Unit
   protected def mkFieldFun(n: String): T
   protected def fieldEquals(fieldFun: T, t1 : T, t2: T):T
-  protected def solverSimplify(t: T): Option[T]
+  protected def solverSimplify(t: T, logDbg:Boolean): Option[T]
   protected def mkTypeConstraint(typeFun: T, addr: T, tc: TypeConstraint):T
   protected def createTypeFun():T
   protected def mkIFun(atom:I):T
@@ -136,6 +136,8 @@ trait StateSolver[T] {
     // A unique id for this element of the trace abstraction, used to distinguish model vars and
     val uniqueID = System.identityHashCode(abs).toString
     val len = mkIntVar(s"len_${uniqueID}") // there exists a finite size of the trace
+    val alli = allI(abs)
+
     def ienc(i:T, abs: TraceAbstraction):T = abs match{
       case AbsFormula(f) =>
         encodePred(f, uniqueID, len)
@@ -145,7 +147,6 @@ trait StateSolver[T] {
         val ipredf = mkIFun(ipred)
         val messageAt = mkINIConstraint(ipredf, j, ipred.lsVars.map(mkModelVar(_,uniqueID)))
         val recurs = ienc(j,abs)
-        val alli = allI(abs)
         // all indices between this and the next arrow do not affect the LSPred
         val disj = mkForallInt(j,i,k =>{
           val listofconst:List[T] = alli.foldLeft(List[T]()){ (acc, i) =>
@@ -158,7 +159,13 @@ trait StateSolver[T] {
       }
       case AbsEq(mv,pv) => mkEq(mkModelVar(mv,uniqueID),mkObjVar(pv))
     }
-    ienc(initial_i, abs)
+
+    // Each position has unique message
+    val uniqueIndex = mkForallInt(mkIntVal(-1), len, ind => mkXor(alli.map(ipred =>{
+      mkINIConstraint(mkIFun(ipred),ind, ipred.lsVars.map(mkModelVar(_,uniqueID)))
+    }).toList))
+
+    mkAnd(ienc(initial_i, abs), uniqueIndex)
   }
 
   def toAST(state: State): T = {
@@ -196,11 +203,14 @@ trait StateSolver[T] {
     mkAnd(mkAnd(pureAst, heapAst),trace)
   }
 
-  def simplify(state: State): Option[State] = {
+  def simplify(state: State, logDbg:Boolean = false): Option[State] = {
     push()
     val ast = toAST(state)
-    println(ast.toString)
-    val simpleAst = solverSimplify(ast)
+    if(logDbg) {
+      println(s"State ${System.identityHashCode(state)} encoding: ")
+      println(ast.toString)
+    }
+    val simpleAst = solverSimplify(ast, logDbg)
 
     pop()
     // TODO: garbage collect, if purevar can't be reached from reg or stack var, discard
