@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder.solver
 
-import com.microsoft.z3.{AST, BoolExpr, BoolSort, Context, Expr, FuncDecl, IntSort, Solver, Sort, Status}
+import com.microsoft.z3.{AST, ArithExpr, BoolExpr, BoolSort, Context, Expr, FuncDecl, IntSort, Solver, Sort, Status}
 import edu.colorado.hopper.solver.StateSolver
 import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSAtom, LSPred}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{PureVar, TraceAbstraction, TypeConstraint}
@@ -54,8 +54,14 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
 
   override protected def mkRem(lhs: AST, rhs: AST): AST = ???
 
-  override protected def mkAnd(lhs: AST, rhs: AST): AST =
-    ctx.mkAnd(lhs.asInstanceOf[BoolExpr], rhs.asInstanceOf[BoolExpr])
+  override protected def mkAnd(lhs:AST, rhs:AST):AST =
+    mkAnd(List(lhs,rhs))
+  override protected def mkAnd(t:List[AST]): AST = {
+    val tb:Array[BoolExpr] = t.map(_.asInstanceOf[BoolExpr]).toArray
+    ctx.mkAnd(tb:_*)
+  }
+
+  //    ctx.mkAnd(lhs.asInstanceOf[BoolExpr], rhs.asInstanceOf[BoolExpr])
 
   override protected def mkOr(lhs: AST, rhs: AST): AST =
     ctx.mkOr(lhs.asInstanceOf[BoolExpr], rhs.asInstanceOf[BoolExpr])
@@ -121,17 +127,21 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
   }
 
   // Model vars have the pred identity hash code appended since they are unique to each pred
-  override protected def mkModelVar(s: String, pred:TraceAbstraction): AST =
-    ctx.mkIntConst("model_var_" + s + "_" + System.identityHashCode(pred))
+  // "_" means we don't care what the value is so just make arbitrary int
+  override protected def mkModelVar(s: String, uniqueID:String): AST =
+    if (s != "_") {
+      ctx.mkIntConst("model_var_" + s + "_" + uniqueID)
+    }else{
+      mkFreshIntVar("_")
+    }
 
   override protected def mkINIConstraint(ifun: AST,index:AST, modelVars: List[AST]): AST = {
     val args: Array[Expr] = (index::modelVars).map(_.asInstanceOf[Expr]).toArray
     ifun.asInstanceOf[FuncDecl].apply(args:_*)
   }
 
-  override protected def mkFreshIntVar(s:String): AST = {
+  override protected def mkFreshIntVar(s:String): AST =
     ctx.mkFreshConst(s, ctx.mkIntSort())
-  }
 
   /**
    * forall int condition is true
@@ -139,8 +149,11 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
    * @param cond
    */
   override protected def mkForallInt(cond: AST => AST): AST = {
-    val j = mkFreshIntVar("j")
-    ???
-    //ctx.mkForall(Array(ctx.mkIntSort()), Array(j), cond(j).asInstanceOf[BoolSort])
+    val j= ctx.mkFreshConst("j", ctx.mkIntSort()).asInstanceOf[ArithExpr]
+    ctx.mkForall(Array(j), cond(j).asInstanceOf[Expr]
+      ,1,null,null,null,null)
   }
+
+  override protected def mkImplies(t: AST, t1: AST): AST =
+    ctx.mkImplies(t.asInstanceOf[BoolExpr], t1.asInstanceOf[BoolExpr])
 }

@@ -149,14 +149,26 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val expr:Expr = ctx.mkIff(
       f.apply(foo1).asInstanceOf[BoolExpr],
       ctx.mkGt(foo1, ctx.mkInt(0)))
-    val a = ctx.mkForall(Array(foo1),expr, 1, null,null,
-      ctx.mkSymbol("a"), ctx.mkSymbol("b"))
+    val ptrn: Array[Expr] = Array(ctx.mkGt(foo1,ctx.mkInt(1)))
+    val a = ctx.mkForall(Array(foo1),expr, 1,
+      null,null,
+      null,null)
 
     solver.add(a)
     solver.check()
     val m = solver.getModel
 
     println(m)
+  }
+  test("sandbox") {
+    val ctx = new Context
+    val solver: Solver = ctx.mkSolver()
+    val foo1:ArithExpr = ctx.mkConst("foo1", ctx.mkIntSort()).asInstanceOf[ArithExpr]
+    val foo2:ArithExpr = ctx.mkConst("foo2", ctx.mkIntSort()).asInstanceOf[ArithExpr]
+    solver.add(ctx.mkAnd(ctx.mkGt(foo1,foo2)), ctx.mkTrue(),ctx.mkTrue())
+    solver.check()
+    println(solver.getModel)
+
   }
 
 }

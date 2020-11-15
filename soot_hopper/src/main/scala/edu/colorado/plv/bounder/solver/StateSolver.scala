@@ -4,6 +4,8 @@ import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, LSAtom, LSPred, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 
+import scala.reflect.ClassTag
+
 trait Assumptions
 
 class UnknownSMTResult(msg : String) extends Exception(msg)
@@ -39,13 +41,15 @@ trait StateSolver[T] {
   protected def mkLe(lhs : T, rhs : T) : T
 
   // logical and arithmetic operations
+  protected def mkImplies(t: T, t1: T):T
   protected def mkNot(o : T) : T
   protected def mkAdd(lhs : T, rhs : T) : T
   protected def mkSub(lhs : T, rhs : T) : T
   protected def mkMul(lhs : T, rhs : T) : T
   protected def mkDiv(lhs : T, rhs : T) : T
   protected def mkRem(lhs : T, rhs : T) : T
-  protected def mkAnd(lhs : T, rhs : T) : T
+  protected def mkAnd(lhs:T, rhs:T):T
+  protected def mkAnd(t : List[T]) : T
   protected def mkOr(lhs : T, rhs : T) : T
   protected def mkXor(lhs : T, rhs : T) : T
 
@@ -56,7 +60,7 @@ trait StateSolver[T] {
   protected def mkFreshIntVar(s:String):T
   protected def mkBoolVar(s : String) : T
   protected def mkObjVar(s:PureVar) : T //Symbolic variable
-  protected def mkModelVar(s:String, pred:TraceAbstraction):T // model vars are scoped to trace abstraction
+  protected def mkModelVar(s:String, uniqueID:String):T // model vars are scoped to trace abstraction
   protected def mkAssert(t : T) : Unit
   protected def mkFieldFun(n: String): T
   protected def fieldEquals(fieldFun: T, t1 : T, t2: T):T
@@ -87,15 +91,15 @@ trait StateSolver[T] {
     case _ =>
       ???
   }
-  def encodePred(combinedPred: LifeState.LSPred, abs: TraceAbstraction): T = combinedPred match {
-    case And(l1, l2) => mkAnd(encodePred(l1, abs), encodePred(l2, abs))
-    case LSAbsBind(k, v: PureVar) => mkEq(mkModelVar(k, abs), mkObjVar(v))
-    case Or(l1, l2) => mkOr(encodePred(l1, abs), encodePred(l2, abs))
-    case Not(l) => mkNot(encodePred(l, abs))
+  def encodePred(combinedPred: LifeState.LSPred, abs: TraceAbstraction, uniqueID:String): T = combinedPred match {
+    case And(l1, l2) => mkAnd(encodePred(l1, abs, uniqueID), encodePred(l2, abs, uniqueID))
+//    case LSAbsBind(k, v: PureVar) => mkEq(mkModelVar(k, abs), mkObjVar(v))
+    case Or(l1, l2) => mkOr(encodePred(l1, abs, uniqueID), encodePred(l2, abs, uniqueID))
+    case Not(l) => mkNot(encodePred(l, abs, uniqueID))
     case i@I(_,_, lsVars) => {
       val ifun = mkIFun(i)
       // exists i such that omega[i] = i
-      mkINIConstraint(ifun,mkFreshIntVar("fromi"), lsVars.map(mkModelVar(_, abs)))
+      mkINIConstraint(ifun,mkFreshIntVar("fromi"), lsVars.map(mkModelVar(_, uniqueID)))
     }
     case ni@NI(m1,m2) => {
       // exists i such that omega[i] = m1 and forall j > i omega[j] != m2
@@ -105,14 +109,34 @@ trait StateSolver[T] {
   }
 
 
+  def allI(abs:TraceAbstraction):Set[I] = {
+    ???
+  }
   def encodeTraceAbs(abs:TraceAbstraction):T = {
-    val initial_i = mkIntVar(s"initial_i_ + ${System.identityHashCode(abs)}")
-    def f(iter:Int, i:T, abs: TraceAbstraction):T = abs match{
-      case AbsFormula(f) => ???
-      case _ =>
+//    val initial_i = mkIntVar(s"initial_i_ + ${System.identityHashCode(abs)}")
+    val initial_i = mkFreshIntVar("i")
+    val uniqueID = System.identityHashCode(abs).toString
+    def ienc(i:T, abs: TraceAbstraction):T = abs match{
+      case AbsFormula(f) =>
         ???
+      case AbsAnd(f1,f2) => mkAnd(ienc(i,f1), ienc(i,f2))
+      case AbsArrow(abs, ipred) => {
+        val j = mkFreshIntVar("j")
+        val ipredf = mkIFun(ipred)
+        val messageAt = mkINIConstraint(ipredf, j, ipred.lsVars.map(mkModelVar(_,uniqueID)))
+        val recurs = ienc(j,abs)
+        val alli = allI(abs)
+        val disj = mkForallInt(k =>{ mkImplies(mkAnd(mkGt(k,j),mkGt(i,k)),{
+          val listofconst:List[T] = alli.foldLeft(List[T]()){ (acc, i) =>
+            mkINIConstraint(mkIFun(i),k,i.lsVars.map(mkModelVar(_,uniqueID)))::acc}
+          mkAnd(listofconst)
+        })})
+        mkImplies(mkLt(j,i),
+          mkAnd(mkAnd(messageAt,recurs),disj))
+      }
+      case AbsEq(mv,pv) => mkEq(mkModelVar(mv,uniqueID),mkObjVar(pv))
     }
-    f(1, initial_i, abs)
+    ienc(initial_i, abs)
   }
 
   def toAST(state: State): T = {
