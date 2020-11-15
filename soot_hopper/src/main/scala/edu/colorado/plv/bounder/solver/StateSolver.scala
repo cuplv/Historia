@@ -1,7 +1,7 @@
 package edu.colorado.hopper.solver
 
 import edu.colorado.plv.bounder.lifestate.LifeState
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, LSAtom, LSPred, NI, Not, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, LSAtom, LSFalse, LSPred, LSTrue, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 
 import scala.reflect.ClassTag
@@ -31,7 +31,7 @@ trait StateSolver[T] {
    * forall int condition is true
    * @param cond
    */
-  protected def mkForallInt(cond:T=>T):T
+  protected def mkForallInt(min:T, max:T, cond:T=>T):T
   // comparison operations
   protected def mkEq(lhs : T, rhs : T) : T
   protected def mkNe(lhs : T, rhs : T) : T
@@ -60,7 +60,7 @@ trait StateSolver[T] {
   protected def mkFreshIntVar(s:String):T
   protected def mkBoolVar(s : String) : T
   protected def mkObjVar(s:PureVar) : T //Symbolic variable
-  protected def mkModelVar(s:String, uniqueID:String):T // model vars are scoped to trace abstraction
+  protected def mkModelVar(s:String, predUniqueID:String):T // model vars are scoped to trace abstraction
   protected def mkAssert(t : T) : Unit
   protected def mkFieldFun(n: String): T
   protected def fieldEquals(fieldFun: T, t1 : T, t2: T):T
@@ -91,34 +91,54 @@ trait StateSolver[T] {
     case _ =>
       ???
   }
-  def encodePred(combinedPred: LifeState.LSPred, abs: TraceAbstraction, uniqueID:String): T = combinedPred match {
-    case And(l1, l2) => mkAnd(encodePred(l1, abs, uniqueID), encodePred(l2, abs, uniqueID))
-//    case LSAbsBind(k, v: PureVar) => mkEq(mkModelVar(k, abs), mkObjVar(v))
-    case Or(l1, l2) => mkOr(encodePred(l1, abs, uniqueID), encodePred(l2, abs, uniqueID))
-    case Not(l) => mkNot(encodePred(l, abs, uniqueID))
+  def encodePred(combinedPred: LifeState.LSPred, uniqueID:String, len:T): T = combinedPred match {
+    case And(l1, l2) => mkAnd(encodePred(l1, uniqueID,len), encodePred(l2, uniqueID,len))
+    case LSAbsBind(k, v: PureVar) => mkEq(mkModelVar(k, uniqueID), mkObjVar(v))
+    case Or(l1, l2) => mkOr(encodePred(l1, uniqueID,len), encodePred(l2, uniqueID,len))
+    case Not(l) => mkNot(encodePred(l, uniqueID,len))
     case i@I(_,_, lsVars) => {
       val ifun = mkIFun(i)
       // exists i such that omega[i] = i
       mkINIConstraint(ifun,mkFreshIntVar("fromi"), lsVars.map(mkModelVar(_, uniqueID)))
     }
-    case ni@NI(m1,m2) => {
+    case NI(m1,m2) => {
       // exists i such that omega[i] = m1 and forall j > i omega[j] != m2
       val i = mkFreshIntVar("i")
-      ???
+      mkAnd(List(
+        mkLt(mkIntVal(-1),i),
+        mkLt(i,len),
+        mkINIConstraint(mkIFun(m1),i, m1.lsVars.map(mkModelVar(_,uniqueID))),
+        mkForallInt(i,len, j => mkNot(mkINIConstraint(mkIFun(m2),j,m2.lsVars.map(mkModelVar(_,uniqueID)))))
+      ))
     }
   }
 
 
-  def allI(abs:TraceAbstraction):Set[I] = {
-    ???
+  def allI(pred:LSPred):Set[I] = pred match{
+    case i@I(_,_,_) => Set(i)
+    case NI(i1,i2) => Set(i1,i2)
+    case And(l1,l2) => allI(l1).union(allI(l2))
+    case Or(l1,l2) => allI(l1).union(allI(l2))
+    case Not(l) => allI(l)
+    case LSTrue => Set()
+    case LSFalse => Set()
+    case LSAbsBind(_,_) => Set()
+  }
+  def allI(abs:TraceAbstraction):Set[I] = abs match{
+    case AbsFormula(pred) => allI(pred)
+    case AbsArrow(pred, _) => allI(pred)
+    case AbsAnd(p1,p2) => allI(p1).union(allI(p2))
+    case AbsEq(_,_) => Set()
   }
   def encodeTraceAbs(abs:TraceAbstraction):T = {
 //    val initial_i = mkIntVar(s"initial_i_ + ${System.identityHashCode(abs)}")
     val initial_i = mkFreshIntVar("i")
+    // A unique id for this element of the trace abstraction, used to distinguish model vars and
     val uniqueID = System.identityHashCode(abs).toString
+    val len = mkIntVar(s"len_${uniqueID}") // there exists a finite size of the trace
     def ienc(i:T, abs: TraceAbstraction):T = abs match{
       case AbsFormula(f) =>
-        ???
+        encodePred(f, uniqueID, len)
       case AbsAnd(f1,f2) => mkAnd(ienc(i,f1), ienc(i,f2))
       case AbsArrow(abs, ipred) => {
         val j = mkFreshIntVar("j")
@@ -126,13 +146,15 @@ trait StateSolver[T] {
         val messageAt = mkINIConstraint(ipredf, j, ipred.lsVars.map(mkModelVar(_,uniqueID)))
         val recurs = ienc(j,abs)
         val alli = allI(abs)
-        val disj = mkForallInt(k =>{ mkImplies(mkAnd(mkGt(k,j),mkGt(i,k)),{
+        // all indices between this and the next arrow do not affect the LSPred
+        val disj = mkForallInt(j,i,k =>{
           val listofconst:List[T] = alli.foldLeft(List[T]()){ (acc, i) =>
-            mkINIConstraint(mkIFun(i),k,i.lsVars.map(mkModelVar(_,uniqueID)))::acc}
+            mkNot(mkINIConstraint(mkIFun(i),k,i.lsVars.map(mkModelVar(_,uniqueID))))::acc}
           mkAnd(listofconst)
-        })})
-        mkImplies(mkLt(j,i),
-          mkAnd(mkAnd(messageAt,recurs),disj))
+        })
+        mkAnd(mkLt(j,i),
+          mkAnd(mkAnd(mkLt(mkIntVal(-1),j), mkLt(i,len)),
+            mkAnd(mkAnd(messageAt,recurs),disj)))
       }
       case AbsEq(mv,pv) => mkEq(mkModelVar(mv,uniqueID),mkObjVar(pv))
     }
@@ -168,16 +190,8 @@ trait StateSolver[T] {
         }
       }
     }
-
-
     val trace = state.traceAbstraction.foldLeft(mkBoolVal(true)) {
       case (acc,v) => mkAnd(acc, encodeTraceAbs(v))
-//      case (acc, abs@LSAbstraction(pred, bind)) => {
-//        val combinedPred = bind.foldLeft(pred) { case (acc2, (k, v)) => And(LSAbsBind(k, v),acc2) }
-//        mkAnd(acc,encodePred(combinedPred,abs))
-//      }
-//      case _ =>
-//        ???
     }
     mkAnd(mkAnd(pureAst, heapAst),trace)
   }

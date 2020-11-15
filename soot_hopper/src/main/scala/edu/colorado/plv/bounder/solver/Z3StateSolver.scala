@@ -36,7 +36,8 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
 
   override protected def mkGt(lhs: AST, rhs: AST): AST = ???
 
-  override protected def mkLt(lhs: AST, rhs: AST): AST = ???
+  override protected def mkLt(lhs: AST, rhs: AST): AST =
+    ctx.mkLt(lhs.asInstanceOf[ArithExpr],rhs.asInstanceOf[ArithExpr])
 
   override protected def mkGe(lhs: AST, rhs: AST): AST = ???
 
@@ -72,7 +73,7 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
 
   override protected def mkBoolVal(b: Boolean): AST = ctx.mkBool(b)
 
-  override protected def mkIntVar(s: String): AST = ???
+  override protected def mkIntVar(s: String): AST = ctx.mkIntConst(s)
 
   override protected def mkBoolVar(s: String): AST = ???
 
@@ -128,9 +129,9 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
 
   // Model vars have the pred identity hash code appended since they are unique to each pred
   // "_" means we don't care what the value is so just make arbitrary int
-  override protected def mkModelVar(s: String, uniqueID:String): AST =
+  override protected def mkModelVar(s: String, predUniqueID:String): AST =
     if (s != "_") {
-      ctx.mkIntConst("model_var_" + s + "_" + uniqueID)
+      ctx.mkIntConst("model_var_" + s + "_" + predUniqueID)
     }else{
       mkFreshIntVar("_")
     }
@@ -148,9 +149,10 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
    *
    * @param cond
    */
-  override protected def mkForallInt(cond: AST => AST): AST = {
+  override protected def mkForallInt(min:AST, max:AST,cond: AST => AST): AST = {
     val j= ctx.mkFreshConst("j", ctx.mkIntSort()).asInstanceOf[ArithExpr]
-    ctx.mkForall(Array(j), cond(j).asInstanceOf[Expr]
+    val range = mkAnd(List(mkLt(min,j), mkLt(j,max)))
+    ctx.mkForall(Array(j), mkImplies(range,cond(j)).asInstanceOf[Expr]
       ,1,null,null,null,null)
   }
 
