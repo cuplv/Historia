@@ -64,7 +64,7 @@ trait StateSolver[T] {
   protected def mkAssert(t : T) : Unit
   protected def mkFieldFun(n: String): T
   protected def fieldEquals(fieldFun: T, t1 : T, t2: T):T
-  protected def solverSimplify(t: T, logDbg:Boolean): Option[T]
+  protected def solverSimplify(t: T, state:State, logDbg:Boolean = false): Option[T]
   protected def mkTypeConstraint(typeFun: T, addr: T, tc: TypeConstraint):T
   protected def createTypeFun():T
   protected def mkIFun(atom:I):T
@@ -149,8 +149,8 @@ trait StateSolver[T] {
         val recurs = ienc(j,abs)
         // all indices between this and the next arrow do not affect the LSPred
         val disj = mkForallInt(j,i,k =>{
-          val listofconst:List[T] = alli.foldLeft(List[T]()){ (acc, i) =>
-            mkNot(mkINIConstraint(mkIFun(i),k,i.lsVars.map(mkModelVar(_,uniqueID))))::acc}
+          val listofconst:List[T] = alli.foldLeft(List[T]()){ (acc, ipred) =>
+            mkNot(mkINIConstraint(mkIFun(ipred),k,ipred.lsVars.map(mkModelVar(_,uniqueID))))::acc}
           mkAnd(listofconst)
         })
         mkAnd(mkLt(j,i),
@@ -210,7 +210,7 @@ trait StateSolver[T] {
       println(s"State ${System.identityHashCode(state)} encoding: ")
       println(ast.toString)
     }
-    val simpleAst = solverSimplify(ast, logDbg)
+    val simpleAst = solverSimplify(ast,state, logDbg)
 
     pop()
     // TODO: garbage collect, if purevar can't be reached from reg or stack var, discard

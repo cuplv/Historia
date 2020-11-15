@@ -17,10 +17,18 @@ object State {
 // pureFormula is a conjunction of constraints
 // callStack is the call string from thresher paper
 sealed trait TraceAbstraction
-case class AbsFormula(pred:LSPred) extends TraceAbstraction
-case class AbsArrow(traceAbstraction: TraceAbstraction, i:I) extends TraceAbstraction
-case class AbsAnd(t1 : TraceAbstraction, t2:TraceAbstraction) extends TraceAbstraction
-case class AbsEq(lsVar : String, pureVar: PureVar) extends TraceAbstraction
+case class AbsFormula(pred:LSPred) extends TraceAbstraction {
+  override def toString:String = pred.toString
+}
+case class AbsArrow(traceAbstraction: TraceAbstraction, i:I) extends TraceAbstraction {
+  override def toString:String = s"(${traceAbstraction}) |> ${i}"
+}
+case class AbsAnd(t1 : TraceAbstraction, t2:TraceAbstraction) extends TraceAbstraction {
+  override def toString:String = s"( ${t1} ) && ( ${t2} )"
+}
+case class AbsEq(lsVar : String, pureVar: PureVar) extends TraceAbstraction {
+  override def toString:String = s"$lsVar = ${pureVar}"
+}
 
 //case class LSAbstraction(pred: LSPred, bind : Map[String, PureExpr]) extends TraceAbstraction {
 //  override def toString: String = s"[${pred.toString} , ${bind.toString}]"

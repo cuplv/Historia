@@ -1,9 +1,9 @@
 package edu.colorado.plv.bounder.solver
 
-import com.microsoft.z3.{AST, ArithExpr, BoolExpr, BoolSort, Context, Expr, FuncDecl, IntSort, Solver, Sort, Status}
+import com.microsoft.z3.{AST, ArithExpr, BoolExpr, BoolSort, Context, Expr, FuncDecl, IntSort, Model, Solver, Sort, Status}
 import edu.colorado.hopper.solver.StateSolver
 import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSAtom, LSPred}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{PureVar, TraceAbstraction, TypeConstraint}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{PureVar, State, TraceAbstraction, TypeConstraint}
 
 class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateSolver[AST] {
   val solver = persistentConstraints.getSolver
@@ -97,13 +97,38 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
 
   override protected def mkObjVar(s: PureVar): AST = ctx.mkIntConst("object_addr_" + s.id.toString)
 
-  override protected def solverSimplify(t: AST, logDbg:Boolean): Option[AST] = {
+  def printAbstSolution(model: Model,state:State) = state match{
+    case State(_,_,_,traceabs) => {
+      traceabs map {abs => {
+        val uniqueID = System.identityHashCode(abs) + ""
+        val len = mkIntVar(s"len_${uniqueID}").asInstanceOf[ArithExpr]
+        println("=trace solution=")
+        val traceLen: Int = model.eval(len,true).toString.toInt
+        val alli = allI(abs)
+        (0 until traceLen).map{ index =>{
+          println(s"${index}: ")
+          val msgati = alli.filter(ipred => {
+            model.eval(
+              mkINIConstraint(mkIFun(ipred),mkIntVal(index),
+                ipred.lsVars.map(mkModelVar(_,uniqueID))).asInstanceOf[Expr],true)
+              .toString == "true"
+          }).mkString("***")
+          println(msgati)
+        }}
+      }}
+    }
+  }
+
+  //  private def printModelSolution()
+  override protected def solverSimplify(t: AST,state:State, logDbg:Boolean): Option[AST] = {
     solver.add(t.asInstanceOf[BoolExpr])
     val status: Status = solver.check()
     status match{
       case Status.SATISFIABLE => {
-        if (logDbg)
+        if (logDbg) {
           println(s"Model: ${solver.getModel}")
+          printAbstSolution(solver.getModel(), state)
+        }
         Some(t)
       }
       case Status.UNKNOWN => Some(t)
