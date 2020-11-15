@@ -1,9 +1,9 @@
 package edu.colorado.plv.bounder.solver
 
-import com.microsoft.z3.{Context, Solver}
+import com.microsoft.z3.{ArithExpr, BoolExpr, Context, Expr, IntExpr, Solver, Symbol}
 import edu.colorado.plv.bounder.ir.{CBEnter, CallbackMethodInvoke}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, NI, Not, Or}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, Equals, FieldPtEdge, LSAbstraction, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, SubclassOf, TypeComp}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbsAnd, AbsArrow, AbsEq, AbsFormula, CallStackFrame, Equals, FieldPtEdge, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, SubclassOf, TraceAbstraction, TypeComp}
 import edu.colorado.plv.bounder.testutils.TestIRMethodLoc
 
 class Z3StateSolverTest extends org.scalatest.FunSuite {
@@ -118,22 +118,45 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     // Lifestate atoms for next few tests
     val i = I(CBEnter, Set(("foo", "bar")), "a" :: Nil)
     val i2 = I(CBEnter, Set(("foo", "baz")), "a" :: Nil)
+    val i3 = I(CBEnter, Set(("foo", "baz")), "b" :: Nil)
+    // NI(a.bar(), a.baz())
+    val niBarBaz = NI(i,i2)
 
     // pure vars for next few tests
     val p1 = PureVar()
     val p2 = PureVar()
 
-    // I(a.bar()) AND (NOT (a |-> a^)) AND (a |->a^) => FALSE
-    val pred1 = And(i, Not(LSAbsBind("a",p1)))
-    val state1 = State(Nil, Map(),Set(), Set(LSAbstraction(pred1, Map("a"-> p1))))
+    val abs1: TraceAbstraction = AbsArrow(
+      AbsAnd(AbsAnd(AbsFormula(niBarBaz), AbsEq("a",p1)), AbsEq("b",p1)),
+      i3
+    )
+    val state1 = State(Nil, Map(),Set(), Set(abs1))
     val res1 = statesolver.simplify(state1)
     assert(!res1.isDefined)
 
+    //TODO: more tests
     // [NI(m1^,m2^) OR (NOT NI(m1^,m2^)) ] AND (a |->a^) => TRUE
     val pred2 = Or(NI(i,i2),Not(NI(i,i2)))
-    val state2 = State(Nil, Map(),Set(), Set(LSAbstraction(pred2, Map("a"-> p1))))
-    val res2 = statesolver.simplify(state2)
-    assert(res2.isDefined)
+    //val state2 = State(Nil, Map(),Set(), Set(LSAbstraction(pred2, Map("a"-> p1))))
+    //val res2 = statesolver.simplify(state2)
+    //assert(res2.isDefined)
+  }
+  test("quantifier example") {
+    val ctx = new Context
+    val solver: Solver = ctx.mkSolver()
+    val foo1:ArithExpr = ctx.mkConst("foo", ctx.mkIntSort()).asInstanceOf[ArithExpr]
+    val f = ctx.mkFuncDecl("f",ctx.mkIntSort(), ctx.mkBoolSort())
+    val expr:Expr = ctx.mkIff(
+      f.apply(foo1).asInstanceOf[BoolExpr],
+      ctx.mkGt(foo1, ctx.mkInt(0)))
+    val a = ctx.mkForall(Array(foo1),expr, 1, null,null,
+      ctx.mkSymbol("a"), ctx.mkSymbol("b"))
+
+    solver.add(a)
+    solver.check()
+    val m = solver.getModel
+
+    println(m)
   }
 
 }

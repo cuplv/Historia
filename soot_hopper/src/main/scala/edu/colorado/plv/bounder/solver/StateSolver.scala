@@ -1,7 +1,7 @@
 package edu.colorado.hopper.solver
 
 import edu.colorado.plv.bounder.lifestate.LifeState
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, LSPred, NI, Not, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, LSAtom, LSPred, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 
 trait Assumptions
@@ -24,6 +24,12 @@ trait StateSolver[T] {
 //  def mkAssert(p : PureConstraint) : Unit = mkAssert(toAST(p))
 //  def mkAssertWithAssumption(assume : String, p : PureConstraint) : Unit = mkAssert(mkImplies(mkBoolVar(assume), toAST(p)))
 
+  // quantifiers
+  /**
+   * forall int condition is true
+   * @param cond
+   */
+  protected def mkForallInt(cond:T=>T):T
   // comparison operations
   protected def mkEq(lhs : T, rhs : T) : T
   protected def mkNe(lhs : T, rhs : T) : T
@@ -47,17 +53,18 @@ trait StateSolver[T] {
   protected def mkIntVal(i : Int) : T
   protected def mkBoolVal(b : Boolean) : T
   protected def mkIntVar(s : String) : T
+  protected def mkFreshIntVar(s:String):T
   protected def mkBoolVar(s : String) : T
   protected def mkObjVar(s:PureVar) : T //Symbolic variable
-  protected def mkModelVar(s:String, pred:TraceAbstraction):T // variable in ls rule
+  protected def mkModelVar(s:String, pred:TraceAbstraction):T // model vars are scoped to trace abstraction
   protected def mkAssert(t : T) : Unit
   protected def mkFieldFun(n: String): T
   protected def fieldEquals(fieldFun: T, t1 : T, t2: T):T
   protected def solverSimplify(t: T): Option[T]
   protected def mkTypeConstraint(typeFun: T, addr: T, tc: TypeConstraint):T
   protected def createTypeFun():T
-  protected def mkINIFun(arity:Int, sig:String):T
-  protected def mkINIConstraint(fun: T, modelVars: List[T]):T
+  protected def mkIFun(atom:I):T
+  protected def mkINIConstraint(fun: T, index: T, modelVars: List[T]):T
 
   def toAST(p : PureConstraint, typeFun: T) : T = p match {
       // TODO: field constraints based on containing object constraints
@@ -80,23 +87,32 @@ trait StateSolver[T] {
     case _ =>
       ???
   }
-
-  def encodePred(combinedPred: LifeState.LSPred, abs: TraceAbstraction): T = combinedPred match{
-    case And(l1,l2) => mkAnd(encodePred(l1,abs),encodePred(l2,abs))
-    case LSAbsBind(k,v:PureVar) => mkEq(mkModelVar(k,abs), mkObjVar(v))
-    case Or(l1, l2) => mkOr(encodePred(l1,abs), encodePred(l2,abs))
-    case Not(l) => mkNot(encodePred(l,abs))
+  def encodePred(combinedPred: LifeState.LSPred, abs: TraceAbstraction): T = combinedPred match {
+    case And(l1, l2) => mkAnd(encodePred(l1, abs), encodePred(l2, abs))
+    case LSAbsBind(k, v: PureVar) => mkEq(mkModelVar(k, abs), mkObjVar(v))
+    case Or(l1, l2) => mkOr(encodePred(l1, abs), encodePred(l2, abs))
+    case Not(l) => mkNot(encodePred(l, abs))
     case i@I(_,_, lsVars) => {
-      val ifun = mkINIFun(lsVars.count(_ != "_"), i.identitySignature)
-      mkINIConstraint(ifun, lsVars.map(mkModelVar(_,abs)))
+      val ifun = mkIFun(i)
+      // exists i such that omega[i] = i
+      mkINIConstraint(ifun,mkFreshIntVar("fromi"), lsVars.map(mkModelVar(_, abs)))
     }
-    case ni@NI(i1, i2) => {
-      val args = i1.lsVar.union(i2.lsVar).toList.sorted
-      val ifun = mkINIFun(args.size, ni.identitySignature)
-      mkINIConstraint(ifun, args.map(mkModelVar(_,abs)))
-    }
-    case _ =>
+    case ni@NI(m1,m2) => {
+      // exists i such that omega[i] = m1 and forall j > i omega[j] != m2
+      val i = mkFreshIntVar("i")
       ???
+    }
+  }
+
+
+  def encodeTraceAbs(abs:TraceAbstraction):T = {
+    val initial_i = mkIntVar(s"initial_i_ + ${System.identityHashCode(abs)}")
+    def f(iter:Int, i:T, abs: TraceAbstraction):T = abs match{
+      case AbsFormula(f) => ???
+      case _ =>
+        ???
+    }
+    f(1, initial_i, abs)
   }
 
   def toAST(state: State): T = {
@@ -129,13 +145,15 @@ trait StateSolver[T] {
       }
     }
 
+
     val trace = state.traceAbstraction.foldLeft(mkBoolVal(true)) {
-      case (acc, abs@LSAbstraction(pred, bind)) => {
-        val combinedPred = bind.foldLeft(pred) { case (acc2, (k, v)) => And(LSAbsBind(k, v),acc2) }
-        mkAnd(acc,encodePred(combinedPred,abs))
-      }
-      case _ =>
-        ???
+      case (acc,v) => mkAnd(acc, encodeTraceAbs(v))
+//      case (acc, abs@LSAbstraction(pred, bind)) => {
+//        val combinedPred = bind.foldLeft(pred) { case (acc2, (k, v)) => And(LSAbsBind(k, v),acc2) }
+//        mkAnd(acc,encodePred(combinedPred,abs))
+//      }
+//      case _ =>
+//        ???
     }
     mkAnd(mkAnd(pureAst, heapAst),trace)
   }

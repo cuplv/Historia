@@ -57,6 +57,8 @@ object LifeState {
 
     // Uesed for naming uninterpreted functions in z3 solver
     override def identitySignature: String = {
+      // Note: this does not include varnames or
+      // any other info that would distinguish this I from another with the same metods
       s"I_${mt.toString}_${sortedSig.head._1}_${sortedSig.head._2}"
     }
     override def toString:String = s"I($mt $identitySignature ( ${lsVars.mkString(",")} )"

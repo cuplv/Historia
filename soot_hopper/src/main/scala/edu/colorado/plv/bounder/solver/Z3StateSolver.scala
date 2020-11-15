@@ -1,8 +1,8 @@
 package edu.colorado.plv.bounder.solver
 
-import com.microsoft.z3.{AST, BoolExpr, Context, Expr, FuncDecl, IntSort, Solver, Sort, Status}
+import com.microsoft.z3.{AST, BoolExpr, BoolSort, Context, Expr, FuncDecl, IntSort, Solver, Sort, Status}
 import edu.colorado.hopper.solver.StateSolver
-import edu.colorado.plv.bounder.lifestate.LifeState.LSPred
+import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSAtom, LSPred}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{PureVar, TraceAbstraction, TypeConstraint}
 
 class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateSolver[AST] {
@@ -110,8 +110,13 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
     ctx.mkFuncDecl("addressToType", intArgs, persistentConstraints.tsort)
   }
 
-  override protected def mkINIFun(arity: Int, sig: String): AST = {
-    val argtypes: Array[Sort] = (1 to arity).map(_ => ctx.mkIntSort()).toArray
+  override protected def mkIFun(atom: I): AST = {
+    // create(i,arg1,arg2 ...):Bool
+    //  function for each msg - takes an index and a lst of arguments,
+    //  returns true if it is at that position in the trace
+    val arity = atom.lsVars.size
+    val argtypes: Array[Sort] = (0 to arity).map(_=>ctx.mkIntSort()).toArray
+    val sig = atom.identitySignature
     ctx.mkFuncDecl(sig, argtypes, ctx.mkBoolSort())
   }
 
@@ -119,8 +124,23 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
   override protected def mkModelVar(s: String, pred:TraceAbstraction): AST =
     ctx.mkIntConst("model_var_" + s + "_" + System.identityHashCode(pred))
 
-  override protected def mkINIConstraint(ifun: AST, modelVars: List[AST]): AST = {
-    val args: Array[Expr] = modelVars.map(_.asInstanceOf[Expr]).toArray
+  override protected def mkINIConstraint(ifun: AST,index:AST, modelVars: List[AST]): AST = {
+    val args: Array[Expr] = (index::modelVars).map(_.asInstanceOf[Expr]).toArray
     ifun.asInstanceOf[FuncDecl].apply(args:_*)
+  }
+
+  override protected def mkFreshIntVar(s:String): AST = {
+    ctx.mkFreshConst(s, ctx.mkIntSort())
+  }
+
+  /**
+   * forall int condition is true
+   *
+   * @param cond
+   */
+  override protected def mkForallInt(cond: AST => AST): AST = {
+    val j = mkFreshIntVar("j")
+    ???
+    //ctx.mkForall(Array(ctx.mkIntSort()), Array(j), cond(j).asInstanceOf[BoolSort])
   }
 }

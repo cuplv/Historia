@@ -1,9 +1,8 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.hopper.solver.StateSolver
-import edu.colorado.plv.bounder.ir.{FieldRef, IRWrapper, LVal, LocalWrapper, ParamWrapper, RVal}
-import edu.colorado.plv.bounder.lifestate.LifeState.LSPred
-import edu.colorado.plv.bounder.solver.Z3StateSolver
+import edu.colorado.plv.bounder.ir.{FieldRef, LVal, LocalWrapper, ParamWrapper, RVal}
+import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSPred}
 
 
 object State {
@@ -18,11 +17,16 @@ object State {
 // pureFormula is a conjunction of constraints
 // callStack is the call string from thresher paper
 sealed trait TraceAbstraction
-case class LSAbstraction(pred: LSPred, bind : Map[String, PureExpr]) extends TraceAbstraction {
-  override def toString: String = s"[${pred.toString} , ${bind.toString}]"
-}
-case class Reg(v: PureVar) extends TraceAbstraction
-case object TopTraceAbstraction extends TraceAbstraction
+case class AbsFormula(pred:LSPred) extends TraceAbstraction
+case class AbsArrow(traceAbstraction: TraceAbstraction, i:I) extends TraceAbstraction
+case class AbsAnd(t1 : TraceAbstraction, t2:TraceAbstraction) extends TraceAbstraction
+case class AbsEq(lsVar : String, pureVar: PureVar) extends TraceAbstraction
+
+//case class LSAbstraction(pred: LSPred, bind : Map[String, PureExpr]) extends TraceAbstraction {
+//  override def toString: String = s"[${pred.toString} , ${bind.toString}]"
+//}
+//case class Reg(v: PureVar) extends TraceAbstraction
+//case object TopTraceAbstraction extends TraceAbstraction
 
 case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdge, PureExpr],
                  pureFormula: Set[PureConstraint], traceAbstraction: Set[TraceAbstraction]) {
@@ -71,12 +75,15 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
   private def pureFormulaContains(p: PureVar): Boolean =
     pureFormula.exists(c => expressionContains(c.lhs,p) || expressionContains(c.rhs,p))
 
-  def traceAbstractionContains(p: PureVar): Boolean =
-    traceAbstraction.exists({
-      case TopTraceAbstraction => false
-      case LSAbstraction(_,bind) => bind.exists(b => expressionContains(b._2,p))
-      case Reg(v) => v == p
-    })
+  def traceAbstractionContains(p: PureVar): Boolean = {
+    def iTraceAbstractionContains(t: TraceAbstraction, p: PureVar): Boolean = t match{
+      case AbsEq(_,pureVar) => p == pureVar
+      case AbsAnd(t1,t2) => iTraceAbstractionContains(t1,p) || iTraceAbstractionContains(t2,p)
+      case AbsArrow(t1, _) => iTraceAbstractionContains(t1,p)
+      case AbsFormula(_) => false
+    }
+    traceAbstraction.exists(iTraceAbstractionContains(_, p))
+  }
 
   def contains(p:PureVar):Boolean = {
      callStackContains(p) || heapContains(p) || pureFormulaContains(p) || traceAbstractionContains(p)
