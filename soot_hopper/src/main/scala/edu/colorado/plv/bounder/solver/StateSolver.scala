@@ -156,7 +156,7 @@ trait StateSolver[T] {
           mkAnd(listofconst)
         })
         mkAnd(mkLt(j,i),
-          mkAnd(mkAnd(mkLt(mkIntVal(-1),j), mkLt(i,len)),
+          mkAnd(mkLt(mkIntVal(-1),j),
             mkAnd(mkAnd(messageAt,recurs),disj)))
       }
       case AbsEq(mv,pv) => mkEq(mkModelVar(mv,uniqueID),mkObjVar(pv))
