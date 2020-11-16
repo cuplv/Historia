@@ -70,6 +70,8 @@ trait StateSolver[T] {
   protected def createTypeFun():T
   protected def mkIFun(atom:I):T
   protected def mkINIConstraint(fun: T, index: T, modelVars: List[T]):T
+  protected def mkIndArgFun(uid:String):T
+  protected def mkIndArgConstraint(argFun:T, index:T, argnumber:T):T
 
   def toAST(p : PureConstraint, typeFun: T) : T = p match {
       // TODO: field constraints based on containing object constraints
@@ -167,11 +169,28 @@ trait StateSolver[T] {
     // dummy message for symbols not contained in formula
     val other = I(CBEnter,Set(("","")), Nil)
     //TODO: unit test that causes two messages to occupy same spot
-    val uniqueIndex = mkForallInt(mkIntVal(-1), len,
-      ind => mkExactlyOneOf((allI(abs,true) + other).map(ipred =>{
-        mkINIConstraint(mkIFun(ipred),ind, ipred.lsVars.map(mkModelVar(_,uniqueID)))
-      }).toList)
-    )
+
+    // group i preds by signature and arity
+    val uniqueGroups =
+      (allI(abs,true) + other).groupBy(ipred => (ipred.lsVars.size,ipred.identitySignature))
+    val indarg = mkIndArgFun(uniqueID)
+    val uniqueAt = (index:T) => {
+      // accumulator is list of constraints where one should be true
+      // and then a list of existentially quantified args
+
+      val oneof = uniqueGroups.flatMap{ case ((arity,_),ipredset) =>
+        val argList = (0 until arity).map(argind => mkIndArgConstraint(indarg, index,mkIntVal(argind))).toList
+        ipredset.map( a => mkINIConstraint(mkIFun(a),index, argList))
+      }.toList
+      mkExactlyOneOf(oneof)
+    }
+    val uniqueIndex = mkForallInt(mkIntVal(-1), len, uniqueAt)
+    //val uniqueIndex = mkForallInt(mkIntVal(-1), len,
+    //  ind => mkExactlyOneOf((allI(abs,true) + other).map(ipred =>{
+    //    //TODO: solver can select unique vars so that multiple of these are true for an index how to fix?
+    //    mkINIConstraint(mkIFun(ipred),ind, ipred.lsVars.map(vname => mkFreshIntVar(s"uniquefor_${vname}")))
+    //  }).toList)
+    //)
 
     mkAnd(ienc(len, abs), uniqueIndex)
   }

@@ -200,4 +200,13 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
 
   override protected def mkImplies(t: AST, t1: AST): AST =
     ctx.mkImplies(t.asInstanceOf[BoolExpr], t1.asInstanceOf[BoolExpr])
+
+  override protected def mkIndArgFun(uid:String): AST = {
+    val argT: Array[Sort] = Array(ctx.mkIntSort, ctx.mkIntSort)
+    ctx.mkFuncDecl(s"index_argument_${uid}", argT, ctx.mkIntSort)
+  }
+
+  override protected def mkIndArgConstraint(argFun:AST, index: AST, argnumber: AST): AST = {
+    argFun.asInstanceOf[FuncDecl].apply(index.asInstanceOf[ArithExpr],argnumber.asInstanceOf[ArithExpr])
+  }
 }
