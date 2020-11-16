@@ -113,6 +113,7 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
         println("=trace solution=")
         val traceLen: Int = model.eval(len,true).toString.toInt
         val alli = allI(abs)
+        val argind = mkIndArgFun(uniqueID)
         (0 until traceLen).map{ index =>{
           println(s"${index}: ")
           val msgati = alli.filter(ipred => {
@@ -120,8 +121,8 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
               mkINIConstraint(mkIFun(ipred),mkIntVal(index),
                 ipred.lsVars.map(mkModelVar(_,uniqueID))).asInstanceOf[Expr],true)
               .toString == "true"
-          }).mkString("***")
-          println(msgati)
+          }).map(ipred => s"${ipred} args: ${ipred.lsVars.zipWithIndex.map(argi => model.eval(mkIndArgConstraint(argind, mkIntVal(index), mkIntVal(argi._2)).asInstanceOf[ArithExpr],true))}")
+          println(msgati.mkString("***"))
         }}
       }}
     }

@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder.solver
 
-import com.microsoft.z3.{ArithExpr, BoolExpr, Context, Expr, IntExpr, Solver, Symbol}
+import com.microsoft.z3.{ArithExpr, BoolExpr, Context, Expr, IntExpr, Solver, Status, Symbol}
 import edu.colorado.plv.bounder.ir.{CBEnter, CallbackMethodInvoke}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbsAnd, AbsArrow, AbsEq, AbsFormula, CallStackFrame, Equals, FieldPtEdge, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, SubclassOf, TraceAbstraction, TypeComp}
@@ -264,11 +264,22 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
   test("sandbox") {
     val ctx = new Context
     val solver: Solver = ctx.mkSolver()
-    val foo1:ArithExpr = ctx.mkConst("foo1", ctx.mkIntSort()).asInstanceOf[ArithExpr]
-    val foo2:ArithExpr = ctx.mkConst("foo2", ctx.mkIntSort()).asInstanceOf[ArithExpr]
-    solver.add(ctx.mkAnd(ctx.mkGt(foo1,foo2)), ctx.mkTrue(),ctx.mkTrue())
-    solver.check()
-    println(solver.getModel)
+    val msgSort = ctx.mkUninterpretedSort("Msg")
+    val pos1 = ctx.mkFuncDecl("tracePos", ctx.mkIntSort, msgSort)
+    val pos2 = ctx.mkFuncDecl("tracePos", ctx.mkIntSort, msgSort)
+    val m1 = ctx.mkConst("m1",msgSort)
+    val m2 = ctx.mkConst("m2",msgSort)
+    val p = ctx.mkAnd(
+      ctx.mkEq(pos1.apply(ctx.mkInt(1)), m1 ),
+      ctx.mkEq(pos2.apply(ctx.mkInt(1)), m2),
+      ctx.mkNot(ctx.mkEq(m1,m2)))
+    solver.add(p)
+
+    solver.check() match {
+      case Status.UNSATISFIABLE => println("unsat")
+      case Status.SATISFIABLE => println(solver.getModel)
+      case Status.UNKNOWN => ???
+    }
 
   }
 
