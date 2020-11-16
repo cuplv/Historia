@@ -109,7 +109,7 @@ trait StateSolver[T] {
         mkLt(mkIntVal(-1),i),
         mkLt(i,len),
         mkINIConstraint(mkIFun(m1),i, m1.lsVars.map(mkModelVar(_,uniqueID))),
-        mkForallInt(i,len, j => mkNot(mkINIConstraint(mkIFun(m2),j,m2.lsVars.map(mkModelVar(_,uniqueID)))))
+        mkForallInt(mkAdd(i,mkIntVal(-1)),len, j => mkNot(mkINIConstraint(mkIFun(m2),j,m2.lsVars.map(mkModelVar(_,uniqueID)))))
       ))
     }
   }

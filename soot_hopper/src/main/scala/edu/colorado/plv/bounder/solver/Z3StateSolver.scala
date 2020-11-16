@@ -45,7 +45,9 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
 
   override protected def mkNot(o: AST): AST = ctx.mkNot(o.asInstanceOf[BoolExpr])
 
-  override protected def mkAdd(lhs: AST, rhs: AST): AST = ???
+  override protected def mkAdd(lhs: AST, rhs: AST): AST = {
+    ctx.mkAdd(lhs.asInstanceOf[ArithExpr], rhs.asInstanceOf[ArithExpr])
+  }
 
   override protected def mkSub(lhs: AST, rhs: AST): AST = ???
 
