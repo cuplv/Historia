@@ -138,7 +138,12 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
         Some(t)
       }
       case Status.UNKNOWN => Some(t)
-      case Status.UNSATISFIABLE => None
+      case Status.UNSATISFIABLE => {
+        if (logDbg) {
+          println(s"Unsat core: ${solver.getUnsatCore.map(s=> s.toString).mkString(" AND \n")}")
+        }
+        None
+      }
     }
   }
 
