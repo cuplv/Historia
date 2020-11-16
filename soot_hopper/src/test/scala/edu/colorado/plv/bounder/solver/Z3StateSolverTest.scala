@@ -119,6 +119,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val i = I(CBEnter, Set(("foo", "bar")), "a" :: Nil)
     val i2 = I(CBEnter, Set(("foo", "baz")), "a" :: Nil)
     val i3 = I(CBEnter, Set(("foo", "baz")), "b" :: Nil)
+    val i4 = I(CBEnter, Set(("foo", "bar")), "c" :: Nil)
     // NI(a.bar(), a.baz())
     val niBarBaz = NI(i,i2)
 
@@ -134,6 +135,11 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     println(s"state: ${state1}")
     val res1 = statesolver.simplify(state1,true)
     assert(!res1.isDefined)
+
+//    val abs2: TraceAbstraction = AbsArrow(
+//      AbsAnd(AbsAnd(AbsFormula(niBarBaz), AbsEq("a",p1)), AbsEq("b",p1)),
+//
+//    )
 
     //TODO: more tests
     // [NI(m1^,m2^) OR (NOT NI(m1^,m2^)) ] AND (a |->a^) => TRUE

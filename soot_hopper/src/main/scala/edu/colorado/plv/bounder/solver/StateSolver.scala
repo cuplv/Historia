@@ -103,7 +103,7 @@ trait StateSolver[T] {
     }
     case NI(m1,m2) => {
       // exists i such that omega[i] = m1 and forall j > i omega[j] != m2
-      val i = mkFreshIntVar("i")
+      val i = mkFreshIntVar("fromni")
       mkAnd(List(
         mkLt(mkIntVal(-1),i),
         mkLt(i,len),
@@ -132,7 +132,7 @@ trait StateSolver[T] {
   }
   def encodeTraceAbs(abs:TraceAbstraction):T = {
 //    val initial_i = mkIntVar(s"initial_i_ + ${System.identityHashCode(abs)}")
-    val initial_i = mkFreshIntVar("i")
+//    val initial_i = mkFreshIntVar("i")
     // A unique id for this element of the trace abstraction, used to distinguish model vars and
     val uniqueID = System.identityHashCode(abs).toString
     val len = mkIntVar(s"len_${uniqueID}") // there exists a finite size of the trace
@@ -143,7 +143,9 @@ trait StateSolver[T] {
         encodePred(f, uniqueID, len)
       case AbsAnd(f1,f2) => mkAnd(ienc(i,f1), ienc(i,f2))
       case AbsArrow(abs, ipred) => {
-        val j = mkFreshIntVar("j")
+        //TODO: somehow enforce that ipred must be later in the trace than the m1 in NI(m1,m2)
+        // Do the semantics enforce this?
+        val j = mkFreshIntVar("jfromarrow")
         val ipredf = mkIFun(ipred)
         val messageAt = mkINIConstraint(ipredf, j, ipred.lsVars.map(mkModelVar(_,uniqueID)))
         val recurs = ienc(j,abs)
@@ -165,7 +167,7 @@ trait StateSolver[T] {
       mkINIConstraint(mkIFun(ipred),ind, ipred.lsVars.map(mkModelVar(_,uniqueID)))
     }).toList))
 
-    mkAnd(ienc(initial_i, abs), uniqueIndex)
+    mkAnd(ienc(len, abs), uniqueIndex)
   }
 
   def toAST(state: State): T = {
