@@ -65,8 +65,14 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
   override protected def mkOr(lhs: AST, rhs: AST): AST =
     ctx.mkOr(lhs.asInstanceOf[BoolExpr], rhs.asInstanceOf[BoolExpr])
 
-  override protected def mkXor(l:List[AST]): AST = l.tail.foldLeft(l.head.asInstanceOf[BoolExpr]){
-    (acc,v) => ctx.mkXor(acc,v.asInstanceOf[BoolExpr])
+  /**
+   * @param l list of boolean expressions
+   * @return boolean expression that is true iff exactly one expression in l is true
+   */
+  override protected def mkExactlyOneOf(l:List[AST]): AST = {
+    val oneorzero: List[ArithExpr] = l.map(lv =>
+      ctx.mkITE(lv.asInstanceOf[BoolExpr],ctx.mkInt(1),ctx.mkInt(0)).asInstanceOf[ArithExpr])
+    ctx.mkEq(ctx.mkAdd(oneorzero.toArray:_*), ctx.mkInt(1))
   }
 
   override protected def mkIntVal(i: Int): AST = ctx.mkInt(i)

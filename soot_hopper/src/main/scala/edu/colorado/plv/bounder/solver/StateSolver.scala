@@ -1,5 +1,6 @@
 package edu.colorado.hopper.solver
 
+import edu.colorado.plv.bounder.ir.CBEnter
 import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, LSAtom, LSFalse, LSPred, LSTrue, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
@@ -51,7 +52,7 @@ trait StateSolver[T] {
   protected def mkAnd(lhs:T, rhs:T):T
   protected def mkAnd(t : List[T]) : T
   protected def mkOr(lhs : T, rhs : T) : T
-  protected def mkXor(l:List[T]) : T
+  protected def mkExactlyOneOf(l:List[T]) : T
 
   // creation of variables, constants, assertions
   protected def mkIntVal(i : Int) : T
@@ -124,9 +125,9 @@ trait StateSolver[T] {
     case LSFalse => Set()
     case LSAbsBind(_,_) => Set()
   }
-  def allI(abs:TraceAbstraction):Set[I] = abs match{
+  def allI(abs:TraceAbstraction, includeArrow:Boolean = false):Set[I] = abs match{
     case AbsFormula(pred) => allI(pred)
-    case AbsArrow(pred, _) => allI(pred)
+    case AbsArrow(pred, i2) => if(includeArrow) allI(pred) + i2 else allI(pred)
     case AbsAnd(p1,p2) => allI(p1).union(allI(p2))
     case AbsEq(_,_) => Set()
   }
@@ -163,9 +164,14 @@ trait StateSolver[T] {
     }
 
     // Each position has unique message
-    val uniqueIndex = mkForallInt(mkIntVal(-1), len, ind => mkXor(alli.map(ipred =>{
-      mkINIConstraint(mkIFun(ipred),ind, ipred.lsVars.map(mkModelVar(_,uniqueID)))
-    }).toList))
+    // dummy message for symbols not contained in formula
+    val other = I(CBEnter,Set(("","")), Nil)
+    //TODO: unit test that causes two messages to occupy same spot
+    val uniqueIndex = mkForallInt(mkIntVal(-1), len,
+      ind => mkExactlyOneOf((allI(abs,true) + other).map(ipred =>{
+        mkINIConstraint(mkIFun(ipred),ind, ipred.lsVars.map(mkModelVar(_,uniqueID)))
+      }).toList)
+    )
 
     mkAnd(ienc(len, abs), uniqueIndex)
   }

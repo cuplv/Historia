@@ -195,15 +195,15 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val p1 = PureVar()
     val p2 = PureVar()
 
-    // NI(a.bar(),a.baz()) |> I(c.bar()) && a == p1 && c == p1 (<=> true)
+    // NI(a.bar(),a.baz()) |> I(c.bar()) |> i(b.baz()
     val niaa: TraceAbstraction = AbsArrow(AbsArrow(
       AbsFormula(niBarBaz),
       i4
     ),i3)
-    //val abs1 =
-    //val state2 = State(Nil,Map(),Set(), Set(abs1))
-    //val res2 = statesolver.simplify(state2, true)
-    //assert(res2.isDefined)
+    val abs1 = AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("c",p1), AbsAnd(AbsEq("b",p1), niaa)))
+    val state2 = State(Nil,Map(),Set(), Set(abs1))
+    val res2 = statesolver.simplify(state2, true)
+    assert(res2.isDefined)
   }
   test("quantifier example") {
     val ctx = new Context
