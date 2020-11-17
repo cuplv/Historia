@@ -85,18 +85,23 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
                               loc: Loc, postState: State): State = {
     //TODO: last element is list of varnames, should probably use that
     val applicableSpecs = specSpace.specsBySig(sig._1,sig._2)
-    val (thisvar,newstack) = postState.getOrDefine(LocalWrapper("this",sig._1))
-    val newLsAbstractions:Set[TraceAbstraction] = applicableSpecs.map{case LSSpec(pred, target) =>
-      //TODO: find all args in abstract state
-      val lsvars = target.lsVars
-      assert(lsvars(0) == "_") // TODO: temporary assumption of no return val
-//      val thisOption = postState.getLocal(LocalWrapper("this", pkg))
-
-//      assert(thisOption.isDefined) // TODO: temporary assumption that this is always defined
-//      val newLsAbstraction = LSAbstraction(pred, Map(lsvars(1) -> thisOption.get))
-//      newLsAbstraction
-      //TODO: update for new trace abstraction
-      ???
+//    val (thisvar,newState) = postState.getOrDefine(LocalWrapper("this",sig._1))
+    val (outState,newLsAbstractions) =
+      applicableSpecs.foldLeft(postState, Set[TraceAbstraction]()) {
+        case ((bstate,specset), LSSpec(pred, I(targetmt, _, lsVars))) if targetmt == mt =>{
+          //TODO: find all args in abstract state
+          val (introducedTA, newState) = (lsVars zip invar).foldLeft(List[TraceAbstraction](),bstate){
+            case ((ta,cstate),(lsvar, Some(local))) => {
+              val (newPv, newState) = cstate.getOrDefine(local)
+              (AbsEq(lsvar,newPv)::ta,newState)
+            }
+            case (acc,(_,None)) => acc
+          }
+          val abstraction: TraceAbstraction =
+            introducedTA.foldLeft(AbsFormula(pred): TraceAbstraction) { (acc, v) => AbsAnd(acc, v) }
+          (newState,specset + abstraction)
+        }
+        case (bstate,_) => bstate
     }
     postState.copy(traceAbstraction = postState.traceAbstraction.union(newLsAbstractions))
   }

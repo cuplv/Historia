@@ -3,10 +3,17 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CallbackMethodInvoke, CallbackMethodReturn, LocalWrapper, NewCommand}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, LSFalse, LSPred, LSSpec, LSTrue, NI, Not, Or}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
-import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, Equals, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, TraceAbstraction}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbsAnd, AbsEq, AbsFormula, CallStackFrame, Equals, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, TraceAbstraction}
 import edu.colorado.plv.bounder.testutils.{CmdTransition, MethodTransition, TestIR, TestIRLineLoc, TestIRMethodLoc}
 
 class TransferFunctionsTest extends org.scalatest.FunSuite {
+  def absContains(contained:TraceAbstraction, result:TraceAbstraction):Boolean = result match{
+    case r if (r == contained) => true
+    case AbsAnd(l,r) => absContains(contained,l) || absContains(contained,r)
+    case AbsEq(_,_) => false
+    case AbsFormula(_) => false
+    case _ => ???
+  }
   test("Transfer assign local") {
     val fooMethod = TestIRMethodLoc("foo")
     val preloc = AppLoc(fooMethod,TestIRLineLoc(1), isPre=true)
@@ -30,8 +37,9 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
     val preloc = CallbackMethodInvoke("","foo", fooMethod) // Transition to just before foo is invoked
     val postloc = AppLoc(fooMethod,TestIRLineLoc(1), isPre=true)
     val ir = new TestIR(Set(MethodTransition(preloc, postloc)))
+    val lhs = I(CBEnter, Set(("", "bar")), "_" :: "a" :: Nil)
     val spec = LSSpec( //  I(cb a.bar()) <= I(cb a.foo())
-      I(CBEnter, Set(("","bar")),"_"::"a"::Nil),
+      lhs,
       I(CBEnter, Set(("","foo")),"_"::"a"::Nil))
     val tr = new TransferFunctions(ir, new SpecSpace(Set(spec)))
     val recPv = PureVar()
@@ -46,6 +54,8 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
     assert(prestate.size == 1)
     val formula = prestate.head.traceAbstraction
     //assert(formula.contains(LSAbstraction(I(CBEnter, Set(("","bar")), "_"::"a"::Nil), Map("a"->recPv))))
+    assert(formula.exists(p => absContains(AbsEq("a",recPv),p)))
+    assert(formula.exists(p => absContains(AbsFormula(lhs),p)))
 
     val stack = prestate.head.callStack
     assert(stack.size == 0)
