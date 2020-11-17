@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder.solver
 
-import com.microsoft.z3.{ArithExpr, BoolExpr, Context, Expr, IntExpr, Solver, Status, Symbol}
+import com.microsoft.z3.{ArithExpr, BoolExpr, Context, EnumSort, Expr, IntExpr, Solver, Status, Symbol}
 import edu.colorado.plv.bounder.ir.{CBEnter, CallbackMethodInvoke}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbsAnd, AbsArrow, AbsEq, AbsFormula, CallStackFrame, Equals, FieldPtEdge, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, SubclassOf, TraceAbstraction, TypeComp}
@@ -106,7 +106,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val simplifyResult2 = statesolver.simplify(state)
     assert(simplifyResult2.isDefined)
   }
-  test("Trace abstraction NI(a.bar(), a.baz() && a == p1 (<==>true)") {
+  test("Trace abstraction NI(a.bar(), a.baz()) && a == p1 (<==>true)") {
     val ctx = new Context
     val solver: Solver = ctx.mkSolver()
     val hierarchy : Map[String, Set[String]] =
@@ -265,10 +265,11 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val ctx = new Context
     val solver: Solver = ctx.mkSolver()
     val msgSort = ctx.mkUninterpretedSort("Msg")
+    val msgSort2 = ctx.mkUninterpretedSort("Msg")
     val pos1 = ctx.mkFuncDecl("tracePos", ctx.mkIntSort, msgSort)
-    val pos2 = ctx.mkFuncDecl("tracePos", ctx.mkIntSort, msgSort)
+    val pos2 = ctx.mkFuncDecl("tracePos", ctx.mkIntSort, msgSort2)
     val m1 = ctx.mkConst("m1",msgSort)
-    val m2 = ctx.mkConst("m2",msgSort)
+    val m2 = ctx.mkConst("m2",msgSort2)
     val p = ctx.mkAnd(
       ctx.mkEq(pos1.apply(ctx.mkInt(1)), m1 ),
       ctx.mkEq(pos2.apply(ctx.mkInt(1)), m2),
@@ -282,5 +283,20 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     }
 
   }
+  test("sandbox2") {
+    val ctx = new Context
+    val solver: Solver = ctx.mkSolver()
+    val es: EnumSort = ctx.mkEnumSort("Foo", "Foo1", "Foo2")
+    val foo2: Expr = es.getConst(1)
+    println(foo2)
+//    solver.add(ctx.mkEq(foo2, ctx.mkSymbol("Foo2")))
 
+
+    solver.check() match {
+      case Status.UNSATISFIABLE => println("unsat")
+      case Status.SATISFIABLE => println(solver.getModel)
+      case Status.UNKNOWN => ???
+    }
+
+  }
 }
