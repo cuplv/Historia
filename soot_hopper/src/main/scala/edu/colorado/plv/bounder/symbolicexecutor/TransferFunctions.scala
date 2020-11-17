@@ -41,7 +41,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         // Since this is a back message, instantiate any new instances of the spec
         //add new instantiations of specs
         //TODO: get rid of theta hat
-        val states2 = newSpecInstanceTransfer(cmloc, state1)
+        val states2 = newSpecInstanceTransfer(CBEnter,(pkg,name), invar, cmloc, state1)
         // Remove the top call stack frame from each candidate state since we are crossing the entry to a method
         val out = states2.copy(callStack = s)
         Set(out) // TODO: check that this output makes sense
@@ -80,16 +80,19 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
    * @param postState
    * @return a new trace abstraction for each possible rule
    */
-  def newSpecInstanceTransfer(loc: Loc, postState: State): State = {
+  def newSpecInstanceTransfer(mt: MessageType,
+                              sig:(String,String), invar:List[Option[LocalWrapper]],
+                              loc: Loc, postState: State): State = {
     //TODO: last element is list of varnames, should probably use that
-    val (pkg: String, name: String,_,_) = msgCmdToMsg(loc)
-    val applicableSpecs = specSpace.specsBySig(pkg, name)
+    val applicableSpecs = specSpace.specsBySig(sig._1,sig._2)
+    val (thisvar,newstack) = postState.getOrDefine(LocalWrapper("this",sig._1))
     val newLsAbstractions:Set[TraceAbstraction] = applicableSpecs.map{case LSSpec(pred, target) =>
       //TODO: find all args in abstract state
       val lsvars = target.lsVars
       assert(lsvars(0) == "_") // TODO: temporary assumption of no return val
-      val thisOption = postState.getLocal(LocalWrapper("this", pkg))
-      assert(thisOption.isDefined) // TODO: temporary assumption that this is always defined
+//      val thisOption = postState.getLocal(LocalWrapper("this", pkg))
+
+//      assert(thisOption.isDefined) // TODO: temporary assumption that this is always defined
 //      val newLsAbstraction = LSAbstraction(pred, Map(lsvars(1) -> thisOption.get))
 //      newLsAbstraction
       //TODO: update for new trace abstraction
@@ -137,7 +140,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
                         postState: State):State = {
     //TODO: you were here 11/9/20
     // update state for
-    //val newTraceAbs: Set[TraceAbstraction] = postState.traceAbstraction.map {
+    val newTraceAbs: Set[TraceAbstraction] = postState.traceAbstraction.map {
+      case _ => ??? //TODO: update
     //  case TopTraceAbstraction => TopTraceAbstraction
     //  case LSAbstraction(pred,bind) => {
     //    val combvar = invar.zipAll(outvar,None,None)
@@ -145,9 +149,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     //    LSAbstraction(predTransferTrace(pred, mt, sig, combvar, postState), bind)
     //  }
     //  case Reg(v) => ???
-    //}
-    //postState.copy(traceAbstraction = newTraceAbs)
-    ??? //TODO: update for new trace abst
+    }
+    postState.copy(traceAbstraction = newTraceAbs)
   }
   def cmdTransfer(cmd:CmdWrapper, state: State):Set[State] = (cmd,state) match{
     case (AssignCmd(LocalWrapper(name,_), NewCommand(className),_),

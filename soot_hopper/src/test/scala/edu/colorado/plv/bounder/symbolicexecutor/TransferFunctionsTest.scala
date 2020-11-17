@@ -57,6 +57,7 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
     val ir = new TestIR(Set(MethodTransition(preloc, postloc)))
     val tr = new TransferFunctions(ir, new SpecSpace(Set()))
     val recPv = PureVar()
+    ???
     //val post = State(
     //  CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("this") -> recPv))::Nil,
     //  heapConstraints = Map(),
