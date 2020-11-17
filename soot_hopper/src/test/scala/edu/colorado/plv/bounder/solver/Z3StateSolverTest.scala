@@ -43,7 +43,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
       PureConstraint(v3, Equals, NullVal))
     val refutableState = State(List(frame),
       Map(FieldPtEdge(v,"f") -> v2),constraints + PureConstraint(v2, Equals, v3),Set())
-    val simplifyResult = statesolver.simplify(refutableState)
+    val simplifyResult = statesolver.simplify(refutableState,true,Some(0))
     assert(!simplifyResult.isDefined)
   }
   test("aliased object implies fields must be aliased") {
@@ -63,13 +63,13 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
       PureConstraint(v, Equals, v2))
     val refutableState = State(List(frame),
       Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),constraints + PureConstraint(v3, NotEquals, v4), Set())
-    val simplifyResult = statesolver.simplify(refutableState)
+    val simplifyResult = statesolver.simplify(refutableState,true,Some(0))
     assert(!simplifyResult.isDefined)
 
     // aliased with field aliased should be feasilbe
     val unrefutableState = State(List(frame),
       Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),constraints + PureConstraint(v3, Equals, v4), Set())
-    val simplifyResult2 = statesolver.simplify(unrefutableState)
+    val simplifyResult2 = statesolver.simplify(unrefutableState,true,Some(0))
     assert(simplifyResult2.isDefined)
   }
   test("aliased object implies fields must be aliased refuted by type constraints") {
@@ -122,7 +122,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val p1 = PureVar()
     val abs1 = AbsAnd(AbsFormula(niBarBaz), AbsEq("a",p1))
     val state1 = State(Nil, Map(),Set(), Set(abs1))
-    val res1 = statesolver.simplify(state1,true)
+    val res1 = statesolver.simplify(state1,true, Some(2))
     assert(res1.isDefined)
   }
   test("Trace abstraction NI(a.bar(), a.baz()) |> I(a.bar()) (<==>true)") {
