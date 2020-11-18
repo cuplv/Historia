@@ -9,7 +9,8 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, Qry
 case class SymbolicExecutorConfig[M,C](stepLimit: Option[Int],
                                        w :  IRWrapper[M,C],
                                        c : ControlFlowResolver[M,C],
-                                       transfer : TransferFunctions[M,C]
+                                       transfer : TransferFunctions[M,C],
+
                                       )
 class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   val ctx = new Context

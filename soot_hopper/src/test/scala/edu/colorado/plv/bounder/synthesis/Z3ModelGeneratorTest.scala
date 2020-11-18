@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.synthesis
 
 import edu.colorado.plv.bounder.ir.{CBEnter, CallbackMethodInvoke}
-import edu.colorado.plv.bounder.lifestate.LifeState.{AND, I, LSPred, NI, PredicateSpace}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSPred, NI, PredicateSpace}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, PureVar, SomeQry, StackVar, State}
 import edu.colorado.plv.bounder.testutils.TestIRMethodLoc
 
