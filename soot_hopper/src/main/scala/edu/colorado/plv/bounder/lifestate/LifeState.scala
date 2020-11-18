@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.MessageType
-import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, LSFalse, LSPred, LSSpec, LSTrue, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state.PureExpr
 
 object LifeState {
@@ -136,8 +136,42 @@ object LifeState {
 /**
  * Representation of a set of possible lifestate specs */
 class SpecSpace(specs: Set[LSSpec]) {
+  private def allI(pred:LSPred):Set[I] = pred match{
+    case i@I(_,_,_) => Set(i)
+    case NI(i1,i2) => Set(i1,i2)
+    case And(p1,p2) => allI(p1).union(allI(p2))
+    case Or(p1,p2) => allI(p1).union(allI(p2))
+    case Not(p) => allI(p)
+    case LSTrue => Set()
+    case LSFalse => Set()
+    case LSAbsBind(_,_) => Set()
+  }
+  private def allI(spec:LSSpec):Set[I] = spec match{
+    case LSSpec(pred, target) => allI(pred).union(allI(target))
+  }
+  val iset: Map[(MessageType, (String, String)), I] = specs.flatMap(allI).flatMap(i => i.signatures.map(j => ((i.mt,j),i))).toMap
+  private var freshLSVarIndex = 0
+  def nextFreshLSVar():String = {
+    val ind = freshLSVarIndex
+    freshLSVarIndex = freshLSVarIndex+1
+    s"LS_GENERATED__${ind}" //TODO: document somewhere that LS vars shouldn't look like this
+  }
+  //TODO: implement this,
+  /**
+   * For step back over a place where the code may emit a message find the applicable I and assign fresh ls vars.
+   * @param mt
+   * @param sig
+   * @return Some(I) if I exists, None otherwise
+   */
+  def getIWithFreshVars(mt: MessageType, sig: (String, String)):Option[I] = {
+    iset.get(mt,sig).map{i =>
+      i.copy(lsVars = i.lsVars.map(a => if(a != "_") nextFreshLSVar() else "_"))
+    }
+  }
+
   /**
    * Find a lifestate spec by
+   *
    * @param pkg
    * @param name
    * @return

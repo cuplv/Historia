@@ -1,11 +1,12 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, LSPred, LSSpec, LSTrue, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSAbsBind, LSPred, LSSpec, LSTrue, Or}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 
 class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
+
   /**
    *
    * @param pre state before current location
@@ -107,12 +108,14 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
   }
 
   /**
-   *
+   * Get input and output vars of executing part of the app responsible for an observed message
+   * TODO: currenlty only includes "this" should also include return vals and params
    * @param loc
-   * @return (pkg, function name, app vars from pre state used, app vars assigned by cmd
+   * @return (pkg, function name, app vars from pre state used, app vars assigned by cmd)
    */
   private def msgCmdToMsg(loc: Loc): (String, String, List[Option[LocalWrapper]], List[Option[LocalWrapper]]) = loc match {
-    case CallbackMethodReturn(pkg, name, _, None) => (pkg, name, List(None, Some(LocalWrapper("this",pkg))), List()) //TODO: first element return var
+    case CallbackMethodReturn(pkg, name, _, None) =>
+      (pkg, name, List(None, Some(LocalWrapper("this",pkg))), List(None))
     case CallbackMethodReturn(pkg, name, m, Some(l)) =>
       val retvar:Option[LocalWrapper] = w.cmdBeforeLocation(AppLoc(m,l,false)) match {
         case v =>
@@ -123,14 +126,34 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       ???
   }
 
-  def predTransferTrace(pred:LSPred, mt:MessageType,
-                        sig:(String,String), variables:List[Option[LocalWrapper]], postState:State):LSPred = pred match{
-    case i@I(mtp, sigset, vars) if sigset.contains(sig) && mtp == mt =>
-      Or(i, (variables zip vars).foldLeft(LSTrue:LSPred)((acc, v) => v match{
-        case (None,_) => acc
-        case (Some(sv),mv) => And(acc,LSAbsBind(mv, postState.getLocal(sv).get))
-      }))
-    case i@I(_,_,_) => i
+  /**
+   * Assume state is updated with appropriate vars
+   *
+   * @return
+   */
+  def predTransferTrace(pred:TraceAbstraction, mt:MessageType,
+                        sig:(String,String), invals:List[Option[PureVar]],
+                        outvals: List[Option[PureVar]]):TraceAbstraction = pred match{
+    case AbsAnd(lhs,rhs) =>
+      AbsAnd(predTransferTrace(lhs, mt, sig, invals, outvals), predTransferTrace(rhs, mt, sig, invals, outvals))
+    case AbsArrow(pred, m) => AbsArrow(predTransferTrace(pred,mt, sig, invals, outvals),m)
+    case eq@AbsEq(_,_) => eq
+    case f@AbsFormula(_) => {
+      specSpace.getIWithFreshVars(mt,sig).map( newi =>
+        // Add message before other arrows with assertions about the ls variables
+        newi.lsVars.zipWithIndex.foldLeft(AbsArrow(f, newi):TraceAbstraction) {
+          case (acc,(varname,varind)) if varname != "_" => {
+            val acc1: TraceAbstraction = invals(varind).map(v => AbsAnd(acc,AbsEq(varname,v))).getOrElse(acc)
+            if (outvals.size > varind) {
+              outvals(varind).map(v =>
+                AbsAnd(acc1, AbsEq(varname, v))).getOrElse(acc1)
+            }else acc1
+          }
+          case (acc,_) => acc
+        }
+      )
+    }.getOrElse(pred)
+
     case v =>
       println(v)
       ???
@@ -143,19 +166,24 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
   def tracePredTransfer(mt: MessageType,
                         sig:(String,String), invar:List[Option[LocalWrapper]], outvar:List[Option[LocalWrapper]],
                         postState: State):State = {
-    //TODO: you were here 11/9/20
-    // update state for
-    val newTraceAbs: Set[TraceAbstraction] = postState.traceAbstraction.map {
-      case _ => ??? //TODO: update
-    //  case TopTraceAbstraction => TopTraceAbstraction
-    //  case LSAbstraction(pred,bind) => {
-    //    val combvar = invar.zipAll(outvar,None,None)
-    //      .map( a => if(a._1 == None) a._2 else a._1)
-    //    LSAbstraction(predTransferTrace(pred, mt, sig, combvar, postState), bind)
-    //  }
-    //  case Reg(v) => ???
+    val (invals, preState) = invar.foldLeft((List[Option[PureVar]](), postState)){
+      case ((lpv,accSt), Some(local)) => {
+        val (pv,state) = accSt.getOrDefine(local)
+        (Some(pv)::lpv, state)
+      }
+      case ((lpv, accSt), None) => (None::lpv, accSt)
     }
-    postState.copy(traceAbstraction = newTraceAbs)
+    val outvals = outvar.map{
+      case Some(local) => postState.getLocal(local) match {
+        case Some(p@PureVar()) => Some(p)
+        case None => None
+      }
+      case None => None
+    }
+    val newTraceAbs: Set[TraceAbstraction] = postState.traceAbstraction.map {
+      traceAbs => predTransferTrace(traceAbs, mt, sig, invals, outvals)
+    }
+    preState.copy(traceAbstraction = newTraceAbs)
   }
   def cmdTransfer(cmd:CmdWrapper, state: State):Set[State] = (cmd,state) match{
     case (AssignCmd(LocalWrapper(name,_), NewCommand(className),_),
@@ -210,9 +238,4 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     case _ =>
       ???
   }
-  //def canAlias(tc:TypeConstraint, target: LVal):Boolean = (tc,target) match{
-  //  case (SubClassOf(pureTypeName),LocalWrapper(_,lvalType)) => w.canAlias(pureTypeName, lvalType)
-  //  case _ =>
-  //    ???
-  //}
 }

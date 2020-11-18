@@ -27,14 +27,9 @@ case class AbsAnd(t1 : TraceAbstraction, t2:TraceAbstraction) extends TraceAbstr
   override def toString:String = s"( ${t1} ) && ( ${t2} )"
 }
 case class AbsEq(lsVar : String, pureVar: PureVar) extends TraceAbstraction {
+  assert(lsVar != "_")
   override def toString:String = s"$lsVar = ${pureVar}"
 }
-
-//case class LSAbstraction(pred: LSPred, bind : Map[String, PureExpr]) extends TraceAbstraction {
-//  override def toString: String = s"[${pred.toString} , ${bind.toString}]"
-//}
-//case class Reg(v: PureVar) extends TraceAbstraction
-//case object TopTraceAbstraction extends TraceAbstraction
 
 case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdge, PureExpr],
                  pureFormula: Set[PureConstraint], traceAbstraction: Set[TraceAbstraction]) {
@@ -49,7 +44,7 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
     }
     val heapString = s"   heap: ${heapConstraints.map(a => a._1.toString + "->" +  a._2.toString).mkString(" * ")}"
     val pureFormulaString = "   pure: " + pureFormula.map(a => a.toString).mkString(" && ")
-    val traceString = s"   trace: ${traceAbstraction.mkString(" * ")}"
+    val traceString = s"   trace: ${traceAbstraction.mkString(" ; ")}"
     s"($stackString $heapString   $pureFormulaString $traceString)"
   }
   def simplify[T](solver : StateSolver[T]):Option[State] = {
