@@ -205,32 +205,43 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     }
     case AssignCmd(lhs:LocalWrapper, FieldRef(base, fieldtype, declType, fieldName), _) =>{
       //TODO: find a better way to structure this pyramid of doom
-      state.get(lhs) match{
-        case Some(lhsv) => {
-          state.get(base) match {
-            case Some(recv:PureVar) => {
-              val state3 = state.clearLVal(lhs)
-              state3.heapConstraints.get(FieldPtEdge(recv, fieldName)) match {
-                case Some(heaptgt) =>
-                  ???
-                case None =>
-                  ???
-              }
-            }
-            case None => {
-              val state2 = state.clearLVal(lhs)
-              // Define base of deref since it is not in the state already
-              val (recv,state3) = state2.getOrDefine(base)
-              // find heap cells that may alias
-              val possibleHeapCells = state3.heapConstraints.filter {
-                case (FieldPtEdge(pv, heapFieldName), pureExpr) => fieldName == heapFieldName
-              }
-              ???
-            }
-          }
+      (state.get(lhs), state.get(base)) match {
+        case (Some(lhsv),Some(recv)) =>{
+          val state2 = state.clearLVal(lhs)
+          ???
         }
-        case None => Set(state)
+        case (l,r) => {
+          println(l)
+          println(r)
+          ???
+        }
       }
+//      state.get(lhs) match{
+//        case Some(lhsv) => {
+//          state.get(base) match {
+//            case Some(recv:PureVar) => {
+//              val state3 = state.clearLVal(lhs)
+//              state3.heapConstraints.get(FieldPtEdge(recv, fieldName)) match {
+//                case Some(heaptgt) =>
+//                  ???
+//                case None =>
+//                  ???
+//              }
+//            }
+//            case None => {
+//              val state2 = state.clearLVal(lhs)
+//              // Define base of deref since it is not in the state already
+//              val (recv,state3) = state2.getOrDefine(base)
+//              // find heap cells that may alias
+//              val possibleHeapCells = state3.heapConstraints.filter {
+//                case (FieldPtEdge(pv, heapFieldName), pureExpr) => fieldName == heapFieldName
+//              }
+//              ???
+//            }
+//          }
+//        }
+//        case None => Set(state)
+//      }
     }
     case c =>
       println(c)

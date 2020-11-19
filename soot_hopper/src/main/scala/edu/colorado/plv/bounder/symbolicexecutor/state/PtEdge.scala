@@ -7,6 +7,5 @@ sealed trait HeapPtEdge
 case class FieldPtEdge(p:PureVar, fieldName:String) extends HeapPtEdge{
   override def toString:String = s"${p.toString}.${fieldName}"
 }
-//Note: these can contain
-//case class LocalPtEdge(src : StackVar, snk:Val) extends PtEdge
-
+case class StaticPtEdge(clazz: String, fieldName:String) extends HeapPtEdge
+//TODO: Array pt edge

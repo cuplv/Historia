@@ -36,7 +36,6 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val pc = new PersistantConstraints(ctx, solver, hierarchy)
     val statesolver = new Z3StateSolver(pc)
 
-    // aliased and contradictory nullness
     val v2 = PureVar()
     val v3 = PureVar()
     val constraints = Set(PureConstraint(v2, NotEquals, NullVal),
@@ -46,7 +45,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val simplifyResult = statesolver.simplify(refutableState,true,Some(0))
     assert(!simplifyResult.isDefined)
   }
-  test("aliased object implies fields must be aliased") {
+  test("Separate fields imply base must not be aliased a^.f->b^ * c^.f->b^ AND a^=c^ (<=> false)") {
     val ctx = new Context
     val solver: Solver = ctx.mkSolver()
     val hierarchy : Map[String, Set[String]] =
@@ -55,20 +54,17 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val pc = new PersistantConstraints(ctx, solver, hierarchy)
     val statesolver = new Z3StateSolver(pc)
 
-    // aliased but field is not aliased should be infeasible
     val v2 = PureVar()
     val v3 = PureVar()
     val v4 = PureVar()
-    val constraints = Set(
-      PureConstraint(v, Equals, v2))
     val refutableState = State(List(frame),
-      Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),constraints + PureConstraint(v3, NotEquals, v4), Set())
+      Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),Set(PureConstraint(v, Equals, v2)), Set())
     val simplifyResult = statesolver.simplify(refutableState,true,Some(0))
     assert(!simplifyResult.isDefined)
 
-    // aliased with field aliased should be feasilbe
+    // v3 and v4 on the right side of the points to can be aliased
     val unrefutableState = State(List(frame),
-      Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),constraints + PureConstraint(v3, Equals, v4), Set())
+      Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),Set(PureConstraint(v3, Equals, v4)), Set())
     val simplifyResult2 = statesolver.simplify(unrefutableState,true,Some(0))
     assert(simplifyResult2.isDefined)
   }
@@ -86,18 +82,18 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val v3 = PureVar()
     val v4 = PureVar()
     val constraints = Set(
-      PureConstraint(v, Equals, v2),
+      PureConstraint(v3, Equals, v4),
       PureConstraint(v3, TypeComp, SubclassOf("String")),
       PureConstraint(v4, TypeComp, SubclassOf("Foo"))
     )
     val refutableState = State(List(frame),
-      Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),constraints, Set())
+      Map(FieldPtEdge(v,"f") -> v3),constraints, Set())
     val simplifyResult = statesolver.simplify(refutableState)
     assert(!simplifyResult.isDefined)
 
     // aliased and consistent field type constraints
     val constraints2 = Set(
-      PureConstraint(v, Equals, v2),
+      PureConstraint(v3, Equals, v4),
       PureConstraint(v3, TypeComp, SubclassOf("String")),
       PureConstraint(v4, TypeComp, SubclassOf("Object"))
     )

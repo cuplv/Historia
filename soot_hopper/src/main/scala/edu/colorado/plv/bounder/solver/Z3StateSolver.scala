@@ -237,4 +237,8 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
 
   override protected def mkArgConstraint(argFun: AST, argIndex: AST, msg: AST): AST =
     argFun.asInstanceOf[FuncDecl].apply(argIndex.asInstanceOf[Expr], msg.asInstanceOf[Expr])
+
+  override protected def mkDistinct(pvList: Iterable[PureVar]): AST = {
+    ctx.mkDistinct(pvList.map(a => mkObjVar(a).asInstanceOf[Expr]).toArray:_*)
+  }
 }

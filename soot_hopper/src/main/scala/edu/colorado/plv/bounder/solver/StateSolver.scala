@@ -5,6 +5,7 @@ import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, LSAtom, LSFalse, LSPred, LSTrue, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 
+import scala.collection.immutable
 import scala.reflect.ClassTag
 
 trait Assumptions
@@ -222,6 +223,8 @@ trait StateSolver[T] {
     ienc(len, abs)
   }
 
+  protected def mkDistinct(pvList: Iterable[PureVar]): T
+
   def toAST(state: State, enum:T, iNameIntMap:Map[String,Int], maxWitness:Option[Int]): T = {
     // TODO: make all variables in this encoding unique from other states so multiple states can be run at once
     // TODO: add ls constraints to state
@@ -238,19 +241,15 @@ trait StateSolver[T] {
       mkAnd(acc, toAST(v, typeFun))
     )
 
-    // Non static fields are modeled by a function from int to int.
-    // A function is created for each fieldname.
-    // For a constraint a^.f -> b^, it is asserted that field_f(a^) == b^
+    // The only constraint we get from the heap is that domain elements must be distinct
+    // e.g. a^.f -> b^ * c^.f->d^ means a^ != c^
+    // alternatively a^.f ->b^ * c^.g->d^ does not mean a^!=c^
     val fields = heap.groupBy({ case (FieldPtEdge(_, fieldName), _) => fieldName })
-    val heapAst = fields.foldLeft(mkBoolVal(true)) {
-      case (acc, (field, heapConstraints)) => {
-        val fieldFun = mkFieldFun(s"field_${field}")
-        heapConstraints.foldLeft(acc) {
-          case (acc, (FieldPtEdge(p, _), tgt)) =>
-            mkAnd(acc, fieldEquals(fieldFun, toAST(p), toAST(tgt)))
-        }
-      }
+    val heapAst = fields.foldLeft(mkBoolVal(true)){(acc,v) =>
+      val pvList = v._2.map{case (FieldPtEdge(pv, _), _) => pv}
+      mkAnd(acc, mkDistinct(pvList))
     }
+
     val trace = state.traceAbstraction.foldLeft(mkBoolVal(true)) {
       case (acc,v) => mkAnd(acc, encodeTraceAbs(v, enum, iNameIntMap,maxWitness))
     }
