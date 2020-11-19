@@ -28,6 +28,8 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
       heapConstraints = Map(),
       pureFormula = Set(PureConstraint(nullPv,Equals, NullVal)), Set())
     val prestate: Set[State] = tr.transfer(post,preloc, postloc)
+    println(s"poststate: $post")
+    println(s"prestate: ${prestate}")
     assert(prestate.size == 1)
     val formula = prestate.head.pureFormula
     assert(formula.contains(PureConstraint(nullPv,Equals, NullVal)))

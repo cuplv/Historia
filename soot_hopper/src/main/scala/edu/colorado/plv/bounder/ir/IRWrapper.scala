@@ -60,6 +60,7 @@ case class InvokeCmd(method: Invoke, loc:AppLoc) extends CmdWrapper(loc)
 trait RVal
 // New only has type, constructor parameters go to the <init> method
 case class NewCommand(className: String) extends RVal
+case object NullConst extends RVal
 
 sealed trait Invoke extends RVal {
   def targetClass:String

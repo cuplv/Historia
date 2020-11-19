@@ -91,18 +91,25 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
   def contains(p:PureVar):Boolean = {
      callStackContains(p) || heapContains(p) || pureFormulaContains(p) || traceAbstractionContains(p)
   }
-  def getLocal(l:LVal):Option[PureExpr] = l match {
+  // If an RVal exists in the state, get it
+  // for a field ref, e.g. x.f if x doesn't exist, create x
+  // if x.f doesn't exist and x does
+  def get(l:RVal):Option[PureExpr] = l match {
     case LocalWrapper(name,localType) => {
       callStack match{
         case CallStackFrame(_,_,locals)::_ => locals.get(StackVar(name))
         case Nil => None
       }
     }
-    case _ => ???
+    case l =>
+      println(l)
+      ???
   }
   // TODO: rename getOrDefineClass
-  def getOrDefine(l : LVal): (PureVar,State) = (l,callStack) match{
-    case (LocalWrapper(name,localType), cshead::cstail) =>
+  def getOrDefine(l : LVal): (PureVar,State) = l match{
+    case LocalWrapper(name,localType) =>
+      val cshead = callStack.headOption.getOrElse(???) //TODO: add new stack frame if empty?
+      val cstail = if (callStack.isEmpty) Nil else callStack.tail
       cshead.locals.get(StackVar(name)) match {
         case Some(v@PureVar()) => (v, this)
         case None => val newident = PureVar();
@@ -133,9 +140,6 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
     ???
   }
 
-  def addHeapEdge(fr:FieldRef, pv:PureVar): State = {
-    ???
-  }
   def pureVars():Set[PureVar] = {
     val pureVarOpt = (a:PureExpr) => a match {
       case p: PureVar => Some(p)

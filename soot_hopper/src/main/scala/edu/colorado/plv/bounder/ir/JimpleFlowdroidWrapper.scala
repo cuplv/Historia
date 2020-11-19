@@ -3,9 +3,9 @@ package edu.colorado.plv.bounder.ir
 import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.symbolicexecutor.state.TypeConstraint
 import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
-import soot.jimple.ThisRef
+import soot.jimple.{NullConstant, ThisRef}
 import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceFieldRef, AbstractInstanceInvokeExpr, AbstractNewExpr, JAssignStmt, JIdentityStmt, JInvokeStmt, JReturnStmt, JReturnVoidStmt, JSpecialInvokeExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
-import soot.{Body, Hierarchy, Scene, SootClass, SootMethod, Type, Value}
+import soot.{Body, Hierarchy, Scene, SootClass, SootMethod, Type, Value, VoidType}
 
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
@@ -138,6 +138,7 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
       NewCommand(className)
     }
     case t:ThisRef => ThisWrapper(t.getType.toString)
+    case _:NullConstant => NullConst
     case _ =>
       ???
   }
@@ -263,5 +264,10 @@ case class JimpleMethodLoc(method: SootMethod) extends MethodLoc {
 }
 case class JimpleLineLoc(cmd: soot.Unit, method: SootMethod) extends LineLoc{
   override def toString: String = cmd.toString
+  def returnTypeIfReturn :Option[String] = cmd match{
+    case cmd :JReturnVoidStmt => Some("void")
+    case _ =>
+      ???
+  }
 }
 
