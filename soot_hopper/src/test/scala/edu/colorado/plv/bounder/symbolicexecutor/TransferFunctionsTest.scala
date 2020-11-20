@@ -82,6 +82,5 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
     println(s"post: ${prestate.toString}")
     val formula = prestate.head.traceAbstraction
     assert(formula.exists(p => absContains(AbsEq("a",recPv),p)))
-
   }
 }

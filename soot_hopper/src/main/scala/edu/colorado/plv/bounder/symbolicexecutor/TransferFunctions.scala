@@ -181,6 +181,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
 
   def cmdTransfer(cmd:CmdWrapper, state:State):Set[State] = cmd match{
     case AssignCmd(lhs@LocalWrapper(_, _), NewCommand(className),_) => {
+      // x = new T
       Set(state.get(lhs) match {
         case Some(v) => state
           .clearLVal(lhs)
@@ -194,6 +195,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     case AssignCmd(lw: LocalWrapper, ThisWrapper(thisTypename),a) =>
       cmdTransfer(AssignCmd(lw, LocalWrapper("this", thisTypename),a),state)
     case AssignCmd(lhs: LocalWrapper,rhs:LocalWrapper,_) => { //
+      // x = y
       val lhsv = state.get(lhs) // Find what lhs pointed to if anything
       lhsv.flatMap(pexpr =>{
         // remove lhs from abstract state (since it is assigned here)
@@ -204,44 +206,35 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       }).map(Set(_)).getOrElse(Set(state))
     }
     case AssignCmd(lhs:LocalWrapper, FieldRef(base, fieldtype, declType, fieldName), _) =>{
+      // x = y.f
       //TODO: find a better way to structure this pyramid of doom
       (state.get(lhs), state.get(base)) match {
-        case (Some(lhsv),Some(recv)) =>{
+        case (None,_) => Set(state)
+        case (Some(lhsv),Some(recv:PureVar)) =>{
+          // Field ref base is in abstract state
           val state2 = state.clearLVal(lhs)
-          ???
+          state2.heapConstraints.get(FieldPtEdge(recv, fieldName)).map( a=>
+            Set(state2.copy(pureFormula = state2.pureFormula + PureConstraint(lhsv, Equals, a))))
+            .getOrElse(Set(state2))
         }
-        case (l,r) => {
-          println(l)
-          println(r)
-          ???
+        case (Some(lhsv), None) => {
+          // Field ref base is not in abstract state
+          val state2 = state.clearLVal(lhs)
+          val possibleHeapCells: Map[HeapPtEdge, PureExpr] = state2.heapConstraints.filter {
+            case (FieldPtEdge(pv, heapFieldName), pureExpr) => fieldName == heapFieldName
+          } + (FieldPtEdge(PureVar(), fieldName) -> lhsv)
+          val (basev,state3) = state.getOrDefine(base)
+          possibleHeapCells.map{ case (FieldPtEdge(p,n), pexp) =>
+            state3.copy(pureFormula = state3.pureFormula +
+              PureConstraint(basev, Equals, p) + PureConstraint(basev, TypeComp, SubclassOf(base.localType)) +
+              PureConstraint(lhsv, Equals, pexp))
+          }.toSet
         }
       }
-//      state.get(lhs) match{
-//        case Some(lhsv) => {
-//          state.get(base) match {
-//            case Some(recv:PureVar) => {
-//              val state3 = state.clearLVal(lhs)
-//              state3.heapConstraints.get(FieldPtEdge(recv, fieldName)) match {
-//                case Some(heaptgt) =>
-//                  ???
-//                case None =>
-//                  ???
-//              }
-//            }
-//            case None => {
-//              val state2 = state.clearLVal(lhs)
-//              // Define base of deref since it is not in the state already
-//              val (recv,state3) = state2.getOrDefine(base)
-//              // find heap cells that may alias
-//              val possibleHeapCells = state3.heapConstraints.filter {
-//                case (FieldPtEdge(pv, heapFieldName), pureExpr) => fieldName == heapFieldName
-//              }
-//              ???
-//            }
-//          }
-//        }
-//        case None => Set(state)
-//      }
+    }
+    case AssignCmd(FieldRef(base, fieldType, declType,name), rhs:LocalWrapper, _) => {
+      // x.f = y
+      ???
     }
     case c =>
       println(c)
