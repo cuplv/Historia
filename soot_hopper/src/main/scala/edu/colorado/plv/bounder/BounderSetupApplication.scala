@@ -62,7 +62,7 @@ object BounderSetupApplication {
     ???
   }
 
-  def loadApk(path:String) : Unit = {
+  def loadApk(path:String, generateFlowdroidCallGraph:Boolean = false) : Unit = {
     // Create call graph and pointer analysis with flowdroid main method
     val config = new InfoflowAndroidConfiguration
     val platformsDir = androidHome + "/platforms"
@@ -73,10 +73,10 @@ object BounderSetupApplication {
     G.reset()
 //    setup.initializeSoot()
 
-    // Hacky way of setting up call graph without running flowdroid
+    // Use flowdroid definition of callbacks
     val setupApplicationClass =
       Class.forName("soot.jimple.infoflow.android.SetupApplication")
-    List("initializeSoot","parseAppResources").foreach(methodname => {
+    List("initializeSoot", "parseAppResources").foreach(methodname => {
       val method = setupApplicationClass.getDeclaredMethod(methodname)
       method.setAccessible(true)
       method.invoke(setup)
@@ -84,19 +84,22 @@ object BounderSetupApplication {
     Options.v.set_keep_line_number(true)
     val ssp = Class.forName("soot.jimple.infoflow.sourcesSinks.definitions.ISourceSinkDefinitionProvider")
     val calculateCallbacks =
-      setupApplicationClass.getDeclaredMethod("calculateCallbacks",ssp)
+      setupApplicationClass.getDeclaredMethod("calculateCallbacks", ssp)
     calculateCallbacks.setAccessible(true)
-    calculateCallbacks.invoke(setup,null)
+    calculateCallbacks.invoke(setup, null)
     val scc = Class.forName("soot.SootClass")
     val createMainMethod =
       setupApplicationClass.getDeclaredMethod("createMainMethod", scc)
     createMainMethod.setAccessible(true)
-    createMainMethod.invoke(setup,null)
+    createMainMethod.invoke(setup, null)
 
-    val constructCg =
-      setupApplicationClass.getDeclaredMethod("constructCallgraphInternal")
-    constructCg.setAccessible(true)
-    constructCg.invoke(setup)
+    // Hacky way of setting up call graph without running flowdroid
+    if(generateFlowdroidCallGraph) {
+      val constructCg =
+        setupApplicationClass.getDeclaredMethod("constructCallgraphInternal")
+      constructCg.setAccessible(true)
+      constructCg.invoke(setup)
+    }
   }
   def loadApkOld(path : String): Unit = {
     G.reset()

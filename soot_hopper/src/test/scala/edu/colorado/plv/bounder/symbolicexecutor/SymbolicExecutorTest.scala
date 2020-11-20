@@ -30,7 +30,6 @@ class SymbolicExecutorTest extends org.scalatest.FunSuite {
     assert(result.iterator.next.qry.isInstanceOf[BottomQry])
   }
 
-  // TODO: interproc not working yet
   test("Symbolic Executor should prove an inter-callback deref"){
     println("======= Interproc ======")
     val test_interproc_1 = getClass.getResource("/test_interproc_2.apk").getPath()
