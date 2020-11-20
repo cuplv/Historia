@@ -117,7 +117,6 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
           (newident, State(
             callStack = cshead.copy(locals = cshead.locals + (StackVar(name) -> newident)) :: cstail,
             heapConstraints,
-//            typeConstraints + (newident -> TypeConstraint.fromLocalType(localType)),
             pureFormula + PureConstraint(newident, TypeComp, SubclassOf(localType)),
             traceAbstraction // TODO: reg purevar
           ))
@@ -191,7 +190,7 @@ case object NotEquals extends CmpOp{
   override def toString:String = " != "
 }
 case object TypeComp extends CmpOp{
-  override def toString:String = " : "
+  override def toString:String = ""
 }
 
 case class PureConstraint(lhs:PureExpr, op: CmpOp, rhs:PureExpr) {
@@ -234,10 +233,14 @@ case object NullVal extends PureVal{
 }
 //TODO: do we need type constraints here?
 sealed trait TypeConstraint extends PureVal
-case class SubclassOf(clazz: String) extends TypeConstraint
-case class SuperclassOf(clazz:String) extends TypeConstraint
+case class SubclassOf(clazz: String) extends TypeConstraint{
+  override def toString:String = s"<: $clazz"
+}
+case class SuperclassOf(clazz:String) extends TypeConstraint {
+  override def toString:String = s">: $clazz"
+}
 case class ClassType(typ:String) extends TypeConstraint {
-  override def toString:String = s"ClassIs($typ)"
+  override def toString:String = s": $typ"
 }
 
 // pure var is a symbolic var (e.g. this^ from the paper)

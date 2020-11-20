@@ -197,12 +197,11 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     case AssignCmd(lhs: LocalWrapper,rhs:LocalWrapper,_) => { //
       // x = y
       val lhsv = state.get(lhs) // Find what lhs pointed to if anything
-      lhsv.flatMap(pexpr =>{
+      lhsv.map(pexpr =>{
         // remove lhs from abstract state (since it is assigned here)
         val state2 = state.clearLVal(lhs)
-        state2.get(rhs).map(rexpr =>
-          state2.copy(pureFormula = state2.pureFormula + PureConstraint(pexpr, Equals, rexpr))
-        )
+        val (rhsv, state3) = state2.getOrDefine(rhs)
+        state3.copy(pureFormula = state3.pureFormula + PureConstraint(pexpr, Equals, rhsv))
       }).map(Set(_)).getOrElse(Set(state))
     }
     case AssignCmd(lhs:LocalWrapper, FieldRef(base, fieldtype, declType, fieldName), _) =>{
@@ -255,61 +254,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     }
     case c =>
       println(c)
-      ???
-  }
-  //TODO: structure assign operation better, split into
-  // remove lhs from state and store thing that it points to
-  // add assertion that thing on rhs is equal to what lhs pointed to
-  def cmdTransferOld(cmd:CmdWrapper, state: State):Set[State] = (cmd,state) match{
-    case (AssignCmd(LocalWrapper(name,_), NewCommand(className),_),
-        s@State(stack@f::_,heap,pureFormula, reg)) =>
-      f.locals.get(StackVar(name)) match{
-        case Some(purevar: PureVar) =>
-          val tconstraint = PureConstraint(purevar, TypeComp, ClassType(className))
-          val constraint = PureConstraint(purevar, NotEquals, NullVal)
-          val newpf = pureFormula + tconstraint + constraint
-          // TODO: check no fields are required to be non null
-          Set(State(stack,heap, newpf, reg))
-        case None =>
-          //TODO: Alias Case Split
-          ???
-        case c =>
-          println(c)
-          throw new IllegalStateException("Assign object to primitive")
-      }
-    case (AssignCmd(target, FieldRef(base, containsType, declType, name),_), s) =>{
-      if(s.get(target).isDefined) {
-        val (tgtval, s1) = s.getOrDefine(target)
-        if(s.get(base).isDefined){
-          ??? // no alias between vars possible
-        }else{
-          // Case split between aliased or not aliased
-          val possibleBaseAliases: Set[PureVar] = s.pureVars()
-            .filter(!s.isNull(_))
-            .filter(a => ???) //TODO: use canAlias from IR
-          //TODO: swap pure vars types
-          val aliasSets: Set[State] = possibleBaseAliases.map(pv => ???)
-          val (basePure, s2) = s1.getOrDefine(base)
-          if(! basePure.isInstanceOf[PureVar]) throw new IllegalStateException(s"Assign to non object purevar.")
-          aliasSets + s2.copy(heapConstraints = s2.heapConstraints +
-            (FieldPtEdge(basePure.asInstanceOf[PureVar],name)-> tgtval)).clearLVal(target)
-        }
-      }else{
-        Set(s) // No change to state if assignment doesn't affect anything in current state
-      }
-    }
-    case (AssignCmd(target:LocalWrapper, LocalWrapper(name, localType),_),s@State(f::t,_,_,_)) => {
-      f.locals.get(StackVar(target.name)) match {
-        case Some(v) =>
-          val (pval,s1) = s.getOrDefine(target)
-          val s2 = s1.clearLVal(target).copy(pureFormula =
-            s1.pureFormula + PureConstraint(pval, TypeComp, SubclassOf(localType)))
-          Set(s2.copy(callStack = f.copy(locals=f.locals + (StackVar(name) -> pval))::t))
-        case None => Set(s)
-      }
-    }
-    case other =>
-      println(other)
       ???
   }
 }

@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CBExit, CallbackMethodInvoke, CallbackMethodReturn, LocalWrapper, NewCommand}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CBExit, CallbackMethodInvoke, CallbackMethodReturn, CmdWrapper, Loc, LocalWrapper, NewCommand}
 import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSSpec}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbsAnd, AbsArrow, AbsEq, AbsFormula, CallStackFrame, Equals, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, TraceAbstraction}
@@ -15,25 +15,46 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
     case AbsArrow(p,_) => absContains(contained,p)
     case _ => ???
   }
-  test("Transfer assign local") {
-    val fooMethod = TestIRMethodLoc("foo")
-    val preloc = AppLoc(fooMethod,TestIRLineLoc(1), isPre=true)
-    val postloc = AppLoc(fooMethod,TestIRLineLoc(1), isPre=false)
-    val cmd = AssignCmd(LocalWrapper("bar",""),NewCommand(""),postloc)
-    val ir = new TestIR(Set(CmdTransition(preloc, cmd, postloc)))
+  def testCmdTransfer(cmd:AppLoc => CmdWrapper, post:State, testIRMethod: TestIRMethodLoc):Set[State] = {
+    val preloc = AppLoc(testIRMethod,TestIRLineLoc(1), isPre=true)
+    val postloc = AppLoc(testIRMethod,TestIRLineLoc(1), isPre=false)
+    val ir = new TestIR(Set(CmdTransition(preloc, cmd(postloc), postloc)))
     val tr = new TransferFunctions(ir, new SpecSpace(Set()))
+    tr.transfer(post,preloc, postloc)
+  }
+  test("Transfer assign new local") {
+    val cmd= (loc:AppLoc) => AssignCmd(LocalWrapper("bar","Object"),NewCommand("String"),loc)
+    val fooMethod = TestIRMethodLoc("foo")
     val nullPv = PureVar()
     val post = State(
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("bar") -> nullPv))::Nil,
       heapConstraints = Map(),
       pureFormula = Set(PureConstraint(nullPv,Equals, NullVal)), Set())
-    val prestate: Set[State] = tr.transfer(post,preloc, postloc)
+    val prestate: Set[State] = testCmdTransfer(cmd, post,fooMethod)
     println(s"poststate: $post")
     println(s"prestate: ${prestate}")
     assert(prestate.size == 1)
     val formula = prestate.head.pureFormula
     assert(formula.contains(PureConstraint(nullPv,Equals, NullVal)))
     assert(formula.contains(PureConstraint(nullPv,NotEquals, NullVal)))
+  }
+  test("Transfer assign local local") {
+    val cmd= (loc:AppLoc) => AssignCmd(LocalWrapper("bar","Object"),LocalWrapper("baz","String"),loc)
+    val fooMethod = TestIRMethodLoc("foo")
+    val nullPv = PureVar()
+    val post = State(
+      CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("bar") -> nullPv))::Nil,
+      heapConstraints = Map(),
+      pureFormula = Set(PureConstraint(nullPv,Equals, NullVal)), Set())
+    val prestate: Set[State] = testCmdTransfer(cmd, post,fooMethod)
+    println(s"poststate: $post")
+    println(s"prestate: ${prestate}")
+    assert(prestate.size == 1)
+    val formula = prestate.head.pureFormula
+    assert(formula.contains(PureConstraint(nullPv,Equals, NullVal)))
+    assert(prestate.head.callStack.head.locals.contains(StackVar("baz")))
+    assert(!prestate.head.callStack.head.locals.contains(StackVar("bar")))
+//    assert(formula.contains(PureConstraint(nullPv,NotEquals, NullVal)))
   }
   private val iFooA: I = I(CBEnter, Set(("", "foo")), "_" :: "a" :: Nil)
   test("Add matcher and phi abstraction when crossing callback entry") {
