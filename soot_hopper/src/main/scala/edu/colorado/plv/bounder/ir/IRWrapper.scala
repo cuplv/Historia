@@ -61,11 +61,13 @@ trait RVal
 // New only has type, constructor parameters go to the <init> method
 case class NewCommand(className: String) extends RVal
 case object NullConst extends RVal
+case class IntConst(v:Int) extends RVal
+case class StringConst(v:String) extends RVal
 
 sealed trait Invoke extends RVal {
   def targetClass:String
   def targetMethod:String
-  def params:List[LocalWrapper]
+  def params:List[RVal]
   def targetOptional: Option[LocalWrapper]
   def receiverType:String =
     ???
@@ -76,19 +78,19 @@ sealed trait Invoke extends RVal {
 case class VirtualInvoke(target:LocalWrapper,
                          targetClass:String,
                          targetMethod:String,
-                         params:List[LocalWrapper]) extends Invoke {
+                         params:List[RVal]) extends Invoke {
   override def targetOptional: Option[LocalWrapper] = Some(target)
 }
 /*SpecialInvoke is used when the exact class target is known*/
 case class SpecialInvoke(target:LocalWrapper,
                          targetClass:String,
                          targetMethod:String,
-                         params:List[LocalWrapper]) extends Invoke {
+                         params:List[RVal]) extends Invoke {
   override def targetOptional: Option[LocalWrapper] = Some(target)
 }
 case class StaticInvoke(targetClass:String,
                         targetMethod:String,
-                        params:List[LocalWrapper])extends Invoke {
+                        params:List[RVal])extends Invoke {
   override def targetOptional: Option[LocalWrapper] = None
 }
 

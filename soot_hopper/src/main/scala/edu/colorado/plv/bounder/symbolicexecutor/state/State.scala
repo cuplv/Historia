@@ -112,12 +112,14 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
       val cstail = if (callStack.isEmpty) Nil else callStack.tail
       cshead.locals.get(StackVar(name)) match {
         case Some(v@PureVar()) => (v, this)
-        case None => val newident = PureVar();
+        case None =>
+          val newident = PureVar()
           (newident, State(
             callStack = cshead.copy(locals = cshead.locals + (StackVar(name) -> newident)) :: cstail,
             heapConstraints,
 //            typeConstraints + (newident -> TypeConstraint.fromLocalType(localType)),
-            pureFormula,traceAbstraction // TODO: reg purevar
+            pureFormula + PureConstraint(newident, TypeComp, SubclassOf(localType)),
+            traceAbstraction // TODO: reg purevar
           ))
       }
     case _ =>

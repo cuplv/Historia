@@ -3,8 +3,8 @@ package edu.colorado.plv.bounder.ir
 import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.symbolicexecutor.state.TypeConstraint
 import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
-import soot.jimple.{NullConstant, ThisRef}
-import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceFieldRef, AbstractInstanceInvokeExpr, AbstractNewExpr, JAssignStmt, JIdentityStmt, JInvokeStmt, JReturnStmt, JReturnVoidStmt, JSpecialInvokeExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
+import soot.jimple.{IntConstant, NullConstant, StringConstant, ThisRef}
+import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceFieldRef, AbstractInstanceInvokeExpr, AbstractNewExpr, AbstractStaticInvokeExpr, JAssignStmt, JIdentityStmt, JInvokeStmt, JReturnStmt, JReturnVoidStmt, JSpecialInvokeExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
 import soot.{Body, Hierarchy, Scene, SootClass, SootMethod, Type, Value, VoidType}
 
 import scala.collection.mutable
@@ -126,12 +126,22 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
       }
       val targetClass = a.getMethodRef.getDeclaringClass.getName
       val targetMethod = a.getMethodRef.getSignature
-      val params: List[LocalWrapper] = (0 until a.getArgCount()).map(argPos => ???).toList //TODO: implement parameters
+      val params: List[RVal] = (0 until a.getArgCount()).map(argPos =>
+        makeVal(a.getArg(argPos))
+      ).toList
       a match{
         case _:JVirtualInvokeExpr => VirtualInvoke(target, targetClass, targetMethod, params)
         case _:JSpecialInvokeExpr => SpecialInvoke(target,targetClass, targetMethod, params)
         case _ => ???
       }
+    }
+    case a : AbstractStaticInvokeExpr => {
+      val params: List[RVal] = (0 until a.getArgCount()).map(argPos =>
+        makeVal(a.getArg(argPos))
+      ).toList
+      val targetClass = a.getMethodRef.getDeclaringClass.getName
+      val targetMethod = a.getMethodRef.getSignature
+      StaticInvoke(targetClass, targetMethod, params)
     }
     case n : AbstractNewExpr => {
       val className = n.getType.toString
@@ -139,7 +149,10 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
     }
     case t:ThisRef => ThisWrapper(t.getType.toString)
     case _:NullConstant => NullConst
-    case _ =>
+    case v:IntConstant => IntConst(v.value)
+    case v:StringConstant => StringConst(v.value)
+    case v =>
+      println(v)
       ???
   }
 

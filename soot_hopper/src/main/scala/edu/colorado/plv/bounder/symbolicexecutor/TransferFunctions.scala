@@ -232,8 +232,25 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         }
       }
     }
-    case AssignCmd(FieldRef(base, fieldType, declType,name), rhs:LocalWrapper, _) => {
-      // x.f = y
+    case AssignCmd(FieldRef(base, fieldType, declType,fieldName), rhs, _) => {
+      val possibleHeapCells = state.heapConstraints.filter {
+        case (FieldPtEdge(pv, heapFieldName), _) => fieldName == heapFieldName
+      }
+      val (rhsv,state2) = rhs match{
+        case NullConst => (NullVal,state)
+        case lw@LocalWrapper(_,_) => state.getOrDefine(lw)
+      }
+      val (basev,state3) = state2.getOrDefine(base)
+
+      possibleHeapCells.map{
+        case (pte@FieldPtEdge(heapPv, fieldName), tgt) =>
+          state3.copy(heapConstraints = state3.heapConstraints - pte,
+            pureFormula = state3.pureFormula + PureConstraint(basev, Equals, tgt))
+      }.toSet
+    }
+    case AssignCmd(FieldRef(base,_,_,name), NullConst,_) => {
+      val (basev, state2) = state.getOrDefine(base)
+
       ???
     }
     case c =>
