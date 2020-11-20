@@ -62,7 +62,8 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
         val newStates = config.transfer.transfer(state,l,loc)
         newStates.map(state => state.simplify(stateSolver) match {
           case Some(state) => SomeQry(state, l)
-          case None => BottomQry(l)
+          case None =>
+            BottomQry(l)
         })
 //          if(state.isFeasible) SomeQry(state,l) else BottomQry(l))
       }).toSet

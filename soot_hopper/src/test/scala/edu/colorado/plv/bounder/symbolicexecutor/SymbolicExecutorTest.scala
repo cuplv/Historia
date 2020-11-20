@@ -38,11 +38,11 @@ class SymbolicExecutorTest extends org.scalatest.FunSuite {
     val w = new JimpleFlowdroidWrapper(test_interproc_1)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
     val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
-    val testSpec = LSSpec(NI(TestSignatures.Activity_onResume_entry, TestSignatures.Activity_onPause_entry),
+    val testSpec = LSSpec(NI(TestSignatures.Activity_onResume_entry, TestSignatures.Activity_onPause_exit),
       TestSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set(testSpec)))
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(10), w,resolver,transfer)
+      stepLimit = Some(15), w,resolver,transfer)
     val query = Qry.makeReceiverNonNull(config, w,
       "com.example.test_interproc_2.MainActivity",
       "void onPause()",27)

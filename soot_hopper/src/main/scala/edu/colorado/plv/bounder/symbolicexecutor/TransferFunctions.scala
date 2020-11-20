@@ -224,10 +224,10 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
             case (FieldPtEdge(pv, heapFieldName), pureExpr) => fieldName == heapFieldName
           } + (FieldPtEdge(PureVar(), fieldName) -> lhsv)
           val (basev,state3) = state.getOrDefine(base)
-          possibleHeapCells.map{ case (FieldPtEdge(p,n), pexp) =>
+          possibleHeapCells.map{ case (fpte@FieldPtEdge(p,n), pexp) =>
             state3.copy(pureFormula = state3.pureFormula +
               PureConstraint(basev, Equals, p) + PureConstraint(basev, TypeComp, SubclassOf(base.localType)) +
-              PureConstraint(lhsv, Equals, pexp))
+              PureConstraint(lhsv, Equals, pexp), heapConstraints = state3.heapConstraints + (fpte->pexp))
           }.toSet
         }
       }
@@ -236,7 +236,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       val possibleHeapCells = state.heapConstraints.filter {
         case (FieldPtEdge(pv, heapFieldName), _) => fieldName == heapFieldName
       }
-      val (rhsv,state2) = rhs match{
+      val (rhsv,state2) = rhs match{ //TODO: seems like rhsv should be used?
         case NullConst => (NullVal,state)
         case lw@LocalWrapper(_,_) => state.getOrDefine(lw)
       }

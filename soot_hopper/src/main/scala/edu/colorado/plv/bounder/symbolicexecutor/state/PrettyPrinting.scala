@@ -24,6 +24,7 @@ object PrettyPrinting {
         .replace(">","\\>")
         .replace("<","\\<")
         .replace("-","\\-")
+        .replace("\"","\\\"")
       val nextProcNodes = procNodes + s"""n${System.identityHashCode(cur)} [label="${curString}"]"""
       val nextProcEdges = cur.succ match {
         case Some(v) => procEdges + s"""n${System.identityHashCode(cur)} -> n${System.identityHashCode(v)}"""

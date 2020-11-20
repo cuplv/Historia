@@ -41,7 +41,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
       val callbacks = resolver.getCallbacks
       callbacks.flatMap(callback => {
         val locCb = wrapper.makeMethodRetuns(callback)
-        locCb.map{case AppLoc(method,line,isPre) => CallbackMethodReturn(method.classType,fmwName, callback,Some(line))}
+        locCb.map{case AppLoc(method,line,isPre) => CallbackMethodReturn(method.classType,method.simpleName, callback,Some(line))}
       }).toList
     case (CallbackMethodReturn(fmwClazz,fmwName, loc, Some(line)),_) => AppLoc(loc, line, true)::Nil
     case _ =>
