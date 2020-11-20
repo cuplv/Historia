@@ -38,7 +38,7 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
       case Some(sf) => {
 
         val locals: Map[StackVar, PureExpr] = sf.locals
-        sf.methodLoc.toString() + " locals: " + locals.map(k => k._1.toString + " -> " + k._2.toString).mkString(",")
+        s"stack: ${callStack.map(f => f.methodLoc.msgSig.getOrElse("")).mkString(";")} locals: " + locals.map(k => k._1.toString + " -> " + k._2.toString).mkString(",")
       }
       case None => "[nc]"
     }

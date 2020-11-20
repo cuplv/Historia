@@ -4,7 +4,7 @@ import edu.colorado.plv.bounder.{BounderSetupApplication, TestSignatures}
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, JimpleFlowdroidWrapper, JimpleMethodLoc, LineLoc, Loc, LocalWrapper, VirtualInvoke}
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NI}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, PureVar, Qry, StackVar}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, PrettyPrinting, PureVar, Qry, StackVar}
 import soot.SootMethod
 
 class SymbolicExecutorTest extends org.scalatest.FunSuite {
@@ -42,12 +42,13 @@ class SymbolicExecutorTest extends org.scalatest.FunSuite {
       TestSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set(testSpec)))
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(20), w,resolver,transfer)
+      stepLimit = Some(10), w,resolver,transfer)
     val query = Qry.makeReceiverNonNull(config, w,
       "com.example.test_interproc_2.MainActivity",
       "void onPause()",27)
     val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
-    val result = symbolicExecutor.executeBackward(query)
+    val result: Set[PathNode] = symbolicExecutor.executeBackward(query)
+    PrettyPrinting.dotWitTree(result, "/Users/shawnmeier/Desktop/foo.dot")
     println(result)
     println()
   }
