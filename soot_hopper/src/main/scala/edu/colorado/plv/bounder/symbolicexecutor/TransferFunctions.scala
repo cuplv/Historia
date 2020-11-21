@@ -109,6 +109,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
    * @return (pkg, function name, app vars from pre state used, app vars assigned by cmd)
    */
   private def msgCmdToMsg(loc: Loc): (String, String, List[Option[LocalWrapper]], List[Option[LocalWrapper]]) = loc match {
+      //TODO: this should return fmw type not specific type
     case CallbackMethodReturn(pkg, name, _, None) =>
       (pkg, name, List(None, Some(LocalWrapper("this",pkg))), List(None))
     case CallbackMethodReturn(pkg, name, m, Some(l:JimpleLineLoc)) if l.returnTypeIfReturn == Some("void") => {
@@ -162,14 +163,16 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     val (invals, preState) = invar.foldLeft((List[Option[PureVar]](), postState)){
       case ((lpv,accSt), Some(local)) => {
         val (pv,state) = accSt.getOrDefine(local)
-        (Some(pv)::lpv, state)
+        (lpv :+ Some(pv), state)
       }
-      case ((lpv, accSt), None) => (None::lpv, accSt)
+      case ((lpv, accSt), None) => (lpv:+ None, accSt)
     }
     val outvals = outvar.map{
       case Some(local) => postState.get(local) match {
         case Some(p@PureVar()) => Some(p)
         case None => None
+        case _ =>
+          ???
       }
       case None => None
     }
@@ -221,14 +224,21 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
           val state2 = state.clearLVal(lhs)
           val possibleHeapCells: Map[HeapPtEdge, PureExpr] = state2.heapConstraints.filter {
             case (FieldPtEdge(pv, heapFieldName), pureExpr) => fieldName == heapFieldName
+            case _ =>
+              ???
           } + (FieldPtEdge(PureVar(), fieldName) -> lhsv)
           val (basev,state3) = state.getOrDefine(base)
-          possibleHeapCells.map{ case (fpte@FieldPtEdge(p,n), pexp) =>
-            state3.copy(pureFormula = state3.pureFormula +
-              PureConstraint(basev, Equals, p) + PureConstraint(basev, TypeComp, SubclassOf(base.localType)) +
-              PureConstraint(lhsv, Equals, pexp), heapConstraints = state3.heapConstraints + (fpte->pexp))
+          possibleHeapCells.map{
+            case (fpte@FieldPtEdge(p,n), pexp) =>
+              state3.copy(pureFormula = state3.pureFormula +
+                PureConstraint(basev, Equals, p) + PureConstraint(basev, TypeComp, SubclassOf(base.localType)) +
+                PureConstraint(lhsv, Equals, pexp), heapConstraints = state3.heapConstraints + (fpte->pexp))
+            case _ =>
+              ???
           }.toSet
         }
+        case _ =>
+          ???
       }
     }
     case AssignCmd(FieldRef(base, fieldType, declType,fieldName), rhs, _) => {

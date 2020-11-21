@@ -54,7 +54,6 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
     assert(formula.contains(PureConstraint(nullPv,Equals, NullVal)))
     assert(prestate.head.callStack.head.locals.contains(StackVar("baz")))
     assert(!prestate.head.callStack.head.locals.contains(StackVar("bar")))
-//    assert(formula.contains(PureConstraint(nullPv,NotEquals, NullVal)))
   }
   private val iFooA: I = I(CBEnter, Set(("", "foo")), "_" :: "a" :: Nil)
   test("Add matcher and phi abstraction when crossing callback entry") {

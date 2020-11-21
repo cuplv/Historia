@@ -38,12 +38,12 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
       case Some(sf) => {
 
         val locals: Map[StackVar, PureExpr] = sf.locals
-        s"stack: ${callStack.map(f => f.methodLoc.msgSig.getOrElse("")).mkString(";")} locals: " + locals.map(k => k._1.toString + " -> " + k._2.toString).mkString(",")
+        s"\nstack: ${callStack.map(f => f.methodLoc.msgSig.getOrElse("")).mkString(";")}\n locals: " + locals.map(k => k._1.toString + " -> " + k._2.toString).mkString(",")
       }
       case None => "[nc]"
     }
-    val heapString = s"   heap: ${heapConstraints.map(a => a._1.toString + "->" +  a._2.toString).mkString(" * ")}"
-    val pureFormulaString = "   pure: " + pureFormula.map(a => a.toString).mkString(" && ")
+    val heapString = s"   heap: ${heapConstraints.map(a => a._1.toString + "->" +  a._2.toString).mkString(" * ")}\n"
+    val pureFormulaString = "   pure: " + pureFormula.map(a => a.toString).mkString(" && ") +"\n"
     val traceString = s"   trace: ${traceAbstraction.mkString(" ; ")}"
     s"($stackString $heapString   $pureFormulaString $traceString)"
   }
