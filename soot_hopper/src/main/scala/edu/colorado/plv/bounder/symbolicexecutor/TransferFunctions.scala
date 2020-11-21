@@ -15,9 +15,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
    * @return set of states that may reach the target state by stepping from source to target
    */
   def transfer(pre: State, target: Loc, source: Loc): Set[State] = (source, target, pre) match {
-    case (source@AppLoc(_, _, false), CallinMethodReturn(fmwClazz, fmwName), State(stack, heap, pure, reg)) =>
+    case (source@AppLoc(_, _, false), CallinMethodReturn(fmwClazz, fmwName,_), State(stack, heap, pure, reg)) =>
       Set(State(CallStackFrame(target, Some(source.copy(isPre = true)), Map()) :: stack, heap, pure, reg)) //TODO: lifestate rule transfer
-    case (CallinMethodReturn(_, _), CallinMethodInvoke(_, _), state) => Set(state)
+    case (CallinMethodReturn(_, _,_), CallinMethodInvoke(_, _), state) => Set(state)
     case (CallinMethodInvoke(_, _), loc@AppLoc(_, _, true), s@State(h :: t, _, _, _)) => {
       //TODO: parameter mapping
       Set(s.copy(callStack = t))

@@ -23,7 +23,7 @@ trait IRWrapper[M,C]{
   def isMethodEntry(cmdWrapper: CmdWrapper): Boolean
   def cmdAfterLocation(loc: AppLoc): CmdWrapper
   def cmdBeforeLocation(loc:AppLoc): CmdWrapper
-  def makeInvokeTargets(invoke:InvokeCmd):Set[UnresolvedMethodTarget]
+  def makeInvokeTargets(invoke:AppLoc):Set[UnresolvedMethodTarget]
   def callSites(method : M): Seq[C]
   def makeMethodRetuns(method: MethodLoc) : List[Loc]
   def getClassHierarchy : Map[String, Set[String]]

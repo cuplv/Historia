@@ -22,7 +22,7 @@ class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] 
     case _ => false
   }).map(_.asInstanceOf[CmdTransition].cmd).get
 
-  override def makeInvokeTargets(invoke: InvokeCmd): Set[UnresolvedMethodTarget] = ???
+  override def makeInvokeTargets(invoke: AppLoc): Set[UnresolvedMethodTarget] = ???
 
   override def getAllMethods: Seq[MethodLoc] = ???
 

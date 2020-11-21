@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.ir
 import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.symbolicexecutor.state.TypeConstraint
 import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
-import soot.jimple.{IntConstant, NullConstant, StringConstant, ThisRef}
+import soot.jimple.{IntConstant, NullConstant, ParameterRef, StringConstant, ThisRef}
 import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceFieldRef, AbstractInstanceInvokeExpr, AbstractNewExpr, AbstractStaticInvokeExpr, JAssignStmt, JIdentityStmt, JInvokeStmt, JReturnStmt, JReturnVoidStmt, JSpecialInvokeExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
 import soot.{Body, Hierarchy, Scene, SootClass, SootMethod, Type, Value, VoidType}
 
@@ -151,6 +151,10 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
     case _:NullConstant => NullConst
     case v:IntConstant => IntConst(v.value)
     case v:StringConstant => StringConst(v.value)
+    case p:ParameterRef =>
+      val name = s"@parameter${p.getIndex}"
+      val tname = p.getType.toString
+      LocalWrapper(name, tname)
     case v =>
       println(v)
       ???
@@ -189,10 +193,10 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
     }).getOrElse(List())
   }
 
-  override def makeInvokeTargets(invoke: InvokeCmd): Set[UnresolvedMethodTarget] = {
+  override def makeInvokeTargets(appLoc: AppLoc): Set[UnresolvedMethodTarget] = {
     val cg = Scene.v().getCallGraph
     //var pt = Scene.v().getPointsToAnalysis
-    val cmd = invoke.getLoc.line match{
+    val cmd = appLoc.line match{
       case JimpleLineLoc(cmd, _) => cmd
       case _ => throw new IllegalArgumentException("Bad Location Type")
     }

@@ -57,7 +57,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       println(s"location: ${loc})")
       println(s"state: $state")
       println("-------------")
-      val predecessorLocations: Seq[Loc] = config.c.resolvePredicessors(loc,state)
+      val predecessorLocations = config.c.resolvePredicessors(loc,state)
       predecessorLocations.flatMap(l => {
         val newStates = config.transfer.transfer(state,l,loc)
         newStates.map(state => state.simplify(stateSolver) match {

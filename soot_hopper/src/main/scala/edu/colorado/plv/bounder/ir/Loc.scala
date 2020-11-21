@@ -35,7 +35,7 @@ case class AppLoc(method: MethodLoc, line: LineLoc, isPre:Boolean) extends Loc {
   override def msgSig = None
 }
 
-case class CallinMethodReturn(fmwClazz : String, fmwName:String) extends Loc {
+case class CallinMethodReturn(fmwClazz : String, fmwName:String, returnLine:Option[LineLoc]) extends Loc {
   override def toString:String = "[CI Ret] " + fmwName
 
   override def msgSig: Option[String] = Some(s"[CI Ret] ${fmwClazz} ${fmwName}" )

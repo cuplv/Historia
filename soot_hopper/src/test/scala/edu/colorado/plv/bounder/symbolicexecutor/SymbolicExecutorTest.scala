@@ -41,7 +41,7 @@ class SymbolicExecutorTest extends org.scalatest.FunSuite {
       TestSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set(testSpec)))
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(15), w,resolver,transfer)
+      stepLimit = Some(30), w,resolver,transfer)
     val query = Qry.makeReceiverNonNull(config, w,
       "com.example.test_interproc_2.MainActivity",
       "void onPause()",27)
