@@ -1,5 +1,7 @@
-name := "soot_hopper"
+import scala._
 
+name := "soot_hopper"
+organization := "edu.colorado.plv.bounder"
 version := "0.1"
 
 scalaVersion := "2.13.1"
@@ -12,3 +14,11 @@ libraryDependencies += "org.scala-graph" %% "graph-core" % "1.13.2"
 libraryDependencies += "org.scala-graph" %% "graph-dot" % "1.13.0"
 
 //libraryDependencies += "com.regblanc" %% "scala-smtlib" % "0.2.2"
+
+envVars in run := Map("DYLD_LIBRARY_PATH" -> System.getenv("Z3_LIB"))
+unmanagedJars in Compile += baseDirectory.value / "lib/soot-infoflow-cmd-jar-with-dependencies.jar"
+unmanagedJars in Compile += baseDirectory.value / "lib/com.microsoft.z3.jar"
+//unmanagedBase := Seq(
+//  baseDirectory.value / "lib/com.microsoft.z3.jar",
+//  baseDirectory.value / "lib/soot-infoflow-cmd-jar-with-dependencies.jar")
+

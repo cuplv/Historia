@@ -9,4 +9,5 @@ object TestSignatures {
   val Activity_onPause_entry = I(CBEnter, Set(("android.app.Activity", "onPause")), List("_", "a"))
   val Activity_onPause_exit = I(CBExit, Set(("android.app.Activity", "onPause")), List("_", "a"))
   val Activity_init_exit = I(CBExit, Set(("android.app.Activity", "<init>")), List("_", "a"))
+
 }
