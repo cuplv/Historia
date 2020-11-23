@@ -50,4 +50,8 @@ class SymbolicExecutorTest extends org.scalatest.FunSuite {
     //TODO: deref not proven, figure out what is going on
 //    PrettyPrinting.dotWitTree(result, "/Users/shawnmeier/Desktop/foo.dot")
   }
+  test("Simplified inter-callback deref") {
+    //TODO: define resume/pause app with TestIR to debug termination issue more easily
+    ???
+  }
 }

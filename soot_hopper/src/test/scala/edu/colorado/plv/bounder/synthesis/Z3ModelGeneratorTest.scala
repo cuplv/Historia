@@ -10,7 +10,7 @@ class Z3ModelGeneratorTest extends org.scalatest.FunSuite {
   test("Encode Node Reachability"){
     val gen = new Z3ModelGenerator()
     val dummyLoc = CallbackMethodInvoke(fmwClazz = "",
-      fmwName="void foo()", TestIRMethodLoc("foo"))
+      fmwName="void foo()", TestIRMethodLoc("","foo"))
     val pureVar = PureVar()
     val frame = CallStackFrame(dummyLoc, None, Map(StackVar("this") -> pureVar))
     val state = State(List(frame), Map(), Set(), Set())

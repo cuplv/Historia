@@ -24,7 +24,7 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
   }
   test("Transfer assign new local") {
     val cmd= (loc:AppLoc) => AssignCmd(LocalWrapper("bar","Object"),NewCommand("String"),loc)
-    val fooMethod = TestIRMethodLoc("foo")
+    val fooMethod = TestIRMethodLoc("","foo")
     val nullPv = PureVar()
     val post = State(
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("bar") -> nullPv))::Nil,
@@ -40,7 +40,7 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
   }
   test("Transfer assign local local") {
     val cmd= (loc:AppLoc) => AssignCmd(LocalWrapper("bar","Object"),LocalWrapper("baz","String"),loc)
-    val fooMethod = TestIRMethodLoc("foo")
+    val fooMethod = TestIRMethodLoc("","foo")
     val nullPv = PureVar()
     val post = State(
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("bar") -> nullPv))::Nil,
@@ -57,7 +57,7 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
   }
   private val iFooA: I = I(CBEnter, Set(("", "foo")), "_" :: "a" :: Nil)
   test("Add matcher and phi abstraction when crossing callback entry") {
-    val fooMethod = TestIRMethodLoc("foo")
+    val fooMethod = TestIRMethodLoc("","foo")
     val preloc = CallbackMethodInvoke("","foo", fooMethod) // Transition to just before foo is invoked
     val postloc = AppLoc(fooMethod,TestIRLineLoc(1), isPre=true)
     val ir = new TestIR(Set(MethodTransition(preloc, postloc)))
@@ -86,7 +86,7 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
     assert(stack.isEmpty)
   }
   test("Discharge I(m1^) phi abstraction when post state must generate m1^ for previous transition") {
-    val fooMethod = TestIRMethodLoc("foo")
+    val fooMethod = TestIRMethodLoc("","foo")
     val preloc = CallbackMethodInvoke("","foo", fooMethod) // Transition to just before foo is invoked
     val postloc = AppLoc(fooMethod,TestIRLineLoc(1), isPre=true)
     val ir = new TestIR(Set(MethodTransition(preloc, postloc)))

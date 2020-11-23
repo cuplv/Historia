@@ -8,7 +8,7 @@ import edu.colorado.plv.bounder.testutils.TestIRMethodLoc
 
 class Z3StateSolverTest extends org.scalatest.FunSuite {
   val dummyLoc = CallbackMethodInvoke(fmwClazz = "",
-    fmwName="void foo()", TestIRMethodLoc("foo"))
+    fmwName="void foo()", TestIRMethodLoc("","foo"))
   val v = PureVar()
   val frame = CallStackFrame(dummyLoc, None, Map(StackVar("x") -> v))
   test("null not null") {

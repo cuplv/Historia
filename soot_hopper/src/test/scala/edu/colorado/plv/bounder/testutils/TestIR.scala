@@ -34,10 +34,10 @@ class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] 
 
   override def getClassHierarchy: Map[String, Set[String]] = ???
 }
-case class TestIRMethodLoc(name:String) extends MethodLoc {
-  override def simpleName: String = ???
+case class TestIRMethodLoc(clazz:String, name:String) extends MethodLoc {
+  override def simpleName: String = name
 
-  override def classType: String = ???
+  override def classType: String = clazz
 
   override def argTypes: List[String] = ???
 }
