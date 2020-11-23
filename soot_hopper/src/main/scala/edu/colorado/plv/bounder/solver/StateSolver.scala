@@ -112,6 +112,8 @@ trait StateSolver[T] {
       ???
   }
   private def assertIAt(index:T, m:I, ienume:T, enumMap: Map[String,Int], uniqueID:String):T = {
+    if (!enumMap.contains(m.identitySignature))
+      println()
     val tracefun = mkTraceFn(uniqueID)
     val msgExpr = mkTraceConstraint(tracefun, index)
     val nameFun = mkINameFn(ienume, uniqueID)
@@ -154,8 +156,8 @@ trait StateSolver[T] {
   }
 
 
-  def allI(traceAbstractionSet: Set[TraceAbstraction]):Set[I] =
-    traceAbstractionSet.flatMap(allI(_,false))
+  def allITraceAbs(traceAbstractionSet: Set[TraceAbstraction], includeArrow:Boolean=false):Set[I] =
+    traceAbstractionSet.flatMap(a => allI(a,includeArrow))
   def allI(pred:LSPred):Set[I] = pred match{
     case i@I(_,_,_) => Set(i)
     case NI(i1,i2) => Set(i1,i2)
@@ -166,10 +168,14 @@ trait StateSolver[T] {
     case LSFalse => Set()
     case LSAbsBind(_,_) => Set()
   }
-  def allI(abs:TraceAbstraction, includeArrow:Boolean = false):Set[I] = abs match{
+  def allI(abs:TraceAbstraction, includeArrow:Boolean):Set[I] = abs match{
     case AbsFormula(pred) => allI(pred)
-    case AbsArrow(pred, i2) => if(includeArrow) allI(pred) + i2 else allI(pred)
-    case AbsAnd(p1,p2) => allI(p1).union(allI(p2))
+    case AbsArrow(pred, i2) =>
+      if(includeArrow)
+        allI(pred,includeArrow) + i2
+      else
+        allI(pred,includeArrow)
+    case AbsAnd(p1,p2) => allI(p1,includeArrow).union(allI(p2,includeArrow))
     case AbsEq(_,_) => Set()
   }
   def encodeTraceAbs(abs:TraceAbstraction, enum:T, iNameIntMap:Map[String,Int],maxWitness:Option[Int]):T = {
@@ -186,7 +192,7 @@ trait StateSolver[T] {
       case AbsArrow(abs, ipred) => {
         //TODO: somehow enforce that ipred must be later in the trace than the m1 in NI(m1,m2)
         // Do the semantics enforce this?
-        val allNestedI = allI(abs)
+        val allNestedI = allI(abs,false)
         val j = mkFreshIntVar("jfromarrow")
         val arrowConstraints = mkAnd(List(
           mkLt(mkIntVal(-1), j),
@@ -199,18 +205,6 @@ trait StateSolver[T] {
           case Some(max) => mkAnd(arrowConstraints, mkLt(len,mkIntVal(max)))
           case None => arrowConstraints
         }
-//        val ipredf = mkIFun(ipred)
-//        val messageAt = mkINIConstraint(ipredf, j, ipred.lsVars.map(mkModelVar(_,uniqueID)))
-//        val recurs = ienc(j,abs)
-//        // all indices between this and the next arrow do not affect the LSPred
-//        val disj = mkForallInt(j,i,k =>{
-//          val listofconst:List[T] = alli.foldLeft(List[T]()){ (acc, ipred) =>
-//            mkNot(mkINIConstraint(mkIFun(ipred),k,ipred.lsVars.map(mkModelVar(_,uniqueID))))::acc}
-//          mkAnd(listofconst)
-//        })
-//        mkAnd(mkLt(j,i),
-//          mkAnd(mkLt(mkIntVal(-1),j),
-//            mkAnd(mkAnd(messageAt,recurs),disj)))
       }
       case AbsEq(mv,pv) => mkEq(mkModelVar(mv,uniqueID),mkObjVar(pv))
     }
@@ -258,8 +252,9 @@ trait StateSolver[T] {
 
   def simplify(state: State, logDbg:Boolean = false, maxWitness:Option[Int] = None): Option[State] = {
     push()
-    val alli = allI(state.traceAbstraction)
-    val inamelist = "OTHEROTHEROTHER"::alli.groupBy(_.identitySignature).keySet.toList
+    val alli = allITraceAbs(state.traceAbstraction,true)
+    //TODO: allI doesn't find cbenter onpause
+    val inamelist = "OTHEROTHEROTHER"::(alli.groupBy(_.identitySignature).keySet.toList)
     val iNameIntMap: Map[String, Int] = inamelist.zipWithIndex.toMap
     val ienum = mkEnum("inames",inamelist)
     val ast = toAST(state,ienum, iNameIntMap, maxWitness)

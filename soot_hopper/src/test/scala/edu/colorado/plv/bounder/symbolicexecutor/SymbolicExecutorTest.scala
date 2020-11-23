@@ -47,8 +47,7 @@ class SymbolicExecutorTest extends org.scalatest.FunSuite {
       "void onPause()",27)
     val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
     val result: Set[PathNode] = symbolicExecutor.executeBackward(query)
-    PrettyPrinting.dotWitTree(result, "/Users/shawnmeier/Desktop/foo.dot")
-    println(result)
-    println()
+    //TODO: deref not proven, figure out what is going on
+//    PrettyPrinting.dotWitTree(result, "/Users/shawnmeier/Desktop/foo.dot")
   }
 }
