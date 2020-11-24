@@ -331,6 +331,36 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val res2 = statesolver.simplify(state2, true)
     assert(!res2.isDefined)
   }
+  test("Vacuous NI(a,a) spec") {
+    //TODO: Is there ever a reason to need this case?
+    val ctx = new Context
+    val solver: Solver = ctx.mkSolver()
+    val hierarchy: Map[String, Set[String]] =
+      Map("Object" -> Set("String", "Foo", "Bar", "Object"),
+        "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
+    val pc = new PersistantConstraints(ctx, solver, hierarchy)
+    val statesolver = new Z3StateSolver(pc)
+
+    // Lifestate atoms for next few tests
+    val i = I(CBEnter, Set(("foo", "bar")), "a" :: Nil)
+    val i4 = I(CBEnter, Set(("foo", "bar")), "b" :: Nil)
+    // NI(a.bar(), a.baz())
+    val niBarBar = NI(i, i)
+
+    // pure vars for next few tests
+    val p1 = PureVar()
+    val p2 = PureVar()
+
+    //NI(a.bar(),a.bar()) |> I(b.bar()) && a = b (<=> true)
+    val niaa: TraceAbstraction = AbsArrow(
+      AbsFormula(niBarBar),
+      i4
+    )
+    val abs1 = AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("b",p1), niaa))
+    val state1 = State(Nil,Map(),Set(), Set(abs1))
+    val res1 = statesolver.simplify(state1, true)
+    assert(res1.isDefined)
+  }
   test("quantifier example") {
     val ctx = new Context
     val solver: Solver = ctx.mkSolver()
