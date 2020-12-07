@@ -37,7 +37,7 @@ object Driver {
       )
     }
     OParser.parse(parser, args, Config()) match {
-      case Config(DotWitnessTree, apkPath, Some(outFolder)) => dotWitnessTree(apkPath, outFolder)
+      case Some(Config(DotWitnessTree, apkPath, Some(outFolder))) => dotWitnessTree(apkPath, outFolder)
       case _ => throw new IllegalArgumentException("Argument parsing failed")
     }
   }
@@ -57,7 +57,7 @@ object Driver {
       "void onPause()",27)
     val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
     val result: Set[PathNode] = symbolicExecutor.executeBackward(query)
-    //TODO: deref not proven, figure out what is going on
-    PrettyPrinting.dotWitTree(result, outFolder)
+    val outname = apkPath.split("/").last
+    PrettyPrinting.dotWitTree(result, s"${outFolder}/${outname}.dot")
   }
 }
