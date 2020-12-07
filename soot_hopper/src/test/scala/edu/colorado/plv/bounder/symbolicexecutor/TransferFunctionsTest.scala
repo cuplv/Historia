@@ -22,6 +22,9 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
     val tr = new TransferFunctions(ir, new SpecSpace(Set()))
     tr.transfer(post,preloc, postloc)
   }
+  //TODO: test transfer function where field is assigned and base may or may not be aliased, when does this happen?
+  // pre: a^.out -> b1^
+  // post: (a^.out -> c^* d^.out -> e^) OR (a^.out -> c^ AND a^=d^ AND c^=d^)
   test("Transfer assign new local") {
     val cmd= (loc:AppLoc) => AssignCmd(LocalWrapper("bar","Object"),NewCommand("String"),loc)
     val fooMethod = TestIRMethodLoc("","foo")
@@ -62,7 +65,8 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
     val postloc = AppLoc(fooMethod,TestIRLineLoc(1), isPre=true)
     val ir = new TestIR(Set(MethodTransition(preloc, postloc)))
     val lhs = I(CBEnter, Set(("", "bar")), "_" :: "a" :: Nil)
-    val spec = LSSpec( //  I(cb a.bar()) <= I(cb a.foo())
+    //  I(cb a.bar()) <= I(cb a.foo())
+    val spec = LSSpec(
       lhs,
       iFooA)
     val tr = new TransferFunctions(ir, new SpecSpace(Set(spec)))
@@ -72,7 +76,7 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("this") -> recPv))::Nil,
       heapConstraints = Map(),
       pureFormula = Set(),
-      traceAbstraction = Set()) //TODO: add otherI back in when pred transfer is working
+      traceAbstraction = Set(otheri))
     println(s"post: ${post.toString}")
     val prestate: Set[State] = tr.transfer(post,preloc, postloc)
     println(s"pre: ${prestate.toString}")
@@ -80,7 +84,7 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
     val formula = prestate.head.traceAbstraction
     assert(formula.exists(p => absContains(AbsEq("a",recPv),p)))
     assert(formula.exists(p => absContains(AbsFormula(lhs),p)))
-//    assert(formula.exists(p => absContains(otheri, p))) //TODO: see above
+    assert(formula.exists(p => absContains(otheri, p)))
 
     val stack = prestate.head.callStack
     assert(stack.isEmpty)
@@ -99,8 +103,9 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
       traceAbstraction = Set(AbsAnd(AbsFormula(iFooA), AbsEq("a",recPv))))
     println(s"post: ${post.toString}")
     val prestate: Set[State] = tr.transfer(post,preloc, postloc)
-    println(s"post: ${prestate.toString}")
+    println(s"pre: ${prestate.toString}")
     val formula = prestate.head.traceAbstraction
     assert(formula.exists(p => absContains(AbsEq("a",recPv),p)))
+    //TODO: Simplification does not yet discharge in this case, should it?
   }
 }

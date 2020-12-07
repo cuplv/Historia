@@ -1,9 +1,9 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
-import edu.colorado.plv.bounder.{BounderSetupApplication, TestSignatures}
+import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, JimpleFlowdroidWrapper, JimpleMethodLoc, LineLoc, Loc, LocalWrapper, VirtualInvoke}
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NI}
-import edu.colorado.plv.bounder.lifestate.SpecSpace
+import edu.colorado.plv.bounder.lifestate.{SpecSpace, TestSignatures}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, PrettyPrinting, PureVar, Qry, StackVar}
 import soot.SootMethod
 
@@ -32,7 +32,7 @@ class SymbolicExecutorTest extends org.scalatest.FunSuite {
 
   test("Symbolic Executor should prove an inter-callback deref"){
     println("======= Interproc ======")
-    val test_interproc_1 = getClass.getResource("/test_interproc_2.apk").getPath()
+    val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath()
     assert(test_interproc_1 != null)
     val w = new JimpleFlowdroidWrapper(test_interproc_1)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)

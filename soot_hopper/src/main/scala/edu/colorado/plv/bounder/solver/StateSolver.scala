@@ -269,4 +269,16 @@ trait StateSolver[T] {
     // TODO: garbage collect, if purevar can't be reached from reg or stack var, discard
     simpleAst.map(_ => state) //TODO: actually simplify?
   }
+
+  /**
+   * Check if formula s1 is entirely contained within s2.  Used to determine if subsumption is possible
+   * @param s1
+   * @param s2
+   * @return
+   */
+  def implies(s1:State, s2:State):Boolean = {
+
+    ???
+  }
+
 }

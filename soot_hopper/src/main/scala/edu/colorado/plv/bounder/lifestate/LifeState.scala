@@ -14,25 +14,34 @@ object LifeState {
   }
 
   sealed trait LSPred {
+    def contains(mt:MessageType,sig: (String, String)):Boolean
+
     def lsVar: Set[String]
   }
   case class And(l1 : LSPred, l2 : LSPred) extends LSPred {
     override def lsVar: Set[String] = l1.lsVar.union(l2.lsVar)
     override def toString:String = s"(${l1.toString} AND ${l2.toString})"
+
+    override def contains(mt:MessageType, sig: (String, String)): Boolean = l1.contains(mt,sig) || l2.contains(mt,sig)
   }
   case class Not(l: LSPred) extends LSPred {
     override def lsVar: Set[String] = l.lsVar
     override def toString:String = s"(NOT ${l.toString})"
+
+    override def contains(mt:MessageType,sig: (String, String)): Boolean = l.contains(mt,sig)
   }
   case class Or(l1:LSPred, l2:LSPred) extends LSPred {
     override def lsVar: Set[String] = l1.lsVar.union(l2.lsVar)
     override def toString:String = s"(${l1.toString} OR ${l2.toString})"
+    override def contains(mt:MessageType,sig: (String, String)): Boolean = l2.contains(mt, sig) || l2.contains(mt,sig)
   }
   case object LSTrue extends LSPred {
     override def lsVar: Set[String] = Set.empty
+    override def contains(mt:MessageType,sig: (String, String)): Boolean = false
   }
   case object LSFalse extends LSPred {
     override def lsVar: Set[String] = Set.empty
+    override def contains(mt:MessageType,sig: (String, String)): Boolean = false
   }
 
   sealed trait LSAtom extends LSPred {
@@ -62,6 +71,8 @@ object LifeState {
       s"I_${mt.toString}_${sortedSig.head._1}_${sortedSig.head._2}"
     }
     override def toString:String = s"I($mt $identitySignature ( ${lsVars.mkString(",")} )"
+
+    override def contains(mt:MessageType,sig: (String, String)): Boolean = signatures.contains(sig)
   }
   // Since i1 has been invoked, i2 has not been invoked.
   case class NI(i1:I, i2:I) extends LSAtom{
@@ -71,12 +82,15 @@ object LifeState {
 
     override def identitySignature: String = s"${i1.identitySignature}_${i2.identitySignature}"
     override def toString:String = s"NI( ${i1.toString} , ${i2.toString} )"
+
+    override def contains(mt:MessageType,sig: (String, String)): Boolean = i1.contains(mt, sig) || i2.contains(mt, sig)
   }
   case class LSSpec(pred:LSPred, target: I)
 
   // Used for abstract state
   case class LSAbsBind(modelVar:String, pureExpr: PureExpr) extends LSPred {
     override def lsVar: Set[String] = Set()
+    override def contains(mt:MessageType,sig: (String, String)): Boolean = false
   }
 
   // Class that holds a graph of possible predicates and alias relations between the predicates.

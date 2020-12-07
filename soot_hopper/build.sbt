@@ -3,7 +3,7 @@ import scala._
 name := "soot_hopper"
 organization := "edu.colorado.plv.bounder"
 version := "0.1"
-
+mainClass in (Compile, run) := Some("edu.colorado.plv.bounder.Driver")
 scalaVersion := "2.13.1"
 libraryDependencies += "ca.mcgill.sable" % "soot" % "3.3.0"
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.0" % "test"
@@ -12,6 +12,7 @@ libraryDependencies += "com.fasterxml.jackson.core" % "jackson-core" % "2.7.9"
 libraryDependencies += "org.scala-graph" %% "graph-core" % "1.13.2"
 // https://mvnrepository.com/artifact/org.scala-graph/graph-dot
 libraryDependencies += "org.scala-graph" %% "graph-dot" % "1.13.0"
+libraryDependencies += "com.github.scopt" % "scopt_2.13" % "4.0.0-RC2"
 
 //libraryDependencies += "com.regblanc" %% "scala-smtlib" % "0.2.2"
 

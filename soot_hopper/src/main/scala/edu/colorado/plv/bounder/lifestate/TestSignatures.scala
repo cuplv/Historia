@@ -1,4 +1,4 @@
-package edu.colorado.plv.bounder
+package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit}
 import edu.colorado.plv.bounder.lifestate.LifeState.I

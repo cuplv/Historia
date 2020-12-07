@@ -33,7 +33,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         val (pkg, name, invar, outvar) = msgCmdToMsg(cmloc)
         // TODO: add all input vars to abs state, currently only considering this
         //update existing spec instantiations
-        val state1 = tracePredTransfer(CBEnter, (pkg,name),invar,outvar,pre)
+        val state1 = traceAllPredTransfer(CBEnter, (pkg,name),invar,outvar,pre)
         // Since this is a back message, instantiate any new instances of the spec
         //add new instantiations of specs
         val states2 = newSpecInstanceTransfer(CBEnter,(pkg,name), invar, cmloc, state1)
@@ -59,7 +59,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       val newStack =
         CallStackFrame(targetLoc, None, newStackVars + (StackVar("this") -> thisId)) :: pre.callStack
       val preWithNewFrame = pre.copy(callStack = newStack)
-      val state1 = tracePredTransfer(CBExit, (pkg,name), invar, outvar, preWithNewFrame)
+      val state1 = traceAllPredTransfer(CBExit, (pkg,name), invar, outvar, preWithNewFrame)
       val state2 = newSpecInstanceTransfer(CBExit, (pkg,name), invar, target, state1)
       Set(state2)
     }
@@ -132,7 +132,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       AbsAnd(predTransferTrace(lhs, mt, sig, invals, outvals), predTransferTrace(rhs, mt, sig, invals, outvals))
     case AbsArrow(pred, m) => AbsArrow(predTransferTrace(pred,mt, sig, invals, outvals),m)
     case eq@AbsEq(_,_) => eq
-    case f@AbsFormula(_) => {
+    case f@AbsFormula(lsformula) if lsformula.contains(mt,sig) => {
       specSpace.getIWithFreshVars(mt,sig).map( newi =>
         // Add message before other arrows with assertions about the ls variables
         newi.lsVars.zipWithIndex.foldLeft(AbsArrow(f, newi):TraceAbstraction) {
@@ -147,6 +147,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         }
       )
     }.getOrElse(pred)
+    case f@AbsFormula(_) => f
 
     case v =>
       println(v)
@@ -157,9 +158,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
    * @param postState
    * @return
    */
-  def tracePredTransfer(mt: MessageType,
-                        sig:(String,String), invar:List[Option[LocalWrapper]], outvar:List[Option[LocalWrapper]],
-                        postState: State):State = {
+  def traceAllPredTransfer(mt: MessageType,
+                           sig:(String,String), invar:List[Option[LocalWrapper]], outvar:List[Option[LocalWrapper]],
+                           postState: State):State = {
     val (invals, preState) = invar.foldLeft((List[Option[PureVar]](), postState)){
       case ((lpv,accSt), Some(local)) => {
         val (pv,state) = accSt.getOrDefine(local)
