@@ -1,8 +1,7 @@
 package edu.colorado.plv.bounder.solver
 
-import com.microsoft.z3.{AST, ArithExpr, BoolExpr, BoolSort, Context, EnumSort, Expr, FuncDecl, IntSort, Model, Solver, Sort, Status}
+import com.microsoft.z3._
 import edu.colorado.hopper.solver.StateSolver
-import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSAtom, LSPred}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{PureVar, State, TraceAbstraction, TypeConstraint}
 
 class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateSolver[AST] {
@@ -16,7 +15,7 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
   //  solver.setParameters(params)
   //  solver
   //}
-  override def checkSAT: Boolean = interpretSolverOutput(solver.check)
+  override def checkSAT(): Boolean = interpretSolverOutput(solver.check)
 
   override def checkSATWithAssumptions(assumes: List[String]): Boolean = ???
 
@@ -85,7 +84,7 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
 
   override protected def mkBoolVar(s: String): AST = ???
 
-  override protected def mkAssert(t: AST): Unit = ???
+  override protected def mkAssert(t: AST): Unit = solver.add(t.asInstanceOf[BoolExpr])
 
   override protected def mkFieldFun(n: String): AST = {
     val fun: FuncDecl = ctx.mkFuncDecl(n, ctx.mkIntSort(), ctx.mkIntSort() )
@@ -105,29 +104,33 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
 
   override protected def mkObjVar(s: PureVar): AST = ctx.mkIntConst("object_addr_" + s.id.toString)
 
-  def printAbstSolution(model: Model, msgname:EnumSort,state:State) = state match{
-    case State(_,_,_,traceabs) => {
-      traceabs map {abs => {
-        val uniqueID = System.identityHashCode(abs) + ""
-        val len = mkIntVar(s"len_${uniqueID}").asInstanceOf[ArithExpr]
-        println("=trace solution=")
-        val traceLen: Int = model.eval(len,true).toString.toInt
-        val traceFun = mkTraceFn(uniqueID).asInstanceOf[FuncDecl]
-        val nameFun = mkINameFn(msgname, uniqueID).asInstanceOf[FuncDecl]
-        val argFun = mkArgFun(uniqueID).asInstanceOf[FuncDecl]
-        (0 until traceLen).map{ index =>{
-          println(s"${index}: ")
-          val msgati = model.eval(traceFun.apply(ctx.mkInt(index)),true)
-          println(s"${model.eval(nameFun.apply(msgati),true)} args: ${model.eval(argFun.apply(ctx.mkInt(0),msgati),true)}")
+  override def printDbgModel(msgname: AST, traceabst: Set[TraceAbstraction]): Unit = {
+    printAbstSolution(solver.getModel, msgname.asInstanceOf[EnumSort], traceabst)
+  }
 
-//            model.eval(
-//              mkINIConstraint(mkIFun(ipred),mkIntVal(index),
-//                ipred.lsVars.map(mkModelVar(_,uniqueID))).asInstanceOf[Expr],true)
-//              .toString == "true"
-//          }).map(ipred => s"${ipred} args: ${ipred.lsVars.zipWithIndex.map(argi => model.eval(mkIndArgConstraint(argind, mkIntVal(index), mkIntVal(argi._2)).asInstanceOf[ArithExpr],true))}")
-//          println(msgati.mkString("***"))
-        }}
-      }}
+  def printAbstSolution(model: Model, msgname: EnumSort, traceabs: Set[TraceAbstraction]) = {
+    traceabs map { abs => {
+      val uniqueID = System.identityHashCode(abs) + ""
+      val len = mkIntVar(s"len_${uniqueID}").asInstanceOf[ArithExpr]
+      println("=trace solution=")
+      val traceLen: Int = model.eval(len, true).toString.toInt
+      val traceFun = mkTraceFn(uniqueID).asInstanceOf[FuncDecl]
+      val nameFun = mkINameFn(msgname, uniqueID).asInstanceOf[FuncDecl]
+      val argFun = mkArgFun(uniqueID).asInstanceOf[FuncDecl]
+      (0 until traceLen).map { index => {
+        println(s"${index}: ")
+        val msgati = model.eval(traceFun.apply(ctx.mkInt(index)), true)
+        println(s"${model.eval(nameFun.apply(msgati), true)} args: ${model.eval(argFun.apply(ctx.mkInt(0), msgati), true)}")
+
+        //            model.eval(
+        //              mkINIConstraint(mkIFun(ipred),mkIntVal(index),
+        //                ipred.lsVars.map(mkModelVar(_,uniqueID))).asInstanceOf[Expr],true)
+        //              .toString == "true"
+        //          }).map(ipred => s"${ipred} args: ${ipred.lsVars.zipWithIndex.map(argi => model.eval(mkIndArgConstraint(argind, mkIntVal(index), mkIntVal(argi._2)).asInstanceOf[ArithExpr],true))}")
+        //          println(msgati.mkString("***"))
+      }
+      }
+    }
     }
   }
 
@@ -139,7 +142,7 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
       case Status.SATISFIABLE => {
         if (logDbg) {
           println(s"Model: ${solver.getModel}")
-          printAbstSolution(solver.getModel(),msgname.asInstanceOf[EnumSort], state)
+          printAbstSolution(solver.getModel(),msgname.asInstanceOf[EnumSort], state.traceAbstraction)
         }
         Some(t)
       }

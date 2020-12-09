@@ -85,7 +85,6 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
     assert(formula.exists(p => absContains(AbsEq("a",recPv),p)))
     assert(formula.exists(p => absContains(AbsFormula(lhs),p)))
     assert(formula.exists(p => absContains(otheri, p)))
-
     val stack = prestate.head.callStack
     assert(stack.isEmpty)
   }

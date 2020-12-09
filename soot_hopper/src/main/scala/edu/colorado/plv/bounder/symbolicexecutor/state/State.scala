@@ -180,9 +180,9 @@ case class StackVar(name : String) extends Var{
 }
 
 sealed trait CmpOp
-case object MayEqual extends CmpOp{
-  override def toString:String = "?="
-}
+//case object MayEqual extends CmpOp{
+//  override def toString:String = "?="
+//}
 case object Equals extends CmpOp{
   override def toString:String = " == "
 }
@@ -257,4 +257,3 @@ sealed case class PureVar() extends PureExpr with Val {
   }
   override def toString : String = "p-" + id
 }
-

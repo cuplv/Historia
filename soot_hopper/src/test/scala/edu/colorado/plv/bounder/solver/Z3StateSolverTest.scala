@@ -1,10 +1,10 @@
 package edu.colorado.plv.bounder.solver
 
 import com.microsoft.z3.{ArithExpr, BoolExpr, Context, EnumSort, Expr, IntExpr, Solver, Status, Symbol}
-import edu.colorado.plv.bounder.ir.{CBEnter, CallbackMethodInvoke}
+import edu.colorado.plv.bounder.ir.{AppLoc, CBEnter, CallbackMethodInvoke}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbsAnd, AbsArrow, AbsEq, AbsFormula, CallStackFrame, Equals, FieldPtEdge, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, SubclassOf, TraceAbstraction, TypeComp}
-import edu.colorado.plv.bounder.testutils.TestIRMethodLoc
+import edu.colorado.plv.bounder.testutils.{TestIRLineLoc, TestIRMethodLoc}
 
 class Z3StateSolverTest extends org.scalatest.FunSuite {
   val dummyLoc = CallbackMethodInvoke(fmwClazz = "",
@@ -360,6 +360,41 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val state1 = State(Nil,Map(),Set(), Set(abs1))
     val res1 = statesolver.simplify(state1, true)
     assert(res1.isDefined)
+  }
+  test("Must imply") {
+    val ctx = new Context
+    val solver: Solver = ctx.mkSolver()
+    val hierarchy: Map[String, Set[String]] =
+      Map("Object" -> Set("String", "Foo", "Bar", "Object"),
+        "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
+
+    val pc = new PersistantConstraints(ctx, solver, hierarchy)
+    val statesolver = new Z3StateSolver(pc)
+
+    val p1 = PureVar()
+    val p2 = PureVar()
+    val loc = AppLoc(TestIRMethodLoc("","foo"), TestIRLineLoc(1), false)
+
+    val state = State(CallStackFrame(loc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Set())
+    val state2 = state.copy(callStack =
+      state.callStack.head.copy(locals=Map(StackVar("x") -> p1, StackVar("y")->p2))::Nil)
+    assert(statesolver.mustImply(state,state))
+    assert(statesolver.mustImply(state,state2))
+    assert(!statesolver.mustImply(state2,state))
+
+    val ifoo = I(CBEnter, Set(("", "foo")), "a" :: Nil)
+    val ibar = I(CBEnter, Set(("", "bar")), "a" :: Nil)
+    val ibarc =I(CBEnter, Set(("", "bar")), "c" :: Nil)
+    val baseTrace = AbsAnd(AbsFormula(NI(ifoo, ibar)), AbsEq("a", p1))
+    val state3 = state.copy(traceAbstraction = Set(baseTrace))
+    val state4 = state.copy(traceAbstraction = Set(AbsArrow(baseTrace, ibarc)))
+
+    val idHc3 =System.identityHashCode(state3)
+    val idHc3c =System.identityHashCode(state3.copy())
+    val res = statesolver.mustImply(state3, state3.copy(), Some(4))
+    //TODO: should quantified "i" values be the same here?
+    assert(res) //TODO: another failing test? why doesn't this work?
+//    assert(statesolver.mustImply(state3,state4)) //TODO: failing test?
   }
   test("quantifier example") {
     val ctx = new Context

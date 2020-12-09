@@ -15,7 +15,7 @@ class UnknownSMTResult(msg : String) extends Exception(msg)
 /** SMT solver parameterized by its AST or expression type */
 trait StateSolver[T] {
   // checking
-  def checkSAT : Boolean
+  def checkSAT() : Boolean
   def checkSATWithAssumptions(assumes : List[String]) : Boolean
 
   def getUNSATCore : String
@@ -85,6 +85,7 @@ trait StateSolver[T] {
   protected def mkNameConstraint(nameFun:T, msg:T):T
   // function argumentindex -> msg -> argvalue
   protected def mkArgConstraint(argFun:T, argIndex:T, msg:T):T
+  def printDbgModel(msgname: T, traceabst: Set[TraceAbstraction]):Unit
   //protected def mkIFun(atom:I):T
   //protected def mkINIConstraint(fun: T, index: T, modelVars: List[T]):T
   //protected def mkIndArgFun(uid:String):T
@@ -219,7 +220,7 @@ trait StateSolver[T] {
 
   protected def mkDistinct(pvList: Iterable[PureVar]): T
 
-  def toAST(state: State, enum:T, iNameIntMap:Map[String,Int], maxWitness:Option[Int]): T = {
+  def toAST(state: State, enum:T, iNameIntMap:Map[String,Int], maxWitness:Option[Int] = None): T = {
     // TODO: make all variables in this encoding unique from other states so multiple states can be run at once
     // TODO: add ls constraints to state
     // TODO: mapping from ? constraints to bools that can be retrieved from the model after solving
@@ -250,13 +251,17 @@ trait StateSolver[T] {
     mkAnd(mkAnd(pureAst, heapAst),trace)
   }
 
-  def simplify(state: State, logDbg:Boolean = false, maxWitness:Option[Int] = None): Option[State] = {
-    push()
-    val alli = allITraceAbs(state.traceAbstraction,true)
+  def enumFromStates(states: List[State]):(T,Map[String,Int]) = {
+//    val alli = allITraceAbs(statestate.traceAbstraction,true)
+    val alli = allITraceAbs(states.flatMap(_.traceAbstraction).toSet,true)
     //TODO: allI doesn't find cbenter onpause
     val inamelist = "OTHEROTHEROTHER"::(alli.groupBy(_.identitySignature).keySet.toList)
     val iNameIntMap: Map[String, Int] = inamelist.zipWithIndex.toMap
-    val ienum = mkEnum("inames",inamelist)
+    (mkEnum("inames",inamelist), iNameIntMap)
+  }
+  def simplify(state: State, logDbg:Boolean = false, maxWitness:Option[Int] = None): Option[State] = {
+    push()
+    val (ienum,iNameIntMap) = enumFromStates(List(state))
     val ast = toAST(state,ienum, iNameIntMap, maxWitness)
 
     if(logDbg) {
@@ -270,15 +275,47 @@ trait StateSolver[T] {
     simpleAst.map(_ => state) //TODO: actually simplify?
   }
 
+  // TODO: call stack is currently just a list of stack frames, this needs to be updated when top is added
+  def stackMustImply(cs1: List[CallStackFrame], cs2: List[CallStackFrame]):Boolean = (cs1, cs2) match {
+    case (CallStackFrame(ml1, _, locals1)::t1, CallStackFrame(ml2, _, locals2)::t2) if ml1 == ml2 =>
+      locals1.forall{case (k,v) => locals2.get(k).map(_==v).getOrElse(false)} &&
+        stackMustImply(t1,t2)
+    case (Nil,Nil) => true
+    case _ => false
+  }
+
   /**
    * Check if formula s1 is entirely contained within s2.  Used to determine if subsumption is possible
+   *
    * @param s1
    * @param s2
    * @return
    */
-  def implies(s1:State, s2:State):Boolean = {
+  def mustImply(s1:State, s2:State, bound: Option[Int] = None):Boolean = {
+    // Currently, the stack is strictly the app call string
+    // When adding more abstraction to the stack, this needs to be modified
+    // TODO: check if pure vars are canonacalized
+    val si = stackMustImply(s1.callStack, s2.callStack)
+    val hi = s1.heapConstraints.forall{case (k,v) => s2.heapConstraints.get(k).map(_ == v).getOrElse(false)}
+    val pvi = s1.pureFormula.forall{
+      case p@PureConstraint(_, Equals, _) =>
+        s2.pureFormula.contains(p)
+      case p@PureConstraint(_, NotEquals, _) => s2.pureFormula.contains(p)
+      case _ => ??? //TODO: type comparison
+    }
+    val (ienum,idMap) = enumFromStates(List(s1,s2))
+    val phi1 = toAST(s1,ienum,idMap,bound)
+    val phi2 = toAST(s2,ienum,idMap,bound)
+    val f = mkNot(mkImplies(phi1,phi2))
+    push()
+    mkAssert(f)
+    val ti = checkSAT()
+    if (ti) {
+      printDbgModel(ienum, s1.traceAbstraction)
+    }
+    pop()
 
-    ???
+    si && hi && pvi && (!ti)
   }
 
 }
