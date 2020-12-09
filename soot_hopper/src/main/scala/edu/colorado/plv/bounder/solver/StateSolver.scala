@@ -34,6 +34,7 @@ trait StateSolver[T] {
    * @param cond
    */
   protected def mkForallInt(min:T, max:T, cond:T=>T):T
+  protected def mkExistsInt(min:T, max:T, cond:T=>T):T
   // comparison operations
   protected def mkEq(lhs : T, rhs : T) : T
   protected def mkNe(lhs : T, rhs : T) : T
@@ -123,36 +124,23 @@ trait StateSolver[T] {
         mkEq(mkArgConstraint(mkArgFun(uniqueID), mkIntVal(ind), msgExpr),mkModelVar(msgvar, uniqueID) )}))
   }
   def encodePred(combinedPred: LifeState.LSPred, uid:String, len:T,
-                 ienume:T, enumMap:Map[String,Int], maxLen:Option[Int]): T = combinedPred match {
-    case And(l1, l2) => mkAnd(encodePred(l1, uid,len, ienume, enumMap,maxLen), encodePred(l2, uid,len,ienume, enumMap,maxLen))
+                 ienume:T, enumMap:Map[String,Int]): T = combinedPred match {
+    case And(l1, l2) => mkAnd(encodePred(l1, uid,len, ienume, enumMap), encodePred(l2, uid,len,ienume, enumMap))
     case LSAbsBind(k, v: PureVar) => mkEq(mkModelVar(k, uid), mkObjVar(v))
-    case Or(l1, l2) => mkOr(encodePred(l1, uid,len,ienume,enumMap,maxLen), encodePred(l2, uid,len,ienume, enumMap,maxLen))
-    case Not(l) => mkNot(encodePred(l, uid,len, ienume, enumMap,maxLen))
-    case m@I(_,_, lsVars) => {
-      val i = mkFreshIntVar("fromi")
-      val iconstraints = mkAnd(List(
-        mkLt(mkIntVal(-1), i),
-        mkLt(i,len),
+    case Or(l1, l2) => mkOr(encodePred(l1, uid,len,ienume,enumMap), encodePred(l2, uid,len,ienume, enumMap))
+    case Not(l) => mkNot(encodePred(l, uid,len, ienume, enumMap))
+    case m@I(_,_, _) => {
+      mkExistsInt(mkIntVal(-1),len,
+      i => mkAnd(List(
         assertIAt(i, m, ienume, enumMap, uid)
-      ))
-      maxLen match{
-        case Some(v) => mkAnd(iconstraints, mkLt(i, mkIntVal(v)))
-        case None => iconstraints
-      }
+      )))
     }
     case NI(m1,m2) => {
       // exists i such that omega[i] = m1 and forall j > i omega[j] != m2
-      val i = mkFreshIntVar("fromni")
-      val niConstraints = mkAnd(List(
-        mkLt(mkIntVal(-1),i),
-        mkLt(i,len),
+      mkExistsInt(mkIntVal(-1), len, i => mkAnd(List(
         assertIAt(i, m1, ienume, enumMap, uid),
         mkForallInt(i,len, j => mkNot(assertIAt(j, m2, ienume, enumMap, uid)))
-      ))
-      maxLen match {
-        case Some(v) => mkAnd(niConstraints, mkLt(i,mkIntVal(v)))
-        case None => niConstraints
-      }
+      )))
     }
   }
 
@@ -179,16 +167,13 @@ trait StateSolver[T] {
     case AbsAnd(p1,p2) => allI(p1,includeArrow).union(allI(p2,includeArrow))
     case AbsEq(_,_) => Set()
   }
-  def encodeTraceAbs(abs:TraceAbstraction, enum:T, iNameIntMap:Map[String,Int],maxWitness:Option[Int]):T = {
-//    val initial_i = mkIntVar(s"initial_i_ + ${System.identityHashCode(abs)}")
-//    val initial_i = mkFreshIntVar("i")
-    // A unique id for this element of the trace abstraction, used to distinguish model vars and
-    val uniqueID = System.identityHashCode(abs).toString
-    val len = mkIntVar(s"len_${uniqueID}") // there exists a finite size of the trace
+  def encodeTraceAbs(abs:TraceAbstraction, enum:T, iNameIntMap:Map[String,Int], uniqueQuantifierID:String,traceLen:T):T = {
+    val uniqueID = uniqueQuantifierID
+//    val len = mkIntVar(s"len_${uniqueID}") // there exists a finite size of the trace
 
     def ienc(i:T, abs: TraceAbstraction):T = abs match{
       case AbsFormula(f) =>
-        encodePred(f, uniqueID, len, enum,iNameIntMap,maxWitness)
+        encodePred(f, uniqueID, traceLen, enum,iNameIntMap)
       case AbsAnd(f1,f2) => mkAnd(ienc(i,f1), ienc(i,f2))
       case AbsArrow(abs, ipred) => {
         //TODO: somehow enforce that ipred must be later in the trace than the m1 in NI(m1,m2)
@@ -202,10 +187,11 @@ trait StateSolver[T] {
           ienc(j, abs),
           mkForallInt(j,i, k => mkAnd(allNestedI.map{mi => mkNot(assertIAt(k,mi, enum, iNameIntMap, uniqueID))}.toList))
         ))
-        maxWitness match{
-          case Some(max) => mkAnd(arrowConstraints, mkLt(len,mkIntVal(max)))
-          case None => arrowConstraints
-        }
+//        maxWitness match{
+//          case Some(max) => mkAnd(arrowConstraints, mkLt(len,mkIntVal(max)))
+//          case None => arrowConstraints
+//        }
+        arrowConstraints
       }
       case AbsEq(mv,pv) => mkEq(mkModelVar(mv,uniqueID),mkObjVar(pv))
     }
@@ -215,7 +201,7 @@ trait StateSolver[T] {
     val other = I(CBEnter,Set(("","")), Nil)
     //TODO: unit test that causes two messages to occupy same spot
 
-    ienc(len, abs)
+    ienc(traceLen, abs)
   }
 
   protected def mkDistinct(pvList: Iterable[PureVar]): T
@@ -245,10 +231,16 @@ trait StateSolver[T] {
       mkAnd(acc, mkDistinct(pvList))
     }
 
+    // Identity hash code of trace abstraction used when encoding a state so that quantifiers are independent
+
+    val stateUniqueID = System.identityHashCode(state)
+    val len = mkIntVar(s"len_${stateUniqueID}") // there exists a finite size of the trace for this state
     val trace = state.traceAbstraction.foldLeft(mkBoolVal(true)) {
-      case (acc,v) => mkAnd(acc, encodeTraceAbs(v, enum, iNameIntMap,maxWitness))
+      case (acc,v) => mkAnd(acc, encodeTraceAbs(v, enum, iNameIntMap,
+        System.identityHashCode(v).toString,len))
     }
     mkAnd(mkAnd(pureAst, heapAst),trace)
+    //TODO: fix maxWitness
   }
 
   def enumFromStates(states: List[State]):(T,Map[String,Int]) = {
@@ -291,7 +283,7 @@ trait StateSolver[T] {
    * @param s2
    * @return
    */
-  def mustImply(s1:State, s2:State, bound: Option[Int] = None):Boolean = {
+  def mustImply(s1:State, s2:State):Boolean = {
     // Currently, the stack is strictly the app call string
     // When adding more abstraction to the stack, this needs to be modified
     // TODO: check if pure vars are canonacalized
@@ -304,13 +296,23 @@ trait StateSolver[T] {
       case _ => ??? //TODO: type comparison
     }
     val (ienum,idMap) = enumFromStates(List(s1,s2))
-    val phi1 = toAST(s1,ienum,idMap,bound)
-    val phi2 = toAST(s2,ienum,idMap,bound)
+//    val phi1 = toAST(s1,ienum,idMap,bound)
+//    val phi2 = toAST(s2,ienum,idMap,bound)
+    val len = mkIntVar(s"len_")
+    val phi1 = s1.traceAbstraction.foldLeft(mkBoolVal(true)) {
+      case (acc,v) => mkAnd(acc, encodeTraceAbs(v, ienum, idMap,
+        System.identityHashCode(v).toString,len))
+    }
+    val phi2 = s2.traceAbstraction.foldLeft(mkBoolVal(true)) {
+      case (acc,v) => mkAnd(acc, encodeTraceAbs(v, ienum, idMap,
+        System.identityHashCode(v).toString,len))
+    }
     val f = mkNot(mkImplies(phi1,phi2))
     push()
     mkAssert(f)
     val ti = checkSAT()
     if (ti) {
+      println(s"===formula: ${f}")
       printDbgModel(ienum, s1.traceAbstraction)
     }
     pop()

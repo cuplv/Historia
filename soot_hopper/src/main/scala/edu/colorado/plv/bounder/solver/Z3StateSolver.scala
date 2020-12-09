@@ -109,6 +109,7 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
   }
 
   def printAbstSolution(model: Model, msgname: EnumSort, traceabs: Set[TraceAbstraction]) = {
+    println(s"===model: ${model}")
     traceabs map { abs => {
       val uniqueID = System.identityHashCode(abs) + ""
       val len = mkIntVar(s"len_${uniqueID}").asInstanceOf[ArithExpr]
@@ -194,14 +195,25 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
     ctx.mkFreshConst(s, ctx.mkIntSort())
 
   /**
-   * forall int condition is true
-   *
-   * @param cond
+   * forall int in (min,max) condition is true
+   * @param cond function from const to boolean expression
    */
   override protected def mkForallInt(min:AST, max:AST,cond: AST => AST): AST = {
     val j= ctx.mkFreshConst("j", ctx.mkIntSort()).asInstanceOf[ArithExpr]
     val range = mkAnd(List(mkLt(min,j), mkLt(j,max)))
     ctx.mkForall(Array(j), mkImplies(range,cond(j)).asInstanceOf[Expr]
+      ,1,null,null,null,null)
+  }
+
+  /**
+   * there exists an int in (min,max) such that condition is true
+   * @param cond function from const to boolean expression
+   * @return
+   */
+  protected def mkExistsInt(min:AST, max:AST, cond:AST=>AST):AST = {
+    val j= ctx.mkFreshConst("i", ctx.mkIntSort()).asInstanceOf[ArithExpr]
+    val range = mkAnd(List(mkLt(min,j), mkLt(j,max)))
+    ctx.mkExists(Array(j), mkAnd(range,cond(j)).asInstanceOf[Expr]
       ,1,null,null,null,null)
   }
 
