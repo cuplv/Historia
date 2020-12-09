@@ -174,11 +174,14 @@ trait StateSolver[T] {
    * @param uniqueTraceID A unique ID that scopes the functions computing a trace,
    *                      should be shared among the traces of a state
    * @param traceLen
+   * @param absUID optional unique id for model variables to scope properly,
+   *               if none is provided, identity hash code of abs is used
    * @return
    */
-  def encodeTraceAbs(abs:TraceAbstraction, enum:T, iNameIntMap:Map[String,Int], uniqueTraceID:String,traceLen:T):T = {
+  def encodeTraceAbs(abs:TraceAbstraction, enum:T, iNameIntMap:Map[String,Int], uniqueTraceID:String,traceLen:T,
+                     absUID: Option[String] = None):T = {
     // A unique id for variables scoped to the trace abstraction
-    val uniqueAbsId = System.identityHashCode(abs).toString
+    val uniqueAbsId = absUID.getOrElse(System.identityHashCode(abs).toString)
     def ienc(i:T, abs: TraceAbstraction):T = abs match{
       case AbsFormula(f) =>
         encodePred(f, uniqueTraceID, traceLen, enum,iNameIntMap, uniqueAbsId)
@@ -276,16 +279,17 @@ trait StateSolver[T] {
   }
 
   /**
-   * Check if formula s1 is entirely contained within s2.  Used to determine if subsumption is possible
+   * Check if formula s1 is entirely contained within s2.  Used to determine if subsumption is sound.
    *
    * @param s1
    * @param s2
    * @return
    */
-  def canSubsume(s1:State, s2:State):Boolean = {
+  def canSubsume(s1:State, s2:State, maxLen: Option[Int] = None):Boolean = {
     // Currently, the stack is strictly the app call string
     // When adding more abstraction to the stack, this needs to be modified
     // TODO: check if pure vars are canonacalized
+    push()
     val si = stackMustImply(s1.callStack, s2.callStack)
     val hi = s1.heapConstraints.forall{case (k,v) => s2.heapConstraints.get(k).map(_ == v).getOrElse(false)}
     val pvi = s1.pureFormula.forall{
@@ -300,14 +304,18 @@ trait StateSolver[T] {
     val len = mkIntVar(s"len_")
     val phi1 = s1.traceAbstraction.foldLeft(mkBoolVal(true)) {
       case (acc,v) => mkAnd(acc, encodeTraceAbs(v, ienum, idMap,
-        "0",len))
+        "0",len, Some("0")))
     }
     val phi2 = s2.traceAbstraction.foldLeft(mkBoolVal(true)) {
       case (acc,v) => mkAnd(acc, encodeTraceAbs(v, ienum, idMap,
-        "0",len))
+        "0",len, Some("0")))
     }
-    val f = mkNot(mkImplies(phi1,phi2))
-    push()
+    val fp = mkNot(mkImplies(phi2,phi1))
+    // limit trace length for debug
+    val f = maxLen match {
+      case Some(v) => mkAnd(mkLt(len, mkIntVal(v)), fp)
+      case None => fp
+    }
     mkAssert(f)
     val ti = checkSAT()
     if (ti) {

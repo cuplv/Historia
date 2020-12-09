@@ -361,7 +361,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val res1 = statesolver.simplify(state1, true)
     assert(res1.isDefined)
   }
-  test("Must imply") {
+  test("Subsumption of states") {
     val ctx = new Context
     val solver: Solver = ctx.mkSolver()
     val hierarchy: Map[String, Set[String]] =
@@ -379,22 +379,29 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val state2 = state.copy(callStack =
       state.callStack.head.copy(locals=Map(StackVar("x") -> p1, StackVar("y")->p2))::Nil)
     //TODO: uncomment after done debugging index quantifier bug
-    //assert(statesolver.canSubsume(state,state))
-    //assert(statesolver.canSubsume(state,state2))
-    //assert(!statesolver.canSubsume(state2,state))
+    assert(statesolver.canSubsume(state,state))
+    assert(statesolver.canSubsume(state,state2))
+    assert(!statesolver.canSubsume(state2,state))
 
     val ifoo = I(CBEnter, Set(("", "foo")), "a" :: Nil)
     val ibar = I(CBEnter, Set(("", "bar")), "a" :: Nil)
     val ibarc =I(CBEnter, Set(("", "bar")), "c" :: Nil)
+
+    val baseTrace1 = AbsAnd(AbsFormula(ifoo), AbsEq("a",p1))
+    val arrowTrace1 = AbsArrow(baseTrace1, ibarc)
+    val state_ = state.copy(traceAbstraction = Set(baseTrace1))
+    val state__ = state.copy(traceAbstraction = Set(arrowTrace1))
+    assert(statesolver.canSubsume(state_,state__,Some(5)))
+
+
     val baseTrace = AbsAnd(AbsFormula(NI(ifoo, ibar)), AbsEq("a", p1))
     val state3 = state.copy(traceAbstraction = Set(baseTrace))
     val state4 = state.copy(traceAbstraction = Set(AbsArrow(baseTrace, ibarc)))
 
-    val idHc3 =System.identityHashCode(state3)
-    val idHc3c =System.identityHashCode(state3.copy())
     val res = statesolver.canSubsume(state3, state3)
-    assert(res)
-    assert(statesolver.canSubsume(state3,state4)) //TODO: failing test?
+    assert(res) //TODO: uncomment after debugging next problem
+    assert(statesolver.canSubsume(state3,state4,Some(5))) //TODO: failing test?
+
   }
   test("quantifier example") {
     val ctx = new Context
