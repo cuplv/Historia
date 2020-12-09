@@ -379,9 +379,9 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val state2 = state.copy(callStack =
       state.callStack.head.copy(locals=Map(StackVar("x") -> p1, StackVar("y")->p2))::Nil)
     //TODO: uncomment after done debugging index quantifier bug
-//    assert(statesolver.mustImply(state,state))
-//    assert(statesolver.mustImply(state,state2))
-//    assert(!statesolver.mustImply(state2,state))
+    //assert(statesolver.canSubsume(state,state))
+    //assert(statesolver.canSubsume(state,state2))
+    //assert(!statesolver.canSubsume(state2,state))
 
     val ifoo = I(CBEnter, Set(("", "foo")), "a" :: Nil)
     val ibar = I(CBEnter, Set(("", "bar")), "a" :: Nil)
@@ -392,10 +392,9 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
 
     val idHc3 =System.identityHashCode(state3)
     val idHc3c =System.identityHashCode(state3.copy())
-    val res = statesolver.mustImply(state3, state3.copy())
-    //TODO: should quantified "i" values be the same here?
-    assert(res) //TODO: another failing test? why doesn't this work?
-//    assert(statesolver.mustImply(state3,state4)) //TODO: failing test?
+    val res = statesolver.canSubsume(state3, state3)
+    assert(res)
+    assert(statesolver.canSubsume(state3,state4)) //TODO: failing test?
   }
   test("quantifier example") {
     val ctx = new Context

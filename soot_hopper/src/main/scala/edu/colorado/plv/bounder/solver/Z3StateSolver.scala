@@ -104,15 +104,16 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
 
   override protected def mkObjVar(s: PureVar): AST = ctx.mkIntConst("object_addr_" + s.id.toString)
 
-  override def printDbgModel(msgname: AST, traceabst: Set[TraceAbstraction]): Unit = {
-    printAbstSolution(solver.getModel, msgname.asInstanceOf[EnumSort], traceabst)
+  override def printDbgModel(msgname: AST, traceabst: Set[TraceAbstraction], lenUID: String): Unit = {
+    printAbstSolution(solver.getModel, msgname.asInstanceOf[EnumSort], traceabst, lenUID)
   }
 
-  def printAbstSolution(model: Model, msgname: EnumSort, traceabs: Set[TraceAbstraction]) = {
+  def printAbstSolution(model: Model, msgname: EnumSort, traceabs: Set[TraceAbstraction],
+                        lenUID:String) = {
     println(s"===model: ${model}")
     traceabs map { abs => {
       val uniqueID = System.identityHashCode(abs) + ""
-      val len = mkIntVar(s"len_${uniqueID}").asInstanceOf[ArithExpr]
+      val len = mkIntVar(s"len_${lenUID}").asInstanceOf[ArithExpr]
       println("=trace solution=")
       val traceLen: Int = model.eval(len, true).toString.toInt
       val traceFun = mkTraceFn(uniqueID).asInstanceOf[FuncDecl]
@@ -143,7 +144,9 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
       case Status.SATISFIABLE => {
         if (logDbg) {
           println(s"Model: ${solver.getModel}")
-          printAbstSolution(solver.getModel(),msgname.asInstanceOf[EnumSort], state.traceAbstraction)
+          printAbstSolution(solver.getModel(),msgname.asInstanceOf[EnumSort],
+            state.traceAbstraction,
+            System.identityHashCode(state).toString)
         }
         Some(t)
       }
