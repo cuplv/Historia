@@ -385,7 +385,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
 
     val ifoo = I(CBEnter, Set(("", "foo")), "a" :: Nil)
     val ibar = I(CBEnter, Set(("", "bar")), "a" :: Nil)
-    val ibarc =I(CBEnter, Set(("", "bar")), "c" :: Nil)
+    val ibarc = I(CBEnter, Set(("", "bar")), "c" :: Nil)
 
     val baseTrace1 = AbsAnd(AbsFormula(ifoo), AbsEq("a",p1))
     val arrowTrace1 = AbsArrow(baseTrace1, ibarc)
@@ -399,8 +399,8 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val state4 = state.copy(traceAbstraction = Set(AbsArrow(baseTrace, ibarc)))
 
     val res = statesolver.canSubsume(state3, state3)
-    assert(res) //TODO: uncomment after debugging next problem
-    assert(statesolver.canSubsume(state3,state4,Some(5))) //TODO: failing test?
+    assert(res)
+    assert(statesolver.canSubsume(state3,state4,Some(5)))
 
   }
   test("quantifier example") {
