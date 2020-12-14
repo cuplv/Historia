@@ -246,17 +246,22 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       val possibleHeapCells = state.heapConstraints.filter {
         case (FieldPtEdge(pv, heapFieldName), _) => fieldName == heapFieldName
       }
+      // Get or define right hand side
       val (rhsv,state2) = rhs match{ //TODO: seems like rhsv should be used?
         case NullConst => (NullVal,state)
         case lw@LocalWrapper(_,_) => state.getOrDefine(lw)
       }
+      // get or define base of assignment
       val (basev,state3) = state2.getOrDefine(base)
-
+      // Enumerate over existing base values that could alias assignment
       possibleHeapCells.map{
         case (pte@FieldPtEdge(heapPv, fieldName), tgt) =>
           state3.copy(heapConstraints = state3.heapConstraints - pte,
-            pureFormula = state3.pureFormula + PureConstraint(basev, Equals, tgt))
+            pureFormula = state3.pureFormula + PureConstraint(basev, Equals, tgt)) //TODO: basv = target? this seems wrong
+        case _ =>
+          ???
       }.toSet
+      // TODO: add case where nothing is aliased
     }
     case AssignCmd(FieldRef(base,_,_,name), NullConst,_) => {
       val (basev, state2) = state.getOrDefine(base)

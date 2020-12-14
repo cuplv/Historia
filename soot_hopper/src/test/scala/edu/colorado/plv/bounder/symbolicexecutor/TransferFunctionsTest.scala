@@ -1,9 +1,9 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CBExit, CallbackMethodInvoke, CallbackMethodReturn, CmdWrapper, Loc, LocalWrapper, NewCommand}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CBExit, CallbackMethodInvoke, CallbackMethodReturn, CmdWrapper, FieldRef, Loc, LocalWrapper, NewCommand, NullConst}
 import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSSpec}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AbsAnd, AbsArrow, AbsEq, AbsFormula, CallStackFrame, Equals, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, TraceAbstraction}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbsAnd, AbsArrow, AbsEq, AbsFormula, CallStackFrame, Equals, FieldPtEdge, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, TraceAbstraction}
 import edu.colorado.plv.bounder.testutils.{CmdTransition, MethodTransition, TestIR, TestIRLineLoc, TestIRMethodLoc}
 
 class TransferFunctionsTest extends org.scalatest.FunSuite {
@@ -25,12 +25,31 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
   //TODO: test transfer function where field is assigned and base may or may not be aliased, when does this happen?
   // pre: a^.out -> b1^
   // post: (a^.out -> c^* d^.out -> e^) OR (a^.out -> c^ AND a^=d^ AND c^=d^)
+  val fooMethod = TestIRMethodLoc("","foo")
+  val fooMethodReturn = CallbackMethodReturn("", "foo", fooMethod, None)
+  test("Transfer may or may not alias") {
+    val cmd = (loc:AppLoc) => {
+      val thisLocal = LocalWrapper("this", "Object")
+      AssignCmd(FieldRef(thisLocal, "Object", "Object", "o"), NullConst, loc)
+    }
+    val basePv = PureVar()
+    val otherPv = PureVar()
+    val post = State(CallStackFrame(fooMethodReturn, None, Map(StackVar("this") -> basePv))::Nil,
+      heapConstraints = Map(FieldPtEdge(otherPv, "o") -> NullVal),
+      pureFormula = Set(),
+      traceAbstraction = Set()
+    )
+    val pre = testCmdTransfer(cmd, post, fooMethod)
+    println(pre)
+    assert(pre.size == 2)
+    ??? //TODO: finish test, fix problem with cmdTransfer and alias enumeration
+
+  }
   test("Transfer assign new local") {
     val cmd= (loc:AppLoc) => AssignCmd(LocalWrapper("bar","Object"),NewCommand("String"),loc)
-    val fooMethod = TestIRMethodLoc("","foo")
     val nullPv = PureVar()
     val post = State(
-      CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("bar") -> nullPv))::Nil,
+      CallStackFrame(fooMethodReturn, None, Map(StackVar("bar") -> nullPv))::Nil,
       heapConstraints = Map(),
       pureFormula = Set(PureConstraint(nullPv,Equals, NullVal)), Set())
     val prestate: Set[State] = testCmdTransfer(cmd, post,fooMethod)
