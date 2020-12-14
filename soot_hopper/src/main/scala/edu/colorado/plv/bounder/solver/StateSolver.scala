@@ -187,24 +187,15 @@ trait StateSolver[T] {
         encodePred(f, uniqueTraceID, traceLen, enum,iNameIntMap, uniqueAbsId)
       case AbsAnd(f1,f2) => mkAnd(ienc(i,f1), ienc(i,f2))
       case AbsArrow(abs, ipred) => {
-        val allNestedI = allI(abs,false)
-        // j is index of message on current arrow, i is index of next arrow position.
-        // The i and j indices are unrelated to the i used for NI and I encoding
-        mkExistsInt(mkIntVal(-1),i,j => mkAnd(List(
-          assertIAt(j, ipred,enum, iNameIntMap, uniqueTraceID, uniqueAbsId),
-          ienc(j, abs),
-          mkForallInt(j,i, k => mkAnd(allNestedI.map{mi =>
-            mkNot(assertIAt(k,mi, enum, iNameIntMap, uniqueTraceID,uniqueAbsId))}.toList))
-        )))
+        //TODO: this change cause a bunch of unit tests to fail, figure out what is going on?
+        val lastElem = mkSub(i,mkIntVal(1))
+        mkAnd(List(
+          assertIAt(lastElem, ipred, enum, iNameIntMap, uniqueTraceID,uniqueAbsId),
+          ienc(lastElem, abs)
+        ))
       }
       case AbsEq(mv,pv) => mkEq(mkModelVar(mv,uniqueAbsId),mkObjVar(pv))
     }
-
-    // Each position has unique message
-    // dummy message for symbols not contained in formula
-    val other = I(CBEnter,Set(("","")), Nil)
-    //TODO: unit test that causes two messages to occupy same spot
-
     ienc(traceLen, abs)
   }
 
@@ -243,8 +234,8 @@ trait StateSolver[T] {
       case (acc,v) => mkAnd(acc, encodeTraceAbs(v, enum, iNameIntMap,
         stateUniqueID,len))
     }
-    mkAnd(mkAnd(pureAst, heapAst),trace)
-    //TODO: fix maxWitness
+    val out = mkAnd(mkAnd(pureAst, heapAst),trace)
+    maxWitness.foldLeft(out){(acc,v) => mkAnd(mkLt(len, mkIntVal(v)), acc)}
   }
 
   def enumFromStates(states: List[State]):(T,Map[String,Int]) = {
@@ -270,10 +261,10 @@ trait StateSolver[T] {
   }
 
   // TODO: call stack is currently just a list of stack frames, this needs to be updated when top is added
-  def stackMustImply(cs1: List[CallStackFrame], cs2: List[CallStackFrame]):Boolean = (cs1, cs2) match {
+  def stackCanSubsume(cs1: List[CallStackFrame], cs2: List[CallStackFrame]):Boolean = (cs1, cs2) match {
     case (CallStackFrame(ml1, _, locals1)::t1, CallStackFrame(ml2, _, locals2)::t2) if ml1 == ml2 =>
       locals1.forall{case (k,v) => locals2.get(k).map(_==v).getOrElse(false)} &&
-        stackMustImply(t1,t2)
+        stackCanSubsume(t1,t2)
     case (Nil,Nil) => true
     case _ => false
   }
@@ -290,7 +281,7 @@ trait StateSolver[T] {
     // When adding more abstraction to the stack, this needs to be modified
     // TODO: check if pure vars are canonacalized
     push()
-    val si = stackMustImply(s1.callStack, s2.callStack)
+    val si = stackCanSubsume(s1.callStack, s2.callStack)
     val hi = s1.heapConstraints.forall{case (k,v) => s2.heapConstraints.get(k).map(_ == v).getOrElse(false)}
     val pvi = s1.pureFormula.forall{
       case p@PureConstraint(_, Equals, _) =>

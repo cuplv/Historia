@@ -184,7 +184,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
       Map("Object" -> Set("String", "Foo", "Bar", "Object"),
         "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
     val pc = new PersistantConstraints(ctx, solver, hierarchy)
-    val statesolver = new Z3StateSolver(pc)
+    val stateSolver = new Z3StateSolver(pc)
 
     // Lifestate atoms for next few tests
     val i = I(CBEnter, Set(("foo", "bar")), "a" :: Nil)
@@ -204,7 +204,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
       i4
     )
     val state2 = State(Nil,Map(),Set(), Set(abs2))
-    val res2 = statesolver.simplify(state2, true)
+    val res2 = stateSolver.simplify(state2, true)
     assert(res2.isDefined)
   }
   test("Trace abstraction NI(a.bar(),a.baz()) |> I(b.baz()) |> I(c.bar() (<=> true) ") {
