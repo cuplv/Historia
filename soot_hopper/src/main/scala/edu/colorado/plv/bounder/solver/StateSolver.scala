@@ -182,12 +182,14 @@ trait StateSolver[T] {
                      absUID: Option[String] = None):T = {
     // A unique id for variables scoped to the trace abstraction
     val uniqueAbsId = absUID.getOrElse(System.identityHashCode(abs).toString)
+    //TODO: arrow constraints shouldn't constrain trace function
+    //TODO: create fresh trace fun that has same pred behavior as previous trace fun except for current arrow
     def ienc(i:T, abs: TraceAbstraction):T = abs match{
       case AbsFormula(f) =>
         encodePred(f, uniqueTraceID, traceLen, enum,iNameIntMap, uniqueAbsId)
       case AbsAnd(f1,f2) => mkAnd(ienc(i,f1), ienc(i,f2))
       case AbsArrow(abs, ipred) => {
-        //TODO: this change cause a bunch of unit tests to fail, figure out what is going on?
+        //TODO: concat on trace doesn't work here due to comparison
         val lastElem = mkSub(i,mkIntVal(1))
         mkAnd(List(
           assertIAt(lastElem, ipred, enum, iNameIntMap, uniqueTraceID,uniqueAbsId),
@@ -232,7 +234,7 @@ trait StateSolver[T] {
     val len = mkIntVar(s"len_${stateUniqueID}") // there exists a finite size of the trace for this state
     val trace = state.traceAbstraction.foldLeft(mkBoolVal(true)) {
       case (acc,v) => mkAnd(acc, encodeTraceAbs(v, enum, iNameIntMap,
-        stateUniqueID,len))
+        uniqueTraceID = stateUniqueID,traceLen = len))
     }
     val out = mkAnd(mkAnd(pureAst, heapAst),trace)
     maxWitness.foldLeft(out){(acc,v) => mkAnd(mkLt(len, mkIntVal(v)), acc)}
@@ -244,16 +246,16 @@ trait StateSolver[T] {
     val iNameIntMap: Map[String, Int] = inamelist.zipWithIndex.toMap
     (mkEnum("inames",inamelist), iNameIntMap)
   }
-  def simplify(state: State, logDbg:Boolean = false, maxWitness:Option[Int] = None): Option[State] = {
+  def simplify(state: State, maxWitness:Option[Int] = None): Option[State] = {
     push()
     val (ienum,iNameIntMap) = enumFromStates(List(state))
     val ast = toAST(state,ienum, iNameIntMap, maxWitness)
 
-    if(logDbg) {
+    if(maxWitness.isDefined) {
       println(s"State ${System.identityHashCode(state)} encoding: ")
       println(ast.toString)
     }
-    val simpleAst = solverSimplify(ast,state,ienum, logDbg)
+    val simpleAst = solverSimplify(ast,state,ienum, maxWitness.isDefined)
 
     pop()
     // TODO: garbage collect, if purevar can't be reached from reg or stack var, discard
@@ -293,18 +295,21 @@ trait StateSolver[T] {
 //    val phi1 = toAST(s1,ienum,idMap,bound)
 //    val phi2 = toAST(s2,ienum,idMap,bound)
     val len = mkIntVar(s"len_")
-    val phi1 = s1.traceAbstraction.foldLeft(mkBoolVal(true)) {
+    val phi = (s:State) => (lenp1:T) => s.traceAbstraction.foldLeft(mkBoolVal(true)) {
       case (acc,v) => mkAnd(acc, encodeTraceAbs(v, ienum, idMap,
-        "0",len, Some("0")))
+        "0",lenp1, Some("0")))
     }
-    val phi2 = s2.traceAbstraction.foldLeft(mkBoolVal(true)) {
-      case (acc,v) => mkAnd(acc, encodeTraceAbs(v, ienum, idMap,
-        "0",len, Some("0")))
-    }
-    val fp = mkNot(mkImplies(phi2,phi1))
+    val fp = mkExistsInt(mkIntVal(-1), len, l => mkNot(mkImplies(
+      phi(s2)(l),
+      phi(s1)(l))))
     // limit trace length for debug
     val f = maxLen match {
-      case Some(v) => mkAnd(mkLt(len, mkIntVal(v)), fp)
+      case Some(v) => {
+        println(s"formula:\n $fp")
+        mkAnd(
+          mkLt(len, mkIntVal(v)),
+          fp)
+      }
       case None => fp
     }
     mkAssert(f)

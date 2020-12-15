@@ -42,7 +42,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
       PureConstraint(v3, Equals, NullVal))
     val refutableState = State(List(frame),
       Map(FieldPtEdge(v,"f") -> v2),constraints + PureConstraint(v2, Equals, v3),Set())
-    val simplifyResult = statesolver.simplify(refutableState,true,Some(0))
+    val simplifyResult = statesolver.simplify(refutableState)
     assert(!simplifyResult.isDefined)
   }
   test("Separate fields imply base must not be aliased a^.f->b^ * c^.f->b^ AND a^=c^ (<=> false)") {
@@ -59,13 +59,13 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val v4 = PureVar()
     val refutableState = State(List(frame),
       Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),Set(PureConstraint(v, Equals, v2)), Set())
-    val simplifyResult = statesolver.simplify(refutableState,true,Some(0))
+    val simplifyResult = statesolver.simplify(refutableState)
     assert(!simplifyResult.isDefined)
 
     // v3 and v4 on the right side of the points to can be aliased
     val unrefutableState = State(List(frame),
       Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),Set(PureConstraint(v3, Equals, v4)), Set())
-    val simplifyResult2 = statesolver.simplify(unrefutableState,true,Some(0))
+    val simplifyResult2 = statesolver.simplify(unrefutableState)
     assert(simplifyResult2.isDefined)
   }
   test("aliased object implies fields must be aliased refuted by type constraints") {
@@ -118,7 +118,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val p1 = PureVar()
     val abs1 = AbsAnd(AbsFormula(niBarBaz), AbsEq("a",p1))
     val state1 = State(Nil, Map(),Set(), Set(abs1))
-    val res1 = statesolver.simplify(state1,true, Some(2))
+    val res1 = statesolver.simplify(state1)
     assert(res1.isDefined)
   }
   test("Trace abstraction NI(a.bar(), a.baz()) |> I(a.bar()) (<==>true)") {
@@ -136,7 +136,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val niBarBaz = NI(i,i2)
     val abs1 = AbsArrow(AbsFormula(niBarBaz), i)
     val state1 = State(Nil, Map(),Set(), Set(abs1))
-    val res1 = statesolver.simplify(state1,true)
+    val res1 = statesolver.simplify(state1)
     assert(res1.isDefined)
   }
   test("Trace abstraction NI(a.bar(),a.baz()) |> I(c.baz()) && a == p1 && c == p1 (<=> false)") {
@@ -167,7 +167,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     )
     val state1 = State(Nil, Map(),Set(), Set(abs1))
     println(s"state: ${state1}")
-    val res1 = statesolver.simplify(state1,true)
+    val res1 = statesolver.simplify(state1, Some(20)) //TODO: remove limit
     assert(!res1.isDefined)
 
     //TODO: more tests
@@ -204,10 +204,10 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
       i4
     )
     val state2 = State(Nil,Map(),Set(), Set(abs2))
-    val res2 = stateSolver.simplify(state2, true)
+    val res2 = stateSolver.simplify(state2)
     assert(res2.isDefined)
   }
-  test("Trace abstraction NI(a.bar(),a.baz()) |> I(b.baz()) |> I(c.bar() (<=> true) ") {
+  test("Trace abstraction NI(a.bar(),a.baz()) |> I(b.baz()) |> I(c.bar()) (<=> true) ") {
     val ctx = new Context
     val solver: Solver = ctx.mkSolver()
     val hierarchy: Map[String, Set[String]] =
@@ -235,7 +235,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     ),i4)
     val abs1 = AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("c",p1), AbsAnd(AbsEq("b",p1), niaa)))
     val state2 = State(Nil,Map(),Set(), Set(abs1))
-    val res2 = statesolver.simplify(state2, true)
+    val res2 = statesolver.simplify(state2, Some(20)) //TODO: remove dbg limit
     assert(res2.isDefined)
   }
   test("Trace abstraction NI(a.bar(),a.baz()) |> I(c.bar()) |> I(b.baz() && a = b = c (<=> false) ") {
@@ -266,7 +266,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     ),i3)
     val abs1 = AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("c",p1), AbsAnd(AbsEq("b",p1), niaa)))
     val state2 = State(Nil,Map(),Set(), Set(abs1))
-    val res2 = statesolver.simplify(state2, true)
+    val res2 = statesolver.simplify(state2)
     assert(!res2.isDefined)
   }
   test("Trace abstraction NI(a.bar(),a.baz()) |> I(c.bar()) |> I(b.baz() && a = c (<=> true) ") {
@@ -297,7 +297,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     ),i3)
     val abs1 = AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("c",p1), AbsAnd(AbsEq("b",p2), niaa)))
     val state2 = State(Nil,Map(),Set(), Set(abs1))
-    val res2 = statesolver.simplify(state2, true)
+    val res2 = statesolver.simplify(state2)
     assert(res2.isDefined)
   }
   test("Trace abstraction NI(a.bar(),a.baz()) |> I(c.bar()) |> I(b.baz() && a = b (<=> false) ") {
@@ -328,7 +328,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     ),i3)
     val abs1 = AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("c",p2), AbsAnd(AbsEq("b",p1), niaa)))
     val state2 = State(Nil,Map(),Set(), Set(abs1))
-    val res2 = statesolver.simplify(state2, true)
+    val res2 = statesolver.simplify(state2)
     assert(!res2.isDefined)
   }
   test("Vacuous NI(a,a) spec") {
@@ -350,6 +350,12 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     // pure vars for next few tests
     val p1 = PureVar()
     val p2 = PureVar()
+    val state = State(Nil,Map(),Set(), Set())
+    //NI(a.bar(),a.bar()) (<=> true)
+    // Note that this should be the same as I(a.bar())
+    val nia = AbsFormula(niBarBar)
+    val res0 = statesolver.simplify(state.copy(traceAbstraction = Set(nia)))
+    assert(res0.isDefined)
 
     //NI(a.bar(),a.bar()) |> I(b.bar()) && a = b (<=> true)
     val niaa: TraceAbstraction = AbsArrow(
@@ -357,8 +363,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
       i4
     )
     val abs1 = AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("b",p1), niaa))
-    val state1 = State(Nil,Map(),Set(), Set(abs1))
-    val res1 = statesolver.simplify(state1, true)
+    val res1 = statesolver.simplify(state.copy(traceAbstraction = Set(abs1)))
     assert(res1.isDefined)
   }
   test("Subsumption of states") {
@@ -378,7 +383,6 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val state = State(CallStackFrame(loc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Set())
     val state2 = state.copy(callStack =
       state.callStack.head.copy(locals=Map(StackVar("x") -> p1, StackVar("y")->p2))::Nil)
-    //TODO: uncomment after done debugging index quantifier bug
     assert(statesolver.canSubsume(state,state))
     assert(statesolver.canSubsume(state,state2))
     assert(!statesolver.canSubsume(state2,state))
@@ -386,22 +390,29 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val ifoo = I(CBEnter, Set(("", "foo")), "a" :: Nil)
     val ibar = I(CBEnter, Set(("", "bar")), "a" :: Nil)
     val ibarc = I(CBEnter, Set(("", "bar")), "c" :: Nil)
+    val ifooc = I(CBEnter, Set(("", "foo")), "c" :: Nil)
 
+    // I(a.foo()) can subsume I(a.foo()) |> a.bar()
     val baseTrace1 = AbsAnd(AbsFormula(ifoo), AbsEq("a",p1))
     val arrowTrace1 = AbsArrow(baseTrace1, ibarc)
     val state_ = state.copy(traceAbstraction = Set(baseTrace1))
     val state__ = state.copy(traceAbstraction = Set(arrowTrace1))
-    assert(statesolver.canSubsume(state_,state__,Some(5)))
-
+    assert(statesolver.canSubsume(state_,state__))
 
     val baseTrace = AbsAnd(AbsFormula(NI(ifoo, ibar)), AbsEq("a", p1))
-    val state3 = state.copy(traceAbstraction = Set(baseTrace))
-    val state4 = state.copy(traceAbstraction = Set(AbsArrow(baseTrace, ibarc)))
+    val state3_ = state.copy(traceAbstraction = Set(baseTrace))
 
-    val res = statesolver.canSubsume(state3, state3)
+    // NI(a.foo(), a.bar()) can subsume itself
+    val res = statesolver.canSubsume(state3_, state3_)
     assert(res)
-    assert(statesolver.canSubsume(state3,state4,Some(5)))
 
+    val state3__ = state.copy(traceAbstraction = Set(AbsArrow(baseTrace, ibarc)))
+    // NI(a.foo(), a.bar()) can subsume NI(a.foo(), a.bar()) |> c.bar()
+    assert(statesolver.canSubsume(state3_,state3__))
+
+    // NI(a.foo(), a.bar()) cannot subsume NI(a.foo(), a.bar()) |> c.foo()
+    val fooBarArrowFoo = state.copy(traceAbstraction = Set(AbsArrow(baseTrace, ifooc)))
+    assert(!statesolver.canSubsume(state3_, fooBarArrowFoo, Some(10)))
   }
   test("quantifier example") {
     val ctx = new Context
