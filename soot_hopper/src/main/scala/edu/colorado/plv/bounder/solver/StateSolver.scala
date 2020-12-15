@@ -25,8 +25,6 @@ trait StateSolver[T] {
   // cleanup
   def dispose() : Unit
   // conversion from pure constraints to AST type of solver (T)
-//  def mkAssert(p : PureConstraint) : Unit = mkAssert(toAST(p))
-//  def mkAssertWithAssumption(assume : String, p : PureConstraint) : Unit = mkAssert(mkImplies(mkBoolVar(assume), toAST(p)))
 
   // quantifiers
   /**
@@ -109,9 +107,8 @@ trait StateSolver[T] {
     case _ =>
       ???
   }
+  case class TraceFn(traceFun:T, iNameFn:T,argFun:T, fullTraceLen:T) //TODO: remove if not used
   private def assertIAt(index:T, m:I, ienume:T, enumMap: Map[String,Int], traceUID:String, absUID:String):T = {
-    if (!enumMap.contains(m.identitySignature))
-      println()
     val tracefun = mkTraceFn(traceUID)
     val msgExpr = mkTraceConstraint(tracefun, index)
     val nameFun = mkINameFn(ienume, traceUID)
@@ -184,29 +181,26 @@ trait StateSolver[T] {
     val uniqueAbsId = absUID.getOrElse(System.identityHashCode(abs).toString)
     //TODO: arrow constraints shouldn't constrain trace function
     //TODO: create fresh trace fun that has same pred behavior as previous trace fun except for current arrow
-    def ienc(i:T, abs: TraceAbstraction):T = abs match{
+    def ienc(i:T, abs: TraceAbstraction, k: T=>T):T = abs match{
       case AbsFormula(f) =>
-        encodePred(f, uniqueTraceID, traceLen, enum,iNameIntMap, uniqueAbsId)
-      case AbsAnd(f1,f2) => mkAnd(ienc(i,f1), ienc(i,f2))
+        mkAnd(encodePred(f, uniqueTraceID, i, enum,iNameIntMap, uniqueAbsId),
+          k(traceLen))
+      case AbsAnd(f1,f2) => mkAnd(ienc(i,f1,k), ienc(i,f2,k))
       case AbsArrow(abs, ipred) => {
-        //TODO: concat on trace doesn't work here due to comparison
-        val lastElem = mkSub(i,mkIntVal(1))
-        mkAnd(List(
-          assertIAt(lastElem, ipred, enum, iNameIntMap, uniqueTraceID,uniqueAbsId),
-          ienc(lastElem, abs)
-        ))
+        val lastElem = mkAdd(i,mkIntVal(1))
+        val newk = (nexti:T) =>
+          mkAnd(k(mkAdd(nexti, mkIntVal(1))), assertIAt(nexti, ipred, enum, iNameIntMap, uniqueTraceID, uniqueAbsId))
+        ienc(lastElem, abs, newk)
       }
       case AbsEq(mv,pv) => mkEq(mkModelVar(mv,uniqueAbsId),mkObjVar(pv))
     }
-    ienc(traceLen, abs)
+    ienc(traceLen, abs, (_:T) => mkBoolVal(true))
   }
 
   protected def mkDistinct(pvList: Iterable[PureVar]): T
 
   def toAST(state: State, enum:T, iNameIntMap:Map[String,Int], maxWitness:Option[Int] = None): T = {
     // TODO: make all variables in this encoding unique from other states so multiple states can be run at once
-    // TODO: add ls constraints to state
-    // TODO: mapping from ? constraints to bools that can be retrieved from the model after solving
     val heap = state.heapConstraints
     val pure = state.pureFormula
     // TODO: handle static fields
