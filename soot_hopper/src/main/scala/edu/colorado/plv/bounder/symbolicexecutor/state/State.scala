@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
-import edu.colorado.hopper.solver.StateSolver
-import edu.colorado.plv.bounder.ir.{FieldRef, LVal, LocalWrapper, ParamWrapper, RVal}
+import edu.colorado.plv.bounder.solver.StateSolver
+import edu.colorado.plv.bounder.ir.{LVal, LocalWrapper, RVal}
 import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSPred}
 
 
@@ -21,7 +21,7 @@ case class AbsFormula(pred:LSPred) extends TraceAbstraction {
   override def toString:String = pred.toString
 }
 case class AbsArrow(traceAbstraction: TraceAbstraction, i:I) extends TraceAbstraction {
-  override def toString:String = s"(${traceAbstraction}) |> ${i}"
+  override def toString:String = s"($traceAbstraction) |> ${i}"
 }
 case class AbsAnd(t1 : TraceAbstraction, t2:TraceAbstraction) extends TraceAbstraction {
   override def toString:String = s"( ${t1} ) && ( ${t2} )"

@@ -1,12 +1,8 @@
-package edu.colorado.hopper.solver
+package edu.colorado.plv.bounder.solver
 
-import edu.colorado.plv.bounder.ir.CBEnter
 import edu.colorado.plv.bounder.lifestate.LifeState
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, LSAtom, LSFalse, LSPred, LSTrue, NI, Not, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, LSFalse, LSPred, LSTrue, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
-
-import scala.collection.immutable
-import scala.reflect.ClassTag
 
 trait Assumptions
 
@@ -73,9 +69,9 @@ trait StateSolver[T] {
   // function traceIndex -> msg
   protected def mkTraceFn(uid:String):T
   // function msg -> iname
-  protected def mkINameFn(enum:T, uid:String):T
+  protected def mkINameFn(enum:T):T
   // function for argument i -> msg -> value
-  protected def mkArgFun(uid:String):T
+  protected def mkArgFun():T
   // Get enum value for I based on index
   protected def mkIName(enum:T, enumNum:Int):T
   // function from index to message (message is at index in trace)
@@ -107,34 +103,33 @@ trait StateSolver[T] {
     case _ =>
       ???
   }
-  case class TraceFn(traceFun:T, iNameFn:T,argFun:T, fullTraceLen:T) //TODO: remove if not used
-  private def assertIAt(index:T, m:I, ienume:T, enumMap: Map[String,Int], traceUID:String, absUID:String):T = {
-    val tracefun = mkTraceFn(traceUID)
-    val msgExpr = mkTraceConstraint(tracefun, index)
-    val nameFun = mkINameFn(ienume, traceUID)
+  private def assertIAt(index:T, m:I, ienume:T, enumMap: Map[String,Int], traceFn:T, absUID:String):T = {
+//    val traceFun = mkTraceFn(traceUID)
+    val msgExpr = mkTraceConstraint(traceFn, index)
+    val nameFun = mkINameFn(ienume)
     mkAnd(mkEq(mkNameConstraint(nameFun,msgExpr), mkIName(ienume,enumMap(m.identitySignature))),
       mkAnd(m.lsVars.zipWithIndex.map{case (msgvar, ind) =>
-        mkEq(mkArgConstraint(mkArgFun(traceUID), mkIntVal(ind), msgExpr),mkModelVar(msgvar, absUID) )}))
+        mkEq(mkArgConstraint(mkArgFun(), mkIntVal(ind), msgExpr),mkModelVar(msgvar, absUID) )}))
   }
-  def encodePred(combinedPred: LifeState.LSPred, traceUID:String, len:T,
+  def encodePred(combinedPred: LifeState.LSPred, traceFn:T, len:T,
                  ienume:T, enumMap:Map[String,Int], absUID:String): T = combinedPred match {
-    case And(l1, l2) => mkAnd(encodePred(l1, traceUID,len, ienume, enumMap,absUID),
-      encodePred(l2, traceUID,len,ienume, enumMap,absUID))
+    case And(l1, l2) => mkAnd(encodePred(l1, traceFn,len, ienume, enumMap,absUID),
+      encodePred(l2, traceFn,len,ienume, enumMap,absUID))
     case LSAbsBind(k, v: PureVar) => mkEq(mkModelVar(k, absUID), mkObjVar(v))
-    case Or(l1, l2) => mkOr(encodePred(l1, traceUID,len,ienume,enumMap,absUID),
-      encodePred(l2, traceUID,len,ienume, enumMap,absUID))
-    case Not(l) => mkNot(encodePred(l, traceUID,len, ienume, enumMap,absUID))
+    case Or(l1, l2) => mkOr(encodePred(l1, traceFn,len,ienume,enumMap,absUID),
+      encodePred(l2, traceFn,len,ienume, enumMap,absUID))
+    case Not(l) => mkNot(encodePred(l, traceFn,len, ienume, enumMap,absUID))
     case m@I(_,_, _) => {
       mkExistsInt(mkIntVal(-1),len,
       i => mkAnd(List(
-        assertIAt(i, m, ienume, enumMap, traceUID, absUID)
+        assertIAt(i, m, ienume, enumMap, traceFn, absUID)
       )))
     }
     case NI(m1,m2) => {
       // exists i such that omega[i] = m1 and forall j > i omega[j] != m2
       mkExistsInt(mkIntVal(-1), len, i => mkAnd(List(
-        assertIAt(i, m1, ienume, enumMap, traceUID, absUID),
-        mkForallInt(i,len, j => mkNot(assertIAt(j, m2, ienume, enumMap, traceUID, absUID)))
+        assertIAt(i, m1, ienume, enumMap, traceFn, absUID),
+        mkForallInt(i,len, j => mkNot(assertIAt(j, m2, ienume, enumMap, traceFn, absUID)))
       )))
     }
   }
@@ -168,28 +163,28 @@ trait StateSolver[T] {
    * @param abs
    * @param enum
    * @param iNameIntMap Mapping from message names to integers in the enum (this includes cb/cbret etc)
-   * @param uniqueTraceID A unique ID that scopes the functions computing a trace,
-   *                      should be shared among the traces of a state
-   * @param traceLen
+   * @param traceFn solver function from indices to trace messages
+   * @param traceLen total length of trace including arrow constraints
    * @param absUID optional unique id for model variables to scope properly,
    *               if none is provided, identity hash code of abs is used
    * @return
    */
-  def encodeTraceAbs(abs:TraceAbstraction, enum:T, iNameIntMap:Map[String,Int], uniqueTraceID:String,traceLen:T,
+  def encodeTraceAbs(abs:TraceAbstraction, enum:T, iNameIntMap:Map[String,Int], traceFn: T,traceLen:T,
                      absUID: Option[String] = None):T = {
+    //TODO: replace tracelen and uniquetraceid with case class that can create new tracefn for each arrow
     // A unique id for variables scoped to the trace abstraction
     val uniqueAbsId = absUID.getOrElse(System.identityHashCode(abs).toString)
     //TODO: arrow constraints shouldn't constrain trace function
     //TODO: create fresh trace fun that has same pred behavior as previous trace fun except for current arrow
     def ienc(i:T, abs: TraceAbstraction, k: T=>T):T = abs match{
       case AbsFormula(f) =>
-        mkAnd(encodePred(f, uniqueTraceID, i, enum,iNameIntMap, uniqueAbsId),
+        mkAnd(encodePred(f, traceFn, i, enum,iNameIntMap, uniqueAbsId),
           k(traceLen))
       case AbsAnd(f1,f2) => mkAnd(ienc(i,f1,k), ienc(i,f2,k))
       case AbsArrow(abs, ipred) => {
         val lastElem = mkAdd(i,mkIntVal(1))
         val newk = (nexti:T) =>
-          mkAnd(k(mkAdd(nexti, mkIntVal(1))), assertIAt(nexti, ipred, enum, iNameIntMap, uniqueTraceID, uniqueAbsId))
+          mkAnd(k(mkAdd(nexti, mkIntVal(1))), assertIAt(nexti, ipred, enum, iNameIntMap, traceFn, uniqueAbsId))
         ienc(lastElem, abs, newk)
       }
       case AbsEq(mv,pv) => mkEq(mkModelVar(mv,uniqueAbsId),mkObjVar(pv))
@@ -225,10 +220,12 @@ trait StateSolver[T] {
     // Identity hash code of trace abstraction used when encoding a state so that quantifiers are independent
 
     val stateUniqueID = System.identityHashCode(state).toString
+
+    val tracefun = mkTraceFn(stateUniqueID)
     val len = mkIntVar(s"len_${stateUniqueID}") // there exists a finite size of the trace for this state
     val trace = state.traceAbstraction.foldLeft(mkBoolVal(true)) {
       case (acc,v) => mkAnd(acc, encodeTraceAbs(v, enum, iNameIntMap,
-        uniqueTraceID = stateUniqueID,traceLen = len))
+        traceFn = tracefun,traceLen = len))
     }
     val out = mkAnd(mkAnd(pureAst, heapAst),trace)
     maxWitness.foldLeft(out){(acc,v) => mkAnd(mkLt(len, mkIntVal(v)), acc)}
@@ -259,7 +256,7 @@ trait StateSolver[T] {
   // TODO: call stack is currently just a list of stack frames, this needs to be updated when top is added
   def stackCanSubsume(cs1: List[CallStackFrame], cs2: List[CallStackFrame]):Boolean = (cs1, cs2) match {
     case (CallStackFrame(ml1, _, locals1)::t1, CallStackFrame(ml2, _, locals2)::t2) if ml1 == ml2 =>
-      locals1.forall{case (k,v) => locals2.get(k).map(_==v).getOrElse(false)} &&
+      locals1.forall{case (k,v) => locals2.get(k).contains(v)} &&
         stackCanSubsume(t1,t2)
     case (Nil,Nil) => true
     case _ => false
@@ -268,8 +265,8 @@ trait StateSolver[T] {
   /**
    * Check if formula s1 is entirely contained within s2.  Used to determine if subsumption is sound.
    *
-   * @param s1
-   * @param s2
+   * @param s1 contained state
+   * @param s2 subsuming state
    * @return
    */
   def canSubsume(s1:State, s2:State, maxLen: Option[Int] = None):Boolean = {
@@ -278,39 +275,38 @@ trait StateSolver[T] {
     // TODO: check if pure vars are canonacalized
     push()
     val si = stackCanSubsume(s1.callStack, s2.callStack)
-    val hi = s1.heapConstraints.forall{case (k,v) => s2.heapConstraints.get(k).map(_ == v).getOrElse(false)}
+    val hi = s1.heapConstraints.forall{case (k,v) => s2.heapConstraints.get(k).contains(v)}
     val pvi = s1.pureFormula.forall{
       case p@PureConstraint(_, Equals, _) =>
         s2.pureFormula.contains(p)
       case p@PureConstraint(_, NotEquals, _) => s2.pureFormula.contains(p)
       case _ => ??? //TODO: type comparison
     }
-    val (ienum,idMap) = enumFromStates(List(s1,s2))
+    val (iEnum,idMap) = enumFromStates(List(s1,s2))
 //    val phi1 = toAST(s1,ienum,idMap,bound)
 //    val phi2 = toAST(s2,ienum,idMap,bound)
     val len = mkIntVar(s"len_")
+    val traceFun = mkTraceFn("0")
     val phi = (s:State) => (lenp1:T) => s.traceAbstraction.foldLeft(mkBoolVal(true)) {
-      case (acc,v) => mkAnd(acc, encodeTraceAbs(v, ienum, idMap,
-        "0",lenp1, Some("0")))
+      case (acc,v) => mkAnd(acc, encodeTraceAbs(v, iEnum, idMap,
+        traceFn=traceFun ,lenp1, Some("0")))
     }
     val fp = mkExistsInt(mkIntVal(-1), len, l => mkNot(mkImplies(
       phi(s2)(l),
       phi(s1)(l))))
     // limit trace length for debug
     val f = maxLen match {
-      case Some(v) => {
+      case Some(v) =>
+        // Print formula when debug mode enabled
         println(s"formula:\n $fp")
-        mkAnd(
-          mkLt(len, mkIntVal(v)),
-          fp)
-      }
+        mkAnd(mkLt(len, mkIntVal(v)), fp)
       case None => fp
     }
     mkAssert(f)
     val ti = checkSAT()
     if (ti) {
-      println(s"===formula: ${f}")
-      printDbgModel(ienum, s1.traceAbstraction.union(s2.traceAbstraction), "")
+      println(s"===formula: $f")
+      printDbgModel(iEnum, s1.traceAbstraction.union(s2.traceAbstraction), "")
     }
     pop()
 

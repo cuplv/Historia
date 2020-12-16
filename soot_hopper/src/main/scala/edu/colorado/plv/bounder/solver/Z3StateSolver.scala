@@ -1,12 +1,11 @@
 package edu.colorado.plv.bounder.solver
 
 import com.microsoft.z3._
-import edu.colorado.hopper.solver.StateSolver
 import edu.colorado.plv.bounder.symbolicexecutor.state.{PureVar, State, TraceAbstraction, TypeConstraint}
 
 class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateSolver[AST] {
-  val solver = persistentConstraints.getSolver
-  val ctx = persistentConstraints.getCtx
+  val solver: Solver = persistentConstraints.getSolver
+  val ctx: Context = persistentConstraints.getCtx
   //val ctx : Context = new Context
   //val solver = {
   //  val solver = ctx.mkSolver
@@ -79,7 +78,7 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
 
   override protected def mkIntVal(i: Int): AST = ctx.mkInt(i)
 
-  override protected def mkBoolVal(b: Boolean): AST = ctx.mkBool(b)
+  override protected def mkBoolVal(boolVal: Boolean): AST = ctx.mkBool(boolVal)
 
   override protected def mkIntVar(s: String): AST = ctx.mkIntConst(s)
 
@@ -105,34 +104,27 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
 
   override protected def mkObjVar(s: PureVar): AST = ctx.mkIntConst("object_addr_" + s.id.toString)
 
-  override def printDbgModel(msgname: AST, traceabst: Set[TraceAbstraction], lenUID: String): Unit = {
-    printAbstSolution(solver.getModel, msgname.asInstanceOf[EnumSort], traceabst, lenUID)
+  override def printDbgModel(msgName: AST, traceAbstraction: Set[TraceAbstraction], lenUID: String): Unit = {
+    printAbstSolution(solver.getModel, msgName.asInstanceOf[EnumSort], traceAbstraction, lenUID)
   }
 
-  def printAbstSolution(model: Model, msgname: EnumSort, traceabs: Set[TraceAbstraction],
-                        lenUID:String) = {
-    println(s"===model: ${model}")
-    traceabs map { abs => {
+  def printAbstSolution(model: Model, msgName: EnumSort, traceAbstraction: Set[TraceAbstraction],
+                        lenUID: String) {
+    println(s"===model: $model")
+    traceAbstraction map { abs => {
       val uniqueID = System.identityHashCode(abs) + ""
-      val len = mkIntVar(s"len_${lenUID}").asInstanceOf[ArithExpr]
+      val len = mkIntVar(s"len_$lenUID").asInstanceOf[ArithExpr]
       println("=trace solution=")
       val traceLen: Int = model.eval(len, true).toString.toInt
       val traceFun = mkTraceFn(uniqueID).asInstanceOf[FuncDecl]
-      val nameFun = mkINameFn(msgname, uniqueID).asInstanceOf[FuncDecl]
-      val argFun = mkArgFun(uniqueID).asInstanceOf[FuncDecl]
-      (0 until traceLen).map { index => {
-        println(s"${index}: ")
+      val nameFun = mkINameFn(msgName).asInstanceOf[FuncDecl]
+      val argFun = mkArgFun().asInstanceOf[FuncDecl]
+      (0 until traceLen).map ( index => {
+        println(s"$index: ")
         val msgati = model.eval(traceFun.apply(ctx.mkInt(index)), true)
-        println(s"${model.eval(nameFun.apply(msgati), true)} args: ${model.eval(argFun.apply(ctx.mkInt(0), msgati), true)}")
-
-        //            model.eval(
-        //              mkINIConstraint(mkIFun(ipred),mkIntVal(index),
-        //                ipred.lsVars.map(mkModelVar(_,uniqueID))).asInstanceOf[Expr],true)
-        //              .toString == "true"
-        //          }).map(ipred => s"${ipred} args: ${ipred.lsVars.zipWithIndex.map(argi => model.eval(mkIndArgConstraint(argind, mkIntVal(index), mkIntVal(argi._2)).asInstanceOf[ArithExpr],true))}")
-        //          println(msgati.mkString("***"))
-      }
-      }
+        println(s"${model.eval(nameFun.apply(msgati), true)} " +
+          s"args: ${model.eval(argFun.apply(ctx.mkInt(0), msgati), true)}")
+      })
     }
     }
   }
@@ -142,7 +134,7 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
     solver.add(t.asInstanceOf[BoolExpr])
     val status: Status = solver.check()
     status match{
-      case Status.SATISFIABLE => {
+      case Status.SATISFIABLE =>
         if (logDbg) {
           println(s"Model: ${solver.getModel}")
           printAbstSolution(solver.getModel(),msgname.asInstanceOf[EnumSort],
@@ -150,14 +142,12 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
             System.identityHashCode(state).toString)
         }
         Some(t)
-      }
       case Status.UNKNOWN => Some(t)
-      case Status.UNSATISFIABLE => {
+      case Status.UNSATISFIABLE =>
         if (logDbg) {
           println(s"Unsat core: ${solver.getUnsatCore.map(s=> s.toString).mkString(" AND \n")}")
         }
         None
-      }
     }
   }
 
@@ -233,13 +223,13 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
 //    argFun.asInstanceOf[FuncDecl].apply(index.asInstanceOf[ArithExpr],argnumber.asInstanceOf[ArithExpr])
 //  }
   override protected def mkTraceFn(uid: String): AST =
-    ctx.mkFuncDecl(s"tracefn_${uid}", ctx.mkIntSort, ctx.mkUninterpretedSort("Msg"))
+    ctx.mkFuncDecl(s"tracefn_$uid", ctx.mkIntSort, ctx.mkUninterpretedSort("Msg"))
 
-  override protected def mkINameFn(enum:AST, uid: String): AST =
-    ctx.mkFuncDecl(s"namefn_${uid}", ctx.mkUninterpretedSort("Msg"), enum.asInstanceOf[EnumSort])
+  override protected def mkINameFn(enum:AST): AST =
+    ctx.mkFuncDecl(s"namefn_", ctx.mkUninterpretedSort("Msg"), enum.asInstanceOf[EnumSort])
 
-  override protected def mkArgFun(uid: String): AST =
-    ctx.mkFuncDecl(s"argfun_${uid}", Array(ctx.mkIntSort(), ctx.mkUninterpretedSort("Msg")), ctx.mkIntSort)
+  override protected def mkArgFun(): AST =
+    ctx.mkFuncDecl(s"argfun_", Array(ctx.mkIntSort(), ctx.mkUninterpretedSort("Msg")), ctx.mkIntSort)
 
   override protected def mkIName(enum:AST, enumNum:Int): AST = enum.asInstanceOf[EnumSort].getConst(enumNum)
 

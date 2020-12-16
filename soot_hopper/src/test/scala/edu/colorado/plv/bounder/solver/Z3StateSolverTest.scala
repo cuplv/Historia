@@ -227,7 +227,6 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
 
     // pure vars for next few tests
     val p1 = PureVar()
-    val p2 = PureVar()
 
     // NI(a.bar(),a.baz()) |> I(c.bar()) |> i(b.baz()
     val niaa: TraceAbstraction = AbsArrow(AbsArrow(
@@ -258,7 +257,6 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
 
     // pure vars for next few tests
     val p1 = PureVar()
-    val p2 = PureVar()
 
     // NI(a.bar(),a.baz()) |> I(c.bar()) |> i(b.baz()
     val niaa: TraceAbstraction = AbsArrow(AbsArrow(
@@ -268,7 +266,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val abs1 = AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("c",p1), AbsAnd(AbsEq("b",p1), niaa)))
     val state2 = State(Nil,Map(),Set(), Set(abs1))
     val res2 = statesolver.simplify(state2)
-    assert(!res2.isDefined)
+    assert(res2.isEmpty)
   }
   test("Trace abstraction NI(a.bar(),a.baz()) |> I(c.bar()) |> I(b.baz() && a = c (<=> true) ") {
     val ctx = new Context
@@ -330,7 +328,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val abs1 = AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("c",p2), AbsAnd(AbsEq("b",p1), niaa)))
     val state2 = State(Nil,Map(),Set(), Set(abs1))
     val res2 = statesolver.simplify(state2)
-    assert(!res2.isDefined)
+    assert(res2.isEmpty)
   }
   test("Trace abstraction NI(a.bar(),a.baz()) |> I(a.bar()),  NI(a.foo(),a.baz()) |> I(a.foo()) (<=> true) ") {
     val ctx = new Context
@@ -397,7 +395,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
 
     val p1 = PureVar()
     val p2 = PureVar()
-    val loc = AppLoc(TestIRMethodLoc("","foo"), TestIRLineLoc(1), false)
+    val loc = AppLoc(TestIRMethodLoc("","foo"), TestIRLineLoc(1), isPre = false)
 
     val state = State(CallStackFrame(loc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Set())
     val state2 = state.copy(callStack =
