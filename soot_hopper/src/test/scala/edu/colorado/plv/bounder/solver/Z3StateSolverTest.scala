@@ -11,6 +11,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     fmwName="void foo()", TestIRMethodLoc("","foo"))
   val v = PureVar()
   val frame = CallStackFrame(dummyLoc, None, Map(StackVar("x") -> v))
+  val state = State(Nil,Map(),Set(), Set())
   test("null not null") {
     val ctx = new Context
     val solver: Solver = ctx.mkSolver()
@@ -331,6 +332,25 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val res2 = statesolver.simplify(state2)
     assert(!res2.isDefined)
   }
+  test("Trace abstraction NI(a.bar(),a.baz()) |> I(a.bar()),  NI(a.foo(),a.baz()) |> I(a.foo()) (<=> true) ") {
+    val ctx = new Context
+    val solver: Solver = ctx.mkSolver()
+    val hierarchy: Map[String, Set[String]] =
+      Map("Object" -> Set("String", "Foo", "Bar", "Object"),
+        "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
+    val pc = new PersistantConstraints(ctx, solver, hierarchy)
+    val statesolver = new Z3StateSolver(pc)
+
+    // Lifestate atoms for next few tests
+    val ibar = I(CBEnter, Set(("", "bar")), "a" :: Nil)
+    val ibaz = I(CBEnter, Set(("", "baz")), "a" :: Nil)
+    val ifoo = I(CBEnter, Set(("", "foo")), "a" :: Nil)
+    val t1 = AbsArrow(AbsFormula(NI(ibar, ibaz)), ibar)
+    val t2 = AbsArrow(AbsFormula(NI(ifoo, ibaz)), ifoo)
+    val s = state.copy(traceAbstraction = Set(t1,t2))
+    val res = statesolver.simplify(s, Some(20))
+    assert(res.isDefined)
+  }
   test("Vacuous NI(a,a) spec") {
     //TODO: Is there ever a reason to need this case?
     val ctx = new Context
@@ -350,7 +370,6 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     // pure vars for next few tests
     val p1 = PureVar()
     val p2 = PureVar()
-    val state = State(Nil,Map(),Set(), Set())
     //NI(a.bar(),a.bar()) (<=> true)
     // Note that this should be the same as I(a.bar())
     val nia = AbsFormula(niBarBar)
