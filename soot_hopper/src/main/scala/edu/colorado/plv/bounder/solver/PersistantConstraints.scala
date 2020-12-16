@@ -1,8 +1,7 @@
 package edu.colorado.plv.bounder.solver
 
-import com.microsoft.z3.{AST, Context, Expr, FiniteDomainSort, FuncDecl, IntSort, Native, Solver, Sort}
-import edu.colorado.plv.bounder.ir.IRWrapper
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, PureVal, SubclassOf, SuperclassOf, TypeConstraint}
+import com.microsoft.z3.{BoolExpr, Context, Expr, FuncDecl, Solver, Sort}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, SubclassOf, SuperclassOf, TypeConstraint}
 
 
 /**
@@ -12,32 +11,20 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, PureVal, Subc
  * @param types mapping from super types to sub types
  */
 class PersistantConstraints(ctx: Context, solver: Solver, types : Map[String,Set[String]]) {
-  def getSolver = solver
-  def getCtx = ctx
+  def getSolver: Solver = solver
+  def getCtx: Context = ctx
 
   val typeToInt: Map[String, Int] = types.keySet.zipWithIndex.toMap
   val intToType: Map[Int, String] = typeToInt.map(a => (a._2, a._1))
 
 
   val tsort: Sort = ctx.mkFiniteDomainSort("Types", typeToInt.size)
-  def getTypeSort = tsort
 
-
-  private def finiteDomVal(t : String):Expr = {
-    try {
+  private def finiteDomVal(t : String):Expr =
       ctx.mkNumeral(typeToInt(t), tsort)
-    }catch{
-      case e =>
-        println(t)
-        ???
-    }
-  }
   val subtypeFun: FuncDecl = ctx.mkFuncDecl("subtype", Array(tsort, tsort), ctx.mkBoolSort())
 
   def mkHirearchyConstraints() {
-    // Direct subclass function
-   //   ctx.mkFreshFuncDecl("directsubtype", Array(tsort, tsort), ctx.mkBoolSort)
-
     val arg1 = ctx.mkBound(0, tsort)
     val arg2 = ctx.mkBound(1, tsort)
     val subclassConstraint =
@@ -59,12 +46,12 @@ class PersistantConstraints(ctx: Context, solver: Solver, types : Map[String,Set
   solver.push()
 
 
-  def addTypeConstraint(vname: String, typeConstraint: TypeConstraint) = {
+  def addTypeConstraint(vname: String, typeConstraint: TypeConstraint): BoolExpr = {
     val const: Expr = ctx.mkConst("t_" + vname, tsort)
     exprTypeConstraint(const, typeConstraint)
   }
 
-  def exprTypeConstraint(e: Expr, typeConstraint: TypeConstraint) = {
+  def exprTypeConstraint(e: Expr, typeConstraint: TypeConstraint): BoolExpr = {
     typeConstraint match {
       case SubclassOf(c) =>
         ctx.mkEq(subtypeFun.apply(finiteDomVal(c), e), ctx.mkTrue)
