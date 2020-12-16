@@ -119,19 +119,17 @@ trait StateSolver[T] {
     case Or(l1, l2) => mkOr(encodePred(l1, traceFn,len,ienume,enumMap,absUID),
       encodePred(l2, traceFn,len,ienume, enumMap,absUID))
     case Not(l) => mkNot(encodePred(l, traceFn,len, ienume, enumMap,absUID))
-    case m@I(_,_, _) => {
+    case m@I(_,_, _) =>
       mkExistsInt(mkIntVal(-1),len,
       i => mkAnd(List(
         assertIAt(i, m, ienume, enumMap, traceFn, absUID)
       )))
-    }
-    case NI(m1,m2) => {
+    case NI(m1,m2) =>
       // exists i such that omega[i] = m1 and forall j > i omega[j] != m2
       mkExistsInt(mkIntVal(-1), len, i => mkAnd(List(
         assertIAt(i, m1, ienume, enumMap, traceFn, absUID),
         mkForallInt(i,len, j => mkNot(assertIAt(j, m2, ienume, enumMap, traceFn, absUID)))
       )))
-    }
   }
 
 
@@ -160,17 +158,17 @@ trait StateSolver[T] {
 
   /**
    *
-   * @param abs
-   * @param enum
+   * @param abs abstraction of trace to encode for the solver
+   * @param enum solver enumeration type for message names
    * @param iNameIntMap Mapping from message names to integers in the enum (this includes cb/cbret etc)
    * @param traceFn solver function from indices to trace messages
    * @param traceLen total length of trace including arrow constraints
    * @param absUID optional unique id for model variables to scope properly,
    *               if none is provided, identity hash code of abs is used
-   * @return
+   * @return encoded trace abstraction
    */
   def encodeTraceAbs(abs:TraceAbstraction, enum:T, iNameIntMap:Map[String,Int], traceFn: T,traceLen:T,
-                     absUID: Option[String] = None):T = {
+                     absUID: Option[String] = None): T = {
     //TODO: replace tracelen and uniquetraceid with case class that can create new tracefn for each arrow
     // A unique id for variables scoped to the trace abstraction
     val uniqueAbsId = absUID.getOrElse(System.identityHashCode(abs).toString)
@@ -181,12 +179,11 @@ trait StateSolver[T] {
         mkAnd(encodePred(f, traceFn, i, enum,iNameIntMap, uniqueAbsId),
           k(traceLen))
       case AbsAnd(f1,f2) => mkAnd(ienc(i,f1,k), ienc(i,f2,k))
-      case AbsArrow(abs, ipred) => {
+      case AbsArrow(abs, ipred) =>
         val lastElem = mkAdd(i,mkIntVal(1))
         val newk = (nexti:T) =>
           mkAnd(k(mkAdd(nexti, mkIntVal(1))), assertIAt(nexti, ipred, enum, iNameIntMap, traceFn, uniqueAbsId))
         ienc(lastElem, abs, newk)
-      }
       case AbsEq(mv,pv) => mkEq(mkModelVar(mv,uniqueAbsId),mkObjVar(pv))
     }
     ienc(traceLen, abs, (_:T) => mkBoolVal(true))
@@ -218,11 +215,10 @@ trait StateSolver[T] {
     }
 
     // Identity hash code of trace abstraction used when encoding a state so that quantifiers are independent
-
     val stateUniqueID = System.identityHashCode(state).toString
 
     val tracefun = mkTraceFn(stateUniqueID)
-    val len = mkIntVar(s"len_${stateUniqueID}") // there exists a finite size of the trace for this state
+    val len = mkIntVar(s"len_$stateUniqueID") // there exists a finite size of the trace for this state
     val trace = state.traceAbstraction.foldLeft(mkBoolVal(true)) {
       case (acc,v) => mkAnd(acc, encodeTraceAbs(v, enum, iNameIntMap,
         traceFn = tracefun,traceLen = len))
@@ -232,8 +228,8 @@ trait StateSolver[T] {
   }
 
   def enumFromStates(states: List[State]):(T,Map[String,Int]) = {
-    val alli = allITraceAbs(states.flatMap(_.traceAbstraction).toSet,true)
-    val inamelist = "OTHEROTHEROTHER"::(alli.groupBy(_.identitySignature).keySet.toList)
+    val alli = allITraceAbs(states.flatMap(_.traceAbstraction).toSet,includeArrow = true)
+    val inamelist = "OTHEROTHEROTHER":: alli.groupBy(_.identitySignature).keySet.toList
     val iNameIntMap: Map[String, Int] = inamelist.zipWithIndex.toMap
     (mkEnum("inames",inamelist), iNameIntMap)
   }
@@ -283,8 +279,6 @@ trait StateSolver[T] {
       case _ => ??? //TODO: type comparison
     }
     val (iEnum,idMap) = enumFromStates(List(s1,s2))
-//    val phi1 = toAST(s1,ienum,idMap,bound)
-//    val phi2 = toAST(s2,ienum,idMap,bound)
     val len = mkIntVar(s"len_")
     val traceFun = mkTraceFn("0")
     val phi = (s:State) => (lenp1:T) => s.traceAbstraction.foldLeft(mkBoolVal(true)) {

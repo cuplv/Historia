@@ -102,27 +102,6 @@ object LifeState {
       v.lsVar.foldLeft(acc){ (iacc, varname) => iacc + (varname -> (iacc.getOrElse(varname, Set()) + v) )}
     }
 
-    //TODO: stale back slicing function, is it still needed?
-//    /**
-//     *
-//     * @param atom to find predecessor aliases for
-//     * @return (var that can be aliased, atom that can alias)
-//     */
-//    def sliceBackStep(atom: LSAtom, index: Int) : Set[(Int, LSAtom)] = {
-//      val targetVar = atom.getVar(index)
-//      predicates.flatMap(a => {
-//        a.lsVar.zipWithIndex.flatMap( {case (varname, index) => if(varname == targetVar) Some(index,a) else None})
-//      })
-//    }
-
-//    /**
-//     * Find I predicate that matches sig
-//     * @param sig e.g. [CB Inv] void onCreate(Bundle)
-//     */
-//    def locateIFromMsgSig(sig: String) : Option[LSAtom] = {
-//      predicates.find({ case I(_,s,_) => s.contains(sig)})
-//    }
-
     /**
      *
      * @param src source of alias edge (index, atom sig)
@@ -168,9 +147,8 @@ class SpecSpace(specs: Set[LSSpec]) {
   def nextFreshLSVar():String = {
     val ind = freshLSVarIndex
     freshLSVarIndex = freshLSVarIndex+1
-    s"LS_GENERATED__${ind}" //TODO: document somewhere that LS vars shouldn't look like this
+    s"LS_GENERATED__${ind}"
   }
-  //TODO: implement this,
   /**
    * For step back over a place where the code may emit a message find the applicable I and assign fresh ls vars.
    * @param mt
