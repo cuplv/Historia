@@ -68,6 +68,7 @@ trait StateSolver[T] {
   protected def getEnumElement(enum:T, i:Int):T
   // function traceIndex -> msg
   protected def mkTraceFn(uid:String):T
+  protected def mkFreshTraceFn(uid:String):T
   // function msg -> iname
   protected def mkINameFn(enum:T):T
   // function for argument i -> msg -> value
@@ -174,19 +175,28 @@ trait StateSolver[T] {
     val uniqueAbsId = absUID.getOrElse(System.identityHashCode(abs).toString)
     //TODO: arrow constraints shouldn't constrain trace function
     //TODO: create fresh trace fun that has same pred behavior as previous trace fun except for current arrow
-    def ienc(i:T, abs: TraceAbstraction, k: T=>T):T = abs match{
+    def ienc(i:T, abs: TraceAbstraction, traceFn:T, k: T=>T):T = abs match{
       case AbsFormula(f) =>
         mkAnd(encodePred(f, traceFn, i, enum,iNameIntMap, uniqueAbsId),
           k(traceLen))
-      case AbsAnd(f1,f2) => mkAnd(ienc(i,f1,k), ienc(i,f2,k))
+      case AbsAnd(f1,f2) => mkAnd(ienc(i,f1,traceFn,k), ienc(i,f2,traceFn,k))
       case AbsArrow(abs, ipred) =>
+        // w |= \theta, \phi |> m^   iff   w;\theta(m^) |= \theta, \phi
+        // Use fresh trace function to avoid arrow constraint contradiction
+        // e.g. NI(a,b)|>a && NI(c,d)|>d should be true
+        val freshTraceFun = mkFreshTraceFn("arrowtf")
         val lastElem = mkAdd(i,mkIntVal(1))
         val newk = (nexti:T) =>
-          mkAnd(k(mkAdd(nexti, mkIntVal(1))), assertIAt(nexti, ipred, enum, iNameIntMap, traceFn, uniqueAbsId))
-        ienc(lastElem, abs, newk)
+          mkAnd(List(k(mkAdd(nexti, mkIntVal(1))),
+            assertIAt(nexti, ipred, enum, iNameIntMap, freshTraceFun, uniqueAbsId),
+            mkForallInt(mkIntVal(-1), nexti, j => mkEq(
+              mkTraceConstraint(freshTraceFun,j),
+              mkTraceConstraint(traceFn,j)))
+          ))
+        ienc(lastElem, abs, freshTraceFun, newk)
       case AbsEq(mv,pv) => mkEq(mkModelVar(mv,uniqueAbsId),mkObjVar(pv))
     }
-    ienc(traceLen, abs, (_:T) => mkBoolVal(true))
+    ienc(traceLen, abs,traceFn, (_:T) => mkBoolVal(true))
   }
 
   protected def mkDistinct(pvList: Iterable[PureVar]): T

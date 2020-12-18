@@ -265,7 +265,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     ),i3)
     val abs1 = AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("c",p1), AbsAnd(AbsEq("b",p1), niaa)))
     val state2 = State(Nil,Map(),Set(), Set(abs1))
-    val res2 = statesolver.simplify(state2)
+    val res2 = statesolver.simplify(state2, Some(20))
     assert(res2.isEmpty)
   }
   test("Trace abstraction NI(a.bar(),a.baz()) |> I(c.bar()) |> I(b.baz() && a = c (<=> true) ") {
