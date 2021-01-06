@@ -81,7 +81,7 @@ trait StateSolver[T] {
   protected def mkNameConstraint(nameFun:T, msg:T):T
   // function argumentindex -> msg -> argvalue
   protected def mkArgConstraint(argFun:T, argIndex:T, msg:T):T
-  def printDbgModel(msgname: T, traceabst: Set[TraceAbstraction],lenUID: String):Unit
+  def printDbgModel(msgname: T, traceabst: Set[TraceAbstractionArrow], lenUID: String):Unit
 
   def toAST(p : PureConstraint, typeFun: T) : T = p match {
       // TODO: field constraints based on containing object constraints
@@ -134,7 +134,7 @@ trait StateSolver[T] {
   }
 
 
-  def allITraceAbs(traceAbstractionSet: Set[TraceAbstraction], includeArrow:Boolean=false):Set[I] =
+  def allITraceAbs(traceAbstractionSet: Set[TraceAbstractionArrow], includeArrow:Boolean=false):Set[I] =
     traceAbstractionSet.flatMap(a => allI(a,includeArrow))
   def allI(pred:LSPred):Set[I] = pred match{
     case i@I(_,_,_) => Set(i)
@@ -146,15 +146,17 @@ trait StateSolver[T] {
     case LSFalse => Set()
     case LSAbsBind(_,_) => Set()
   }
-  def allI(abs:TraceAbstraction, includeArrow:Boolean):Set[I] = abs match{
+  def allI(abs:AbstractTrace):Set[I] = abs match{
     case AbsFormula(pred) => allI(pred)
+    case AbsAnd(p1,p2) => allI(p1).union(allI(p2))
+    case AbsEq(_,_) => Set()
+  }
+  def allI(abs:TraceAbstractionArrow, includeArrow:Boolean):Set[I] = abs match{
     case AbsArrow(pred, i2) =>
       if(includeArrow)
-        allI(pred,includeArrow) + i2
+        allI(pred) ++ i2
       else
-        allI(pred,includeArrow)
-    case AbsAnd(p1,p2) => allI(p1,includeArrow).union(allI(p2,includeArrow))
-    case AbsEq(_,_) => Set()
+        allI(pred)
   }
 
   /**
@@ -168,35 +170,47 @@ trait StateSolver[T] {
    *               if none is provided, identity hash code of abs is used
    * @return encoded trace abstraction
    */
-  def encodeTraceAbs(abs:TraceAbstraction, enum:T, iNameIntMap:Map[String,Int], traceFn: T,traceLen:T,
+  def encodeTraceAbs(abs:TraceAbstractionArrow, enum:T, iNameIntMap:Map[String,Int], traceFn: T, traceLen:T,
                      absUID: Option[String] = None): T = {
     //TODO: replace tracelen and uniquetraceid with case class that can create new tracefn for each arrow
     // A unique id for variables scoped to the trace abstraction
     val uniqueAbsId = absUID.getOrElse(System.identityHashCode(abs).toString)
-    //TODO: arrow constraints shouldn't constrain trace function
-    //TODO: create fresh trace fun that has same pred behavior as previous trace fun except for current arrow
-    def ienc(i:T, abs: TraceAbstraction, traceFn:T, k: T=>T):T = abs match{
-      case AbsFormula(f) =>
-        mkAnd(encodePred(f, traceFn, i, enum,iNameIntMap, uniqueAbsId),
-          k(traceLen))
-      case AbsAnd(f1,f2) => mkAnd(ienc(i,f1,traceFn,k), ienc(i,f2,traceFn,k))
-      case AbsArrow(abs, ipred) =>
-        // w |= \theta, \phi |> m^   iff   w;\theta(m^) |= \theta, \phi
-        // Use fresh trace function to avoid arrow constraint contradiction
-        // e.g. NI(a,b)|>a && NI(c,d)|>d should be true
+
+    def iencarrow(len:T, abs:TraceAbstractionArrow, traceFn:T):T = abs match{
+      case AbsArrow(abs, ipreds) =>
         val freshTraceFun = mkFreshTraceFn("arrowtf")
-        val lastElem = mkAdd(i,mkIntVal(1))
-        val newk = (nexti:T) =>
-          mkAnd(List(k(mkAdd(nexti, mkIntVal(1))),
-            assertIAt(nexti, ipred, enum, iNameIntMap, freshTraceFun, uniqueAbsId),
-            mkForallInt(mkIntVal(-1), nexti, j => mkEq(
-              mkTraceConstraint(freshTraceFun,j),
-              mkTraceConstraint(traceFn,j)))
-          ))
-        ienc(lastElem, abs, freshTraceFun, newk)
+        val beforeIndEq =
+          mkForallInt(mkIntVal(-1), len, i =>
+            mkEq(mkTraceConstraint(traceFn,i), mkTraceConstraint(freshTraceFun,i)))
+        val (suffixConstraint,endlen) = ipreds.foldLeft((beforeIndEq,len)) {
+          case ((acc,ind),i) => (
+            mkAnd(acc, assertIAt(ind, i, enum, iNameIntMap, freshTraceFun, uniqueAbsId)),
+            mkAdd(ind, mkIntVal(1))
+          )
+        }
+        mkAnd(ienc(endlen, abs, freshTraceFun), suffixConstraint)
+    }
+    def ienc(sublen:T, abs: AbstractTrace, traceFn:T):T = abs match{
+      case AbsFormula(f) =>
+        encodePred(f, traceFn, sublen, enum,iNameIntMap, uniqueAbsId)
+      case AbsAnd(f1,f2) => mkAnd(ienc(sublen,f1,traceFn), ienc(sublen,f2,traceFn))
+//      case AbsArrow(abs, ipred) =>
+//        // w |= \theta, \phi |> m^   iff   w;\theta(m^) |= \theta, \phi
+//        // Use fresh trace function to avoid arrow constraint contradiction
+//        // e.g. NI(a,b)|>a && NI(c,d)|>d should be true
+//        val freshTraceFun = mkFreshTraceFn("arrowtf")
+//        val lastElem = mkAdd(i,mkIntVal(1))
+//        val newk = (nexti:T) =>
+//          mkAnd(List(k(mkAdd(nexti, mkIntVal(1))),
+//            assertIAt(nexti, ipred, enum, iNameIntMap, freshTraceFun, uniqueAbsId),
+//            mkForallInt(mkIntVal(-1), nexti, j => mkEq(
+//              mkTraceConstraint(freshTraceFun,j),
+//              mkTraceConstraint(traceFn,j)))
+//          ))
+//        ienc(lastElem, abs, freshTraceFun, newk)
       case AbsEq(mv,pv) => mkEq(mkModelVar(mv,uniqueAbsId),mkObjVar(pv))
     }
-    ienc(traceLen, abs,traceFn, (_:T) => mkBoolVal(true))
+    iencarrow(traceLen, abs,traceFn)
   }
 
   protected def mkDistinct(pvList: Iterable[PureVar]): T

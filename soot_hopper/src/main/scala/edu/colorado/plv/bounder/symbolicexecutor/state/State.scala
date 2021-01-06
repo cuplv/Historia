@@ -16,30 +16,30 @@ object State {
 
 // pureFormula is a conjunction of constraints
 // callStack is the call string from thresher paper
-sealed trait TraceAbstraction
-case class AbsFormula(pred:LSPred) extends TraceAbstraction {
+sealed trait TraceAbstractionArrow
+sealed trait AbstractTrace
+case class AbsFormula(pred:LSPred) extends AbstractTrace{
   override def toString:String = pred.toString
 }
-case class AbsArrow(traceAbstraction: TraceAbstraction, i:I) extends TraceAbstraction {
+case class AbsArrow(traceAbstraction: AbstractTrace, i:List[I]) extends TraceAbstractionArrow {
   override def toString:String = s"($traceAbstraction) |> ${i}"
 }
-case class AbsAnd(t1 : TraceAbstraction, t2:TraceAbstraction) extends TraceAbstraction {
+case class AbsAnd(t1 : AbstractTrace, t2:AbstractTrace) extends AbstractTrace{
   override def toString:String = s"( ${t1} ) && ( ${t2} )"
 }
-case class AbsEq(lsVar : String, pureVar: PureVar) extends TraceAbstraction {
+case class AbsEq(lsVar : String, pureVar: PureVar) extends AbstractTrace{
   assert(lsVar != "_")
   override def toString:String = s"$lsVar = ${pureVar}"
 }
+case object EmptyTrace extends AbstractTrace
 
 case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdge, PureExpr],
-                 pureFormula: Set[PureConstraint], traceAbstraction: Set[TraceAbstraction]) {
+                 pureFormula: Set[PureConstraint], traceAbstraction: Set[TraceAbstractionArrow]) {
   override def toString:String = {
     val stackString = callStack.headOption match{
-      case Some(sf) => {
-
+      case Some(sf) =>
         val locals: Map[StackVar, PureExpr] = sf.locals
         s"\nstack: ${callStack.map(f => f.methodLoc.msgSig.getOrElse("")).mkString(";")}\n locals: " + locals.map(k => k._1.toString + " -> " + k._2.toString).mkString(",")
-      }
       case None => "[nc]"
     }
     val heapString = s"   heap: ${heapConstraints.map(a => a._1.toString + "->" +  a._2.toString).mkString(" * ")}\n"
@@ -79,13 +79,15 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
     pureFormula.exists(c => expressionContains(c.lhs,p) || expressionContains(c.rhs,p))
 
   def traceAbstractionContains(p: PureVar): Boolean = {
-    def iTraceAbstractionContains(t: TraceAbstraction, p: PureVar): Boolean = t match{
+    def iArrowContains(t: TraceAbstractionArrow, p:PureVar):Boolean = t match {
+      case AbsArrow(t1, _ ) => iTraceAbstractionContains(t1,p)
+    }
+    def iTraceAbstractionContains(t: AbstractTrace, p: PureVar): Boolean = t match{
       case AbsEq(_,pureVar) => p == pureVar
       case AbsAnd(t1,t2) => iTraceAbstractionContains(t1,p) || iTraceAbstractionContains(t2,p)
-      case AbsArrow(t1, _) => iTraceAbstractionContains(t1,p)
       case AbsFormula(_) => false
     }
-    traceAbstraction.exists(iTraceAbstractionContains(_, p))
+    traceAbstraction.exists(iArrowContains(_, p))
   }
 
   def contains(p:PureVar):Boolean = {
@@ -95,7 +97,7 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
   // for a field ref, e.g. x.f if x doesn't exist, create x
   // if x.f doesn't exist and x does
   def get(l:RVal):Option[PureExpr] = l match {
-    case LocalWrapper(name,localType) => {
+    case LocalWrapper(name,_) => {
       callStack match{
         case CallStackFrame(_,_,locals)::_ => locals.get(StackVar(name))
         case Nil => None

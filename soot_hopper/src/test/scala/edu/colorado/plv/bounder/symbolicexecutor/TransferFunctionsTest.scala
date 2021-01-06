@@ -3,16 +3,18 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CBExit, CallbackMethodInvoke, CallbackMethodReturn, CmdWrapper, FieldRef, Loc, LocalWrapper, NewCommand, NullConst}
 import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSSpec}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AbsAnd, AbsArrow, AbsEq, AbsFormula, CallStackFrame, Equals, FieldPtEdge, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, TraceAbstraction}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbsAnd, AbsArrow, AbsEq, AbsFormula, AbstractTrace, CallStackFrame, Equals, FieldPtEdge, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, TraceAbstractionArrow}
 import edu.colorado.plv.bounder.testutils.{CmdTransition, MethodTransition, TestIR, TestIRLineLoc, TestIRMethodLoc}
 
 class TransferFunctionsTest extends org.scalatest.FunSuite {
-  def absContains(contained:TraceAbstraction, result:TraceAbstraction):Boolean = result match{
+  def absContains(contained:AbstractTrace, result:TraceAbstractionArrow):Boolean = result match{
+    case AbsArrow(result, _) => absContains(contained, result)
+  }
+  def absContains(contained:AbstractTrace, result:AbstractTrace):Boolean = result match{
     case r if r == contained => true
     case AbsAnd(l,r) => absContains(contained,l) || absContains(contained,r)
     case AbsEq(_,_) => false
     case AbsFormula(_) => false
-    case AbsArrow(p,_) => absContains(contained,p)
     case _ => ???
   }
   def testCmdTransfer(cmd:AppLoc => CmdWrapper, post:State, testIRMethod: TestIRMethodLoc):Set[State] = {
@@ -95,7 +97,8 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("this") -> recPv))::Nil,
       heapConstraints = Map(),
       pureFormula = Set(),
-      traceAbstraction = Set(otheri))
+      traceAbstraction = Set(AbsArrow(otheri,Nil)))
+
     println(s"post: ${post.toString}")
     val prestate: Set[State] = tr.transfer(post,preloc, postloc)
     println(s"pre: ${prestate.toString}")
@@ -118,7 +121,7 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("this") -> recPv))::Nil,
       heapConstraints = Map(),
       pureFormula = Set(),
-      traceAbstraction = Set(AbsAnd(AbsFormula(iFooA), AbsEq("a",recPv))))
+      traceAbstraction = Set(AbsArrow(AbsAnd(AbsFormula(iFooA), AbsEq("a",recPv)), Nil)))
     println(s"post: ${post.toString}")
     val prestate: Set[State] = tr.transfer(post,preloc, postloc)
     println(s"pre: ${prestate.toString}")

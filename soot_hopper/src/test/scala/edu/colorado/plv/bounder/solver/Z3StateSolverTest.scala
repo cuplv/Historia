@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.solver
 import com.microsoft.z3.{ArithExpr, BoolExpr, Context, EnumSort, Expr, IntExpr, Solver, Status, Symbol}
 import edu.colorado.plv.bounder.ir.{AppLoc, CBEnter, CallbackMethodInvoke}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, NI, Not, Or}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AbsAnd, AbsArrow, AbsEq, AbsFormula, CallStackFrame, Equals, FieldPtEdge, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, SubclassOf, TraceAbstraction, TypeComp}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbsAnd, AbsArrow, AbsEq, AbsFormula, CallStackFrame, EmptyTrace, Equals, FieldPtEdge, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, SubclassOf, TraceAbstractionArrow, TypeComp}
 import edu.colorado.plv.bounder.testutils.{TestIRLineLoc, TestIRMethodLoc}
 
 class Z3StateSolverTest extends org.scalatest.FunSuite {
@@ -117,7 +117,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val i2 = I(CBEnter, Set(("foo", "baz")), "a" :: Nil)
     val niBarBaz = NI(i,i2)
     val p1 = PureVar()
-    val abs1 = AbsAnd(AbsFormula(niBarBaz), AbsEq("a",p1))
+    val abs1 = AbsArrow(AbsAnd(AbsFormula(niBarBaz), AbsEq("a",p1)), Nil)
     val state1 = State(Nil, Map(),Set(), Set(abs1))
     val res1 = statesolver.simplify(state1)
     assert(res1.isDefined)
@@ -135,7 +135,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val i = I(CBEnter, Set(("foo", "bar")), "a" :: Nil)
     val i2 = I(CBEnter, Set(("foo", "baz")), "a" :: Nil)
     val niBarBaz = NI(i,i2)
-    val abs1 = AbsArrow(AbsFormula(niBarBaz), i)
+    val abs1 = AbsArrow(AbsFormula(niBarBaz), i::Nil)
     val state1 = State(Nil, Map(),Set(), Set(abs1))
     val res1 = statesolver.simplify(state1)
     assert(res1.isDefined)
@@ -162,9 +162,9 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val p2 = PureVar()
 
     // NI(a.bar(),a.baz()) |> I(c.baz()) && a == p1 && c == p1 (<=> false)
-    val abs1: TraceAbstraction = AbsArrow(
+    val abs1: TraceAbstractionArrow = AbsArrow(
       AbsAnd(AbsAnd(AbsFormula(niBarBaz), AbsEq("a",p1)), AbsEq("b",p1)),
-      i3
+      i3::Nil
     )
     val state1 = State(Nil, Map(),Set(), Set(abs1))
     println(s"state: ${state1}")
@@ -200,9 +200,9 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val p2 = PureVar()
 
     // NI(a.bar(),a.baz()) |> I(c.bar()) && a == p1 && c == p1 (<=> true)
-    val abs2: TraceAbstraction = AbsArrow(
+    val abs2: TraceAbstractionArrow = AbsArrow(
       AbsAnd(AbsAnd(AbsFormula(niBarBaz), AbsEq("a",p1)), AbsEq("c",p1)),
-      i4
+      i4::Nil
     )
     val state2 = State(Nil,Map(),Set(), Set(abs2))
     val res2 = stateSolver.simplify(state2)
@@ -220,21 +220,21 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     // Lifestate atoms for next few tests
     val i = I(CBEnter, Set(("foo", "bar")), "a" :: Nil)
     val i2 = I(CBEnter, Set(("foo", "baz")), "a" :: Nil)
-    val i3 = I(CBEnter, Set(("foo", "baz")), "b" :: Nil)
-    val i4 = I(CBEnter, Set(("foo", "bar")), "c" :: Nil)
+    val b_baz = I(CBEnter, Set(("foo", "baz")), "b" :: Nil)
+    val c_bar = I(CBEnter, Set(("foo", "bar")), "c" :: Nil)
     // NI(a.bar(), a.baz())
     val niBarBaz = NI(i, i2)
 
     // pure vars for next few tests
     val p1 = PureVar()
 
-    // NI(a.bar(),a.baz()) |> I(c.bar()) |> i(b.baz()
-    val niaa: TraceAbstraction = AbsArrow(AbsArrow(
-      AbsFormula(niBarBaz),
-      i3
-    ),i4)
-    val abs1 = AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("c",p1), AbsAnd(AbsEq("b",p1), niaa)))
-    val state2 = State(Nil,Map(),Set(), Set(abs1))
+    // NI(a.bar(),a.baz()) |> I(c.bar()) ; i(b.baz()
+    val niaa: TraceAbstractionArrow = AbsArrow(
+      AbsAnd(AbsFormula(niBarBaz), AbsAnd(AbsEq("a",p1),AbsEq("c",p1))),
+      c_bar::b_baz::Nil
+    )
+//    val abs1 = AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("c",p1), AbsAnd(AbsEq("b",p1), niaa)))
+    val state2 = State(Nil,Map(),Set(), Set(niaa))
     val res2 = statesolver.simplify(state2, Some(20)) //TODO: remove dbg limit
     assert(res2.isDefined)
   }
@@ -250,21 +250,20 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     // Lifestate atoms for next few tests
     val i = I(CBEnter, Set(("foo", "bar")), "a" :: Nil)
     val i2 = I(CBEnter, Set(("foo", "baz")), "a" :: Nil)
-    val i3 = I(CBEnter, Set(("foo", "baz")), "b" :: Nil)
-    val i4 = I(CBEnter, Set(("foo", "bar")), "c" :: Nil)
+    val b_baz = I(CBEnter, Set(("foo", "baz")), "b" :: Nil)
+    val c_bar = I(CBEnter, Set(("foo", "bar")), "c" :: Nil)
     // NI(a.bar(), a.baz())
     val niBarBaz = NI(i, i2)
 
     // pure vars for next few tests
     val p1 = PureVar()
 
-    // NI(a.bar(),a.baz()) |> I(c.bar()) |> i(b.baz()
-    val niaa: TraceAbstraction = AbsArrow(AbsArrow(
-      AbsFormula(niBarBaz),
-      i4
-    ),i3)
-    val abs1 = AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("c",p1), AbsAnd(AbsEq("b",p1), niaa)))
-    val state2 = State(Nil,Map(),Set(), Set(abs1))
+    // NI(a.bar(),a.baz()) |> I(c.bar());i(b.baz()
+    val niaa: TraceAbstractionArrow = AbsArrow(
+      AbsAnd(AbsFormula(niBarBaz), AbsAnd(AbsEq("a",p1), AbsEq("c",p1))),
+      c_bar::b_baz::Nil
+    )
+    val state2 = State(Nil,Map(),Set(), Set(niaa))
     val res2 = statesolver.simplify(state2, Some(20))
     assert(res2.isEmpty)
   }
@@ -280,8 +279,8 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     // Lifestate atoms for next few tests
     val i = I(CBEnter, Set(("foo", "bar")), "a" :: Nil)
     val i2 = I(CBEnter, Set(("foo", "baz")), "a" :: Nil)
-    val i3 = I(CBEnter, Set(("foo", "baz")), "b" :: Nil)
-    val i4 = I(CBEnter, Set(("foo", "bar")), "c" :: Nil)
+    val b_baz = I(CBEnter, Set(("foo", "baz")), "b" :: Nil)
+    val c_bar = I(CBEnter, Set(("foo", "bar")), "c" :: Nil)
     // NI(a.bar(), a.baz())
     val niBarBaz = NI(i, i2)
 
@@ -289,13 +288,12 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val p1 = PureVar()
     val p2 = PureVar()
 
-    // NI(a.bar(),a.baz()) |> I(c.bar()) |> i(b.baz()
-    val niaa: TraceAbstraction = AbsArrow(AbsArrow(
-      AbsFormula(niBarBaz),
-      i4
-    ),i3)
-    val abs1 = AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("c",p1), AbsAnd(AbsEq("b",p2), niaa)))
-    val state2 = State(Nil,Map(),Set(), Set(abs1))
+    // NI(a.bar(),a.baz()) |> I(c.bar()) ; I(b.baz())
+    val niaa: TraceAbstractionArrow = AbsArrow(
+      AbsAnd(AbsFormula(niBarBaz), AbsAnd(AbsEq("a",p1),AbsAnd(AbsEq("c",p1),AbsEq("b",p2)))),
+      c_bar::b_baz::Nil)
+//    val abs1 = AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("c",p1), AbsAnd(AbsEq("b",p2), niaa)))
+    val state2 = State(Nil,Map(),Set(), Set(niaa))
     val res2 = statesolver.simplify(state2)
     assert(res2.isDefined)
   }
@@ -311,8 +309,8 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     // Lifestate atoms for next few tests
     val i = I(CBEnter, Set(("foo", "bar")), "a" :: Nil)
     val i2 = I(CBEnter, Set(("foo", "baz")), "a" :: Nil)
-    val i3 = I(CBEnter, Set(("foo", "baz")), "b" :: Nil)
-    val i4 = I(CBEnter, Set(("foo", "bar")), "c" :: Nil)
+    val b_baz = I(CBEnter, Set(("foo", "baz")), "b" :: Nil)
+    val c_bar = I(CBEnter, Set(("foo", "bar")), "c" :: Nil)
     // NI(a.bar(), a.baz())
     val niBarBaz = NI(i, i2)
 
@@ -321,12 +319,11 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val p2 = PureVar()
 
     // NI(a.bar(),a.baz()) |> I(c.bar()) |> i(b.baz()
-    val niaa: TraceAbstraction = AbsArrow(AbsArrow(
-      AbsFormula(niBarBaz),
-      i4
-    ),i3)
-    val abs1 = AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("c",p2), AbsAnd(AbsEq("b",p1), niaa)))
-    val state2 = State(Nil,Map(),Set(), Set(abs1))
+    val niaa: TraceAbstractionArrow = AbsArrow(
+      AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("c",p2), AbsAnd(AbsEq("b",p1),AbsFormula(niBarBaz)))),
+      c_bar::b_baz::Nil)
+//    val abs1 = AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("c",p2), AbsAnd(AbsEq("b",p1), niaa)))
+    val state2 = State(Nil,Map(),Set(), Set(niaa))
     val res2 = statesolver.simplify(state2)
     assert(res2.isEmpty)
   }
@@ -343,8 +340,8 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val ibar = I(CBEnter, Set(("", "bar")), "a" :: Nil)
     val ibaz = I(CBEnter, Set(("", "baz")), "a" :: Nil)
     val ifoo = I(CBEnter, Set(("", "foo")), "a" :: Nil)
-    val t1 = AbsArrow(AbsFormula(NI(ibar, ibaz)), ibar)
-    val t2 = AbsArrow(AbsFormula(NI(ifoo, ibaz)), ifoo)
+    val t1 = AbsArrow(AbsFormula(NI(ibar, ibaz)), ibar::Nil)
+    val t2 = AbsArrow(AbsFormula(NI(ifoo, ibaz)), ifoo::Nil)
     val s = state.copy(traceAbstraction = Set(t1,t2))
     val res = statesolver.simplify(s, Some(20))
     assert(res.isDefined)
@@ -370,17 +367,17 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val p2 = PureVar()
     //NI(a.bar(),a.bar()) (<=> true)
     // Note that this should be the same as I(a.bar())
-    val nia = AbsFormula(niBarBar)
+    val nia = AbsArrow(AbsFormula(niBarBar), Nil)
     val res0 = statesolver.simplify(state.copy(traceAbstraction = Set(nia)))
     assert(res0.isDefined)
 
     //NI(a.bar(),a.bar()) |> I(b.bar()) && a = b (<=> true)
-    val niaa: TraceAbstraction = AbsArrow(
-      AbsFormula(niBarBar),
-      i4
+    val niaa: TraceAbstractionArrow = AbsArrow(
+      AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("b",p1), AbsFormula(niBarBar))),
+      i4::Nil
     )
-    val abs1 = AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("b",p1), niaa))
-    val res1 = statesolver.simplify(state.copy(traceAbstraction = Set(abs1)))
+//    val abs1 = AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("b",p1), niaa))
+    val res1 = statesolver.simplify(state.copy(traceAbstraction = Set(niaa)))
     assert(res1.isDefined)
   }
   test("Subsumption of states") {
@@ -409,26 +406,28 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val ibarc = I(CBEnter, Set(("", "bar")), "c" :: Nil)
     val ifooc = I(CBEnter, Set(("", "foo")), "c" :: Nil)
 
+    val tpred = AbsAnd(AbsFormula(ifoo), AbsEq("a", p1))
     // I(a.foo()) can subsume I(a.foo()) |> a.bar()
-    val baseTrace1 = AbsAnd(AbsFormula(ifoo), AbsEq("a",p1))
-    val arrowTrace1 = AbsArrow(baseTrace1, ibarc)
+    val baseTrace1 = AbsArrow(tpred, Nil)
+    val arrowTrace1 = AbsArrow(tpred, ibarc::Nil)
     val state_ = state.copy(traceAbstraction = Set(baseTrace1))
     val state__ = state.copy(traceAbstraction = Set(arrowTrace1))
     assert(statesolver.canSubsume(state_,state__))
 
-    val baseTrace = AbsAnd(AbsFormula(NI(ifoo, ibar)), AbsEq("a", p1))
+    val tpred2 = AbsAnd(AbsFormula(NI(ifoo, ibar)), AbsEq("a", p1))
+    val baseTrace = AbsArrow(tpred2, Nil)
     val state3_ = state.copy(traceAbstraction = Set(baseTrace))
 
     // NI(a.foo(), a.bar()) can subsume itself
     val res = statesolver.canSubsume(state3_, state3_)
     assert(res)
 
-    val state3__ = state.copy(traceAbstraction = Set(AbsArrow(baseTrace, ibarc)))
+    val state3__ = state.copy(traceAbstraction = Set(AbsArrow(tpred2, ibarc::Nil)))
     // NI(a.foo(), a.bar()) can subsume NI(a.foo(), a.bar()) |> c.bar()
     assert(statesolver.canSubsume(state3_,state3__))
 
     // NI(a.foo(), a.bar()) cannot subsume NI(a.foo(), a.bar()) |> c.foo()
-    val fooBarArrowFoo = state.copy(traceAbstraction = Set(AbsArrow(baseTrace, ifooc)))
+    val fooBarArrowFoo = state.copy(traceAbstraction = Set(AbsArrow(tpred2, ifooc::Nil)))
     assert(!statesolver.canSubsume(state3_, fooBarArrowFoo, Some(10)))
   }
   test("quantifier example") {
@@ -456,7 +455,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
   }
   test("sandbox") {
     val ctx = new Context
-    val solver: Solver = ctx.mkSolver()
+    val solver = ctx.mkSolver()
     val msgSort = ctx.mkUninterpretedSort("Msg")
     val msgSort2 = ctx.mkUninterpretedSort("Msg")
     val pos1 = ctx.mkFuncDecl("tracePos", ctx.mkIntSort, msgSort)

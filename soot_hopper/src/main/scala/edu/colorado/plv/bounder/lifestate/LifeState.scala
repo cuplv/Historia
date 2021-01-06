@@ -168,9 +168,11 @@ class SpecSpace(specs: Set[LSSpec]) {
    * @param name
    * @return
    */
-  def specsBySig(pkg:String, name:String):Set[LSSpec] = {
-    // TODO: put specs in hash map or something
-    specs.filter(a => a.target.signatures.contains((pkg,name)))
+  def specsBySig(mt: MessageType, pkg:String, name:String):Option[LSSpec] = {
+    // TODO: cache specs in hash map
+    val specsForSig = specs.filter(a => a.target.signatures.contains((pkg,name)) && a.target.mt == mt)
+    assert(specsForSig.size < 2, "Spec is not well formed, multiple applicable specs for transfer")
+    specsForSig.headOption
   }
 
 }
