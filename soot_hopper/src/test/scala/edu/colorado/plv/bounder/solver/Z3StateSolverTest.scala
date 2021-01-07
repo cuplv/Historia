@@ -344,6 +344,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
 
     val foo = FwkMethod("foo", "")
     val bar = FwkMethod("bar", "")
+    val baz = FwkMethod("baz", "")
 
     val i_foo_x = I(CIEnter, Set(("foo",""),("foo2","")), "X"::Nil)
     val i_bar_x = I(CIEnter, Set(("bar",""),("bar2","")), "X"::Nil)
@@ -361,6 +362,11 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     // I(x.foo()) ! models empty
     assert(!statesolver.traceInAbstraction(
       state.copy(traceAbstraction = Set(AbsArrow(AbsFormula(i_foo_x),Nil))),
+      Nil))
+
+    // NI(x.foo(), x.bar()) ! models empty
+    assert(!statesolver.traceInAbstraction(
+      state.copy(traceAbstraction = Set(AbsArrow(AbsFormula(ni_foo_x_bar_x),Nil))),
       Nil))
 
     // NI(x.foo(), x.bar()) ! models @1.foo();@1.bar()
@@ -382,6 +388,20 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
         state.copy(traceAbstraction = Set(AbsArrow(AbsFormula(ni_foo_x_bar_x), i_foo_x::Nil))),
         TMessage(CIEnter, bar, TAddr(1)::Nil)::Nil
       ))
+    // NI(x.foo(),x.bar()) |> x.foo() models @1.foo();@1.bar()
+    assert(
+      statesolver.traceInAbstraction(
+        state.copy(traceAbstraction = Set(AbsArrow(AbsFormula(ni_foo_x_bar_x), i_foo_x::Nil))),
+        trace
+      ))
+
+    // NI(x.foo(),x.bar()) |> x.bar() ! models empty
+    assert(
+      !statesolver.traceInAbstraction(
+        state.copy(traceAbstraction = Set(AbsArrow(AbsFormula(ni_foo_x_bar_x), i_bar_x::Nil))),
+        Nil
+      ))
+    //TODO: test "and", "scoped abstract traces"
   }
 
   private def getStateSolver: Z3StateSolver = {
