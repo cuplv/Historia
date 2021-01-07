@@ -200,7 +200,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
 
     // NI(a.bar(),a.baz()) |> I(c.bar());i(b.baz()
     val niaa: TraceAbstractionArrow = AbsArrow(
-      AbsAnd(AbsFormula(niBarBaz), AbsAnd(AbsEq("a",p1), AbsEq("c",p1))),
+      AbsAnd(AbsFormula(niBarBaz), AbsAnd(AbsAnd(AbsEq("a",p1), AbsEq("c",p1)),AbsEq("b",p1))),
       c_bar::b_baz::Nil
     )
     val state2 = State(Nil,Map(),Set(), Set(niaa))
