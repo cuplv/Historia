@@ -405,19 +405,27 @@ trait StateSolver[T] {
         val i = messageTranslator.iForMsg(m)
         i.map(assertIAt(mkIntVal(ind), _, messageTranslator, traceFN, ""))
     }
-    assertEachMsg.reduce( (a,b) => mkAnd(a,b))
+    assertEachMsg.foldLeft(mkBoolVal(true))( (a,b) => mkAnd(a,b))
   }
 
   def traceInAbstraction(state:State, trace: List[TMessage]): Boolean ={
+    val assert = encodeTraceContained(state, trace)
+    push()
+    mkAssert(assert)
+    val sat = checkSAT()
+    pop()
+    sat
+  }
+
+  private def encodeTraceContained(state: State, trace: List[TMessage]):T = {
     val messageTranslator = MessageTranslator(List(state))
     val traceFn = mkTraceFn("")
     val len = mkIntVar(s"len_")
     val encodedAbs: Set[T] =
       state.traceAbstraction.map(encodeTraceAbs(_, messageTranslator, traceFn, len, Some("")))
     val encodedTrace = encodeTrace(traceFn, trace, messageTranslator)
-    val assert = mkAnd(encodedAbs.reduce( (a,b) => mkAnd(a,b)), encodedTrace)
-    push()
-    mkAssert(assert)
-    checkSAT()
+    mkAnd(mkEq(len, mkIntVal(trace.length)),
+      mkAnd(encodedAbs.foldLeft(mkBoolVal(true))((a, b) => mkAnd(a, b)), encodedTrace)
+    )
   }
 }
