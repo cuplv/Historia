@@ -31,7 +31,6 @@ case class AbsEq(lsVar : String, pureVar: PureVar) extends AbstractTrace{
   assert(lsVar != "_")
   override def toString:String = s"$lsVar = ${pureVar}"
 }
-case object EmptyTrace extends AbstractTrace
 
 case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdge, PureExpr],
                  pureFormula: Set[PureConstraint], traceAbstraction: Set[TraceAbstractionArrow]) {

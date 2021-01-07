@@ -231,7 +231,9 @@ trait StateSolver[T] {
 
     def iencarrow(len: T, abs: TraceAbstractionArrow, traceFn: T): T = abs match {
       case AbsArrow(abs, ipreds) =>
-        val freshTraceFun = mkFreshTraceFn("arrowtf")
+      //TODO: creating fresh trace function here breaks negation used for subsumption
+        // TODO: how to fix this??? =========================
+      val freshTraceFun = mkFreshTraceFn("arrowtf")
         val beforeIndEq =
           mkForallInt(mkIntVal(-1), len, i =>
             mkEq(mkTraceConstraint(traceFn, i), mkTraceConstraint(freshTraceFun, i)))
