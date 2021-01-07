@@ -97,11 +97,11 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
 
   override protected def mkObjVar(s: PureVar): AST = ctx.mkIntConst("object_addr_" + s.id.toString)
 
-  override def printDbgModel(msgName: AST, traceAbstraction: Set[TraceAbstractionArrow], lenUID: String): Unit = {
-    printAbstSolution(solver.getModel, msgName.asInstanceOf[EnumSort], traceAbstraction, lenUID)
+  override def printDbgModel(messageTranslator: MessageTranslator, traceAbstraction: Set[TraceAbstractionArrow], lenUID: String): Unit = {
+    printAbstSolution(solver.getModel, messageTranslator, traceAbstraction, lenUID)
   }
 
-  def printAbstSolution(model: Model, msgName: EnumSort, traceAbstraction: Set[TraceAbstractionArrow],
+  def printAbstSolution(model: Model, messageTranslator: MessageTranslator, traceAbstraction: Set[TraceAbstractionArrow],
                         lenUID: String) {
     println(s"===model: $model")
     traceAbstraction map { abs => {
@@ -110,7 +110,8 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
       println("=trace solution=")
       val traceLen: Int = model.eval(len, true).toString.toInt
       val traceFun = mkTraceFn(uniqueID).asInstanceOf[FuncDecl]
-      val nameFun = mkINameFn(msgName).asInstanceOf[FuncDecl]
+//      val nameFun = mkINameFn(msgName).asInstanceOf[FuncDecl]
+      val nameFun = messageTranslator.nameFun.asInstanceOf[FuncDecl]
       val argFun = mkArgFun().asInstanceOf[FuncDecl]
       (0 until traceLen).map ( index => {
         println(s"$index: ")
@@ -123,14 +124,14 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
   }
 
   //  private def printModelSolution()
-  override protected def solverSimplify(t: AST,state:State, msgname:AST, logDbg:Boolean): Option[AST] = {
+  override protected def solverSimplify(t: AST,state:State, messageTranslator: MessageTranslator, logDbg:Boolean): Option[AST] = {
     solver.add(t.asInstanceOf[BoolExpr])
     val status: Status = solver.check()
     status match{
       case Status.SATISFIABLE =>
         if (logDbg) {
           println(s"Model: ${solver.getModel}")
-          printAbstSolution(solver.getModel(),msgname.asInstanceOf[EnumSort],
+          printAbstSolution(solver.getModel(),messageTranslator,
             state.traceAbstraction,
             System.identityHashCode(state).toString)
         }

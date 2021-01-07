@@ -12,10 +12,18 @@ case object CBExit extends MessageType
 
 sealed trait Method {
   def name : String
+  def fwkSig : Option[(String,String)]
 }
-case class AppMethod(retType : String,
-                     name: String,
-                     argTypes: List[String], declaringType: String, fwkOverride : Option[FwkMethod]) extends Method
-case class FwkMethod(retType : String, name: String, argTypes: List[String], declaringType : String) extends Method
+case class AppMethod(name: String, declaringType: String, fwkOverride : Option[FwkMethod]) extends Method{
+  override def fwkSig: Option[(String, String)] = fwkOverride.flatMap(_.fwkSig)
+}
+case class FwkMethod(name: String, declaringType : String) extends Method{
+  override def fwkSig: Option[(String, String)] = Some(name,declaringType)
+}
 
-case class Message(mType : MessageType, method: Method)
+case class TMessage(mType : MessageType, method: Method, args: List[TVal]){
+  def fwkSig = method.fwkSig
+}
+sealed trait TVal
+case class TAddr(i:Int) extends TVal
+case object TNullVal extends TVal

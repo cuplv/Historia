@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.solver
 
 import com.microsoft.z3.{ArithExpr, BoolExpr, Context, EnumSort, Expr, IntExpr, Solver, Status, Symbol}
-import edu.colorado.plv.bounder.ir.{AppLoc, CBEnter, CallbackMethodInvoke}
+import edu.colorado.plv.bounder.ir.{AppLoc, CBEnter, CIEnter, CallbackMethodInvoke, FwkMethod, TAddr, TMessage}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbsAnd, AbsArrow, AbsEq, AbsFormula, CallStackFrame, EmptyTrace, Equals, FieldPtEdge, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, SubclassOf, TraceAbstractionArrow, TypeComp}
 import edu.colorado.plv.bounder.testutils.{TestIRLineLoc, TestIRMethodLoc}
@@ -13,13 +13,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
   val frame = CallStackFrame(dummyLoc, None, Map(StackVar("x") -> v))
   val state = State(Nil,Map(),Set(), Set())
   test("null not null") {
-    val ctx = new Context
-    val solver: Solver = ctx.mkSolver()
-    val hierarchy : Map[String, Set[String]] =
-      Map("Object" -> Set("String", "Foo", "Bar", "Object"),
-        "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
-    val pc = new PersistantConstraints(ctx, solver, hierarchy)
-    val statesolver = new Z3StateSolver(pc)
+  val statesolver = getStateSolver
 
     val v2 = PureVar()
     val constraints = Set(PureConstraint(v2, NotEquals, NullVal), PureConstraint(v2, Equals, NullVal))
@@ -29,13 +23,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     assert(!simplifyResult.isDefined)
   }
   test("alias") {
-    val ctx = new Context
-    val solver: Solver = ctx.mkSolver()
-    val hierarchy : Map[String, Set[String]] =
-      Map("Object" -> Set("String", "Foo", "Bar", "Object"),
-        "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
-    val pc = new PersistantConstraints(ctx, solver, hierarchy)
-    val statesolver = new Z3StateSolver(pc)
+  val statesolver = getStateSolver
 
     val v2 = PureVar()
     val v3 = PureVar()
@@ -47,13 +35,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     assert(!simplifyResult.isDefined)
   }
   test("Separate fields imply base must not be aliased a^.f->b^ * c^.f->b^ AND a^=c^ (<=> false)") {
-    val ctx = new Context
-    val solver: Solver = ctx.mkSolver()
-    val hierarchy : Map[String, Set[String]] =
-      Map("Object" -> Set("String", "Foo", "Bar", "Object"),
-        "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
-    val pc = new PersistantConstraints(ctx, solver, hierarchy)
-    val statesolver = new Z3StateSolver(pc)
+  val statesolver = getStateSolver
 
     val v2 = PureVar()
     val v3 = PureVar()
@@ -70,13 +52,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     assert(simplifyResult2.isDefined)
   }
   test("aliased object implies fields must be aliased refuted by type constraints") {
-    val ctx = new Context
-    val solver: Solver = ctx.mkSolver()
-    val hierarchy : Map[String, Set[String]] =
-      Map("Object" -> Set("String", "Foo", "Bar", "Object"),
-        "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
-    val pc = new PersistantConstraints(ctx, solver, hierarchy)
-    val statesolver = new Z3StateSolver(pc)
+    val statesolver = getStateSolver
 
     // aliased and contradictory types of field
     val v2 = PureVar()
@@ -104,13 +80,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     assert(simplifyResult2.isDefined)
   }
   test("Trace abstraction NI(a.bar(), a.baz()) && a == p1 (<==>true)") {
-    val ctx = new Context
-    val solver: Solver = ctx.mkSolver()
-    val hierarchy : Map[String, Set[String]] =
-      Map("Object" -> Set("String", "Foo", "Bar", "Object"),
-        "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
-    val pc = new PersistantConstraints(ctx, solver, hierarchy)
-    val statesolver = new Z3StateSolver(pc)
+    val statesolver = getStateSolver
 
     // Lifestate atoms for next few tests
     val i = I(CBEnter, Set(("foo", "bar")), "a" :: Nil)
@@ -123,13 +93,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     assert(res1.isDefined)
   }
   test("Trace abstraction NI(a.bar(), a.baz()) |> I(a.bar()) (<==>true)") {
-    val ctx = new Context
-    val solver: Solver = ctx.mkSolver()
-    val hierarchy : Map[String, Set[String]] =
-      Map("Object" -> Set("String", "Foo", "Bar", "Object"),
-        "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
-    val pc = new PersistantConstraints(ctx, solver, hierarchy)
-    val statesolver = new Z3StateSolver(pc)
+    val statesolver = getStateSolver
 
     // Lifestate atoms for next few tests
     val i = I(CBEnter, Set(("foo", "bar")), "a" :: Nil)
@@ -141,13 +105,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     assert(res1.isDefined)
   }
   test("Trace abstraction NI(a.bar(),a.baz()) |> I(c.baz()) && a == p1 && c == p1 (<=> false)") {
-    val ctx = new Context
-    val solver: Solver = ctx.mkSolver()
-    val hierarchy : Map[String, Set[String]] =
-      Map("Object" -> Set("String", "Foo", "Bar", "Object"),
-        "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
-    val pc = new PersistantConstraints(ctx, solver, hierarchy)
-    val statesolver = new Z3StateSolver(pc)
+    val statesolver = getStateSolver
 
     // Lifestate atoms for next few tests
     val i = I(CBEnter, Set(("foo", "bar")), "a" :: Nil)
@@ -179,13 +137,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     //assert(res2.isDefined)
   }
   test("Trace abstraction NI(a.bar(),a.baz()) |> I(c.bar()) && a == p1 && c == p1 (<=> true)") {
-    val ctx = new Context
-    val solver: Solver = ctx.mkSolver()
-    val hierarchy: Map[String, Set[String]] =
-      Map("Object" -> Set("String", "Foo", "Bar", "Object"),
-        "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
-    val pc = new PersistantConstraints(ctx, solver, hierarchy)
-    val stateSolver = new Z3StateSolver(pc)
+    val stateSolver = getStateSolver
 
     // Lifestate atoms for next few tests
     val i = I(CBEnter, Set(("foo", "bar")), "a" :: Nil)
@@ -209,13 +161,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     assert(res2.isDefined)
   }
   test("Trace abstraction NI(a.bar(),a.baz()) |> I(b.baz()) |> I(c.bar()) (<=> true) ") {
-    val ctx = new Context
-    val solver: Solver = ctx.mkSolver()
-    val hierarchy: Map[String, Set[String]] =
-      Map("Object" -> Set("String", "Foo", "Bar", "Object"),
-        "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
-    val pc = new PersistantConstraints(ctx, solver, hierarchy)
-    val statesolver = new Z3StateSolver(pc)
+    val statesolver = getStateSolver
 
     // Lifestate atoms for next few tests
     val i = I(CBEnter, Set(("foo", "bar")), "a" :: Nil)
@@ -238,14 +184,8 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val res2 = statesolver.simplify(state2, Some(20)) //TODO: remove dbg limit
     assert(res2.isDefined)
   }
-  test("Trace abstraction NI(a.bar(),a.baz()) |> I(c.bar()) |> I(b.baz() && a = b = c (<=> false) ") {
-    val ctx = new Context
-    val solver: Solver = ctx.mkSolver()
-    val hierarchy: Map[String, Set[String]] =
-      Map("Object" -> Set("String", "Foo", "Bar", "Object"),
-        "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
-    val pc = new PersistantConstraints(ctx, solver, hierarchy)
-    val statesolver = new Z3StateSolver(pc)
+  test("Trace abstraction NI(a.bar(),a.baz()) ; I(c.bar()) ; I(b.baz()) && a = b = c (<=> false) ") {
+    val statesolver = getStateSolver
 
     // Lifestate atoms for next few tests
     val i = I(CBEnter, Set(("foo", "bar")), "a" :: Nil)
@@ -268,13 +208,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     assert(res2.isEmpty)
   }
   test("Trace abstraction NI(a.bar(),a.baz()) |> I(c.bar()) |> I(b.baz() && a = c (<=> true) ") {
-    val ctx = new Context
-    val solver: Solver = ctx.mkSolver()
-    val hierarchy: Map[String, Set[String]] =
-      Map("Object" -> Set("String", "Foo", "Bar", "Object"),
-        "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
-    val pc = new PersistantConstraints(ctx, solver, hierarchy)
-    val statesolver = new Z3StateSolver(pc)
+    val statesolver = getStateSolver
 
     // Lifestate atoms for next few tests
     val i = I(CBEnter, Set(("foo", "bar")), "a" :: Nil)
@@ -298,13 +232,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     assert(res2.isDefined)
   }
   test("Trace abstraction NI(a.bar(),a.baz()) |> I(c.bar()) |> I(b.baz() && a = b (<=> false) ") {
-    val ctx = new Context
-    val solver: Solver = ctx.mkSolver()
-    val hierarchy: Map[String, Set[String]] =
-      Map("Object" -> Set("String", "Foo", "Bar", "Object"),
-        "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
-    val pc = new PersistantConstraints(ctx, solver, hierarchy)
-    val statesolver = new Z3StateSolver(pc)
+    val statesolver = getStateSolver
 
     // Lifestate atoms for next few tests
     val i = I(CBEnter, Set(("foo", "bar")), "a" :: Nil)
@@ -328,13 +256,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     assert(res2.isEmpty)
   }
   test("Trace abstraction NI(a.bar(),a.baz()) |> I(a.bar()),  NI(a.foo(),a.baz()) |> I(a.foo()) (<=> true) ") {
-    val ctx = new Context
-    val solver: Solver = ctx.mkSolver()
-    val hierarchy: Map[String, Set[String]] =
-      Map("Object" -> Set("String", "Foo", "Bar", "Object"),
-        "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
-    val pc = new PersistantConstraints(ctx, solver, hierarchy)
-    val statesolver = new Z3StateSolver(pc)
+    val statesolver = getStateSolver
 
     // Lifestate atoms for next few tests
     val ibar = I(CBEnter, Set(("", "bar")), "a" :: Nil)
@@ -347,14 +269,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     assert(res.isDefined)
   }
   test("Vacuous NI(a,a) spec") {
-    //TODO: Is there ever a reason to need this case?
-    val ctx = new Context
-    val solver: Solver = ctx.mkSolver()
-    val hierarchy: Map[String, Set[String]] =
-      Map("Object" -> Set("String", "Foo", "Bar", "Object"),
-        "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
-    val pc = new PersistantConstraints(ctx, solver, hierarchy)
-    val statesolver = new Z3StateSolver(pc)
+    val statesolver = getStateSolver
 
     // Lifestate atoms for next few tests
     val i = I(CBEnter, Set(("foo", "bar")), "a" :: Nil)
@@ -381,14 +296,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     assert(res1.isDefined)
   }
   test("Subsumption of states") {
-    val ctx = new Context
-    val solver: Solver = ctx.mkSolver()
-    val hierarchy: Map[String, Set[String]] =
-      Map("Object" -> Set("String", "Foo", "Bar", "Object"),
-        "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
-
-    val pc = new PersistantConstraints(ctx, solver, hierarchy)
-    val statesolver = new Z3StateSolver(pc)
+    val statesolver = getStateSolver
 
     val p1 = PureVar()
     val p2 = PureVar()
@@ -430,6 +338,35 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val fooBarArrowFoo = state.copy(traceAbstraction = Set(AbsArrow(tpred2, ifooc::Nil)))
     assert(!statesolver.canSubsume(state3_, fooBarArrowFoo, Some(10)))
   }
+
+  test("Trace contained in abstraction") {
+    val statesolver = getStateSolver
+
+    val foo = FwkMethod("foo", "")
+    val bar = FwkMethod("bar", "")
+    val cb_bar_1 = TMessage(CIEnter, bar, TAddr(1)::Nil)
+
+    val i_foo_x = I(CIEnter, Set(("foo",""),("foo2","")), "X"::Nil)
+    val trace = List(
+      TMessage(CIEnter, foo, TAddr(1)::Nil),
+      TMessage(CIEnter, bar, TAddr(1)::Nil)
+    )
+    assert(statesolver.traceInAbstraction(
+      state.copy(traceAbstraction = Set(AbsArrow(AbsFormula(i_foo_x),Nil))),
+      trace))
+  }
+
+  private def getStateSolver: Z3StateSolver = {
+    val ctx = new Context
+    val solver: Solver = ctx.mkSolver()
+    val hierarchy: Map[String, Set[String]] =
+      Map("Object" -> Set("String", "Foo", "Bar", "Object"),
+        "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
+
+    val pc = new PersistantConstraints(ctx, solver, hierarchy)
+    new Z3StateSolver(pc)
+  }
+
   test("quantifier example") {
     val ctx = new Context
     val solver: Solver = ctx.mkSolver()
@@ -475,6 +412,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     }
 
   }
+
   test("sandbox2") {
     val ctx = new Context
     val solver: Solver = ctx.mkSolver()
