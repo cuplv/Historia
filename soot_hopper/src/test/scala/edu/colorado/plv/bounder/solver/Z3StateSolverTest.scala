@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.solver
 import com.microsoft.z3.{ArithExpr, BoolExpr, Context, EnumSort, Expr, IntExpr, Solver, Status, Symbol}
 import edu.colorado.plv.bounder.ir.{AppLoc, CBEnter, CIEnter, CallbackMethodInvoke, FwkMethod, TAddr, TMessage}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, NI, Not, Or}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AbsAnd, AbsArrow, AbsEq, AbsFormula, CallStackFrame, EmptyTrace, Equals, FieldPtEdge, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, SubclassOf, TraceAbstractionArrow, TypeComp}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbsAnd, AbsArrow, AbsEq, AbsFormula, CallStackFrame, Equals, FieldPtEdge, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, SubclassOf, TraceAbstractionArrow, TypeComp}
 import edu.colorado.plv.bounder.testutils.{TestIRLineLoc, TestIRMethodLoc}
 
 class Z3StateSolverTest extends org.scalatest.FunSuite {
@@ -305,10 +305,10 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val state = State(CallStackFrame(loc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Set())
     val state2 = state.copy(callStack =
       state.callStack.head.copy(locals=Map(StackVar("x") -> p1, StackVar("y")->p2))::Nil)
-    //TODO: uncomment tests after dbg
-//    assert(statesolver.canSubsume(state,state))
-//    assert(statesolver.canSubsume(state,state2))
-//    assert(!statesolver.canSubsume(state2,state))
+    //TODO: uncomment after dbg:
+    //assert(statesolver.canSubsume(state,state))
+    //assert(statesolver.canSubsume(state,state2))
+    //assert(!statesolver.canSubsume(state2,state))
 
     val ifoo = I(CBEnter, Set(("", "foo")), "a" :: Nil)
     val ibar = I(CBEnter, Set(("", "bar")), "a" :: Nil)
@@ -316,11 +316,16 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val ifooc = I(CBEnter, Set(("", "foo")), "c" :: Nil)
 
     val tpred = AbsAnd(AbsFormula(ifoo), AbsEq("a", p1))
-    // I(a.foo()) can subsume I(a.foo()) |> a.bar()
     val baseTrace1 = AbsArrow(tpred, Nil)
     val arrowTrace1 = AbsArrow(tpred, ibarc::Nil)
     val state_ = state.copy(traceAbstraction = Set(baseTrace1))
     val state__ = state.copy(traceAbstraction = Set(arrowTrace1))
+
+    //TODO: failing unit tests
+
+    // State I(a.foo())|>empty should subsume itself
+    assert(statesolver.canSubsume(state_,state_))
+    // I(a.foo()) can subsume I(a.foo()) |> a.bar()
     assert(statesolver.canSubsume(state_,state__, Some(5)))
 
     //TODO: uncomment below after dbg
