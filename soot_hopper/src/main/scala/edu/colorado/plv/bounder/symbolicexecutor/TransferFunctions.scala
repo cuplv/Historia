@@ -16,7 +16,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
    */
   def transfer(pre: State, target: Loc, source: Loc): Set[State] = (source, target, pre) match {
     case (source@AppLoc(_, _, false), CallinMethodReturn(fmwClazz, fmwName,_), State(stack, heap, pure, reg)) =>
-      Set(State(CallStackFrame(target, Some(source.copy(isPre = true)), Map()) :: stack, heap, pure, reg)) //TODO: lifestate rule transfer
+      Set(State(CallStackFrame(target, Some(source.copy(isPre = true)), Map()) :: stack, heap, pure, reg))
     case (CallinMethodReturn(_, _,_), CallinMethodInvoke(_, _), state) => Set(state)
     case (CallinMethodInvoke(_, _), loc@AppLoc(_, _, true), s@State(h :: t, _, _, _)) => {
       //TODO: parameter mapping
@@ -28,18 +28,24 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     case (AppLoc(_, m, true), CallbackMethodInvoke(fc1, fn1, l1), State(CallStackFrame(cmloc@CallbackMethodReturn(fc2, fn2, l2, _), None, locals) :: s, heap, pure, reg)) => {
       // If call doesn't match return on stack, return bottom
       // Target loc of CallbackMethodInvoke means just before callback is invoked
-      if (fc1 != fc2 || fn1 != fn2 || l1 != l2) Set() else {
-        // Update each element in the trace abstraction for the current message
-        val (pkg, name, invar) = msgCmdToMsg(cmloc)
-        // TODO: add all input vars to abs state, currently only considering this
+      if (fc1 != fc2 || fn1 != fn2 || l1 != l2) {
+        Set()//TODO: why is this conditional here?
+      }
+      else {
+        val (pkg, name, invars) = msgCmdToMsg(cmloc)
+        // Add all parameters to abs state (note just moved these out of the trace transfer)
+        val state0 = invars.foldLeft(pre){
+          case (cstate,Some(invar)) => cstate.getOrDefine(invar)._2
+          case (cstate, None) => cstate
+        }
         //update existing spec instantiations
-        val state1 = traceAllPredTransfer(CBEnter, (pkg,name),invar,pre)
+        val state1 = traceAllPredTransfer(CBEnter, (pkg,name),invars,state0)
         // Since this is a back message, instantiate any new instances of the spec
         //add new instantiations of specs
-        val states2 = newSpecInstanceTransfer(CBEnter,(pkg,name), invar, cmloc, state1)
+        val states2 = newSpecInstanceTransfer(CBEnter,(pkg,name), invars, cmloc, state1)
         // Remove the top call stack frame from each candidate state since we are crossing the entry to a method
         val out = states2.copy(callStack = s)
-        Set(out) // TODO: check that this output makes sense
+        Set(out)
       }
     }
     case (CallbackMethodInvoke(_, _, _), targetLoc@CallbackMethodReturn(_,_,mloc, _), pre) => {
@@ -90,32 +96,13 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     val parameterPairing: Seq[(String, Option[LocalWrapper])] = (target.lsVars zip allVar)
 
     // Match each lsvar to absvar if both exist
-    val formula = parameterPairing.foldLeft(AbsFormula(pred)) {
+    val formula = parameterPairing.foldLeft(AbsFormula(pred):AbstractTrace) {
       case (abstTrace, (lsvar, Some(invar))) if lsvar != "_" =>
-        ???
+        AbsAnd(abstTrace, AbsEq(lsvar, postState.get(invar).get))
       case (abstTrace, (_, None)) => abstTrace
     }
-    ???
-
-//    val (outState,newLsAbstractions) =
-//      applicableSpecs.foldLeft(postState, Set[TraceAbstractionArrow]()) {
-//        case ((bstate,specset), LSSpec(pred, I(targetmt, _, lsVars))) if targetmt == mt =>{
-//          //TODO: find all args in abstract state
-//          val (introducedTA, newState) = (lsVars zip invar).foldLeft(List[TraceAbstractionArrow](),bstate){
-//            case ((ta,cstate),(lsvar, Some(local))) => {
-//              val (newPv, newState) = cstate.getOrDefine(local)
-//              (AbsEq(lsvar,newPv)::ta,newState)
-//            }
-//            case (acc,(_,None)) => acc
-//          }
-//          val abstraction: TraceAbstractionArrow =
-//            introducedTA.foldLeft(AbsFormula(pred): AbsFormula) { (acc, v) => AbsAnd(acc, v) }
-//          (newState,specset + abstraction)
-//        }
-//        case (bstate,_) => bstate
-//    }
-//    postState.copy(traceAbstraction = postState.traceAbstraction.union(newLsAbstractions))
-    ???
+    val newLsAbstraction = AbsArrow(formula, Nil)
+    postState.copy(traceAbstraction = postState.traceAbstraction + newLsAbstraction)
   }
 
   /**
@@ -143,14 +130,16 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
    * @return
    */
   def predTransferTrace(pred:TraceAbstractionArrow, mt:MessageType,
-                        sig:(String,String), vals: List[Option[PureVar]]):TraceAbstractionArrow = pred match{
+                        sig:(String,String), vals: List[Option[PureExpr]]):TraceAbstractionArrow = pred match{
     case AbsArrow(traceAbstraction, suffixAbstraction) =>
 
       specSpace.getIWithFreshVars(mt, sig) match{
         case Some(i@I(_,_,lsVars)) =>
-          val modelVarConstraints: Seq[AbstractTrace] = (lsVars zip vals).flatMap{ a =>
-            a._2.map(AbsEq(a._1,_))
+          val modelVarConstraints: Seq[AbstractTrace] = (lsVars zip vals).flatMap{
+            case (lsvar, Some(stateVal)) if lsvar != "_"  => Some(AbsEq(lsvar,stateVal))
+            case _ => None
           }
+          //TODO: handle case where no vars should be matched
           val modelVarFormula = modelVarConstraints.reduceRight{(a,b) => AbsAnd(a,b)}
           AbsArrow(AbsAnd(modelVarFormula, traceAbstraction), // map lifestate vars to
             i::suffixAbstraction) // prepend message if in spec space
@@ -190,13 +179,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
   def traceAllPredTransfer(mt: MessageType,
                            sig:(String,String), alvar:List[Option[LocalWrapper]],
                            postState: State):State = {
-    val (updstate,allVal) = alvar.foldLeft((postState,List[Option[PureVar]]())){
-      case ((updstate, allVal), Some(currentVar)) =>
-        val (newpv, newstate) = updstate.getOrDefine(currentVar)
-        (newstate, Some(newpv) :: allVal)
-      case ((updstate, allVal), None) => (updstate, None::allVal)
-    }
-    val newTraceAbs: Set[TraceAbstractionArrow] = updstate.traceAbstraction.map {
+    // values we want to track should already be added to the state
+    val allVal = alvar.map(_.flatMap(postState.get(_)))
+    val newTraceAbs: Set[TraceAbstractionArrow] = postState.traceAbstraction.map {
       traceAbs => predTransferTrace(traceAbs, mt, sig, allVal)
     }
     postState.copy(traceAbstraction = newTraceAbs)

@@ -233,6 +233,10 @@ trait StateSolver[T] {
       case AbsArrow(abs, ipreds) =>
       //TODO: creating fresh trace function here breaks negation used for subsumption
         // TODO: how to fix this??? =========================
+        //
+        // w |= \psi_1 |> \psi_2  iff  \exists w' . w' |= \psi_2 and w;w' |= \psi_1
+
+        // \exists tf: Int->Msg . ...
       val freshTraceFun = mkFreshTraceFn("arrowtf")
         val beforeIndEq =
           mkForallInt(mkIntVal(-1), len, i =>
@@ -265,7 +269,8 @@ trait StateSolver[T] {
       //              mkTraceConstraint(traceFn,j)))
       //          ))
       //        ienc(lastElem, abs, freshTraceFun, newk)
-      case AbsEq(mv, pv) => mkEq(mkModelVar(mv, uniqueAbsId), mkObjVar(pv))
+      case AbsEq(mv, pv : PureVar) => mkEq(mkModelVar(mv, uniqueAbsId), mkObjVar(pv))
+      case AbsEq(mv, pv ) => ??? //TODO: encoding for non-pure var
     }
 
     iencarrow(traceLen, abs, traceFn)

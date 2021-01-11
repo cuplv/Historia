@@ -324,6 +324,15 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     //TODO: failing unit tests
 
     // State I(a.foo())|>empty should subsume itself
+
+    // SAT( \exists w . !( (w |= state_) => (w |=state_)  ))
+    // SAT( \exists w . (w |= I(a.foo())|>empty ) && !(w |= I(a.foo())|>empty)
+
+    // a0: NI(a,b) |> a
+    // a1: NI(a,b) && a!=c && b=!c |> c
+    // subsume(a1,a0) (<=> true)
+    // subsume(a0,a1) (<=> false)
+
     assert(statesolver.canSubsume(state_,state_))
     // I(a.foo()) can subsume I(a.foo()) |> a.bar()
     assert(statesolver.canSubsume(state_,state__, Some(5)))

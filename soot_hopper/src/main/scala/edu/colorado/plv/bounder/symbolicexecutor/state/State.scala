@@ -27,7 +27,7 @@ case class AbsArrow(traceAbstraction: AbstractTrace, i:List[I]) extends TraceAbs
 case class AbsAnd(t1 : AbstractTrace, t2:AbstractTrace) extends AbstractTrace{
   override def toString:String = s"( ${t1} ) && ( ${t2} )"
 }
-case class AbsEq(lsVar : String, pureVar: PureVar) extends AbstractTrace{
+case class AbsEq(lsVar : String, pureVar: PureExpr) extends AbstractTrace{
   assert(lsVar != "_")
   override def toString:String = s"$lsVar = ${pureVar}"
 }
