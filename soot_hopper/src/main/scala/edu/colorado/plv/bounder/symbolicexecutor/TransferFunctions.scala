@@ -29,7 +29,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       // If call doesn't match return on stack, return bottom
       // Target loc of CallbackMethodInvoke means just before callback is invoked
       if (fc1 != fc2 || fn1 != fn2 || l1 != l2) {
-        Set()//TODO: why is this conditional here?
+        Set() // Call from location that does not match stack, return bottom
+        //TODO: does this ever happen with callback entry? (remove ??? when this is figured out)
+        ???
       }
       else {
         val (pkg, name, invars) = msgCmdToMsg(cmloc)
@@ -268,16 +270,19 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       }
     }
     case AssignCmd(FieldRef(base, fieldType, declType,fieldName), rhs, _) => {
+      val (basev,state2) = state.getOrDefine(base)
+
+      // get all heap cells with correct field name
       val possibleHeapCells = state.heapConstraints.filter {
         case (FieldPtEdge(pv, heapFieldName), _) => fieldName == heapFieldName
       }
+
       // Get or define right hand side
-      val (rhsv,state2) = rhs match{ //TODO: seems like rhsv should be used?
+      val (rhsv,state3) = rhs match{ //TODO: seems like rhsv should be used?
         case NullConst => (NullVal,state)
         case lw@LocalWrapper(_,_) => state.getOrDefine(lw)
       }
       // get or define base of assignment
-      val (basev,state3) = state2.getOrDefine(base)
       // Enumerate over existing base values that could alias assignment
       possibleHeapCells.map{
         case (pte@FieldPtEdge(heapPv, fieldName), tgt) =>

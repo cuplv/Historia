@@ -221,10 +221,12 @@ trait StateSolver[T] {
    * @param traceLen    total length of trace including arrow constraints
    * @param absUID      optional unique id for model variables to scope properly,
    *                    if none is provided, identity hash code of abs is used
+   * @param negate      encode the assertion that traceFn is not in abs,
+   *                    note that "mkNot(encodeTraceAbs(..." does not work due to skolomization
    * @return encoded trace abstraction
    */
   def encodeTraceAbs(abs: TraceAbstractionArrow, messageTranslator: MessageTranslator, traceFn: T, traceLen: T,
-                     absUID: Option[String] = None): T = {
+                     absUID: Option[String] = None, negate:Boolean = false): T = {
     //TODO: replace tracelen and uniquetraceid with case class that can create new tracefn for each arrow
     // A unique id for variables scoped to the trace abstraction
     val uniqueAbsId = absUID.getOrElse(System.identityHashCode(abs).toString)
@@ -248,27 +250,17 @@ trait StateSolver[T] {
           )
         }
         val absEnc = ienc(endlen, abs, freshTraceFun)
-        mkAnd(absEnc, suffixConstraint)
+        if(negate){
+          mkAnd(mkNot(absEnc), suffixConstraint)
+        }else {
+          mkAnd(absEnc, suffixConstraint)
+        }
     }
 
     def ienc(sublen: T, abs: AbstractTrace, traceFn: T): T = abs match {
       case AbsFormula(f) =>
         encodePred(f, traceFn, sublen, messageTranslator, uniqueAbsId)
       case AbsAnd(f1, f2) => mkAnd(ienc(sublen, f1, traceFn), ienc(sublen, f2, traceFn))
-      //      case AbsArrow(abs, ipred) =>
-      //        // w |= \theta, \phi |> m^   iff   w;\theta(m^) |= \theta, \phi
-      //        // Use fresh trace function to avoid arrow constraint contradiction
-      //        // e.g. NI(a,b)|>a && NI(c,d)|>d should be true
-      //        val freshTraceFun = mkFreshTraceFn("arrowtf")
-      //        val lastElem = mkAdd(i,mkIntVal(1))
-      //        val newk = (nexti:T) =>
-      //          mkAnd(List(k(mkAdd(nexti, mkIntVal(1))),
-      //            assertIAt(nexti, ipred, enum, iNameIntMap, freshTraceFun, uniqueAbsId),
-      //            mkForallInt(mkIntVal(-1), nexti, j => mkEq(
-      //              mkTraceConstraint(freshTraceFun,j),
-      //              mkTraceConstraint(traceFn,j)))
-      //          ))
-      //        ienc(lastElem, abs, freshTraceFun, newk)
       case AbsEq(mv, pv : PureVar) => mkEq(mkModelVar(mv, uniqueAbsId), mkObjVar(pv))
       case AbsEq(mv, pv ) => ??? //TODO: encoding for non-pure var
     }
@@ -380,13 +372,19 @@ trait StateSolver[T] {
     val messageTranslator = MessageTranslator(List(s1,s2))
     val len = mkIntVar(s"len_")
     val traceFun = mkTraceFn("0")
-    val phi = (s: State) => (lenp1: T) => s.traceAbstraction.foldLeft(mkBoolVal(true)) {
+
+    val phi = s2.traceAbstraction.foldLeft(mkBoolVal(true)) {
       case (acc, v) => mkAnd(acc, encodeTraceAbs(v, messageTranslator,
-        traceFn = traceFun, lenp1, Some("0")))
+        traceFn = traceFun, len, Some("0")))
     }
-    val fp = mkExistsInt(mkIntVal(-1), len, l => mkNot(mkImplies(
-      phi(s2)(l),
-      phi(s1)(l))))
+    val negPhi = s1.traceAbstraction.foldLeft(mkBoolVal(false)) {
+      case (acc, v) => mkOr(acc, encodeTraceAbs(v, messageTranslator,
+        traceFn = traceFun, len, Some("0"),negate = true))
+    }
+
+    val fp = mkAnd(
+      negPhi,
+      phi)
     // limit trace length for debug
     val f = maxLen match {
       case Some(v) =>

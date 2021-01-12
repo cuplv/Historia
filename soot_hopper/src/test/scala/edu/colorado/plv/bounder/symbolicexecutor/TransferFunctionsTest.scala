@@ -42,7 +42,8 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
       traceAbstraction = Set()
     )
     val pre = testCmdTransfer(cmd, post, fooMethod)
-    println(pre)
+    println(s"pre: ${pre})")
+    println(s"post: ${post}")
     assert(pre.size == 2)
     ??? //TODO: finish test, fix problem with cmdTransfer and alias enumeration
 
