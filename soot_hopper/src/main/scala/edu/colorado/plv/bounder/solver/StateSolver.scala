@@ -349,11 +349,11 @@ trait StateSolver[T] {
   }
 
   /**
-   * Check if formula s1 is entirely contained within s2.  Used to determine if subsumption is sound.
+   * Check if formula s2 is entirely contained within s1.  Used to determine if subsumption is sound.
    *
-   * @param s1 contained state
-   * @param s2 subsuming state
-   * @return
+   * @param s1 subsuming state
+   * @param s2 contained state
+   * @return false if there exists a trace in s2 that is not in s1 otherwise true
    */
   def canSubsume(s1: State, s2: State, maxLen: Option[Int] = None): Boolean = {
     // Currently, the stack is strictly the app call string

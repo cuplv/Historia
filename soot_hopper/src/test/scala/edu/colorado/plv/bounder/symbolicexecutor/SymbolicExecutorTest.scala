@@ -25,7 +25,6 @@ class SymbolicExecutorTest extends org.scalatest.FunSuite {
 
     val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
     val result: Set[PathNode] = symbolicExecutor.executeBackward(query)
-    println(result.iterator.next)
     assert(result.size === 1)
     assert(result.iterator.next.qry.isInstanceOf[BottomQry])
   }

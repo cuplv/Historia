@@ -11,7 +11,6 @@ object State {
     id = id + 1
     id
   }
-//  val solver = new Z3StateSolver()
 }
 
 // pureFormula is a conjunction of constraints
@@ -22,14 +21,14 @@ case class AbsFormula(pred:LSPred) extends AbstractTrace{
   override def toString:String = pred.toString
 }
 case class AbsArrow(traceAbstraction: AbstractTrace, i:List[I]) extends TraceAbstractionArrow {
-  override def toString:String = s"($traceAbstraction) |> ${i}"
+  override def toString:String = s"($traceAbstraction) |> $i"
 }
 case class AbsAnd(t1 : AbstractTrace, t2:AbstractTrace) extends AbstractTrace{
-  override def toString:String = s"( ${t1} ) && ( ${t2} )"
+  override def toString:String = s"( ${t1} ) && ( $t2 )"
 }
 case class AbsEq(lsVar : String, pureVar: PureExpr) extends AbstractTrace{
   assert(lsVar != "_")
-  override def toString:String = s"$lsVar = ${pureVar}"
+  override def toString:String = s"$lsVar = $pureVar"
 }
 
 case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdge, PureExpr],
@@ -47,7 +46,6 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
     s"($stackString $heapString   $pureFormulaString $traceString)"
   }
   def simplify[T](solver : StateSolver[T]):Option[State] = {
-//    val solver = new Z3Solver()
     //TODO: garbage collect abstract variables and heap cells not reachable from the trace abstraction or spec
     solver.push()
     val simpl = solver.simplify(this)
@@ -96,12 +94,11 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
   // for a field ref, e.g. x.f if x doesn't exist, create x
   // if x.f doesn't exist and x does
   def get(l:RVal):Option[PureExpr] = l match {
-    case LocalWrapper(name,_) => {
+    case LocalWrapper(name,_) =>
       callStack match{
         case CallStackFrame(_,_,locals)::_ => locals.get(StackVar(name))
         case Nil => None
       }
-    }
     case l =>
       println(l)
       ???
