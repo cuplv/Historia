@@ -151,10 +151,17 @@ trait StateSolver[T] {
       ???
   }
 
+  /**
+   * Formula representing truth of "m is at position index in traceFn"
+   * @param index index of the message (ArithExpr)
+   * @param m
+   * @param messageTranslator
+   * @param traceFn : Int->Msg
+   * @param absUID unique identifier for this scoped abstraction to separate model vars
+   * @return
+   */
   private def assertIAt(index: T, m: I, messageTranslator: MessageTranslator, traceFn: T, absUID: String): T = {
-    //    val traceFun = mkTraceFn(traceUID)
     val msgExpr = mkTraceConstraint(traceFn, index)
-//    val nameFun = mkINameFn(ienume)
     val nameFun = messageTranslator.nameFun
     mkAnd(mkEq(mkNameConstraint(nameFun, msgExpr), messageTranslator.enumFromI(m)),
       mkAnd(m.lsVars.zipWithIndex.map { case (msgvar, ind) =>
@@ -227,18 +234,10 @@ trait StateSolver[T] {
    */
   def encodeTraceAbs(abs: TraceAbstractionArrow, messageTranslator: MessageTranslator, traceFn: T, traceLen: T,
                      absUID: Option[String] = None, negate:Boolean = false): T = {
-    //TODO: replace tracelen and uniquetraceid with case class that can create new tracefn for each arrow
-    // A unique id for variables scoped to the trace abstraction
     val uniqueAbsId = absUID.getOrElse(System.identityHashCode(abs).toString)
 
     def iencarrow(len: T, abs: TraceAbstractionArrow, traceFn: T): T = abs match {
       case AbsArrow(abs, ipreds) =>
-      //TODO: creating fresh trace function here breaks negation used for subsumption
-        // TODO: how to fix this??? =========================
-        //
-        // w |= \psi_1 |> \psi_2  iff  \exists w' . w' |= \psi_2 and w;w' |= \psi_1
-
-        // \exists tf: Int->Msg . ...
       val freshTraceFun = mkFreshTraceFn("arrowtf")
         val beforeIndEq =
           mkForallInt(mkIntVal(-1), len, i =>
@@ -368,7 +367,6 @@ trait StateSolver[T] {
       case p@PureConstraint(_, NotEquals, _) => s2.pureFormula.contains(p)
       case _ => ??? //TODO: type comparison
     }
-//    val (iEnum, idMap) = enumFromStates(List(s1, s2))
     val messageTranslator = MessageTranslator(List(s1,s2))
     val len = mkIntVar(s"len_")
     val traceFun = mkTraceFn("0")

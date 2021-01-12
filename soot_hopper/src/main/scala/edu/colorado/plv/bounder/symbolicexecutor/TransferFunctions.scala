@@ -147,31 +147,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
             i::suffixAbstraction) // prepend message if in spec space
         case None => pred
       }
-
-//    case AbsAnd(lhs,rhs) =>
-//      AbsAnd(predTransferTrace(lhs, mt, sig, invals, outvals), predTransferTrace(rhs, mt, sig, invals, outvals))
-//    case AbsArrow(pred, m) => AbsArrow(predTransferTrace(pred,mt, sig, invals, outvals),m)
-//    case eq@AbsEq(_,_) => eq
-//    case f@AbsFormula(lsformula) if lsformula.contains(mt,sig) => {
-//      specSpace.getIWithFreshVars(mt,sig).map( newi =>
-//        // Add message before other arrows with assertions about the ls variables
-//        newi.lsVars.zipWithIndex.foldLeft(AbsArrow(f, newi):TraceAbstractionArrow) {
-//          case (acc,(varname,varind)) if varname != "_" => {
-//            val acc1: TraceAbstractionArrow = invals(varind).map(v => AbsAnd(acc,AbsEq(varname,v))).getOrElse(acc)
-//            if (outvals.size > varind) {
-//              outvals(varind).map(v =>
-//                AbsAnd(acc1, AbsEq(varname, v))).getOrElse(acc1)
-//            }else acc1
-//          }
-//          case (acc,_) => acc
-//        }
-//      )
-//    }.getOrElse(pred)
-//    case f@AbsFormula(_) => f
-//
-//    case v =>
-//      println(v)
-//      ???
   }
   /**
    * Update each trace abstraction in an abstract state
@@ -187,31 +162,10 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       traceAbs => predTransferTrace(traceAbs, mt, sig, allVal)
     }
     postState.copy(traceAbstraction = newTraceAbs)
-    //TODO: refactor so trace pred transfer doesn't care about invar/outvar
-//    val (invals, preState) = invar.foldLeft((List[Option[PureVar]](), postState)){
-//      case ((lpv,accSt), Some(local)) => {
-//        val (pv,state) = accSt.getOrDefine(local)
-//        (lpv :+ Some(pv), state)
-//      }
-//      case ((lpv, accSt), None) => (lpv:+ None, accSt)
-//    }
-//    val outvals = outvar.map{
-//      case Some(local) => postState.get(local) match {
-//        case Some(p@PureVar()) => Some(p)
-//        case None => None
-//        case _ =>
-//          ???
-//      }
-//      case None => None
-//    }
-//    val newTraceAbs: Set[TraceAbstractionArrow] = postState.traceAbstraction.map {
-//      traceAbs => predTransferTrace(traceAbs, mt, sig, invals, outvals)
-//    }
-//    preState.copy(traceAbstraction = newTraceAbs)
   }
 
   def cmdTransfer(cmd:CmdWrapper, state:State):Set[State] = cmd match{
-    case AssignCmd(lhs@LocalWrapper(_, _), NewCommand(className),_) => {
+    case AssignCmd(lhs@LocalWrapper(_, _), NewCommand(className),_) =>
       // x = new T
       Set(state.get(lhs) match {
         case Some(v) => state
@@ -222,10 +176,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
           )
         case None => state
       })
-    }
     case AssignCmd(lw: LocalWrapper, ThisWrapper(thisTypename),a) =>
       cmdTransfer(AssignCmd(lw, LocalWrapper("this", thisTypename),a),state)
-    case AssignCmd(lhs: LocalWrapper,rhs:LocalWrapper,_) => { //
+    case AssignCmd(lhs: LocalWrapper,rhs:LocalWrapper,_) => //
       // x = y
       val lhsv = state.get(lhs) // Find what lhs pointed to if anything
       lhsv.map(pexpr =>{
@@ -234,20 +187,18 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         val (rhsv, state3) = state2.getOrDefine(rhs)
         state3.copy(pureFormula = state3.pureFormula + PureConstraint(pexpr, Equals, rhsv))
       }).map(Set(_)).getOrElse(Set(state))
-    }
-    case AssignCmd(lhs:LocalWrapper, FieldRef(base, fieldtype, declType, fieldName), _) =>{
+    case AssignCmd(lhs:LocalWrapper, FieldRef(base, fieldtype, declType, fieldName), _) =>
       // x = y.f
       //TODO: find a better way to structure this pyramid of doom
       (state.get(lhs), state.get(base)) match {
         case (None,_) => Set(state)
-        case (Some(lhsv),Some(recv:PureVar)) =>{
+        case (Some(lhsv),Some(recv:PureVar)) =>
           // Field ref base is in abstract state
           val state2 = state.clearLVal(lhs)
           state2.heapConstraints.get(FieldPtEdge(recv, fieldName)).map( a=>
             Set(state2.copy(pureFormula = state2.pureFormula + PureConstraint(lhsv, Equals, a))))
             .getOrElse(Set(state2))
-        }
-        case (Some(lhsv), None) => {
+        case (Some(lhsv), None) =>
           // Field ref base is not in abstract state
           val state2 = state.clearLVal(lhs)
           val possibleHeapCells: Map[HeapPtEdge, PureExpr] = state2.heapConstraints.filter {
@@ -264,12 +215,10 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
             case _ =>
               ???
           }.toSet
-        }
         case _ =>
           ???
       }
-    }
-    case AssignCmd(FieldRef(base, fieldType, _,fieldName), rhs, _) => {
+    case AssignCmd(FieldRef(base, fieldType, _,fieldName), rhs, _) =>
       val (basev,state2) = state.getOrDefine(base)
 
       // get all heap cells with correct field name
@@ -301,12 +250,10 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       }
       val caseWithNoHeapAlias = state3.copy(pureFormula = state3.pureFormula.union(notAlias.toSet))
       casesWithHeapCellAlias + caseWithNoHeapAlias
-    }
-    case AssignCmd(FieldRef(base,_,_,name), NullConst,_) => {
+    case AssignCmd(FieldRef(base,_,_,name), NullConst,_) =>
       val (basev, state2) = state.getOrDefine(base)
 
       ???
-    }
     case c =>
       println(c)
       ???

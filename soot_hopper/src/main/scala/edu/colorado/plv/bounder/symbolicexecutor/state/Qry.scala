@@ -2,14 +2,12 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, IRWrapper, InternalMethodReturn, LineLoc, Loc, LocalWrapper, VirtualInvoke}
 import edu.colorado.plv.bounder.symbolicexecutor.SymbolicExecutorConfig
-import soot.SootMethod
 
 object Qry {
   private var qryIdCounter = 0
   private def getFreshQryId = { qryIdCounter += 1; qryIdCounter }
   def make[M,C](config: SymbolicExecutorConfig[M,C], loc:AppLoc, locals : Map[StackVar, PureVar], pureFormula: Set[PureConstraint]):Qry = {
     // Note: no return location for arbitrary query
-//    val queryStack = List(CallStackFrame(loc,None, locals))
 
     val acr = config.c.getResolver
     val cbexit = acr.resolveCallbackEntry(loc.method) match{

@@ -1,8 +1,8 @@
 package edu.colorado.plv.bounder.solver
 
-import com.microsoft.z3.{ArithExpr, BoolExpr, Context, EnumSort, Expr, IntExpr, Solver, Status, Symbol}
+import com.microsoft.z3.{ArithExpr, BoolExpr, Context, EnumSort, Expr, Solver, Status}
 import edu.colorado.plv.bounder.ir.{AppLoc, CBEnter, CIEnter, CallbackMethodInvoke, FwkMethod, TAddr, TMessage}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, NI, Not, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{I, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbsAnd, AbsArrow, AbsEq, AbsFormula, CallStackFrame, Equals, FieldPtEdge, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, SubclassOf, TraceAbstractionArrow, TypeComp}
 import edu.colorado.plv.bounder.testutils.{TestIRLineLoc, TestIRMethodLoc}
 
