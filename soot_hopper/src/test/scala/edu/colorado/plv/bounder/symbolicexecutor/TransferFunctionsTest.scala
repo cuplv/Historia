@@ -24,7 +24,7 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
     val tr = new TransferFunctions(ir, new SpecSpace(Set()))
     tr.transfer(post,preloc, postloc)
   }
-  //TODO: test transfer function where field is assigned and base may or may not be aliased, when does this happen?
+  //Test transfer function where field is assigned and base may or may not be aliased
   // pre: a^.out -> b1^
   // post: (a^.out -> c^* d^.out -> e^) OR (a^.out -> c^ AND a^=d^ AND c^=d^)
   val fooMethod = TestIRMethodLoc("","foo")
@@ -45,8 +45,10 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
     println(s"pre: ${pre})")
     println(s"post: ${post}")
     assert(pre.size == 2)
-    ??? //TODO: finish test, fix problem with cmdTransfer and alias enumeration
-
+    assert(1 == pre.count(state =>
+      state.heapConstraints.size == 1
+      && state.pureFormula.contains(PureConstraint(basePv,NotEquals, otherPv))))
+    assert(pre.count(state => state.heapConstraints.isEmpty) == 1)
   }
   test("Transfer assign new local") {
     val cmd= (loc:AppLoc) => AssignCmd(LocalWrapper("bar","Object"),NewCommand("String"),loc)

@@ -269,7 +269,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
           ???
       }
     }
-    case AssignCmd(FieldRef(base, fieldType, declType,fieldName), rhs, _) => {
+    case AssignCmd(FieldRef(base, fieldType, _,fieldName), rhs, _) => {
       val (basev,state2) = state.getOrDefine(base)
 
       // get all heap cells with correct field name
@@ -278,20 +278,29 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       }
 
       // Get or define right hand side
-      val (rhsv,state3) = rhs match{ //TODO: seems like rhsv should be used?
+      val (rhsv,state3) = rhs match{
         case NullConst => (NullVal,state)
-        case lw@LocalWrapper(_,_) => state.getOrDefine(lw)
+        case lw@LocalWrapper(_,_) => state2.getOrDefine(lw)
+        case _ =>
+          ??? //TODO: implement other const values
       }
       // get or define base of assignment
       // Enumerate over existing base values that could alias assignment
-      possibleHeapCells.map{
-        case (pte@FieldPtEdge(heapPv, fieldName), tgt) =>
+      val casesWithHeapCellAlias = possibleHeapCells.map{
+        case (pte@FieldPtEdge(heapPv, _), tgt) =>
           state3.copy(heapConstraints = state3.heapConstraints - pte,
-            pureFormula = state3.pureFormula + PureConstraint(basev, Equals, tgt)) //TODO: basv = target? this seems wrong
+            pureFormula = state3.pureFormula +
+              PureConstraint(basev, Equals, heapPv) +
+              PureConstraint(tgt, Equals, rhsv))
         case _ =>
           ???
       }.toSet
-      // TODO: add case where nothing is aliased
+      val notAlias = possibleHeapCells.map{
+        case (FieldPtEdge(heapPv, _), _) => PureConstraint(basev, NotEquals, heapPv)
+        case _ => ???
+      }
+      val caseWithNoHeapAlias = state3.copy(pureFormula = state3.pureFormula.union(notAlias.toSet))
+      casesWithHeapCellAlias + caseWithNoHeapAlias
     }
     case AssignCmd(FieldRef(base,_,_,name), NullConst,_) => {
       val (basev, state2) = state.getOrDefine(base)
