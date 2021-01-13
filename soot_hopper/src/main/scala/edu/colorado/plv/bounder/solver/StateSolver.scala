@@ -361,12 +361,22 @@ trait StateSolver[T] {
     push()
     val si = stackCanSubsume(s1.callStack, s2.callStack)
     val hi = s1.heapConstraints.forall { case (k, v) => s2.heapConstraints.get(k).contains(v) }
-    val pvi = s1.pureFormula.forall {
-      case p@PureConstraint(_, Equals, _) =>
-        s2.pureFormula.contains(p)
-      case p@PureConstraint(_, NotEquals, _) => s2.pureFormula.contains(p)
-      case _ => ??? //TODO: type comparison
+//    val pvi = s1.pureFormula.forall {
+//      case p@PureConstraint(_, Equals, _) =>
+//        s2.pureFormula.contains(p)
+//      case p@PureConstraint(_, NotEquals, _) => s2.pureFormula.contains(p)
+//      case _ => ??? //TODO: type comparison
+//    }
+    //TODO: make sure this works:
+    val typeFun = createTypeFun()
+    val negs1pure = s1.pureFormula.foldLeft(mkBoolVal(false)){
+      case(acc,constraint) => mkOr(mkNot(toAST(constraint,typeFun)),acc)
     }
+    val s2pure = s2.pureFormula.foldLeft(mkBoolVal(true)){
+      case(acc,constraint) => mkAnd(toAST(constraint,typeFun),acc)
+    }
+    val pureFormulaEnc = mkAnd(negs1pure, s2pure)
+
     val messageTranslator = MessageTranslator(List(s1,s2))
     val len = mkIntVar(s"len_")
     val traceFun = mkTraceFn("0")
@@ -391,7 +401,7 @@ trait StateSolver[T] {
         mkAnd(mkLt(len, mkIntVal(v)), fp)
       case None => fp
     }
-    mkAssert(f)
+    mkAssert(mkOr(f,pureFormulaEnc))
     val ti = checkSAT()
     if (ti) {
       println(s"===formula: $f")
@@ -399,7 +409,7 @@ trait StateSolver[T] {
     }
     pop()
 
-    si && hi && pvi && (!ti)
+    si && hi && (!ti) //TODO: pure constraints
   }
 
   def encodeTrace(traceFN:T, trace: List[TMessage], messageTranslator: MessageTranslator):T = {

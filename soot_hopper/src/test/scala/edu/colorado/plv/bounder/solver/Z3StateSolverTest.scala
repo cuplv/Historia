@@ -295,7 +295,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val res1 = statesolver.simplify(state.copy(traceAbstraction = Set(niaa)))
     assert(res1.isDefined)
   }
-  test("Subsumption of states") {
+  test("Subsumption of abstract traces") {
     val statesolver = getStateSolver
 
     val p1 = PureVar()
@@ -341,6 +341,16 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     // NI(a.foo(), a.bar()) cannot subsume NI(a.foo(), a.bar()) |> c.foo()
     val fooBarArrowFoo = state.copy(traceAbstraction = Set(AbsArrow(tpred2, ifooc::Nil)))
     assert(!statesolver.canSubsume(state3_, fooBarArrowFoo, Some(10)))
+  }
+  test("Subsumption of pure formula in states"){
+    val statesolver = getStateSolver
+
+    val p1 = PureVar()
+    val p2 = PureVar()
+    val loc = AppLoc(TestIRMethodLoc("","foo"), TestIRLineLoc(1), isPre = false)
+
+    val state = State(CallStackFrame(loc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Set())
+    ??? //TODO:
   }
 
   test("Trace contained in abstraction") {

@@ -10,6 +10,11 @@ import scalax.collection.edge.Implicits._
 import scalax.collection.io.dot.{DotAttr, DotEdgeStmt, DotGraph, DotRootGraph, Id, NodeId}
 
 object PrettyPrinting {
+  private def sanitizeStringForDot(str:String):String =
+    str.replace(">","\\>")
+      .replace("<","\\<")
+      .replace("-","\\-")
+      .replace("\"","\\\"").replace("|","\\|")
   private def iDotNode(qrySet:Set[PathNode],seen:Set[PathNode],
                        procNodes:Set[String],procEdges:Set[String]):(Set[String],Set[String]) = {
     if(qrySet.isEmpty){
@@ -20,12 +25,11 @@ object PrettyPrinting {
         case None => qrySet.tail
         case Some(v) => qrySet.tail + v
       }
-      val curString = cur.qry.toString
-        .replace(">","\\>")
-        .replace("<","\\<")
-        .replace("-","\\-")
-        .replace("\"","\\\"").replace("|","\\|")
+      val curString = sanitizeStringForDot(cur.qry.toString)
+
       val nextProcNodes = procNodes + s"""n${System.identityHashCode(cur)} [label="${curString}"]"""
+      // TODO: add subsumption edges
+      // TODO: add subsumption labels
       val nextProcEdges = cur.succ match {
         case Some(v) => procEdges + s"""n${System.identityHashCode(cur)} -> n${System.identityHashCode(v)}"""
         case None => procEdges
