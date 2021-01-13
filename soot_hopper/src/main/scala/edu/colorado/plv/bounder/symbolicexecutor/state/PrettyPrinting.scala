@@ -31,7 +31,8 @@ object PrettyPrinting {
       // TODO: add subsumption edges
       // TODO: add subsumption labels
       val nextProcEdges = cur.succ match {
-        case Some(v) => procEdges + s"""n${System.identityHashCode(cur)} -> n${System.identityHashCode(v)}"""
+        case Some(v) => procEdges + s"""n${System.identityHashCode(cur)} -> n${System.identityHashCode(v)}""" +
+          v.subsumed.map(v => s"\n    n${System.identityHashCode(cur)} -> n${System.identityHashCode(v)}").getOrElse("")
         case None => procEdges
       }
       iDotNode(rest, seen + cur, nextProcNodes, nextProcEdges)

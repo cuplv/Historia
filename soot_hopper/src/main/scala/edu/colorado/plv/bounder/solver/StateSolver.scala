@@ -403,7 +403,7 @@ trait StateSolver[T] {
     }
     mkAssert(mkOr(f,pureFormulaEnc))
     val ti = checkSAT()
-    if (ti) {
+    if (ti && maxLen.isDefined) {
       println(s"===formula: $f")
       printDbgModel(messageTranslator, s1.traceAbstraction.union(s2.traceAbstraction), "")
     }
