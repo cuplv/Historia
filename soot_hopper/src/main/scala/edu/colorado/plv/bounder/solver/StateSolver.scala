@@ -339,6 +339,7 @@ trait StateSolver[T] {
   }
 
   // TODO: call stack is currently just a list of stack frames, this needs to be updated when top is added
+  //TODO: contains may be flipped
   def stackCanSubsume(cs1: List[CallStackFrame], cs2: List[CallStackFrame]): Boolean = (cs1, cs2) match {
     case (CallStackFrame(ml1, _, locals1) :: t1, CallStackFrame(ml2, _, locals2) :: t2) if ml1 == ml2 =>
       locals1.forall { case (k, v) => locals2.get(k).contains(v) } &&
@@ -358,13 +359,17 @@ trait StateSolver[T] {
     // Currently, the stack is strictly the app call string
     // When adding more abstraction to the stack, this needs to be modified
     // TODO: check if pure vars are canonacalized
+    if(!stackCanSubsume(s1.callStack, s2.callStack))
+      return false
+    if(!s1.heapConstraints.forall { case (k, v) => s2.heapConstraints.get(k).contains(v) })
+      return false
+
     push()
-    val si = stackCanSubsume(s1.callStack, s2.callStack)
-    val hi = s1.heapConstraints.forall { case (k, v) => s2.heapConstraints.get(k).contains(v) }
     val typeFun = createTypeFun()
     val negs1pure = s1.pureFormula.foldLeft(mkBoolVal(false)){
       case(acc,constraint) => mkOr(mkNot(toAST(constraint,typeFun)),acc)
     }
+
     val s2pure = s2.pureFormula.foldLeft(mkBoolVal(true)){
       case(acc,constraint) => mkAnd(toAST(constraint,typeFun),acc)
     }
@@ -401,8 +406,7 @@ trait StateSolver[T] {
       printDbgModel(messageTranslator, s1.traceAbstraction.union(s2.traceAbstraction), "")
     }
     pop()
-
-    si && hi && (!ti) //TODO: pure constraints
+    !ti
   }
 
   def encodeTrace(traceFN:T, trace: List[TMessage], messageTranslator: MessageTranslator):T = {

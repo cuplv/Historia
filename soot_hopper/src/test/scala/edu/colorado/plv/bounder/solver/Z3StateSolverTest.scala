@@ -296,6 +296,22 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val res1 = statesolver.simplify(state.copy(traceAbstraction = Set(niaa)))
     assert(res1.isDefined)
   }
+  test("Subsumption of stack"){
+    val statesolver = getStateSolver
+
+    val p1 = PureVar()
+    val p2 = PureVar()
+    val loc = AppLoc(TestIRMethodLoc("","foo"), TestIRLineLoc(1), isPre = false)
+
+    val state = State(CallStackFrame(loc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Set())
+    val state_ = state.copy(callStack = CallStackFrame(loc, None, Map(
+      StackVar("x") -> p1,
+      StackVar("y") -> p2
+    ))::Nil)
+    assert(statesolver.canSubsume(state,state_))
+    assert(!statesolver.canSubsume(state_,state))
+
+  }
   test("Subsumption of abstract traces") {
     val statesolver = getStateSolver
 
@@ -342,6 +358,15 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     // NI(a.foo(), a.bar()) cannot subsume NI(a.foo(), a.bar()) |> c.foo()
     val fooBarArrowFoo = state.copy(traceAbstraction = Set(AbsArrow(tpred2, ifooc::Nil)))
     assert(!statesolver.canSubsume(state3_, fooBarArrowFoo, Some(10)))
+
+    // NI(a.foo(), a.bar()), I(a.foo()) should be subsumed by NI(a.foo(), a.bar())
+    val s_foo_bar_foo = state.copy(traceAbstraction = Set(AbsArrow(tpred2, Nil),AbsArrow(AbsFormula(ifooc),Nil)))
+    val s_foo_bar = state.copy(traceAbstraction = Set(AbsArrow(tpred2, Nil)))
+    assert(statesolver.canSubsume(s_foo_bar, s_foo_bar_foo))
+    // TODO: failing test below is probably correct behavior, but figure out why subsumption fails in executor
+    ???
+//    assert(!statesolver.canSubsume(s_foo_bar_foo, s_foo_bar))
+
   }
   test("Subsumption of pure formula in states"){
     val statesolver = getStateSolver
@@ -381,6 +406,17 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val state2__ = state__.copy(traceAbstraction = Set(AbsArrow(formula, Nil)))
     assert(statesolver.canSubsume(state2__, state2_, Some(20)))
     assert(!statesolver.canSubsume(state2_, state2__, Some(20)))
+
+    // x->p1 * y->p2 can be subsumed by x->p1
+    val state_x_y = state.copy(
+      callStack = CallStackFrame(loc,None,Map(
+        StackVar("x") -> p1,
+        StackVar("y") -> p2
+      ))::Nil,
+      pureFormula = Set(PureConstraint(p1, NotEquals, p2))
+    )
+    assert(statesolver.canSubsume(state,state_x_y))
+    assert(!statesolver.canSubsume(state_x_y,state))
 
   }
 

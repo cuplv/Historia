@@ -59,7 +59,8 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
             case q@SomeQry(state, loc) =>
               val subsumed = visited.get(loc).flatMap(_.find{
                 case PathNode(SomeQry(subsumer, _), _, None) =>
-                  stateSolver.canSubsume(subsumer,state)
+                  val subs = stateSolver.canSubsume(subsumer,state)
+                  subs
                 case _ => false
               })
               PathNode(q, Some(succ), subsumed)
