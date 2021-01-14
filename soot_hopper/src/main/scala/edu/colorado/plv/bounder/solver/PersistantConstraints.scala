@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder.solver
 
-import com.microsoft.z3.{BoolExpr, Context, Expr, FuncDecl, Solver, Sort}
+import com.microsoft.z3.{BoolExpr, Context, EnumSort, Expr, FuncDecl, Solver, Sort}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, SubclassOf, SuperclassOf, TypeConstraint}
 
 
@@ -18,11 +18,12 @@ class PersistantConstraints(ctx: Context, solver: Solver, types : Map[String,Set
   val intToType: Map[Int, String] = typeToInt.map(a => (a._2, a._1))
 
 
-  val tsort: Sort = ctx.mkFiniteDomainSort("Types", typeToInt.size)
+//  val tsort: Sort = ctx.mkFiniteDomainSort("Types", typeToInt.size)
+  val tsort: EnumSort = ctx.mkEnumSort("Types", typeToInt.keys.toArray:_*)
 
   private def finiteDomVal(t : String):Expr =
-      ctx.mkNumeral(typeToInt(t), tsort)
-  val subtypeFun: FuncDecl = ctx.mkFuncDecl("subtype", Array(tsort, tsort), ctx.mkBoolSort())
+      tsort.getConst(typeToInt(t))
+  val subtypeFun: FuncDecl = ctx.mkFuncDecl("subtype", Array(tsort:Sort, tsort), ctx.mkBoolSort())
 
   def mkHirearchyConstraints() {
     val arg1 = ctx.mkBound(0, tsort)
@@ -54,9 +55,9 @@ class PersistantConstraints(ctx: Context, solver: Solver, types : Map[String,Set
   def exprTypeConstraint(e: Expr, typeConstraint: TypeConstraint): BoolExpr = {
     typeConstraint match {
       case SubclassOf(c) =>
-        ctx.mkEq(subtypeFun.apply(finiteDomVal(c), e), ctx.mkTrue)
+        subtypeFun.apply(finiteDomVal(c), e).asInstanceOf[BoolExpr]
       case SuperclassOf(c) =>
-        ctx.mkEq(subtypeFun.apply(e, finiteDomVal(c)), ctx.mkTrue)
+        subtypeFun.apply(e, finiteDomVal(c)).asInstanceOf[BoolExpr]
       case ClassType(c) =>
         ctx.mkEq(e, finiteDomVal(c))
     }
