@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import com.microsoft.z3.Context
 import edu.colorado.plv.bounder.ir.{IRWrapper, Loc}
 import edu.colorado.plv.bounder.solver.{PersistantConstraints, Z3StateSolver}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, Qry, SomeQry, State}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, Qry, SomeQry}
 
 import scala.annotation.tailrec
 
@@ -11,10 +11,22 @@ case class SymbolicExecutorConfig[M,C](stepLimit: Option[Int],
                                        w :  IRWrapper[M,C],
                                        c : ControlFlowResolver[M,C],
                                        transfer : TransferFunctions[M,C],
+                                       printProgress : Boolean = false,
+                                       z3Timeout : Option[Int] = None // Timeout in seconds
                                       )
 class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   val ctx = new Context
-  val solver = ctx.mkSolver
+//  val solver = ctx.mkSolver
+  val solver = {
+    val solver = ctx.mkSolver
+    val params = ctx.mkParams()
+    config.z3Timeout match{
+      case Some(v) => params.add("timeout", v*1000)
+      case None =>
+    }
+    solver.setParameters(params)
+    solver
+  }
   val persistantConstraints =
     new PersistantConstraints(ctx, solver, config.w.getClassHierarchy)
   val stateSolver = new Z3StateSolver(persistantConstraints)
@@ -35,6 +47,9 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   final def executeBackwardLimitSubsumeAll(qrySet: Set[PathNode], limit:Int,
                                             refuted: Set[PathNode] = Set(),
                                            visited:Map[Loc,Set[PathNode]] = Map()):Set[PathNode] = {
+    if (config.printProgress){
+      println(s"Steps left until limit: $limit")
+    }
     if(qrySet.isEmpty){
       refuted
     }else if(limit > 0) {

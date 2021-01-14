@@ -3,6 +3,7 @@ package edu.colorado.plv.bounder.solver
 import com.microsoft.z3.{ArithExpr, BoolExpr, Context, EnumSort, Expr, Solver, Status}
 import edu.colorado.plv.bounder.ir.{AppLoc, CBEnter, CIEnter, CallbackMethodInvoke, FwkMethod, TAddr, TMessage}
 import edu.colorado.plv.bounder.lifestate.LifeState.{I, NI, Not, Or}
+import edu.colorado.plv.bounder.symbolicexecutor
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbsAnd, AbsArrow, AbsEq, AbsFormula, CallStackFrame, Equals, FieldPtEdge, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, SubclassOf, TraceAbstractionArrow, TypeComp}
 import edu.colorado.plv.bounder.testutils.{TestIRLineLoc, TestIRMethodLoc}
 
@@ -350,7 +351,37 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val loc = AppLoc(TestIRMethodLoc("","foo"), TestIRLineLoc(1), isPre = false)
 
     val state = State(CallStackFrame(loc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Set())
-    ??? //TODO:
+
+    val state_ = state.copy(pureFormula = Set(PureConstraint(p1,TypeComp,SubclassOf("Foo")  )))
+    val state__ = state.copy(pureFormula = Set(PureConstraint(p1,TypeComp,SubclassOf("Object"))))
+    // (x->p1 && p1 <: Foo) can be subsumed by (x->p1 && p1 <:Object)
+    assert(statesolver.canSubsume(state__, state_))
+    assert(statesolver.canSubsume(state_, state_))
+
+    // (x->p1 && p1 <: Object) can not be subsumed by (x->p1 && p1 <:Foo)
+    assert(!statesolver.canSubsume(state_, state__))
+
+    // (x->p1 &&  p1 <: Foo && p1 == p2) can be subsumed by (x->p1 &&  p2 <: Object && p1 == p2)
+    val state1_ = state.copy(pureFormula = Set(
+      PureConstraint(p1, TypeComp, SubclassOf("Foo")),
+      PureConstraint(p1, Equals, p2)
+    ))
+    val state1__ = state.copy(pureFormula = Set(
+      PureConstraint(p2, TypeComp, SubclassOf("Object")),
+      PureConstraint(p1, Equals, p2)
+    ))
+    assert(statesolver.canSubsume(state1__, state1_))
+    assert(!statesolver.canSubsume(state1_, state1__))
+
+    // Combine type constraints and trace constraints
+    val ifoo = I(CBEnter, Set(("", "foo")), "a" :: Nil)
+    val ibar = I(CBEnter, Set(("", "bar")), "a" :: Nil)
+    val formula = AbsAnd(AbsFormula(NI(ifoo, ibar)), AbsEq("a",p1))
+    val state2_ = state_.copy(traceAbstraction = Set(AbsArrow(formula, Nil)))
+    val state2__ = state__.copy(traceAbstraction = Set(AbsArrow(formula, Nil)))
+    assert(statesolver.canSubsume(state2__, state2_, Some(20)))
+    assert(!statesolver.canSubsume(state2_, state2__, Some(20)))
+
   }
 
   test("Trace contained in abstraction") {

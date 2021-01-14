@@ -361,13 +361,6 @@ trait StateSolver[T] {
     push()
     val si = stackCanSubsume(s1.callStack, s2.callStack)
     val hi = s1.heapConstraints.forall { case (k, v) => s2.heapConstraints.get(k).contains(v) }
-//    val pvi = s1.pureFormula.forall {
-//      case p@PureConstraint(_, Equals, _) =>
-//        s2.pureFormula.contains(p)
-//      case p@PureConstraint(_, NotEquals, _) => s2.pureFormula.contains(p)
-//      case _ => ??? //TODO: type comparison
-//    }
-    //TODO: make sure this works:
     val typeFun = createTypeFun()
     val negs1pure = s1.pureFormula.foldLeft(mkBoolVal(false)){
       case(acc,constraint) => mkOr(mkNot(toAST(constraint,typeFun)),acc)
