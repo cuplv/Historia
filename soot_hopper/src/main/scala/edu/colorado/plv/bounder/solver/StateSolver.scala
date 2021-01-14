@@ -417,6 +417,15 @@ trait StateSolver[T] {
     }
     assertEachMsg.foldLeft(mkBoolVal(true))( (a,b) => mkAnd(a,b))
   }
+  def witnessed(state:State):Boolean = {
+    if (!state.heapConstraints.isEmpty)
+      return false
+    if (!state.callStack.isEmpty)
+      return false
+    if (!traceInAbstraction(state, Nil))
+      return false
+    true
+  }
 
   def traceInAbstraction(state:State, trace: List[TMessage]): Boolean ={
     val assert = encodeTraceContained(state, trace)

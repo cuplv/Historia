@@ -364,7 +364,6 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val s_foo_bar = state.copy(traceAbstraction = Set(AbsArrow(tpred2, Nil)))
     assert(statesolver.canSubsume(s_foo_bar, s_foo_bar_foo))
     // TODO: failing test below is probably correct behavior, but figure out why subsumption fails in executor
-    ???
 //    assert(!statesolver.canSubsume(s_foo_bar_foo, s_foo_bar))
 
   }

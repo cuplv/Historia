@@ -51,9 +51,11 @@ object PrettyPrinting {
          |}
          |""".stripMargin)
     pw.close
-
   }
-    //TODO: figure out how to use dot package
 
-
+  def printWitnessOrProof(qrySet : Set[PathNode], outFile:String) =
+    qrySet.find(_.qry.isInstanceOf[WitnessedQry]) match{
+      case Some(v) => dotWitTree(Set(v), outFile)
+      case None => dotWitTree(qrySet, outFile)
+    }
 }

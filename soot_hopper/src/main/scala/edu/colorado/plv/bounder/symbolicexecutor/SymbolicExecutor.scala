@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import com.microsoft.z3.Context
 import edu.colorado.plv.bounder.ir.{IRWrapper, Loc}
 import edu.colorado.plv.bounder.solver.{PersistantConstraints, Z3StateSolver}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, Qry, SomeQry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, Qry, SomeQry, WitnessedQry}
 
 import scala.annotation.tailrec
 
@@ -45,38 +45,52 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   }
   @tailrec
   final def executeBackwardLimitSubsumeAll(qrySet: Set[PathNode], limit:Int,
-                                            refuted: Set[PathNode] = Set(),
+                                           refutedSubsumedOrWitnessed: Set[PathNode] = Set(),
                                            visited:Map[Loc,Set[PathNode]] = Map()):Set[PathNode] = {
+
+    def isSubsumed(qry: Qry, nVisited: Map[Loc,Set[PathNode]]):Option[PathNode] = qry match{
+      case SomeQry(state,loc) if nVisited.contains(loc) =>
+        nVisited(loc).find(a => stateSolver.canSubsume(a.qry.state,state))
+      case _ => None
+    }
     if (config.printProgress){
       println(s"Steps left until limit: $limit")
     }
-    if(qrySet.isEmpty){
-      refuted
-    }else if(limit > 0) {
-      val nextQry: Set[PathNode] = qrySet.flatMap{
-        case succ@PathNode(qry@SomeQry(_,_), _, None) =>
-          executeStep(qry).map{
-            case q@SomeQry(state, loc) =>
-              val subsumed = visited.get(loc).flatMap(_.find{
-                case PathNode(SomeQry(subsumer, _), _, None) =>
-                  val subs = stateSolver.canSubsume(subsumer,state)
-                  subs
-                case _ => false
-              })
-              PathNode(q, Some(succ), subsumed)
-            case b@BottomQry(_,_) => PathNode(b, Some(succ), None)
-          }
-        case PathNode(SomeQry(_,_), _, Some(_)) => Set()
-        case PathNode(BottomQry(_,_), _, _) => Set()
-      }
-      val newVisited: Map[Loc, Set[PathNode]] = qrySet.groupBy(_.qry.loc)
-      val refuted = qrySet.filter(a => a.qry.isInstanceOf[BottomQry] || a.subsumed.isDefined)
-      val nextVisited = (visited ++ newVisited).map {
-        case (k,v) => k-> v.union(visited.getOrElse(k,Set()))
-      }
-      executeBackwardLimitSubsumeAll(nextQry, limit - 1, refuted, nextVisited)
+    if(qrySet.isEmpty || qrySet.exists(p => p.qry.isInstanceOf[WitnessedQry]) || 0 >= limit){
+      refutedSubsumedOrWitnessed ++ qrySet
     }else {
-      refuted ++ qrySet
+      // Split queries into live queries(true) and refuted/witnessed(false)
+      val queriesByType = qrySet.groupBy(_.qry match{
+        case _:SomeQry => true
+        case _:BottomQry => false
+        case _:WitnessedQry => false
+      })
+
+      // add new visited to old visited
+      val newVisited: Map[Loc, Set[PathNode]] = queriesByType.getOrElse(true,Set()).groupBy(_.qry.loc)
+      val nextVisited = (visited ++ newVisited).map {
+        case (k, v) => k -> v.union(visited.getOrElse(k, Set()))
+      }
+
+      // collect dead queries
+      val newRefutedSubsumedOrWitnessed = refutedSubsumedOrWitnessed ++
+        queriesByType.getOrElse(false,Set())
+
+      // execute step on live queries
+      val nextQry = queriesByType.getOrElse(true,Set()).flatMap {
+        case p@PathNode(qry: SomeQry, _, None) => executeStep(qry).map((p,_))
+      }
+
+      val nextPathNode = nextQry.map{
+        case (parent,q@SomeQry(_,_)) =>
+          // Check subsumption for live queries
+          PathNode(q, succ = Some(parent), subsumed = isSubsumed(q,nextVisited))
+        case (parent,q) =>
+          // No subsumption check for Witnessed or Refuted queries
+          PathNode(q, succ = Some(parent), subsumed = None)
+      }
+
+      executeBackwardLimitSubsumeAll(nextPathNode, limit - 1, newRefutedSubsumedOrWitnessed, nextVisited)
     }
   }
   @tailrec
@@ -103,9 +117,11 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   def executeStep(qry:Qry):Set[Qry] = qry match{
     case SomeQry(state, loc) =>
       val predecessorLocations = config.c.resolvePredicessors(loc,state)
+      //TODO: check for witnessed state
       predecessorLocations.flatMap(l => {
         val newStates = config.transfer.transfer(state,l,loc)
         newStates.map(state => state.simplify(stateSolver) match {
+          case Some(state) if stateSolver.witnessed(state) => WitnessedQry(state, l)
           case Some(state) => SomeQry(state, l)
           case None =>
             BottomQry(state,l)
