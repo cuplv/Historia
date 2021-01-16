@@ -11,6 +11,8 @@ object State {
     id = id + 1
     id
   }
+  def topState:State =
+    State(Nil,Map(),Set(),Set())
 }
 
 // pureFormula is a conjunction of constraints

@@ -61,9 +61,9 @@ case class SomeQry(state:State, loc: Loc) extends Qry {
 }
 // Infeasible precondition, path refuted
 case class BottomQry(state:State, loc:Loc) extends Qry {
-  override def toString:String = "!!!refuted!!! loc: " + state.toString + " state: " + state.toString
+  override def toString:String = "!!!refuted!!! loc: " + loc.toString + " state: " + state.toString
 }
 
 case class WitnessedQry(state:State, loc:Loc) extends Qry {
-  override def toString:String = "!!!witnessed!!! loc: " + state.toString + " state: " + state.toString
+  override def toString:String = "!!!witnessed!!! loc: " + loc.toString + " state: " + state.toString
 }

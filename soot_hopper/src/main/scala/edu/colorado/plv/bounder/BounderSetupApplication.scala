@@ -67,11 +67,11 @@ object BounderSetupApplication {
     val config = new InfoflowAndroidConfiguration
     val platformsDir = androidHome + "/platforms"
     config.getAnalysisFileConfig.setTargetAPKFile(path)
-    // TODO: attempting to load test classes for unit tests
+    // TODO: figure out how to load apk without generating flowdroid callgraph
+    // Note: this generates flowdroid call graph and points to analysis, but we don't use it
     config.getAnalysisFileConfig.setAndroidPlatformDir(platformsDir)
     val setup = new SetupApplication(config)
     G.reset()
-//    setup.initializeSoot()
 
     // Use flowdroid definition of callbacks
     val setupApplicationClass =

@@ -1,6 +1,7 @@
 package edu.colorado.plv.bounder.testutils
 
 import edu.colorado.plv.bounder.ir.{AppLoc, CmdWrapper, IRWrapper, InvokeCmd, LineLoc, Loc, MethodLoc, UnresolvedMethodTarget}
+import edu.colorado.plv.bounder.symbolicexecutor.AppCodeResolver
 
 class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] {
   override def findMethodLoc(className: String, methodName: String): Option[MethodLoc] = ???
@@ -22,13 +23,13 @@ class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] 
     case _ => false
   }).map(_.asInstanceOf[CmdTransition].cmd).get
 
-  override def makeInvokeTargets(invoke: AppLoc): Set[UnresolvedMethodTarget] = ???
+  override def makeInvokeTargets(invoke: AppLoc): UnresolvedMethodTarget = ???
 
   override def getAllMethods: Seq[MethodLoc] = ???
 
   override def getOverrideChain(method: MethodLoc): Seq[MethodLoc] = ???
 
-  override def callSites(method: String): Seq[String] = ???
+  override def appCallSites(method: MethodLoc, resolver: AppCodeResolver): Seq[AppLoc] = ???
 
   override def makeMethodRetuns(method: MethodLoc): List[Loc] = ???
 

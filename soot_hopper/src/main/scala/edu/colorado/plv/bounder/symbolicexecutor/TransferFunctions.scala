@@ -7,6 +7,9 @@ import edu.colorado.plv.bounder.symbolicexecutor.state._
 
 class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
 
+  def cbInvTransfer(pre:State, pkg:String, name:String, invars:List[Option[LocalWrapper]]):Set[State] = {
+    ???
+  }
   /**
    *
    * @param pre state before current location
@@ -15,9 +18,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
    * @return set of states that may reach the target state by stepping from source to target
    */
   def transfer(pre: State, target: Loc, source: Loc): Set[State] = (source, target, pre) match {
-    case (source@AppLoc(_, _, false), CallinMethodReturn(fmwClazz, fmwName,_), State(stack, heap, pure, reg)) =>
+    case (source@AppLoc(_, _, false), CallinMethodReturn(fmwClazz, fmwName), State(stack, heap, pure, reg)) =>
       Set(State(CallStackFrame(target, Some(source.copy(isPre = true)), Map()) :: stack, heap, pure, reg))
-    case (CallinMethodReturn(_, _,_), CallinMethodInvoke(_, _), state) => Set(state)
+    case (CallinMethodReturn(_, _), CallinMethodInvoke(_, _), state) => Set(state)
     case (CallinMethodInvoke(_, _), loc@AppLoc(_, _, true), s@State(h :: t, _, _, _)) => {
       //TODO: parameter mapping
       Set(s.copy(callStack = t))
@@ -28,13 +31,13 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     case (AppLoc(_, m, true), CallbackMethodInvoke(fc1, fn1, l1), State(CallStackFrame(cmloc@CallbackMethodReturn(fc2, fn2, l2, _), None, locals) :: s, heap, pure, reg)) => {
       // If call doesn't match return on stack, return bottom
       // Target loc of CallbackMethodInvoke means just before callback is invoked
+      val (pkg, name, invars) = msgCmdToMsg(cmloc)
       if (fc1 != fc2 || fn1 != fn2 || l1 != l2) {
         Set() // Call from location that does not match stack, return bottom
         //TODO: does this ever happen with callback entry? (remove ??? when this is figured out)
         ???
       }
       else {
-        val (pkg, name, invars) = msgCmdToMsg(cmloc)
         // Add all parameters to abs state (note just moved these out of the trace transfer)
         val state0 = invars.foldLeft(pre){
           case (cstate,Some(invar)) => cstate.getOrDefine(invar)._2

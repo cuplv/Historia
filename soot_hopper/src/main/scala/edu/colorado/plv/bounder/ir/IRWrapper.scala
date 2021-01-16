@@ -1,5 +1,6 @@
 package edu.colorado.plv.bounder.ir
 
+import edu.colorado.plv.bounder.symbolicexecutor.AppCodeResolver
 import edu.colorado.plv.bounder.symbolicexecutor.state.TypeConstraint
 
 // Interface to handle all the messy parts of interacting with the underlying IR representation
@@ -23,12 +24,12 @@ trait IRWrapper[M,C]{
   def isMethodEntry(cmdWrapper: CmdWrapper): Boolean
   def cmdAfterLocation(loc: AppLoc): CmdWrapper
   def cmdBeforeLocation(loc:AppLoc): CmdWrapper
-  def makeInvokeTargets(invoke:AppLoc):Set[UnresolvedMethodTarget]
-  def callSites(method : M): Seq[C]
+  def makeInvokeTargets(invoke:AppLoc):UnresolvedMethodTarget
+  def appCallSites(method : MethodLoc, resolver:AppCodeResolver): Seq[AppLoc]
   def makeMethodRetuns(method: MethodLoc) : List[Loc]
   def getClassHierarchy : Map[String, Set[String]]
 }
-sealed case class UnresolvedMethodTarget(clazz: String, methodName:String, loc:Option[MethodLoc])
+sealed case class UnresolvedMethodTarget(clazz: String, methodName:String, loc:Set[MethodLoc])
 
 
 /**

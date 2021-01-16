@@ -7,7 +7,7 @@ import scala.util.matching.Regex
 
 trait AppCodeResolver {
   def isFrameworkClass(packageName:String):Boolean
-  def resolveCallLocation(tgt : UnresolvedMethodTarget): Loc
+  def resolveCallLocation(tgt : UnresolvedMethodTarget): Set[Loc]
   def resolveCallbackExit(method : MethodLoc, retCmdLoc: Option[LineLoc]):Option[Loc]
   def resolveCallbackEntry(method: MethodLoc):Option[Loc]
   def getCallbacks: Set[MethodLoc]
@@ -24,10 +24,22 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     case _ => false
   }
 
-  override def resolveCallLocation(tgt: UnresolvedMethodTarget): Loc = tgt match{
-    case UnresolvedMethodTarget(clazz, method, _) if isFrameworkClass(clazz) => CallinMethodReturn(clazz, method, None)
-    case UnresolvedMethodTarget(clazz, method, Some(methodloc: MethodLoc)) => InternalMethodReturn(clazz, method, methodloc)
+  override def resolveCallLocation(tgt: UnresolvedMethodTarget): Set[Loc] = {
+    tgt.loc.map{m =>
+      val classType = m.classType
+      if(isFrameworkClass(classType)){
+        CallinMethodReturn(classType, m.simpleName)
+      }else {
+        InternalMethodReturn(classType, m.simpleName, m)
+      }
+    }
   }
+//  override def resolveCallLocation(tgt: UnresolvedMethodTarget): Set[Loc] = tgt match{
+//    case UnresolvedMethodTarget(clazz, method, _) if isFrameworkClass(clazz) =>
+//      Set(CallinMethodReturn(clazz, method, None))
+//    case UnresolvedMethodTarget(clazz, method, methodLocs) =>
+//      methodLocs.map(loc => InternalMethodReturn(clazz, method, _))
+//  }
 
   override def resolveCallbackExit(method: MethodLoc, retCmdLoc: Option[LineLoc]): Option[Loc] = {
     val overrides = ir.getOverrideChain(method)
