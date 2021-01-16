@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, JimpleFlowdroidWrapper, JimpleMethodLoc, LineLoc, Loc, LocalWrapper, VirtualInvoke}
-import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NI}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, LSSpec, NI}
 import edu.colorado.plv.bounder.lifestate.{SpecSpace, TestSignatures}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, PrettyPrinting, PureVar, Qry, StackVar}
 import soot.SootMethod
@@ -36,9 +36,13 @@ class SymbolicExecutorTest extends org.scalatest.FunSuite {
     val w = new JimpleFlowdroidWrapper(test_interproc_1)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
     val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
-    val testSpec = LSSpec(NI(TestSignatures.Activity_onResume_entry, TestSignatures.Activity_onPause_exit),
+
+
+    val testSpec0 = LSSpec(TestSignatures.Activity_init_exit, TestSignatures.Activity_onResume_entry)
+    val resumePause = NI(TestSignatures.Activity_onResume_entry, TestSignatures.Activity_onPause_exit)
+    val testSpec1 = LSSpec(resumePause,
       TestSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
-    val transfer = new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set(testSpec)))
+    val transfer = new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set(testSpec1,testSpec0)))
     val config = SymbolicExecutorConfig(
       stepLimit = Some(50), w,resolver,transfer, printProgress = true, z3Timeout = Some(30))
     val query = Qry.makeReceiverNonNull(config, w,
