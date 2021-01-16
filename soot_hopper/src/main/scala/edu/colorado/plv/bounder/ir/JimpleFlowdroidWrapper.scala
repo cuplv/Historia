@@ -4,8 +4,9 @@ import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.symbolicexecutor.AppCodeResolver
 import edu.colorado.plv.bounder.symbolicexecutor.state.TypeConstraint
 import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
-import soot.jimple.{IntConstant, NullConstant, ParameterRef, StringConstant, ThisRef}
-import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceFieldRef, AbstractInstanceInvokeExpr, AbstractInvokeExpr, AbstractNewExpr, AbstractStaticInvokeExpr, JAssignStmt, JIdentityStmt, JInvokeStmt, JReturnStmt, JReturnVoidStmt, JSpecialInvokeExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
+import soot.jimple.infoflow.entryPointCreators.SimulatedCodeElementTag
+import soot.jimple.{Constant, IntConstant, InvokeExpr, NullConstant, ParameterRef, StringConstant, ThisRef}
+import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceFieldRef, AbstractInstanceInvokeExpr, AbstractInvokeExpr, AbstractNewExpr, AbstractStaticInvokeExpr, InvokeExprBox, JAssignStmt, JIdentityStmt, JInstanceFieldRef, JInvokeStmt, JNewExpr, JReturnStmt, JReturnVoidStmt, JSpecialInvokeExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
 import soot.{Body, Hierarchy, Scene, SootClass, SootMethod, Type, Value, VoidType}
 
 import scala.collection.mutable
@@ -30,6 +31,10 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
     ???
   }
 
+  private def cmdToLoc(u : soot.Unit, containingMethod:SootMethod): AppLoc = {
+    AppLoc(JimpleMethodLoc(containingMethod),JimpleLineLoc(u,containingMethod),false)
+  }
+
   protected def getUnitGraph(body:Body):EnhancedUnitGraphFixed = {
     if(unitGraphCache.contains(body)){
       unitGraphCache.getOrElse(body, ???)
@@ -43,9 +48,15 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
     if(appMethodCache.isEmpty) {
       val classes = Scene.v().getApplicationClasses
       classes.forEach(c =>
-        if (!resolver.isFrameworkClass(c.getJavaPackageName)) {
-           c.methodIterator().forEachRemaining(m => appMethodCache.add(m))
-        }
+        if (resolver.isAppClass(c.getName))
+           c.methodIterator().forEachRemaining(m => {
+             var simulated:Boolean = false
+             // simulated code tags added to flowdroid additions
+             m.getTags.forEach(t =>
+               simulated = simulated || t.isInstanceOf[SimulatedCodeElementTag])
+             if(!simulated)
+              appMethodCache.add(m)
+           })
       )
     }
     appMethodCache
@@ -67,8 +78,6 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
   }
   override def getAllMethods: Iterable[MethodLoc] = {
     Scene.v().getApplicationClasses.asScala.flatMap(clazz => {
-      if(clazz.getJavaPackageName == "com.example.test_interproc_1" && clazz.getName.contains("MainActivity"))
-        println()
       clazz.getMethods.asScala
         .filter(!_.hasTag("SimulatedCodeElementTag")) // Remove simulated code elements from Flowdroid
         .map(JimpleMethodLoc)
@@ -265,23 +274,80 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
     methods.toList
   }
 
-  override def appCallSites(method: MethodLoc, resolver:AppCodeResolver): Seq[AppLoc] = {
-    val m = method.asInstanceOf[JimpleMethodLoc]
-    val sootMethod = m.method
-//    val cg = Scene.v().getCallGraph
-    ???
+  private def canCall(invokeExpr:InvokeExpr, method:JimpleMethodLoc):Boolean = {
+    val targetName = method.method.getName
+    val callName = invokeExpr.getMethod.getName
+    if (targetName != callName ) {
+      return false
+    }
+    val paramCount = method.method.getParameterCount
+    if (invokeExpr.getArgCount != paramCount){
+      return false
+    }
+    // Check if types are remotely compatible, abstract domain figures things out more precisely later
+    val callRefType = invokeExpr.getMethodRef.getDeclaringClass
+    val targetType = method.method.getDeclaringClass
+    val canCall = Scene.v().getActiveHierarchy.isClassSubclassOfIncluding(callRefType, targetType)
+    canCall
+  }
+
+  //TODO: check that this function covers all cases
+  private val callSiteCache = mutable.HashMap[MethodLoc, Seq[AppLoc]]()
+  override def appCallSites(method_in: MethodLoc, resolver:AppCodeResolver): Seq[AppLoc] = {
+    val method = method_in.asInstanceOf[JimpleMethodLoc]
+    callSiteCache.getOrElse(method, {
+      val m = method.asInstanceOf[JimpleMethodLoc]
+      val sootMethod = m.method
+      val appMethods = getAppMethods(resolver)
+      val callSites:Seq[AppLoc] = appMethods.flatMap(mContainingCall => {
+        var locs = mutable.Set[AppLoc]()
+        if (mContainingCall.hasActiveBody) {
+          mContainingCall.getActiveBody.getUnits.forEach {
+            case unit : JInvokeStmt =>
+              if (canCall(unit.getInvokeExpr, method)) {
+                val loc = cmdToLoc(unit, mContainingCall)
+                locs.add(loc)
+              }
+
+            case unit : JAssignStmt => // if unit.getRightOpBox.getValue.isInstanceOf[InvokeExprBox] =>
+              unit.getRightOpBox.getValue match {
+                case v : InvokeExpr =>
+                  if(canCall(v, method)) {
+                    val loc = cmdToLoc(unit, mContainingCall)
+                    locs.add(loc)
+                  }
+                case _ =>
+              }
+            case r: JReturnStmt =>
+              assert(!r.getOpBox.isInstanceOf[InvokeExpr]) //TODO: don't think this can happen
+            case unit =>
+          }
+        }
+        locs
+      }).toSeq
+      callSiteCache.put(method, callSites)
+      callSites
+    })
   }
 
   override def makeMethodRetuns(method: MethodLoc): List[Loc] = {
     val smethod = method.asInstanceOf[JimpleMethodLoc]
     val rets = mutable.ListBuffer[AppLoc]()
-    smethod.method.getActiveBody.getUnits.forEach( (u:soot.Unit) =>{
-      if (u.isInstanceOf[JReturnStmt] || u.isInstanceOf[JReturnVoidStmt]) {
-        val lineloc = JimpleLineLoc(u, smethod.method)
-        rets.addOne(AppLoc(smethod, lineloc, false))
-      }
-    })
-    rets.toList
+    if (smethod.method.hasActiveBody) {
+      smethod.method.getActiveBody.getUnits.forEach((u: soot.Unit) => {
+        if (u.isInstanceOf[JReturnStmt] || u.isInstanceOf[JReturnVoidStmt]) {
+          val lineloc = JimpleLineLoc(u, smethod.method)
+          rets.addOne(AppLoc(smethod, lineloc, false))
+        }
+      })
+      rets.toList
+    }else{
+      // TODO: for some reason no active bodies for R or BuildConfig generated classes?
+      // note: these typically don't have any meaningful implementation anyway
+      val classString = smethod.method.getDeclaringClass.toString
+      assert(classString.contains(".R$") || classString.contains("BuildConfig") || classString.endsWith(".R"))
+      List()
+    }
   }
 
   override def getClassHierarchy: Map[String, Set[String]] = {
@@ -307,7 +373,10 @@ case class JimpleMethodLoc(method: SootMethod) extends MethodLoc {
       println(t)
       ???
   }
-  override def simpleName: String = method.getName
+  override def simpleName: String = {
+//    val n = method.getName
+    method.getSubSignature
+  }
 
   override def classType: String = string(method.getDeclaringClass)
 

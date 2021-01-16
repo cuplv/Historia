@@ -51,7 +51,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
       AppLoc(loc, line, true)::Nil
     case (CallinMethodInvoke(fmwClazz, fmwName),Nil) =>
       val m: Option[MethodLoc] = wrapper.findMethodLoc(fmwClazz, fmwName)
-      m.map(m2 => wrapper.appCallSites(m2,resolver)).getOrElse(List())
+      m.map(m2 =>
+        wrapper.appCallSites(m2,resolver).map(v => v.copy(isPre = true))).getOrElse(List())
     case _ =>
       ???
   }

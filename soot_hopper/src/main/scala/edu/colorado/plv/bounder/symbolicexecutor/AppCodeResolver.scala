@@ -7,6 +7,7 @@ import scala.util.matching.Regex
 
 trait AppCodeResolver {
   def isFrameworkClass(packageName:String):Boolean
+  def isAppClass(fullClassName:String):Boolean
   def resolveCallLocation(tgt : UnresolvedMethodTarget): Set[Loc]
   def resolveCallbackExit(method : MethodLoc, retCmdLoc: Option[LineLoc]):Option[Loc]
   def resolveCallbackEntry(method: MethodLoc):Option[Loc]
@@ -17,12 +18,25 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
   protected val frameworkExtPath = getClass.getResource("/FrameworkExtensions.txt").getPath
   protected val extensionStrings: Regex = Source.fromFile(frameworkExtPath).getLines.mkString("|").r
 
+  protected val excludedClasses = "dummyMainClass".r
+
   val appMethods = ir.getAllMethods.filter(m => !isFrameworkClass(m.classType)).toSet
   def getCallbacks = appMethods.filter(resolveCallbackEntry(_).isDefined)
-  def isFrameworkClass(packageName:String):Boolean = packageName match{
+  def isFrameworkClass(fullClassName:String):Boolean = fullClassName match{
     case extensionStrings() => true
     case _ => false
   }
+
+  def isAppClass(fullClassName:String):Boolean = {
+    if(isFrameworkClass(fullClassName))
+      return false
+    fullClassName match{
+      case excludedClasses() =>
+        false
+      case _ => true
+    }
+  }
+
 
   override def resolveCallLocation(tgt: UnresolvedMethodTarget): Set[Loc] = {
     tgt.loc.map{m =>

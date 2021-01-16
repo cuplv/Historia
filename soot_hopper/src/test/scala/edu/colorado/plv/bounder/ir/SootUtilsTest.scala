@@ -7,6 +7,8 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.{Qry, State}
 import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, SymbolicExecutorConfig, TransferFunctions}
 import soot.SootMethod
 
+import scala.annotation.tailrec
+
 class SootUtilsTest extends org.scalatest.FunSuite {
   val test_interproc_1 = getClass.getResource("/test_interproc_1.apk").getPath()
   assert(test_interproc_1 != null)
@@ -35,19 +37,29 @@ class SootUtilsTest extends org.scalatest.FunSuite {
     assert(locs.size > 0)
   }
 
+  @tailrec
   /**
    * Find a predecessor of a location such that b is true
    * @param l list of locations
    * @param b functon of location that returns true when desired location is found
    * @return
    */
-  def iterPredUntil(l:List[Loc], config: SymbolicExecutorConfig[SootMethod, soot.Unit], b : Loc=>Boolean):Option[Loc] =
+  private def iterPredUntil(l:Set[Loc], config: SymbolicExecutorConfig[SootMethod, soot.Unit], b : Loc=>Boolean, count:Int):Option[Loc] = {
+    if (count == 0) {
+      return None
+    }
+    println(l)
     l.find(b) match {
       case Some(v) => Some(v)
       case None =>
-        val pred: List[Loc] = l.flatMap(config.c.resolvePredicessors(_, State.topState))
-        iterPredUntil(pred, config,b)
+        val pred: Set[Loc] = l.flatMap(config.c.resolvePredicessors(_, State.topState))
+        if(pred.isEmpty)
+          None
+        else
+          iterPredUntil(pred, config,b, count-1)
     }
+  }
+
   test("iterate transitions in real apk"){
 
     val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath()
@@ -66,16 +78,17 @@ class SootUtilsTest extends org.scalatest.FunSuite {
     val l = query.loc
     assert(l.isInstanceOf[AppLoc])
 
-    val entryloc = iterPredUntil(List(l), config, {
-      case curLoc@AppLoc(method, line, true) =>
-        println(curLoc)
-        w.isMethodEntry(w.cmdAfterLocation(curLoc))
-      case l@AppLoc(method, line, false) => println(l);false
-      case l => println(l);false
-    })
-    ???
+    val entryloc = iterPredUntil(Set(l), config, {
+      case CallbackMethodInvoke(_,_,_) => true
+      case l => false
+    }, 12)
+    assert(entryloc.isDefined)
 
-//    w.cmdBeforeLocation()
-
+    println("---")
+    val retPause = iterPredUntil(Set(l), config, {
+      case CallbackMethodReturn(_,name,_,_) if name.contains("onPause") => true
+      case _ => false
+    },20)
+    assert(retPause.isDefined)
   }
 }
