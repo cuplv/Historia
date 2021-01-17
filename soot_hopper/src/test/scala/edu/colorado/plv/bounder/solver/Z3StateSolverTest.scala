@@ -73,7 +73,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val constraints2 = Set(
       PureConstraint(v3, Equals, v4),
       PureConstraint(v3, TypeComp, SubclassOf("String")),
-      PureConstraint(v4, TypeComp, SubclassOf("Object"))
+      PureConstraint(v4, TypeComp, SubclassOf("java.lang.Object"))
     )
     val state = State(List(frame),
       Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),constraints2, Set())
@@ -377,7 +377,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val state = State(CallStackFrame(loc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Set())
 
     val state_ = state.copy(pureFormula = Set(PureConstraint(p1,TypeComp,SubclassOf("Foo")  )))
-    val state__ = state.copy(pureFormula = Set(PureConstraint(p1,TypeComp,SubclassOf("Object"))))
+    val state__ = state.copy(pureFormula = Set(PureConstraint(p1,TypeComp,SubclassOf("java.lang.Object"))))
     // (x->p1 && p1 <: Foo) can be subsumed by (x->p1 && p1 <:Object)
     assert(statesolver.canSubsume(state__, state_))
     assert(statesolver.canSubsume(state_, state_))
@@ -391,7 +391,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
       PureConstraint(p1, Equals, p2)
     ))
     val state1__ = state.copy(pureFormula = Set(
-      PureConstraint(p2, TypeComp, SubclassOf("Object")),
+      PureConstraint(p2, TypeComp, SubclassOf("java.lang.Object")),
       PureConstraint(p1, Equals, p2)
     ))
     assert(statesolver.canSubsume(state1__, state1_))
@@ -488,7 +488,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val ctx = new Context
     val solver: Solver = ctx.mkSolver()
     val hierarchy: Map[String, Set[String]] =
-      Map("Object" -> Set("String", "Foo", "Bar", "Object"),
+      Map("java.lang.Object" -> Set("String", "Foo", "Bar", "java.lang.Object"),
         "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
 
     val pc = new PersistantConstraints(ctx, solver, hierarchy)
@@ -521,17 +521,23 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
   test("sandbox") {
     val ctx = new Context
     val solver = ctx.mkSolver()
-    val msgSort = ctx.mkUninterpretedSort("Msg")
-    val msgSort2 = ctx.mkUninterpretedSort("Msg")
-    val pos1 = ctx.mkFuncDecl("tracePos", ctx.mkIntSort, msgSort)
-    val pos2 = ctx.mkFuncDecl("tracePos", ctx.mkIntSort, msgSort2)
-    val m1 = ctx.mkConst("m1",msgSort)
-    val m2 = ctx.mkConst("m2",msgSort2)
-    val p = ctx.mkAnd(
-      ctx.mkEq(pos1.apply(ctx.mkInt(1)), m1 ),
-      ctx.mkEq(pos2.apply(ctx.mkInt(1)), m2),
-      ctx.mkNot(ctx.mkEq(m1,m2)))
-    solver.add(p)
+    val addr = ctx.mkUninterpretedSort("Msg")
+//    val msgSort2 = ctx.mkUninterpretedSort("Msg")
+//    val pos1 = ctx.mkFuncDecl("tracePos", ctx.mkIntSort, msgSort)
+//    val pos2 = ctx.mkFuncDecl("tracePos", ctx.mkIntSort, msgSort2)
+//    val m1 = ctx.mkConst("m1",msgSort)
+//    val m2 = ctx.mkConst("m2",msgSort2)
+//    val p = ctx.mkAnd(
+//      ctx.mkEq(pos1.apply(ctx.mkInt(1)), m1 ),
+//      ctx.mkEq(pos2.apply(ctx.mkInt(1)), m2),
+//      ctx.mkNot(ctx.mkEq(m1,m2)))
+    val a1 = ctx.mkConst("a1", addr)
+    val a2 = ctx.mkConst("a2", addr)
+    val a3 = ctx.mkConst("a3", addr)
+    val p1 = ctx.mkEq(a1,a2)
+    val p2 = ctx.mkNot(ctx.mkEq(a2,a3))
+    val p3 = ctx.mkEq(a3,a1)
+    solver.add(ctx.mkAnd(p1,p2,p3))
 
     solver.check() match {
       case Status.UNSATISFIABLE => println("unsat")

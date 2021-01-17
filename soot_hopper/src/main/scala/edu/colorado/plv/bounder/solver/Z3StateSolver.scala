@@ -7,6 +7,8 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
   val solver: Solver = persistentConstraints.getSolver
   val ctx: Context = persistentConstraints.getCtx
 
+  private val addrSort = ctx.mkUninterpretedSort("Addr")
+
   override def checkSAT(): Boolean = interpretSolverOutput(solver.check)
 
   override def checkSATWithAssumptions(assumes: List[String]): Boolean = ???
@@ -80,7 +82,7 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
   override protected def mkAssert(t: AST): Unit = solver.add(t.asInstanceOf[BoolExpr])
 
   override protected def mkFieldFun(n: String): AST = {
-    val fun: FuncDecl = ctx.mkFuncDecl(n, ctx.mkIntSort(), ctx.mkIntSort() )
+    val fun: FuncDecl = ctx.mkFuncDecl(n, addrSort, addrSort )
     fun
   }
   override protected def fieldEquals(f: AST, t1 : AST, t2:AST): AST = {
@@ -95,7 +97,7 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
       throw new IllegalStateException("Z3 decidability or timeout issue--got Status.UNKNOWN")
   }
 
-  override protected def mkObjVar(s: PureVar): AST = ctx.mkIntConst("object_addr_" + s.id.toString)
+  override protected def mkObjVar(s: PureVar): AST = ctx.mkConst("object_addr_" + s.id.toString, addrSort)
 
   override def printDbgModel(messageTranslator: MessageTranslator, traceAbstraction: Set[TraceAbstractionArrow], lenUID: String): Unit = {
     printAbstSolution(solver.getModel, messageTranslator, traceAbstraction, lenUID)
@@ -151,17 +153,17 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
 
   }
   override protected def createTypeFun():AST = {
-    val intArgs: Array[Sort] = Array(ctx.mkIntSort())
-    ctx.mkFuncDecl("addressToType", intArgs, persistentConstraints.tsort)
+    val args: Array[Sort] = Array(addrSort)
+    ctx.mkFuncDecl("addressToType", args, persistentConstraints.tsort)
   }
 
   // Model vars have the pred identity hash code appended since they are unique to each pred
   // "_" means we don't care what the value is so just make arbitrary int
   override protected def mkModelVar(s: String, predUniqueID:String): AST =
     if (s != "_") {
-      ctx.mkIntConst("model_var_" + s + "_" + predUniqueID)
+      ctx.mkConst("model_var_" + s + "_" + predUniqueID, addrSort)
     }else{
-      mkFreshIntVar("_")
+      ctx.mkFreshConst("_", addrSort)
     }
 
   override protected def mkFreshIntVar(s:String): AST =
@@ -202,8 +204,10 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
   override protected def mkINameFn(enum:AST): AST =
     ctx.mkFuncDecl(s"namefn_", ctx.mkUninterpretedSort("Msg"), enum.asInstanceOf[EnumSort])
 
-  override protected def mkArgFun(): AST =
-    ctx.mkFuncDecl(s"argfun_", Array(ctx.mkIntSort(), ctx.mkUninterpretedSort("Msg")), ctx.mkIntSort)
+  override protected def mkArgFun(): AST = {
+    //TODO: swap addr int wiht uninterpreted
+    ctx.mkFuncDecl(s"argfun_", Array(ctx.mkIntSort(), ctx.mkUninterpretedSort("Msg")), addrSort)
+  }
 
   override protected def mkIName(enum:AST, enumNum:Int): AST = enum.asInstanceOf[EnumSort].getConst(enumNum)
 

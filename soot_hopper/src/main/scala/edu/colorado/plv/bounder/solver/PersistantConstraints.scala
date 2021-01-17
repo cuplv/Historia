@@ -14,15 +14,17 @@ class PersistantConstraints(ctx: Context, solver: Solver, types : Map[String,Set
   def getSolver: Solver = solver
   def getCtx: Context = ctx
 
-  val typeToInt: Map[String, Int] = types.keySet.zipWithIndex.toMap
+  val typeToInt: Map[String, Int] = (types.keySet + "null").zipWithIndex.toMap
   val intToType: Map[Int, String] = typeToInt.map(a => (a._2, a._1))
 
 
 //  val tsort: Sort = ctx.mkFiniteDomainSort("Types", typeToInt.size)
   val tsort: EnumSort = ctx.mkEnumSort("Types", typeToInt.keys.toArray:_*)
 
-  private def finiteDomVal(t : String):Expr =
+  private def finiteDomVal(t : String):Expr = {
       tsort.getConst(typeToInt(t))
+  }
+
   val subtypeFun: FuncDecl = ctx.mkFuncDecl("subtype", Array(tsort:Sort, tsort), ctx.mkBoolSort())
 
   def mkHirearchyConstraints() {
@@ -41,7 +43,8 @@ class PersistantConstraints(ctx: Context, solver: Solver, types : Map[String,Set
       Array(ctx.mkSymbol("arg1"), ctx.mkSymbol("arg2")) /*symbols*/ ,
       ctx.mkEq(subtypeFun.apply(arg1, arg2), subclassConstraint) /*body*/ , 1 /*weight*/ ,
       Array() /*patterns*/ , null, null, null)
-    solver.add(subtype_forall)
+    solver.add(ctx.mkAnd(subtype_forall, ctx.mkNot(
+      subtypeFun.apply(finiteDomVal("java.lang.Object"), finiteDomVal("null")).asInstanceOf[BoolExpr])))
   }
   mkHirearchyConstraints()
   solver.push()

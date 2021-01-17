@@ -127,10 +127,20 @@ trait StateSolver[T] {
 
   def printDbgModel(messageTranslator: MessageTranslator, traceabst: Set[TraceAbstractionArrow], lenUID: String): Unit
 
+  def nullConst(v: PureExpr, op : CmpOp):T = {
+    val tfun = createTypeFun()
+    op match {
+      case Equals => mkTypeConstraint(tfun, toAST(v), ClassType("null"))
+      case NotEquals => mkTypeConstraint(tfun, toAST(v), SubclassOf("java.lang.Object"))
+    }
+  }
+
   def toAST(p: PureConstraint, typeFun: T): T = p match {
     // TODO: field constraints based on containing object constraints
     case PureConstraint(lhs: PureVar, TypeComp, rhs: TypeConstraint) =>
       mkTypeConstraint(typeFun, toAST(lhs), rhs)
+    case PureConstraint(lhs, op, NullVal) => nullConst(lhs,op)
+    case PureConstraint(NullVal, op, rhs) => nullConst(rhs,op)
     case PureConstraint(lhs, op, rhs) =>
       toAST(toAST(lhs), op, toAST(rhs))
     case _ => ???
@@ -146,7 +156,8 @@ trait StateSolver[T] {
 
   def toAST(lhs: T, op: CmpOp, rhs: T): T = op match {
     case Equals => mkEq(lhs, rhs)
-    case NotEquals => mkNe(lhs, rhs)
+    case NotEquals =>
+      mkNe(lhs, rhs)
     case _ =>
       ???
   }
