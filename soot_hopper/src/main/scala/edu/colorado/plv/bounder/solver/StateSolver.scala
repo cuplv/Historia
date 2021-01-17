@@ -110,8 +110,12 @@ trait StateSolver[T] {
   // function msg -> iname
   protected def mkINameFn(enum: T): T
 
-  // function for argument i -> msg -> value
+  // function for argument i -> msg -> addr
   protected def mkArgFun(): T
+
+  // function to test if addr is null
+  // Uses uninterpreted function isNullFn : addr -> bool
+  protected def mkIsNull(addr:T): T
 
   // Get enum value for I based on index
   protected def mkIName(enum: T, enumNum: Int): T
@@ -130,8 +134,8 @@ trait StateSolver[T] {
   def nullConst(v: PureExpr, op : CmpOp):T = {
     val tfun = createTypeFun()
     op match {
-      case Equals => mkTypeConstraint(tfun, toAST(v), ClassType("null"))
-      case NotEquals => mkTypeConstraint(tfun, toAST(v), SubclassOf("java.lang.Object"))
+      case Equals => mkIsNull(toAST(v))
+      case NotEquals => mkNot(mkIsNull(toAST(v)))
     }
   }
 

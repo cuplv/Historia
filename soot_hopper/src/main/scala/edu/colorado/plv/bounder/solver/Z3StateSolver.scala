@@ -209,6 +209,11 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
     ctx.mkFuncDecl(s"argfun_", Array(ctx.mkIntSort(), ctx.mkUninterpretedSort("Msg")), addrSort)
   }
 
+  override protected def mkIsNull(addr:AST): AST = {
+    val isNullFun = ctx.mkFuncDecl("isNullFn", addrSort, ctx.mkBoolSort())
+    isNullFun.apply(addr.asInstanceOf[Expr])
+  }
+
   override protected def mkIName(enum:AST, enumNum:Int): AST = enum.asInstanceOf[EnumSort].getConst(enumNum)
 
   override protected def mkEnum(name: String, types: List[String]): AST =

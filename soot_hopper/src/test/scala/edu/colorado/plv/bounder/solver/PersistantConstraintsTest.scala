@@ -14,9 +14,6 @@ class PersistantConstraintsTest extends org.scalatest.FunSuite {
     val ch = new PersistantConstraints(ctx, solver, hierarchy)
     assert(solver.check() == Status.SATISFIABLE)
 
-    val tc5 = ch.addTypeConstraint("c", ClassType("null"))
-    solver.add(tc5)
-
     assert(solver.check() == Status.SATISFIABLE)
     val tc1 = ch.addTypeConstraint("a", SuperclassOf("Bar"))
     solver.add(tc1)
@@ -28,24 +25,6 @@ class PersistantConstraintsTest extends org.scalatest.FunSuite {
     solver.add(tc3)
     val tc4 = ch.addTypeConstraint("b", SubclassOf("String"))
     solver.add(tc4)
-
-    assert(solver.check() == Status.SATISFIABLE)
-
-    solver.push()
-    val tc5_5 = ch.addTypeConstraint("c", SubclassOf("java.lang.Object"))
-    solver.add(tc5_5)
-    assert(solver.check() == Status.UNSATISFIABLE)
-    solver.pop()
-
-    assert(solver.check() == Status.SATISFIABLE)
-
-    solver.push()
-    val tc5_6 = ch.addTypeConstraint("c", SubclassOf("Foo"))
-    solver.add(tc5_6)
-    assert(solver.check() == Status.UNSATISFIABLE)
-    solver.pop()
-
-    assert(solver.check() == Status.SATISFIABLE)
 
     val tc6 = ch.addTypeConstraint("b", SuperclassOf("String"))
     solver.add(tc6)
