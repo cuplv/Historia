@@ -19,6 +19,13 @@ trait MethodLoc {
   def simpleName: String
   def classType: String
   def argTypes: List[String]
+
+  /**
+   * No return since call site has that info
+   * None for reciever if static
+   * @return list of args, [reciever, arg1,arg2 ...]
+   */
+  def getArgs : List[Option[LocalWrapper]]
   // TODO: handle params
   // def argNames:List[String]
 }

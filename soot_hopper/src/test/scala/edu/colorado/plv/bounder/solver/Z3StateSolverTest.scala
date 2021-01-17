@@ -10,13 +10,13 @@ import edu.colorado.plv.bounder.testutils.{TestIRLineLoc, TestIRMethodLoc}
 class Z3StateSolverTest extends org.scalatest.FunSuite {
   val dummyLoc = CallbackMethodInvoke(fmwClazz = "",
     fmwName="void foo()", TestIRMethodLoc("","foo"))
-  val v = PureVar()
+  val v = PureVar(State.getId())
   val frame = CallStackFrame(dummyLoc, None, Map(StackVar("x") -> v))
   val state = State(Nil,Map(),Set(), Set())
   test("null not null") {
   val statesolver = getStateSolver
 
-    val v2 = PureVar()
+    val v2 = PureVar(State.getId())
     val constraints = Set(PureConstraint(v2, NotEquals, NullVal), PureConstraint(v2, Equals, NullVal))
     val refutableState = State(List(frame),
       Map(FieldPtEdge(v,"f") -> v2),constraints,Set())
@@ -26,8 +26,8 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
   test("alias") {
   val statesolver = getStateSolver
 
-    val v2 = PureVar()
-    val v3 = PureVar()
+    val v2 = PureVar(State.getId())
+    val v3 = PureVar(State.getId())
     val constraints = Set(PureConstraint(v2, NotEquals, NullVal),
       PureConstraint(v3, Equals, NullVal))
     val refutableState = State(List(frame),
@@ -38,9 +38,9 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
   test("Separate fields imply base must not be aliased a^.f->b^ * c^.f->b^ AND a^=c^ (<=> false)") {
   val statesolver = getStateSolver
 
-    val v2 = PureVar()
-    val v3 = PureVar()
-    val v4 = PureVar()
+    val v2 = PureVar(State.getId())
+    val v3 = PureVar(State.getId())
+    val v4 = PureVar(State.getId())
     val refutableState = State(List(frame),
       Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),Set(PureConstraint(v, Equals, v2)), Set())
     val simplifyResult = statesolver.simplify(refutableState)
@@ -56,9 +56,9 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val statesolver = getStateSolver
 
     // aliased and contradictory types of field
-    val v2 = PureVar()
-    val v3 = PureVar()
-    val v4 = PureVar()
+    val v2 = PureVar(State.getId())
+    val v3 = PureVar(State.getId())
+    val v4 = PureVar(State.getId())
     val constraints = Set(
       PureConstraint(v3, Equals, v4),
       PureConstraint(v3, TypeComp, SubclassOf("String")),
@@ -87,7 +87,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val i = I(CBEnter, Set(("foo", "bar")), "a" :: Nil)
     val i2 = I(CBEnter, Set(("foo", "baz")), "a" :: Nil)
     val niBarBaz = NI(i,i2)
-    val p1 = PureVar()
+    val p1 = PureVar(State.getId())
     val abs1 = AbsArrow(AbsAnd(AbsFormula(niBarBaz), AbsEq("a",p1)), Nil)
     val state1 = State(Nil, Map(),Set(), Set(abs1))
     val res1 = statesolver.simplify(state1)
@@ -117,8 +117,8 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val niBarBaz = NI(i,i2)
 
     // pure vars for next few tests
-    val p1 = PureVar()
-    val p2 = PureVar()
+    val p1 = PureVar(State.getId())
+    val p2 = PureVar(State.getId())
 
     // NI(a.bar(),a.baz()) |> I(c.baz()) && a == p1 && c == p1 (<=> false)
     val abs1: TraceAbstractionArrow = AbsArrow(
@@ -149,8 +149,8 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val niBarBaz = NI(i, i2)
 
     // pure vars for next few tests
-    val p1 = PureVar()
-    val p2 = PureVar()
+    val p1 = PureVar(State.getId())
+    val p2 = PureVar(State.getId())
 
     // NI(a.bar(),a.baz()) |> I(c.bar()) && a == p1 && c == p1 (<=> true)
     val abs2: TraceAbstractionArrow = AbsArrow(
@@ -173,7 +173,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val niBarBaz = NI(i, i2)
 
     // pure vars for next few tests
-    val p1 = PureVar()
+    val p1 = PureVar(State.getId())
 
     // NI(a.bar(),a.baz()) |> I(c.bar()) ; i(b.baz()
     val niaa: TraceAbstractionArrow = AbsArrow(
@@ -197,7 +197,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val niBarBaz = NI(i, i2)
 
     // pure vars for next few tests
-    val p1 = PureVar()
+    val p1 = PureVar(State.getId())
 
     // NI(a.bar(),a.baz()) |> I(c.bar());i(b.baz()
     val niaa: TraceAbstractionArrow = AbsArrow(
@@ -220,8 +220,8 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val niBarBaz = NI(i, i2)
 
     // pure vars for next few tests
-    val p1 = PureVar()
-    val p2 = PureVar()
+    val p1 = PureVar(State.getId())
+    val p2 = PureVar(State.getId())
 
     // NI(a.bar(),a.baz()) |> I(c.bar()) ; I(b.baz())
     val niaa: TraceAbstractionArrow = AbsArrow(
@@ -244,8 +244,8 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val niBarBaz = NI(i, i2)
 
     // pure vars for next few tests
-    val p1 = PureVar()
-    val p2 = PureVar()
+    val p1 = PureVar(State.getId())
+    val p2 = PureVar(State.getId())
 
     // NI(a.bar(),a.baz()) |> I(c.bar()) |> i(b.baz()
     val niaa: TraceAbstractionArrow = AbsArrow(
@@ -279,8 +279,8 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val niBarBar = NI(i, i)
 
     // pure vars for next few tests
-    val p1 = PureVar()
-    val p2 = PureVar()
+    val p1 = PureVar(State.getId())
+    val p2 = PureVar(State.getId())
     //NI(a.bar(),a.bar()) (<=> true)
     // Note that this should be the same as I(a.bar())
     val nia = AbsArrow(AbsFormula(niBarBar), Nil)
@@ -299,8 +299,8 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
   test("Subsumption of stack"){
     val statesolver = getStateSolver
 
-    val p1 = PureVar()
-    val p2 = PureVar()
+    val p1 = PureVar(State.getId())
+    val p2 = PureVar(State.getId())
     val loc = AppLoc(TestIRMethodLoc("","foo"), TestIRLineLoc(1), isPre = false)
 
     val state = State(CallStackFrame(loc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Set())
@@ -315,8 +315,8 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
   test("Subsumption of abstract traces") {
     val statesolver = getStateSolver
 
-    val p1 = PureVar()
-    val p2 = PureVar()
+    val p1 = PureVar(State.getId())
+    val p2 = PureVar(State.getId())
     val loc = AppLoc(TestIRMethodLoc("","foo"), TestIRLineLoc(1), isPre = false)
 
     val state = State(CallStackFrame(loc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Set())
@@ -370,8 +370,8 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
   test("Subsumption of pure formula in states"){
     val statesolver = getStateSolver
 
-    val p1 = PureVar()
-    val p2 = PureVar()
+    val p1 = PureVar(State.getId())
+    val p2 = PureVar(State.getId())
     val loc = AppLoc(TestIRMethodLoc("","foo"), TestIRLineLoc(1), isPre = false)
 
     val state = State(CallStackFrame(loc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Set())

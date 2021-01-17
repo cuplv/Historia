@@ -34,8 +34,8 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
       val thisLocal = LocalWrapper("this", "Object")
       AssignCmd(FieldRef(thisLocal, "Object", "Object", "o"), NullConst, loc)
     }
-    val basePv = PureVar()
-    val otherPv = PureVar()
+    val basePv = PureVar(State.getId())
+    val otherPv = PureVar(State.getId())
     val post = State(CallStackFrame(fooMethodReturn, None, Map(StackVar("this") -> basePv))::Nil,
       heapConstraints = Map(FieldPtEdge(otherPv, "o") -> NullVal),
       pureFormula = Set(),
@@ -52,7 +52,7 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
   }
   test("Transfer assign new local") {
     val cmd= (loc:AppLoc) => AssignCmd(LocalWrapper("bar","Object"),NewCommand("String"),loc)
-    val nullPv = PureVar()
+    val nullPv = PureVar(State.getId())
     val post = State(
       CallStackFrame(fooMethodReturn, None, Map(StackVar("bar") -> nullPv))::Nil,
       heapConstraints = Map(),
@@ -68,7 +68,7 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
   test("Transfer assign local local") {
     val cmd= (loc:AppLoc) => AssignCmd(LocalWrapper("bar","Object"),LocalWrapper("baz","String"),loc)
     val fooMethod = TestIRMethodLoc("","foo")
-    val nullPv = PureVar()
+    val nullPv = PureVar(State.getId())
     val post = State(
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("bar") -> nullPv))::Nil,
       heapConstraints = Map(),
@@ -94,7 +94,7 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
       lhs,
       iFooA)
     val tr = new TransferFunctions(ir, new SpecSpace(Set(spec)))
-    val recPv = PureVar()
+    val recPv = PureVar(State.getId())
     val otheri = AbsFormula(I(CBExit, Set(("a","a")), "b"::Nil))
     val post = State(
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("this") -> recPv))::Nil,
@@ -119,7 +119,7 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
     val postloc = AppLoc(fooMethod,TestIRLineLoc(1), isPre=true)
     val ir = new TestIR(Set(MethodTransition(preloc, postloc)))
     val tr = new TransferFunctions(ir, new SpecSpace(Set(LSSpec(iFooA,iFooA.copy(signatures = Set(("bbb","bbb")))))))
-    val recPv = PureVar()
+    val recPv = PureVar(State.getId())
     val post = State(
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("this") -> recPv))::Nil,
       heapConstraints = Map(),

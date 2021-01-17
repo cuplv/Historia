@@ -54,7 +54,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       case _ => None
     }
     if (config.printProgress){
-      println(s"Steps left until limit: $limit")
+      println(s"Steps left until limit: $limit queries: ${qrySet.size}")
     }
     if(qrySet.isEmpty || qrySet.exists(p => p.qry.isInstanceOf[WitnessedQry]) || 0 >= limit){
       refutedSubsumedOrWitnessed ++ qrySet
@@ -84,7 +84,8 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       val nextPathNode = nextQry.map{
         case (parent,q@SomeQry(_,_)) =>
           // Check subsumption for live queries
-          PathNode(q, succ = Some(parent), subsumed = isSubsumed(q,nextVisited))
+          val subsumingState = isSubsumed(q, nextVisited)
+          PathNode(q, succ = Some(parent), subsumed = subsumingState)
         case (parent,q) =>
           // No subsumption check for Witnessed or Refuted queries
           PathNode(q, succ = Some(parent), subsumed = None)

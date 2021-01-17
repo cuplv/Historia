@@ -7,7 +7,7 @@ import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
 import soot.jimple.infoflow.entryPointCreators.SimulatedCodeElementTag
 import soot.jimple.{Constant, IntConstant, InvokeExpr, NullConstant, ParameterRef, StringConstant, ThisRef}
 import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceFieldRef, AbstractInstanceInvokeExpr, AbstractInvokeExpr, AbstractNewExpr, AbstractStaticInvokeExpr, InvokeExprBox, JAssignStmt, JIdentityStmt, JInstanceFieldRef, JInvokeStmt, JNewExpr, JReturnStmt, JReturnVoidStmt, JSpecialInvokeExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
-import soot.{Body, Hierarchy, Scene, SootClass, SootMethod, Type, Value, VoidType}
+import soot.{Body, Hierarchy, RefType, Scene, SootClass, SootMethod, Type, Value, VoidType}
 
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
@@ -369,6 +369,9 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
 case class JimpleMethodLoc(method: SootMethod) extends MethodLoc {
   def string(clazz: SootClass):String = JimpleFlowdroidWrapper.stringNameOfClass(clazz)
   def string(t:Type) :String = t match {
+    case t:RefType =>
+      val str = t.toString
+      str
     case t =>
       println(t)
       ???
@@ -385,8 +388,24 @@ case class JimpleMethodLoc(method: SootMethod) extends MethodLoc {
     classType::
     method.getParameterTypes.asScala.map({
     case t =>
+      val str = t.toString
+      println(str)
       ???
   }).toList
+
+  /**
+   * None for reciever if static
+   * @return list of args, [reciever, arg1,arg2 ...]
+   */
+  override def getArgs: List[Option[LocalWrapper]] = {
+    val clazz = string(method.getDeclaringClass)
+    val params =
+      (0 until method.getParameterCount).map(ind =>
+        Some(LocalWrapper("@parameter" + s"$ind", string(method.getParameterType(ind)))))
+    val out = (if (method.isStatic) None else Some(LocalWrapper("@this",clazz)) ):: params.toList
+    //TODO: this method is probably totally wrong, figure out arg names and how to convert type to string
+    out
+  }
 }
 case class JimpleLineLoc(cmd: soot.Unit, method: SootMethod) extends LineLoc{
   override def toString: String = "line: " + cmd.getJavaSourceStartLineNumber() + " " + cmd.toString()

@@ -34,7 +34,7 @@ case class AbsEq(lsVar : String, pureVar: PureExpr) extends AbstractTrace{
 }
 
 case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdge, PureExpr],
-                 pureFormula: Set[PureConstraint], traceAbstraction: Set[TraceAbstractionArrow]) {
+                 pureFormula: Set[PureConstraint], traceAbstraction: Set[TraceAbstractionArrow], nextAddr:Int = 0) {
   override def toString:String = {
     val stackString = callStack.headOption match{
       case Some(sf) =>
@@ -57,7 +57,7 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
 
   // helper functions to find pure variable
   private def expressionContains(expr: PureExpr, pureVar: PureVar):Boolean = expr match {
-    case p2@PureVar() => pureVar == p2
+    case p2@PureVar(_) => pureVar == p2
     case _ => false
   }
   private def callStackContains(p :PureVar):Boolean = {
@@ -111,14 +111,15 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
       val cshead = callStack.headOption.getOrElse(???) //TODO: add new stack frame if empty?
       val cstail = if (callStack.isEmpty) Nil else callStack.tail
       cshead.locals.get(StackVar(name)) match {
-        case Some(v@PureVar()) => (v, this)
+        case Some(v@PureVar(_)) => (v, this)
         case None =>
-          val newident = PureVar()
+          val newident = PureVar(nextAddr)
           (newident, State(
             callStack = cshead.copy(locals = cshead.locals + (StackVar(name) -> newident)) :: cstail,
             heapConstraints,
             pureFormula + PureConstraint(newident, TypeComp, SubclassOf(localType)),
-            traceAbstraction // TODO: reg purevar
+            traceAbstraction,
+            nextAddr + 1
           ))
       }
     case _ =>
@@ -244,8 +245,8 @@ case class ClassType(typ:String) extends TypeConstraint {
 }
 
 // pure var is a symbolic var (e.g. this^ from the paper)
-sealed case class PureVar() extends PureExpr with Val {
-  val id : Int = State.getId()
+sealed case class PureVar(id:Int) extends PureExpr with Val {
+//  val id : Int = State.getId()
   override def getVars(s : Set[PureVar]) : Set[PureVar] = s + this
 
   override def substitute(toSub : PureExpr, subFor : PureVar) : PureExpr = if (subFor == this) toSub else this

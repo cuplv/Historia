@@ -6,6 +6,7 @@ import edu.colorado.plv.bounder.symbolicexecutor.SymbolicExecutorConfig
 object Qry {
   private var qryIdCounter = 0
   private def getFreshQryId = { qryIdCounter += 1; qryIdCounter }
+  @deprecated
   def make[M,C](config: SymbolicExecutorConfig[M,C], loc:AppLoc, locals : Map[StackVar, PureVar], pureFormula: Set[PureConstraint]):Qry = {
     // Note: no return location for arbitrary query
 
@@ -38,13 +39,34 @@ object Qry {
     val derefLoc: AppLoc = derefLocs.iterator.next
     // Get name of variable that should not be null
     val varname = w.cmdAfterLocation(derefLoc) match {
-      case AssignCmd(_, VirtualInvoke(LocalWrapper(name,_),_,_,_), _) => name
+      case AssignCmd(_, VirtualInvoke(localWrapper,_,_,_), _) => localWrapper
       case _ => ???
     }
 
-    val pureVar = PureVar()
-    Qry.make(config, derefLoc, Map((StackVar(varname),pureVar)),
-      Set(PureConstraint(pureVar, Equals, NullVal)))
+//    val pureVar = PureVar()
+//    Qry.make(config, derefLoc, Map((StackVar(varname),pureVar)),
+//      Set(PureConstraint(pureVar, Equals, NullVal)))
+    val acr = config.c.getResolver
+    val cbexit = acr.resolveCallbackEntry(derefLoc.method) match{
+      case Some(CallbackMethodInvoke(clazz, name, loc)) =>
+        CallbackMethodReturn(clazz,name, loc, None) //get an arbitrary return location
+      case None => {
+
+        InternalMethodReturn(derefLoc.method.classType, derefLoc.method.simpleName, derefLoc.method)
+      }
+      case _ =>
+        throw new IllegalArgumentException
+    }
+    val queryStack = List(CallStackFrame(cbexit, None,Map()))
+    val state0 = State.topState.copy(callStack = queryStack)
+
+
+    val (pureVar,state1) = state0.getOrDefine(varname)
+//    val locals = Map((StackVar(varname),pureVar)
+
+    //    val queryStack = Nil
+//    SomeQry(State(queryStack,Map(), pureFormula, Set()),loc)
+    SomeQry(state1.copy(pureFormula = Set(PureConstraint(pureVar, Equals, NullVal))), derefLoc)
   }
 
 }
