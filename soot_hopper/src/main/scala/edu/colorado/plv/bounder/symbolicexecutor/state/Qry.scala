@@ -25,6 +25,28 @@ object Qry {
 //    val queryStack = Nil
     SomeQry(State(queryStack,Map(), pureFormula, Set()),loc)
   }
+  def makeReach[M,C](config: SymbolicExecutorConfig[M,C],
+                     w:IRWrapper[M,C],
+                     className:String,
+                     methodName:String, line:Int):Qry = {
+    val locs = w.findLineInMethod(className, methodName,line)
+    assert(locs.size == 1)
+    val targetLoc = locs.head
+    val acr = config.c.getResolver
+    val cbexit = acr.resolveCallbackEntry(targetLoc.method) match{
+      case Some(CallbackMethodInvoke(clazz, name, loc)) =>
+        CallbackMethodReturn(clazz,name, loc, None) //get an arbitrary return location
+      case None => {
+        InternalMethodReturn(targetLoc.method.classType, targetLoc.method.simpleName, targetLoc.method)
+      }
+      case _ =>
+        throw new IllegalArgumentException
+    }
+    val queryStack = List(CallStackFrame(cbexit, None,Map()))
+    val state0 = State.topState.copy(callStack = queryStack)
+
+    SomeQry(state0, targetLoc)
+  }
   def makeReceiverNonNull[M,C](config: SymbolicExecutorConfig[M,C],
                                w:IRWrapper[M,C],
                                className:String,

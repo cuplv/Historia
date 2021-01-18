@@ -60,7 +60,7 @@ class SootUtilsTest extends org.scalatest.FunSuite {
     }
   }
 
-  test("iterate transitions in real apk"){
+  test("iterate transitions in real apk onPause"){
 
     val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath()
     assert(test_interproc_1 != null)
@@ -90,5 +90,29 @@ class SootUtilsTest extends org.scalatest.FunSuite {
       case _ => false
     },20)
     assert(retPause.isDefined)
+  }
+  test("iterate to parameter assignments onCreate"){
+    val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath()
+    assert(test_interproc_1 != null)
+    val w = new JimpleFlowdroidWrapper(test_interproc_1)
+    val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
+    val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
+    val testSpec = LSSpec(NI(TestSignatures.Activity_onResume_entry, TestSignatures.Activity_onPause_exit),
+      TestSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
+    val transfer = new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set(testSpec)))
+    val config: SymbolicExecutorConfig[SootMethod, soot.Unit] = SymbolicExecutorConfig(
+      stepLimit = Some(50), w,resolver,transfer, printProgress = true, z3Timeout = Some(30))
+    val query = Qry.makeReach(config, w,
+      "com.example.test_interproc_2.MainActivity",
+      "void onCreate(android.os.Bundle)",16)
+    val l = query.loc
+    assert(l.isInstanceOf[AppLoc])
+
+    val entryloc = iterPredUntil(Set(l), config, {
+      case CallbackMethodInvoke(_,_,_) => true
+      case l => false
+    }, 12)
+    assert(entryloc.isDefined)
+
   }
 }
