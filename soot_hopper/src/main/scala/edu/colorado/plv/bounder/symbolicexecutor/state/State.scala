@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.solver.StateSolver
-import edu.colorado.plv.bounder.ir.{LVal, LocalWrapper, RVal}
+import edu.colorado.plv.bounder.ir.{IntConst, LVal, LocalWrapper, RVal, StringConst}
 import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSPred}
 
 
@@ -101,6 +101,10 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
         case CallStackFrame(_,_,locals)::_ => locals.get(StackVar(name))
         case Nil => None
       }
+    case IntConst(v) =>
+      Some(IntVal(v))
+    case StringConst(v) =>
+      Some(StringVal(v))
     case l =>
       println(l)
       ???
@@ -223,7 +227,7 @@ sealed abstract class PureExpr {
 
 
 // primitive values
-sealed abstract class PureVal(val v : Any) extends PureExpr with Val {
+sealed abstract class PureVal(v:Any) extends PureExpr with Val {
   override def substitute(toSub : PureExpr, subFor : PureVar) : PureVal = this
 
   def >(p : PureVal) : Boolean = sys.error("GT for arbitrary PureVal")
@@ -243,6 +247,10 @@ sealed abstract class PureVal(val v : Any) extends PureExpr with Val {
 case object NullVal extends PureVal{
   override def toString:String = "NULL"
 }
+case class IntVal(v : Int) extends PureVal(v)
+case class BoolVal(v : Boolean) extends PureVal(v)
+case class StringVal(v : String) extends PureVal(v)
+case object TopVal extends PureVal(null)
 //TODO: do we need type constraints here?
 sealed trait TypeConstraint extends PureVal
 case class SubclassOf(clazz: String) extends TypeConstraint{

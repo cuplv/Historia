@@ -15,7 +15,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
   }
   def resolvePredicessors(loc:Loc, state: State):Iterable[Loc] = (loc,state.callStack) match{
     case (l@AppLoc(method,_,true),_) => {
-      val cmd: CmdWrapper = wrapper.cmdAfterLocation(l)
+      val cmd: CmdWrapper = wrapper.cmdAtLocation(l)
       cmd match {
         case cmd if wrapper.isMethodEntry(cmd) =>
           val callback = resolver.resolveCallbackEntry(method)
@@ -26,7 +26,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
       }
     }
     case (l@AppLoc(_,_,false),_) => {
-      val cmd: CmdWrapper = wrapper.cmdBeforeLocation(l)
+      val cmd: CmdWrapper = wrapper.cmdAtLocation(l)
       cmd match{
         case InvokeCmd(i, loc) => {
           val upper = upperBoundOfInvoke(i)

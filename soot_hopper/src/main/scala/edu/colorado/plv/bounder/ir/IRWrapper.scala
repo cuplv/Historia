@@ -22,8 +22,7 @@ trait IRWrapper[M,C]{
    * Is this the first command in containing method
    */
   def isMethodEntry(cmdWrapper: CmdWrapper): Boolean
-  def cmdAfterLocation(loc: AppLoc): CmdWrapper
-  def cmdBeforeLocation(loc:AppLoc): CmdWrapper
+  def cmdAtLocation(loc:AppLoc) :CmdWrapper
   def makeInvokeTargets(invoke:AppLoc, upperTypeBound: Option[String]):UnresolvedMethodTarget
   def appCallSites(method : MethodLoc, resolver:AppCodeResolver): Seq[AppLoc]
   def makeMethodRetuns(method: MethodLoc) : List[Loc]
@@ -70,8 +69,6 @@ sealed trait Invoke extends RVal {
   def targetMethod:String
   def params:List[RVal]
   def targetOptional: Option[LocalWrapper]
-  def receiverType:String =
-    ???
   def paramTypes:List[String] =
     ???
 }

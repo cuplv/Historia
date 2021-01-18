@@ -54,13 +54,13 @@ object Qry {
     val locs = w.findLineInMethod(className, methodName,line)
 
     val derefLocs: Iterable[AppLoc] = locs.filter(pred = a => {
-      w.cmdAfterLocation(a).isInstanceOf[AssignCmd]
+      w.cmdAtLocation(a).isInstanceOf[AssignCmd]
     })
     assert(derefLocs.size == 1)
     // Get location of query
     val derefLoc: AppLoc = derefLocs.iterator.next
     // Get name of variable that should not be null
-    val varname = w.cmdAfterLocation(derefLoc) match {
+    val varname = w.cmdAtLocation(derefLoc) match {
       case AssignCmd(_, VirtualInvoke(localWrapper,_,_,_), _) => localWrapper
       case _ => ???
     }

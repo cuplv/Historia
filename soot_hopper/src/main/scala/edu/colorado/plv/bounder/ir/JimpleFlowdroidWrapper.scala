@@ -127,21 +127,11 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
         throw new IllegalStateException("command after pre location doesn't exist")
     }
 
-  override def cmdAfterLocation(loc: AppLoc): CmdWrapper =
-    loc match{
-      case AppLoc(_, JimpleLineLoc(cmd,method),true) =>{
-        makeCmd(cmd,method,Some(loc))
-      }
-      case _ =>
-        throw new IllegalStateException("command after post location doesn't exist")
-    }
-
-  override def cmdBeforeLocation(loc: AppLoc): CmdWrapper = loc match{
-    case AppLoc(_, JimpleLineLoc(cmd, method), false) =>
-      makeCmd(cmd,method,Some(loc))
-    case _ =>
-      ???
+  override def cmdAtLocation(loc: AppLoc):CmdWrapper = loc match {
+    case AppLoc(_, JimpleLineLoc(cmd,method),_) => makeCmd(cmd,method,Some(loc))
+    case loc => throw new IllegalStateException(s"No command associated with location: ${loc}")
   }
+
   protected def makeRVal(box:Value):RVal = box match{
     case a: AbstractInstanceInvokeExpr =>{
       val target = makeVal(a.getBase) match{

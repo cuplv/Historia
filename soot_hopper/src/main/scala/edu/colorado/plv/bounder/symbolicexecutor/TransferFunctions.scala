@@ -15,21 +15,35 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
    * @return set of states that may reach the target state by stepping from source to target
    */
   def transfer(pre: State, target: Loc, source: Loc): Set[State] = (source, target, pre) match {
-    case (source@AppLoc(_, line, false), cmret@CallinMethodReturn(_, _), preState) =>
+    case (source@AppLoc(_, _, false), cmret@CallinMethodReturn(_, _), preState) =>
       // traverse back over the retun of a callin
       // "Some(source.copy(isPre = true))" places the entry to the callin as the location of call
       val (pkg, name) = msgCmdToMsg(cmret)
-      val invars: List[Option[LocalWrapper]] = ??? //None::line.getArgs
+      val invars: List[Option[RVal]] = inVarsForCall(source)
       val frame = CallStackFrame(target, Some(source.copy(isPre = true)), Map())
-      Set(preState.copy(callStack=frame::preState.callStack))
+      // add all args except assignment to state
+      val state0 = defineVars(preState, invars.tail)
+      val state1 = traceAllPredTransfer(CIExit, (pkg,name),invars,state0)
+      val states2 = newSpecInstanceTransfer(CIExit,(pkg,name), invars, cmret, state1)
+
+      // clear assigned var from stack if exists
+      val states3 = invars.head.map{
+        case localWrapper: LocalWrapper => states2.clearLVal(localWrapper)
+        case _ => states2
+      }.getOrElse(states2)
+      Set(states3.copy(callStack=frame::preState.callStack))
     case (CallinMethodReturn(_, _), CallinMethodInvoke(_, _), state) => Set(state)
-    case (CallinMethodInvoke(_, _), loc@AppLoc(_, _, true), s@State(h :: t, _, _, _,_)) => {
-      //TODO: parameter mapping
-      Set(s.copy(callStack = t))
+    case (cminv@CallinMethodInvoke(_, _), ciInv@AppLoc(_, _, true), s@State(_ :: t, _, _, _,_)) => {
+      val (pkg,name) = msgCmdToMsg(cminv)
+      val invars = inVarsForCall(ciInv)
+      val state0 = defineVars(s, invars.tail)
+      val state1 = traceAllPredTransfer(CIExit, (pkg,name),invars,state0)
+      val states2 = newSpecInstanceTransfer(CIExit,(pkg,name), invars, ciInv, state1)
+      Set(states2.copy(callStack = t))
     }
     case (AppLoc(_, _, true), AppLoc(_, _, false), pre) => Set(pre)
     case (appLoc@AppLoc(c1, m1, false), AppLoc(c2, m2, true), prestate) if c1 == c2 && m1 == m2 =>
-      cmdTransfer(w.cmdBeforeLocation(appLoc), prestate)
+      cmdTransfer(w.cmdAtLocation(appLoc), prestate)
     case (AppLoc(containingMethod, m, true), cmInv@CallbackMethodInvoke(fc1, fn1, l1), pre) => {
       // If call doesn't match return on stack, return bottom
       // Target loc of CallbackMethodInvoke means just before callback is invoked
@@ -63,7 +77,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       // TODO: case split on equality between args and params of trace abstraction? ------
       // Control flow resolver is responsible for the
       val appLoc = AppLoc(targetLoc.loc, targetLoc.line.get,false)
-      val rvar = w.cmdBeforeLocation(appLoc) match{
+      val rvar = w.cmdAtLocation(appLoc) match{
         case ReturnCmd(v,_) =>v
         case c => throw new IllegalStateException(s"return from non return command $c ")
       }
@@ -83,10 +97,31 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       ???
   }
 
-  private def defineVars(pre: State, invars: List[Option[LocalWrapper]]) = {
+  private def inVarsForCall(i:Invoke):List[Option[RVal]] = i match{
+    case i@VirtualInvoke(tgt, _, _, _) =>
+      Some(tgt) :: i.params.map(Some(_))
+    case i@SpecialInvoke(tgt, _, _, _) =>
+      Some(tgt) :: i.params.map(Some(_))
+    case i@StaticInvoke(_, _, _) =>
+      None :: i.params.map(Some(_))
+  }
+  private def inVarsForCall(source: AppLoc):List[Option[RVal]] = {
+    w.cmdAtLocation(source) match {
+      case AssignCmd(local : LocalWrapper, i:Invoke, _) =>
+        Some(local) :: inVarsForCall(i)
+      case InvokeCmd(i: Invoke, _) =>
+        None :: inVarsForCall(i)
+      case v =>
+        println(v) //Note: jimple should restrict so that assign only occurs to locals from invoke
+        ???
+    }
+  }
+
+  private def defineVars(pre: State, invars: List[Option[RVal]]) = {
     invars.foldLeft(pre) {
-      case (cstate, Some(invar)) => cstate.getOrDefine(invar)._2
-      case (cstate, None) => cstate
+      case (cstate, Some(invar : LocalWrapper)) =>
+        cstate.getOrDefine(invar)._2
+      case (cstate, _) => cstate
     }
   }
 
@@ -98,7 +133,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
    * @return a new trace abstraction for each possible rule
    */
   def newSpecInstanceTransfer(mt: MessageType,
-                              sig:(String,String), allVar:List[Option[LocalWrapper]],
+                              sig:(String,String), allVar:List[Option[RVal]],
                               loc: Loc, postState: State): State = {
     //TODO: last element is list of varnames, should probably use that
     val specOpt = specSpace.specsBySig(mt,sig._1,sig._2)
@@ -109,7 +144,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       case None => return postState
     }
 
-    val parameterPairing: Seq[(String, Option[LocalWrapper])] = (target.lsVars zip allVar)
+    val parameterPairing: Seq[(String, Option[RVal])] = (target.lsVars zip allVar)
 
     // Match each lsvar to absvar if both exist
     val formula = parameterPairing.foldLeft(AbsFormula(pred):AbstractTrace) {
@@ -171,7 +206,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
    * @return
    */
   def traceAllPredTransfer(mt: MessageType,
-                           sig:(String,String), alvar:List[Option[LocalWrapper]],
+                           sig:(String,String), alvar:List[Option[RVal]],
                            postState: State):State = {
     // values we want to track should already be added to the state
     val allVal = alvar.map(_.flatMap(postState.get(_)))

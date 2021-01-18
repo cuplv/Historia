@@ -113,7 +113,7 @@ class SootUtilsTest extends org.scalatest.FunSuite {
       case l@AppLoc(a,b,false) =>
         println(a)
         println(b)
-        val cmd = w.cmdBeforeLocation(l)
+        val cmd = w.cmdAtLocation(l)
         println(cmd)
         false
       case l => false
