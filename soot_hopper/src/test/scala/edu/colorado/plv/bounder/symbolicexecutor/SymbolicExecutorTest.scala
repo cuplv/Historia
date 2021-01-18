@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, JimpleFlowdroidWrapper, JimpleMethodLoc, LineLoc, Loc, LocalWrapper, VirtualInvoke}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, LSSpec, NI}
-import edu.colorado.plv.bounder.lifestate.{SpecSpace, TestSignatures}
+import edu.colorado.plv.bounder.lifestate.{SpecSpace, SpecSignatures}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, PrettyPrinting, PureVar, Qry, StackVar}
 import soot.SootMethod
 
@@ -30,6 +30,7 @@ class SymbolicExecutorTest extends org.scalatest.FunSuite {
   }
 
   test("Symbolic Executor should prove an inter-callback deref"){
+    //TODO: seems to prove too quickly?
     println("======= Interproc ======")
     val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath()
     assert(test_interproc_1 != null)
@@ -38,13 +39,14 @@ class SymbolicExecutorTest extends org.scalatest.FunSuite {
     val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
 
 
-    val testSpec0 = LSSpec(TestSignatures.Activity_init_exit, TestSignatures.Activity_onResume_entry)
-    val resumePause = NI(TestSignatures.Activity_onResume_entry, TestSignatures.Activity_onPause_exit)
+    val testSpec0 = LSSpec(NI(SpecSignatures.Activity_init_exit, SpecSignatures.Activity_onPause_exit),
+      SpecSignatures.Activity_onResume_entry)
+    val resumePause = NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit)
     val testSpec1 = LSSpec(resumePause,
-      TestSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
+      SpecSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set(testSpec1,testSpec0)))
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(50), w,resolver,transfer, printProgress = true, z3Timeout = Some(30))
+      stepLimit = Some(30), w,resolver,transfer, printProgress = true, z3Timeout = Some(30))
     val query = Qry.makeReceiverNonNull(config, w,
       "com.example.test_interproc_2.MainActivity",
       "void onPause()",27)

@@ -7,9 +7,6 @@ import edu.colorado.plv.bounder.symbolicexecutor.state._
 
 class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
 
-  def cbInvTransfer(pre:State, pkg:String, name:String, invars:List[Option[LocalWrapper]]):Set[State] = {
-    ???
-  }
   /**
    *
    * @param pre state before current location

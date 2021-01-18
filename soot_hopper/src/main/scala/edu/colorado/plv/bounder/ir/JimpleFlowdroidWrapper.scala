@@ -63,8 +63,11 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
 
 
 
+  def getClassByName(className:String):SootClass = {
+    Scene.v().getSootClass(className)
+  }
   override def findMethodLoc(className: String, methodName: String):Option[JimpleMethodLoc] = {
-    val clazzFound = Scene.v().getSootClass(className)
+    val clazzFound = getClassByName(className)
     val clazz = if(clazzFound.isPhantom){None} else {Some(clazzFound)}
     val method: Option[SootMethod] = clazz.flatMap(a => try{
       Some(a.getMethod(methodName))
@@ -214,7 +217,7 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
     }).getOrElse(List())
   }
 
-  override def makeInvokeTargets(appLoc: AppLoc): UnresolvedMethodTarget = {
+  override def makeInvokeTargets(appLoc: AppLoc, upperTypeBound: Option[String]): UnresolvedMethodTarget = {
     val mref = appLoc.line match {
       case JimpleLineLoc(cmd :JInvokeStmt, _) => cmd.getInvokeExpr.getMethodRef
       case JimpleLineLoc(cmd :JAssignStmt, _) if cmd.getRightOp.isInstanceOf[JVirtualInvokeExpr] =>
@@ -226,30 +229,21 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
     val declClass = mref.getDeclaringClass
     val clazzName = declClass.getName
     val name = mref.getSubSignature
-    //TODO: remove call graph code at some point, disabled for now
-    // We don't use call graph since it depends on the framework implementation
-//      val cg = Scene.v().getCallGraph
-//      //var pt = Scene.v().getPointsToAnalysis
-//
-//      val edges = cg.edgesOutOf(cmd)
-//
-//      val locs: Set[MethodLoc] = edges.asScala.map(a => {
-//        val tgt = a.getTgt.method()
-//        val clazz = tgt.getDeclaringClass.getName
-//        val method = tgt.getName
-//        JimpleMethodLoc(tgt)
-//      }).toSet
-//      UnresolvedMethodTarget(clazzName, name.toString,locs)
-      // Less precise get possible targets by type system
-      val hierarchy: Hierarchy = Scene.v().getActiveHierarchy
-      val out = mutable.Set[JimpleMethodLoc]()
-      val subClasses = hierarchy.getSuperclassesOfIncluding(declClass)
-      subClasses.forEach{ c =>
-        if(c.declaresMethod(name)){
-          out.add( JimpleMethodLoc(c.getMethod(name)))
+
+    val hierarchy: Hierarchy = Scene.v().getActiveHierarchy
+    val out = mutable.Set[JimpleMethodLoc]()
+    val subClasses = hierarchy.getSuperclassesOfIncluding(declClass)
+    val boundClass = upperTypeBound.map(getClassByName).getOrElse(getClassByName("java.lang.Object"))
+    var found:Boolean = false
+    subClasses.forEach{ c =>
+      if(!found && c.declaresMethod(name)){
+        out.add( JimpleMethodLoc(c.getMethod(name)))
+        if(hierarchy.isClassSuperclassOf(c,boundClass)){
+          found = true
         }
       }
-      UnresolvedMethodTarget(clazzName, name.toString,out.toSet)
+    }
+    UnresolvedMethodTarget(clazzName, name.toString,out.toSet)
   }
 
   def canAlias(type1: String, type2: String): Boolean = {

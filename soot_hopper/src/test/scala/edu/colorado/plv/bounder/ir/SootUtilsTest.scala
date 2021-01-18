@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.ir
 
 import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NI}
-import edu.colorado.plv.bounder.lifestate.{SpecSpace, TestSignatures}
+import edu.colorado.plv.bounder.lifestate.{SpecSpace, SpecSignatures}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{Qry, State}
 import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, SymbolicExecutorConfig, TransferFunctions}
 import soot.SootMethod
@@ -67,8 +67,8 @@ class SootUtilsTest extends org.scalatest.FunSuite {
     val w = new JimpleFlowdroidWrapper(test_interproc_1)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
     val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
-    val testSpec = LSSpec(NI(TestSignatures.Activity_onResume_entry, TestSignatures.Activity_onPause_exit),
-      TestSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
+    val testSpec = LSSpec(NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
+      SpecSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set(testSpec)))
     val config: SymbolicExecutorConfig[SootMethod, soot.Unit] = SymbolicExecutorConfig(
       stepLimit = Some(50), w,resolver,transfer, printProgress = true, z3Timeout = Some(30))
@@ -97,8 +97,8 @@ class SootUtilsTest extends org.scalatest.FunSuite {
     val w = new JimpleFlowdroidWrapper(test_interproc_1)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
     val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
-    val testSpec = LSSpec(NI(TestSignatures.Activity_onResume_entry, TestSignatures.Activity_onPause_exit),
-      TestSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
+    val testSpec = LSSpec(NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
+      SpecSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set(testSpec)))
     val config: SymbolicExecutorConfig[SootMethod, soot.Unit] = SymbolicExecutorConfig(
       stepLimit = Some(50), w,resolver,transfer, printProgress = true, z3Timeout = Some(30))

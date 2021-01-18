@@ -8,6 +8,11 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, State}
  */
 class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver) {
   def getResolver = resolver
+  def upperBoundOfInvoke(i:Invoke):Option[String] = i match{
+    case SpecialInvoke(LocalWrapper(_,baseType),_,_,_) => Some(baseType)
+    case StaticInvoke(targetClass, _,_) => Some(targetClass)
+    case VirtualInvoke(LocalWrapper(_,baseType),_,_,_) => Some(baseType)
+  }
   def resolvePredicessors(loc:Loc, state: State):Iterable[Loc] = (loc,state.callStack) match{
     case (l@AppLoc(method,_,true),_) => {
       val cmd: CmdWrapper = wrapper.cmdAfterLocation(l)
@@ -23,13 +28,15 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
     case (l@AppLoc(_,_,false),_) => {
       val cmd: CmdWrapper = wrapper.cmdBeforeLocation(l)
       cmd match{
-        case i:InvokeCmd => {
-          val unresolvedTargets = wrapper.makeInvokeTargets(i.getLoc)
+        case InvokeCmd(i, loc) => {
+          val upper = upperBoundOfInvoke(i)
+          val unresolvedTargets = wrapper.makeInvokeTargets(loc,upper)
           val resolved = resolver.resolveCallLocation(unresolvedTargets)
           resolved
         }
         case AssignCmd(tgt, i:Invoke,loc) => {
-          val unresolvedTargets = wrapper.makeInvokeTargets(loc)
+          val upper = upperBoundOfInvoke(i)
+          val unresolvedTargets = wrapper.makeInvokeTargets(loc,upper)
           val resolved = resolver.resolveCallLocation(unresolvedTargets)
           resolved
         }

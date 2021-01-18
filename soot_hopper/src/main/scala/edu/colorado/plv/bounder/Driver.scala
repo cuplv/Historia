@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder
 
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NI}
-import edu.colorado.plv.bounder.lifestate.{SpecSpace, TestSignatures}
+import edu.colorado.plv.bounder.lifestate.{SpecSpace, SpecSignatures}
 import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{PathNode, PrettyPrinting, Qry}
 import scopt.OParser
@@ -47,8 +47,8 @@ object Driver {
     val w = new JimpleFlowdroidWrapper(apkPath)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
     val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
-    val testSpec = LSSpec(NI(TestSignatures.Activity_onResume_entry, TestSignatures.Activity_onPause_exit),
-      TestSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
+    val testSpec = LSSpec(NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
+      SpecSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set(testSpec)))
     val config = SymbolicExecutorConfig(
       stepLimit = Some(30), w,resolver,transfer)
