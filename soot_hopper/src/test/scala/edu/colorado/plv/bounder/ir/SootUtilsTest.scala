@@ -110,6 +110,12 @@ class SootUtilsTest extends org.scalatest.FunSuite {
 
     val entryloc = iterPredUntil(Set(l), config, {
       case CallbackMethodInvoke(_,_,_) => true
+      case l@AppLoc(a,b,false) =>
+        println(a)
+        println(b)
+        val cmd = w.cmdBeforeLocation(l)
+        println(cmd)
+        false
       case l => false
     }, 12)
     assert(entryloc.isDefined)

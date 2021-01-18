@@ -35,12 +35,19 @@ class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] 
 
   override def getClassHierarchy: Map[String, Set[String]] = ???
 }
-case class TestIRMethodLoc(clazz:String, name:String) extends MethodLoc {
+
+/**
+ *
+ * @param clazz
+ * @param name
+ * @param args use "_" for receiver on static method
+ */
+case class TestIRMethodLoc(clazz:String, name:String, args:List[LocalWrapper]) extends MethodLoc {
   override def simpleName: String = name
 
   override def classType: String = clazz
 
-  override def argTypes: List[String] = ???
+  override def argTypes: List[String] = args.map(_.localType)
 
   /**
    * None for return if void
@@ -48,7 +55,10 @@ case class TestIRMethodLoc(clazz:String, name:String) extends MethodLoc {
    *
    * @return list of args, [return,reciever, arg1,arg2 ...]
    */
-  override def getArgs: List[Option[LocalWrapper]] = ???
+  override def getArgs: List[Option[LocalWrapper]] = args.map{
+    case LocalWrapper("_", _) => None
+    case local@LocalWrapper(_, _) => Some(local)
+  }
 }
 case class TestIRLineLoc(line:Int) extends LineLoc {
 

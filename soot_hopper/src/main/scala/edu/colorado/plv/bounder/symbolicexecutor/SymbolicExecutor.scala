@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
 import com.microsoft.z3.Context
-import edu.colorado.plv.bounder.ir.{IRWrapper, Loc}
+import edu.colorado.plv.bounder.ir.{CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, IRWrapper, Loc}
 import edu.colorado.plv.bounder.solver.{PersistantConstraints, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, Qry, SomeQry, WitnessedQry}
 
@@ -43,6 +43,16 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
         ???
     }
   }
+
+  //TODO: add loop heads?
+  private def subsumableLocation(loc:Loc) :Boolean = loc match{
+    case _ : CallbackMethodInvoke => true
+    case _ : CallbackMethodReturn => true
+    case _ : CallinMethodInvoke => true
+    case _ : CallinMethodReturn => true
+    case _ => false
+  }
+
   @tailrec
   final def executeBackwardLimitSubsumeAll(qrySet: Set[PathNode], limit:Int,
                                            refutedSubsumedOrWitnessed: Set[PathNode] = Set(),
@@ -60,14 +70,18 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       refutedSubsumedOrWitnessed ++ qrySet
     }else {
       // Split queries into live queries(true) and refuted/witnessed(false)
-      val queriesByType = qrySet.groupBy(_.qry match{
+      val queriesByType: Map[Boolean, Set[PathNode]] = qrySet.groupBy(_.qry match{
         case _:SomeQry => true
         case _:BottomQry => false
         case _:WitnessedQry => false
       })
 
+      val liveQueries: Set[PathNode] = queriesByType.getOrElse(true, Set())
       // add new visited to old visited
-      val newVisited: Map[Loc, Set[PathNode]] = queriesByType.getOrElse(true,Set()).groupBy(_.qry.loc)
+      // filter out locations that we don't want to consider for subsumption
+      val newVisited: Map[Loc, Set[PathNode]] = liveQueries
+        .filter(pathNode => subsumableLocation(pathNode.qry.loc))
+        .groupBy(_.qry.loc)
       val nextVisited = (visited ++ newVisited).map {
         case (k, v) => k -> v.union(visited.getOrElse(k, Set()))
       }
@@ -77,7 +91,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
         queriesByType.getOrElse(false,Set())
 
       // execute step on live queries
-      val nextQry = queriesByType.getOrElse(true,Set()).flatMap {
+      val nextQry = liveQueries.flatMap {
         case p@PathNode(qry: SomeQry, _, None) => executeStep(qry).map((p,_))
       }
 

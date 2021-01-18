@@ -2,10 +2,9 @@ package edu.colorado.plv.bounder.ir
 
 import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.symbolicexecutor.AppCodeResolver
-import edu.colorado.plv.bounder.symbolicexecutor.state.TypeConstraint
 import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
 import soot.jimple.infoflow.entryPointCreators.SimulatedCodeElementTag
-import soot.jimple.{Constant, IntConstant, InvokeExpr, NullConstant, ParameterRef, StringConstant, ThisRef}
+import soot.jimple.{IntConstant, InvokeExpr, NullConstant, ParameterRef, StringConstant, ThisRef}
 import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceFieldRef, AbstractInstanceInvokeExpr, AbstractInvokeExpr, AbstractNewExpr, AbstractStaticInvokeExpr, InvokeExprBox, JAssignStmt, JIdentityStmt, JInstanceFieldRef, JInvokeStmt, JNewExpr, JReturnStmt, JReturnVoidStmt, JSpecialInvokeExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
 import soot.{Body, Hierarchy, RefType, Scene, SootClass, SootMethod, Type, Value, VoidType}
 

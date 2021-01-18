@@ -27,16 +27,16 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
   //Test transfer function where field is assigned and base may or may not be aliased
   // pre: a^.out -> b1^
   // post: (a^.out -> c^* d^.out -> e^) OR (a^.out -> c^ AND a^=d^ AND c^=d^)
-  val fooMethod = TestIRMethodLoc("","foo")
+  val fooMethod = TestIRMethodLoc("","foo", List(LocalWrapper("@this","Object")))
   val fooMethodReturn = CallbackMethodReturn("", "foo", fooMethod, None)
   test("Transfer may or may not alias") {
     val cmd = (loc:AppLoc) => {
-      val thisLocal = LocalWrapper("this", "Object")
+      val thisLocal = LocalWrapper("@this", "Object")
       AssignCmd(FieldRef(thisLocal, "Object", "Object", "o"), NullConst, loc)
     }
     val basePv = PureVar(State.getId())
     val otherPv = PureVar(State.getId())
-    val post = State(CallStackFrame(fooMethodReturn, None, Map(StackVar("this") -> basePv))::Nil,
+    val post = State(CallStackFrame(fooMethodReturn, None, Map(StackVar("@this") -> basePv))::Nil,
       heapConstraints = Map(FieldPtEdge(otherPv, "o") -> NullVal),
       pureFormula = Set(),
       traceAbstraction = Set()
@@ -67,7 +67,6 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
   }
   test("Transfer assign local local") {
     val cmd= (loc:AppLoc) => AssignCmd(LocalWrapper("bar","Object"),LocalWrapper("baz","String"),loc)
-    val fooMethod = TestIRMethodLoc("","foo")
     val nullPv = PureVar(State.getId())
     val post = State(
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("bar") -> nullPv))::Nil,
@@ -84,7 +83,6 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
   }
   private val iFooA: I = I(CBEnter, Set(("", "foo")), "_" :: "a" :: Nil)
   test("Add matcher and phi abstraction when crossing callback entry") {
-    val fooMethod = TestIRMethodLoc("","foo")
     val preloc = CallbackMethodInvoke("","foo", fooMethod) // Transition to just before foo is invoked
     val postloc = AppLoc(fooMethod,TestIRLineLoc(1), isPre=true)
     val ir = new TestIR(Set(MethodTransition(preloc, postloc)))
@@ -97,12 +95,14 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
     val recPv = PureVar(State.getId())
     val otheri = AbsFormula(I(CBExit, Set(("a","a")), "b"::Nil))
     val post = State(
-      CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("this") -> recPv))::Nil,
+      CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("@this") -> recPv))::Nil,
       heapConstraints = Map(),
       pureFormula = Set(),
       traceAbstraction = Set(AbsArrow(otheri,Nil)))
 
     println(s"post: ${post.toString}")
+    println(s"preloc: ${preloc}")
+    println(s"postloc: ${postloc}")
     val prestate: Set[State] = tr.transfer(post,preloc, postloc)
     println(s"pre: ${prestate.toString}")
     assert(prestate.size == 1)
@@ -114,14 +114,13 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
     assert(stack.isEmpty)
   }
   test("Discharge I(m1^) phi abstraction when post state must generate m1^ for previous transition") {
-    val fooMethod = TestIRMethodLoc("","foo")
     val preloc = CallbackMethodInvoke("","foo", fooMethod) // Transition to just before foo is invoked
     val postloc = AppLoc(fooMethod,TestIRLineLoc(1), isPre=true)
     val ir = new TestIR(Set(MethodTransition(preloc, postloc)))
     val tr = new TransferFunctions(ir, new SpecSpace(Set(LSSpec(iFooA,iFooA.copy(signatures = Set(("bbb","bbb")))))))
     val recPv = PureVar(State.getId())
     val post = State(
-      CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("this") -> recPv))::Nil,
+      CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("@this") -> recPv))::Nil,
       heapConstraints = Map(),
       pureFormula = Set(),
       traceAbstraction = Set(AbsArrow(AbsAnd(AbsFormula(iFooA), AbsEq("a",recPv)), Nil)))

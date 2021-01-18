@@ -1,15 +1,16 @@
 package edu.colorado.plv.bounder.solver
 
 import com.microsoft.z3.{ArithExpr, BoolExpr, Context, EnumSort, Expr, Solver, Status}
-import edu.colorado.plv.bounder.ir.{AppLoc, CBEnter, CIEnter, CallbackMethodInvoke, FwkMethod, TAddr, TMessage}
+import edu.colorado.plv.bounder.ir.{AppLoc, CBEnter, CIEnter, CallbackMethodInvoke, FwkMethod, LocalWrapper, TAddr, TMessage}
 import edu.colorado.plv.bounder.lifestate.LifeState.{I, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbsAnd, AbsArrow, AbsEq, AbsFormula, CallStackFrame, Equals, FieldPtEdge, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, SubclassOf, TraceAbstractionArrow, TypeComp}
 import edu.colorado.plv.bounder.testutils.{TestIRLineLoc, TestIRMethodLoc}
 
 class Z3StateSolverTest extends org.scalatest.FunSuite {
+  val fooMethod = TestIRMethodLoc("","foo", List(LocalWrapper("@this","Object")))
   val dummyLoc = CallbackMethodInvoke(fmwClazz = "",
-    fmwName="void foo()", TestIRMethodLoc("","foo"))
+    fmwName="void foo()", fooMethod)
   val v = PureVar(State.getId())
   val frame = CallStackFrame(dummyLoc, None, Map(StackVar("x") -> v))
   val state = State(Nil,Map(),Set(), Set())
@@ -301,7 +302,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
 
     val p1 = PureVar(State.getId())
     val p2 = PureVar(State.getId())
-    val loc = AppLoc(TestIRMethodLoc("","foo"), TestIRLineLoc(1), isPre = false)
+    val loc = AppLoc(fooMethod, TestIRLineLoc(1), isPre = false)
 
     val state = State(CallStackFrame(loc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Set())
     val state_ = state.copy(callStack = CallStackFrame(loc, None, Map(
@@ -317,7 +318,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
 
     val p1 = PureVar(State.getId())
     val p2 = PureVar(State.getId())
-    val loc = AppLoc(TestIRMethodLoc("","foo"), TestIRLineLoc(1), isPre = false)
+    val loc = AppLoc(fooMethod, TestIRLineLoc(1), isPre = false)
 
     val state = State(CallStackFrame(loc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Set())
     val state2 = state.copy(callStack =
@@ -372,7 +373,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
 
     val p1 = PureVar(State.getId())
     val p2 = PureVar(State.getId())
-    val loc = AppLoc(TestIRMethodLoc("","foo"), TestIRLineLoc(1), isPre = false)
+    val loc = AppLoc(fooMethod, TestIRLineLoc(1), isPre = false)
 
     val state = State(CallStackFrame(loc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Set())
 
