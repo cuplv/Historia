@@ -15,6 +15,6 @@ object SpecSignatures {
   val Activity_onResume_exit = I(CBExit, activityTypeSet.map((_, "void onResume()")), List("_", "a"))
   val Activity_onPause_entry = I(CBEnter, activityTypeSet.map((_, "void onPause()")), List("_", "a"))
   val Activity_onPause_exit = I(CBExit, activityTypeSet.map((_, "void onPause()")), List("_", "a"))
-  val Activity_init_exit = I(CBExit,activityTypeSet.map((_, "void <init>()")), List("_", "a"))
-
+  val Activity_init_exit = I(CBExit,
+    (activityTypeSet + "java.lang.Object").map((_, "void <init>()")), List("_", "a"))
 }
