@@ -12,7 +12,7 @@ object State {
     id
   }
   def topState:State =
-    State(Nil,Map(),Set(),Set())
+    State(Nil,Map(),Set(),Set(),0)
 }
 
 // pureFormula is a conjunction of constraints
@@ -34,7 +34,7 @@ case class AbsEq(lsVar : String, pureVar: PureExpr) extends AbstractTrace{
 }
 
 case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdge, PureExpr],
-                 pureFormula: Set[PureConstraint], traceAbstraction: Set[TraceAbstractionArrow], nextAddr:Int = 0) {
+                 pureFormula: Set[PureConstraint], traceAbstraction: Set[TraceAbstractionArrow], nextAddr:Int) {
   override def toString:String = {
     val stackString = callStack.headOption match{
       case Some(sf) =>
@@ -106,6 +106,18 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
       ???
   }
   // TODO: rename getOrDefineClass
+  def defineAs(l : LVal, pureExpr: PureExpr): State = l match{
+    case LocalWrapper(localName, localType) =>
+      val cshead: CallStackFrame = callStack.headOption.getOrElse(???) //TODO: add new stack frame if empty?
+      val csheadNew = cshead.copy(locals = cshead.locals + (StackVar(localName)->pureExpr))
+      val cstail = if (callStack.isEmpty) Nil else callStack.tail
+      this.copy(callStack = csheadNew::cstail,
+        pureFormula = pureFormula + PureConstraint(pureExpr, TypeComp, SubclassOf(localType)))
+    case v =>
+      println(v)
+      ???
+  }
+
   def getOrDefine(l : LVal): (PureVar,State) = l match{
     case LocalWrapper(name,localType) =>
       val cshead = callStack.headOption.getOrElse(???) //TODO: add new stack frame if empty?
@@ -132,8 +144,9 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
    * @return new state
    */
   def clearLVal(l : LVal): State = (l,callStack) match {
-    case (LocalWrapper(name,localType), cshead::cstail) =>
-      State(cshead.removeStackVar(StackVar(name))::cstail,heapConstraints, pureFormula, traceAbstraction)
+    case (LocalWrapper(name,_), cshead::cstail) =>
+      val newCsHead = cshead.removeStackVar(StackVar(name))
+      this.copy(newCsHead::cstail)
     case _ =>
       ???
   }
@@ -159,8 +172,6 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
   def isNull(pv:PureVar):Boolean = {
     pureFormula.contains(PureConstraint(pv,Equals,NullVal))
   }
-  def newPureVarType(p:PureVar,newType:String): State =
-    ???
 }
 
 sealed trait Val

@@ -39,7 +39,8 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
     val post = State(CallStackFrame(fooMethodReturn, None, Map(StackVar("@this") -> basePv))::Nil,
       heapConstraints = Map(FieldPtEdge(otherPv, "o") -> NullVal),
       pureFormula = Set(),
-      traceAbstraction = Set()
+      traceAbstraction = Set(),
+      0
     )
     val pre = testCmdTransfer(cmd, post, fooMethod)
     println(s"pre: ${pre})")
@@ -56,7 +57,7 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
     val post = State(
       CallStackFrame(fooMethodReturn, None, Map(StackVar("bar") -> nullPv))::Nil,
       heapConstraints = Map(),
-      pureFormula = Set(PureConstraint(nullPv,Equals, NullVal)), Set())
+      pureFormula = Set(PureConstraint(nullPv,Equals, NullVal)), Set(),0)
     val prestate: Set[State] = testCmdTransfer(cmd, post,fooMethod)
     println(s"poststate: $post")
     println(s"prestate: ${prestate}")
@@ -71,7 +72,7 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
     val post = State(
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("bar") -> nullPv))::Nil,
       heapConstraints = Map(),
-      pureFormula = Set(PureConstraint(nullPv,Equals, NullVal)), Set())
+      pureFormula = Set(PureConstraint(nullPv,Equals, NullVal)), Set(),0)
     val prestate: Set[State] = testCmdTransfer(cmd, post,fooMethod)
     println(s"poststate: $post")
     println(s"prestate: ${prestate}")
@@ -98,7 +99,7 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("@this") -> recPv))::Nil,
       heapConstraints = Map(),
       pureFormula = Set(),
-      traceAbstraction = Set(AbsArrow(otheri,Nil)))
+      traceAbstraction = Set(AbsArrow(otheri,Nil)),0)
 
     println(s"post: ${post.toString}")
     println(s"preloc: ${preloc}")
@@ -123,7 +124,7 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("@this") -> recPv))::Nil,
       heapConstraints = Map(),
       pureFormula = Set(),
-      traceAbstraction = Set(AbsArrow(AbsAnd(AbsFormula(iFooA), AbsEq("a",recPv)), Nil)))
+      traceAbstraction = Set(AbsArrow(AbsAnd(AbsFormula(iFooA), AbsEq("a",recPv)), Nil)),0)
     println(s"post: ${post.toString}")
     val prestate: Set[State] = tr.transfer(post,preloc, postloc)
     println(s"pre: ${prestate.toString}")

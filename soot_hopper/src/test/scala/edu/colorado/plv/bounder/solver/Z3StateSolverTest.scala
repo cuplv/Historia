@@ -13,14 +13,14 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     fmwName="void foo()", fooMethod)
   val v = PureVar(State.getId())
   val frame = CallStackFrame(dummyLoc, None, Map(StackVar("x") -> v))
-  val state = State(Nil,Map(),Set(), Set())
+  val state = State.topState
   test("null not null") {
   val statesolver = getStateSolver
 
     val v2 = PureVar(State.getId())
     val constraints = Set(PureConstraint(v2, NotEquals, NullVal), PureConstraint(v2, Equals, NullVal))
     val refutableState = State(List(frame),
-      Map(FieldPtEdge(v,"f") -> v2),constraints,Set())
+      Map(FieldPtEdge(v,"f") -> v2),constraints,Set(),0)
     val simplifyResult = statesolver.simplify(refutableState)
     assert(!simplifyResult.isDefined)
   }
@@ -32,7 +32,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val constraints = Set(PureConstraint(v2, NotEquals, NullVal),
       PureConstraint(v3, Equals, NullVal))
     val refutableState = State(List(frame),
-      Map(FieldPtEdge(v,"f") -> v2),constraints + PureConstraint(v2, Equals, v3),Set())
+      Map(FieldPtEdge(v,"f") -> v2),constraints + PureConstraint(v2, Equals, v3),Set(),0)
     val simplifyResult = statesolver.simplify(refutableState)
     assert(!simplifyResult.isDefined)
   }
@@ -43,13 +43,13 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val v3 = PureVar(State.getId())
     val v4 = PureVar(State.getId())
     val refutableState = State(List(frame),
-      Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),Set(PureConstraint(v, Equals, v2)), Set())
+      Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),Set(PureConstraint(v, Equals, v2)), Set(),0)
     val simplifyResult = statesolver.simplify(refutableState)
     assert(!simplifyResult.isDefined)
 
     // v3 and v4 on the right side of the points to can be aliased
     val unrefutableState = State(List(frame),
-      Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),Set(PureConstraint(v3, Equals, v4)), Set())
+      Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),Set(PureConstraint(v3, Equals, v4)), Set(),0)
     val simplifyResult2 = statesolver.simplify(unrefutableState)
     assert(simplifyResult2.isDefined)
   }
@@ -66,7 +66,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
       PureConstraint(v4, TypeComp, SubclassOf("Foo"))
     )
     val refutableState = State(List(frame),
-      Map(FieldPtEdge(v,"f") -> v3),constraints, Set())
+      Map(FieldPtEdge(v,"f") -> v3),constraints, Set(),0)
     val simplifyResult = statesolver.simplify(refutableState)
     assert(!simplifyResult.isDefined)
 
@@ -77,7 +77,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
       PureConstraint(v4, TypeComp, SubclassOf("java.lang.Object"))
     )
     val state = State(List(frame),
-      Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),constraints2, Set())
+      Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),constraints2, Set(),0)
     val simplifyResult2 = statesolver.simplify(state)
     assert(simplifyResult2.isDefined)
   }
@@ -90,7 +90,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val niBarBaz = NI(i,i2)
     val p1 = PureVar(State.getId())
     val abs1 = AbsArrow(AbsAnd(AbsFormula(niBarBaz), AbsEq("a",p1)), Nil)
-    val state1 = State(Nil, Map(),Set(), Set(abs1))
+    val state1 = State(Nil, Map(),Set(), Set(abs1),0)
     val res1 = statesolver.simplify(state1)
     assert(res1.isDefined)
   }
@@ -102,7 +102,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val i2 = I(CBEnter, Set(("foo", "baz")), "a" :: Nil)
     val niBarBaz = NI(i,i2)
     val abs1 = AbsArrow(AbsFormula(niBarBaz), i::Nil)
-    val state1 = State(Nil, Map(),Set(), Set(abs1))
+    val state1 = State(Nil, Map(),Set(), Set(abs1),0)
     val res1 = statesolver.simplify(state1)
     assert(res1.isDefined)
   }
@@ -126,7 +126,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
       AbsAnd(AbsAnd(AbsFormula(niBarBaz), AbsEq("a",p1)), AbsEq("b",p1)),
       i3::Nil
     )
-    val state1 = State(Nil, Map(),Set(), Set(abs1))
+    val state1 = State(Nil, Map(),Set(), Set(abs1),0)
     println(s"state: ${state1}")
     val res1 = statesolver.simplify(state1, Some(20)) //TODO: remove limit
     assert(!res1.isDefined)
@@ -158,7 +158,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
       AbsAnd(AbsAnd(AbsFormula(niBarBaz), AbsEq("a",p1)), AbsEq("c",p1)),
       i4::Nil
     )
-    val state2 = State(Nil,Map(),Set(), Set(abs2))
+    val state2 = State(Nil,Map(),Set(), Set(abs2),0)
     val res2 = stateSolver.simplify(state2)
     assert(res2.isDefined)
   }
@@ -182,7 +182,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
       c_bar::b_baz::Nil
     )
 //    val abs1 = AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("c",p1), AbsAnd(AbsEq("b",p1), niaa)))
-    val state2 = State(Nil,Map(),Set(), Set(niaa))
+    val state2 = State(Nil,Map(),Set(), Set(niaa),0)
     val res2 = statesolver.simplify(state2, Some(20)) //TODO: remove dbg limit
     assert(res2.isDefined)
   }
@@ -205,7 +205,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
       AbsAnd(AbsFormula(niBarBaz), AbsAnd(AbsAnd(AbsEq("a",p1), AbsEq("c",p1)),AbsEq("b",p1))),
       c_bar::b_baz::Nil
     )
-    val state2 = State(Nil,Map(),Set(), Set(niaa))
+    val state2 = State(Nil,Map(),Set(), Set(niaa),0)
     val res2 = statesolver.simplify(state2, Some(20))
     assert(res2.isEmpty)
   }
@@ -229,7 +229,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
       AbsAnd(AbsFormula(niBarBaz), AbsAnd(AbsEq("a",p1),AbsAnd(AbsEq("c",p1),AbsEq("b",p2)))),
       c_bar::b_baz::Nil)
 //    val abs1 = AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("c",p1), AbsAnd(AbsEq("b",p2), niaa)))
-    val state2 = State(Nil,Map(),Set(), Set(niaa))
+    val state2 = State(Nil,Map(),Set(), Set(niaa),0)
     val res2 = statesolver.simplify(state2)
     assert(res2.isDefined)
   }
@@ -253,7 +253,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
       AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("c",p2), AbsAnd(AbsEq("b",p1),AbsFormula(niBarBaz)))),
       c_bar::b_baz::Nil)
 //    val abs1 = AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("c",p2), AbsAnd(AbsEq("b",p1), niaa)))
-    val state2 = State(Nil,Map(),Set(), Set(niaa))
+    val state2 = State(Nil,Map(),Set(), Set(niaa),0)
     val res2 = statesolver.simplify(state2)
     assert(res2.isEmpty)
   }
@@ -304,7 +304,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val p2 = PureVar(State.getId())
     val loc = AppLoc(fooMethod, TestIRLineLoc(1), isPre = false)
 
-    val state = State(CallStackFrame(loc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Set())
+    val state = State(CallStackFrame(loc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Set(),0)
     val state_ = state.copy(callStack = CallStackFrame(loc, None, Map(
       StackVar("x") -> p1,
       StackVar("y") -> p2
@@ -320,7 +320,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val p2 = PureVar(State.getId())
     val loc = AppLoc(fooMethod, TestIRLineLoc(1), isPre = false)
 
-    val state = State(CallStackFrame(loc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Set())
+    val state = State(CallStackFrame(loc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Set(),0)
     val state2 = state.copy(callStack =
       state.callStack.head.copy(locals=Map(StackVar("x") -> p1, StackVar("y")->p2))::Nil)
     assert(statesolver.canSubsume(state,state))
@@ -375,7 +375,7 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val p2 = PureVar(State.getId())
     val loc = AppLoc(fooMethod, TestIRLineLoc(1), isPre = false)
 
-    val state = State(CallStackFrame(loc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Set())
+    val state = State(CallStackFrame(loc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Set(),0)
 
     val state_ = state.copy(pureFormula = Set(PureConstraint(p1,TypeComp,SubclassOf("Foo")  )))
     val state__ = state.copy(pureFormula = Set(PureConstraint(p1,TypeComp,SubclassOf("java.lang.Object"))))

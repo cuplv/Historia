@@ -15,8 +15,13 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
    * @return set of states that may reach the target state by stepping from source to target
    */
   def transfer(pre: State, target: Loc, source: Loc): Set[State] = (source, target, pre) match {
-    case (source@AppLoc(_, _, false), CallinMethodReturn(fmwClazz, fmwName), State(stack, heap, pure, reg,_)) =>
-      Set(State(CallStackFrame(target, Some(source.copy(isPre = true)), Map()) :: stack, heap, pure, reg))
+    case (source@AppLoc(_, line, false), cmret@CallinMethodReturn(_, _), preState) =>
+      // traverse back over the retun of a callin
+      // "Some(source.copy(isPre = true))" places the entry to the callin as the location of call
+      val (pkg, name) = msgCmdToMsg(cmret)
+      val invars: List[Option[LocalWrapper]] = ??? //None::line.getArgs
+      val frame = CallStackFrame(target, Some(source.copy(isPre = true)), Map())
+      Set(preState.copy(callStack=frame::preState.callStack))
     case (CallinMethodReturn(_, _), CallinMethodInvoke(_, _), state) => Set(state)
     case (CallinMethodInvoke(_, _), loc@AppLoc(_, _, true), s@State(h :: t, _, _, _,_)) => {
       //TODO: parameter mapping
@@ -87,7 +92,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
 
   /**
    * For a back message with a given package and name, instantiate each rule as a new trace abstraction
- *
+   *
    * @param loc
    * @param postState
    * @return a new trace abstraction for each possible rule
@@ -196,9 +201,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       lhsv.map(pexpr =>{
         // remove lhs from abstract state (since it is assigned here)
         val state2 = state.clearLVal(lhs)
-        val (rhsv, state3) = state2.getOrDefine(rhs)
-        state3.copy(pureFormula = state3.pureFormula + PureConstraint(pexpr, Equals, rhsv))
-      }).map(Set(_)).getOrElse(Set(state))
+        val state3 = state2.defineAs(rhs, pexpr)
+        Set(state3)
+      }).getOrElse(Set(state))
     case AssignCmd(lhs:LocalWrapper, FieldRef(base, fieldtype, declType, fieldName), _) =>
       // x = y.f
       state.get(lhs) match{
@@ -207,8 +212,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
           val heapCell = FieldPtEdge(basev, fieldName)
           val state2 = state1.clearLVal(lhs)
           Set(state2.copy(
-            heapConstraints = state1.heapConstraints + (heapCell -> lhsV),
-            pureFormula = state1.pureFormula + PureConstraint(lhsV, TypeComp, SubclassOf(fieldtype))
+            heapConstraints = state2.heapConstraints + (heapCell -> lhsV),
+            pureFormula = state2.pureFormula + PureConstraint(lhsV, TypeComp, SubclassOf(fieldtype))
           ))
         }
         case None => Set(state)
