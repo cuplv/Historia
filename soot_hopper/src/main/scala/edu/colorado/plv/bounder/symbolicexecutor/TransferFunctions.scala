@@ -216,6 +216,18 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     postState.copy(traceAbstraction = newTraceAbs)
   }
 
+  def possibleAliasesOf(local: LocalWrapper, state:State):Set[PureVar] = {
+    val stackVars = state.callStack.headOption.map(_.locals.flatMap{
+      case (_,v:PureVar) if state.pvTypeUpperBound(v).exists(ot => w.canAlias(local.localType, ot)) =>
+        Some(v)
+      case _ => None
+    }).getOrElse(Set()).toSet
+    val traceVars = state.allTraceVar().flatMap{
+      case v if state.pvTypeUpperBound(v).exists(ot => w.canAlias(local.localType, ot)) => Some(v)
+      case _ => None
+    }
+    stackVars.union(traceVars)
+  }
   def cmdTransfer(cmd:CmdWrapper, state:State):Set[State] = cmd match{
     case AssignCmd(lhs@LocalWrapper(_, _), NewCommand(className),_) =>
       // x = new T
@@ -236,8 +248,15 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       lhsv.map(pexpr =>{
         // remove lhs from abstract state (since it is assigned here)
         val state2 = state.clearLVal(lhs)
-        val state3 = state2.defineAs(rhs, pexpr)
-        Set(state3)
+        if (state2.containsLocal(rhs)) {
+          // rhs constrained by refutation state, lhs should be equivalent
+          val state3 = state2.swapPv(pexpr.asInstanceOf[PureVar], state2.get(rhs).get.asInstanceOf[PureVar])
+          Set(state3) // no type constraint added since both existed before hand
+        } else{
+          // rhs unconstrained by refutation state, should now be same as lhs
+          val state3 = state2.defineAs(rhs, pexpr)
+          Set(state3)
+        }
       }).getOrElse(Set(state))
     case AssignCmd(lhs:LocalWrapper, FieldRef(base, fieldtype, declType, fieldName), _) =>
       // x = y.f
@@ -246,43 +265,19 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
           val (basev, state1) = state.getOrDefine(base)
           val heapCell = FieldPtEdge(basev, fieldName)
           val state2 = state1.clearLVal(lhs)
-          Set(state2.copy(
-            heapConstraints = state2.heapConstraints + (heapCell -> lhsV),
-            pureFormula = state2.pureFormula + PureConstraint(lhsV, TypeComp, SubclassOf(fieldtype))
-          ))
+          if (state2.heapConstraints.contains(heapCell))
+            Set(state2.swapPv(lhsV.asInstanceOf[PureVar], state2.heapConstraints(heapCell).asInstanceOf[PureVar]))
+          else {
+            Set(state2.copy(
+              heapConstraints = state2.heapConstraints + (heapCell -> lhsV),
+              pureFormula = state2.pureFormula + PureConstraint(lhsV, TypeComp, SubclassOf(fieldtype))
+            ))
+          }
         }
         case None => Set(state)
       }
-      //TODO: find a better way to structure this pyramid of doom
-//      (state.get(lhs), state.get(base)) match {
-//        case (None,_) => Set(state)
-//        case (Some(lhsv),Some(recv:PureVar)) =>
-//          // Field ref base is in abstract state
-//          val state2 = state.clearLVal(lhs)
-//          state2.heapConstraints.get(FieldPtEdge(recv, fieldName)).map( a=>
-//            Set(state2.copy(pureFormula = state2.pureFormula + PureConstraint(lhsv, Equals, a))))
-//            .getOrElse(Set(state2))
-//        case (Some(lhsv), None) =>
-//          // Field ref base is not in abstract state
-//          val state2 = state.clearLVal(lhs)
-//          val possibleHeapCells: Map[HeapPtEdge, PureExpr] = state2.heapConstraints.filter {
-//            case (FieldPtEdge(pv, heapFieldName), pureExpr) => fieldName == heapFieldName
-//            case _ =>
-//              ???
-//          } + (FieldPtEdge(PureVar(), fieldName) -> lhsv)
-//          val (basev,state3) = state.getOrDefine(base)
-//          possibleHeapCells.map{
-//            case (fpte@FieldPtEdge(p,n), pexp) =>
-//              state3.copy(pureFormula = state3.pureFormula +
-//                PureConstraint(basev, Equals, p) + PureConstraint(basev, TypeComp, SubclassOf(base.localType)) +
-//                PureConstraint(lhsv, Equals, pexp), heapConstraints = state3.heapConstraints + (fpte->pexp))
-//            case _ =>
-//              ???
-//          }.toSet
-//        case _ =>
-//          ???
-//      }
     case AssignCmd(FieldRef(base, fieldType, _,fieldName), rhs, _) =>
+      // x.f = y
       val (basev,state2) = state.getOrDefine(base)
 
       // get all heap cells with correct field name
@@ -291,20 +286,30 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       }
 
       // Get or define right hand side
-      val (rhsv,state3) = rhs match{
-        case NullConst => (NullVal,state)
-        case lw@LocalWrapper(_,_) => state2.getOrDefine(lw)
+      val (rhsv,state3, rhsType) = rhs match{
+        case NullConst => (NullVal,state, None)
+        case lw@LocalWrapper(_,localType) =>
+          val v = state2.getOrDefine(lw)
+          (v._1, v._2, Some(localType))
         case _ =>
           ??? //TODO: implement other const values
       }
       // get or define base of assignment
       // Enumerate over existing base values that could alias assignment
+      // TODO: swap base instead of assume equality
       val casesWithHeapCellAlias = possibleHeapCells.map{
-        case (pte@FieldPtEdge(heapPv, _), tgt) =>
-          state3.copy(heapConstraints = state3.heapConstraints - pte,
-            pureFormula = state3.pureFormula +
-              PureConstraint(basev, Equals, heapPv) +
-              PureConstraint(tgt, Equals, rhsv))
+        case (pte@FieldPtEdge(heapPv, _), _) =>
+          val swapped0 = state3.swapPv( basev, heapPv)
+          val swapped = swapped0.copy(heapConstraints = swapped0.heapConstraints - pte)
+          rhsType match {
+            case Some(t) =>
+              swapped.copy(pureFormula = swapped.pureFormula + PureConstraint(heapPv, TypeComp, SubclassOf(t)))
+            case None => swapped
+          }
+//          state3.copy(heapConstraints = state3.heapConstraints - pte,
+//            pureFormula = state3.pureFormula +
+//              PureConstraint(basev, Equals, heapPv) +
+//              PureConstraint(tgt, Equals, rhsv))
         case _ =>
           ???
       }.toSet

@@ -27,6 +27,7 @@ trait IRWrapper[M,C]{
   def appCallSites(method : MethodLoc, resolver:AppCodeResolver): Seq[AppLoc]
   def makeMethodRetuns(method: MethodLoc) : List[Loc]
   def getClassHierarchy : Map[String, Set[String]]
+  def canAlias(type1:String, type2:String):Boolean
 }
 sealed case class UnresolvedMethodTarget(clazz: String, methodName:String, loc:Set[MethodLoc])
 

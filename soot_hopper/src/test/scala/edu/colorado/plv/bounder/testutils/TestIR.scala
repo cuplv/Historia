@@ -35,6 +35,8 @@ class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] 
   override def makeMethodRetuns(method: MethodLoc): List[Loc] = ???
 
   override def getClassHierarchy: Map[String, Set[String]] = ???
+
+  override def canAlias(type1: String, type2: String): Boolean = ???
 }
 
 /**

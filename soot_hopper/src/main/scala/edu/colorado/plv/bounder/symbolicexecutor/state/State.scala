@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.solver.StateSolver
 import edu.colorado.plv.bounder.ir.{IntConst, LVal, LocalWrapper, RVal, StringConst}
-import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSPred}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, LSAtom, LSFalse, LSPred, LSTrue, Not, Or}
 
 
 object State {
@@ -35,6 +35,31 @@ case class AbsEq(lsVar : String, pureVar: PureExpr) extends AbstractTrace{
 
 case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdge, PureExpr],
                  pureFormula: Set[PureConstraint], traceAbstraction: Set[TraceAbstractionArrow], nextAddr:Int) {
+
+  private def tformulaVars(t : LSPred):Set[PureVar] = t match{
+    case And(lhs,rhs) => tformulaVars(lhs).union(tformulaVars(rhs))
+    case Or(lhs,rhs) => tformulaVars(lhs).union(tformulaVars(rhs))
+    case Not(v) => tformulaVars(v)
+    case LSAbsBind(_,pv) => Set(pv)
+    case _ => Set()
+  }
+  private def formulaVars(trace: AbstractTrace):Set[PureVar] = trace match{
+    case AbsEq(_,pv) => Set(pv)
+    case AbsAnd(lhs,rhs) => formulaVars(lhs).union(formulaVars(rhs))
+    case AbsFormula(f) => tformulaVars(f)
+  }
+  def allTraceVar():Set[PureVar] = traceAbstraction.flatMap{
+    case AbsArrow(f,_) => formulaVars(f)
+  }
+
+  def pvTypeUpperBound(v: PureVar): Option[String] = {
+    pureFormula.flatMap{
+      case PureConstraint(_, TypeComp, SubclassOf(s)) => Some(s)
+      case PureConstraint(_, TypeComp, ClassType(s)) => Some(s)
+      case _ => None
+    }.headOption
+  }
+
   override def toString:String = {
     val stackString = callStack.headOption match{
       case Some(sf) =>
@@ -46,6 +71,69 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
     val pureFormulaString = "   pure: " + pureFormula.map(a => a.toString).mkString(" && ") +"\n"
     val traceString = s"   trace: ${traceAbstraction.mkString(" ; ")}"
     s"($stackString $heapString   $pureFormulaString $traceString)"
+  }
+  def containsLocal(localWrapper: LocalWrapper):Boolean = {
+    val sVar = StackVar(localWrapper.name)
+    callStack.headOption.exists(f => f.locals.contains(sVar))
+  }
+
+  private def pureExprSwap[T<:PureExpr](oldPv : PureVar, newPv : PureVar, expr:T): T = expr match{
+    case PureVar(id) if id==oldPv.id => newPv.asInstanceOf[T]
+    case pv@PureVar(_) => pv.asInstanceOf[T]
+    case pv: PureVal => pv.asInstanceOf[T]
+  }
+  private def stackSwapPv(oldPv : PureVar, newPv : PureVar, frame: CallStackFrame): CallStackFrame =
+    frame.copy(locals = frame.locals.map{
+      case (k,v) => (k->pureExprSwap(oldPv, newPv, v))
+    })
+
+  private def heapSwapPv(oldPv : PureVar, newPv : PureVar, hv: (HeapPtEdge, PureExpr)):(HeapPtEdge, PureExpr) = hv match{
+    case (FieldPtEdge(pv, fieldName), pe) =>
+      (FieldPtEdge(pureExprSwap(oldPv, newPv, pv), fieldName), pureExprSwap(oldPv, newPv, pe))
+  }
+  private def pureSwapPv(oldPv : PureVar, newPv : PureVar, pureConstraint: PureConstraint):PureConstraint = pureConstraint match{
+    case PureConstraint(lhs, op, rhs) =>
+      PureConstraint(pureExprSwap(oldPv, newPv, lhs),op, pureExprSwap(oldPv, newPv, rhs))
+  }
+  private def formulaSwapPv(oldPv: PureVar, newPv: PureVar, pred: LSPred):LSPred = pred match{
+    case LSAbsBind(modelVar, pureExpr)=> LSAbsBind(modelVar, pureExprSwap(oldPv, newPv,pureExpr))
+    case i:LSAtom => i
+    case Not(f) => Not(formulaSwapPv(oldPv,newPv, f))
+    case And(f1, f2) => And(
+      formulaSwapPv(oldPv, newPv, f1),
+      formulaSwapPv(oldPv, newPv, f2)
+    )
+    case Or(f1,f2) => Or(
+      formulaSwapPv(oldPv, newPv, f1),
+      formulaSwapPv(oldPv, newPv, f2)
+    )
+    case LSTrue => LSTrue
+    case LSFalse => LSFalse
+  }
+  private def aTraceSwapPv(oldPv : PureVar, newPv : PureVar, tr: AbstractTrace):AbstractTrace = tr match{
+    case AbsEq(lsVar, pv) => AbsEq(lsVar, pureExprSwap(oldPv, newPv,pv))
+    case AbsAnd(lhs,rhs) => AbsAnd(
+      aTraceSwapPv(oldPv, newPv, lhs),
+      aTraceSwapPv(oldPv, newPv, rhs)
+    )
+    case AbsFormula(f) => AbsFormula(formulaSwapPv(oldPv,newPv,f))
+  }
+  private def traceSwapPv(oldPv : PureVar, newPv :PureVar, traceAbstractionArrow: TraceAbstractionArrow): TraceAbstractionArrow =  traceAbstractionArrow match{
+    case AbsArrow(at, is) =>
+      AbsArrow(aTraceSwapPv(oldPv, newPv, at), is)
+  }
+  /**
+   *
+   * @param oldPv
+   * @param newPv
+   */
+  def swapPv(oldPv : PureVar, newPv: PureVar):State = {
+    this.copy(
+      callStack = callStack.map(f => stackSwapPv(oldPv, newPv, f)),
+      heapConstraints = heapConstraints.map(hc => heapSwapPv(oldPv, newPv, hc)),
+      pureFormula = pureFormula.map(pf => pureSwapPv(oldPv, newPv, pf)),
+      traceAbstraction = traceAbstraction.map(ta => traceSwapPv(oldPv,newPv, ta))
+    )
   }
   def simplify[T](solver : StateSolver[T]):Option[State] = {
     //TODO: garbage collect abstract variables and heap cells not reachable from the trace abstraction or spec

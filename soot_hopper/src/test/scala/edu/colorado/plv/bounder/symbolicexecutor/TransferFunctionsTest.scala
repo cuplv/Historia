@@ -25,8 +25,8 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
     tr.transfer(post,preloc, postloc)
   }
   //Test transfer function where field is assigned and base may or may not be aliased
-  // pre: a^.out -> b1^
-  // post: (a^.out -> c^* d^.out -> e^) OR (a^.out -> c^ AND a^=d^ AND c^=d^)
+  // pre: this -> a^ * b^.out -> b1^ /\ b1^ == null
+  // post: (this -> a^ * a^.out -> c^* d^.out -> e^) OR (this -> a^ * a^.out -> c^ AND a^=d^ AND c^=d^)
   val fooMethod = TestIRMethodLoc("","foo", List(LocalWrapper("@this","Object")))
   val fooMethodReturn = CallbackMethodReturn("", "foo", fooMethod, None)
   test("Transfer may or may not alias") {

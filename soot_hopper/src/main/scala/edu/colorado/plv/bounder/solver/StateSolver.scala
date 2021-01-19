@@ -284,9 +284,19 @@ trait StateSolver[T] {
 
   protected def mkDistinct(pvList: Iterable[PureVar]): T
 
+  def toAST(heap: Map[HeapPtEdge, PureExpr]): T={
+    // The only constraint we get from the heap is that domain elements must be distinct
+    // e.g. a^.f -> b^ * c^.f->d^ means a^ != c^
+    // alternatively a^.f ->b^ * c^.g->d^ does not mean a^!=c^
+    val fields = heap.groupBy({ case (FieldPtEdge(_, fieldName), _) => fieldName })
+    val heapAst = fields.foldLeft(mkBoolVal(true)) { (acc, v) =>
+      val pvList = v._2.map { case (FieldPtEdge(pv, _), _) => pv }
+      mkAnd(acc, mkDistinct(pvList))
+    }
+    heapAst
+  }
   def toAST(state: State, messageTranslator: MessageTranslator, maxWitness: Option[Int] = None): T = {
     // TODO: make all variables in this encoding unique from other states so multiple states can be run at once
-    val heap = state.heapConstraints
     val pure = state.pureFormula
     // TODO: handle static fields
     // typeFun is a function from addresses to concrete types in the program
@@ -298,14 +308,7 @@ trait StateSolver[T] {
       mkAnd(acc, toAST(v, typeFun))
     )
 
-    // The only constraint we get from the heap is that domain elements must be distinct
-    // e.g. a^.f -> b^ * c^.f->d^ means a^ != c^
-    // alternatively a^.f ->b^ * c^.g->d^ does not mean a^!=c^
-    val fields = heap.groupBy({ case (FieldPtEdge(_, fieldName), _) => fieldName })
-    val heapAst = fields.foldLeft(mkBoolVal(true)) { (acc, v) =>
-      val pvList = v._2.map { case (FieldPtEdge(pv, _), _) => pv }
-      mkAnd(acc, mkDistinct(pvList))
-    }
+    val heapAst = toAST(state.heapConstraints)
 
     // Identity hash code of trace abstraction used when encoding a state so that quantifiers are independent
     val stateUniqueID = System.identityHashCode(state).toString
@@ -379,7 +382,9 @@ trait StateSolver[T] {
     if(!s1.heapConstraints.forall { case (k, v) => s2.heapConstraints.get(k).contains(v) })
       return false
 
+    // TODO: encode inequality of heap cells in smt formula?
     push()
+
     val typeFun = createTypeFun()
     val negs1pure = s1.pureFormula.foldLeft(mkBoolVal(false)){
       case(acc,constraint) => mkOr(mkNot(toAST(constraint,typeFun)),acc)
