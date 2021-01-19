@@ -36,7 +36,7 @@ class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] 
 
   override def getClassHierarchy: Map[String, Set[String]] = ???
 
-  override def canAlias(type1: String, type2: String): Boolean = ???
+  override def canAlias(type1: String, type2: String): Boolean = true
 }
 
 /**

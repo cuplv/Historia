@@ -1,5 +1,6 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
+import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSAbsBind, LSPred, LSSpec, LSTrue, Or}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
@@ -217,7 +218,10 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
   }
 
   def pureCanAlias(pv:PureVar, otherType:String, state:State):Boolean =
-    state.pvTypeUpperBound(pv).exists(ot => w.canAlias(otherType, ot))
+    state.pvTypeUpperBound(pv) match{
+      case Some(ot) => w.canAlias(otherType, ot)
+      case None => true //Assume alias possible with no type constraints
+    }
   def possibleAliasesOf(local: LocalWrapper, state:State):Set[PureVar] = {
     //TODO: use this function to enumerate all alias possibilities when stepping into the return point of callback
     //TODO: or possibly whenever encountering an undefined variable? (This seems less ideal right now)
@@ -254,6 +258,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       cmdTransfer(AssignCmd(lw, LocalWrapper("@this", thisTypename),a),state)
     case AssignCmd(lhs: LocalWrapper,rhs:LocalWrapper,_) => //
       // x = y
+      // TODO: enumerate possible aliases
       val lhsv = state.get(lhs) // Find what lhs pointed to if anything
       lhsv.map(pexpr =>{
         // remove lhs from abstract state (since it is assigned here)
@@ -272,6 +277,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       }
     case AssignCmd(lhs:LocalWrapper, FieldRef(base, fieldtype, declType, fieldName), _) =>
       // x = y.f
+      // TODO: enumerate possible aliases
       state.get(lhs) match{
         case Some(lhsV) =>{
           val (basev, state1) = state.getOrDefine(base)
@@ -293,48 +299,48 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       val (basev,state2) = state.getOrDefine(base)
 
       // get all heap cells with correct field name
-      val possibleHeapCells = state.heapConstraints.filter {
-        case (FieldPtEdge(pv, heapFieldName), _) => fieldName == heapFieldName
+      val possibleHeapCells = state2.heapConstraints.filter {
+        case (FieldPtEdge(pv, heapFieldName), _) =>
+          val fieldEq = fieldName == heapFieldName
+          val canAlias = pureCanAlias(pv,base.localType,state2)
+          fieldEq && canAlias
+        case other =>
+          println(other)
+          false
       }
 
       // Get or define right hand side
-      val (rhsv,state3, rhsType) = rhs match{
-        case NullConst => (NullVal,state, None)
-        case lw@LocalWrapper(_,localType) =>
-          val v = state2.getOrDefine(lw)
-          (v._1, v._2, Some(localType))
+      val possibleRhs : Set[(PureExpr,State)] = rhs match{
+        case NullConst => Set((NullVal,state2))
+        case lw: LocalWrapper =>
+          // TODO: make sure thi works
+          val posAlias = possibleAliasesOf(lw, state2)
+          val (v,state3) = state2.getOrDefine(lw)
+          posAlias.map(a => (a,state3.swapPv(v,a)))
         case _ =>
           ??? //TODO: implement other const values
       }
       // get or define base of assignment
       // Enumerate over existing base values that could alias assignment
-      // TODO: swap base instead of assume equality
-      val casesWithHeapCellAlias = possibleHeapCells.map{
-        case (pte@FieldPtEdge(heapPv, _), _) =>
-          val swapped0 = state3.swapPv( basev, heapPv)
-          val swapped = swapped0.copy(heapConstraints = swapped0.heapConstraints - pte)
-          rhsType match {
-            case Some(t) =>
-              swapped.copy(pureFormula = swapped.pureFormula + PureConstraint(heapPv, TypeComp, SubclassOf(t)))
-            case None => swapped
-          }
-//          state3.copy(heapConstraints = state3.heapConstraints - pte,
-//            pureFormula = state3.pureFormula +
-//              PureConstraint(basev, Equals, heapPv) +
-//              PureConstraint(tgt, Equals, rhsv))
-        case _ =>
+      // Enumerate permutations of heap cell and rhs
+      val perm = BounderUtil.repeatingPerm(a => if(a ==0) possibleHeapCells else possibleRhs , 2)
+      val casesWithHeapCellAlias: Set[State] = perm.map{
+        case (pte@FieldPtEdge(heapPv, _), tgtVal:PureExpr)::(rhsPureExpr:PureExpr,state3:State)::Nil =>
+          val swapped0 = state3.swapPv(basev, heapPv)
+          val swapped = swapped0.copy(
+            heapConstraints = swapped0.heapConstraints - pte,
+            pureFormula = swapped0.pureFormula + PureConstraint(tgtVal, Equals, rhsPureExpr)
+          )
+          swapped
+        case v =>
+          println(v)
           ???
       }.toSet
-      val notAlias = possibleHeapCells.map{
-        case (FieldPtEdge(heapPv, _), _) => PureConstraint(basev, NotEquals, heapPv)
-        case _ => ???
-      }
-      val caseWithNoHeapAlias = state3.copy(pureFormula = state3.pureFormula.union(notAlias.toSet))
-      casesWithHeapCellAlias + caseWithNoHeapAlias
-    case AssignCmd(FieldRef(base,_,_,name), NullConst,_) =>
-      val (basev, state2) = state.getOrDefine(base)
-
-      ???
+      val caseWithNoAlias = state2.copy(pureFormula = state2.pureFormula ++ possibleHeapCells.flatMap{
+        case (FieldPtEdge(pv, _),_) => Some(PureConstraint(basev, NotEquals, pv))
+        case _ => None
+      })
+      casesWithHeapCellAlias + caseWithNoAlias
     case c =>
       println(c)
       ???

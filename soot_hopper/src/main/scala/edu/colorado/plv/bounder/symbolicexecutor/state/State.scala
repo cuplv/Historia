@@ -58,8 +58,8 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
 
   def pvTypeUpperBound(v: PureVar): Option[String] = {
     pureFormula.flatMap{
-      case PureConstraint(_, TypeComp, SubclassOf(s)) => Some(s)
-      case PureConstraint(_, TypeComp, ClassType(s)) => Some(s)
+      case PureConstraint(v2, TypeComp, SubclassOf(s)) if v==v2 => Some(s)
+      case PureConstraint(v2, TypeComp, ClassType(s)) if v==v2 => Some(s)
       case _ => None
     }.headOption
   }

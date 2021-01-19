@@ -10,6 +10,7 @@ trait Loc{
     case _ => ""
   }
   def msgSig : Option[String]
+  def toString:String
 }
 
 /**
@@ -38,7 +39,7 @@ trait LineLoc
  * @param isPre //TODO: I think this is before/after cmd?
  */
 case class AppLoc(method: MethodLoc, line: LineLoc, isPre:Boolean) extends Loc {
-  override def toString: String = line.toString()
+  override def toString: String = (if(isPre) "pre-" else "post-" ) + line.toString()
   override def msgSig = None
 }
 

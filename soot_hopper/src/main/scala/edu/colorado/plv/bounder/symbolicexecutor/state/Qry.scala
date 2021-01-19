@@ -77,6 +77,7 @@ object Qry {
 sealed trait Qry {
   def loc: Loc
   def state: State
+  def toString:String
 }
 //Query consists of a location and an abstract state defined at the program point just before that location.
 case class SomeQry(state:State, loc: Loc) extends Qry {
