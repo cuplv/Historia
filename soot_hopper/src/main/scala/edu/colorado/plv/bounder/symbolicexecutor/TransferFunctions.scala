@@ -257,7 +257,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
           val state3 = state2.defineAs(rhs, pexpr)
           Set(state3)
         }
-      }).getOrElse(Set(state))
+      }).getOrElse{
+        Set(state)
+      }
     case AssignCmd(lhs:LocalWrapper, FieldRef(base, fieldtype, declType, fieldName), _) =>
       // x = y.f
       state.get(lhs) match{

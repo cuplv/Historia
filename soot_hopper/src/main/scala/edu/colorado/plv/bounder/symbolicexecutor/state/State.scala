@@ -36,15 +36,19 @@ case class AbsEq(lsVar : String, pureVar: PureExpr) extends AbstractTrace{
 case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdge, PureExpr],
                  pureFormula: Set[PureConstraint], traceAbstraction: Set[TraceAbstractionArrow], nextAddr:Int) {
 
+  private def pformulaVars(p:PureExpr):Set[PureVar] = p match{
+    case p:PureVar => Set(p)
+    case _ => Set()
+  }
   private def tformulaVars(t : LSPred):Set[PureVar] = t match{
     case And(lhs,rhs) => tformulaVars(lhs).union(tformulaVars(rhs))
     case Or(lhs,rhs) => tformulaVars(lhs).union(tformulaVars(rhs))
     case Not(v) => tformulaVars(v)
-    case LSAbsBind(_,pv) => Set(pv)
+    case LSAbsBind(_,pv) => pformulaVars(pv)
     case _ => Set()
   }
   private def formulaVars(trace: AbstractTrace):Set[PureVar] = trace match{
-    case AbsEq(_,pv) => Set(pv)
+    case AbsEq(_,pv) => pformulaVars(pv)
     case AbsAnd(lhs,rhs) => formulaVars(lhs).union(formulaVars(rhs))
     case AbsFormula(f) => tformulaVars(f)
   }
