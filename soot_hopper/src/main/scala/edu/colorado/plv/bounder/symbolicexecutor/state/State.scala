@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.solver.StateSolver
-import edu.colorado.plv.bounder.ir.{IntConst, LVal, LocalWrapper, RVal, StringConst}
+import edu.colorado.plv.bounder.ir.{IRWrapper, IntConst, LVal, LocalWrapper, RVal, StringConst}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, LSAtom, LSFalse, LSPred, LSTrue, Not, Or}
 
 
