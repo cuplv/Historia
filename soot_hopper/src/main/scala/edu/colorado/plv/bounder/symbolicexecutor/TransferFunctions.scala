@@ -88,7 +88,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       val state0 = defineVars(pre_push, lsvars)
       val state1 = traceAllPredTransfer(CBExit, (pkg,name), lsvars, state0)
       val state2 = newSpecInstanceTransfer(CBExit, (pkg,name), lsvars, target, state1)
-      ??? // TODO: see todo on line 221
       Set(state2)
     }
     case (CallbackMethodReturn(_,_,mloc1,_), AppLoc(mloc2,_,_), state) =>
@@ -217,6 +216,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     postState.copy(traceAbstraction = newTraceAbs)
   }
 
+  def pureCanAlias(pv:PureVar, otherType:String, state:State):Boolean =
+    state.pvTypeUpperBound(pv).exists(ot => w.canAlias(otherType, ot))
   def possibleAliasesOf(local: LocalWrapper, state:State):Set[PureVar] = {
     //TODO: use this function to enumerate all alias possibilities when stepping into the return point of callback
     //TODO: or possibly whenever encountering an undefined variable? (This seems less ideal right now)
@@ -226,15 +227,15 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       case _ => None
     }).getOrElse(Set()).toSet
     val traceVars = state.allTraceVar().flatMap{
-      case v if state.pvTypeUpperBound(v).exists(ot => w.canAlias(local.localType, ot)) => Some(v)
+      case v if pureCanAlias(v, local.localType, state) => Some(v)
       case _ => None
     }
-    val heapVars:Set[PureVar] = state.heapConstraints.flatMap{
-      case FieldPtEdge(pureVar,_) if state.pvTypeUpperBound(pureVar).exists(ot => w.canAlias(local.localType,ot)) =>
-        Some(pureVar)
+    val heapVars:Set[PureVar] = state.heapConstraints.flatMap{a => a match {
+      case (FieldPtEdge(pureVar, _), pureVar2:PureVar) =>
+        List(pureVar,pureVar2).filter(pureCanAlias(_,local.localType, state))
       case _ =>
         ???
-    }.toSet
+    }}.toSet
     stackVars.union(traceVars).union(heapVars)
   }
   def cmdTransfer(cmd:CmdWrapper, state:State):Set[State] = cmd match{
