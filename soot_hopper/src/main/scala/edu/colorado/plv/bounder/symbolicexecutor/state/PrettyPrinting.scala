@@ -1,6 +1,7 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 import java.io.{File, PrintWriter}
 
+import com.sun.org.glassfish.gmbal.IncludeSubclass
 import scalax.collection.Graph
 import scalax.collection.edge.LDiEdge
 import scalax.collection.GraphEdge._
@@ -16,7 +17,8 @@ object PrettyPrinting {
       .replace("-","\\-")
       .replace("\"","\\\"").replace("|","\\|")
   private def iDotNode(qrySet:Set[PathNode],seen:Set[PathNode],
-                       procNodes:Set[String],procEdges:Set[String]):(Set[String],Set[String]) = {
+                       procNodes:Set[String],procEdges:Set[String],
+                       includeSubsEdges:Boolean):(Set[String],Set[String]) = {
     if(qrySet.isEmpty){
       (procNodes,procEdges)
     }else {
@@ -27,20 +29,26 @@ object PrettyPrinting {
       }
       val curString = sanitizeStringForDot(cur.qry.toString)
 
-      val nextProcNodes = procNodes + s"""n${System.identityHashCode(cur)} [label="${curString}"]"""
+      val init = if(cur.succ.isDefined) "" else "INITIAL: "
+      val subs = if(cur.subsumed.isDefined)"SUBSUMED: " else ""
+      val nextProcNodes = procNodes + s"""n${System.identityHashCode(cur)} [label="${init}${subs}${curString}"]"""
       // TODO: add subsumption edges
       // TODO: add subsumption labels
       val nextProcEdges = cur.succ match {
-        case Some(v) => procEdges + s"""n${System.identityHashCode(cur)} -> n${System.identityHashCode(v)}""" +
-          v.subsumed.map(v => s"\n    n${System.identityHashCode(cur)} -> n${System.identityHashCode(v)}").getOrElse("")
+        case Some(v) =>
+          assert(!v.subsumed.isDefined)
+          procEdges + s"""n${System.identityHashCode(cur)} -> n${System.identityHashCode(v)}"""
         case None => procEdges
       }
-      iDotNode(rest, seen + cur, nextProcNodes, nextProcEdges)
+      val subsumedEdges =
+        if (includeSubsEdges)cur.subsumed.map(v =>
+          s"\n    n${System.identityHashCode(v)}->n${System.identityHashCode(cur)}").getOrElse("") else ""
+      iDotNode(rest, seen + cur, nextProcNodes, nextProcEdges + subsumedEdges, includeSubsEdges)
     }
   }
-  def dotWitTree(qrySet : Set[PathNode], outFile:String) = {
+  def dotWitTree(qrySet : Set[PathNode], outFile:String, includeSubsEdges:Boolean) = {
     val pw = new PrintWriter(new File(outFile ))
-    val (nodes,edges) = iDotNode(qrySet,Set(),Set(),Set())
+    val (nodes,edges) = iDotNode(qrySet,Set(),Set(),Set(), includeSubsEdges)
     pw.write(
       s"""
          |digraph D {
@@ -53,9 +61,9 @@ object PrettyPrinting {
     pw.close
   }
 
-  def printWitnessOrProof(qrySet : Set[PathNode], outFile:String) =
+  def printWitnessOrProof(qrySet : Set[PathNode], outFile:String, includeSubsEdges:Boolean = false) =
     qrySet.find(_.qry.isInstanceOf[WitnessedQry]) match{
-      case Some(v) => dotWitTree(Set(v), outFile)
-      case None => dotWitTree(qrySet, outFile)
+      case Some(v) => dotWitTree(Set(v), outFile, includeSubsEdges)
+      case None => dotWitTree(qrySet, outFile, includeSubsEdges)
     }
 }

@@ -71,12 +71,14 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     if(qrySet.isEmpty || qrySet.exists(p => p.qry.isInstanceOf[WitnessedQry]) || 0 >= limit){
       refutedSubsumedOrWitnessed ++ qrySet
     }else {
-      // Split queries into live queries(true) and refuted/witnessed(false)
-      val queriesByType: Map[Boolean, Set[PathNode]] = qrySet.groupBy(_.qry match{
-        case _:SomeQry => true
-        case _:BottomQry => false
-        case _:WitnessedQry => false
-      })
+      // Split queries into live queries(true) and refuted/witnessed/subsumed(false)
+      val queriesByType: Map[Boolean, Set[PathNode]] = qrySet.groupBy{
+        case PathNode(_:SomeQry, _,None) => true
+        case p@PathNode(_:SomeQry, _,Some(_)) =>
+          false
+        case PathNode(_:BottomQry,_,_) => false
+        case PathNode(_:WitnessedQry,_,_) => false
+      }
 
       val liveQueries: Set[PathNode] = queriesByType.getOrElse(true, Set())
       // add new visited to old visited
@@ -94,8 +96,8 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
 
       // execute step on live queries
       val nextQry = liveQueries.flatMap {
-        case p@PathNode(qry: SomeQry, _, None) => executeStep(qry).map((p,_))
-        case _ => None
+        case p@PathNode(qry: SomeQry, _, None) =>
+          executeStep(qry).map((p,_))
       }
 
       val nextPathNode = nextQry.map{
@@ -108,7 +110,10 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
           PathNode(q, succ = Some(parent), subsumed = None)
       }
 
-      executeBackwardLimitSubsumeAll(nextPathNode, limit - 1, newRefutedSubsumedOrWitnessed, nextVisited)
+      executeBackwardLimitSubsumeAll(nextPathNode,
+        limit - 1,
+        newRefutedSubsumedOrWitnessed,
+        nextVisited)
     }
   }
   @tailrec

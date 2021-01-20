@@ -58,6 +58,6 @@ object Driver {
     val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
     val result: Set[PathNode] = symbolicExecutor.executeBackward(query)
     val outname = apkPath.split("/").last
-    PrettyPrinting.dotWitTree(result, s"${outFolder}/${outname}.dot")
+    PrettyPrinting.dotWitTree(result, s"${outFolder}/${outname}.dot",false)
   }
 }
