@@ -18,6 +18,39 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     }
   }
 
+  def defineVarsAs(state: State, comb: List[(Option[LocalWrapper], LSParamConstraint)]):State = {
+    comb.foldLeft(state){
+      case (state, (Some(l), LSPure(v:PureVar))) =>
+        val (oldLocVal,state2) = state.getOrDefine(l)
+        state2.swapPv(oldLocVal, v)
+      case (state, (Some(l), LSPure(v))) =>
+        println(v) //TODO: other kinds of v
+        ???
+      case (state, (Some(l), LSModelVar(v,ta))) =>
+        val (oldLocVal,state2) = state.getOrDefine(l)
+        assert(state2.traceAbstraction.contains(ta), "model var constraint not contained in current state")
+        state2.copy(traceAbstraction = (state2.traceAbstraction - ta) + ta.addModelVar(v,oldLocVal) )
+      case (statemap, (_, _)) => statemap
+    }
+  }
+  def statesWhereOneVarNot(state: State, comb: List[(Option[LocalWrapper], LSParamConstraint)]): Set[State] = {
+    comb.toSet.flatMap{(a:(Option[LocalWrapper], LSParamConstraint)) => a match{
+      case (None, _) => None
+      case (_,LSAny) => None
+      case (Some(l), LSPure(pv)) =>
+        val (locval,state0)  = state.getOrDefine(l)
+        Some(state0.copy(pureFormula = state0.pureFormula + PureConstraint(locval, NotEquals, pv)))
+      case (Some(l), LSModelVar(mv,ta)) =>
+        val (locval, state0) = state.getOrDefine(l)
+        val (pv :PureVar, state1:State) = state0.nextPv()
+        assert(state1.traceAbstraction.contains(ta), "model var constraint not contained in current state")
+        Some(state1.copy(
+          traceAbstraction = (state1.traceAbstraction - ta) + ta.addModelVar(mv,pv),
+          pureFormula = state1.pureFormula + PureConstraint(pv, NotEquals, locval)
+        ))
+    }}
+  }
+
   /**
    *
    * @param pre state before current location
@@ -87,8 +120,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       // Case where execution goes to the exit of another callback
       // TODO: nested callbacks not supported yet, assuming we can't go back to callin entry
       // TODO: note that the callback method invoke is to be ignored here.
-
-      //TODO: relevant transition enumeration
       // Control flow resolver is responsible for the
       val appLoc = AppLoc(targetLoc.loc, targetLoc.line.get,false)
       val rvar = w.cmdAtLocation(appLoc) match{
@@ -99,16 +130,24 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       val (pkg,name) = msgCmdToMsg(target)
       // Push frame regardless of relevance
       val pre_push = pre.copy(callStack = newFrame::pre.callStack)
-      val relAliases = relevantAliases(pre, CBExit, (pkg,name))
-      val lsvars: List[Option[LocalWrapper]] = rvar::mloc.getArgs
+      val relAliases: Set[List[LSParamConstraint]] = relevantAliases(pre, CBExit, (pkg,name))
+      val localVarOrVal: List[Option[LocalWrapper]] = rvar::mloc.getArgs
       // Note: no newSpecInstanceTransfer since this is an in-message
       if(relAliases.isEmpty){
         Set(pre_push)
       }else {
-        val state0 = defineVars(pre_push, lsvars)
-        val state1 = traceAllPredTransfer(CBExit, (pkg, name), lsvars, state0)
-        Set(state1)
-        ??? //TODO: relevant aliases found, enumerate possible states
+        relAliases.flatMap( aliases => {
+          val comb = localVarOrVal zip aliases
+
+          // State where all local vars are aliased with required
+//          val state0 = defineVars(pre_push, localVarOrVal)
+          val state0 = defineVarsAs(pre_push, comb)
+          val state1 = traceAllPredTransfer(CBExit, (pkg, name), localVarOrVal, state0)
+
+          // States where at least one var is not aliased with required
+          val otherStates:Set[State] = statesWhereOneVarNot(pre_push, comb)
+          otherStates + state1
+        })
       }
     }
     case (CallbackMethodReturn(_,_,mloc1,_), AppLoc(mloc2,_,_), state) =>

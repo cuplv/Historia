@@ -19,16 +19,23 @@ object State {
 // callStack is the call string from thresher paper
 //sealed trait TraceAbstractionArrow
 case class AbstractTrace(a:LSPred,rightOfArrow:List[I], modelVars: Map[String,PureExpr]){
+  def addModelVar(v: String, pureVar: PureExpr): AbstractTrace = {
+    assert(!modelVars.contains(v), s"model var $v already in trace abstraction.")
+    this.copy(modelVars= modelVars + (v->pureVar))
+  }
+
   override def toString:String = s"(${modelVars} - ${a.toString} |> ${rightOfArrow.mkString(";")})"
 }
 
 sealed trait LSParamConstraint
 case class LSPure(p: PureExpr) extends LSParamConstraint
-case class LSModelVar(s:String) extends LSParamConstraint
+case class LSModelVar(s:String, trace:AbstractTrace) extends LSParamConstraint
 object LSAny extends LSParamConstraint
 
 case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdge, PureExpr],
                  pureFormula: Set[PureConstraint], traceAbstraction: Set[AbstractTrace], nextAddr:Int) {
+  def nextPv() = (PureVar(nextAddr), this.copy(nextAddr = nextAddr+1))
+
 
   private def findIAF(messageType: MessageType, tuple: (String, String), pred: LSPred):Set[I] = pred match{
     case i@I(mt, sigs, _) if mt == messageType && sigs.contains(tuple) => Set(i)
@@ -47,7 +54,7 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
     traceAbstraction.flatMap(ar =>{
       val iset = findIAF(dir,signature,ar.a)
       iset.map(i => (i, i.lsVars.map(mv => ar.modelVars.get(mv).map(LSPure)
-        .getOrElse(LSModelVar(mv)))))
+        .getOrElse(LSModelVar(mv,ar)))))
     })
   }
 
@@ -277,9 +284,6 @@ case class StackVar(name : String) extends Var{
 }
 
 sealed trait CmpOp
-//case object MayEqual extends CmpOp{
-//  override def toString:String = "?="
-//}
 case object Equals extends CmpOp{
   override def toString:String = " == "
 }
