@@ -88,7 +88,6 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val i2 = I(CBEnter, Set(("foo", "baz")), "a" :: Nil)
     val niBarBaz = NI(i,i2)
     val p1 = PureVar(State.getId())
-//    val abs1 = AbsArrow(AbsAnd(AbsFormula(niBarBaz), AbsEq("a",p1)), Nil)
     val abs1 = AbstractTrace(niBarBaz, Nil, Map("a"->p1))
     val state1 = State(Nil, Map(),Set(), Set(abs1),0)
     val res1 = statesolver.simplify(state1)
@@ -334,19 +333,23 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     // NI(a.foo(), a.bar()) can subsume NI(a.foo(), a.bar()) |> c.bar()
     assert(statesolver.canSubsume(state3_,state3__))
 
-    // NI(a.foo(), a.bar()) cannot subsume NI(a.foo(), a.bar()) |> c.foo()
+    // NI(a.foo(), a.bar()) cannot subsume NI(a.foo(), a.bar()) |> c.foo() /\ a==c
     // ifooc::Nil
-    val fooBarArrowFoo = state.copy(traceAbstraction = Set(AbstractTrace(NI(ifoo,ibar), ifooc::Nil, Map("a"->p1))))
-    assert(!statesolver.canSubsume(state3_, fooBarArrowFoo, Some(10)))
+    val fooBarArrowFoo = state.copy(
+      traceAbstraction = Set(AbstractTrace(NI(ifoo,ibar), ifooc::Nil, Map("a"->p1, "c"->p1))))
+    val resfoobarfoo = statesolver.canSubsume(state3_, fooBarArrowFoo)
+    assert(!resfoobarfoo)
 
     // NI(a.foo(), a.bar()), I(a.foo()) should be subsumed by NI(a.foo(), a.bar())
     val s_foo_bar_foo = state.copy(traceAbstraction =
-      Set(AbstractTrace(NI(ifoo,ibar), Nil, Map("a"->p1)),
+      Set(AbstractTrace(NI(ifoo,ibar), Nil, Map("a"->p1, "c"->p1)),
         AbstractTrace(ifooc,Nil, Map())))
     val s_foo_bar = state.copy(traceAbstraction = Set(AbstractTrace(NI(ifoo,ibar), Nil, Map("a"->p1))))
     assert(statesolver.canSubsume(s_foo_bar, s_foo_bar_foo))
-    // TODO: failing test below is probably correct behavior, but figure out why subsumption fails in executor
-//    assert(!statesolver.canSubsume(s_foo_bar_foo, s_foo_bar))
+
+    // Extra trace constraint prevents subsumption
+    val res2 = statesolver.canSubsume(s_foo_bar_foo, s_foo_bar,Some(10))
+    assert(!res2)
 
   }
   test("Refute trace with multi arg and multi var (bad arg fun skolemization caused bug here)") {
@@ -477,6 +480,13 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
       !statesolver.traceInAbstraction(
         state.copy(traceAbstraction = Set(AbstractTrace(ni_foo_x_bar_x, i_bar_x::Nil,Map()))),
         Nil
+      ))
+
+    // Not NI(x.foo(), x.bar())  models @1.foo();@1.bar()
+    assert(
+      statesolver.traceInAbstraction(
+        state.copy(traceAbstraction = Set(AbstractTrace(Not(ni_foo_x_bar_x), Nil,Map()))),
+        trace
       ))
     //TODO: test "and", "scoped abstract traces"
   }
