@@ -71,6 +71,8 @@ trait StateSolver[T] {
 
   protected def mkOr(lhs: T, rhs: T): T
 
+  protected def mkOr(t : List[T]):T
+
   protected def mkExactlyOneOf(l: List[T]): T
 
   // creation of variables, constants, assertions
@@ -175,13 +177,25 @@ trait StateSolver[T] {
    * @param absUID unique identifier for this scoped abstraction to separate model vars
    * @return
    */
-  private def assertIAt(index: T, m: I, messageTranslator: MessageTranslator, traceFn: T, absUID: String): T = {
+  private def assertIAt(index: T, m: I,
+                        messageTranslator: MessageTranslator,
+                        traceFn: T, absUID: String,
+                        negated:Boolean = false): T = {
     val msgExpr = mkTraceConstraint(traceFn, index)
     val nameFun = messageTranslator.nameFun
-    mkAnd(mkEq(mkNameConstraint(nameFun, msgExpr), messageTranslator.enumFromI(m)),
-      mkAnd(m.lsVars.zipWithIndex.map { case (msgvar, ind) =>
-        mkEq(mkArgConstraint(mkArgFun(), mkIntVal(ind), msgExpr), mkModelVar(msgvar, absUID))
-      }))
+    val nameConstraint = mkEq(mkNameConstraint(nameFun, msgExpr), messageTranslator.enumFromI(m))
+    val argConstraints = m.lsVars.zipWithIndex.flatMap {
+      case (msgvar, ind) if msgvar != "_" =>
+        Some(mkEq(mkArgConstraint(mkArgFun(), mkIntVal(ind), msgExpr), mkModelVar(msgvar, absUID)))
+      case _ => None
+    }
+
+    // If we are asserting that a message is not at a location, the arg function cannot be negated due to skolemization
+    // We only negate the name function
+    if(negated)
+      mkOr(mkNot(nameConstraint),mkOr(argConstraints.map(mkNot)))
+    else
+      mkAnd(nameConstraint, mkAnd(argConstraints))
   }
 
   private def encodePred(combinedPred: LifeState.LSPred, traceFn: T, len: T,
@@ -192,7 +206,13 @@ trait StateSolver[T] {
 //    case LSAbsBind(k, v: PureVar) => mkEq(mkModelVar(k, absUID), mkObjVar(v))
     case Or(l1, l2) => mkOr(encodePred(l1, traceFn, len, messageTranslator, absUID),
       encodePred(l2, traceFn, len, messageTranslator, absUID))
-    case Not(l) => mkNot(encodePred(l, traceFn, len, messageTranslator, absUID))
+    case Not(m:I) =>
+      mkForallInt(mkIntVal(-1),len, i => assertIAt(i,m,messageTranslator,traceFn,absUID,true))
+    case Not(l) =>
+      // TODO: not of general lspred not yet supported due to negation of arg function
+      // Note: negation of arbitrary may not be needed
+      mkNot(encodePred(l, traceFn, len, messageTranslator, absUID))
+      ???
     case m@I(_, _, _) =>
       mkExistsInt(mkIntVal(-1), len,
         i => mkAnd(List(
@@ -200,9 +220,10 @@ trait StateSolver[T] {
         )))
     case NI(m1, m2) =>
       // exists i such that omega[i] = m1 and forall j > i omega[j] != m2
+      //TODO: assertIAt is skolemized and can't be negated due to arg fun
       mkExistsInt(mkIntVal(-1), len, i => mkAnd(List(
         assertIAt(i, m1, messageTranslator, traceFn, absUID),
-        mkForallInt(i, len, j => mkNot(assertIAt(j, m2, messageTranslator, traceFn, absUID)))
+        mkForallInt(i, len, j => assertIAt(j, m2, messageTranslator, traceFn, absUID, negated = true))
       )))
   }
 
@@ -246,7 +267,7 @@ trait StateSolver[T] {
 
     def iencarrow(len: T, abs: AbstractTrace, traceFn: T): T = abs match {
       case AbstractTrace(abs, ipreds, modelVars) =>
-      val freshTraceFun = mkFreshTraceFn("arrowtf")
+        val freshTraceFun = mkFreshTraceFn("arrowtf")
         val beforeIndEq =
           mkForallInt(mkIntVal(-1), len, i =>
             mkEq(mkTraceConstraint(traceFn, i), mkTraceConstraint(freshTraceFun, i)))
@@ -259,6 +280,7 @@ trait StateSolver[T] {
         val absEnc = ienc(endlen, abs,modelVars, freshTraceFun)
         if(negate){
           mkAnd(mkNot(absEnc), suffixConstraint)
+          ??? //TODO: subsumption won't work since argument function is skolemized 
         }else {
           mkAnd(absEnc, suffixConstraint)
         }
@@ -369,9 +391,9 @@ trait StateSolver[T] {
    * @return false if there exists a trace in s2 that is not in s1 otherwise true
    */
   def canSubsume(s1: State, s2: State, maxLen: Option[Int] = None): Boolean = {
+    //TODO: figure out if negation of arg fun breaks subusmption, it probably does
     // Currently, the stack is strictly the app call string
     // When adding more abstraction to the stack, this needs to be modified
-    // TODO: check if pure vars are canonacalized
     if(!stackCanSubsume(s1.callStack, s2.callStack))
       return false
     if(!s1.heapConstraints.forall { case (k, v) => s2.heapConstraints.get(k).contains(v) })

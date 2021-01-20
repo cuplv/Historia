@@ -349,6 +349,21 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
 //    assert(!statesolver.canSubsume(s_foo_bar_foo, s_foo_bar))
 
   }
+  test("Refute trace with multi arg and multi var (bad arg fun skolemization caused bug here)") {
+    val statesolver = getStateSolver
+
+    val p1 = PureVar(State.getId())
+    val loc = AppLoc(fooMethod, TestIRLineLoc(1), isPre = false)
+
+    val ifoo = I(CBEnter, Set(("", "foo")),  "_"::"a" :: Nil)
+    val ibar = I(CBEnter, Set(("", "bar")),  "_"::"a" :: Nil)
+    val ibarc = I(CBEnter, Set(("", "bar")), "_"::"c" :: Nil)
+
+    val at = AbstractTrace(NI(ifoo,ibar), ibarc::Nil, Map("a"->p1, "c"->p1))
+    val state = State(CallStackFrame(loc, None, Map(StackVar("x") -> p1)) :: Nil, Map(), Set(), Set(at), 0)
+    val res = statesolver.simplify(state, Some(8))
+    assert(res.isEmpty)
+  }
   test("Subsumption of pure formula in states"){
     val statesolver = getStateSolver
 
