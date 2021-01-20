@@ -9,6 +9,13 @@ import edu.colorado.plv.bounder.symbolicexecutor.state._
 class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
 
 
+  /**
+   * Get set of things that if aliased, change the trace abstraction state
+   * @param pre state before cmd that emits an observed message
+   * @param dir callback/callin entry/exit
+   * @param signature class and name of method
+   * @return
+   */
   def relevantAliases(pre: State,
                       dir: MessageType,
                       signature: (String, String)) :Set[List[LSParamConstraint]]  = {
@@ -64,28 +71,46 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       // "Some(source.copy(isPre = true))" places the entry to the callin as the location of call
       //TODO:relevant transition enumeration
       val (pkg, name) = msgCmdToMsg(cmret)
-      val invars: List[Option[RVal]] = inVarsForCall(source)
+      val relAliases: Set[List[LSParamConstraint]] = relevantAliases(pre, CIExit, (pkg,name))
       val frame = CallStackFrame(target, Some(source.copy(isPre = true)), Map())
-      // add all args except assignment to state
-      val state0 = defineVars(preState, invars.tail)
-      val state1 = traceAllPredTransfer(CIExit, (pkg,name),invars,state0)
-      val states2 = newSpecInstanceTransfer(CIExit,(pkg,name), invars, cmret, state1)
+      val ostates = if(relAliases.isEmpty){
+        Set(pre)
+      }else {
+        val invars: List[Option[RVal]] = inVarsForCall(source)
+        // add all args except assignment to state
+        val state0 = defineVars(preState, invars.tail)
+        val state1 = traceAllPredTransfer(CIExit, (pkg, name), invars, state0)
+        val states2 = newSpecInstanceTransfer(CIExit, (pkg, name), invars, cmret, state1)
 
-      // clear assigned var from stack if exists
-      val states3 = invars.head.map{
-        case localWrapper: LocalWrapper => states2.clearLVal(localWrapper)
-        case _ => states2
-      }.getOrElse(states2)
-      Set(states3.copy(callStack=frame::preState.callStack))
+        // clear assigned var from stack if exists
+        val states3 = invars.head.map {
+          case localWrapper: LocalWrapper => states2.clearLVal(localWrapper)
+          case _ => states2
+        }.getOrElse(states2)
+        println(???) //TODO
+//        Set(states3.copy(callStack = frame :: preState.callStack))
+        Set(states3)
+      }
+      ostates.map(a => a.copy(callStack = frame::a.callStack))
     case (CallinMethodReturn(_, _), CallinMethodInvoke(_, _), state) => Set(state)
     case (cminv@CallinMethodInvoke(_, _), ciInv@AppLoc(_, _, true), s@State(_ :: t, _, _, _,_)) => {
      //TODO: relevant transition enumeration
       val (pkg,name) = msgCmdToMsg(cminv)
-      val invars = inVarsForCall(ciInv)
-      val state0 = defineVars(s, invars.tail)
-      val state1 = traceAllPredTransfer(CIExit, (pkg,name),invars,state0)
-      val states2 = newSpecInstanceTransfer(CIExit,(pkg,name), invars, ciInv, state1)
-      Set(states2.copy(callStack = t))
+      val relAliases: Set[List[LSParamConstraint]] = relevantAliases(pre, CIEnter, (pkg,name))
+      val ostates = if(relAliases.isEmpty)
+        Set(pre)
+      else {
+        println(???) //TODO: enumerate aliases
+        val invars = inVarsForCall(ciInv)
+        val state0 = defineVars(s, invars.tail)
+        val state1 = traceAllPredTransfer(CIEnter, (pkg, name), invars, state0)
+//        val states2 = newSpecInstanceTransfer(CIExit, (pkg, name), invars, ciInv, state1)
+//        Set(states2.copy(callStack = t))
+//        ???
+        Set(state1)
+        ???
+      }
+      ostates.map(s => s.copy(if (s.callStack.isEmpty) Nil else s.callStack.tail))
     }
     case (AppLoc(_, _, true), AppLoc(_, _, false), pre) => Set(pre)
     case (appLoc@AppLoc(c1, m1, false), AppLoc(c2, m2, true), prestate) if c1 == c2 && m1 == m2 =>
@@ -103,18 +128,24 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       }
 
       val (pkg, name) = msgCmdToMsg(cmInv)
-      val invars: List[Option[LocalWrapper]] = None::containingMethod.getArgs
-      // Add all parameters to abs state (note just moved these out of the trace transfer)
-      val state0 = defineVars(pre, invars)
-      //update existing spec instantiations
-      val state1 = traceAllPredTransfer(CBEnter, (pkg,name),invars,state0)
-      // Since this is a back message, instantiate any new instances of the spec
-      //add new instantiations of specs
-      val states2 = newSpecInstanceTransfer(CBEnter,(pkg,name), invars, cmInv, state1)
-      // Remove the top call stack frame from each candidate state since we are crossing the entry to a method
-      val newCallStack = if (states2.callStack.isEmpty) Nil else states2.callStack.tail
-      val out = states2.copy(callStack = newCallStack)
-      Set(out)
+      val relAliases: Set[List[LSParamConstraint]] = relevantAliases(pre, CBEnter, (pkg,name))
+      val ostates = if (relAliases.isEmpty){
+        Set(pre)
+      }else {
+        val invars: List[Option[LocalWrapper]] = None :: containingMethod.getArgs
+        relAliases.flatMap(relAliases =>{
+          val comb = invars zip relAliases
+          val state0 = defineVarsAs(pre, comb)
+          val state1 = traceAllPredTransfer(CBEnter, (pkg,name), invars, state0)
+          val otherStates = statesWhereOneVarNot(pre, comb)
+          otherStates + state1
+        })
+      }
+      ostates.map(a => {
+        val invars: List[Option[LocalWrapper]] = None :: containingMethod.getArgs
+        val b = newSpecInstanceTransfer(CBEnter, (pkg, name), invars, cmInv, a)
+        b.copy(callStack = if(a.callStack.isEmpty) Nil else a.callStack.tail)
+      })
     }
     case (CallbackMethodInvoke(_, _, _), targetLoc@CallbackMethodReturn(_,_,mloc, _), pre) => {
       // Case where execution goes to the exit of another callback

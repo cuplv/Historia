@@ -34,6 +34,12 @@ object LSAny extends LSParamConstraint
 
 case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdge, PureExpr],
                  pureFormula: Set[PureConstraint], traceAbstraction: Set[AbstractTrace], nextAddr:Int) {
+  var isSimplified = false
+  def setSimplified(): State = {
+    isSimplified = true
+    this
+  }
+
   def nextPv() = (PureVar(nextAddr), this.copy(nextAddr = nextAddr+1))
 
 

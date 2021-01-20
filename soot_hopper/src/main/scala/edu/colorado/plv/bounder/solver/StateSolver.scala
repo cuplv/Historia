@@ -362,19 +362,23 @@ trait StateSolver[T] {
   }
 
   def simplify(state: State, maxWitness: Option[Int] = None): Option[State] = {
-    push()
-    val messageTranslator = MessageTranslator(List(state))
-    val ast = toAST(state, messageTranslator, maxWitness)
+    if(false && state.isSimplified) Some(state) else {
+      push()
+      val messageTranslator = MessageTranslator(List(state))
+      val ast = toAST(state, messageTranslator, maxWitness)
 
-    if (maxWitness.isDefined) {
-      println(s"State ${System.identityHashCode(state)} encoding: ")
-      println(ast.toString)
+      if (maxWitness.isDefined) {
+        println(s"State ${System.identityHashCode(state)} encoding: ")
+        println(ast.toString)
+      }
+      val simpleAst = solverSimplify(ast, state, messageTranslator, maxWitness.isDefined)
+
+      pop()
+      // TODO: garbage collect, if purevar can't be reached from reg or stack var, discard
+      simpleAst.map(_ =>
+        state.setSimplified()
+      )
     }
-    val simpleAst = solverSimplify(ast, state, messageTranslator, maxWitness.isDefined)
-
-    pop()
-    // TODO: garbage collect, if purevar can't be reached from reg or stack var, discard
-    simpleAst.map(_ => state) //TODO: actually simplify?
   }
 
   // TODO: call stack is currently just a list of stack frames, this needs to be updated when top is added
