@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.MessageType
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, LSFalse, LSPred, LSSpec, LSTrue, NI, Not, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSFalse, LSPred, LSSpec, LSTrue, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state.PureExpr
 
 object LifeState {
@@ -72,7 +72,7 @@ object LifeState {
     }
     override def toString:String = s"I($mt $identitySignature ( ${lsVars.mkString(",")} )"
 
-    override def contains(mt:MessageType,sig: (String, String)): Boolean = signatures.contains(sig)
+    override def contains(omt:MessageType,sig: (String, String)): Boolean = signatures.contains(sig) && omt == mt
   }
   // Since i1 has been invoked, i2 has not been invoked.
   case class NI(i1:I, i2:I) extends LSAtom{
@@ -87,11 +87,11 @@ object LifeState {
   }
   case class LSSpec(pred:LSPred, target: I)
 
-  // Used for abstract state
-  case class LSAbsBind(modelVar:String, pureExpr: PureExpr) extends LSPred {
-    override def lsVar: Set[String] = Set()
-    override def contains(mt:MessageType,sig: (String, String)): Boolean = false
-  }
+//  // Used for abstract state
+//  case class LSAbsBind(modelVar:String, pureExpr: PureExpr) extends LSPred {
+//    override def lsVar: Set[String] = Set()
+//    override def contains(mt:MessageType,sig: (String, String)): Boolean = false
+//  }
 
   // Class that holds a graph of possible predicates and alias relations between the predicates.
   // Generated from a fast pre analysis of the applications.
@@ -137,12 +137,13 @@ class SpecSpace(specs: Set[LSSpec]) {
     case Not(p) => allI(p)
     case LSTrue => Set()
     case LSFalse => Set()
-    case LSAbsBind(_,_) => Set()
+//    case LSAbsBind(_,_) => Set()
   }
   private def allI(spec:LSSpec):Set[I] = spec match{
     case LSSpec(pred, target) => allI(pred).union(allI(target))
   }
-  val iset: Map[(MessageType, (String, String)), I] = specs.flatMap(allI).flatMap(i => i.signatures.map(j => ((i.mt,j),i))).toMap
+  val iset: Map[(MessageType, (String, String)), I] =
+    specs.flatMap(allI).flatMap(i => i.signatures.map(j => ((i.mt,j),i))).toMap
   private var freshLSVarIndex = 0
   def nextFreshLSVar():String = {
     val ind = freshLSVarIndex

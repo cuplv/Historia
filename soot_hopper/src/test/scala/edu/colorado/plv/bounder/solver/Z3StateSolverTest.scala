@@ -4,7 +4,7 @@ import com.microsoft.z3.{ArithExpr, BoolExpr, Context, EnumSort, Expr, Solver, S
 import edu.colorado.plv.bounder.ir.{AppLoc, CBEnter, CIEnter, CallbackMethodInvoke, FwkMethod, LocalWrapper, TAddr, TMessage}
 import edu.colorado.plv.bounder.lifestate.LifeState.{I, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AbsAnd, AbsArrow, AbsEq, AbsFormula, CallStackFrame, Equals, FieldPtEdge, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, SubclassOf, TraceAbstractionArrow, TypeComp}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, CallStackFrame, Equals, FieldPtEdge, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, SubclassOf, TypeComp}
 import edu.colorado.plv.bounder.testutils.{TestIRLineLoc, TestIRMethodLoc}
 
 class Z3StateSolverTest extends org.scalatest.FunSuite {
@@ -89,7 +89,8 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val i2 = I(CBEnter, Set(("foo", "baz")), "a" :: Nil)
     val niBarBaz = NI(i,i2)
     val p1 = PureVar(State.getId())
-    val abs1 = AbsArrow(AbsAnd(AbsFormula(niBarBaz), AbsEq("a",p1)), Nil)
+//    val abs1 = AbsArrow(AbsAnd(AbsFormula(niBarBaz), AbsEq("a",p1)), Nil)
+    val abs1 = AbstractTrace(niBarBaz, Nil, Map("a"->p1))
     val state1 = State(Nil, Map(),Set(), Set(abs1),0)
     val res1 = statesolver.simplify(state1)
     assert(res1.isDefined)
@@ -101,7 +102,8 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val i = I(CBEnter, Set(("foo", "bar")), "a" :: Nil)
     val i2 = I(CBEnter, Set(("foo", "baz")), "a" :: Nil)
     val niBarBaz = NI(i,i2)
-    val abs1 = AbsArrow(AbsFormula(niBarBaz), i::Nil)
+//    val abs1 = AbsArrow(AbsFormula(niBarBaz), i::Nil)
+    val abs1 = AbstractTrace(niBarBaz, i::Nil, Map())
     val state1 = State(Nil, Map(),Set(), Set(abs1),0)
     val res1 = statesolver.simplify(state1)
     assert(res1.isDefined)
@@ -122,10 +124,8 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val p2 = PureVar(State.getId())
 
     // NI(a.bar(),a.baz()) |> I(c.baz()) && a == p1 && c == p1 (<=> false)
-    val abs1: TraceAbstractionArrow = AbsArrow(
-      AbsAnd(AbsAnd(AbsFormula(niBarBaz), AbsEq("a",p1)), AbsEq("b",p1)),
-      i3::Nil
-    )
+    val abs1 = AbstractTrace(niBarBaz,i3::Nil, Map("a"->p1, "b"->p1))
+//    AbsAnd(AbsAnd(AbsFormula(niBarBaz), AbsEq("a",p1)), AbsEq("b",p1)),
     val state1 = State(Nil, Map(),Set(), Set(abs1),0)
     println(s"state: ${state1}")
     val res1 = statesolver.simplify(state1, Some(20)) //TODO: remove limit
@@ -154,10 +154,11 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val p2 = PureVar(State.getId())
 
     // NI(a.bar(),a.baz()) |> I(c.bar()) && a == p1 && c == p1 (<=> true)
-    val abs2: TraceAbstractionArrow = AbsArrow(
-      AbsAnd(AbsAnd(AbsFormula(niBarBaz), AbsEq("a",p1)), AbsEq("c",p1)),
-      i4::Nil
-    )
+//    val abs2: TraceAbstractionArrow = AbsArrow(
+//      AbsAnd(AbsAnd(AbsFormula(niBarBaz), AbsEq("a",p1)), AbsEq("c",p1)),
+//      i4::Nil
+//    )
+    val abs2 = AbstractTrace(niBarBaz,i4::Nil, Map("a"->p1, "c"->p1) )
     val state2 = State(Nil,Map(),Set(), Set(abs2),0)
     val res2 = stateSolver.simplify(state2)
     assert(res2.isDefined)
@@ -177,11 +178,11 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val p1 = PureVar(State.getId())
 
     // NI(a.bar(),a.baz()) |> I(c.bar()) ; i(b.baz()
-    val niaa: TraceAbstractionArrow = AbsArrow(
-      AbsAnd(AbsFormula(niBarBaz), AbsAnd(AbsEq("a",p1),AbsEq("c",p1))),
-      c_bar::b_baz::Nil
-    )
-//    val abs1 = AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("c",p1), AbsAnd(AbsEq("b",p1), niaa)))
+//    val niaa: TraceAbstractionArrow = AbsArrow(
+//      AbsAnd(AbsFormula(niBarBaz), AbsAnd(AbsEq("a",p1),AbsEq("c",p1))),
+//      c_bar::b_baz::Nil
+//    )
+    val niaa = AbstractTrace(niBarBaz, c_bar::b_baz::Nil, Map("a"->p1, "c"->p1))
     val state2 = State(Nil,Map(),Set(), Set(niaa),0)
     val res2 = statesolver.simplify(state2, Some(20)) //TODO: remove dbg limit
     assert(res2.isDefined)
@@ -200,11 +201,12 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     // pure vars for next few tests
     val p1 = PureVar(State.getId())
 
-    // NI(a.bar(),a.baz()) |> I(c.bar());i(b.baz()
-    val niaa: TraceAbstractionArrow = AbsArrow(
-      AbsAnd(AbsFormula(niBarBaz), AbsAnd(AbsAnd(AbsEq("a",p1), AbsEq("c",p1)),AbsEq("b",p1))),
-      c_bar::b_baz::Nil
-    )
+    // NI(a.bar(),a.baz()) |> I(a.bar());I(a.baz())
+//    val niaa: TraceAbstractionArrow = AbsArrow(
+//      AbsAnd(AbsFormula(niBarBaz), AbsAnd(AbsAnd(AbsEq("a",p1), AbsEq("c",p1)),AbsEq("b",p1))),
+//      c_bar::b_baz::Nil
+//    )
+    val niaa = AbstractTrace(niBarBaz, c_bar::b_baz::Nil, Map("a"->p1, "c"->p1, "b"->p1))
     val state2 = State(Nil,Map(),Set(), Set(niaa),0)
     val res2 = statesolver.simplify(state2, Some(20))
     assert(res2.isEmpty)
@@ -225,10 +227,10 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val p2 = PureVar(State.getId())
 
     // NI(a.bar(),a.baz()) |> I(c.bar()) ; I(b.baz())
-    val niaa: TraceAbstractionArrow = AbsArrow(
-      AbsAnd(AbsFormula(niBarBaz), AbsAnd(AbsEq("a",p1),AbsAnd(AbsEq("c",p1),AbsEq("b",p2)))),
-      c_bar::b_baz::Nil)
-//    val abs1 = AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("c",p1), AbsAnd(AbsEq("b",p2), niaa)))
+//    val niaa: TraceAbstractionArrow = AbsArrow(
+//      AbsAnd(AbsFormula(niBarBaz), AbsAnd(AbsEq("a",p1),AbsAnd(AbsEq("c",p1),AbsEq("b",p2)))),
+//      c_bar::b_baz::Nil)
+    val niaa = AbstractTrace(niBarBaz, c_bar::b_baz::Nil, Map("a"->p1, "c"->p1, "b"->p2))
     val state2 = State(Nil,Map(),Set(), Set(niaa),0)
     val res2 = statesolver.simplify(state2)
     assert(res2.isDefined)
@@ -249,10 +251,11 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val p2 = PureVar(State.getId())
 
     // NI(a.bar(),a.baz()) |> I(c.bar()) |> i(b.baz()
-    val niaa: TraceAbstractionArrow = AbsArrow(
-      AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("c",p2), AbsAnd(AbsEq("b",p1),AbsFormula(niBarBaz)))),
-      c_bar::b_baz::Nil)
-//    val abs1 = AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("c",p2), AbsAnd(AbsEq("b",p1), niaa)))
+//    val niaa: TraceAbstractionArrow = AbsArrow(
+//      AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("c",p2), AbsAnd(AbsEq("b",p1),AbsFormula(niBarBaz)))),
+//      c_bar::b_baz::Nil)
+
+    val niaa = AbstractTrace(niBarBaz, c_bar::b_baz::Nil, Map("a"->p1,"b"->p1, "c"->p2))
     val state2 = State(Nil,Map(),Set(), Set(niaa),0)
     val res2 = statesolver.simplify(state2)
     assert(res2.isEmpty)
@@ -264,8 +267,10 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val ibar = I(CBEnter, Set(("", "bar")), "a" :: Nil)
     val ibaz = I(CBEnter, Set(("", "baz")), "a" :: Nil)
     val ifoo = I(CBEnter, Set(("", "foo")), "a" :: Nil)
-    val t1 = AbsArrow(AbsFormula(NI(ibar, ibaz)), ibar::Nil)
-    val t2 = AbsArrow(AbsFormula(NI(ifoo, ibaz)), ifoo::Nil)
+//    val t1 = AbsArrow(AbsFormula(NI(ibar, ibaz)), ibar::Nil)
+//    val t2 = AbsArrow(AbsFormula(NI(ifoo, ibaz)), ifoo::Nil)
+    val t1 = AbstractTrace(NI(ibar,ibaz), ibar::Nil, Map())
+    val t2 = AbstractTrace(NI(ifoo,ibaz), ifoo::Nil, Map())
     val s = state.copy(traceAbstraction = Set(t1,t2))
     val res = statesolver.simplify(s, Some(20))
     assert(res.isDefined)
@@ -284,16 +289,17 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val p2 = PureVar(State.getId())
     //NI(a.bar(),a.bar()) (<=> true)
     // Note that this should be the same as I(a.bar())
-    val nia = AbsArrow(AbsFormula(niBarBar), Nil)
+//    val nia = AbsArrow(AbsFormula(niBarBar), Nil)
+    val nia = AbstractTrace(niBarBar, Nil, Map())
     val res0 = statesolver.simplify(state.copy(traceAbstraction = Set(nia)))
     assert(res0.isDefined)
 
     //NI(a.bar(),a.bar()) |> I(b.bar()) && a = b (<=> true)
-    val niaa: TraceAbstractionArrow = AbsArrow(
-      AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("b",p1), AbsFormula(niBarBar))),
-      i4::Nil
-    )
-//    val abs1 = AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("b",p1), niaa))
+//    val niaa: TraceAbstractionArrow = AbsArrow(
+//      AbsAnd(AbsEq("a",p1), AbsAnd(AbsEq("b",p1), AbsFormula(niBarBar))),
+//      i4::Nil
+//    )
+    val niaa = AbstractTrace(niBarBar, i4::Nil, Map("a"->p1,"b"->p1))
     val res1 = statesolver.simplify(state.copy(traceAbstraction = Set(niaa)))
     assert(res1.isDefined)
   }
@@ -332,9 +338,11 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val ibarc = I(CBEnter, Set(("", "bar")), "c" :: Nil)
     val ifooc = I(CBEnter, Set(("", "foo")), "c" :: Nil)
 
-    val tpred = AbsAnd(AbsFormula(ifoo), AbsEq("a", p1))
-    val baseTrace1 = AbsArrow(tpred, Nil)
-    val arrowTrace1 = AbsArrow(tpred, ibarc::Nil)
+//    val tpred = AbsAnd(AbsFormula(ifoo), AbsEq("a", p1))
+//    val baseTrace1 = AbsArrow(tpred, Nil)
+//    val arrowTrace1 = AbsArrow(tpred, ibarc::Nil)
+    val baseTrace1 = AbstractTrace(ifoo, Nil, Map("a"->p1))
+    val arrowTrace1 = AbstractTrace(ifoo, ibarc::Nil, Map("a"->p1))
     val state_ = state.copy(traceAbstraction = Set(baseTrace1))
     val state__ = state.copy(traceAbstraction = Set(arrowTrace1))
 
@@ -344,25 +352,31 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     // I(a.foo()) can subsume I(a.foo()) |> a.bar()
     assert(statesolver.canSubsume(state_,state__, Some(5)))
 
-    val tpred2 = AbsAnd(AbsFormula(NI(ifoo, ibar)), AbsEq("a", p1))
-    val baseTrace = AbsArrow(tpred2, Nil)
+//    val tpred2 = AbsAnd(AbsFormula(NI(ifoo, ibar)), AbsEq("a", p1))
+//    val baseTrace = AbsArrow(tpred2, Nil)
+    val baseTrace = AbstractTrace(NI(ifoo,ibar), Nil, Map("a"->p1))
     val state3_ = state.copy(traceAbstraction = Set(baseTrace))
 
     // NI(a.foo(), a.bar()) can subsume itself
     val res = statesolver.canSubsume(state3_, state3_)
     assert(res)
 
-    val state3__ = state.copy(traceAbstraction = Set(AbsArrow(tpred2, ibarc::Nil)))
+    val state3__ = state.copy(traceAbstraction =
+      Set(AbstractTrace(NI(ifoo,ibar), ibarc::Nil, Map("a"->p1))))
     // NI(a.foo(), a.bar()) can subsume NI(a.foo(), a.bar()) |> c.bar()
     assert(statesolver.canSubsume(state3_,state3__))
 
     // NI(a.foo(), a.bar()) cannot subsume NI(a.foo(), a.bar()) |> c.foo()
-    val fooBarArrowFoo = state.copy(traceAbstraction = Set(AbsArrow(tpred2, ifooc::Nil)))
+    // ifooc::Nil
+    val fooBarArrowFoo = state.copy(traceAbstraction = Set(AbstractTrace(NI(ifoo,ibar), ifooc::Nil, Map("a"->p1))))
     assert(!statesolver.canSubsume(state3_, fooBarArrowFoo, Some(10)))
 
     // NI(a.foo(), a.bar()), I(a.foo()) should be subsumed by NI(a.foo(), a.bar())
-    val s_foo_bar_foo = state.copy(traceAbstraction = Set(AbsArrow(tpred2, Nil),AbsArrow(AbsFormula(ifooc),Nil)))
-    val s_foo_bar = state.copy(traceAbstraction = Set(AbsArrow(tpred2, Nil)))
+    val s_foo_bar_foo = state.copy(traceAbstraction =
+      Set(AbstractTrace(NI(ifoo,ibar), Nil, Map("a"->p1)),
+        AbstractTrace(ifooc,Nil, Map())))
+//        AbsArrow(AbsFormula(ifooc),Nil)))
+    val s_foo_bar = state.copy(traceAbstraction = Set(AbstractTrace(NI(ifoo,ibar), Nil, Map("a"->p1))))
     assert(statesolver.canSubsume(s_foo_bar, s_foo_bar_foo))
     // TODO: failing test below is probably correct behavior, but figure out why subsumption fails in executor
 //    assert(!statesolver.canSubsume(s_foo_bar_foo, s_foo_bar))
@@ -401,9 +415,10 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     // Combine type constraints and trace constraints
     val ifoo = I(CBEnter, Set(("", "foo")), "a" :: Nil)
     val ibar = I(CBEnter, Set(("", "bar")), "a" :: Nil)
-    val formula = AbsAnd(AbsFormula(NI(ifoo, ibar)), AbsEq("a",p1))
-    val state2_ = state_.copy(traceAbstraction = Set(AbsArrow(formula, Nil)))
-    val state2__ = state__.copy(traceAbstraction = Set(AbsArrow(formula, Nil)))
+//    val formula = AbsAnd(AbsFormula(NI(ifoo, ibar)), AbsEq("a",p1))
+    val formula = AbstractTrace(NI(ifoo,ibar),Nil, Map("a"->p1))
+    val state2_ = state_.copy(traceAbstraction = Set(formula))
+    val state2__ = state__.copy(traceAbstraction = Set(formula))
     assert(statesolver.canSubsume(state2__, state2_, Some(20)))
     assert(!statesolver.canSubsume(state2_, state2__, Some(20)))
 
@@ -437,49 +452,49 @@ class Z3StateSolverTest extends org.scalatest.FunSuite {
     val ni_foo_x_bar_x = NI(i_foo_x, i_bar_x)
     // I(x.foo()) models @1.foo();@1.bar()
     assert(statesolver.traceInAbstraction(
-      state.copy(traceAbstraction = Set(AbsArrow(AbsFormula(i_foo_x),Nil))),
+      state.copy(traceAbstraction = Set(AbstractTrace(i_foo_x,Nil, Map()))),
       trace))
 
     // I(x.foo()) ! models empty
     assert(!statesolver.traceInAbstraction(
-      state.copy(traceAbstraction = Set(AbsArrow(AbsFormula(i_foo_x),Nil))),
+      state.copy(traceAbstraction = Set(AbstractTrace(i_foo_x,Nil,Map()))),
       Nil))
 
     // NI(x.foo(), x.bar()) ! models empty
     assert(!statesolver.traceInAbstraction(
-      state.copy(traceAbstraction = Set(AbsArrow(AbsFormula(ni_foo_x_bar_x),Nil))),
+      state.copy(traceAbstraction = Set(AbstractTrace(ni_foo_x_bar_x,Nil,Map()))),
       Nil))
 
     // NI(x.foo(), x.bar()) ! models @1.foo();@1.bar()
     assert(!
       statesolver.traceInAbstraction(
-        state.copy(traceAbstraction = Set(AbsArrow(AbsFormula(ni_foo_x_bar_x), Nil))),
+        state.copy(traceAbstraction = Set(AbstractTrace(ni_foo_x_bar_x, Nil,Map()))),
         trace
       ))
 
     // NI(x.foo(),x.bar()) |> x.foo() models empty
     assert(
       statesolver.traceInAbstraction(
-        state.copy(traceAbstraction = Set(AbsArrow(AbsFormula(ni_foo_x_bar_x), i_foo_x::Nil))),
+        state.copy(traceAbstraction = Set(AbstractTrace(ni_foo_x_bar_x, i_foo_x::Nil,Map()))),
         Nil
       ))
     // NI(x.foo(),x.bar()) |> x.foo() models @1.bar()
     assert(
       statesolver.traceInAbstraction(
-        state.copy(traceAbstraction = Set(AbsArrow(AbsFormula(ni_foo_x_bar_x), i_foo_x::Nil))),
+        state.copy(traceAbstraction = Set(AbstractTrace(ni_foo_x_bar_x, i_foo_x::Nil,Map()))),
         TMessage(CIEnter, bar, TAddr(1)::Nil)::Nil
       ))
     // NI(x.foo(),x.bar()) |> x.foo() models @1.foo();@1.bar()
     assert(
       statesolver.traceInAbstraction(
-        state.copy(traceAbstraction = Set(AbsArrow(AbsFormula(ni_foo_x_bar_x), i_foo_x::Nil))),
+        state.copy(traceAbstraction = Set(AbstractTrace(ni_foo_x_bar_x, i_foo_x::Nil,Map()))),
         trace
       ))
 
     // NI(x.foo(),x.bar()) |> x.bar() ! models empty
     assert(
       !statesolver.traceInAbstraction(
-        state.copy(traceAbstraction = Set(AbsArrow(AbsFormula(ni_foo_x_bar_x), i_bar_x::Nil))),
+        state.copy(traceAbstraction = Set(AbstractTrace(ni_foo_x_bar_x, i_bar_x::Nil,Map()))),
         Nil
       ))
     //TODO: test "and", "scoped abstract traces"

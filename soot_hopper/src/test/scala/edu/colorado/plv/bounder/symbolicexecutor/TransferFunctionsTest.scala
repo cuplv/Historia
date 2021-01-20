@@ -3,20 +3,20 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CBExit, CallbackMethodInvoke, CallbackMethodReturn, CmdWrapper, FieldRef, Loc, LocalWrapper, NewCommand, NullConst}
 import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSSpec}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AbsAnd, AbsArrow, AbsEq, AbsFormula, AbstractTrace, CallStackFrame, Equals, FieldPtEdge, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, TraceAbstractionArrow}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, CallStackFrame, Equals, FieldPtEdge, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State}
 import edu.colorado.plv.bounder.testutils.{CmdTransition, MethodTransition, TestIR, TestIRLineLoc, TestIRMethodLoc}
 
 class TransferFunctionsTest extends org.scalatest.FunSuite {
-  def absContains(contained:AbstractTrace, result:TraceAbstractionArrow):Boolean = result match{
-    case AbsArrow(result, _) => absContains(contained, result)
-  }
-  def absContains(contained:AbstractTrace, result:AbstractTrace):Boolean = result match{
-    case r if r == contained => true
-    case AbsAnd(l,r) => absContains(contained,l) || absContains(contained,r)
-    case AbsEq(_,_) => false
-    case AbsFormula(_) => false
-    case _ => ???
-  }
+//  def absContains(contained:AbstractTrace, result:AbstractTrace):Boolean = result match{
+//    case AbsArrow(result, _) => absContains(contained, result)
+//  }
+//  def absContains(contained:AbstractTrace, result:AbstractTrace):Boolean = result match{
+//    case r if r == contained => true
+//    case AbsAnd(l,r) => absContains(contained,l) || absContains(contained,r)
+//    case AbsEq(_,_) => false
+//    case AbsFormula(_) => false
+//    case _ => ???
+//  }
   def testCmdTransfer(cmd:AppLoc => CmdWrapper, post:State, testIRMethod: TestIRMethodLoc):Set[State] = {
     val preloc = AppLoc(testIRMethod,TestIRLineLoc(1), isPre=true)
     val postloc = AppLoc(testIRMethod,TestIRLineLoc(1), isPre=false)
@@ -94,12 +94,12 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
       iFooA)
     val tr = new TransferFunctions(ir, new SpecSpace(Set(spec)))
     val recPv = PureVar(State.getId())
-    val otheri = AbsFormula(I(CBExit, Set(("a","a")), "b"::Nil))
+    val otheri = AbstractTrace(I(CBExit, Set(("a","a")), "b"::Nil), Nil, Map())
     val post = State(
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("@this") -> recPv))::Nil,
       heapConstraints = Map(),
       pureFormula = Set(),
-      traceAbstraction = Set(AbsArrow(otheri,Nil)),0)
+      traceAbstraction = Set(otheri),0)
 
     println(s"post: ${post.toString}")
     println(s"preloc: ${preloc}")
@@ -107,10 +107,15 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
     val prestate: Set[State] = tr.transfer(post,preloc, postloc)
     println(s"pre: ${prestate.toString}")
     assert(prestate.size == 1)
-    val formula = prestate.head.traceAbstraction
-    assert(formula.exists(p => absContains(AbsEq("a",recPv),p)))
-    assert(formula.exists(p => absContains(AbsFormula(lhs),p)))
-    assert(formula.exists(p => absContains(otheri, p)))
+    val formula: Set[AbstractTrace] = prestate.head.traceAbstraction
+    assert(formula.exists(p => p.modelVars.exists{
+      case (k,v) => k == "a" && v == recPv
+    }))
+//    assert(formula.exists(p => absContains(AbsEq("a",recPv),p)))
+//    assert(formula.exists(p => absContains(AbsFormula(lhs),p)))
+    assert(formula.exists(p => p.a == lhs))
+//    assert(formula.exists(p => absContains(otheri, p)))
+    assert(formula.contains(otheri))
     val stack = prestate.head.callStack
     assert(stack.isEmpty)
   }
@@ -124,12 +129,16 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("@this") -> recPv))::Nil,
       heapConstraints = Map(),
       pureFormula = Set(),
-      traceAbstraction = Set(AbsArrow(AbsAnd(AbsFormula(iFooA), AbsEq("a",recPv)), Nil)),0)
+      traceAbstraction = Set(AbstractTrace(iFooA, Nil, Map("a"->recPv))),0)
+//      traceAbstraction = Set(AbsArrow(AbsAnd(AbsFormula(iFooA), AbsEq("a",recPv)), Nil)),0)
     println(s"post: ${post.toString}")
     val prestate: Set[State] = tr.transfer(post,preloc, postloc)
     println(s"pre: ${prestate.toString}")
     val formula = prestate.head.traceAbstraction
-    assert(formula.exists(p => absContains(AbsEq("a",recPv),p)))
+    assert(formula.exists(p => p.modelVars.exists{
+      case (k,v) => k == "a" && v == recPv
+    }))
+//    assert(formula.exists(p => absContains(AbsEq("a",recPv),p)))
     //TODO: Simplification does not yet discharge in this case, should it?
   }
 }

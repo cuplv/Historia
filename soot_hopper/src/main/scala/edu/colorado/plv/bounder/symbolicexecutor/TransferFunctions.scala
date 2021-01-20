@@ -2,11 +2,21 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSAbsBind, LSPred, LSSpec, LSTrue, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSPred, LSSpec, LSTrue, Or}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 
 class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
+
+
+  def relevantAliases(pre: State,
+                      dir: MessageType,
+                      signature: (String, String)) :Set[List[LSParamConstraint]]  = {
+    val relevantI = pre.findIFromCurrent(dir, signature)
+    relevantI.map{
+      case (I(_, _, vars),p)=> p
+    }
+  }
 
   /**
    *
@@ -19,6 +29,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     case (source@AppLoc(_, _, false), cmret@CallinMethodReturn(_, _), preState) =>
       // traverse back over the retun of a callin
       // "Some(source.copy(isPre = true))" places the entry to the callin as the location of call
+      //TODO:relevant transition enumeration
       val (pkg, name) = msgCmdToMsg(cmret)
       val invars: List[Option[RVal]] = inVarsForCall(source)
       val frame = CallStackFrame(target, Some(source.copy(isPre = true)), Map())
@@ -35,6 +46,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       Set(states3.copy(callStack=frame::preState.callStack))
     case (CallinMethodReturn(_, _), CallinMethodInvoke(_, _), state) => Set(state)
     case (cminv@CallinMethodInvoke(_, _), ciInv@AppLoc(_, _, true), s@State(_ :: t, _, _, _,_)) => {
+     //TODO: relevant transition enumeration
       val (pkg,name) = msgCmdToMsg(cminv)
       val invars = inVarsForCall(ciInv)
       val state0 = defineVars(s, invars.tail)
@@ -75,7 +87,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       // Case where execution goes to the exit of another callback
       // TODO: nested callbacks not supported yet, assuming we can't go back to callin entry
       // TODO: note that the callback method invoke is to be ignored here.
-      // TODO: case split on equality between args and params of trace abstraction? ------
+
+      //TODO: relevant transition enumeration
       // Control flow resolver is responsible for the
       val appLoc = AppLoc(targetLoc.loc, targetLoc.line.get,false)
       val rvar = w.cmdAtLocation(appLoc) match{
@@ -83,13 +96,20 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         case c => throw new IllegalStateException(s"return from non return command $c ")
       }
       val newFrame = CallStackFrame(appLoc, None, Map())
-      val pre_push = pre.copy(callStack = newFrame::pre.callStack)
       val (pkg,name) = msgCmdToMsg(target)
+      // Push frame regardless of relevance
+      val pre_push = pre.copy(callStack = newFrame::pre.callStack)
+      val relAliases = relevantAliases(pre, CBExit, (pkg,name))
       val lsvars: List[Option[LocalWrapper]] = rvar::mloc.getArgs
-      val state0 = defineVars(pre_push, lsvars)
-      val state1 = traceAllPredTransfer(CBExit, (pkg,name), lsvars, state0)
-      val state2 = newSpecInstanceTransfer(CBExit, (pkg,name), lsvars, target, state1)
-      Set(state2)
+      // Note: no newSpecInstanceTransfer since this is an in-message
+      if(relAliases.isEmpty){
+        Set(pre_push)
+      }else {
+        val state0 = defineVars(pre_push, lsvars)
+        val state1 = traceAllPredTransfer(CBExit, (pkg, name), lsvars, state0)
+        Set(state1)
+        ??? //TODO: relevant aliases found, enumerate possible states
+      }
     }
     case (CallbackMethodReturn(_,_,mloc1,_), AppLoc(mloc2,_,_), state) =>
       assert(mloc1 == mloc2) ; Set(state) // transfer handled by processing callbackmethodreturn, nothing to do here
@@ -148,12 +168,21 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     val parameterPairing: Seq[(String, Option[RVal])] = (target.lsVars zip allVar)
 
     // Match each lsvar to absvar if both exist
-    val formula = parameterPairing.foldLeft(AbsFormula(pred):AbstractTrace) {
-      case (abstTrace, (lsvar, Some(invar))) if lsvar != "_" =>
-        AbsAnd(abstTrace, AbsEq(lsvar, postState.get(invar).get))
-      case (abstTrace, (_, None)) => abstTrace
-    }
-    val newLsAbstraction = AbsArrow(formula, Nil)
+//    val formula = parameterPairing.foldLeft(AbsFormula(pred):AbstractTrace) {
+//      case (abstTrace, (lsvar, Some(invar))) if lsvar != "_" =>
+//        AbsAnd(abstTrace, AbsEq(lsvar, postState.get(invar).get))
+//      case (abstTrace, (_, None)) => abstTrace
+//    }
+//    val newLsAbstraction = AbsArrow(formula, Nil)
+    val newLsAbstraction = AbstractTrace(pred, Nil, parameterPairing.flatMap{
+      case (k,_) if k == "_" => None
+      case (k,Some(l : LocalWrapper)) => Some((k,postState.get(l).get))
+      case (_,None) => None
+      case (k,v) =>
+        println(k)
+        println(v)
+        ??? //TODO: handle primitives e.g. true "string" 1 2 etc
+    }.toMap)
     postState.copy(traceAbstraction = postState.traceAbstraction + newLsAbstraction)
   }
 
@@ -181,26 +210,45 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
    *
    * @return
    */
-  def predTransferTrace(pred:TraceAbstractionArrow, mt:MessageType,
-                        sig:(String,String), vals: List[Option[PureExpr]]):TraceAbstractionArrow = pred match{
-    case AbsArrow(traceAbstraction, suffixAbstraction) =>
-      specSpace.getIWithFreshVars(mt, sig) match{
-        case Some(i@I(_,_,lsVars)) =>
-          val modelVarConstraints: Seq[AbstractTrace] = (lsVars zip vals).flatMap{
-            case (lsvar, Some(stateVal)) if lsvar != "_"  => Some(AbsEq(lsvar,stateVal))
+  def predTransferTrace(pred:AbstractTrace, mt:MessageType,
+                        sig:(String,String),
+                        vals: List[Option[PureExpr]]):AbstractTrace = {
+    if (pred.a.contains(mt,sig)) {
+      specSpace.getIWithFreshVars(mt, sig) match {
+        case Some(i@I(_, _, lsVars)) =>
+          val modelVarConstraints = (lsVars zip vals).flatMap {
+            case (lsvar, Some(stateVal)) if lsvar != "_" => Some((lsvar, stateVal))
             case _ => None
-          }
-          //TODO: handle case where no vars should be matched
-          val modelVarFormula = if(modelVarConstraints.isEmpty){
-            ???
-          }else {
-            modelVarConstraints.reduceRight{(a,b) => AbsAnd(a,b)}
-          }
-          AbsArrow(AbsAnd(modelVarFormula, traceAbstraction), // map lifestate vars to
-            i::suffixAbstraction) // prepend message if in spec space
+          }.toMap
+          assert(!modelVarConstraints.isEmpty) //TODO: can this ever happen?
+          assert(pred.modelVars.keySet.intersect(modelVarConstraints.keySet).isEmpty,
+            "Previous substitutions must be made so that comflicting model " +
+              "var constraints aren't added to trace abstraction")
+          AbstractTrace(pred.a,
+            i :: pred.rightOfArrow, pred.modelVars ++ modelVarConstraints)
         case None => pred
       }
+    } else pred
   }
+//    pred match{
+//    case AbsArrow(traceAbstraction, suffixAbstraction) =>
+//      specSpace.getIWithFreshVars(mt, sig) match{
+//        case Some(i@I(_,_,lsVars)) =>
+//          val modelVarConstraints: Seq[AbstractTrace] = (lsVars zip vals).flatMap{
+//            case (lsvar, Some(stateVal)) if lsvar != "_"  => Some(AbsEq(lsvar,stateVal))
+//            case _ => None
+//          }
+//          //TODO: handle case where no vars should be matched
+//          val modelVarFormula = if(modelVarConstraints.isEmpty){
+//            ???
+//          }else {
+//            modelVarConstraints.reduceRight{(a,b) => AbsAnd(a,b)}
+//          }
+//          AbsArrow(AbsAnd(modelVarFormula, traceAbstraction), // map lifestate vars to
+//            i::suffixAbstraction) // prepend message if in spec space
+//        case None => pred
+//      }
+//  }
   /**
    * Update each trace abstraction in an abstract state
    * @param postState
@@ -211,7 +259,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
                            postState: State):State = {
     // values we want to track should already be added to the state
     val allVal = alvar.map(_.flatMap(postState.get(_)))
-    val newTraceAbs: Set[TraceAbstractionArrow] = postState.traceAbstraction.map {
+    val newTraceAbs: Set[AbstractTrace] = postState.traceAbstraction.map {
       traceAbs => predTransferTrace(traceAbs, mt, sig, allVal)
     }
     postState.copy(traceAbstraction = newTraceAbs)

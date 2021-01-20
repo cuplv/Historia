@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.solver
 
 import com.microsoft.z3._
-import edu.colorado.plv.bounder.symbolicexecutor.state.{PureVar, State, TraceAbstractionArrow, TypeConstraint}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, PureVar, State, TypeConstraint}
 
 class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateSolver[AST] {
   val solver: Solver = persistentConstraints.getSolver
@@ -99,11 +99,11 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
 
   override protected def mkObjVar(s: PureVar): AST = ctx.mkConst("object_addr_" + s.id.toString, addrSort)
 
-  override def printDbgModel(messageTranslator: MessageTranslator, traceAbstraction: Set[TraceAbstractionArrow], lenUID: String): Unit = {
+  override def printDbgModel(messageTranslator: MessageTranslator, traceAbstraction: Set[AbstractTrace], lenUID: String): Unit = {
     printAbstSolution(solver.getModel, messageTranslator, traceAbstraction, lenUID)
   }
 
-  def printAbstSolution(model: Model, messageTranslator: MessageTranslator, traceAbstraction: Set[TraceAbstractionArrow],
+  def printAbstSolution(model: Model, messageTranslator: MessageTranslator, traceAbstraction: Set[AbstractTrace],
                         lenUID: String) {
     println(s"===model: $model")
     traceAbstraction map { abs => {

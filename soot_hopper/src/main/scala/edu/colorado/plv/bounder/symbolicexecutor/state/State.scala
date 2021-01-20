@@ -1,8 +1,8 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.solver.StateSolver
-import edu.colorado.plv.bounder.ir.{IRWrapper, IntConst, LVal, LocalWrapper, RVal, StringConst}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, LSAtom, LSFalse, LSPred, LSTrue, Not, Or}
+import edu.colorado.plv.bounder.ir.{IRWrapper, IntConst, LVal, LocalWrapper, MessageType, RVal, StringConst}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAtom, LSFalse, LSPred, LSTrue, NI, Not, Or}
 
 
 object State {
@@ -17,24 +17,57 @@ object State {
 
 // pureFormula is a conjunction of constraints
 // callStack is the call string from thresher paper
-sealed trait TraceAbstractionArrow
-sealed trait AbstractTrace
-case class AbsFormula(pred:LSPred) extends AbstractTrace{
-  override def toString:String = pred.toString
+//sealed trait TraceAbstractionArrow
+//TODO: replace AbstractTrace with a formula and a map from String to pureExpr
+case class AbstractTrace(a:LSPred,rightOfArrow:List[I], modelVars: Map[String,PureExpr]){
+  override def toString:String = s"(${modelVars} - ${a.toString} |> ${rightOfArrow.mkString(";")})"
 }
-case class AbsArrow(traceAbstraction: AbstractTrace, i:List[I]) extends TraceAbstractionArrow {
-  override def toString:String = s"($traceAbstraction) |> $i"
-}
-case class AbsAnd(t1 : AbstractTrace, t2:AbstractTrace) extends AbstractTrace{
-  override def toString:String = s"( ${t1} ) && ( $t2 )"
-}
-case class AbsEq(lsVar : String, pureVar: PureExpr) extends AbstractTrace{
-  assert(lsVar != "_")
-  override def toString:String = s"$lsVar = $pureVar"
-}
+//sealed trait AbstractTrace
+//case class AbsFormula(pred:LSPred) extends AbstractTrace{
+//  override def toString:String = pred.toString
+//}
+//case class AbsArrow(traceAbstraction: LSPred, i:List[I]) {
+//  override def toString:String = s"($traceAbstraction) |> $i"
+//}
+//case class AbsAnd(t1 : AbstractTrace, t2:AbstractTrace) extends AbstractTrace{
+//  override def toString:String = s"( ${t1} ) && ( $t2 )"
+//}
+//case class AbsEq(lsVar : String, pureVar: PureExpr) extends AbstractTrace{
+//  assert(lsVar != "_")
+//  override def toString:String = s"$lsVar = $pureVar"
+//}
+
+
+sealed trait LSParamConstraint
+case class LSPure(p: PureExpr) extends LSParamConstraint
+case class LSModelVar(s:String) extends LSParamConstraint
+object LSAny extends LSParamConstraint
 
 case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdge, PureExpr],
-                 pureFormula: Set[PureConstraint], traceAbstraction: Set[TraceAbstractionArrow], nextAddr:Int) {
+                 pureFormula: Set[PureConstraint], traceAbstraction: Set[AbstractTrace], nextAddr:Int) {
+
+  private def findIAF(messageType: MessageType, tuple: (String, String), pred: LSPred):Set[I] = pred match{
+    case i@I(mt, sigs, _) if mt == messageType && sigs.contains(tuple) => Set(i)
+    case NI(i1,i2) => Set(i1,i2).flatMap(findIAF(messageType, tuple, _))
+    case And(l1,l2) => findIAF(messageType,tuple,l1).union(findIAF(messageType,tuple,l2))
+    case Or(l1,l2) => findIAF(messageType,tuple,l1).union(findIAF(messageType,tuple,l2))
+    case Not(l) => findIAF(messageType, tuple, l)
+    case _ => Set()
+  }
+
+  def lsVarConstraint(f: AbstractTrace, lsvar: String): Option[LSParamConstraint] = f match{
+    case AbstractTrace(_,_,mv) => mv.get(lsvar).map(LSPure)
+  }
+
+  def findIFromCurrent(dir: MessageType, signature: (String, String)): Set[(I, List[LSParamConstraint])] = {
+//    traceAbstraction.flatMap(ar => findIAF(dir,signature,ar.a).map(i => (i,i.lsVars.map(lsVarConstraint(ar,_).getOrElse(LSModelVar(i))))))
+    traceAbstraction.flatMap(ar =>{
+      val iset = findIAF(dir,signature,ar.a)
+      iset.map(i => (i, i.lsVars.map(mv => ar.modelVars.get(mv).map(LSPure)
+        .getOrElse(LSModelVar(mv)))))
+    })
+  }
+
 
   private def pformulaVars(p:PureExpr):Set[PureVar] = p match{
     case p:PureVar => Set(p)
@@ -44,17 +77,18 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
     case And(lhs,rhs) => tformulaVars(lhs).union(tformulaVars(rhs))
     case Or(lhs,rhs) => tformulaVars(lhs).union(tformulaVars(rhs))
     case Not(v) => tformulaVars(v)
-    case LSAbsBind(_,pv) => pformulaVars(pv)
+//    case LSAbsBind(_,pv) => pformulaVars(pv)
     case _ => Set()
   }
-  private def formulaVars(trace: AbstractTrace):Set[PureVar] = trace match{
-    case AbsEq(_,pv) => pformulaVars(pv)
-    case AbsAnd(lhs,rhs) => formulaVars(lhs).union(formulaVars(rhs))
-    case AbsFormula(f) => tformulaVars(f)
+  private def formulaVars(trace: AbstractTrace):Set[PureVar] = {
+//    case AbsEq(_,pv) => pformulaVars(pv)
+//    case AbsAnd(lhs,rhs) => formulaVars(lhs).union(formulaVars(rhs))
+//    case AbsFormula(f) => tformulaVars(f)
+    tformulaVars(trace.a).union(trace.modelVars.flatMap{
+      case (_,v) => pformulaVars(v)
+    }.toSet)
   }
-  def allTraceVar():Set[PureVar] = traceAbstraction.flatMap{
-    case AbsArrow(f,_) => formulaVars(f)
-  }
+  def allTraceVar():Set[PureVar] = traceAbstraction.flatMap(formulaVars)
 
   def pvTypeUpperBound(v: PureVar): Option[String] = {
     pureFormula.flatMap{
@@ -99,33 +133,26 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
     case PureConstraint(lhs, op, rhs) =>
       PureConstraint(pureExprSwap(oldPv, newPv, lhs),op, pureExprSwap(oldPv, newPv, rhs))
   }
-  private def formulaSwapPv(oldPv: PureVar, newPv: PureVar, pred: LSPred):LSPred = pred match{
-    case LSAbsBind(modelVar, pureExpr)=> LSAbsBind(modelVar, pureExprSwap(oldPv, newPv,pureExpr))
-    case i:LSAtom => i
-    case Not(f) => Not(formulaSwapPv(oldPv,newPv, f))
-    case And(f1, f2) => And(
-      formulaSwapPv(oldPv, newPv, f1),
-      formulaSwapPv(oldPv, newPv, f2)
-    )
-    case Or(f1,f2) => Or(
-      formulaSwapPv(oldPv, newPv, f1),
-      formulaSwapPv(oldPv, newPv, f2)
-    )
-    case LSTrue => LSTrue
-    case LSFalse => LSFalse
+
+  private def traceSwapPv(oldPv : PureVar, newPv : PureVar, tr: AbstractTrace):AbstractTrace = {
+    val nmv = tr.modelVars.map{
+      case (k,v) => (k,pureExprSwap(oldPv, newPv, v))
+    }
+    tr.copy(modelVars = nmv)
   }
-  private def aTraceSwapPv(oldPv : PureVar, newPv : PureVar, tr: AbstractTrace):AbstractTrace = tr match{
-    case AbsEq(lsVar, pv) => AbsEq(lsVar, pureExprSwap(oldPv, newPv,pv))
-    case AbsAnd(lhs,rhs) => AbsAnd(
-      aTraceSwapPv(oldPv, newPv, lhs),
-      aTraceSwapPv(oldPv, newPv, rhs)
-    )
-    case AbsFormula(f) => AbsFormula(formulaSwapPv(oldPv,newPv,f))
-  }
-  private def traceSwapPv(oldPv : PureVar, newPv :PureVar, traceAbstractionArrow: TraceAbstractionArrow): TraceAbstractionArrow =  traceAbstractionArrow match{
-    case AbsArrow(at, is) =>
-      AbsArrow(aTraceSwapPv(oldPv, newPv, at), is)
-  }
+
+//    tr match{
+//    case AbsEq(lsVar, pv) => AbsEq(lsVar, pureExprSwap(oldPv, newPv,pv))
+//    case AbsAnd(lhs,rhs) => AbsAnd(
+//      aTraceSwapPv(oldPv, newPv, lhs),
+//      aTraceSwapPv(oldPv, newPv, rhs)
+//    )
+//    case AbsFormula(f) => AbsFormula(formulaSwapPv(oldPv,newPv,f))
+//  }
+//  private def traceSwapPv(oldPv : PureVar, newPv :PureVar, traceAbstractionArrow: TraceAbstractionArrow): TraceAbstractionArrow =  traceAbstractionArrow match{
+//    case AbsArrow(at, is) =>
+//      AbsArrow(aTraceSwapPv(oldPv, newPv, at), is)
+//  }
   /**
    *
    * @param oldPv
@@ -170,15 +197,10 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
     pureFormula.exists(c => expressionContains(c.lhs,p) || expressionContains(c.rhs,p))
 
   def traceAbstractionContains(p: PureVar): Boolean = {
-    def iArrowContains(t: TraceAbstractionArrow, p:PureVar):Boolean = t match {
-      case AbsArrow(t1, _ ) => iTraceAbstractionContains(t1,p)
-    }
-    def iTraceAbstractionContains(t: AbstractTrace, p: PureVar): Boolean = t match{
-      case AbsEq(_,pureVar) => p == pureVar
-      case AbsAnd(t1,t2) => iTraceAbstractionContains(t1,p) || iTraceAbstractionContains(t2,p)
-      case AbsFormula(_) => false
-    }
-    traceAbstraction.exists(iArrowContains(_, p))
+    traceAbstraction.exists(_.modelVars.exists{
+      case (k,v) if v == p => true
+      case _ => false
+    })
   }
 
   def contains(p:PureVar):Boolean = {

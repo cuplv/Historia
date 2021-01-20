@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.solver
 
 import edu.colorado.plv.bounder.ir.TMessage
 import edu.colorado.plv.bounder.lifestate.LifeState
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAbsBind, LSFalse, LSPred, LSTrue, NI, Not, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSFalse, LSPred, LSTrue, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 
 trait Assumptions
@@ -129,7 +129,7 @@ trait StateSolver[T] {
   // function argumentindex -> msg -> argvalue
   protected def mkArgConstraint(argFun: T, argIndex: T, msg: T): T
 
-  def printDbgModel(messageTranslator: MessageTranslator, traceabst: Set[TraceAbstractionArrow], lenUID: String): Unit
+  def printDbgModel(messageTranslator: MessageTranslator, traceabst: Set[AbstractTrace], lenUID: String): Unit
 
   def nullConst(v: PureExpr, op : CmpOp):T = {
     val tfun = createTypeFun()
@@ -189,7 +189,7 @@ trait StateSolver[T] {
                          , absUID: String): T = combinedPred match {
     case And(l1, l2) => mkAnd(encodePred(l1, traceFn, len, messageTranslator, absUID),
       encodePred(l2, traceFn, len, messageTranslator, absUID))
-    case LSAbsBind(k, v: PureVar) => mkEq(mkModelVar(k, absUID), mkObjVar(v))
+//    case LSAbsBind(k, v: PureVar) => mkEq(mkModelVar(k, absUID), mkObjVar(v))
     case Or(l1, l2) => mkOr(encodePred(l1, traceFn, len, messageTranslator, absUID),
       encodePred(l2, traceFn, len, messageTranslator, absUID))
     case Not(l) => mkNot(encodePred(l, traceFn, len, messageTranslator, absUID))
@@ -207,7 +207,7 @@ trait StateSolver[T] {
   }
 
 
-  private def allITraceAbs(traceAbstractionSet: Set[TraceAbstractionArrow], includeArrow: Boolean = false): Set[I] =
+  private def allITraceAbs(traceAbstractionSet: Set[AbstractTrace], includeArrow: Boolean = false): Set[I] =
     traceAbstractionSet.flatMap(a => allI(a, includeArrow))
 
   private def allI(pred: LSPred): Set[I] = pred match {
@@ -218,17 +218,10 @@ trait StateSolver[T] {
     case Not(l) => allI(l)
     case LSTrue => Set()
     case LSFalse => Set()
-    case LSAbsBind(_, _) => Set()
   }
 
-  private def allI(abs: AbstractTrace): Set[I] = abs match {
-    case AbsFormula(pred) => allI(pred)
-    case AbsAnd(p1, p2) => allI(p1).union(allI(p2))
-    case AbsEq(_, _) => Set()
-  }
-
-  private def allI(abs: TraceAbstractionArrow, includeArrow: Boolean): Set[I] = abs match {
-    case AbsArrow(pred, i2) =>
+  private def allI(abs: AbstractTrace, includeArrow: Boolean): Set[I] = abs match {
+    case AbstractTrace(pred, i2, mapping) =>
       if (includeArrow)
         allI(pred) ++ i2
       else
@@ -247,12 +240,12 @@ trait StateSolver[T] {
    *                    note that "mkNot(encodeTraceAbs(..." does not work due to skolomization
    * @return encoded trace abstraction
    */
-  def encodeTraceAbs(abs: TraceAbstractionArrow, messageTranslator: MessageTranslator, traceFn: T, traceLen: T,
+  def encodeTraceAbs(abs: AbstractTrace, messageTranslator: MessageTranslator, traceFn: T, traceLen: T,
                      absUID: Option[String] = None, negate:Boolean = false): T = {
     val uniqueAbsId = absUID.getOrElse(System.identityHashCode(abs).toString)
 
-    def iencarrow(len: T, abs: TraceAbstractionArrow, traceFn: T): T = abs match {
-      case AbsArrow(abs, ipreds) =>
+    def iencarrow(len: T, abs: AbstractTrace, traceFn: T): T = abs match {
+      case AbstractTrace(abs, ipreds, modelVars) =>
       val freshTraceFun = mkFreshTraceFn("arrowtf")
         val beforeIndEq =
           mkForallInt(mkIntVal(-1), len, i =>
@@ -263,7 +256,7 @@ trait StateSolver[T] {
             mkAdd(ind, mkIntVal(1))
           )
         }
-        val absEnc = ienc(endlen, abs, freshTraceFun)
+        val absEnc = ienc(endlen, abs,modelVars, freshTraceFun)
         if(negate){
           mkAnd(mkNot(absEnc), suffixConstraint)
         }else {
@@ -271,12 +264,14 @@ trait StateSolver[T] {
         }
     }
 
-    def ienc(sublen: T, abs: AbstractTrace, traceFn: T): T = abs match {
-      case AbsFormula(f) =>
-        encodePred(f, traceFn, sublen, messageTranslator, uniqueAbsId)
-      case AbsAnd(f1, f2) => mkAnd(ienc(sublen, f1, traceFn), ienc(sublen, f2, traceFn))
-      case AbsEq(mv, pv : PureVar) => mkEq(mkModelVar(mv, uniqueAbsId), mkObjVar(pv))
-      case AbsEq(mv, pv ) => ??? //TODO: encoding for non-pure var
+    def ienc(sublen: T, f: LSPred, modelVars: Map[String,PureExpr], traceFn: T): T = {
+      val modelConstraints:List[T] = modelVars.map{
+        case (k,v:PureVar) => mkEq(mkModelVar(k, uniqueAbsId), mkObjVar(v))
+        case _ => ???
+      }.toList
+      mkAnd(
+        encodePred(f, traceFn, sublen, messageTranslator, uniqueAbsId)::
+          modelConstraints)
     }
 
     iencarrow(traceLen, abs, traceFn)
