@@ -95,6 +95,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       // execute step on live queries
       val nextQry = liveQueries.flatMap {
         case p@PathNode(qry: SomeQry, _, None) => executeStep(qry).map((p,_))
+        case _ => None
       }
 
       val nextPathNode = nextQry.map{
