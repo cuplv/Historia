@@ -168,12 +168,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     val parameterPairing: Seq[(String, Option[RVal])] = (target.lsVars zip allVar)
 
     // Match each lsvar to absvar if both exist
-//    val formula = parameterPairing.foldLeft(AbsFormula(pred):AbstractTrace) {
-//      case (abstTrace, (lsvar, Some(invar))) if lsvar != "_" =>
-//        AbsAnd(abstTrace, AbsEq(lsvar, postState.get(invar).get))
-//      case (abstTrace, (_, None)) => abstTrace
-//    }
-//    val newLsAbstraction = AbsArrow(formula, Nil)
     val newLsAbstraction = AbstractTrace(pred, Nil, parameterPairing.flatMap{
       case (k,_) if k == "_" => None
       case (k,Some(l : LocalWrapper)) => Some((k,postState.get(l).get))
@@ -230,25 +224,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       }
     } else pred
   }
-//    pred match{
-//    case AbsArrow(traceAbstraction, suffixAbstraction) =>
-//      specSpace.getIWithFreshVars(mt, sig) match{
-//        case Some(i@I(_,_,lsVars)) =>
-//          val modelVarConstraints: Seq[AbstractTrace] = (lsVars zip vals).flatMap{
-//            case (lsvar, Some(stateVal)) if lsvar != "_"  => Some(AbsEq(lsvar,stateVal))
-//            case _ => None
-//          }
-//          //TODO: handle case where no vars should be matched
-//          val modelVarFormula = if(modelVarConstraints.isEmpty){
-//            ???
-//          }else {
-//            modelVarConstraints.reduceRight{(a,b) => AbsAnd(a,b)}
-//          }
-//          AbsArrow(AbsAnd(modelVarFormula, traceAbstraction), // map lifestate vars to
-//            i::suffixAbstraction) // prepend message if in spec space
-//        case None => pred
-//      }
-//  }
+
   /**
    * Update each trace abstraction in an abstract state
    * @param postState

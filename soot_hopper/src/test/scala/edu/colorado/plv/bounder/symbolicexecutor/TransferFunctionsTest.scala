@@ -7,16 +7,7 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, CallStack
 import edu.colorado.plv.bounder.testutils.{CmdTransition, MethodTransition, TestIR, TestIRLineLoc, TestIRMethodLoc}
 
 class TransferFunctionsTest extends org.scalatest.FunSuite {
-//  def absContains(contained:AbstractTrace, result:AbstractTrace):Boolean = result match{
-//    case AbsArrow(result, _) => absContains(contained, result)
-//  }
-//  def absContains(contained:AbstractTrace, result:AbstractTrace):Boolean = result match{
-//    case r if r == contained => true
-//    case AbsAnd(l,r) => absContains(contained,l) || absContains(contained,r)
-//    case AbsEq(_,_) => false
-//    case AbsFormula(_) => false
-//    case _ => ???
-//  }
+
   def testCmdTransfer(cmd:AppLoc => CmdWrapper, post:State, testIRMethod: TestIRMethodLoc):Set[State] = {
     val preloc = AppLoc(testIRMethod,TestIRLineLoc(1), isPre=true)
     val postloc = AppLoc(testIRMethod,TestIRLineLoc(1), isPre=false)
@@ -111,10 +102,7 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
     assert(formula.exists(p => p.modelVars.exists{
       case (k,v) => k == "a" && v == recPv
     }))
-//    assert(formula.exists(p => absContains(AbsEq("a",recPv),p)))
-//    assert(formula.exists(p => absContains(AbsFormula(lhs),p)))
     assert(formula.exists(p => p.a == lhs))
-//    assert(formula.exists(p => absContains(otheri, p)))
     assert(formula.contains(otheri))
     val stack = prestate.head.callStack
     assert(stack.isEmpty)
@@ -130,7 +118,6 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
       heapConstraints = Map(),
       pureFormula = Set(),
       traceAbstraction = Set(AbstractTrace(iFooA, Nil, Map("a"->recPv))),0)
-//      traceAbstraction = Set(AbsArrow(AbsAnd(AbsFormula(iFooA), AbsEq("a",recPv)), Nil)),0)
     println(s"post: ${post.toString}")
     val prestate: Set[State] = tr.transfer(post,preloc, postloc)
     println(s"pre: ${prestate.toString}")
@@ -138,7 +125,6 @@ class TransferFunctionsTest extends org.scalatest.FunSuite {
     assert(formula.exists(p => p.modelVars.exists{
       case (k,v) => k == "a" && v == recPv
     }))
-//    assert(formula.exists(p => absContains(AbsEq("a",recPv),p)))
     //TODO: Simplification does not yet discharge in this case, should it?
   }
 }
