@@ -10,7 +10,43 @@ import scalax.collection.io.dot.Indent._
 import scalax.collection.edge.Implicits._
 import scalax.collection.io.dot.{DotAttr, DotEdgeStmt, DotGraph, DotRootGraph, Id, NodeId}
 
+import scala.io.Source
+
 object PrettyPrinting {
+  val templateFile = getClass.getResource("/pageTemplate.html").getPath
+  val template = Source.fromFile(templateFile).getLines().mkString
+  def qryString(q : Qry):String = q match{
+    case SomeQry(state,loc) =>
+      loc.toString +
+        "   state: " + state.callStack.headOption.map(_.locals.toString).getOrElse("Empty stack")
+    case BottomQry(state,loc) =>
+      "REFUTED: " + loc.toString +
+        "   state: " + state.callStack.headOption.map(_.locals.toString).getOrElse("Empty stack")
+    case WitnessedQry(state,loc) =>
+      "WITNESSED: " + loc.toString +
+        "   state: " + state.callStack.headOption.map(_.locals.toString).getOrElse("Empty stack")
+  }
+  def witnessToTrace(pn:PathNode):List[String] = pn match{
+    case PathNode(q, Some(pred), _) =>
+      qryString(q) :: witnessToTrace(pred)
+    case PathNode(q, None, _) =>
+      qryString(q) :: Nil
+    case v =>
+      println(v)
+      ???
+  }
+  def printWitnessTraces(result: Set[PathNode], outFile: String): Unit = {
+    val pw = new PrintWriter(new File(outFile ))
+    val live = result.flatMap{
+      case pn@PathNode(_: SomeQry, _ , None) => Some(("live",pn))
+      case pn@PathNode(_ :WitnessedQry, succ, _) => Some(("witnessed", pn))
+      case _ => None
+    }
+    val traces = live.map(a => a._1 + "\n    " + witnessToTrace(a._2).mkString("\n    ")).mkString("\n")
+    pw.write(traces)
+    pw.close()
+  }
+
   private def sanitizeStringForDot(str:String):String =
     str.replace(">","\\>")
       .replace("<","\\<")

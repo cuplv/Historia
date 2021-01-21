@@ -143,7 +143,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       }
       ostates.map(a => {
         val invars: List[Option[LocalWrapper]] = None :: containingMethod.getArgs
-        val b = newSpecInstanceTransfer(CBEnter, (pkg, name), invars, cmInv, a)
+        val c = defineVars(a, invars)
+        val b = newSpecInstanceTransfer(CBEnter, (pkg, name), invars, cmInv, c)
         b.copy(callStack = if(a.callStack.isEmpty) Nil else a.callStack.tail)
       })
     }
@@ -240,7 +241,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     // Match each lsvar to absvar if both exist
     val newLsAbstraction = AbstractTrace(pred, Nil, parameterPairing.flatMap{
       case (k,_) if k == "_" => None
-      case (k,Some(l : LocalWrapper)) => Some((k,postState.get(l).get))
+      case (k,Some(l : LocalWrapper)) =>
+        Some((k,postState.get(l).get))
       case (_,None) => None
       case (k,v) =>
         println(k)
