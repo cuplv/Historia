@@ -317,7 +317,6 @@ trait StateSolver[T] {
     heapAst
   }
   def toAST(state: State, messageTranslator: MessageTranslator, maxWitness: Option[Int] = None): T = {
-    // TODO: make all variables in this encoding unique from other states so multiple states can be run at once
     val pure = state.pureFormula
     // TODO: handle static fields
     // typeFun is a function from addresses to concrete types in the program
@@ -382,7 +381,6 @@ trait StateSolver[T] {
   }
 
   // TODO: call stack is currently just a list of stack frames, this needs to be updated when top is added
-  //TODO: contains may be flipped
   def stackCanSubsume(cs1: List[CallStackFrame], cs2: List[CallStackFrame]): Boolean = (cs1, cs2) match {
     case (CallStackFrame(ml1, _, locals1) :: t1, CallStackFrame(ml2, _, locals2) :: t2) if ml1 == ml2 =>
       locals1.forall { case (k, v) => locals2.get(k).contains(v) } &&
@@ -399,14 +397,12 @@ trait StateSolver[T] {
    * @return false if there exists a trace in s2 that is not in s1 otherwise true
    */
   def canSubsume(s1: State, s2: State, maxLen: Option[Int] = None): Boolean = {
-    //TODO: figure out if negation of arg fun breaks subusmption, it probably does
     // Currently, the stack is strictly the app call string
     // When adding more abstraction to the stack, this needs to be modified
     if(!stackCanSubsume(s1.callStack, s2.callStack))
       return false
     if(!s1.heapConstraints.forall { case (k, v) => s2.heapConstraints.get(k).contains(v) })
       return false
-
     // TODO: encode inequality of heap cells in smt formula?
     push()
 
@@ -463,9 +459,9 @@ trait StateSolver[T] {
     assertEachMsg.foldLeft(mkBoolVal(true))( (a,b) => mkAnd(a,b))
   }
   def witnessed(state:State):Boolean = {
-    if (!state.heapConstraints.isEmpty)
+    if (state.heapConstraints.nonEmpty)
       return false
-    if (!state.callStack.isEmpty)
+    if (state.callStack.nonEmpty)
       return false
     if (!traceInAbstraction(state, Nil))
       return false

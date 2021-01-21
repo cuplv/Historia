@@ -1,10 +1,10 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CBExit, CallbackMethodInvoke, CallbackMethodReturn, CmdWrapper, FieldRef, Loc, LocalWrapper, NewCommand, NullConst}
+import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSSpec}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, CallStackFrame, Equals, FieldPtEdge, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State}
-import edu.colorado.plv.bounder.testutils.{CmdTransition, MethodTransition, TestIR, TestIRLineLoc, TestIRMethodLoc}
+import edu.colorado.plv.bounder.symbolicexecutor.state._
+import edu.colorado.plv.bounder.testutils._
 
 class TransferFunctionsTest extends org.scalatest.FunSuite {
 

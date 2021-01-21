@@ -76,7 +76,7 @@ object LifeState {
   }
   // Since i1 has been invoked, i2 has not been invoked.
   case class NI(i1:I, i2:I) extends LSAtom{
-    def lsVar = i1.lsVar.union(i2.lsVar)
+    def lsVar: Set[String] = i1.lsVar.union(i2.lsVar)
 
     override def getAtomSig: String = s"NI(${i1.getAtomSig}, ${i2.getAtomSig})"
 
@@ -86,12 +86,6 @@ object LifeState {
     override def contains(mt:MessageType,sig: (String, String)): Boolean = i1.contains(mt, sig) || i2.contains(mt, sig)
   }
   case class LSSpec(pred:LSPred, target: I)
-
-//  // Used for abstract state
-//  case class LSAbsBind(modelVar:String, pureExpr: PureExpr) extends LSPred {
-//    override def lsVar: Set[String] = Set()
-//    override def contains(mt:MessageType,sig: (String, String)): Boolean = false
-//  }
 
   // Class that holds a graph of possible predicates and alias relations between the predicates.
   // Generated from a fast pre analysis of the applications.
@@ -109,7 +103,7 @@ object LifeState {
      */
     case class Edge(src: (Int, String), tgt: (Int, String))
 
-    def getEdgeSet(): Set[Edge] = {
+    def getEdgeSet: Set[Edge] = {
       val varmap: Map[String, Set[(Int, String)]] =
         predicates.foldLeft(Map[String, Set[(Int,String)]]()) { (acc, predicate) => {
           predicate.lsVar.zipWithIndex.foldLeft(acc){(iacc, v) => {
@@ -121,7 +115,7 @@ object LifeState {
         }}
       varmap.flatMap(a => {
         val l = BounderUtil.repeatingPerm(_=> a._2, 2)
-        l.map(b => Edge(b(0), b(1))).toSet
+        l.map(b => Edge(b.head, b(1))).toSet
       }).toSet
     }
   }
@@ -137,7 +131,6 @@ class SpecSpace(specs: Set[LSSpec]) {
     case Not(p) => allI(p)
     case LSTrue => Set()
     case LSFalse => Set()
-//    case LSAbsBind(_,_) => Set()
   }
   private def allI(spec:LSSpec):Set[I] = spec match{
     case LSSpec(pred, target) => allI(pred).union(allI(target))
