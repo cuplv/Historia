@@ -10,6 +10,7 @@ import soot.{Body, Hierarchy, RefType, Scene, SootClass, SootMethod, Type, Value
 
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
+import scala.util.matching.Regex
 
 object JimpleFlowdroidWrapper{
   def stringNameOfClass(m : SootClass): String = {
@@ -67,10 +68,33 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
     Scene.v().getSootClass(className)
   }
   override def findMethodLoc(className: String, methodName: String):Option[JimpleMethodLoc] = {
+    val methodRegex: Regex = methodName.r
     val clazzFound = getClassByName(className)
     val clazz = if(clazzFound.isPhantom){None} else {Some(clazzFound)}
     val method: Option[SootMethod] = clazz.flatMap(a => try{
       Some(a.getMethod(methodName))
+    }catch{
+      case t:RuntimeException if t.getMessage.startsWith("No method") =>
+        None
+      case t:Throwable => throw t
+    })
+    method.map(a=> JimpleMethodLoc(a))
+  }
+  def findMethodLocRegex(className: String, methodName: Regex):Option[JimpleMethodLoc] = {
+    val methodRegex: Regex = methodName
+    val clazzFound = getClassByName(className)
+    val clazz = if(clazzFound.isPhantom){None} else {Some(clazzFound)}
+    val method: Option[SootMethod] = clazz.flatMap(a => try{
+      //      Some(a.getMethod(methodName))
+      var methodsFound : List[SootMethod] = Nil
+      a.getMethods.forEach{ m =>
+        if (methodRegex.matches(m.getSubSignature))
+          methodsFound = m::methodsFound
+      }
+      assert(methodsFound.size > 0, s"findMethodLoc found no methods matching regex ${methodName}")
+      assert(methodsFound.size <2, s"findMethodLoc found multiple methods matching " +
+        s"regex ${methodName} \n   methods ${methodsFound.mkString(",")}")
+      Some(methodsFound.head)
     }catch{
       case t:RuntimeException if t.getMessage.startsWith("No method") =>
         None

@@ -1,9 +1,13 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, IRWrapper, InternalMethodReturn, LineLoc, Loc, LocalWrapper, VirtualInvoke}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, IRWrapper, InternalMethodReturn, Invoke, JimpleFlowdroidWrapper, LineLoc, Loc, LocalWrapper, VirtualInvoke}
 import edu.colorado.plv.bounder.symbolicexecutor.SymbolicExecutorConfig
+import soot.SootMethod
+
+import scala.util.matching.Regex
 
 object Qry {
+
   def makeReach[M,C](config: SymbolicExecutorConfig[M,C],
                      w:IRWrapper[M,C],
                      className:String,
@@ -26,6 +30,24 @@ object Qry {
 
     SomeQry(state0, targetLoc)
   }
+  def makeCallinReturnNonNull[M,C](config: SymbolicExecutorConfig[M,C],
+                                   w:IRWrapper[M,C],
+                                   className:String,
+                                   methodName:String,
+                                   line:Int,
+                                   callinMatches:Regex):Qry ={
+    val locs = w.findLineInMethod(className, methodName,line)
+    val callinLocals = locs.flatMap(a => {
+      w.cmdAtLocation(a) match{
+        case AssignCmd(target : LocalWrapper, i:Invoke, loc) if callinMatches.matches(i.targetMethod) =>
+          Some(target)
+        case _ => None
+      }
+    })
+    println(callinLocals)
+    ???
+  }
+
   def makeReceiverNonNull[M,C](config: SymbolicExecutorConfig[M,C],
                                w:IRWrapper[M,C],
                                className:String,

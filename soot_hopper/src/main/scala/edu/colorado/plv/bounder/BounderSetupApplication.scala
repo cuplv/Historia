@@ -70,6 +70,7 @@ object BounderSetupApplication {
     // TODO: figure out how to load apk without generating flowdroid callgraph
     // Note: this generates flowdroid call graph and points to analysis, but we don't use it
     config.getAnalysisFileConfig.setAndroidPlatformDir(platformsDir)
+    config.setMergeDexFiles(true)
     val setup = new SetupApplication(config)
     G.reset()
 
@@ -81,6 +82,7 @@ object BounderSetupApplication {
       method.setAccessible(true)
       method.invoke(setup)
     })
+    Options.v().set_process_multiple_dex(true)
     Options.v.set_keep_line_number(true)
     val ssp = Class.forName("soot.jimple.infoflow.sourcesSinks.definitions.ISourceSinkDefinitionProvider")
     val calculateCallbacks =
