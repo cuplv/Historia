@@ -2,8 +2,8 @@ package edu.colorado.plv.bounder.ir
 
 import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NI}
-import edu.colorado.plv.bounder.lifestate.{SpecSpace, SpecSignatures}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{Qry, State}
+import edu.colorado.plv.bounder.lifestate.{SpecSignatures, SpecSpace}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{Qry, SomeQry, State}
 import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, SymbolicExecutorConfig, TransferFunctions}
 import soot.SootMethod
 
@@ -75,8 +75,11 @@ class SootUtilsTest extends org.scalatest.FunSuite {
     val query = Qry.makeReceiverNonNull(config, w,
       "com.example.test_interproc_2.MainActivity",
       "void onPause()",27)
-    val l = query.loc
-    assert(l.isInstanceOf[AppLoc])
+    val l = query.find{
+      case SomeQry(s,_) if s.callStack.head.methodLoc.isInstanceOf[CallbackMethodReturn] => true
+      case _ => false
+    }.get.loc
+
 
     val entryloc = iterPredUntil(Set(l), config, {
       case CallbackMethodInvoke(_,_,_) => true
@@ -105,8 +108,11 @@ class SootUtilsTest extends org.scalatest.FunSuite {
     val query = Qry.makeReach(config, w,
       "com.example.test_interproc_2.MainActivity",
       "void onCreate(android.os.Bundle)",16)
-    val l = query.loc
-    assert(l.isInstanceOf[AppLoc])
+
+    val l = query.find{
+      case SomeQry(s,_) if s.callStack.head.methodLoc.isInstanceOf[CallbackMethodReturn] => true
+      case _ => false
+    }.get.loc
 
     val entryloc = iterPredUntil(Set(l), config, {
       case CallbackMethodInvoke(_,_,_) => true

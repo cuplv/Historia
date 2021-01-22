@@ -36,9 +36,10 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
    * @return None if the assertion at that location is unreachable, Some(Trace) if it is reachable.
    *         Trace will contain a tree of backward executions for triage.
    */
-  def executeBackward(qry: Qry) : Set[PathNode] = {
+  def executeBackward(qry: List[Qry]) : Set[PathNode] = {
+    val pathNodes = qry.map(PathNode(_,None,None)).toSet
     config.stepLimit match{
-      case Some(limit) => executeBackwardLimitSubsumeAll(Set(PathNode(qry,None,None)),limit)
+      case Some(limit) => executeBackwardLimitSubsumeAll(pathNodes,limit)
       case None =>
         ???
     }

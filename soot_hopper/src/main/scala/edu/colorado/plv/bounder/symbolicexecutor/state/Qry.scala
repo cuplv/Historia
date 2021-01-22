@@ -1,8 +1,7 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, IRWrapper, InternalMethodReturn, Invoke, JimpleFlowdroidWrapper, LineLoc, Loc, LocalWrapper, VirtualInvoke}
+import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.symbolicexecutor.SymbolicExecutorConfig
-import soot.SootMethod
 
 import scala.util.matching.Regex
 
@@ -11,47 +10,63 @@ object Qry {
   def makeReach[M,C](config: SymbolicExecutorConfig[M,C],
                      w:IRWrapper[M,C],
                      className:String,
-                     methodName:String, line:Int):Qry = {
+                     methodName:String, line:Int):List[Qry] = {
     val locs = w.findLineInMethod(className, methodName,line)
     assert(locs.size == 1)
     val targetLoc = locs.head
     val acr = config.c.getResolver
-    val cbexit = acr.resolveCallbackEntry(targetLoc.method) match{
-      case Some(CallbackMethodInvoke(clazz, name, loc)) =>
-        CallbackMethodReturn(clazz,name, loc, None) //get an arbitrary return location
-      case None => {
-        InternalMethodReturn(targetLoc.method.classType, targetLoc.method.simpleName, targetLoc.method)
-      }
-      case _ =>
-        throw new IllegalArgumentException
+    val containingMethodPos: List[Loc] = resolveMethodForAppLoc(config, targetLoc)
+//    val cbexit = acr.resolveCallbackEntry(targetLoc.method) match{
+//      case Some(CallbackMethodInvoke(clazz, name, loc)) =>
+//        CallbackMethodReturn(clazz,name, loc, None) //get an arbitrary return location
+//      case None => {
+//        InternalMethodReturn(targetLoc.method.classType, targetLoc.method.simpleName, targetLoc.method)
+//      }
+//      case _ =>
+//        throw new IllegalArgumentException
+//    }
+    containingMethodPos.map{method =>
+      val queryStack = List(CallStackFrame(method, None,Map()))
+      val state0 = State.topState.copy(callStack = queryStack)
+      SomeQry(state0, targetLoc)
     }
-    val queryStack = List(CallStackFrame(cbexit, None,Map()))
-    val state0 = State.topState.copy(callStack = queryStack)
-
-    SomeQry(state0, targetLoc)
   }
+
   def makeCallinReturnNonNull[M,C](config: SymbolicExecutorConfig[M,C],
                                    w:IRWrapper[M,C],
                                    className:String,
                                    methodName:String,
                                    line:Int,
-                                   callinMatches:Regex):Qry ={
+                                   callinMatches:Regex):List[Qry] ={
     val locs = w.findLineInMethod(className, methodName,line)
     val callinLocals = locs.flatMap(a => {
       w.cmdAtLocation(a) match{
         case AssignCmd(target : LocalWrapper, i:Invoke, loc) if callinMatches.matches(i.targetMethod) =>
-          Some(target)
+          Some((target,loc))
         case _ => None
       }
     })
-    println(callinLocals)
-    ???
+    assert(callinLocals.size == 1, s"Wrong number of locations found while making query " +
+      s"got: ${callinLocals.size}, expected 1")
+    val (local, location) = callinLocals.head
+
+    val method = location.method
+    //local.method
+    val containingMethodPos: List[Loc] = resolveMethodForAppLoc(config, location)
+
+    containingMethodPos.map { pos =>
+      val queryStack = List(CallStackFrame(pos, None, Map()))
+      val state = State.topState.copy(callStack = queryStack)
+      val (pv,state1) = state.getOrDefine(local)
+      val state2 = state1.copy(pureFormula = Set(PureConstraint(pv, Equals, NullVal)))
+      SomeQry(state2, pos)
+    }
   }
 
   def makeReceiverNonNull[M,C](config: SymbolicExecutorConfig[M,C],
                                w:IRWrapper[M,C],
                                className:String,
-                               methodName:String, line:Int):Qry = {
+                               methodName:String, line:Int):List[Qry] = {
     val locs = w.findLineInMethod(className, methodName,line)
 
     val derefLocs: Iterable[AppLoc] = locs.filter(pred = a => {
@@ -69,29 +84,33 @@ object Qry {
 //    val pureVar = PureVar()
 //    Qry.make(config, derefLoc, Map((StackVar(varname),pureVar)),
 //      Set(PureConstraint(pureVar, Equals, NullVal)))
-    val acr = config.c.getResolver
-    val cbexit = acr.resolveCallbackEntry(derefLoc.method) match{
-      case Some(CallbackMethodInvoke(clazz, name, loc)) =>
-        CallbackMethodReturn(clazz,name, loc, None) //get an arbitrary return location
-      case None => {
+    val cbexits = resolveMethodForAppLoc(config, derefLoc)
+    cbexits.map { cbexit =>
+      val queryStack = List(CallStackFrame(cbexit, None, Map()))
+      val state0 = State.topState.copy(callStack = queryStack)
 
-        InternalMethodReturn(derefLoc.method.classType, derefLoc.method.simpleName, derefLoc.method)
+
+      val (pureVar, state1) = state0.getOrDefine(varname)
+      //    val locals = Map((StackVar(varname),pureVar)
+
+      //    val queryStack = Nil
+      //    SomeQry(State(queryStack,Map(), pureFormula, Set()),loc)
+      SomeQry(state1.copy(pureFormula = Set(PureConstraint(pureVar, Equals, NullVal))), derefLoc)
+    }
+  }
+
+  private def resolveMethodForAppLoc[C, M](config: SymbolicExecutorConfig[M, C], appLoc: AppLoc) :List[Loc]= {
+    config.c.getResolver.resolveCallbackEntry(appLoc.method) match {
+      case Some(CallbackMethodInvoke(clazz, name, loc)) =>
+        CallbackMethodReturn(clazz, name, loc, None)::
+          InternalMethodReturn(appLoc.method.classType, appLoc.method.simpleName, appLoc.method)::Nil
+      case None => {
+        InternalMethodReturn(appLoc.method.classType, appLoc.method.simpleName, appLoc.method)::Nil
       }
       case _ =>
         throw new IllegalArgumentException
     }
-    val queryStack = List(CallStackFrame(cbexit, None,Map()))
-    val state0 = State.topState.copy(callStack = queryStack)
-
-
-    val (pureVar,state1) = state0.getOrDefine(varname)
-//    val locals = Map((StackVar(varname),pureVar)
-
-    //    val queryStack = Nil
-//    SomeQry(State(queryStack,Map(), pureFormula, Set()),loc)
-    SomeQry(state1.copy(pureFormula = Set(PureConstraint(pureVar, Equals, NullVal))), derefLoc)
   }
-
 }
 //TODO: add extra constraints into query later
 //heapConstraints : Set[HeapPtEdge],
