@@ -60,9 +60,10 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
       val m: Option[MethodLoc] = wrapper.findMethodLoc(fmwClazz, fmwName)
       m.map(m2 =>
         wrapper.appCallSites(m2,resolver).map(v => v.copy(isPre = true))).getOrElse(List())
+    case (InternalMethodReturn(clazz,name,loc), state) =>
+      wrapper.makeMethodRetuns(loc)
     case v =>
       println(v)
       ???
   }
 }
-

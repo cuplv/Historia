@@ -1,7 +1,6 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 import java.io.{File, PrintWriter}
 
-import com.sun.org.glassfish.gmbal.IncludeSubclass
 import scalax.collection.Graph
 import scalax.collection.edge.LDiEdge
 import scalax.collection.GraphEdge._

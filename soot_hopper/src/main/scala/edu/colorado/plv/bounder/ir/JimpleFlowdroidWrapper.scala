@@ -340,6 +340,12 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
   override def makeMethodRetuns(method: MethodLoc): List[Loc] = {
     val smethod = method.asInstanceOf[JimpleMethodLoc]
     val rets = mutable.ListBuffer[AppLoc]()
+    try{
+      smethod.method.getActiveBody()
+    }catch{
+      case t: Throwable =>
+        println(t)
+    }
     if (smethod.method.hasActiveBody) {
       smethod.method.getActiveBody.getUnits.forEach((u: soot.Unit) => {
         if (u.isInstanceOf[JReturnStmt] || u.isInstanceOf[JReturnVoidStmt]) {
@@ -352,7 +358,9 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
       // TODO: for some reason no active bodies for R or BuildConfig generated classes?
       // note: these typically don't have any meaningful implementation anyway
       val classString = smethod.method.getDeclaringClass.toString
-      assert(classString.contains(".R$") || classString.contains("BuildConfig") || classString.endsWith(".R"))
+      if (! (classString.contains(".R$") || classString.contains("BuildConfig") || classString.endsWith(".R"))){
+        assert(false)
+      }
       List()
     }
   }
@@ -364,7 +372,13 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
       val subclasses = if(v.isInterface()) {
         hierarchy.getImplementersOf(v)
       }else {
-        hierarchy.getSubclassesOf(v)
+        try {
+          hierarchy.getSubclassesOf(v)
+        }catch {
+          case _: NullPointerException =>
+            assert(v.toString.contains("$$Lambda"))
+            List[SootClass]().asJava // Soot bug with lambdas
+        }
       }
       val strSubClasses = subclasses.asScala.map(c => JimpleFlowdroidWrapper.stringNameOfClass(c)).toSet + cname
       acc  + (cname -> strSubClasses)

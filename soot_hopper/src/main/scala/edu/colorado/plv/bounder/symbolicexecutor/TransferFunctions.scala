@@ -184,6 +184,13 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     }
     case (CallbackMethodReturn(_,_,mloc1,_), AppLoc(mloc2,_,_), state) =>
       assert(mloc1 == mloc2) ; Set(state) // transfer handled by processing callbackmethodreturn, nothing to do here
+    case (InternalMethodInvoke(clazz, name, loc), AppLoc(mloc, line, false), state) =>
+      println()
+      ???
+    case (AppLoc(mloc, line, false), mRet@InternalMethodReturn(clazz, name, loc), state) =>
+      // Create call stack frame with empty
+      val newFrame = CallStackFrame(mRet, Some(AppLoc(mloc,line,true)), Map())
+      Set(state.copy(callStack = newFrame::state.callStack))
     case t =>
       println(t)
       ???

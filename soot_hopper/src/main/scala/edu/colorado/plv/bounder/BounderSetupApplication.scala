@@ -9,7 +9,7 @@ import soot.jimple.infoflow.android.callbacks.filters.{AlienHostComponentFilter,
 import soot.jimple.infoflow.android.entryPointCreators.AndroidEntryPointCreator
 import soot.jimple.infoflow.android.manifest.ProcessManifest
 import soot.jimple.infoflow.android.resources.{ARSCFileParser, LayoutFileParser}
-import soot.{G, PackManager, Scene, SootClass}
+import soot.{G, Main, PackManager, Scene, SootClass, SootMethod}
 import soot.options.Options
 
 import scala.jdk.CollectionConverters._
@@ -62,7 +62,7 @@ object BounderSetupApplication {
     ???
   }
 
-  def loadApk(path:String, generateFlowdroidCallGraph:Boolean = false) : Unit = {
+  def loadApk2(path:String, generateFlowdroidCallGraph:Boolean = false) : Unit = {
     // Create call graph and pointer analysis with flowdroid main method
     val config = new InfoflowAndroidConfiguration
     val platformsDir = androidHome + "/platforms"
@@ -71,37 +71,81 @@ object BounderSetupApplication {
     // Note: this generates flowdroid call graph and points to analysis, but we don't use it
     config.getAnalysisFileConfig.setAndroidPlatformDir(platformsDir)
     config.setMergeDexFiles(true)
+    config.setEnableLineNumbers(true)
+    config.setExcludeSootLibraryClasses(false)
     val setup = new SetupApplication(config)
     G.reset()
+    setup.constructCallgraph()
+//    // Use flowdroid definition of callbacks
+//    val setupApplicationClass =
+//      Class.forName("soot.jimple.infoflow.android.SetupApplication")
+//    List("initializeSoot", "parseAppResources").foreach(methodname => {
+//      val method = setupApplicationClass.getDeclaredMethod(methodname)
+//      method.setAccessible(true)
+//      method.invoke(setup)
+//    })
+//    Options.v().set_process_multiple_dex(true)
+//    Options.v.set_keep_line_number(true)
+//    val ssp = Class.forName("soot.jimple.infoflow.sourcesSinks.definitions.ISourceSinkDefinitionProvider")
+//    val calculateCallbacks =
+//      setupApplicationClass.getDeclaredMethod("calculateCallbacks", ssp)
 
-    // Use flowdroid definition of callbacks
-    val setupApplicationClass =
-      Class.forName("soot.jimple.infoflow.android.SetupApplication")
-    List("initializeSoot", "parseAppResources").foreach(methodname => {
-      val method = setupApplicationClass.getDeclaredMethod(methodname)
-      method.setAccessible(true)
-      method.invoke(setup)
-    })
-    Options.v().set_process_multiple_dex(true)
+//    calculateCallbacks.setAccessible(true)
+//    calculateCallbacks.invoke(setup, null)
+//    val scc = Class.forName("soot.SootClass")
+//    val createMainMethod =
+//      setupApplicationClass.getDeclaredMethod("createMainMethod", scc)
+//    createMainMethod.setAccessible(true)
+//    createMainMethod.invoke(setup, null)
+//
+//    // Hacky way of setting up call graph without running flowdroid
+//    if(generateFlowdroidCallGraph) {
+//      val constructCg =
+//        setupApplicationClass.getDeclaredMethod("constructCallgraphInternal")
+//      constructCg.setAccessible(true)
+//      constructCg.invoke(setup)
+//    }
+  }
+  def loadApk(path : String):Unit ={
+    G.reset()
+    val platformsDir = androidHome + "/platforms"
+    //TODO: below should be "/Users/shawnmeier/Library/Android/sdk/platforms"
+    Options.v.set_allow_phantom_refs(true)
+    //Options.v.set_output_format(1) //TODO: dbg output?
+    Options.v.set_output_format(Options.output_format_none)
+
+    //TODO: added from jpf example
+    import soot.Scene
+    import soot.SootClass
+    Scene.v.addBasicClass("java.lang.System", SootClass.SIGNATURES)
+    Scene.v.addBasicClass("java.lang.Thread", SootClass.SIGNATURES)
+    Scene.v.addBasicClass("java.lang.ThreadGroup", SootClass.SIGNATURES)
+
+    Scene.v.addBasicClass("java.lang.ClassLoader", SootClass.SIGNATURES)
+    Scene.v.addBasicClass("java.security.PrivilegedActionException", SootClass.SIGNATURES)
+    Scene.v.addBasicClass("java.lang.ref.Finalizer", SootClass.SIGNATURES)
+
+    Options.v.set_whole_program(true)
+    Options.v.set_process_dir(List(path).asJava)
+    Options.v.set_android_jars(platformsDir)
+    Options.v.set_src_prec(Options.src_prec_apk_class_jimple)
+    Options.v.set_keep_offset(false) //don't create tag that holds bytecode offset
     Options.v.set_keep_line_number(true)
-    val ssp = Class.forName("soot.jimple.infoflow.sourcesSinks.definitions.ISourceSinkDefinitionProvider")
-    val calculateCallbacks =
-      setupApplicationClass.getDeclaredMethod("calculateCallbacks", ssp)
-    calculateCallbacks.setAccessible(true)
-    calculateCallbacks.invoke(setup, null)
-    val scc = Class.forName("soot.SootClass")
-    val createMainMethod =
-      setupApplicationClass.getDeclaredMethod("createMainMethod", scc)
-    createMainMethod.setAccessible(true)
-    createMainMethod.invoke(setup, null)
+    Options.v.set_throw_analysis(Options.throw_analysis_dalvik)
+    Options.v.set_process_multiple_dex(true)
+    Options.v.set_ignore_resolution_errors(true) //TODO: what does this do?
+//    Options.v.setPhaseOption("jb", "use-original-names:true")
+    val classpath = s"${platformsDir}/android-26/android.jar"
+    //TODO: construct classpath
+    Options.v.set_soot_classpath(classpath)
+    Main.v.autoSetOptions()
+//    Options.v.setPhaseOption("cg.cha", "on")
+    Scene.v.loadBasicClasses()
+    Scene.v.loadNecessaryClasses()
+    PackManager.v.getPack("wjpp").apply()
+    PackManager.v.runPacks()
+//    Packmanager.v().runPacks()
 
-    // Hacky way of setting up call graph without running flowdroid
-    if(generateFlowdroidCallGraph) {
-      val constructCg =
-        setupApplicationClass.getDeclaredMethod("constructCallgraphInternal")
-      constructCg.setAccessible(true)
-      constructCg.invoke(setup)
-    }
   }
   def loadApkOld(path : String): Unit = {
     G.reset()
@@ -122,6 +166,7 @@ object BounderSetupApplication {
     Options.v.set_process_multiple_dex(true)
     // Ignore resolutionn errors, does not appear to work?
 //    Options.v.set_ignore_resolution_errors(true)
+    Scene.v().loadBasicClasses()
     Scene.v().loadNecessaryClasses()
     val manifest = new ProcessManifest(path)
     val entryPoints = manifest.getEntryPointClasses.asScala.flatMap(epName => {

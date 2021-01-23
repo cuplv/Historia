@@ -59,7 +59,7 @@ object Qry {
       val state = State.topState.copy(callStack = queryStack)
       val (pv,state1) = state.getOrDefine(local)
       val state2 = state1.copy(pureFormula = Set(PureConstraint(pv, Equals, NullVal)))
-      SomeQry(state2, pos)
+      SomeQry(state2, location)
     }
   }
 

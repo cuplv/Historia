@@ -2,8 +2,8 @@ package edu.colorado.plv.bounder
 
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.SpecSpace
-import edu.colorado.plv.bounder.symbolicexecutor.state.Qry
-import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, SymbolicExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{PrettyPrinting, Qry}
+import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
 
@@ -16,12 +16,15 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
     val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set()))
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(40), w, resolver,transfer)
+      stepLimit = Some(5), w, resolver,transfer, printProgress = true)
     val query = Qry.makeCallinReturnNonNull(config, w,
       "de.danoeh.antennapod.fragment.ExternalPlayerFragment",
       "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)",200,
       callinMatches = ".*getActivity.*".r)
-    println(query)
+    val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
+    val result = symbolicExecutor.executeBackward(query)
+    PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/antennapod_fix_2856.dot")
+    PrettyPrinting.printWitnessTraces(result, outFile="/Users/shawnmeier/Desktop/antennapod_fix_2856.witnesses")
   }
 
 }
