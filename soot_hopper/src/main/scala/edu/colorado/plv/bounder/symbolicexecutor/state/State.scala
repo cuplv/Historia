@@ -204,7 +204,7 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
       ???
   }
   // TODO: rename getOrDefineClass
-  def defineAs(l : LVal, pureExpr: PureExpr): State = l match{
+  def defineAs(l : RVal, pureExpr: PureExpr): State = l match{
     case LocalWrapper(localName, localType) =>
       val cshead: CallStackFrame = callStack.headOption.getOrElse(???) //TODO: add new stack frame if empty?
       val csheadNew = cshead.copy(locals = cshead.locals + (StackVar(localName)->pureExpr))
@@ -216,7 +216,7 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
       ???
   }
 
-  def getOrDefine(l : LVal): (PureVar,State) = l match{
+  def getOrDefine(l : RVal): (PureVar,State) = l match{
     case LocalWrapper(name,localType) =>
       val cshead = callStack.headOption.getOrElse(???) //TODO: add new stack frame if empty?
       val cstail = if (callStack.isEmpty) Nil else callStack.tail

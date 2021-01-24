@@ -26,23 +26,27 @@ object TransferFunctions{
 }
 
 class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
-  def defineVarsAs(state: State, comb: List[(Option[LocalWrapper], LSParamConstraint)]):State = {
+  def defineVarsAs(state: State, comb: List[(Option[RVal], LSParamConstraint)]):State = {
     comb.foldLeft(state){
-      case (state, (Some(l), LSPure(v:PureVar))) =>
+      case (state, (Some(l:LocalWrapper), LSPure(v:PureVar))) =>
         val (oldLocVal,state2) = state.getOrDefine(l)
         state2.swapPv(oldLocVal, v)
-      case (state, (Some(l), LSPure(v))) =>
+      case (state, (Some(l:LocalWrapper), LSPure(v))) =>
         println(v) //TODO: other kinds of v
         ???
-      case (state, (Some(l), LSModelVar(v,ta))) =>
+      case (state, (Some(l:LocalWrapper), LSModelVar(v,ta))) =>
         val (oldLocVal,state2) = state.getOrDefine(l)
         assert(state2.traceAbstraction.contains(ta), "model var constraint not contained in current state")
         state2.copy(traceAbstraction = (state2.traceAbstraction - ta) + ta.addModelVar(v,oldLocVal) )
+      case (state, (Some(NullConst), _)) => ??? //TODO: These cases shouldn't come up until const values are added to ls
+      case (state, (Some(l:BoolConst), _)) => ???
+      case (state, (Some(l:IntConst), _)) => ???
+      case (state, (Some(l:StringConst), _)) => ???
       case (statemap, (_, _)) => statemap
     }
   }
-  def statesWhereOneVarNot(state: State, comb: List[(Option[LocalWrapper], LSParamConstraint)]): Set[State] = {
-    comb.toSet.flatMap{(a:(Option[LocalWrapper], LSParamConstraint)) => a match{
+  def statesWhereOneVarNot(state: State, comb: List[(Option[RVal], LSParamConstraint)]): Set[State] = {
+    comb.toSet.flatMap{(a:(Option[RVal], LSParamConstraint)) => a match{
       case (None, _) => None
       case (_,LSAny) => None
       case (Some(l), LSPure(pv)) =>
@@ -163,7 +167,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       // Push frame regardless of relevance
       val pre_push = pre.copy(callStack = newFrame::pre.callStack)
       val relAliases: Set[List[LSParamConstraint]] = relevantAliases(pre, CBExit, (pkg,name))
-      val localVarOrVal: List[Option[LocalWrapper]] = rvar::mloc.getArgs
+      val localVarOrVal: List[Option[RVal]] = rvar::mloc.getArgs
       // Note: no newSpecInstanceTransfer since this is an in-message
       if(relAliases.isEmpty){
         Set(pre_push)

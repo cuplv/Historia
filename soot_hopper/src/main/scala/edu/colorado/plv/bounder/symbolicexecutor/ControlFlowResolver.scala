@@ -131,12 +131,15 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
     }
   }
 
-  def existsIAlias(locals: List[Option[LocalWrapper]], dir :MessageType, sig: (String,String), state:State):Boolean = {
+  def existsIAlias(locals: List[Option[RVal]], dir :MessageType, sig: (String,String), state:State):Boolean = {
     val aliasPos = TransferFunctions.relevantAliases(state, dir, sig)
     aliasPos.exists{ aliasPo =>
       (aliasPo zip locals).forall{
-        case (LSPure(v:PureVar), Some(local)) =>
+        case (LSPure(v:PureVar), Some(local:LocalWrapper)) =>
           state.pvTypeUpperBound(v).forall(wrapper.canAlias(_, local.localType))
+        case (LSPure(v:PureVar), Some(NullConst)) => ???
+        case (LSPure(v:PureVar), Some(i:IntConst)) => ???
+        case (LSPure(v:PureVar), Some(i:StringConst)) => ???
         case _ => true
       }
     }
@@ -158,7 +161,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
           }
         else List(None)
       val iExists = retVars.exists { retVar =>
-        val locs: List[Option[LocalWrapper]] = retVar :: rloc.getArgs
+        val locs: List[Option[RVal]] = retVar :: rloc.getArgs
         val res = existsIAlias(locs, CBExit, (clazz,name),state) ||
           existsIAlias(None::locs.tail, CBEnter, (clazz,name),state)
         res

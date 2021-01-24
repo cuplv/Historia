@@ -48,7 +48,7 @@ sealed abstract class CmdWrapper(loc:AppLoc){
  * @param returnVar None if void return otherwise local returned by cmd
  * @param loc
  */
-case class ReturnCmd(returnVar: Option[LocalWrapper], loc:AppLoc) extends CmdWrapper(loc) {
+case class ReturnCmd(returnVar: Option[RVal], loc:AppLoc) extends CmdWrapper(loc) {
   override def mkPre: CmdWrapper = this.copy(loc=loc.copy(isPre = true))
   override def toString: String = s"return ${returnVar.getOrElse("")};"
 }
@@ -70,6 +70,12 @@ case class Ne(v1:RVal, v2:RVal) extends RVal
 case class Gt(v1:RVal, v2:RVal) extends RVal
 
 case class Cast(castT:String, local: LocalWrapper) extends RVal
+case class Binop(v1:RVal, op: BinaryOperator, v2:RVal) extends RVal
+sealed trait BinaryOperator
+case object Mult extends BinaryOperator
+case object Div extends BinaryOperator
+case object Add extends BinaryOperator
+case object Sub extends BinaryOperator
 
 
 //abstract class MethodWrapper[M,C](decalringClass : String,
@@ -82,8 +88,10 @@ trait RVal
 // New only has type, constructor parameters go to the <init> method
 case class NewCommand(className: String) extends RVal
 case object NullConst extends RVal
+case class ConstVal(v:Any) extends RVal
 case class IntConst(v:Int) extends RVal
 case class StringConst(v:String) extends RVal
+case class BoolConst(v:Boolean) extends RVal
 
 sealed trait Invoke extends RVal {
   def targetClass:String

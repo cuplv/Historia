@@ -5,8 +5,8 @@ import edu.colorado.plv.bounder.solver.PersistantConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.AppCodeResolver
 import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
 import soot.jimple.infoflow.entryPointCreators.SimulatedCodeElementTag
-import soot.jimple.{DynamicInvokeExpr, InstanceInvokeExpr, IntConstant, InvokeExpr, NullConstant, ParameterRef, StringConstant, ThisRef}
-import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceFieldRef, AbstractInstanceInvokeExpr, AbstractInvokeExpr, AbstractNewExpr, AbstractStaticInvokeExpr, InvokeExprBox, JAssignStmt, JCastExpr, JEqExpr, JIdentityStmt, JIfStmt, JInstanceFieldRef, JInvokeStmt, JNeExpr, JNewExpr, JReturnStmt, JReturnVoidStmt, JSpecialInvokeExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
+import soot.jimple.{DoubleConstant, DynamicInvokeExpr, InstanceInvokeExpr, IntConstant, InvokeExpr, NullConstant, ParameterRef, RealConstant, StringConstant, ThisRef}
+import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceFieldRef, AbstractInstanceInvokeExpr, AbstractInvokeExpr, AbstractNewExpr, AbstractStaticInvokeExpr, InvokeExprBox, JAddExpr, JAssignStmt, JCastExpr, JDivExpr, JEqExpr, JIdentityStmt, JIfStmt, JInstanceFieldRef, JInvokeStmt, JMulExpr, JNeExpr, JNewExpr, JReturnStmt, JReturnVoidStmt, JSpecialInvokeExpr, JSubExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
 import soot.{Body, BooleanType, ByteType, CharType, DoubleType, FloatType, Hierarchy, IntType, LongType, RefType, Scene, ShortType, SootClass, SootMethod, Type, Value, VoidType}
 
 import scala.collection.mutable
@@ -138,7 +138,7 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
         AssignCmd(leftBox, rightBox,loc)
       }
       case cmd: JReturnStmt => {
-        val box = makeVal(cmd.getOpBox.getValue).asInstanceOf[LocalWrapper]
+        val box = makeVal(cmd.getOpBox.getValue)
         ReturnCmd(Some(box), loc)
       }
       case cmd:JInvokeStmt => {
@@ -225,6 +225,25 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
       val castType = JimpleFlowdroidWrapper.stringNameOfType(cast.getCastType)
       val v = makeRVal(cast.getOp).asInstanceOf[LocalWrapper]
       Cast(castType, v)
+    case mult: JMulExpr =>
+      val op1 = makeRVal(mult.getOp1)
+      val op2 = makeRVal(mult.getOp2)
+      Binop(op1, Mult, op2)
+    case div : JDivExpr =>
+      val op1 = makeRVal(div.getOp1)
+      val op2 = makeRVal(div.getOp2)
+      Binop(op1, Div, op2)
+    case div : JAddExpr =>
+      val op1 = makeRVal(div.getOp1)
+      val op2 = makeRVal(div.getOp2)
+      Binop(op1, Add, op2)
+    case div : JSubExpr =>
+      val op1 = makeRVal(div.getOp1)
+      val op2 = makeRVal(div.getOp2)
+      Binop(op1, Sub, op2)
+
+    case const: RealConstant=>
+      ConstVal(const) // Not doing anything special with real values for now
     case v =>
       println(v)
       ???
