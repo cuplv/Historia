@@ -4,8 +4,8 @@ import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.symbolicexecutor.AppCodeResolver
 import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
 import soot.jimple.infoflow.entryPointCreators.SimulatedCodeElementTag
-import soot.jimple.{IntConstant, InvokeExpr, NullConstant, ParameterRef, StringConstant, ThisRef}
-import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceFieldRef, AbstractInstanceInvokeExpr, AbstractInvokeExpr, AbstractNewExpr, AbstractStaticInvokeExpr, InvokeExprBox, JAssignStmt, JIdentityStmt, JInstanceFieldRef, JInvokeStmt, JNewExpr, JReturnStmt, JReturnVoidStmt, JSpecialInvokeExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
+import soot.jimple.{DynamicInvokeExpr, InstanceInvokeExpr, IntConstant, InvokeExpr, NullConstant, ParameterRef, StringConstant, ThisRef}
+import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceFieldRef, AbstractInstanceInvokeExpr, AbstractInvokeExpr, AbstractNewExpr, AbstractStaticInvokeExpr, InvokeExprBox, JAssignStmt, JEqExpr, JIdentityStmt, JIfStmt, JInstanceFieldRef, JInvokeStmt, JNeExpr, JNewExpr, JReturnStmt, JReturnVoidStmt, JSpecialInvokeExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
 import soot.{Body, Hierarchy, RefType, Scene, SootClass, SootMethod, Type, Value, VoidType}
 
 import scala.collection.mutable
@@ -130,19 +130,25 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
       case _ : JReturnVoidStmt => {
         ReturnCmd(None, loc)
       }
-      case _ =>
+      case cmd: JIfStmt =>
+        If(makeVal(cmd.getCondition),loc)
+
+      case v =>
+        println(s"unimplemented command: ${v}")
         ???
+
     }
   }
 
-  override def commandPredicessors(cmdWrapper : CmdWrapper):List[AppLoc] =
+  override def commandPredecessors(cmdWrapper : CmdWrapper):List[AppLoc] =
     cmdWrapper.getLoc match{
     case AppLoc(methodWrapper @ JimpleMethodLoc(_),JimpleLineLoc(cmd,sootMethod), true) => {
       val unitGraph = getUnitGraph(sootMethod.retrieveActiveBody())
       val predCommands = unitGraph.getPredsOf(cmd).asScala
       predCommands.map(cmd => AppLoc(methodWrapper,JimpleLineLoc(cmd,sootMethod), false)).toList
     }
-    case _ => ???
+    case v =>
+        throw new IllegalStateException(s"Bad argument for command predecessor ${v}")
   }
   override def commandNext(cmdWrapper: CmdWrapper):List[AppLoc] =
     cmdWrapper.getLoc match{
@@ -193,6 +199,8 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
       val name = s"@parameter${p.getIndex}"
       val tname = p.getType.toString
       LocalWrapper(name, tname)
+    case ne: JNeExpr => Ne(makeRVal(ne.getOp1), makeRVal(ne.getOp2))
+    case eq: JEqExpr => Eq(makeRVal(eq.getOp1), makeRVal(eq.getOp2))
     case v =>
       println(v)
       ???
@@ -337,7 +345,7 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
     })
   }
 
-  override def makeMethodRetuns(method: MethodLoc): List[Loc] = {
+  override def makeMethodRetuns(method: MethodLoc): List[AppLoc] = {
     val smethod = method.asInstanceOf[JimpleMethodLoc]
     val rets = mutable.ListBuffer[AppLoc]()
     try{
@@ -384,7 +392,42 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
       acc  + (cname -> strSubClasses)
     }
   }
+//  private def receiverOfInvoke(i: InvokeExpr) = {
+//    case _:StaticInvoke => None
+//    case i:InstanceInvokeExpr => Some(i.getBase)
+//    case i:DynamicInvokeExpr =>
+//      println(i)
+//      ???
+//    case i =>
+//      println(i)
+//      ???
+//  }
+  override def getDirectMethodCalls(method: MethodLoc): Set[MethodLoc] = {
+    val methodLoc = method.asInstanceOf[JimpleMethodLoc]
+    val units = methodLoc.method.getActiveBody.getUnits
+    var out:List[MethodLoc] = List()
+    units.forEach{ (u:soot.Unit) =>
+      val loc = AppLoc(method,JimpleLineLoc(u,methodLoc.method), false)
+      val upper = u match{
+        case i : JInvokeStmt =>
+//          receiverOfInvoke(i.getInvokeExpr)
+          println(i)
+          println(i)
+        case i : JAssignStmt if i.getRightOp.isInstanceOf[InvokeExpr] =>
+          println(i)
+          println(i)
+        case i =>
+          println(i)
+          println(i)
+      }
+//      val targets = makeInvokeTargets(loc, upper)
 
+    }
+    ???
+    out.toSet
+  }
+
+  override def getDirectHeapOps(method: MethodLoc): Set[CmdWrapper] = ???
 }
 
 case class JimpleMethodLoc(method: SootMethod) extends MethodLoc {
@@ -427,6 +470,8 @@ case class JimpleMethodLoc(method: SootMethod) extends MethodLoc {
     //TODO: this method is probably totally wrong, figure out arg names and how to convert type to string
     out
   }
+
+  override def isStatic: Boolean = method.isStatic
 }
 case class JimpleLineLoc(cmd: soot.Unit, method: SootMethod) extends LineLoc{
   override def toString: String = "line: " + cmd.getJavaSourceStartLineNumber() + " " + cmd.toString()

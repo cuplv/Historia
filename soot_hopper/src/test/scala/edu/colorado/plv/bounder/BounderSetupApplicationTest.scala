@@ -10,7 +10,7 @@ class BounderSetupApplicationTest extends org.scalatest.FunSuite {
 
     BounderSetupApplication.loadApk(trikita_apk)
     val gotSize = Scene.v().getClasses().size
-    assert( gotSize === 2060 )
+    assert( gotSize === 2513 )
     //TODO: individual java file loading so unit tests are easier
 //    BounderSetupApplication.loadClass("/Users/shawnmeier/Desktop/Test.java")
 //    val testClass = Scene.v().getClasses.asScala.filter(a => a.getName == "Test")

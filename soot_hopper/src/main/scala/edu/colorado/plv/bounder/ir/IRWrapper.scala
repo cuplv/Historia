@@ -15,7 +15,7 @@ trait IRWrapper[M,C]{
   def findMethodLoc(className: String, methodName: String):Option[MethodLoc]
   def findLineInMethod(className:String, methodName:String, line:Int):Iterable[AppLoc]
   def makeCmd(cmd:C, method:M, loc:Option[AppLoc] = None): CmdWrapper
-  def commandPredicessors(cmdWrapper:CmdWrapper): List[AppLoc]
+  def commandPredecessors(cmdWrapper:CmdWrapper): List[AppLoc]
   def commandNext(cmdWrapper:CmdWrapper):List[AppLoc]
 
   /**
@@ -25,9 +25,11 @@ trait IRWrapper[M,C]{
   def cmdAtLocation(loc:AppLoc) :CmdWrapper
   def makeInvokeTargets(invoke:AppLoc, upperTypeBound: Option[String]):UnresolvedMethodTarget
   def appCallSites(method : MethodLoc, resolver:AppCodeResolver): Seq[AppLoc]
-  def makeMethodRetuns(method: MethodLoc) : List[Loc]
+  def makeMethodRetuns(method: MethodLoc) : List[AppLoc]
   def getClassHierarchy : Map[String, Set[String]]
   def canAlias(type1:String, type2:String):Boolean
+  def getDirectMethodCalls(method: MethodLoc):Set[MethodLoc]
+  def getDirectHeapOps(method:MethodLoc):Set[CmdWrapper]
 }
 sealed case class UnresolvedMethodTarget(clazz: String, methodName:String, loc:Set[MethodLoc])
 
@@ -38,6 +40,7 @@ sealed case class UnresolvedMethodTarget(clazz: String, methodName:String, loc:S
  */
 sealed abstract class CmdWrapper(loc:AppLoc){
   def getLoc: AppLoc = loc
+  def mkPre: CmdWrapper
 }
 
 /**
@@ -45,11 +48,26 @@ sealed abstract class CmdWrapper(loc:AppLoc){
  * @param returnVar None if void return otherwise local returned by cmd
  * @param loc
  */
-case class ReturnCmd(returnVar: Option[LocalWrapper], loc:AppLoc) extends CmdWrapper(loc)
-case class AssignCmd(target: LVal, source: RVal, loc:AppLoc) extends CmdWrapper(loc){
-  override def toString:String = s"$target := $source"
+case class ReturnCmd(returnVar: Option[LocalWrapper], loc:AppLoc) extends CmdWrapper(loc) {
+  override def mkPre: CmdWrapper = this.copy(loc=loc.copy(isPre = true))
+  override def toString: String = s"return ${returnVar.getOrElse("")};"
 }
-case class InvokeCmd(method: Invoke, loc:AppLoc) extends CmdWrapper(loc)
+case class AssignCmd(target: LVal, source: RVal, loc:AppLoc) extends CmdWrapper(loc){
+  override def toString:String = s"$target := $source;"
+  override def mkPre: CmdWrapper = this.copy(loc=loc.copy(isPre = true))
+}
+case class InvokeCmd(method: Invoke, loc:AppLoc) extends CmdWrapper(loc) {
+  override def mkPre: CmdWrapper = this.copy(loc=loc.copy(isPre = true))
+  override def toString: String = method.toString
+}
+
+case class If(b:RVal, loc:AppLoc) extends CmdWrapper(loc){
+  override def mkPre: CmdWrapper = this.copy(loc=loc.copy(isPre = true))
+}
+
+case class Eq(v1:RVal, v2:RVal) extends RVal
+case class Ne(v1:RVal, v2:RVal) extends RVal
+case class Gt(v1:RVal, v2:RVal) extends RVal
 
 
 //abstract class MethodWrapper[M,C](decalringClass : String,

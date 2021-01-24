@@ -2,6 +2,7 @@ package edu.colorado.plv.bounder
 
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, SomeQry, WitnessedQry}
 
+import scala.annotation.tailrec
 import scala.collection.mutable
 
 object BounderUtil {
@@ -34,6 +35,58 @@ object BounderUtil {
     if (genSize < 0) throw new IllegalArgumentException("Negative lengths not allowed in repeatingPerm...")
     repeatingPermRec(elems, genSize, Nil)
     acc
+  }
+
+  // Abstract interpretation with no widen
+  def graphFixpoint[N,V](start: Set[N],
+                         startVal: V,
+                         botVal: V,
+                         next: N=>Set[N],
+                         comp: (V,N) => V,
+                         join: (V,V)=>V ): Map[N,V] = {
+    // computed : map from nodes to their outputs
+    val initialComp = start.map( a=>(a -> comp(startVal,a))).toMap
+
+    @tailrec
+    def iGraphFixpoint(toVisit:Set[N], computed:Map[N,V]) :Map[N,V] = {
+      if(toVisit.isEmpty) {
+        computed
+      } else{
+        val c = toVisit.head
+        val preV = computed(c)
+        val nextNodes = next(c)
+        val (addTo, newComp) = nextNodes.foldLeft((List[N](),computed)){
+          case ((nextVisit, computed_),cNode) =>
+            val oldNextV = computed_.getOrElse(cNode,botVal)
+            val newNextV = comp(preV, cNode)
+            val joined = join(oldNextV,newNextV)
+            val nextVisit2 = if(computed_.contains(cNode) && oldNextV == joined)
+              nextVisit else cNode::nextVisit
+            (nextVisit2, computed_ + (cNode -> joined))
+        }
+        iGraphFixpoint(toVisit.tail ++ addTo, newComp)
+      }
+    }
+    iGraphFixpoint(start, initialComp)
+  }
+
+  def graphExists[N](start: Set[N],
+                       next: N=>Set[N],
+                       exists: N=>Boolean
+                      ):Boolean = {
+    @tailrec
+    def iGraphExists(toVisit: Set[N], visited: Set[N]):Boolean = {
+      if(toVisit.isEmpty)
+        return false
+      val c = toVisit.head
+      if(exists(c)){
+        true
+      }else{
+        val nextV = next(c) -- visited
+        iGraphExists(toVisit.tail.union(nextV), visited + c)
+      }
+    }
+    iGraphExists(start, Set())
   }
 }
 

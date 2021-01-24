@@ -2,13 +2,12 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSPred, LSSpec, LSTrue, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSSpec}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
+import edu.colorado.plv.bounder.symbolicexecutor.TransferFunctions.relevantAliases
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 
-class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
-
-
+object TransferFunctions{
   /**
    * Get set of things that if aliased, change the trace abstraction state
    * @param pre state before cmd that emits an observed message
@@ -24,7 +23,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       case (I(_, _, vars),p)=> p
     }
   }
+}
 
+class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
   def defineVarsAs(state: State, comb: List[(Option[LocalWrapper], LSParamConstraint)]):State = {
     comb.foldLeft(state){
       case (state, (Some(l), LSPure(v:PureVar))) =>
@@ -187,10 +188,21 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     case (InternalMethodInvoke(clazz, name, loc), AppLoc(mloc, line, false), state) =>
       println()
       ???
-    case (AppLoc(mloc, line, false), mRet@InternalMethodReturn(clazz, name, loc), state) =>
+    case (retloc@AppLoc(mloc, line, false), mRet@InternalMethodReturn(clazz, name, loc), state) =>
       // Create call stack frame with empty
-      val newFrame = CallStackFrame(mRet, Some(AppLoc(mloc,line,true)), Map())
+      val retVal:Map[StackVar, PureExpr] = w.cmdAtLocation(retloc) match{
+        case AssignCmd(tgt, _:InvokeCmd, _) => state.get(tgt).map(v => Map(StackVar("@ret") -> v)).getOrElse(Map())
+        case InvokeCmd(_,_) => Map()
+        case _ => throw new IllegalStateException(s"malformed bytecode, source: ${retloc}  target: ${mRet}")
+      }
+      val newFrame = CallStackFrame(mRet, Some(AppLoc(mloc,line,true)), retVal)
       Set(state.copy(callStack = newFrame::state.callStack))
+    case (mr@InternalMethodReturn(_,_,_), cmd@AppLoc(_,_,_),state) =>
+      // TODO: case where return value is important
+      w.cmdAtLocation(cmd) match{
+        case ReturnCmd(_,_) => Set(state)
+        case _ => throw new IllegalStateException(s"malformed bytecode, source: ${mr}  target: ${cmd}")
+      }
     case t =>
       println(t)
       ???
@@ -397,6 +409,12 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         }
         case None => Set(state)
       }
+    case ReturnCmd(Some(v), _) =>
+      val fakeRetLocal = LocalWrapper("@ret", "_")
+      val retv = state.get(fakeRetLocal)
+      val state1 = state.clearLVal(fakeRetLocal)
+      Set(retv.map(state1.defineAs(v, _)).getOrElse(state))
+    case ReturnCmd(None, _) => Set(state)
     case AssignCmd(FieldRef(base, fieldType, _,fieldName), rhs, _) =>
       // x.f = y
       val (basev,state2) = state.getOrDefine(base)

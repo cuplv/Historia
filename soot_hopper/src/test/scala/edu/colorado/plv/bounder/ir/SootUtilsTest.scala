@@ -1,9 +1,9 @@
 package edu.colorado.plv.bounder.ir
 
 import edu.colorado.plv.bounder.BounderSetupApplication
-import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NI}
+import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSSpec, NI}
 import edu.colorado.plv.bounder.lifestate.{SpecSignatures, SpecSpace}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{Qry, SomeQry, State}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, PureVar, Qry, SomeQry, State}
 import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, SymbolicExecutorConfig, TransferFunctions}
 import soot.SootMethod
 
@@ -44,7 +44,11 @@ class SootUtilsTest extends org.scalatest.FunSuite {
    * @param b functon of location that returns true when desired location is found
    * @return
    */
-  private def iterPredUntil(l:Set[Loc], config: SymbolicExecutorConfig[SootMethod, soot.Unit], b : Loc=>Boolean, count:Int):Option[Loc] = {
+  private def iterPredUntil(l:Set[Loc],
+                            config: SymbolicExecutorConfig[SootMethod, soot.Unit],
+                            b : Loc=>Boolean,
+                            state: State,
+                            count:Int):Option[Loc] = {
     if (count == 0) {
       return None
     }
@@ -52,11 +56,11 @@ class SootUtilsTest extends org.scalatest.FunSuite {
     l.find(b) match {
       case Some(v) => Some(v)
       case None =>
-        val pred: Set[Loc] = l.flatMap(config.c.resolvePredicessors(_, State.topState))
+        val pred: Set[Loc] = l.flatMap(config.c.resolvePredicessors(_, state))
         if(pred.isEmpty)
           None
         else
-          iterPredUntil(pred, config,b, count-1)
+          iterPredUntil(pred, config,b,state, count-1)
     }
   }
 
@@ -84,14 +88,15 @@ class SootUtilsTest extends org.scalatest.FunSuite {
     val entryloc = iterPredUntil(Set(l), config, {
       case CallbackMethodInvoke(_,_,_) => true
       case l => false
-    }, 12)
+    },State.topState, 12)
     assert(entryloc.isDefined)
 
     println("---")
+    val pv = PureVar(0)
     val retPause = iterPredUntil(Set(l), config, {
       case CallbackMethodReturn(_,name,_,_) if name.contains("onPause") => true
       case _ => false
-    },20)
+    },State.topState.copy(traceAbstraction = Set(AbstractTrace(SpecSignatures.Activity_onPause_entry,Nil, Map()))),20)
     assert(retPause.isDefined)
   }
   test("iterate to parameter assignments onCreate"){
@@ -117,13 +122,10 @@ class SootUtilsTest extends org.scalatest.FunSuite {
     val entryloc = iterPredUntil(Set(l), config, {
       case CallbackMethodInvoke(_,_,_) => true
       case l@AppLoc(a,b,false) =>
-        println(a)
-        println(b)
         val cmd = w.cmdAtLocation(l)
-        println(cmd)
         false
       case l => false
-    }, 12)
+    },State.topState, 12)
     assert(entryloc.isDefined)
 
   }

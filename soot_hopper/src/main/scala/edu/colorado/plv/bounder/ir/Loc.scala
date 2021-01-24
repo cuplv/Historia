@@ -27,6 +27,7 @@ trait MethodLoc {
    * @return list of args, [reciever, arg1,arg2 ...]
    */
   def getArgs : List[Option[LocalWrapper]]
+  def isStatic:Boolean
   // TODO: handle params
   // def argNames:List[String]
 }

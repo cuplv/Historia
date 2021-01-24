@@ -3,6 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 import edu.colorado.plv.bounder.solver.StateSolver
 import edu.colorado.plv.bounder.ir.{IRWrapper, IntConst, LVal, LocalWrapper, MessageType, RVal, StringConst}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAtom, LSFalse, LSPred, LSTrue, NI, Not, Or}
+import edu.colorado.plv.bounder.symbolicexecutor.state.State.findIAF
 
 
 object State {
@@ -13,6 +14,15 @@ object State {
   }
   def topState:State =
     State(Nil,Map(),Set(),Set(),0)
+
+  def findIAF(messageType: MessageType, tuple: (String, String), pred: LSPred):Set[I] = pred match{
+    case i@I(mt, sigs, _) if mt == messageType && sigs.contains(tuple) => Set(i)
+    case NI(i1,i2) => Set(i1,i2).flatMap(findIAF(messageType, tuple, _))
+    case And(l1,l2) => findIAF(messageType,tuple,l1).union(findIAF(messageType,tuple,l2))
+    case Or(l1,l2) => findIAF(messageType,tuple,l1).union(findIAF(messageType,tuple,l2))
+    case Not(l) => findIAF(messageType, tuple, l)
+    case _ => Set()
+  }
 }
 
 // pureFormula is a conjunction of constraints
@@ -41,16 +51,6 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
   }
 
   def nextPv() = (PureVar(nextAddr), this.copy(nextAddr = nextAddr+1))
-
-
-  private def findIAF(messageType: MessageType, tuple: (String, String), pred: LSPred):Set[I] = pred match{
-    case i@I(mt, sigs, _) if mt == messageType && sigs.contains(tuple) => Set(i)
-    case NI(i1,i2) => Set(i1,i2).flatMap(findIAF(messageType, tuple, _))
-    case And(l1,l2) => findIAF(messageType,tuple,l1).union(findIAF(messageType,tuple,l2))
-    case Or(l1,l2) => findIAF(messageType,tuple,l1).union(findIAF(messageType,tuple,l2))
-    case Not(l) => findIAF(messageType, tuple, l)
-    case _ => Set()
-  }
 
   def lsVarConstraint(f: AbstractTrace, lsvar: String): Option[LSParamConstraint] = f match{
     case AbstractTrace(_,_,mv) => mv.get(lsvar).map(LSPure)

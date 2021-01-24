@@ -10,7 +10,7 @@ class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] 
 
   override def makeCmd(cmd: String, method: String, loc: Option[AppLoc]): CmdWrapper = ???
 
-  override def commandPredicessors(cmdWrapper: CmdWrapper): List[AppLoc] = ???
+  override def commandPredecessors(cmdWrapper: CmdWrapper): List[AppLoc] = ???
 
   override def commandNext(cmdWrapper: CmdWrapper): List[AppLoc] = ???
 
@@ -32,11 +32,15 @@ class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] 
 
   override def appCallSites(method: MethodLoc, resolver: AppCodeResolver): Seq[AppLoc] = ???
 
-  override def makeMethodRetuns(method: MethodLoc): List[Loc] = ???
-
   override def getClassHierarchy: Map[String, Set[String]] = ???
 
   override def canAlias(type1: String, type2: String): Boolean = true
+
+  override def getDirectMethodCalls(method: MethodLoc): Set[MethodLoc] = ???
+
+  override def getDirectHeapOps(method: MethodLoc): Set[CmdWrapper] = ???
+
+  override def makeMethodRetuns(method: MethodLoc): List[AppLoc] = ???
 }
 
 /**
@@ -62,6 +66,8 @@ case class TestIRMethodLoc(clazz:String, name:String, args:List[LocalWrapper]) e
     case LocalWrapper("_", _) => None
     case local@LocalWrapper(_, _) => Some(local)
   }
+
+  override def isStatic: Boolean = ???
 }
 case class TestIRLineLoc(line:Int) extends LineLoc {
 
