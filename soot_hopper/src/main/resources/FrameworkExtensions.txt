@@ -6,3 +6,8 @@ dalvik.*
 java.*
 javax.*
 junit.*
+sun.*
+org.apache.*
+org.eclipse.*
+soot.*
+rx.*

@@ -1,8 +1,28 @@
 package edu.colorado.plv.bounder.solver
 
 import com.microsoft.z3.{BoolExpr, Context, EnumSort, Expr, FuncDecl, Solver, Sort}
+import edu.colorado.plv.bounder.solver.PersistantConstraints.primitiveTypes
 import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, SubclassOf, SuperclassOf, TypeConstraint}
+import soot.ShortType
 
+object PersistantConstraints{
+  val intType = "int"
+  val shortType = "short"
+  val byteType = "byte"
+  val longType = "long"
+  val doubleType = "double"
+  val charType = "char"
+  val booleanType = "boolean"
+  val floatType = "float"
+  val primitiveTypes: Set[String] = Set(
+    intType,
+    shortType,
+    byteType,
+    longType,
+    doubleType,
+    floatType,
+    booleanType)
+}
 
 /**
  * Z3 constraints that persist from state to state
@@ -15,7 +35,9 @@ class PersistantConstraints(ctx: Context, solver: Solver, types : Map[String,Set
   def getCtx: Context = ctx
 
   val typeToInt: Map[String, Int] = types.keySet.zipWithIndex.toMap
-  val intToType: Map[Int, String] = typeToInt.map(a => (a._2, a._1))
+  val intToType: Map[Int, String] = typeToInt.map{a =>
+    assert(!primitiveTypes.contains(a._1), s"Invalid class name ${a._1}")
+    (a._2, a._1)}
 
 
 //  val tsort: Sort = ctx.mkFiniteDomainSort("Types", typeToInt.size)

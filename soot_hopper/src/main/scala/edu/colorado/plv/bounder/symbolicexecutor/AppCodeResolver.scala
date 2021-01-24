@@ -13,17 +13,27 @@ trait AppCodeResolver {
   def resolveCallbackEntry(method: MethodLoc):Option[Loc]
   def getCallbacks: Set[MethodLoc]
 }
+object FrameworkExtensions{
+  protected val frameworkExtPath = getClass.getResource("/FrameworkExtensions.txt").getPath
+  val extensionStrings: List[String] = {
+    val source = Source.fromFile(frameworkExtPath)
+    try {
+      source.getLines.toList
+    }finally{
+      source.close
+    }
+  }
+  val extensionRegex: Regex = extensionStrings.mkString("|").r
+}
 
 class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
-  protected val frameworkExtPath = getClass.getResource("/FrameworkExtensions.txt").getPath
-  protected val extensionStrings: Regex = Source.fromFile(frameworkExtPath).getLines.mkString("|").r
 
   protected val excludedClasses = "dummyMainClass".r
 
   val appMethods = ir.getAllMethods.filter(m => !isFrameworkClass(m.classType)).toSet
   def getCallbacks = appMethods.filter(resolveCallbackEntry(_).isDefined)
   def isFrameworkClass(fullClassName:String):Boolean = fullClassName match{
-    case extensionStrings() => true
+    case FrameworkExtensions.extensionRegex() => true
     case _ => false
   }
 

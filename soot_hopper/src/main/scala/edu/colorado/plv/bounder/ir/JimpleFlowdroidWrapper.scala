@@ -1,12 +1,13 @@
 package edu.colorado.plv.bounder.ir
 
 import edu.colorado.plv.bounder.BounderSetupApplication
+import edu.colorado.plv.bounder.solver.PersistantConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.AppCodeResolver
 import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
 import soot.jimple.infoflow.entryPointCreators.SimulatedCodeElementTag
 import soot.jimple.{DynamicInvokeExpr, InstanceInvokeExpr, IntConstant, InvokeExpr, NullConstant, ParameterRef, StringConstant, ThisRef}
-import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceFieldRef, AbstractInstanceInvokeExpr, AbstractInvokeExpr, AbstractNewExpr, AbstractStaticInvokeExpr, InvokeExprBox, JAssignStmt, JEqExpr, JIdentityStmt, JIfStmt, JInstanceFieldRef, JInvokeStmt, JNeExpr, JNewExpr, JReturnStmt, JReturnVoidStmt, JSpecialInvokeExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
-import soot.{Body, Hierarchy, RefType, Scene, SootClass, SootMethod, Type, Value, VoidType}
+import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceFieldRef, AbstractInstanceInvokeExpr, AbstractInvokeExpr, AbstractNewExpr, AbstractStaticInvokeExpr, InvokeExprBox, JAssignStmt, JCastExpr, JEqExpr, JIdentityStmt, JIfStmt, JInstanceFieldRef, JInvokeStmt, JNeExpr, JNewExpr, JReturnStmt, JReturnVoidStmt, JSpecialInvokeExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
+import soot.{Body, BooleanType, ByteType, CharType, DoubleType, FloatType, Hierarchy, IntType, LongType, RefType, Scene, ShortType, SootClass, SootMethod, Type, Value, VoidType}
 
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
@@ -17,6 +18,23 @@ object JimpleFlowdroidWrapper{
     val name = m.getName
 //    s"${m.getPackageName}.${name}"
     name
+  }
+  def stringNameOfType(t : Type) : String = t match {
+    case t:RefType =>
+      val className = t.getClassName
+      val str = t.toString
+      str
+    case _:IntType => PersistantConstraints.intType
+    case _:ShortType => PersistantConstraints.shortType
+    case _:ByteType => PersistantConstraints.byteType
+    case _:LongType => PersistantConstraints.longType
+    case _:DoubleType => PersistantConstraints.doubleType
+    case _:CharType => PersistantConstraints.charType
+    case _:BooleanType => PersistantConstraints.booleanType
+    case _:FloatType => PersistantConstraints.floatType
+    case t =>
+      println(t)
+      ???
   }
 }
 
@@ -201,6 +219,12 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
       LocalWrapper(name, tname)
     case ne: JNeExpr => Ne(makeRVal(ne.getOp1), makeRVal(ne.getOp2))
     case eq: JEqExpr => Eq(makeRVal(eq.getOp1), makeRVal(eq.getOp2))
+    case local: JimpleLocal =>
+      LocalWrapper(local.getName, JimpleFlowdroidWrapper.stringNameOfType(local.getType))
+    case cast: JCastExpr =>
+      val castType = JimpleFlowdroidWrapper.stringNameOfType(cast.getCastType)
+      val v = makeRVal(cast.getOp).asInstanceOf[LocalWrapper]
+      Cast(castType, v)
     case v =>
       println(v)
       ???
@@ -432,14 +456,7 @@ class JimpleFlowdroidWrapper(apkPath : String) extends IRWrapper[SootMethod, soo
 
 case class JimpleMethodLoc(method: SootMethod) extends MethodLoc {
   def string(clazz: SootClass):String = JimpleFlowdroidWrapper.stringNameOfClass(clazz)
-  def string(t:Type) :String = t match {
-    case t:RefType =>
-      val str = t.toString
-      str
-    case t =>
-      println(t)
-      ???
-  }
+  def string(t:Type) :String = JimpleFlowdroidWrapper.stringNameOfType(t)
   override def simpleName: String = {
 //    val n = method.getName
     method.getSubSignature
@@ -450,12 +467,7 @@ case class JimpleMethodLoc(method: SootMethod) extends MethodLoc {
   // return type, receiver type, arg1, arg2 ...
   override def argTypes: List[String] = string(method.getReturnType)::
     classType::
-    method.getParameterTypes.asScala.map({
-    case t =>
-      val str = t.toString
-      println(str)
-      ???
-  }).toList
+    method.getParameterTypes.asScala.map(string).toList
 
   /**
    * None for reciever if static

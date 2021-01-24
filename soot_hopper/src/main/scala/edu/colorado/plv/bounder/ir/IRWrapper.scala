@@ -69,6 +69,8 @@ case class Eq(v1:RVal, v2:RVal) extends RVal
 case class Ne(v1:RVal, v2:RVal) extends RVal
 case class Gt(v1:RVal, v2:RVal) extends RVal
 
+case class Cast(castT:String, local: LocalWrapper) extends RVal
+
 
 //abstract class MethodWrapper[M,C](decalringClass : String,
 //                                  returnType: String,

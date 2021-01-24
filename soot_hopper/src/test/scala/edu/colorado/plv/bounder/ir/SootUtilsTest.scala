@@ -1,9 +1,9 @@
 package edu.colorado.plv.bounder.ir
 
 import edu.colorado.plv.bounder.BounderSetupApplication
-import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSSpec, NI}
+import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NI}
 import edu.colorado.plv.bounder.lifestate.{SpecSignatures, SpecSpace}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, PureVar, Qry, SomeQry, State}
+import edu.colorado.plv.bounder.symbolicexecutor.state._
 import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, SymbolicExecutorConfig, TransferFunctions}
 import soot.SootMethod
 

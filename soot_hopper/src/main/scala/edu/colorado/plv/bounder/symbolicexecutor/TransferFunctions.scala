@@ -94,9 +94,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       }
       ostates.map(a => a.copy(callStack = frame::a.callStack))
     case (CallinMethodReturn(_, _), CallinMethodInvoke(_, _), state) => Set(state)
-    case (cminv@CallinMethodInvoke(_, _), ciInv@AppLoc(_, _, true), s@State(_ :: t, _, _, _,_)) => {
-     //TODO: relevant transition enumeration
-      val (pkg,name) = msgCmdToMsg(cminv)
+    case (cminv@CallinMethodInvoke(_, _), ciInv@AppLoc(_, _, true), s@State(_ :: t, _, _, _,_)) =>
+      //TODO: relevant transition enumeration
+       val (pkg,name) = msgCmdToMsg(cminv)
       val relAliases: Set[List[LSParamConstraint]] = relevantAliases(pre, CIEnter, (pkg,name))
       val ostates = if(relAliases.isEmpty)
         Set(pre)
@@ -112,14 +112,13 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         ???
       }
       ostates.map(s => s.copy(if (s.callStack.isEmpty) Nil else s.callStack.tail))
-    }
     case (AppLoc(_, _, true), AppLoc(_, _, false), pre) => Set(pre)
     case (appLoc@AppLoc(c1, m1, false), AppLoc(c2, m2, true), prestate) if c1 == c2 && m1 == m2 =>
       cmdTransfer(w.cmdAtLocation(appLoc), prestate)
     case (AppLoc(containingMethod, m, true), cmInv@CallbackMethodInvoke(fc1, fn1, l1), pre) => {
       // If call doesn't match return on stack, return bottom
       // Target loc of CallbackMethodInvoke means just before callback is invoked
-      if(!pre.callStack.isEmpty){
+      if(pre.callStack.nonEmpty){
         pre.callStack.head match {
           case CallStackFrame(CallbackMethodReturn(fc2,fn2,l2,_),_,_) if fc1 != fc2 || fn1 != fn2 || l1 != l2 =>
             ???

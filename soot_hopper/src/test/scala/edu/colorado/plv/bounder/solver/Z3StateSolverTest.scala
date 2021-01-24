@@ -1,9 +1,9 @@
 package edu.colorado.plv.bounder.solver
 
-import com.microsoft.z3.{ArithExpr, BoolExpr, Context, EnumSort, Expr, Solver, Status}
-import edu.colorado.plv.bounder.ir.{AppLoc, CBEnter, CIEnter, CallbackMethodInvoke, FwkMethod, LocalWrapper, TAddr, TMessage}
+import com.microsoft.z3._
+import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.lifestate.LifeState.{I, NI, Not, Or}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, CallStackFrame, Equals, FieldPtEdge, NotEquals, NullVal, PureConstraint, PureVar, StackVar, State, SubclassOf, TypeComp}
+import edu.colorado.plv.bounder.symbolicexecutor.state._
 import edu.colorado.plv.bounder.testutils.{TestIRLineLoc, TestIRMethodLoc}
 
 class Z3StateSolverTest extends org.scalatest.FunSuite {

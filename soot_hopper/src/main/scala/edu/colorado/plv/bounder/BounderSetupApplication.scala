@@ -2,6 +2,7 @@ package edu.colorado.plv.bounder
 
 import java.io.{File, FileOutputStream}
 
+import edu.colorado.plv.bounder.symbolicexecutor.FrameworkExtensions
 import javax.tools.{JavaCompiler, ToolProvider}
 import soot.jimple.infoflow.android.{InfoflowAndroidConfiguration, SetupApplication}
 import soot.jimple.infoflow.android.callbacks.{AndroidCallbackDefinition, DefaultCallbackAnalyzer}
@@ -124,7 +125,9 @@ object BounderSetupApplication {
     Scene.v.addBasicClass("java.lang.ClassLoader", SootClass.SIGNATURES)
     Scene.v.addBasicClass("java.security.PrivilegedActionException", SootClass.SIGNATURES)
     Scene.v.addBasicClass("java.lang.ref.Finalizer", SootClass.SIGNATURES)
-
+    val excludedList = FrameworkExtensions.extensionStrings
+    Options.v().set_exclude(excludedList.asJava)
+    Options.v().set_no_bodies_for_excluded(true)
     Options.v.set_whole_program(true)
     Options.v.set_process_dir(List(path).asJava)
     Options.v.set_android_jars(platformsDir)
