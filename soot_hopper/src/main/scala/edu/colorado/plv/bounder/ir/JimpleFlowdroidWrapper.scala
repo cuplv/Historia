@@ -8,13 +8,15 @@ import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, AppOnlyCallGr
 import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
 import soot.jimple.infoflow.entryPointCreators.SimulatedCodeElementTag
 import soot.jimple.{DoubleConstant, DynamicInvokeExpr, InstanceInvokeExpr, IntConstant, InvokeExpr, LongConstant, NullConstant, ParameterRef, RealConstant, StringConstant, ThisRef}
-import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceFieldRef, AbstractInstanceInvokeExpr, AbstractInvokeExpr, AbstractNewExpr, AbstractStaticInvokeExpr, InvokeExprBox, JAddExpr, JAssignStmt, JCastExpr, JCaughtExceptionRef, JDivExpr, JEqExpr, JIdentityStmt, JIfStmt, JInstanceFieldRef, JInterfaceInvokeExpr, JInvokeStmt, JMulExpr, JNeExpr, JNewExpr, JReturnStmt, JReturnVoidStmt, JSpecialInvokeExpr, JSubExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
+import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceFieldRef, AbstractInstanceInvokeExpr, AbstractInvokeExpr, AbstractNewExpr, AbstractStaticInvokeExpr, InvokeExprBox, JAddExpr, JAssignStmt, JCastExpr, JCaughtExceptionRef, JDivExpr, JEqExpr, JIdentityStmt, JIfStmt, JInstanceFieldRef, JInterfaceInvokeExpr, JInvokeStmt, JLeExpr, JMulExpr, JNeExpr, JNewExpr, JReturnStmt, JReturnVoidStmt, JSpecialInvokeExpr, JSubExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
 import soot.jimple.spark.SparkTransformer
 import soot.jimple.toolkits.callgraph.{CHATransformer, CallGraph}
 import soot.options.{Options, SparkOptions}
 import soot.toolkits.scalar.FlowAnalysis
 import soot.{Body, BooleanType, ByteType, CharType, DoubleType, FloatType, Hierarchy, IntType, LongType, RefType, Scene, ShortType, SootClass, SootMethod, SourceLocator, Transformer, Type, Value, VoidType}
 
+import scala.annotation.tailrec
+import scala.collection.immutable.Queue
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 import scala.util.control.Breaks.break
@@ -57,22 +59,51 @@ trait CallGraphProvider{
  */
 class AppOnlyCallGraph(cg: CallGraph,
                        callbacks: Set[SootMethod],
-                       wrapper: JimpleFlowdroidWrapper) extends CallGraphProvider {
+                       wrapper: JimpleFlowdroidWrapper,
+                       resolver: AppCodeResolver) extends CallGraphProvider {
   sealed trait PointLoc
   case class FieldPoint(clazz: SootClass, fname: String) extends PointLoc
   case class LocalPoint(method: SootMethod, locName:String) extends PointLoc
-
+  // TODO: finish implementing this
   var pointsTo = mutable.Map[PointLoc, Set[SootClass]]()
   var icg = mutable.Map[soot.Unit, Set[SootMethod]]()
   var workList = callbacks.toList
-  //TODO: implement this
+  case class PTState(pointsTo: Map[PointLoc, Set[SootClass]],
+                     callGraph : Map[soot.Unit, Set[SootMethod]],
+                     registered: Set[SootClass]){
+    def updateLocal(method: SootMethod, name:String, clazz : SootClass): PTState = {
+      val ptKey = LocalPoint(method,name)
+      val updatedClasses = pointsTo.getOrElse(ptKey, Set()) + clazz
+      this.copy(pointsTo=pointsTo+(ptKey-> updatedClasses))
+    }
+
+  }
+  val hierarchy = Scene.v().getActiveHierarchy
+  def initialParamForCallback(method:SootMethod, state:PTState):PTState = {
+    ???
+  }
+  def processMethod(method:SootMethod, state:PTState) : (PTState, List[SootMethod]) = {
+
+    ???
+  }
+  @tailrec
+  private def iComputePt(workList: Queue[SootMethod], state: PTState): PTState = {
+    if(workList.isEmpty) state else {
+      val head = workList.front
+      val (state1,nextWL) = processMethod(head, state)
+      iComputePt(workList.tail ++ nextWL, state1)
+    }
+  }
+  val allFwkClasses = Scene.v().getClasses.asScala.filter(c =>
+    resolver.isFrameworkClass(JimpleFlowdroidWrapper.stringNameOfClass(c))).toSet
+  val ptState = iComputePt(Queue.from(callbacks),PTState(Map(), Map(), allFwkClasses))
 
   override def edgesInto(method : SootMethod): Set[(SootMethod,soot.Unit)] = {
     ???
   }
 
   override def edgesOutOf(unit: soot.Unit): Set[SootMethod] = {
-    ???
+    ptState.callGraph(unit)
   }
 
 }
@@ -108,6 +139,16 @@ class JimpleFlowdroidWrapper(apkPath : String,
   val cg: CallGraphProvider = callGraphSource match{
     case SparkCallGraph =>
       Scene.v().setEntryPoints(callbacks.toList.asJava)
+      val appClasses: mutable.Set[SootClass] = getAppMethods(resolver).flatMap{ a =>
+        val cname = JimpleFlowdroidWrapper.stringNameOfClass(a.getDeclaringClass)
+        if (!resolver.isFrameworkClass(cname))
+          Some(a.getDeclaringClass)
+        else None
+      }
+      appClasses.foreach{(c:SootClass) =>
+        c.setApplicationClass()
+      }
+
       val opt = Map(
         ("verbose", "true"),
         ("propagator", "worklist"),
@@ -115,11 +156,13 @@ class JimpleFlowdroidWrapper(apkPath : String,
         ("on-fly-cg", "true"),
         ("set-impl", "double"),
         ("double-set-old", "hybrid"),
-        ("double-set-new", "hybrid"),
-        ("vta", "true") // Trying to get rid of unsoundness of using callbacks as entry points
+        ("double-set-new", "hybrid")
       )
-      val opt2 = new SparkOptions(opt.asJava)
       SparkTransformer.v().transform("", opt.asJava)
+      val pta = Scene.v().getPointsToAnalysis
+      // TODO: Remove dbg code below
+
+      println()
       new CallGraphWrapper(Scene.v().getCallGraph)
     case CHACallGraph =>
       Scene.v().setEntryPoints(callbacks.toList.asJava)
@@ -127,7 +170,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
       new CallGraphWrapper(Scene.v().getCallGraph)
     case AppOnlyCallGraph =>
       val chacg: CallGraph = Scene.v().getCallGraph
-      new AppOnlyCallGraph(chacg, callbacks, this)
+      new AppOnlyCallGraph(chacg, callbacks, this, resolver)
     case FlowdroidCallGraph => new CallGraphWrapper(Scene.v().getCallGraph)
   }
 
@@ -340,6 +383,10 @@ class JimpleFlowdroidWrapper(apkPath : String,
       val op1 = makeRVal(div.getOp1)
       val op2 = makeRVal(div.getOp2)
       Binop(op1, Sub, op2)
+    case lt : JLeExpr =>
+      val op1 = makeRVal(lt.getOp1)
+      val op2 = makeRVal(lt.getOp2)
+      Binop(op1, Lt, op2)
 
     case const: RealConstant=>
       ConstVal(const) // Not doing anything special with real values for now

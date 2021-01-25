@@ -74,6 +74,7 @@ case object Mult extends BinaryOperator
 case object Div extends BinaryOperator
 case object Add extends BinaryOperator
 case object Sub extends BinaryOperator
+case object Lt extends BinaryOperator
 
 
 //abstract class MethodWrapper[M,C](decalringClass : String,

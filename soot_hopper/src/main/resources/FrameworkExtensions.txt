@@ -19,3 +19,5 @@ de.greenrobot.*
 org.xml.sax.*
 okio.*
 kotlin.*
+okhttp3.*
+org.jsoup.*

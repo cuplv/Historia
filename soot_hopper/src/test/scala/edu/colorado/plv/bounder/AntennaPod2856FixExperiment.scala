@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.symbolicexecutor.state.{PrettyPrinting, Qry}
-import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, FlowdroidCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, ControlFlowResolver, DefaultAppCodeResolver, FlowdroidCallGraph, SparkCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
 
@@ -11,7 +11,7 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
   test("Prove location in stack trace is unreachable under a simple spec.") {
     val apk = getClass.getResource("/Antennapod-fix-2856-app-free-debug.apk").getPath
     assert(apk != null)
-    val w = new JimpleFlowdroidWrapper(apk, FlowdroidCallGraph)
+    val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
     val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set()))
