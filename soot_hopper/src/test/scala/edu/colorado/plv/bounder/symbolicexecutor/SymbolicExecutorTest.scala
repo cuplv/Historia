@@ -6,9 +6,10 @@ import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, LSSpec, NI}
 import edu.colorado.plv.bounder.lifestate.{SpecSignatures, SpecSpace}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, PrettyPrinting, Qry}
+import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
 
-class SymbolicExecutorTest extends org.scalatest.FunSuite {
+class SymbolicExecutorTest extends AnyFunSuite {
 
   test("Symbolic Executor should prove an intraprocedural deref"){
     val test_interproc_1 = getClass.getResource("/test_interproc_1.apk").getPath()
@@ -26,7 +27,7 @@ class SymbolicExecutorTest extends org.scalatest.FunSuite {
 
     val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
     val result: Set[PathNode] = symbolicExecutor.executeBackward(query)
-    assert(result.size === 1)
+    assert(result.size == 1)
     assert(result.iterator.next.qry.isInstanceOf[BottomQry])
     PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/reftest.dot")
   }

@@ -6,6 +6,7 @@ import edu.colorado.plv.bounder.solver.{PersistantConstraints, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, Qry, SomeQry, WitnessedQry}
 
 import scala.annotation.tailrec
+import scala.collection.parallel.CollectionConverters.ImmutableSetIsParallelizable
 
 sealed trait CallGraphSource
 case object FlowdroidCallGraph extends CallGraphSource
@@ -129,11 +130,11 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     if(qrySet.isEmpty){
       refuted
     }else if(limit > 0) {
-      val nextQry = qrySet.flatMap{
+      val nextQry = qrySet.par.map{
         case succ@PathNode(qry@SomeQry(_,_), _,_) => executeStep(qry).map(PathNode(_,Some(succ), None))
         case PathNode(BottomQry(_,_), _,_) => Set()
       }
-      executeBackwardLimitKeepAll(nextQry, limit - 1, qrySet.filter(_.qry.isInstanceOf[BottomQry]))
+      executeBackwardLimitKeepAll(nextQry.seq.flatten, limit - 1, qrySet.filter(_.qry.isInstanceOf[BottomQry]))
     }else {
       refuted ++ qrySet
     }

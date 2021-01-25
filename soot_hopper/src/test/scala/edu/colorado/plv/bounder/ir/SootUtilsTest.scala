@@ -5,11 +5,12 @@ import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NI}
 import edu.colorado.plv.bounder.lifestate.{SpecSignatures, SpecSpace}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, ControlFlowResolver, DefaultAppCodeResolver, FlowdroidCallGraph, SymbolicExecutorConfig, TransferFunctions}
+import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
 
 import scala.annotation.tailrec
 
-class SootUtilsTest extends org.scalatest.FunSuite {
+class SootUtilsTest extends AnyFunSuite {
   val test_interproc_1 = getClass.getResource("/test_interproc_1.apk").getPath()
   assert(test_interproc_1 != null)
   BounderSetupApplication.loadApk(test_interproc_1, FlowdroidCallGraph)

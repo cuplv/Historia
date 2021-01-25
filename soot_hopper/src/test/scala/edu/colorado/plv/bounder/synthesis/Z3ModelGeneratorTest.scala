@@ -4,8 +4,9 @@ import edu.colorado.plv.bounder.ir.{CBEnter, CallbackMethodInvoke, LocalWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSPred, NI, PredicateSpace}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, PureVar, SomeQry, StackVar, State}
 import edu.colorado.plv.bounder.testutils.TestIRMethodLoc
+import org.scalatest.funsuite.AnyFunSuite
 
-class Z3ModelGeneratorTest extends org.scalatest.FunSuite {
+class Z3ModelGeneratorTest extends AnyFunSuite {
 
   val fooMethod = TestIRMethodLoc("","foo", List(LocalWrapper("@this","Object")))
   test("Encode Node Reachability"){

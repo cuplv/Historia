@@ -2,8 +2,9 @@ package edu.colorado.plv.bounder.solver
 
 import com.microsoft.z3.{Context, Status}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, SubclassOf, SuperclassOf}
+import org.scalatest.funsuite.AnyFunSuite
 
-class PersistantConstraintsTest extends org.scalatest.FunSuite {
+class PersistantConstraintsTest extends AnyFunSuite {
   test("Subtype"){
     val ctx = new Context
     val hierarchy : Map[String, Set[String]] =

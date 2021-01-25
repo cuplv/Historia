@@ -1,11 +1,12 @@
 package edu.colorado.plv.bounder
 
 import edu.colorado.plv.bounder.symbolicexecutor.FlowdroidCallGraph
+import org.scalatest.funsuite.AnyFunSuite
 import soot.Scene
 
 import scala.jdk.CollectionConverters._
 
-class BounderSetupApplicationTest extends org.scalatest.FunSuite {
+class BounderSetupApplicationTest extends AnyFunSuite {
   val trikita_apk = getClass.getResource("/trikita.slide_4.apk").getPath
   assert(trikita_apk != null)
   test("Load apk loads an apk.") {

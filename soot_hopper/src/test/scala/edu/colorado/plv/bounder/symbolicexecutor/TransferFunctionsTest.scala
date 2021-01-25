@@ -5,8 +5,9 @@ import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSSpec}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import edu.colorado.plv.bounder.testutils._
+import org.scalatest.funsuite.AnyFunSuite
 
-class TransferFunctionsTest extends org.scalatest.FunSuite {
+class TransferFunctionsTest extends AnyFunSuite {
 
   def testCmdTransfer(cmd:AppLoc => CmdWrapper, post:State, testIRMethod: TestIRMethodLoc):Set[State] = {
     val preloc = AppLoc(testIRMethod,TestIRLineLoc(1), isPre=true)
