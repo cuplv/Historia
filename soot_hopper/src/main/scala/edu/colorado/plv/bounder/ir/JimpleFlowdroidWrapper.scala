@@ -7,8 +7,8 @@ import edu.colorado.plv.bounder.solver.PersistantConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, AppOnlyCallGraph, CHACallGraph, CallGraphSource, DefaultAppCodeResolver, FlowdroidCallGraph, SparkCallGraph, SymbolicExecutorConfig}
 import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
 import soot.jimple.infoflow.entryPointCreators.SimulatedCodeElementTag
-import soot.jimple.{DoubleConstant, DynamicInvokeExpr, InstanceInvokeExpr, IntConstant, InvokeExpr, LongConstant, NullConstant, ParameterRef, RealConstant, StringConstant, ThisRef}
-import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceFieldRef, AbstractInstanceInvokeExpr, AbstractInvokeExpr, AbstractNewExpr, AbstractStaticInvokeExpr, InvokeExprBox, JAddExpr, JAssignStmt, JCastExpr, JCaughtExceptionRef, JDivExpr, JEqExpr, JIdentityStmt, JIfStmt, JInstanceFieldRef, JInterfaceInvokeExpr, JInvokeStmt, JLeExpr, JMulExpr, JNeExpr, JNewExpr, JReturnStmt, JReturnVoidStmt, JSpecialInvokeExpr, JSubExpr, JVirtualInvokeExpr, JimpleLocal, VariableBox}
+import soot.jimple.{DoubleConstant, DynamicInvokeExpr, InstanceInvokeExpr, IntConstant, InvokeExpr, LongConstant, NullConstant, ParameterRef, RealConstant, StaticFieldRef, StringConstant, ThisRef}
+import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceFieldRef, AbstractInstanceInvokeExpr, AbstractInvokeExpr, AbstractNewExpr, AbstractStaticInvokeExpr, InvokeExprBox, JAddExpr, JAssignStmt, JCastExpr, JCaughtExceptionRef, JCmpExpr, JDivExpr, JEnterMonitorStmt, JEqExpr, JExitMonitorStmt, JGeExpr, JGotoStmt, JGtExpr, JIdentityStmt, JIfStmt, JInstanceFieldRef, JInstanceOfExpr, JInterfaceInvokeExpr, JInvokeStmt, JLeExpr, JLtExpr, JMulExpr, JNeExpr, JNewExpr, JNopStmt, JReturnStmt, JReturnVoidStmt, JSpecialInvokeExpr, JStaticInvokeExpr, JSubExpr, JThrowStmt, JVirtualInvokeExpr, JimpleLocal, VariableBox}
 import soot.jimple.spark.SparkTransformer
 import soot.jimple.toolkits.callgraph.{CHATransformer, CallGraph}
 import soot.options.{Options, SparkOptions}
@@ -288,7 +288,14 @@ class JimpleFlowdroidWrapper(apkPath : String,
       }
       case cmd: JIfStmt =>
         If(makeVal(cmd.getCondition),loc)
-
+      case _ : JNopStmt =>
+        NopCmd(loc)
+      case _: JThrowStmt =>
+        // TODO: exception being thrown
+        ThrowCmd(loc)
+      case _:JGotoStmt => NopCmd(loc) // control flow handled elsewhere
+      case _:JExitMonitorStmt => NopCmd(loc) // ignore concurrency
+      case _:JEnterMonitorStmt => NopCmd(loc) // ignore concurrency
       case v =>
         println(s"unimplemented command: ${v}")
         ???
@@ -359,8 +366,8 @@ class JimpleFlowdroidWrapper(apkPath : String,
       val name = s"@parameter${p.getIndex}"
       val tname = p.getType.toString
       LocalWrapper(name, tname)
-    case ne: JNeExpr => Ne(makeRVal(ne.getOp1), makeRVal(ne.getOp2))
-    case eq: JEqExpr => Eq(makeRVal(eq.getOp1), makeRVal(eq.getOp2))
+    case ne: JNeExpr => Binop(makeRVal(ne.getOp1),Ne, makeRVal(ne.getOp2))
+    case eq: JEqExpr => Binop(makeRVal(eq.getOp1),Eq, makeRVal(eq.getOp2))
     case local: JimpleLocal =>
       LocalWrapper(local.getName, JimpleFlowdroidWrapper.stringNameOfType(local.getType))
     case cast: JCastExpr =>
@@ -386,12 +393,37 @@ class JimpleFlowdroidWrapper(apkPath : String,
     case lt : JLeExpr =>
       val op1 = makeRVal(lt.getOp1)
       val op2 = makeRVal(lt.getOp2)
+      Binop(op1, Le, op2)
+    case lt : JLtExpr =>
+      val op1 = makeRVal(lt.getOp1)
+      val op2 = makeRVal(lt.getOp2)
       Binop(op1, Lt, op2)
+    case gt: JGtExpr =>
+      val op1 = makeRVal(gt.getOp1)
+      val op2 = makeRVal(gt.getOp2)
+      Binop(op2, Lt, op1)
+    case ge: JGeExpr =>
+      val op1 = makeRVal(ge.getOp1)
+      val op2 = makeRVal(ge.getOp2)
+      Binop(op1, Ge, op2)
+    case staticRef : StaticFieldRef =>
+      val declaringClass = JimpleFlowdroidWrapper.stringNameOfClass(staticRef.getFieldRef.declaringClass())
+      val fieldName = staticRef.getFieldRef.name()
+      val containedType = JimpleFlowdroidWrapper.stringNameOfType(staticRef.getFieldRef.`type`())
+      StaticFieldReference(declaringClass, fieldName, containedType)
 
     case const: RealConstant=>
       ConstVal(const) // Not doing anything special with real values for now
     case caught: JCaughtExceptionRef =>
       CaughtException("")
+    case jcomp: JCmpExpr =>
+      val op1 = makeRVal(jcomp.getOp1)
+      val op2 = makeRVal(jcomp.getOp2)
+      Binop(op1,Eq, op2)
+    case i : JInstanceOfExpr =>
+      val targetClassType = JimpleFlowdroidWrapper.stringNameOfType(i.getCheckType)
+      val target = makeRVal(i.getOp).asInstanceOf[LocalWrapper]
+      InstanceOf(targetClassType, target)
     case v =>
       println(v)
       ???
@@ -445,8 +477,12 @@ class JimpleFlowdroidWrapper(apkPath : String,
         cmd.getRightOp.asInstanceOf[JVirtualInvokeExpr].getMethodRef
       case JimpleLineLoc(cmd: JAssignStmt, _) if cmd.getRightOp.isInstanceOf[JInterfaceInvokeExpr] =>
         cmd.getRightOp.asInstanceOf[JInterfaceInvokeExpr].getMethodRef
-      case _ =>
-        throw new IllegalArgumentException("Bad Location Type")
+      case JimpleLineLoc(cmd: JAssignStmt, _) if cmd.getRightOp.isInstanceOf[JSpecialInvokeExpr] =>
+        cmd.getRightOp.asInstanceOf[JSpecialInvokeExpr].getMethodRef
+      case JimpleLineLoc(cmd: JAssignStmt, _) if cmd.getRightOp.isInstanceOf[JStaticInvokeExpr] =>
+        cmd.getRightOp.asInstanceOf[JStaticInvokeExpr].getMethodRef
+      case t =>
+        throw new IllegalArgumentException(s"Bad Location Type $t")
     }
     //    val mref = cmd.getMethodRef
     val declClass = mref.getDeclaringClass

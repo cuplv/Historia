@@ -130,11 +130,11 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     if(qrySet.isEmpty){
       refuted
     }else if(limit > 0) {
-      val nextQry = qrySet.par.map{
+      val nextQry = qrySet.map{
         case succ@PathNode(qry@SomeQry(_,_), _,_) => executeStep(qry).map(PathNode(_,Some(succ), None))
         case PathNode(BottomQry(_,_), _,_) => Set()
       }
-      executeBackwardLimitKeepAll(nextQry.seq.flatten, limit - 1, qrySet.filter(_.qry.isInstanceOf[BottomQry]))
+      executeBackwardLimitKeepAll(nextQry.flatten, limit - 1, qrySet.filter(_.qry.isInstanceOf[BottomQry]))
     }else {
       refuted ++ qrySet
     }

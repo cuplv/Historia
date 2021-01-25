@@ -63,9 +63,14 @@ case class If(b:RVal, loc:AppLoc) extends CmdWrapper(loc){
   override def mkPre: CmdWrapper = this.copy(loc=loc.copy(isPre = true))
 }
 
-case class Eq(v1:RVal, v2:RVal) extends RVal
-case class Ne(v1:RVal, v2:RVal) extends RVal
-case class Gt(v1:RVal, v2:RVal) extends RVal
+case class NopCmd(loc:AppLoc) extends CmdWrapper(loc){
+  override def mkPre: CmdWrapper = this.copy(loc=loc.copy(isPre = true))
+}
+
+case class ThrowCmd(loc:AppLoc) extends CmdWrapper(loc){
+  override def mkPre: CmdWrapper = this.copy(loc=loc.copy(isPre = true))
+}
+
 
 case class Cast(castT:String, local: LocalWrapper) extends RVal
 case class Binop(v1:RVal, op: BinaryOperator, v2:RVal) extends RVal
@@ -75,6 +80,10 @@ case object Div extends BinaryOperator
 case object Add extends BinaryOperator
 case object Sub extends BinaryOperator
 case object Lt extends BinaryOperator
+case object Le extends BinaryOperator
+case object Eq extends BinaryOperator
+case object Ne extends BinaryOperator
+case object Ge extends BinaryOperator
 
 
 //abstract class MethodWrapper[M,C](decalringClass : String,
@@ -91,6 +100,7 @@ case class ConstVal(v:Any) extends RVal
 case class IntConst(v:Int) extends RVal
 case class StringConst(v:String) extends RVal
 case class BoolConst(v:Boolean) extends RVal
+case class InstanceOf(clazz:String, target: LocalWrapper) extends RVal
 
 case class CaughtException(n:String) extends RVal
 
@@ -133,3 +143,5 @@ case class ThisWrapper(className:String) extends LVal
 case class FieldRef(base:LocalWrapper, containsType:String, declType:String, name:String) extends LVal{
   override def toString: String = s"${base}.${name}"
 }
+case class StaticFieldReference(declaringClass: String,
+                                fieldName: String, containedType:String) extends LVal
