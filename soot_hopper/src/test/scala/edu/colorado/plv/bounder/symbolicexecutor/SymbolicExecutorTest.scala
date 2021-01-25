@@ -13,12 +13,12 @@ class SymbolicExecutorTest extends org.scalatest.FunSuite {
   test("Symbolic Executor should prove an intraprocedural deref"){
     val test_interproc_1 = getClass.getResource("/test_interproc_1.apk").getPath()
     assert(test_interproc_1 != null)
-    val w = new JimpleFlowdroidWrapper(test_interproc_1)
+    val w = new JimpleFlowdroidWrapper(test_interproc_1, FlowdroidCallGraph)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
     val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set()))
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(8), w, resolver,transfer)
+      stepLimit = Some(8), w, resolver,transfer, printProgress = true)
     val query = Qry.makeReceiverNonNull(config, w,
       "com.example.test_interproc_1.MainActivity",
       "java.lang.String objectString()",21)
@@ -40,7 +40,7 @@ class SymbolicExecutorTest extends org.scalatest.FunSuite {
     println("======= Interproc ======")
     val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath()
     assert(test_interproc_1 != null)
-    val w = new JimpleFlowdroidWrapper(test_interproc_1)
+    val w = new JimpleFlowdroidWrapper(test_interproc_1, FlowdroidCallGraph)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
     val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
 
@@ -59,7 +59,7 @@ class SymbolicExecutorTest extends org.scalatest.FunSuite {
   test("Symbolic executor should witness onPause"){
     val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath()
     assert(test_interproc_1 != null)
-    val w = new JimpleFlowdroidWrapper(test_interproc_1)
+    val w = new JimpleFlowdroidWrapper(test_interproc_1, FlowdroidCallGraph)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
     val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, specForResumePause)
@@ -76,7 +76,7 @@ class SymbolicExecutorTest extends org.scalatest.FunSuite {
   test("Symbolic executor should witness onResume"){
     val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath()
     assert(test_interproc_1 != null)
-    val w = new JimpleFlowdroidWrapper(test_interproc_1)
+    val w = new JimpleFlowdroidWrapper(test_interproc_1, FlowdroidCallGraph)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
     val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, specForResumePause)

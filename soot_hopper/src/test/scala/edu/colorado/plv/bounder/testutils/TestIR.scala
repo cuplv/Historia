@@ -24,7 +24,7 @@ class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] 
     ).map(_.asInstanceOf[CmdTransition].cmd).get
   }
 
-  override def makeInvokeTargets(invoke: AppLoc, typeBound:Option[String]): UnresolvedMethodTarget = ???
+  override def makeInvokeTargets(invoke: AppLoc): UnresolvedMethodTarget = ???
 
   override def getAllMethods: Seq[MethodLoc] = ???
 
@@ -35,10 +35,6 @@ class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] 
   override def getClassHierarchy: Map[String, Set[String]] = ???
 
   override def canAlias(type1: String, type2: String): Boolean = true
-
-  override def getDirectMethodCalls(method: MethodLoc): Set[MethodLoc] = ???
-
-  override def getDirectHeapOps(method: MethodLoc): Set[CmdWrapper] = ???
 
   override def makeMethodRetuns(method: MethodLoc): List[AppLoc] = ???
 }
@@ -68,6 +64,8 @@ case class TestIRMethodLoc(clazz:String, name:String, args:List[LocalWrapper]) e
   }
 
   override def isStatic: Boolean = ???
+
+  override def isInterface: Boolean = ???
 }
 case class TestIRLineLoc(line:Int) extends LineLoc {
 

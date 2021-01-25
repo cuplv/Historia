@@ -1,6 +1,8 @@
 package edu.colorado.plv.bounder
 
+import edu.colorado.plv.bounder.symbolicexecutor.FlowdroidCallGraph
 import soot.Scene
+
 import scala.jdk.CollectionConverters._
 
 class BounderSetupApplicationTest extends org.scalatest.FunSuite {
@@ -8,7 +10,7 @@ class BounderSetupApplicationTest extends org.scalatest.FunSuite {
   assert(trikita_apk != null)
   test("Load apk loads an apk.") {
 
-    BounderSetupApplication.loadApk(trikita_apk)
+    BounderSetupApplication.loadApk(trikita_apk, FlowdroidCallGraph)
     val gotSize = Scene.v().getClasses().size
     assert( gotSize > 2000 )
     //TODO: individual java file loading so unit tests are easier

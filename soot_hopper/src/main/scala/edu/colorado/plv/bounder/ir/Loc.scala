@@ -28,6 +28,7 @@ trait MethodLoc {
    */
   def getArgs : List[Option[LocalWrapper]]
   def isStatic:Boolean
+  def isInterface:Boolean
   // TODO: handle params
   // def argNames:List[String]
 }

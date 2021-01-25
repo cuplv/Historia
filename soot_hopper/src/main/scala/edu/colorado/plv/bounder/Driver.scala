@@ -2,8 +2,8 @@ package edu.colorado.plv.bounder
 
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NI}
-import edu.colorado.plv.bounder.lifestate.{SpecSpace, SpecSignatures}
-import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.lifestate.{SpecSignatures, SpecSpace}
+import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, FlowdroidCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{PathNode, PrettyPrinting, Qry}
 import scopt.OParser
 import soot.SootMethod
@@ -43,8 +43,8 @@ object Driver {
   }
 
   def dotWitnessTree(apkPath: String, outFolder: String): Unit = {
-
-    val w = new JimpleFlowdroidWrapper(apkPath)
+    val callGraph = FlowdroidCallGraph
+    val w = new JimpleFlowdroidWrapper(apkPath, callGraph)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
     val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
     val testSpec = LSSpec(NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),

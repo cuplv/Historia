@@ -196,7 +196,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       val retVal:Map[StackVar, PureExpr] = w.cmdAtLocation(retloc) match{
         case AssignCmd(tgt, _:InvokeCmd, _) => state.get(tgt).map(v => Map(StackVar("@ret") -> v)).getOrElse(Map())
         case InvokeCmd(_,_) => Map()
-        case _ => throw new IllegalStateException(s"malformed bytecode, source: ${retloc}  target: ${mRet}")
+        case _ => throw new IllegalStateException(s"malformed bytecode, source: $retloc  target: $mRet")
       }
       val newFrame = CallStackFrame(mRet, Some(AppLoc(mloc,line,true)), retVal)
       Set(state.copy(callStack = newFrame::state.callStack))
@@ -204,7 +204,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       // TODO: case where return value is important
       w.cmdAtLocation(cmd) match{
         case ReturnCmd(_,_) => Set(state)
-        case _ => throw new IllegalStateException(s"malformed bytecode, source: ${mr}  target: ${cmd}")
+        case _ => throw new IllegalStateException(s"malformed bytecode, source: $mr  target: ${cmd}")
       }
     case t =>
       println(t)
@@ -242,8 +242,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
   /**
    * For a back message with a given package and name, instantiate each rule as a new trace abstraction
    *
-   * @param loc
-   * @param postState
+   * @param loc callback invoke or callin return
+   * @param postState state at point in app just before back message
    * @return a new trace abstraction for each possible rule
    */
   def newSpecInstanceTransfer(mt: MessageType,
@@ -465,6 +465,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         case _ => None
       })
       casesWithHeapCellAlias + caseWithNoAlias
+    case _:InvokeCmd => Set(state)// Invoke not relevant and skipped
+    case AssignCmd(_, _:Invoke, _) => Set(state)
     case c =>
       println(c)
       ???

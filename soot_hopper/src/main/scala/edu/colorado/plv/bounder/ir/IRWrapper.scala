@@ -23,13 +23,11 @@ trait IRWrapper[M,C]{
    */
   def isMethodEntry(cmdWrapper: CmdWrapper): Boolean
   def cmdAtLocation(loc:AppLoc) :CmdWrapper
-  def makeInvokeTargets(invoke:AppLoc, upperTypeBound: Option[String]):UnresolvedMethodTarget
+  def makeInvokeTargets(invoke:AppLoc):UnresolvedMethodTarget
   def appCallSites(method : MethodLoc, resolver:AppCodeResolver): Seq[AppLoc]
   def makeMethodRetuns(method: MethodLoc) : List[AppLoc]
   def getClassHierarchy : Map[String, Set[String]]
   def canAlias(type1:String, type2:String):Boolean
-  def getDirectMethodCalls(method: MethodLoc):Set[MethodLoc]
-  def getDirectHeapOps(method:MethodLoc):Set[CmdWrapper]
 }
 sealed case class UnresolvedMethodTarget(clazz: String, methodName:String, loc:Set[MethodLoc])
 
@@ -92,6 +90,8 @@ case class ConstVal(v:Any) extends RVal
 case class IntConst(v:Int) extends RVal
 case class StringConst(v:String) extends RVal
 case class BoolConst(v:Boolean) extends RVal
+
+case class CaughtException(n:String) extends RVal
 
 sealed trait Invoke extends RVal {
   def targetClass:String

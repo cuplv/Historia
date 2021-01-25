@@ -2,14 +2,16 @@ package edu.colorado.plv.bounder
 
 import java.io.{File, FileOutputStream}
 
-import edu.colorado.plv.bounder.symbolicexecutor.FrameworkExtensions
+import edu.colorado.plv.bounder.symbolicexecutor.{CallGraphSource, FlowdroidCallGraph, FrameworkExtensions}
 import javax.tools.{JavaCompiler, ToolProvider}
+import soot.jimple.infoflow.InfoflowConfiguration.{AliasingAlgorithm, CallgraphAlgorithm}
 import soot.jimple.infoflow.android.{InfoflowAndroidConfiguration, SetupApplication}
 import soot.jimple.infoflow.android.callbacks.{AndroidCallbackDefinition, DefaultCallbackAnalyzer}
 import soot.jimple.infoflow.android.callbacks.filters.{AlienHostComponentFilter, ApplicationCallbackFilter, UnreachableConstructorFilter}
 import soot.jimple.infoflow.android.entryPointCreators.AndroidEntryPointCreator
 import soot.jimple.infoflow.android.manifest.ProcessManifest
 import soot.jimple.infoflow.android.resources.{ARSCFileParser, LayoutFileParser}
+import soot.jimple.toolkits.callgraph.CHATransformer
 import soot.{G, Main, PackManager, Scene, SootClass, SootMethod}
 import soot.options.Options
 
@@ -63,17 +65,22 @@ object BounderSetupApplication {
     ???
   }
 
-  def loadApk2(path:String, generateFlowdroidCallGraph:Boolean = false) : Unit = {
+  def loadApk(path:String, callGraph:CallGraphSource) : Unit = callGraph match{
+    case FlowdroidCallGraph => loadApkFlowdroid(path)
+    case _ => loadApkNonFlowdroid(path)
+  }
+  def loadApkFlowdroid(path:String) : Unit = {
     // Create call graph and pointer analysis with flowdroid main method
     val config = new InfoflowAndroidConfiguration
     val platformsDir = androidHome + "/platforms"
     config.getAnalysisFileConfig.setTargetAPKFile(path)
     // TODO: figure out how to load apk without generating flowdroid callgraph
-    // Note: this generates flowdroid call graph and points to analysis, but we don't use it
     config.getAnalysisFileConfig.setAndroidPlatformDir(platformsDir)
     config.setMergeDexFiles(true)
     config.setEnableLineNumbers(true)
     config.setExcludeSootLibraryClasses(false)
+    config.setOneComponentAtATime(false)
+    config.getSourceSinkConfig.setEnableLifecycleSources(true)
     val setup = new SetupApplication(config)
     G.reset()
     setup.constructCallgraph()
@@ -107,7 +114,7 @@ object BounderSetupApplication {
 //      constructCg.invoke(setup)
 //    }
   }
-  def loadApk(path : String):Unit ={
+  def loadApkNonFlowdroid(path : String):Unit ={
     G.reset()
     val platformsDir = androidHome + "/platforms"
     //TODO: below should be "/Users/shawnmeier/Library/Android/sdk/platforms"
@@ -126,7 +133,7 @@ object BounderSetupApplication {
     Scene.v.addBasicClass("java.security.PrivilegedActionException", SootClass.SIGNATURES)
     Scene.v.addBasicClass("java.lang.ref.Finalizer", SootClass.SIGNATURES)
     val excludedList = FrameworkExtensions.extensionStrings
-    Options.v().set_exclude(excludedList.asJava)
+//    Options.v().set_exclude(excludedList.asJava)
     Options.v().set_no_bodies_for_excluded(true)
     Options.v.set_whole_program(true)
     Options.v.set_process_dir(List(path).asJava)
@@ -147,6 +154,7 @@ object BounderSetupApplication {
     Scene.v.loadNecessaryClasses()
     PackManager.v.getPack("wjpp").apply()
     PackManager.v.runPacks()
+//    CHATransformer.v().transform()
 //    Packmanager.v().runPacks()
 
   }

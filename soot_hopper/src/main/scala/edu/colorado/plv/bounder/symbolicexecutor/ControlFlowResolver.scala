@@ -26,12 +26,14 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
         next = n =>
           wrapper.commandPredecessors(n).map((v: AppLoc) => wrapper.cmdAtLocation(v).mkPre).toSet,
         comp = {
-          case (_, i: InvokeCmd) =>
+          case (_, i@InvokeCmd(it,_)) =>
             val upper = i.method.targetOptional.map(_.localType)
-            resolver.resolveCallLocation(wrapper.makeInvokeTargets(i.getLoc, upper))
+            resolver.resolveCallLocation(
+              wrapper.makeInvokeTargets(i.getLoc))
           case (_, AssignCmd(_, i: Invoke, l)) =>
             val upper = i.targetOptional.map(_.localType)
-            resolver.resolveCallLocation(wrapper.makeInvokeTargets(l, upper))
+            resolver.resolveCallLocation(
+              wrapper.makeInvokeTargets(l))
           case _ => Set()
         },
         join = (a, b) => a.union(b)
@@ -183,11 +185,13 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
       }
     }
     case (l@AppLoc(_,_,false),_) => {
+      //TODO: filter resolved based on things that can possibly alias reciever
       val cmd: CmdWrapper = wrapper.cmdAtLocation(l)
       cmd match{
         case InvokeCmd(i, loc) => {
           val upper = upperBoundOfInvoke(i)
-          val unresolvedTargets = wrapper.makeInvokeTargets(loc,upper)
+          val unresolvedTargets =
+            wrapper.makeInvokeTargets(loc)
           val resolved: Set[Loc] = resolver.resolveCallLocation(unresolvedTargets) // .filter(relevantMethod(_, state))
           if(resolved.forall(m => !relevantMethod(m,state)))
             List(l.copy(isPre = true)) // skip if all method targets are not relevant
@@ -196,7 +200,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
         }
         case AssignCmd(tgt, i:Invoke,loc) => {
           val upper = upperBoundOfInvoke(i)
-          val unresolvedTargets = wrapper.makeInvokeTargets(loc,upper)
+          val unresolvedTargets =
+            wrapper.makeInvokeTargets(loc)
           val resolved = resolver.resolveCallLocation(unresolvedTargets)
           if (state.get(tgt).isDefined)
             resolved

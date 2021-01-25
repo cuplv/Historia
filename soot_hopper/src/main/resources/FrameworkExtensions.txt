@@ -9,9 +9,13 @@ junit.*
 sun.*
 org.apache.*
 org.eclipse.*
+org.hamcrest.*
 soot.*
 rx.*
 com.github.bumptech.glide.*
 com.squareup.okhttp3.*
 com.squareup.okio.*
 de.greenrobot.*
+org.xml.sax.*
+okio.*
+kotlin.*

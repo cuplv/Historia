@@ -4,7 +4,7 @@ import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NI}
 import edu.colorado.plv.bounder.lifestate.{SpecSignatures, SpecSpace}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
-import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, SymbolicExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, ControlFlowResolver, DefaultAppCodeResolver, FlowdroidCallGraph, SymbolicExecutorConfig, TransferFunctions}
 import soot.SootMethod
 
 import scala.annotation.tailrec
@@ -12,7 +12,7 @@ import scala.annotation.tailrec
 class SootUtilsTest extends org.scalatest.FunSuite {
   val test_interproc_1 = getClass.getResource("/test_interproc_1.apk").getPath()
   assert(test_interproc_1 != null)
-  BounderSetupApplication.loadApk(test_interproc_1)
+  BounderSetupApplication.loadApk(test_interproc_1, FlowdroidCallGraph)
 
   test("findMethodLoc should find a location based on a classname and line number."){
     val res = SootUtils.findMethodLoc(
@@ -68,7 +68,7 @@ class SootUtilsTest extends org.scalatest.FunSuite {
 
     val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath()
     assert(test_interproc_1 != null)
-    val w = new JimpleFlowdroidWrapper(test_interproc_1)
+    val w = new JimpleFlowdroidWrapper(test_interproc_1, FlowdroidCallGraph)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
     val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
     val testSpec = LSSpec(NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
@@ -102,7 +102,7 @@ class SootUtilsTest extends org.scalatest.FunSuite {
   test("iterate to parameter assignments onCreate"){
     val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath()
     assert(test_interproc_1 != null)
-    val w = new JimpleFlowdroidWrapper(test_interproc_1)
+    val w = new JimpleFlowdroidWrapper(test_interproc_1, FlowdroidCallGraph)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
     val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
     val testSpec = LSSpec(NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),

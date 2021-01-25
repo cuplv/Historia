@@ -78,9 +78,14 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
 
   }
   override def resolveCallbackEntry(method:MethodLoc):Option[Loc] = {
-    val overrides = ir.getOverrideChain(method)
+    if(method.isInterface)
+      return None // Interface methods cannot be callbacks
+    val overrides = ir.getOverrideChain(method).filter(c =>
+      isFrameworkClass(
+        JimpleFlowdroidWrapper.stringNameOfClass(
+          c.asInstanceOf[JimpleMethodLoc].method.getDeclaringClass)))
     if(overrides.size == 1 && overrides.last.classType == "java.lang.Object" && overrides.last.simpleName == "<init>"){
-      // Object init is not considered a callback
+      // Object init is not considered a callback unless it overrides a subclass's init
       return None
     }
     if (overrides.size > 0) {

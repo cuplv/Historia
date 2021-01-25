@@ -7,12 +7,18 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, Qry
 
 import scala.annotation.tailrec
 
+sealed trait CallGraphSource
+case object FlowdroidCallGraph extends CallGraphSource
+case object CHACallGraph extends CallGraphSource
+case object SparkCallGraph extends CallGraphSource
+case object AppOnlyCallGraph extends CallGraphSource
+
 case class SymbolicExecutorConfig[M,C](stepLimit: Option[Int],
                                        w :  IRWrapper[M,C],
                                        c : ControlFlowResolver[M,C],
                                        transfer : TransferFunctions[M,C],
                                        printProgress : Boolean = false,
-                                       z3Timeout : Option[Int] = None // Timeout in seconds
+                                       z3Timeout : Option[Int] = None
                                       )
 class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   val ctx = new Context
