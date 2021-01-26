@@ -16,7 +16,7 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
     val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set()))
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(20), w, resolver,transfer, printProgress = true)
+      stepLimit = Some(30), w, resolver,transfer, printProgress = true)
     val query = Qry.makeCallinReturnNonNull(config, w,
       "de.danoeh.antennapod.fragment.ExternalPlayerFragment",
       "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)",200,

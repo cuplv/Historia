@@ -467,8 +467,20 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       casesWithHeapCellAlias + caseWithNoAlias
     case _:InvokeCmd => Set(state)// Invoke not relevant and skipped
     case AssignCmd(_, _:Invoke, _) => Set(state)
+    case If(b,_) =>
+      Set(assumeInState(b,state))
     case c =>
       println(c)
+      ???
+  }
+  def assumeInState(b:RVal, state:State): State = b match{
+    case Binop(l@LocalWrapper(name,_), op, const) if state.containsLocal(l) =>
+      ???
+    case Binop(l:LocalWrapper,_,const) if !state.containsLocal(l) =>
+      assert(!const.isInstanceOf[LocalWrapper])
+      state
+    case v =>
+      println(v)
       ???
   }
 }

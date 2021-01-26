@@ -57,8 +57,8 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   private def subsumableLocation(loc:Loc) :Boolean = loc match{
     case _ : CallbackMethodInvoke => true
     case _ : CallbackMethodReturn => true
-    case _ : CallinMethodInvoke => true
-    case _ : CallinMethodReturn => true
+    case _ : CallinMethodInvoke => false // message locations don't remember program counter so subsumption is unsound
+    case _ : CallinMethodReturn => false
     case _ => false
   }
 
