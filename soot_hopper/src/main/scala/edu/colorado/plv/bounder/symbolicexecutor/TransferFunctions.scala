@@ -206,6 +206,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         case ReturnCmd(_,_) => Set(state)
         case _ => throw new IllegalStateException(s"malformed bytecode, source: $mr  target: ${cmd}")
       }
+    case (AppLoc(_,_,_), InternalMethodInvoke(_,_,_), state) => Set(state)
     case t =>
       println(t)
       ???

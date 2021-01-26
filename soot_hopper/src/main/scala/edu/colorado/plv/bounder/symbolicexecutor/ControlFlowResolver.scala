@@ -178,8 +178,9 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
       val cmd: CmdWrapper = wrapper.cmdAtLocation(l)
       cmd match {
         case cmd if wrapper.isMethodEntry(cmd) =>
-          val callback = resolver.resolveCallbackEntry(method)
-          callback.toList
+//          val callback = resolver.resolveCallbackEntry(method)
+          val callback = BounderUtil.resolveMethodEntryForAppLoc(resolver,l )
+          callback
         case _ => // normal control flow
           val pred = wrapper.commandPredecessors(cmd)
           pred
@@ -247,6 +248,10 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
         wrapper.appCallSites(m2,resolver).map(v => v.copy(isPre = true))).getOrElse(List())
     case (InternalMethodReturn(clazz,name,loc), state) =>
       wrapper.makeMethodRetuns(loc)
+    case (InternalMethodInvoke(_, _, _), CallStackFrame(_,Some(returnLoc:AppLoc),_)::_) => List(returnLoc)
+    case (InternalMethodInvoke(clazz, name, loc), _) =>
+      val unresolved = UnresolvedMethodTarget(clazz, name, Set(loc))
+      resolver.resolveCallLocation(unresolved).filter(loc => resolver.isFrameworkClass(loc.containingMethod))
     case v =>
       println(v)
       ???

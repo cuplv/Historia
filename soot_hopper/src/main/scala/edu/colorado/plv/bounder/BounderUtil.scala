@@ -1,5 +1,7 @@
 package edu.colorado.plv.bounder
 
+import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, InternalMethodInvoke, InternalMethodReturn, Loc}
+import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, SymbolicExecutorConfig}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, SomeQry, WitnessedQry}
 
 import scala.annotation.tailrec
@@ -87,6 +89,31 @@ object BounderUtil {
       }
     }
     iGraphExists(start, Set())
+  }
+
+  def resolveMethodEntryForAppLoc(resolver : AppCodeResolver, appLoc: AppLoc) :List[Loc]= {
+    resolver.resolveCallbackEntry(appLoc.method) match {
+      case Some(CallbackMethodInvoke(clazz, name, loc)) =>
+        CallbackMethodInvoke(clazz, name, loc)::
+          InternalMethodInvoke(appLoc.method.classType, appLoc.method.simpleName, appLoc.method)::Nil
+      case None => {
+        InternalMethodInvoke(appLoc.method.classType, appLoc.method.simpleName, appLoc.method)::Nil
+      }
+      case _ =>
+        throw new IllegalArgumentException
+    }
+  }
+  def resolveMethodReturnForAppLoc(resolver : AppCodeResolver, appLoc: AppLoc) :List[Loc]= {
+    resolver.resolveCallbackEntry(appLoc.method) match {
+      case Some(CallbackMethodInvoke(clazz, name, loc)) =>
+        CallbackMethodReturn(clazz, name, loc, None)::
+          InternalMethodReturn(appLoc.method.classType, appLoc.method.simpleName, appLoc.method)::Nil
+      case None => {
+        InternalMethodReturn(appLoc.method.classType, appLoc.method.simpleName, appLoc.method)::Nil
+      }
+      case _ =>
+        throw new IllegalArgumentException
+    }
   }
 }
 
