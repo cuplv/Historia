@@ -129,8 +129,8 @@ class PatchingCallGraphWrapper(cg:CallGraph, pt: PointsToAnalysis) extends CallG
     if(clazz.declaresMethod(method.getSubSignature))
       Some(clazz.getMethod(method.getSubSignature))
     else{
-      val superClass = clazz.getSuperclass
-      if(superClass != null){
+      if(clazz.hasSuperclass){
+        val superClass = clazz.getSuperclass
         findMethodInvoke(superClass, method)
       }else None
     }
@@ -161,8 +161,8 @@ class PatchingCallGraphWrapper(cg:CallGraph, pt: PointsToAnalysis) extends CallG
       assert(!m.isAbstract, "Special invoke of abstract method?")
       Set(m)
     case i : JStaticInvokeExpr =>
-      println(i)
-      ???
+      val method = i.getMethod
+      Set(method)
     case v => Set() //Non invoke methods have no edges
   }
   private def fallbackOutEdges(unit: soot.Unit): Set[SootMethod] = unit match{
