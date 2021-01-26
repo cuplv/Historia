@@ -13,11 +13,11 @@ import soot.jimple.spark.SparkTransformer
 import soot.jimple.toolkits.callgraph.{CHATransformer, CallGraph}
 import soot.options.{Options, SparkOptions}
 import soot.toolkits.scalar.FlowAnalysis
-import soot.{Body, BooleanType, ByteType, CharType, DoubleType, FloatType, Hierarchy, IntType, LongType, PointsToAnalysis, PointsToSet, RefType, Scene, ShortType, SootClass, SootMethod, SootMethodRef, SourceLocator, Transformer, Type, Value, VoidType}
+import soot.{ArrayType, Body, BooleanType, ByteType, CharType, DoubleType, FloatType, Hierarchy, IntType, LongType, PointsToAnalysis, PointsToSet, RefType, Scene, ShortType, SootClass, SootMethod, SootMethodRef, SourceLocator, Transformer, Type, Value, VoidType}
 
 import scala.annotation.tailrec
 import scala.collection.immutable.Queue
-import scala.collection.mutable
+import scala.collection.{MapView, mutable}
 import scala.jdk.CollectionConverters._
 import scala.util.control.Breaks.break
 import scala.util.matching.Regex
@@ -116,14 +116,19 @@ class AppOnlyCallGraph(cg: CallGraph,
  * missing edges are detected by call sites with no outgoing edges
  * @param cg
  */
-class PatchingCallGraphWrapper(cg:CallGraph, pt: PointsToAnalysis) extends CallGraphProvider{
+class PatchingCallGraphWrapper(cg:CallGraph, appMethods: Set[SootMethod]) extends CallGraphProvider{
+  val unitToTargets: MapView[SootMethod, Set[(SootMethod,soot.Unit)]] =
+    appMethods.flatMap{ outerMethod =>
+      if(outerMethod.hasActiveBody){
+        outerMethod.getActiveBody.getUnits.asScala.flatMap{unit =>
+          val methods = edgesOutOf(unit)
+          methods.map(m => (m,(outerMethod,unit)))
+        }
+      }else{Set()}
+    }.groupBy(_._1).view.mapValues(l => l.map(_._2))
+
   def edgesInto(method : SootMethod): Set[(SootMethod,soot.Unit)] = {
-    val out = cg.edgesInto(method).asScala.map(e => (e.src(),e.srcUnit()))
-    if(out.isEmpty){
-      ???
-    }else {
-      out.toSet
-    }
+    unitToTargets.getOrElse(method, Set())
   }
 
   def findMethodInvoke(clazz : SootClass, method: SootMethodRef) : Option[SootMethod] =
@@ -142,11 +147,22 @@ class PatchingCallGraphWrapper(cg:CallGraph, pt: PointsToAnalysis) extends CallG
     else
       Scene.v.getActiveHierarchy.getSubclassesOfIncluding(sootClass).asScala.toList
 
+  private def baseType(sType: Value): SootClass = sType match{
+    case l : JimpleLocal if l.getType.isInstanceOf[RefType] =>
+      l.getType.asInstanceOf[RefType].getSootClass
+    case v : JimpleLocal if v.getType.isInstanceOf[ArrayType]=>
+      // Arrays inherit Object methods such as clone and toString
+      // We consider both as callins when invoked on arrays
+      Scene.v().getSootClass("java.lang.Object")
+    case v =>
+      println(v)
+      ???
+  }
   private def fallbackOutEdgesInvoke(v : Value):Set[SootMethod] = v match{
     case v : JVirtualInvokeExpr =>
       // TODO: is base ever not a local?
-      val base = v.getBase.asInstanceOf[JimpleLocal]
-      val reachingObjects = subThingsOf(base.getType.asInstanceOf[RefType].getSootClass)
+      val base = v.getBase
+      val reachingObjects = subThingsOf(baseType(base))
       val ref: SootMethodRef = v.getMethodRef
       val out = reachingObjects.flatMap(findMethodInvoke(_, ref))
       Set(out.toList:_*).filter(m => !m.isAbstract)
@@ -221,7 +237,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
   val cg: CallGraphProvider = callGraphSource match{
     case SparkCallGraph =>
       Scene.v().setEntryPoints(callbacks.toList.asJava)
-      val appClasses: mutable.Set[SootClass] = getAppMethods(resolver).flatMap{ a =>
+      val appClasses: Set[SootClass] = getAppMethods(resolver).flatMap{ a =>
         val cname = JimpleFlowdroidWrapper.stringNameOfClass(a.getDeclaringClass)
         if (!resolver.isFrameworkClass(cname))
           Some(a.getDeclaringClass)
@@ -253,7 +269,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
       new AppOnlyCallGraph(chacg, callbacks, this, resolver)
     case FlowdroidCallGraph => new CallGraphWrapper(Scene.v().getCallGraph)
     case PatchedFlowdroidCallGraph =>
-      new PatchingCallGraphWrapper(Scene.v().getCallGraph, Scene.v().getPointsToAnalysis)
+      new PatchingCallGraphWrapper(Scene.v().getCallGraph, getAppMethods(resolver))
   }
 
 
@@ -274,7 +290,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
       cache
     }
   }
-  protected def getAppMethods(resolver: AppCodeResolver):mutable.Set[SootMethod] = {
+  protected def getAppMethods(resolver: AppCodeResolver):Set[SootMethod] = {
     if(appMethodCache.isEmpty) {
       val classes = Scene.v().getApplicationClasses
       classes.forEach(c =>
@@ -289,9 +305,8 @@ class JimpleFlowdroidWrapper(apkPath : String,
            })
       )
     }
-    appMethodCache
+    appMethodCache.toSet
   }
-
 
 
   def getClassByName(className:String):SootClass = {

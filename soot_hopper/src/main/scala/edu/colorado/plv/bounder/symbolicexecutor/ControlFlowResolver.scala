@@ -250,8 +250,9 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
       wrapper.makeMethodRetuns(loc)
     case (InternalMethodInvoke(_, _, _), CallStackFrame(_,Some(returnLoc:AppLoc),_)::_) => List(returnLoc)
     case (InternalMethodInvoke(clazz, name, loc), _) =>
-      val unresolved = UnresolvedMethodTarget(clazz, name, Set(loc))
-      resolver.resolveCallLocation(unresolved).filter(loc => resolver.isFrameworkClass(loc.containingMethod))
+      val locations = wrapper.appCallSites(loc, resolver)
+        .filter(loc => !resolver.isFrameworkClass(loc.containingMethod))
+      locations
     case v =>
       println(v)
       ???

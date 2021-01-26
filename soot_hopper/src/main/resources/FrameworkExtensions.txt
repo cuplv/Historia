@@ -13,8 +13,7 @@ org.hamcrest.*
 soot.*
 rx.*
 com.github.bumptech.glide.*
-com.squareup.okhttp3.*
-com.squareup.okio.*
+com.squareup.*
 de.greenrobot.*
 org.xml.sax.*
 okio.*
