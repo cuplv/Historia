@@ -4,7 +4,7 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, LSSpec, NI}
-import edu.colorado.plv.bounder.lifestate.{SpecSignatures, SpecSpace}
+import edu.colorado.plv.bounder.lifestate.{ResumePauseSpec, SpecSignatures, SpecSpace}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, PrettyPrinting, Qry}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
@@ -31,11 +31,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     assert(result.iterator.next.qry.isInstanceOf[BottomQry])
     PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/reftest.dot")
   }
-  val resumePause = NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit)
-  val initPause = NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_init_exit)
-  val testSpec1 = LSSpec(And(resumePause,initPause),
-    SpecSignatures.Activity_onPause_entry)
-  val specForResumePause = new SpecSpace(Set(testSpec1))
+
 
   test("Symbolic Executor should prove an inter-callback deref"){
     println("======= Interproc ======")
@@ -45,7 +41,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
     val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
 
-    val transfer = new TransferFunctions[SootMethod,soot.Unit](w, specForResumePause)
+    val transfer = new TransferFunctions[SootMethod,soot.Unit](w, ResumePauseSpec.spec)
     val config = SymbolicExecutorConfig(
       stepLimit = Some(60), w,resolver,transfer, printProgress = true, z3Timeout = Some(30))
     val query = Qry.makeReceiverNonNull(config, w,
@@ -63,7 +59,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     val w = new JimpleFlowdroidWrapper(test_interproc_1, PatchedFlowdroidCallGraph)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
     val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
-    val transfer = new TransferFunctions[SootMethod,soot.Unit](w, specForResumePause)
+    val transfer = new TransferFunctions[SootMethod,soot.Unit](w, ResumePauseSpec.spec)
     val config = SymbolicExecutorConfig(
       stepLimit = Some(50), w,resolver,transfer, printProgress = true, z3Timeout = Some(30))
     val query = Qry.makeReach(config, w,
@@ -80,7 +76,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     val w = new JimpleFlowdroidWrapper(test_interproc_1, PatchedFlowdroidCallGraph)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
     val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
-    val transfer = new TransferFunctions[SootMethod,soot.Unit](w, specForResumePause)
+    val transfer = new TransferFunctions[SootMethod,soot.Unit](w, ResumePauseSpec.spec)
     val config = SymbolicExecutorConfig(
       stepLimit = Some(50), w,resolver,transfer, printProgress = true, z3Timeout = Some(30))
     val query = Qry.makeReach(config, w,
