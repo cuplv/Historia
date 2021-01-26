@@ -2,9 +2,9 @@ package edu.colorado.plv.bounder
 
 import java.io.{File, FileOutputStream}
 
-import edu.colorado.plv.bounder.symbolicexecutor.{CallGraphSource, FlowdroidCallGraph, FrameworkExtensions}
+import edu.colorado.plv.bounder.symbolicexecutor.{CallGraphSource, FlowdroidCallGraph, FrameworkExtensions, PatchedFlowdroidCallGraph}
 import javax.tools.{JavaCompiler, ToolProvider}
-import soot.jimple.infoflow.InfoflowConfiguration.{AliasingAlgorithm, CallgraphAlgorithm}
+import soot.jimple.infoflow.InfoflowConfiguration.{AliasingAlgorithm, CallgraphAlgorithm, CodeEliminationMode}
 import soot.jimple.infoflow.android.{InfoflowAndroidConfiguration, SetupApplication}
 import soot.jimple.infoflow.android.callbacks.{AndroidCallbackDefinition, DefaultCallbackAnalyzer}
 import soot.jimple.infoflow.android.callbacks.filters.{AlienHostComponentFilter, ApplicationCallbackFilter, UnreachableConstructorFilter}
@@ -66,6 +66,7 @@ object BounderSetupApplication {
   }
 
   def loadApk(path:String, callGraph:CallGraphSource) : Unit = callGraph match{
+    case PatchedFlowdroidCallGraph => loadApkFlowdroid(path)
     case FlowdroidCallGraph => loadApkFlowdroid(path)
     case _ => loadApkNonFlowdroid(path)
   }
@@ -73,12 +74,14 @@ object BounderSetupApplication {
     // Create call graph and pointer analysis with flowdroid main method
     val config = new InfoflowAndroidConfiguration
     val platformsDir = androidHome + "/platforms"
+    config.getAnalysisFileConfig.setAndroidPlatformDir(platformsDir)
     config.getAnalysisFileConfig.setTargetAPKFile(path)
     // TODO: figure out how to load apk without generating flowdroid callgraph
-    config.getAnalysisFileConfig.setAndroidPlatformDir(platformsDir)
+    config.setCallgraphAlgorithm(CallgraphAlgorithm.VTA)
     config.setMergeDexFiles(true)
     config.setEnableLineNumbers(true)
     config.setExcludeSootLibraryClasses(false)
+    config.setCodeEliminationMode(CodeEliminationMode.NoCodeElimination)
     config.setOneComponentAtATime(false)
     config.getSourceSinkConfig.setEnableLifecycleSources(true)
     val setup = new SetupApplication(config)

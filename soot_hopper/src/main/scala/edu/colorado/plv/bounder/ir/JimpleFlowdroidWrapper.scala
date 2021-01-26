@@ -4,7 +4,7 @@ import java.util
 
 import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.solver.PersistantConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, AppOnlyCallGraph, CHACallGraph, CallGraphSource, DefaultAppCodeResolver, FlowdroidCallGraph, SparkCallGraph, SymbolicExecutorConfig}
+import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, AppOnlyCallGraph, CHACallGraph, CallGraphSource, DefaultAppCodeResolver, FlowdroidCallGraph, PatchedFlowdroidCallGraph, SparkCallGraph, SymbolicExecutorConfig}
 import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
 import soot.jimple.infoflow.entryPointCreators.SimulatedCodeElementTag
 import soot.jimple.{DoubleConstant, DynamicInvokeExpr, InstanceInvokeExpr, IntConstant, InvokeExpr, LongConstant, NullConstant, ParameterRef, RealConstant, StaticFieldRef, StringConstant, ThisRef}
@@ -13,7 +13,7 @@ import soot.jimple.spark.SparkTransformer
 import soot.jimple.toolkits.callgraph.{CHATransformer, CallGraph}
 import soot.options.{Options, SparkOptions}
 import soot.toolkits.scalar.FlowAnalysis
-import soot.{Body, BooleanType, ByteType, CharType, DoubleType, FloatType, Hierarchy, IntType, LongType, RefType, Scene, ShortType, SootClass, SootMethod, SourceLocator, Transformer, Type, Value, VoidType}
+import soot.{Body, BooleanType, ByteType, CharType, DoubleType, FloatType, Hierarchy, IntType, LongType, PointsToAnalysis, PointsToSet, RefType, Scene, ShortType, SootClass, SootMethod, SootMethodRef, SourceLocator, Transformer, Type, Value, VoidType}
 
 import scala.annotation.tailrec
 import scala.collection.immutable.Queue
@@ -42,7 +42,7 @@ object JimpleFlowdroidWrapper{
     case _:BooleanType => PersistantConstraints.booleanType
     case _:FloatType => PersistantConstraints.floatType
     case t =>
-      println(t)
+//      println(t)
       ???
   }
 }
@@ -50,6 +50,7 @@ object JimpleFlowdroidWrapper{
 trait CallGraphProvider{
   def edgesInto(method:SootMethod):Set[(SootMethod,soot.Unit)]
   def edgesOutOf(unit:soot.Unit):Set[SootMethod]
+  def edgesOutOfMethod(method: SootMethod):Set[SootMethod]
 }
 
 /**
@@ -78,7 +79,7 @@ class AppOnlyCallGraph(cg: CallGraph,
     }
 
   }
-  val hierarchy = Scene.v().getActiveHierarchy
+//  val hierarchy = Scene.v().getActiveHierarchy
   def initialParamForCallback(method:SootMethod, state:PTState):PTState = {
     ???
   }
@@ -106,6 +107,84 @@ class AppOnlyCallGraph(cg: CallGraph,
     ptState.callGraph(unit)
   }
 
+  override def edgesOutOfMethod(method: SootMethod): Set[SootMethod] = ???
+}
+
+/**
+ * A call graph wrapper that patches in missing edges from CHA
+ * missing edges are detected by call sites with no outgoing edges
+ * @param cg
+ */
+class PatchingCallGraphWrapper(cg:CallGraph, pt: PointsToAnalysis) extends CallGraphProvider{
+  def edgesInto(method : SootMethod): Set[(SootMethod,soot.Unit)] = {
+    val out = cg.edgesInto(method).asScala.map(e => (e.src(),e.srcUnit()))
+    if(out.isEmpty){
+      ???
+    }else {
+      out.toSet
+    }
+  }
+
+  def findMethodInvoke(clazz : SootClass, method: SootMethodRef) : Option[SootMethod] =
+    if(clazz.declaresMethod(method.getSubSignature))
+      Some(clazz.getMethod(method.getSubSignature))
+    else{
+      val superClass = clazz.getSuperclass
+      if(superClass != null){
+        findMethodInvoke(superClass, method)
+      }else None
+    }
+
+  private def subThingsOf(sootClass: SootClass):List[SootClass] =
+    if(sootClass.isInterface)
+      Scene.v.getActiveHierarchy.getImplementersOf(sootClass).asScala.toList
+    else
+      Scene.v.getActiveHierarchy.getSubclassesOfIncluding(sootClass).asScala.toList
+
+  private def fallbackOutEdgesInvoke(v : Value):Set[SootMethod] = v match{
+    case v : JVirtualInvokeExpr =>
+      // TODO: is base ever not a local?
+      val base = v.getBase.asInstanceOf[JimpleLocal]
+      val reachingObjects = subThingsOf(base.getType.asInstanceOf[RefType].getSootClass)
+      val ref: SootMethodRef = v.getMethodRef
+      val out = reachingObjects.flatMap(findMethodInvoke(_, ref))
+      Set(out.toList:_*).filter(m => !m.isAbstract)
+    case i : JInterfaceInvokeExpr =>
+      val base = i.getBase.asInstanceOf[JimpleLocal]
+      val reachingObjects =
+        subThingsOf(base.getType.asInstanceOf[RefType].getSootClass)
+      val ref: SootMethodRef = i.getMethodRef
+      val out = reachingObjects.flatMap(findMethodInvoke(_, ref)).filter(m => !m.isAbstract)
+      Set(out.toList:_*)
+    case i : JSpecialInvokeExpr =>
+      val m = i.getMethod
+      assert(!m.isAbstract, "Special invoke of abstract method?")
+      Set(m)
+    case i : JStaticInvokeExpr =>
+      println(i)
+      ???
+    case v => Set() //Non invoke methods have no edges
+  }
+  private def fallbackOutEdges(unit: soot.Unit): Set[SootMethod] = unit match{
+    case j: JAssignStmt => fallbackOutEdgesInvoke(j.getRightOp)
+    case j: JInvokeStmt => fallbackOutEdgesInvoke(j.getInvokeExpr)
+    case _ => Set()
+  }
+  def edgesOutOf(unit: soot.Unit): Set[SootMethod] = {
+    val out = cg.edgesOutOf(unit).asScala.map(e => e.tgt())
+    if(out.isEmpty) {
+      fallbackOutEdges(unit)
+    } else out.toSet
+  }
+  def edgesOutOfMethod(method: SootMethod):Set[SootMethod] = {
+    val cgOut = cg.edgesOutOf(method).asScala.map(e => e.tgt()).toSet
+    if(method.hasActiveBody) {
+      method.getActiveBody.getUnits.asScala.foldLeft(cgOut) {
+        case (ccg, unit) if !cg.edgesOutOf(unit).hasNext => ccg ++ edgesOutOf(unit)
+        case (ccg, _) => ccg
+      }
+    }else cgOut
+  }
 }
 
 class CallGraphWrapper(cg: CallGraph) extends CallGraphProvider{
@@ -118,7 +197,9 @@ class CallGraphWrapper(cg: CallGraph) extends CallGraphProvider{
     val out = cg.edgesOutOf(unit).asScala.map(e => e.tgt())
     out.toSet
   }
-
+  def edgesOutOfMethod(method: SootMethod):Set[SootMethod] = {
+    cg.edgesOutOf(method).asScala.map(e => e.tgt()).toSet
+  }
 }
 
 class JimpleFlowdroidWrapper(apkPath : String,
@@ -160,9 +241,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
       )
       SparkTransformer.v().transform("", opt.asJava)
       val pta = Scene.v().getPointsToAnalysis
-      // TODO: Remove dbg code below
 
-      println()
       new CallGraphWrapper(Scene.v().getCallGraph)
     case CHACallGraph =>
       Scene.v().setEntryPoints(callbacks.toList.asJava)
@@ -172,6 +251,8 @@ class JimpleFlowdroidWrapper(apkPath : String,
       val chacg: CallGraph = Scene.v().getCallGraph
       new AppOnlyCallGraph(chacg, callbacks, this, resolver)
     case FlowdroidCallGraph => new CallGraphWrapper(Scene.v().getCallGraph)
+    case PatchedFlowdroidCallGraph =>
+      new PatchingCallGraphWrapper(Scene.v().getCallGraph, Scene.v().getPointsToAnalysis)
   }
 
 
@@ -297,7 +378,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
       case _:JExitMonitorStmt => NopCmd(loc) // ignore concurrency
       case _:JEnterMonitorStmt => NopCmd(loc) // ignore concurrency
       case v =>
-        println(s"unimplemented command: ${v}")
+//        println(s"unimplemented command: ${v}")
         ???
 
     }
@@ -341,7 +422,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
         case _:JSpecialInvokeExpr => SpecialInvoke(target,targetClass, targetMethod, params)
         case _:JInterfaceInvokeExpr => VirtualInvoke(target, targetClass, targetMethod, params)
         case v =>
-          println(v)
+          //println(v)
           ???
       }
     }
@@ -425,7 +506,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
       val target = makeRVal(i.getOp).asInstanceOf[LocalWrapper]
       InstanceOf(targetClassType, target)
     case v =>
-      println(v)
+      //println(v)
       ???
   }
 
@@ -462,14 +543,12 @@ class JimpleFlowdroidWrapper(apkPath : String,
     }).getOrElse(List())
   }
 
+  def makeMethodTargets(source: MethodLoc): Set[MethodLoc] =
+    cg.edgesOutOfMethod(source.asInstanceOf[JimpleMethodLoc].method).map(JimpleMethodLoc(_))
+
   override def makeInvokeTargets(appLoc: AppLoc): UnresolvedMethodTarget = {
     val line = appLoc.line.asInstanceOf[JimpleLineLoc]
     val edgesOut = cg.edgesOutOf(line.cmd)
-    if(edgesOut.isEmpty){
-      println(s"!!!Empty out edges for cmd: $appLoc")
-    }else{
-      println(s"out edge set for: $appLoc size: ${edgesOut.size}")
-    }
 
     val mref = appLoc.line match {
       case JimpleLineLoc(cmd: JInvokeStmt, _) => cmd.getInvokeExpr.getMethodRef
@@ -484,43 +563,11 @@ class JimpleFlowdroidWrapper(apkPath : String,
       case t =>
         throw new IllegalArgumentException(s"Bad Location Type $t")
     }
-    //    val mref = cmd.getMethodRef
     val declClass = mref.getDeclaringClass
     val clazzName = declClass.getName
     val name = mref.getSubSignature
 
     UnresolvedMethodTarget(clazzName, name.toString,edgesOut.map(f => JimpleMethodLoc(f)))
-//    val hierarchy: Hierarchy = Scene.v().getActiveHierarchy
-//    val searchClasses: util.List[SootClass] =if (specialOrStatic){
-//      val combination = new util.ArrayList[SootClass]()
-//      combination.add(declClass)
-//      combination
-//    }else if(declClass.isInterface){
-//      val v: util.List[SootClass] = hierarchy.getImplementersOf(declClass)
-//      v
-//    }else{
-//      val superClasses: util.List[SootClass] = hierarchy.getSuperclassesOfIncluding(declClass)
-//      val subClasses = hierarchy.getSubclassesOf(declClass)
-//      val combination = new util.ArrayList[SootClass]()
-//      subClasses.forEach(v =>
-//        combination.add(v))
-//      superClasses.forEach(v => combination.add(v))
-//
-//      combination
-//    }
-//    val boundClass = upperTypeBound.map(getClassByName).getOrElse(getClassByName("java.lang.Object"))
-//    var found:Boolean = false
-//
-//    val out = mutable.Set[JimpleMethodLoc]()
-//    searchClasses.forEach{ c =>
-//      if(!found && c.declaresMethod(name)){
-//        out.add( JimpleMethodLoc(c.getMethod(name)))
-//        if(hierarchy.isClassSuperclassOf(c,boundClass)){
-//          found = true
-//        }
-//      }
-//    }
-//    UnresolvedMethodTarget(clazzName, name.toString,out.toSet)
   }
 
   def canAlias(type1: String, type2: String): Boolean = {
@@ -544,23 +591,6 @@ class JimpleFlowdroidWrapper(apkPath : String,
     methods.toList
   }
 
-  private def canCall(invokeExpr:InvokeExpr, method:JimpleMethodLoc):Boolean = {
-    val targetName = method.method.getName
-    val callName = invokeExpr.getMethod.getName
-    if (targetName != callName ) {
-      return false
-    }
-    val paramCount = method.method.getParameterCount
-    if (invokeExpr.getArgCount != paramCount){
-      return false
-    }
-    // Check if types are remotely compatible, abstract domain figures things out more precisely later
-    val callRefType = invokeExpr.getMethodRef.getDeclaringClass
-    val targetType = method.method.getDeclaringClass
-    val canCall = Scene.v().getActiveHierarchy.isClassSubclassOfIncluding(callRefType, targetType)
-    canCall
-  }
-
   //TODO: check that this function covers all cases
   private val callSiteCache = mutable.HashMap[MethodLoc, Seq[AppLoc]]()
   override def appCallSites(method_in: MethodLoc, resolver:AppCodeResolver): Seq[AppLoc] = {
@@ -580,37 +610,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
       appLocations
     })
   }
-//      //TODO: update to use call graph ===================
-//      val appMethods = getAppMethods(resolver)
-//      val callSites:Seq[AppLoc] = appMethods.flatMap(mContainingCall => {
-//        var locs = mutable.Set[AppLoc]()
-//        if (mContainingCall.hasActiveBody) {
-//          mContainingCall.getActiveBody.getUnits.forEach {
-//            case unit : JInvokeStmt =>
-//              if (canCall(unit.getInvokeExpr, method)) {
-//                val loc = cmdToLoc(unit, mContainingCall)
-//                locs.add(loc)
-//              }
-//
-//            case unit : JAssignStmt => // if unit.getRightOpBox.getValue.isInstanceOf[InvokeExprBox] =>
-//              unit.getRightOpBox.getValue match {
-//                case v : InvokeExpr =>
-//                  if(canCall(v, method)) {
-//                    val loc = cmdToLoc(unit, mContainingCall)
-//                    locs.add(loc)
-//                  }
-//                case _ =>
-//              }
-//            case r: JReturnStmt =>
-//              assert(!r.getOpBox.isInstanceOf[InvokeExpr]) //TODO: don't think this can happen
-//            case unit =>
-//          }
-//        }
-//        locs
-//      }).toSeq
-//      callSiteCache.put(method, callSites)
-//      callSites
-//    })
+
 
   override def makeMethodRetuns(method: MethodLoc): List[AppLoc] = {
     val smethod = method.asInstanceOf[JimpleMethodLoc]
@@ -619,7 +619,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
       smethod.method.getActiveBody()
     }catch{
       case t: Throwable =>
-        println(t)
+        //println(t)
     }
     if (smethod.method.hasActiveBody) {
       smethod.method.getActiveBody.getUnits.forEach((u: soot.Unit) => {
@@ -659,16 +659,23 @@ class JimpleFlowdroidWrapper(apkPath : String,
       acc  + (cname -> strSubClasses)
     }
   }
-//  private def receiverOfInvoke(i: InvokeExpr) = {
-//    case _:StaticInvoke => None
-//    case i:InstanceInvokeExpr => Some(i.getBase)
-//    case i:DynamicInvokeExpr =>
-//      println(i)
-//      ???
-//    case i =>
-//      println(i)
-//      ???
-//  }
+
+  /**
+   * NOTE: DO NOT USE Scene.v.getActiveHierarchy.{isSuperClassOf...,isSubClassOf...}
+   *      Above methods always return true if a parent is a phantom class
+   * Check if one class is a subtype of another
+   * Also returns true if they are equal
+   * @param type1 possible supertype
+   * @param type2 possible subtype
+   * @return if type2 is subtype or equal to type2
+   */
+  override def isSuperClass(type1: String, type2: String): Boolean = {
+    val type1Soot = Scene.v().getSootClass(type1)
+    val type2Soot = Scene.v().getSootClass(type2)
+    val subclasses = Scene.v.getActiveHierarchy.getSubclassesOfIncluding(type1Soot)
+    val res = subclasses.contains(type2Soot)
+    res
+  }
 }
 
 case class JimpleMethodLoc(method: SootMethod) extends MethodLoc {

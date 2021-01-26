@@ -13,35 +13,23 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
   def getResolver = resolver
 
   //TODO: cache result
-  private val directCallsCache = mutable.Map[MethodLoc, Set[Loc]]()
-  def lazyDirectCallsGraph(m : MethodLoc): Set[Loc] = {
-    if(directCallsCache.contains(m)){
-      directCallsCache(m)
-    }else {
-      val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) => wrapper.cmdAtLocation(v).mkPre)
+  def lazyDirectCallsGraph(loc: MethodLoc) : Set[Loc] = {
+    val unresolvedTargets = wrapper.makeMethodTargets(loc).map(callee =>
+      UnresolvedMethodTarget(callee.classType, callee.simpleName, Set(callee)))
+    unresolvedTargets.flatMap(target => resolver.resolveCallLocation(target))
+  }
 
-      val res = BounderUtil.graphFixpoint[CmdWrapper, Set[Loc]](returns,
-        startVal = Set[Loc](),
-        botVal = Set(),
-        next = n =>
-          wrapper.commandPredecessors(n).map((v: AppLoc) => wrapper.cmdAtLocation(v).mkPre).toSet,
-        comp = {
-          case (_, i@InvokeCmd(it,_)) =>
-            val upper = i.method.targetOptional.map(_.localType)
-            resolver.resolveCallLocation(
-              wrapper.makeInvokeTargets(i.getLoc))
-          case (_, AssignCmd(_, i: Invoke, l)) =>
-            val upper = i.targetOptional.map(_.localType)
-            resolver.resolveCallLocation(
-              wrapper.makeInvokeTargets(l))
-          case _ => Set()
-        },
-        join = (a, b) => a.union(b)
-      ).flatMap {
-        case (k, v) => v
-      }.toSet
-      directCallsCache.addOne(m->res)
-      res
+  /**
+   * Normally we crash on unsupported instructions, but when determining relevance, all we care about is invokes
+   * Since relevance scans lots of methods,
+   * @param loc
+   * @return
+   */
+  def cmdAtLocationNopIfUnknown(loc: AppLoc):CmdWrapper = {
+    try {
+      wrapper.cmdAtLocation(loc)
+    }catch{
+      case _:NotImplementedError => NopCmd(loc)
     }
   }
 
@@ -93,11 +81,13 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
       case _:ReturnCmd => false
       case _:InvokeCmd => false // This method only counts commands that directly modify the heap
       case _:If => false
+      case _:NopCmd => false
+      case _:ThrowCmd => false
     }
-    val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) => wrapper.cmdAtLocation(v).mkPre)
+    val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) => cmdAtLocationNopIfUnknown(v).mkPre)
     BounderUtil.graphExists[CmdWrapper](start = returns,
       next = n =>
-        wrapper.commandPredecessors(n).map((v: AppLoc) => wrapper.cmdAtLocation(v).mkPre).toSet,
+        wrapper.commandPredecessors(n).map((v: AppLoc) => cmdAtLocationNopIfUnknown(v).mkPre).toSet,
       exists = canModifyHeap
     )
   }
@@ -106,6 +96,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
     val calls: Set[CallinMethodReturn] = lazyDirectCallsGraph(m).flatMap{
       case v: CallinMethodReturn => Some(v)
       case _: InternalMethodInvoke => None
+      case _: InternalMethodReturn => None
       case v =>
         println(v)
         ???
@@ -122,6 +113,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
   }
 
   def relevantMethodBody(m:MethodLoc, state:State):Boolean = {
+    if (resolver.isFrameworkClass(m.classType))
+      return false // body can only be relevant to app heap or trace if method is in the app
     val callees = allCalls(m) + m
     callees.exists{c =>
       if(relevantHeap(c,state))
@@ -146,10 +139,17 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
       }
     }
   }
+  def irrelevantCallinInvoke(m:Loc,state:State):Boolean = m match{
+    case CallinMethodReturn(clazz, name) =>
+      TransferFunctions.relevantAliases(state, CIExit, (clazz,name)).isEmpty &&
+        TransferFunctions.relevantAliases(state, CIEnter, (clazz,name)).isEmpty
+    case _ => false
+  }
   def relevantMethod(loc: Loc, state: State): Boolean = loc match{
     case InternalMethodReturn(_,_,m) =>
       val callees: Set[MethodLoc] = allCalls(m)
-      callees.exists(c => relevantMethodBody(c,state))
+      val out = callees.exists(c => relevantMethodBody(c,state))
+      out
     case CallinMethodReturn(_,_) => true
     case CallbackMethodReturn(clazz, name, rloc, Some(retLine)) => {
       //TODO: switch on static or not
@@ -168,7 +168,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
           existsIAlias(None::locs.tail, CBEnter, (clazz,name),state)
         res
       }
-      iExists || relevantMethodBody(rloc,state)
+      val relevantBody = relevantMethodBody(rloc,state)
+      iExists || relevantBody
     }
     case _ => throw new IllegalStateException("relevantMethod only for method returns")
   }
@@ -189,17 +190,27 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
       val cmd: CmdWrapper = wrapper.cmdAtLocation(l)
       cmd match{
         case InvokeCmd(i, loc) => {
-          val upper = upperBoundOfInvoke(i)
           val unresolvedTargets =
             wrapper.makeInvokeTargets(loc)
           val resolved: Set[Loc] = resolver.resolveCallLocation(unresolvedTargets) // .filter(relevantMethod(_, state))
           if(resolved.forall(m => !relevantMethod(m,state)))
             List(l.copy(isPre = true)) // skip if all method targets are not relevant
-          else
-            resolved
+          else {
+            val irrelevantCallinsToMerge: Set[Loc] = resolved.filter(irrelevantCallinInvoke(_,state))
+            // merge all irrelevant callins with most general type
+            val merged = irrelevantCallinsToMerge.headOption.map{v =>
+              irrelevantCallinsToMerge.foldLeft(v){
+                case (CallinMethodReturn(clazz,_), other@CallinMethodReturn(clazz2, _)) if wrapper.isSuperClass(clazz2,clazz) =>
+                  other
+                case (cur,other) =>
+                  println(other)
+                  cur
+              }
+            }
+            (resolved -- irrelevantCallinsToMerge) ++ merged
+          }
         }
         case AssignCmd(tgt, i:Invoke,loc) => {
-          val upper = upperBoundOfInvoke(i)
           val unresolvedTargets =
             wrapper.makeInvokeTargets(loc)
           val resolved = resolver.resolveCallLocation(unresolvedTargets)

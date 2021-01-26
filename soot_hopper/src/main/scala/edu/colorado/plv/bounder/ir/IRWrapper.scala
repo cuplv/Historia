@@ -14,6 +14,7 @@ trait IRWrapper[M,C]{
   def getOverrideChain( method : MethodLoc) : Seq[MethodLoc]
   def findMethodLoc(className: String, methodName: String):Option[MethodLoc]
   def findLineInMethod(className:String, methodName:String, line:Int):Iterable[AppLoc]
+  def makeMethodTargets(source: MethodLoc): Set[MethodLoc]
   def makeCmd(cmd:C, method:M, loc:Option[AppLoc] = None): CmdWrapper
   def commandPredecessors(cmdWrapper:CmdWrapper): List[AppLoc]
   def commandNext(cmdWrapper:CmdWrapper):List[AppLoc]
@@ -28,6 +29,7 @@ trait IRWrapper[M,C]{
   def makeMethodRetuns(method: MethodLoc) : List[AppLoc]
   def getClassHierarchy : Map[String, Set[String]]
   def canAlias(type1:String, type2:String):Boolean
+  def isSuperClass(type1:String, type2:String):Boolean
 }
 sealed case class UnresolvedMethodTarget(clazz: String, methodName:String, loc:Set[MethodLoc])
 
