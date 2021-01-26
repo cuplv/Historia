@@ -20,3 +20,4 @@ okio.*
 kotlin.*
 okhttp3.*
 org.jsoup.*
+com.bumptech.glide.*

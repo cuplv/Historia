@@ -26,7 +26,13 @@ object TransferFunctions{
 }
 
 class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
-  def defineVarsAs(state: State, comb: List[(Option[RVal], LSParamConstraint)]):State = {
+  def defineVarsAs(state: State, comb: List[(Option[RVal], Option[PureExpr])]):State =
+    comb.foldLeft(state){
+      case (stateNext, (None,_)) => stateNext
+      case (stateNext, (_,None)) => stateNext
+      case (stateNext, (Some(rval), Some(pexp))) => stateNext.defineAs(rval, pexp)
+    }
+  def defineLSVarsAs(state: State, comb: List[(Option[RVal], LSParamConstraint)]):State = {
     comb.foldLeft(state){
       case (state, (Some(l:LocalWrapper), LSPure(v:PureVar))) =>
         val (oldLocVal,state2) = state.getOrDefine(l)
@@ -100,7 +106,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     case (CallinMethodReturn(_, _), CallinMethodInvoke(_, _), state) => Set(state)
     case (cminv@CallinMethodInvoke(_, _), ciInv@AppLoc(_, _, true), s@State(_ :: t, _, _, _,_)) =>
       //TODO: relevant transition enumeration
-       val (pkg,name) = msgCmdToMsg(cminv)
+      val (pkg,name) = msgCmdToMsg(cminv)
       val relAliases: Set[List[LSParamConstraint]] = relevantAliases(pre, CIEnter, (pkg,name))
       val ostates = if(relAliases.isEmpty)
         Set(pre)
@@ -119,7 +125,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     case (AppLoc(_, _, true), AppLoc(_, _, false), pre) => Set(pre)
     case (appLoc@AppLoc(c1, m1, false), AppLoc(c2, m2, true), prestate) if c1 == c2 && m1 == m2 =>
       cmdTransfer(w.cmdAtLocation(appLoc), prestate)
-    case (AppLoc(containingMethod, m, true), cmInv@CallbackMethodInvoke(fc1, fn1, l1), pre) => {
+    case (AppLoc(containingMethod, m, true), cmInv@CallbackMethodInvoke(fc1, fn1, l1), pre) =>
       // If call doesn't match return on stack, return bottom
       // Target loc of CallbackMethodInvoke means just before callback is invoked
       if(pre.callStack.nonEmpty){
@@ -139,7 +145,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         val invars: List[Option[LocalWrapper]] = None :: containingMethod.getArgs
         relAliases.flatMap(relAliases =>{
           val comb = invars zip relAliases
-          val state0 = defineVarsAs(pre, comb)
+          val state0 = defineLSVarsAs(pre, comb)
           val state1 = traceAllPredTransfer(CBEnter, (pkg,name), invars, state0)
           val otherStates = statesWhereOneVarNot(pre, comb)
           otherStates + state1
@@ -151,13 +157,12 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         val b = newSpecInstanceTransfer(CBEnter, (pkg, name), invars, cmInv, c)
         b.copy(callStack = if(a.callStack.isEmpty) Nil else a.callStack.tail)
       })
-    }
-    case (CallbackMethodInvoke(_, _, _), targetLoc@CallbackMethodReturn(_,_,mloc, _), pre) => {
+    case (CallbackMethodInvoke(_, _, _), targetLoc@CallbackMethodReturn(_,_,mloc, _), pre) =>
       // Case where execution goes to the exit of another callback
       // TODO: nested callbacks not supported yet, assuming we can't go back to callin entry
       // TODO: note that the callback method invoke is to be ignored here.
       // Control flow resolver is responsible for the
-      val appLoc = AppLoc(targetLoc.loc, targetLoc.line.get,false)
+      val appLoc = AppLoc(targetLoc.loc, targetLoc.line.get,isPre = false)
       val rvar = w.cmdAtLocation(appLoc) match{
         case ReturnCmd(v,_) =>v
         case c => throw new IllegalStateException(s"return from non return command $c ")
@@ -176,8 +181,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
           val comb = localVarOrVal zip aliases
 
           // State where all local vars are aliased with required
-//          val state0 = defineVars(pre_push, localVarOrVal)
-          val state0 = defineVarsAs(pre_push, comb)
+          val state0 = defineLSVarsAs(pre_push, comb)
           val state1 = traceAllPredTransfer(CBExit, (pkg, name), localVarOrVal, state0)
 
           // States where at least one var is not aliased with required
@@ -185,13 +189,33 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
           otherStates + state1
         })
       }
-    }
     case (CallbackMethodReturn(_,_,mloc1,_), AppLoc(mloc2,_,_), state) =>
       assert(mloc1 == mloc2) ; Set(state) // transfer handled by processing callbackmethodreturn, nothing to do here
-    case (InternalMethodInvoke(clazz, name, loc), AppLoc(mloc, line, false), state) =>
-      println()
-      ???
-    case (retloc@AppLoc(mloc, line, false), mRet@InternalMethodReturn(clazz, name, loc), state) =>
+    case (_:InternalMethodInvoke, al@AppLoc(_, _, false), state) =>
+      val cmd = w.cmdAtLocation(al) match{
+        case InvokeCmd(inv : Invoke, _) => inv
+        case AssignCmd(_, inv: Invoke, _) => inv
+      }
+      val receiverOption: Option[RVal] = cmd match{
+        case v:VirtualInvoke => Some(v.target)
+        case s:SpecialInvoke => Some(s.target)
+        case s:StaticInvoke => None
+      }
+      val argOptions: List[Option[RVal]] = cmd.params.map(Some(_))
+      val receiverValueOption = state.get(LocalWrapper("@this","_"))
+      val frameArgVals: List[Option[PureExpr]] =
+        (0 until cmd.params.length).map(i => state.get(LocalWrapper(s"@parameter$i", "_"))).toList
+      val allArgs = receiverOption :: argOptions
+      val allParams: Seq[Option[PureExpr]] = (receiverValueOption::frameArgVals)
+      val argsAndVals: List[(Option[RVal], Option[PureExpr])] = allArgs zip allParams
+      val resolver = new DefaultAppCodeResolver(w)
+      // Possible stack frames for source of call being a callback or internal method call
+      val newStackFrames: List[CallStackFrame] =
+        BounderUtil.resolveMethodReturnForAppLoc(resolver, al).map(mr => CallStackFrame(mr, None, Map()))
+      val newStacks = newStackFrames.map(frame => frame :: (if(pre.callStack.isEmpty) Nil else pre.callStack.tail))
+      val nextStates = newStacks.map(newStack => pre.copy(callStack = newStack))
+      nextStates.map(nextState => defineVarsAs(nextState, argsAndVals)).toSet
+    case (retloc@AppLoc(mloc, line, false), mRet:InternalMethodReturn, state) =>
       // Create call stack frame with empty
       val retVal:Map[StackVar, PureExpr] = w.cmdAtLocation(retloc) match{
         case AssignCmd(tgt, _:InvokeCmd, _) => state.get(tgt).map(v => Map(StackVar("@ret") -> v)).getOrElse(Map())
@@ -470,6 +494,12 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     case AssignCmd(_, _:Invoke, _) => Set(state)
     case If(b,_) =>
       Set(assumeInState(b,state))
+    case AssignCmd(l,Cast(castT, local),cmdloc) =>
+      val state1 = state.get(local) match{
+        case Some(v) => state.copy(pureFormula = state.pureFormula + PureConstraint(v, TypeComp, SubclassOf(castT)))
+        case None => state
+      }
+      cmdTransfer(AssignCmd(l,local,cmdloc),state1)
     case c =>
       println(c)
       ???
