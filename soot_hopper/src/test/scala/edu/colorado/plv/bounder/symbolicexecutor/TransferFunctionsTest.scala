@@ -24,7 +24,7 @@ class TransferFunctionsTest extends AnyFunSuite {
   test("Transfer may or may not alias") {
     val cmd = (loc:AppLoc) => {
       val thisLocal = LocalWrapper("@this", "Object")
-      AssignCmd(FieldRef(thisLocal, "Object", "Object", "o"), NullConst, loc)
+      AssignCmd(FieldReference(thisLocal, "Object", "Object", "o"), NullConst, loc)
     }
     val basePv = PureVar(State.getId())
     val otherPv = PureVar(State.getId())

@@ -4,24 +4,20 @@ import java.util
 
 import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.solver.PersistantConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, AppOnlyCallGraph, CHACallGraph, CallGraphSource, DefaultAppCodeResolver, FlowdroidCallGraph, PatchedFlowdroidCallGraph, SparkCallGraph, SymbolicExecutorConfig}
+import edu.colorado.plv.bounder.symbolicexecutor._
 import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
 import soot.jimple.infoflow.entryPointCreators.SimulatedCodeElementTag
-import soot.jimple.{DoubleConstant, DynamicInvokeExpr, InstanceInvokeExpr, IntConstant, InvokeExpr, LongConstant, NullConstant, ParameterRef, RealConstant, StaticFieldRef, StringConstant, ThisRef}
-import soot.jimple.internal.{AbstractDefinitionStmt, AbstractInstanceFieldRef, AbstractInstanceInvokeExpr, AbstractInvokeExpr, AbstractNewExpr, AbstractStaticInvokeExpr, InvokeExprBox, JAddExpr, JAssignStmt, JCastExpr, JCaughtExceptionRef, JCmpExpr, JDivExpr, JEnterMonitorStmt, JEqExpr, JExitMonitorStmt, JGeExpr, JGotoStmt, JGtExpr, JIdentityStmt, JIfStmt, JInstanceFieldRef, JInstanceOfExpr, JInterfaceInvokeExpr, JInvokeStmt, JLeExpr, JLtExpr, JMulExpr, JNeExpr, JNewExpr, JNopStmt, JReturnStmt, JReturnVoidStmt, JSpecialInvokeExpr, JStaticInvokeExpr, JSubExpr, JThrowStmt, JVirtualInvokeExpr, JimpleLocal, VariableBox}
+import soot.jimple.internal._
 import soot.jimple.spark.SparkTransformer
 import soot.jimple.toolkits.callgraph.{CHATransformer, CallGraph}
-import soot.options.{Options, SparkOptions}
-import soot.toolkits.scalar.FlowAnalysis
+import soot.jimple._
 import soot.util.Chain
-import soot.{ArrayType, Body, BooleanType, ByteType, CharType, DoubleType, FloatType, Hierarchy, IntType, LongType, PointsToAnalysis, PointsToSet, RefType, Scene, ShortType, SootClass, SootMethod, SootMethodRef, SourceLocator, Transformer, Type, Value, VoidType}
+import soot.{ArrayType, Body, BooleanType, ByteType, CharType, DoubleType, FloatType, Hierarchy, IntType, LongType, RefType, Scene, ShortType, SootClass, SootMethod, SootMethodRef, Type, Value}
 
 import scala.annotation.tailrec
-import scala.collection.convert.ImplicitConversions.`collection AsScalaIterable`
 import scala.collection.immutable.Queue
 import scala.collection.{MapView, mutable}
 import scala.jdk.CollectionConverters._
-import scala.util.control.Breaks.break
 import scala.util.matching.Regex
 
 object JimpleFlowdroidWrapper{
@@ -32,7 +28,6 @@ object JimpleFlowdroidWrapper{
   }
   def stringNameOfType(t : Type) : String = t match {
     case t:RefType =>
-      val className = t.getClassName
       val str = t.toString
       str
     case _:IntType => PersistantConstraints.intType
@@ -43,9 +38,7 @@ object JimpleFlowdroidWrapper{
     case _:CharType => PersistantConstraints.charType
     case _:BooleanType => PersistantConstraints.booleanType
     case _:FloatType => PersistantConstraints.floatType
-    case t =>
-//      println(t)
-      ???
+    case t => t.toString
   }
 
 }
@@ -536,7 +529,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
       val base = makeVal(f.getBase).asInstanceOf[LocalWrapper]
       val fieldname = f.getField.getName
       val fieldDeclType = f.getField.getDeclaringClass.toString
-      FieldRef(base,fieldType, fieldDeclType, fieldname)
+      FieldReference(base,fieldType, fieldDeclType, fieldname)
     }
     case a => makeRVal(a)
   }
@@ -654,7 +647,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
       // note: these typically don't have any meaningful implementation anyway
       val classString = smethod.method.getDeclaringClass.toString
       if (! (classString.contains(".R$") || classString.contains("BuildConfig") || classString.endsWith(".R"))){
-        assert(false, s"Method ${method} has no active body, consider adding it to FrameworkExtensions.txt")
+        println(s"Method $method has no active body, consider adding it to FrameworkExtensions.txt")
       }
       List()
     }

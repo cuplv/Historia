@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
-import edu.colorado.plv.bounder.ir.FieldRef
+import edu.colorado.plv.bounder.ir.FieldReference
 
 sealed trait HeapPtEdge
 

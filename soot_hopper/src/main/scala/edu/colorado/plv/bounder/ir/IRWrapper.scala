@@ -142,7 +142,7 @@ case class LocalWrapper(name:String, localType:String) extends LVal {
 case class ParamWrapper(name:String) extends LVal
 //case class FieldWrapper(name:String) extends LVal
 case class ThisWrapper(className:String) extends LVal
-case class FieldRef(base:LocalWrapper, containsType:String, declType:String, name:String) extends LVal{
+case class FieldReference(base:LocalWrapper, containsType:String, declType:String, name:String) extends LVal{
   override def toString: String = s"${base}.${name}"
 }
 case class StaticFieldReference(declaringClass: String,

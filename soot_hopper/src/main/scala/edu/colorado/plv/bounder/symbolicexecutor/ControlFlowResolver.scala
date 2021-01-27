@@ -64,7 +64,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
     case VirtualInvoke(LocalWrapper(_, baseType), _, _, _) => Some(baseType)
   }
 
-  private def fieldCanPt(fr:FieldRef, state:State):Boolean = {
+  private def fieldCanPt(fr:FieldReference, state:State):Boolean = {
     val fname = fr.name
     val localType = fr.base.localType
     state.heapConstraints.exists{
@@ -75,8 +75,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
   }
   def relevantHeap(m: MethodLoc, state: State): Boolean = {
     def canModifyHeap(c : CmdWrapper) : Boolean = c match{
-      case AssignCmd(fr:FieldRef, _,_) => fieldCanPt(fr, state)
-      case AssignCmd(_,fr:FieldRef,_) => fieldCanPt(fr,state)
+      case AssignCmd(fr:FieldReference, _,_) => fieldCanPt(fr, state)
+      case AssignCmd(_,fr:FieldReference,_) => fieldCanPt(fr,state)
       case _:AssignCmd => false
       case _:ReturnCmd => false
       case _:InvokeCmd => false // This method only counts commands that directly modify the heap
@@ -158,7 +158,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
           wrapper.makeMethodRetuns(rloc).map{ retloc =>
             wrapper.cmdAtLocation(retloc) match{
               case ReturnCmd(Some(l), loc) => Some(l)
-              case _ => throw new IllegalStateException("Wrong type of return in non-static method")
+              case _ => None
             }
           }
         else List(None)

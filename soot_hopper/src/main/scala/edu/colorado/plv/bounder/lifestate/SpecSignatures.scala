@@ -44,21 +44,11 @@ object SpecSignatures {
   val Fragment_onActivityCreated_entry = I(CBEnter, Fragment_onActivityCreated_Signatures, "_"::"f"::Nil)
 
   val Fragment_onDestroy_Signatures = Set(
-    ("android.app.Fragment","void onDestroyView()"),
     ("android.app.Fragment","void onDestroy()"),
-    ("android.app.Fragment","void onDestroyOptionsMenu()"),
     ("android.support.v4.app.Fragment","void onDestroy()"),
-    ("android.support.v4.app.Fragment","void onDestroyOptionsMenu()"),
-    ("android.support.v4.app.Fragment","void onDestroyView()"),
     ("android.support.v4.app.FragmentActivity","void onDestroy()"),
-    ("android.support.v4.app.DialogFragment","void onDestroyView()"),
-    ("android.app.DialogFragment","void onDestroyView()"),
     ("android.arch.lifecycle.ReportFragment","void onDestroy()"),
-    ("android.preference.PreferenceFragment","void onDestroyView()"),
     ("android.preference.PreferenceFragment","void onDestroy()"),
-    ("android.support.v14.preference.PreferenceFragment","void onDestroyView()"),
-    ("android.support.v4.app.ListFragment","void onDestroyView()"),
-    ("android.support.v7.preference.PreferenceFragmentCompat","void onDestroyView()"),
     ("android.support.wearable.view.CardFragment","void onDestroy()"),
   )
   val Fragment_onDestroy_exit = I(CBExit, Fragment_onDestroy_Signatures, "_"::"f"::Nil)

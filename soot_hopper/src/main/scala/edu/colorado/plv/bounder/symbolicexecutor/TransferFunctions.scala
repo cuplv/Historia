@@ -91,7 +91,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         // add all args except assignment to state
         val state0 = defineVars(preState, inVars.tail)
         val state1 = traceAllPredTransfer(CIExit, (pkg, name), inVars, state0)
-        val states2 = newSpecInstanceTransfer(CIExit, (pkg, name), inVars, cmret, state1)
+        val states2: State = state1
 
         // clear assigned var from stack if exists
         val states3 = inVars.head.map {
@@ -108,7 +108,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
           case Some(revar:LocalWrapper)::_ => outState.clearLVal(revar)
           case _ => outState
         }
-        outState1.copy(callStack = frame::s.callStack)
+        outState1.copy(callStack = frame::outState1.callStack)
       }
     case (CallinMethodReturn(_, _), CallinMethodInvoke(_, _), state) => Set(state)
     case (cminv@CallinMethodInvoke(_, _), ciInv@AppLoc(_, _, true), s@State(_ :: t, _, _, _,_)) =>
@@ -442,7 +442,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       }).getOrElse{
         Set(state)
       }
-    case AssignCmd(lhs:LocalWrapper, FieldRef(base, fieldtype, declType, fieldName), _) =>
+    case AssignCmd(lhs:LocalWrapper, FieldReference(base, fieldtype, declType, fieldName), _) =>
       // x = y.f
       // TODO: enumerate possible aliases
       state.get(lhs) match{
@@ -467,7 +467,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       val state1 = state.clearLVal(fakeRetLocal)
       Set(retv.map(state1.defineAs(v, _)).getOrElse(state))
     case ReturnCmd(None, _) => Set(state)
-    case AssignCmd(FieldRef(base, fieldType, _,fieldName), rhs, _) =>
+    case AssignCmd(FieldReference(base, fieldType, _,fieldName), rhs, _) =>
       // x.f = y
       val (basev,state2) = state.getOrDefine(base)
 
