@@ -534,6 +534,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         ???
       }else Set(state)
     case NopCmd(_) => Set(state)
+    case ThrowCmd(v) => Set() //TODO: implement exceptional control flow
     case c =>
       println(c)
       ???

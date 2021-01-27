@@ -592,6 +592,8 @@ class JimpleFlowdroidWrapper(apkPath : String,
   def canAlias(type1: String, type2: String): Boolean = {
     if(type1 == type2) true else {
       val hierarchy: Hierarchy = Scene.v().getActiveHierarchy
+      assert(Scene.v().containsClass(type1), s"Type: $type1 not in soot scene")
+      assert(Scene.v().containsClass(type2), s"Type: $type2 not in soot scene")
       val type1Soot = Scene.v().getSootClass(type1)
       val type2Soot = Scene.v().getSootClass(type2)
       val sub1 = hierarchy.getSubclassesOfIncluding(type1Soot).asScala

@@ -124,7 +124,7 @@ case class InstanceOf(clazz:String, target: LocalWrapper) extends RVal {
   override def isConst: Boolean = false
 }
 case class ClassConst(clazz:String) extends RVal {
-  override def isConst: Boolean = false
+  override def isConst: Boolean = true
 }
 case class CaughtException(n:String) extends RVal {
   override def isConst: Boolean = false
