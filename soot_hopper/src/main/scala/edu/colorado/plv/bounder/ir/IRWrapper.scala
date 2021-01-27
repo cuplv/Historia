@@ -103,7 +103,7 @@ case class IntConst(v:Int) extends RVal
 case class StringConst(v:String) extends RVal
 case class BoolConst(v:Boolean) extends RVal
 case class InstanceOf(clazz:String, target: LocalWrapper) extends RVal
-
+case class ClassConst(clazz:String) extends RVal
 case class CaughtException(n:String) extends RVal
 
 sealed trait Invoke extends RVal {
@@ -136,6 +136,7 @@ case class StaticInvoke(targetClass:String,
 
 // Things that can be assigned to or used as expressins
 trait LVal extends RVal
+case class ArrayReference(base:RVal, index:RVal) extends LVal
 case class LocalWrapper(name:String, localType:String) extends LVal {
   override def toString:String = name
 }

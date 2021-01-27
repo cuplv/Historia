@@ -3,8 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, LSSpec, NI}
-import edu.colorado.plv.bounder.lifestate.{ResumePauseSpec, SpecSignatures, SpecSpace}
+import edu.colorado.plv.bounder.lifestate.{ResumePauseSpec, SpecSpace}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, PrettyPrinting, Qry}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod

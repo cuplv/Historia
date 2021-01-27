@@ -1,14 +1,6 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 import java.io.{File, PrintWriter}
 
-import scalax.collection.Graph
-import scalax.collection.edge.LDiEdge
-import scalax.collection.GraphEdge._
-import scalax.collection.GraphPredef._
-import scalax.collection.io.dot.Indent._
-import scalax.collection.edge.Implicits._
-import scalax.collection.io.dot.{DotAttr, DotEdgeStmt, DotGraph, DotRootGraph, Id, NodeId}
-
 import scala.io.Source
 
 object PrettyPrinting {

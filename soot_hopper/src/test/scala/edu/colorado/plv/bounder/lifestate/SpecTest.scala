@@ -67,7 +67,7 @@ class SpecTest extends AnyFunSuite {
       else Nil
     }
 
-    printMatchingSignatures("Single","subscribe",frameworkMethods, isCallin = false)
+    printMatchingSignatures("rx.","subscribe",frameworkMethods, isCallin = false)
   }
 
   private def printMatchingSignatures(classContains: String,

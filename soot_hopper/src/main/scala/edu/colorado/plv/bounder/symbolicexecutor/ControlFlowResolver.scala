@@ -3,9 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, FieldPtEdge, HeapPtEdge, LSPure, PureVar, State, StaticPtEdge}
-
-import scala.collection.mutable
-
+import scalaz.Memo
 /**
  * Functions to resolve control flow edges while maintaining context sensitivity.
  */
@@ -58,6 +56,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
     }.toSet
   }
 
+  val memoizedallCalls: MethodLoc => Set[MethodLoc] = Memo.mutableHashMapMemo(allCalls)
+//  val memoizedallCalls: MethodLoc => Set[MethodLoc]= allCalls
   def upperBoundOfInvoke(i: Invoke): Option[String] = i match {
     case SpecialInvoke(LocalWrapper(_, baseType), _, _, _) => Some(baseType)
     case StaticInvoke(targetClass, _, _) => Some(targetClass)
@@ -115,7 +115,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
   def relevantMethodBody(m:MethodLoc, state:State):Boolean = {
     if (resolver.isFrameworkClass(m.classType))
       return false // body can only be relevant to app heap or trace if method is in the app
-    val callees = allCalls(m) + m
+    val callees = memoizedallCalls(m) + m
     callees.exists{c =>
       if(relevantHeap(c,state))
         true
@@ -147,7 +147,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
   }
   def relevantMethod(loc: Loc, state: State): Boolean = loc match{
     case InternalMethodReturn(_,_,m) =>
-      val callees: Set[MethodLoc] = allCalls(m)
+      val callees: Set[MethodLoc] = memoizedallCalls(m)
       val out = callees.exists(c => relevantMethodBody(c,state))
       out
     case CallinMethodReturn(_,_) => true

@@ -1,4 +1,3 @@
-import scala._
 
 name := "soot_hopper"
 organization := "edu.colorado.plv.bounder"
@@ -11,18 +10,23 @@ unmanagedJars in Compile += baseDirectory.value / "lib/com.microsoft.z3.jar"
 
 //libraryDependencies += "org.scalatest" % "scalatest" % "3.1.0" % "test"
 //libraryDependencies += "org.scalatest" % "scalatest_3.0.0-M3" % "3.2.4-M1"
-libraryDependencies += "org.slf4j" % "slf4j-simple" % "1.7.5"
-libraryDependencies += "com.fasterxml.jackson.core" % "jackson-core" % "2.7.9"
-libraryDependencies += "org.scala-graph" %% "graph-core" % "1.13.2"
-// https://mvnrepository.com/artifact/org.scala-graph/graph-dot
-libraryDependencies += "org.scala-graph" %% "graph-dot" % "1.13.0"
-libraryDependencies += "com.github.scopt" % "scopt_2.13" % "4.0.0-RC2"
-libraryDependencies += "org.scala-lang.modules" % "scala-parallel-collections_2.13" % "1.0.0"
+libraryDependencies += "org.slf4j" % "slf4j-simple" % "1.7.5" % "compile"
+libraryDependencies += "com.fasterxml.jackson.core" % "jackson-core" % "2.7.9" % "compile"
+libraryDependencies += "org.scala-graph" %% "graph-core" % "1.13.2" % "compile"
+// https://mvnrepository.com/artifact/org.scala-graph/graph-dot % "compile"
+libraryDependencies += "org.scala-graph" %% "graph-dot" % "1.13.0" % "compile"
+libraryDependencies += "com.github.scopt" % "scopt_2.13" % "4.0.0-RC2" % "compile"
+libraryDependencies += "org.scala-lang.modules" % "scala-parallel-collections_2.13" % "1.0.0" % "compile"
 libraryDependencies += "org.scalatest" %% "scalatest-funsuite" % "3.2.2" % "test"
+libraryDependencies += "org.scalaz" %% "scalaz-core" % "7.3.3" %"compile"
+
+Compile / unmanagedResourceDirectories += baseDirectory.value / "src/main/resources"
+Test / unmanagedResourceDirectories += baseDirectory.value / "src/main/resources"
+
 
 //libraryDependencies += "com.regblanc" %% "scala-smtlib" % "0.2.2"
 
-envVars in run := Map("DYLD_LIBRARY_PATH" -> System.getenv("Z3_LIB"))
+//envVars in run := Map("DYLD_LIBRARY_PATH" -> System.getenv("Z3_LIB"))
 //unmanagedBase := Seq(
 //  baseDirectory.value / "lib/com.microsoft.z3.jar",
 //  baseDirectory.value / "lib/soot-infoflow-cmd-jar-with-dependencies.jar")

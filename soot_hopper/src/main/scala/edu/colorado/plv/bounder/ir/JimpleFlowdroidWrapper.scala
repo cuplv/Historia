@@ -516,6 +516,14 @@ class JimpleFlowdroidWrapper(apkPath : String,
       val targetClassType = JimpleFlowdroidWrapper.stringNameOfType(i.getCheckType)
       val target = makeRVal(i.getOp).asInstanceOf[LocalWrapper]
       InstanceOf(targetClassType, target)
+    case a : ArrayRef =>
+      val baseVar = makeRVal(a.getBase)
+      val index = makeRVal(a.getIndex)
+      ArrayReference(baseVar, makeRVal(a.getIndex))
+    case a : NewArrayExpr =>
+      NewCommand(JimpleFlowdroidWrapper.stringNameOfType(a.getType))
+    case a : ClassConstant =>
+      ClassConst(JimpleFlowdroidWrapper.stringNameOfType(a.getType))
     case v =>
       //println(v)
       ???

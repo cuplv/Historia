@@ -533,7 +533,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       if(state.containsLocal(l)){
         ???
       }else Set(state)
-    case AssignCmd(StaticFieldReference(declaringClass,fieldName,containedType), l:LocalWrapper,_) =>
+    case AssignCmd(StaticFieldReference(declaringClass,fieldName,containedType), l,_) =>
       if(state.heapConstraints.contains(StaticPtEdge(declaringClass,fieldName))){
         ???
       }else Set(state)
