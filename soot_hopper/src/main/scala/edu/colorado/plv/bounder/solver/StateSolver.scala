@@ -94,6 +94,7 @@ trait StateSolver[T] {
 
   protected def fieldEquals(fieldFun: T, t1: T, t2: T): T
 
+  protected def freshSolverIfNeeded()
   protected def solverSimplify(t: T, state: State, messageTranslator:MessageTranslator, logDbg: Boolean = false): Option[T]
 
   protected def mkTypeConstraint(typeFun: T, addr: T, tc: TypeConstraint): T
@@ -361,7 +362,7 @@ trait StateSolver[T] {
   }
 
   def simplify(state: State, maxWitness: Option[Int] = None): Option[State] = {
-    if(false && state.isSimplified) Some(state) else {
+    if(state.isSimplified) Some(state) else {
       push()
       val messageTranslator = MessageTranslator(List(state))
       val ast = toAST(state, messageTranslator, maxWitness)

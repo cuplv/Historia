@@ -33,6 +33,7 @@ object PersistantConstraints{
 class PersistantConstraints(ctx: Context, solver: Solver, types : Map[String,Set[String]]) {
   def getSolver: Solver = solver
   def getCtx: Context = ctx
+  def getTypes:Map[String,Set[String]] = types
 
   val typeToInt: Map[String, Int] = types.keySet.zipWithIndex.toMap
   val intToType: Map[Int, String] = typeToInt.map{a =>

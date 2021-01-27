@@ -3,9 +3,9 @@ package edu.colorado.plv.bounder.solver
 import com.microsoft.z3._
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, PureVar, State, TypeConstraint}
 
-class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateSolver[AST] {
-  val solver: Solver = persistentConstraints.getSolver
-  val ctx: Context = persistentConstraints.getCtx
+class Z3StateSolver(var persistentConstraints: PersistantConstraints, freshSolverForEach:Boolean = false) extends StateSolver[AST] {
+  var solver: Solver = persistentConstraints.getSolver
+  var ctx: Context = persistentConstraints.getCtx
 
   private val addrSort = ctx.mkUninterpretedSort("Addr")
 
@@ -130,6 +130,13 @@ class Z3StateSolver(persistentConstraints: PersistantConstraints) extends StateS
     }
   }
 
+  override protected def freshSolverIfNeeded():Unit = {
+    if(freshSolverForEach){
+      ctx = new Context
+      solver = ctx.mkSolver
+      persistentConstraints = new PersistantConstraints(ctx,solver,persistentConstraints.getTypes)
+    }
+  }
   //  private def printModelSolution()
   override protected def solverSimplify(t: AST,state:State, messageTranslator: MessageTranslator, logDbg:Boolean): Option[AST] = {
     solver.add(t.asInstanceOf[BoolExpr])
