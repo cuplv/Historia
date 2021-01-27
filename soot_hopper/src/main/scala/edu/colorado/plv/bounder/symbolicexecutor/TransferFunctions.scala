@@ -198,8 +198,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       }
     case (CallbackMethodReturn(_,_,mloc1,_), AppLoc(mloc2,_,_), state) =>
       assert(mloc1 == mloc2) ; Set(state) // transfer handled by processing callbackmethodreturn, nothing to do here
-    case (_:InternalMethodInvoke, al@AppLoc(_, _, false), state) =>
-      val cmd = w.cmdAtLocation(al) match{
+    case (_:InternalMethodInvoke, al@AppLoc(_, _, true), state) =>
+      val cmd = w.cmdAtLocation(al) match{ //TODO: this case should probably go to a AppLoc(_,_,true) figure out if it is reachable like this and fix bug elsewhere
         case InvokeCmd(inv : Invoke, _) => inv
         case AssignCmd(_, inv: Invoke, _) => inv
       }
@@ -225,7 +225,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     case (retloc@AppLoc(mloc, line, false), mRet:InternalMethodReturn, state) =>
       // Create call stack frame with empty
       val retVal:Map[StackVar, PureExpr] = w.cmdAtLocation(retloc) match{
-        case AssignCmd(tgt, _:InvokeCmd, _) => state.get(tgt).map(v => Map(StackVar("@ret") -> v)).getOrElse(Map())
+        case AssignCmd(tgt, _:Invoke, _) =>
+          state.get(tgt).map(v => Map(StackVar("@ret") -> v)).getOrElse(Map())
         case InvokeCmd(_,_) => Map()
         case _ => throw new IllegalStateException(s"malformed bytecode, source: $retloc  target: $mRet")
       }
@@ -524,6 +525,15 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         case None => state
       }
       cmdTransfer(AssignCmd(l,local,cmdloc),state1)
+    case AssignCmd(l:LocalWrapper, StaticFieldReference(declaringClass, fname, containedType), _) =>
+      if(state.containsLocal(l)){
+        ???
+      }else Set(state)
+    case AssignCmd(StaticFieldReference(declaringClass,fieldName,containedType), l:LocalWrapper,_) =>
+      if(state.heapConstraints.contains(StaticPtEdge(declaringClass,fieldName))){
+        ???
+      }else Set(state)
+    case NopCmd(_) => Set(state)
     case c =>
       println(c)
       ???

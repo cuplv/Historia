@@ -252,7 +252,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
     case (InternalMethodInvoke(clazz, name, loc), _) =>
       val locations = wrapper.appCallSites(loc, resolver)
         .filter(loc => !resolver.isFrameworkClass(loc.containingMethod))
-      locations
+      locations.map(loc => loc.copy(isPre = true))
     case v =>
       println(v)
       ???

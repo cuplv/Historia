@@ -50,6 +50,7 @@ class SpecTest extends AnyFunSuite {
     findIInFwkForall(SpecSignatures.Fragment_get_activity_exit_null)
     findIInFwkForall(SpecSignatures.Fragment_onActivityCreated_entry)
     findIInFwkForall(SpecSignatures.Fragment_onDestroy_exit)
+    findIInFwkForall(SpecSignatures.RxJava_call_entry)
 
   }
 
@@ -66,10 +67,7 @@ class SpecTest extends AnyFunSuite {
       else Nil
     }
 
-    printMatchingSignatures("Fragment","getActivity",frameworkMethods, isCallin = true)
-    printMatchingSignatures("Fragment","onActivityCreated",frameworkMethods, isCallin = false)
-    printMatchingSignatures("Fragment","onDestroy",frameworkMethods, isCallin = false)
-
+    printMatchingSignatures("Single","subscribe",frameworkMethods, isCallin = false)
   }
 
   private def printMatchingSignatures(classContains: String,

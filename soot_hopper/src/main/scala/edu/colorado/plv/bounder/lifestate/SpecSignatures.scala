@@ -52,6 +52,12 @@ object SpecSignatures {
     ("android.support.wearable.view.CardFragment","void onDestroy()"),
   )
   val Fragment_onDestroy_exit = I(CBExit, Fragment_onDestroy_Signatures, "_"::"f"::Nil)
+
+  // rxjava
+  val RxJava_call = Set(
+    ("rx.functions.Action1","void call(java.lang.Object)"),
+  )
+  val RxJava_call_entry = I(CBEnter, RxJava_call, "_"::"l"::Nil)
 }
 
 object FragmentGetActivityNullSpec{

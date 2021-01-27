@@ -79,7 +79,7 @@ object BounderSetupApplication {
     // TODO: figure out how to load apk without generating flowdroid callgraph
     config.setCallgraphAlgorithm(CallgraphAlgorithm.VTA)
     config.setMergeDexFiles(true)
-    config.setAliasingAlgorithm(AliasingAlgorithm.PtsBased)
+//    config.setAliasingAlgorithm(AliasingAlgorithm.PtsBased)
     config.setEnableLineNumbers(true)
     config.setExcludeSootLibraryClasses(false)
     config.setCodeEliminationMode(CodeEliminationMode.NoCodeElimination)
