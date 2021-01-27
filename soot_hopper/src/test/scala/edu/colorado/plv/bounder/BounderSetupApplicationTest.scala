@@ -1,5 +1,6 @@
 package edu.colorado.plv.bounder
 
+import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.symbolicexecutor.FlowdroidCallGraph
 import org.scalatest.funsuite.AnyFunSuite
 import soot.Scene
@@ -18,5 +19,22 @@ class BounderSetupApplicationTest extends AnyFunSuite {
 //    BounderSetupApplication.loadClass("/Users/shawnmeier/Desktop/Test.java")
 //    val testClass = Scene.v().getClasses.asScala.filter(a => a.getName == "Test")
 //    ???
+  }
+  test("LSRegex"){
+    def m(s:String):String= {
+      s match {
+        case LifeState.LSBoolConst(_) => "bool"
+        case LifeState.LSVar(v) => s"var:$v"
+        case LifeState.LSAnyVal() => "any"
+        case _ => "NONE"
+      }
+    }
+    assert(m("@true") == "bool")
+    assert(m("_") == "any")
+    assert(m("A_") == "var:A_")
+    assert(LifeState.LSVar.matches("A9"))
+    assert(!LifeState.LSVar.matches("0"))
+    assert(!LifeState.LSVar.matches("_"))
+    assert(!LifeState.LSVar.matches("@null"))
   }
 }

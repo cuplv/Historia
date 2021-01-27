@@ -34,7 +34,7 @@ object Qry {
     val callinLocals = locs.flatMap(a => {
       w.cmdAtLocation(a) match{
         case AssignCmd(target : LocalWrapper, i:Invoke, loc) if callinMatches.matches(i.targetMethod) =>
-          Some((target,loc))
+          Some((target,loc.copy(isPre = false)))
         case _ => None
       }
     })
@@ -42,7 +42,6 @@ object Qry {
       s"got: ${callinLocals.size}, expected 1")
     val (local, location) = callinLocals.head
 
-    val method = location.method
     //local.method
     val containingMethodPos: List[Loc] = BounderUtil.resolveMethodReturnForAppLoc(config.c.getResolver, location)
 

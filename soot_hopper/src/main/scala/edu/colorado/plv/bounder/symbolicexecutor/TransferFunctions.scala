@@ -1,9 +1,9 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSSpec}
-import edu.colorado.plv.bounder.lifestate.SpecSpace
+import edu.colorado.plv.bounder.ir.{NullConst, _}
+import edu.colorado.plv.bounder.lifestate.LifeState.{I,LSVar, LSAnyVal, LSConst, LSNullConst, LSSpec}
+import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.symbolicexecutor.TransferFunctions.relevantAliases
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 
@@ -84,17 +84,17 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       val (pkg, name) = msgCmdToMsg(cmret)
       val relAliases: Set[List[LSParamConstraint]] = relevantAliases(pre, CIExit, (pkg,name))
       val frame = CallStackFrame(target, Some(source.copy(isPre = true)), Map())
+      val inVars: List[Option[RVal]] = inVarsForCall(source)
       val ostates = if(relAliases.isEmpty){
         Set(pre)
       }else {
-        val invars: List[Option[RVal]] = inVarsForCall(source)
         // add all args except assignment to state
-        val state0 = defineVars(preState, invars.tail)
-        val state1 = traceAllPredTransfer(CIExit, (pkg, name), invars, state0)
-        val states2 = newSpecInstanceTransfer(CIExit, (pkg, name), invars, cmret, state1)
+        val state0 = defineVars(preState, inVars.tail)
+        val state1 = traceAllPredTransfer(CIExit, (pkg, name), inVars, state0)
+        val states2 = newSpecInstanceTransfer(CIExit, (pkg, name), inVars, cmret, state1)
 
         // clear assigned var from stack if exists
-        val states3 = invars.head.map {
+        val states3 = inVars.head.map {
           case localWrapper: LocalWrapper => states2.clearLVal(localWrapper)
           case _ => states2
         }.getOrElse(states2)
@@ -102,7 +102,14 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
 //        Set(states3.copy(callStack = frame :: preState.callStack))
         Set(states3)
       }
-      ostates.map(a => a.copy(callStack = frame::a.callStack))
+      ostates.map{s =>
+        val outState = newSpecInstanceTransfer(CIExit, (pkg, name), inVars, cmret, s)
+        val outState1 = inVars match{
+          case Some(revar:LocalWrapper)::_ => outState.clearLVal(revar)
+          case _ => outState
+        }
+        outState1.copy(callStack = frame::s.callStack)
+      }
     case (CallinMethodReturn(_, _), CallinMethodInvoke(_, _), state) => Set(state)
     case (cminv@CallinMethodInvoke(_, _), ciInv@AppLoc(_, _, true), s@State(_ :: t, _, _, _,_)) =>
       //TODO: relevant transition enumeration
@@ -274,29 +281,46 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
   def newSpecInstanceTransfer(mt: MessageType,
                               sig:(String,String), allVar:List[Option[RVal]],
                               loc: Loc, postState: State): State = {
-    //TODO: last element is list of varnames, should probably use that
-    val specOpt = specSpace.specsBySig(mt,sig._1,sig._2)
+    val specsBySignature = specSpace.specsBySig(mt, sig._1, sig._2)
+    //TODO: find a more general pattern for the following
+    val specOpt = specsBySignature.filter {
+      case LSSpec(_,I(CIExit,_,LSConst(vOfLSConst)::_)) =>
+        val optionalLocalAssignVal = allVar.headOption.flatMap(h => h.flatMap(postState.get))
+        optionalLocalAssignVal.exists(v => postState.pureFormula.contains(PureConstraint(v, Equals, vOfLSConst)))
+      case LSSpec(_,I(CIExit,_,LSConst(_)::_)) => false
+      case _ => true
+    }
+    assert(specOpt.size < 2, s"Spec is not well formed, multiple applicable specs for transfer: $loc")
+    if(specOpt.isEmpty)
+      return postState
 
     // Split spec into pred and target if it exists, otherwise pre state is post state
-    val (pred, target) = specOpt match{
-      case Some(LSSpec(pred, target)) => (pred,target)
-      case None => return postState
+    val pred = specOpt.head.pred
+    val target = specOpt.head.target
+
+    val parameterPairing: Seq[(String, Option[RVal])] = target.lsVars zip allVar
+
+    // Define variables in rule in the state
+    val state2 = parameterPairing.foldLeft(postState){
+      case (cstate,(LSAnyVal(),_)) => cstate
+      case (cstate, (LSConst(_), _)) => cstate
+      case (cstate, (_, Some(rval))) => cstate.getOrDefine(rval)._2
+      case (cstate, _) => cstate
     }
-
-    val parameterPairing: Seq[(String, Option[RVal])] = (target.lsVars zip allVar)
-
-    // Match each lsvar to absvar if both exist
-    val newLsAbstraction = AbstractTrace(pred, Nil, parameterPairing.flatMap{
-      case (k,_) if k == "_" => None
-      case (k,Some(l : LocalWrapper)) =>
-        Some((k,postState.get(l).get))
-      case (_,None) => None
-      case (k,v) =>
+    val lsVarConstraints = parameterPairing.flatMap {
+      case (LSAnyVal(), _) => None
+      case (LSVar(k), Some(l: LocalWrapper)) =>
+        Some((k, state2.get(l).get))
+      case (_, None) => None
+      case (LSConst(_), Some(_: LocalWrapper)) => None
+      case (k, v) =>
         println(k)
         println(v)
-        ??? //TODO: handle primitives e.g. true "string" 1 2 etc
-    }.toMap)
-    postState.copy(traceAbstraction = postState.traceAbstraction + newLsAbstraction)
+        ??? //TODO: handle primitives e.g. true "string" 1 2 etc ====
+    }
+    // Match each lsvar to absvar if both exist
+    val newLsAbstraction = AbstractTrace(pred, Nil, lsVarConstraints.toMap)
+    state2.copy(traceAbstraction = state2.traceAbstraction + newLsAbstraction)
   }
 
   /**
@@ -329,9 +353,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     if (pred.a.contains(mt,sig)) {
       specSpace.getIWithFreshVars(mt, sig) match {
         case Some(i@I(_, _, lsVars)) =>
-          val modelVarConstraints = (lsVars zip vals).flatMap {
-            case (lsvar, Some(stateVal)) if lsvar != "_" => Some((lsvar, stateVal))
-            case _ => None
+          val modelVarConstraints: Map[String, PureExpr] = (lsVars zip vals).flatMap {
+            case (LSVar(lsvar), Some(stateVal)) => Some((lsvar, stateVal))
+            case _ => None //TODO: cases where transfer needs const values (e.g. setEnabled(true))
           }.toMap
           assert(!modelVarConstraints.isEmpty) //TODO: can this ever happen?
           assert(pred.modelVars.keySet.intersect(modelVarConstraints.keySet).isEmpty,
@@ -505,7 +529,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       ???
   }
   def assumeInState(b:RVal, state:State): State = b match{
-    case Binop(l@LocalWrapper(name,_), op, const) if state.containsLocal(l) =>
+    case Binop(l@LocalWrapper(name,ltype), op, const) if state.containsLocal(l) =>
+      println(name)
+      println(ltype)
       ???
     case Binop(l:LocalWrapper,_,const) if !state.containsLocal(l) =>
       assert(!const.isInstanceOf[LocalWrapper])

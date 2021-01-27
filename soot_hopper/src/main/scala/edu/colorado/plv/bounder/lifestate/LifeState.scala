@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.lifestate
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.MessageType
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSFalse, LSPred, LSSpec, LSTrue, NI, Not, Or}
-import edu.colorado.plv.bounder.symbolicexecutor.state.PureExpr
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, NullVal, PureExpr, PureVal}
 
 object LifeState {
   var id = 0
@@ -13,6 +13,20 @@ object LifeState {
     lsVar
   }
 
+  // Const value matchers
+  val LSBoolConst = "@(false|true|False|True)".r
+  val LSNullConst = "@(?:null|Null|NULL)".r
+  object LSConst{
+    def unapply(arg: String): Option[PureVal] = arg match{
+      case LSBoolConst(sv) => Some(BoolVal(sv.toBoolean))
+      case LSNullConst() => Some(NullVal)
+      case _ => None
+    }
+  }
+  val LSVar = "((?:[a-zA-Z])(?:[a-zA-Z0-9]|_)*)".r
+
+
+  val LSAnyVal = "_".r
   sealed trait LSPred {
     def contains(mt:MessageType,sig: (String, String)):Boolean
 
@@ -162,11 +176,10 @@ class SpecSpace(specs: Set[LSSpec]) {
    * @param name
    * @return
    */
-  def specsBySig(mt: MessageType, pkg:String, name:String):Option[LSSpec] = {
+  def specsBySig(mt: MessageType, pkg:String, name:String):Set[LSSpec] = {
     // TODO: cache specs in hash map
     val specsForSig = specs.filter(a => a.target.signatures.contains((pkg,name)) && a.target.mt == mt)
-    assert(specsForSig.size < 2, "Spec is not well formed, multiple applicable specs for transfer")
-    specsForSig.headOption
+    specsForSig
   }
 
 }

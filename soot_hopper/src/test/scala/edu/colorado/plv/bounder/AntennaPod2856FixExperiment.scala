@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder
 
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
-import edu.colorado.plv.bounder.lifestate.SpecSpace
+import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, SpecSpace}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{PrettyPrinting, Qry}
 import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, ControlFlowResolver, DefaultAppCodeResolver, FlowdroidCallGraph, PatchedFlowdroidCallGraph, SparkCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
 import org.scalatest.funsuite.AnyFunSuite
@@ -14,9 +14,10 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
     val w = new JimpleFlowdroidWrapper(apk,PatchedFlowdroidCallGraph)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
     val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
-    val transfer = new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set()))
+    val transfer = new TransferFunctions[SootMethod,soot.Unit](w,
+      new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull)))
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(50), w, resolver,transfer, printProgress = true)
+      stepLimit = Some(20), w, resolver,transfer, printProgress = true)
     val query = Qry.makeCallinReturnNonNull(config, w,
       "de.danoeh.antennapod.fragment.ExternalPlayerFragment",
       "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)",200,

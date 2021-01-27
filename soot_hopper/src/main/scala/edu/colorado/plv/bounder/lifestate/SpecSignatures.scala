@@ -1,8 +1,8 @@
 package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.ir.{CBEnter, CBExit}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSSpec, NI}
+import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIExit}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSSpec, NI, Not, Or}
 
 object SpecSignatures {
   // TODO; get all specs out of ls def
@@ -27,7 +27,7 @@ object SpecSignatures {
     ("android.support.v4.app.Fragment","android.support.v4.app.FragmentActivity getActivity()"),
     ("android.support.v4.app.FragmentHostCallback","android.app.Activity getActivity()")
   )
-  val Fragment_get_activity_exit_null = I(CBExit, Fragment_getActivity_Signatures, "@null"::"f"::Nil)
+  val Fragment_get_activity_exit_null = I(CIExit, Fragment_getActivity_Signatures, "@null"::"f"::Nil)
 
   val Fragment_onActivityCreated_Signatures = Set(
     ("android.app.Fragment","void onActivityCreated(android.os.Bundle)"),
@@ -62,6 +62,11 @@ object SpecSignatures {
     ("android.support.wearable.view.CardFragment","void onDestroy()"),
   )
   val Fragment_onDestroy_exit = I(CBExit, Fragment_onDestroy_Signatures, "_"::"f"::Nil)
+}
+
+object FragmentGetActivityNullSpec{
+  val cond = Or(Not(SpecSignatures.Fragment_onActivityCreated_entry), SpecSignatures.Fragment_onDestroy_exit)
+  val getActivityNull = LSSpec(cond, SpecSignatures.Fragment_get_activity_exit_null)
 }
 
 object ResumePauseSpec {
