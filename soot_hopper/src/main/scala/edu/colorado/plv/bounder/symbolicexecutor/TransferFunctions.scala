@@ -491,7 +491,11 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
           val posAlias = possibleAliasesOf(lw, state2)
           val (v,state3) = state2.getOrDefine(lw)
           posAlias.map(a => (a,state3.swapPv(v,a)))
-        case _ =>
+        case BoolConst(v) => Set((BoolVal(v),state2))
+        case IntConst(v) => Set((IntVal(v),state2))
+        case StringConst(v) => Set((StringVal(v),state2))
+        case v =>
+          println(v)
           ??? //TODO: implement other const values
       }
       // get or define base of assignment
