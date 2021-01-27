@@ -484,20 +484,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       }
 
       // Get or define right hand side
-      val possibleRhs : Set[(PureExpr,State)] = rhs match{
-        case NullConst => Set((NullVal,state2))
-        case lw: LocalWrapper =>
-          // TODO: make sure thi works
-          val posAlias = possibleAliasesOf(lw, state2)
-          val (v,state3) = state2.getOrDefine(lw)
-          posAlias.map(a => (a,state3.swapPv(v,a)))
-        case BoolConst(v) => Set((BoolVal(v),state2))
-        case IntConst(v) => Set((IntVal(v),state2))
-        case StringConst(v) => Set((StringVal(v),state2))
-        case v =>
-          println(v)
-          ??? //TODO: implement other const values
-      }
+      val possibleRhs : Set[(PureExpr,State)] = getOrDefineSourceOfAssign(rhs, state2)
       // get or define base of assignment
       // Enumerate over existing base values that could alias assignment
       // Enumerate permutations of heap cell and rhs
@@ -519,6 +506,15 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         case _ => None
       })
       casesWithHeapCellAlias + caseWithNoAlias
+    case AssignCmd(target :LocalWrapper, source, _) if source.isConst =>
+      state.get(target) match{
+        case Some(v) =>
+          val src: Set[(PureExpr, State)] = getOrDefineSourceOfAssign(source, state)
+          src.map{
+            case (pexp, s2) => s2.copy(pureFormula = s2.pureFormula + PureConstraint(v, Equals, pexp)).clearLVal(target)
+          }
+        case None => Set(state)
+      }
     case _:InvokeCmd => Set(state)// Invoke not relevant and skipped
     case AssignCmd(_, _:Invoke, _) => Set(state)
     case If(b,_) =>
@@ -542,6 +538,24 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       println(c)
       ???
   }
+
+  private def getOrDefineSourceOfAssign(rhs: RVal, state2: State) : Set[(PureExpr,State)]= {
+    rhs match {
+      case NullConst => Set((NullVal, state2))
+      case lw: LocalWrapper =>
+        // TODO: make sure thi works
+        val posAlias = possibleAliasesOf(lw, state2)
+        val (v, state3) = state2.getOrDefine(lw)
+        posAlias.map(a => (a, state3.swapPv(v, a)))
+      case BoolConst(v) => Set((BoolVal(v), state2))
+      case IntConst(v) => Set((IntVal(v), state2))
+      case StringConst(v) => Set((StringVal(v), state2))
+      case v =>
+        println(v)
+        ??? //TODO: implement other const values
+    }
+  }
+
   def assumeInState(b:RVal, state:State): State = b match{
     case Binop(l@LocalWrapper(name,ltype), op, const) if state.containsLocal(l) =>
       println(name)

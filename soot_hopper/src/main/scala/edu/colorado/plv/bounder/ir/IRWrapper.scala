@@ -74,8 +74,12 @@ case class ThrowCmd(loc:AppLoc) extends CmdWrapper(loc){
 }
 
 
-case class Cast(castT:String, local: LocalWrapper) extends RVal
-case class Binop(v1:RVal, op: BinaryOperator, v2:RVal) extends RVal
+case class Cast(castT:String, local: LocalWrapper) extends RVal {
+  override def isConst: Boolean = false
+}
+case class Binop(v1:RVal, op: BinaryOperator, v2:RVal) extends RVal {
+  override def isConst: Boolean = false
+}
 sealed trait BinaryOperator
 case object Mult extends BinaryOperator
 case object Div extends BinaryOperator
@@ -94,17 +98,37 @@ case object Ge extends BinaryOperator
 //                                  params:List[String], wrapper:IRWrapper[M,C])
 
 // Things that can be used as expressions
-trait RVal
+trait RVal{
+  def isConst:Boolean
+}
 // New only has type, constructor parameters go to the <init> method
-case class NewCommand(className: String) extends RVal
-case object NullConst extends RVal
-case class ConstVal(v:Any) extends RVal
-case class IntConst(v:Int) extends RVal
-case class StringConst(v:String) extends RVal
-case class BoolConst(v:Boolean) extends RVal
-case class InstanceOf(clazz:String, target: LocalWrapper) extends RVal
-case class ClassConst(clazz:String) extends RVal
-case class CaughtException(n:String) extends RVal
+case class NewCommand(className: String) extends RVal {
+  override def isConst: Boolean = false
+}
+case object NullConst extends RVal {
+  override def isConst: Boolean = true
+}
+case class ConstVal(v:Any) extends RVal {
+  override def isConst: Boolean = true
+}
+case class IntConst(v:Int) extends RVal {
+  override def isConst: Boolean = true
+}
+case class StringConst(v:String) extends RVal {
+  override def isConst: Boolean = true
+}
+case class BoolConst(v:Boolean) extends RVal {
+  override def isConst: Boolean = true
+}
+case class InstanceOf(clazz:String, target: LocalWrapper) extends RVal {
+  override def isConst: Boolean = false
+}
+case class ClassConst(clazz:String) extends RVal {
+  override def isConst: Boolean = false
+}
+case class CaughtException(n:String) extends RVal {
+  override def isConst: Boolean = false
+}
 
 sealed trait Invoke extends RVal {
   def targetClass:String
@@ -120,6 +144,8 @@ case class VirtualInvoke(target:LocalWrapper,
                          targetMethod:String,
                          params:List[RVal]) extends Invoke {
   override def targetOptional: Option[LocalWrapper] = Some(target)
+
+  override def isConst: Boolean = false
 }
 /*SpecialInvoke is used when the exact class target is known*/
 case class SpecialInvoke(target:LocalWrapper,
@@ -127,24 +153,40 @@ case class SpecialInvoke(target:LocalWrapper,
                          targetMethod:String,
                          params:List[RVal]) extends Invoke {
   override def targetOptional: Option[LocalWrapper] = Some(target)
+
+  override def isConst: Boolean = false
 }
 case class StaticInvoke(targetClass:String,
                         targetMethod:String,
                         params:List[RVal])extends Invoke {
   override def targetOptional: Option[LocalWrapper] = None
+
+  override def isConst: Boolean = false
 }
 
 // Things that can be assigned to or used as expressins
 trait LVal extends RVal
-case class ArrayReference(base:RVal, index:RVal) extends LVal
+case class ArrayReference(base:RVal, index:RVal) extends LVal {
+  override def isConst: Boolean = false
+}
 case class LocalWrapper(name:String, localType:String) extends LVal {
   override def toString:String = name
+
+  override def isConst: Boolean = false
 }
-case class ParamWrapper(name:String) extends LVal
+case class ParamWrapper(name:String) extends LVal {
+  override def isConst: Boolean = false
+}
 //case class FieldWrapper(name:String) extends LVal
-case class ThisWrapper(className:String) extends LVal
+case class ThisWrapper(className:String) extends LVal {
+  override def isConst: Boolean = false
+}
 case class FieldReference(base:LocalWrapper, containsType:String, declType:String, name:String) extends LVal{
   override def toString: String = s"${base}.${name}"
+
+  override def isConst: Boolean = false
 }
 case class StaticFieldReference(declaringClass: String,
-                                fieldName: String, containedType:String) extends LVal
+                                fieldName: String, containedType:String) extends LVal {
+  override def isConst: Boolean = false
+}
