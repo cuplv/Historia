@@ -363,20 +363,24 @@ trait StateSolver[T] {
 
   def simplify(state: State, maxWitness: Option[Int] = None): Option[State] = {
     if(state.isSimplified) Some(state) else {
+      val state2 = state.copy(pureFormula = state.pureFormula.filter{
+        case PureConstraint(v, TypeComp, SubclassOf("java.lang.Object")) => false
+        case _ => true
+      })
       push()
-      val messageTranslator = MessageTranslator(List(state))
-      val ast = toAST(state, messageTranslator, maxWitness)
+      val messageTranslator = MessageTranslator(List(state2))
+      val ast = toAST(state2, messageTranslator, maxWitness)
 
       if (maxWitness.isDefined) {
-        println(s"State ${System.identityHashCode(state)} encoding: ")
+        println(s"State ${System.identityHashCode(state2)} encoding: ")
         println(ast.toString)
       }
-      val simpleAst = solverSimplify(ast, state, messageTranslator, maxWitness.isDefined)
+      val simpleAst = solverSimplify(ast, state2, messageTranslator, maxWitness.isDefined)
 
       pop()
       // TODO: garbage collect, if purevar can't be reached from reg or stack var, discard
       simpleAst.map(_ =>
-        state.setSimplified()
+        state2.setSimplified()
       )
     }
   }
