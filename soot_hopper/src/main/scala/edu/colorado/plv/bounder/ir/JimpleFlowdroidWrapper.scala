@@ -158,19 +158,19 @@ class PatchingCallGraphWrapper(cg:CallGraph, appMethods: Set[SootMethod]) extend
       println(v)
       ???
   }
-  val subThingsOf : SootClass => Set[SootClass] = JimpleFlowdroidWrapper.subThingsOf
+
   private def fallbackOutEdgesInvoke(v : Value):Set[SootMethod] = v match{
     case v : JVirtualInvokeExpr =>
       // TODO: is base ever not a local?
       val base = v.getBase
-      val reachingObjects = subThingsOf(baseType(base))
+      val reachingObjects = JimpleFlowdroidWrapper.subThingsOf(baseType(base))
       val ref: SootMethodRef = v.getMethodRef
       val out = reachingObjects.flatMap(findMethodInvoke(_, ref))
       Set(out.toList:_*).filter(m => !m.isAbstract)
     case i : JInterfaceInvokeExpr =>
       val base = i.getBase.asInstanceOf[JimpleLocal]
       val reachingObjects =
-        subThingsOf(base.getType.asInstanceOf[RefType].getSootClass)
+        JimpleFlowdroidWrapper.subThingsOf(base.getType.asInstanceOf[RefType].getSootClass)
       val ref: SootMethodRef = i.getMethodRef
       val out = reachingObjects.flatMap(findMethodInvoke(_, ref)).filter(m => !m.isAbstract)
       Set(out.toList:_*)
@@ -183,6 +183,7 @@ class PatchingCallGraphWrapper(cg:CallGraph, appMethods: Set[SootMethod]) extend
       Set(method)
     case v => Set() //Non invoke methods have no edges
   }
+
   private def fallbackOutEdges(unit: soot.Unit): Set[SootMethod] = unit match{
     case j: JAssignStmt => fallbackOutEdgesInvoke(j.getRightOp)
     case j: JInvokeStmt => fallbackOutEdgesInvoke(j.getInvokeExpr)
