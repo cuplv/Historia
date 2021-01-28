@@ -7,10 +7,21 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, FieldPtE
 import scalaz.Memo
 
 import scala.collection.mutable
+import scala.util.matching.Regex
 /**
  * Functions to resolve control flow edges while maintaining context sensitivity.
  */
-class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver, persistantConstraints: PersistantConstraints) {
+class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
+                               resolver: AppCodeResolver,
+                               persistantConstraints: PersistantConstraints,
+                               component: Option[List[String]]) {
+  private val componentR: Option[List[Regex]] = component.map(_.map(_.r))
+  def callbackInComponent(loc:Loc):Boolean = loc match{
+    case CallbackMethodReturn(_,_,methodLoc, _) =>
+      val className = methodLoc.classType
+      componentR.forall(_.exists(r => r.matches(className)))
+    case _ => throw new IllegalStateException("callbackInComponent should only be called on callback returns")
+  }
   def getResolver = resolver
 
   //TODO: cache result
@@ -135,7 +146,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
     if (resolver.isFrameworkClass(m.classType))
       return false // body can only be relevant to app heap or trace if method is in the app
     val callees = memoizedallCalls(m) + m
-    callees.exists{c => //====
+    callees.exists{c =>
       if(relevantHeap(c,state))
         true
       else if(relevantTrace(c,state))
@@ -235,7 +246,6 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
                 case (CallinMethodReturn(clazz,_), other@CallinMethodReturn(clazz2, _)) if wrapper.isSuperClass(clazz2,clazz) =>
                   other
                 case (cur,other) =>
-                  println(other)
                   cur
               }
             }
@@ -265,11 +275,12 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
       List(returnLoc)
     case (CallbackMethodInvoke(fmwClazz, fmwName, loc), _) =>
       val callbacks = resolver.getCallbacks
-      val res = callbacks.flatMap(callback => {
+      val res: Seq[Loc] = callbacks.flatMap(callback => {
         val locCb = wrapper.makeMethodRetuns(callback)
         locCb.flatMap{case AppLoc(method,line,isPre) => resolver.resolveCallbackExit(method, Some(line))}
       }).toList
-      val res1 = res.filter(relevantMethod(_,state))
+      val componentFiltered = res.filter(callbackInComponent)
+      val res1 = componentFiltered.filter(relevantMethod(_,state))
       res1
     case (CallbackMethodReturn(fmwClazz,fmwName, loc, Some(line)),_) =>
       AppLoc(loc, line, true)::Nil

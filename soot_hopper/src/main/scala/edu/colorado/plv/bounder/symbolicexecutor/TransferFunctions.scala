@@ -443,6 +443,12 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       }).getOrElse{
         Set(state)
       }
+    case ReturnCmd(Some(v), _) =>
+      val fakeRetLocal = LocalWrapper("@ret", "_")
+      val retv = state.get(fakeRetLocal)
+      val state1 = state.clearLVal(fakeRetLocal)
+      Set(retv.map(state1.defineAs(v, _)).getOrElse(state))
+    case ReturnCmd(None, _) => Set(state)
     case AssignCmd(lhs:LocalWrapper, FieldReference(base, fieldtype, declType, fieldName), _) =>
       // x = y.f
       // TODO: enumerate possible aliases
@@ -462,12 +468,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         }
         case None => Set(state)
       }
-    case ReturnCmd(Some(v), _) =>
-      val fakeRetLocal = LocalWrapper("@ret", "_")
-      val retv = state.get(fakeRetLocal)
-      val state1 = state.clearLVal(fakeRetLocal)
-      Set(retv.map(state1.defineAs(v, _)).getOrElse(state))
-    case ReturnCmd(None, _) => Set(state)
     case AssignCmd(FieldReference(base, fieldType, _,fieldName), rhs, _) =>
       // x.f = y
       val (basev,state2) = state.getOrDefine(base)
@@ -541,9 +541,31 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       targets.foldLeft(Set[State]()){
         case (acc, cmd) => acc ++ cmdTransfer(cmd, state)
       }
-    case AssignCmd(l:LocalWrapper, ArrayReference(base, index),_) =>
-      //TODO:
-      ???
+    case AssignCmd(lhs:LocalWrapper, ArrayReference(base, index),_) =>
+      state.get(lhs) match{
+        case Some(v) =>
+          val (basev,state1) = state.getOrDefine(base)
+          val (indexv,state2) = state1.getOrDefine(index)
+          val arrayRef = ArrayPtEdge(basev, indexv)
+          Set(state2.copy(heapConstraints = state2.heapConstraints + (arrayRef -> v)).clearLVal(lhs))
+        case None => Set(state)
+      }
+    case AssignCmd(ArrayReference(base,index), lhs:LocalWrapper,_) =>
+      val possibleAliases = state.heapConstraints.filter{
+        case (ArrayPtEdge(basev,_),_) => true
+        case _ => false
+      }
+      if (possibleAliases.isEmpty)
+        Set(state)
+      else
+        ???
+
+    case AssignCmd(lhs:LocalWrapper, ArrayLength(l),_) =>
+      state.get(lhs) match{
+        case Some(v) =>
+          ???
+        case None => Set(state)
+      }
     case c =>
       println(c)
       ???

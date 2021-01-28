@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIExit}
+import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSSpec, NI, Not, Or}
 
 object SpecSignatures {
@@ -58,6 +58,11 @@ object SpecSignatures {
     ("rx.functions.Action1","void call(java.lang.Object)"),
   )
   val RxJava_call_entry = I(CBEnter, RxJava_call, "_"::"l"::Nil)
+
+  val RxJava_unsubscribe = Set(
+    ("rx.Subscription", "void unsubscribe()")
+  )
+  val RxJava_unsubscribe_entry = I(CIEnter, RxJava_unsubscribe, "_"::"l"::Nil)
 }
 
 object FragmentGetActivityNullSpec{

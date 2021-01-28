@@ -51,6 +51,7 @@ class SpecTest extends AnyFunSuite {
     findIInFwkForall(SpecSignatures.Fragment_onActivityCreated_entry)
     findIInFwkForall(SpecSignatures.Fragment_onDestroy_exit)
     findIInFwkForall(SpecSignatures.RxJava_call_entry)
+    findIInFwkForall(SpecSignatures.RxJava_unsubscribe_entry)
 
   }
 

@@ -16,11 +16,23 @@ case object CHACallGraph extends CallGraphSource
 case object SparkCallGraph extends CallGraphSource
 case object AppOnlyCallGraph extends CallGraphSource
 
+/**
+ *
+ * @param stepLimit
+ * @param w
+ * @param transfer
+ * @param printProgress
+ * @param z3Timeout
+ * @param component restrict analysis to callbacks that match the listed regular expressions
+ * @tparam M
+ * @tparam C
+ */
 case class SymbolicExecutorConfig[M,C](stepLimit: Option[Int],
                                        w :  IRWrapper[M,C],
                                        transfer : TransferFunctions[M,C],
                                        printProgress : Boolean = false,
-                                       z3Timeout : Option[Int] = None
+                                       z3Timeout : Option[Int] = None,
+                                       component : Option[List[String]] = None
                                       ){
   def getSymbolicExecutor =
     new SymbolicExecutor[M, C](this)}
@@ -41,7 +53,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
 
   val appCodeResolver = new DefaultAppCodeResolver[M,C](config.w)
   def getAppCodeResolver = appCodeResolver
-  val controlFlowResolver = new ControlFlowResolver[M,C](config.w,appCodeResolver, persistantConstraints)
+  val controlFlowResolver = new ControlFlowResolver[M,C](config.w,appCodeResolver, persistantConstraints, config.component)
   def getControlFlowResolver = controlFlowResolver
   val stateSolver = new Z3StateSolver(persistantConstraints)
   /**

@@ -40,7 +40,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, ResumePauseSpec.spec)
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(60), w,transfer, printProgress = true, z3Timeout = Some(30))
+      stepLimit = Some(60), w,transfer, printProgress = true, z3Timeout = Some(30), component = Some(List("com\\.example\\.test_interproc_2.*")))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = Qry.makeReceiverNonNull(symbolicExecutor, w,
       "com.example.test_interproc_2.MainActivity",
@@ -49,6 +49,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/foo.dot")
     PrettyPrinting.printWitnessTraces(result, outFile="/Users/shawnmeier/Desktop/foo.witnesses")
     assert(BounderUtil.interpretResult(result) == Proven)
+    assert(result.size > 0)
   }
   test("Symbolic executor should witness onPause"){
     val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath()

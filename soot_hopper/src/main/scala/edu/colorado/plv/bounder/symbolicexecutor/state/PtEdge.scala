@@ -9,3 +9,5 @@ case class FieldPtEdge(p:PureVar, fieldName:String) extends HeapPtEdge{
 }
 case class StaticPtEdge(clazz: String, fieldName:String) extends HeapPtEdge
 //TODO: Array pt edge to represent array heap cells
+
+case class ArrayPtEdge(base:PureVar, index: PureExpr) extends HeapPtEdge

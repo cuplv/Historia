@@ -446,6 +446,24 @@ class Z3StateSolverTest extends AnyFunSuite {
       state.copy(traceAbstraction = Set(AbstractTrace(i_foo_x,Nil,Map()))),
       Nil))
 
+    // not I(x.foo()) models empty
+    assert(statesolver.traceInAbstraction(
+      state = state.copy(traceAbstraction = Set(AbstractTrace(Not(i_foo_x), Nil, Map()))),
+      trace = Nil
+    ))
+
+    // not I(x.foo()) or I(x.bar()) models empty
+    assert(statesolver.traceInAbstraction(
+      state = state.copy(traceAbstraction = Set(AbstractTrace(Or(Not(i_foo_x), i_bar_x), Nil, Map()))),
+      trace = Nil
+    ))
+
+    // not I(x.foo()) or I(x.bar()) ! models @1.foo()
+    assert(!statesolver.traceInAbstraction(
+      state = state.copy(traceAbstraction = Set(AbstractTrace(Or(Not(i_foo_x), i_bar_x), Nil, Map()))),
+      trace = TMessage(CIEnter, foo, TAddr(1)::Nil)::Nil
+    ))
+
     // NI(x.foo(), x.bar()) ! models empty
     assert(!statesolver.traceInAbstraction(
       state.copy(traceAbstraction = Set(AbstractTrace(ni_foo_x_bar_x,Nil,Map()))),

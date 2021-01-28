@@ -11,14 +11,14 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
   test("Prove location in stack trace is unreachable under a simple spec.") {
     val apk = getClass.getResource("/Antennapod-fix-2856-app-free-debug.apk").getPath
     assert(apk != null)
-    val w = new JimpleFlowdroidWrapper(apk,PatchedFlowdroidCallGraph)
-//    val w = new JimpleFlowdroidWrapper(apk,CHACallGraph)
+    val w = new JimpleFlowdroidWrapper(apk,CHACallGraph)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
 //    val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w,
       new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull)))
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(300), w,transfer, printProgress = true)
+      stepLimit = Some(100), w,transfer, printProgress = true,
+      component = Some(List("de\\.danoeh\\.antennapod\\.fragment\\.ExternalPlayerFragment.*")))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = Qry.makeCallinReturnNonNull(symbolicExecutor, w,
       "de.danoeh.antennapod.fragment.ExternalPlayerFragment",

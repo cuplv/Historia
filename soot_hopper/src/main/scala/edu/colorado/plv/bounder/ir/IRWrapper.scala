@@ -136,6 +136,10 @@ case class CaughtException(n:String) extends RVal {
   override def isConst: Boolean = false
 }
 
+case class ArrayLength(l:LocalWrapper) extends RVal {
+  override def isConst: Boolean = false
+}
+
 sealed trait Invoke extends RVal {
   def targetClass:String
   def targetMethod:String

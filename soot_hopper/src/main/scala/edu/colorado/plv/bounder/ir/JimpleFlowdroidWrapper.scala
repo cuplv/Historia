@@ -539,6 +539,9 @@ class JimpleFlowdroidWrapper(apkPath : String,
       NewCommand(JimpleFlowdroidWrapper.stringNameOfType(a.getType))
     case a : ClassConstant =>
       ClassConst(JimpleFlowdroidWrapper.stringNameOfType(a.getType))
+    case l : JLengthExpr =>
+      ArrayLength(makeRVal(l.getOp).asInstanceOf[LocalWrapper])
+
     case v =>
       //println(v)
       throw CmdNotImplemented(s"Command not implemented: $v  type: ${v.getType}")
