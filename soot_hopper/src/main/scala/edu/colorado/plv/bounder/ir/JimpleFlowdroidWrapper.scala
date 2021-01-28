@@ -41,6 +41,17 @@ object JimpleFlowdroidWrapper{
     case t => t.toString
   }
 
+  /**
+   * Use instead of soot version because soot version crashes on interface.
+   * @param sootClass
+   * @return
+   */
+  def subThingsOf(sootClass: SootClass):Set[SootClass] =
+    if(sootClass.isInterface)
+      Scene.v.getActiveHierarchy.getImplementersOf(sootClass).asScala.toSet
+    else
+      Scene.v.getActiveHierarchy.getSubclassesOfIncluding(sootClass).asScala.toSet
+
 }
 
 trait CallGraphProvider{
@@ -136,12 +147,6 @@ class PatchingCallGraphWrapper(cg:CallGraph, appMethods: Set[SootMethod]) extend
       }else None
     }
 
-  private def subThingsOf(sootClass: SootClass):List[SootClass] =
-    if(sootClass.isInterface)
-      Scene.v.getActiveHierarchy.getImplementersOf(sootClass).asScala.toList
-    else
-      Scene.v.getActiveHierarchy.getSubclassesOfIncluding(sootClass).asScala.toList
-
   private def baseType(sType: Value): SootClass = sType match{
     case l : JimpleLocal if l.getType.isInstanceOf[RefType] =>
       l.getType.asInstanceOf[RefType].getSootClass
@@ -153,6 +158,7 @@ class PatchingCallGraphWrapper(cg:CallGraph, appMethods: Set[SootMethod]) extend
       println(v)
       ???
   }
+  val subThingsOf : SootClass => Set[SootClass] = JimpleFlowdroidWrapper.subThingsOf
   private def fallbackOutEdgesInvoke(v : Value):Set[SootMethod] = v match{
     case v : JVirtualInvokeExpr =>
       // TODO: is base ever not a local?
@@ -389,6 +395,10 @@ class JimpleFlowdroidWrapper(apkPath : String,
       case _:JGotoStmt => NopCmd(loc) // control flow handled elsewhere
       case _:JExitMonitorStmt => NopCmd(loc) // ignore concurrency
       case _:JEnterMonitorStmt => NopCmd(loc) // ignore concurrency
+      case sw:JLookupSwitchStmt =>
+        val key = makeRVal(sw.getKey).asInstanceOf[LocalWrapper]
+        val targets = sw.getTargets.asScala.map(u => makeCmd(u,method, locOpt))
+        SwitchCmd(key,targets.toList,loc)
       case v =>
         throw CmdNotImplemented(s"Unimplemented command: ${v}")
     }
@@ -606,8 +616,8 @@ class JimpleFlowdroidWrapper(apkPath : String,
       assert(Scene.v().containsClass(type2), s"Type: $type2 not in soot scene")
       val type1Soot = Scene.v().getSootClass(type1)
       val type2Soot = Scene.v().getSootClass(type2)
-      val sub1 = hierarchy.getSubclassesOfIncluding(type1Soot).asScala
-      val sub2 = hierarchy.getSubclassesOfIncluding(type2Soot).asScala.toSet
+      val sub1 = JimpleFlowdroidWrapper.subThingsOf(type1Soot)
+      val sub2 = JimpleFlowdroidWrapper.subThingsOf(type2Soot)
       sub1.exists(a => sub2.contains(a))
     }
   }

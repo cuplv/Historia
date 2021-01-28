@@ -84,6 +84,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
       case _:If => false
       case _:NopCmd => false
       case _:ThrowCmd => false
+      case _:SwitchCmd => false
     }
     val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) => cmdAtLocationNopIfUnknown(v).mkPre)
     BounderUtil.graphExists[CmdWrapper](start = returns,

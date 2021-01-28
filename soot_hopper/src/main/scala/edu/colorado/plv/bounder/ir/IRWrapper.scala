@@ -71,6 +71,9 @@ case class If(b:RVal, loc:AppLoc) extends CmdWrapper(loc){
 case class NopCmd(loc:AppLoc) extends CmdWrapper(loc){
   override def mkPre: CmdWrapper = this.copy(loc=loc.copy(isPre = true))
 }
+case class SwitchCmd(key: LocalWrapper, targets : List[CmdWrapper], loc:AppLoc)extends CmdWrapper(loc) {
+  override def mkPre: CmdWrapper = this.copy(loc=loc.copy(isPre = true))
+}
 
 case class ThrowCmd(loc:AppLoc) extends CmdWrapper(loc){
   override def mkPre: CmdWrapper = this.copy(loc=loc.copy(isPre = true))
