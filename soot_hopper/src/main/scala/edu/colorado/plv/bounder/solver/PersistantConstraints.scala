@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.solver
 
 import com.microsoft.z3.{BoolExpr, Context, EnumSort, Expr, FuncDecl, Solver, Sort}
 import edu.colorado.plv.bounder.solver.PersistantConstraints.primitiveTypes
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, SubclassOf, SuperclassOf, TypeConstraint}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, Equals, PureConstraint, PureVar, State, SubclassOf, SuperclassOf, TypeComp, TypeConstraint}
 import soot.ShortType
 
 object PersistantConstraints{
@@ -99,5 +99,25 @@ class PersistantConstraints(ctx: Context, solver: Solver, types : Map[String,Set
       case ClassType(c) =>
         ctx.mkEq(e, finiteDomVal(c))
     }
+  }
+
+  def typeSetForPureVar(v:PureVar, state:State):Set[String] = {
+    state.pureFormula.foldLeft(getSubtypesOf("java.lang.Object")) {
+      case (acc, PureConstraint(p2, TypeComp, SubclassOf(c))) if v == p2 => acc.intersect(getSubtypesOf(c))
+      case (acc, PureConstraint(p2, TypeComp, ClassType(c))) if v == p2 => acc.intersect(Set(c))
+      case (acc, PureConstraint(p2, TypeComp, SuperclassOf(c))) if v == p2 => acc.intersect(getSupertypesOf(c))
+      case (acc, _) => acc
+    }
+  }
+  def pureVarTypeMap(state:State):Map[PureVar, Set[String]] = {
+    val pvMap: Map[PureVar, Set[String]] = state.pureVars().map(p => (p,typeSetForPureVar(p,state))).toMap
+    val pvMap2 = state.pureFormula.foldLeft(pvMap){
+      case(acc, PureConstraint(p1:PureVar, Equals, p2:PureVar)) => {
+        val newPvClasses = acc(p1).intersect(acc(p2))
+        acc + (p1->newPvClasses) + (p2 -> newPvClasses)
+      }
+      case (acc,_) => acc
+    }
+    pvMap2
   }
 }

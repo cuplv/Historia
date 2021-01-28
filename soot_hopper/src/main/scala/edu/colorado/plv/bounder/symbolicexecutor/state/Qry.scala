@@ -2,21 +2,20 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.symbolicexecutor.SymbolicExecutorConfig
+import edu.colorado.plv.bounder.symbolicexecutor.{SymbolicExecutor, SymbolicExecutorConfig}
 
 import scala.util.matching.Regex
 
 object Qry {
 
-  def makeReach[M,C](config: SymbolicExecutorConfig[M,C],
+  def makeReach[M,C](ex: SymbolicExecutor[M,C],
                      w:IRWrapper[M,C],
                      className:String,
                      methodName:String, line:Int):List[Qry] = {
     val locs = w.findLineInMethod(className, methodName,line)
     assert(locs.size == 1)
     val targetLoc = locs.head
-    val acr = config.c.getResolver
-    val containingMethodPos: List[Loc] = BounderUtil.resolveMethodReturnForAppLoc(config.c.getResolver, targetLoc)
+    val containingMethodPos: List[Loc] = BounderUtil.resolveMethodReturnForAppLoc(ex.getAppCodeResolver, targetLoc)
     containingMethodPos.map{method =>
       val queryStack = List(CallStackFrame(method, None,Map()))
       val state0 = State.topState.copy(callStack = queryStack)
@@ -24,7 +23,7 @@ object Qry {
     }
   }
 
-  def makeCallinReturnNonNull[M,C](config: SymbolicExecutorConfig[M,C],
+  def makeCallinReturnNonNull[M,C](ex: SymbolicExecutor[M,C],
                                    w:IRWrapper[M,C],
                                    className:String,
                                    methodName:String,
@@ -43,7 +42,7 @@ object Qry {
     val (local, location) = callinLocals.head
 
     //local.method
-    val containingMethodPos: List[Loc] = BounderUtil.resolveMethodReturnForAppLoc(config.c.getResolver, location)
+    val containingMethodPos: List[Loc] = BounderUtil.resolveMethodReturnForAppLoc(ex.getAppCodeResolver, location)
 
     containingMethodPos.map { pos =>
       val queryStack = List(CallStackFrame(pos, None, Map()))
@@ -54,7 +53,7 @@ object Qry {
     }
   }
 
-  def makeReceiverNonNull[M,C](config: SymbolicExecutorConfig[M,C],
+  def makeReceiverNonNull[M,C](ex: SymbolicExecutor[M,C],
                                w:IRWrapper[M,C],
                                className:String,
                                methodName:String, line:Int):List[Qry] = {
@@ -72,7 +71,7 @@ object Qry {
       case _ => ???
     }
 
-    val cbexits = BounderUtil.resolveMethodReturnForAppLoc(config.c.getResolver, derefLoc)
+    val cbexits = BounderUtil.resolveMethodReturnForAppLoc(ex.getAppCodeResolver, derefLoc)
     cbexits.map { cbexit =>
       val queryStack = List(CallStackFrame(cbexit, None, Map()))
       val state0 = State.topState.copy(callStack = queryStack)

@@ -2,12 +2,13 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir._
+import edu.colorado.plv.bounder.solver.{PersistantConstraints, StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, FieldPtEdge, HeapPtEdge, LSPure, PureVar, State, StaticPtEdge}
 import scalaz.Memo
 /**
  * Functions to resolve control flow edges while maintaining context sensitivity.
  */
-class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver) {
+class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver, persistantConstraints: PersistantConstraints) {
   def getResolver = resolver
 
   //TODO: cache result
@@ -69,7 +70,10 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
     val localType = fr.base.localType
     state.heapConstraints.exists{
       case (FieldPtEdge(p, otherFieldName),_) if fname == otherFieldName =>
-        val res = state.pvTypeUpperBound(p).forall(wrapper.canAlias(localType, _))
+//        val res = state.pvTypeUpperBound(p).forall(wrapper.canAlias(localType, _))
+        val posLocalTypes = persistantConstraints.getSubtypesOf(localType)
+        val pureTypes = persistantConstraints.typeSetForPureVar(p,state)
+        val res = posLocalTypes.exists(t => pureTypes.contains(t))
         res
       case _ => false
     }

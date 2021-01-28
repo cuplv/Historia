@@ -15,16 +15,15 @@ class SymbolicExecutorTest extends AnyFunSuite {
     assert(test_interproc_1 != null)
     val w = new JimpleFlowdroidWrapper(test_interproc_1, PatchedFlowdroidCallGraph)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
-    val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set()))
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(8), w, resolver,transfer, printProgress = true)
-    val query = Qry.makeReceiverNonNull(config, w,
+      stepLimit = Some(8), w,transfer, printProgress = true)
+    val symbolicExecutor = config.getSymbolicExecutor
+    val query = Qry.makeReceiverNonNull(symbolicExecutor, w,
       "com.example.test_interproc_1.MainActivity",
       "java.lang.String objectString()",21)
     // Call symbolic executor
 
-    val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
     val result: Set[PathNode] = symbolicExecutor.executeBackward(query)
     assert(result.size == 1)
     assert(result.iterator.next.qry.isInstanceOf[BottomQry])
@@ -38,15 +37,14 @@ class SymbolicExecutorTest extends AnyFunSuite {
     assert(test_interproc_1 != null)
     val w = new JimpleFlowdroidWrapper(test_interproc_1, PatchedFlowdroidCallGraph)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
-    val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
 
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, ResumePauseSpec.spec)
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(60), w,resolver,transfer, printProgress = true, z3Timeout = Some(30))
-    val query = Qry.makeReceiverNonNull(config, w,
+      stepLimit = Some(60), w,transfer, printProgress = true, z3Timeout = Some(30))
+    val symbolicExecutor = config.getSymbolicExecutor
+    val query = Qry.makeReceiverNonNull(symbolicExecutor, w,
       "com.example.test_interproc_2.MainActivity",
       "void onPause()",27)
-    val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
     val result: Set[PathNode] = symbolicExecutor.executeBackward(query)
     PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/foo.dot")
     PrettyPrinting.printWitnessTraces(result, outFile="/Users/shawnmeier/Desktop/foo.witnesses")
@@ -57,14 +55,13 @@ class SymbolicExecutorTest extends AnyFunSuite {
     assert(test_interproc_1 != null)
     val w = new JimpleFlowdroidWrapper(test_interproc_1, PatchedFlowdroidCallGraph)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
-    val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, ResumePauseSpec.spec)
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(50), w,resolver,transfer, printProgress = true, z3Timeout = Some(30))
-    val query = Qry.makeReach(config, w,
+      stepLimit = Some(50), w,transfer, printProgress = true, z3Timeout = Some(30))
+    val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
+    val query = Qry.makeReach(symbolicExecutor, w,
       "com.example.test_interproc_2.MainActivity",
       "void onPause()",25)
-    val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
     val result: Set[PathNode] = symbolicExecutor.executeBackward(query)
     PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/witnessOnPause.dot")
     assert(BounderUtil.interpretResult(result) == Witnessed)
@@ -74,14 +71,13 @@ class SymbolicExecutorTest extends AnyFunSuite {
     assert(test_interproc_1 != null)
     val w = new JimpleFlowdroidWrapper(test_interproc_1, PatchedFlowdroidCallGraph)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
-    val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, ResumePauseSpec.spec)
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(50), w,resolver,transfer, printProgress = true, z3Timeout = Some(30))
-    val query = Qry.makeReach(config, w,
+      stepLimit = Some(50), w,transfer, printProgress = true, z3Timeout = Some(30))
+    val symbolicExecutor = config.getSymbolicExecutor
+    val query = Qry.makeReach(symbolicExecutor, w,
       "com.example.test_interproc_2.MainActivity",
       "void onResume()",20)
-    val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
     val result: Set[PathNode] = symbolicExecutor.executeBackward(query)
     PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/witnessOnResume.dot")
     assert(BounderUtil.interpretResult(result) == Witnessed)

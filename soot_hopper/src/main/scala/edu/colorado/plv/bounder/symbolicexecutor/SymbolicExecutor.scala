@@ -4,6 +4,7 @@ import com.microsoft.z3.Context
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, IRWrapper, Loc}
 import edu.colorado.plv.bounder.solver.{PersistantConstraints, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, Qry, SomeQry, WitnessedQry}
+import soot.SootMethod
 
 import scala.annotation.tailrec
 import scala.collection.parallel.CollectionConverters.ImmutableSetIsParallelizable
@@ -17,11 +18,12 @@ case object AppOnlyCallGraph extends CallGraphSource
 
 case class SymbolicExecutorConfig[M,C](stepLimit: Option[Int],
                                        w :  IRWrapper[M,C],
-                                       c : ControlFlowResolver[M,C],
                                        transfer : TransferFunctions[M,C],
                                        printProgress : Boolean = false,
                                        z3Timeout : Option[Int] = None
-                                      )
+                                      ){
+  def getSymbolicExecutor =
+    new SymbolicExecutor[M, C](this)}
 class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   val ctx = new Context
 //  val solver = ctx.mkSolver
@@ -35,8 +37,12 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     solver.setParameters(params)
     solver
   }
-  val persistantConstraints =
-    new PersistantConstraints(ctx, solver, config.w.getClassHierarchy)
+  val persistantConstraints = new PersistantConstraints(ctx, solver, config.w.getClassHierarchy)
+
+  val appCodeResolver = new DefaultAppCodeResolver[M,C](config.w)
+  def getAppCodeResolver = appCodeResolver
+  val controlFlowResolver = new ControlFlowResolver[M,C](config.w,appCodeResolver, persistantConstraints)
+  def getControlFlowResolver = controlFlowResolver
   val stateSolver = new Z3StateSolver(persistantConstraints)
   /**
    *
@@ -149,7 +155,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
    */
   def executeStep(qry:Qry):Set[Qry] = qry match{
     case SomeQry(state, loc) =>
-      val predecessorLocations = config.c.resolvePredicessors(loc,state)
+      val predecessorLocations = controlFlowResolver.resolvePredicessors(loc,state)
       //TODO: check for witnessed state
       predecessorLocations.flatMap(l => {
         val newStates = config.transfer.transfer(state,l,loc)

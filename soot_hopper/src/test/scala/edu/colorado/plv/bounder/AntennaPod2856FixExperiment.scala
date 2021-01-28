@@ -13,16 +13,16 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
     assert(apk != null)
     val w = new JimpleFlowdroidWrapper(apk,PatchedFlowdroidCallGraph)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
-    val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
+//    val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w,
       new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull)))
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(90), w, resolver,transfer, printProgress = true)
-    val query = Qry.makeCallinReturnNonNull(config, w,
+      stepLimit = Some(90), w,transfer, printProgress = true)
+    val symbolicExecutor = config.getSymbolicExecutor
+    val query = Qry.makeCallinReturnNonNull(symbolicExecutor, w,
       "de.danoeh.antennapod.fragment.ExternalPlayerFragment",
       "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)",200,
       callinMatches = ".*getActivity.*".r)
-    val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
     val result = symbolicExecutor.executeBackward(query)
     PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/antennapod_fix_2856.dot")
     PrettyPrinting.printWitnessTraces(result, outFile="/Users/shawnmeier/Desktop/antennapod_fix_2856.witnesses")

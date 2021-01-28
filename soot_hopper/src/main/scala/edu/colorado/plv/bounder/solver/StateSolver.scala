@@ -367,26 +367,6 @@ trait StateSolver[T] {
     }
   }
 
-  def typeSetForPureVar(v:PureVar, state:State):Set[String] = {
-    state.pureFormula.foldLeft(persist.getSubtypesOf("java.lang.Object")) {
-      case (acc, PureConstraint(p2, TypeComp, SubclassOf(c))) if v == p2 => acc.intersect(persist.getSubtypesOf(c))
-      case (acc, PureConstraint(p2, TypeComp, ClassType(c))) if v == p2 => acc.intersect(Set(c))
-      case (acc, PureConstraint(p2, TypeComp, SuperclassOf(c))) if v == p2 => acc.intersect(persist.getSupertypesOf(c))
-      case (acc, _) => acc
-    }
-  }
-  def pureVarTypeMap(state:State):Map[PureVar, Set[String]] = {
-    val pvMap: Map[PureVar, Set[String]] = state.pureVars().map(p => (p,typeSetForPureVar(p,state))).toMap
-    val pvMap2 = state.pureFormula.foldLeft(pvMap){
-      case(acc, PureConstraint(p1:PureVar, Equals, p2:PureVar)) => {
-        val newPvClasses = acc(p1).intersect(acc(p2))
-        acc + (p1->newPvClasses) + (p2 -> newPvClasses)
-      }
-      case (acc,_) => acc
-    }
-    pvMap2
-  }
-
   def simplify(state: State, maxWitness: Option[Int] = None): Option[State] = {
     if(state.isSimplified) Some(state) else {
       val state2 = state.copy(pureFormula = state.pureFormula.filter{
@@ -394,7 +374,7 @@ trait StateSolver[T] {
         case _ => true
       })
       if (!encodeTypeConsteraints) {
-        val pvMap2 = pureVarTypeMap(state)
+        val pvMap2 = persist.pureVarTypeMap(state)
         if(pvMap2.exists(a => a._2.isEmpty)){
           return None
         }
@@ -444,8 +424,8 @@ trait StateSolver[T] {
     // TODO: encode inequality of heap cells in smt formula?
 
     if(!encodeTypeConsteraints){
-      val s1TypeMap = pureVarTypeMap(s1)
-      val s2TypeMap = pureVarTypeMap(s2)
+      val s1TypeMap = persist.pureVarTypeMap(s1)
+      val s2TypeMap = persist.pureVarTypeMap(s2)
       val typesSubsume =
         s1TypeMap.keySet.forall(pv => s2TypeMap.get(pv).exists(tset => s1TypeMap(pv).union(tset) == s1TypeMap(pv)))
       if(!typesSubsume){

@@ -4,7 +4,7 @@ import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NI}
 import edu.colorado.plv.bounder.lifestate.{SpecSignatures, SpecSpace}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
-import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, ControlFlowResolver, DefaultAppCodeResolver, FlowdroidCallGraph, SymbolicExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, ControlFlowResolver, DefaultAppCodeResolver, FlowdroidCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
 
@@ -45,8 +45,8 @@ class SootUtilsTest extends AnyFunSuite {
    * @param b functon of location that returns true when desired location is found
    * @return
    */
-  private def iterPredUntil(l:Set[Loc],
-                            config: SymbolicExecutorConfig[SootMethod, soot.Unit],
+  private def iterPredUntil[M,C](l:Set[Loc],
+                            resolver:ControlFlowResolver[M,C],
                             b : Loc=>Boolean,
                             state: State,
                             count:Int):Option[Loc] = {
@@ -57,11 +57,11 @@ class SootUtilsTest extends AnyFunSuite {
     l.find(b) match {
       case Some(v) => Some(v)
       case None =>
-        val pred: Set[Loc] = l.flatMap(config.c.resolvePredicessors(_, state))
+        val pred: Set[Loc] = l.flatMap(resolver.resolvePredicessors(_, state))
         if(pred.isEmpty)
           None
         else
-          iterPredUntil(pred, config,b,state, count-1)
+          iterPredUntil(pred, resolver,b,state, count-1)
     }
   }
 
@@ -71,13 +71,14 @@ class SootUtilsTest extends AnyFunSuite {
     assert(test_interproc_1 != null)
     val w = new JimpleFlowdroidWrapper(test_interproc_1, FlowdroidCallGraph)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
-    val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
+//    val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
     val testSpec = LSSpec(NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
       SpecSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set(testSpec)))
     val config: SymbolicExecutorConfig[SootMethod, soot.Unit] = SymbolicExecutorConfig(
-      stepLimit = Some(50), w,resolver,transfer, printProgress = true, z3Timeout = Some(30))
-    val query = Qry.makeReceiverNonNull(config, w,
+      stepLimit = Some(50), w,transfer, printProgress = true, z3Timeout = Some(30))
+    val symbolicExecutor = config.getSymbolicExecutor
+    val query = Qry.makeReceiverNonNull(symbolicExecutor, w,
       "com.example.test_interproc_2.MainActivity",
       "void onPause()",27)
     val l = query.find{
@@ -86,7 +87,7 @@ class SootUtilsTest extends AnyFunSuite {
     }.get.loc
 
 
-    val entryloc = iterPredUntil(Set(l), config, {
+    val entryloc = iterPredUntil(Set(l), symbolicExecutor.controlFlowResolver, {
       case CallbackMethodInvoke(_,_,_) => true
       case l => false
     },State.topState, 12)
@@ -94,7 +95,7 @@ class SootUtilsTest extends AnyFunSuite {
 
     println("---")
     val pv = PureVar(0)
-    val retPause = iterPredUntil(Set(l), config, {
+    val retPause = iterPredUntil(Set(l), symbolicExecutor.controlFlowResolver, {
       case CallbackMethodReturn(_,name,_,_) if name.contains("onPause") => true
       case _ => false
     },State.topState.copy(traceAbstraction = Set(AbstractTrace(SpecSignatures.Activity_onPause_entry,Nil, Map()))),20)
@@ -105,13 +106,14 @@ class SootUtilsTest extends AnyFunSuite {
     assert(test_interproc_1 != null)
     val w = new JimpleFlowdroidWrapper(test_interproc_1, FlowdroidCallGraph)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
-    val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
+//    val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
     val testSpec = LSSpec(NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
       SpecSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set(testSpec)))
     val config: SymbolicExecutorConfig[SootMethod, soot.Unit] = SymbolicExecutorConfig(
-      stepLimit = Some(50), w,resolver,transfer, printProgress = true, z3Timeout = Some(30))
-    val query = Qry.makeReach(config, w,
+      stepLimit = Some(50), w,transfer, printProgress = true, z3Timeout = Some(30))
+    val symbolicExecutor = config.getSymbolicExecutor
+    val query = Qry.makeReach(symbolicExecutor, w,
       "com.example.test_interproc_2.MainActivity",
       "void onCreate(android.os.Bundle)",16)
 
@@ -120,7 +122,7 @@ class SootUtilsTest extends AnyFunSuite {
       case _ => false
     }.get.loc
 
-    val entryloc = iterPredUntil(Set(l), config, {
+    val entryloc = iterPredUntil(Set(l), symbolicExecutor.controlFlowResolver, {
       case CallbackMethodInvoke(_,_,_) => true
       case l@AppLoc(a,b,false) =>
         val cmd = w.cmdAtLocation(l)

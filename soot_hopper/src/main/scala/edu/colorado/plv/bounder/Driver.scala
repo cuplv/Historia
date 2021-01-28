@@ -46,16 +46,16 @@ object Driver {
     val callGraph = FlowdroidCallGraph
     val w = new JimpleFlowdroidWrapper(apkPath, callGraph)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
-    val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
+//    val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
     val testSpec = LSSpec(NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
       SpecSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set(testSpec)))
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(30), w,resolver,transfer)
-    val query = Qry.makeReceiverNonNull(config, w,
+      stepLimit = Some(30), w,transfer)
+    val symbolicExecutor = config.getSymbolicExecutor
+    val query = Qry.makeReceiverNonNull(symbolicExecutor, w,
       "com.example.test_interproc_2.MainActivity",
       "void onPause()",27)
-    val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
     val result: Set[PathNode] = symbolicExecutor.executeBackward(query)
     val outname = apkPath.split("/").last
     PrettyPrinting.dotWitTree(result, s"${outFolder}/${outname}.dot",false)
