@@ -350,6 +350,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
     })
   }
 
+
   override def makeCmd(cmd: soot.Unit, method: SootMethod,
                        locOpt:Option[AppLoc] = None): CmdWrapper = {
     val loc:AppLoc = locOpt.getOrElse(???)
@@ -389,12 +390,15 @@ class JimpleFlowdroidWrapper(apkPath : String,
       case _:JExitMonitorStmt => NopCmd(loc) // ignore concurrency
       case _:JEnterMonitorStmt => NopCmd(loc) // ignore concurrency
       case v =>
-//        println(s"unimplemented command: ${v}")
-        ???
-
+        throw CmdNotImplemented(s"Unimplemented command: ${v}")
     }
   }
 
+  override def degreeOut(cmd : AppLoc) = {
+    val ll = cmd.line.asInstanceOf[JimpleLineLoc]
+    val unitGraph = getUnitGraph(ll.method.retrieveActiveBody())
+    unitGraph.getSuccsOf(ll.cmd).size()
+  }
   override def commandPredecessors(cmdWrapper : CmdWrapper):List[AppLoc] =
     cmdWrapper.getLoc match{
     case AppLoc(methodWrapper @ JimpleMethodLoc(_),JimpleLineLoc(cmd,sootMethod), true) => {
@@ -526,7 +530,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
       ClassConst(JimpleFlowdroidWrapper.stringNameOfType(a.getType))
     case v =>
       //println(v)
-      ???
+      throw CmdNotImplemented(s"Command not implemented: $v  type: ${v.getType}")
   }
 
   protected def makeVal(box: Value):RVal = box match{
@@ -590,6 +594,12 @@ class JimpleFlowdroidWrapper(apkPath : String,
   }
 
   def canAlias(type1: String, type2: String): Boolean = {
+    val oneIsPrimitive = List(type1,type2).exists{
+      case PersistantConstraints.Primitive() => true
+      case _ => false
+    }
+    if(oneIsPrimitive)
+      return false
     if(type1 == type2) true else {
       val hierarchy: Hierarchy = Scene.v().getActiveHierarchy
       assert(Scene.v().containsClass(type1), s"Type: $type1 not in soot scene")
@@ -657,7 +667,8 @@ class JimpleFlowdroidWrapper(apkPath : String,
       // note: these typically don't have any meaningful implementation anyway
       val classString = smethod.method.getDeclaringClass.toString
       if (! (classString.contains(".R$") || classString.contains("BuildConfig") || classString.endsWith(".R"))){
-        println(s"Method $method has no active body, consider adding it to FrameworkExtensions.txt")
+        //TODO: figure out why some app methods don't have active bodies
+//        println(s"Method $method has no active body, consider adding it to FrameworkExtensions.txt")
       }
       List()
     }

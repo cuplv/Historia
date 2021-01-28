@@ -27,7 +27,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
     try {
       wrapper.cmdAtLocation(loc)
     }catch{
-      case _:NotImplementedError => NopCmd(loc)
+      case CmdNotImplemented(_) => NopCmd(loc)
     }
   }
 
@@ -69,7 +69,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
     val localType = fr.base.localType
     state.heapConstraints.exists{
       case (FieldPtEdge(p, otherFieldName),_) if fname == otherFieldName =>
-        state.pvTypeUpperBound(p).forall(wrapper.canAlias(localType, _))
+        val res = state.pvTypeUpperBound(p).forall(wrapper.canAlias(localType, _))
+        res
       case _ => false
     }
   }

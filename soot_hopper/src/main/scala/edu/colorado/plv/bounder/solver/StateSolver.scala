@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.solver
 
 import edu.colorado.plv.bounder.ir.TMessage
 import edu.colorado.plv.bounder.lifestate.LifeState
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSFalse, LSPred, LSTrue, NI, Not, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState._
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 
 trait Assumptions
@@ -305,6 +305,8 @@ trait StateSolver[T] {
   }
 
   protected def mkDistinct(pvList: Iterable[PureVar]): T
+  protected def encodeTypeConsteraints:Boolean
+  protected def persist: PersistantConstraints
 
   def toAST(heap: Map[HeapPtEdge, PureExpr]): T={
     // The only constraint we get from the heap is that domain elements must be distinct
@@ -325,7 +327,11 @@ trait StateSolver[T] {
 
     // pure formula are for asserting that two abstract addresses alias each other or not
     //  as well as asserting upper and lower bounds on concrete types associated with addresses
-    val pureAst = pure.foldLeft(mkBoolVal(true))((acc, v) =>
+    val pure2 = if(encodeTypeConsteraints)pure else pure.filter{
+      case PureConstraint(_,TypeComp, _) => false
+      case _ => true
+    }
+    val pureAst = pure2.foldLeft(mkBoolVal(true))((acc, v) =>
       mkAnd(acc, toAST(v, typeFun))
     )
 
@@ -361,14 +367,41 @@ trait StateSolver[T] {
     }
   }
 
+  def typeSetForPureVar(v:PureVar, state:State):Set[String] = {
+    state.pureFormula.foldLeft(persist.getSubtypesOf("java.lang.Object")) {
+      case (acc, PureConstraint(p2, TypeComp, SubclassOf(c))) if v == p2 => acc.intersect(persist.getSubtypesOf(c))
+      case (acc, PureConstraint(p2, TypeComp, ClassType(c))) if v == p2 => acc.intersect(Set(c))
+      case (acc, PureConstraint(p2, TypeComp, SuperclassOf(c))) if v == p2 => acc.intersect(persist.getSupertypesOf(c))
+      case (acc, _) => acc
+    }
+  }
+  def pureVarTypeMap(state:State):Map[PureVar, Set[String]] = {
+    val pvMap: Map[PureVar, Set[String]] = state.pureVars().map(p => (p,typeSetForPureVar(p,state))).toMap
+    val pvMap2 = state.pureFormula.foldLeft(pvMap){
+      case(acc, PureConstraint(p1:PureVar, Equals, p2:PureVar)) => {
+        val newPvClasses = acc(p1).intersect(acc(p2))
+        acc + (p1->newPvClasses) + (p2 -> newPvClasses)
+      }
+      case (acc,_) => acc
+    }
+    pvMap2
+  }
+
   def simplify(state: State, maxWitness: Option[Int] = None): Option[State] = {
     if(state.isSimplified) Some(state) else {
       val state2 = state.copy(pureFormula = state.pureFormula.filter{
         case PureConstraint(v, TypeComp, SubclassOf("java.lang.Object")) => false
         case _ => true
       })
+      if (!encodeTypeConsteraints) {
+        val pvMap2 = pureVarTypeMap(state)
+        if(pvMap2.exists(a => a._2.isEmpty)){
+          return None
+        }
+      }
       push()
       val messageTranslator = MessageTranslator(List(state2))
+
       val ast = toAST(state2, messageTranslator, maxWitness)
 
       if (maxWitness.isDefined) {
@@ -409,17 +442,30 @@ trait StateSolver[T] {
     if(!s1.heapConstraints.forall { case (k, v) => s2.heapConstraints.get(k).contains(v) })
       return false
     // TODO: encode inequality of heap cells in smt formula?
+
+    if(!encodeTypeConsteraints){
+      val s1TypeMap = pureVarTypeMap(s1)
+      val s2TypeMap = pureVarTypeMap(s2)
+      val typesSubsume =
+        s1TypeMap.keySet.forall(pv => s2TypeMap.get(pv).exists(tset => s1TypeMap(pv).union(tset) == s1TypeMap(pv)))
+      if(!typesSubsume){
+        return false
+      }
+    }
+
     push()
 
-    val typeFun = createTypeFun()
-    val negs1pure = s1.pureFormula.foldLeft(mkBoolVal(false)){
-      case(acc,constraint) => mkOr(mkNot(toAST(constraint,typeFun)),acc)
-    }
+    val pureFormulaEnc = if(encodeTypeConsteraints) {
+      val typeFun = createTypeFun()
+      val negs1pure = s1.pureFormula.foldLeft(mkBoolVal(false)) {
+        case (acc, constraint) => mkOr(mkNot(toAST(constraint, typeFun)), acc)
+      }
 
-    val s2pure = s2.pureFormula.foldLeft(mkBoolVal(true)){
-      case(acc,constraint) => mkAnd(toAST(constraint,typeFun),acc)
-    }
-    val pureFormulaEnc = mkAnd(negs1pure, s2pure)
+      val s2pure = s2.pureFormula.foldLeft(mkBoolVal(true)) {
+        case (acc, constraint) => mkAnd(toAST(constraint, typeFun), acc)
+      }
+      mkAnd(negs1pure, s2pure)
+    }else mkBoolVal(false)
 
     val messageTranslator = MessageTranslator(List(s1,s2))
     val len = mkIntVar(s"len_")

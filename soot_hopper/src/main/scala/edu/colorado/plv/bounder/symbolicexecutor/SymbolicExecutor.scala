@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
 import com.microsoft.z3.Context
-import edu.colorado.plv.bounder.ir.{CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, IRWrapper, Loc}
+import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, IRWrapper, Loc}
 import edu.colorado.plv.bounder.solver.{PersistantConstraints, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, Qry, SomeQry, WitnessedQry}
 
@@ -57,6 +57,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   private def subsumableLocation(loc:Loc) :Boolean = loc match{
     case _ : CallbackMethodInvoke => true
     case _ : CallbackMethodReturn => true
+    case a:AppLoc if config.w.degreeOut(a)>1 => true
     case _ : CallinMethodInvoke => false // message locations don't remember program counter so subsumption is unsound
     case _ : CallinMethodReturn => false
     case _ => false

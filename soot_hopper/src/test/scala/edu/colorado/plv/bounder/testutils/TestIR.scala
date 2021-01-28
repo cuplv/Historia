@@ -41,6 +41,8 @@ class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] 
   override def makeMethodTargets(source: MethodLoc): Set[MethodLoc] = ???
 
   override def isSuperClass(type1: String, type2: String): Boolean = ???
+
+  override def degreeOut(cmd: AppLoc): Int = ???
 }
 
 /**

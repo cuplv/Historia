@@ -260,12 +260,14 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
     }
     val pureVarFromLocals: Set[PureVar] = callStack.headOption match {
       case Some(CallStackFrame(_, _, locals)) =>
-
         locals.flatMap(a => pureVarOpt(a._2)).toSet
       case None => Set()
     }
     val pureVarFromHeap = heapConstraints.flatMap(a => pureVarOpt(a._2)).toSet
-    pureVarFromHeap ++ pureVarFromLocals
+    val pureVarFromConst = pureFormula.flatMap{
+      case PureConstraint(p1,_,p2) => Set() ++ pureVarOpt(p1) ++ pureVarOpt(p2)
+    }
+    pureVarFromHeap ++ pureVarFromLocals ++ pureVarFromConst
   }
   def isNull(pv:PureVar):Boolean = {
     pureFormula.contains(PureConstraint(pv,Equals,NullVal))

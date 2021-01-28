@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.solver
 import com.microsoft.z3._
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, PureVar, State, TypeConstraint}
 
-class Z3StateSolver(var persistentConstraints: PersistantConstraints, freshSolverForEach:Boolean = false) extends StateSolver[AST] {
+class Z3StateSolver(var persistentConstraints: PersistantConstraints) extends StateSolver[AST] {
   var solver: Solver = persistentConstraints.getSolver
   var ctx: Context = persistentConstraints.getCtx
 
@@ -131,11 +131,12 @@ class Z3StateSolver(var persistentConstraints: PersistantConstraints, freshSolve
   }
 
   override protected def freshSolverIfNeeded():Unit = {
-    if(freshSolverForEach){
-      ctx = new Context
-      solver = ctx.mkSolver
-      persistentConstraints = new PersistantConstraints(ctx,solver,persistentConstraints.getTypes)
-    }
+    ???
+//    if(freshSolverForEach){
+//      ctx = new Context
+//      solver = ctx.mkSolver
+//      persistentConstraints = new PersistantConstraints(ctx,solver,persistentConstraints.getTypes)
+//    }
   }
   //  private def printModelSolution()
   override protected def solverSimplify(t: AST,state:State, messageTranslator: MessageTranslator, logDbg:Boolean): Option[AST] = {
@@ -245,4 +246,8 @@ class Z3StateSolver(var persistentConstraints: PersistantConstraints, freshSolve
   override protected def mkDistinct(pvList: Iterable[PureVar]): AST = {
     ctx.mkDistinct(pvList.map(a => mkObjVar(a).asInstanceOf[Expr]).toArray:_*)
   }
+
+  override protected def encodeTypeConsteraints: Boolean = persistentConstraints.getUseZ3TypeSolver
+
+  override protected def persist: PersistantConstraints = persistentConstraints
 }

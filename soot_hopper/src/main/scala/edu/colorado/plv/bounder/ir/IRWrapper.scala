@@ -16,6 +16,7 @@ trait IRWrapper[M,C]{
   def findLineInMethod(className:String, methodName:String, line:Int):Iterable[AppLoc]
   def makeMethodTargets(source: MethodLoc): Set[MethodLoc]
   def makeCmd(cmd:C, method:M, loc:Option[AppLoc] = None): CmdWrapper
+  def degreeOut(cmd: AppLoc):Int
   def commandPredecessors(cmdWrapper:CmdWrapper): List[AppLoc]
   def commandNext(cmdWrapper:CmdWrapper):List[AppLoc]
 
@@ -31,6 +32,8 @@ trait IRWrapper[M,C]{
   def canAlias(type1:String, type2:String):Boolean
   def isSuperClass(type1:String, type2:String):Boolean
 }
+// Ignore parts of the IR we haven't implemented while scanning for relevant method calls and heap access
+final case class CmdNotImplemented(message:String) extends RuntimeException(message)
 sealed case class UnresolvedMethodTarget(clazz: String, methodName:String, loc:Set[MethodLoc])
 
 

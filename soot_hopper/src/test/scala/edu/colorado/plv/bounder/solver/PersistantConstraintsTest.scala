@@ -12,7 +12,7 @@ class PersistantConstraintsTest extends AnyFunSuite {
         "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
     val solver = ctx.mkSolver()
 
-    val ch = new PersistantConstraints(ctx, solver, hierarchy)
+    val ch = new PersistantConstraints(ctx, solver, hierarchy, true)
     assert(solver.check() == Status.SATISFIABLE)
 
     assert(solver.check() == Status.SATISFIABLE)

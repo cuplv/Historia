@@ -53,6 +53,7 @@ class Z3StateSolverTest extends AnyFunSuite {
     val simplifyResult2 = statesolver.simplify(unrefutableState)
     assert(simplifyResult2.isDefined)
   }
+  //TODO: group equal pure vars for type check
   test("aliased object implies fields must be aliased refuted by type constraints") {
     val statesolver = getStateSolver
 

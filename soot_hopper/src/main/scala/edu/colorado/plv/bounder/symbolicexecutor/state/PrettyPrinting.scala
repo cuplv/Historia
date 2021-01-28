@@ -9,13 +9,13 @@ object PrettyPrinting {
   def qryString(q : Qry):String = q match{
     case SomeQry(state,loc) =>
       loc.toString +
-        "   state: " + state.callStack.headOption.map(_.locals.toString).getOrElse("Empty stack")
+        "\n       state: " + state.toString.replaceAll("\n"," ")
     case BottomQry(state,loc) =>
       "REFUTED: " + loc.toString +
-        "   state: " + state.callStack.headOption.map(_.locals.toString).getOrElse("Empty stack")
+        "\n       state: " + state.toString.replaceAll("\n"," ")
     case WitnessedQry(state,loc) =>
       "WITNESSED: " + loc.toString +
-        "   state: " + state.callStack.headOption.map(_.locals.toString).getOrElse("Empty stack")
+        "\n       state: " + state.toString.replaceAll("\n"," ")
   }
   def witnessToTrace(pn:PathNode):List[String] = pn match{
     case PathNode(q, Some(pred), _) =>

@@ -517,8 +517,10 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       }
     case _:InvokeCmd => Set(state)// Invoke not relevant and skipped
     case AssignCmd(_, _:Invoke, _) => Set(state)
-    case If(b,_) =>
-      Set(assumeInState(b,state))
+    //TODO: handle if, when transfering over if, assume b was true.
+      // Note: ignoring if stmts is sound but not precise
+    case If(b,_) => Set(state)
+//      Set(assumeInState(b,state))
     case AssignCmd(l,Cast(castT, local),cmdloc) =>
       val state1 = state.get(local) match{
         case Some(v) => state.copy(pureFormula = state.pureFormula + PureConstraint(v, TypeComp, SubclassOf(castT)))
@@ -557,16 +559,22 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     }
   }
 
-  def assumeInState(b:RVal, state:State): State = b match{
-    case Binop(l@LocalWrapper(name,ltype), op, const) if state.containsLocal(l) =>
-      println(name)
-      println(ltype)
-      ???
-    case Binop(l:LocalWrapper,_,const) if !state.containsLocal(l) =>
-      assert(!const.isInstanceOf[LocalWrapper])
-      state
-    case v =>
-      println(v)
-      ???
-  }
+//  def assumeInState(b:RVal, state:State): State = b match{
+//    case Binop(v1, op, v2) =>
+//      val oneIsInState
+//
+//  }
+
+//    b match{
+//    case Binop(l@LocalWrapper(name,ltype), op, const) if state.containsLocal(l) =>
+//      println(name)
+//      println(ltype)
+//      ???
+//    case Binop(l:LocalWrapper,_,const) if !state.containsLocal(l) =>
+//      assert(!const.isInstanceOf[LocalWrapper])
+//      state
+//    case v =>
+//      println(v)
+//      ???
+//  }
 }

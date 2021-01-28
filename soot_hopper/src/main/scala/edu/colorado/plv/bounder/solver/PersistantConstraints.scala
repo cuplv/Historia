@@ -22,6 +22,7 @@ object PersistantConstraints{
     doubleType,
     floatType,
     booleanType)
+  val Primitive = primitiveTypes.mkString("|").r
 }
 
 /**
@@ -30,10 +31,14 @@ object PersistantConstraints{
  * @param ctx z3 context to add class hierarchy assertions
  * @param types mapping from super types to sub types
  */
-class PersistantConstraints(ctx: Context, solver: Solver, types : Map[String,Set[String]]) {
+class PersistantConstraints(ctx: Context, solver: Solver, types : Map[String,Set[String]],
+                            useZ3TypeSolver: Boolean = false) {
   def getSolver: Solver = solver
   def getCtx: Context = ctx
   def getTypes:Map[String,Set[String]] = types
+  def getUseZ3TypeSolver:Boolean = useZ3TypeSolver
+  def getSubtypesOf(tname:String):Set[String] = types(tname)
+  def getSupertypesOf(tname:String) :Set[String] = types.keySet.filter(k => types(k).contains(tname))
 
   val typeToInt: Map[String, Int] = types.keySet.zipWithIndex.toMap
   val intToType: Map[Int, String] = typeToInt.map{a =>
@@ -50,7 +55,7 @@ class PersistantConstraints(ctx: Context, solver: Solver, types : Map[String,Set
 
   val subtypeFun: FuncDecl = ctx.mkFuncDecl("subtype", Array(tsort:Sort, tsort), ctx.mkBoolSort())
 
-  def mkHirearchyConstraints() {
+  private def mkHirearchyConstraints() {
     val arg1 = ctx.mkBound(0, tsort)
     val arg2 = ctx.mkBound(1, tsort)
     val subclassConstraint =
@@ -68,16 +73,24 @@ class PersistantConstraints(ctx: Context, solver: Solver, types : Map[String,Set
       Array() /*patterns*/ , null, null, null)
     solver.add(subtype_forall)
   }
-  mkHirearchyConstraints()
-  solver.push()
+  if(useZ3TypeSolver) {
+    mkHirearchyConstraints()
+    solver.push()
+  }
 
 
   def addTypeConstraint(vname: String, typeConstraint: TypeConstraint): BoolExpr = {
+    if(!useZ3TypeSolver){
+      throw new IllegalStateException("Z3 type solving disabled")
+    }
     val const: Expr = ctx.mkConst("t_" + vname, tsort)
     exprTypeConstraint(const, typeConstraint)
   }
 
   def exprTypeConstraint(e: Expr, typeConstraint: TypeConstraint): BoolExpr = {
+    if(!useZ3TypeSolver){
+      throw new IllegalStateException("Z3 type solving disabled")
+    }
     typeConstraint match {
       case SubclassOf(c) =>
         subtypeFun.apply(finiteDomVal(c), e).asInstanceOf[BoolExpr]
