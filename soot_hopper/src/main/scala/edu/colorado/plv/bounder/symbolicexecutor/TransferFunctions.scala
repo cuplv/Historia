@@ -541,6 +541,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       targets.foldLeft(Set[State]()){
         case (acc, cmd) => acc ++ cmdTransfer(cmd, state)
       }
+    case AssignCmd(l:LocalWrapper, ArrayReference(base, index),_) =>
+      //TODO:
+      ???
     case c =>
       println(c)
       ???

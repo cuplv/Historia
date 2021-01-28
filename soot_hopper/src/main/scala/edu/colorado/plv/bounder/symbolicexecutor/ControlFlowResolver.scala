@@ -5,6 +5,8 @@ import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.solver.{PersistantConstraints, StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, FieldPtEdge, HeapPtEdge, LSPure, PureVar, State, StaticPtEdge}
 import scalaz.Memo
+
+import scala.collection.mutable
 /**
  * Functions to resolve control flow edges while maintaining context sensitivity.
  */
@@ -32,11 +34,22 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
     }
   }
 
+  var printCacheCache = mutable.Set[String]()
+  def printCache(s:String):Unit = {
+    if(!printCacheCache.contains(s)) {
+      println(s)
+      printCacheCache.add(s)
+    }
+  }
   private def callsToRetLoc(loc:MethodLoc):Set[MethodLoc] = {
     val directCalls = lazyDirectCallsGraph(loc)
     val internalCalls = directCalls.flatMap{
-      case InternalMethodReturn(_,_,loc) =>
-        Some(loc)
+      case InternalMethodReturn(_,_,oloc) =>
+        // We only care about direct calls, calls through framework are considered callbacks
+        if(!resolver.isFrameworkClass(oloc.classType))
+          Some(oloc)
+        else
+          None
       case _ =>
         None
     }
@@ -122,13 +135,25 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C], resolver: AppCodeResolver
     if (resolver.isFrameworkClass(m.classType))
       return false // body can only be relevant to app heap or trace if method is in the app
     val callees = memoizedallCalls(m) + m
-    callees.exists{c =>
+    callees.exists{c => //====
       if(relevantHeap(c,state))
         true
       else if(relevantTrace(c,state))
         true
       else
         false
+    }
+  }
+  def relevantMethodBodyDBG(m:MethodLoc, state:State, visited : Set[MethodLoc] = Set()):Boolean = {
+    if(visited.contains(m)){
+      false
+    } else if(relevantHeap(m,state)) {
+      true
+    } else if(relevantTrace(m,state)) {
+      true
+    } else {
+      val directCalls = callsToRetLoc(m)
+      directCalls.exists(relevantMethodBodyDBG(_, state, visited + m))
     }
   }
 
