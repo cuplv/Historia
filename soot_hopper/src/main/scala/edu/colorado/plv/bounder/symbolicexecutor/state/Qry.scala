@@ -59,9 +59,11 @@ object Qry {
                                methodName:String, line:Int):List[Qry] = {
     val locs = w.findLineInMethod(className, methodName,line)
 
-    val derefLocs: Iterable[AppLoc] = locs.filter(pred = a => {
-      w.cmdAtLocation(a).isInstanceOf[AssignCmd]
+    val derefLocs: Iterable[AppLoc] = locs.filter(a => w.cmdAtLocation(a) match {
+      case AssignCmd(tgt, source :Invoke, _) => true
+      case _ => false
     })
+
     assert(derefLocs.size == 1)
     // Get location of query
     val derefLoc: AppLoc = derefLocs.iterator.next

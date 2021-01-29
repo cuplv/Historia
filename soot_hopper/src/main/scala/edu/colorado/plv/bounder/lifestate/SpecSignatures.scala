@@ -31,26 +31,38 @@ object SpecSignatures {
   val Fragment_get_activity_exit_null = I(CIExit, Fragment_getActivity_Signatures, "@null"::"f"::Nil)
 
   val Fragment_onActivityCreated_Signatures = Set(
-    ("android.app.Fragment","void onActivityCreated(android.os.Bundle)"),
-    ("android.support.v4.app.Fragment","void onActivityCreated(android.os.Bundle)"),
-    ("android.support.v4.app.DialogFragment","void onActivityCreated(android.os.Bundle)"),
     ("android.app.DialogFragment","void onActivityCreated(android.os.Bundle)"),
+    ("android.app.Fragment","void onActivityCreated(android.os.Bundle)"),
     ("android.arch.lifecycle.ReportFragment","void onActivityCreated(android.os.Bundle)"),
     ("android.preference.PreferenceFragment","void onActivityCreated(android.os.Bundle)"),
     ("android.support.v14.preference.PreferenceFragment","void onActivityCreated(android.os.Bundle)"),
+    ("android.support.v4.app.DialogFragment","void onActivityCreated(android.os.Bundle)"),
+    ("android.support.v4.app.Fragment","void onActivityCreated(android.os.Bundle)"),
     ("android.support.v7.preference.PreferenceFragmentCompat","void onActivityCreated(android.os.Bundle)"),
     ("android.support.wearable.view.CardFragment","void onActivityCreated(android.os.Bundle)"),
+    ("androidx.fragment.app.DialogFragment","void onActivityCreated(android.os.Bundle)"),
+    ("androidx.fragment.app.Fragment","void onActivityCreated(android.os.Bundle)"),
+    ("androidx.lifecycle.ReportFragment","void onActivityCreated(android.os.Bundle)"),
   )
 
   val Fragment_onActivityCreated_entry = I(CBEnter, Fragment_onActivityCreated_Signatures, "_"::"f"::Nil)
 
   val Fragment_onDestroy_Signatures = Set(
     ("android.app.Fragment","void onDestroy()"),
-    ("android.support.v4.app.Fragment","void onDestroy()"),
-    ("android.support.v4.app.FragmentActivity","void onDestroy()"),
+    ("android.app.Fragment","void onDestroyOptionsMenu()"),
+    ("android.app.Fragment","void onDestroyView()"),
     ("android.arch.lifecycle.ReportFragment","void onDestroy()"),
     ("android.preference.PreferenceFragment","void onDestroy()"),
+    ("android.support.v4.app.Fragment","void onDestroy()"),
+    ("android.support.v4.app.FragmentActivity","void onDestroy()"),
     ("android.support.wearable.view.CardFragment","void onDestroy()"),
+    ("androidx.fragment.app.DialogFragment","void onDestroyView()"),
+    ("androidx.fragment.app.Fragment","void onDestroy()"),
+    ("androidx.fragment.app.Fragment","void onDestroyOptionsMenu()"),
+    ("androidx.fragment.app.Fragment","void onDestroyView()"),
+    ("androidx.fragment.app.FragmentActivity","void onDestroy()"),
+    ("androidx.fragment.app.ListFragment","void onDestroyView()"),
+    ("androidx.lifecycle.ReportFragment","void onDestroy()"),
   )
   val Fragment_onDestroy_exit = I(CBExit, Fragment_onDestroy_Signatures, "_"::"f"::Nil)
 
@@ -63,7 +75,12 @@ object SpecSignatures {
   val RxJava_unsubscribe = Set(
     ("rx.Subscription", "void unsubscribe()")
   )
-  val RxJava_unsubscribe_entry = I(CIEnter, RxJava_unsubscribe, "_"::"l"::Nil)
+  val RxJava_unsubscribe_exit = I(CIExit, RxJava_unsubscribe, "_"::"s"::Nil)
+
+  val RxJava_subscribe = Set(
+    ("rx.Single", "rx.Subscription subscribe(rx.functions.Action1)")
+  )
+  val RxJava_subscribe_exit = I(CIExit, RxJava_subscribe, "_"::"s"::"l"::Nil)
 }
 
 object FragmentGetActivityNullSpec{
@@ -71,10 +88,15 @@ object FragmentGetActivityNullSpec{
   val getActivityNull = LSSpec(cond, SpecSignatures.Fragment_get_activity_exit_null)
 }
 
+object RxJavaSpec{
+  val subUnsub = NI(SpecSignatures.RxJava_subscribe_exit, SpecSignatures.RxJava_unsubscribe_exit)
+  val call = LSSpec(subUnsub, SpecSignatures.RxJava_call_entry)
+}
+
 object ResumePauseSpec {
   val resumePause = NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit)
   val initPause = NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_init_exit)
-  val testSpec1 = LSSpec(And(resumePause,initPause),
+  val resumePauseInit = LSSpec(And(resumePause,initPause),
     SpecSignatures.Activity_onPause_entry)
-  val spec = new SpecSpace(Set(testSpec1))
+  val spec = new SpecSpace(Set(resumePauseInit))
 }

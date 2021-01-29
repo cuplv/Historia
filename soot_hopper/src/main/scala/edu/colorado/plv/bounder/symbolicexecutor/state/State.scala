@@ -37,10 +37,18 @@ case class AbstractTrace(a:LSPred,rightOfArrow:List[I], modelVars: Map[String,Pu
   override def toString:String = s"(${modelVars} - ${a.toString} |> ${rightOfArrow.mkString(";")})"
 }
 
-sealed trait LSParamConstraint
-case class LSPure(p: PureExpr) extends LSParamConstraint
-case class LSModelVar(s:String, trace:AbstractTrace) extends LSParamConstraint
-object LSAny extends LSParamConstraint
+sealed trait LSParamConstraint{
+  def optTraceAbs: Option[AbstractTrace]
+}
+case class LSPure(p: PureExpr) extends LSParamConstraint {
+  override def optTraceAbs: Option[AbstractTrace] = None
+}
+case class LSModelVar(s:String, trace:AbstractTrace) extends LSParamConstraint {
+  override def optTraceAbs: Option[AbstractTrace] = Some(trace)
+}
+object LSAny extends LSParamConstraint {
+  override def optTraceAbs: Option[AbstractTrace] = None
+}
 
 case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdge, PureExpr],
                  pureFormula: Set[PureConstraint], traceAbstraction: Set[AbstractTrace], nextAddr:Int) {

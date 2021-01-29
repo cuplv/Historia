@@ -12,13 +12,14 @@ object BounderUtil {
   case object Proven extends ResultSummary
   case object Witnessed extends ResultSummary
   case object Timeout extends ResultSummary
+  case object Unreachable extends ResultSummary
   def interpretResult(result: Set[PathNode]):ResultSummary = {
     if(result.forall {
       case PathNode(_: BottomQry, _, _) => true
       case PathNode(_: WitnessedQry, _, _) => false
       case PathNode(_: SomeQry, _, Some(_)) => true
       case PathNode(_: SomeQry, _, _) => false
-    }) Proven
+    }) if(result.size > 0) Proven else Unreachable
     else if(result.exists{
       case PathNode(_: WitnessedQry, _, _) => true
       case _ => false

@@ -50,10 +50,10 @@ class SpecTest extends AnyFunSuite {
     findIInFwkForall(SpecSignatures.Fragment_get_activity_exit_null
       .copy(signatures = SpecSignatures.Fragment_getActivity_Signatures
         .filter(a => a._1 != "androidx.fragment.app.Fragment" )))
-    findIInFwkForall(SpecSignatures.Fragment_onActivityCreated_entry)
-    findIInFwkForall(SpecSignatures.Fragment_onDestroy_exit)
+    assert(findIInFwk(SpecSignatures.Fragment_onActivityCreated_entry))
+    assert(findIInFwk(SpecSignatures.Fragment_onDestroy_exit))
     findIInFwkForall(SpecSignatures.RxJava_call_entry)
-    findIInFwkForall(SpecSignatures.RxJava_unsubscribe_entry)
+    findIInFwkForall(SpecSignatures.RxJava_unsubscribe_exit)
   }
   test("RXJavaSubscribe: Each I in spec signatures corresponds to a method or interface in the framework"){
     val apk = getClass.getResource("/RXJavaSubscribe-fix-debug.apk").getPath
@@ -63,10 +63,14 @@ class SpecTest extends AnyFunSuite {
     findIInFwkForall(SpecSignatures.Fragment_get_activity_exit_null
       .copy(signatures = SpecSignatures.Fragment_getActivity_Signatures
         .filter(a => a._1 == "androidx.fragment.app.Fragment" )))
+
+    assert(findIInFwk(SpecSignatures.Fragment_onActivityCreated_entry))
+    assert(findIInFwk(SpecSignatures.Fragment_onDestroy_exit))
+    assert(findIInFwk(SpecSignatures.Fragment_onDestroy_exit))
   }
 
   test("Dummy test to print framework types"){
-    val apk = getClass.getResource("/Antennapod-fix-2856-app-free-debug.apk").getPath
+    val apk = getClass.getResource("/RXJavaSubscribe-fix-debug.apk").getPath
     assert(apk != null)
     BounderSetupApplication.loadApk(apk, PatchedFlowdroidCallGraph)
     val w = new JimpleFlowdroidWrapper(apk,PatchedFlowdroidCallGraph)
@@ -78,7 +82,7 @@ class SpecTest extends AnyFunSuite {
       else Nil
     }
 
-    printMatchingSignatures("rx.","subscribe",frameworkMethods, isCallin = false)
+    printMatchingSignatures("rx","unsubscribe",frameworkMethods, isCallin = false)
   }
 
   private def printMatchingSignatures(classContains: String,

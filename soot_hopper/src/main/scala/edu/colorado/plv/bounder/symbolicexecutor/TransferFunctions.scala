@@ -33,22 +33,40 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       case (stateNext, (Some(rval), Some(pexp))) => stateNext.defineAs(rval, pexp)
     }
   def defineLSVarsAs(state: State, comb: List[(Option[RVal], LSParamConstraint)]):State = {
-    comb.foldLeft(state){
-      case (state, (Some(l:LocalWrapper), LSPure(v:PureVar))) =>
+    val comb2 = comb.groupBy(c => c._2.optTraceAbs)
+    val applySingle: (State,(Option[RVal], LSParamConstraint))=>State = {
+      case (state:State, (Some(l:LocalWrapper), LSPure(v:PureVar))) =>
         val (oldLocVal,state2) = state.getOrDefine(l)
         state2.swapPv(oldLocVal, v)
       case (state, (Some(l:LocalWrapper), LSPure(v))) =>
         println(v) //TODO: other kinds of v
         ???
-      case (state, (Some(l:LocalWrapper), LSModelVar(v,ta))) =>
-        val (oldLocVal,state2) = state.getOrDefine(l)
-        assert(state2.traceAbstraction.contains(ta), "model var constraint not contained in current state")
-        state2.copy(traceAbstraction = (state2.traceAbstraction - ta) + ta.addModelVar(v,oldLocVal) )
+      case (_:State, (Some(_:LocalWrapper), LSModelVar(_,_))) =>
+        throw new Exception("Group should have prevented this case")
+//      case (state:State, (Some(l:LocalWrapper), LSModelVar(v,ta))) =>
+//        val (oldLocVal,state2) = state.getOrDefine(l)
+//        assert(state2.traceAbstraction.contains(ta), "model var constraint not contained in current state")
+//        state2.copy(traceAbstraction = (state2.traceAbstraction - ta) + ta.addModelVar(v,oldLocVal) )
+//        ???
       case (state, (Some(NullConst), _)) => ??? //TODO: These cases shouldn't come up until const values are added to ls
       case (state, (Some(l:BoolConst), _)) => ???
       case (state, (Some(l:IntConst), _)) => ???
       case (state, (Some(l:StringConst), _)) => ???
       case (statemap, (_, _)) => statemap
+    }
+    comb2.foldLeft(state){
+      case (state,(Some(at), list)) =>
+        val (state1, mapping) = list.foldLeft((state,Map[String,PureExpr]())){
+          case ((state, map),(Some(l:LocalWrapper), LSModelVar(s,trace))) =>
+            assert(at == trace)
+            val (oldLocVal,state2) = state.getOrDefine(l)
+            (state2, map + (s->oldLocVal))
+          case (v,(None, _)) =>
+            v
+        }
+        val newAt = mapping.foldLeft(at)((acc,v) => acc.addModelVar(v._1, v._2))
+        state1.copy(traceAbstraction = (state1.traceAbstraction-at) + newAt)
+      case (state, (None, list)) => list.foldLeft(state)(applySingle)
     }
   }
   def statesWhereOneVarNot(state: State, comb: List[(Option[RVal], LSParamConstraint)]): Set[State] = {
@@ -85,22 +103,24 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       val relAliases: Set[List[LSParamConstraint]] = relevantAliases(pre, CIExit, (pkg,name))
       val frame = CallStackFrame(target, Some(source.copy(isPre = true)), Map())
       val inVars: List[Option[RVal]] = inVarsForCall(source)
-      val ostates = if(relAliases.isEmpty){
+      val ostates: Set[State] = if(relAliases.isEmpty){
         Set(pre)
       }else {
         // add all args except assignment to state
-        val state0 = defineVars(preState, inVars.tail)
-        val state1 = traceAllPredTransfer(CIExit, (pkg, name), inVars, state0)
-        val states2: State = state1
+        val states2 = relAliases.flatMap(relAlias =>{
+          val comb: List[(Option[RVal], LSParamConstraint)] = inVars zip relAlias
+          val state0 = defineLSVarsAs(pre,comb)
+          val state1 = traceAllPredTransfer(CIExit, (pkg,name),inVars, state0)
+          val otherStates = statesWhereOneVarNot(pre, comb)
+          otherStates + state1
+        })
 
         // clear assigned var from stack if exists
-        val states3 = inVars.head.map {
-          case localWrapper: LocalWrapper => states2.clearLVal(localWrapper)
-          case _ => states2
-        }.getOrElse(states2)
-        println(???) //TODO
-//        Set(states3.copy(callStack = frame :: preState.callStack))
-        Set(states3)
+        val states3 = inVars.head match{
+          case Some(v:LocalWrapper) => states2.map(s => s.clearLVal(v))
+          case None => states2
+        }
+        states3
       }
       ostates.map{s =>
         val outState = newSpecInstanceTransfer(CIExit, (pkg, name), inVars, cmret, s)
@@ -150,8 +170,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         Set(pre)
       }else {
         val invars: List[Option[LocalWrapper]] = None :: containingMethod.getArgs
-        relAliases.flatMap(relAliases =>{
-          val comb = invars zip relAliases
+        relAliases.flatMap(relAlias =>{
+          val comb: List[(Option[LocalWrapper], LSParamConstraint)] = invars zip relAlias
           val state0 = defineLSVarsAs(pre, comb)
           val state1 = traceAllPredTransfer(CBEnter, (pkg,name), invars, state0)
           val otherStates = statesWhereOneVarNot(pre, comb)
@@ -199,7 +219,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     case (CallbackMethodReturn(_,_,mloc1,_), AppLoc(mloc2,_,_), state) =>
       assert(mloc1 == mloc2) ; Set(state) // transfer handled by processing callbackmethodreturn, nothing to do here
     case (_:InternalMethodInvoke, al@AppLoc(_, _, true), state) =>
-      val cmd = w.cmdAtLocation(al) match{ //TODO: this case should probably go to a AppLoc(_,_,true) figure out if it is reachable like this and fix bug elsewhere
+      val cmd = w.cmdAtLocation(al) match{
         case InvokeCmd(inv : Invoke, _) => inv
         case AssignCmd(_, inv: Invoke, _) => inv
       }
@@ -217,6 +237,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       val argsAndVals: List[(Option[RVal], Option[PureExpr])] = allArgs zip allParams
       val resolver = new DefaultAppCodeResolver(w)
       // Possible stack frames for source of call being a callback or internal method call
+      // TODO: This currently clobbers the values in the stack frame above, assert equals instead
       val newStackFrames: List[CallStackFrame] =
         BounderUtil.resolveMethodReturnForAppLoc(resolver, al).map(mr => CallStackFrame(mr, None, Map()))
       val newStacks = newStackFrames.map(frame => frame :: (if(pre.callStack.isEmpty) Nil else pre.callStack.tail))
