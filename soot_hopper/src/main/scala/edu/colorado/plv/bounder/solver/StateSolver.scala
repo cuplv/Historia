@@ -351,8 +351,10 @@ trait StateSolver[T] {
   }
 
   case class MessageTranslator(states: List[State]){
+
     private val alli = allITraceAbs(states.flatMap(_.traceAbstraction).toSet, includeArrow = true)
-    private val inamelist = "OTHEROTHEROTHER" :: alli.groupBy(_.identitySignature).keySet.toList
+    private val inameToI: Map[String, Set[I]] = alli.groupBy(_.identitySignature)
+    private val inamelist = "OTHEROTHEROTHER" :: inameToI.keySet.toList
     private val iNameIntMap: Map[String, Int] = inamelist.zipWithIndex.toMap
     private val enum = mkEnum("inames", inamelist)
 
@@ -365,6 +367,10 @@ trait StateSolver[T] {
       assert(possibleI.size < 2)
       possibleI.headOption
     }
+    def iForZ3Name(z3Name: String): Set[I] = {
+      inameToI.getOrElse(z3Name,Set())
+    }
+
   }
 
   def simplify(state: State, maxWitness: Option[Int] = None): Option[State] = {
@@ -407,6 +413,11 @@ trait StateSolver[T] {
     case _ => false
   }
 
+  private def filterTypeConstraintsFromPf(pure: Set[PureConstraint]): Set[PureConstraint] = pure.filter{
+    case PureConstraint(_,TypeComp,_) => false
+    case _ => true
+  }
+
   /**
    * Check if formula s2 is entirely contained within s1.  Used to determine if subsumption is sound.
    *
@@ -435,17 +446,20 @@ trait StateSolver[T] {
 
     push()
 
-    val pureFormulaEnc = if(encodeTypeConsteraints) {
+    val pureFormulaEnc = {
+      val s1pf = if(encodeTypeConsteraints) s1.pureFormula else filterTypeConstraintsFromPf(s1.pureFormula)
+      val s2pf = if(encodeTypeConsteraints) s2.pureFormula else filterTypeConstraintsFromPf(s2.pureFormula)
+
       val typeFun = createTypeFun()
-      val negs1pure = s1.pureFormula.foldLeft(mkBoolVal(false)) {
+      val negs1pure = s1pf.foldLeft(mkBoolVal(false)) {
         case (acc, constraint) => mkOr(mkNot(toAST(constraint, typeFun)), acc)
       }
 
-      val s2pure = s2.pureFormula.foldLeft(mkBoolVal(true)) {
+      val s2pure = s2pf.foldLeft(mkBoolVal(true)) {
         case (acc, constraint) => mkAnd(toAST(constraint, typeFun), acc)
       }
       mkAnd(negs1pure, s2pure)
-    }else mkBoolVal(false)
+    }
 
     val messageTranslator = MessageTranslator(List(s1,s2))
     val len = mkIntVar(s"len_")

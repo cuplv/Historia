@@ -353,7 +353,28 @@ class Z3StateSolverTest extends AnyFunSuite {
     val res2 = statesolver.canSubsume(s_foo_bar_foo, s_foo_bar,Some(10))
     assert(!res2)
 
+    // Extra pure constraints should not prevent subsumption
+    val fewerPure = State.topState.copy(pureFormula = Set(PureConstraint(p2, NotEquals, NullVal)))
+    val morePure = fewerPure.copy(pureFormula = fewerPure.pureFormula +
+      PureConstraint(p1, TypeComp, SubclassOf("java.lang.Object")) + PureConstraint(p1, NotEquals, p2))
+    assert(statesolver.canSubsume(fewerPure, morePure))
+
   }
+  test("Subsumption of multi arg abstract traces") {
+    val statesolver = getStateSolver
+
+    val p1 = PureVar(State.getId())
+    val p2 = PureVar(State.getId())
+    val loc = AppLoc(fooMethod, TestIRLineLoc(1), isPre = false)
+
+
+    val ifoo = I(CBEnter, Set(("", "foo")), "a" :: Nil)
+    val ibar = I(CBEnter, Set(("", "bar")), "a"::"b":: Nil)
+    val niSpec = NI(ibar,ifoo)
+    val state = State.topState.copy(traceAbstraction = Set(AbstractTrace(ibar, Nil, Map())))
+    assert(statesolver.canSubsume(state,state, Some(2)))
+  }
+
   test("Refute trace with multi arg and multi var (bad arg fun skolemization caused bug here)") {
     val statesolver = getStateSolver
 

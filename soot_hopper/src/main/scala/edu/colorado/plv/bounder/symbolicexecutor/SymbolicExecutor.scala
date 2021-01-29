@@ -95,9 +95,11 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
 
     def isSubsumed(qry: Qry, nVisited: Map[SubsumableLocation,Set[PathNode]]):Option[PathNode] = qry match{
       case SomeQry(state,SwapLoc(loc)) if nVisited.contains(loc) =>
-        nVisited(loc).find(a =>
-          stateSolver.canSubsume(a.qry.state,state)
-        )
+        nVisited(loc).find(a => {
+          val possiblySubsumingState = a.qry.state
+          val res = stateSolver.canSubsume(possiblySubsumingState, state)
+          res
+        })
       case _ => None
     }
     if (config.printProgress){

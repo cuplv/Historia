@@ -31,6 +31,10 @@ class CreateDestroySubscribe_TestApp extends AnyFunSuite{
     val result = symbolicExecutor.executeBackward(query)
     PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/CreateDestroySubscribe_TestApp.dot")
     PrettyPrinting.printWitnessTraces(result, outFile="/Users/shawnmeier/Desktop/CreateDestroySubscribe_TestApp.witnesses")
+
+    println(s"size of result: ${result.size}")
+
+
     assert(BounderUtil.interpretResult(result) == Proven)
     //TODO: there is some kind of weird mixing going on, p-1 == p-0 && p-1<:MainActivity && p-0 == null
     //TODO: nothing should be causing the equality between these two things?  This may be the source of never terminating
