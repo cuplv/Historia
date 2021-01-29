@@ -2,8 +2,8 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{NullConst, _}
-import edu.colorado.plv.bounder.lifestate.LifeState.{I,LSVar, LSAnyVal, LSConst, LSNullConst, LSSpec}
-import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
+import edu.colorado.plv.bounder.lifestate.LifeState._
+import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.symbolicexecutor.TransferFunctions.relevantAliases
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 
@@ -32,6 +32,18 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       case (stateNext, (_,None)) => stateNext
       case (stateNext, (Some(rval), Some(pexp))) => stateNext.defineAs(rval, pexp)
     }
+  def swapVarsAs(state : State, comb: List[(Option[RVal], Option[PureExpr])]):State = {
+    comb.foldLeft(state){
+      case (stateNext, (None,_)) => stateNext
+      case (stateNext, (_,None)) => stateNext
+      case (stateNext, (Some(rval), Some(pexp:PureVar))) if state.get(rval).isDefined =>
+        val oldv = stateNext.get(rval).get.asInstanceOf[PureVar]
+        stateNext.swapPv(oldv,pexp)
+      case (stateNext, (Some(rval), Some(pexp))) =>
+        stateNext.defineAs(rval, pexp)
+    }
+  }
+
   def defineLSVarsAs(state: State, comb: List[(Option[RVal], LSParamConstraint)]):State = {
     val comb2 = comb.groupBy(c => c._2.optTraceAbs)
     val applySingle: (State,(Option[RVal], LSParamConstraint))=>State = {
@@ -237,13 +249,22 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       val argsAndVals: List[(Option[RVal], Option[PureExpr])] = allArgs zip allParams
       val resolver = new DefaultAppCodeResolver(w)
       // Possible stack frames for source of call being a callback or internal method call
-      // TODO: This currently clobbers the values in the stack frame above, assert equals instead
-      val newStackFrames: List[CallStackFrame] =
-        BounderUtil.resolveMethodReturnForAppLoc(resolver, al).map(mr => CallStackFrame(mr, None, Map()))
-      val newStacks = newStackFrames.map(frame => frame :: (if(pre.callStack.isEmpty) Nil else pre.callStack.tail))
-      val nextStates = newStacks.map(newStack => pre.copy(callStack = newStack))
-      nextStates.map(nextState => defineVarsAs(nextState, argsAndVals)).toSet
-    case (retloc@AppLoc(mloc, line, false), mRet:InternalMethodReturn, state) =>
+      val out = if (pre.callStack.size == 1) {
+        val newStackFrames: List[CallStackFrame] =
+          BounderUtil.resolveMethodReturnForAppLoc(resolver, al).map(mr => CallStackFrame(mr, None, Map()))
+        val newStacks = newStackFrames.map(frame => frame :: (if (pre.callStack.isEmpty) Nil else pre.callStack.tail))
+        val nextStates = newStacks.map(newStack => pre.copy(callStack = newStack))
+        nextStates.map(nextState => defineVarsAs(nextState, argsAndVals)).toSet
+      }else if (pre.callStack.size > 1){
+        val state1 = pre.copy(callStack = pre.callStack.tail)
+        //TODO: double check this logic at some point, you wrote it at midnight
+        Set(swapVarsAs(state1, argsAndVals))
+      }else{
+        throw new IllegalStateException("Abstract state should always have a " +
+          "stack when returning from internal method.")
+      }
+      out //TODO: this is still malfunctioning
+    case (retloc@AppLoc(mloc, line, false), mRet: InternalMethodReturn, state) =>
       // Create call stack frame with empty
       val retVal:Map[StackVar, PureExpr] = w.cmdAtLocation(retloc) match{
         case AssignCmd(tgt, _:Invoke, _) =>
