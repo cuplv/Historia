@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder.solver
 
-import edu.colorado.plv.bounder.ir.TMessage
+import edu.colorado.plv.bounder.ir.{TAddr, TMessage, TNullVal}
 import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.lifestate.LifeState._
 import edu.colorado.plv.bounder.symbolicexecutor.state._
@@ -131,6 +131,8 @@ trait StateSolver[T] {
 
   // function argumentindex -> msg -> argvalue
   protected def mkArgConstraint(argFun: T, argIndex: T, msg: T): T
+
+  protected def mkAddrConst(i: Int):T
 
   def printDbgModel(messageTranslator: MessageTranslator, traceabst: Set[AbstractTrace], lenUID: String): Unit
 
@@ -305,6 +307,7 @@ trait StateSolver[T] {
   }
 
   protected def mkDistinct(pvList: Iterable[PureVar]): T
+  protected def mkDistinctT(tList : Iterable[T]):T
   protected def encodeTypeConsteraints:Boolean
   protected def persist: PersistantConstraints
 
@@ -495,11 +498,20 @@ trait StateSolver[T] {
     !ti
   }
 
-  def encodeTrace(traceFN:T, trace: List[TMessage], messageTranslator: MessageTranslator):T = {
+  def encodeTrace(traceFN:T, trace: List[TMessage], messageTranslator: MessageTranslator, valToT: Map[Int, T]):T = {
     val assertEachMsg: List[T] = trace.zipWithIndex.flatMap {
       case(m,ind) =>
+        val msgExpr = mkTraceConstraint(traceFN, mkIntVal(ind))
         val i = messageTranslator.iForMsg(m)
-        i.map(assertIAt(mkIntVal(ind), _, messageTranslator, traceFN, ""))
+        val argConstraints: List[T] = m.args.zipWithIndex.map{
+          case (TAddr(addr), ind) => mkEq(mkArgConstraint(mkArgFun(),mkIntVal(ind),msgExpr), valToT(addr))
+          case (TNullVal, _) => ???
+        }
+        i.map(ii => {
+          mkAnd(assertIAt(mkIntVal(ind), ii, messageTranslator, traceFN, ""),
+            mkAnd(argConstraints)
+          )
+        })
     }
     assertEachMsg.foldLeft(mkBoolVal(true))( (a,b) => mkAnd(a,b))
   }
@@ -513,24 +525,31 @@ trait StateSolver[T] {
     true
   }
 
-  def traceInAbstraction(state:State, trace: List[TMessage]): Boolean ={
+  def traceInAbstraction(state:State, trace: List[TMessage], debug: Boolean = false): Boolean ={
     push()
-    val assert = encodeTraceContained(state, trace)
+    val messageTranslator = MessageTranslator(List(state))
+    val assert = encodeTraceContained(state, trace, messageTranslator)
     mkAssert(assert)
     val sat = checkSAT()
+    if(sat && debug) {
+      println(s"model:\n $assert")
+      printDbgModel(messageTranslator, state.traceAbstraction,"")
+    }
     pop()
     sat
   }
 
-  private def encodeTraceContained(state: State, trace: List[TMessage]):T = {
-    val messageTranslator = MessageTranslator(List(state))
+  private def encodeTraceContained(state: State, trace: List[TMessage], messageTranslator: MessageTranslator):T = {
     val traceFn = mkTraceFn("")
     val len = mkIntVar(s"len_")
     val encodedAbs: Set[T] =
       state.traceAbstraction.map(encodeTraceAbs(_, messageTranslator, traceFn, len, Some("")))
-    val encodedTrace = encodeTrace(traceFn, trace, messageTranslator)
+
+    val distinctAddr: Map[Int, T] = (0 until 10).map(v => (v,mkAddrConst(v))).toMap
+    val assertDistinct = mkDistinctT(distinctAddr.keySet.map(distinctAddr(_)))
+    val encodedTrace = encodeTrace(traceFn, trace, messageTranslator, distinctAddr)
     mkAnd(mkEq(len, mkIntVal(trace.length)),
-      mkAnd(encodedAbs.foldLeft(mkBoolVal(true))((a, b) => mkAnd(a, b)), encodedTrace)
+      mkAnd(encodedAbs.foldLeft(assertDistinct)((a, b) => mkAnd(a, b)), encodedTrace)
     )
   }
 }

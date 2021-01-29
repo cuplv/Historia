@@ -529,6 +529,43 @@ class Z3StateSolverTest extends AnyFunSuite {
         state.copy(traceAbstraction = Set(AbstractTrace(Not(ni_foo_x_bar_x), Nil,Map()))),
         trace
       ))
+
+    // I(foo(x,y)) models foo(@1,@2)
+    val i_foo_x_y = I(CIEnter, Set(("foo",""),("foo2","")), "X"::"Y"::Nil)
+    assert(
+      statesolver.traceInAbstraction(
+        state.copy(traceAbstraction = Set(AbstractTrace(i_foo_x_y,Nil,Map()))),
+        trace = TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil)::Nil //====
+      )
+    )
+
+
+    // not I(foo(x,y)) !models foo(@1,@2)
+    assert(
+      !statesolver.traceInAbstraction(
+        state.copy(traceAbstraction = Set(AbstractTrace(Not(i_foo_x_y),Nil,Map()))),
+        trace = TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil)::Nil //====
+      )
+    )
+
+    // I(foo(y,y) !models foo(@1,@2)
+    val i_foo_y_y = I(CIEnter, Set(("foo",""),("foo2","")), "Y"::"Y"::Nil)
+    assert(
+      !statesolver.traceInAbstraction(
+        state.copy(traceAbstraction = Set(AbstractTrace(i_foo_y_y,Nil,Map()))),
+        trace = TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil)::Nil,
+        debug = true
+      )
+    )
+
+    // I(foo(y,y) models foo(@2,@2)
+    assert(
+      statesolver.traceInAbstraction(
+        state.copy(traceAbstraction = Set(AbstractTrace(i_foo_y_y,Nil,Map()))),
+        trace = TMessage(CIEnter, foo, TAddr(2)::TAddr(2)::Nil)::Nil //====
+      )
+    )
+
     //TODO: test "and", "scoped abstract traces"
   }
 

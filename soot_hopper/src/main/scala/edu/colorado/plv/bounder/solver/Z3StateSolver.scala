@@ -245,11 +245,17 @@ class Z3StateSolver(var persistentConstraints: PersistantConstraints) extends St
   override protected def mkNameConstraint(nameFun: AST, msg: AST): AST =
     nameFun.asInstanceOf[FuncDecl].apply(msg.asInstanceOf[Expr])
 
-  override protected def mkArgConstraint(argFun: AST, argIndex: AST, msg: AST): AST =
+  override protected def mkArgConstraint(argFun: AST, argIndex: AST, msg: AST): AST = {
     argFun.asInstanceOf[FuncDecl].apply(argIndex.asInstanceOf[Expr], msg.asInstanceOf[Expr])
+  }
+
+  override protected def mkAddrConst(i: Int): AST = ctx.mkConst(s"addr_const$i", addrSort)
 
   override protected def mkDistinct(pvList: Iterable[PureVar]): AST = {
     ctx.mkDistinct(pvList.map(a => mkObjVar(a).asInstanceOf[Expr]).toArray:_*)
+  }
+  override protected def mkDistinctT(pvList: Iterable[AST]): AST = {
+    ctx.mkDistinct(pvList.map(a => a.asInstanceOf[Expr]).toArray:_*)
   }
 
   override protected def encodeTypeConsteraints: Boolean = persistentConstraints.getUseZ3TypeSolver
