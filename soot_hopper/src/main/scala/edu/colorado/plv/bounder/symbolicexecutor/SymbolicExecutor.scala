@@ -7,6 +7,7 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, Qry
 import soot.SootMethod
 
 import scala.annotation.tailrec
+import scala.collection.MapView
 import scala.collection.parallel.CollectionConverters.ImmutableSetIsParallelizable
 
 sealed trait CallGraphSource
@@ -71,23 +72,29 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     }
   }
 
+  sealed trait SubsumableLocation
+  case class CodeLocation(loc:Loc)extends SubsumableLocation
+  case object FrameworkLocation extends SubsumableLocation
   //TODO: add loop heads?
-  private def subsumableLocation(loc:Loc) :Boolean = loc match{
-    case _ : CallbackMethodInvoke => true
-    case _ : CallbackMethodReturn => true
-    case a:AppLoc if config.w.degreeOut(a)>1 => true
-    case _ : CallinMethodInvoke => false // message locations don't remember program counter so subsumption is unsound
-    case _ : CallinMethodReturn => false
-    case _ => false
+  object SwapLoc {
+    def unapply(loc: Loc): Option[SubsumableLocation] = loc match {
+      case _: CallbackMethodInvoke => Some(FrameworkLocation)
+      case _: CallbackMethodReturn => None
+      case a: AppLoc if config.w.degreeOut(a) > 1 => Some(CodeLocation(a))
+      case _: CallinMethodInvoke => None // message locations don't remember program counter so subsumption is unsound
+      case _: CallinMethodReturn => None
+      case _ => None
+    }
+    def apply(loc:Loc):Option[SubsumableLocation] = unapply(loc)
   }
 
   @tailrec
   final def executeBackwardLimitSubsumeAll(qrySet: Set[PathNode], limit:Int,
                                            refutedSubsumedOrWitnessed: Set[PathNode] = Set(),
-                                           visited:Map[Loc,Set[PathNode]] = Map()):Set[PathNode] = {
+                                           visited:Map[SubsumableLocation,Set[PathNode]] = Map()):Set[PathNode] = {
 
-    def isSubsumed(qry: Qry, nVisited: Map[Loc,Set[PathNode]]):Option[PathNode] = qry match{
-      case SomeQry(state,loc) if nVisited.contains(loc) =>
+    def isSubsumed(qry: Qry, nVisited: Map[SubsumableLocation,Set[PathNode]]):Option[PathNode] = qry match{
+      case SomeQry(state,SwapLoc(loc)) if nVisited.contains(loc) =>
         nVisited(loc).find(a =>
           stateSolver.canSubsume(a.qry.state,state)
         )
@@ -111,9 +118,9 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       val liveQueries: Set[PathNode] = queriesByType.getOrElse(true, Set())
       // add new visited to old visited
       // filter out locations that we don't want to consider for subsumption
-      val newVisited: Map[Loc, Set[PathNode]] = liveQueries
-        .filter(pathNode => subsumableLocation(pathNode.qry.loc))
-        .groupBy(_.qry.loc)
+      val newVisited: MapView[SubsumableLocation, Set[PathNode]] = liveQueries
+        .flatMap(pathNode => SwapLoc(pathNode.qry.loc)
+          .map((_,pathNode))).groupBy(_._1).view.mapValues(_.map(_._2))
       val nextVisited = (visited ++ newVisited).map {
         case (k, v) => k -> v.union(visited.getOrElse(k, Set()))
       }
