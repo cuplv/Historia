@@ -25,7 +25,8 @@ object SpecSignatures {
   val Fragment_getActivity_Signatures = Set(
     ("android.app.Fragment","android.app.Activity getActivity()"),
     ("android.support.v4.app.Fragment","android.support.v4.app.FragmentActivity getActivity()"),
-    ("android.support.v4.app.FragmentHostCallback","android.app.Activity getActivity()")
+    ("android.support.v4.app.FragmentHostCallback","android.app.Activity getActivity()"),
+    ("androidx.fragment.app.Fragment","androidx.fragment.app.FragmentActivity getActivity()")
   )
   val Fragment_get_activity_exit_null = I(CIExit, Fragment_getActivity_Signatures, "@null"::"f"::Nil)
 

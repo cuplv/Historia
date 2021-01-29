@@ -190,7 +190,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   def relevantMethod(loc: Loc, state: State): Boolean = loc match{
     case InternalMethodReturn(_,_,m) =>
       val callees: Set[MethodLoc] = memoizedallCalls(m)
-      val out = callees.exists(c => relevantMethodBody(c,state))
+      val out = (callees + m).exists(c => relevantMethodBody(c,state))
       out
     case CallinMethodReturn(_,_) => true
     case CallbackMethodReturn(clazz, name, rloc, Some(retLine)) => {
@@ -236,7 +236,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
           val unresolvedTargets =
             wrapper.makeInvokeTargets(loc)
           val resolved: Set[Loc] = resolver.resolveCallLocation(unresolvedTargets) // .filter(relevantMethod(_, state))
-          if(resolved.forall(m => !relevantMethod(m,state)))
+          if(resolved.forall(m => !relevantMethod(m,state))) //TODO:
             List(l.copy(isPre = true)) // skip if all method targets are not relevant
           else {
             val irrelevantCallinsToMerge: Set[Loc] = resolved.filter(irrelevantCallinInvoke(_,state))

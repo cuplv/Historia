@@ -4,7 +4,7 @@ import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.LifeState.I
 import edu.colorado.plv.bounder.symbolicexecutor.state.Qry
-import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, PatchedFlowdroidCallGraph, SymbolicExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, ControlFlowResolver, DefaultAppCodeResolver, PatchedFlowdroidCallGraph, SymbolicExecutorConfig, TransferFunctions}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.{Scene, SootMethod}
 
@@ -37,22 +37,32 @@ class SpecTest extends AnyFunSuite {
     }
   }
 
-  test("Each I in spec signatures corresponds to a method or interface in the framework"){
+  test("Antennapod: Each I in spec signatures corresponds to a method or interface in the framework"){
     val apk = getClass.getResource("/Antennapod-fix-2856-app-free-debug.apk").getPath
     assert(apk != null)
-    BounderSetupApplication.loadApk(apk, PatchedFlowdroidCallGraph)
+    BounderSetupApplication.loadApk(apk, CHACallGraph)
 
     assert(findIInFwk(SpecSignatures.Activity_onPause_entry))
     assert(findIInFwk(SpecSignatures.Activity_init_exit))
     assert(findIInFwk(SpecSignatures.Activity_onResume_exit))
     assert(findIInFwk(SpecSignatures.Activity_onPause_exit))
     assert(findIInFwk(SpecSignatures.Activity_onResume_entry))
-    findIInFwkForall(SpecSignatures.Fragment_get_activity_exit_null)
+    findIInFwkForall(SpecSignatures.Fragment_get_activity_exit_null
+      .copy(signatures = SpecSignatures.Fragment_getActivity_Signatures
+        .filter(a => a._1 != "androidx.fragment.app.Fragment" )))
     findIInFwkForall(SpecSignatures.Fragment_onActivityCreated_entry)
     findIInFwkForall(SpecSignatures.Fragment_onDestroy_exit)
     findIInFwkForall(SpecSignatures.RxJava_call_entry)
     findIInFwkForall(SpecSignatures.RxJava_unsubscribe_entry)
+  }
+  test("RXJavaSubscribe: Each I in spec signatures corresponds to a method or interface in the framework"){
+    val apk = getClass.getResource("/RXJavaSubscribe-fix-debug.apk").getPath
+    assert(apk != null)
+    BounderSetupApplication.loadApk(apk, CHACallGraph)
 
+    findIInFwkForall(SpecSignatures.Fragment_get_activity_exit_null
+      .copy(signatures = SpecSignatures.Fragment_getActivity_Signatures
+        .filter(a => a._1 == "androidx.fragment.app.Fragment" )))
   }
 
   test("Dummy test to print framework types"){
