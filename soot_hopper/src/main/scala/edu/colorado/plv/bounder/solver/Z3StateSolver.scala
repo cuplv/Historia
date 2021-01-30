@@ -124,12 +124,17 @@ class Z3StateSolver(var persistentConstraints: PersistantConstraints) extends St
         println(s"$index: ")
         val msgati: Expr = model.eval(traceFun.apply(ctx.mkInt(index)), true)
         val m = model.eval(nameFun.apply(msgati),true)
-        val iset = messageTranslator.iForZ3Name(m.toString)
-        val args = (0 until iset.head.lsVars.size)
-          .map(index => model.eval(argFun.apply(ctx.mkInt(index), msgati), true)).mkString(",")
+        if(m.toString != "OTHEROTHEROTHER") {
+          val iset = messageTranslator.iForZ3Name(m.toString)
+          assert(iset.size == 1, s"Bad message name ${m.toString}")
+          val args = (0 until iset.head.lsVars.size)
+            .map(index => model.eval(argFun.apply(ctx.mkInt(index), msgati), true)).mkString(",")
 
-        println(s"$m " +
-          s"args: ${args}")
+          println(s"$m " +
+            s"args: ${args}")
+        }else{
+          println("Other Msg")
+        }
       })
     }
     }

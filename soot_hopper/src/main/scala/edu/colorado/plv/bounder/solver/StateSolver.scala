@@ -182,8 +182,9 @@ trait StateSolver[T] {
    */
   private def assertIAt(index: T, m: I,
                         messageTranslator: MessageTranslator,
-                        traceFn: T, absUID: String,
-                        negated:Boolean = false): T = {
+                        traceFn: T,  // Int -> Msg
+                        absUID: String,
+                        negated:Boolean = false): T = { //TODO: when negated, model vars shouldn't be skolemized, TODO: where to put them?
     val msgExpr = mkTraceConstraint(traceFn, index)
     val nameFun = messageTranslator.nameFun
     val nameConstraint = mkEq(mkNameConstraint(nameFun, msgExpr), messageTranslator.enumFromI(m))
@@ -193,6 +194,7 @@ trait StateSolver[T] {
       case _ => None
     }
 
+    // w[i] = cb foo(x,y)
     // If we are asserting that a message is not at a location, the arg function cannot be negated due to skolemization
     // We only negate the name function
     if(negated)
@@ -273,37 +275,31 @@ trait StateSolver[T] {
                      absUID: Option[String] = None, negate:Boolean = false): T = {
     val uniqueAbsId = absUID.getOrElse(System.identityHashCode(abs).toString)
 
-    def iencarrow(len: T, abs: AbstractTrace, traceFn: T): T = abs match {
-      case AbstractTrace(abs, ipreds, modelVars) =>
-        val freshTraceFun = mkFreshTraceFn("arrowtf")
-        val beforeIndEq =
-          mkForallInt(mkIntVal(-1), len, i =>
-            mkEq(mkTraceConstraint(traceFn, i), mkTraceConstraint(freshTraceFun, i)))
-        val (suffixConstraint, endlen) = ipreds.foldLeft((beforeIndEq, len)) {
-          case ((acc, ind), i) => (
-            mkAnd(acc, assertIAt(ind, i, messageTranslator, freshTraceFun, uniqueAbsId)),
-            mkAdd(ind, mkIntVal(1))
-          )
-        }
-        val absEnc = ienc(endlen, abs,modelVars, freshTraceFun, negate)
-        if(negate){
-          mkAnd(absEnc, suffixConstraint)
-        }else {
-          mkAnd(absEnc, suffixConstraint)
-        }
-    }
-
     def ienc(sublen: T, f: LSPred, modelVars: Map[String,PureExpr], traceFn: T, negate:Boolean): T = {
       val modelConstraints:List[T] = modelVars.map{
         case (k,v:PureVar) => mkEq(mkModelVar(k, uniqueAbsId), mkObjVar(v))
         case _ => ???
       }.toList
-//      val mc = if(negate) mkOr(modelConstraints.map(mkNot)) else mkAnd(modelConstraints)
       mkAnd(
         encodePred(f, traceFn, sublen, messageTranslator, uniqueAbsId, negate), mkAnd(modelConstraints))
     }
 
-    iencarrow(traceLen, abs, traceFn)
+    val freshTraceFun = mkFreshTraceFn("arrowtf")
+    val beforeIndEq =
+      mkForallInt(mkIntVal(-1), traceLen, i =>
+        mkEq(mkTraceConstraint(traceFn, i), mkTraceConstraint(freshTraceFun, i)))
+    val (suffixConstraint, endlen) = abs.rightOfArrow.foldLeft((beforeIndEq, traceLen)) {
+      case ((acc, ind), i) => (
+        mkAnd(acc, assertIAt(ind, i, messageTranslator, freshTraceFun, uniqueAbsId)),
+        mkAdd(ind, mkIntVal(1))
+      )
+    }
+    val absEnc = ienc(endlen, abs.a,abs.modelVars, freshTraceFun, negate)
+    if(negate){
+      mkAnd(absEnc, suffixConstraint)
+    }else {
+      mkAnd(absEnc, suffixConstraint)
+    }
   }
 
   protected def mkDistinct(pvList: Iterable[PureVar]): T

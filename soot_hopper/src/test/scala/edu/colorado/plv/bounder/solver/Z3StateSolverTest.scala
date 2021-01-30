@@ -350,7 +350,7 @@ class Z3StateSolverTest extends AnyFunSuite {
     assert(statesolver.canSubsume(s_foo_bar, s_foo_bar_foo))
 
     // Extra trace constraint prevents subsumption
-    val res2 = statesolver.canSubsume(s_foo_bar_foo, s_foo_bar,Some(10))
+    val res2 = statesolver.canSubsume(s_foo_bar_foo, s_foo_bar)
     assert(!res2)
 
     // Extra pure constraints should not prevent subsumption
