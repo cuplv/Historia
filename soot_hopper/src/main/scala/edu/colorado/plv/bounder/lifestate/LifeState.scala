@@ -47,7 +47,7 @@ object LifeState {
   case class Or(l1:LSPred, l2:LSPred) extends LSPred {
     override def lsVar: Set[String] = l1.lsVar.union(l2.lsVar)
     override def toString:String = s"(${l1.toString} OR ${l2.toString})"
-    override def contains(mt:MessageType,sig: (String, String)): Boolean = l2.contains(mt, sig) || l2.contains(mt,sig)
+    override def contains(mt:MessageType,sig: (String, String)): Boolean = l1.contains(mt, sig) || l2.contains(mt,sig)
   }
   case object LSTrue extends LSPred {
     override def lsVar: Set[String] = Set.empty

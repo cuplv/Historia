@@ -8,6 +8,8 @@ import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
 
 class RXJavaSubscribe_TestApp extends AnyFunSuite{
+  // TODO: !!!!IMPORTANT!!!! current transfer functions are imprecise with respect to IF
+  // if this example works before fixing precision issue, there is likely unsoundness somewhere
   test("Prove location in stack trace is unreachable under a simple spec.") {
     val apk = getClass.getResource("/RXJavaSubscribe-fix-debug.apk").getPath
     assert(apk != null)

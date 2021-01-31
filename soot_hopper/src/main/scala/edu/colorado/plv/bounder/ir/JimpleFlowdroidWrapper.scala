@@ -315,7 +315,6 @@ class JimpleFlowdroidWrapper(apkPath : String,
     Scene.v().getSootClass(className)
   }
   override def findMethodLoc(className: String, methodName: String):Option[JimpleMethodLoc] = {
-    val methodRegex: Regex = methodName.r
     val clazzFound = getClassByName(className)
     val clazz = if(clazzFound.isPhantom){None} else {Some(clazzFound)}
     val method: Option[SootMethod] = clazz.flatMap(a => try{

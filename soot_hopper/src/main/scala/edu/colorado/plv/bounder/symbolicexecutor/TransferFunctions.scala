@@ -151,6 +151,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         Set(pre)
       else {
         println(???) //TODO: enumerate aliases
+        // TODO: in general, this case won't be used until the entry of a callin shows up in a rule
         val invars = inVarsForCall(ciInv)
         val state0 = defineVars(s, invars.tail)
         val state1 = traceAllPredTransfer(CIEnter, (pkg, name), invars, state0)
@@ -170,8 +171,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       if(pre.callStack.nonEmpty){
         pre.callStack.head match {
           case CallStackFrame(CallbackMethodReturn(fc2,fn2,l2,_),_,_) if fc1 != fc2 || fn1 != fn2 || l1 != l2 =>
-            ???
-            return Set()//TODO: does this ever happen with callback entry? (remove ??? when this is figured out)
+            return Set(???)//TODO: does this ever happen with callback entry? (remove ??? when this is figured out)
           case _ =>
         }
       }
