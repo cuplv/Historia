@@ -47,6 +47,7 @@ class PersistantConstraints(ctx: Context, solver: Solver, types : Map[String,Set
 
 
 //  val tsort: Sort = ctx.mkFiniteDomainSort("Types", typeToInt.size)
+  // TODO: swap enum sort with uninterpreted sort and distinct.  EnumSort is extremely slow.
   val tsort: EnumSort = ctx.mkEnumSort("Types", typeToInt.keys.toArray:_*)
 
   private def finiteDomVal(t : String):Expr = {
