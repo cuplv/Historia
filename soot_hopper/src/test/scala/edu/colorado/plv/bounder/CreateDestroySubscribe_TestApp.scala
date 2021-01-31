@@ -36,16 +36,16 @@ class CreateDestroySubscribe_TestApp extends AnyFunSuite{
     PrettyPrinting.printWitnessTraces(result, outFile="/Users/shawnmeier/Desktop/CreateDestroySubscribe_TestApp.witnesses")
     assert(BounderUtil.interpretResult(result) == Proven)
     assert(result.nonEmpty)
-
-
   }
   test("Witness call reachability"){
-
     // Line 31 is reachable
     val query2 = Qry.makeReach(symbolicExecutor,w,
       "com.example.createdestroy.MainActivity",
       "void lambda$onCreate$1$MainActivity(java.lang.Object)",31)
     val result2 = symbolicExecutor.executeBackward(query2)
+    PrettyPrinting.printWitnessOrProof(result2, "/Users/shawnmeier/Desktop/CreateDestroySubscribe_TestApp_reach.dot")
+    PrettyPrinting.printWitnessTraces(result2, outFile="/Users/shawnmeier/Desktop/CreateDestroySubscribe_TestApp_reach.witnesses")
+    assert(result2.nonEmpty)
     assert(BounderUtil.interpretResult(result2) == Witnessed) //TODO: failing test
   }
 

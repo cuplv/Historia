@@ -131,14 +131,10 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
         println(v)
         ???
     }
+    // Find any call that matches a spec in the abstract trace
+    // TODO: later this should be refined based on type information
     calls.exists{call =>
-      val relI = state.findIFromCurrent(CIEnter, (call.fmwClazz, call.fmwName)).union(
-        state.findIFromCurrent(CIEnter, (call.fmwClazz, call.fmwName)))
-      relI.exists{
-        case v =>
-          println(v)
-          ???
-      }
+      Set(CIEnter, CIExit).exists(cdir => state.findIFromCurrent(cdir, (call.fmwClazz, call.fmwName)).nonEmpty)
     }
   }
 

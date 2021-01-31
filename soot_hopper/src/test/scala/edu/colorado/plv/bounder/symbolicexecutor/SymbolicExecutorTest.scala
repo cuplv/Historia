@@ -83,6 +83,4 @@ class SymbolicExecutorTest extends AnyFunSuite {
     PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/witnessOnResume.dot")
     assert(BounderUtil.interpretResult(result) == Witnessed)
   }
-
-
 }

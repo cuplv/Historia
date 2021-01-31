@@ -81,7 +81,8 @@ object SpecSignatures {
   val RxJava_call_entry = I(CBEnter, RxJava_call, "_"::"l"::Nil)
 
   val RxJava_unsubscribe = Set(
-    ("rx.Subscription", "void unsubscribe()")
+    ("rx.Subscription", "void unsubscribe()"),
+    ("rx.internal.operators.CachedObservable$ReplayProducer", "void unsubscribe()")
   )
   val RxJava_unsubscribe_exit = I(CIExit, RxJava_unsubscribe, "_"::"s"::Nil)
 
