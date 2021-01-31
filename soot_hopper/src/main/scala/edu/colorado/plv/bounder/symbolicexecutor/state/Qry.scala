@@ -13,7 +13,7 @@ object Qry {
                      className:String,
                      methodName:String, line:Int):List[Qry] = {
     val locs = w.findLineInMethod(className, methodName,line)
-    assert(locs.size == 1)
+    assert(locs.size > 1, "found no locations")
     val targetLoc = locs.head
     val containingMethodPos: List[Loc] = BounderUtil.resolveMethodReturnForAppLoc(ex.getAppCodeResolver, targetLoc)
     containingMethodPos.map{method =>
