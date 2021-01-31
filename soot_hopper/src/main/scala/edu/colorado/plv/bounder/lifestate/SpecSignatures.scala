@@ -5,7 +5,11 @@ import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSSpec, NI, Not, Or}
 
 object SpecSignatures {
-  // TODO; get all specs out of ls def
+
+  // TODO: parse specs from DSL
+  // TODO: type constraints on runtime value of LS vars instead of syntactic matching of signature
+  //    e.g. the following would eliminate the need for enumerating activity types
+  //    I(void onActivityCreated(), _::a, a<:Activity)
   val activityTypeSet = Set(
     "androidx.appcompat.app.AppCompatActivity",
     "androidx.fragment.app.FragmentActivity",
@@ -16,10 +20,14 @@ object SpecSignatures {
   // Activity lifecycle
   val Activity_onResume_entry = I(CBEnter, activityTypeSet.map((_, "void onResume()")), List("_", "a"))
   val Activity_onResume_exit = I(CBExit, activityTypeSet.map((_, "void onResume()")), List("_", "a"))
+  val Activity_onCreate_exit =
+    I(CBExit, activityTypeSet.map((_, "void onCreate(android.os.Bundle)")), List("_", "a"))
   val Activity_onPause_entry = I(CBEnter, activityTypeSet.map((_, "void onPause()")), List("_", "a"))
   val Activity_onPause_exit = I(CBExit, activityTypeSet.map((_, "void onPause()")), List("_", "a"))
   val Activity_init_exit = I(CBExit,
     (activityTypeSet + "java.lang.Object").map((_, "void <init>()")), List("_", "a"))
+
+  val Activity_init_entry: I = Activity_init_exit.copy(mt = CBEnter)
 
   // Fragment getActivity
   val Fragment_getActivity_Signatures = Set(
@@ -93,10 +101,17 @@ object RxJavaSpec{
   val call = LSSpec(subUnsub, SpecSignatures.RxJava_call_entry)
 }
 
-object ResumePauseSpec {
+object ActivityLifecycle {
   val resumePause = NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit)
   val initPause = NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_init_exit)
-  val resumePauseInit = LSSpec(And(resumePause,initPause),
+  val onPause_onlyafter_onResume_init = LSSpec(And(resumePause,initPause),
     SpecSignatures.Activity_onPause_entry)
-  val spec = new SpecSpace(Set(resumePauseInit))
+  val init_first_callback =
+    LSSpec(And(
+      Not(SpecSignatures.Activity_onCreate_exit),
+      And(Not(SpecSignatures.Activity_onResume_exit),
+        Not(SpecSignatures.Activity_onPause_exit))
+    ),
+      SpecSignatures.Activity_init_entry)
+  val spec = new SpecSpace(Set(onPause_onlyafter_onResume_init))
 }

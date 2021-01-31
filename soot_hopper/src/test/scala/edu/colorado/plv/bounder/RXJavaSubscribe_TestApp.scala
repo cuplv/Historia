@@ -1,23 +1,21 @@
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
-import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
+import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{PrettyPrinting, Qry}
-import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, ControlFlowResolver, DefaultAppCodeResolver, FlowdroidCallGraph, PatchedFlowdroidCallGraph, SparkCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, SymbolicExecutorConfig, TransferFunctions}
 import org.scalatest.funsuite.AnyFunSuite
-import soot.{Scene, SootMethod}
-
-import scala.jdk.CollectionConverters.CollectionHasAsScala
+import soot.SootMethod
 
 class RXJavaSubscribe_TestApp extends AnyFunSuite{
   test("Prove location in stack trace is unreachable under a simple spec.") {
     val apk = getClass.getResource("/RXJavaSubscribe-fix-debug.apk").getPath
     assert(apk != null)
     val w = new JimpleFlowdroidWrapper(apk,CHACallGraph)
-    val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
-    //    val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w,
-      new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,RxJavaSpec.call)))
+      new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
+        ActivityLifecycle.init_first_callback,
+        RxJavaSpec.call)))
     val config = SymbolicExecutorConfig(
       stepLimit = Some(120), w,transfer, printProgress = true,
       component = Some(List("example.com.rxjavasubscribebug.PlayerFragment.*")))

@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
-import edu.colorado.plv.bounder.lifestate.{ResumePauseSpec, SpecSpace}
+import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, SpecSpace}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, PrettyPrinting, Qry}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
@@ -38,7 +38,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     val w = new JimpleFlowdroidWrapper(test_interproc_1, PatchedFlowdroidCallGraph)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
 
-    val transfer = new TransferFunctions[SootMethod,soot.Unit](w, ResumePauseSpec.spec)
+    val transfer = new TransferFunctions[SootMethod,soot.Unit](w, ActivityLifecycle.spec)
     val config = SymbolicExecutorConfig(
       stepLimit = Some(60), w,transfer, printProgress = true, z3Timeout = Some(30), component = Some(List("com\\.example\\.test_interproc_2.*")))
     val symbolicExecutor = config.getSymbolicExecutor
@@ -56,7 +56,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     assert(test_interproc_1 != null)
     val w = new JimpleFlowdroidWrapper(test_interproc_1, PatchedFlowdroidCallGraph)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
-    val transfer = new TransferFunctions[SootMethod,soot.Unit](w, ResumePauseSpec.spec)
+    val transfer = new TransferFunctions[SootMethod,soot.Unit](w, ActivityLifecycle.spec)
     val config = SymbolicExecutorConfig(
       stepLimit = Some(50), w,transfer, printProgress = true, z3Timeout = Some(30))
     val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
@@ -72,7 +72,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     assert(test_interproc_1 != null)
     val w = new JimpleFlowdroidWrapper(test_interproc_1, PatchedFlowdroidCallGraph)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
-    val transfer = new TransferFunctions[SootMethod,soot.Unit](w, ResumePauseSpec.spec)
+    val transfer = new TransferFunctions[SootMethod,soot.Unit](w, ActivityLifecycle.spec)
     val config = SymbolicExecutorConfig(
       stepLimit = Some(50), w,transfer, printProgress = true, z3Timeout = Some(30))
     val symbolicExecutor = config.getSymbolicExecutor
