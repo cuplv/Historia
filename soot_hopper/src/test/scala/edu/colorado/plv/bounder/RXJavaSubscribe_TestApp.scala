@@ -1,5 +1,5 @@
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.BounderUtil.Witnessed
+import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{PrettyPrinting, Qry}
@@ -30,7 +30,7 @@ class RXJavaSubscribe_TestApp extends AnyFunSuite{
     val result = symbolicExecutor.executeBackward(query)
     PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/RXJavaSubscribe_Fix_TestApp.dot")
     PrettyPrinting.printWitnessTraces(result, outFile="/Users/shawnmeier/Desktop/RXJavaSubscribe_Fix_TestApp.witnesses")
-    assert(BounderUtil.interpretResult(result) == Witnessed)
+    assert(BounderUtil.interpretResult(result) == Proven)
   }
 
 }

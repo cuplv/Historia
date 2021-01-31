@@ -1,6 +1,7 @@
 package edu.colorado.plv.bounder.solver
 
 import com.microsoft.z3._
+import edu.colorado.plv.bounder.lifestate.LifeState.{LSVar,LSAnyVal}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, PureVar, State, TypeConstraint}
 
 class Z3StateSolver(var persistentConstraints: PersistantConstraints) extends StateSolver[AST] {
@@ -140,14 +141,6 @@ class Z3StateSolver(var persistentConstraints: PersistantConstraints) extends St
     }
   }
 
-  override protected def freshSolverIfNeeded():Unit = {
-    ???
-//    if(freshSolverForEach){
-//      ctx = new Context
-//      solver = ctx.mkSolver
-//      persistentConstraints = new PersistantConstraints(ctx,solver,persistentConstraints.getTypes)
-//    }
-  }
   //  private def printModelSolution()
   override protected def solverSimplify(t: AST,state:State, messageTranslator: MessageTranslator, logDbg:Boolean): Option[AST] = {
     solver.add(t.asInstanceOf[BoolExpr])
@@ -182,12 +175,13 @@ class Z3StateSolver(var persistentConstraints: PersistantConstraints) extends St
 
   // Model vars have the pred identity hash code appended since they are unique to each pred
   // "_" means we don't care what the value is so just make arbitrary int
-  override protected def mkModelVar(s: String, predUniqueID:String): AST =
-    if (s != "_") {
-      ctx.mkConst("model_var_" + s + "_" + predUniqueID, addrSort)
-    }else{
-      ctx.mkFreshConst("_", addrSort)
-    }
+  override protected def mkModelVar(s: String, predUniqueID:String): AST = s match {
+    case LSVar(s) =>
+      ctx.mkConst ("model_var_" + s + "_" + predUniqueID, addrSort)
+    case LSAnyVal() =>
+      ctx.mkFreshConst ("_", addrSort)
+    case _ => throw new IllegalArgumentException("mkModelVar expects variable or any.")
+  }
 
   override protected def mkFreshIntVar(s:String): AST =
     ctx.mkFreshConst(s, ctx.mkIntSort())
@@ -201,6 +195,10 @@ class Z3StateSolver(var persistentConstraints: PersistantConstraints) extends St
     val range = mkAnd(List(mkLt(min,j), mkLt(j,max)))
     ctx.mkForall(Array(j), mkImplies(range,cond(j)).asInstanceOf[Expr]
       ,1,null,null,null,null)
+  }
+  override protected def mkForallAddr(name:String, cond: AST=>AST):AST = {
+    val j = ctx.mkFreshConst(name, addrSort)
+    ctx.mkForall(Array(j), cond(j).asInstanceOf[Expr],1,null,null,null,null)
   }
 
   /**

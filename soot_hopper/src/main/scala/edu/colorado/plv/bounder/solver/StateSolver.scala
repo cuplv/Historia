@@ -34,6 +34,7 @@ trait StateSolver[T] {
    * @param cond
    */
   protected def mkForallInt(min: T, max: T, cond: T => T): T
+  protected def mkForallAddr(name:String, cond: T=>T):T
 
   protected def mkExistsInt(min: T, max: T, cond: T => T): T
 
@@ -94,7 +95,6 @@ trait StateSolver[T] {
 
   protected def fieldEquals(fieldFun: T, t1: T, t2: T): T
 
-  protected def freshSolverIfNeeded()
   protected def solverSimplify(t: T, state: State, messageTranslator:MessageTranslator, logDbg: Boolean = false): Option[T]
 
   protected def mkTypeConstraint(typeFun: T, addr: T, tc: TypeConstraint): T
@@ -137,7 +137,6 @@ trait StateSolver[T] {
   def printDbgModel(messageTranslator: MessageTranslator, traceabst: Set[AbstractTrace], lenUID: String): Unit
 
   def nullConst(v: PureExpr, op : CmpOp):T = {
-    val tfun = createTypeFun()
     op match {
       case Equals => mkIsNull(toAST(v))
       case NotEquals => mkNot(mkIsNull(toAST(v)))
@@ -177,21 +176,25 @@ trait StateSolver[T] {
    * @param m
    * @param messageTranslator
    * @param traceFn : Int->Msg
-   * @param absUID unique identifier for this scoped abstraction to separate model vars
+   *
    * @return
    */
   private def assertIAt(index: T, m: I,
                         messageTranslator: MessageTranslator,
                         traceFn: T,  // Int -> Msg
-                        absUID: String,
-                        negated:Boolean = false): T = { //TODO: when negated, model vars shouldn't be skolemized, TODO: where to put them?
+                        negated:Boolean = false,
+                        modelVarMap : String => T): T = {
     val msgExpr = mkTraceConstraint(traceFn, index)
     val nameFun = messageTranslator.nameFun
     val nameConstraint = mkEq(mkNameConstraint(nameFun, msgExpr), messageTranslator.enumFromI(m))
     val argConstraints = m.lsVars.zipWithIndex.flatMap {
-      case (msgvar, ind) if msgvar != "_" =>
-        Some(mkEq(mkArgConstraint(mkArgFun(), mkIntVal(ind), msgExpr), mkModelVar(msgvar, absUID)))
-      case _ => None
+      case (LSVar(msgVar), ind) =>
+        val modelVar = modelVarMap(msgVar)
+        Some(mkEq(mkArgConstraint(mkArgFun(), mkIntVal(ind), msgExpr), modelVar))
+      case (LSAnyVal(),_) => None //TODO: primitive value cases
+      case (LSConst(v),_) =>
+        println(v)
+        ???
     }
 
     // w[i] = cb foo(x,y)
@@ -205,36 +208,36 @@ trait StateSolver[T] {
 
   private def encodePred(combinedPred: LifeState.LSPred, traceFn: T, len: T,
                          messageTranslator: MessageTranslator
-                         , absUID: String, negate:Boolean = false): T = combinedPred match {
-    case And(l1, l2) if !negate => mkAnd(encodePred(l1, traceFn, len, messageTranslator, absUID),
-      encodePred(l2, traceFn, len, messageTranslator, absUID))
+                         , modelVarMap : Map[String,T], negate:Boolean = false): T = combinedPred match {
+    case And(l1, l2) if !negate => mkAnd(encodePred(l1, traceFn, len, messageTranslator, modelVarMap),
+      encodePred(l2, traceFn, len, messageTranslator, modelVarMap))
     case And(l1,l2) if negate => mkOr(
-      encodePred(l1, traceFn,len,messageTranslator,absUID, negate = true),
-      encodePred(l2, traceFn,len,messageTranslator,absUID, negate = true)
+      encodePred(l1, traceFn,len,messageTranslator, modelVarMap, negate = true),
+      encodePred(l2, traceFn,len,messageTranslator, modelVarMap, negate = true)
     )
-    case Or(l1, l2) if !negate => mkOr(encodePred(l1, traceFn, len, messageTranslator, absUID),
-      encodePred(l2, traceFn, len, messageTranslator, absUID))
-    case Or(l1, l2) if negate => mkAnd(encodePred(l1, traceFn, len, messageTranslator, absUID, negate=true),
-      encodePred(l2, traceFn, len, messageTranslator, absUID, negate=true))
+    case Or(l1, l2) if !negate => mkOr(encodePred(l1, traceFn, len, messageTranslator, modelVarMap),
+      encodePred(l2, traceFn, len, messageTranslator, modelVarMap))
+    case Or(l1, l2) if negate => mkAnd(encodePred(l1, traceFn, len, messageTranslator, modelVarMap, negate=true),
+      encodePred(l2, traceFn, len, messageTranslator, modelVarMap, negate=true))
 //    case Not(m:I) if !negate =>
 //      mkForallInt(mkIntVal(-1),len, i => assertIAt(i,m,messageTranslator,traceFn,absUID,true))
     case Not(l) =>
-      encodePred(l, traceFn, len, messageTranslator, absUID, !negate)
+      encodePred(l, traceFn, len, messageTranslator, modelVarMap, !negate)
     case m@I(_, _, _) if !negate=>
       mkExistsInt(mkIntVal(-1), len,
-        i => assertIAt(i, m, messageTranslator, traceFn, absUID))
+        i => assertIAt(i, m, messageTranslator, traceFn, negated = false, modelVarMap))
     case m:I if negate =>
-      mkForallInt(mkIntVal(-1),len, i=>assertIAt(i,m,messageTranslator,traceFn,absUID,negated = true))
+      mkForallInt(mkIntVal(-1),len, i=>assertIAt(i,m,messageTranslator,traceFn,negated = true, modelVarMap))
     case NI(m1, m2) if !negate =>
       // exists i such that omega[i] = m1 and forall j > i omega[j] != m2
       mkExistsInt(mkIntVal(-1), len, i => mkAnd(List(
-        assertIAt(i, m1, messageTranslator, traceFn, absUID),
-        mkForallInt(i, len, j => assertIAt(j, m2, messageTranslator, traceFn, absUID, negated = true))
+        assertIAt(i, m1, messageTranslator, traceFn, negated = false, modelVarMap),
+        mkForallInt(i, len, j => assertIAt(j, m2, messageTranslator, traceFn, negated = true, modelVarMap))
       )))
     case NI(m1,m2) if negate =>
       // not NI(m1,m2) def= (not I(m1)) or NI(m2,m1)
       // encode with no negation
-      encodePred(Or(Not(m1),NI(m2,m1)), traceFn, len, messageTranslator, absUID)
+      encodePred(Or(Not(m1),NI(m2,m1)), traceFn, len, messageTranslator, modelVarMap)
   }
 
 
@@ -275,30 +278,42 @@ trait StateSolver[T] {
                      absUID: Option[String] = None, negate:Boolean = false): T = {
     val uniqueAbsId = absUID.getOrElse(System.identityHashCode(abs).toString)
 
-    def ienc(sublen: T, f: LSPred, modelVars: Map[String,PureExpr], traceFn: T, negate:Boolean): T = {
-      val modelConstraints:List[T] = modelVars.map{
+    def ienc(sublen: T, f: LSPred, modelVarsConstraints: Map[String,PureExpr], traceFn: T,
+             modelVars:Map[String,T], negate:Boolean): T = {
+      val modelConstraints:List[T] = modelVarsConstraints.map{
         case (k,v:PureVar) => mkEq(mkModelVar(k, uniqueAbsId), mkObjVar(v))
         case _ => ???
       }.toList
       mkAnd(
-        encodePred(f, traceFn, sublen, messageTranslator, uniqueAbsId, negate), mkAnd(modelConstraints))
+        encodePred(f, traceFn, sublen, messageTranslator, modelVars, negate), mkAnd(modelConstraints))
+    }
+    //TODO: make all model variables here
+    //TODO: when negated, use "forall"
+    val modelVarsToEncoding : Map[String,T] => T = { modelVars =>
+      val freshTraceFun = mkFreshTraceFn("arrowtf")
+      val beforeIndEq =
+        mkForallInt(mkIntVal(-1), traceLen, i =>
+          mkEq(mkTraceConstraint(traceFn, i), mkTraceConstraint(freshTraceFun, i)))
+      val (suffixConstraint, endlen) = abs.rightOfArrow.foldLeft((beforeIndEq, traceLen)) {
+        case ((acc, ind), i) => (
+          mkAnd(acc, assertIAt(ind, i, messageTranslator, freshTraceFun, negated = false, modelVars)),
+          mkAdd(ind, mkIntVal(1))
+        )
+      }
+      val absEnc = ienc(endlen, abs.a, abs.modelVars, freshTraceFun, modelVars, negate)
+      mkAnd(absEnc, suffixConstraint)
     }
 
-    val freshTraceFun = mkFreshTraceFn("arrowtf")
-    val beforeIndEq =
-      mkForallInt(mkIntVal(-1), traceLen, i =>
-        mkEq(mkTraceConstraint(traceFn, i), mkTraceConstraint(freshTraceFun, i)))
-    val (suffixConstraint, endlen) = abs.rightOfArrow.foldLeft((beforeIndEq, traceLen)) {
-      case ((acc, ind), i) => (
-        mkAnd(acc, assertIAt(ind, i, messageTranslator, freshTraceFun, uniqueAbsId)),
-        mkAdd(ind, mkIntVal(1))
-      )
-    }
-    val absEnc = ienc(endlen, abs.a,abs.modelVars, freshTraceFun, negate)
-    if(negate){
-      mkAnd(absEnc, suffixConstraint)
-    }else {
-      mkAnd(absEnc, suffixConstraint)
+    val allLSVarsInPred = abs.a.lsVar ++ abs.rightOfArrow.flatMap(_.lsVars)
+    if(negate)
+      allLSVarsInPred.foldLeft(modelVarsToEncoding){
+        case(acc,lsVar) => {
+          (lsMap:Map[String,T]) => mkForallAddr(lsVar,tMV => acc(lsMap + (lsVar -> tMV)))
+        }
+      }(Map())
+    else{
+      val modelVarMap = allLSVarsInPred.map(varname => (varname,mkModelVar(varname,uniqueAbsId))).toMap
+      modelVarsToEncoding(modelVarMap)
     }
   }
 
@@ -504,7 +519,7 @@ trait StateSolver[T] {
           case (TNullVal, _) => ???
         }
         i.map(ii => {
-          mkAnd(assertIAt(mkIntVal(ind), ii, messageTranslator, traceFN, ""),
+          mkAnd(assertIAt(mkIntVal(ind), ii, messageTranslator, traceFN, negated =false, s=>mkModelVar(s,"")),
             mkAnd(argConstraints)
           )
         })

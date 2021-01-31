@@ -349,9 +349,19 @@ class Z3StateSolverTest extends AnyFunSuite {
     val s_foo_bar = state.copy(traceAbstraction = Set(AbstractTrace(NI(ifoo,ibar), Nil, Map("a"->p1))))
     assert(statesolver.canSubsume(s_foo_bar, s_foo_bar_foo))
 
-    // Extra trace constraint prevents subsumption
+    // Extra trace constraint does not prevent subsumption
+    // NI(foo(a),bar(a)), I(foo(c))  can subsume  NI(foo(a),bar(a))
     val res2 = statesolver.canSubsume(s_foo_bar_foo, s_foo_bar)
-    assert(!res2)
+    assert(res2)
+
+    // NI(foo(a),bar(a)), I(foo(c)) /\ a!=c cannot subsume  NI(foo(a),bar(a))
+    val s_foo_bar_foo_notEq = state.copy(traceAbstraction =
+      Set(AbstractTrace(NI(ifoo,ibar), Nil, Map("a"->p1, "c"->p2)),
+        AbstractTrace(ifooc,Nil, Map())),
+      pureFormula = Set(PureConstraint(p1, NotEquals, p2))
+    )
+    val res3 = statesolver.canSubsume(s_foo_bar_foo_notEq, s_foo_bar)
+    assert(!res3)
 
     // Extra pure constraints should not prevent subsumption
     val fewerPure = State.topState.copy(pureFormula = Set(PureConstraint(p2, NotEquals, NullVal)))
