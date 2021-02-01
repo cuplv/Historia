@@ -126,6 +126,5 @@ class TransferFunctionsTest extends AnyFunSuite {
     assert(formula.exists(p => p.modelVars.exists{
       case (k,v) => k == "a" && v == recPv
     }))
-    //TODO: Simplification does not yet discharge in this case, should it?
   }
 }

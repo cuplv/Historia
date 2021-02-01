@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.solver.StateSolver
-import edu.colorado.plv.bounder.ir.{IRWrapper, IntConst, LVal, LocalWrapper, MessageType, RVal, StringConst}
+import edu.colorado.plv.bounder.ir.{AppLoc, IRWrapper, IntConst, LVal, LocalWrapper, MessageType, RVal, StringConst}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAtom, LSFalse, LSPred, LSTrue, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state.State.findIAF
 
@@ -50,13 +50,27 @@ object LSAny extends LSParamConstraint {
   override def optTraceAbs: Option[AbstractTrace] = None
 }
 
+/**
+ *
+ * @param callStack Application only call stack abstraction, emtpy stack or callin on top means framework control.
+ * @param heapConstraints Separation logic heap representation
+ * @param pureFormula Constraints on values in separation logic formula including:
+ *                    - null/not null
+ *                    - type bounds
+ * @param traceAbstraction Trace required to reach this point in the program execution
+ * @param nextAddr Int val of next pure val to be declared
+ * @param nextCmd Command just processed while executing backwards.
+ */
 case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdge, PureExpr],
-                 pureFormula: Set[PureConstraint], traceAbstraction: Set[AbstractTrace], nextAddr:Int) {
+                 pureFormula: Set[PureConstraint], traceAbstraction: Set[AbstractTrace], nextAddr:Int,
+                 nextCmd: Option[AppLoc] = None) {
   var isSimplified = false
   def setSimplified(): State = {
     isSimplified = true
     this
   }
+
+  def setNextCmd(cmd: Option[AppLoc]):State = this.copy(nextCmd = cmd)
 
   def nextPv() = (PureVar(nextAddr), this.copy(nextAddr = nextAddr+1))
 

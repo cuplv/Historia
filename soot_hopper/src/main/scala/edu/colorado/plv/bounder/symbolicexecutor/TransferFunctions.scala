@@ -101,29 +101,29 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
 
   /**
    *
-   * @param pre state before current location
+   * @param postState state after current location in control flow
    * @param target predecessor of current location
    * @param source current location
    * @return set of states that may reach the target state by stepping from source to target
    */
-  def transfer(pre: State, target: Loc, source: Loc): Set[State] = (source, target, pre) match {
-    case (source@AppLoc(_, _, false), cmret@CallinMethodReturn(_, _), preState) =>
+  def transfer(postState: State, target: Loc, source: Loc): Set[State] = (source, target) match {
+    case (source@AppLoc(_, _, false), cmret@CallinMethodReturn(_, _)) =>
       // traverse back over the retun of a callin
       // "Some(source.copy(isPre = true))" places the entry to the callin as the location of call
       //TODO:relevant transition enumeration
       val (pkg, name) = msgCmdToMsg(cmret)
-      val relAliases: Set[List[LSParamConstraint]] = relevantAliases(pre, CIExit, (pkg,name))
+      val relAliases: Set[List[LSParamConstraint]] = relevantAliases(postState, CIExit, (pkg,name))
       val frame = CallStackFrame(target, Some(source.copy(isPre = true)), Map())
       val inVars: List[Option[RVal]] = inVarsForCall(source)
       val ostates: Set[State] = if(relAliases.isEmpty){
-        Set(pre)
+        Set(postState)
       }else {
         // add all args except assignment to state
         val states2 = relAliases.flatMap(relAlias =>{
           val comb: List[(Option[RVal], LSParamConstraint)] = inVars zip relAlias
-          val state0 = defineLSVarsAs(pre,comb)
+          val state0 = defineLSVarsAs(postState,comb)
           val state1 = traceAllPredTransfer(CIExit, (pkg,name),inVars, state0)
-          val otherStates = statesWhereOneVarNot(pre, comb)
+          val otherStates = statesWhereOneVarNot(postState, comb)
           otherStates + state1
         })
 
@@ -140,20 +140,21 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
           case Some(revar:LocalWrapper)::_ => outState.clearLVal(revar)
           case _ => outState
         }
-        outState1.copy(callStack = frame::outState1.callStack)
+        outState1.copy(callStack = frame::outState1.callStack, nextCmd = None)
       }
-    case (CallinMethodReturn(_, _), CallinMethodInvoke(_, _), state) => Set(state)
-    case (cminv@CallinMethodInvoke(_, _), ciInv@AppLoc(_, _, true), s@State(_ :: t, _, _, _,_)) =>
+    case (CallinMethodReturn(_, _), CallinMethodInvoke(_, _)) => Set(postState)
+    case (cminv@CallinMethodInvoke(_, _), ciInv@AppLoc(_, _, true)) =>
       //TODO: relevant transition enumeration
+      assert(postState.callStack.nonEmpty, "Bad control flow, abstract stack must be non-empty.")
       val (pkg,name) = msgCmdToMsg(cminv)
-      val relAliases: Set[List[LSParamConstraint]] = relevantAliases(pre, CIEnter, (pkg,name))
+      val relAliases: Set[List[LSParamConstraint]] = relevantAliases(postState, CIEnter, (pkg,name))
       val ostates = if(relAliases.isEmpty)
-        Set(pre)
+        Set(postState)
       else {
         println(???) //TODO: enumerate aliases
         // TODO: in general, this case won't be used until the entry of a callin shows up in a rule
         val invars = inVarsForCall(ciInv)
-        val state0 = defineVars(s, invars.tail)
+        val state0 = defineVars(postState, invars.tail)
         val state1 = traceAllPredTransfer(CIEnter, (pkg, name), invars, state0)
 //        val states2 = newSpecInstanceTransfer(CIExit, (pkg, name), invars, ciInv, state1)
 //        Set(states2.copy(callStack = t))
@@ -161,15 +162,15 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         Set(state1)
         ???
       }
-      ostates.map(s => s.copy(if (s.callStack.isEmpty) Nil else s.callStack.tail))
-    case (AppLoc(_, _, true), AppLoc(_, _, false), pre) => Set(pre)
-    case (appLoc@AppLoc(c1, m1, false), AppLoc(c2, m2, true), prestate) if c1 == c2 && m1 == m2 =>
-      cmdTransfer(w.cmdAtLocation(appLoc), prestate)
-    case (AppLoc(containingMethod, m, true), cmInv@CallbackMethodInvoke(fc1, fn1, l1), pre) =>
+      ostates.map(s => s.copy(callStack = if (s.callStack.isEmpty) Nil else s.callStack.tail, nextCmd = Some(ciInv)))
+    case (AppLoc(_, _, true), AppLoc(_, _, false)) => Set(postState)
+    case (appLoc@AppLoc(c1, m1, false), postLoc@AppLoc(c2, m2, true)) if c1 == c2 && m1 == m2 =>
+      cmdTransfer(w.cmdAtLocation(appLoc), postState).map(_.setNextCmd(Some(postLoc)))
+    case (AppLoc(containingMethod, m, true), cmInv@CallbackMethodInvoke(fc1, fn1, l1)) =>
       // If call doesn't match return on stack, return bottom
       // Target loc of CallbackMethodInvoke means just before callback is invoked
-      if(pre.callStack.nonEmpty){
-        pre.callStack.head match {
+      if(postState.callStack.nonEmpty){
+        postState.callStack.head match {
           case CallStackFrame(CallbackMethodReturn(fc2,fn2,l2,_),_,_) if fc1 != fc2 || fn1 != fn2 || l1 != l2 =>
             return Set(???)//TODO: does this ever happen with callback entry? (remove ??? when this is figured out)
           case _ =>
@@ -177,16 +178,16 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       }
 
       val (pkg, name) = msgCmdToMsg(cmInv)
-      val relAliases: Set[List[LSParamConstraint]] = relevantAliases(pre, CBEnter, (pkg,name))
+      val relAliases: Set[List[LSParamConstraint]] = relevantAliases(postState, CBEnter, (pkg,name))
       val ostates = if (relAliases.isEmpty){
-        Set(pre)
+        Set(postState)
       }else {
         val invars: List[Option[LocalWrapper]] = None :: containingMethod.getArgs
         relAliases.flatMap(relAlias =>{
           val comb: List[(Option[LocalWrapper], LSParamConstraint)] = invars zip relAlias
-          val state0 = defineLSVarsAs(pre, comb)
+          val state0 = defineLSVarsAs(postState, comb)
           val state1 = traceAllPredTransfer(CBEnter, (pkg,name), invars, state0)
-          val otherStates = statesWhereOneVarNot(pre, comb)
+          val otherStates = statesWhereOneVarNot(postState, comb)
           otherStates + state1
         })
       }
@@ -194,9 +195,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         val invars: List[Option[LocalWrapper]] = None :: containingMethod.getArgs
         val c = defineVars(a, invars)
         val b = newSpecInstanceTransfer(CBEnter, (pkg, name), invars, cmInv, c)
-        b.copy(callStack = if(a.callStack.isEmpty) Nil else a.callStack.tail)
+        b.copy(callStack = if(a.callStack.isEmpty) Nil else a.callStack.tail, nextCmd = None)
       })
-    case (CallbackMethodInvoke(_, _, _), targetLoc@CallbackMethodReturn(_,_,mloc, _), pre) =>
+    case (CallbackMethodInvoke(_, _, _), targetLoc@CallbackMethodReturn(_,_,mloc, _)) =>
       // Case where execution goes to the exit of another callback
       // TODO: nested callbacks not supported yet, assuming we can't go back to callin entry
       // TODO: note that the callback method invoke is to be ignored here.
@@ -209,8 +210,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       val newFrame = CallStackFrame(appLoc, None, Map())
       val (pkg,name) = msgCmdToMsg(target)
       // Push frame regardless of relevance
-      val pre_push = pre.copy(callStack = newFrame::pre.callStack)
-      val relAliases: Set[List[LSParamConstraint]] = relevantAliases(pre, CBExit, (pkg,name))
+      val pre_push = postState.copy(callStack = newFrame::postState.callStack)
+      val relAliases: Set[List[LSParamConstraint]] = relevantAliases(postState, CBExit, (pkg,name))
       val localVarOrVal: List[Option[RVal]] = rvar::mloc.getArgs
       // Note: no newSpecInstanceTransfer since this is an in-message
       if(relAliases.isEmpty){
@@ -228,9 +229,11 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
           otherStates + state1
         })
       }
-    case (CallbackMethodReturn(_,_,mloc1,_), AppLoc(mloc2,_,_), state) =>
-      assert(mloc1 == mloc2) ; Set(state) // transfer handled by processing callbackmethodreturn, nothing to do here
-    case (_:InternalMethodInvoke, al@AppLoc(_, _, true), state) =>
+    case (CallbackMethodReturn(_,_,mloc1,_), AppLoc(mloc2,_,false)) =>
+      assert(mloc1 == mloc2)
+      assert(postState.nextCmd.isEmpty)
+      Set(postState) // transfer handled by processing callbackmethodreturn, nothing to do here
+    case (_:InternalMethodInvoke, al@AppLoc(_, _, true)) =>
       val cmd = w.cmdAtLocation(al) match{
         case InvokeCmd(inv : Invoke, _) => inv
         case AssignCmd(_, inv: Invoke, _) => inv
@@ -238,49 +241,49 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       val receiverOption: Option[RVal] = cmd match{
         case v:VirtualInvoke => Some(v.target)
         case s:SpecialInvoke => Some(s.target)
-        case s:StaticInvoke => None
+        case _:StaticInvoke => None
       }
       val argOptions: List[Option[RVal]] = cmd.params.map(Some(_))
-      val receiverValueOption = state.get(LocalWrapper("@this","_"))
+      val state0 = postState.setNextCmd(None)
+      val receiverValueOption = state0.get(LocalWrapper("@this","_"))
       val frameArgVals: List[Option[PureExpr]] =
-        (0 until cmd.params.length).map(i => state.get(LocalWrapper(s"@parameter$i", "_"))).toList
+        (0 until cmd.params.length).map(i => state0.get(LocalWrapper(s"@parameter$i", "_"))).toList
       val allArgs = receiverOption :: argOptions
       val allParams: Seq[Option[PureExpr]] = (receiverValueOption::frameArgVals)
       val argsAndVals: List[(Option[RVal], Option[PureExpr])] = allArgs zip allParams
       val resolver = new DefaultAppCodeResolver(w)
       // Possible stack frames for source of call being a callback or internal method call
-      val out = if (pre.callStack.size == 1) {
+      val out = if (postState.callStack.size == 1) {
         val newStackFrames: List[CallStackFrame] =
           BounderUtil.resolveMethodReturnForAppLoc(resolver, al).map(mr => CallStackFrame(mr, None, Map()))
-        val newStacks = newStackFrames.map(frame => frame :: (if (pre.callStack.isEmpty) Nil else pre.callStack.tail))
-        val nextStates = newStacks.map(newStack => pre.copy(callStack = newStack))
+        val newStacks = newStackFrames.map(frame => frame :: (if (postState.callStack.isEmpty) Nil else postState.callStack.tail))
+        val nextStates = newStacks.map(newStack => postState.copy(callStack = newStack))
         nextStates.map(nextState => defineVarsAs(nextState, argsAndVals)).toSet
-      }else if (pre.callStack.size > 1){
-        val state1 = pre.copy(callStack = pre.callStack.tail)
-        //TODO: double check this logic at some point, you wrote it at midnight
+      }else if (postState.callStack.size > 1){
+        val state1 = postState.copy(callStack = postState.callStack.tail)
         Set(swapVarsAs(state1, argsAndVals))
       }else{
         throw new IllegalStateException("Abstract state should always have a " +
           "stack when returning from internal method.")
       }
-      out //TODO: this is still malfunctioning
-    case (retloc@AppLoc(mloc, line, false), mRet: InternalMethodReturn, state) =>
-      // Create call stack frame with empty
+      out
+    case (retloc@AppLoc(mloc, line, false), mRet: InternalMethodReturn) =>
       val retVal:Map[StackVar, PureExpr] = w.cmdAtLocation(retloc) match{
         case AssignCmd(tgt, _:Invoke, _) =>
-          state.get(tgt).map(v => Map(StackVar("@ret") -> v)).getOrElse(Map())
+          postState.get(tgt).map(v => Map(StackVar("@ret") -> v)).getOrElse(Map())
         case InvokeCmd(_,_) => Map()
         case _ => throw new IllegalStateException(s"malformed bytecode, source: $retloc  target: $mRet")
       }
+      // Create call stack frame with return value
+      // TODO: add @this to prove non-static invokes faster
       val newFrame = CallStackFrame(mRet, Some(AppLoc(mloc,line,true)), retVal)
-      Set(state.copy(callStack = newFrame::state.callStack))
-    case (mr@InternalMethodReturn(_,_,_), cmd@AppLoc(_,_,_),state) =>
-      // TODO: case where return value is important
+      Set(postState.copy(callStack = newFrame::postState.callStack, nextCmd = None))
+    case (mr@InternalMethodReturn(_,_,_), cmd@AppLoc(_,_,false)) =>
       w.cmdAtLocation(cmd) match{
-        case ReturnCmd(_,_) => Set(state)
+        case ReturnCmd(_,_) => Set(postState)
         case _ => throw new IllegalStateException(s"malformed bytecode, source: $mr  target: ${cmd}")
       }
-    case (AppLoc(_,_,_), InternalMethodInvoke(_,_,_), state) => Set(state)
+    case (_:AppLoc, _:InternalMethodInvoke) => Set(postState)
     case t =>
       println(t)
       ???
@@ -561,8 +564,15 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     case AssignCmd(_, _:Invoke, _) => Set(state)
     //TODO: handle if, when transfering over if, assume b was true.
       // Note: ignoring if stmts is sound but not precise
-    case If(b,_) => Set(state)
-//      Set(assumeInState(b,state))
+      // TODO: needed info about where control flow came from. If statement is encountered on both branches through the unit graph
+    case If(b,trueLoc,_) =>
+      assert(state.nextCmd.isDefined, "Malformed transfer, next command must be defined to transfer If node.")
+      val stateLocationFrom: AppLoc = state.nextCmd.get
+      if(stateLocationFrom == trueLoc){
+        ???
+      }else{
+        ???
+      }
     case AssignCmd(l,Cast(castT, local),cmdloc) =>
       val state1 = state.get(local) match{
         case Some(v) => state.copy(pureFormula = state.pureFormula + PureConstraint(v, TypeComp, SubclassOf(castT)))
@@ -630,11 +640,17 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     }
   }
 
-//  def assumeInState(b:RVal, state:State): State = b match{
-//    case Binop(v1, op, v2) =>
-//      val oneIsInState
-//
-//  }
+  def assumeInState(b:RVal, state:State): Option[State] = b match{
+    case BoolConst(true) => Some(state)
+    case BoolConst(false) => None
+    case Binop(v1, Eq, v2) =>
+      ???
+    case Binop(v1, Ne, v2) =>
+      ???
+    case v =>
+      println(v)
+      ??? //TODO: implement more boolean cases
+  }
 
 //    b match{
 //    case Binop(l@LocalWrapper(name,ltype), op, const) if state.containsLocal(l) =>

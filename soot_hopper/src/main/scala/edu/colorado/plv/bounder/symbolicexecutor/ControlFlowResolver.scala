@@ -278,8 +278,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       val componentFiltered = res.filter(callbackInComponent)
       val res1 = componentFiltered.filter(relevantMethod(_,state))
       res1
-    case (CallbackMethodReturn(fmwClazz,fmwName, loc, Some(line)),_) =>
-      AppLoc(loc, line, true)::Nil
+    case (CallbackMethodReturn(_,_, loc, Some(line)),_) =>
+      AppLoc(loc, line, isPre = false)::Nil
     case (CallinMethodInvoke(fmwClazz, fmwName),Nil) =>
       val m: Option[MethodLoc] = wrapper.findMethodLoc(fmwClazz, fmwName)
       m.map(m2 =>

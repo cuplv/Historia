@@ -386,7 +386,8 @@ class JimpleFlowdroidWrapper(apkPath : String,
         ReturnCmd(None, loc)
       }
       case cmd: JIfStmt =>
-        If(makeVal(cmd.getCondition),loc)
+        val targetIfTrue = AppLoc(loc.method, JimpleLineLoc(cmd.getTarget, method), true)
+        If(makeVal(cmd.getCondition),targetIfTrue,loc)
       case _ : JNopStmt =>
         NopCmd(loc)
       case _: JThrowStmt =>

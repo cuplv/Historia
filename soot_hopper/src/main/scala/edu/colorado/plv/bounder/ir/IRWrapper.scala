@@ -1,7 +1,6 @@
 package edu.colorado.plv.bounder.ir
 
 import edu.colorado.plv.bounder.symbolicexecutor.AppCodeResolver
-import edu.colorado.plv.bounder.symbolicexecutor.state.TypeConstraint
 
 // Interface to handle all the messy parts of interacting with the underlying IR representation
 /**
@@ -64,7 +63,7 @@ case class InvokeCmd(method: Invoke, loc:AppLoc) extends CmdWrapper(loc) {
   override def toString: String = method.toString
 }
 
-case class If(b:RVal, loc:AppLoc) extends CmdWrapper(loc){
+case class If(b:RVal, trueLoc:AppLoc, loc:AppLoc) extends CmdWrapper(loc){
   override def mkPre: CmdWrapper = this.copy(loc=loc.copy(isPre = true))
 }
 
