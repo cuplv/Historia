@@ -4,6 +4,8 @@ import java.io.{File, PrintWriter}
 import scala.io.Source
 
 object PrettyPrinting {
+  val outDir = sys.env.get("OUT_DIR")
+
   val templateFile = getClass.getResource("/pageTemplate.html").getPath
   val template = Source.fromFile(templateFile).getLines().mkString
   def qryString(q : Qry):String = q match{
@@ -93,4 +95,15 @@ object PrettyPrinting {
       case Some(v) => dotWitTree(Set(v), outFile, includeSubsEdges)
       case None => dotWitTree(qrySet, outFile, includeSubsEdges)
     }
+
+  def dumpDebugInfo(qrySet:Set[PathNode],fileName: String):Unit = {
+    outDir match{
+      case Some(baseDir) =>
+        val fname = s"$baseDir/$fileName"
+        printWitnessOrProof(qrySet, s"$fname.dot")
+        printWitnessTraces(qrySet, s"$fname.witnesses")
+      case None =>
+    }
+
+  }
 }

@@ -32,8 +32,7 @@ class CreateDestroySubscribe_TestApp extends AnyFunSuite{
       "com.example.createdestroy.MainActivity",
       "void lambda$onCreate$1$MainActivity(java.lang.Object)",31)
     val result = symbolicExecutor.executeBackward(query)
-    PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/CreateDestroySubscribe_TestApp.dot")
-    PrettyPrinting.printWitnessTraces(result, outFile="/Users/shawnmeier/Desktop/CreateDestroySubscribe_TestApp.witnesses")
+    PrettyPrinting.dumpDebugInfo(result, "CreateDestroySubscribe_TestApp")
     assert(BounderUtil.interpretResult(result) == Proven)
     assert(result.nonEmpty)
   }
@@ -43,8 +42,7 @@ class CreateDestroySubscribe_TestApp extends AnyFunSuite{
       "com.example.createdestroy.MainActivity",
       "void lambda$onCreate$1$MainActivity(java.lang.Object)",31)
     val result2 = symbolicExecutor.executeBackward(query2)
-    PrettyPrinting.printWitnessOrProof(result2, "/Users/shawnmeier/Desktop/CreateDestroySubscribe_TestApp_reach.dot")
-    PrettyPrinting.printWitnessTraces(result2, outFile="/Users/shawnmeier/Desktop/CreateDestroySubscribe_TestApp_reach.witnesses")
+    PrettyPrinting.dumpDebugInfo(result2, "CreateDestroySubscribe_TestApp_reach")
     assert(result2.nonEmpty)
     assert(BounderUtil.interpretResult(result2) == Witnessed)
   }

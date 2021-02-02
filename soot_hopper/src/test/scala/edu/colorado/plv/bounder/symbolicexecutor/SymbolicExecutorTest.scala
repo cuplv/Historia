@@ -11,7 +11,7 @@ import soot.SootMethod
 class SymbolicExecutorTest extends AnyFunSuite {
 
   test("Symbolic Executor should prove an intraprocedural deref"){
-    val test_interproc_1 = getClass.getResource("/test_interproc_1.apk").getPath()
+    val test_interproc_1 = getClass.getResource("/test_interproc_1.apk").getPath
     assert(test_interproc_1 != null)
     val w = new JimpleFlowdroidWrapper(test_interproc_1, PatchedFlowdroidCallGraph)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
@@ -27,16 +27,16 @@ class SymbolicExecutorTest extends AnyFunSuite {
     val result: Set[PathNode] = symbolicExecutor.executeBackward(query)
     assert(result.size == 1)
     assert(result.iterator.next.qry.isInstanceOf[BottomQry])
-    PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/reftest.dot")
+//    PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/reftest.dot")
+    PrettyPrinting.dumpDebugInfo(result, "test_interproc_1_derefSafe")
   }
 
 
   test("Symbolic Executor should prove an inter-callback deref"){
     println("======= Interproc ======")
-    val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath()
+    val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath
     assert(test_interproc_1 != null)
     val w = new JimpleFlowdroidWrapper(test_interproc_1, PatchedFlowdroidCallGraph)
-    val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
 
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, ActivityLifecycle.spec)
     val config = SymbolicExecutorConfig(
@@ -46,16 +46,16 @@ class SymbolicExecutorTest extends AnyFunSuite {
       "com.example.test_interproc_2.MainActivity",
       "void onPause()",27)
     val result: Set[PathNode] = symbolicExecutor.executeBackward(query)
-    PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/foo.dot")
-    PrettyPrinting.printWitnessTraces(result, outFile="/Users/shawnmeier/Desktop/foo.witnesses")
+//    PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/foo.dot")
+//    PrettyPrinting.printWitnessTraces(result, outFile="/Users/shawnmeier/Desktop/foo.witnesses")
+    PrettyPrinting.dumpDebugInfo(result, "test_interproc_2_derefSafe")
     assert(BounderUtil.interpretResult(result) == Proven)
-    assert(result.size > 0)
+    assert(result.nonEmpty)
   }
   test("Symbolic executor should witness onPause"){
-    val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath()
+    val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath
     assert(test_interproc_1 != null)
     val w = new JimpleFlowdroidWrapper(test_interproc_1, PatchedFlowdroidCallGraph)
-    val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, ActivityLifecycle.spec)
     val config = SymbolicExecutorConfig(
       stepLimit = Some(50), w,transfer, printProgress = true, z3Timeout = Some(30))
@@ -64,14 +64,14 @@ class SymbolicExecutorTest extends AnyFunSuite {
       "com.example.test_interproc_2.MainActivity",
       "void onPause()",25)
     val result: Set[PathNode] = symbolicExecutor.executeBackward(query)
-    PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/witnessOnPause.dot")
+//    PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/witnessOnPause.dot")
+    PrettyPrinting.dumpDebugInfo(result, "test_interproc_2_onPauseReach")
     assert(BounderUtil.interpretResult(result) == Witnessed)
   }
   test("Symbolic executor should witness onResume"){
-    val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath()
+    val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath
     assert(test_interproc_1 != null)
     val w = new JimpleFlowdroidWrapper(test_interproc_1, PatchedFlowdroidCallGraph)
-    val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, ActivityLifecycle.spec)
     val config = SymbolicExecutorConfig(
       stepLimit = Some(50), w,transfer, printProgress = true, z3Timeout = Some(30))
@@ -80,7 +80,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       "com.example.test_interproc_2.MainActivity",
       "void onResume()",20)
     val result: Set[PathNode] = symbolicExecutor.executeBackward(query)
-    PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/witnessOnResume.dot")
+    PrettyPrinting.dumpDebugInfo(result, "test_interproc_2_onResumeReach")
     assert(BounderUtil.interpretResult(result) == Witnessed)
   }
 }

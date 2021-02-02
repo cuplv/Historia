@@ -1,6 +1,7 @@
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
+import edu.colorado.plv.bounder.lifestate.LifeState.LSFalse
 import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{PrettyPrinting, Qry}
 import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, SymbolicExecutorConfig, TransferFunctions}
@@ -20,7 +21,7 @@ class RXJavaSubscribe_TestApp extends AnyFunSuite{
         RxJavaSpec.subscribeDoesNotReturnNull
       )))
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(120), w,transfer, printProgress = true,
+      stepLimit = Some(100), w,transfer, printProgress = true,
       component = Some(List("example.com.rxjavasubscribebug.PlayerFragment.*")))
     val symbolicExecutor = config.getSymbolicExecutor
 
@@ -29,8 +30,7 @@ class RXJavaSubscribe_TestApp extends AnyFunSuite{
       "void lambda$onActivityCreated$1$PlayerFragment(java.lang.Object)",64,
       callinMatches = ".*getActivity.*".r)
     val result = symbolicExecutor.executeBackward(query)
-    PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/RXJavaSubscribe_Fix_TestApp.dot")
-    PrettyPrinting.printWitnessTraces(result, outFile="/Users/shawnmeier/Desktop/RXJavaSubscribe_Fix_TestApp.witnesses")
+//    PrettyPrinting.dumpDebugInfo(result, "RXJavaSubscribe_Fix_TestApp")
     assert(BounderUtil.interpretResult(result) == Proven)
     assert(result.nonEmpty)
   }

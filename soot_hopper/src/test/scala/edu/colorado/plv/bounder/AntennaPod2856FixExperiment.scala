@@ -25,8 +25,8 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
       "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)",200,
       callinMatches = ".*getActivity.*".r)
     val result = symbolicExecutor.executeBackward(query)
-    PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/antennapod_fix_2856.dot")
-    PrettyPrinting.printWitnessTraces(result, outFile="/Users/shawnmeier/Desktop/antennapod_fix_2856.witnesses")
+
+    PrettyPrinting.dumpDebugInfo(result, "antennapod_fix_2856")
   }
 
 }

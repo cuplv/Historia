@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.ir.{AppLoc, BoolConst, IRWrapper, IntConst, LVal
 import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAtom, LSFalse, LSPred, LSTrue, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state.State.findIAF
-
+import upickle.default.{ReadWriter => RW, macroRW}
 
 object State {
   private var id:Int = -1
@@ -357,6 +357,9 @@ sealed abstract class PureExpr {
   def isDoubleExpr : Boolean = false
   def getVars(s : Set[PureVar] = Set.empty) : Set[PureVar]
 }
+object PureExpr{
+  implicit val rw:RW[PureExpr] = RW.merge(PureVal.rw, macroRW[PureVar])
+}
 
 
 
@@ -379,6 +382,13 @@ sealed abstract class PureVal(v:Any) extends PureExpr with Val {
 //  }
   override def toString : String = v.toString
 }
+case object PureVal{
+  implicit val rw:RW[PureVal] = RW.merge(
+    macroRW[NullVal.type], macroRW[TopVal.type],
+    macroRW[IntVal],macroRW[BoolVal],macroRW[StringVal],
+    macroRW[SubclassOf],macroRW[ClassType],macroRW[SuperclassOf])
+}
+
 case object NullVal extends PureVal{
   override def toString:String = "NULL"
 }
@@ -386,7 +396,7 @@ case class IntVal(v : Int) extends PureVal(v)
 case class BoolVal(v : Boolean) extends PureVal(v)
 case class StringVal(v : String) extends PureVal(v)
 case object TopVal extends PureVal(null)
-//TODO: do we need type constraints here?
+
 sealed trait TypeConstraint extends PureVal
 case class SubclassOf(clazz: String) extends TypeConstraint{
   override def toString:String = s"<: $clazz"

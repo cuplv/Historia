@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
-import edu.colorado.plv.bounder.ir.{Loc, MethodLoc}
+import edu.colorado.plv.bounder.ir.Loc
 
 
 //TODO: state should probably define all locals as pointing to pv, pv can then be constrained by pure expr

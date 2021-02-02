@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSExpr, LSFalse, LSSpec, NI, Not, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSFalse, LSSpec, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{Equals, NotEquals}
 
 object SpecSignatures {

@@ -2,10 +2,10 @@ package edu.colorado.plv.bounder
 
 import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.symbolicexecutor.FlowdroidCallGraph
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, IntVal, PureExpr, PureVal, PureVar, State, SubclassOf, TypeConstraint}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.Scene
-
-import scala.jdk.CollectionConverters._
+import upickle.default._
 
 class BounderSetupApplicationTest extends AnyFunSuite {
   val trikita_apk = getClass.getResource("/trikita.slide_4.apk").getPath
@@ -36,5 +36,12 @@ class BounderSetupApplicationTest extends AnyFunSuite {
     assert(!LifeState.LSVar.matches("0"))
     assert(!LifeState.LSVar.matches("_"))
     assert(!LifeState.LSVar.matches("@null"))
+  }
+  test("State serialization"){
+    // TODO: state serialization for better dbg support
+    val v: List[PureExpr] = List(SubclassOf("foo"), ClassType("bar"), IntVal(3), PureVar(7))
+    val serialized = write(v)
+    val deserialized = read[List[PureExpr]](serialized)
+    assert(v === deserialized)
   }
 }
