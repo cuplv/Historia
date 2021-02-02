@@ -32,7 +32,9 @@ object PrettyPrinting {
     val pw = new PrintWriter(new File(outFile ))
     val live = result.flatMap{
       case pn@PathNode(_: SomeQry, _ , None) => Some(("live",pn))
-      case pn@PathNode(_ :WitnessedQry, succ, _) => Some(("witnessed", pn))
+      case pn@PathNode(_ :WitnessedQry, _, _) => Some(("witnessed", pn))
+      case pn@PathNode(_:BottomQry, _, None) => Some(("refuted",pn))
+      case pn@PathNode(_:SomeQry, _, Some(v)) => Some((s"subsumed by:\n -- ${qryString(v.qry)}\n", pn))
       case _ => None
     }
     val traces = live.map(a => a._1 + "\n    " + witnessToTrace(a._2).mkString("\n    ")).mkString("\n")
@@ -100,7 +102,7 @@ object PrettyPrinting {
     outDir match{
       case Some(baseDir) =>
         val fname = s"$baseDir/$fileName"
-        printWitnessOrProof(qrySet, s"$fname.dot")
+//        printWitnessOrProof(qrySet, s"$fname.dot")
         printWitnessTraces(qrySet, s"$fname.witnesses")
       case None =>
     }
