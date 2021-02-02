@@ -1,14 +1,19 @@
 FROM ubuntu:18.04
 RUN apt-get update
 RUN apt-get install -y gcc make sudo cmake apt-transport-https software-properties-common binutils g++
-RUN sudo apt-get install -y default-jdk
-ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-amd64
+RUN apt-get install wget apt-transport-https gnupg
+RUN wget -qO - https://adoptopenjdk.jfrog.io/adoptopenjdk/api/gpg/key/public | sudo apt-key add -
+RUN echo "deb https://adoptopenjdk.jfrog.io/adoptopenjdk/deb <codename> main" | sudo tee /etc/apt/sources.list.d/adoptopenjdk.list 
+RUN apt-get update
+RUN apt-get install adoptopenjdk-11-hotspot
+#RUN sudo apt-get install -y default-jdk
+#ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-amd64
 
 ## 3. sbt
-RUN echo "deb https://dl.bintray.com/sbt/debian /" | sudo tee -a /etc/apt/sources.list.d/sbt.list
-RUN sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823
-RUN sudo apt-get update
-RUN sudo apt-get install -y sbt
+#RUN echo "deb https://dl.bintray.com/sbt/debian /" | sudo tee -a /etc/apt/sources.list.d/sbt.list
+#RUN sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823
+#RUN sudo apt-get update
+#RUN sudo apt-get install -y sbt
 
 
 ### Microsoft z3
