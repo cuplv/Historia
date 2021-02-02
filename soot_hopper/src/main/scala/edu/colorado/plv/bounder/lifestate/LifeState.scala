@@ -57,11 +57,6 @@ object LifeState {
     override def lsVar: Set[String] = Set.empty
     override def contains(mt:MessageType,sig: (String, String)): Boolean = false
   }
-  case class LSExpr(v1:String, op: CmpOp, v2:String) extends LSPred {
-    override def contains(mt: MessageType, sig: (String, String)): Boolean = false
-
-    override def lsVar: Set[String] = Set()
-  }
 
   sealed trait LSAtom extends LSPred {
     def getAtomSig:String
@@ -73,6 +68,10 @@ object LifeState {
   // A string of "_" means "don't care"
   // primitives are parsed as in java "null", "true", "false", numbers etc.
   case class I(mt: MessageType, signatures: Set[(String, String)], lsVars : List[String]) extends LSAtom {
+    def constVals:List[Option[PureExpr]] = lsVars.map{
+      case LifeState.LSConst(v) => Some(v)
+      case _ => None
+    }
     private val sortedSig = signatures.toList.sorted
     override def lsVar: Set[String] = lsVars.filter(vname => LifeState.LSVar.matches(vname)).toSet
 

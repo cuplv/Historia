@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.lifestate
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSExpr, LSFalse, LSSpec, NI, Not, Or}
-import edu.colorado.plv.bounder.symbolicexecutor.state.NotEquals
+import edu.colorado.plv.bounder.symbolicexecutor.state.{Equals, NotEquals}
 
 object SpecSignatures {
 
@@ -91,6 +91,7 @@ object SpecSignatures {
     ("rx.Single", "rx.Subscription subscribe(rx.functions.Action1)")
   )
   val RxJava_subscribe_exit = I(CIExit, RxJava_subscribe, "sr"::"s"::"l"::Nil)
+  val RxJava_subscribe_exit_null = RxJava_subscribe_exit.copy(lsVars = "@null"::Nil)
 }
 
 object FragmentGetActivityNullSpec{
@@ -101,7 +102,7 @@ object FragmentGetActivityNullSpec{
 object RxJavaSpec{
   val subUnsub = NI(SpecSignatures.RxJava_subscribe_exit, SpecSignatures.RxJava_unsubscribe_exit)
   val call = LSSpec(subUnsub, SpecSignatures.RxJava_call_entry)
-  val subscribeDoesNotReturnNull = LSSpec(LSExpr("sr", NotEquals, "@null"), SpecSignatures.RxJava_subscribe_exit)
+  val subscribeDoesNotReturnNull = LSSpec(LSFalse, SpecSignatures.RxJava_subscribe_exit_null)
 }
 
 object ActivityLifecycle {

@@ -46,7 +46,7 @@ class CreateDestroySubscribe_TestApp extends AnyFunSuite{
     PrettyPrinting.printWitnessOrProof(result2, "/Users/shawnmeier/Desktop/CreateDestroySubscribe_TestApp_reach.dot")
     PrettyPrinting.printWitnessTraces(result2, outFile="/Users/shawnmeier/Desktop/CreateDestroySubscribe_TestApp_reach.witnesses")
     assert(result2.nonEmpty)
-    assert(BounderUtil.interpretResult(result2) == Witnessed) //TODO: failing test
+    assert(BounderUtil.interpretResult(result2) == Witnessed)
   }
 
 }

@@ -136,13 +136,13 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         }
         states3
       }
-      ostates.map{s =>
+      ostates.flatMap{s =>
         val outState = newSpecInstanceTransfer(CIExit, (pkg, name), inVars, cmret, s)
-        val outState1 = inVars match{
-          case Some(revar:LocalWrapper)::_ => outState.clearLVal(revar)
+        val outState1: Set[State] = inVars match{
+          case Some(revar:LocalWrapper)::_ => outState.map(s3 => s3.clearLVal(revar))
           case _ => outState
         }
-        outState1.copy(callStack = frame::outState1.callStack, nextCmd = None)
+        outState1.map(s2 => s2.copy(callStack = frame::s2.callStack, nextCmd = None))
       }
     case (CallinMethodReturn(_, _), CallinMethodInvoke(_, _)) => Set(postState)
     case (cminv@CallinMethodInvoke(_, _), ciInv@AppLoc(_, _, true)) =>
@@ -193,11 +193,11 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
           otherStates + state1
         })
       }
-      ostates.map(a => {
+      ostates.flatMap(a => {
         val invars: List[Option[LocalWrapper]] = None :: containingMethod.getArgs
         val c = defineVars(a, invars)
         val b = newSpecInstanceTransfer(CBEnter, (pkg, name), invars, cmInv, c)
-        b.copy(callStack = if(a.callStack.isEmpty) Nil else a.callStack.tail, nextCmd = None)
+        b.map(s => s.copy(callStack = if(s.callStack.isEmpty) Nil else s.callStack.tail, nextCmd = None))
       })
     case (CallbackMethodInvoke(_, _, _), targetLoc@CallbackMethodReturn(_,_,mloc, _)) =>
       // Case where execution goes to the exit of another callback
@@ -328,47 +328,72 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
    */
   def newSpecInstanceTransfer(mt: MessageType,
                               sig:(String,String), allVar:List[Option[RVal]],
-                              loc: Loc, postState: State): State = {
+                              loc: Loc, postState: State): Set[State] = {
     val specsBySignature = specSpace.specsBySig(mt, sig._1, sig._2)
-    //TODO: find a more general pattern for the following
-    val specOpt = specsBySignature.filter {
-      case LSSpec(_,I(CIExit,_,LSConst(vOfLSConst)::_)) =>
-        val optionalLocalAssignVal = allVar.headOption.flatMap(h => h.flatMap(postState.get))
-        optionalLocalAssignVal.exists(v => postState.pureFormula.contains(PureConstraint(v, Equals, vOfLSConst)))
-      case LSSpec(_,I(CIExit,_,LSConst(_)::_)) => false
-      case _ => true
-    }
-    assert(specOpt.size < 2, s"Spec is not well formed, multiple applicable specs for transfer: $loc")
-    if(specOpt.isEmpty)
-      return postState
 
-    // Split spec into pred and target if it exists, otherwise pre state is post state
-    val pred = specOpt.head.pred
-    val target = specOpt.head.target
 
-    val parameterPairing: Seq[(String, Option[RVal])] = target.lsVars zip allVar
+    val postStatesByConstAssume: Set[(LSSpec,State)] = specsBySignature.flatMap{ s =>
+      val cv = s.target.constVals zip allVar
+      val definedCv: Seq[(PureExpr, RVal)] = cv.flatMap{
+        case (None,_) => None
+        case (_,None) => None
+        case (Some(cv), Some(stateVar)) => Some((cv,stateVar))
+      }
+      if(definedCv.isEmpty) {
+        // Spec does not assume any constants
+        Set((s,postState))
+      } else {
+        // Constants are assumed, split into cases
+        //    1. where all const matches rhs of lifestate rule and
+        //    2. where at least one const does not match
+        val posState: State = definedCv.foldLeft(postState) {
+          case (st, (pureExpr, stateVar)) =>
+            val (vv, st1) = st.getOrDefine(stateVar)
+            st1.copy(pureFormula = st.pureFormula + PureConstraint(vv, Equals, pureExpr))
+        }
+        val negStates: Set[State] = definedCv.map {
+          case (pureExpr, stateVar) =>
+            val (vv, st1) = postState.getOrDefine(stateVar)
+            st1.copy(pureFormula = postState.pureFormula + PureConstraint(vv, NotEquals, pureExpr))
+        }.toSet
 
-    // Define variables in rule in the state
-    val state2 = parameterPairing.foldLeft(postState){
-      case (cstate,(LSAnyVal(),_)) => cstate
-      case (cstate, (LSConst(_), _)) => cstate
-      case (cstate, (_, Some(rval))) => cstate.getOrDefine(rval)._2
-      case (cstate, _) => cstate
+        val out: Set[State] = negStates + posState
+        out.map((s, _))
+      }
     }
-    val lsVarConstraints = parameterPairing.flatMap {
-      case (LSAnyVal(), _) => None
-      case (LSVar(k), Some(l: LocalWrapper)) =>
-        Some((k, state2.get(l).get))
-      case (_, None) => None
-      case (LSConst(_), Some(_: LocalWrapper)) => None
-      case (k, v) =>
-        println(k)
-        println(v)
-        ??? //TODO: handle primitives e.g. true "string" 1 2 etc ====
+
+    // If no lifestate rules match, no new specs are instantiated
+    if(postStatesByConstAssume.isEmpty)
+      return Set(postState)
+
+    // For each applicable state and spec,
+    //  instantiate ls variables in both the trace abstraction and abstract state
+    postStatesByConstAssume.map {
+      case (LSSpec(pred, target), newPostState) =>
+        val parameterPairing: Seq[(String, Option[RVal])] = target.lsVars zip allVar
+
+        // Define variables in rule in the state
+        val state2 = parameterPairing.foldLeft(newPostState) {
+          case (cstate, (LSAnyVal(), _)) => cstate
+          case (cstate, (LSConst(_), _)) => cstate
+          case (cstate, (_, Some(rval))) => cstate.getOrDefine(rval)._2
+          case (cstate, _) => cstate
+        }
+        val lsVarConstraints = parameterPairing.flatMap {
+          case (LSAnyVal(), _) => None
+          case (LSVar(k), Some(l: LocalWrapper)) =>
+            Some((k, state2.get(l).get))
+          case (_, None) => None
+          case (LSConst(_), Some(_: LocalWrapper)) => None
+          case (k, v) =>
+            println(k)
+            println(v)
+            ??? //TODO: handle primitives e.g. true "string" 1 2 etc ====
+        }
+        // Match each lsvar to absvar if both exist
+        val newLsAbstraction = AbstractTrace(pred, Nil, lsVarConstraints.toMap)
+        state2.copy(traceAbstraction = state2.traceAbstraction + newLsAbstraction)
     }
-    // Match each lsvar to absvar if both exist
-    val newLsAbstraction = AbstractTrace(pred, Nil, lsVarConstraints.toMap)
-    state2.copy(traceAbstraction = state2.traceAbstraction + newLsAbstraction)
   }
 
   /**

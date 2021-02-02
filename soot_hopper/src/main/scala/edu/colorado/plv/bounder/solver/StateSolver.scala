@@ -136,10 +136,13 @@ trait StateSolver[T] {
 
   def printDbgModel(messageTranslator: MessageTranslator, traceabst: Set[AbstractTrace], lenUID: String): Unit
 
-  def nullConst(v: PureExpr, op : CmpOp):T = {
-    op match {
-      case Equals => mkIsNull(toAST(v))
-      case NotEquals => mkNot(mkIsNull(toAST(v)))
+  def compareConstValueOf(rhs: T, op : CmpOp, pureVal: PureVal):T = {
+    (pureVal,op) match {
+      case (NullVal,Equals) => mkIsNull(rhs)
+      case (NullVal,NotEquals) => mkNot(mkIsNull(rhs))
+      case v =>
+        println(v)
+        ???
     }
   }
 
@@ -147,8 +150,8 @@ trait StateSolver[T] {
     // TODO: field constraints based on containing object constraints
     case PureConstraint(lhs: PureVar, TypeComp, rhs: TypeConstraint) =>
       mkTypeConstraint(typeFun, toAST(lhs), rhs)
-    case PureConstraint(lhs, op, NullVal) => nullConst(lhs,op)
-    case PureConstraint(NullVal, op, rhs) => nullConst(rhs,op)
+    case PureConstraint(v:PureVal,op,rhs) => compareConstValueOf(toAST(rhs),op,v)
+    case PureConstraint(lhs, op, v:PureVal) => compareConstValueOf(toAST(lhs),op,v)
     case PureConstraint(lhs, op, rhs) =>
       toAST(toAST(lhs), op, toAST(rhs))
     case _ => ???
@@ -156,10 +159,7 @@ trait StateSolver[T] {
 
   def toAST(p: PureExpr): T = p match {
     case p: PureVar => mkObjVar(p)
-    case NullVal => mkIntVal(0)
-    case ClassType(t) => ??? //handled at a higher level
-    case _ =>
-      ???
+    case _ => throw new IllegalStateException("Values should be handled at a higher level")
   }
 
   def toAST(lhs: T, op: CmpOp, rhs: T): T = op match {
@@ -188,13 +188,11 @@ trait StateSolver[T] {
     val nameFun = messageTranslator.nameFun
     val nameConstraint = mkEq(mkNameConstraint(nameFun, msgExpr), messageTranslator.enumFromI(m))
     val argConstraints = m.lsVars.zipWithIndex.flatMap {
-      case (LSVar(msgVar), ind) =>
-        val modelVar = modelVarMap(msgVar)
-        Some(mkEq(mkArgConstraint(mkArgFun(), mkIntVal(ind), msgExpr), modelVar))
       case (LSAnyVal(),_) => None //TODO: primitive value cases
-      case (LSConst(v),_) =>
-        println(v)
-        ???
+      case (msgVar, ind) =>
+//        val modelVar = modelVarMap(msgVar)
+        val modelExpr = encodeModelVarOrConst(msgVar, modelVarMap)
+        Some(mkEq(mkArgConstraint(mkArgFun(), mkIntVal(ind), msgExpr), modelExpr))
     }
 
     // w[i] = cb foo(x,y)
@@ -206,6 +204,12 @@ trait StateSolver[T] {
       mkAnd(nameConstraint, mkAnd(argConstraints))
   }
 
+  private def encodeModelVarOrConst(lsExpr:String, modelVarMap: String =>T):T = lsExpr match{
+    case LifeState.LSVar(v) => modelVarMap(v)
+    case LifeState.LSConst(const) => toAST(const)
+    case LifeState.LSAnyVal() =>
+      throw new IllegalStateException("AnyVal shouldn't reach here")
+  }
   private def encodePred(combinedPred: LifeState.LSPred, traceFn: T, len: T,
                          messageTranslator: MessageTranslator
                          , modelVarMap : Map[String,T], negate:Boolean = false): T = combinedPred match {
@@ -238,6 +242,8 @@ trait StateSolver[T] {
       // not NI(m1,m2) def= (not I(m1)) or NI(m2,m1)
       // encode with no negation
       encodePred(Or(Not(m1),NI(m2,m1)), traceFn, len, messageTranslator, modelVarMap)
+    case LSFalse => mkBoolVal(!negate)
+    case LSTrue => mkBoolVal(negate)
   }
 
 
