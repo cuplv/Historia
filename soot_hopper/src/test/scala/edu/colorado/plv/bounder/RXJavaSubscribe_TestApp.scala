@@ -32,5 +32,6 @@ class RXJavaSubscribe_TestApp extends AnyFunSuite{
     PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/RXJavaSubscribe_Fix_TestApp.dot")
     PrettyPrinting.printWitnessTraces(result, outFile="/Users/shawnmeier/Desktop/RXJavaSubscribe_Fix_TestApp.witnesses")
     assert(BounderUtil.interpretResult(result) == Proven)
+    assert(result.nonEmpty)
   }
 }

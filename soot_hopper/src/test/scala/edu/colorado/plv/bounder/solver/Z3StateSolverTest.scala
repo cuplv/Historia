@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.solver
 
 import com.microsoft.z3._
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.lifestate.LifeState.{I, NI, Not, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSFalse, LSTrue, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import edu.colorado.plv.bounder.testutils.{TestIRLineLoc, TestIRMethodLoc}
 import org.scalatest.funsuite.AnyFunSuite
@@ -81,6 +81,17 @@ class Z3StateSolverTest extends AnyFunSuite {
       Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),constraints2, Set(),0)
     val simplifyResult2 = statesolver.simplify(state)
     assert(simplifyResult2.isDefined)
+  }
+  test("Trace abstraction lsfalse is empty and lstrue is not"){
+    val statesolver = getStateSolver
+    val absFalse = AbstractTrace(LSFalse, Nil, Map())
+    val state = State.topState.copy(traceAbstraction = Set(absFalse))
+    val res = statesolver.simplify(state)
+    assert(!res.isDefined)
+    val absTrue = AbstractTrace(LSTrue, Nil, Map())
+    val stateTrue = State.topState.copy(traceAbstraction = Set(absTrue))
+    val resTrue = statesolver.simplify(stateTrue)
+    assert(resTrue.isDefined)
   }
   test("Trace abstraction NI(a.bar(), a.baz()) && a == p1 (<==>true)") {
     val statesolver = getStateSolver

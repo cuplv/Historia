@@ -242,8 +242,10 @@ trait StateSolver[T] {
       // not NI(m1,m2) def= (not I(m1)) or NI(m2,m1)
       // encode with no negation
       encodePred(Or(Not(m1),NI(m2,m1)), traceFn, len, messageTranslator, modelVarMap)
-    case LSFalse => mkBoolVal(!negate)
-    case LSTrue => mkBoolVal(negate)
+    case LSFalse =>
+      mkBoolVal(negate)
+    case LSTrue =>
+      mkBoolVal(!negate)
   }
 
 
@@ -293,8 +295,7 @@ trait StateSolver[T] {
       mkAnd(
         encodePred(f, traceFn, sublen, messageTranslator, modelVars, negate), mkAnd(modelConstraints))
     }
-    //TODO: make all model variables here
-    //TODO: when negated, use "forall"
+    // encoding is function of model variables to solver boolean expression T
     val modelVarsToEncoding : Map[String,T] => T = { modelVars =>
       val freshTraceFun = mkFreshTraceFn("arrowtf")
       val beforeIndEq =

@@ -83,7 +83,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       case (state, (None, list)) => list.foldLeft(state)(applySingle)
     }
   }
-  def statesWhereOneVarNot(state: State, comb: List[(Option[RVal], LSParamConstraint)]): Set[State] = {
+  def statesNotMatching(state: State, comb: List[(Option[RVal], LSParamConstraint)]): Set[State] = {
+    // TODO: This should actually be the power set of things that won't match =======================
     comb.toSet.flatMap{(a:(Option[RVal], LSParamConstraint)) => a match{
       case (None, _) => None
       case (_,LSAny) => None
@@ -112,7 +113,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     case (source@AppLoc(_, _, false), cmret@CallinMethodReturn(_, _)) =>
       // traverse back over the retun of a callin
       // "Some(source.copy(isPre = true))" places the entry to the callin as the location of call
-      //TODO:relevant transition enumeration
       val (pkg, name) = msgCmdToMsg(cmret)
       val relAliases: Set[List[LSParamConstraint]] = relevantAliases(postState, CIExit, (pkg,name))
       val frame = CallStackFrame(target, Some(source.copy(isPre = true)), Map())
@@ -125,7 +125,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
           val comb: List[(Option[RVal], LSParamConstraint)] = inVars zip relAlias
           val state0 = defineLSVarsAs(postState,comb)
           val state1 = traceAllPredTransfer(CIExit, (pkg,name),inVars, state0)
-          val otherStates = statesWhereOneVarNot(postState, comb)
+          val otherStates = statesNotMatching(postState, comb)
           otherStates + state1
         })
 
@@ -189,7 +189,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
           val comb: List[(Option[LocalWrapper], LSParamConstraint)] = invars zip relAlias
           val state0 = defineLSVarsAs(postState, comb)
           val state1 = traceAllPredTransfer(CBEnter, (pkg,name), invars, state0)
-          val otherStates = statesWhereOneVarNot(postState, comb)
+          val otherStates = statesNotMatching(postState, comb)
           otherStates + state1
         })
       }
@@ -227,7 +227,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
           val state1 = traceAllPredTransfer(CBExit, (pkg, name), localVarOrVal, state0)
 
           // States where at least one var is not aliased with required
-          val otherStates:Set[State] = statesWhereOneVarNot(pre_push, comb)
+          val otherStates:Set[State] = statesNotMatching(pre_push, comb)
           otherStates + state1
         })
       }
@@ -329,10 +329,10 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
   def newSpecInstanceTransfer(mt: MessageType,
                               sig:(String,String), allVar:List[Option[RVal]],
                               loc: Loc, postState: State): Set[State] = {
-    val specsBySignature = specSpace.specsBySig(mt, sig._1, sig._2)
+    val specsBySignature: Set[LSSpec] = specSpace.specsBySig(mt, sig._1, sig._2)
 
 
-    val postStatesByConstAssume: Set[(LSSpec,State)] = specsBySignature.flatMap{ s =>
+    val postStatesByConstAssume: Set[(LSSpec,State)] = specsBySignature.flatMap{ (s:LSSpec) =>
       val cv = s.target.constVals zip allVar
       val definedCv: Seq[(PureExpr, RVal)] = cv.flatMap{
         case (None,_) => None
@@ -357,8 +357,10 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
             st1.copy(pureFormula = postState.pureFormula + PureConstraint(vv, NotEquals, pureExpr))
         }.toSet
 
-        val out: Set[State] = negStates + posState
-        out.map((s, _))
+        val negSpec = s.copy(pred=Not(s.pred))
+        val notSpec: Set[(LSSpec, State)] = negStates.map((negSpec,_))
+        val out = notSpec.+((s,posState))
+        out
       }
     }
 
@@ -388,7 +390,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
           case (k, v) =>
             println(k)
             println(v)
-            ??? //TODO: handle primitives e.g. true "string" 1 2 etc ====
+            ??? //TODO: handle primitives e.g. true "string" 1 2 etc
         }
         // Match each lsvar to absvar if both exist
         val newLsAbstraction = AbstractTrace(pred, Nil, lsVarConstraints.toMap)
