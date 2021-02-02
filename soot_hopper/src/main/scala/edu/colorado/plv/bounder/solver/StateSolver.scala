@@ -389,8 +389,10 @@ trait StateSolver[T] {
 
   def simplify(state: State, maxWitness: Option[Int] = None): Option[State] = {
     if(state.isSimplified) Some(state) else {
+      // Drop useless constraints
       val state2 = state.copy(pureFormula = state.pureFormula.filter{
-        case PureConstraint(v, TypeComp, SubclassOf("java.lang.Object")) => false
+        case PureConstraint(_, TypeComp, SubclassOf("java.lang.Object")) => false
+        case PureConstraint(v1,Equals,v2) if v1==v2 => false
         case _ => true
       })
       if (!encodeTypeConsteraints) {

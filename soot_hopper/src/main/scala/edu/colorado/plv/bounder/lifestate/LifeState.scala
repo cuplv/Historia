@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.lifestate
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.MessageType
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSFalse, LSPred, LSSpec, LSTrue, NI, Not, Or}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, NullVal, PureExpr, PureVal}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CmpOp, NullVal, PureExpr, PureVal}
 
 object LifeState {
   var id = 0
@@ -57,6 +57,11 @@ object LifeState {
     override def lsVar: Set[String] = Set.empty
     override def contains(mt:MessageType,sig: (String, String)): Boolean = false
   }
+  case class LSExpr(v1:String, op: CmpOp, v2:String) extends LSPred {
+    override def contains(mt: MessageType, sig: (String, String)): Boolean = false
+
+    override def lsVar: Set[String] = Set()
+  }
 
   sealed trait LSAtom extends LSPred {
     def getAtomSig:String
@@ -69,7 +74,7 @@ object LifeState {
   // primitives are parsed as in java "null", "true", "false", numbers etc.
   case class I(mt: MessageType, signatures: Set[(String, String)], lsVars : List[String]) extends LSAtom {
     private val sortedSig = signatures.toList.sorted
-    override def lsVar: Set[String] = lsVars.filter(_!="_").toSet
+    override def lsVar: Set[String] = lsVars.filter(vname => LifeState.LSVar.matches(vname)).toSet
 
     def getVar(i: Int): String = lsVars(i)
 
@@ -149,8 +154,19 @@ class SpecSpace(specs: Set[LSSpec]) {
   private def allI(spec:LSSpec):Set[I] = spec match{
     case LSSpec(pred, target) => allI(pred).union(allI(target))
   }
-  val iset: Map[(MessageType, (String, String)), I] =
-    specs.flatMap(allI).flatMap(i => i.signatures.map(j => ((i.mt,j),i))).toMap
+  private val iset: Map[(MessageType, (String, String)), I] = {
+    val allISpecs = specs.flatMap(allI)
+    val collected = allISpecs.groupBy(i => (i.mt, i.signatures))
+    collected.flatMap{
+      case (k,v) =>
+        val setOfVarLists = v.map(_.lsVars)
+        val maxL = setOfVarLists.foldLeft(0)((acc,v) => if(v.size > acc)v.size else acc)
+        val blankVars = (0 until maxL).map(ind =>
+          if(setOfVarLists.exists(l=> (l.size > ind) && !LifeState.LSAnyVal.matches(l(ind)))) "v" else "_")
+        k._2.map(v => (k._1,v)->I(k._1,k._2,blankVars.toList))
+    }
+  }
+
   private var freshLSVarIndex = 0
   def nextFreshLSVar():String = {
     val ind = freshLSVarIndex
@@ -159,9 +175,10 @@ class SpecSpace(specs: Set[LSSpec]) {
   }
   /**
    * For step back over a place where the code may emit a message find the applicable I and assign fresh ls vars.
-   * @param mt
-   * @param sig
-   * @return Some(I) if I exists, None otherwise
+   * Fresh LS vars are generated for vars and constants
+   * @param mt Direction of message
+   * @param sig class name and method signature (e.g. void foo(java.lang.Object))
+   * @return Some(I) if I exists, None otherwise.
    */
   def getIWithFreshVars(mt: MessageType, sig: (String, String)):Option[I] = {
     iset.get(mt,sig).map{i =>

@@ -16,7 +16,9 @@ class RXJavaSubscribe_TestApp extends AnyFunSuite{
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w,
       new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
         ActivityLifecycle.init_first_callback,
-        RxJavaSpec.call)))
+        RxJavaSpec.call,
+        RxJavaSpec.subscribeDoesNotReturnNull
+      )))
     val config = SymbolicExecutorConfig(
       stepLimit = Some(120), w,transfer, printProgress = true,
       component = Some(List("example.com.rxjavasubscribebug.PlayerFragment.*")))

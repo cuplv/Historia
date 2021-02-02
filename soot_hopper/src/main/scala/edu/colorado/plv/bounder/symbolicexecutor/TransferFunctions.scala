@@ -73,6 +73,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
             assert(at == trace)
             val (oldLocVal,state2) = state.getOrDefine(l)
             (state2, map + (s->oldLocVal))
+          case ((state, map), (Some(l:LocalWrapper), LSConstConstraint(pureExpr, trace))) =>
+            ???
           case (v,(None, _)) =>
             v
         }
@@ -400,7 +402,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       specSpace.getIWithFreshVars(mt, sig) match {
         case Some(i@I(_, _, lsVars)) =>
           val modelVarConstraints: Map[String, PureExpr] = (lsVars zip vals).flatMap {
-            case (LSVar(lsvar), Some(stateVal)) => Some((lsvar, stateVal))
+            case (LSVar(lsVar), Some(stateVal)) => Some((lsVar, stateVal))
             case _ => None //TODO: cases where transfer needs const values (e.g. setEnabled(true))
           }.toMap
           assert(!modelVarConstraints.isEmpty) //TODO: can this ever happen?
@@ -568,9 +570,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     case If(b,trueLoc,_) =>
       assert(state.nextCmd.isDefined, "Malformed transfer, next command must be defined to transfer If node.")
       val stateLocationFrom: AppLoc = state.nextCmd.get
-      if(stateLocationFrom == trueLoc){
-        ???
-      }else{
+      if(stateLocationFrom == trueLoc)
+        assumeInState(b,state).toSet
+      else{
         ???
       }
     case AssignCmd(l,Cast(castT, local),cmdloc) =>
@@ -640,28 +642,22 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     }
   }
 
-  def assumeInState(b:RVal, state:State): Option[State] = b match{
+  def assumeInState(bExp:RVal, state:State): Option[State] = bExp match{
     case BoolConst(true) => Some(state)
     case BoolConst(false) => None
-    case Binop(v1, Eq, v2) =>
-      ???
-    case Binop(v1, Ne, v2) =>
-      ???
+    case Binop(v1, op, v2) =>
+      val (v1Val,state0) = state.getOrDefine2(v1)
+      val (v2Val,state1) = state0.getOrDefine2(v2)
+      //TODO: Handle boolean expressions, integer expressions, etc
+      // it is sound, but not precise, to drop constraints
+      Some(op match{
+        case Eq => state1.copy(pureFormula = state1.pureFormula + PureConstraint(v1Val, Equals, v2Val))
+        case Ne => state1.copy(pureFormula = state1.pureFormula + PureConstraint(v1Val, NotEquals, v2Val))
+        case _ => state
+      })
+    case Binop(v, Eq, lw:LocalWrapper) if v.isConst => assumeInState(Binop(lw,Eq,v),state)
+    case Binop(v, Ne, lw:LocalWrapper) if v.isConst => assumeInState(Binop(lw,Eq,v),state)
     case v =>
-      println(v)
-      ??? //TODO: implement more boolean cases
+      throw new IllegalStateException(s"Invalid rval for assumeInState: $v")
   }
-
-//    b match{
-//    case Binop(l@LocalWrapper(name,ltype), op, const) if state.containsLocal(l) =>
-//      println(name)
-//      println(ltype)
-//      ???
-//    case Binop(l:LocalWrapper,_,const) if !state.containsLocal(l) =>
-//      assert(!const.isInstanceOf[LocalWrapper])
-//      state
-//    case v =>
-//      println(v)
-//      ???
-//  }
 }

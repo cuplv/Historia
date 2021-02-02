@@ -1,7 +1,8 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.solver.StateSolver
-import edu.colorado.plv.bounder.ir.{AppLoc, IRWrapper, IntConst, LVal, LocalWrapper, MessageType, RVal, StringConst}
+import edu.colorado.plv.bounder.ir.{AppLoc, BoolConst, IRWrapper, IntConst, LVal, LocalWrapper, MessageType, NullConst, RVal, StringConst}
+import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAtom, LSFalse, LSPred, LSTrue, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state.State.findIAF
 
@@ -30,6 +31,7 @@ object State {
 //sealed trait TraceAbstractionArrow
 case class AbstractTrace(a:LSPred,rightOfArrow:List[I], modelVars: Map[String,PureExpr]){
   def addModelVar(v: String, pureVar: PureExpr): AbstractTrace = {
+    assert(LifeState.LSVar.matches(v))
     assert(!modelVars.contains(v), s"model var $v already in trace abstraction.")
     this.copy(modelVars= modelVars + (v->pureVar))
   }
@@ -44,10 +46,14 @@ case class LSPure(p: PureExpr) extends LSParamConstraint {
   override def optTraceAbs: Option[AbstractTrace] = None
 }
 case class LSModelVar(s:String, trace:AbstractTrace) extends LSParamConstraint {
+  assert(LifeState.LSVar.matches(s), s"Failure parsing $s as model var")
   override def optTraceAbs: Option[AbstractTrace] = Some(trace)
 }
 object LSAny extends LSParamConstraint {
   override def optTraceAbs: Option[AbstractTrace] = None
+}
+case class LSConstConstraint(pureExpr: PureExpr, trace:AbstractTrace) extends LSParamConstraint{
+  override def optTraceAbs: Option[AbstractTrace] = Some(trace)
 }
 
 /**
@@ -79,10 +85,15 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
   }
 
   def findIFromCurrent(dir: MessageType, signature: (String, String)): Set[(I, List[LSParamConstraint])] = {
+    //TODO: constant constraints
     traceAbstraction.flatMap(ar =>{
       val iset = findIAF(dir,signature,ar.a)
-      iset.map(i => (i, i.lsVars.map(mv => ar.modelVars.get(mv).map(LSPure)
-        .getOrElse(LSModelVar(mv,ar)))))
+      iset.map(i => (i, i.lsVars.map{
+        case LifeState.LSVar(mv) =>
+          ar.modelVars.get(mv).map(LSPure).getOrElse(LSModelVar(mv,ar))
+        case LifeState.LSConst(constV) => LSConstConstraint(constV, ar)
+        case LifeState.LSAnyVal() => LSAny
+      }))
     })
   }
 
@@ -221,6 +232,8 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
       Some(IntVal(v))
     case StringConst(v) =>
       Some(StringVal(v))
+    case NullConst => Some(NullVal)
+    case BoolConst(v) => Some(BoolVal(v))
     case l =>
       println(l)
       ???
@@ -238,6 +251,13 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
       ???
   }
 
+  //TODO: this should probably be the behavior of getOrDefine, refactor later
+  def getOrDefine2(l : RVal): (PureExpr, State) = l match{
+    case l:LocalWrapper => getOrDefine(l)
+    case v if v.isConst => (get(l).getOrElse(???),this)
+    case _ =>
+      ???
+  }
   def getOrDefine(l : RVal): (PureVar,State) = l match{
     case LocalWrapper(name,localType) =>
       val cshead = callStack.headOption.getOrElse(???) //TODO: add new stack frame if empty?
@@ -254,8 +274,8 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
             nextAddr + 1
           ))
       }
-    case _ =>
-      ???
+    case v =>
+      ??? //TODO: should probably restrict this function to only take locals
   }
 
   /**
