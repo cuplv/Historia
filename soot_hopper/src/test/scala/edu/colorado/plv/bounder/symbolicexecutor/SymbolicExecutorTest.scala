@@ -3,8 +3,10 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
-import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, SpecSpace}
+import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, PrettyPrinting, Qry}
+import edu.colorado.plv.bounder.testutils.MkApk
+import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
 
@@ -82,5 +84,74 @@ class SymbolicExecutorTest extends AnyFunSuite {
     val result: Set[PathNode] = symbolicExecutor.executeBackward(query)
     PrettyPrinting.dumpDebugInfo(result, "test_interproc_2_onResumeReach")
     assert(BounderUtil.interpretResult(result) == Witnessed)
+  }
+  test("Test dereference with subscribe/unsubscribe and non null subscribe") {
+    val src = """package com.example.createdestroy;
+                |import androidx.appcompat.app.AppCompatActivity;
+                |import android.os.Bundle;
+                |import android.util.Log;
+                |
+                |import rx.Single;
+                |import rx.Subscription;
+                |import rx.android.schedulers.AndroidSchedulers;
+                |import rx.schedulers.Schedulers;
+                |
+                |
+                |public class MyActivity extends AppCompatActivity {
+                |    Object o = null;
+                |    Subscription subscription;
+                |
+                |    @Override
+                |    protected void onCreate(Bundle savedInstanceState) {
+                |        super.onCreate(savedInstanceState);
+                |        setContentView(R.layout.activity_main);
+                |        o = new Object();
+                |        subscription = Single.create(subscriber -> {
+                |            try {
+                |                Thread.sleep(2000);
+                |            } catch (InterruptedException e) {
+                |                e.printStackTrace();
+                |            }
+                |            subscriber.onSuccess(3);
+                |        }).subscribeOn(Schedulers.newThread())
+                |                .observeOn(AndroidSchedulers.mainThread())
+                |                .subscribe(a -> {
+                |                    Log.i("b", o.toString());
+                |                });
+                |    }
+                |
+                |    @Override
+                |    protected void onDestroy() {
+                |        super.onDestroy();
+                |        if(subscription != null){
+                |            subscription.unsubscribe();
+                |        }
+                |    }
+                |}""".stripMargin
+
+    val test: String => Unit = apk => {
+      assert(apk != null)
+      val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
+      val transfer = new TransferFunctions[SootMethod, soot.Unit](w,
+        new SpecSpace(Set(//FragmentGetActivityNullSpec.getActivityNull,
+          ActivityLifecycle.init_first_callback,
+          RxJavaSpec.call,
+          RxJavaSpec.subscribeDoesNotReturnNull
+        )))
+      val config = SymbolicExecutorConfig(
+        stepLimit = Some(200), w, transfer, printProgress = true,
+        component = Some(List("com.example.createdestroy.MyActivity.*")))
+      val symbolicExecutor = config.getSymbolicExecutor
+      //void lambda$onCreate$1$MainActivity(java.lang.Object)
+      val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
+        "void lambda$onCreate$1$MyActivity(java.lang.Object)",31)
+      val result = symbolicExecutor.executeBackward(query)
+      PrettyPrinting.dumpDebugInfo(result,"MkApk")
+      assert(result.nonEmpty)
+      assert(BounderUtil.interpretResult(result) == Proven)
+
+    }
+
+    makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
   }
 }
