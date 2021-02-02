@@ -84,7 +84,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     }
   }
   def statesNotMatching(state: State, comb: List[(Option[RVal], LSParamConstraint)]): Set[State] = {
-    // TODO: This should actually be the power set of things that won't match =======================
+    // TODO: need to enumerate matching or not matching all I() from spec
+    // TODO:  null = a.foo() and b.foo() will clobber each other
+    // States where at least one variable defined as not matching combination for lifestate
     comb.toSet.flatMap{(a:(Option[RVal], LSParamConstraint)) => a match{
       case (None, _) => None
       case (_,LSAny) => None
@@ -128,13 +130,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
           val otherStates = statesNotMatching(postState, comb)
           otherStates + state1
         })
-
-        // clear assigned var from stack if exists
-        val states3 = inVars.head match{
-          case Some(v:LocalWrapper) => states2.map(s => s.clearLVal(v))
-          case None => states2
-        }
-        states3
+        states2
       }
       ostates.flatMap{s =>
         val outState = newSpecInstanceTransfer(CIExit, (pkg, name), inVars, cmret, s)
@@ -143,6 +139,13 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
           case _ => outState
         }
         outState1.map(s2 => s2.copy(callStack = frame::s2.callStack, nextCmd = None))
+      }.map{ oState =>
+        //clear assigned var from stack if exists
+        val statesWithClearedReturn = inVars.head match{
+          case Some(v:LocalWrapper) => oState.clearLVal(v)
+          case None => oState
+        }
+        statesWithClearedReturn
       }
     case (CallinMethodReturn(_, _), CallinMethodInvoke(_, _)) => Set(postState)
     case (cminv@CallinMethodInvoke(_, _), ciInv@AppLoc(_, _, true)) =>
