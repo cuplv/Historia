@@ -7,6 +7,7 @@ import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivit
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, PrettyPrinting, Qry}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
+import org.scalatest.Ignore
 import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
 
@@ -200,7 +201,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       assert(apk != null)
       val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
       val transfer = new TransferFunctions[SootMethod, soot.Unit](w,
-        new SpecSpace(Set(
+        new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
           ActivityLifecycle.init_first_callback,
           RxJavaSpec.call,
           RxJavaSpec.subscribeDoesNotReturnNull
@@ -219,5 +220,93 @@ class SymbolicExecutorTest extends AnyFunSuite {
     }
 
     makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
+  }
+
+  ignore("Test prove dereference of return from getActivity") {
+    //TODO: this test is currently timing out not sure if it will work or not
+    val src =
+      """
+        |package com.example.createdestroy;
+        |import android.app.Activity;
+        |import android.content.Context;
+        |import android.net.Uri;
+        |import android.os.Bundle;
+        |
+        |import androidx.fragment.app.Fragment;
+        |
+        |import android.util.Log;
+        |import android.view.LayoutInflater;
+        |import android.view.View;
+        |import android.view.ViewGroup;
+        |
+        |import rx.Single;
+        |import rx.Subscription;
+        |import rx.android.schedulers.AndroidSchedulers;
+        |import rx.schedulers.Schedulers;
+        |
+        |
+        |public class MyFragment extends Fragment {
+        |    Subscription subscription;
+        |
+        |    public MyFragment() {
+        |        // Required empty public constructor
+        |    }
+        |
+        |
+        |    @Override
+        |    public void onActivityCreated(Bundle savedInstanceState){
+        |        super.onActivityCreated(savedInstanceState);
+        |        subscription = Single.create(subscriber -> {
+        |            try {
+        |                Thread.sleep(2000);
+        |            } catch (InterruptedException e) {
+        |                e.printStackTrace();
+        |            }
+        |            subscriber.onSuccess(3);
+        |        })
+        |                .subscribeOn(Schedulers.newThread())
+        |                .observeOn(AndroidSchedulers.mainThread())
+        |                .subscribe(a -> {
+        |                    Activity b = getActivity();
+        |                    Log.i("b", b.toString());
+        |                });
+        |    }
+        |
+        |
+        |    @Override
+        |    public void onDestroy(){
+        |        super.onDestroy();
+        |        if(subscription != null){
+        |            subscription.unsubscribe();
+        |        }
+        |    }
+        |}
+        |""".stripMargin
+
+    val test: String => Unit = apk => {
+      assert(apk != null)
+      val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
+      val transfer = new TransferFunctions[SootMethod, soot.Unit](w,
+        new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
+          ActivityLifecycle.init_first_callback,
+          RxJavaSpec.call,
+          RxJavaSpec.subscribeDoesNotReturnNull
+        )))
+      val config = SymbolicExecutorConfig(
+        stepLimit = Some(200), w, transfer, printProgress = true,
+        component = Some(List("com.example.createdestroy.MyFragment.*")))
+      val symbolicExecutor = config.getSymbolicExecutor
+      val query = Qry.makeCallinReturnNonNull(symbolicExecutor, w,
+        "com.example.createdestroy.MyFragment",
+        "void lambda$onActivityCreated$1$MyFragment(java.lang.Object)",43,
+        ".*getActivity.*".r)
+      val result = symbolicExecutor.executeBackward(query)
+      PrettyPrinting.dumpDebugInfo(result,"MkApk")
+      assert(result.nonEmpty)
+      assert(BounderUtil.interpretResult(result) == Proven)
+
+    }
+
+    makeApkWithSources(Map("MyFragment.java"->src), MkApk.RXBase, test)
   }
 }

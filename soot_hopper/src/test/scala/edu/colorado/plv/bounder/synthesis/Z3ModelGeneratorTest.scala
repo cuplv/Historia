@@ -9,7 +9,8 @@ import org.scalatest.funsuite.AnyFunSuite
 class Z3ModelGeneratorTest extends AnyFunSuite {
 
   val fooMethod = TestIRMethodLoc("","foo", List(LocalWrapper("@this","Object")))
-  test("Encode Node Reachability"){
+  ignore("Encode Node Reachability"){
+    // TODO: implement model generator
     val gen = new Z3ModelGenerator()
     val dummyLoc = CallbackMethodInvoke(fmwClazz = "",
       fmwName="void foo()", fooMethod)

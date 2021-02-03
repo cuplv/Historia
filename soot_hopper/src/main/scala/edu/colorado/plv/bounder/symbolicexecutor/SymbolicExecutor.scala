@@ -66,7 +66,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   def executeBackward(qry: List[Qry]) : Set[PathNode] = {
     val pathNodes = qry.map(PathNode(_,None,None)).toSet
     config.stepLimit match{
-      case Some(limit) => executeBackwardLimitSubsumeAll(pathNodes,limit)
+      case Some(limit) => executeBackwardOAT(pathNodes.toList, limit)
       case None =>
         ???
     }
@@ -93,15 +93,6 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
                                            refutedSubsumedOrWitnessed: Set[PathNode] = Set(),
                                            visited:Map[SubsumableLocation,Set[PathNode]] = Map()):Set[PathNode] = {
 
-    def isSubsumed(qry: Qry, nVisited: Map[SubsumableLocation,Set[PathNode]]):Option[PathNode] = qry match{
-      case SomeQry(state,SwapLoc(loc)) if nVisited.contains(loc) =>
-        nVisited(loc).find(a => {
-          val possiblySubsumingState = a.qry.state
-          val res = stateSolver.canSubsume(possiblySubsumingState, state)
-          res
-        })
-      case _ => None
-    }
     if (config.printProgress){
       println(s"Steps left until limit: $limit queries: ${qrySet.size}")
     }
@@ -151,6 +142,55 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
         limit - 1,
         newRefutedSubsumedOrWitnessed,
         nextVisited)
+    }
+  }
+  def isSubsumed(qry: Qry, nVisited: Map[SubsumableLocation,Set[PathNode]]):Option[PathNode] = qry match{
+    case SomeQry(state,SwapLoc(loc)) if nVisited.contains(loc) =>
+      nVisited(loc).find(a => {
+        val possiblySubsumingState = a.qry.state
+        val res = stateSolver.canSubsume(possiblySubsumingState, state)
+        res
+      })
+    case _ => None
+  }
+
+  @tailrec
+  final def executeBackwardOAT(qrySet: List[PathNode], limit:Int,
+                                           refutedSubsumedOrWitnessed: Set[PathNode] = Set(),
+                                           visited:Map[SubsumableLocation,Set[PathNode]] = Map()):Set[PathNode] = {
+
+
+    if(qrySet.isEmpty){
+      return refutedSubsumedOrWitnessed ++ qrySet
+    }
+    val current = qrySet.head
+
+    if (config.printProgress && current.depth % 10 == 0 ){
+      println(s"CurrentNodeSteps: ${current.depth} queries: ${qrySet.size}")
+    }
+
+    current match {
+      case p@PathNode(_:SomeQry, _,Some(_)) =>
+        executeBackwardOAT(qrySet.tail, limit, refutedSubsumedOrWitnessed + p, visited)
+      case p@PathNode(_:BottomQry,_,_) =>
+        executeBackwardOAT(qrySet.tail, limit, refutedSubsumedOrWitnessed + p, visited)
+      case PathNode(_:WitnessedQry,_,_) =>
+        refutedSubsumedOrWitnessed.union(qrySet.toSet)
+      case p:PathNode if p.depth > limit =>
+        refutedSubsumedOrWitnessed.union(qrySet.toSet)
+      case p@PathNode(qry:SomeQry, _,None) =>
+        isSubsumed(qry, visited) match{
+          case v@Some(_) =>
+            executeBackwardOAT(qrySet.tail, limit, refutedSubsumedOrWitnessed + p.copy(subsumed = v), visited)
+          case None =>
+            val newVisited: Map[SubsumableLocation, Set[PathNode]] = SwapLoc(current.qry.loc) match{
+              case Some(v) => visited + (v -> (visited.getOrElse(v,Set()) + p))
+              case None => visited
+            }
+            val nextQry = executeStep(qry).map(q => PathNode(q, Some(p), None))
+            val nextQrySet = qrySet.tail.appendedAll(nextQry)
+            executeBackwardOAT(nextQrySet, limit, refutedSubsumedOrWitnessed, newVisited)
+        }
     }
   }
   @tailrec

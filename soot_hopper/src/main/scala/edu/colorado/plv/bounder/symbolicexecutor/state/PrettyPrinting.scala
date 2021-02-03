@@ -102,7 +102,7 @@ object PrettyPrinting {
     outDir match{
       case Some(baseDir) =>
         val fname = s"$baseDir/$fileName"
-//        printWitnessOrProof(qrySet, s"$fname.dot")
+        printWitnessOrProof(qrySet, s"$fname.dot")
         printWitnessTraces(qrySet, s"$fname.witnesses")
       case None =>
     }
