@@ -31,7 +31,7 @@ case object AppOnlyCallGraph extends CallGraphSource
 case class SymbolicExecutorConfig[M,C](stepLimit: Option[Int],
                                        w :  IRWrapper[M,C],
                                        transfer : TransferFunctions[M,C],
-                                       printProgress : Boolean = false,
+                                       printProgress : Boolean = sys.env.getOrElse("DEBUG","false").toBoolean,
                                        z3Timeout : Option[Int] = None,
                                        component : Option[List[String]] = None
                                       ){

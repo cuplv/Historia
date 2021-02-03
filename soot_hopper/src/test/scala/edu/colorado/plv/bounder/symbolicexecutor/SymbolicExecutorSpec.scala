@@ -7,7 +7,6 @@ import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivit
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, PrettyPrinting, Qry}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
-import org.scalatest.Ignore
 import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
 
@@ -43,7 +42,7 @@ class SymbolicExecutorSpec extends AnyFunSuite {
 
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, ActivityLifecycle.spec)
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(60), w,transfer, printProgress = true, z3Timeout = Some(30), component = Some(List("com\\.example\\.test_interproc_2.*")))
+      stepLimit = Some(60), w,transfer,  z3Timeout = Some(30), component = Some(List("com\\.example\\.test_interproc_2.*")))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = Qry.makeReceiverNonNull(symbolicExecutor, w,
       "com.example.test_interproc_2.MainActivity",
@@ -61,7 +60,7 @@ class SymbolicExecutorSpec extends AnyFunSuite {
     val w = new JimpleFlowdroidWrapper(test_interproc_1, PatchedFlowdroidCallGraph)
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, ActivityLifecycle.spec)
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(50), w,transfer, printProgress = true, z3Timeout = Some(30))
+      stepLimit = Some(50), w,transfer,  z3Timeout = Some(30))
     val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
     val query = Qry.makeReach(symbolicExecutor, w,
       "com.example.test_interproc_2.MainActivity",
@@ -77,7 +76,7 @@ class SymbolicExecutorSpec extends AnyFunSuite {
     val w = new JimpleFlowdroidWrapper(test_interproc_1, PatchedFlowdroidCallGraph)
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w, ActivityLifecycle.spec)
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(50), w,transfer, printProgress = true, z3Timeout = Some(30))
+      stepLimit = Some(50), w,transfer,  z3Timeout = Some(30))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = Qry.makeReach(symbolicExecutor, w,
       "com.example.test_interproc_2.MainActivity",
@@ -141,7 +140,7 @@ class SymbolicExecutorSpec extends AnyFunSuite {
           RxJavaSpec.subscribeDoesNotReturnNull
         )))
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(200), w, transfer, printProgress = true,
+        stepLimit = Some(200), w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
@@ -207,7 +206,7 @@ class SymbolicExecutorSpec extends AnyFunSuite {
           RxJavaSpec.subscribeDoesNotReturnNull
         )))
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(200), w, transfer, printProgress = true,
+        stepLimit = Some(200), w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
@@ -222,7 +221,7 @@ class SymbolicExecutorSpec extends AnyFunSuite {
     makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
   }
 
-  ignore("Test prove dereference of return from getActivity") {
+  test("Test prove dereference of return from getActivity") {
     //TODO: this test is currently timing out not sure if it will work or not
     val src =
       """
@@ -293,7 +292,7 @@ class SymbolicExecutorSpec extends AnyFunSuite {
           RxJavaSpec.subscribeDoesNotReturnNull
         )))
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(50), w, transfer, printProgress = true,
+        stepLimit = Some(50), w, transfer,
         component = Some(List("com.example.createdestroy.MyFragment.*")))
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeCallinReturnNonNull(symbolicExecutor, w,

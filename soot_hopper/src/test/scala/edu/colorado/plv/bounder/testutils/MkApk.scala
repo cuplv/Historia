@@ -1,19 +1,8 @@
 package edu.colorado.plv.bounder.testutils
 
-import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
-import org.scalatest.funsuite.AnyFunSuite
 import better.files._
-import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.BounderUtil.Proven
-import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
-import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{PrettyPrinting, Qry}
-import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, SymbolicExecutorConfig, TransferFunctions}
-import soot.{Scene, SootMethod}
-
-import scala.jdk.CollectionConverters.CollectionHasAsScala
 import sys.process._
-//import scala.language.postfixOps
+
 object MkApk {
   val RXBase = getClass.getResource("/CreateDestroySubscribe.zip").getPath
 

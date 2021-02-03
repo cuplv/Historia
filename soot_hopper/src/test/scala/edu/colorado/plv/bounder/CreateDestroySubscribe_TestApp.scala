@@ -20,7 +20,7 @@ class CreateDestroySubscribe_TestApp extends AnyFunSuite{
       ActivityLifecycle.init_first_callback,
       RxJavaSpec.call)))
   val config = SymbolicExecutorConfig(
-    stepLimit = Some(200), w,transfer, printProgress = true,
+    stepLimit = Some(200), w,transfer,
     component = Some(List("com.example.createdestroy.MainActivity.*")))
   val symbolicExecutor = config.getSymbolicExecutor
 

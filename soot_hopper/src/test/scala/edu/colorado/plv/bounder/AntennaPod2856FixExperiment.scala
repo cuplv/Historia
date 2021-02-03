@@ -18,7 +18,7 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
     val transfer = new TransferFunctions[SootMethod,soot.Unit](w,
       new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull, RxJavaSpec.call)))
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(100), w,transfer, printProgress = true,
+      stepLimit = Some(100), w,transfer,
       component = Some(List("de\\.danoeh\\.antennapod\\.fragment\\.ExternalPlayerFragment.*")))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = Qry.makeCallinReturnNonNull(symbolicExecutor, w,
