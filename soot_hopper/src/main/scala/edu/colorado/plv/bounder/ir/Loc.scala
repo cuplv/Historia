@@ -65,7 +65,7 @@ object LineLoc{
  */
 case class AppLoc(method: MethodLoc, line: LineLoc, isPre:Boolean) extends Loc {
   override def toString: String = (if(isPre) "pre-" else "post-" ) + line.toString()
-  override def msgSig = None
+  override def msgSig = Some(s"[Int] ${method.simpleName}")
 }
 object AppLoc{
   implicit val rw:RW[AppLoc] = macroRW

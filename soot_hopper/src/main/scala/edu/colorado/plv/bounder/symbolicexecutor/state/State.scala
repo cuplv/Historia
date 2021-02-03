@@ -131,12 +131,17 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
   }
 
   override def toString:String = {
-    val stackString = callStack.headOption match{
-      case Some(sf) =>
+    def sfString(sfl:List[CallStackFrame], frames: Int):String = (sfl,frames) match{
+      case (sf::t, fr) if fr > 0 =>
         val locals: Map[StackVar, PureExpr] = sf.locals
-        s"\nstack: ${callStack.map(f => f.methodLoc.msgSig.getOrElse("")).mkString(";")}\n locals: " + locals.map(k => k._1.toString + " -> " + k._2.toString).mkString(",")
-      case None => "[nc]"
+        s"${sf.methodLoc.msgSig.getOrElse("")} " +
+          s"locals: " + locals.map(k => k._1.toString + " -> " + k._2.toString).mkString(",") + "\n" +
+          sfString(t, fr-1)
+      case (Nil,_) => ""
+      case (_::_,_) => "..."
     }
+    val stackString = sfString(callStack, 2)
+
     val heapString = s"   heap: ${heapConstraints.map(a => a._1.toString + "->" +  a._2.toString).mkString(" * ")}\n"
     val pureFormulaString = "   pure: " + pureFormula.map(a => a.toString).mkString(" && ") +"\n"
     val traceString = s"   trace: ${traceAbstraction.mkString(" ; ")}"

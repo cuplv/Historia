@@ -11,7 +11,7 @@ import org.scalatest.Ignore
 import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
 
-class SymbolicExecutorTest extends AnyFunSuite {
+class SymbolicExecutorSpec extends AnyFunSuite {
 
   test("Symbolic Executor should prove an intraprocedural deref"){
     val test_interproc_1 = getClass.getResource("/test_interproc_1.apk").getPath
@@ -222,7 +222,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
   }
 
-  ignore("Test prove dereference of return from getActivity") {
+  test("Test prove dereference of return from getActivity") {
     //TODO: this test is currently timing out not sure if it will work or not
     val src =
       """

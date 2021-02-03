@@ -187,7 +187,7 @@ class Z3StateSolverTest extends AnyFunSuite {
     // NI(a.bar(),a.baz()) |> I(c.bar()) ; i(b.baz()
     val niaa = AbstractTrace(niBarBaz, c_bar::b_baz::Nil, Map("a"->p1, "c"->p1))
     val state2 = State(Nil,Map(),Set(), Set(niaa),0)
-    val res2 = statesolver.simplify(state2, Some(20)) //TODO: remove dbg limit
+    val res2 = statesolver.simplify(state2)
     assert(res2.isDefined)
   }
   test("Trace abstraction NI(a.bar(),a.baz()) ; I(c.bar()) ; I(b.baz()) && a = b = c (<=> false) ") {
