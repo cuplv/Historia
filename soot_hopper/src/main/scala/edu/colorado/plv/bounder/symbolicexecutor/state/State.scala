@@ -36,7 +36,14 @@ case class AbstractTrace(a:LSPred,rightOfArrow:List[I], modelVars: Map[String,Pu
     this.copy(modelVars= modelVars + (v->pureVar))
   }
 
-  override def toString:String = s"(${modelVars} - ${a.toString} |> ${rightOfArrow.mkString(";")})"
+  override def toString:String = {
+    val generated = modelVars.filter{case (k,_) => LifeState.LSGenerated.matches(k) }
+    val notGenerated = modelVars.removedAll(generated.keySet)
+    val replace: String => String = str => generated.foldLeft(str){case (str, (k,v)) => str.replaceAll(k, v.toString)}
+    val lhs = replace(a.toString)
+    val rhs = replace(rightOfArrow.mkString(";"))
+    s"(${notGenerated} - $lhs |> $rhs)"
+  }
 }
 
 sealed trait LSParamConstraint{
@@ -316,24 +323,23 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
   }
 }
 
-sealed trait Val
-//case object TopVal extends Val
-//case object NullVal extends Val
-//
-///**
-// * Val that is instantiated from a subtype of className
-// */
-//case class ObjSubtypeVal(className:String) extends Val{
-//  val id = State.getId()
-//}
-
 sealed trait Var
+object Var{
+  implicit val rw:RW[Var] = RW.merge(macroRW[StackVar])
+}
 
 case class StackVar(name : String) extends Var{
   override def toString:String = name
 }
+object StackVar{
+  implicit val rw:RW[StackVar] = macroRW
+}
 
 sealed trait CmpOp
+object CmpOp{
+  implicit val rw:RW[CmpOp] = RW.merge(
+    macroRW[Equals.type], macroRW[NotEquals.type], macroRW[TypeComp.type])
+}
 case object Equals extends CmpOp{
   override def toString:String = " == "
 }
@@ -346,6 +352,9 @@ case object TypeComp extends CmpOp{
 
 case class PureConstraint(lhs:PureExpr, op: CmpOp, rhs:PureExpr) {
   override def toString:String = s"$lhs $op $rhs"
+}
+object PureConstraint {
+  implicit val rw:RW[PureConstraint] = macroRW
 }
 
 sealed abstract class PureExpr {
@@ -365,7 +374,7 @@ object PureExpr{
 
 
 // primitive values
-sealed abstract class PureVal(v:Any) extends PureExpr with Val {
+sealed abstract class PureVal(v:Any) extends PureExpr {
   override def substitute(toSub : PureExpr, subFor : PureVar) : PureVal = this
 
   def >(p : PureVal) : Boolean = sys.error("GT for arbitrary PureVal")
@@ -409,7 +418,7 @@ case class ClassType(typ:String) extends TypeConstraint {
 }
 
 // pure var is a symbolic var (e.g. this^ from the paper)
-sealed case class PureVar(id:Int) extends PureExpr with Val {
+sealed case class PureVar(id:Int) extends PureExpr {
 //  val id : Int = State.getId()
   override def getVars(s : Set[PureVar]) : Set[PureVar] = s + this
 

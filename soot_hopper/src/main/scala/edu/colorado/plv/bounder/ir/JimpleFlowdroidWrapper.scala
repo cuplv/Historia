@@ -520,7 +520,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
       StaticFieldReference(declaringClass, fieldName, containedType)
 
     case const: RealConstant=>
-      ConstVal(const) // Not doing anything special with real values for now
+      ConstVal(const.toString) // Not doing anything special with real values for now
     case caught: JCaughtExceptionRef =>
       CaughtException("")
     case jcomp: JCmpExpr =>

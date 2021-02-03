@@ -2,6 +2,7 @@ package edu.colorado.plv.bounder.testutils
 
 import edu.colorado.plv.bounder.ir.{AppLoc, CmdWrapper, IRWrapper, InvokeCmd, LineLoc, Loc, LocalWrapper, MethodLoc, UnresolvedMethodTarget}
 import edu.colorado.plv.bounder.symbolicexecutor.AppCodeResolver
+import upickle.default.{ReadWriter => RW, macroRW}
 
 class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] {
   override def findMethodLoc(className: String, methodName: String): Option[MethodLoc] = ???
@@ -73,8 +74,23 @@ case class TestIRMethodLoc(clazz:String, name:String, args:List[LocalWrapper]) e
 
   override def isInterface: Boolean = ???
 }
+
+object TestIRMethodLoc{
+  implicit val rw = upickle.default.readwriter[ujson.Value].bimap[MethodLoc](
+    x => ujson.Arr(x.simpleName, x.classType, x.argTypes),
+    json => TestIRMethodLoc(json(0).str, json(1).str, ???)
+  )
+}
+
+
 case class TestIRLineLoc(line:Int) extends LineLoc {
 
+}
+object TestIRLineLoc{
+  implicit val rw = upickle.default.readwriter[ujson.Value].bimap[LineLoc](
+    x => ujson.write(x.asInstanceOf[TestIRLineLoc].line),
+    json => TestIRLineLoc(json.num.toInt)
+  )
 }
 
 sealed trait TestTransition

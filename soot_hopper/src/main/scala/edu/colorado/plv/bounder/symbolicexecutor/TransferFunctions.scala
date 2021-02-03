@@ -132,7 +132,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         })
         states2
       }
-      ostates.flatMap{s =>
+      val out = ostates.flatMap{s =>
         val outState = newSpecInstanceTransfer(CIExit, (pkg, name), inVars, cmret, s)
         val outState1: Set[State] = inVars match{
           case Some(revar:LocalWrapper)::_ => outState.map(s3 => s3.clearLVal(revar))
@@ -147,6 +147,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
         }
         statesWithClearedReturn
       }
+      out
     case (CallinMethodReturn(_, _), CallinMethodInvoke(_, _)) => Set(postState)
     case (cminv@CallinMethodInvoke(_, _), ciInv@AppLoc(_, _, true)) =>
       //TODO: relevant transition enumeration

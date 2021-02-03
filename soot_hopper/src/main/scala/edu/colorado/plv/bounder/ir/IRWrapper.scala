@@ -1,6 +1,7 @@
 package edu.colorado.plv.bounder.ir
 
 import edu.colorado.plv.bounder.symbolicexecutor.AppCodeResolver
+import upickle.default.{ReadWriter => RW, macroRW}
 
 // Interface to handle all the messy parts of interacting with the underlying IR representation
 /**
@@ -86,6 +87,12 @@ case class Binop(v1:RVal, op: BinaryOperator, v2:RVal) extends RVal {
   override def isConst: Boolean = false
 }
 sealed trait BinaryOperator
+object BinaryOperator{
+  implicit val rw:RW[BinaryOperator] = RW.merge(
+    macroRW[Mult.type], macroRW[Div.type], macroRW[Add.type], macroRW[Sub.type], macroRW[Lt.type],
+    macroRW[Le.type], macroRW[Eq.type], macroRW[Ne.type], macroRW[Ge.type]
+  )
+}
 case object Mult extends BinaryOperator
 case object Div extends BinaryOperator
 case object Add extends BinaryOperator
@@ -106,6 +113,13 @@ case object Ge extends BinaryOperator
 trait RVal{
   def isConst:Boolean
 }
+object RVal{
+  implicit val rw:RW[RVal] = RW.merge(
+    macroRW[ConstVal],LVal.rw, macroRW[BoolConst], Invoke.rw, macroRW[InstanceOf], macroRW[CaughtException],
+    macroRW[StringConst],macroRW[IntConst],macroRW[NewCommand],macroRW[ClassConst], macroRW[ArrayLength],
+    macroRW[Cast],macroRW[Binop],macroRW[NullConst.type]
+  )//===
+}
 // New only has type, constructor parameters go to the <init> method
 case class NewCommand(className: String) extends RVal {
   override def isConst: Boolean = false
@@ -113,7 +127,7 @@ case class NewCommand(className: String) extends RVal {
 case object NullConst extends RVal {
   override def isConst: Boolean = true
 }
-case class ConstVal(v:Any) extends RVal {
+case class ConstVal(v:String) extends RVal {
   override def isConst: Boolean = true
 }
 case class IntConst(v:Int) extends RVal {
@@ -147,6 +161,9 @@ sealed trait Invoke extends RVal {
   def paramTypes:List[String] =
     ???
 }
+object Invoke{
+  implicit val rw:RW[Invoke] = RW.merge(macroRW[VirtualInvoke], macroRW[SpecialInvoke], macroRW[StaticInvoke])
+}
 /*VirtualInvoke is used when dynamic dispatch can change target*/
 case class VirtualInvoke(target:LocalWrapper,
                          targetClass:String,
@@ -175,27 +192,56 @@ case class StaticInvoke(targetClass:String,
 
 // Things that can be assigned to or used as expressins
 trait LVal extends RVal
+object LVal{
+  implicit val rw:RW[LVal] = RW.merge(
+    FieldReference.rw,ParamWrapper.rw,StaticFieldReference.rw, ArrayReference.rw, LocalWrapper.rw, ThisWrapper.rw)
+}
+
 case class ArrayReference(base:RVal, index:RVal) extends LVal {
   override def isConst: Boolean = false
 }
+object ArrayReference{
+  implicit val rw:RW[ArrayReference] = macroRW
+}
+
 case class LocalWrapper(name:String, localType:String) extends LVal {
   override def toString:String = name
 
   override def isConst: Boolean = false
 }
+object LocalWrapper{
+  implicit val rw:RW[LocalWrapper] = macroRW
+}
+
 case class ParamWrapper(name:String) extends LVal {
   override def isConst: Boolean = false
 }
+object ParamWrapper{
+  implicit val rw:RW[ParamWrapper] = macroRW
+}
+
 //case class FieldWrapper(name:String) extends LVal
 case class ThisWrapper(className:String) extends LVal {
   override def isConst: Boolean = false
 }
+
+object ThisWrapper{
+  implicit val rw:RW[ThisWrapper] = macroRW
+}
+
 case class FieldReference(base:LocalWrapper, containsType:String, declType:String, name:String) extends LVal{
   override def toString: String = s"${base}.${name}"
 
   override def isConst: Boolean = false
 }
+object FieldReference{
+  implicit val rw:RW[FieldReference] = macroRW
+}
+
 case class StaticFieldReference(declaringClass: String,
                                 fieldName: String, containedType:String) extends LVal {
   override def isConst: Boolean = false
+}
+object StaticFieldReference{
+  implicit val rw:RW[StaticFieldReference] = macroRW
 }

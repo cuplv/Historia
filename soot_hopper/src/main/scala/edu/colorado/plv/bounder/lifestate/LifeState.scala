@@ -32,6 +32,9 @@ object LifeState {
 
     def lsVar: Set[String]
   }
+
+  val LSGenerated = "LS_GENERATED_.*".r
+
   case class And(l1 : LSPred, l2 : LSPred) extends LSPred {
     override def lsVar: Set[String] = l1.lsVar.union(l2.lsVar)
     override def toString:String = s"(${l1.toString} AND ${l2.toString})"

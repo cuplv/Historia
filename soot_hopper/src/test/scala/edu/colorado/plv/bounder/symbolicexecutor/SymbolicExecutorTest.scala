@@ -288,12 +288,12 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
       val transfer = new TransferFunctions[SootMethod, soot.Unit](w,
         new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
-          ActivityLifecycle.init_first_callback,
+//          ActivityLifecycle.init_first_callback,
           RxJavaSpec.call,
           RxJavaSpec.subscribeDoesNotReturnNull
         )))
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(200), w, transfer, printProgress = true,
+        stepLimit = Some(50), w, transfer, printProgress = true,
         component = Some(List("com.example.createdestroy.MyFragment.*")))
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeCallinReturnNonNull(symbolicExecutor, w,
