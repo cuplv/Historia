@@ -294,6 +294,67 @@ class Z3StateSolverTest extends AnyFunSuite {
     val stateSolver = getStateSolver
     val res = stateSolver.simplify(state)
     assert(res.isDefined)
+
+    // (Map(f -> p-1) -
+    // ((NOT I(CBEnter I_CBEnter_android.app.DialogFragment_void onActivityCreated(android.os.Bundle) ( _,f ))
+    // OR
+    // I(CBExit I_CBExit_android.app.Fragment_void onDestroy() ( _,f ))
+    // |> I(CBEnter I_CBEnter_android.app.DialogFragment_void onActivityCreated(android.os.Bundle) ( _,p-1 ))
+    val at1Pickle =
+    """{"a":{"$type":"edu.colorado.plv.bounder.lifestate.LifeState.Or",
+      |"l1":{"$type":"edu.colorado.plv.bounder.lifestate.LifeState.Not",
+      |"l":{"$type":"edu.colorado.plv.bounder.lifestate.LifeState.I",
+      |"mt":{"$type":"edu.colorado.plv.bounder.ir.CBEnter"},
+      |"signatures":[["androidx.fragment.app.DialogFragment","void onActivityCreated(android.os.Bundle)"],
+      |["android.app.Fragment","void onActivityCreated(android.os.Bundle)"],
+      |["androidx.fragment.app.Fragment","void onActivityCreated(android.os.Bundle)"],
+      |["androidx.lifecycle.ReportFragment","void onActivityCreated(android.os.Bundle)"],
+      |["android.support.v4.app.Fragment","void onActivityCreated(android.os.Bundle)"],
+      |["android.support.wearable.view.CardFragment","void onActivityCreated(android.os.Bundle)"],
+      |["android.support.v7.preference.PreferenceFragmentCompat","void onActivityCreated(android.os.Bundle)"],
+      |["android.support.v14.preference.PreferenceFragment","void onActivityCreated(android.os.Bundle)"],
+      |["android.support.v4.app.DialogFragment","void onActivityCreated(android.os.Bundle)"],
+      |["android.arch.lifecycle.ReportFragment","void onActivityCreated(android.os.Bundle)"],
+      |["android.app.DialogFragment","void onActivityCreated(android.os.Bundle)"],
+      |["android.preference.PreferenceFragment","void onActivityCreated(android.os.Bundle)"]],
+      |"lsVars":["_","f"]}},"l2":{"$type":"edu.colorado.plv.bounder.lifestate.LifeState.I",
+      |"mt":{"$type":"edu.colorado.plv.bounder.ir.CBExit"},
+      |"signatures":[["androidx.fragment.app.Fragment","void onDestroy()"],
+      |["androidx.fragment.app.FragmentActivity","void onDestroy()"],
+      |["android.app.Fragment","void onDestroy()"],
+      |["androidx.fragment.app.DialogFragment","void onDestroyView()"],
+      |["androidx.lifecycle.ReportFragment","void onDestroy()"],
+      |["android.support.wearable.view.CardFragment","void onDestroy()"],
+      |["android.support.v4.app.FragmentActivity","void onDestroy()"],
+      |["androidx.fragment.app.Fragment","void onDestroyOptionsMenu()"],
+      |["android.support.v4.app.Fragment","void onDestroy()"],
+      |["android.preference.PreferenceFragment","void onDestroy()"],
+      |["android.app.Fragment","void onDestroyView()"],
+      |["android.arch.lifecycle.ReportFragment","void onDestroy()"],
+      |["androidx.fragment.app.Fragment","void onDestroyView()"],
+      |["android.app.Fragment","void onDestroyOptionsMenu()"],
+      |["androidx.fragment.app.ListFragment","void onDestroyView()"]],
+      |"lsVars":["_","f"]}},"rightOfArrow":[{"$type":"edu.colorado.plv.bounder.lifestate.LifeState.I",
+      |"mt":{"$type":"edu.colorado.plv.bounder.ir.CBEnter"},"signatures":[["androidx.fragment.app.DialogFragment",
+      |"void onActivityCreated(android.os.Bundle)"],["android.app.Fragment",
+      |"void onActivityCreated(android.os.Bundle)"],["androidx.fragment.app.Fragment",
+      |"void onActivityCreated(android.os.Bundle)"],["androidx.lifecycle.ReportFragment",
+      |"void onActivityCreated(android.os.Bundle)"],["android.support.v4.app.Fragment",
+      |"void onActivityCreated(android.os.Bundle)"],["android.support.wearable.view.CardFragment",
+      |"void onActivityCreated(android.os.Bundle)"],["android.support.v7.preference.PreferenceFragmentCompat",
+      |"void onActivityCreated(android.os.Bundle)"],["android.support.v14.preference.PreferenceFragment",
+      |"void onActivityCreated(android.os.Bundle)"],["android.support.v4.app.DialogFragment",
+      |"void onActivityCreated(android.os.Bundle)"],["android.arch.lifecycle.ReportFragment",
+      |"void onActivityCreated(android.os.Bundle)"],["android.app.DialogFragment",
+      |"void onActivityCreated(android.os.Bundle)"],["android.preference.PreferenceFragment",
+      |"void onActivityCreated(android.os.Bundle)"]],"lsVars":["_","LS_GENERATED__15"]}],
+      |"modelVars":{"f":{"$type":"edu.colorado.plv.bounder.symbolicexecutor.state.PureVar","id":1},
+      |"LS_GENERATED__15":{"$type":"edu.colorado.plv.bounder.symbolicexecutor.state.PureVar","id":1}}}""".stripMargin
+    val at1 = read[AbstractTrace](at1Pickle)
+
+    val state1 = State.topState.copy(traceAbstraction = Set(at1))
+    val res1 = stateSolver.simplify(state1, Some(3))
+    assert(res1.isDefined)
   }
   test("Vacuous NI(a,a) spec") {
     val statesolver = getStateSolver
