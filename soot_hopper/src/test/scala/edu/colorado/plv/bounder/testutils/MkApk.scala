@@ -1,9 +1,14 @@
 package edu.colorado.plv.bounder.testutils
 
 import better.files._
+import edu.colorado.plv.bounder.solver.StateSolver
+import org.slf4j.LoggerFactory
+
 import sys.process._
 
 object MkApk {
+
+  private val logger = LoggerFactory.getLogger("MkApk.scala")
   val RXBase = getClass.getResource("/CreateDestroySubscribe.zip").getPath
 
   /**
@@ -28,11 +33,26 @@ object MkApk {
           (srcDir / filename).appendLines(v)
       }
 
-      val gw = appDir / "gradlew"
-      val res1 = Process("chmod +x gradlew",appDir.toJava).!!
-      val res2 = Process("./gradlew assembleDebug",appDir.toJava).!!
-      val apkFile = appDir / "app" / "build" / "outputs/apk/debug/app-debug.apk"
-      res = Some(applyWithApk(apkFile.toString))
+      try {
+        val res1 = Process("chmod +x gradlew", appDir.toJava).!!
+        logger.info(s"Chmod output: $res1")
+        import sys.process._
+
+        val stdout = new StringBuilder
+        val stderr = new StringBuilder
+//        val status = "ls -al FRED" ! ProcessLogger(stdout append _, stderr append _)
+        Process("./gradlew assembleDebug", appDir.toJava) ! ProcessLogger(stdout append _, stderr append _)
+        logger.info(s"Gradle stdout: $stdout")
+        logger.info(s"Gradle stderr: $stderr")
+        val apkFile = appDir / "app" / "build" / "outputs/apk/debug/app-debug.apk"
+        res = Some(applyWithApk(apkFile.toString))
+      }catch{
+        case e:RuntimeException =>
+          logger.error("FAILED BUILDING TEST APK")
+          logger.error(e.toString)
+          logger.error(e.getStackTrace.mkString("\n    "))
+          throw e
+      }
     }
     res
   }
