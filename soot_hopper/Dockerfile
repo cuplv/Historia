@@ -70,7 +70,8 @@ RUN mkdir "$ANDROID_HOME" .android \
 RUN cd /root/android-sdk-linux/cmdline-tools/bin \
     && ./sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "platforms;android-10" "platforms;android-11" "platforms;android-12" "platforms;android-13" "platforms;android-14" "platforms;android-15" "platforms;android-16" "platforms;android-17" "platforms;android-18" "platforms;android-19" "platforms;android-20" "platforms;android-21" "platforms;android-22" "platforms;android-23" "platforms;android-24" "platforms;android-25" "platforms;android-26" "platforms;android-27" "platforms;android-7" "platforms;android-8" "platforms;android-9"
 #
-
+RUN  cd /root/android-sdk-linux/cmdline-tools/bin \
+    && ./sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-29"
 
 COPY . /home/bounder/
 ENV LD_LIBRARY_PATH=/usr/lib/
