@@ -100,7 +100,10 @@ object FragmentGetActivityNullSpec{
 }
 
 object RxJavaSpec{
-  val subUnsub = NI(SpecSignatures.RxJava_subscribe_exit, SpecSignatures.RxJava_unsubscribe_exit)
+  // TODO: copy of subscribe_exit is a workaround for a bug where unneeded vars cause failure to terminate
+  val subUnsub = NI(
+    SpecSignatures.RxJava_subscribe_exit.copy(lsVars = "_"::SpecSignatures.RxJava_subscribe_exit.lsVars.tail),
+    SpecSignatures.RxJava_unsubscribe_exit)
   val call = LSSpec(subUnsub, SpecSignatures.RxJava_call_entry)
   val subscribeDoesNotReturnNull = LSSpec(LSFalse, SpecSignatures.RxJava_subscribe_exit_null)
 }

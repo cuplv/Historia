@@ -1,10 +1,15 @@
 package edu.colorado.plv.bounder.ir
+import upickle.default.{ReadWriter => RW, macroRW}
 
 
 object Trace {
 
 }
 sealed trait MessageType
+object MessageType{
+  implicit var rw:RW[MessageType] = RW.merge(macroRW[CIEnter.type],  macroRW[CIExit.type],
+    macroRW[CBEnter.type], macroRW[CBExit.type])
+}
 case object CIEnter extends MessageType
 case object CIExit extends MessageType
 case object CBEnter extends MessageType

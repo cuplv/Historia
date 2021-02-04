@@ -76,9 +76,6 @@ COPY . /home/bounder/
 ENV LD_LIBRARY_PATH=/usr/lib/
 RUN cd /home/bounder/; sbt compile 
 
-
-
-
-
+RUN mkdir /home/bounder_host
 
 CMD ["/bin/bash"]

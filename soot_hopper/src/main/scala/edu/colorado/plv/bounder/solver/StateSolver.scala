@@ -4,6 +4,8 @@ import edu.colorado.plv.bounder.ir.{TAddr, TMessage, TNullVal}
 import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.lifestate.LifeState._
 import edu.colorado.plv.bounder.symbolicexecutor.state._
+import org.slf4j.LoggerFactory
+import upickle.default._
 
 trait Assumptions
 
@@ -11,6 +13,7 @@ class UnknownSMTResult(msg : String) extends Exception(msg)
 
 /** SMT solver parameterized by its AST or expression type */
 trait StateSolver[T] {
+  private val logger = LoggerFactory.getLogger(classOf[StateSolver[T]])
   // checking
   def checkSAT(): Boolean
 
@@ -394,6 +397,8 @@ trait StateSolver[T] {
 
   }
 
+  //TODO: remove log code
+
   def simplify(state: State, maxWitness: Option[Int] = None): Option[State] = {
     if(state.isSimplified) Some(state) else {
       // Drop useless constraints
@@ -451,10 +456,14 @@ trait StateSolver[T] {
   def canSubsume(s1: State, s2: State, maxLen: Option[Int] = None): Boolean = {
     // Currently, the stack is strictly the app call string
     // When adding more abstraction to the stack, this needs to be modified
-    if(!stackCanSubsume(s1.callStack, s2.callStack))
+    if(!stackCanSubsume(s1.callStack, s2.callStack)) {
+      logger.info(s"Stack no subsume STATE1: $s1  STATE2: $s2")
       return false
-    if(!s1.heapConstraints.forall { case (k, v) => s2.heapConstraints.get(k).contains(v) })
+    }
+    if(!s1.heapConstraints.forall { case (k, v) => s2.heapConstraints.get(k).contains(v) }) {
+      logger.info(s"Heap no subsume STATE1: $s1  STATE2: $s2")
       return false
+    }
     // TODO: encode inequality of heap cells in smt formula?
 
     if(!encodeTypeConsteraints){
@@ -515,6 +524,15 @@ trait StateSolver[T] {
       printDbgModel(messageTranslator, s1.traceAbstraction.union(s2.traceAbstraction), "")
     }
     pop()
+    if(ti){
+      logger.info(s"Pure or Trace no subsume STATE1: " +
+        s"$s1  " +
+        s"STATE2: $s2")
+    }else{
+      logger.info(s"Subsumed STATE1: " +
+        s"${s1.toString.replace("\n"," ")}  " +
+        s"STATE2: ${s2.toString.replace("\n"," ")}")
+    }
     !ti
   }
 

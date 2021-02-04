@@ -4,6 +4,7 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.MessageType
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSFalse, LSPred, LSSpec, LSTrue, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CmpOp, NullVal, PureExpr, PureVal}
+import upickle.default.{ReadWriter => RW, macroRW}
 
 object LifeState {
   var id = 0
@@ -31,6 +32,10 @@ object LifeState {
     def contains(mt:MessageType,sig: (String, String)):Boolean
 
     def lsVar: Set[String]
+  }
+  object LSPred{
+    implicit var rw:RW[LSPred] = RW.merge(LSAtom.rw, macroRW[Not], macroRW[And],
+      macroRW[Or], macroRW[LSTrue.type], macroRW[LSFalse.type])
   }
 
   val LSGenerated = "LS_GENERATED_.*".r
@@ -65,6 +70,9 @@ object LifeState {
     def getAtomSig:String
     def identitySignature:String
   }
+  object LSAtom{
+    implicit val rw:RW[LSAtom] = RW.merge(I.rw, NI.rw)
+  }
 
   // A method with a signature in "signatures" has been invoed
   // lsVars: element 0 is return value, element 1 is reciever, rest of the elements are arguemnts
@@ -95,6 +103,9 @@ object LifeState {
 
     override def contains(omt:MessageType,sig: (String, String)): Boolean = signatures.contains(sig) && omt == mt
   }
+  object I{
+    implicit val rw:RW[I] = macroRW
+  }
   // Since i1 has been invoked, i2 has not been invoked.
   case class NI(i1:I, i2:I) extends LSAtom{
     def lsVar: Set[String] = i1.lsVar.union(i2.lsVar)
@@ -105,6 +116,9 @@ object LifeState {
     override def toString:String = s"NI( ${i1.toString} , ${i2.toString} )"
 
     override def contains(mt:MessageType,sig: (String, String)): Boolean = i1.contains(mt, sig) || i2.contains(mt, sig)
+  }
+  object NI{
+    implicit val rw:RW[NI] = macroRW
   }
   case class LSSpec(pred:LSPred, target: I)
 

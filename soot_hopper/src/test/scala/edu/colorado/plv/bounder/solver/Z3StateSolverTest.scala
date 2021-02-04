@@ -265,6 +265,36 @@ class Z3StateSolverTest extends AnyFunSuite {
     val res = statesolver.simplify(s, Some(20))
     assert(res.isDefined)
   }
+  test ("Pickled states from integration tests should not crash solver") {
+    // (Map(l -> p-2, s -> p-5) -
+    // NI( I(CIExit I_CIExit_rx.Single_rx.Subscription subscribe(rx.functions.Action1) ( _,s,l ) ,
+    //     I(CIExit I_CIExit_rx.Subscription_void unsubscribe() ( _,s ) ) |>
+    //     I(CIExit I_CIExit_rx.Single_rx.Subscription subscribe(rx.functions.Action1) ( LS_GENERATED__3,p-5,p-2 ))
+    val pickledAbstractTrace =
+    """{"a":{"$type":"edu.colorado.plv.bounder.lifestate.LifeState.NI","i1":
+      |{"$type":"edu.colorado.plv.bounder.lifestate.LifeState.I","mt":{"$type":"edu.colorado.plv.bounder.ir.CIExit"},
+      |"signatures":[["rx.Single","rx.Subscription subscribe(rx.functions.Action1)"]],"lsVars":["_","s","l"]},
+      |"i2":{"$type":"edu.colorado.plv.bounder.lifestate.LifeState.I",
+      |"mt":{"$type":"edu.colorado.plv.bounder.ir.CIExit"},
+      |"signatures":[["rx.Subscription","void unsubscribe()"],
+      |["rx.internal.operators.CachedObservable$ReplayProducer","void unsubscribe()"]],
+      |"lsVars":["_","s"]}},"rightOfArrow":[{"$type":"edu.colorado.plv.bounder.lifestate.LifeState.I",
+      |"mt":{"$type":"edu.colorado.plv.bounder.ir.CIExit"},
+      |"signatures":[["rx.Single","rx.Subscription subscribe(rx.functions.Action1)"]],
+      |"lsVars":["LS_GENERATED__3","LS_GENERATED__4","LS_GENERATED__5"]}],
+      |"modelVars":{"l":{"$type":"edu.colorado.plv.bounder.symbolicexecutor.state.PureVar","id":2},
+      |"s":{"$type":"edu.colorado.plv.bounder.symbolicexecutor.state.PureVar","id":5},
+      |"LS_GENERATED__4":{"$type":"edu.colorado.plv.bounder.symbolicexecutor.state.PureVar","id":5},
+      |"LS_GENERATED__5":{"$type":"edu.colorado.plv.bounder.symbolicexecutor.state.PureVar","id":2}}}""".stripMargin
+
+    import upickle.default._
+    val at = read[AbstractTrace](pickledAbstractTrace)
+    val state = State.topState.copy(traceAbstraction = Set(at))
+
+    val stateSolver = getStateSolver
+    val res = stateSolver.simplify(state)
+    assert(res.isDefined)
+  }
   test("Vacuous NI(a,a) spec") {
     val statesolver = getStateSolver
 

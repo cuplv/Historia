@@ -45,6 +45,9 @@ case class AbstractTrace(a:LSPred,rightOfArrow:List[I], modelVars: Map[String,Pu
     s"(${notGenerated} - $lhs |> $rhs)"
   }
 }
+object AbstractTrace{
+  implicit var rw:RW[AbstractTrace] = macroRW[AbstractTrace]
+}
 
 sealed trait LSParamConstraint{
   def optTraceAbs: Option[AbstractTrace]
@@ -135,15 +138,15 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
       case (sf::t, fr) if fr > 0 =>
         val locals: Map[StackVar, PureExpr] = sf.locals
         s"${sf.methodLoc.msgSig.getOrElse("")} " +
-          s"locals: " + locals.map(k => k._1.toString + " -> " + k._2.toString).mkString(",") + "\n" +
+          s"locals: " + locals.map(k => k._1.toString + " -> " + k._2.toString).mkString(",") + "     " +
           sfString(t, fr-1)
       case (Nil,_) => ""
       case (_::_,_) => "..."
     }
     val stackString = sfString(callStack, 2)
 
-    val heapString = s"   heap: ${heapConstraints.map(a => a._1.toString + "->" +  a._2.toString).mkString(" * ")}\n"
-    val pureFormulaString = "   pure: " + pureFormula.map(a => a.toString).mkString(" && ") +"\n"
+    val heapString = s"   heap: ${heapConstraints.map(a => a._1.toString + "->" +  a._2.toString).mkString(" * ")}    "
+    val pureFormulaString = "   pure: " + pureFormula.map(a => a.toString).mkString(" && ") +"    "
     val traceString = s"   trace: ${traceAbstraction.mkString(" ; ")}"
     s"($stackString $heapString   $pureFormulaString $traceString)"
   }

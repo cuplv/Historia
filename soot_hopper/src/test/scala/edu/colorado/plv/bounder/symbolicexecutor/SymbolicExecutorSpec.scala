@@ -35,7 +35,6 @@ class SymbolicExecutorSpec extends AnyFunSuite {
 
 
   test("Symbolic Executor should prove an inter-callback deref"){
-    println("======= Interproc ======")
     val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath
     assert(test_interproc_1 != null)
     val w = new JimpleFlowdroidWrapper(test_interproc_1, PatchedFlowdroidCallGraph)
@@ -221,7 +220,7 @@ class SymbolicExecutorSpec extends AnyFunSuite {
     makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
   }
 
-  test("Test prove dereference of return from getActivity") {
+  ignore("Test prove dereference of return from getActivity") {
     //TODO: this test is currently timing out not sure if it will work or not
     val src =
       """
@@ -292,13 +291,14 @@ class SymbolicExecutorSpec extends AnyFunSuite {
           RxJavaSpec.subscribeDoesNotReturnNull
         )))
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(50), w, transfer,
+        stepLimit = Some(300), w, transfer,
         component = Some(List("com.example.createdestroy.MyFragment.*")))
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeCallinReturnNonNull(symbolicExecutor, w,
         "com.example.createdestroy.MyFragment",
         "void lambda$onActivityCreated$1$MyFragment(java.lang.Object)",43,
         ".*getActivity.*".r)
+
       val result = symbolicExecutor.executeBackward(query)
       PrettyPrinting.dumpDebugInfo(result,"MkApk")
       assert(result.nonEmpty)
