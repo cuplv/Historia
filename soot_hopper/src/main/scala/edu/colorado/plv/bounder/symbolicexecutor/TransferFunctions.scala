@@ -471,6 +471,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
   def possibleAliasesOf(local: LocalWrapper, state:State):Set[PureVar] = {
     //TODO: use this function to enumerate all alias possibilities when stepping into the return point of callback
     //TODO: or possibly whenever encountering an undefined variable? (This seems less ideal right now)
+    // TODO: Rewrite this function using the state type information from ClassHierarchyConstraints ===========
     val stackVars = state.callStack.headOption.map(_.locals.flatMap{
       case (_,v:PureVar) if state.pvTypeUpperBound(v).exists(ot => w.canAlias(local.localType, ot)) =>
         Some(v)
@@ -565,13 +566,19 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       // get or define base of assignment
       // Enumerate over existing base values that could alias assignment
       // Enumerate permutations of heap cell and rhs
+      // TODO: flawed logic here
       val perm = BounderUtil.repeatingPerm(a => if(a ==0) possibleHeapCells else possibleRhs , 2)
       val casesWithHeapCellAlias: Set[State] = perm.map{
         case (pte@FieldPtEdge(heapPv, _), tgtVal:PureExpr)::(rhsPureExpr:PureExpr,state3:State)::Nil =>
           val swapped0 = state3.swapPv(basev, heapPv)
           val swapped = swapped0.copy(
             heapConstraints = swapped0.heapConstraints - pte,
-            pureFormula = swapped0.pureFormula + PureConstraint(tgtVal, Equals, rhsPureExpr)
+            pureFormula = swapped0.pureFormula +
+              PureConstraint( // heap cell is aliased by base var so target of heap cell and rhs must be equal
+                if(tgtVal != basev) tgtVal else heapPv,
+                Equals,
+                if (rhsPureExpr != basev) rhsPureExpr else heapPv) +
+              PureConstraint(heapPv, NotEquals, NullVal) // Base must be non null for normal control flow
           )
           swapped
         case v =>

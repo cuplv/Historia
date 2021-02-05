@@ -37,7 +37,7 @@ case object SetInclusionTypeSolving extends StateTypeSolving
  * @param types mapping from super types to sub types
  */
 class ClassHierarchyConstraints(ctx: Context, solver: Solver, types : Map[String,Set[String]],
-                                useZ3TypeSolver: StateTypeSolving = SetInclusionTypeSolving ) {
+                                useZ3TypeSolver: StateTypeSolving = NoTypeSolving ) {
   def getSolver: Solver = solver
   def getCtx: Context = ctx
   def getTypes:Map[String,Set[String]] = types

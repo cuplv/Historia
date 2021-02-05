@@ -418,11 +418,10 @@ trait StateSolver[T] {
         case PureConstraint(v1,Equals,v2) if v1==v2 => false
         case _ => true
       })
-      if (encodeTypeConsteraints == SetInclusionTypeSolving) {
-        val pvMap2 = persist.pureVarTypeMap(state)
-        if(pvMap2.exists(a => a._2.isEmpty)){
-          return None
-        }
+      // If no type possible for a pure var, throw it out
+      val pvMap2 = persist.pureVarTypeMap(state)
+      if(pvMap2.exists(a => a._2.isEmpty)){
+        return None
       }
       push()
       val messageTranslator = MessageTranslator(List(state2))
