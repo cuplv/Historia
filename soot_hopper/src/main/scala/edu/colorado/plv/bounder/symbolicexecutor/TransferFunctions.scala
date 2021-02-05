@@ -466,31 +466,13 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
   }
 
   def pureCanAlias(pv:PureVar, otherType:String, state:State):Boolean =
-    state.pvTypeUpperBound(pv) match{
-      case Some(ot) => w.canAlias(otherType, ot)
-      case None => true //Assume alias possible with no type constraints
-    }
+    classHierarchyConstraints.typeSetForPureVar(pv,state).contains(otherType)
+
   def possibleAliasesOf(local: LocalWrapper, state:State):Set[PureVar] = {
-    //TODO: use this function to enumerate all alias possibilities when stepping into the return point of callback
-    //TODO: or possibly whenever encountering an undefined variable? (This seems less ideal right now)
-    // TODO: Rewrite this function using the state type information from ClassHierarchyConstraints ===========
-    val stackVars = state.callStack.headOption.map(_.locals.flatMap{
-      case (_,v:PureVar) if state.pvTypeUpperBound(v).exists(ot => w.canAlias(local.localType, ot)) =>
-        Some(v)
-      case _ => None
-    }).getOrElse(Set()).toSet
-    val traceVars = state.allTraceVar().flatMap{
-      case v if pureCanAlias(v, local.localType, state) => Some(v)
-      case _ => None
-    }
-    val heapVars:Set[PureVar] = state.heapConstraints.flatMap{a => a match {
-      case (FieldPtEdge(pureVar, _), pureVar2:PureVar) =>
-        List(pureVar,pureVar2).filter(pureCanAlias(_,local.localType, state))
-      case _ =>
-        ???
-    }}.toSet
-    val oldv = stackVars.union(traceVars).union(heapVars)
-    val newV = state.pureVars()
+    val pvTypeMap = classHierarchyConstraints.pureVarTypeMap(state)
+    val newV = pvTypeMap.filter{
+      case (_,v) => v.exists(ot => w.canAlias(ot,local.localType))
+    }.keySet
     newV
   }
   def cmdTransfer(cmd:CmdWrapper, state:State):Set[State] = cmd match{

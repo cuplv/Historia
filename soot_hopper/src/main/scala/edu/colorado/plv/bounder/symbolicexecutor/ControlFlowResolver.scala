@@ -13,7 +13,7 @@ import scala.util.matching.Regex
  */
 class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
                                resolver: AppCodeResolver,
-                               persistantConstraints: ClassHierarchyConstraints,
+                               cha: ClassHierarchyConstraints,
                                component: Option[List[String]]) {
   private val componentR: Option[List[Regex]] = component.map(_.map(_.r))
   def callbackInComponent(loc:Loc):Boolean = loc match{
@@ -95,8 +95,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     state.heapConstraints.exists{
       case (FieldPtEdge(p, otherFieldName),_) if fname == otherFieldName =>
 //        val res = state.pvTypeUpperBound(p).forall(wrapper.canAlias(localType, _))
-        val posLocalTypes = persistantConstraints.getSubtypesOf(localType)
-        val pureTypes = persistantConstraints.typeSetForPureVar(p,state)
+        val posLocalTypes = cha.getSubtypesOf(localType)
+        val pureTypes = cha.typeSetForPureVar(p,state)
         val res = posLocalTypes.exists(t => pureTypes.contains(t))
         res
       case _ => false
@@ -169,7 +169,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     aliasPos.exists{ aliasPo =>
       (aliasPo zip locals).forall{
         case (LSPure(v:PureVar), Some(local:LocalWrapper)) =>
-          state.pvTypeUpperBound(v).forall(wrapper.canAlias(_, local.localType))
+          cha.typeSetForPureVar(v,state).forall(wrapper.canAlias(_, local.localType))
         case (LSPure(v:PureVar), Some(NullConst)) => ???
         case (LSPure(v:PureVar), Some(i:IntConst)) => ???
         case (LSPure(v:PureVar), Some(i:StringConst)) => ???

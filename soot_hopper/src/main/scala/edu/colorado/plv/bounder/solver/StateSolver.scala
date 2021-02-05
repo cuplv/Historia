@@ -363,10 +363,13 @@ trait StateSolver[T] {
       mkAnd(acc, toAST(v))
     )
 
-    // TODO: ==================
     val typeConstraints = if(encodeTypeConsteraints == SolverTypeSolving) {
       // Encode type constraints in Z3
       val typeConstraints = persist.pureVarTypeMap(state)
+      typeConstraints.keySet.filter(pv => state.pureFormula.exists{
+        case PureConstraint(v1, TypeComp,_) =>  v1 == pv
+        case _ => false
+      })
       mkAnd(typeConstraints.map{case (pv, ts) => mkTypeConstraint(typeFun, toAST(pv), ts)}.toList)
     } else mkBoolVal(true)
 

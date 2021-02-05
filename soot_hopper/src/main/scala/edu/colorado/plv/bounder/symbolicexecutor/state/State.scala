@@ -125,14 +125,6 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
   }
   def allTraceVar():Set[PureVar] = traceAbstraction.flatMap(formulaVars)
 
-  def pvTypeUpperBound(v: PureVar): Option[String] = {
-    pureFormula.flatMap{
-      case PureConstraint(v2, TypeComp, SubclassOf(s)) if v==v2 => Some(s)
-      case PureConstraint(v2, TypeComp, ClassType(s)) if v==v2 => Some(s)
-      case _ => None
-    }.headOption
-  }
-
   override def toString:String = {
     def sfString(sfl:List[CallStackFrame], frames: Int):String = (sfl,frames) match{
       case (sf::t, fr) if fr > 0 =>

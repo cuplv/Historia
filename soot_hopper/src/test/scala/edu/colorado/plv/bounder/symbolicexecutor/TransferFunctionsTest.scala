@@ -27,11 +27,11 @@ class TransferFunctionsTest extends AnyFunSuite {
   //Test transfer function where field is assigned and base may or may not be aliased
   // pre: this -> a^ * b^.out -> b1^ /\ b1^ == null
   // post: (this -> a^ * a^.out -> c^* d^.out -> e^) OR (this -> a^ * a^.out -> c^ AND a^=d^ AND c^=d^)
-  val fooMethod = TestIRMethodLoc("","foo", List(LocalWrapper("@this","Object")))
+  val fooMethod = TestIRMethodLoc("","foo", List(LocalWrapper("@this","java.lang.Object")))
   val fooMethodReturn = CallbackMethodReturn("", "foo", fooMethod, None)
   test("Transfer may or may not alias") {
     val cmd = (loc:AppLoc) => {
-      val thisLocal = LocalWrapper("@this", "Object")
+      val thisLocal = LocalWrapper("@this", "java.lang.Object")
       AssignCmd(FieldReference(thisLocal, "Object", "Object", "o"), NullConst, loc)
     }
     val basePv = PureVar(State.getId())
@@ -42,6 +42,7 @@ class TransferFunctionsTest extends AnyFunSuite {
       traceAbstraction = Set(),
       0
     )
+
     val pre = testCmdTransfer(cmd, post, fooMethod)
     println(s"pre: ${pre})")
     println(s"post: ${post}")
@@ -52,7 +53,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     assert(pre.count(state => state.heapConstraints.isEmpty) == 1)
   }
   test("Transfer assign new local") {
-    val cmd= (loc:AppLoc) => AssignCmd(LocalWrapper("bar","Object"),NewCommand("String"),loc)
+    val cmd= (loc:AppLoc) => AssignCmd(LocalWrapper("bar","java.lang.Object"),NewCommand("String"),loc)
     val nullPv = PureVar(State.getId())
     val post = State(
       CallStackFrame(fooMethodReturn, None, Map(StackVar("bar") -> nullPv))::Nil,

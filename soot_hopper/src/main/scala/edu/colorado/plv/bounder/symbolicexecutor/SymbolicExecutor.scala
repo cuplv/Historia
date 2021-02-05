@@ -51,16 +51,16 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     solver.setParameters(params)
     solver
   }
-  val persistantConstraints =
+  val cha =
     new ClassHierarchyConstraints(ctx, solver, config.w.getClassHierarchy, config.stateTypeSolving)
-  val transfer = config.transfer(persistantConstraints)
+  val transfer = config.transfer(cha)
 
   val appCodeResolver = new DefaultAppCodeResolver[M,C](config.w)
   def getAppCodeResolver = appCodeResolver
   val controlFlowResolver =
-    new ControlFlowResolver[M,C](config.w,appCodeResolver, persistantConstraints, config.component)
+    new ControlFlowResolver[M,C](config.w,appCodeResolver, cha, config.component)
   def getControlFlowResolver = controlFlowResolver
-  val stateSolver = new Z3StateSolver(persistantConstraints)
+  val stateSolver = new Z3StateSolver(cha)
   /**
    *
    * @param qry - a source location and an assertion to prove
