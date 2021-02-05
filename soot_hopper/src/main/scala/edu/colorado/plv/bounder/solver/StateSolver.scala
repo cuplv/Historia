@@ -5,6 +5,7 @@ import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.lifestate.LifeState._
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import org.slf4j.LoggerFactory
+import scalaz.Memo
 import upickle.default._
 
 trait Assumptions
@@ -100,10 +101,11 @@ trait StateSolver[T] {
 
   protected def solverSimplify(t: T, state: State, messageTranslator:MessageTranslator, logDbg: Boolean = false): Option[T]
 
-  protected def mkTypeConstraint(typeFun: T, addr: T, tc: TypeConstraint): T
+  protected def mkTypeConstraint(typeFun: T, addr: T, tc: Set[String]): T
 
   protected def createTypeFun(): T
 
+  // TODO: swap enum with uninterpreted type
   protected def mkEnum(name: String, types: List[String]): T
 
   protected def getEnumElement(enum: T, i: Int): T
@@ -149,10 +151,12 @@ trait StateSolver[T] {
     }
   }
 
-  def toAST(p: PureConstraint, typeFun: T): T = p match {
+  def toAST(p: PureConstraint): T = p match {
     // TODO: field constraints based on containing object constraints
     case PureConstraint(lhs: PureVar, TypeComp, rhs: TypeConstraint) =>
-      mkTypeConstraint(typeFun, toAST(lhs), rhs)
+      throw new IllegalStateException("Pure constraints should be filtered out before here.")
+//      val typeSet = persist.typeSetForPureVar(lhs,state)
+//      mkTypeConstraint(typeFun, toAST(lhs), rhs)
     case PureConstraint(v:PureVal,op,rhs) => compareConstValueOf(toAST(rhs),op,v)
     case PureConstraint(lhs, op, v:PureVal) => compareConstValueOf(toAST(lhs),op,v)
     case PureConstraint(lhs, op, rhs) =>
@@ -329,8 +333,8 @@ trait StateSolver[T] {
 
   protected def mkDistinct(pvList: Iterable[PureVar]): T
   protected def mkDistinctT(tList : Iterable[T]):T
-  protected def encodeTypeConsteraints:Boolean
-  protected def persist: PersistantConstraints
+  protected def encodeTypeConsteraints:StateTypeSolving
+  protected def persist: ClassHierarchyConstraints
 
   def toAST(heap: Map[HeapPtEdge, PureExpr]): T={
     // The only constraint we get from the heap is that domain elements must be distinct
@@ -351,13 +355,20 @@ trait StateSolver[T] {
 
     // pure formula are for asserting that two abstract addresses alias each other or not
     //  as well as asserting upper and lower bounds on concrete types associated with addresses
-    val pure2 = if(encodeTypeConsteraints)pure else pure.filter{
+    val pureNoTypes = pure.filter{
       case PureConstraint(_,TypeComp, _) => false
       case _ => true
     }
-    val pureAst = pure2.foldLeft(mkBoolVal(true))((acc, v) =>
-      mkAnd(acc, toAST(v, typeFun))
+    val pureAst = pureNoTypes.foldLeft(mkBoolVal(true))((acc, v) =>
+      mkAnd(acc, toAST(v))
     )
+
+    // TODO: ==================
+    val typeConstraints = if(encodeTypeConsteraints == SolverTypeSolving) {
+      // Encode type constraints in Z3
+      val typeConstraints = persist.pureVarTypeMap(state)
+      mkAnd(typeConstraints.map{case (pv, ts) => mkTypeConstraint(typeFun, toAST(pv), ts)}.toList)
+    } else mkBoolVal(true)
 
     val heapAst = toAST(state.heapConstraints)
 
@@ -370,7 +381,7 @@ trait StateSolver[T] {
       case (acc, v) => mkAnd(acc, encodeTraceAbs(v, messageTranslator,
         traceFn = tracefun, traceLen = len))
     }
-    val out = mkAnd(mkAnd(pureAst, heapAst), trace)
+    val out = mkAnd(mkAnd(mkAnd(pureAst, heapAst), trace), typeConstraints)
     maxWitness.foldLeft(out) { (acc, v) => mkAnd(mkLt(len, mkIntVal(v)), acc) }
   }
 
@@ -407,7 +418,7 @@ trait StateSolver[T] {
         case PureConstraint(v1,Equals,v2) if v1==v2 => false
         case _ => true
       })
-      if (!encodeTypeConsteraints) {
+      if (encodeTypeConsteraints == SetInclusionTypeSolving) {
         val pvMap2 = persist.pureVarTypeMap(state)
         if(pvMap2.exists(a => a._2.isEmpty)){
           return None
@@ -425,7 +436,7 @@ trait StateSolver[T] {
       val simpleAst = solverSimplify(ast, state2, messageTranslator, maxWitness.isDefined)
 
       pop()
-      // TODO: garbage collect, if purevar can't be reached from reg or stack var, discard
+      // TODO: garbage collect constraint, if all purevar can't be reached from reg or stack var and state is satisfiable
       simpleAst.map(_ =>
         state2.setSimplified()
       )
@@ -446,6 +457,12 @@ trait StateSolver[T] {
     case _ => true
   }
 
+  def canSubsumeAlt(s1: State, s2: State, maxLen: Option[Int] = None): Boolean = maxLen match {
+    case Some(_) => canSubsume(s1,s2,maxLen)
+    case None => canSubsumeMemo(s1,s2)
+  }
+  val canSubsumeMemo: ((State,State)) => Boolean =
+    Memo.mutableHashMapMemo((s:(State,State)) => canSubsume(s._1,s._2))
   /**
    * Check if formula s2 is entirely contained within s1.  Used to determine if subsumption is sound.
    *
@@ -466,7 +483,7 @@ trait StateSolver[T] {
     }
     // TODO: encode inequality of heap cells in smt formula?
 
-    if(!encodeTypeConsteraints){
+    if(encodeTypeConsteraints == SetInclusionTypeSolving){
       val s1TypeMap = persist.pureVarTypeMap(s1)
       val s2TypeMap = persist.pureVarTypeMap(s2)
       val typesSubsume =
@@ -479,17 +496,37 @@ trait StateSolver[T] {
     push()
 
     val pureFormulaEnc = {
-      val s1pf = if(encodeTypeConsteraints) s1.pureFormula else filterTypeConstraintsFromPf(s1.pureFormula)
-      val s2pf = if(encodeTypeConsteraints) s2.pureFormula else filterTypeConstraintsFromPf(s2.pureFormula)
 
       val typeFun = createTypeFun()
-      val negs1pure = s1pf.foldLeft(mkBoolVal(false)) {
-        case (acc, constraint) => mkOr(mkNot(toAST(constraint, typeFun)), acc)
+      // TODO: add type encoding here
+      val (negTC1, tC2) = if(encodeTypeConsteraints == SolverTypeSolving) {
+        val state1Types = persist.pureVarTypeMap(s1).map{
+          case (pv,ts) => mkTypeConstraint(typeFun, toAST(pv), ts)
+        }
+        val state2Types = persist.pureVarTypeMap(s2).map{
+          case (pv,ts) => mkTypeConstraint(typeFun, toAST(pv), ts)
+        }
+        val notS1TypesEncoded = state1Types.foldLeft(mkBoolVal(false)){
+          (acc,v) => mkOr(acc, mkNot(v))
+        }
+        val s2TypesEncoded = state2Types.foldLeft(mkBoolVal(true)){
+          (acc,v) => mkAnd(acc, v)
+        }
+        (notS1TypesEncoded,s2TypesEncoded)
+      } else (mkBoolVal(false),mkBoolVal(true))
+
+      val s1pf = filterTypeConstraintsFromPf(s1.pureFormula)
+      val s2pf = filterTypeConstraintsFromPf(s2.pureFormula)
+
+      // Pure formula that are not type constraints
+      val negs1pure = s1pf.foldLeft(negTC1) {
+        case (acc, constraint) => mkOr(mkNot(toAST(constraint)), acc)
       }
 
-      val s2pure = s2pf.foldLeft(mkBoolVal(true)) {
-        case (acc, constraint) => mkAnd(toAST(constraint, typeFun), acc)
+      val s2pure = s2pf.foldLeft(tC2) {
+        case (acc, constraint) => mkAnd(toAST(constraint), acc)
       }
+
       mkAnd(negs1pure, s2pure)
     }
 

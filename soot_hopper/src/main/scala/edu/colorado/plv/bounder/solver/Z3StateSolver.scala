@@ -4,7 +4,7 @@ import com.microsoft.z3._
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSVar,LSAnyVal}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, PureVar, State, TypeConstraint}
 
-class Z3StateSolver(var persistentConstraints: PersistantConstraints) extends StateSolver[AST] {
+class Z3StateSolver(var persistentConstraints: ClassHierarchyConstraints) extends StateSolver[AST] {
   var solver: Solver = persistentConstraints.getSolver
   var ctx: Context = persistentConstraints.getCtx
 
@@ -166,10 +166,11 @@ class Z3StateSolver(var persistentConstraints: PersistantConstraints) extends St
     }
   }
 
-  override protected def mkTypeConstraint(typeFun: AST, addr:AST, tc: TypeConstraint): AST = {
-    persistentConstraints.exprTypeConstraint(
-      typeFun.asInstanceOf[FuncDecl].apply(addr.asInstanceOf[Expr]),tc)
-
+  //TODO: ===============
+  override protected def mkTypeConstraint(typeFun: AST, addr:AST, tc:Set[String]): AST = {
+//    persistentConstraints.exprTypeConstraint(
+//      typeFun.asInstanceOf[FuncDecl].apply(addr.asInstanceOf[Expr]),tc)
+    persistentConstraints.equalToOneOfTypes(typeFun.asInstanceOf[FuncDecl].apply(addr.asInstanceOf[Expr]),tc)
   }
   override protected def createTypeFun():AST = {
     val args: Array[Sort] = Array(addrSort)
@@ -264,7 +265,7 @@ class Z3StateSolver(var persistentConstraints: PersistantConstraints) extends St
     ctx.mkDistinct(pvList.map(a => a.asInstanceOf[Expr]).toArray:_*)
   }
 
-  override protected def encodeTypeConsteraints: Boolean = persistentConstraints.getUseZ3TypeSolver
+  override protected def encodeTypeConsteraints: StateTypeSolving = persistentConstraints.getUseZ3TypeSolver
 
-  override protected def persist: PersistantConstraints = persistentConstraints
+  override protected def persist: ClassHierarchyConstraints = persistentConstraints
 }

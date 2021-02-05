@@ -529,7 +529,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
     case ReturnCmd(None, _) => Set(state)
     case AssignCmd(lhs:LocalWrapper, FieldReference(base, fieldtype, declType, fieldName), _) =>
       // x = y.f
-      // TODO: enumerate possible aliases
       state.get(lhs) match{
         case Some(lhsV) =>{
           val (basev, state1) = state.getOrDefine(base)

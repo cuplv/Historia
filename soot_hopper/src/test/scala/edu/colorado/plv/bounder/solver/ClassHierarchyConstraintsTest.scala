@@ -4,7 +4,7 @@ import com.microsoft.z3.{Context, Status}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, SubclassOf, SuperclassOf}
 import org.scalatest.funsuite.AnyFunSuite
 
-class PersistantConstraintsTest extends AnyFunSuite {
+class ClassHierarchyConstraintsTest extends AnyFunSuite {
   test("Subtype"){
     val ctx = new Context
     val hierarchy : Map[String, Set[String]] =
@@ -12,7 +12,7 @@ class PersistantConstraintsTest extends AnyFunSuite {
         "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
     val solver = ctx.mkSolver()
 
-    val ch = new PersistantConstraints(ctx, solver, hierarchy, true)
+    val ch = new ClassHierarchyConstraints(ctx, solver, hierarchy, SolverTypeSolving)
     assert(solver.check() == Status.SATISFIABLE)
 
     assert(solver.check() == Status.SATISFIABLE)

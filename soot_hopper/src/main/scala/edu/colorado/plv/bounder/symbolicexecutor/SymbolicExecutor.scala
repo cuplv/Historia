@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import com.microsoft.z3.Context
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, IRWrapper, Loc}
-import edu.colorado.plv.bounder.solver.{PersistantConstraints, Z3StateSolver}
+import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SetInclusionTypeSolving, StateTypeSolving, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, Qry, SomeQry, WitnessedQry}
 import soot.SootMethod
 
@@ -33,7 +33,8 @@ case class SymbolicExecutorConfig[M,C](stepLimit: Option[Int],
                                        transfer : TransferFunctions[M,C],
                                        printProgress : Boolean = sys.env.getOrElse("DEBUG","false").toBoolean,
                                        z3Timeout : Option[Int] = None,
-                                       component : Option[List[String]] = None
+                                       component : Option[List[String]] = None,
+                                       stateTypeSolving: StateTypeSolving = SetInclusionTypeSolving
                                       ){
   def getSymbolicExecutor =
     new SymbolicExecutor[M, C](this)}
@@ -50,11 +51,13 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     solver.setParameters(params)
     solver
   }
-  val persistantConstraints = new PersistantConstraints(ctx, solver, config.w.getClassHierarchy)
+  val persistantConstraints =
+    new ClassHierarchyConstraints(ctx, solver, config.w.getClassHierarchy, config.stateTypeSolving)
 
   val appCodeResolver = new DefaultAppCodeResolver[M,C](config.w)
   def getAppCodeResolver = appCodeResolver
-  val controlFlowResolver = new ControlFlowResolver[M,C](config.w,appCodeResolver, persistantConstraints, config.component)
+  val controlFlowResolver =
+    new ControlFlowResolver[M,C](config.w,appCodeResolver, persistantConstraints, config.component)
   def getControlFlowResolver = controlFlowResolver
   val stateSolver = new Z3StateSolver(persistantConstraints)
   /**

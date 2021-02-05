@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.solver.{PersistantConstraints, StateSolver}
+import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, FieldPtEdge, HeapPtEdge, LSPure, PureVar, State, StaticPtEdge}
 import scalaz.Memo
 
@@ -13,7 +13,7 @@ import scala.util.matching.Regex
  */
 class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
                                resolver: AppCodeResolver,
-                               persistantConstraints: PersistantConstraints,
+                               persistantConstraints: ClassHierarchyConstraints,
                                component: Option[List[String]]) {
   private val componentR: Option[List[Regex]] = component.map(_.map(_.r))
   def callbackInComponent(loc:Loc):Boolean = loc match{

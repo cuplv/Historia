@@ -155,6 +155,8 @@ class SymbolicExecutorSpec extends AnyFunSuite {
   }
 
   test("Test witness dereference with subscribe and possibly null field") {
+    // TODO: 9 min 50 seconds with memo version
+    // TODO: time with non-memo version?
     val src = """package com.example.createdestroy;
                 |import androidx.appcompat.app.AppCompatActivity;
                 |import android.os.Bundle;

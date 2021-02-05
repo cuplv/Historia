@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.ir
 import java.util
 
 import edu.colorado.plv.bounder.BounderSetupApplication
-import edu.colorado.plv.bounder.solver.PersistantConstraints
+import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor._
 import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
 import soot.jimple.infoflow.entryPointCreators.SimulatedCodeElementTag
@@ -30,14 +30,14 @@ object JimpleFlowdroidWrapper{
     case t:RefType =>
       val str = t.toString
       str
-    case _:IntType => PersistantConstraints.intType
-    case _:ShortType => PersistantConstraints.shortType
-    case _:ByteType => PersistantConstraints.byteType
-    case _:LongType => PersistantConstraints.longType
-    case _:DoubleType => PersistantConstraints.doubleType
-    case _:CharType => PersistantConstraints.charType
-    case _:BooleanType => PersistantConstraints.booleanType
-    case _:FloatType => PersistantConstraints.floatType
+    case _:IntType => ClassHierarchyConstraints.intType
+    case _:ShortType => ClassHierarchyConstraints.shortType
+    case _:ByteType => ClassHierarchyConstraints.byteType
+    case _:LongType => ClassHierarchyConstraints.longType
+    case _:DoubleType => ClassHierarchyConstraints.doubleType
+    case _:CharType => ClassHierarchyConstraints.charType
+    case _:BooleanType => ClassHierarchyConstraints.booleanType
+    case _:FloatType => ClassHierarchyConstraints.floatType
     case t => t.toString
   }
 
@@ -609,7 +609,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
 
   def canAlias(type1: String, type2: String): Boolean = {
     val oneIsPrimitive = List(type1,type2).exists{
-      case PersistantConstraints.Primitive() => true
+      case ClassHierarchyConstraints.Primitive() => true
       case _ => false
     }
     if(oneIsPrimitive)
