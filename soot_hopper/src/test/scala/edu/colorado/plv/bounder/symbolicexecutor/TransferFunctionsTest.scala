@@ -3,18 +3,26 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSSpec}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
+import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import edu.colorado.plv.bounder.testutils._
 import org.scalatest.funsuite.AnyFunSuite
+import com.microsoft.z3.Context
 
 class TransferFunctionsTest extends AnyFunSuite {
+  val ctx = new Context
+  val solver = ctx.mkSolver()
+  val hierarchy: Map[String, Set[String]] =
+    Map("java.lang.Object" -> Set("String", "Foo", "Bar", "java.lang.Object"),
+      "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
 
+  val cha = new ClassHierarchyConstraints(ctx, solver, hierarchy)
+  val tr = (ir:TestIR) => new TransferFunctions(ir, new SpecSpace(Set()),cha)
   def testCmdTransfer(cmd:AppLoc => CmdWrapper, post:State, testIRMethod: TestIRMethodLoc):Set[State] = {
     val preloc = AppLoc(testIRMethod,TestIRLineLoc(1), isPre=true)
     val postloc = AppLoc(testIRMethod,TestIRLineLoc(1), isPre=false)
     val ir = new TestIR(Set(CmdTransition(preloc, cmd(postloc), postloc)))
-    val tr = new TransferFunctions(ir, new SpecSpace(Set()))
-    tr.transfer(post,preloc, postloc)
+    tr(ir).transfer(post,preloc, postloc)
   }
   //Test transfer function where field is assigned and base may or may not be aliased
   // pre: this -> a^ * b^.out -> b1^ /\ b1^ == null
@@ -84,7 +92,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     val spec = LSSpec(
       lhs,
       iFooA)
-    val tr = new TransferFunctions(ir, new SpecSpace(Set(spec)))
+    val tr = new TransferFunctions(ir, new SpecSpace(Set(spec)),cha)
     val recPv = PureVar(State.getId())
     val otheri = AbstractTrace(I(CBExit, Set(("a","a")), "b"::Nil), Nil, Map())
     val post = State(
@@ -102,7 +110,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     val formula: Set[AbstractTrace] = prestate.head.traceAbstraction
     assert(formula.exists(p => p.modelVars.exists{
       case (k,v) => k == "a" && v == recPv
-    }))
+    })) //TODO: Stale test? I don't think we go from a cb inv to an app loc anymore
     assert(formula.exists(p => p.a == lhs))
     assert(formula.contains(otheri))
     val stack = prestate.head.callStack
@@ -112,7 +120,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     val preloc = CallbackMethodInvoke("","foo", fooMethod) // Transition to just before foo is invoked
     val postloc = AppLoc(fooMethod,TestIRLineLoc(1), isPre=true)
     val ir = new TestIR(Set(MethodTransition(preloc, postloc)))
-    val tr = new TransferFunctions(ir, new SpecSpace(Set(LSSpec(iFooA,iFooA.copy(signatures = Set(("bbb","bbb")))))))
+    val trf = tr(ir)
     val recPv = PureVar(State.getId())
     val post = State(
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("@this") -> recPv))::Nil,
@@ -120,7 +128,7 @@ class TransferFunctionsTest extends AnyFunSuite {
       pureFormula = Set(),
       traceAbstraction = Set(AbstractTrace(iFooA, Nil, Map("a"->recPv))),0)
     println(s"post: ${post.toString}")
-    val prestate: Set[State] = tr.transfer(post,preloc, postloc)
+    val prestate: Set[State] = trf.transfer(post,preloc, postloc)
     println(s"pre: ${prestate.toString}")
     val formula = prestate.head.traceAbstraction
     assert(formula.exists(p => p.modelVars.exists{

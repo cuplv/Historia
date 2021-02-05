@@ -3,6 +3,7 @@ package edu.colorado.plv.bounder.ir
 import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NI}
 import edu.colorado.plv.bounder.lifestate.{SpecSignatures, SpecSpace}
+import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, ControlFlowResolver, DefaultAppCodeResolver, FlowdroidCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
 import org.scalatest.funsuite.AnyFunSuite
@@ -74,7 +75,8 @@ class SootUtilsTest extends AnyFunSuite {
 //    val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
     val testSpec = LSSpec(NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
       SpecSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
-    val transfer = new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set(testSpec)))
+    val transfer = (cha:ClassHierarchyConstraints) =>
+      new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set(testSpec)),cha)
     val config: SymbolicExecutorConfig[SootMethod, soot.Unit] = SymbolicExecutorConfig(
       stepLimit = Some(50), w,transfer, printProgress = true, z3Timeout = Some(30))
     val symbolicExecutor = config.getSymbolicExecutor
@@ -109,7 +111,8 @@ class SootUtilsTest extends AnyFunSuite {
 //    val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
     val testSpec = LSSpec(NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
       SpecSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
-    val transfer = new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set(testSpec)))
+    val transfer = (cha:ClassHierarchyConstraints) =>
+      new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set(testSpec)),cha)
     val config: SymbolicExecutorConfig[SootMethod, soot.Unit] = SymbolicExecutorConfig(
       stepLimit = Some(50), w,transfer, printProgress = true, z3Timeout = Some(30))
     val symbolicExecutor = config.getSymbolicExecutor

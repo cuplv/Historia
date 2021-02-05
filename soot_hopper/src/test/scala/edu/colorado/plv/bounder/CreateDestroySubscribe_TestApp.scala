@@ -3,7 +3,8 @@ package edu.colorado.plv.bounder
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
-import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, ActivityLifecycle, RxJavaSpec, SpecSpace}
+import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
+import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{PrettyPrinting, Qry}
 import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, ControlFlowResolver, DefaultAppCodeResolver, FlowdroidCallGraph, PatchedFlowdroidCallGraph, SparkCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
 import org.scalatest.funsuite.AnyFunSuite
@@ -15,10 +16,12 @@ class CreateDestroySubscribe_TestApp extends AnyFunSuite{
   val apk = getClass.getResource("/CreateDestroySubscribe-debug.apk").getPath
   assert(apk != null)
   val w = new JimpleFlowdroidWrapper(apk,CHACallGraph)
-  val transfer = new TransferFunctions[SootMethod,soot.Unit](w,
-    new SpecSpace(Set(ActivityLifecycle.onPause_onlyafter_onResume_init,
-      ActivityLifecycle.init_first_callback,
-      RxJavaSpec.call)))
+  val specSpace = new SpecSpace(Set(ActivityLifecycle.onPause_onlyafter_onResume_init,
+    ActivityLifecycle.init_first_callback,
+    RxJavaSpec.call))
+  val transfer = (cha:ClassHierarchyConstraints) =>  {
+    new TransferFunctions[SootMethod, soot.Unit](w, specSpace,cha)
+  }
   val config = SymbolicExecutorConfig(
     stepLimit = Some(200), w,transfer,
     component = Some(List("com.example.createdestroy.MainActivity.*")))

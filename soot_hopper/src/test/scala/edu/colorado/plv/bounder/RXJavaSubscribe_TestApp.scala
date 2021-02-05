@@ -3,6 +3,7 @@ import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.LifeState.LSFalse
 import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
+import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{PrettyPrinting, Qry}
 import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, SymbolicExecutorConfig, TransferFunctions}
 import org.scalatest.funsuite.AnyFunSuite
@@ -15,12 +16,12 @@ class RXJavaSubscribe_TestApp extends AnyFunSuite{
     val apk = getClass.getResource("/RXJavaSubscribe-fix-debug.apk").getPath
     assert(apk != null)
     val w = new JimpleFlowdroidWrapper(apk,CHACallGraph)
-    val transfer = new TransferFunctions[SootMethod,soot.Unit](w,
+    val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod,soot.Unit](w,
       new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
         ActivityLifecycle.init_first_callback,
         RxJavaSpec.call,
         RxJavaSpec.subscribeDoesNotReturnNull
-      )))
+      )),cha)
     val config = SymbolicExecutorConfig(
       stepLimit = Some(200), w,transfer,
       component = Some(List("example.com.rxjavasubscribebug.PlayerFragment.*")))

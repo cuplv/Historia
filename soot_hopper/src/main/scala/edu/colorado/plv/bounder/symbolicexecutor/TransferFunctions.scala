@@ -4,6 +4,7 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{NullConst, _}
 import edu.colorado.plv.bounder.lifestate.LifeState._
 import edu.colorado.plv.bounder.lifestate.SpecSpace
+import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.TransferFunctions.relevantAliases
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 
@@ -25,7 +26,8 @@ object TransferFunctions{
   }
 }
 
-class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
+class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
+                             classHierarchyConstraints: ClassHierarchyConstraints) {
   def defineVarsAs(state: State, comb: List[(Option[RVal], Option[PureExpr])]):State =
     comb.foldLeft(state){
       case (stateNext, (None,_)) => stateNext
@@ -487,7 +489,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       case _ =>
         ???
     }}.toSet
-    stackVars.union(traceVars).union(heapVars)
+    val oldv = stackVars.union(traceVars).union(heapVars)
+    val newV = state.pureVars()
+    newV
   }
   def cmdTransfer(cmd:CmdWrapper, state:State):Set[State] = cmd match{
     case AssignCmd(lhs@LocalWrapper(_, _), NewCommand(className),_) =>
@@ -505,7 +509,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace) {
       cmdTransfer(AssignCmd(lw, LocalWrapper("@this", thisTypename),a),state)
     case AssignCmd(lhs: LocalWrapper,rhs:LocalWrapper,_) => //
       // x = y
-      // TODO: enumerate possible aliases
+      // TODO: enumerate possible aliases ======
       val lhsv = state.get(lhs) // Find what lhs pointed to if anything
       lhsv.map(pexpr =>{
         // remove lhs from abstract state (since it is assigned here)

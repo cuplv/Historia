@@ -315,12 +315,18 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
       case p: PureVar => Some(p)
       case _ => None
     }
+    val pureVarOptH = (a:HeapPtEdge) => a match {
+      case FieldPtEdge(p, _) => Some(p)
+      case ArrayPtEdge(p, _) => Some(p)
+      case _ => None
+    }
     val pureVarFromLocals: Set[PureVar] = callStack.headOption match {
       case Some(CallStackFrame(_, _, locals)) =>
         locals.flatMap(a => pureVarOpt(a._2)).toSet
       case None => Set()
     }
-    val pureVarFromHeap = heapConstraints.flatMap(a => pureVarOpt(a._2)).toSet
+    val pureVarFromHeap = heapConstraints
+      .flatMap(a => Set() ++ pureVarOptH(a._1) ++ pureVarOpt(a._2)).toSet
     val pureVarFromConst = pureFormula.flatMap{
       case PureConstraint(p1,_,p2) => Set() ++ pureVarOpt(p1) ++ pureVarOpt(p2)
     }

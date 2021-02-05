@@ -18,19 +18,19 @@ case object SparkCallGraph extends CallGraphSource
 case object AppOnlyCallGraph extends CallGraphSource
 
 /**
- *
- * @param stepLimit
- * @param w
- * @param transfer
- * @param printProgress
- * @param z3Timeout
+ * //TODO: ugly lambda due to wanting to configure transfer functions externally but still need cha
+ * @param stepLimit Number of back steps to take from assertion before timeout
+ * @param w  IR representation defined by IRWrapper interface
+ * @param transfer transfer functions over app transitions including callin/callback boundaries
+ * @param printProgress print steps taken
+ * @param z3Timeout seconds that z3 can take on a query before timeout
  * @param component restrict analysis to callbacks that match the listed regular expressions
  * @tparam M
  * @tparam C
  */
 case class SymbolicExecutorConfig[M,C](stepLimit: Option[Int],
                                        w :  IRWrapper[M,C],
-                                       transfer : TransferFunctions[M,C],
+                                       transfer : ClassHierarchyConstraints => TransferFunctions[M,C],
                                        printProgress : Boolean = sys.env.getOrElse("DEBUG","false").toBoolean,
                                        z3Timeout : Option[Int] = None,
                                        component : Option[List[String]] = None,
@@ -53,6 +53,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   }
   val persistantConstraints =
     new ClassHierarchyConstraints(ctx, solver, config.w.getClassHierarchy, config.stateTypeSolving)
+  val transfer = config.transfer(persistantConstraints)
 
   val appCodeResolver = new DefaultAppCodeResolver[M,C](config.w)
   def getAppCodeResolver = appCodeResolver
@@ -222,7 +223,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       val predecessorLocations = controlFlowResolver.resolvePredicessors(loc,state)
       //TODO: check for witnessed state
       predecessorLocations.flatMap(l => {
-        val newStates = config.transfer.transfer(state,l,loc)
+        val newStates = transfer.transfer(state,l,loc)
         newStates.map(state => state.simplify(stateSolver) match {
           case Some(state) if stateSolver.witnessed(state) => WitnessedQry(state, l)
           case Some(state) => SomeQry(state, l)
