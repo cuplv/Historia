@@ -83,7 +83,8 @@ object SpecSignatures {
 
   val RxJava_unsubscribe = Set(
     ("rx.Subscription", "void unsubscribe()"),
-    ("rx.internal.operators.CachedObservable$ReplayProducer", "void unsubscribe()")
+    ("rx.internal.operators.CachedObservable$ReplayProducer", "void unsubscribe()"),
+    ("rx.android.schedulers.LooperScheduler$HandlerWorker", "void unsubscribe()")
   )
   val RxJava_unsubscribe_exit = I(CIExit, RxJava_unsubscribe, "_"::"s"::Nil)
 
