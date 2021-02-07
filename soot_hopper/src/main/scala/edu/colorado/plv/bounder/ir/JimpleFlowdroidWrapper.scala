@@ -52,6 +52,180 @@ object JimpleFlowdroidWrapper{
     else
       Scene.v.getActiveHierarchy.getSubclassesOfIncluding(sootClass).asScala.toSet
 
+
+  protected def makeRVal(box:Value):RVal = box match{
+    case a: AbstractInstanceInvokeExpr =>{
+      val target = makeVal(a.getBase) match{
+        case jl@LocalWrapper(_,_)=>jl
+        case _ => ???
+      }
+      val targetClass = a.getMethodRef.getDeclaringClass.getName
+      val targetMethod = a.getMethodRef.getSignature
+      val params: List[RVal] = (0 until a.getArgCount()).map(argPos =>
+        makeVal(a.getArg(argPos))
+      ).toList
+      a match{
+        case _:JVirtualInvokeExpr => VirtualInvoke(target, targetClass, targetMethod, params)
+        case _:JSpecialInvokeExpr => SpecialInvoke(target,targetClass, targetMethod, params)
+        case _:JInterfaceInvokeExpr => VirtualInvoke(target, targetClass, targetMethod, params)
+        case v =>
+          //println(v)
+          ???
+      }
+    }
+    case a : AbstractStaticInvokeExpr => {
+      val params: List[RVal] = (0 until a.getArgCount()).map(argPos =>
+        makeVal(a.getArg(argPos))
+      ).toList
+      val targetClass = a.getMethodRef.getDeclaringClass.getName
+      val targetMethod = a.getMethodRef.getSignature
+      StaticInvoke(targetClass, targetMethod, params)
+    }
+    case n : AbstractNewExpr => {
+      val className = n.getType.toString
+      NewCommand(className)
+    }
+    case t:ThisRef => ThisWrapper(t.getType.toString)
+    case _:NullConstant => NullConst
+    case v:IntConstant => IntConst(v.value)
+    case v:LongConstant => IntConst(v.value.toInt)
+    case v:StringConstant => StringConst(v.value)
+    case p:ParameterRef =>
+      val name = s"@parameter${p.getIndex}"
+      val tname = p.getType.toString
+      LocalWrapper(name, tname)
+    case ne: JNeExpr => Binop(makeRVal(ne.getOp1),Ne, makeRVal(ne.getOp2))
+    case eq: JEqExpr => Binop(makeRVal(eq.getOp1),Eq, makeRVal(eq.getOp2))
+    case local: JimpleLocal =>
+      LocalWrapper(local.getName, JimpleFlowdroidWrapper.stringNameOfType(local.getType))
+    case cast: JCastExpr =>
+      val castType = JimpleFlowdroidWrapper.stringNameOfType(cast.getCastType)
+      val v = makeRVal(cast.getOp).asInstanceOf[LocalWrapper]
+      Cast(castType, v)
+    case mult: JMulExpr =>
+      val op1 = makeRVal(mult.getOp1)
+      val op2 = makeRVal(mult.getOp2)
+      Binop(op1, Mult, op2)
+    case div : JDivExpr =>
+      val op1 = makeRVal(div.getOp1)
+      val op2 = makeRVal(div.getOp2)
+      Binop(op1, Div, op2)
+    case div : JAddExpr =>
+      val op1 = makeRVal(div.getOp1)
+      val op2 = makeRVal(div.getOp2)
+      Binop(op1, Add, op2)
+    case div : JSubExpr =>
+      val op1 = makeRVal(div.getOp1)
+      val op2 = makeRVal(div.getOp2)
+      Binop(op1, Sub, op2)
+    case lt : JLeExpr =>
+      val op1 = makeRVal(lt.getOp1)
+      val op2 = makeRVal(lt.getOp2)
+      Binop(op1, Le, op2)
+    case lt : JLtExpr =>
+      val op1 = makeRVal(lt.getOp1)
+      val op2 = makeRVal(lt.getOp2)
+      Binop(op1, Lt, op2)
+    case gt: JGtExpr =>
+      val op1 = makeRVal(gt.getOp1)
+      val op2 = makeRVal(gt.getOp2)
+      Binop(op2, Lt, op1)
+    case ge: JGeExpr =>
+      val op1 = makeRVal(ge.getOp1)
+      val op2 = makeRVal(ge.getOp2)
+      Binop(op1, Ge, op2)
+    case staticRef : StaticFieldRef =>
+      val declaringClass = JimpleFlowdroidWrapper.stringNameOfClass(staticRef.getFieldRef.declaringClass())
+      val fieldName = staticRef.getFieldRef.name()
+      val containedType = JimpleFlowdroidWrapper.stringNameOfType(staticRef.getFieldRef.`type`())
+      StaticFieldReference(declaringClass, fieldName, containedType)
+
+    case const: RealConstant=>
+      ConstVal(const.toString) // Not doing anything special with real values for now
+    case caught: JCaughtExceptionRef =>
+      CaughtException("")
+    case jcomp: JCmpExpr =>
+      val op1 = makeRVal(jcomp.getOp1)
+      val op2 = makeRVal(jcomp.getOp2)
+      Binop(op1,Eq, op2)
+    case i : JInstanceOfExpr =>
+      val targetClassType = JimpleFlowdroidWrapper.stringNameOfType(i.getCheckType)
+      val target = makeRVal(i.getOp).asInstanceOf[LocalWrapper]
+      InstanceOf(targetClassType, target)
+    case a : ArrayRef =>
+      val baseVar = makeRVal(a.getBase)
+      val index = makeRVal(a.getIndex)
+      ArrayReference(baseVar, makeRVal(a.getIndex))
+    case a : NewArrayExpr =>
+      NewCommand(JimpleFlowdroidWrapper.stringNameOfType(a.getType))
+    case a : ClassConstant =>
+      ClassConst(JimpleFlowdroidWrapper.stringNameOfType(a.getType))
+    case l : JLengthExpr =>
+      ArrayLength(makeRVal(l.getOp).asInstanceOf[LocalWrapper])
+
+    case v =>
+      //println(v)
+      throw CmdNotImplemented(s"Command not implemented: $v  type: ${v.getType}")
+  }
+  protected def makeVal(box: Value):RVal = box match{
+    case a : JimpleLocal=>
+      LocalWrapper(a.getName,a.getType.toString)
+    case f: AbstractInstanceFieldRef => {
+      val fieldType = f.getType.toString
+      val base = makeVal(f.getBase).asInstanceOf[LocalWrapper]
+      val fieldname = f.getField.getName
+      val fieldDeclType = f.getField.getDeclaringClass.toString
+      FieldReference(base,fieldType, fieldDeclType, fieldname)
+    }
+    case a => makeRVal(a)
+  }
+  def makeCmd(cmd: soot.Unit, method: SootMethod,
+                       locOpt:Option[AppLoc] = None): CmdWrapper = {
+    val loc:AppLoc = locOpt.getOrElse(???)
+    cmd match{
+      case cmd: AbstractDefinitionStmt if cmd.rightBox.isInstanceOf[JCaughtExceptionRef] =>
+        val leftBox = makeVal(cmd.leftBox.getValue).asInstanceOf[LVal]
+        var exceptionName:String = ""
+        method.getActiveBody.getTraps.forEach{trap =>
+          if(trap.getHandlerUnit == cmd) exceptionName = JimpleFlowdroidWrapper.stringNameOfClass(trap.getException)
+        }
+        val rightBox = CaughtException(exceptionName)
+        AssignCmd(leftBox, rightBox, loc)
+      case cmd: AbstractDefinitionStmt => {
+        val leftBox = makeVal(cmd.leftBox.getValue).asInstanceOf[LVal]
+        val rightBox = makeVal(cmd.rightBox.getValue)
+        AssignCmd(leftBox, rightBox,loc)
+      }
+      case cmd: JReturnStmt => {
+        val box = makeVal(cmd.getOpBox.getValue)
+        ReturnCmd(Some(box), loc)
+      }
+      case cmd:JInvokeStmt => {
+        val invokeval = makeVal(cmd.getInvokeExpr).asInstanceOf[Invoke]
+        InvokeCmd(invokeval, loc)
+      }
+      case _ : JReturnVoidStmt => {
+        ReturnCmd(None, loc)
+      }
+      case cmd: JIfStmt =>
+        val targetIfTrue = AppLoc(loc.method, JimpleLineLoc(cmd.getTarget, method), true)
+        If(makeVal(cmd.getCondition),targetIfTrue,loc)
+      case _ : JNopStmt =>
+        NopCmd(loc)
+      case _: JThrowStmt =>
+        // TODO: exception being thrown
+        ThrowCmd(loc)
+      case _:JGotoStmt => NopCmd(loc) // control flow handled elsewhere
+      case _:JExitMonitorStmt => NopCmd(loc) // ignore concurrency
+      case _:JEnterMonitorStmt => NopCmd(loc) // ignore concurrency
+      case sw:JLookupSwitchStmt =>
+        val key = makeRVal(sw.getKey).asInstanceOf[LocalWrapper]
+        val targets = sw.getTargets.asScala.map(u => makeCmd(u,method, locOpt))
+        SwitchCmd(key,targets.toList,loc)
+      case v =>
+        throw CmdNotImplemented(s"Unimplemented command: ${v}")
+    }
+  }
 }
 
 trait CallGraphProvider{
@@ -358,52 +532,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
 
 
   override def makeCmd(cmd: soot.Unit, method: SootMethod,
-                       locOpt:Option[AppLoc] = None): CmdWrapper = {
-    val loc:AppLoc = locOpt.getOrElse(???)
-    cmd match{
-      case cmd: AbstractDefinitionStmt if cmd.rightBox.isInstanceOf[JCaughtExceptionRef] =>
-        val leftBox = makeVal(cmd.leftBox.getValue).asInstanceOf[LVal]
-        var exceptionName:String = ""
-        method.getActiveBody.getTraps.forEach{trap =>
-          if(trap.getHandlerUnit == cmd) exceptionName = JimpleFlowdroidWrapper.stringNameOfClass(trap.getException)
-        }
-        val rightBox = CaughtException(exceptionName)
-        AssignCmd(leftBox, rightBox, loc)
-      case cmd: AbstractDefinitionStmt => {
-        val leftBox = makeVal(cmd.leftBox.getValue).asInstanceOf[LVal]
-        val rightBox = makeVal(cmd.rightBox.getValue)
-        AssignCmd(leftBox, rightBox,loc)
-      }
-      case cmd: JReturnStmt => {
-        val box = makeVal(cmd.getOpBox.getValue)
-        ReturnCmd(Some(box), loc)
-      }
-      case cmd:JInvokeStmt => {
-        val invokeval = makeVal(cmd.getInvokeExpr).asInstanceOf[Invoke]
-        InvokeCmd(invokeval, loc)
-      }
-      case _ : JReturnVoidStmt => {
-        ReturnCmd(None, loc)
-      }
-      case cmd: JIfStmt =>
-        val targetIfTrue = AppLoc(loc.method, JimpleLineLoc(cmd.getTarget, method), true)
-        If(makeVal(cmd.getCondition),targetIfTrue,loc)
-      case _ : JNopStmt =>
-        NopCmd(loc)
-      case _: JThrowStmt =>
-        // TODO: exception being thrown
-        ThrowCmd(loc)
-      case _:JGotoStmt => NopCmd(loc) // control flow handled elsewhere
-      case _:JExitMonitorStmt => NopCmd(loc) // ignore concurrency
-      case _:JEnterMonitorStmt => NopCmd(loc) // ignore concurrency
-      case sw:JLookupSwitchStmt =>
-        val key = makeRVal(sw.getKey).asInstanceOf[LocalWrapper]
-        val targets = sw.getTargets.asScala.map(u => makeCmd(u,method, locOpt))
-        SwitchCmd(key,targets.toList,loc)
-      case v =>
-        throw CmdNotImplemented(s"Unimplemented command: ${v}")
-    }
-  }
+                       locOpt:Option[AppLoc] = None): CmdWrapper = JimpleFlowdroidWrapper.makeCmd(cmd,method,locOpt)
 
   override def degreeOut(cmd : AppLoc) = {
     val ll = cmd.line.asInstanceOf[JimpleLineLoc]
@@ -432,133 +561,9 @@ class JimpleFlowdroidWrapper(apkPath : String,
     case loc => throw new IllegalStateException(s"No command associated with location: ${loc}")
   }
 
-  protected def makeRVal(box:Value):RVal = box match{
-    case a: AbstractInstanceInvokeExpr =>{
-      val target = makeVal(a.getBase) match{
-        case jl@LocalWrapper(_,_)=>jl
-        case _ => ???
-      }
-      val targetClass = a.getMethodRef.getDeclaringClass.getName
-      val targetMethod = a.getMethodRef.getSignature
-      val params: List[RVal] = (0 until a.getArgCount()).map(argPos =>
-        makeVal(a.getArg(argPos))
-      ).toList
-      a match{
-        case _:JVirtualInvokeExpr => VirtualInvoke(target, targetClass, targetMethod, params)
-        case _:JSpecialInvokeExpr => SpecialInvoke(target,targetClass, targetMethod, params)
-        case _:JInterfaceInvokeExpr => VirtualInvoke(target, targetClass, targetMethod, params)
-        case v =>
-          //println(v)
-          ???
-      }
-    }
-    case a : AbstractStaticInvokeExpr => {
-      val params: List[RVal] = (0 until a.getArgCount()).map(argPos =>
-        makeVal(a.getArg(argPos))
-      ).toList
-      val targetClass = a.getMethodRef.getDeclaringClass.getName
-      val targetMethod = a.getMethodRef.getSignature
-      StaticInvoke(targetClass, targetMethod, params)
-    }
-    case n : AbstractNewExpr => {
-      val className = n.getType.toString
-      NewCommand(className)
-    }
-    case t:ThisRef => ThisWrapper(t.getType.toString)
-    case _:NullConstant => NullConst
-    case v:IntConstant => IntConst(v.value)
-    case v:LongConstant => IntConst(v.value.toInt)
-    case v:StringConstant => StringConst(v.value)
-    case p:ParameterRef =>
-      val name = s"@parameter${p.getIndex}"
-      val tname = p.getType.toString
-      LocalWrapper(name, tname)
-    case ne: JNeExpr => Binop(makeRVal(ne.getOp1),Ne, makeRVal(ne.getOp2))
-    case eq: JEqExpr => Binop(makeRVal(eq.getOp1),Eq, makeRVal(eq.getOp2))
-    case local: JimpleLocal =>
-      LocalWrapper(local.getName, JimpleFlowdroidWrapper.stringNameOfType(local.getType))
-    case cast: JCastExpr =>
-      val castType = JimpleFlowdroidWrapper.stringNameOfType(cast.getCastType)
-      val v = makeRVal(cast.getOp).asInstanceOf[LocalWrapper]
-      Cast(castType, v)
-    case mult: JMulExpr =>
-      val op1 = makeRVal(mult.getOp1)
-      val op2 = makeRVal(mult.getOp2)
-      Binop(op1, Mult, op2)
-    case div : JDivExpr =>
-      val op1 = makeRVal(div.getOp1)
-      val op2 = makeRVal(div.getOp2)
-      Binop(op1, Div, op2)
-    case div : JAddExpr =>
-      val op1 = makeRVal(div.getOp1)
-      val op2 = makeRVal(div.getOp2)
-      Binop(op1, Add, op2)
-    case div : JSubExpr =>
-      val op1 = makeRVal(div.getOp1)
-      val op2 = makeRVal(div.getOp2)
-      Binop(op1, Sub, op2)
-    case lt : JLeExpr =>
-      val op1 = makeRVal(lt.getOp1)
-      val op2 = makeRVal(lt.getOp2)
-      Binop(op1, Le, op2)
-    case lt : JLtExpr =>
-      val op1 = makeRVal(lt.getOp1)
-      val op2 = makeRVal(lt.getOp2)
-      Binop(op1, Lt, op2)
-    case gt: JGtExpr =>
-      val op1 = makeRVal(gt.getOp1)
-      val op2 = makeRVal(gt.getOp2)
-      Binop(op2, Lt, op1)
-    case ge: JGeExpr =>
-      val op1 = makeRVal(ge.getOp1)
-      val op2 = makeRVal(ge.getOp2)
-      Binop(op1, Ge, op2)
-    case staticRef : StaticFieldRef =>
-      val declaringClass = JimpleFlowdroidWrapper.stringNameOfClass(staticRef.getFieldRef.declaringClass())
-      val fieldName = staticRef.getFieldRef.name()
-      val containedType = JimpleFlowdroidWrapper.stringNameOfType(staticRef.getFieldRef.`type`())
-      StaticFieldReference(declaringClass, fieldName, containedType)
+  protected def makeRVal(box:Value):RVal = JimpleFlowdroidWrapper.makeRVal(box)
 
-    case const: RealConstant=>
-      ConstVal(const.toString) // Not doing anything special with real values for now
-    case caught: JCaughtExceptionRef =>
-      CaughtException("")
-    case jcomp: JCmpExpr =>
-      val op1 = makeRVal(jcomp.getOp1)
-      val op2 = makeRVal(jcomp.getOp2)
-      Binop(op1,Eq, op2)
-    case i : JInstanceOfExpr =>
-      val targetClassType = JimpleFlowdroidWrapper.stringNameOfType(i.getCheckType)
-      val target = makeRVal(i.getOp).asInstanceOf[LocalWrapper]
-      InstanceOf(targetClassType, target)
-    case a : ArrayRef =>
-      val baseVar = makeRVal(a.getBase)
-      val index = makeRVal(a.getIndex)
-      ArrayReference(baseVar, makeRVal(a.getIndex))
-    case a : NewArrayExpr =>
-      NewCommand(JimpleFlowdroidWrapper.stringNameOfType(a.getType))
-    case a : ClassConstant =>
-      ClassConst(JimpleFlowdroidWrapper.stringNameOfType(a.getType))
-    case l : JLengthExpr =>
-      ArrayLength(makeRVal(l.getOp).asInstanceOf[LocalWrapper])
-
-    case v =>
-      //println(v)
-      throw CmdNotImplemented(s"Command not implemented: $v  type: ${v.getType}")
-  }
-
-  protected def makeVal(box: Value):RVal = box match{
-    case a : JimpleLocal=>
-      LocalWrapper(a.getName,a.getType.toString)
-    case f: AbstractInstanceFieldRef => {
-      val fieldType = f.getType.toString
-      val base = makeVal(f.getBase).asInstanceOf[LocalWrapper]
-      val fieldname = f.getField.getName
-      val fieldDeclType = f.getField.getDeclaringClass.toString
-      FieldReference(base,fieldType, fieldDeclType, fieldname)
-    }
-    case a => makeRVal(a)
-  }
+  protected def makeVal(box: Value):RVal = JimpleFlowdroidWrapper.makeVal(box)
 
   override def isMethodEntry(cmdWrapper: CmdWrapper): Boolean = cmdWrapper.getLoc match {
     case AppLoc(_, JimpleLineLoc(cmd,method),true) => {

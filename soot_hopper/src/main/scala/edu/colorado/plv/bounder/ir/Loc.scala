@@ -1,6 +1,8 @@
 package edu.colorado.plv.bounder.ir
-import upickle.default.write
-import upickle.default.{ReadWriter => RW, macroRW}
+import upickle.default.{read, write}
+import upickle.default.{macroRW, ReadWriter => RW}
+
+import scala.util.matching.Regex
 
 /**
  * A source code location
@@ -39,10 +41,19 @@ trait MethodLoc {
   def isInterface:Boolean
 }
 object MethodLoc {
+  private val rmQuotes: Regex = "^\"(.*)\"$".r
   implicit val rw:RW[MethodLoc] = upickle.default.readwriter[ujson.Value].bimap[MethodLoc](
     x => ujson.Arr(x.simpleName, x.classType, x.argTypes, x.getArgs.map(v => write(v))),
-    _ => {
-      throw new IllegalStateException("Deserialization of state must be done on serialized IR")
+    json => {
+      val name = json.arr(0).str
+      val clazz = json.arr(1).str
+      val args = json.arr(3).arr.map{v =>
+        val v0 = ujson.read(v.str)
+        val name = v0(0).obj("name").str
+        val t = v0(0).obj("localType").str
+        LocalWrapper(name,t)
+      }.toList
+      TestIRMethodLoc(clazz, name, args)
     }
   )
 }
@@ -51,8 +62,9 @@ trait LineLoc
 object LineLoc{
   implicit val rw:RW[LineLoc] = upickle.default.readwriter[ujson.Value].bimap[LineLoc](
     x => ujson.write(System.identityHashCode(x)),
-    _ => {
-      throw new IllegalStateException("Deserialization of state must be done on serialized IR")
+    json => json match {
+      case ujson.Num(v) => TestIRLineLoc (v.intValue)
+      case ujson.Str(v) => TestIRLineLoc (v.toInt)
     }
   )
 }

@@ -4,7 +4,6 @@ import com.microsoft.z3._
 import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSFalse, LSTrue, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
-import edu.colorado.plv.bounder.testutils.{TestIRLineLoc, TestIRMethodLoc}
 import org.scalatest.funsuite.AnyFunSuite
 
 class Z3StateSolverTest extends AnyFunSuite {

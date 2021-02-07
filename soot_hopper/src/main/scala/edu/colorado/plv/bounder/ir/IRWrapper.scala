@@ -45,6 +45,10 @@ sealed abstract class CmdWrapper(loc:AppLoc){
   def getLoc: AppLoc = loc
   def mkPre: CmdWrapper
 }
+object CmdWrapper{
+  implicit var rw:RW[CmdWrapper] = RW.merge(ThrowCmd.rw, AssignCmd.rw, ReturnCmd.rw, NopCmd.rw, InvokeCmd.rw,
+    SwitchCmd.rw, If.rw)
+}
 
 /**
  *
@@ -55,36 +59,63 @@ case class ReturnCmd(returnVar: Option[RVal], loc:AppLoc) extends CmdWrapper(loc
   override def mkPre: CmdWrapper = this.copy(loc=loc.copy(isPre = true))
   override def toString: String = s"return ${returnVar.getOrElse("")};"
 }
+object ReturnCmd{
+  implicit var rw:RW[ReturnCmd] = macroRW
+}
 case class AssignCmd(target: LVal, source: RVal, loc:AppLoc) extends CmdWrapper(loc){
   override def toString:String = s"$target := $source;"
   override def mkPre: CmdWrapper = this.copy(loc=loc.copy(isPre = true))
+}
+object AssignCmd{
+  implicit var rw:RW[AssignCmd] = macroRW
 }
 case class InvokeCmd(method: Invoke, loc:AppLoc) extends CmdWrapper(loc) {
   override def mkPre: CmdWrapper = this.copy(loc=loc.copy(isPre = true))
   override def toString: String = method.toString
 }
+object InvokeCmd{
+  implicit var rw:RW[InvokeCmd] = macroRW
+}
 
 case class If(b:RVal, trueLoc:AppLoc, loc:AppLoc) extends CmdWrapper(loc){
   override def mkPre: CmdWrapper = this.copy(loc=loc.copy(isPre = true))
+}
+object If{
+  implicit var rw:RW[If] = macroRW
 }
 
 case class NopCmd(loc:AppLoc) extends CmdWrapper(loc){
   override def mkPre: CmdWrapper = this.copy(loc=loc.copy(isPre = true))
 }
+object NopCmd{
+  implicit var rw:RW[NopCmd] = macroRW
+}
+
 case class SwitchCmd(key: LocalWrapper, targets : List[CmdWrapper], loc:AppLoc)extends CmdWrapper(loc) {
   override def mkPre: CmdWrapper = this.copy(loc=loc.copy(isPre = true))
+}
+object SwitchCmd{
+  implicit var rw:RW[SwitchCmd] = macroRW
 }
 
 case class ThrowCmd(loc:AppLoc) extends CmdWrapper(loc){
   override def mkPre: CmdWrapper = this.copy(loc=loc.copy(isPre = true))
 }
-
+object ThrowCmd{
+  implicit var rw:RW[ThrowCmd] = macroRW
+}
 
 case class Cast(castT:String, local: LocalWrapper) extends RVal {
   override def isConst: Boolean = false
 }
+object Cast{
+  implicit var rw:RW[Cast] = macroRW
+}
 case class Binop(v1:RVal, op: BinaryOperator, v2:RVal) extends RVal {
   override def isConst: Boolean = false
+}
+object Binop{
+  implicit var rw:RW[Binop] = macroRW
 }
 sealed trait BinaryOperator
 object BinaryOperator{

@@ -1,13 +1,14 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
-import edu.colorado.plv.bounder.ir._
+import better.files.Resource
+import edu.colorado.plv.bounder.ir.{TestIR, _}
 import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSSpec}
-import edu.colorado.plv.bounder.lifestate.SpecSpace
+import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state._
-import edu.colorado.plv.bounder.testutils._
 import org.scalatest.funsuite.AnyFunSuite
 import com.microsoft.z3.Context
+import upickle.default.read
 
 class TransferFunctionsTest extends AnyFunSuite {
   val ctx = new Context
@@ -16,13 +17,36 @@ class TransferFunctionsTest extends AnyFunSuite {
     Map("java.lang.Object" -> Set("String", "Foo", "Bar", "java.lang.Object"),
       "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
 
-  val cha = new ClassHierarchyConstraints(ctx, solver, hierarchy)
-  val tr = (ir:TestIR) => new TransferFunctions(ir, new SpecSpace(Set()),cha)
+  val miniCha = new ClassHierarchyConstraints(ctx, solver, hierarchy)
+  val tr = (ir:TestIR, cha:ClassHierarchyConstraints) => new TransferFunctions(ir, new SpecSpace(Set()),cha)
   def testCmdTransfer(cmd:AppLoc => CmdWrapper, post:State, testIRMethod: TestIRMethodLoc):Set[State] = {
     val preloc = AppLoc(testIRMethod,TestIRLineLoc(1), isPre=true)
     val postloc = AppLoc(testIRMethod,TestIRLineLoc(1), isPre=false)
     val ir = new TestIR(Set(CmdTransition(preloc, cmd(postloc), postloc)))
-    tr(ir).transfer(post,preloc, postloc)
+    tr(ir,miniCha).transfer(post,preloc, postloc)
+  }
+
+  def transferJsonTest(name:String,spec:SpecSpace):Set[State] = {
+
+    val js = ujson.Value(Resource.getAsString(name)).obj
+    val state = read[State](js("state"))
+    val source = read[Loc](js("source"))
+    val target: Loc = read[Loc](js("target"))
+    val cmd = read[CmdWrapper](js("cmd"))
+    val cha = read[ClassHierarchyConstraints](Resource.getAsString("TestStates/hierarchy2.json"))
+
+    val ir = new TestIR(Set(CmdTransition(source,cmd,target)))
+    val transfer = new TransferFunctions(ir, spec,cha)
+    val out = transfer.transfer(state, target, source)
+    out
+  }
+
+  test("Callin return test"){
+    val spec = new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
+      RxJavaSpec.call
+    ))
+    val res = transferJsonTest("TestStates/post_unsubscribe_callin.json",spec)
+    ??? //TODO:
   }
   //Test transfer function where field is assigned and base may or may not be aliased
   // pre: this -> a^ * b^.out -> b1^ /\ b1^ == null
@@ -61,7 +85,7 @@ class TransferFunctionsTest extends AnyFunSuite {
       pureFormula = Set(PureConstraint(nullPv,Equals, NullVal)), Set(),0)
     val prestate: Set[State] = testCmdTransfer(cmd, post,fooMethod)
     println(s"poststate: $post")
-    println(s"prestate: ${prestate}")
+    println(s"prestate: $prestate")
     assert(prestate.size == 1)
     val formula = prestate.head.pureFormula
     assert(formula.contains(PureConstraint(nullPv,Equals, NullVal)))
@@ -93,7 +117,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     val spec = LSSpec(
       lhs,
       iFooA)
-    val tr = new TransferFunctions(ir, new SpecSpace(Set(spec)),cha)
+    val tr = new TransferFunctions(ir, new SpecSpace(Set(spec)),miniCha)
     val recPv = PureVar(State.getId())
     val otheri = AbstractTrace(I(CBExit, Set(("a","a")), "b"::Nil), Nil, Map())
     val post = State(
@@ -103,8 +127,8 @@ class TransferFunctionsTest extends AnyFunSuite {
       traceAbstraction = Set(otheri),0)
 
     println(s"post: ${post.toString}")
-    println(s"preloc: ${preloc}")
-    println(s"postloc: ${postloc}")
+    println(s"preloc: $preloc")
+    println(s"postloc: $postloc")
     val prestate: Set[State] = tr.transfer(post,preloc, postloc)
     println(s"pre: ${prestate.toString}")
     assert(prestate.size == 1)
@@ -121,7 +145,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     val preloc = CallbackMethodInvoke("","foo", fooMethod) // Transition to just before foo is invoked
     val postloc = AppLoc(fooMethod,TestIRLineLoc(1), isPre=true)
     val ir = new TestIR(Set(MethodTransition(preloc, postloc)))
-    val trf = tr(ir)
+    val trf = tr(ir,miniCha)
     val recPv = PureVar(State.getId())
     val post = State(
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("@this") -> recPv))::Nil,

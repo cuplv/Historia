@@ -24,6 +24,7 @@ object State {
     case Not(l) => findIAF(messageType, tuple, l)
     case _ => Set()
   }
+  implicit var rw:RW[State] = macroRW
 }
 
 // pureFormula is a conjunction of constraints
@@ -373,11 +374,8 @@ sealed abstract class PureExpr {
   def getVars(s : Set[PureVar] = Set.empty) : Set[PureVar]
 }
 object PureExpr{
-  implicit val rw:RW[PureExpr] = RW.merge(PureVal.rw, macroRW[PureVar])
+  implicit val rw:RW[PureExpr] = RW.merge(PureVal.rw, PureVar.rw)
 }
-
-
-
 
 // primitive values
 sealed abstract class PureVal(v:Any) extends PureExpr {
@@ -436,4 +434,7 @@ sealed case class PureVar(id:Int) extends PureExpr {
     case _ => false
   }
   override def toString : String = "p-" + id
+}
+object PureVar{
+  implicit val rw:RW[PureVar] = macroRW
 }

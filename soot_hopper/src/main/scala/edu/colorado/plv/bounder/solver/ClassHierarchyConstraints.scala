@@ -5,6 +5,8 @@ import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints.primitiveTypes
 import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, Equals, PureConstraint, PureVar, State, SubclassOf, SuperclassOf, TypeComp, TypeConstraint}
 import scalaz.Memo
 import soot.ShortType
+import upickle.default.write
+import upickle.default.{ReadWriter => RW, macroRW}
 
 object ClassHierarchyConstraints{
   val intType = "int"
@@ -24,12 +26,28 @@ object ClassHierarchyConstraints{
     floatType,
     booleanType)
   val Primitive = primitiveTypes.mkString("|").r
+
+  implicit val rw:RW[ClassHierarchyConstraints] = upickle.default.readwriter[ujson.Value].bimap[ClassHierarchyConstraints](
+    x => ujson.Obj("hierarchy" -> x.getTypes),
+    json => {
+      val hiearchy = json("hierarchy").obj.map{
+        case (k,v) => k->v.arr.map(_.str).toSet
+      }.toMap
+      val ctx = new Context
+      new ClassHierarchyConstraints(ctx, ctx.mkSolver(), hiearchy)
+    }
+  )
+
 }
 
 sealed trait StateTypeSolving
 case object NoTypeSolving extends StateTypeSolving
 case object SolverTypeSolving extends StateTypeSolving
 case object SetInclusionTypeSolving extends StateTypeSolving
+import upickle.default.{write,read}
+
+import upickle.default.{ReadWriter => RW, macroRW}
+
 /**
  * Z3 constraints that persist from state to state
  * Adds class hierarchy assertions

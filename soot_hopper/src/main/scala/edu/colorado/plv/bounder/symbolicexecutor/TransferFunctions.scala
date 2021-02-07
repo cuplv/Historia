@@ -7,10 +7,12 @@ import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.TransferFunctions.relevantAliases
 import edu.colorado.plv.bounder.symbolicexecutor.state._
+import upickle.default._
 
 object TransferFunctions{
   /**
    * Get set of things that if aliased, change the trace abstraction state
+   * TODO: this is over approx
    * @param pre state before cmd that emits an observed message
    * @param dir callback/callin entry/exit
    * @param signature class and name of method
@@ -85,6 +87,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       case (state, (None, list)) => list.foldLeft(state)(applySingle)
     }
   }
+  @deprecated //TODO: this should be replaced, this brute force matching of LS preds is brittle and probaby broken
   def statesNotMatching(state: State, comb: List[(Option[RVal], LSParamConstraint)]): Set[State] = {
     // TODO: need to enumerate matching or not matching all I() from spec
     // TODO:  null = a.foo() and b.foo() will clobber each other
@@ -146,6 +149,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         val statesWithClearedReturn = inVars.head match{
           case Some(v:LocalWrapper) => oState.clearLVal(v)
           case None => oState
+          case v => throw new IllegalStateException(s"Malformed IR. Callin result assigned to non-local: $v")
         }
         statesWithClearedReturn
       }
