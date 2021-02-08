@@ -26,6 +26,23 @@ object TransferFunctions{
       case (I(_, _, vars),p)=> p
     }
   }
+  //TODO: replace relevantAliases with this
+  // transfer should simply define any variables that aren't seen in the state but read
+  // alias considerations are done later by the trace abstraction or by separation logic
+  def relevantAliases2(pre:State,
+                       dir:MessageType,
+                       signature: (String,String),
+                       lst : List[Option[RVal]]):List[Option[RVal]] = {
+    val relevantI = pre.findIFromCurrent(dir,signature)
+    lst.zipWithIndex.map{ case (rval,ind) =>
+      val existsNAtInd = relevantI.exists{i =>
+        val vars: Seq[String] = i._1.lsVars
+        val out = (ind < vars.length) && !LSAnyVal.matches(vars(ind))
+        out
+      }
+      if(existsNAtInd) rval else None
+    }
+  }
 }
 
 class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
@@ -121,6 +138,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       // traverse back over the retun of a callin
       // "Some(source.copy(isPre = true))" places the entry to the callin as the location of call
       val (pkg, name) = msgCmdToMsg(cmret)
+      //TODO: see relevantAliases2
       val relAliases: Set[List[LSParamConstraint]] = relevantAliases(postState, CIExit, (pkg,name))
       val frame = CallStackFrame(target, Some(source.copy(isPre = true)), Map())
       val inVars: List[Option[RVal]] = inVarsForCall(source)
@@ -159,6 +177,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       //TODO: relevant transition enumeration
       assert(postState.callStack.nonEmpty, "Bad control flow, abstract stack must be non-empty.")
       val (pkg,name) = msgCmdToMsg(cminv)
+      //TODO: see relevantAliases2
       val relAliases: Set[List[LSParamConstraint]] = relevantAliases(postState, CIEnter, (pkg,name))
       val ostates = if(relAliases.isEmpty)
         Set(postState)
@@ -190,6 +209,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       }
 
       val (pkg, name) = msgCmdToMsg(cmInv)
+      //TODO: see relevantAliases2
       val relAliases: Set[List[LSParamConstraint]] = relevantAliases(postState, CBEnter, (pkg,name))
       val ostates = if (relAliases.isEmpty){
         Set(postState)
@@ -223,6 +243,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val (pkg,name) = msgCmdToMsg(target)
       // Push frame regardless of relevance
       val pre_push = postState.copy(callStack = newFrame::postState.callStack)
+      //TODO: see relevantAliases2
       val relAliases: Set[List[LSParamConstraint]] = relevantAliases(postState, CBExit, (pkg,name))
       val localVarOrVal: List[Option[RVal]] = rvar::mloc.getArgs
       // Note: no newSpecInstanceTransfer since this is an in-message
