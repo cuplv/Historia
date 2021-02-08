@@ -189,7 +189,7 @@ class SymbolicExecutorSpec extends AnyFunSuite {
           RxJavaSpec.subscribeDoesNotReturnNull
         )),cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(40), w, transfer,
+        stepLimit = Some(60), w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
@@ -275,8 +275,6 @@ class SymbolicExecutorSpec extends AnyFunSuite {
   }
 
   test("Test witness dereference with subscribe and possibly null field") {
-    // TODO: 9 min 50 seconds with memo version
-    // TODO: time with non-memo version?
     val src = """package com.example.createdestroy;
                 |import androidx.appcompat.app.AppCompatActivity;
                 |import android.os.Bundle;
