@@ -1,11 +1,11 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.solver.StateSolver
-import edu.colorado.plv.bounder.ir.{AppLoc, BoolConst, IRWrapper, IntConst, LVal, LocalWrapper, MessageType, NullConst, RVal, StringConst}
+import edu.colorado.plv.bounder.ir.{AppLoc, BoolConst, CallbackMethodInvoke, CallbackMethodReturn, IntConst, InternalMethodInvoke, InternalMethodReturn, LVal, Loc, LocalWrapper, MessageType, NullConst, RVal, StringConst}
 import edu.colorado.plv.bounder.lifestate.LifeState
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAtom, LSFalse, LSPred, LSTrue, NI, Not, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSPred, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state.State.findIAF
-import upickle.default.{ReadWriter => RW, macroRW}
+import upickle.default.{macroRW, ReadWriter => RW}
 
 object State {
   private var id:Int = -1
@@ -81,6 +81,24 @@ case class LSConstConstraint(pureExpr: PureExpr, trace:AbstractTrace) extends LS
 case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdge, PureExpr],
                  pureFormula: Set[PureConstraint], traceAbstraction: Set[AbstractTrace], nextAddr:Int,
                  nextCmd: Option[AppLoc] = None) {
+  def entryPossible(loc: Loc): Boolean = loc match{
+    case CallbackMethodInvoke(clazz, name, _) =>
+      callStack.headOption match{
+        case Some(CallStackFrame(CallbackMethodReturn(clazz2, name2,_,_),_,_)) =>
+          clazz == clazz2 && name == name2
+        case None => true
+        case _ => false
+      }
+    case InternalMethodInvoke(clazz,name,_) =>
+      callStack.headOption match{
+        case Some(CallStackFrame(InternalMethodReturn(clazz2, name2,_),_,_)) =>
+          clazz == clazz2 && name == name2
+        case None => true
+        case _ => false
+      }
+    case v => throw new IllegalStateException(s"$v is not a entry location")
+  }
+
   var isSimplified = false
   def setSimplified(): State = {
     isSimplified = true

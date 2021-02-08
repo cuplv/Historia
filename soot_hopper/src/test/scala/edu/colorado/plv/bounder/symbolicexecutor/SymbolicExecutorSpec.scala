@@ -89,6 +89,121 @@ class SymbolicExecutorSpec extends AnyFunSuite {
     PrettyPrinting.dumpDebugInfo(result, "test_interproc_2_onResumeReach")
     assert(BounderUtil.interpretResult(result) == Witnessed)
   }
+  test("Test setField") {
+    val src = """package com.example.createdestroy;
+                |import androidx.appcompat.app.AppCompatActivity;
+                |import android.os.Bundle;
+                |import android.util.Log;
+                |
+                |import rx.Single;
+                |import rx.Subscription;
+                |import rx.android.schedulers.AndroidSchedulers;
+                |import rx.schedulers.Schedulers;
+                |
+                |
+                |public class MyActivity extends AppCompatActivity {
+                |    Object o = null;
+                |    Subscription subscription;
+                |
+                |    @Override
+                |    protected void onCreate(Bundle savedInstanceState) {
+                |        super.onCreate(savedInstanceState);
+                |        setO();
+                |        Log.i("b", o.toString());
+                |    }
+                |    protected void setO() {
+                |        this.o = new Object();
+                |    }
+                |
+                |    @Override
+                |    protected void onDestroy() {
+                |        super.onDestroy();
+                |        o = null;
+                |    }
+                |}""".stripMargin
+
+    val test: String => Unit = apk => {
+      assert(apk != null)
+      val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
+      val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
+        new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
+          ActivityLifecycle.init_first_callback,
+          RxJavaSpec.call,
+          RxJavaSpec.subscribeDoesNotReturnNull
+        )),cha)
+      val config = SymbolicExecutorConfig(
+        stepLimit = Some(200), w, transfer,
+        component = Some(List("com.example.createdestroy.MyActivity.*")))
+      val symbolicExecutor = config.getSymbolicExecutor
+      val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
+        "void onCreate(android.os.Bundle)",20)
+      val result = symbolicExecutor.executeBackward(query)
+      PrettyPrinting.dumpDebugInfo(result,"MkApk")
+      assert(result.nonEmpty)
+      assert(BounderUtil.interpretResult(result) == Proven)
+
+    }
+
+    makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
+  }
+  test("Test setField on wrong activity") {
+    val src = """package com.example.createdestroy;
+                |import androidx.appcompat.app.AppCompatActivity;
+                |import android.os.Bundle;
+                |import android.util.Log;
+                |
+                |import rx.Single;
+                |import rx.Subscription;
+                |import rx.android.schedulers.AndroidSchedulers;
+                |import rx.schedulers.Schedulers;
+                |
+                |
+                |public class MyActivity extends AppCompatActivity {
+                |    Object o = null;
+                |    Subscription subscription;
+                |
+                |    @Override
+                |    protected void onCreate(Bundle savedInstanceState) {
+                |        super.onCreate(savedInstanceState);
+                |        (new MyActivity()).setO();
+                |        Log.i("b", o.toString());
+                |    }
+                |    protected void setO() {
+                |        this.o = new Object();
+                |    }
+                |
+                |    @Override
+                |    protected void onDestroy() {
+                |        super.onDestroy();
+                |        o = null;
+                |    }
+                |}""".stripMargin
+
+    val test: String => Unit = apk => {
+      assert(apk != null)
+      val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
+      val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
+        new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
+          ActivityLifecycle.init_first_callback,
+          RxJavaSpec.call,
+          RxJavaSpec.subscribeDoesNotReturnNull
+        )),cha)
+      val config = SymbolicExecutorConfig(
+        stepLimit = Some(40), w, transfer,
+        component = Some(List("com.example.createdestroy.MyActivity.*")))
+      val symbolicExecutor = config.getSymbolicExecutor
+      val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
+        "void onCreate(android.os.Bundle)",20)
+      val result = symbolicExecutor.executeBackward(query)
+      PrettyPrinting.dumpDebugInfo(result,"MkApk")
+      assert(result.nonEmpty)
+      assert(BounderUtil.interpretResult(result) == Witnessed)
+
+    }
+
+    makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
+  }
+
   test("Test dereference with subscribe/unsubscribe and non null subscribe") {
     val src = """package com.example.createdestroy;
                 |import androidx.appcompat.app.AppCompatActivity;

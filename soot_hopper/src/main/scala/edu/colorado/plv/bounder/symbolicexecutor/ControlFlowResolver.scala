@@ -217,8 +217,9 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       cmd match {
         case cmd if wrapper.isMethodEntry(cmd) =>
 //          val callback = resolver.resolveCallbackEntry(method)
-          val callback = BounderUtil.resolveMethodEntryForAppLoc(resolver,l )
-          callback
+          val methodEntries = BounderUtil.resolveMethodEntryForAppLoc(resolver,l )
+          val out = methodEntries.filter(state.entryPossible(_))
+          out
         case _ => // normal control flow
           val pred = wrapper.commandPredecessors(cmd)
           pred

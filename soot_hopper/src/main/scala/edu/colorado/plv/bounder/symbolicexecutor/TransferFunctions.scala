@@ -239,7 +239,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         case ReturnCmd(v,_) =>v
         case c => throw new IllegalStateException(s"return from non return command $c ")
       }
-      val newFrame = CallStackFrame(appLoc, None, Map())
+      val newFrame = CallStackFrame(targetLoc, None, Map())
       val (pkg,name) = msgCmdToMsg(target)
       // Push frame regardless of relevance
       val pre_push = postState.copy(callStack = newFrame::postState.callStack)
@@ -516,11 +516,11 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       cmdTransfer(AssignCmd(lw, LocalWrapper("@this", thisTypename),a),state)
     case AssignCmd(lhs: LocalWrapper,rhs:LocalWrapper,_) => //
       // x = y
-      // TODO: enumerate possible aliases ======
       val lhsv = state.get(lhs) // Find what lhs pointed to if anything
       lhsv.map(pexpr =>{
         // remove lhs from abstract state (since it is assigned here)
         val state2 = state.clearLVal(lhs)
+        // TODO: swap with getOrDefineRVal =====
         if (state2.containsLocal(rhs)) {
           // rhs constrained by refutation state, lhs should be equivalent
           val state3 = state2.swapPv(pexpr.asInstanceOf[PureVar], state2.get(rhs).get.asInstanceOf[PureVar])
@@ -531,7 +531,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
           Set(state3)
         }
       }).getOrElse{
-        Set(state)
+        Set(state) // if lhs points to nothing, no change in state
       }
     case ReturnCmd(Some(v), _) =>
       val fakeRetLocal = LocalWrapper("@ret", "_")
@@ -573,7 +573,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       }
 
       // Get or define right hand side
-      val possibleRhs : Set[(PureExpr,State)] = getOrDefineSourceOfAssign(rhs, state2)
+      val possibleRhs : Set[(PureExpr,State)] = getOrDefineRVal(rhs, state2)
       // get or define base of assignment
       // Enumerate over existing base values that could alias assignment
       // Enumerate permutations of heap cell and rhs
@@ -604,7 +604,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     case AssignCmd(target :LocalWrapper, source, _) if source.isConst =>
       state.get(target) match{
         case Some(v) =>
-          val src: Set[(PureExpr, State)] = getOrDefineSourceOfAssign(source, state)
+          val src: Set[(PureExpr, State)] = getOrDefineRVal(source, state)
           src.map{
             case (pexp, s2) => s2.copy(pureFormula = s2.pureFormula + PureConstraint(v, Equals, pexp)).clearLVal(target)
           }
@@ -673,11 +673,23 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       ???
   }
 
-  private def getOrDefineSourceOfAssign(rhs: RVal, state2: State) : Set[(PureExpr,State)]= {
+  private def getOrDefineRVals(rhs:List[Option[RVal]], state:State): Set[(List[PureExpr], State)] ={
+    rhs.foldRight(Set[(List[PureExpr],State)]((Nil,state))){
+      case (Some(rval),out) =>
+        out.flatMap{case (vlist,cstate) =>
+          val posForRVal = getOrDefineRVal(rval,cstate)
+          posForRVal.map{
+            case (pv,nstate) => (pv::vlist, nstate)
+          }
+        }
+      case (None,acc) => acc
+    }
+  }
+
+  private def getOrDefineRVal(rhs: RVal, state2: State) : Set[(PureExpr,State)]= {
     rhs match {
       case NullConst => Set((NullVal, state2))
       case lw: LocalWrapper =>
-        // TODO: make sure thi works
         val posAlias = possibleAliasesOf(lw, state2)
         val (v, state3) = state2.getOrDefine(lw)
         posAlias.map(a => (a, state3.swapPv(v, a)))
