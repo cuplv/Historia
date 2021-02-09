@@ -65,66 +65,66 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     }
   }
 
-  def defineLSVarsAs(state: State, comb: List[(Option[RVal], LSParamConstraint)]):State = {
-    val comb2 = comb.groupBy(c => c._2.optTraceAbs)
-    val applySingle: (State,(Option[RVal], LSParamConstraint))=>State = {
-      case (state:State, (Some(l:LocalWrapper), LSPure(v:PureVar))) =>
-        val (oldLocVal,state2) = state.getOrDefine(l)
-        state2.swapPv(oldLocVal, v)
-      case (state, (Some(l:LocalWrapper), LSPure(v))) =>
-        println(v) //TODO: other kinds of v
-        ???
-      case (_:State, (Some(_:LocalWrapper), LSModelVar(_,_))) =>
-        throw new Exception("Group should have prevented this case")
-//      case (state:State, (Some(l:LocalWrapper), LSModelVar(v,ta))) =>
+//  def defineLSVarsAs(state: State, comb: List[(Option[RVal], LSParamConstraint)]):State = {
+//    val comb2 = comb.groupBy(c => c._2.optTraceAbs)
+//    val applySingle: (State,(Option[RVal], LSParamConstraint))=>State = {
+//      case (state:State, (Some(l:LocalWrapper), LSPure(v:PureVar))) =>
 //        val (oldLocVal,state2) = state.getOrDefine(l)
-//        assert(state2.traceAbstraction.contains(ta), "model var constraint not contained in current state")
-//        state2.copy(traceAbstraction = (state2.traceAbstraction - ta) + ta.addModelVar(v,oldLocVal) )
+//        state2.swapPv(oldLocVal, v)
+//      case (state, (Some(l:LocalWrapper), LSPure(v))) =>
+//        println(v) //TODO: other kinds of v
 //        ???
-      case (state, (Some(NullConst), _)) => ??? //TODO: These cases shouldn't come up until const values are added to ls
-      case (state, (Some(l:BoolConst), _)) => ???
-      case (state, (Some(l:IntConst), _)) => ???
-      case (state, (Some(l:StringConst), _)) => ???
-      case (statemap, (_, _)) => statemap
-    }
-    comb2.foldLeft(state){
-      case (state,(Some(at), list)) =>
-        val (state1, mapping) = list.foldLeft((state,Map[String,PureExpr]())){
-          case ((state, map),(Some(l:LocalWrapper), LSModelVar(s,trace))) =>
-            assert(at == trace)
-            val (oldLocVal,state2) = state.getOrDefine(l)
-            (state2, map + (s->oldLocVal))
-          case ((state, map), (Some(l:LocalWrapper), LSConstConstraint(pureExpr, trace))) =>
-            ???
-          case (v,(None, _)) =>
-            v
-        }
-        val newAt = mapping.foldLeft(at)((acc,v) => acc.addModelVar(v._1, v._2))
-        state1.copy(traceAbstraction = (state1.traceAbstraction-at) + newAt)
-      case (state, (None, list)) => list.foldLeft(state)(applySingle)
-    }
-  }
-  @deprecated //TODO: this should be replaced, this brute force matching of LS preds is brittle and probaby broken
-  def statesNotMatching(state: State, comb: List[(Option[RVal], LSParamConstraint)]): Set[State] = {
-    // TODO: need to enumerate matching or not matching all I() from spec
-    // TODO:  null = a.foo() and b.foo() will clobber each other
-    // States where at least one variable defined as not matching combination for lifestate
-    comb.toSet.flatMap{(a:(Option[RVal], LSParamConstraint)) => a match{
-      case (None, _) => None
-      case (_,LSAny) => None
-      case (Some(l), LSPure(pv)) =>
-        val (locval,state0)  = state.getOrDefine(l)
-        Some(state0.copy(pureFormula = state0.pureFormula + PureConstraint(locval, NotEquals, pv)))
-      case (Some(l), LSModelVar(mv,ta)) =>
-        val (locval, state0) = state.getOrDefine(l)
-        val (pv :PureVar, state1:State) = state0.nextPv()
-        assert(state1.traceAbstraction.contains(ta), "model var constraint not contained in current state")
-        Some(state1.copy(
-          traceAbstraction = (state1.traceAbstraction - ta) + ta.addModelVar(mv,pv),
-          pureFormula = state1.pureFormula + PureConstraint(pv, NotEquals, locval)
-        ))
-    }}
-  }
+//      case (_:State, (Some(_:LocalWrapper), LSModelVar(_,_))) =>
+//        throw new Exception("Group should have prevented this case")
+////      case (state:State, (Some(l:LocalWrapper), LSModelVar(v,ta))) =>
+////        val (oldLocVal,state2) = state.getOrDefine(l)
+////        assert(state2.traceAbstraction.contains(ta), "model var constraint not contained in current state")
+////        state2.copy(traceAbstraction = (state2.traceAbstraction - ta) + ta.addModelVar(v,oldLocVal) )
+////        ???
+//      case (state, (Some(NullConst), _)) => ??? //TODO: These cases shouldn't come up until const values are added to ls
+//      case (state, (Some(l:BoolConst), _)) => ???
+//      case (state, (Some(l:IntConst), _)) => ???
+//      case (state, (Some(l:StringConst), _)) => ???
+//      case (statemap, (_, _)) => statemap
+//    }
+//    comb2.foldLeft(state){
+//      case (state,(Some(at), list)) =>
+//        val (state1, mapping) = list.foldLeft((state,Map[String,PureExpr]())){
+//          case ((state, map),(Some(l:LocalWrapper), LSModelVar(s,trace))) =>
+//            assert(at == trace)
+//            val (oldLocVal,state2) = state.getOrDefine(l)
+//            (state2, map + (s->oldLocVal))
+//          case ((state, map), (Some(l:LocalWrapper), LSConstConstraint(pureExpr, trace))) =>
+//            ???
+//          case (v,(None, _)) =>
+//            v
+//        }
+//        val newAt = mapping.foldLeft(at)((acc,v) => acc.addModelVar(v._1, v._2))
+//        state1.copy(traceAbstraction = (state1.traceAbstraction-at) + newAt)
+//      case (state, (None, list)) => list.foldLeft(state)(applySingle)
+//    }
+//  }
+//  @deprecated //TODO: this should be replaced, this brute force matching of LS preds is brittle and probaby broken
+//  def statesNotMatching(state: State, comb: List[(Option[RVal], LSParamConstraint)]): Set[State] = {
+//    // TODO: need to enumerate matching or not matching all I() from spec
+//    // TODO:  null = a.foo() and b.foo() will clobber each other
+//    // States where at least one variable defined as not matching combination for lifestate
+//    comb.toSet.flatMap{(a:(Option[RVal], LSParamConstraint)) => a match{
+//      case (None, _) => None
+//      case (_,LSAny) => None
+//      case (Some(l), LSPure(pv)) =>
+//        val (locval,state0)  = state.getOrDefine(l)
+//        Some(state0.copy(pureFormula = state0.pureFormula + PureConstraint(locval, NotEquals, pv)))
+//      case (Some(l), LSModelVar(mv,ta)) =>
+//        val (locval, state0) = state.getOrDefine(l)
+//        val (pv :PureVar, state1:State) = state0.nextPv()
+//        assert(state1.traceAbstraction.contains(ta), "model var constraint not contained in current state")
+//        Some(state1.copy(
+//          traceAbstraction = (state1.traceAbstraction - ta) + ta.addModelVar(mv,pv),
+//          pureFormula = state1.pureFormula + PureConstraint(pv, NotEquals, locval)
+//        ))
+//    }}
+//  }
 
   /**
    *
@@ -291,14 +291,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       case v =>
         println(v) //Note: jimple should restrict so that assign only occurs to locals from invoke
         ???
-    }
-  }
-
-  private def defineVars(pre: State, invars: List[Option[RVal]]) = {
-    invars.foldLeft(pre) {
-      case (cstate, Some(invar : LocalWrapper)) =>
-        cstate.getOrDefine(invar)._2
-      case (cstate, _) => cstate
     }
   }
 

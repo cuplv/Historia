@@ -318,7 +318,7 @@ trait StateSolver[T] {
       mkAnd(absEnc, suffixConstraint)
     }
 
-    val allLSVarsInPred = abs.a.lsVar ++ abs.rightOfArrow.flatMap(_.lsVars)
+    val allLSVarsInPred = abs.a.lsVar ++ abs.rightOfArrow.flatMap(_.lsVar)
     if(negate)
       allLSVarsInPred.foldLeft(modelVarsToEncoding){
         case(acc,lsVar) => {

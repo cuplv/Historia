@@ -1,5 +1,6 @@
 package edu.colorado.plv.bounder.solver
 
+import better.files.Resource
 import com.microsoft.z3._
 import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSFalse, LSTrue, NI, Not, Or}
@@ -140,6 +141,8 @@ class Z3StateSolverTest extends AnyFunSuite {
     println(s"state: ${state1}")
     val res1 = statesolver.simplify(state1)
     assert(!res1.isDefined)
+    val res2 = statesolver.witnessed(state1)
+    assert(!res2)
 
     //TODO: more tests
     // [NI(m1^,m2^) OR (NOT NI(m1^,m2^)) ] AND (a |->a^) => TRUE
@@ -355,6 +358,56 @@ class Z3StateSolverTest extends AnyFunSuite {
     val res1 = stateSolver.simplify(state1)
     assert(res1.isDefined)
   }
+  test("Not I(a.foo) |> a.foo does not contain empty trace"){
+    //================ TODO: Yet another problem with negation
+    val statesolver = getStateSolver()
+
+    // Lifestate atoms for next few tests
+    val foo_a = I(CBEnter, Set(("", "foo")), "a" :: Nil)
+    val foo_b = I(CBEnter, Set(("", "foo")), "b" :: Nil)
+    val bar_a = I(CBEnter, Set(("", "bar")), "a" :: Nil)
+
+
+    // pure vars for next few tests
+    val p1 = PureVar(State.getId())
+    val p2 = PureVar(State.getId())
+
+    val niaa = AbstractTrace(Not(foo_a), foo_b::Nil, Map("a"->p1, "b"->p2))
+    val state = State(Nil,Map(),Set(PureConstraint(p1, Equals, p2)), Set(niaa),0)
+    val contains = statesolver.traceInAbstraction(state, Nil, true)
+    assert(!contains)
+
+    val niaa2 = AbstractTrace(Or(Not(foo_a),bar_a), foo_b::Nil, Map("a"->p1))
+    val state2 = State(Nil,Map(),Set(), Set(niaa2),0)
+    val simpl = statesolver.simplify(state2,Some(2))
+    assert(simpl.isDefined)
+    val contains2 = statesolver.traceInAbstraction(state2, Nil, true)
+    assert(contains2)
+  }
+
+  import upickle.default.read
+  private val js = (name:String) => ujson.Value(Resource.getAsString(name)).obj
+  test("Test bad witnessed state"){
+    //  Not(I(f.onActivityCreated())) or I(f.onDestroy()) <= null = f.getActivity()
+    // The following abstract state can be witnessed and not refuted:
+    // Not(I(f.onActivityCreated())) or I(f.onDestroy()) |> f.onActivityCreated()
+    // The empty trace should not match here
+    val state1 = read[State](js("TestStates/badWitnessState.json"))
+    val state = state1.copy(
+      traceAbstraction = state1.traceAbstraction.filter(v => v.toString.contains("onActivityCreated")),
+      pureFormula = state1.pureFormula.filter(p => p.toString.contains("p-1") && p.toString.contains("p-7"))
+    )
+    val stateSolver = getStateSolver()
+
+    val containsEmpty = stateSolver.traceInAbstraction(state, Nil, true)
+    assert(!containsEmpty)
+
+    val refuted = stateSolver.simplify(state,Some(2)) //Note this state is not refuted but witness is bad
+    assert(refuted.isDefined)
+    val witnessed = stateSolver.witnessed(state)
+    assert(!witnessed)
+  }
+
   test("Vacuous NI(a,a) spec") {
     val statesolver = getStateSolver()
 
@@ -708,8 +761,17 @@ class Z3StateSolverTest extends AnyFunSuite {
     val ctx = new Context
     val solver: Solver = ctx.mkSolver()
     val hierarchy: Map[String, Set[String]] =
-      Map("java.lang.Object" -> Set("String", "Foo", "Bar", "java.lang.Object"),
-        "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
+      Map("java.lang.Object" -> Set("String", "Foo", "Bar",
+        "com.example.createdestroy.MyFragment",
+        "rx.Single",
+        "com.example.createdestroy.-$$Lambda$MyFragment$hAOPQ7FFP1lMCJX7gGOvwmZq1uk",
+        "java.lang.Object"),
+        "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"),
+        "com.example.createdestroy.MyFragment" -> Set("com.example.createdestroy.MyFragment"),
+        "com.example.createdestroy.-$$Lambda$MyFragment$hAOPQ7FFP1lMCJX7gGOvwmZq1uk" ->
+          Set("com.example.createdestroy.-$$Lambda$MyFragment$hAOPQ7FFP1lMCJX7gGOvwmZq1uk"),
+        "rx.Single" -> Set("rx.Single")
+    )
 
     val pc = new ClassHierarchyConstraints(ctx, solver, hierarchy, stateTypeSolving)
     new Z3StateSolver(pc)

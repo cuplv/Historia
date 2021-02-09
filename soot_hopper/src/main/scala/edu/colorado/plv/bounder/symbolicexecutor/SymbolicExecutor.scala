@@ -9,6 +9,7 @@ import soot.SootMethod
 import scala.annotation.tailrec
 import scala.collection.MapView
 import scala.collection.parallel.CollectionConverters.ImmutableSetIsParallelizable
+import upickle.default._
 
 sealed trait CallGraphSource
 case object FlowdroidCallGraph extends CallGraphSource
@@ -225,7 +226,8 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       predecessorLocations.flatMap(l => {
         val newStates = transfer.transfer(state,l,loc)
         newStates.map(state => state.simplify(stateSolver) match {
-          case Some(state) if stateSolver.witnessed(state) => WitnessedQry(state, l)
+          case Some(state) if stateSolver.witnessed(state) =>
+            WitnessedQry(state, l)
           case Some(state) => SomeQry(state, l)
           case None =>
             BottomQry(state,l)

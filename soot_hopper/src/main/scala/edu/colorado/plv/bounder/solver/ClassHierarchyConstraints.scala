@@ -60,7 +60,8 @@ class ClassHierarchyConstraints(ctx: Context, solver: Solver, types : Map[String
   def getCtx: Context = ctx
   def getTypes:Map[String,Set[String]] = types
   def getUseZ3TypeSolver:StateTypeSolving = useZ3TypeSolver
-  def getSubtypesOf(tname:String):Set[String] = types(tname)
+  def getSubtypesOf(tname:String):Set[String] = types.getOrElse(tname,
+    throw new IllegalStateException(s"Type: $tname not found"))
 //  def getSupertypesOf(tname:String) :Set[String] = types.keySet.filter(k => types(k).contains(tname))
 
   val getSupertypesOf : String => Set[String] = Memo.mutableHashMapMemo{ tname =>
