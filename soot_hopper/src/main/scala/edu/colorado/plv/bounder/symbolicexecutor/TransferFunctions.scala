@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.ir.{NullConst, _}
 import edu.colorado.plv.bounder.lifestate.LifeState._
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.TransferFunctions.relevantAliases
+import edu.colorado.plv.bounder.symbolicexecutor.TransferFunctions.{relevantAliases, relevantAliases2}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import upickle.default._
 
@@ -138,31 +138,20 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       // traverse back over the retun of a callin
       // "Some(source.copy(isPre = true))" places the entry to the callin as the location of call
       val (pkg, name) = msgCmdToMsg(cmret)
-      //TODO: see relevantAliases2
-      val relAliases: Set[List[LSParamConstraint]] = relevantAliases(postState, CIExit, (pkg,name))
-      val frame = CallStackFrame(target, Some(source.copy(isPre = true)), Map())
       val inVars: List[Option[RVal]] = inVarsForCall(source)
-      val ostates: Set[State] = if(relAliases.isEmpty){
-        Set(postState)
-      }else {
-        // add all args except assignment to state
-        val states2 = relAliases.flatMap(relAlias =>{
-          val comb: List[(Option[RVal], LSParamConstraint)] = inVars zip relAlias
-          val state0 = defineLSVarsAs(postState,comb)
-          val state1 = traceAllPredTransfer(CIExit, (pkg,name),inVars, state0)
-          val otherStates = statesNotMatching(postState, comb)
-          otherStates + state1
-        })
-        states2
+      val relAliases = relevantAliases2(postState, CIExit, (pkg,name),inVars)
+      val frame = CallStackFrame(target, Some(source.copy(isPre = true)), Map())
+      val (rvals, state0) = getOrDefineRVals(relAliases, postState)
+      val state1 = traceAllPredTransfer(CIExit, (pkg,name),rvals, state0)
+      //TODO: better state names
+      val outState = newSpecInstanceTransfer(CIExit, (pkg, name), inVars, cmret, state1)
+      val outState1: Set[State] = inVars match{
+        case Some(revar:LocalWrapper)::_ => outState.map(s3 => s3.clearLVal(revar))
+        case _ => outState
       }
-      val out = ostates.flatMap{s =>
-        val outState = newSpecInstanceTransfer(CIExit, (pkg, name), inVars, cmret, s)
-        val outState1: Set[State] = inVars match{
-          case Some(revar:LocalWrapper)::_ => outState.map(s3 => s3.clearLVal(revar))
-          case _ => outState
-        }
-        outState1.map(s2 => s2.copy(callStack = frame::s2.callStack, nextCmd = None))
-      }.map{ oState =>
+      val outState2 = outState1.map(s2 => s2.copy(callStack = frame::s2.callStack, nextCmd = None))
+
+      val out = outState2.map{ oState =>
         //clear assigned var from stack if exists
         val statesWithClearedReturn = inVars.head match{
           case Some(v:LocalWrapper) => oState.clearLVal(v)
@@ -174,26 +163,16 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       out
     case (CallinMethodReturn(_, _), CallinMethodInvoke(_, _)) => Set(postState)
     case (cminv@CallinMethodInvoke(_, _), ciInv@AppLoc(_, _, true)) =>
-      //TODO: relevant transition enumeration
       assert(postState.callStack.nonEmpty, "Bad control flow, abstract stack must be non-empty.")
+      val invars = inVarsForCall(ciInv)
       val (pkg,name) = msgCmdToMsg(cminv)
-      //TODO: see relevantAliases2
-      val relAliases: Set[List[LSParamConstraint]] = relevantAliases(postState, CIEnter, (pkg,name))
-      val ostates = if(relAliases.isEmpty)
-        Set(postState)
-      else {
-        println(???) //TODO: enumerate aliases
-        // TODO: in general, this case won't be used until the entry of a callin shows up in a rule
-        val invars = inVarsForCall(ciInv)
-        val state0 = defineVars(postState, invars.tail)
-        val state1 = traceAllPredTransfer(CIEnter, (pkg, name), invars, state0)
-//        val states2 = newSpecInstanceTransfer(CIExit, (pkg, name), invars, ciInv, state1)
-//        Set(states2.copy(callStack = t))
-//        ???
+      val relAliases = relevantAliases2(postState, CIEnter, (pkg,name),invars)
+      val ostates:Set[State] = {
+        val (rvals, state0) = getOrDefineRVals(relAliases, postState)
+        val state1 = traceAllPredTransfer(CIEnter, (pkg, name), rvals, state0)
         Set(state1)
-        ???
       }
-      ostates.map(s => s.copy(callStack = if (s.callStack.isEmpty) Nil else s.callStack.tail, nextCmd = Some(ciInv)))
+      ostates.map(s => s.copy(callStack = s.callStack.tail, nextCmd = Some(ciInv)))
     case (AppLoc(_, _, true), AppLoc(_, _, false)) => Set(postState)
     case (appLoc@AppLoc(c1, m1, false), postLoc@AppLoc(c2, m2, true)) if c1 == c2 && m1 == m2 =>
       cmdTransfer(w.cmdAtLocation(appLoc), postState).map(_.setNextCmd(Some(postLoc)))
@@ -203,32 +182,18 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       if(postState.callStack.nonEmpty){
         postState.callStack.head match {
           case CallStackFrame(CallbackMethodReturn(fc2,fn2,l2,_),_,_) if fc1 != fc2 || fn1 != fn2 || l1 != l2 =>
-            return Set(???)//TODO: does this ever happen with callback entry? (remove ??? when this is figured out)
+            throw new IllegalStateException("ControlFlowResolver should enforce stack matching")
           case _ =>
         }
       }
 
+      val invars: List[Option[LocalWrapper]] = None :: containingMethod.getArgs
       val (pkg, name) = msgCmdToMsg(cmInv)
-      //TODO: see relevantAliases2
-      val relAliases: Set[List[LSParamConstraint]] = relevantAliases(postState, CBEnter, (pkg,name))
-      val ostates = if (relAliases.isEmpty){
-        Set(postState)
-      }else {
-        val invars: List[Option[LocalWrapper]] = None :: containingMethod.getArgs
-        relAliases.flatMap(relAlias =>{
-          val comb: List[(Option[LocalWrapper], LSParamConstraint)] = invars zip relAlias
-          val state0 = defineLSVarsAs(postState, comb)
-          val state1 = traceAllPredTransfer(CBEnter, (pkg,name), invars, state0)
-          val otherStates = statesNotMatching(postState, comb)
-          otherStates + state1
-        })
-      }
-      ostates.flatMap(a => {
-        val invars: List[Option[LocalWrapper]] = None :: containingMethod.getArgs
-        val c = defineVars(a, invars)
-        val b = newSpecInstanceTransfer(CBEnter, (pkg, name), invars, cmInv, c)
-        b.map(s => s.copy(callStack = if(s.callStack.isEmpty) Nil else s.callStack.tail, nextCmd = None))
-      })
+      val relAliases = relevantAliases2(postState, CBEnter, (pkg,name),invars)
+      val (inVals, state0) = getOrDefineRVals(relAliases,postState)
+      val state1 = traceAllPredTransfer(CBEnter, (pkg,name), inVals, state0)
+      val b = newSpecInstanceTransfer(CBEnter, (pkg, name), invars, cmInv, state1)
+      b.map(s => s.copy(callStack = if(s.callStack.isEmpty) Nil else s.callStack.tail, nextCmd = None))
     case (CallbackMethodInvoke(_, _, _), targetLoc@CallbackMethodReturn(_,_,mloc, _)) =>
       // Case where execution goes to the exit of another callback
       // TODO: nested callbacks not supported yet, assuming we can't go back to callin entry
@@ -243,25 +208,12 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val (pkg,name) = msgCmdToMsg(target)
       // Push frame regardless of relevance
       val pre_push = postState.copy(callStack = newFrame::postState.callStack)
-      //TODO: see relevantAliases2
-      val relAliases: Set[List[LSParamConstraint]] = relevantAliases(postState, CBExit, (pkg,name))
       val localVarOrVal: List[Option[RVal]] = rvar::mloc.getArgs
+      val relAliases = relevantAliases2(postState, CBExit, (pkg,name),localVarOrVal)
       // Note: no newSpecInstanceTransfer since this is an in-message
-      if(relAliases.isEmpty){
-        Set(pre_push)
-      }else {
-        relAliases.flatMap( aliases => {
-          val comb = localVarOrVal zip aliases
-
-          // State where all local vars are aliased with required
-          val state0 = defineLSVarsAs(pre_push, comb)
-          val state1 = traceAllPredTransfer(CBExit, (pkg, name), localVarOrVal, state0)
-
-          // States where at least one var is not aliased with required
-          val otherStates:Set[State] = statesNotMatching(pre_push, comb)
-          otherStates + state1
-        })
-      }
+      val (rVals, state0) = getOrDefineRVals(relAliases, pre_push)
+      val state1 = traceAllPredTransfer(CBExit, (pkg, name), rVals, state0)
+      Set(state1)
     case (CallbackMethodReturn(_,_,mloc1,_), AppLoc(mloc2,_,false)) =>
       assert(mloc1 == mloc2)
       assert(postState.nextCmd.isEmpty)
@@ -476,14 +428,14 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
 
   /**
    * Update each trace abstraction in an abstract state
-   * @param postState
+   * @param allVal values to apply transfer with
    * @return
    */
   def traceAllPredTransfer(mt: MessageType,
-                           sig:(String,String), alvar:List[Option[RVal]],
+                           sig:(String,String), allVal:List[Option[PureExpr]],
                            postState: State):State = {
     // values we want to track should already be added to the state
-    val allVal = alvar.map(_.flatMap(postState.get(_)))
+//    val allVal = alvar.map(_.flatMap(postState.get(_)))
     val newTraceAbs: Set[AbstractTrace] = postState.traceAbstraction.map {
       traceAbs => predTransferTrace(traceAbs, mt, sig, allVal)
     }
@@ -520,7 +472,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       lhsv.map(pexpr =>{
         // remove lhs from abstract state (since it is assigned here)
         val state2 = state.clearLVal(lhs)
-        // TODO: swap with getOrDefineRVal =====
         if (state2.containsLocal(rhs)) {
           // rhs constrained by refutation state, lhs should be equivalent
           val state3 = state2.swapPv(pexpr.asInstanceOf[PureVar], state2.get(rhs).get.asInstanceOf[PureVar])
@@ -573,11 +524,11 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       }
 
       // Get or define right hand side
-      val possibleRhs : Set[(PureExpr,State)] = getOrDefineRVal(rhs, state2)
+      val possibleRhs = Set(state2.getOrDefine2(rhs))
       // get or define base of assignment
       // Enumerate over existing base values that could alias assignment
       // Enumerate permutations of heap cell and rhs
-      // TODO: flawed logic here
+      // TODO: remove repeatingPerm here since only one possible rhs
       val perm = BounderUtil.repeatingPerm(a => if(a ==0) possibleHeapCells else possibleRhs , 2)
       val casesWithHeapCellAlias: Set[State] = perm.map{
         case (pte@FieldPtEdge(heapPv, _), tgtVal:PureExpr)::(rhsPureExpr:PureExpr,state3:State)::Nil =>
@@ -604,7 +555,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     case AssignCmd(target :LocalWrapper, source, _) if source.isConst =>
       state.get(target) match{
         case Some(v) =>
-          val src: Set[(PureExpr, State)] = getOrDefineRVal(source, state)
+//          val src: Set[(PureExpr, State)] = enumerateAliasesForRVal(source, state)
+          val src = Set(state.getOrDefine2(source))
           src.map{
             case (pexp, s2) => s2.copy(pureFormula = s2.pureFormula + PureConstraint(v, Equals, pexp)).clearLVal(target)
           }
@@ -673,20 +625,18 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       ???
   }
 
-  private def getOrDefineRVals(rhs:List[Option[RVal]], state:State): Set[(List[PureExpr], State)] ={
-    rhs.foldRight(Set[(List[PureExpr],State)]((Nil,state))){
-      case (Some(rval),out) =>
-        out.flatMap{case (vlist,cstate) =>
-          val posForRVal = getOrDefineRVal(rval,cstate)
-          posForRVal.map{
-            case (pv,nstate) => (pv::vlist, nstate)
-          }
-        }
-      case (None,acc) => acc
+  private def getOrDefineRVals(rhs:List[Option[RVal]], state:State): (List[Option[PureExpr]], State) ={
+    rhs.foldRight((List[Option[PureExpr]](),state)){
+      case (Some(rval),(vlist,cstate)) =>
+        val (pexp,nstate) = cstate.getOrDefine2(rval)//enumerateAliasesForRVal(rval,cstate)
+        (Some(pexp)::vlist, nstate)
+      case (None,(vlist,cstate)) => (None::vlist, cstate)
     }
   }
 
-  private def getOrDefineRVal(rhs: RVal, state2: State) : Set[(PureExpr,State)]= {
+  //TODO: is this needed anymore?
+  @deprecated
+  private def enumerateAliasesForRVal(rhs: RVal, state2: State) : Set[(PureExpr,State)]= {
     rhs match {
       case NullConst => Set((NullVal, state2))
       case lw: LocalWrapper =>

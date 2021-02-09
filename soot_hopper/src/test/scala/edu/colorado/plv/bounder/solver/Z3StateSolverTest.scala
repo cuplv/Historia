@@ -7,12 +7,12 @@ import edu.colorado.plv.bounder.symbolicexecutor.state._
 import org.scalatest.funsuite.AnyFunSuite
 
 class Z3StateSolverTest extends AnyFunSuite {
-  val fooMethod = TestIRMethodLoc("","foo", List(LocalWrapper("@this","Object")))
-  val dummyLoc = CallbackMethodInvoke(fmwClazz = "",
-    fmwName="void foo()", fooMethod)
-  val v = PureVar(State.getId())
-  val frame = CallStackFrame(dummyLoc, None, Map(StackVar("x") -> v))
-  val state = State.topState
+  private val fooMethod = TestIRMethodLoc("","foo", List(LocalWrapper("@this","Object")))
+  private val dummyLoc = CallbackMethodReturn(fmwClazz = "",
+     fmwName="void foo()", fooMethod, None)
+  private val v = PureVar(State.getId())
+  private val frame = CallStackFrame(dummyLoc, None, Map(StackVar("x") -> v))
+  private val state = State.topState
   test("null not null") {
   val statesolver = getStateSolver()
 
@@ -385,8 +385,8 @@ class Z3StateSolverTest extends AnyFunSuite {
     val p2 = PureVar(State.getId())
     val loc = AppLoc(fooMethod, TestIRLineLoc(1), isPre = false)
 
-    val state = State(CallStackFrame(loc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Set(),0)
-    val state_ = state.copy(callStack = CallStackFrame(loc, None, Map(
+    val state = State(CallStackFrame(dummyLoc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Set(),0)
+    val state_ = state.copy(callStack = CallStackFrame(dummyLoc, None, Map(
       StackVar("x") -> p1,
       StackVar("y") -> p2
     ))::Nil)
@@ -401,7 +401,7 @@ class Z3StateSolverTest extends AnyFunSuite {
     val p2 = PureVar(State.getId())
     val loc = AppLoc(fooMethod, TestIRLineLoc(1), isPre = false)
 
-    val state = State(CallStackFrame(loc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Set(),0)
+    val state = State(CallStackFrame(dummyLoc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Set(),0)
     val state2 = state.copy(callStack =
       state.callStack.head.copy(locals=Map(StackVar("x") -> p1, StackVar("y")->p2))::Nil)
     assert(statesolver.canSubsume(state,state))
@@ -471,6 +471,24 @@ class Z3StateSolverTest extends AnyFunSuite {
     assert(statesolver.canSubsume(fewerPure, morePure))
 
   }
+  test("Subsumption of unrelated trace constraint") {
+    val statesolver = getStateSolver()
+
+    val p1 = PureVar(State.getId())
+    val p2 = PureVar(State.getId())
+
+
+    val ifooa = I(CBEnter, Set(("", "foo")), "a" :: Nil)
+    val ifoob = I(CBEnter, Set(("", "foo")), "b" :: Nil)
+    val state0 = State.topState.copy(
+      traceAbstraction = Set(AbstractTrace(ifooa, Nil, Map("a"->p1)))
+    )
+    val state1 = State.topState.copy(
+      pureFormula = Set(PureConstraint(p1, NotEquals, p2)),
+      traceAbstraction = Set(AbstractTrace(ifooa, ifoob::Nil, Map("a"->p1, "b"->p2)))
+    )
+    assert(statesolver.canSubsume(state0,state1, Some(2)))
+  }
   test("Subsumption of multi arg abstract traces") {
     val statesolver = getStateSolver()
 
@@ -497,7 +515,7 @@ class Z3StateSolverTest extends AnyFunSuite {
     val ibarc = I(CBEnter, Set(("", "bar")), "_"::"c" :: Nil)
 
     val at = AbstractTrace(NI(ifoo,ibar), ibarc::Nil, Map("a"->p1, "c"->p1))
-    val state = State(CallStackFrame(loc, None, Map(StackVar("x") -> p1)) :: Nil, Map(), Set(), Set(at), 0)
+    val state = State(CallStackFrame(dummyLoc, None, Map(StackVar("x") -> p1)) :: Nil, Map(), Set(), Set(at), 0)
     val res = statesolver.simplify(state)
     assert(res.isEmpty)
   }
@@ -544,11 +562,11 @@ class Z3StateSolverTest extends AnyFunSuite {
     val p2 = PureVar(State.getId())
     val loc = AppLoc(fooMethod, TestIRLineLoc(1), isPre = false)
 
-    val state = State(CallStackFrame(loc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Set(),0)
+    val state = State(CallStackFrame(dummyLoc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Set(),0)
 
     // x->p1 * y->p2 can be subsumed by x->p1
     val state_x_y = state.copy(
-      callStack = CallStackFrame(loc,None,Map(
+      callStack = CallStackFrame(dummyLoc,None,Map(
         StackVar("x") -> p1,
         StackVar("y") -> p2
       ))::Nil,

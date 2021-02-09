@@ -268,9 +268,7 @@ class SymbolicExecutorSpec extends AnyFunSuite {
       PrettyPrinting.dumpDebugInfo(result,"MkApk")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Proven)
-
     }
-
     makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
   }
 
@@ -340,7 +338,7 @@ class SymbolicExecutorSpec extends AnyFunSuite {
 
     makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
   }
-  ignore("Test prove dereference of return from getActivity") {
+  test("Test prove dereference of return from getActivity") {
     //TODO: this test is currently timing out not sure if it will work or not
     val src =
       """

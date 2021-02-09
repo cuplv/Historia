@@ -41,7 +41,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     out
   }
 
-  test("Callin return test"){
+  ignore("Callin return test"){
     val spec = new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
       RxJavaSpec.call
     ))
