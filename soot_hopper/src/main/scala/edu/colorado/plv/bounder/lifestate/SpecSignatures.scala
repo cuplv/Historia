@@ -82,9 +82,61 @@ object SpecSignatures {
   val RxJava_call_entry = I(CBEnter, RxJava_call, "_"::"l"::Nil)
 
   val RxJava_unsubscribe = Set(
-    ("rx.Subscription", "void unsubscribe()"),
-    ("rx.internal.operators.CachedObservable$ReplayProducer", "void unsubscribe()"),
-    ("rx.android.schedulers.LooperScheduler$HandlerWorker", "void unsubscribe()")
+    ("rx.SingleSubscriber","void unsubscribe()"),
+    ("rx.Subscriber","void unsubscribe()"),
+    ("rx.Subscription","void unsubscribe()"),
+    ("rx.android.schedulers.LooperScheduler$HandlerWorker","void unsubscribe()"),
+    ("rx.android.schedulers.LooperScheduler$ScheduledAction","void unsubscribe()"),
+    ("rx.internal.operators.CachedObservable$ReplayProducer","void unsubscribe()"),
+    ("rx.internal.operators.OnSubscribeAmb","void unsubscribeAmbSubscribers(java.util.Collection)"),
+    ("rx.internal.operators.OnSubscribeAmb$Selection","void unsubscribeLosers()"),
+    ("rx.internal.operators.OnSubscribeAmb$Selection","void unsubscribeOthers(rx.internal.operators.OnSubscribeAmb$AmbSubscriber)"),
+    ("rx.internal.operators.OnSubscribeCombineLatest$LatestCoordinator","void unsubscribe()"),
+    ("rx.internal.operators.OnSubscribeDetach$DetachProducer","void unsubscribe()"),
+    ("rx.internal.operators.OnSubscribeGroupJoin$ResultManager","void unsubscribe()"),
+    ("rx.internal.operators.OnSubscribePublishMulticast","void unsubscribe()"),
+    ("rx.internal.operators.OnSubscribePublishMulticast$PublishProducer","void unsubscribe()"),
+    ("rx.internal.operators.OnSubscribeUsing$DisposeAction","void unsubscribe()"),
+    ("rx.internal.operators.OperatorGroupBy$State","void unsubscribe()"),
+    ("rx.internal.operators.OperatorOnBackpressureLatest$LatestEmitter","void unsubscribe()"),
+    ("rx.internal.operators.OperatorPublish$InnerProducer","void unsubscribe()"),
+    ("rx.internal.operators.OperatorReplay$InnerProducer","void unsubscribe()"),
+    ("rx.internal.schedulers.CachedThreadScheduler$EventLoopWorker","void unsubscribe()"),
+    ("rx.internal.schedulers.EventLoopsScheduler$EventLoopWorker","void unsubscribe()"),
+    ("rx.internal.schedulers.ExecutorScheduler$ExecutorSchedulerWorker","void unsubscribe()"),
+    ("rx.internal.schedulers.ImmediateScheduler$InnerImmediateScheduler","void unsubscribe()"),
+    ("rx.internal.schedulers.NewThreadWorker","void unsubscribe()"),
+    ("rx.internal.schedulers.ScheduledAction","void unsubscribe()"),
+    ("rx.internal.schedulers.ScheduledAction$FutureCompleter","void unsubscribe()"),
+    ("rx.internal.schedulers.ScheduledAction$Remover","void unsubscribe()"),
+    ("rx.internal.schedulers.ScheduledAction$Remover2","void unsubscribe()"),
+    ("rx.internal.schedulers.TrampolineScheduler$InnerCurrentThreadScheduler","void unsubscribe()"),
+    ("rx.internal.util.IndexedRingBuffer","void unsubscribe()"),
+    ("rx.internal.util.RxRingBuffer","void unsubscribe()"),
+    ("rx.internal.util.SubscriptionList","void unsubscribe()"),
+    ("rx.internal.util.SubscriptionList","void unsubscribeFromAll(java.util.Collection)"),
+    ("rx.internal.util.SynchronizedSubscription","void unsubscribe()"),
+    ("rx.observables.AsyncOnSubscribe$AsyncOuterManager","void unsubscribe()"),
+    ("rx.observables.SyncOnSubscribe$SubscriptionProducer","void unsubscribe()"),
+    ("rx.observers.SafeCompletableSubscriber","void unsubscribe()"),
+    ("rx.schedulers.TestScheduler$InnerTestScheduler","void unsubscribe()"),
+    ("rx.subjects.ReplaySubject$ReplayProducer","void unsubscribe()"),
+    ("rx.subjects.UnicastSubject$State","void unsubscribe()"),
+    ("rx.subscriptions.BooleanSubscription","void unsubscribe()"),
+    ("rx.subscriptions.CompositeSubscription","void unsubscribe()"),
+    ("rx.subscriptions.CompositeSubscription","void unsubscribeFromAll(java.util.Collection)"),
+    ("rx.subscriptions.MultipleAssignmentSubscription","void unsubscribe()"),
+    ("rx.subscriptions.MultipleAssignmentSubscription$State","rx.subscriptions.MultipleAssignmentSubscription$State unsubscribe()"),
+    ("rx.subscriptions.RefCountSubscription","void unsubscribe()"),
+    ("rx.subscriptions.RefCountSubscription","void unsubscribeAChild()"),
+    ("rx.subscriptions.RefCountSubscription","void unsubscribeActualIfApplicable(rx.subscriptions.RefCountSubscription$State)"),
+    ("rx.subscriptions.RefCountSubscription$InnerSubscription","void unsubscribe()"),
+    ("rx.subscriptions.RefCountSubscription$State","rx.subscriptions.RefCountSubscription$State unsubscribe()"),
+    ("rx.subscriptions.SerialSubscription","void unsubscribe()"),
+    ("rx.subscriptions.SerialSubscription$State","rx.subscriptions.SerialSubscription$State unsubscribe()"),
+    ("rx.subscriptions.Subscriptions","rx.Subscription unsubscribed()"),
+    ("rx.subscriptions.Subscriptions$FutureSubscription","void unsubscribe()"),
+    ("rx.subscriptions.Subscriptions$Unsubscribed","void unsubscribe()"),
   )
   val RxJava_unsubscribe_exit = I(CIExit, RxJava_unsubscribe, "_"::"s"::Nil)
 
@@ -96,12 +148,14 @@ object SpecSignatures {
 }
 
 object FragmentGetActivityNullSpec{
-  val cond = Or(Not(SpecSignatures.Fragment_onActivityCreated_entry), SpecSignatures.Fragment_onDestroy_exit)
+//  val cond = Or(Not(SpecSignatures.Fragment_onActivityCreated_entry), SpecSignatures.Fragment_onDestroy_exit)
+  val cond = NI(SpecSignatures.Fragment_onDestroy_exit, SpecSignatures.Fragment_onActivityCreated_entry)
   val getActivityNull = LSSpec(cond, SpecSignatures.Fragment_get_activity_exit_null)
 }
 
 object RxJavaSpec{
   // TODO: copy of subscribe_exit is a workaround for a bug where unneeded vars cause failure to terminate
+  // TODO: this bug may be fixed now
   val subUnsub = NI(
     SpecSignatures.RxJava_subscribe_exit.copy(lsVars = "_"::SpecSignatures.RxJava_subscribe_exit.lsVars.tail),
     SpecSignatures.RxJava_unsubscribe_exit)
