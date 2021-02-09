@@ -529,18 +529,18 @@ trait StateSolver[T] {
         case (acc, constraint) => mkAnd(toAST(constraint), acc)
       }
 
-      mkAnd(negs1pure, s2pure)
+      (negs1pure, s2pure)
     }
 
     val messageTranslator = MessageTranslator(List(s1,s2))
     val len = mkIntVar(s"len_")
     val traceFun = mkTraceFn("0")
 
-    val phi = s2.traceAbstraction.foldLeft(mkBoolVal(true)) {
+    val phi = s2.traceAbstraction.foldLeft(pureFormulaEnc._2) {
       case (acc, v) => mkAnd(acc, encodeTraceAbs(v, messageTranslator,
         traceFn = traceFun, len, absUID = Some("0")))
     }
-    val negPhi = s1.traceAbstraction.foldLeft(mkBoolVal(false)) {
+    val negPhi = s1.traceAbstraction.foldLeft(pureFormulaEnc._1) {
       case (acc, v) => mkOr(acc, encodeTraceAbs(v, messageTranslator,
         traceFn = traceFun, len, absUID = Some("1"),negate = true))
     }
@@ -556,7 +556,7 @@ trait StateSolver[T] {
         mkAnd(mkLt(len, mkIntVal(v)), fp)
       case None => fp
     }
-    mkAssert(mkOr(f,pureFormulaEnc))
+    mkAssert(f)
     val ti = checkSAT()
     if (ti && maxLen.isDefined) {
       println(s"===formula: $f")

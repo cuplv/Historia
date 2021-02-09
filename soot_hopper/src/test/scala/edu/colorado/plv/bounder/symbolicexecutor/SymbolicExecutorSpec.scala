@@ -339,7 +339,7 @@ class SymbolicExecutorSpec extends AnyFunSuite {
     makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
   }
   test("Test prove dereference of return from getActivity") {
-    //TODO: this test is currently timing out not sure if it will work or not
+    //TODO: this test is currently witnessed
     val src =
       """
         |package com.example.createdestroy;
