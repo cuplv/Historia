@@ -621,12 +621,16 @@ trait StateSolver[T] {
     val len = mkIntVar(s"len_")
     val encodedAbs: Set[T] =
       state.traceAbstraction.map(encodeTraceAbs(_, messageTranslator, traceFn, len, Some("")))
+    val pf = filterTypeConstraintsFromPf(state.pureFormula)
+    val s2pure = pf.foldLeft(mkBoolVal(true)) {
+      case (acc, constraint) => mkAnd(toAST(constraint), acc)
+    }
 
     val distinctAddr: Map[Int, T] = (0 until 10).map(v => (v,mkAddrConst(v))).toMap
     val assertDistinct = mkDistinctT(distinctAddr.keySet.map(distinctAddr(_)))
     val encodedTrace = encodeTrace(traceFn, trace, messageTranslator, distinctAddr)
     mkAnd(mkEq(len, mkIntVal(trace.length)),
-      mkAnd(encodedAbs.foldLeft(assertDistinct)((a, b) => mkAnd(a, b)), encodedTrace)
+      mkAnd(encodedAbs.foldLeft(mkAnd(assertDistinct,s2pure))((a, b) => mkAnd(a, b)), encodedTrace)
     )
   }
 }
