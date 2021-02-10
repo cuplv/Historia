@@ -260,7 +260,7 @@ class SymbolicExecutorSpec extends AnyFunSuite {
           ActivityLifecycle.init_first_callback,
           RxJavaSpec.call,
           RxJavaSpec.subscribeDoesNotReturnNull,
-          RxJavaSpec.subscribeIsUniqueAndNonNull //TODO: why does adding this spec cause a witness???? Adding specs should strictly remove behavior.
+          RxJavaSpec.subscribeIsUniqueAndNonNull
         )),cha)
       val config = SymbolicExecutorConfig(
         stepLimit = Some(200), w, transfer,

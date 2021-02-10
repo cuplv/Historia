@@ -52,7 +52,7 @@ class SpecTest extends AnyFunSuite {
     assert(findIInFwk(SpecSignatures.Fragment_onActivityCreated_entry))
     assert(findIInFwk(SpecSignatures.Fragment_onDestroy_exit))
     findIInFwkForall(SpecSignatures.RxJava_call_entry)
-    findIInFwkForall(SpecSignatures.RxJava_unsubscribe_exit)
+    assert(findIInFwk(SpecSignatures.RxJava_unsubscribe_exit))
   }
   test("RXJavaSubscribe: Each I in spec signatures corresponds to a method or interface in the framework"){
     val apk = getClass.getResource("/RXJavaSubscribe-fix-debug.apk").getPath
