@@ -159,6 +159,9 @@ object RxJavaSpec{
     SpecSignatures.RxJava_unsubscribe_exit)
   val call = LSSpec(subUnsub, SpecSignatures.RxJava_call_entry)
   val subscribeDoesNotReturnNull = LSSpec(LSFalse, SpecSignatures.RxJava_subscribe_exit_null)
+  val subscribeIsUnique = LSSpec(Not(SpecSignatures.RxJava_subscribe_exit.copy(lsVars = "s"::Nil)),
+    SpecSignatures.RxJava_subscribe_exit
+  )
 }
 
 object ActivityLifecycle {

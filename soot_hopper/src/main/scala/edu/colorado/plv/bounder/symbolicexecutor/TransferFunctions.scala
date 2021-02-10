@@ -495,10 +495,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       assert(state.nextCmd.isDefined, "Malformed transfer, next command must be defined to transfer If node.")
       val stateLocationFrom: AppLoc = state.nextCmd.get
       if(stateLocationFrom == trueLoc)
-        assumeInState(b,state).toSet
-      else{
-        ???
-      }
+        assumeInState(b,state,negate=false).toSet
+      else
+        assumeInState(b,state,negate=true).toSet
     case AssignCmd(l,Cast(castT, local),cmdloc) =>
       val state1 = state.get(local) match{
         case Some(v) => state.copy(pureFormula = state.pureFormula + PureConstraint(v, TypeComp, SubclassOf(castT)))
@@ -559,21 +558,23 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
   }
 
 
-  def assumeInState(bExp:RVal, state:State): Option[State] = bExp match{
-    case BoolConst(true) => Some(state)
-    case BoolConst(false) => None
+  def assumeInState(bExp:RVal, state:State, negate: Boolean): Option[State] = bExp match{
+    case BoolConst(b) if b != negate => Some(state)
+    case BoolConst(b) if b == negate => None
     case Binop(v1, op, v2) =>
       val (v1Val,state0) = state.getOrDefine2(v1)
       val (v2Val,state1) = state0.getOrDefine2(v2)
       //TODO: Handle boolean expressions, integer expressions, etc
       // it is sound, but not precise, to drop constraints
-      Some(op match{
-        case Eq => state1.copy(pureFormula = state1.pureFormula + PureConstraint(v1Val, Equals, v2Val))
-        case Ne => state1.copy(pureFormula = state1.pureFormula + PureConstraint(v1Val, NotEquals, v2Val))
+      Some((op, negate) match{
+        case (Eq,false) => state1.copy(pureFormula = state1.pureFormula + PureConstraint(v1Val, Equals, v2Val))
+        case (Ne,false) => state1.copy(pureFormula = state1.pureFormula + PureConstraint(v1Val, NotEquals, v2Val))
+        case (Eq,true) => state1.copy(pureFormula = state1.pureFormula + PureConstraint(v1Val, NotEquals, v2Val))
+        case (Ne,true) => state1.copy(pureFormula = state1.pureFormula + PureConstraint(v1Val, Equals, v2Val))
         case _ => state
       })
-    case Binop(v, Eq, lw:LocalWrapper) if v.isConst => assumeInState(Binop(lw,Eq,v),state)
-    case Binop(v, Ne, lw:LocalWrapper) if v.isConst => assumeInState(Binop(lw,Eq,v),state)
+    case Binop(v, Eq, lw:LocalWrapper) if v.isConst => assumeInState(Binop(lw,Eq,v),state, negate)
+    case Binop(v, Ne, lw:LocalWrapper) if v.isConst => assumeInState(Binop(lw,Eq,v),state, negate)
     case v =>
       throw new IllegalStateException(s"Invalid rval for assumeInState: $v")
   }

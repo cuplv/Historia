@@ -4,7 +4,7 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
-import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, NoTypeSolving, SolverTypeSolving}
+import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, NoTypeSolving}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, PrettyPrinting, Qry}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
@@ -17,7 +17,6 @@ class SymbolicExecutorSpec extends AnyFunSuite {
     val test_interproc_1 = getClass.getResource("/test_interproc_1.apk").getPath
     assert(test_interproc_1 != null)
     val w = new JimpleFlowdroidWrapper(test_interproc_1, PatchedFlowdroidCallGraph)
-    val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
     val transfer =  (cha:ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set()),cha)
     val config = SymbolicExecutorConfig(
@@ -186,7 +185,8 @@ class SymbolicExecutorSpec extends AnyFunSuite {
         new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
           ActivityLifecycle.init_first_callback,
           RxJavaSpec.call,
-          RxJavaSpec.subscribeDoesNotReturnNull
+          RxJavaSpec.subscribeDoesNotReturnNull,
+          RxJavaSpec.subscribeIsUnique
         )),cha)
       val config = SymbolicExecutorConfig(
         stepLimit = Some(60), w, transfer,
@@ -256,7 +256,8 @@ class SymbolicExecutorSpec extends AnyFunSuite {
         new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
           ActivityLifecycle.init_first_callback,
           RxJavaSpec.call,
-          RxJavaSpec.subscribeDoesNotReturnNull
+          RxJavaSpec.subscribeDoesNotReturnNull,
+          RxJavaSpec.subscribeIsUnique //TODO: why does adding this spec cause a witness???? Adding specs should strictly remove behavior.
         )),cha)
       val config = SymbolicExecutorConfig(
         stepLimit = Some(200), w, transfer,
@@ -321,7 +322,8 @@ class SymbolicExecutorSpec extends AnyFunSuite {
         new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
           ActivityLifecycle.init_first_callback,
           RxJavaSpec.call,
-          RxJavaSpec.subscribeDoesNotReturnNull
+          RxJavaSpec.subscribeDoesNotReturnNull,
+          RxJavaSpec.subscribeIsUnique
         )),cha)
       val config = SymbolicExecutorConfig(
         stepLimit = Some(200), w, transfer,
@@ -402,7 +404,8 @@ class SymbolicExecutorSpec extends AnyFunSuite {
       val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
       val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
         new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
-          RxJavaSpec.call
+          RxJavaSpec.call,
+          RxJavaSpec.subscribeIsUnique
         )),cha)
       val config = SymbolicExecutorConfig(
         stepLimit = Some(300), w, transfer,
@@ -423,7 +426,7 @@ class SymbolicExecutorSpec extends AnyFunSuite {
     makeApkWithSources(Map("MyFragment.java"->src), MkApk.RXBase, test)
   }
 
-  ignore("Test prove dereference of return from getActivity with subscribe non-null spec") {
+  test("Test prove dereference of return from getActivity with subscribe non-null spec") {
     //TODO: this test is currently timing out not sure if it will work or not
     val src =
       """
@@ -489,9 +492,9 @@ class SymbolicExecutorSpec extends AnyFunSuite {
       val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
       val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
         new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
-//          ActivityLifecycle.init_first_callback,
           RxJavaSpec.call,
-          RxJavaSpec.subscribeDoesNotReturnNull
+          RxJavaSpec.subscribeDoesNotReturnNull,
+          RxJavaSpec.subscribeIsUnique
         )),cha)
       val config = SymbolicExecutorConfig(
         stepLimit = Some(300), w, transfer,
