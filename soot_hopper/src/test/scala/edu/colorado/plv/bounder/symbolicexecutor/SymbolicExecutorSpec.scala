@@ -265,7 +265,7 @@ class SymbolicExecutorSpec extends AnyFunSuite {
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void lambda$onCreate$1$MyActivity(java.lang.Object)",31)
       val result = symbolicExecutor.executeBackward(query)
-      PrettyPrinting.dumpDebugInfo(result,"MkApk")
+      PrettyPrinting.dumpDebugInfo(result,"ProveFieldDerefWithSubscribe")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Proven)
     }
@@ -330,7 +330,7 @@ class SymbolicExecutorSpec extends AnyFunSuite {
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void lambda$onCreate$1$MyActivity(java.lang.Object)",31)
       val result = symbolicExecutor.executeBackward(query)
-      PrettyPrinting.dumpDebugInfo(result,"MkApk")
+      PrettyPrinting.dumpDebugInfo(result,"WitnessFieldDerefWithSubscribe")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Witnessed)
 
@@ -339,7 +339,7 @@ class SymbolicExecutorSpec extends AnyFunSuite {
     makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
   }
   test("Test prove dereference of return from getActivity") {
-    //TODO: this test is currently witnessed
+    //TODO: this test is currently witnessed but shouldn't be
     val src =
       """
         |package com.example.createdestroy;
@@ -414,7 +414,7 @@ class SymbolicExecutorSpec extends AnyFunSuite {
         ".*getActivity.*".r)
 
       val result = symbolicExecutor.executeBackward(query)
-      PrettyPrinting.dumpDebugInfo(result,"MkApk")
+      PrettyPrinting.dumpDebugInfo(result,"ProveSafeGetActivityWithSubscribe")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Proven)
 
