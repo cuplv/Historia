@@ -3,10 +3,12 @@ package edu.colorado.plv.bounder.lifestate
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.MessageType
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSFalse, LSPred, LSSpec, LSTrue, NI, Not, Or}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CmpOp, NullVal, PureExpr, PureVal}
-import upickle.default.{ReadWriter => RW, macroRW}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CmpOp, Equals, NullVal, PureExpr, PureVal}
 
-object LifeState {
+import scala.util.parsing.combinator._
+import upickle.default.{macroRW, ReadWriter => RW}
+
+object LifeState extends RegexParsers {
   var id = 0
   def nextLsVar():String = {
     val lsVar = "v" + id
@@ -28,6 +30,9 @@ object LifeState {
 
 
   val LSAnyVal = "_".r
+
+  case class LSConstraint(v1:String,op:CmpOp,v2:String )
+
   sealed trait LSPred {
     def contains(mt:MessageType,sig: (String, String)):Boolean
 
@@ -79,8 +84,15 @@ object LifeState {
   // A string of "_" means "don't care"
   // primitives are parsed as in java "null", "true", "false", numbers etc.
   case class I(mt: MessageType, signatures: Set[(String, String)], lsVars : List[String]) extends LSAtom {
-    def constVals:List[Option[PureExpr]] = lsVars.map{
-      case LifeState.LSConst(v) => Some(v)
+    def constVals(constraints: Set[LSConstraint]):List[Option[(CmpOp, PureExpr)]] = lsVars.map{
+      case LifeState.LSConst(v) => Some((Equals, v))
+      case LifeState.LSVar(v) =>
+        constraints.find(c => c.v1 == v || c.v2 == v) match {
+          case Some(LSConstraint(_, op, LifeState.LSConst(v2))) => Some(op,v2)
+          case Some(LSConstraint(LifeState.LSConst(v1), op, _)) => Some(op,v1)
+          case None => None
+          case c => throw new IllegalStateException(s"Malformed constraint: $c")
+        }
       case _ => None
     }
     private val sortedSig = signatures.toList.sorted
@@ -120,7 +132,7 @@ object LifeState {
   object NI{
     implicit val rw:RW[NI] = macroRW
   }
-  case class LSSpec(pred:LSPred, target: I)
+  case class LSSpec(pred:LSPred, target: I, rhsConstraints: Set[LSConstraint] = Set())
 
   // Class that holds a graph of possible predicates and alias relations between the predicates.
   // Generated from a fast pre analysis of the applications.
@@ -168,7 +180,7 @@ class SpecSpace(specs: Set[LSSpec]) {
     case LSFalse => Set()
   }
   private def allI(spec:LSSpec):Set[I] = spec match{
-    case LSSpec(pred, target) => allI(pred).union(allI(target))
+    case LSSpec(pred, target,_) => allI(pred).union(allI(target))
   }
   private val iset: Map[(MessageType, (String, String)), I] = {
     val allISpecs = specs.flatMap(allI)

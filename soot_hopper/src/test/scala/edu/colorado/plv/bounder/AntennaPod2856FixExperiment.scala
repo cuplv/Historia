@@ -18,10 +18,11 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
 //    val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
     val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod,soot.Unit](w,
       new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
+        FragmentGetActivityNullSpec.getActivityNonNull,
         //          ActivityLifecycle.init_first_callback,
         RxJavaSpec.call,
         RxJavaSpec.subscribeDoesNotReturnNull,
-        RxJavaSpec.subscribeIsUnique
+        RxJavaSpec.subscribeIsUniqueAndNonNull
       )),cha)
     val config = SymbolicExecutorConfig(
       stepLimit = Some(100), w,transfer,

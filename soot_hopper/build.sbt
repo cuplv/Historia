@@ -21,6 +21,7 @@ libraryDependencies += "org.scalatest" %% "scalatest-funsuite" % "3.2.2" % Test
 libraryDependencies += "org.scalaz" %% "scalaz-core" % "7.3.3" %"compile"
 libraryDependencies += "com.lihaoyi" %% "upickle" % "0.9.5"
 libraryDependencies += "com.github.pathikrit" % "better-files_2.13" % "3.9.1"
+libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2"
 
 libraryDependencies ++= {
   Seq("org.slf4j" % "slf4j-log4j12" % "1.7.30")

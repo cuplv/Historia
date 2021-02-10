@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSFalse, LSSpec, NI, Not, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSConstraint, LSFalse, LSSpec, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{Equals, NotEquals}
 
 object SpecSignatures {
@@ -38,6 +38,8 @@ object SpecSignatures {
     ("androidx.fragment.app.Fragment","androidx.fragment.app.FragmentActivity getActivity()")
   )
   val Fragment_get_activity_exit_null = I(CIExit, Fragment_getActivity_Signatures, "@null"::"f"::Nil)
+
+  val Fragment_get_activity_exit = I(CIExit, Fragment_getActivity_Signatures, "a"::"f"::Nil)
 
   val Fragment_onActivityCreated_Signatures = Set(
     ("android.app.DialogFragment","void onActivityCreated(android.os.Bundle)"),
@@ -151,6 +153,8 @@ object FragmentGetActivityNullSpec{
 //  val cond = Or(Not(SpecSignatures.Fragment_onActivityCreated_entry), SpecSignatures.Fragment_onDestroy_exit)
   val cond = NI(SpecSignatures.Fragment_onDestroy_exit, SpecSignatures.Fragment_onActivityCreated_entry)
   val getActivityNull = LSSpec(cond, SpecSignatures.Fragment_get_activity_exit_null)
+  val getActivityNonNull = LSSpec(Not(cond), SpecSignatures.Fragment_get_activity_exit,
+    Set(LSConstraint("a", NotEquals, "@null")))
 }
 
 object RxJavaSpec{
@@ -159,8 +163,8 @@ object RxJavaSpec{
     SpecSignatures.RxJava_unsubscribe_exit)
   val call = LSSpec(subUnsub, SpecSignatures.RxJava_call_entry)
   val subscribeDoesNotReturnNull = LSSpec(LSFalse, SpecSignatures.RxJava_subscribe_exit_null)
-  val subscribeIsUnique = LSSpec(Not(SpecSignatures.RxJava_subscribe_exit.copy(lsVars = "s"::Nil)),
-    SpecSignatures.RxJava_subscribe_exit
+  val subscribeIsUniqueAndNonNull = LSSpec(Not(SpecSignatures.RxJava_subscribe_exit.copy(lsVars = "s"::Nil)),
+    SpecSignatures.RxJava_subscribe_exit,Set(LSConstraint("s",NotEquals,"@null"))
   )
 }
 

@@ -18,6 +18,7 @@ class RXJavaSubscribe_TestApp extends AnyFunSuite{
     val w = new JimpleFlowdroidWrapper(apk,CHACallGraph)
     val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod,soot.Unit](w,
       new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
+        FragmentGetActivityNullSpec.getActivityNonNull,
         ActivityLifecycle.init_first_callback,
         RxJavaSpec.call,
         RxJavaSpec.subscribeDoesNotReturnNull

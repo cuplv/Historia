@@ -247,33 +247,36 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
 
 
     val postStatesByConstAssume: Set[(LSSpec,State)] = specsBySignature.flatMap{ (s:LSSpec) =>
-      val cv = s.target.constVals zip allVar
-      val definedCv: Seq[(PureExpr, RVal)] = cv.flatMap{
+      val cv = s.target.constVals(s.rhsConstraints) zip allVar
+      val definedCv: Seq[(PureExpr,CmpOp ,RVal)] = cv.flatMap{
         case (None,_) => None
         case (_,None) => None
-        case (Some(cv), Some(stateVar)) => Some((cv,stateVar))
+        case (Some((op,cv)), Some(stateVar)) => Some((cv,op,stateVar))
       }
       if(definedCv.isEmpty) {
         // Spec does not assume any constants
         Set((s,postState))
       } else {
+        // TODO: this has been changed so that if a spec exists,
+        //  we assume that the negation also exists or is just false
         // Constants are assumed, split into cases
         //    1. where all const matches rhs of lifestate rule and
         //    2. where at least one const does not match
         val posState: State = definedCv.foldLeft(postState) {
-          case (st, (pureExpr, stateVar)) =>
+          case (st, (pureExpr, op,stateVar)) =>
             val (vv, st1) = st.getOrDefine(stateVar)
-            st1.copy(pureFormula = st.pureFormula + PureConstraint(vv, Equals, pureExpr))
+            st1.copy(pureFormula = st.pureFormula + PureConstraint(vv, op, pureExpr))
         }
-        val negStates: Set[State] = definedCv.map {
-          case (pureExpr, stateVar) =>
-            val (vv, st1) = postState.getOrDefine(stateVar)
-            st1.copy(pureFormula = postState.pureFormula + PureConstraint(vv, NotEquals, pureExpr))
-        }.toSet
+//        val negStates: Set[State] = definedCv.map {
+//          case (pureExpr, stateVar) =>
+//            val (vv, st1) = postState.getOrDefine(stateVar)
+//            st1.copy(pureFormula = postState.pureFormula + PureConstraint(vv, NotEquals, pureExpr))
+//        }.toSet
 
-        val negSpec = s.copy(pred=Not(s.pred))
-        val notSpec: Set[(LSSpec, State)] = negStates.map((negSpec,_))
-        val out = notSpec.+((s,posState))
+//        val negSpec = s.copy(pred=Not(s.pred))
+//        val notSpec: Set[(LSSpec, State)] = negStates.map((negSpec,_))
+//        val out = notSpec.+((s,posState))
+        val out = Set((s,posState))
         out
       }
     }
@@ -285,7 +288,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     // For each applicable state and spec,
     //  instantiate ls variables in both the trace abstraction and abstract state
     postStatesByConstAssume.map {
-      case (LSSpec(pred, target), newPostState) =>
+      case (LSSpec(pred, target,_), newPostState) =>
         val parameterPairing: Seq[(String, Option[RVal])] = target.lsVars zip allVar
 
         // Define variables in rule in the state
