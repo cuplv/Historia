@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder
 
-import edu.colorado.plv.bounder.BounderUtil.Proven
+import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
@@ -10,30 +10,57 @@ import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
 
 class AntennaPod2856FixExperiment  extends AnyFunSuite{
-  test("Prove location in stack trace is unreachable under a simple spec.") {
-    //TODO: currently failing
-    val apk = getClass.getResource("/Antennapod-fix-2856-app-free-debug.apk").getPath
-    assert(apk != null)
-    val w = new JimpleFlowdroidWrapper(apk,CHACallGraph)
-    val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod,soot.Unit](w,
-      new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
-        FragmentGetActivityNullSpec.getActivityNonNull,
-        RxJavaSpec.call,
-        RxJavaSpec.subscribeDoesNotReturnNull,
-        RxJavaSpec.subscribeIsUniqueAndNonNull
-      )),cha)
+  private val apk = getClass.getResource("/Antennapod-fix-2856-app-free-debug.apk").getPath
+  assert(apk != null)
+  private val w = new JimpleFlowdroidWrapper(apk,CHACallGraph)
+  private val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod,soot.Unit](w,
+    new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
+      FragmentGetActivityNullSpec.getActivityNonNull,
+      RxJavaSpec.call,
+      RxJavaSpec.subscribeDoesNotReturnNull,
+      RxJavaSpec.subscribeIsUniqueAndNonNull
+    )),cha)
+
+  test("Prove updateUI is not reachable where getActivity returns null under a simple spec.") {
     val config = SymbolicExecutorConfig(
       stepLimit = Some(300), w,transfer,
-      component = Some(List("de\\.danoeh\\.antennapod\\.fragment\\.ExternalPlayerFragment.*")))
+      component = Some(List("de\\.danoeh\\.antennapod\\.fragment.*")))
     val symbolicExecutor = config.getSymbolicExecutor
-    val query = Qry.makeCallinReturnNonNull(symbolicExecutor, w,
+    val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
       "de.danoeh.antennapod.fragment.ExternalPlayerFragment",
       "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)",200,
       callinMatches = ".*getActivity.*".r)
     val result = symbolicExecutor.executeBackward(query)
-    assert(BounderUtil.interpretResult(result) == Proven)
-
     PrettyPrinting.dumpDebugInfo(result, "antennapod_fix_2856")
+    assert(BounderUtil.interpretResult(result) == Proven)
+  }
+  test("updateUI is reachable under a simple spec.") {
+    val config = SymbolicExecutorConfig(
+      stepLimit = Some(300), w,transfer,
+      component = Some(List("de\\.danoeh\\.antennapod\\.fragment.*")))
+    val symbolicExecutor = config.getSymbolicExecutor
+    val query = Qry.makeReach(symbolicExecutor, w,
+      "de.danoeh.antennapod.fragment.ExternalPlayerFragment",
+      "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)",200)
+    val result = symbolicExecutor.executeBackward(query)
+    PrettyPrinting.dumpDebugInfo(result, "antennapod_fix_2856")
+    assert(BounderUtil.interpretResult(result) == Witnessed)
+  }
+  test("GetActivity may return null in certain locations"){
+    //TODO: implement synthetic callbacks when they are not defined
+    // how to handle dynamic dispatch?
+    val config = SymbolicExecutorConfig(
+      stepLimit = Some(50), w,transfer,
+      component = Some(List("de\\.danoeh\\.antennapod\\.fragment.*")))
+    val symbolicExecutor = config.getSymbolicExecutor
+    val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
+      "de.danoeh.antennapod.fragment.CompletedDownloadsFragment",
+      "void onViewCreated(android.view.View,android.os.Bundle)",112,
+      callinMatches = ".*getActivity.*".r)
+    val result = symbolicExecutor.executeBackward(query)
+
+    PrettyPrinting.dumpDebugInfo(result, "antennapod_witness_2856")
+    assert(BounderUtil.interpretResult(result) == Witnessed)
   }
 
 }

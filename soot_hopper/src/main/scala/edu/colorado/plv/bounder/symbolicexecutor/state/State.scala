@@ -1,9 +1,9 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.solver.StateSolver
-import edu.colorado.plv.bounder.ir.{AppLoc, BoolConst, CallbackMethodInvoke, CallbackMethodReturn, IntConst, InternalMethodInvoke, InternalMethodReturn, LVal, Loc, LocalWrapper, MessageType, NullConst, RVal, StringConst}
+import edu.colorado.plv.bounder.ir.{AppLoc, BoolConst, CallbackMethodInvoke, CallbackMethodReturn, ClassConst, IntConst, InternalMethodInvoke, InternalMethodReturn, LVal, Loc, LocalWrapper, MessageType, NullConst, RVal, StringConst}
 import edu.colorado.plv.bounder.lifestate.LifeState
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSPred, NI, Not, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAnyVal, LSPred, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state.State.findIAF
 import upickle.default.{macroRW, ReadWriter => RW}
 
@@ -265,6 +265,7 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
       Some(StringVal(v))
     case NullConst => Some(NullVal)
     case BoolConst(v) => Some(BoolVal(v))
+    case ClassConst(clazz) => Some(ClassVal(clazz))
     case l =>
       println(l)
       ???
@@ -434,6 +435,7 @@ case object NullVal extends PureVal{
 case class IntVal(v : Int) extends PureVal(v)
 case class BoolVal(v : Boolean) extends PureVal(v)
 case class StringVal(v : String) extends PureVal(v)
+case class ClassVal(name:String) extends PureVal(name)
 case object TopVal extends PureVal(null)
 
 sealed trait TypeConstraint extends PureVal

@@ -145,6 +145,8 @@ trait StateSolver[T] {
     (pureVal,op) match {
       case (NullVal,Equals) => mkIsNull(rhs)
       case (NullVal,NotEquals) => mkNot(mkIsNull(rhs))
+      case (v,Equals) if v == pureVal => mkBoolVal(true)
+      case (ClassVal(_),_) => mkBoolVal(true) //TODO: add class vals if necessary for precision
       case v =>
         println(v)
         ???

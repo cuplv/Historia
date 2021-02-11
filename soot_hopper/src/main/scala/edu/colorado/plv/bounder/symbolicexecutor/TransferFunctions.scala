@@ -552,8 +552,13 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
           ???
         case None => Set(state)
       }
-    case AssignCmd(lhs:LocalWrapper, CaughtException(n), _) =>
+    case AssignCmd(_:LocalWrapper, CaughtException(_), _) =>
       Set[State]() //TODO: handle exceptional control flow
+    case AssignCmd(lhs:LocalWrapper, Binop(_,_,_), _) =>
+      state.get(lhs) match{
+        case Some(_) => ??? //TODO: handle binary operators
+        case None => Set(state) // Can ignore if lhs not in state
+      }
     case c =>
       println(c)
       ???

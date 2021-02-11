@@ -29,7 +29,7 @@ class RXJavaSubscribe_TestApp extends AnyFunSuite{
       component = Some(List("example.com.rxjavasubscribebug.PlayerFragment.*")))
     val symbolicExecutor = config.getSymbolicExecutor
 
-    val query = Qry.makeCallinReturnNonNull(symbolicExecutor, w,
+    val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
       "example.com.rxjavasubscribebug.PlayerFragment",
       "void lambda$onActivityCreated$1$PlayerFragment(java.lang.Object)",64,
       callinMatches = ".*getActivity.*".r)

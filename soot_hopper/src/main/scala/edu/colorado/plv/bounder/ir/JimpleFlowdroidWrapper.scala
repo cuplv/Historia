@@ -100,7 +100,7 @@ object JimpleFlowdroidWrapper{
       LocalWrapper(local.getName, JimpleFlowdroidWrapper.stringNameOfType(local.getType))
     case cast: JCastExpr =>
       val castType = JimpleFlowdroidWrapper.stringNameOfType(cast.getCastType)
-      val v = makeRVal(cast.getOp).asInstanceOf[LocalWrapper]
+      val v = makeRVal(cast.getOp)
       Cast(castType, v)
     case mult: JMulExpr =>
       val op1 = makeRVal(mult.getOp1)
@@ -159,7 +159,8 @@ object JimpleFlowdroidWrapper{
     case a : NewArrayExpr =>
       NewCommand(JimpleFlowdroidWrapper.stringNameOfType(a.getType))
     case a : ClassConstant =>
-      ClassConst(JimpleFlowdroidWrapper.stringNameOfType(a.getType))
+      val t = IRParser.parseReflectiveRef(a.getValue)
+      ClassConst(t.sootString)
     case l : JLengthExpr =>
       ArrayLength(makeRVal(l.getOp).asInstanceOf[LocalWrapper])
 

@@ -105,7 +105,7 @@ object ThrowCmd{
   implicit var rw:RW[ThrowCmd] = macroRW
 }
 
-case class Cast(castT:String, local: LocalWrapper) extends RVal {
+case class Cast(castT:String, local: RVal) extends RVal {
   override def isConst: Boolean = false
 }
 object Cast{
@@ -134,12 +134,6 @@ case object Eq extends BinaryOperator
 case object Ne extends BinaryOperator
 case object Ge extends BinaryOperator
 
-
-//abstract class MethodWrapper[M,C](decalringClass : String,
-//                                  returnType: String,
-//                                  simpleName:String,
-//                                  params:List[String], wrapper:IRWrapper[M,C])
-
 // Things that can be used as expressions
 trait RVal{
   def isConst:Boolean
@@ -149,7 +143,7 @@ object RVal{
     macroRW[ConstVal],LVal.rw, macroRW[BoolConst], Invoke.rw, macroRW[InstanceOf], macroRW[CaughtException],
     macroRW[StringConst],macroRW[IntConst],macroRW[NewCommand],macroRW[ClassConst], macroRW[ArrayLength],
     macroRW[Cast],macroRW[Binop],macroRW[NullConst.type]
-  )//===
+  )
 }
 // New only has type, constructor parameters go to the <init> method
 case class NewCommand(className: String) extends RVal {

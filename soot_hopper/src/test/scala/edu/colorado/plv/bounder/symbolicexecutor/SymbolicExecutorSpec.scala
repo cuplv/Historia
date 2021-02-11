@@ -416,7 +416,7 @@ class SymbolicExecutorSpec extends AnyFunSuite {
         stepLimit = Some(300), w, transfer,
         component = Some(List("com.example.createdestroy.MyFragment.*")))
       val symbolicExecutor = config.getSymbolicExecutor
-      val query = Qry.makeCallinReturnNonNull(symbolicExecutor, w,
+      val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
         "com.example.createdestroy.MyFragment",
         "void lambda$onActivityCreated$1$MyFragment(java.lang.Object)",43,
         ".*getActivity.*".r)
@@ -506,7 +506,7 @@ class SymbolicExecutorSpec extends AnyFunSuite {
         stepLimit = Some(300), w, transfer,
         component = Some(List("com.example.createdestroy.MyFragment.*")))
       val symbolicExecutor = config.getSymbolicExecutor
-      val query = Qry.makeCallinReturnNonNull(symbolicExecutor, w,
+      val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
         "com.example.createdestroy.MyFragment",
         "void lambda$onActivityCreated$1$MyFragment(java.lang.Object)",43,
         ".*getActivity.*".r)

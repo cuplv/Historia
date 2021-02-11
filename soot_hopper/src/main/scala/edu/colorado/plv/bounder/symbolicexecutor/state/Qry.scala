@@ -11,7 +11,7 @@ object Qry {
   def makeReach[M,C](ex: SymbolicExecutor[M,C],
                      w:IRWrapper[M,C],
                      className:String,
-                     methodName:String, line:Int):List[Qry] = {
+                     methodName:String, line:Int):Set[Qry] = {
     val locs = w.findLineInMethod(className, methodName,line)
     assert(locs.nonEmpty, "found no locations")
     val targetLoc = locs.head
@@ -20,15 +20,15 @@ object Qry {
       val queryStack = List(CallStackFrame(method, None,Map()))
       val state0 = State.topState.copy(callStack = queryStack)
       SomeQry(state0, targetLoc)
-    }
+    }.toSet
   }
 
-  def makeCallinReturnNonNull[M,C](ex: SymbolicExecutor[M,C],
-                                   w:IRWrapper[M,C],
-                                   className:String,
-                                   methodName:String,
-                                   line:Int,
-                                   callinMatches:Regex):List[Qry] ={
+  def makeCallinReturnNull[M,C](ex: SymbolicExecutor[M,C],
+                                w:IRWrapper[M,C],
+                                className:String,
+                                methodName:String,
+                                line:Int,
+                                callinMatches:Regex):Set[Qry] ={
     val locs = w.findLineInMethod(className, methodName,line)
     val callinLocals = locs.flatMap(a => {
       w.cmdAtLocation(a) match{
@@ -50,13 +50,13 @@ object Qry {
       val (pv,state1) = state.getOrDefine(local)
       val state2 = state1.copy(pureFormula = Set(PureConstraint(pv, Equals, NullVal)))
       SomeQry(state2, location)
-    }
+    }.toSet
   }
 
   def makeReceiverNonNull[M,C](ex: SymbolicExecutor[M,C],
                                w:IRWrapper[M,C],
                                className:String,
-                               methodName:String, line:Int):List[Qry] = {
+                               methodName:String, line:Int):Set[Qry] = {
     val locs = w.findLineInMethod(className, methodName,line)
 
     val derefLocs: Iterable[AppLoc] = locs.filter(a => w.cmdAtLocation(a) match {
@@ -81,7 +81,7 @@ object Qry {
 
       val (pureVar, state1) = state0.getOrDefine(varname)
       SomeQry(state1.copy(pureFormula = Set(PureConstraint(pureVar, Equals, NullVal))), derefLoc)
-    }
+    }.toSet
   }
 
 

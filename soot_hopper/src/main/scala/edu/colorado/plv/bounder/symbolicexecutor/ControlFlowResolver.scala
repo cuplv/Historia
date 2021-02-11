@@ -102,10 +102,18 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       case _ => false
     }
   }
-  def relevantHeap(m: MethodLoc, state: State): Boolean = {
+  def relevantHeap(m: MethodLoc, state: State): Boolean = { //TODO: static field
     def canModifyHeap(c : CmdWrapper) : Boolean = c match{
       case AssignCmd(fr:FieldReference, _,_) => fieldCanPt(fr, state)
       case AssignCmd(_,fr:FieldReference,_) => fieldCanPt(fr,state)
+      case AssignCmd(StaticFieldReference(clazz, name, _),_,_) => state.heapConstraints.exists{
+        case (StaticPtEdge(clazz2,name2),_) => clazz == clazz2 && name == name2
+        case _ => false
+      }
+      case AssignCmd(_,StaticFieldReference(clazz, name, _),_) => state.heapConstraints.exists{
+        case (StaticPtEdge(clazz2,name2),_) => clazz == clazz2 && name == name2
+        case _ => false
+      }
       case _:AssignCmd => false
       case _:ReturnCmd => false
       case _:InvokeCmd => false // This method only counts commands that directly modify the heap
