@@ -232,8 +232,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
         case InvokeCmd(i, loc) => {
           val unresolvedTargets =
             wrapper.makeInvokeTargets(loc)
-          val resolved: Set[Loc] = resolver.resolveCallLocation(unresolvedTargets) // .filter(relevantMethod(_, state))
-          if(resolved.forall(m => !relevantMethod(m,state))) //TODO:
+          val resolved: Set[Loc] = resolver.resolveCallLocation(unresolvedTargets)
+          if(resolved.forall(m => !relevantMethod(m,state)))
             List(l.copy(isPre = true)) // skip if all method targets are not relevant
           else {
             val irrelevantCallinsToMerge: Set[Loc] = resolved.filter(irrelevantCallinInvoke(_,state))
@@ -242,7 +242,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
               irrelevantCallinsToMerge.foldLeft(v){
                 case (CallinMethodReturn(clazz,_), other@CallinMethodReturn(clazz2, _)) if wrapper.isSuperClass(clazz2,clazz) =>
                   other
-                case (cur,other) =>
+                case (cur,_) =>
                   cur
               }
             }
@@ -270,11 +270,11 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       List(CallinMethodInvoke(clazz,name))
     case (CallinMethodInvoke(_, _), CallStackFrame(_,Some(returnLoc@AppLoc(_,_,true)),_)::_) =>
       List(returnLoc)
-    case (CallbackMethodInvoke(fmwClazz, fmwName, loc), _) =>
+    case (CallbackMethodInvoke(_, _, _), _) =>
       val callbacks = resolver.getCallbacks
       val res: Seq[Loc] = callbacks.flatMap(callback => {
         val locCb = wrapper.makeMethodRetuns(callback)
-        locCb.flatMap{case AppLoc(method,line,isPre) => resolver.resolveCallbackExit(method, Some(line))}
+        locCb.flatMap{case AppLoc(method,line,_) => resolver.resolveCallbackExit(method, Some(line))}
       }).toList
       val componentFiltered = res.filter(callbackInComponent)
       val res1 = componentFiltered.filter(relevantMethod(_,state))
@@ -285,10 +285,10 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       val m: Option[MethodLoc] = wrapper.findMethodLoc(fmwClazz, fmwName)
       m.map(m2 =>
         wrapper.appCallSites(m2,resolver).map(v => v.copy(isPre = true))).getOrElse(List())
-    case (InternalMethodReturn(clazz,name,loc), state) =>
+    case (InternalMethodReturn(_,_,loc), _) =>
       wrapper.makeMethodRetuns(loc)
     case (InternalMethodInvoke(_, _, _), CallStackFrame(_,Some(returnLoc:AppLoc),_)::_) => List(returnLoc)
-    case (InternalMethodInvoke(clazz, name, loc), _) =>
+    case (InternalMethodInvoke(_, _, loc), _) =>
       val locations = wrapper.appCallSites(loc, resolver)
         .filter(loc => !resolver.isFrameworkClass(loc.containingMethod))
       locations.map(loc => loc.copy(isPre = true))

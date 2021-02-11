@@ -340,9 +340,17 @@ trait StateSolver[T] {
     // The only constraint we get from the heap is that domain elements must be distinct
     // e.g. a^.f -> b^ * c^.f->d^ means a^ != c^
     // alternatively a^.f ->b^ * c^.g->d^ does not mean a^!=c^
-    val fields = heap.groupBy({ case (FieldPtEdge(_, fieldName), _) => fieldName })
+    val fields = heap.groupBy{
+      case (FieldPtEdge(_, fieldName), _) => fieldName
+      case (StaticPtEdge(_,_), _) => "@static"
+      case (ArrayPtEdge(_,_),_) => "@array"
+    }
     val heapAst = fields.foldLeft(mkBoolVal(true)) { (acc, v) =>
-      val pvList = v._2.map { case (FieldPtEdge(pv, _), _) => pv }
+      val pvList = v._2.flatMap {
+        case (FieldPtEdge(pv, _), _) => Some(pv)
+        case (StaticPtEdge(_,_),_) => None
+        case (ArrayPtEdge(pv,_),_) => None //TODO: array encoding
+      }
       mkAnd(acc, mkDistinct(pvList))
     }
     heapAst

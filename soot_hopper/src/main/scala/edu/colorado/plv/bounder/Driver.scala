@@ -27,6 +27,7 @@ object Driver {
         programName("Bounder"),
         opt[String]('m',"mode").required().text("run mode [dottree, ...]").action{
           case ("dottree",c) => c.copy(mode = DotWitnessTree)
+          case (m,_) => throw new IllegalArgumentException(s"Unsupported mode $m")
         },
         opt[String]('a', "apkFile").required().text("Compiled Android application").action{
           case (v,c) => c.copy(apkPath = v)

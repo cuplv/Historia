@@ -161,6 +161,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val cmd = w.cmdAtLocation(al) match{
         case InvokeCmd(inv : Invoke, _) => inv
         case AssignCmd(_, inv: Invoke, _) => inv
+        case c => throw new IllegalStateException(s"Malformed invoke command $c")
       }
       val receiverOption: Option[RVal] = cmd match{
         case v:VirtualInvoke => Some(v.target)
@@ -417,7 +418,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val state1 = state.clearLVal(fakeRetLocal)
       Set(retv.map(state1.defineAs(v, _)).getOrElse(state))
     case ReturnCmd(None, _) => Set(state)
-    case AssignCmd(lhs:LocalWrapper, FieldReference(base, fieldtype, declType, fieldName), _) =>
+    case AssignCmd(lhs:LocalWrapper, FieldReference(base, fieldType, _, fieldName), _) =>
       // x = y.f
       state.get(lhs) match{
         case Some(lhsV) =>{
@@ -429,7 +430,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
           else {
             Set(state2.copy(
               heapConstraints = state2.heapConstraints + (heapCell -> lhsV),
-              pureFormula = state2.pureFormula + PureConstraint(lhsV, TypeComp, SubclassOf(fieldtype))
+              pureFormula = state2.pureFormula + PureConstraint(lhsV, TypeComp, SubclassOf(fieldType))
             ))
           }
         }
@@ -446,7 +447,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
           val canAlias = pureCanAlias(pv,base.localType,state2)
           fieldEq && canAlias
         case other =>
-          println(other)
           false
       }
 
@@ -482,7 +482,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     case AssignCmd(target :LocalWrapper, source, _) if source.isConst =>
       state.get(target) match{
         case Some(v) =>
-//          val src: Set[(PureExpr, State)] = enumerateAliasesForRVal(source, state)
           val src = Set(state.getOrDefine2(source))
           src.map{
             case (pexp, s2) => s2.copy(pureFormula = s2.pureFormula + PureConstraint(v, Equals, pexp)).clearLVal(target)
@@ -509,11 +508,18 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       cmdTransfer(AssignCmd(l,local,cmdloc),state1)
     case AssignCmd(l:LocalWrapper, StaticFieldReference(declaringClass, fname, containedType), _) =>
       if(state.containsLocal(l)){
-        ???
+        val v = state.get(l).get
+        val state1 = state.clearLVal(l)
+        Set(state1.copy(heapConstraints = state1.heapConstraints + (StaticPtEdge(declaringClass,fname) -> v),
+          pureFormula = state1.pureFormula + PureConstraint(v, TypeComp, SubclassOf(containedType))
+        ))
       }else Set(state)
-    case AssignCmd(StaticFieldReference(declaringClass,fieldName,containedType), l,_) =>
-      if(state.heapConstraints.contains(StaticPtEdge(declaringClass,fieldName))){
-        ???
+    case AssignCmd(StaticFieldReference(declaringClass,fieldName,_), l,_) =>
+      val edge = StaticPtEdge(declaringClass, fieldName)
+      if(state.heapConstraints.contains(edge)){
+        val v = state.heapConstraints(edge)
+        val state1 = state.defineAs(l, v)
+        Set(state1.copy(heapConstraints = state1.heapConstraints - edge))
       }else Set(state)
     case NopCmd(_) => Set(state)
     case ThrowCmd(v) => Set() //TODO: implement exceptional control flow
@@ -546,6 +552,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
           ???
         case None => Set(state)
       }
+    case AssignCmd(lhs:LocalWrapper, CaughtException(n), _) =>
+      Set[State]() //TODO: handle exceptional control flow
     case c =>
       println(c)
       ???
@@ -576,8 +584,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         case (Ne,true) => state1.copy(pureFormula = state1.pureFormula + PureConstraint(v1Val, Equals, v2Val))
         case _ => state
       })
-    case Binop(v, Eq, lw:LocalWrapper) if v.isConst => assumeInState(Binop(lw,Eq,v),state, negate)
-    case Binop(v, Ne, lw:LocalWrapper) if v.isConst => assumeInState(Binop(lw,Eq,v),state, negate)
     case v =>
       throw new IllegalStateException(s"Invalid rval for assumeInState: $v")
   }

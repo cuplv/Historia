@@ -131,6 +131,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       val nextQry = liveQueries.flatMap {
         case p@PathNode(qry: SomeQry, _, None) =>
           executeStep(qry).map((p,_))
+        case _ => throw new IllegalStateException()
       }
 
       val nextPathNode = nextQry.map{
@@ -207,6 +208,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       val nextQry = qrySet.map{
         case succ@PathNode(qry@SomeQry(_,_), _,_) => executeStep(qry).map(PathNode(_,Some(succ), None))
         case PathNode(BottomQry(_,_), _,_) => Set()
+        case PathNode(WitnessedQry(_,_),_,_) => Set()
       }
       executeBackwardLimitKeepAll(nextQry.flatten, limit - 1, qrySet.filter(_.qry.isInstanceOf[BottomQry]))
     }else {
@@ -234,5 +236,6 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
         })
       }).toSet
     case BottomQry(_,_) => Set()
+    case WitnessedQry(_,_) => Set()
   }
 }

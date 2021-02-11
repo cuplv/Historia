@@ -179,8 +179,13 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
   private def heapSwapPv(oldPv : PureVar, newPv : PureVar, hv: (HeapPtEdge, PureExpr)):(HeapPtEdge, PureExpr) = hv match{
     case (FieldPtEdge(pv, fieldName), pe) =>
       (FieldPtEdge(pureExprSwap(oldPv, newPv, pv), fieldName), pureExprSwap(oldPv, newPv, pe))
+    case (StaticPtEdge(clazz,fname), pe) =>
+      (StaticPtEdge(clazz,fname), pureExprSwap(oldPv,newPv,pe))
+    case (ArrayPtEdge(base, index), pe) =>
+      (ArrayPtEdge(pureExprSwap(oldPv,newPv, base), pureExprSwap(oldPv,newPv,index)),pureExprSwap(oldPv,newPv,pe))
   }
-  private def pureSwapPv(oldPv : PureVar, newPv : PureVar, pureConstraint: PureConstraint):PureConstraint = pureConstraint match{
+  private def pureSwapPv(oldPv : PureVar, newPv : PureVar,
+                         pureConstraint: PureConstraint):PureConstraint = pureConstraint match{
     case PureConstraint(lhs, op, rhs) =>
       PureConstraint(pureExprSwap(oldPv, newPv, lhs),op, pureExprSwap(oldPv, newPv, rhs))
   }
@@ -272,6 +277,9 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
       val cstail = if (callStack.isEmpty) Nil else callStack.tail
       this.copy(callStack = csheadNew::cstail,
         pureFormula = pureFormula + PureConstraint(pureExpr, TypeComp, SubclassOf(localType)))
+    case v if v.isConst =>
+      val v2 = get(v).get
+      this.copy(pureFormula = this.pureFormula + PureConstraint(v2, Equals, pureExpr))
     case v =>
       println(v)
       ???

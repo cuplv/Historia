@@ -1,5 +1,6 @@
 package edu.colorado.plv.bounder
 
+import edu.colorado.plv.bounder.BounderUtil.Proven
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
@@ -14,18 +15,15 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
     val apk = getClass.getResource("/Antennapod-fix-2856-app-free-debug.apk").getPath
     assert(apk != null)
     val w = new JimpleFlowdroidWrapper(apk,CHACallGraph)
-//    val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
-//    val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
     val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod,soot.Unit](w,
       new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
         FragmentGetActivityNullSpec.getActivityNonNull,
-        //          ActivityLifecycle.init_first_callback,
         RxJavaSpec.call,
         RxJavaSpec.subscribeDoesNotReturnNull,
         RxJavaSpec.subscribeIsUniqueAndNonNull
       )),cha)
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(100), w,transfer,
+      stepLimit = Some(300), w,transfer,
       component = Some(List("de\\.danoeh\\.antennapod\\.fragment\\.ExternalPlayerFragment.*")))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = Qry.makeCallinReturnNonNull(symbolicExecutor, w,
@@ -33,6 +31,7 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
       "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)",200,
       callinMatches = ".*getActivity.*".r)
     val result = symbolicExecutor.executeBackward(query)
+    assert(BounderUtil.interpretResult(result) == Proven)
 
     PrettyPrinting.dumpDebugInfo(result, "antennapod_fix_2856")
   }

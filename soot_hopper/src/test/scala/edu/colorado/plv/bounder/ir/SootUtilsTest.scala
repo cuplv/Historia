@@ -68,13 +68,12 @@ class SootUtilsTest extends AnyFunSuite {
 
   test("iterate transitions in real apk onPause"){
 
-    val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath()
+    val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath
     assert(test_interproc_1 != null)
     val w = new JimpleFlowdroidWrapper(test_interproc_1, FlowdroidCallGraph)
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
-//    val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
     val testSpec = LSSpec(NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
-      SpecSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
+      SpecSignatures.Activity_onPause_entry)
     val transfer = (cha:ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set(testSpec)),cha)
     val config: SymbolicExecutorConfig[SootMethod, soot.Unit] = SymbolicExecutorConfig(
@@ -96,7 +95,6 @@ class SootUtilsTest extends AnyFunSuite {
     assert(entryloc.isDefined)
 
     println("---")
-    val pv = PureVar(0)
     val retPause = iterPredUntil(Set(l), symbolicExecutor.controlFlowResolver, {
       case CallbackMethodReturn(_,name,_,_) if name.contains("onPause") => true
       case _ => false
@@ -133,6 +131,5 @@ class SootUtilsTest extends AnyFunSuite {
       case l => false
     },State.topState, 12)
     assert(entryloc.isDefined)
-
   }
 }

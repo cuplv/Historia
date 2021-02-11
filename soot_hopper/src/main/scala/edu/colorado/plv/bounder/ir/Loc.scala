@@ -65,6 +65,7 @@ object LineLoc{
     json => json match {
       case ujson.Num(v) => TestIRLineLoc (v.intValue)
       case ujson.Str(v) => TestIRLineLoc (v.toInt)
+      case v => throw new IllegalArgumentException(s"Cannot parse $v as LineLoc")
     }
   )
 }
