@@ -2,6 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import java.net.URL
 
+import better.files.Resource
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodReturn, IRWrapper, InternalMethodReturn, JimpleFlowdroidWrapper, JimpleMethodLoc, LineLoc, Loc, MethodLoc, UnresolvedMethodTarget}
 
 import scala.io.Source
@@ -16,7 +17,7 @@ trait AppCodeResolver {
   def getCallbacks: Set[MethodLoc]
 }
 object FrameworkExtensions{
-  private val url: URL = getClass.getResource("/FrameworkExtensions.txt")
+  private val url = Resource.getUrl("FrameworkExtensions.txt")
   protected val frameworkExtPath = url.getPath
   val extensionStrings: List[String] = {
     val source = Source.fromFile(frameworkExtPath)

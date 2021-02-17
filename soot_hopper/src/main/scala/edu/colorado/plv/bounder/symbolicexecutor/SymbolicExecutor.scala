@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import com.microsoft.z3.Context
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, IRWrapper, Loc}
-import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, NoTypeSolving, SetInclusionTypeSolving, StateTypeSolving, Z3StateSolver}
+import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, NoTypeSolving, StateTypeSolving, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, Qry, SomeQry, WitnessedQry}
 import soot.SootMethod
 
@@ -34,7 +34,7 @@ case class SymbolicExecutorConfig[M,C](stepLimit: Option[Int],
                                        transfer : ClassHierarchyConstraints => TransferFunctions[M,C],
                                        printProgress : Boolean = sys.env.getOrElse("DEBUG","false").toBoolean,
                                        z3Timeout : Option[Int] = None,
-                                       component : Option[List[String]] = None,
+                                       component : Option[Seq[String]] = None,
                                        stateTypeSolving: StateTypeSolving = NoTypeSolving
                                       ){
   def getSymbolicExecutor =
@@ -59,7 +59,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   val appCodeResolver = new DefaultAppCodeResolver[M,C](config.w)
   def getAppCodeResolver = appCodeResolver
   val controlFlowResolver =
-    new ControlFlowResolver[M,C](config.w,appCodeResolver, cha, config.component)
+    new ControlFlowResolver[M,C](config.w,appCodeResolver, cha, config.component.map(_.toList))
   def getControlFlowResolver = controlFlowResolver
   val stateSolver = new Z3StateSolver(cha)
   /**
@@ -93,63 +93,6 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     def apply(loc:Loc):Option[SubsumableLocation] = unapply(loc)
   }
 
-  @tailrec
-  final def executeBackwardLimitSubsumeAll(qrySet: Set[PathNode], limit:Int,
-                                           refutedSubsumedOrWitnessed: Set[PathNode] = Set(),
-                                           visited:Map[SubsumableLocation,Set[PathNode]] = Map()):Set[PathNode] = {
-
-    if (config.printProgress){
-      println(s"Steps left until limit: $limit queries: ${qrySet.size}")
-    }
-    if(qrySet.isEmpty || qrySet.exists(p => p.qry.isInstanceOf[WitnessedQry]) || 0 >= limit){
-      refutedSubsumedOrWitnessed ++ qrySet
-    }else {
-      // Split queries into live queries(true) and refuted/witnessed/subsumed(false)
-      val queriesByType: Map[Boolean, Set[PathNode]] = qrySet.groupBy{
-        case PathNode(_:SomeQry, _,None) => true
-        case p@PathNode(_:SomeQry, _,Some(_)) =>
-          false
-        case PathNode(_:BottomQry,_,_) => false
-        case PathNode(_:WitnessedQry,_,_) => false
-      }
-
-      val liveQueries: Set[PathNode] = queriesByType.getOrElse(true, Set())
-      // add new visited to old visited
-      // filter out locations that we don't want to consider for subsumption
-      val newVisited: MapView[SubsumableLocation, Set[PathNode]] = liveQueries
-        .flatMap(pathNode => SwapLoc(pathNode.qry.loc)
-          .map((_,pathNode))).groupBy(_._1).view.mapValues(_.map(_._2))
-      val nextVisited = (visited ++ newVisited).map {
-        case (k, v) => k -> v.union(visited.getOrElse(k, Set()))
-      }
-
-      // collect dead queries
-      val newRefutedSubsumedOrWitnessed = refutedSubsumedOrWitnessed ++
-        queriesByType.getOrElse(false,Set())
-
-      // execute step on live queries
-      val nextQry = liveQueries.flatMap {
-        case p@PathNode(qry: SomeQry, _, None) =>
-          executeStep(qry).map((p,_))
-        case _ => throw new IllegalStateException()
-      }
-
-      val nextPathNode = nextQry.map{
-        case (parent,q@SomeQry(_,_)) =>
-          // Check subsumption for live queries
-          val subsumingState = isSubsumed(q, nextVisited)
-          PathNode(q, succ = Some(parent), subsumed = subsumingState)
-        case (parent,q) =>
-          // No subsumption check for Witnessed or Refuted queries
-          PathNode(q, succ = Some(parent), subsumed = None)
-      }
-
-      executeBackwardLimitSubsumeAll(nextPathNode,
-        limit - 1,
-        newRefutedSubsumedOrWitnessed,
-        nextVisited)
-    }
-  }
   def isSubsumed(qry: Qry, nVisited: Map[SubsumableLocation,Set[PathNode]]):Option[PathNode] = qry match{
     case SomeQry(state,SwapLoc(loc)) if nVisited.contains(loc) =>
       nVisited(loc).find(a => {

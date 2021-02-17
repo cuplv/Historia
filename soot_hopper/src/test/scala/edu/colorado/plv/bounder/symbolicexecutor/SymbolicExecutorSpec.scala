@@ -30,7 +30,6 @@ class SymbolicExecutorSpec extends AnyFunSuite {
     val result: Set[PathNode] = symbolicExecutor.executeBackward(query)
     assert(result.size == 1)
     assert(result.iterator.next.qry.isInstanceOf[BottomQry])
-//    PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/reftest.dot")
     PrettyPrinting.dumpDebugInfo(result, "test_interproc_1_derefSafe")
   }
 
@@ -432,7 +431,6 @@ class SymbolicExecutorSpec extends AnyFunSuite {
   }
 
   test("Test prove dereference of return from getActivity with subscribe non-null spec") {
-    //TODO: this test is currently timing out not sure if it will work or not
     val src =
       """
         |package com.example.createdestroy;

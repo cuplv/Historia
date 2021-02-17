@@ -2,8 +2,8 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, StateSolver}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, FieldPtEdge, HeapPtEdge, LSPure, PureVar, State, StaticPtEdge}
+import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
+import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, FieldPtEdge, LSPure, PureVar, State, StaticPtEdge}
 import scalaz.Memo
 
 import scala.collection.mutable
@@ -257,7 +257,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
             (resolved -- irrelevantCallinsToMerge) ++ merged
           }
         }
-        case AssignCmd(tgt, i:Invoke,loc) => {
+        case AssignCmd(tgt, _:Invoke,loc) => {
           val unresolvedTargets =
             wrapper.makeInvokeTargets(loc)
           val resolved = resolver.resolveCallLocation(unresolvedTargets)

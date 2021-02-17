@@ -41,8 +41,13 @@ mappings in (Test,packageBin) ~= { (ms: Seq[(File, String)]) =>
   }
 }
 
+Compile / resourceDirectory := baseDirectory.value / "src" / "main" / "resources"
 
-Compile / unmanagedResourceDirectories += baseDirectory.value / "src/main/resources"
-Test / unmanagedResourceDirectories += baseDirectory.value / "src/main/resources"
+//Compile / unmanagedResourceDirectories += baseDirectory.value / "src/main/resources"
+//Test / unmanagedResourceDirectories += baseDirectory.value / "src/main/resources"
 parallelExecution in Test := false
 javaOptions += "-Xmx15G"
+
+//lazy val configTest = settingKey[String]("example")
+
+//configTest := baseDirectory.value.toString()
