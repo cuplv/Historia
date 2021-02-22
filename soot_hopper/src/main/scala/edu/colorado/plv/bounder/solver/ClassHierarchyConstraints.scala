@@ -17,6 +17,12 @@ object ClassHierarchyConstraints{
   val charType = "char"
   val booleanType = "boolean"
   val floatType = "float"
+  def boxedName(prim:String):String = {
+    if(prim == intType) "java.lang.Integer" else{
+      val capFirst = prim(0).toUpper + prim.tail
+      "java.lang." + capFirst
+    }
+  }
   val primitiveTypes: Set[String] = Set(
     intType,
     shortType,
@@ -58,24 +64,26 @@ class ClassHierarchyConstraints(ctx: Context, solver: Solver, types : Map[String
                                 useZ3TypeSolver: StateTypeSolving = NoTypeSolving ) {
   def getSolver: Solver = solver
   def getCtx: Context = ctx
-  def getTypes:Map[String,Set[String]] = types
+  // Treat primitive values as subtypes of their boxed types
+  val getTypes:Map[String,Set[String]] = ClassHierarchyConstraints.primitiveTypes.foldLeft(types){
+    (acc,v) =>
+      val boxedName = ClassHierarchyConstraints.boxedName(v)
+      (acc + (v -> Set(v))) + (boxedName -> (acc.getOrElse(boxedName,Set(boxedName)) + v))
+  } + ("java.lang.Object" -> types.getOrElse("java.lang.Object",Set()).union(ClassHierarchyConstraints.primitiveTypes))
   def getUseZ3TypeSolver:StateTypeSolving = useZ3TypeSolver
   def getSubtypesOf(tname:String):Set[String] = {
-    if(primitiveTypes.exists(t => t.matches(tname))){
-      Set(tname)
-    }else
-    types.getOrElse(tname,
+    getTypes.getOrElse(tname,
       throw new IllegalStateException(s"Type: $tname not found"))
   }
 
   //  def getSupertypesOf(tname:String) :Set[String] = types.keySet.filter(k => types(k).contains(tname))
 
   val getSupertypesOf : String => Set[String] = Memo.mutableHashMapMemo{ tname =>
-    types.keySet.filter(k => types(k).contains(tname))
+    getTypes.keySet.filter(k => getTypes(k).contains(tname))
   }
 
   val tsort: UninterpretedSort = ctx.mkUninterpretedSort("ClassTypes")
-  val typeToSolverConst: Map[String, Expr] = types.keySet.map(t => (t-> ctx.mkConst(s"type_$t", tsort))).toMap
+  val typeToSolverConst: Map[String, Expr] = getTypes.keySet.map(t => (t-> ctx.mkConst(s"type_$t", tsort))).toMap
 
   private def solverValueOfType(t : String):Expr = {
     typeToSolverConst(t)
@@ -117,10 +125,10 @@ class ClassHierarchyConstraints(ctx: Context, solver: Solver, types : Map[String
     }
     typeConstraint match {
       case SubclassOf(c) =>
-        val solverTypes = types(c).map(typeToSolverConst).toArray
+        val solverTypes = getTypes(c).map(typeToSolverConst).toArray
         equalToOneOf(e, solverTypes)
       case SuperclassOf(c) =>
-        val solverTypes = types.keySet.filter(k => types(k).contains(c)).map(typeToSolverConst)
+        val solverTypes = getTypes.keySet.filter(k => getTypes(k).contains(c)).map(typeToSolverConst)
         equalToOneOf(e, solverTypes.toArray)
       case ClassType(c) =>
         ctx.mkEq(e, solverValueOfType(c))
@@ -136,6 +144,7 @@ class ClassHierarchyConstraints(ctx: Context, solver: Solver, types : Map[String
     }
   }
   def pureVarTypeMap(state:State):Map[PureVar, Set[String]] = {
+    //TODO: primitive types fail here
     val pvMap: Map[PureVar, Set[String]] = state.pureVars().map(p => (p,typeSetForPureVar(p,state))).toMap
     val pvMap2 = state.pureFormula.foldLeft(pvMap){
       case(acc, PureConstraint(p1:PureVar, Equals, p2:PureVar)) => {

@@ -11,7 +11,7 @@ import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
 
-class SymbolicExecutorSpec extends AnyFunSuite {
+class SymbolicExecutorTest extends AnyFunSuite {
 
   test("Symbolic Executor should prove an intraprocedural deref"){
     val test_interproc_1 = getClass.getResource("/test_interproc_1.apk").getPath
@@ -137,7 +137,7 @@ class SymbolicExecutorSpec extends AnyFunSuite {
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void onCreate(android.os.Bundle)",20)
       val result = symbolicExecutor.executeBackward(query)
-      PrettyPrinting.dumpDebugInfo(result,"MkApk")
+      PrettyPrinting.dumpDebugInfo(result,"setField")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Proven)
 
@@ -203,6 +203,65 @@ class SymbolicExecutorSpec extends AnyFunSuite {
     }
 
     makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
+  }
+
+  test("Boolean conditional") {
+    // TODO: add (false,Proven) when bool vals are handled precisely
+    List((true,Witnessed)).map { case (initial, expectedResult) =>
+      val src =
+        s"""package com.example.createdestroy;
+          |import androidx.appcompat.app.AppCompatActivity;
+          |import android.os.Bundle;
+          |import android.util.Log;
+          |
+          |import rx.Single;
+          |import rx.Subscription;
+          |import rx.android.schedulers.AndroidSchedulers;
+          |import rx.schedulers.Schedulers;
+          |
+          |
+          |public class MyActivity extends AppCompatActivity {
+          |    Object o = null;
+          |    boolean initialized = $initial;
+          |    Subscription subscription;
+          |
+          |    @Override
+          |    protected void onCreate(Bundle savedInstanceState) {
+          |        super.onCreate(savedInstanceState);
+          |        o = new Object();
+          |        initialized = true;
+          |    }
+          |
+          |    @Override
+          |    protected void onDestroy() {
+          |        super.onDestroy();
+          |        if(initialized){
+          |            Log.i("b", o.toString());
+          |        }
+          |        o = null;
+          |    }
+          |}""".stripMargin
+
+      val test: String => Unit = apk => {
+        assert(apk != null)
+        val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
+        val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
+          new SpecSpace(Set()), cha)
+        val config = SymbolicExecutorConfig(
+          stepLimit = Some(60), w, transfer,
+          component = Some(List("com.example.createdestroy.MyActivity.*")))
+        val symbolicExecutor = config.getSymbolicExecutor
+        val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
+          "void onDestroy()", 28)
+        val result = symbolicExecutor.executeBackward(query)
+        PrettyPrinting.dumpDebugInfo(result, s"BoolTest_initial_$initial")
+        assert(result.nonEmpty)
+        assert(BounderUtil.interpretResult(result) == expectedResult, s"Initial value: $initial")
+
+      }
+
+      makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
+    }
   }
 
   test("Test dereference with subscribe/unsubscribe and non null subscribe") {

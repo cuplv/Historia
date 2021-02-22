@@ -58,8 +58,10 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       case (stateNext, (None,_)) => stateNext
       case (stateNext, (_,None)) => stateNext
       case (stateNext, (Some(rval), Some(pexp:PureVar))) if state.get(rval).isDefined =>
-        val oldv = stateNext.get(rval).get.asInstanceOf[PureVar]
-        stateNext.swapPv(oldv,pexp)
+        stateNext.get(rval).get match {
+          case oldv:PureVar => stateNext.swapPv (oldv, pexp)
+          case ov => stateNext.defineAs(rval,pexp)
+        }
       case (stateNext, (Some(rval), Some(pexp))) =>
         stateNext.defineAs(rval, pexp)
     }
@@ -554,11 +556,11 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       }
     case AssignCmd(_:LocalWrapper, CaughtException(_), _) =>
       Set[State]() //TODO: handle exceptional control flow
+    case AssignCmd(lhs:LocalWrapper, Binop(_,_,_),_) if state.get(lhs).isEmpty =>
+      Set(state) // lhs of binop is not defined
     case AssignCmd(lhs:LocalWrapper, Binop(_,_,_), _) =>
-      state.get(lhs) match{
-        case Some(_) => ??? //TODO: handle binary operators
-        case None => Set(state) // Can ignore if lhs not in state
-      }
+      // TODO: sound to drop constraint, add precision when necessary
+      Set(state.clearLVal(lhs))
     case c =>
       println(c)
       ???

@@ -28,7 +28,7 @@ object PrettyPrinting {
       println(v)
       ???
   }
-  def printWitnessTraces(result: Set[PathNode], outFile: String): Unit = {
+  def printTraces(result: Set[PathNode], outFile: String): Unit = {
     val pw = new PrintWriter(new File(outFile ))
     val live = result.flatMap{
       case pn@PathNode(_: SomeQry, _ , None) => Some(("live",pn))
@@ -110,7 +110,23 @@ object PrettyPrinting {
       case Some(baseDir) =>
         val fname = s"$baseDir/$fileName"
         // printWitnessOrProof(qrySet, s"$fname.dot")
-        printWitnessTraces(qrySet, s"$fname.witnesses")
+
+        printTraces(qrySet.filter{
+          case PathNode(_:WitnessedQry, _, None) => true
+          case _ => false
+        }, s"$fname.witnesses")
+        printTraces(qrySet.filter{
+          case PathNode(_:BottomQry, _, None) => true
+          case _ => false
+        }, s"$fname.refuted")
+        printTraces(qrySet.filter{
+          case PathNode(_, _, Some(_)) => true
+          case _ => false
+        }, s"$fname.subsumed")
+        printTraces(qrySet.filter{
+          case PathNode(_:SomeQry, _, None) => true
+          case _ => false
+        }, s"$fname.live")
       case None =>
     }
 
