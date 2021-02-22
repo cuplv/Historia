@@ -71,7 +71,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   def executeBackward(qry: Set[Qry]) : Set[PathNode] = {
     val pathNodes = qry.map(PathNode(_,None,None))
     config.stepLimit match{
-      case Some(limit) => executeBackwardOAT(pathNodes.toList, limit)
+      case Some(limit) => executeBackward(pathNodes.toList, limit)
       case None =>
         ???
     }
@@ -104,9 +104,9 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   }
 
   @tailrec
-  final def executeBackwardOAT(qrySet: List[PathNode], limit:Int,
-                                           refutedSubsumedOrWitnessed: Set[PathNode] = Set(),
-                                           visited:Map[SubsumableLocation,Set[PathNode]] = Map()):Set[PathNode] = {
+  final def executeBackward(qrySet: List[PathNode], limit:Int,
+                            refutedSubsumedOrWitnessed: Set[PathNode] = Set(),
+                            visited:Map[SubsumableLocation,Set[PathNode]] = Map()):Set[PathNode] = {
 
 
     if(qrySet.isEmpty){
@@ -120,9 +120,9 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
 
     current match {
       case p@PathNode(_:SomeQry, _,Some(_)) =>
-        executeBackwardOAT(qrySet.tail, limit, refutedSubsumedOrWitnessed + p, visited)
+        executeBackward(qrySet.tail, limit, refutedSubsumedOrWitnessed + p, visited)
       case p@PathNode(_:BottomQry,_,_) =>
-        executeBackwardOAT(qrySet.tail, limit, refutedSubsumedOrWitnessed + p, visited)
+        executeBackward(qrySet.tail, limit, refutedSubsumedOrWitnessed + p, visited)
       case PathNode(_:WitnessedQry,_,_) =>
         refutedSubsumedOrWitnessed.union(qrySet.toSet)
       case p:PathNode if p.depth > limit =>
@@ -130,7 +130,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       case p@PathNode(qry:SomeQry, _,None) =>
         isSubsumed(qry, visited) match{
           case v@Some(_) =>
-            executeBackwardOAT(qrySet.tail, limit, refutedSubsumedOrWitnessed + p.copy(subsumed = v), visited)
+            executeBackward(qrySet.tail, limit, refutedSubsumedOrWitnessed + p.copy(subsumed = v), visited)
           case None =>
             val newVisited: Map[SubsumableLocation, Set[PathNode]] = SwapLoc(current.qry.loc) match{
               case Some(v) => visited + (v -> (visited.getOrElse(v,Set()) + p))
@@ -138,7 +138,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
             }
             val nextQry = executeStep(qry).map(q => PathNode(q, Some(p), None))
             val nextQrySet = qrySet.tail.appendedAll(nextQry)
-            executeBackwardOAT(nextQrySet, limit, refutedSubsumedOrWitnessed, newVisited)
+            executeBackward(nextQrySet, limit, refutedSubsumedOrWitnessed, newVisited)
         }
     }
   }
@@ -167,7 +167,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   def executeStep(qry:Qry):Set[Qry] = qry match{
     case SomeQry(state, loc) =>
       val predecessorLocations = controlFlowResolver.resolvePredicessors(loc,state)
-      //TODO: check for witnessed state
+      //TODO: combine all callin locs that behave the same in the control flow resolver
       predecessorLocations.flatMap(l => {
         val newStates = transfer.transfer(state,l,loc)
         newStates.map(state => state.simplify(stateSolver) match {
