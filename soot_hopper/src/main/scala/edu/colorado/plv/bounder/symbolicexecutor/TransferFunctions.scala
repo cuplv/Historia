@@ -21,7 +21,7 @@ object TransferFunctions{
   def relevantAliases(pre: State,
                       dir: MessageType,
                       signature: (String, String)) :Set[List[LSParamConstraint]]  = {
-    val relevantI = pre.findIFromCurrent(dir, signature)
+    val relevantI: Set[(I, List[LSParamConstraint])] = pre.findIFromCurrent(dir, signature)
     relevantI.map{
       case (I(_, _, vars),p)=> p
     }
@@ -383,6 +383,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     classHierarchyConstraints.typeSetForPureVar(pv,state).contains(otherType)
 
   def cmdTransfer(cmd:CmdWrapper, state:State):Set[State] = cmd match{
+    case AssignCmd(lhs:LocalWrapper, TopExpr(_),_) => Set(state.clearLVal(lhs))
     case AssignCmd(lhs@LocalWrapper(_, _), NewCommand(className),_) =>
       // x = new T
       Set(state.get(lhs) match {

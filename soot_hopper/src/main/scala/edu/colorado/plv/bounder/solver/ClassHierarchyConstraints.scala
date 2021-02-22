@@ -72,8 +72,12 @@ class ClassHierarchyConstraints(ctx: Context, solver: Solver, types : Map[String
   } + ("java.lang.Object" -> types.getOrElse("java.lang.Object",Set()).union(ClassHierarchyConstraints.primitiveTypes))
   def getUseZ3TypeSolver:StateTypeSolving = useZ3TypeSolver
   def getSubtypesOf(tname:String):Set[String] = {
-    getTypes.getOrElse(tname,
-      throw new IllegalStateException(s"Type: $tname not found"))
+    if (tname.endsWith("[]")){
+      ???
+    }else {
+      getTypes.getOrElse(tname,
+        throw new IllegalStateException(s"Type: $tname not found"))
+    }
   }
 
   //  def getSupertypesOf(tname:String) :Set[String] = types.keySet.filter(k => types(k).contains(tname))

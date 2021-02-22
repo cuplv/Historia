@@ -142,8 +142,17 @@ object RVal{
   implicit val rw:RW[RVal] = RW.merge(
     macroRW[ConstVal],LVal.rw, macroRW[BoolConst], Invoke.rw, macroRW[InstanceOf], macroRW[CaughtException],
     macroRW[StringConst],macroRW[IntConst],macroRW[NewCommand],macroRW[ClassConst], macroRW[ArrayLength],
-    macroRW[Cast],macroRW[Binop],macroRW[NullConst.type]
+    macroRW[Cast],macroRW[Binop],macroRW[NullConst.type],macroRW[TopExpr]
   )
+}
+
+/**
+ * Currently unsupported rval treated as doing anything.
+ * To add support for command, create an ast node and add it to the IRWrappers
+ * @param str
+ */
+case class TopExpr(str:String) extends RVal {
+  override def isConst: Boolean = false
 }
 // New only has type, constructor parameters go to the <init> method
 case class NewCommand(className: String) extends RVal {

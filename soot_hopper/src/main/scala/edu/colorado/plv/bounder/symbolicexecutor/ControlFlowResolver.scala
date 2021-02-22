@@ -2,8 +2,9 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir._
+import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, FieldPtEdge, LSPure, PureVar, State, StaticPtEdge}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, FieldPtEdge, LSParamConstraint, LSPure, PureVar, State, StaticPtEdge}
 import scalaz.Memo
 
 import scala.collection.mutable
@@ -16,16 +17,18 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
                                cha: ClassHierarchyConstraints,
                                component: Option[List[String]]) {
   private val componentR: Option[List[Regex]] = component.map(_.map(_.r))
-  def callbackInComponent(loc:Loc):Boolean = loc match{
-    case CallbackMethodReturn(_,_,methodLoc, _) =>
+
+  def callbackInComponent(loc: Loc): Boolean = loc match {
+    case CallbackMethodReturn(_, _, methodLoc, _) =>
       val className = methodLoc.classType
       componentR.forall(_.exists(r => r.matches(className)))
     case _ => throw new IllegalStateException("callbackInComponent should only be called on callback returns")
   }
+
   def getResolver = resolver
 
   //TODO: cache result
-  def lazyDirectCallsGraph(loc: MethodLoc) : Set[Loc] = {
+  def lazyDirectCallsGraph(loc: MethodLoc): Set[Loc] = {
     val unresolvedTargets = wrapper.makeMethodTargets(loc).map(callee =>
       UnresolvedMethodTarget(callee.classType, callee.simpleName, Set(callee)))
     unresolvedTargets.flatMap(target => resolver.resolveCallLocation(target))
@@ -34,30 +37,33 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   /**
    * Normally we crash on unsupported instructions, but when determining relevance, all we care about is invokes
    * Since relevance scans lots of methods,
+   *
    * @param loc
    * @return
    */
-  def cmdAtLocationNopIfUnknown(loc: AppLoc):CmdWrapper = {
+  def cmdAtLocationNopIfUnknown(loc: AppLoc): CmdWrapper = {
     try {
       wrapper.cmdAtLocation(loc)
-    }catch{
+    } catch {
       case CmdNotImplemented(_) => NopCmd(loc)
     }
   }
 
   var printCacheCache = mutable.Set[String]()
-  def printCache(s:String):Unit = {
-    if(!printCacheCache.contains(s)) {
+
+  def printCache(s: String): Unit = {
+    if (!printCacheCache.contains(s)) {
       println(s)
       printCacheCache.add(s)
     }
   }
-  private def callsToRetLoc(loc:MethodLoc):Set[MethodLoc] = {
+
+  private def callsToRetLoc(loc: MethodLoc): Set[MethodLoc] = {
     val directCalls = lazyDirectCallsGraph(loc)
-    val internalCalls = directCalls.flatMap{
-      case InternalMethodReturn(_,_,oloc) =>
+    val internalCalls = directCalls.flatMap {
+      case InternalMethodReturn(_, _, oloc) =>
         // We only care about direct calls, calls through framework are considered callbacks
-        if(!resolver.isFrameworkClass(oloc.classType))
+        if (!resolver.isFrameworkClass(oloc.classType))
           Some(oloc)
         else
           None
@@ -67,61 +73,64 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     internalCalls
   }
 
-  def allCalls(loc: MethodLoc):Set[MethodLoc] = {
+  def allCalls(loc: MethodLoc): Set[MethodLoc] = {
     val empty = Set[MethodLoc]()
-    val out = BounderUtil.graphFixpoint[MethodLoc,Set[MethodLoc]](Set(loc),
+    val out = BounderUtil.graphFixpoint[MethodLoc, Set[MethodLoc]](Set(loc),
       empty,
       empty,
       next = callsToRetLoc,
-      comp = (_,v) => callsToRetLoc(v),
-      join = (a,b) => a.union(b)
+      comp = (_, v) => callsToRetLoc(v),
+      join = (a, b) => a.union(b)
     )
-    out.flatMap{
-      case(k,v) => v
+    out.flatMap {
+      case (k, v) => v
     }.toSet
   }
 
   val memoizedallCalls: MethodLoc => Set[MethodLoc] = Memo.mutableHashMapMemo(allCalls)
-//  val memoizedallCalls: MethodLoc => Set[MethodLoc]= allCalls
+
+  //  val memoizedallCalls: MethodLoc => Set[MethodLoc]= allCalls
   def upperBoundOfInvoke(i: Invoke): Option[String] = i match {
     case SpecialInvoke(LocalWrapper(_, baseType), _, _, _) => Some(baseType)
     case StaticInvoke(targetClass, _, _) => Some(targetClass)
     case VirtualInvoke(LocalWrapper(_, baseType), _, _, _) => Some(baseType)
   }
 
-  private def fieldCanPt(fr:FieldReference, state:State):Boolean = {
+  private def fieldCanPt(fr: FieldReference, state: State): Boolean = {
     val fname = fr.name
     val localType = fr.base.localType
-    state.heapConstraints.exists{
-      case (FieldPtEdge(p, otherFieldName),_) if fname == otherFieldName =>
-//        val res = state.pvTypeUpperBound(p).forall(wrapper.canAlias(localType, _))
+    state.heapConstraints.exists {
+      case (FieldPtEdge(p, otherFieldName), _) if fname == otherFieldName =>
+        //        val res = state.pvTypeUpperBound(p).forall(wrapper.canAlias(localType, _))
         val posLocalTypes = cha.getSubtypesOf(localType)
-        val pureTypes = cha.typeSetForPureVar(p,state)
+        val pureTypes = cha.typeSetForPureVar(p, state)
         val res = posLocalTypes.exists(t => pureTypes.contains(t))
         res
       case _ => false
     }
   }
+
   def relevantHeap(m: MethodLoc, state: State): Boolean = { //TODO: static field
-    def canModifyHeap(c : CmdWrapper) : Boolean = c match{
-      case AssignCmd(fr:FieldReference, _,_) => fieldCanPt(fr, state)
-      case AssignCmd(_,fr:FieldReference,_) => fieldCanPt(fr,state)
-      case AssignCmd(StaticFieldReference(clazz, name, _),_,_) => state.heapConstraints.exists{
-        case (StaticPtEdge(clazz2,name2),_) => clazz == clazz2 && name == name2
+    def canModifyHeap(c: CmdWrapper): Boolean = c match {
+      case AssignCmd(fr: FieldReference, _, _) => fieldCanPt(fr, state)
+      case AssignCmd(_, fr: FieldReference, _) => fieldCanPt(fr, state)
+      case AssignCmd(StaticFieldReference(clazz, name, _), _, _) => state.heapConstraints.exists {
+        case (StaticPtEdge(clazz2, name2), _) => clazz == clazz2 && name == name2
         case _ => false
       }
-      case AssignCmd(_,StaticFieldReference(clazz, name, _),_) => state.heapConstraints.exists{
-        case (StaticPtEdge(clazz2,name2),_) => clazz == clazz2 && name == name2
+      case AssignCmd(_, StaticFieldReference(clazz, name, _), _) => state.heapConstraints.exists {
+        case (StaticPtEdge(clazz2, name2), _) => clazz == clazz2 && name == name2
         case _ => false
       }
-      case _:AssignCmd => false
-      case _:ReturnCmd => false
-      case _:InvokeCmd => false // This method only counts commands that directly modify the heap
-      case _:If => false
-      case _:NopCmd => false
-      case _:ThrowCmd => false
-      case _:SwitchCmd => false
+      case _: AssignCmd => false
+      case _: ReturnCmd => false
+      case _: InvokeCmd => false // This method only counts commands that directly modify the heap
+      case _: If => false
+      case _: NopCmd => false
+      case _: ThrowCmd => false
+      case _: SwitchCmd => false
     }
+
     val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) => cmdAtLocationNopIfUnknown(v).mkPre)
     BounderUtil.graphExists[CmdWrapper](start = returns,
       next = n =>
@@ -131,7 +140,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   }
 
   def relevantTrace(m: MethodLoc, state: State): Boolean = {
-    val calls: Set[CallinMethodReturn] = lazyDirectCallsGraph(m).flatMap{
+    val calls: Set[CallinMethodReturn] = lazyDirectCallsGraph(m).flatMap {
       case v: CallinMethodReturn => Some(v)
       case _: InternalMethodInvoke => None
       case _: InternalMethodReturn => None
@@ -141,30 +150,31 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     }
     // Find any call that matches a spec in the abstract trace
     // TODO: later this should be refined based on type information
-    calls.exists{call =>
+    calls.exists { call =>
       Set(CIEnter, CIExit).exists(cdir => state.findIFromCurrent(cdir, (call.fmwClazz, call.fmwName)).nonEmpty)
     }
   }
 
-  def relevantMethodBody(m:MethodLoc, state:State):Boolean = {
+  def relevantMethodBody(m: MethodLoc, state: State): Boolean = {
     if (resolver.isFrameworkClass(m.classType))
       return false // body can only be relevant to app heap or trace if method is in the app
     val callees = memoizedallCalls(m) + m
-    callees.exists{c =>
-      if(relevantHeap(c,state))
+    callees.exists { c =>
+      if (relevantHeap(c, state))
         true
-      else if(relevantTrace(c,state))
+      else if (relevantTrace(c, state))
         true
       else
         false
     }
   }
-  def relevantMethodBodyDBG(m:MethodLoc, state:State, visited : Set[MethodLoc] = Set()):Boolean = {
-    if(visited.contains(m)){
+
+  def relevantMethodBodyDBG(m: MethodLoc, state: State, visited: Set[MethodLoc] = Set()): Boolean = {
+    if (visited.contains(m)) {
       false
-    } else if(relevantHeap(m,state)) {
+    } else if (relevantHeap(m, state)) {
       true
-    } else if(relevantTrace(m,state)) {
+    } else if (relevantTrace(m, state)) {
       true
     } else {
       val directCalls = callsToRetLoc(m)
@@ -172,37 +182,32 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     }
   }
 
-  def existsIAlias(locals: List[Option[RVal]], dir :MessageType, sig: (String,String), state:State):Boolean = {
+  def existsIAlias(locals: List[Option[RVal]], dir: MessageType, sig: (String, String), state: State): Boolean = {
     val aliasPos = TransferFunctions.relevantAliases(state, dir, sig)
-    aliasPos.exists{ aliasPo =>
-      (aliasPo zip locals).forall{
-        case (LSPure(v:PureVar), Some(local:LocalWrapper)) =>
-          cha.typeSetForPureVar(v,state).forall(wrapper.canAlias(_, local.localType))
-        case (LSPure(v:PureVar), Some(NullConst)) => ???
-        case (LSPure(v:PureVar), Some(i:IntConst)) => ???
-        case (LSPure(v:PureVar), Some(i:StringConst)) => ???
+    aliasPos.exists { aliasPo =>
+      (aliasPo zip locals).forall {
+        case (LSPure(v: PureVar), Some(local: LocalWrapper)) =>
+          cha.typeSetForPureVar(v, state).forall(wrapper.canAlias(_, local.localType))
+        case (LSPure(v: PureVar), Some(NullConst)) => ???
+        case (LSPure(v: PureVar), Some(i: IntConst)) => ???
+        case (LSPure(v: PureVar), Some(i: StringConst)) => ???
         case _ => true
       }
     }
   }
-  def irrelevantCallinInvoke(m:Loc,state:State):Boolean = m match{
-    case CallinMethodReturn(clazz, name) =>
-      TransferFunctions.relevantAliases(state, CIExit, (clazz,name)).isEmpty &&
-        TransferFunctions.relevantAliases(state, CIEnter, (clazz,name)).isEmpty
-    case _ => false
-  }
-  def relevantMethod(loc: Loc, state: State): Boolean = loc match{
-    case InternalMethodReturn(_,_,m) =>
+
+  def relevantMethod(loc: Loc, state: State): Boolean = loc match {
+    case InternalMethodReturn(_, _, m) =>
       val callees: Set[MethodLoc] = memoizedallCalls(m)
-      val out = (callees + m).exists(c => relevantMethodBody(c,state))
+      val out = (callees + m).exists(c => relevantMethodBody(c, state))
       out
-    case CallinMethodReturn(_,_) => true
+    case CallinMethodReturn(_, _) => true
     case CallbackMethodReturn(clazz, name, rloc, Some(retLine)) => {
       //TODO: switch on static or not
       val retVars =
-        if(rloc.isStatic)
-          wrapper.makeMethodRetuns(rloc).map{ retloc =>
-            wrapper.cmdAtLocation(retloc) match{
+        if (rloc.isStatic)
+          wrapper.makeMethodRetuns(rloc).map { retloc =>
+            wrapper.cmdAtLocation(retloc) match {
               case ReturnCmd(Some(l), loc) => Some(l)
               case _ => None
             }
@@ -210,14 +215,25 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
         else List(None)
       val iExists = retVars.exists { retVar =>
         val locs: List[Option[RVal]] = retVar :: rloc.getArgs
-        val res = existsIAlias(locs, CBExit, (clazz,name),state) ||
-          existsIAlias(None::locs.tail, CBEnter, (clazz,name),state)
+        val res = existsIAlias(locs, CBExit, (clazz, name), state) ||
+          existsIAlias(None :: locs.tail, CBEnter, (clazz, name), state)
         res
       }
-      val relevantBody = relevantMethodBody(rloc,state)
+      val relevantBody = relevantMethodBody(rloc, state)
       iExists || relevantBody
     }
     case _ => throw new IllegalStateException("relevantMethod only for method returns")
+  }
+  // Callins are equivalent if they match the same set of I predicates in the abstract trace
+  def mergeEquivalentCallins(callins: Set[Loc], state: State): Set[Loc] ={
+    val groups = callins.groupBy{
+      case CallinMethodReturn(fc,fn) =>
+        val i: Set[(LifeState.I, List[LSParamConstraint])] =state.findIFromCurrent(CIExit,(fc,fn))
+        i.map(a => a._1)
+      case i => i
+    }
+    val out = groups.keySet.map(k => groups(k).head)
+    out
   }
   def resolvePredicessors(loc:Loc, state: State):Iterable[Loc] = (loc,state.callStack) match{
     case (l@AppLoc(method,_,true),_) => {
@@ -244,17 +260,18 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
           if(resolved.forall(m => !relevantMethod(m,state)))
             List(l.copy(isPre = true)) // skip if all method targets are not relevant
           else {
-            val irrelevantCallinsToMerge: Set[Loc] = resolved.filter(irrelevantCallinInvoke(_,state))
-            // merge all irrelevant callins with most general type
-            val merged = irrelevantCallinsToMerge.headOption.map{v =>
-              irrelevantCallinsToMerge.foldLeft(v){
-                case (CallinMethodReturn(clazz,_), other@CallinMethodReturn(clazz2, _)) if wrapper.isSuperClass(clazz2,clazz) =>
-                  other
-                case (cur,_) =>
-                  cur
-              }
-            }
-            (resolved -- irrelevantCallinsToMerge) ++ merged
+            mergeEquivalentCallins(resolved, state)
+//            val irrelevantCallinsToMerge: Set[Loc] = resolved.filter(irrelevantCallinInvoke(_,state))
+//            // merge all irrelevant callins with most general type
+//            val merged = irrelevantCallinsToMerge.headOption.map{v =>
+//              irrelevantCallinsToMerge.foldLeft(v){
+//                case (CallinMethodReturn(clazz,_), other@CallinMethodReturn(clazz2, _)) if wrapper.isSuperClass(clazz2,clazz) =>
+//                  other
+//                case (cur,_) =>
+//                  cur
+//              }
+//            }
+//            (resolved -- irrelevantCallinsToMerge) ++ merged
           }
         }
         case AssignCmd(tgt, _:Invoke,loc) => {
@@ -262,12 +279,12 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
             wrapper.makeInvokeTargets(loc)
           val resolved = resolver.resolveCallLocation(unresolvedTargets)
           if (state.get(tgt).isDefined)
-            resolved
+            mergeEquivalentCallins(resolved,state)
           else {
             if(resolved.forall(m => !relevantMethod(m,state)))
               List(l.copy(isPre = true)) // skip if all method targets are not relevant
             else
-              resolved
+              mergeEquivalentCallins(resolved,state)
           }
         }
         case _ => List(l.copy(isPre=true))

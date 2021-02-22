@@ -26,7 +26,7 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
   test("Fix: Prove updateUI is not reachable where getActivity returns null under a simple spec.") {
     val w = new JimpleFlowdroidWrapper(apkFix,CHACallGraph)
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(120), w,transfer(w),
+      stepLimit = Some(300), w,transfer(w),
       component = Some(List("de\\.danoeh\\.antennapod\\.fragment\\.ExternalPlayerFragment.*")))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = Qry.makeCallinReturnNull(symbolicExecutor, w,

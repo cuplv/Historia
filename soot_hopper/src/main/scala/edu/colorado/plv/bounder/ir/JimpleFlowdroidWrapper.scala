@@ -163,6 +163,12 @@ object JimpleFlowdroidWrapper{
       ClassConst(t.sootString)
     case l : JLengthExpr =>
       ArrayLength(makeRVal(l.getOp).asInstanceOf[LocalWrapper])
+    case s : JShrExpr => TopExpr(s.toString + " : JShrExpr")
+    case s : JShlExpr => TopExpr(s.toString + " : JShlExpr")
+    case s : JXorExpr => TopExpr(s.toString + " : JXorExpr")
+    case s : JAndExpr => TopExpr(s.toString + " : JAndExpr")
+    case s : JOrExpr => TopExpr(s.toString + " : JOrExpr")
+    case s : JUshrExpr => TopExpr(s.toString + " : JUshrExpr")
 
     case v =>
       //println(v)
