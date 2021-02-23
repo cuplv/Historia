@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder
 
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, InternalMethodInvoke, InternalMethodReturn, Loc}
 import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, SymbolicExecutorConfig}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, SomeQry, WitnessedQry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, PathNode, SomeQry, WitnessedQry}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -13,15 +13,15 @@ object BounderUtil {
   case object Witnessed extends ResultSummary
   case object Timeout extends ResultSummary
   case object Unreachable extends ResultSummary
-  def interpretResult(result: Set[PathNode]):ResultSummary = {
+  def interpretResult(result: Set[IPathNode]):ResultSummary = {
     if(result.forall {
-      case PathNode(_: BottomQry, _, _) => true
-      case PathNode(_: WitnessedQry, _, _) => false
-      case PathNode(_: SomeQry, _, Some(_)) => true
-      case PathNode(_: SomeQry, _, _) => false
+      case PathNode(_: BottomQry, _) => true
+      case PathNode(_: WitnessedQry, _) => false
+      case PathNode(_: SomeQry, true) => true
+      case PathNode(_: SomeQry, false) => false
     }) if(result.size > 0) Proven else Unreachable
     else if(result.exists{
-      case PathNode(_: WitnessedQry, _, _) => true
+      case PathNode(_: WitnessedQry, _) => true
       case _ => false
     }) Witnessed
     else Timeout

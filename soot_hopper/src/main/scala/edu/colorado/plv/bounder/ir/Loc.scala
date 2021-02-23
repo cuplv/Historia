@@ -47,11 +47,15 @@ object MethodLoc {
     json => {
       val name = json.arr(0).str
       val clazz = json.arr(1).str
-      val args = json.arr(3).arr.map{v =>
+      val args = json.arr(3).arr.map { v =>
         val v0 = ujson.read(v.str)
-        val name = v0(0).obj("name").str
-        val t = v0(0).obj("localType").str
-        LocalWrapper(name,t)
+        if (v0.arr.isEmpty) {
+          None
+        } else {
+          val name = v0(0).obj("name").str
+          val t = v0(0).obj("localType").str
+          Some(LocalWrapper(name, t))
+        }
       }.toList
       TestIRMethodLoc(clazz, name, args)
     }
@@ -61,10 +65,10 @@ object MethodLoc {
 trait LineLoc
 object LineLoc{
   implicit val rw:RW[LineLoc] = upickle.default.readwriter[ujson.Value].bimap[LineLoc](
-    x => ujson.write(System.identityHashCode(x)),
+    x => ujson.Obj("id" -> System.identityHashCode(x), "str" -> x.toString),
     json => json match {
-      case ujson.Num(v) => TestIRLineLoc (v.intValue)
-      case ujson.Str(v) => TestIRLineLoc (v.toInt)
+      case ujson.Str(v) => TestIRLineLoc (v.toInt,"")
+      case ujson.Obj(v) => TestIRLineLoc (v("id").num.toInt, v("str").str)
       case v => throw new IllegalArgumentException(s"Cannot parse $v as LineLoc")
     }
   )

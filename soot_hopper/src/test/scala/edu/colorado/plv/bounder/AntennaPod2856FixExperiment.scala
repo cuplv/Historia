@@ -22,6 +22,7 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
       RxJavaSpec.subscribeDoesNotReturnNull,
       RxJavaSpec.subscribeIsUniqueAndNonNull
     )),cha)
+  private val prettyPrinting = new PrettyPrinting()
 
   test("Fix: Prove updateUI is not reachable where getActivity returns null under a simple spec.") {
     val w = new JimpleFlowdroidWrapper(apkFix,CHACallGraph)
@@ -34,7 +35,7 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
       "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)",200,
       callinMatches = ".*getActivity.*".r)
     val result = symbolicExecutor.executeBackward(query)
-    PrettyPrinting.dumpDebugInfo(result, "antennapod_fix_2856")
+    prettyPrinting.dumpDebugInfo(result, "antennapod_fix_2856")
     assert(BounderUtil.interpretResult(result) == Proven)
   }
 
@@ -50,7 +51,7 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
       "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)",193,
       callinMatches = ".*getActivity.*".r)
     val result = symbolicExecutor.executeBackward(query)
-    PrettyPrinting.dumpDebugInfo(result, "antennapod_bug_2856")
+    prettyPrinting.dumpDebugInfo(result, "antennapod_bug_2856")
     assert(BounderUtil.interpretResult(result) == Witnessed)
   }
   ignore("Fix: updateUI is reachable under a simple spec.") {
@@ -64,7 +65,7 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
       "de.danoeh.antennapod.fragment.ExternalPlayerFragment",
       "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)",200)
     val result = symbolicExecutor.executeBackward(query)
-    PrettyPrinting.dumpDebugInfo(result, "antennapod_witness1_2856")
+    prettyPrinting.dumpDebugInfo(result, "antennapod_witness1_2856")
     assert(BounderUtil.interpretResult(result) == Witnessed)
   }
   ignore("Fix: GetActivity may return null in certain locations"){
@@ -80,7 +81,7 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
       callinMatches = ".*getActivity.*".r)
     val result = symbolicExecutor.executeBackward(query)
 
-    PrettyPrinting.dumpDebugInfo(result, "antennapod_witness2_2856")
+    prettyPrinting.dumpDebugInfo(result, "antennapod_witness2_2856")
     assert(BounderUtil.interpretResult(result) == Witnessed)
   }
 

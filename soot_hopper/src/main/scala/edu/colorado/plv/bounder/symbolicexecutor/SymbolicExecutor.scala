@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import com.microsoft.z3.Context
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, IRWrapper, Loc}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, NoTypeSolving, StateTypeSolving, Z3StateSolver}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, Qry, SomeQry, WitnessedQry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, MemoryPathMode, PathMode, PathNode, Qry, SomeQry, WitnessedQry}
 import soot.SootMethod
 
 import scala.annotation.tailrec
@@ -35,11 +35,13 @@ case class SymbolicExecutorConfig[M,C](stepLimit: Option[Int],
                                        printProgress : Boolean = sys.env.getOrElse("DEBUG","false").toBoolean,
                                        z3Timeout : Option[Int] = None,
                                        component : Option[Seq[String]] = None,
-                                       stateTypeSolving: StateTypeSolving = NoTypeSolving
+                                       stateTypeSolving: StateTypeSolving = NoTypeSolving,
+                                       pathMode : PathMode = MemoryPathMode
                                       ){
   def getSymbolicExecutor =
     new SymbolicExecutor[M, C](this)}
 class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
+  implicit var pathMode = config.pathMode
   val ctx = new Context
 //  val solver = ctx.mkSolver
   val solver = {
@@ -68,7 +70,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
    * @return None if the assertion at that location is unreachable, Some(Trace) if it is reachable.
    *         Trace will contain a tree of backward executions for triage.
    */
-  def executeBackward(qry: Set[Qry]) : Set[PathNode] = {
+  def executeBackward(qry: Set[Qry]) : Set[IPathNode] = {
     val pathNodes = qry.map(PathNode(_,None,None))
     config.stepLimit match{
       case Some(limit) => executeBackward(pathNodes.toList, limit)
@@ -93,7 +95,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     def apply(loc:Loc):Option[SubsumableLocation] = unapply(loc)
   }
 
-  def isSubsumed(qry: Qry, nVisited: Map[SubsumableLocation,Set[PathNode]]):Option[PathNode] = qry match{
+  def isSubsumed(qry: Qry, nVisited: Map[SubsumableLocation,Set[IPathNode]]):Option[IPathNode] = qry match{
     case SomeQry(state,SwapLoc(loc)) if nVisited.contains(loc) =>
       nVisited(loc).find(a => {
         val possiblySubsumingState = a.qry.state
@@ -104,9 +106,9 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   }
 
   @tailrec
-  final def executeBackward(qrySet: List[PathNode], limit:Int,
-                            refutedSubsumedOrWitnessed: Set[PathNode] = Set(),
-                            visited:Map[SubsumableLocation,Set[PathNode]] = Map()):Set[PathNode] = {
+  final def executeBackward(qrySet: List[IPathNode], limit:Int,
+                            refutedSubsumedOrWitnessed: Set[IPathNode] = Set(),
+                            visited:Map[SubsumableLocation,Set[IPathNode]] = Map()):Set[IPathNode] = {
 
 
     if(qrySet.isEmpty){
@@ -119,20 +121,20 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     }
 
     current match {
-      case p@PathNode(_:SomeQry, _,Some(_)) =>
+      case p@PathNode(_:SomeQry, true) =>
         executeBackward(qrySet.tail, limit, refutedSubsumedOrWitnessed + p, visited)
-      case p@PathNode(_:BottomQry,_,_) =>
+      case p@PathNode(_:BottomQry,_) =>
         executeBackward(qrySet.tail, limit, refutedSubsumedOrWitnessed + p, visited)
-      case PathNode(_:WitnessedQry,_,_) =>
+      case PathNode(_:WitnessedQry,_) =>
         refutedSubsumedOrWitnessed.union(qrySet.toSet)
-      case p:PathNode if p.depth > limit =>
+      case p:IPathNode if p.depth > limit =>
         refutedSubsumedOrWitnessed.union(qrySet.toSet)
-      case p@PathNode(qry:SomeQry, _,None) =>
+      case p@PathNode(qry:SomeQry,false) =>
         isSubsumed(qry, visited) match{
           case v@Some(_) =>
-            executeBackward(qrySet.tail, limit, refutedSubsumedOrWitnessed + p.copy(subsumed = v), visited)
+            executeBackward(qrySet.tail, limit, refutedSubsumedOrWitnessed + p.setSubsumed(v), visited)
           case None =>
-            val newVisited: Map[SubsumableLocation, Set[PathNode]] = SwapLoc(current.qry.loc) match{
+            val newVisited: Map[SubsumableLocation, Set[IPathNode]] = SwapLoc(current.qry.loc) match{
               case Some(v) => visited + (v -> (visited.getOrElse(v,Set()) + p))
               case None => visited
             }
@@ -143,15 +145,15 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     }
   }
   @tailrec
-  final def executeBackwardLimitKeepAll(qrySet: Set[PathNode], limit:Int,
-                                  refuted: Set[PathNode] = Set()):Set[PathNode] = {
+  final def executeBackwardLimitKeepAll(qrySet: Set[IPathNode], limit:Int,
+                                  refuted: Set[IPathNode] = Set()):Set[IPathNode] = {
     if(qrySet.isEmpty){
       refuted
     }else if(limit > 0) {
       val nextQry = qrySet.map{
-        case succ@PathNode(qry@SomeQry(_,_), _,_) => executeStep(qry).map(PathNode(_,Some(succ), None))
-        case PathNode(BottomQry(_,_), _,_) => Set()
-        case PathNode(WitnessedQry(_,_),_,_) => Set()
+        case succ@PathNode(qry@SomeQry(_,_), _) => executeStep(qry).map(PathNode(_,Some(succ), None))
+        case PathNode(BottomQry(_,_), _) => Set()
+        case PathNode(WitnessedQry(_,_),_) => Set()
       }
       executeBackwardLimitKeepAll(nextQry.flatten, limit - 1, qrySet.filter(_.qry.isInstanceOf[BottomQry]))
     }else {

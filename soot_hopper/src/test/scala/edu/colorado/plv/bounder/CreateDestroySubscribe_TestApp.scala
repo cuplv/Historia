@@ -28,6 +28,7 @@ class CreateDestroySubscribe_TestApp extends AnyFunSuite{
     stepLimit = Some(200), w,transfer,
     component = Some(List("com.example.createdestroy.MainActivity.*")))
   val symbolicExecutor = config.getSymbolicExecutor
+  private val prettyPrinting = new PrettyPrinting()
 
   test("Prove location in stack trace is unreachable under a simple spec.") {
     val clazzes = Scene.v().getClasses.asScala.filter(c => c.toString.contains("MainActivity"))
@@ -37,7 +38,7 @@ class CreateDestroySubscribe_TestApp extends AnyFunSuite{
       "com.example.createdestroy.MainActivity",
       "void lambda$onCreate$1$MainActivity(java.lang.Object)",31)
     val result = symbolicExecutor.executeBackward(query)
-    PrettyPrinting.dumpDebugInfo(result, "CreateDestroySubscribe_TestApp")
+    prettyPrinting.dumpDebugInfo(result, "CreateDestroySubscribe_TestApp")
     assert(BounderUtil.interpretResult(result) == Proven)
     assert(result.nonEmpty)
   }
@@ -47,7 +48,7 @@ class CreateDestroySubscribe_TestApp extends AnyFunSuite{
       "com.example.createdestroy.MainActivity",
       "void lambda$onCreate$1$MainActivity(java.lang.Object)",31)
     val result2 = symbolicExecutor.executeBackward(query2)
-    PrettyPrinting.dumpDebugInfo(result2, "CreateDestroySubscribe_TestApp_reach")
+    prettyPrinting.dumpDebugInfo(result2, "CreateDestroySubscribe_TestApp_reach")
     assert(result2.nonEmpty)
     assert(BounderUtil.interpretResult(result2) == Witnessed)
   }

@@ -8,9 +8,6 @@ unmanagedJars in Compile += baseDirectory.value / "lib/soot-infoflow-cmd-jar-wit
 unmanagedJars in Compile += baseDirectory.value / "lib/com.microsoft.z3.jar"
 //libraryDependencies += "ca.mcgill.sable" % "soot" % "4.1.0"
 
-//libraryDependencies += "org.slf4j" % "slf4j-simple" % "1.7.5" % "compile"
-//libraryDependencies += "org.slf4j" % "slf4j-log4j12" % "1.7.30"
-//libraryDependencies += "org.slf4j" % "slf4j-api" % "1.7.5" % "compile"
 libraryDependencies += "com.fasterxml.jackson.core" % "jackson-core" % "2.7.9" % "compile"
 libraryDependencies += "org.scala-graph" %% "graph-core" % "1.13.2" % "compile"
 libraryDependencies += "org.scala-graph" %% "graph-dot" % "1.13.0" % "compile"
@@ -22,6 +19,9 @@ libraryDependencies += "org.scalaz" %% "scalaz-core" % "7.3.3" %"compile"
 libraryDependencies += "com.lihaoyi" %% "upickle" % "0.9.5"
 libraryDependencies += "com.github.pathikrit" % "better-files_2.13" % "3.9.1"
 libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2"
+libraryDependencies += "com.typesafe.slick" % "slick_2.13" % "3.3.3"
+libraryDependencies += "org.xerial" % "sqlite-jdbc" % "3.34.0"
+libraryDependencies += "com.h2database" % "h2" % "1.4.187"
 
 libraryDependencies ++= {
   Seq("org.slf4j" % "slf4j-log4j12" % "1.7.30")

@@ -5,13 +5,15 @@ import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, NoTypeSolving}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, PathNode, PrettyPrinting, Qry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, PrettyPrinting, Qry}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
 
 class SymbolicExecutorTest extends AnyFunSuite {
+
+  private val prettyPrinting = new PrettyPrinting()
 
   test("Symbolic Executor should prove an intraprocedural deref"){
     val test_interproc_1 = getClass.getResource("/test_interproc_1.apk").getPath
@@ -27,10 +29,10 @@ class SymbolicExecutorTest extends AnyFunSuite {
       "java.lang.String objectString()",21)
     // Call symbolic executor
 
-    val result: Set[PathNode] = symbolicExecutor.executeBackward(query)
+    val result: Set[IPathNode] = symbolicExecutor.executeBackward(query)
     assert(result.size == 1)
     assert(result.iterator.next.qry.isInstanceOf[BottomQry])
-    PrettyPrinting.dumpDebugInfo(result, "test_interproc_1_derefSafe")
+    prettyPrinting.dumpDebugInfo(result, "test_interproc_1_derefSafe")
   }
 
 
@@ -47,10 +49,10 @@ class SymbolicExecutorTest extends AnyFunSuite {
     val query = Qry.makeReceiverNonNull(symbolicExecutor, w,
       "com.example.test_interproc_2.MainActivity",
       "void onPause()",27)
-    val result: Set[PathNode] = symbolicExecutor.executeBackward(query)
+    val result: Set[IPathNode] = symbolicExecutor.executeBackward(query)
 //    PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/foo.dot")
 //    PrettyPrinting.printWitnessTraces(result, outFile="/Users/shawnmeier/Desktop/foo.witnesses")
-    PrettyPrinting.dumpDebugInfo(result, "test_interproc_2_derefSafe")
+    prettyPrinting.dumpDebugInfo(result, "test_interproc_2_derefSafe")
     assert(BounderUtil.interpretResult(result) == Proven)
     assert(result.nonEmpty)
   }
@@ -66,9 +68,9 @@ class SymbolicExecutorTest extends AnyFunSuite {
     val query = Qry.makeReach(symbolicExecutor, w,
       "com.example.test_interproc_2.MainActivity",
       "void onPause()",25)
-    val result: Set[PathNode] = symbolicExecutor.executeBackward(query)
+    val result: Set[IPathNode] = symbolicExecutor.executeBackward(query)
 //    PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/witnessOnPause.dot")
-    PrettyPrinting.dumpDebugInfo(result, "test_interproc_2_onPauseReach")
+    prettyPrinting.dumpDebugInfo(result, "test_interproc_2_onPauseReach")
     assert(BounderUtil.interpretResult(result) == Witnessed)
   }
   test("Symbolic executor should witness onResume"){
@@ -83,11 +85,11 @@ class SymbolicExecutorTest extends AnyFunSuite {
     val query = Qry.makeReach(symbolicExecutor, w,
       "com.example.test_interproc_2.MainActivity",
       "void onResume()",20)
-    val result: Set[PathNode] = symbolicExecutor.executeBackward(query)
-    PrettyPrinting.dumpDebugInfo(result, "test_interproc_2_onResumeReach")
+    val result: Set[IPathNode] = symbolicExecutor.executeBackward(query)
+    prettyPrinting.dumpDebugInfo(result, "test_interproc_2_onResumeReach")
     assert(BounderUtil.interpretResult(result) == Witnessed)
   }
-  test("Test setField") {
+  test("Test internal object method call") {
     val src = """package com.example.createdestroy;
                 |import androidx.appcompat.app.AppCompatActivity;
                 |import android.os.Bundle;
@@ -137,7 +139,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void onCreate(android.os.Bundle)",20)
       val result = symbolicExecutor.executeBackward(query)
-      PrettyPrinting.dumpDebugInfo(result,"setField")
+      prettyPrinting.dumpDebugInfo(result,"setField")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Proven)
 
@@ -145,7 +147,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
   }
-  test("Test setField on wrong activity") {
+  test("Test method call on disaliased object") {
     val src = """package com.example.createdestroy;
                 |import androidx.appcompat.app.AppCompatActivity;
                 |import android.os.Bundle;
@@ -196,7 +198,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void onCreate(android.os.Bundle)",20)
       val result = symbolicExecutor.executeBackward(query)
-      PrettyPrinting.dumpDebugInfo(result,"MkApk")
+      prettyPrinting.dumpDebugInfo(result,"MkApk")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Witnessed)
 
@@ -254,7 +256,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
           "void onDestroy()", 28)
         val result = symbolicExecutor.executeBackward(query)
-        PrettyPrinting.dumpDebugInfo(result, s"BoolTest_initial_$initial")
+        prettyPrinting.dumpDebugInfo(result, s"BoolTest_initial_$initial")
         assert(result.nonEmpty)
         assert(BounderUtil.interpretResult(result) == expectedResult, s"Initial value: $initial")
 
@@ -327,7 +329,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void lambda$onCreate$1$MyActivity(java.lang.Object)",31)
       val result = symbolicExecutor.executeBackward(query)
-      PrettyPrinting.dumpDebugInfo(result,"ProveFieldDerefWithSubscribe")
+      prettyPrinting.dumpDebugInfo(result,"ProveFieldDerefWithSubscribe")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Proven)
     }
@@ -394,7 +396,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void lambda$onCreate$1$MyActivity(java.lang.Object)",31)
       val result = symbolicExecutor.executeBackward(query)
-      PrettyPrinting.dumpDebugInfo(result,"WitnessFieldDerefWithSubscribe")
+      prettyPrinting.dumpDebugInfo(result,"WitnessFieldDerefWithSubscribe")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Witnessed)
 
@@ -480,7 +482,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         ".*getActivity.*".r)
 
       val result = symbolicExecutor.executeBackward(query)
-      PrettyPrinting.dumpDebugInfo(result,"ProveSafeGetActivityWithSubscribe")
+      prettyPrinting.dumpDebugInfo(result,"ProveSafeGetActivityWithSubscribe")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Proven)
 
@@ -569,7 +571,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         ".*getActivity.*".r)
 
       val result = symbolicExecutor.executeBackward(query)
-      PrettyPrinting.dumpDebugInfo(result,"MkApk")
+      prettyPrinting.dumpDebugInfo(result,"MkApk")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Proven)
 

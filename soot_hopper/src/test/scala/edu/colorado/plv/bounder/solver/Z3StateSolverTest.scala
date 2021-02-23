@@ -8,7 +8,7 @@ import edu.colorado.plv.bounder.symbolicexecutor.state._
 import org.scalatest.funsuite.AnyFunSuite
 
 class Z3StateSolverTest extends AnyFunSuite {
-  private val fooMethod = TestIRMethodLoc("","foo", List(LocalWrapper("@this","Object")))
+  private val fooMethod = TestIRMethodLoc("","foo", List(Some(LocalWrapper("@this","Object"))))
   private val dummyLoc = CallbackMethodReturn(fmwClazz = "",
      fmwName="void foo()", fooMethod, None)
   private val v = PureVar(State.getId())

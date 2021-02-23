@@ -51,7 +51,7 @@ class TransferFunctionsTest extends AnyFunSuite {
   //Test transfer function where field is assigned and base may or may not be aliased
   // pre: this -> a^ * b^.out -> b1^ /\ b1^ == null
   // post: (this -> a^ * a^.out -> c^* d^.out -> e^) OR (this -> a^ * a^.out -> c^ AND a^=d^ AND c^=d^)
-  val fooMethod = TestIRMethodLoc("","foo", List(LocalWrapper("@this","java.lang.Object")))
+  val fooMethod = TestIRMethodLoc("","foo", List(Some(LocalWrapper("@this","java.lang.Object"))))
   val fooMethodReturn = CallbackMethodReturn("", "foo", fooMethod, None)
   test("Transfer may or may not alias") {
     val cmd = (loc:AppLoc) => {

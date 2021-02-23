@@ -3,10 +3,12 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.symbolicexecutor.{SymbolicExecutor, SymbolicExecutorConfig}
+import upickle.default.{macroRW, ReadWriter => RW}
 
 import scala.util.matching.Regex
 
 object Qry {
+  implicit val rw:RW[Qry] = RW.merge(macroRW[SomeQry], macroRW[BottomQry], macroRW[WitnessedQry])
 
   def makeReach[M,C](ex: SymbolicExecutor[M,C],
                      w:IRWrapper[M,C],

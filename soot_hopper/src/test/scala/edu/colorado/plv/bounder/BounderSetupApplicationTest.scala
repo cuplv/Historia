@@ -1,8 +1,9 @@
 package edu.colorado.plv.bounder
 
+import better.files.Resource
 import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.symbolicexecutor.FlowdroidCallGraph
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, IntVal, PureExpr, PureVal, PureVar, State, SubclassOf, TypeConstraint}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, DBPathNode, IntVal, PureExpr, PureVal, PureVar, State, SubclassOf, TypeConstraint}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.Scene
 import upickle.default._
@@ -43,5 +44,11 @@ class BounderSetupApplicationTest extends AnyFunSuite {
     val serialized = write(v)
     val deserialized = read[List[PureExpr]](serialized)
     assert(v === deserialized)
+  }
+
+  private val js = (name:String) => ujson.Value(Resource.getAsString(name)).obj
+  test("Deserialize old json loc with system identity hash code only"){
+    val v = read[DBPathNode](js("TestStates/badJson"))
+    println(v)
   }
 }

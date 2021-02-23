@@ -6,6 +6,7 @@ import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor._
 import edu.colorado.plv.fixedsoot.EnhancedUnitGraphFixed
+import scalaz.Memo
 import soot.jimple.infoflow.entryPointCreators.SimulatedCodeElementTag
 import soot.jimple.internal._
 import soot.jimple.spark.SparkTransformer
@@ -408,7 +409,8 @@ class JimpleFlowdroidWrapper(apkPath : String,
   BounderSetupApplication.loadApk(apkPath, callGraphSource)
 
 
-  private var unitGraphCache : scala.collection.mutable.Map[Body, EnhancedUnitGraphFixed] = scala.collection.mutable.Map()
+//  private var unitGraphCache : scala.collection.mutable.Map[Body, EnhancedUnitGraphFixed] =
+//    scala.collection.mutable.Map()
   private var appMethodCache : scala.collection.mutable.Set[SootMethod] = scala.collection.mutable.Set()
 
   val resolver = new DefaultAppCodeResolver[SootMethod, soot.Unit](this)
@@ -464,15 +466,17 @@ class JimpleFlowdroidWrapper(apkPath : String,
     AppLoc(JimpleMethodLoc(containingMethod),JimpleLineLoc(u,containingMethod),false)
   }
 
-  protected def getUnitGraph(body:Body):EnhancedUnitGraphFixed = {
-    if(unitGraphCache.contains(body)){
-      unitGraphCache.getOrElse(body, ???)
-    }else{
-      val cache = new EnhancedUnitGraphFixed(body)
-      unitGraphCache.put(body, cache)
-      cache
-    }
-  }
+//  protected def iGetUnitGraph(body:Body):EnhancedUnitGraphFixed = {
+//    if(unitGraphCache.contains(body)){
+//      unitGraphCache.getOrElse(body, ???)
+//    }else{
+//      val cache = new EnhancedUnitGraphFixed(body)
+//      unitGraphCache.put(body, cache)
+//      cache
+//    }
+//  }
+  protected val getUnitGraph: Body => EnhancedUnitGraphFixed = Memo.mutableHashMapMemo {b =>
+    new EnhancedUnitGraphFixed(b)}
   protected def getAppMethods(resolver: AppCodeResolver):Set[SootMethod] = {
     if(appMethodCache.isEmpty) {
       val classes = Scene.v().getApplicationClasses

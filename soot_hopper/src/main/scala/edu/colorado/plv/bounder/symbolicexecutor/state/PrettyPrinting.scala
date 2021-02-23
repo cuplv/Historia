@@ -1,9 +1,12 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 import java.io.{File, PrintWriter}
 
+import edu.colorado.plv.bounder.symbolicexecutor.SymbolicExecutorConfig
+
 import scala.io.Source
 
-object PrettyPrinting {
+class PrettyPrinting(mode : PathMode = MemoryPathMode) {
+  implicit val thisMode = mode
   val outDir = sys.env.get("OUT_DIR")
 
   val templateFile = getClass.getResource("/pageTemplate.html").getPath
@@ -19,25 +22,24 @@ object PrettyPrinting {
       "WITNESSED: " + loc.toString +
         "\n       state: " + state.toString.replaceAll("\n"," ")
   }
-  def witnessToTrace(pn:PathNode):List[String] = pn match{
-    case PathNode(q, Some(pred), _) =>
-      qryString(q) :: witnessToTrace(pred)
-    case PathNode(q, None, _) =>
-      qryString(q) :: Nil
+  def witnessToTrace(pn:Option[IPathNode]):List[String] = pn match{
+    case Some(p@PathNode(q, _)) =>
+      qryString(q) :: witnessToTrace(p.succ)
+    case None => Nil
     case v =>
       println(v)
       ???
   }
-  def printTraces(result: Set[PathNode], outFile: String): Unit = {
+  def printTraces(result: Set[IPathNode], outFile: String): Unit = {
     val pw = new PrintWriter(new File(outFile ))
     val live = result.flatMap{
-      case pn@PathNode(_: SomeQry, _ , None) => Some(("live",pn))
-      case pn@PathNode(_ :WitnessedQry, _, _) => Some(("witnessed", pn))
-      case pn@PathNode(_:BottomQry, _, None) => Some(("refuted",pn))
-      case pn@PathNode(_:SomeQry, _, Some(v)) => Some((s"subsumed by:\n -- ${qryString(v.qry)}\n", pn))
+      case pn@PathNode(_: SomeQry, false) => Some(("live",pn))
+      case pn@PathNode(_ :WitnessedQry, _) => Some(("witnessed", pn))
+      case pn@PathNode(_:BottomQry, false) => Some(("refuted",pn))
+      case pn@PathNode(_:SomeQry, true) => Some((s"subsumed by:\n -- ${qryString(pn.qry)}\n", pn))
       case _ => None
     }
-    val traces = live.map(a => a._1 + "\n    " + witnessToTrace(a._2).mkString("\n    ")).mkString("\n")
+    val traces = live.map(a => a._1 + "\n    " + witnessToTrace(Some(a._2)).mkString("\n    ")).mkString("\n")
     pw.write(traces)
     pw.close()
   }
@@ -47,7 +49,7 @@ object PrettyPrinting {
       .replace("<","\\<")
       .replace("-","\\-")
       .replace("\"","\\\"").replace("|","\\|")
-  private def iDotNode(qrySet:Set[PathNode],seen:Set[PathNode],
+  private def iDotNode(qrySet:Set[IPathNode],seen:Set[IPathNode],
                        procNodes:Set[String],procEdges:Set[String],
                        includeSubsEdges:Boolean):(Set[String],Set[String]) = {
     if(qrySet.isEmpty){
@@ -77,7 +79,7 @@ object PrettyPrinting {
       iDotNode(rest, seen + cur, nextProcNodes, nextProcEdges + subsumedEdges, includeSubsEdges)
     }
   }
-  def dotWitTree(qrySet : Set[PathNode], outFile:String, includeSubsEdges:Boolean) = {
+  def dotWitTree(qrySet : Set[IPathNode], outFile:String, includeSubsEdges:Boolean) = {
     val pw = new PrintWriter(new File(outFile ))
     val (nodes,edges) = iDotNode(qrySet,Set(),Set(),Set(), includeSubsEdges)
     pw.write(
@@ -92,7 +94,7 @@ object PrettyPrinting {
     pw.close
   }
 
-  def printWitnessOrProof(qrySet : Set[PathNode], outFile:String, includeSubsEdges:Boolean = false) =
+  def printWitnessOrProof(qrySet : Set[IPathNode], outFile:String, includeSubsEdges:Boolean = false) =
     qrySet.find(_.qry.isInstanceOf[WitnessedQry]) match{
       case Some(v) => dotWitTree(Set(v), outFile, includeSubsEdges)
       case None => dotWitTree(qrySet, outFile, includeSubsEdges)
@@ -104,7 +106,7 @@ object PrettyPrinting {
    * @param fileName base name of output files
    * @param outDir2 override env variable out
    */
-  def dumpDebugInfo(qrySet:Set[PathNode],fileName: String, outDir2 : Option[String] = None):Unit = {
+  def dumpDebugInfo(qrySet:Set[IPathNode],fileName: String, outDir2 : Option[String] = None):Unit = {
     val outDir3 = if(outDir2.isDefined) outDir2 else outDir
     outDir3 match{
       case Some(baseDir) =>
@@ -112,19 +114,19 @@ object PrettyPrinting {
         // printWitnessOrProof(qrySet, s"$fname.dot")
 
         printTraces(qrySet.filter{
-          case PathNode(_:WitnessedQry, _, None) => true
+          case PathNode(_:WitnessedQry, false) => true
           case _ => false
         }, s"$fname.witnesses")
         printTraces(qrySet.filter{
-          case PathNode(_:BottomQry, _, None) => true
+          case PathNode(_:BottomQry, false) => true
           case _ => false
         }, s"$fname.refuted")
         printTraces(qrySet.filter{
-          case PathNode(_, _, Some(_)) => true
+          case PathNode(_, false) => true
           case _ => false
         }, s"$fname.subsumed")
         printTraces(qrySet.filter{
-          case PathNode(_:SomeQry, _, None) => true
+          case PathNode(_:SomeQry, false) => true
           case _ => false
         }, s"$fname.live")
       case None =>

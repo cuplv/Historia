@@ -51,12 +51,12 @@ class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] 
  * @param name
  * @param args use "_" for receiver on static method
  */
-case class TestIRMethodLoc(clazz:String, name:String, args:List[LocalWrapper]) extends MethodLoc {
+case class TestIRMethodLoc(clazz:String, name:String, args:List[Option[LocalWrapper]]) extends MethodLoc {
   override def simpleName: String = name
 
   override def classType: String = clazz
 
-  override def argTypes: List[String] = args.map(_.localType)
+  override def argTypes: List[String] = args.map(_.map(_.localType).getOrElse("void"))
 
   /**
    * None for return if void
@@ -65,8 +65,9 @@ case class TestIRMethodLoc(clazz:String, name:String, args:List[LocalWrapper]) e
    * @return list of args, [return,reciever, arg1,arg2 ...]
    */
   override def getArgs: List[Option[LocalWrapper]] = args.map{
-    case LocalWrapper("_", _) => None
-    case local@LocalWrapper(_, _) => Some(local)
+    case Some(LocalWrapper("_", _)) => None
+    case Some(local@LocalWrapper(_, _)) => Some(local)
+    case None => None
   }
 
   override def isStatic: Boolean = ???
@@ -82,7 +83,9 @@ object TestIRMethodLoc{
 }
 
 
-case class TestIRLineLoc(line:Int) extends LineLoc
+case class TestIRLineLoc(line:Int, desc:String = "") extends LineLoc {
+  override def toString: String = if(desc == "") line.toString else desc
+}
 object TestIRLineLoc{
   implicit val rw:RW[TestIRMethodLoc] = macroRW
 }
