@@ -60,7 +60,7 @@ object JimpleFlowdroidWrapper{
         case _ => ???
       }
       val targetClass = a.getMethodRef.getDeclaringClass.getName
-      val targetMethod = a.getMethodRef.getSignature
+      val targetMethod = a.getMethodRef.getSubSignature.toString
       val params: List[RVal] = (0 until a.getArgCount()).map(argPos =>
         makeVal(a.getArg(argPos))
       ).toList
@@ -78,7 +78,7 @@ object JimpleFlowdroidWrapper{
         makeVal(a.getArg(argPos))
       ).toList
       val targetClass = a.getMethodRef.getDeclaringClass.getName
-      val targetMethod = a.getMethodRef.getSignature
+      val targetMethod = a.getMethodRef.getSubSignature.toString
       StaticInvoke(targetClass, targetMethod, params)
     }
     case n : AbstractNewExpr => {

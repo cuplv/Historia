@@ -4,9 +4,9 @@ import better.files.File
 import edu.colorado.plv.bounder.Driver.{Default, RunMode}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NI}
-import edu.colorado.plv.bounder.lifestate.{SpecSignatures, SpecSpace}
+import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, RxJavaSpec, SpecSignatures, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.{FlowdroidCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, FlowdroidCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{PathNode, PrettyPrinting, Qry}
 import scopt.OParser
 import soot.SootMethod
@@ -139,20 +139,31 @@ object Driver {
   }
 
   def runAnalysis(apkPath: String, componentFilter:Option[Seq[String]]): Set[PathNode] = {
-    //TODO: read location from json config
-    //TODO: read spec from json config
-    val callGraph = FlowdroidCallGraph
-    val w = new JimpleFlowdroidWrapper(apkPath, callGraph)
-    val testSpec = LSSpec(NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
-      SpecSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
-    val transfer =  (cha:ClassHierarchyConstraints) =>
-      new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set(testSpec)), cha)
-    val config = SymbolicExecutorConfig(
-      stepLimit = Some(30), w,transfer, component = componentFilter)
-    val symbolicExecutor = config.getSymbolicExecutor
-    val query = Qry.makeReceiverNonNull(symbolicExecutor, w,
-      "com.example.test_interproc_2.MainActivity",
-      "void onPause()",27)
-    symbolicExecutor.executeBackward(query)
+    val startTime = System.currentTimeMillis()
+    try {
+      //TODO: read location from json config
+      //TODO: read spec from json config
+      val callGraph = CHACallGraph
+      val w = new JimpleFlowdroidWrapper(apkPath, callGraph)
+      //TODO: un-hard code spec
+      val specSet = Set(FragmentGetActivityNullSpec.getActivityNull,
+        FragmentGetActivityNullSpec.getActivityNonNull,
+        RxJavaSpec.call,
+        RxJavaSpec.subscribeDoesNotReturnNull,
+        RxJavaSpec.subscribeIsUniqueAndNonNull
+      )
+      val transfer = (cha: ClassHierarchyConstraints) =>
+        new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(specSet), cha)
+      val config = SymbolicExecutorConfig(
+        stepLimit = Some(160), w, transfer, component = componentFilter)
+      val symbolicExecutor = config.getSymbolicExecutor
+      val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
+        "de.danoeh.antennapod.fragment.ExternalPlayerFragment",
+        "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)", 200,
+        callinMatches = ".*getActivity.*".r)
+      symbolicExecutor.executeBackward(query)
+    } finally {
+      println(s"time: ${(System.currentTimeMillis() - startTime) / 1000} seconds")
+    }
   }
 }

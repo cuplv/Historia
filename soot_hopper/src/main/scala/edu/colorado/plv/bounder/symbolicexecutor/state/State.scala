@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.solver.StateSolver
 import edu.colorado.plv.bounder.ir.{AppLoc, BoolConst, CallbackMethodInvoke, CallbackMethodReturn, ClassConst, IntConst, InternalMethodInvoke, InternalMethodReturn, LVal, Loc, LocalWrapper, MessageType, NullConst, RVal, StringConst}
-import edu.colorado.plv.bounder.lifestate.LifeState
+import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAnyVal, LSPred, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state.State.findIAF
 import upickle.default.{macroRW, ReadWriter => RW}
@@ -81,6 +81,26 @@ case class LSConstConstraint(pureExpr: PureExpr, trace:AbstractTrace) extends LS
 case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdge, PureExpr],
                  pureFormula: Set[PureConstraint], traceAbstraction: Set[AbstractTrace], nextAddr:Int,
                  nextCmd: Option[AppLoc] = None) {
+  /**
+   * Use for over approximate relevant methods
+   * @return set of field names that could be referenced by abstract state
+   */
+  def fieldNameSet():Set[String] = heapConstraints.keySet.flatMap{
+    case FieldPtEdge(_,fieldName) => Some(fieldName)
+    case StaticPtEdge(_, fieldName) => Some(fieldName)
+    case ArrayPtEdge(_,_) => None
+  }
+
+  /**
+   * Use for over approximate relevant methods
+   * @return set of simple method names referenced by trace abstraction
+   */
+  def traceMethodSet():Set[String] =
+    traceAbstraction.flatMap{ at =>
+      val allISet = SpecSpace.allI(at.a)
+      allISet.flatMap(i => i.signatures.map(_._2))
+    }
+
   def entryPossible(loc: Loc): Boolean = loc match{
     case CallbackMethodInvoke(clazz, name, _) =>
       callStack.headOption match{

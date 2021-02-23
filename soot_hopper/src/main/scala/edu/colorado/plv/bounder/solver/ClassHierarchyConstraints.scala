@@ -73,7 +73,8 @@ class ClassHierarchyConstraints(ctx: Context, solver: Solver, types : Map[String
   def getUseZ3TypeSolver:StateTypeSolving = useZ3TypeSolver
   def getSubtypesOf(tname:String):Set[String] = {
     if (tname.endsWith("[]")){
-      ???
+      val arrayBase = tname.replaceFirst("\\[\\]","")
+      getSubtypesOf(arrayBase).map(_ + "[]")
     }else {
       getTypes.getOrElse(tname,
         throw new IllegalStateException(s"Type: $tname not found"))
@@ -82,9 +83,15 @@ class ClassHierarchyConstraints(ctx: Context, solver: Solver, types : Map[String
 
   //  def getSupertypesOf(tname:String) :Set[String] = types.keySet.filter(k => types(k).contains(tname))
 
-  val getSupertypesOf : String => Set[String] = Memo.mutableHashMapMemo{ tname =>
-    getTypes.keySet.filter(k => getTypes(k).contains(tname))
+  def iGetSupertypesOf(tname:String):Set[String] = {
+    if (tname.endsWith("[]")){
+      val arrayBase = tname.replaceFirst("\\[\\]","")
+      iGetSupertypesOf(arrayBase).map(_ + "[]")
+    }else {
+      getTypes.keySet.filter(k => getTypes(k).contains(tname))
+    }
   }
+  val getSupertypesOf : String => Set[String] = Memo.mutableHashMapMemo{ iGetSupertypesOf }
 
   val tsort: UninterpretedSort = ctx.mkUninterpretedSort("ClassTypes")
   val typeToSolverConst: Map[String, Expr] = getTypes.keySet.map(t => (t-> ctx.mkConst(s"type_$t", tsort))).toMap

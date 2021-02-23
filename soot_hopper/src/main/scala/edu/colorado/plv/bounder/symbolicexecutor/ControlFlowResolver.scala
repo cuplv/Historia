@@ -1,13 +1,14 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.ir._
+import edu.colorado.plv.bounder.ir.{Invoke, _}
 import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, FieldPtEdge, LSParamConstraint, LSPure, PureVar, State, StaticPtEdge}
 import scalaz.Memo
 
 import scala.collection.mutable
+import scala.collection.parallel.CollectionConverters.ImmutableIterableIsParallelizable
 import scala.util.matching.Regex
 /**
  * Functions to resolve control flow edges while maintaining context sensitivity.
@@ -27,7 +28,6 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 
   def getResolver = resolver
 
-  //TODO: cache result
   def lazyDirectCallsGraph(loc: MethodLoc): Set[Loc] = {
     val unresolvedTargets = wrapper.makeMethodTargets(loc).map(callee =>
       UnresolvedMethodTarget(callee.classType, callee.simpleName, Set(callee)))
@@ -110,7 +110,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     }
   }
 
-  def relevantHeap(m: MethodLoc, state: State): Boolean = { //TODO: static field
+  def relevantHeap(m: MethodLoc, state: State): Boolean = {
     def canModifyHeap(c: CmdWrapper): Boolean = c match {
       case AssignCmd(fr: FieldReference, _, _) => fieldCanPt(fr, state)
       case AssignCmd(_, fr: FieldReference, _) => fieldCanPt(fr, state)
@@ -151,15 +151,75 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     // Find any call that matches a spec in the abstract trace
     // TODO: later this should be refined based on type information
     calls.exists { call =>
-      Set(CIEnter, CIExit).exists(cdir => state.findIFromCurrent(cdir, (call.fmwClazz, call.fmwName)).nonEmpty)
+      Set(CIEnter, CIExit).exists{cdir =>
+        val relI = state.findIFromCurrent(cdir, (call.fmwClazz, call.fmwName))
+        relI.nonEmpty
+      }
     }
   }
 
+  def iHeapNamesModified(m:MethodLoc):Set[String] = {
+    def modifiedNames(c: CmdWrapper): Option[String] = c match {
+      case AssignCmd(fr: FieldReference, _, _) => Some(fr.name)
+      case AssignCmd(_, fr: FieldReference, _) => Some(fr.name)
+      case AssignCmd(StaticFieldReference(_, name, _), _, _) => Some(name)
+      case AssignCmd(_, StaticFieldReference(_, name, _), _) => Some(name)
+      case _: AssignCmd => None
+      case _: ReturnCmd => None
+      case _: InvokeCmd => None
+      case _: If => None
+      case _: NopCmd => None
+      case _: ThrowCmd => None
+      case _: SwitchCmd => None
+    }
+    val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) => cmdAtLocationNopIfUnknown(v).mkPre)
+    BounderUtil.graphFixpoint[CmdWrapper, Set[String]](start = returns,Set(),Set(),
+      next = n => wrapper.commandPredecessors(n).map((v: AppLoc) => cmdAtLocationNopIfUnknown(v).mkPre).toSet,
+      comp = (acc,v) => acc ++ modifiedNames(v),
+      join = (a,b) => a.union(b)
+    ).flatMap{ case (_,v) => v}.toSet
+  }
+  val heapNamesModified:MethodLoc => Set[String] = Memo.mutableHashMapMemo{iHeapNamesModified}
+  def iCallinNames(m:MethodLoc):Set[String] = {
+    def modifiedNames(c: CmdWrapper): Option[String] = c match {
+      case AssignCmd(_,i : Invoke, _) => Some(i.targetMethod)
+      case _: AssignCmd => None
+      case _: ReturnCmd => None
+      case InvokeCmd(i,_) => Some(i.targetMethod)
+      case _: If => None
+      case _: NopCmd => None
+      case _: ThrowCmd => None
+      case _: SwitchCmd => None
+    }
+    val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) => cmdAtLocationNopIfUnknown(v).mkPre)
+    BounderUtil.graphFixpoint[CmdWrapper, Set[String]](start = returns,Set(),Set(),
+      next = n => wrapper.commandPredecessors(n).map((v: AppLoc) => cmdAtLocationNopIfUnknown(v).mkPre).toSet,
+      comp = (acc,v) => acc ++ modifiedNames(v),
+      join = (a,b) => a.union(b)
+    ).flatMap{ case (_,v) => v}.toSet
+  }
+  val callinNames:MethodLoc => Set[String] = Memo.mutableHashMapMemo{iCallinNames}
   def relevantMethodBody(m: MethodLoc, state: State): Boolean = {
+    val fnSet = state.fieldNameSet()
+    val mSet = state.traceMethodSet()
     if (resolver.isFrameworkClass(m.classType))
       return false // body can only be relevant to app heap or trace if method is in the app
-    val callees = memoizedallCalls(m) + m
-    callees.exists { c =>
+
+    val allCalls = memoizedallCalls(m) + m
+//    val callees = allCalls
+    val callees = allCalls.par.filter { m =>
+      val fnOverlap = fnSet.exists { fn =>
+        val hn = iHeapNamesModified(m)
+        hn.contains(fn)
+      }
+      lazy val mSetOverlap = mSet.exists{ci =>
+        val cin = callinNames(m)
+        cin.contains(ci)
+      }
+      fnOverlap || mSetOverlap
+    }
+
+    callees.par.exists { c =>
       if (relevantHeap(c, state))
         true
       else if (relevantTrace(c, state))
@@ -257,7 +317,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
           val unresolvedTargets =
             wrapper.makeInvokeTargets(loc)
           val resolved: Set[Loc] = resolver.resolveCallLocation(unresolvedTargets)
-          if(resolved.forall(m => !relevantMethod(m,state)))
+          if(resolved.par.forall(m => !relevantMethod(m,state)))
             List(l.copy(isPre = true)) // skip if all method targets are not relevant
           else {
             mergeEquivalentCallins(resolved, state)
@@ -281,7 +341,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
           if (state.get(tgt).isDefined)
             mergeEquivalentCallins(resolved,state)
           else {
-            if(resolved.forall(m => !relevantMethod(m,state)))
+            if(resolved.par.forall(m => !relevantMethod(m,state)))
               List(l.copy(isPre = true)) // skip if all method targets are not relevant
             else
               mergeEquivalentCallins(resolved,state)

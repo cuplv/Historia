@@ -562,6 +562,12 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     case AssignCmd(lhs:LocalWrapper, Binop(_,_,_), _) =>
       // TODO: sound to drop constraint, add precision when necessary
       Set(state.clearLVal(lhs))
+    case AssignCmd(lhs:LocalWrapper, InstanceOf(clazz, target),_) =>
+      // TODO: sound to drop constraint, handle instanceof when needed
+      state.get(lhs) match{
+        case Some(v) => Set(state.clearLVal(lhs))
+        case None => Set(state)
+      }
     case c =>
       println(c)
       ???

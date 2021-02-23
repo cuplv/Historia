@@ -167,10 +167,8 @@ object LifeState extends RegexParsers {
     }
   }
 }
-/**
- * Representation of a set of possible lifestate specs */
-class SpecSpace(specs: Set[LSSpec]) {
-  private def allI(pred:LSPred):Set[I] = pred match{
+object SpecSpace{
+  def allI(pred:LSPred):Set[I] = pred match{
     case i@I(_,_,_) => Set(i)
     case NI(i1,i2) => Set(i1,i2)
     case And(p1,p2) => allI(p1).union(allI(p2))
@@ -179,11 +177,15 @@ class SpecSpace(specs: Set[LSSpec]) {
     case LSTrue => Set()
     case LSFalse => Set()
   }
-  private def allI(spec:LSSpec):Set[I] = spec match{
+  def allI(spec:LSSpec):Set[I] = spec match{
     case LSSpec(pred, target,_) => allI(pred).union(allI(target))
   }
+}
+/**
+ * Representation of a set of possible lifestate specs */
+class SpecSpace(specs: Set[LSSpec]) {
   private val iset: Map[(MessageType, (String, String)), I] = {
-    val allISpecs = specs.flatMap(allI)
+    val allISpecs = specs.flatMap(SpecSpace.allI)
     val collected = allISpecs.groupBy(i => (i.mt, i.signatures))
     collected.flatMap{
       case (k,v) =>
