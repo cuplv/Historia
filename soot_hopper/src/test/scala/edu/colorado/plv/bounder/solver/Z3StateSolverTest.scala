@@ -582,7 +582,7 @@ class Z3StateSolverTest extends AnyFunSuite {
     val statesolver = getStateSolver(SolverTypeSolving)
     // (x->p1 && p1 <: Object) can not be subsumed by (x->p1 && p1 <:Foo)
     val p1 = PureVar(State.getId())
-    val state_ = state.copy(pureFormula = Set(PureConstraint(p1,TypeComp,SubclassOf("Foo")  )))
+    val state_ = state.copy(pureFormula = Set(PureConstraint(p1,TypeComp,SubclassOf("Foo"))))
     val state__ = state.copy(pureFormula = Set(PureConstraint(p1,TypeComp,SubclassOf("java.lang.Object"))))
     assert(!statesolver.canSubsume(state_, state__))
 
@@ -599,11 +599,9 @@ class Z3StateSolverTest extends AnyFunSuite {
     assert(statesolver.canSubsume(state1__, state1_))
     assert(!statesolver.canSubsume(state1_, state1__))
 
-////    val state_ = state.copy(pureFormula = Set(PureConstraint(p1,TypeComp,SubclassOf("Foo")  )))
-////    val state__ = state.copy(pureFormula = Set(PureConstraint(p1,TypeComp,SubclassOf("java.lang.Object"))))
-//    // (x->p1 && p1 <: Foo) can be subsumed by (x->p1 && p1 <:Object)
-//    assert(statesolver.canSubsume(state__, state_))
-//    assert(statesolver.canSubsume(state_, state_))
+    // (x->p1 && p1 <: Foo) can be subsumed by (x->p1 && p1 <:Object)
+    assert(statesolver.canSubsume(state__, state_))
+    assert(statesolver.canSubsume(state_, state_))
 
     // Combine type constraints and trace constraints
     val ifoo = I(CBEnter, Set(("", "foo")), "a" :: Nil)

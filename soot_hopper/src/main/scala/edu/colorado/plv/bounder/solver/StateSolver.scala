@@ -422,8 +422,19 @@ trait StateSolver[T] {
 
   }
 
-  //TODO: remove log code
-
+  def reduceStatePureVars(state:State):State = {
+    assert(state.isSimplified, "reduceStatePureVars must be called on feasible state.")
+    // TODO: test for trace enforcing that pure vars are equivalent
+    state.pureFormula.foldLeft(state){
+      case (acc,pc@PureConstraint(v1@PureVar(id1), Equals, v2@PureVar(id2))) if id1 < id2 =>
+        acc.copy(pureFormula = acc.pureFormula - pc).swapPv(v2,v1)
+      case (acc,pc@PureConstraint(v1@PureVar(id1), Equals, v2@PureVar(id2))) if id1 > id2 =>
+        acc.copy(pureFormula = acc.pureFormula - pc).swapPv(v1,v2)
+      case (acc,pc@PureConstraint(PureVar(id1), Equals, PureVar(id2))) if id1 == id2 =>
+        acc.copy(pureFormula = acc.pureFormula - pc)
+      case (acc,_) => acc
+    }
+  }
   def simplify(state: State, maxWitness: Option[Int] = None): Option[State] = {
     if(state.isSimplified) Some(state) else {
       // Drop useless constraints
@@ -432,7 +443,7 @@ trait StateSolver[T] {
         case PureConstraint(v1,Equals,v2) if v1==v2 => false
         case _ => true
       })
-      // If no type possible for a pure var, throw it out
+      // If no type possible for a pure var, state is not feasible
       val pvMap2 = persist.pureVarTypeMap(state)
       if(pvMap2.exists(a => a._2.isEmpty)){
         return None
@@ -451,7 +462,7 @@ trait StateSolver[T] {
       pop()
       // TODO: garbage collect constraint, if all purevar can't be reached from reg or stack var and state is satisfiable
       simpleAst.map(_ =>
-        state2.setSimplified()
+        reduceStatePureVars(state2.setSimplified())
       )
     }
   }
