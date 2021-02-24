@@ -49,9 +49,17 @@ class Z3StateSolverTest extends AnyFunSuite {
 
     // v3 and v4 on the right side of the points to can be aliased
     val unrefutableState = State(List(frame),
-      Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),Set(PureConstraint(v3, Equals, v4)), Set(),0)
+      Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),Set(PureConstraint(v3, Equals, v4),
+        PureConstraint(v, NotEquals, v2)), Set(),0)
     val simplifyResult2 = statesolver.simplify(unrefutableState)
     assert(simplifyResult2.isDefined)
+
+    // object field can point to self
+    val unrefutableState2 = State(List(frame),
+      Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),Set(PureConstraint(v3, Equals, v4),
+        PureConstraint(v, Equals, v4)), Set(),0)
+    val simplifyResult3 = statesolver.simplify(unrefutableState2)
+    assert(simplifyResult3.isDefined)
   }
   //TODO: group equal pure vars for type check
   test("aliased object implies fields must be aliased refuted by type constraints") {
