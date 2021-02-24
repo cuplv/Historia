@@ -156,6 +156,7 @@ object Driver {
       //TODO: read location from json config
       //TODO: read spec from json config
       val callGraph = CHACallGraph
+//      val callGraph = FlowdroidCallGraph // flowdroid call graph immediately fails with "unreachable"
       val w = new JimpleFlowdroidWrapper(apkPath, callGraph)
       //TODO: un-hard code spec
       val specSet = Set(FragmentGetActivityNullSpec.getActivityNull,
@@ -167,7 +168,7 @@ object Driver {
       val transfer = (cha: ClassHierarchyConstraints) =>
         new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(specSet), cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(150), w, transfer, component = componentFilter, pathMode = mode)
+        stepLimit = Some(130), w, transfer, component = componentFilter, pathMode = mode)
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
         "de.danoeh.antennapod.fragment.ExternalPlayerFragment",
@@ -175,7 +176,7 @@ object Driver {
         callinMatches = ".*getActivity.*".r)
       symbolicExecutor.executeBackward(query)
     } finally {
-      println(s"time: ${(System.currentTimeMillis() - startTime) / 1000} seconds")
+      println(s"analysis time: ${(System.currentTimeMillis() - startTime) / 1000} seconds")
     }
   }
 }

@@ -35,7 +35,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
   protected val excludedClasses = "dummyMainClass".r
 
   val appMethods = ir.getAllMethods.filter(m => !isFrameworkClass(m.classType)).toSet
-  def getCallbacks = appMethods.filter(resolveCallbackEntry(_).isDefined)
+  def getCallbacks:Set[MethodLoc] = appMethods.filter(resolveCallbackEntry(_).isDefined)
   def isFrameworkClass(fullClassName:String):Boolean = fullClassName match{
     case FrameworkExtensions.extensionRegex() => true
     case _ => false
@@ -82,6 +82,10 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
 
   }
   override def resolveCallbackEntry(method:MethodLoc):Option[Loc] = {
+    if(method.simpleName == "void <clinit>()"){
+      // <clinit> considered a callback
+      return Some(CallbackMethodInvoke("java.lang.Object", "void <clinit>()", method))
+    }
     if(method.isInterface)
       return None // Interface methods cannot be callbacks
     val overrides = ir.getOverrideChain(method).filter(c =>

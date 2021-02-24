@@ -457,24 +457,10 @@ class JimpleFlowdroidWrapper(apkPath : String,
       new PatchingCallGraphWrapper(Scene.v().getCallGraph, getAppMethods(resolver))
   }
 
-
-  def addClassFile(path: String): Unit = {
-    ???
-  }
-
   private def cmdToLoc(u : soot.Unit, containingMethod:SootMethod): AppLoc = {
     AppLoc(JimpleMethodLoc(containingMethod),JimpleLineLoc(u,containingMethod),false)
   }
 
-//  protected def iGetUnitGraph(body:Body):EnhancedUnitGraphFixed = {
-//    if(unitGraphCache.contains(body)){
-//      unitGraphCache.getOrElse(body, ???)
-//    }else{
-//      val cache = new EnhancedUnitGraphFixed(body)
-//      unitGraphCache.put(body, cache)
-//      cache
-//    }
-//  }
   protected val getUnitGraph: Body => EnhancedUnitGraphFixed = Memo.mutableHashMapMemo {b =>
     new EnhancedUnitGraphFixed(b)}
   protected def getAppMethods(resolver: AppCodeResolver):Set[SootMethod] = {
@@ -609,6 +595,16 @@ class JimpleFlowdroidWrapper(apkPath : String,
     val line = appLoc.line.asInstanceOf[JimpleLineLoc]
     val edgesOut = cg.edgesOutOf(line.cmd)
 
+    // A class may be statically initialized at any location where it is first used
+    // Soot adds a <clinit> edge to any static invoke site.
+    // We assume that <clinit> is a callback for simplicity.
+    // This is an unsound assumption but one that is unlikely to affect results of the analysis.
+    // Note that handling <clinit> in a sound way for a flow sensitive analysis is difficult.
+    // <clinit> for different classes can be interleved arbitrarily to resolve circular dependencies.
+    val edgesWithoutClInit = edgesOut.filter{edge =>
+      edge.getName != "<clinit>"
+    }
+
     val mref = appLoc.line match {
       case JimpleLineLoc(cmd: JInvokeStmt, _) => cmd.getInvokeExpr.getMethodRef
       case JimpleLineLoc(cmd: JAssignStmt, _) if cmd.getRightOp.isInstanceOf[JVirtualInvokeExpr] =>
@@ -626,7 +622,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
     val clazzName = declClass.getName
     val name = mref.getSubSignature
 
-    UnresolvedMethodTarget(clazzName, name.toString,edgesOut.map(f => JimpleMethodLoc(f)))
+    UnresolvedMethodTarget(clazzName, name.toString,edgesWithoutClInit.map(f => JimpleMethodLoc(f)))
   }
 
   def canAlias(type1: String, type2: String): Boolean = {

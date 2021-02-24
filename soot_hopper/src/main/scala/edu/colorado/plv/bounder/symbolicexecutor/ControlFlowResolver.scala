@@ -206,7 +206,6 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       return false // body can only be relevant to app heap or trace if method is in the app
 
     val allCalls = memoizedallCalls(m) + m
-//    val callees = allCalls
     val callees = allCalls.par.filter { m =>
       val fnOverlap = fnSet.exists { fn =>
         val hn = iHeapNamesModified(m)
@@ -263,7 +262,6 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       out
     case CallinMethodReturn(_, _) => true
     case CallbackMethodReturn(clazz, name, rloc, Some(retLine)) => {
-      //TODO: switch on static or not
       val retVars =
         if (rloc.isStatic)
           wrapper.makeMethodRetuns(rloc).map { retloc =>
@@ -271,8 +269,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
               case ReturnCmd(Some(l), loc) => Some(l)
               case _ => None
             }
-          }
-        else List(None)
+          } else List(None)
       val iExists = retVars.exists { retVar =>
         val locs: List[Option[RVal]] = retVar :: rloc.getArgs
         val res = existsIAlias(locs, CBExit, (clazz, name), state) ||
@@ -296,11 +293,10 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     out
   }
   def resolvePredicessors(loc:Loc, state: State):Iterable[Loc] = (loc,state.callStack) match{
-    case (l@AppLoc(method,_,true),_) => {
+    case (l@AppLoc(_,_,true),_) => {
       val cmd: CmdWrapper = wrapper.cmdAtLocation(l)
       cmd match {
         case cmd if wrapper.isMethodEntry(cmd) =>
-//          val callback = resolver.resolveCallbackEntry(method)
           val methodEntries = BounderUtil.resolveMethodEntryForAppLoc(resolver,l )
           val out = methodEntries.filter(state.entryPossible(_))
           out
@@ -311,6 +307,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     }
     case (l@AppLoc(_,_,false),_) => {
       //TODO: filter resolved based on things that can possibly alias reciever
+      // TODO: filter out clinit, call somewhere else?
       val cmd: CmdWrapper = wrapper.cmdAtLocation(l)
       cmd match{
         case InvokeCmd(i, loc) => {
@@ -321,17 +318,6 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
             List(l.copy(isPre = true)) // skip if all method targets are not relevant
           else {
             mergeEquivalentCallins(resolved, state)
-//            val irrelevantCallinsToMerge: Set[Loc] = resolved.filter(irrelevantCallinInvoke(_,state))
-//            // merge all irrelevant callins with most general type
-//            val merged = irrelevantCallinsToMerge.headOption.map{v =>
-//              irrelevantCallinsToMerge.foldLeft(v){
-//                case (CallinMethodReturn(clazz,_), other@CallinMethodReturn(clazz2, _)) if wrapper.isSuperClass(clazz2,clazz) =>
-//                  other
-//                case (cur,_) =>
-//                  cur
-//              }
-//            }
-//            (resolved -- irrelevantCallinsToMerge) ++ merged
           }
         }
         case AssignCmd(tgt, _:Invoke,loc) => {

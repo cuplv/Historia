@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.symbolicexecutor.{SymbolicExecutor, SymbolicExecutorConfig}
+import edu.colorado.plv.bounder.symbolicexecutor.{SymbolicExecutor}
 import upickle.default.{macroRW, ReadWriter => RW}
 
 import scala.util.matching.Regex
@@ -88,9 +88,7 @@ object Qry {
 
 
 }
-//TODO: add extra constraints into query later
-//heapConstraints : Set[HeapPtEdge],
-//pureConstraints : Set[PureConstraint],
+
 sealed trait Qry {
   def loc: Loc
   def state: State
