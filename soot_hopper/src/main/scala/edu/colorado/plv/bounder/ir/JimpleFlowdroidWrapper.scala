@@ -550,6 +550,12 @@ class JimpleFlowdroidWrapper(apkPath : String,
     val unitGraph = getUnitGraph(ll.method.retrieveActiveBody())
     unitGraph.getSuccsOf(ll.cmd).size()
   }
+
+  override def degreeIn(cmd: AppLoc): Int = {
+    val ll = cmd.line.asInstanceOf[JimpleLineLoc]
+    val unitGraph = getUnitGraph(ll.method.retrieveActiveBody())
+    unitGraph.getPredsOf(ll.cmd).size()
+  }
   override def commandPredecessors(cmdWrapper : CmdWrapper):List[AppLoc] =
     cmdWrapper.getLoc match{
     case AppLoc(methodWrapper @ JimpleMethodLoc(_),JimpleLineLoc(cmd,sootMethod), true) => {

@@ -44,7 +44,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     val transfer = (cha:ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod,soot.Unit](w, ActivityLifecycle.spec,cha)
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(60), w,transfer,  z3Timeout = Some(30), component = Some(List("com\\.example\\.test_interproc_2.*")))
+      stepLimit = Some(160), w,transfer,  z3Timeout = Some(30), component = Some(List("com\\.example\\.test_interproc_2.*")))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = Qry.makeReceiverNonNull(symbolicExecutor, w,
       "com.example.test_interproc_2.MainActivity",

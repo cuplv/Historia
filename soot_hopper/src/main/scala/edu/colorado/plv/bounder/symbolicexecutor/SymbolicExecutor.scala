@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
 import com.microsoft.z3.Context
-import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, IRWrapper, Loc}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, Loc, SpecialInvoke, StaticInvoke, VirtualInvoke}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, NoTypeSolving, StateTypeSolving, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, MemoryPathMode, PathMode, PathNode, Qry, SomeQry, WitnessedQry}
 import soot.SootMethod
@@ -87,10 +87,21 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     def unapply(loc: Loc): Option[SubsumableLocation] = loc match {
       case _: CallbackMethodInvoke => Some(FrameworkLocation)
       case _: CallbackMethodReturn => None
-      case a: AppLoc if config.w.degreeOut(a) > 1 => Some(CodeLocation(a))
+//      case a@AppLoc(_,_,false) if config.w.degreeOut(a) > 1 => Some(CodeLocation(a))
+      case AppLoc(_,_,false) => None
+      case a@AppLoc(_,_,true) if config.w.degreeIn(a) > 1 => Some(CodeLocation(a))
       case _: CallinMethodInvoke => None // message locations don't remember program counter so subsumption is unsound
       case _: CallinMethodReturn => None
-      case _ => None
+      case _: InternalMethodInvoke => None
+      case _: InternalMethodReturn => None
+      case a@AppLoc(_,_,true) =>
+        config.w.cmdAtLocation(a) match {
+          case InvokeCmd(_, _) => Some(CodeLocation(a))
+          case AssignCmd(_, VirtualInvoke(_,_,_,_),_) => Some(CodeLocation(a))
+          case AssignCmd(_, SpecialInvoke(_,_,_,_),_) => Some(CodeLocation(a))
+          case AssignCmd(_, StaticInvoke(_,_,_),_) => Some(CodeLocation(a))
+          case _ => None
+        }
     }
     def apply(loc:Loc):Option[SubsumableLocation] = unapply(loc)
   }

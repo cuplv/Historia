@@ -17,6 +17,7 @@ trait IRWrapper[M,C]{
   def makeMethodTargets(source: MethodLoc): Set[MethodLoc]
   def makeCmd(cmd:C, method:M, loc:Option[AppLoc] = None): CmdWrapper
   def degreeOut(cmd: AppLoc):Int
+  def degreeIn(cmd: AppLoc):Int
   def commandPredecessors(cmdWrapper:CmdWrapper): List[AppLoc]
   def commandNext(cmdWrapper:CmdWrapper):List[AppLoc]
 

@@ -12,7 +12,6 @@ import soot.SootMethod
 class RXJavaSubscribe_TestApp extends AnyFunSuite{
   // if this example works before fixing precision issue, there is likely unsoundness somewhere
   test("Prove location in stack trace is unreachable under a simple spec.") {
-    //TODO: currently failing test results in timeout
     val apk = getClass.getResource("/RXJavaSubscribe-fix-debug.apk").getPath
     assert(apk != null)
     val w = new JimpleFlowdroidWrapper(apk,CHACallGraph)
