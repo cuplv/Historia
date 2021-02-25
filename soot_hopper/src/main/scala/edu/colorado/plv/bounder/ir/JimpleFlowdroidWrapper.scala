@@ -559,10 +559,11 @@ class JimpleFlowdroidWrapper(apkPath : String,
         throw new IllegalStateException("command after pre location doesn't exist")
     }
 
-  override def cmdAtLocation(loc: AppLoc):CmdWrapper = loc match {
-    case AppLoc(_, JimpleLineLoc(cmd,method),_) => makeCmd(cmd,method,Some(loc))
+  private val iCmdAtLocation: AppLoc => CmdWrapper = Memo.mutableHashMapMemo {
+    case loc@AppLoc(_, JimpleLineLoc(cmd, method), _) => makeCmd(cmd, method, Some(loc))
     case loc => throw new IllegalStateException(s"No command associated with location: ${loc}")
   }
+  override def cmdAtLocation(loc: AppLoc):CmdWrapper = iCmdAtLocation(loc)
 
   protected def makeRVal(box:Value):RVal = JimpleFlowdroidWrapper.makeRVal(box)
 

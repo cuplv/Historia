@@ -142,7 +142,8 @@ object Driver {
         println(interpretedRes)
         outFolder.foreach { outF =>
           val outName = apkPath.split("/").last
-          (new PrettyPrinting(pathMode)).dumpDebugInfo(res, outName, Some(outF))
+          //TODO: pretty printing too slow
+//          (new PrettyPrinting(pathMode)).dumpDebugInfo(res, outName, Some(outF))
           val resFile = File(outF) / "result.txt"
           resFile.overwrite(interpretedRes.toString)
         }
@@ -168,7 +169,7 @@ object Driver {
       val transfer = (cha: ClassHierarchyConstraints) =>
         new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(specSet), cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(130), w, transfer, component = componentFilter, pathMode = mode)
+        stepLimit = Some(150), w, transfer, component = componentFilter, pathMode = mode)
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
         "de.danoeh.antennapod.fragment.ExternalPlayerFragment",

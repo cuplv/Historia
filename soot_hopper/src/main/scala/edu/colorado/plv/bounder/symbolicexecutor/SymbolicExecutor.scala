@@ -155,22 +155,6 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
         }
     }
   }
-  @tailrec
-  final def executeBackwardLimitKeepAll(qrySet: Set[IPathNode], limit:Int,
-                                  refuted: Set[IPathNode] = Set()):Set[IPathNode] = {
-    if(qrySet.isEmpty){
-      refuted
-    }else if(limit > 0) {
-      val nextQry = qrySet.map{
-        case succ@PathNode(qry@SomeQry(_,_), _) => executeStep(qry).map(PathNode(_,Some(succ), None))
-        case PathNode(BottomQry(_,_), _) => Set()
-        case PathNode(WitnessedQry(_,_),_) => Set()
-      }
-      executeBackwardLimitKeepAll(nextQry.flatten, limit - 1, qrySet.filter(_.qry.isInstanceOf[BottomQry]))
-    }else {
-      refuted ++ qrySet
-    }
-  }
 
   /**
    * Call methods to choose where to go with symbolic execution and apply transfer functions

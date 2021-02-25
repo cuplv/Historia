@@ -147,12 +147,17 @@ class ClassHierarchyConstraints(ctx: Context, solver: Solver, types : Map[String
   }
 
   def typeSetForPureVar(v:PureVar, state:State):Set[String] = {
-    state.pureFormula.foldLeft(getSubtypesOf("java.lang.Object")) {
-      case (acc, PureConstraint(p2, TypeComp, SubclassOf(c))) if v == p2 => acc.intersect(getSubtypesOf(c))
-      case (acc, PureConstraint(p2, TypeComp, ClassType(c))) if v == p2 => acc.intersect(Set(c))
-      case (acc, PureConstraint(p2, TypeComp, SuperclassOf(c))) if v == p2 => acc.intersect(getSupertypesOf(c))
-      case (acc, _) => acc
+    def typeSet(const: PureConstraint):Set[String] = const match{
+      case PureConstraint(_, TypeComp, SuperclassOf(c)) => getSupertypesOf(c)
+      case PureConstraint(_, TypeComp, SubclassOf(c)) => getSubtypesOf(c)
+      case PureConstraint(_, TypeComp, ClassType(c)) => Set(c)
+      case _ => Set()
     }
+    state.pureFormula.foldLeft(None:Option[Set[String]]){
+      case (None,p@PureConstraint(p2, TypeComp, _)) if p2 == v => Some(typeSet(p))
+      case (Some(acc),p@PureConstraint(p2, TypeComp, _)) if p2 == v => Some(acc.union(typeSet(p)))
+      case (acc,_) => acc
+    }.getOrElse(getSubtypesOf("java.lang.Object"))
   }
   def pureVarTypeMap(state:State):Map[PureVar, Set[String]] = {
     //TODO: primitive types fail here
