@@ -169,7 +169,7 @@ object Driver {
       val transfer = (cha: ClassHierarchyConstraints) =>
         new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(specSet), cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(150), w, transfer, component = componentFilter, pathMode = mode)
+        stepLimit = Some(500), w, transfer, component = componentFilter, pathMode = mode)
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
         "de.danoeh.antennapod.fragment.ExternalPlayerFragment",

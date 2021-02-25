@@ -106,9 +106,9 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     def apply(loc:Loc):Option[SubsumableLocation] = unapply(loc)
   }
 
-  def isSubsumed(qry: Qry, nVisited: Map[SubsumableLocation,Set[IPathNode]]):Option[IPathNode] = qry match{
+  def isSubsumed(qry: Qry, nVisited: Map[SubsumableLocation,Map[Int,Set[IPathNode]]]):Option[IPathNode] = qry match{
     case SomeQry(state,SwapLoc(loc)) if nVisited.contains(loc) =>
-      nVisited(loc).find(a => {
+      nVisited(loc).getOrElse(qry.state.callStack.size, Set()).find(a => {
         val possiblySubsumingState = a.qry.state
         val res = stateSolver.canSubsume(possiblySubsumingState, state)
         res
@@ -116,11 +116,18 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     case _ => None
   }
 
+  /**
+   *
+   * @param qrySet
+   * @param limit
+   * @param refutedSubsumedOrWitnessed
+   * @param visited Map of visited states StackSize -> Location -> Set[State]
+   * @return
+   */
   @tailrec
   final def executeBackward(qrySet: List[IPathNode], limit:Int,
                             refutedSubsumedOrWitnessed: Set[IPathNode] = Set(),
-                            visited:Map[SubsumableLocation,Set[IPathNode]] = Map()):Set[IPathNode] = {
-
+                            visited:Map[SubsumableLocation,Map[Int,Set[IPathNode]]] = Map()):Set[IPathNode] = {
 
     if(qrySet.isEmpty){
       return refutedSubsumedOrWitnessed ++ qrySet
@@ -145,8 +152,13 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
           case v@Some(_) =>
             executeBackward(qrySet.tail, limit, refutedSubsumedOrWitnessed + p.setSubsumed(v), visited)
           case None =>
-            val newVisited: Map[SubsumableLocation, Set[IPathNode]] = SwapLoc(current.qry.loc) match{
-              case Some(v) => visited + (v -> (visited.getOrElse(v,Set()) + p))
+            val stackSize = p.qry.state.callStack.size
+            val newVisited = SwapLoc(current.qry.loc) match{
+              case Some(v) =>
+                val stackSizeToNode = visited.getOrElse(v,Map[Int,Set[IPathNode]]())
+                val nodeSet = stackSizeToNode.getOrElse(stackSize, Set()) + p
+                val newStackSizeToNode = stackSizeToNode + (stackSize -> nodeSet)
+                visited + (v -> newStackSizeToNode)
               case None => visited
             }
             val nextQry = executeStep(qry).map(q => PathNode(q, Some(p), None))
