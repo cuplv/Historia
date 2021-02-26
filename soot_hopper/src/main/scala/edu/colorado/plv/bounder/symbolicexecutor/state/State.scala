@@ -290,14 +290,20 @@ case class State(callStack: List[CallStackFrame], heapConstraints: Map[HeapPtEdg
       println(l)
       ???
   }
-  // TODO: rename getOrDefineClass
+  // TODO: does this ever need to "clobber" old value?
   def defineAs(l : RVal, pureExpr: PureExpr): State = l match{
     case LocalWrapper(localName, localType) =>
-      val cshead: CallStackFrame = callStack.headOption.getOrElse(???) //TODO: add new stack frame if empty?
-      val csheadNew = cshead.copy(locals = cshead.locals + (StackVar(localName)->pureExpr))
-      val cstail = if (callStack.isEmpty) Nil else callStack.tail
-      this.copy(callStack = csheadNew::cstail,
-        pureFormula = pureFormula + PureConstraint(pureExpr, TypeComp, SubclassOf(localType)))
+      val cshead: CallStackFrame = callStack.headOption.getOrElse{
+        throw new IllegalStateException("Expected non-empty stack")
+      }
+      if(cshead.locals.contains(StackVar(localName))){
+        val v = cshead.locals.get(StackVar(localName))
+        this.copy(pureFormula = pureFormula + PureConstraint(v.get , Equals, pureExpr))
+      }else {
+        val csheadNew = cshead.copy(locals = cshead.locals + (StackVar(localName) -> pureExpr))
+        this.copy(callStack = csheadNew :: callStack.tail,
+          pureFormula = pureFormula + PureConstraint(pureExpr, TypeComp, SubclassOf(localType)))
+      }
     case v if v.isConst =>
       val v2 = get(v).get
       this.copy(pureFormula = this.pureFormula + PureConstraint(v2, Equals, pureExpr))

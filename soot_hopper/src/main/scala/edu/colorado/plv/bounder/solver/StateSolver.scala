@@ -425,7 +425,7 @@ trait StateSolver[T] {
   def reduceStatePureVars(state:State):State = {
     assert(state.isSimplified, "reduceStatePureVars must be called on feasible state.")
     // TODO: test for trace enforcing that pure vars are equivalent
-    state.pureFormula.foldLeft(state){
+    val swappedForSmallerPv = state.pureFormula.foldLeft(state){
       case (acc,pc@PureConstraint(v1@PureVar(id1), Equals, v2@PureVar(id2))) if id1 < id2 =>
         acc.copy(pureFormula = acc.pureFormula - pc).swapPv(v2,v1)
       case (acc,pc@PureConstraint(v1@PureVar(id1), Equals, v2@PureVar(id2))) if id1 > id2 =>
@@ -434,6 +434,12 @@ trait StateSolver[T] {
         acc.copy(pureFormula = acc.pureFormula - pc)
       case (acc,_) => acc
     }
+    val allPv = swappedForSmallerPv.pureVars()
+    if(allPv.nonEmpty) {
+      val maxPvValue = allPv.map { case PureVar(id) => id }.max
+      swappedForSmallerPv.copy(nextAddr = maxPvValue + 1)
+    } else
+      swappedForSmallerPv
   }
   def simplify(state: State, maxWitness: Option[Int] = None): Option[State] = {
     if(state.isSimplified) Some(state) else {

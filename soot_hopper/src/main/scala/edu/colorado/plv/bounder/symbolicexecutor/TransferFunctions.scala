@@ -47,25 +47,13 @@ object TransferFunctions{
 
 class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
                              classHierarchyConstraints: ClassHierarchyConstraints) {
+  private val resolver = new DefaultAppCodeResolver(w)
   def defineVarsAs(state: State, comb: List[(Option[RVal], Option[PureExpr])]):State =
     comb.foldLeft(state){
       case (stateNext, (None,_)) => stateNext
       case (stateNext, (_,None)) => stateNext
       case (stateNext, (Some(rval), Some(pexp))) => stateNext.defineAs(rval, pexp)
     }
-  def swapVarsAs(state : State, comb: List[(Option[RVal], Option[PureExpr])]):State = {
-    comb.foldLeft(state){
-      case (stateNext, (None,_)) => stateNext
-      case (stateNext, (_,None)) => stateNext
-      case (stateNext, (Some(rval), Some(pexp:PureVar))) if state.get(rval).isDefined =>
-        stateNext.get(rval).get match {
-          case oldv:PureVar => stateNext.swapPv (oldv, pexp)
-          case ov => stateNext.defineAs(rval,pexp)
-        }
-      case (stateNext, (Some(rval), Some(pexp))) =>
-        stateNext.defineAs(rval, pexp)
-    }
-  }
 
   /**
    *
@@ -178,7 +166,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val allArgs = receiverOption :: argOptions
       val allParams: Seq[Option[PureExpr]] = (receiverValueOption::frameArgVals)
       val argsAndVals: List[(Option[RVal], Option[PureExpr])] = allArgs zip allParams
-      val resolver = new DefaultAppCodeResolver(w)
       // Possible stack frames for source of call being a callback or internal method call
       val out = if (postState.callStack.size == 1) {
         val newStackFrames: List[CallStackFrame] =
@@ -188,7 +175,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         nextStates.map(nextState => defineVarsAs(nextState, argsAndVals)).toSet
       }else if (postState.callStack.size > 1){
         val state1 = postState.copy(callStack = postState.callStack.tail)
-        Set(swapVarsAs(state1, argsAndVals))
+        Set(defineVarsAs(state1, argsAndVals))
       }else{
         throw new IllegalStateException("Abstract state should always have a " +
           "stack when returning from internal method.")
@@ -405,8 +392,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         val state2 = state.clearLVal(lhs)
         if (state2.containsLocal(rhs)) {
           // rhs constrained by refutation state, lhs should be equivalent
-          val state3 = state2.swapPv(pexpr.asInstanceOf[PureVar], state2.get(rhs).get.asInstanceOf[PureVar])
-          Set(state3) // no type constraint added since both existed before hand
+          Set(state2.copy(pureFormula = state2.pureFormula + PureConstraint(pexpr,Equals, state2.get(rhs).get)))
         } else{
           // rhs unconstrained by refutation state, should now be same as lhs
           val state3 = state2.defineAs(rhs, pexpr)
@@ -426,16 +412,32 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       state.get(lhs) match{
         case Some(lhsV) =>{
           val (basev, state1) = state.getOrDefine(base)
-          val heapCell = FieldPtEdge(basev, fieldName)
-          val state2 = state1.clearLVal(lhs)
-          if (state2.heapConstraints.contains(heapCell))
-            Set(state2.swapPv(lhsV.asInstanceOf[PureVar], state2.heapConstraints(heapCell).asInstanceOf[PureVar]))
-          else {
-            Set(state2.copy(
-              heapConstraints = state2.heapConstraints + (heapCell -> lhsV),
-              pureFormula = state2.pureFormula + PureConstraint(lhsV, TypeComp, SubclassOf(fieldType))
-            ))
+          // get all heap cells with correct field name that can alias
+          val possibleHeapCells = state1.heapConstraints.filter {
+            case (FieldPtEdge(pv, heapFieldName), _) =>
+              val fieldEq = fieldName == heapFieldName
+              val canAlias = pureCanAlias(pv,base.localType,state1)
+              fieldEq && canAlias
+            case _ =>
+              false
           }
+          val statesWhereBaseAliasesExisting:Set[State] = possibleHeapCells.map{
+            case (FieldPtEdge(p,_), heapV) =>
+              state1.copy(pureFormula = state1.pureFormula +
+                PureConstraint(basev, Equals, p) +
+                PureConstraint(lhsV, Equals, heapV))
+            case _ => throw new IllegalStateException()
+          }.toSet
+          val heapCell = FieldPtEdge(basev, fieldName)
+          val stateWhereNoHeapCellIsAliased = state1.copy(
+            heapConstraints = state1.heapConstraints + (heapCell -> lhsV),
+            pureFormula = state1.pureFormula ++ possibleHeapCells.map{
+              case (FieldPtEdge(p,_),_) => PureConstraint(p, NotEquals, basev)
+              case _ => throw new IllegalStateException()
+            }
+          )
+          val res = statesWhereBaseAliasesExisting + stateWhereNoHeapCellIsAliased
+          res.map(s => s.clearLVal(lhs))
         }
         case None => Set(state)
       }
@@ -443,13 +445,13 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       // x.f = y
       val (basev,state2) = state.getOrDefine(base)
 
-      // get all heap cells with correct field name
+      // get all heap cells with correct field name that can alias
       val possibleHeapCells = state2.heapConstraints.filter {
         case (FieldPtEdge(pv, heapFieldName), _) =>
           val fieldEq = fieldName == heapFieldName
           val canAlias = pureCanAlias(pv,base.localType,state2)
           fieldEq && canAlias
-        case other =>
+        case _ =>
           false
       }
 

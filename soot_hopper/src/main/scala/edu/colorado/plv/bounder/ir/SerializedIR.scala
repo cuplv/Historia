@@ -26,7 +26,8 @@ class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] 
 
   override def makeInvokeTargets(invoke: AppLoc): UnresolvedMethodTarget = ???
 
-  override def getAllMethods: Seq[MethodLoc] = ???
+  // TODO: serialized methods
+  override def getAllMethods: Seq[MethodLoc] = Seq()
 
   override def getOverrideChain(method: MethodLoc): Seq[MethodLoc] = ???
 

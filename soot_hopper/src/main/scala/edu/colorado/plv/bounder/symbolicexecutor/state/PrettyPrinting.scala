@@ -1,7 +1,10 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
-import java.io.{File, PrintWriter}
 
-import edu.colorado.plv.bounder.symbolicexecutor.SymbolicExecutorConfig
+import better.files.Dsl.SymbolicOperations
+import better.files.File
+import edu.colorado.plv.bounder.BounderUtil
+import edu.colorado.plv.bounder.ir.{AppLoc, CmdWrapper, IRWrapper, Loc}
+import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, SymbolicExecutorConfig}
 
 import scala.io.Source
 
@@ -31,7 +34,7 @@ class PrettyPrinting(mode : PathMode = MemoryPathMode) {
       ???
   }
   def printTraces(result: Set[IPathNode], outFile: String): Unit = {
-    val pw = new PrintWriter(new File(outFile ))
+    val pw = File(outFile)
     val live = result.flatMap{
       case pn@PathNode(_: SomeQry, false) => Some(("live",pn))
       case pn@PathNode(_ :WitnessedQry, _) => Some(("witnessed", pn))
@@ -40,8 +43,9 @@ class PrettyPrinting(mode : PathMode = MemoryPathMode) {
       case _ => None
     }
     val traces = live.map(a => a._1 + "\n    " + witnessToTrace(Some(a._2)).mkString("\n    ")).mkString("\n")
-    pw.write(traces)
-    pw.close()
+    if(pw.exists()) pw.delete()
+    pw.createFile()
+      .append(traces)
   }
 
   private def sanitizeStringForDot(str:String):String =
@@ -80,8 +84,10 @@ class PrettyPrinting(mode : PathMode = MemoryPathMode) {
     }
   }
   def dotWitTree(qrySet : Set[IPathNode], outFile:String, includeSubsEdges:Boolean) = {
-    val pw = new PrintWriter(new File(outFile ))
+    val pw = File(s"${outDir.get}/$outFile" )
     val (nodes,edges) = iDotNode(qrySet,Set(),Set(),Set(), includeSubsEdges)
+    if(pw.exists()) pw.delete()
+    pw.createFile()
     pw.write(
       s"""
          |digraph D {
@@ -91,7 +97,57 @@ class PrettyPrinting(mode : PathMode = MemoryPathMode) {
          |    ${edges.mkString("\n    ")}
          |}
          |""".stripMargin)
-    pw.close
+  }
+
+  def dotMethod[M,C](loc : Loc, resolver:ControlFlowResolver[M,C], outFile:String): Unit = {
+    val containingMethod = loc.containingMethod
+    val w = resolver.getWrapper
+    val rets: Set[CmdWrapper] = w.makeMethodRetuns(containingMethod.get).toSet
+      .map((v: AppLoc) => resolver.cmdAtLocationNopIfUnknown(v).mkPre)
+    val outf = File(outDir.get) / outFile
+    if(outf.exists()) outf.delete()
+    case class NodesAndEdges(nodes: Map[CmdWrapper,Int], ind:Int, edges:Set[(Int,Int)] = Set()){
+      def addEdge(src:CmdWrapper, tgt:CmdWrapper):NodesAndEdges = {
+        assert(nodes.contains(tgt))
+        val (newNodes,newInd) = if(nodes.contains(src)) (nodes,ind) else (nodes + (src -> ind), ind+1)
+        val newEdges = edges.+((newNodes(src),newNodes(tgt)))
+        NodesAndEdges(newNodes, newInd, newEdges)
+      }
+      def getNodes:Set[String] = {
+        nodes.map{
+          case (cmd,ind) if w.isMethodEntry(cmd) =>
+            s"""n$ind [label="ENTRY: ${sanitizeStringForDot(cmd.toString)}"]"""
+          case (cmd,ind) => s"""n$ind [label="${sanitizeStringForDot(cmd.toString)}"]"""
+        }.toSet
+      }
+      def getEdges:Set[String] = {
+        edges.map{case (src,tgt) => s"""n$src -> n$tgt"""}
+      }
+    }
+
+    def iter(acc: NodesAndEdges, worklist:Set[CmdWrapper],
+             visited:Set[CmdWrapper] = Set()):NodesAndEdges = worklist match{
+      case s if s.nonEmpty =>
+        val h = s.head
+        val pred = w.commandPredecessors(h).map(loc => w.cmdAtLocation(loc).mkPre).toSet
+        val newAcc = pred.foldLeft(acc){case (acc2,v) => acc2.addEdge(v,h)}
+        iter(newAcc, s.tail ++ (pred -- visited), visited + h)
+      case _ => acc
+    }
+    val nodesAndEdges = iter(NodesAndEdges(rets.zipWithIndex.toMap, rets.size),rets)
+
+
+    val nodes:Set[String] = nodesAndEdges.getNodes
+    val edges: Set[String] = nodesAndEdges.getEdges
+    outf.write(s"""
+                  |digraph D {
+                  |    node[shape=record];
+                  |    ${nodes.mkString("\n    ")}
+                  |
+                  |    ${edges.mkString("\n    ")}
+                  |}
+                  |""".stripMargin
+    )
   }
 
   def printWitnessOrProof(qrySet : Set[IPathNode], outFile:String, includeSubsEdges:Boolean = false) =

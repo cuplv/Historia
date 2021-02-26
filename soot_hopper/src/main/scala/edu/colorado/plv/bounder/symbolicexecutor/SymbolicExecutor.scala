@@ -43,7 +43,6 @@ case class SymbolicExecutorConfig[M,C](stepLimit: Option[Int],
 class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   implicit var pathMode = config.pathMode
   val ctx = new Context
-//  val solver = ctx.mkSolver
   val solver = {
     val solver = ctx.mkSolver
     val params = ctx.mkParams()
@@ -87,7 +86,6 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     def unapply(loc: Loc): Option[SubsumableLocation] = loc match {
       case _: CallbackMethodInvoke => Some(FrameworkLocation)
       case _: CallbackMethodReturn => None
-//      case a@AppLoc(_,_,false) if config.w.degreeOut(a) > 1 => Some(CodeLocation(a))
       case AppLoc(_,_,false) => None
       case a@AppLoc(_,_,true) if config.w.degreeIn(a) > 1 => Some(CodeLocation(a))
       case _: CallinMethodInvoke => None // message locations don't remember program counter so subsumption is unsound

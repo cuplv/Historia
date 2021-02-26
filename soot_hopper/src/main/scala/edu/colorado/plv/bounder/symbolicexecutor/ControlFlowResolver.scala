@@ -27,6 +27,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   }
 
   def getResolver = resolver
+  def getWrapper = wrapper
 
   def lazyDirectCallsGraph(loc: MethodLoc): Set[Loc] = {
     val unresolvedTargets = wrapper.makeMethodTargets(loc).map(callee =>
@@ -51,6 +52,10 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 
   var printCacheCache = mutable.Set[String]()
 
+  /**
+   * Debug function that only prints any given string once
+   * @param s string to print
+   */
   def printCache(s: String): Unit = {
     if (!printCacheCache.contains(s)) {
       println(s)
@@ -361,7 +366,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     case (InternalMethodInvoke(_, _, _), CallStackFrame(_,Some(returnLoc:AppLoc),_)::_) => List(returnLoc)
     case (InternalMethodInvoke(_, _, loc), _) =>
       val locations = wrapper.appCallSites(loc, resolver)
-        .filter(loc => !resolver.isFrameworkClass(loc.containingMethod))
+        .filter(loc => !resolver.isFrameworkClass(loc.containingMethod.get.classType))
       locations.map(loc => loc.copy(isPre = true))
     case v =>
       println(v)
