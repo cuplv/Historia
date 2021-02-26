@@ -73,6 +73,9 @@ RUN cd /root/android-sdk-linux/cmdline-tools/bin \
 RUN  cd /root/android-sdk-linux/cmdline-tools/bin \
     && ./sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-29"
 
+RUN apt-get update
+RUN apt-get install -y sqlite
+
 COPY . /home/bounder/
 ENV LD_LIBRARY_PATH=/usr/lib/
 RUN cd /home/bounder/; sbt compile 
