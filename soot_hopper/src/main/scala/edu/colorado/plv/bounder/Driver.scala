@@ -7,7 +7,7 @@ import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NI}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, RxJavaSpec, SpecSignatures, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, FlowdroidCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{DBPathMode, IPathNode, MemoryPathMode, PathMode, PathNode, PrettyPrinting, Qry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{DBOutputMode, IPathNode, MemoryOutputMode$, OutputMode, PathNode, PrettyPrinting, Qry}
 import scopt.OParser
 import soot.SootMethod
 import upickle.core.AbortException
@@ -126,16 +126,16 @@ object Driver {
         val apkPath = cfg.getApkPath
         val outFolder = cfg.getOutFolder
 
-        val pathMode:PathMode = outFolder match{
+        val pathMode:OutputMode = outFolder match{
           case Some(outF) =>{
             val outFile = (File(outF) / "paths.db")
             if(outFile.exists) {
               implicit val opt = File.CopyOptions(overwrite = true)
               outFile.moveTo(File(outF) / "paths.db1")
             }
-            DBPathMode(outFile.canonicalPath)
+            DBOutputMode(outFile.canonicalPath)
           }
-          case None => MemoryPathMode
+          case None => MemoryOutputMode$
         }
         val res = runAnalysis(apkPath, componentFilter,pathMode)
         val interpretedRes = BounderUtil.interpretResult(res)
@@ -151,7 +151,7 @@ object Driver {
     }
   }
 
-  def runAnalysis(apkPath: String, componentFilter:Option[Seq[String]], mode:PathMode): Set[IPathNode] = {
+  def runAnalysis(apkPath: String, componentFilter:Option[Seq[String]], mode:OutputMode): Set[IPathNode] = {
     val startTime = System.currentTimeMillis()
     try {
       //TODO: read location from json config
@@ -169,7 +169,7 @@ object Driver {
       val transfer = (cha: ClassHierarchyConstraints) =>
         new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(specSet), cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(500), w, transfer, component = componentFilter, pathMode = mode)
+        stepLimit = Some(400), w, transfer, component = componentFilter, outputMode = mode)
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
         "de.danoeh.antennapod.fragment.ExternalPlayerFragment",

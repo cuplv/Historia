@@ -76,6 +76,8 @@ case class TestIRMethodLoc(clazz:String, name:String, args:List[Option[LocalWrap
   override def isStatic: Boolean = ???
 
   override def isInterface: Boolean = ???
+
+  override def bodyToString: String = ???
 }
 
 object TestIRMethodLoc{

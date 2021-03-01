@@ -29,7 +29,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   def getResolver = resolver
   def getWrapper = wrapper
 
-  def lazyDirectCallsGraph(loc: MethodLoc): Set[Loc] = {
+  def directCallsGraph(loc: MethodLoc): Set[Loc] = {
     val unresolvedTargets = wrapper.makeMethodTargets(loc).map(callee =>
       UnresolvedMethodTarget(callee.classType, callee.simpleName, Set(callee)))
     unresolvedTargets.flatMap(target => resolver.resolveCallLocation(target))
@@ -64,7 +64,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   }
 
   private def callsToRetLoc(loc: MethodLoc): Set[MethodLoc] = {
-    val directCalls = lazyDirectCallsGraph(loc)
+    val directCalls = directCallsGraph(loc)
     val internalCalls = directCalls.flatMap {
       case InternalMethodReturn(_, _, oloc) =>
         // We only care about direct calls, calls through framework are considered callbacks
@@ -119,14 +119,13 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     def canModifyHeap(c: CmdWrapper): Boolean = c match {
       case AssignCmd(fr: FieldReference, _, _) => fieldCanPt(fr, state)
       case AssignCmd(_, fr: FieldReference, _) => fieldCanPt(fr, state)
-      case AssignCmd(StaticFieldReference(clazz, name, _), _, _) => state.heapConstraints.exists {
-        case (StaticPtEdge(clazz2, name2), _) => clazz == clazz2 && name == name2
-        case _ => false
-      }
-      case AssignCmd(_, StaticFieldReference(clazz, name, _), _) => state.heapConstraints.exists {
-        case (StaticPtEdge(clazz2, name2), _) => clazz == clazz2 && name == name2
-        case _ => false
-      }
+      case AssignCmd(StaticFieldReference(clazz, name, _), _, _) =>
+        val out = state.heapConstraints.contains(StaticPtEdge(clazz, name))
+        out && !manuallyExcludedStaticField(name)
+
+      case AssignCmd(_, StaticFieldReference(clazz, name, _), _) =>
+        val out = state.heapConstraints.contains(StaticPtEdge(clazz, name))
+        out && !manuallyExcludedStaticField(name)
       case _: AssignCmd => false
       case _: ReturnCmd => false
       case _: InvokeCmd => false // This method only counts commands that directly modify the heap
@@ -144,8 +143,34 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     )
   }
 
+  //TODO: manuallyExcluded.* methods are for debugging scalability issues
+  val excludedCaller =
+    List(
+      ".*ItemDescriptionFragment.*",
+      ".*PlaybackController.*initServiceNot.*",
+      ".*PlaybackController.*release.*",
+      ".*PlaybackController.*bindToService.*",
+    ).mkString("|").r
+  /**
+   * Experiment to see if better relevance filtering would improve performance
+   * @param caller
+   * @param callee
+   * @return
+   */
+  def manuallyExcludedCallSite(caller:MethodLoc, callee:CallinMethodReturn):Boolean = {
+    if (excludedCaller.matches(caller.classType + ";" + caller.simpleName)){
+      printCache(s"excluding $caller calls $callee")
+      true
+    }else{
+      false
+    }
+  }
+  def manuallyExcludedStaticField(fieldName:String):Boolean = {
+    fieldName == "isRunning"
+  }
+
   def relevantTrace(m: MethodLoc, state: State): Boolean = {
-    val calls: Set[CallinMethodReturn] = lazyDirectCallsGraph(m).flatMap {
+    val calls: Set[CallinMethodReturn] = directCallsGraph(m).flatMap {
       case v: CallinMethodReturn => Some(v)
       case _: InternalMethodInvoke => None
       case _: InternalMethodReturn => None
@@ -159,7 +184,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       Set(CIEnter, CIExit).exists{cdir =>
         val relI = state.findIFromCurrent(cdir, (call.fmwClazz, call.fmwName))
         relI.nonEmpty
-      }
+      } && !manuallyExcludedCallSite(m,call) // TODO==== manually excluded call sites
     }
   }
 
@@ -224,27 +249,29 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     }
 
     callees.par.exists { c =>
-      if (relevantHeap(c, state))
+      if (relevantHeap(c, state)) {
+        printCache(s"method: $m calls $c - heap relevant to state: $state")
         true
-      else if (relevantTrace(c, state))
-        true
-      else
+      } else if (relevantTrace(c, state)) {
+        printCache(s"method: $m calls $c trace relevant to state: $state")
+      true
+      } else
         false
     }
   }
 
-  def relevantMethodBodyDBG(m: MethodLoc, state: State, visited: Set[MethodLoc] = Set()): Boolean = {
-    if (visited.contains(m)) {
-      false
-    } else if (relevantHeap(m, state)) {
-      true
-    } else if (relevantTrace(m, state)) {
-      true
-    } else {
-      val directCalls = callsToRetLoc(m)
-      directCalls.exists(relevantMethodBodyDBG(_, state, visited + m))
-    }
-  }
+//  def relevantMethodBodyDBG(m: MethodLoc, state: State, visited: Set[MethodLoc] = Set()): Boolean = {
+//    if (visited.contains(m)) {
+//      false
+//    } else if (relevantHeap(m, state)) {
+//      true
+//    } else if (relevantTrace(m, state)) {
+//      true
+//    } else {
+//      val directCalls = callsToRetLoc(m)
+//      directCalls.exists(relevantMethodBodyDBG(_, state, visited + m))
+//    }
+//  }
 
   def existsIAlias(locals: List[Option[RVal]], dir: MessageType, sig: (String, String), state: State): Boolean = {
     val aliasPos = TransferFunctions.relevantAliases(state, dir, sig)

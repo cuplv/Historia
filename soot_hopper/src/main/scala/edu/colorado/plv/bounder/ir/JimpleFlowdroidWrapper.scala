@@ -589,8 +589,15 @@ class JimpleFlowdroidWrapper(apkPath : String,
     }).getOrElse(List())
   }
 
-  def makeMethodTargets(source: MethodLoc): Set[MethodLoc] =
-    cg.edgesOutOfMethod(source.asInstanceOf[JimpleMethodLoc].method).map(JimpleMethodLoc(_))
+  def makeMethodTargets(source: MethodLoc): Set[MethodLoc] = {
+    val edgesOut:Set[MethodLoc] =
+      cg.edgesOutOfMethod(source.asInstanceOf[JimpleMethodLoc].method).map(JimpleMethodLoc)
+    val withoutClInit:Set[MethodLoc] = edgesOut.filter{
+      case JimpleMethodLoc(m) => m.getName != "<clinit>"
+      case _ => throw new IllegalStateException()
+    }
+    withoutClInit
+  }
 
   override def makeInvokeTargets(appLoc: AppLoc): UnresolvedMethodTarget = {
     val line = appLoc.line.asInstanceOf[JimpleLineLoc]
@@ -752,6 +759,8 @@ case class JimpleMethodLoc(method: SootMethod) extends MethodLoc {
 //    val n = method.getName
     method.getSubSignature
   }
+
+  override def bodyToString: String = if(method.hasActiveBody) method.getActiveBody.toString else ""
 
   override def classType: String = string(method.getDeclaringClass)
 

@@ -1,9 +1,9 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
 import com.microsoft.z3.Context
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, Loc, SpecialInvoke, StaticInvoke, VirtualInvoke}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, Loc, MethodLoc, SpecialInvoke, StaticInvoke, VirtualInvoke}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, NoTypeSolving, StateTypeSolving, Z3StateSolver}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, MemoryPathMode, PathMode, PathNode, Qry, SomeQry, WitnessedQry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, IPathNode, MemoryOutputMode$, OutputMode, PathNode, Qry, SomeQry, WitnessedQry}
 import soot.SootMethod
 
 import scala.annotation.tailrec
@@ -36,12 +36,12 @@ case class SymbolicExecutorConfig[M,C](stepLimit: Option[Int],
                                        z3Timeout : Option[Int] = None,
                                        component : Option[Seq[String]] = None,
                                        stateTypeSolving: StateTypeSolving = NoTypeSolving,
-                                       pathMode : PathMode = MemoryPathMode
+                                       outputMode : OutputMode = MemoryOutputMode$
                                       ){
   def getSymbolicExecutor =
     new SymbolicExecutor[M, C](this)}
 class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
-  implicit var pathMode = config.pathMode
+  implicit var pathMode = config.outputMode
   val ctx = new Context
   val solver = {
     val solver = ctx.mkSolver
@@ -61,6 +61,24 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   def getAppCodeResolver = appCodeResolver
   val controlFlowResolver =
     new ControlFlowResolver[M,C](config.w,appCodeResolver, cha, config.component.map(_.toList))
+  def writeIR():Unit = {
+    val callbacks = appCodeResolver.getCallbacks
+    config.outputMode match {
+      case db@DBOutputMode(_) =>
+        appCodeResolver.appMethods.foreach{m =>
+          db.writeMethod(m,callbacks.contains(m))
+          val directCalls = controlFlowResolver.directCallsGraph(m).map{
+            case InternalMethodReturn(clazz,name,m) => (name,clazz,false)
+            case CallinMethodReturn(clazz,name) => (name,clazz,true)
+            case _ => throw new IllegalStateException()
+          }
+          directCalls.foreach{callee => db.writeCallEdge(m.simpleName,m.classType, callee._1,callee._2,callee._3)}
+        }
+      case _ =>
+    }
+  }
+  writeIR()
+
   def getControlFlowResolver = controlFlowResolver
   val stateSolver = new Z3StateSolver(cha)
   /**
@@ -132,8 +150,18 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     }
     val current = qrySet.head
 
-    if (config.printProgress && current.depth % 10 == 0 ){
-      println(s"CurrentNodeSteps: ${current.depth} queries: ${qrySet.size}")
+//    if (config.printProgress && current.depth % 10 == 0 ){
+//      println(s"CurrentNodeSteps: ${current.depth} queries: ${qrySet.size}")
+//    }
+    current.qry.loc match{
+      case SwapLoc(FrameworkLocation) =>
+        println("Framework location query")
+        println(s"    State: ${current.qry.state}")
+        println(s"    Loc  : ${current.qry.loc}")
+        println(s"    Subsumed:${current.subsumed}")
+        println(s"    depth: ${current.depth}")
+        println(s"    size of worklist: ${qrySet.size}")
+      case _ =>
     }
 
     current match {

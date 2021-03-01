@@ -464,14 +464,11 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val perm = BounderUtil.repeatingPerm(a => if(a ==0) possibleHeapCells else possibleRhs , 2)
       val casesWithHeapCellAlias: Set[State] = perm.map{
         case (pte@FieldPtEdge(heapPv, _), tgtVal:PureExpr)::(rhsPureExpr:PureExpr,state3:State)::Nil =>
-          val swapped0 = state3.swapPv(basev, heapPv)
-          val swapped = swapped0.copy(
-            heapConstraints = swapped0.heapConstraints - pte,
-            pureFormula = swapped0.pureFormula +
-              PureConstraint( // heap cell is aliased by base var so target of heap cell and rhs must be equal
-                if(tgtVal != basev) tgtVal else heapPv,
-                Equals,
-                if (rhsPureExpr != basev) rhsPureExpr else heapPv) +
+          val withPureConstraint = state3.copy(pureFormula = state3.pureFormula + PureConstraint(basev, Equals, heapPv))
+          val swapped = withPureConstraint.copy(
+            heapConstraints = withPureConstraint.heapConstraints - pte,
+            pureFormula = withPureConstraint.pureFormula +
+              PureConstraint( tgtVal, Equals, rhsPureExpr) +
               PureConstraint(heapPv, NotEquals, NullVal) // Base must be non null for normal control flow
           )
           swapped

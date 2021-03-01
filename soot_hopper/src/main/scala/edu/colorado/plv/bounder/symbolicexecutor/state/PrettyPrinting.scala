@@ -8,7 +8,7 @@ import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAp
 
 import scala.io.Source
 
-class PrettyPrinting(mode : PathMode = MemoryPathMode) {
+class PrettyPrinting(mode : OutputMode = MemoryOutputMode$) {
   implicit val thisMode = mode
   val outDir = sys.env.get("OUT_DIR")
 

@@ -30,6 +30,7 @@ trait MethodLoc {
   def simpleName: String
   def classType: String
   def argTypes: List[String]
+  def bodyToString: String
 
   /**
    * No return since call site has that info
