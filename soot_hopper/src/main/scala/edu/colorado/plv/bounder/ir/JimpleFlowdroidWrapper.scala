@@ -482,24 +482,45 @@ class JimpleFlowdroidWrapper(apkPath : String,
   }
 
 
-  def getClassByName(className:String):SootClass = {
-    Scene.v().getSootClass(className)
+  def getClassByName(className:String):Iterable[SootClass] = {
+    if(Scene.v().containsClass(className))
+      List(Scene.v().getSootClass(className))
+    else {
+      val nameMatcher = className.r
+      val classOpt = Scene.v().getClasses.asScala.filter { c => nameMatcher.matches(c.getName) }
+      classOpt
+    }
   }
-  override def findMethodLoc(className: String, methodName: String):Option[JimpleMethodLoc] = {
-    val clazzFound = getClassByName(className)
-    val clazz = if(clazzFound.isPhantom){None} else {Some(clazzFound)}
-    val method: Option[SootMethod] = clazz.flatMap(a => try{
-      Some(a.getMethod(methodName))
-    }catch{
-      case t:RuntimeException if t.getMessage.startsWith("No method") =>
+  override def findMethodLoc(className: String, methodName: String):Iterable[JimpleMethodLoc] = {
+    val classesFound = getClassByName(className)
+    val res = classesFound.flatMap { clazzFound =>
+      val clazz = if (clazzFound.isPhantom) {
         None
-      case t:Throwable => throw t
-    })
-    method.map(a=> JimpleMethodLoc(a))
+      } else {
+        Some(clazzFound)
+      }
+      val method: Option[SootMethod] = clazz.flatMap(a => try {
+        val method1 = a.getMethod(methodName)
+        Some(method1)
+      } catch {
+        case t: RuntimeException if t.getMessage.startsWith("No method") =>
+          val mNameReg = methodName.r
+          val sootM = clazz.map { c =>
+            val mForC = c.getMethods.asScala
+            mForC.find(m => mNameReg.matches(m.getName))
+          }
+          sootM.getOrElse(throw t)
+        case t: Throwable => throw t
+      })
+      method.map(a => JimpleMethodLoc(a))
+    }
+    res
   }
   def findMethodLocRegex(className: String, methodName: Regex):Option[JimpleMethodLoc] = {
     val methodRegex: Regex = methodName
-    val clazzFound = getClassByName(className)
+    val res: Iterable[SootClass] = getClassByName(className)
+    assert(res.size != 1, s"Found wrong number (${res.size}) of classes for $className $methodName")
+    val clazzFound = res.head
     val clazz = if(clazzFound.isPhantom){None} else {Some(clazzFound)}
     val method: Option[SootMethod] = clazz.flatMap(a => try{
       //      Some(a.getMethod(methodName))
@@ -581,12 +602,13 @@ class JimpleFlowdroidWrapper(apkPath : String,
   }
 
   override def findLineInMethod(className: String, methodName: String, line: Int): Iterable[AppLoc] = {
-    val loc: Option[JimpleMethodLoc] = findMethodLoc(className, methodName)
-    loc.map(loc => {
+    val loc: Iterable[JimpleMethodLoc] = findMethodLoc(className, methodName)
+    loc.flatMap(loc => {
       val activeBody = loc.method.retrieveActiveBody()
       val units: Iterable[soot.Unit] = activeBody.getUnits.asScala
-      units.filter(a => a.getJavaSourceStartLineNumber == line).map((a:soot.Unit) => AppLoc(loc, JimpleLineLoc(a,loc.method),true))
-    }).getOrElse(List())
+      val unitsForLine = units.filter(a => a.getJavaSourceStartLineNumber == line)
+      unitsForLine.map((a:soot.Unit) => AppLoc(loc, JimpleLineLoc(a,loc.method),true))
+    })
   }
 
   def makeMethodTargets(source: MethodLoc): Set[MethodLoc] = {

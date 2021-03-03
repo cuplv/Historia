@@ -1,12 +1,14 @@
 package edu.colorado.plv.bounder.solver
 
 import com.microsoft.z3.{BoolExpr, Context, EnumSort, Expr, FuncDecl, Solver, Sort, UninterpretedSort}
+import edu.colorado.plv.bounder.ir.{AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, InternalMethodInvoke, InternalMethodReturn, Loc}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints.primitiveTypes
 import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, Equals, PureConstraint, PureVar, State, SubclassOf, SuperclassOf, TypeComp, TypeConstraint}
+import org.scalactic.anyvals.NonEmptySet
 import scalaz.Memo
 import soot.ShortType
 import upickle.default.write
-import upickle.default.{ReadWriter => RW, macroRW}
+import upickle.default.{macroRW, ReadWriter => RW}
 
 object ClassHierarchyConstraints{
   val intType = "int"
@@ -62,6 +64,23 @@ import upickle.default.{ReadWriter => RW, macroRW}
  */
 class ClassHierarchyConstraints(ctx: Context, solver: Solver, types : Map[String,Set[String]],
                                 useZ3TypeSolver: StateTypeSolving = NoTypeSolving ) {
+  def leastUpperBound(classesToGroup: Set[String]): String ={
+    if(classesToGroup.isEmpty)
+      return "java.lang.Object"
+    // Note: This is inefficient, but most classes should have a small number of super types so it may not matter
+    // This whole class should be refactored later
+    val b = getSupertypesOf(classesToGroup.head)
+    val intersectOfSuper = classesToGroup.tail.foldLeft(b){
+      case (acc, clazzToJoin) => acc.intersect(getSupertypesOf(clazzToJoin))
+    }
+    val typeWithMostSuperTypes = intersectOfSuper.reduceLeft{
+      (a,b) => if(getSupertypesOf(a).size > getSupertypesOf(b).size) a else b
+    }
+    typeWithMostSuperTypes
+    //=====================
+    ??? //TODO: add full hierarchy to this class including framework, currently it excludes things like "java.lang.Runnable"
+  }
+
   def getSolver: Solver = solver
   def getCtx: Context = ctx
   // Treat primitive values as subtypes of their boxed types
@@ -71,6 +90,18 @@ class ClassHierarchyConstraints(ctx: Context, solver: Solver, types : Map[String
       (acc + (v -> Set(v))) + (boxedName -> (acc.getOrElse(boxedName,Set(boxedName)) + v))
   } + ("java.lang.Object" -> types.getOrElse("java.lang.Object",Set()).union(ClassHierarchyConstraints.primitiveTypes))
   def getUseZ3TypeSolver:StateTypeSolving = useZ3TypeSolver
+  def upperTypeBoundForReciever(methodReturnLoc: Loc):Option[String] = methodReturnLoc match {
+    case CallinMethodInvoke(clazz, _) =>
+      Some(clazz)
+    case CallbackMethodInvoke(fmwClazz,_,_) =>
+      Some(fmwClazz)
+    case InternalMethodInvoke(clazz,_,_) =>
+      Some(clazz)
+    case CallinMethodReturn(clazz,_) => Some(clazz)
+    case CallbackMethodReturn(fmwClazz, _, _, _) => Some(fmwClazz)
+    case InternalMethodReturn(clazz, _,_) => Some(clazz)
+    case _ => throw new IllegalArgumentException("Loc is not method entry/exit")
+  }
   def getSubtypesOf(tname:String):Set[String] = {
     if (tname.endsWith("[]")){
       val arrayBase = tname.replaceFirst("\\[\\]","")
@@ -154,14 +185,17 @@ class ClassHierarchyConstraints(ctx: Context, solver: Solver, types : Map[String
       case _ => Set()
     }
     state.pureFormula.foldLeft(None:Option[Set[String]]){
-      case (None,p@PureConstraint(p2, TypeComp, _)) if p2 == v => Some(typeSet(p))
-      case (Some(acc),p@PureConstraint(p2, TypeComp, _)) if p2 == v => Some(acc.union(typeSet(p)))
-      case (acc,_) => acc
+      case (None,p@PureConstraint(p2, TypeComp, _)) if p2 == v =>
+        Some(typeSet(p))
+      case (Some(acc),p@PureConstraint(p2, TypeComp, _)) if p2 == v =>
+        Some(acc.intersect(typeSet(p)))
+      case (acc,_) =>
+        acc
     }.getOrElse(getSubtypesOf("java.lang.Object"))
   }
   def pureVarTypeMap(state:State):Map[PureVar, Set[String]] = {
-    //TODO: primitive types fail here
-    val pvMap: Map[PureVar, Set[String]] = state.pureVars().map(p => (p,typeSetForPureVar(p,state))).toMap
+    val pvMap: Map[PureVar, Set[String]] =
+      state.pureVars().map(p => (p,typeSetForPureVar(p,state))).toMap
     val pvMap2 = state.pureFormula.foldLeft(pvMap){
       case(acc, PureConstraint(p1:PureVar, Equals, p2:PureVar)) => {
         val newPvClasses = acc(p1).intersect(acc(p2))

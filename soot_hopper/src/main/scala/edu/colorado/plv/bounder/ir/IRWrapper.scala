@@ -12,7 +12,7 @@ import upickle.default.{ReadWriter => RW, macroRW}
 trait IRWrapper[M,C]{
   def getAllMethods : Iterable[MethodLoc]
   def getOverrideChain( method : MethodLoc) : Seq[MethodLoc]
-  def findMethodLoc(className: String, methodName: String):Option[MethodLoc]
+  def findMethodLoc(className: String, methodName: String):Iterable[MethodLoc]
   def findLineInMethod(className:String, methodName:String, line:Int):Iterable[AppLoc]
   def makeMethodTargets(source: MethodLoc): Set[MethodLoc]
   def makeCmd(cmd:C, method:M, loc:Option[AppLoc] = None): CmdWrapper

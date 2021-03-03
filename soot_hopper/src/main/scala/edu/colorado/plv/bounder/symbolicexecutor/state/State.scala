@@ -466,6 +466,7 @@ case object TopVal extends PureVal(null)
 
 sealed trait TypeConstraint extends PureVal
 case class SubclassOf(clazz: String) extends TypeConstraint{
+  assert(clazz != "_")
   override def toString:String = s"<: $clazz"
 }
 case class SuperclassOf(clazz:String) extends TypeConstraint {

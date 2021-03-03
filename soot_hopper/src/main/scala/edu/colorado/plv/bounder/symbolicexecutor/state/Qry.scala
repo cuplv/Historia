@@ -62,7 +62,10 @@ object Qry {
     val locs = w.findLineInMethod(className, methodName,line)
 
     val derefLocs: Iterable[AppLoc] = locs.filter(a => w.cmdAtLocation(a) match {
-      case AssignCmd(tgt, source :Invoke, _) => true
+      case AssignCmd(_, _:VirtualInvoke, _) => true
+      case AssignCmd(_, _:SpecialInvoke, _) => true
+      case InvokeCmd(_:VirtualInvoke,_) => true
+      case InvokeCmd(_:SpecialInvoke,_) => true
       case _ => false
     })
 
@@ -72,6 +75,7 @@ object Qry {
     // Get name of variable that should not be null
     val varname = w.cmdAtLocation(derefLoc) match {
       case AssignCmd(_, VirtualInvoke(localWrapper,_,_,_), _) => localWrapper
+      case InvokeCmd(VirtualInvoke(localWrapper,_,_,_),_) => localWrapper
       case _ => ???
     }
 

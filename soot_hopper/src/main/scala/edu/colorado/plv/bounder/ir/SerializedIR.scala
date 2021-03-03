@@ -4,7 +4,7 @@ import edu.colorado.plv.bounder.symbolicexecutor.AppCodeResolver
 import upickle.default.{macroRW, ReadWriter => RW}
 
 class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] {
-  override def findMethodLoc(className: String, methodName: String): Option[MethodLoc] = ???
+  override def findMethodLoc(className: String, methodName: String): Iterable[MethodLoc] = ???
 
   override def findLineInMethod(className: String, methodName: String, line: Int): Iterable[AppLoc] = ???
 

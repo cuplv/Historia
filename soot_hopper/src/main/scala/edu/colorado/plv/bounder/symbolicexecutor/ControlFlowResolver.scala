@@ -5,6 +5,7 @@ import edu.colorado.plv.bounder.ir.{Invoke, _}
 import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, FieldPtEdge, LSParamConstraint, LSPure, PureVar, State, StaticPtEdge}
+import org.scalactic.anyvals.NonEmptySet
 import scalaz.Memo
 
 import scala.collection.mutable
@@ -121,11 +122,11 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       case AssignCmd(_, fr: FieldReference, _) => fieldCanPt(fr, state)
       case AssignCmd(StaticFieldReference(clazz, name, _), _, _) =>
         val out = state.heapConstraints.contains(StaticPtEdge(clazz, name))
-        out && !manuallyExcludedStaticField(name)
+        out //&& !manuallyExcludedStaticField(name) //TODO:
 
       case AssignCmd(_, StaticFieldReference(clazz, name, _), _) =>
         val out = state.heapConstraints.contains(StaticPtEdge(clazz, name))
-        out && !manuallyExcludedStaticField(name)
+        out //&& !manuallyExcludedStaticField(name)
       case _: AssignCmd => false
       case _: ReturnCmd => false
       case _: InvokeCmd => false // This method only counts commands that directly modify the heap
@@ -184,7 +185,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       Set(CIEnter, CIExit).exists{cdir =>
         val relI = state.findIFromCurrent(cdir, (call.fmwClazz, call.fmwName))
         relI.nonEmpty
-      } && !manuallyExcludedCallSite(m,call) // TODO==== manually excluded call sites
+      } //&& !manuallyExcludedCallSite(m,call) // TODO==== manually excluded call sites
     }
   }
 
@@ -260,19 +261,6 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     }
   }
 
-//  def relevantMethodBodyDBG(m: MethodLoc, state: State, visited: Set[MethodLoc] = Set()): Boolean = {
-//    if (visited.contains(m)) {
-//      false
-//    } else if (relevantHeap(m, state)) {
-//      true
-//    } else if (relevantTrace(m, state)) {
-//      true
-//    } else {
-//      val directCalls = callsToRetLoc(m)
-//      directCalls.exists(relevantMethodBodyDBG(_, state, visited + m))
-//    }
-//  }
-
   def existsIAlias(locals: List[Option[RVal]], dir: MessageType, sig: (String, String), state: State): Boolean = {
     val aliasPos = TransferFunctions.relevantAliases(state, dir, sig)
     aliasPos.exists { aliasPo =>
@@ -315,13 +303,28 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   }
   // Callins are equivalent if they match the same set of I predicates in the abstract trace
   def mergeEquivalentCallins(callins: Set[Loc], state: State): Set[Loc] ={
-    val groups = callins.groupBy{
+    val groups: Map[Object, Set[Loc]] = callins.groupBy{
       case CallinMethodReturn(fc,fn) =>
-        val i: Set[(LifeState.I, List[LSParamConstraint])] =state.findIFromCurrent(CIExit,(fc,fn))
+        val i: Set[(LifeState.I, List[LSParamConstraint])] = state.findIFromCurrent(CIExit,(fc,fn))
         i.map(a => a._1)
       case i => i
     }
-    val out = groups.keySet.map(k => groups(k).head)
+    val out:Set[Loc] = groups.keySet.map{k =>
+      //TODO: find least upper bound for receiver=========
+      val classesToGroup = groups(k).map{
+        case CallinMethodReturn(fmwClazz,_) => fmwClazz
+        case InternalMethodReturn(clazz,_, _) => clazz
+        case _ => throw new IllegalStateException()
+      }
+      val leastUpper:String = cha.leastUpperBound(classesToGroup)
+      groups(k).collectFirst{
+        case CallinMethodReturn(_,name) =>
+          CallinMethodReturn(leastUpper,name)
+        case imr@InternalMethodReturn(clazz,_,_) =>
+          assert(clazz == leastUpper)
+          imr
+      }.getOrElse(throw new IllegalStateException())
+    }
     out
   }
   def resolvePredicessors(loc:Loc, state: State):Iterable[Loc] = (loc,state.callStack) match{
@@ -343,7 +346,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       val cmd: CmdWrapper = wrapper.cmdAtLocation(l)
       cmd match{
         case InvokeCmd(i, loc) => {
-          val unresolvedTargets =
+          val unresolvedTargets: UnresolvedMethodTarget =
             wrapper.makeInvokeTargets(loc)
           val resolved: Set[Loc] = resolver.resolveCallLocation(unresolvedTargets)
           if(resolved.par.forall(m => !relevantMethod(m,state)))
@@ -385,9 +388,10 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     case (CallbackMethodReturn(_,_, loc, Some(line)),_) =>
       AppLoc(loc, line, isPre = false)::Nil
     case (CallinMethodInvoke(fmwClazz, fmwName),Nil) =>
-      val m: Option[MethodLoc] = wrapper.findMethodLoc(fmwClazz, fmwName)
-      m.map(m2 =>
-        wrapper.appCallSites(m2,resolver).map(v => v.copy(isPre = true))).getOrElse(List())
+      val m: Iterable[MethodLoc] = wrapper.findMethodLoc(fmwClazz, fmwName)
+      assert(m.toList.size < 2, "Wrong number of methods found")
+      m.flatMap(m2 =>
+        wrapper.appCallSites(m2,resolver).map(v => v.copy(isPre = true)))
     case (InternalMethodReturn(_,_,loc), _) =>
       wrapper.makeMethodRetuns(loc)
     case (InternalMethodInvoke(_, _, _), CallStackFrame(_,Some(returnLoc:AppLoc),_)::_) => List(returnLoc)
