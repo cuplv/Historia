@@ -367,7 +367,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
   test("Test dynamic dispatch2") {
     List(
       (".*query2.*".r,Witnessed),
-//      (".*query1.*".r, Proven)
+//      (".*query1.*".r, Proven) //TODO: timeout here
     ).map { case (queryL, expectedResult) =>
       val src =
         s"""package com.example.createdestroy;
@@ -421,7 +421,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
           new SpecSpace(Set(ActivityLifecycle.init_first_callback)), cha)
         val config = SymbolicExecutorConfig(
-          stepLimit = Some(200), w, transfer,
+          stepLimit = Some(110), w, transfer,
           component = Some(List("com.example.createdestroy.MyActivity.*")))
         val symbolicExecutor = config.getSymbolicExecutor
         val i = lineForRegex(queryL, src)

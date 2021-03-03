@@ -107,6 +107,23 @@ object CallinMethodInvoke{
   implicit val rw:RW[CallinMethodInvoke] = macroRW
 }
 
+case class GroupedCallinMethodInvoke(targetClasses: Set[String], fmwName:String) extends Loc {
+  override def toString:String = "[CI Inv merge] " + fmwName
+  override def msgSig: Option[String] = Some(s"[CI Inv] ${targetClasses.head} ${fmwName}")
+}
+object GroupedCallinMethodInvoke{
+  implicit val rw:RW[GroupedCallinMethodInvoke] = macroRW
+}
+
+//TODO: could probably merge this with the CallinMethod classes
+case class GroupedCallinMethodReturn(targetClasses: Set[String], fmwName:String) extends Loc {
+  override def toString:String = "[CI Ret merge] " + fmwName
+  override def msgSig: Option[String] = Some(s"[CI Ret] ${targetClasses.head} ${fmwName}")
+}
+object GroupedCallinMethodReturn{
+  implicit val rw:RW[GroupedCallinMethodReturn] = macroRW
+}
+
 case class CallbackMethodInvoke(fmwClazz: String, fmwName: String, loc:MethodLoc) extends Loc {
   override def toString:String = "[CB Inv] " + fmwName
   override def msgSig: Option[String] = Some(s"[CB Inv] ${fmwClazz} ${fmwName}")

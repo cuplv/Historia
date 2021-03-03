@@ -316,13 +316,10 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
         case InternalMethodReturn(clazz,_, _) => clazz
         case _ => throw new IllegalStateException()
       }
-      val leastUpper:String = cha.leastUpperBound(classesToGroup)
       groups(k).collectFirst{
         case CallinMethodReturn(_,name) =>
-          CallinMethodReturn(leastUpper,name)
-        case imr@InternalMethodReturn(clazz,_,_) =>
-          assert(clazz == leastUpper)
-          imr
+          GroupedCallinMethodReturn(classesToGroup,name)
+        case imr@InternalMethodReturn(_,_,_) => imr
       }.getOrElse(throw new IllegalStateException())
     }
     out
@@ -374,7 +371,12 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     case (CallinMethodReturn(clazz, name),_) =>
       // TODO: nested callbacks not currently handled
       List(CallinMethodInvoke(clazz,name))
+    case (GroupedCallinMethodReturn(classes, name),_) =>
+      // TODO: nested callbacks not currently handled
+      List(GroupedCallinMethodInvoke(classes, name))
     case (CallinMethodInvoke(_, _), CallStackFrame(_,Some(returnLoc@AppLoc(_,_,true)),_)::_) =>
+      List(returnLoc)
+    case (GroupedCallinMethodInvoke(_,_),CallStackFrame(_,Some(returnLoc@AppLoc(_,_,true)),_)::_) =>
       List(returnLoc)
     case (CallbackMethodInvoke(_, _, _), _) =>
       val callbacks = resolver.getCallbacks
@@ -388,7 +390,13 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     case (CallbackMethodReturn(_,_, loc, Some(line)),_) =>
       AppLoc(loc, line, isPre = false)::Nil
     case (CallinMethodInvoke(fmwClazz, fmwName),Nil) =>
+      //TODO: these two cases for callin with empty stack only seem to be used by SootUtilsTest
       val m: Iterable[MethodLoc] = wrapper.findMethodLoc(fmwClazz, fmwName)
+      assert(m.toList.size < 2, "Wrong number of methods found")
+      m.flatMap(m2 =>
+        wrapper.appCallSites(m2,resolver).map(v => v.copy(isPre = true)))
+    case (GroupedCallinMethodInvoke(fmwClazzs, fmwName),Nil) =>
+      val m: Iterable[MethodLoc] = fmwClazzs.flatMap(c => wrapper.findMethodLoc(c, fmwName))
       assert(m.toList.size < 2, "Wrong number of methods found")
       m.flatMap(m2 =>
         wrapper.appCallSites(m2,resolver).map(v => v.copy(isPre = true)))
@@ -400,7 +408,6 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
         .filter(loc => !resolver.isFrameworkClass(loc.containingMethod.get.classType))
       locations.map(loc => loc.copy(isPre = true))
     case v =>
-      println(v)
-      ???
+      throw new IllegalStateException(s"No predecessor locations for loc: ${v._1} with stack: ${v._2}")
   }
 }

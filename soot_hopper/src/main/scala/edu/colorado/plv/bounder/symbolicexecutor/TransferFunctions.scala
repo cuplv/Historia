@@ -65,14 +65,12 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
   def transfer(postState: State, target: Loc, source: Loc): Set[State] = (source, target) match {
     case (source@AppLoc(_, _, false), cmret@CallinMethodReturn(_, _)) =>
       // traverse back over the retun of a callin
-      // "Some(source.copy(isPre = true))" places the entry to the callin as the location of call
       val (pkg, name) = msgCmdToMsg(cmret)
       val inVars: List[Option[RVal]] = inVarsForCall(source)
       val relAliases = relevantAliases2(postState, CIExit, (pkg,name),inVars)
       val frame = CallStackFrame(target, Some(source.copy(isPre = true)), Map())
       val (rvals, state0) = getOrDefineRVals(relAliases, postState)
       val state1 = traceAllPredTransfer(CIExit, (pkg,name),rvals, state0)
-      //TODO: better state names
       val outState = newSpecInstanceTransfer(CIExit, (pkg, name), inVars, cmret, state1)
       val outState1: Set[State] = inVars match{
         case Some(revar:LocalWrapper)::_ => outState.map(s3 => s3.clearLVal(revar))
@@ -90,12 +88,35 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         statesWithClearedReturn
       }
       out
-    case (CallinMethodReturn(_, _), CallinMethodInvoke(_, _)) =>
-      Set(postState)
-    case (cminv@CallinMethodInvoke(invokeType, _), ciInv@AppLoc(_, _, true)) =>
+    case (source@AppLoc(_, _, false), cmret@GroupedCallinMethodReturn(_, _)) =>
+      // traverse back over the retun of a callin
+      //TODO: Deduplicate with code of CallinMethodReturn
+      val (pkg, name) = msgCmdToMsg(cmret)
+      val inVars: List[Option[RVal]] = inVarsForCall(source)
+      val relAliases = relevantAliases2(postState, CIExit, (pkg,name),inVars)
+      val frame = CallStackFrame(target, Some(source.copy(isPre = true)), Map())
+      val (rvals, state0) = getOrDefineRVals(relAliases, postState)
+      val state1 = traceAllPredTransfer(CIExit, (pkg,name),rvals, state0)
+      val outState = newSpecInstanceTransfer(CIExit, (pkg, name), inVars, cmret, state1)
+      val outState1: Set[State] = inVars match{
+        case Some(revar:LocalWrapper)::_ => outState.map(s3 => s3.clearLVal(revar))
+        case _ => outState
+      }
+      val outState2 = outState1.map(s2 => s2.copy(callStack = frame::s2.callStack, nextCmd = None))
+
+      val out = outState2.map{ oState =>
+        //clear assigned var from stack if exists
+        val statesWithClearedReturn = inVars.head match{
+          case Some(v:LocalWrapper) => oState.clearLVal(v)
+          case None => oState
+          case v => throw new IllegalStateException(s"Malformed IR. Callin result assigned to non-local: $v")
+        }
+        statesWithClearedReturn
+      }
+      out //TODO: check that this works ====
+    case (cminv@GroupedCallinMethodInvoke(targets, _), tgt@AppLoc(_,_,true)) =>
       assert(postState.callStack.nonEmpty, "Bad control flow, abstract stack must be non-empty.")
-      // TODO: === restrict reciever to types possible for that particular invoke -- Check that it is working
-      val invars = inVarsForCall(ciInv)
+      val invars = inVarsForCall(tgt)
       val (pkg,name) = msgCmdToMsg(cminv)
       val relAliases = relevantAliases2(postState, CIEnter, (pkg,name),invars)
       val ostates:Set[State] = {
@@ -106,7 +127,37 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
 
       ostates.map{s =>
         // Pop stack and set command just processed
-        val s2 = s.copy(callStack = s.callStack.tail, nextCmd = Some(ciInv))
+        val s2 = s.copy(callStack = s.callStack.tail, nextCmd = Some(tgt))
+        // If dynamic invoke, restrict receiver type by the callin we just came from
+        invars match{
+          case _::Some(rec)::_ =>
+            val (recV,stateWithRec) = s2.getOrDefine(rec)
+            val pureFormulaConstrainingReceiver = stateWithRec.pureFormula +
+              PureConstraint(recV, TypeComp, OneOfClass(targets)) +
+              PureConstraint(recV, NotEquals, NullVal)
+            stateWithRec.copy(pureFormula =pureFormulaConstrainingReceiver)
+          case _ => s2
+        }
+      }
+
+    case (GroupedCallinMethodReturn(_,_), GroupedCallinMethodInvoke(_,_)) =>
+      Set(postState)
+    case (CallinMethodReturn(_, _), CallinMethodInvoke(_, _)) =>
+      Set(postState)
+    case (cminv@CallinMethodInvoke(invokeType, _), tgt@AppLoc(_, _, true)) =>
+      assert(postState.callStack.nonEmpty, "Bad control flow, abstract stack must be non-empty.")
+      val invars = inVarsForCall(tgt)
+      val (pkg,name) = msgCmdToMsg(cminv)
+      val relAliases = relevantAliases2(postState, CIEnter, (pkg,name),invars)
+      val ostates:Set[State] = {
+        val (rvals, state0) = getOrDefineRVals(relAliases, postState)
+        val state1 = traceAllPredTransfer(CIEnter, (pkg, name), rvals, state0)
+        Set(state1)
+      }
+
+      ostates.map{s =>
+        // Pop stack and set command just processed
+        val s2 = s.copy(callStack = s.callStack.tail, nextCmd = Some(tgt))
         // If dynamic invoke, restrict receiver type by the callin we just came from
         invars match{
           case _::Some(rec)::_ =>
@@ -327,18 +378,18 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
    * @param loc
    * @return (pkg, function name)
    */
-  private def msgCmdToMsg(loc: Loc): (String, String) = {
+  private def msgCmdToMsg(loc: Loc): (String, String) =
 
     loc match {
-      //TODO: this should return fmw type not specific type
       case CallbackMethodReturn(pkg, name, _,_) => (pkg, name)
       case CallbackMethodInvoke(pkg, name, _) => (pkg,name)
       case CallinMethodInvoke(clazz, name) => (clazz,name)
       case CallinMethodReturn(clazz,name) => (clazz,name)
+      case GroupedCallinMethodInvoke(targetClasses, fmwName) => (targetClasses.head, fmwName)
+      case GroupedCallinMethodReturn(targetClasses,fmwName) => (targetClasses.head, fmwName)
       case v =>
-        ???
+        throw new IllegalStateException(s"No command message for $v")
     }
-  }
 
   /**
    * Assume state is updated with appropriate vars

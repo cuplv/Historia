@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.solver
 import com.microsoft.z3.{BoolExpr, Context, EnumSort, Expr, FuncDecl, Solver, Sort, UninterpretedSort}
 import edu.colorado.plv.bounder.ir.{AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, InternalMethodInvoke, InternalMethodReturn, Loc}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints.primitiveTypes
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, Equals, PureConstraint, PureVar, State, SubclassOf, SuperclassOf, TypeComp, TypeConstraint}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, Equals, OneOfClass, PureConstraint, PureVar, State, SubclassOf, SuperclassOf, TypeComp, TypeConstraint}
 import org.scalactic.anyvals.NonEmptySet
 import scalaz.Memo
 import soot.ShortType
@@ -64,22 +64,21 @@ import upickle.default.{ReadWriter => RW, macroRW}
  */
 class ClassHierarchyConstraints(ctx: Context, solver: Solver, types : Map[String,Set[String]],
                                 useZ3TypeSolver: StateTypeSolving = NoTypeSolving ) {
-  def leastUpperBound(classesToGroup: Set[String]): String ={
-    if(classesToGroup.isEmpty)
-      return "java.lang.Object"
-    // Note: This is inefficient, but most classes should have a small number of super types so it may not matter
-    // This whole class should be refactored later
-    val b = getSupertypesOf(classesToGroup.head)
-    val intersectOfSuper = classesToGroup.tail.foldLeft(b){
-      case (acc, clazzToJoin) => acc.intersect(getSupertypesOf(clazzToJoin))
-    }
-    val typeWithMostSuperTypes = intersectOfSuper.reduceLeft{
-      (a,b) => if(getSupertypesOf(a).size > getSupertypesOf(b).size) a else b
-    }
-    typeWithMostSuperTypes
-    //=====================
-    ??? //TODO: add full hierarchy to this class including framework, currently it excludes things like "java.lang.Runnable"
-  }
+//  def leastUpperBound(classesToGroup: Set[String]): String ={
+//    if(classesToGroup.isEmpty)
+//      return "java.lang.Object"
+//    // Note: This is inefficient, but most classes should have a small number of super types so it may not matter
+//    // This whole class should be refactored later
+//    val b = getSupertypesOf(classesToGroup.head)
+//    val intersectOfSuper = classesToGroup.tail.foldLeft(b){
+//      case (acc, clazzToJoin) => acc.intersect(getSupertypesOf(clazzToJoin))
+//    }
+//    //TODO: prefer interface over class?
+//    val typeWithMostSuperTypes = intersectOfSuper.reduceLeft{
+//      (a,b) => if(getSupertypesOf(a).size > getSupertypesOf(b).size) a else b
+//    }
+//    typeWithMostSuperTypes
+//  }
 
   def getSolver: Solver = solver
   def getCtx: Context = ctx
@@ -182,6 +181,7 @@ class ClassHierarchyConstraints(ctx: Context, solver: Solver, types : Map[String
       case PureConstraint(_, TypeComp, SuperclassOf(c)) => getSupertypesOf(c)
       case PureConstraint(_, TypeComp, SubclassOf(c)) => getSubtypesOf(c)
       case PureConstraint(_, TypeComp, ClassType(c)) => Set(c)
+      case PureConstraint(_, TypeComp, OneOfClass(c)) => c.flatMap(getSubtypesOf)
       case _ => Set()
     }
     state.pureFormula.foldLeft(None:Option[Set[String]]){

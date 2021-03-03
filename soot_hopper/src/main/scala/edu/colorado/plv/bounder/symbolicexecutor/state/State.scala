@@ -475,6 +475,12 @@ case class SuperclassOf(clazz:String) extends TypeConstraint {
 case class ClassType(typ:String) extends TypeConstraint {
   override def toString:String = s": $typ"
 }
+case class OneOfClass(possibleClass: Set[String]) extends TypeConstraint {
+  override def toString:String = {
+    val possibleDots = if(possibleClass.size > 3) ", ..." else ""
+    s": {${possibleClass.slice(0,3).mkString(",") + possibleDots}}"
+  }
+}
 
 // pure var is a symbolic var (e.g. this^ from the paper)
 sealed case class PureVar(id:Int) extends PureExpr {

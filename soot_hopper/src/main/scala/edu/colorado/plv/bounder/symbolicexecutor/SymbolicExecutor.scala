@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
 import com.microsoft.z3.Context
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, Loc, MethodLoc, SpecialInvoke, StaticInvoke, VirtualInvoke}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, Loc, MethodLoc, SpecialInvoke, StaticInvoke, VirtualInvoke}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, NoTypeSolving, StateTypeSolving, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, IPathNode, MemoryOutputMode$, OutputMode, PathNode, Qry, SomeQry, WitnessedQry}
 import soot.SootMethod
@@ -99,7 +99,6 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   sealed trait SubsumableLocation
   case class CodeLocation(loc:Loc)extends SubsumableLocation
   case object FrameworkLocation extends SubsumableLocation
-  //TODO: add loop heads?
   object SwapLoc {
     def unapply(loc: Loc): Option[SubsumableLocation] = loc match {
       case _: CallbackMethodInvoke => Some(FrameworkLocation)
@@ -108,6 +107,8 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       case a@AppLoc(_,_,true) if config.w.degreeIn(a) > 1 => Some(CodeLocation(a))
       case _: CallinMethodInvoke => None // message locations don't remember program counter so subsumption is unsound
       case _: CallinMethodReturn => None
+      case _: GroupedCallinMethodInvoke => None
+      case _: GroupedCallinMethodReturn => None
       case _: InternalMethodInvoke => None
       case _: InternalMethodReturn => None
       case a@AppLoc(_,_,true) =>

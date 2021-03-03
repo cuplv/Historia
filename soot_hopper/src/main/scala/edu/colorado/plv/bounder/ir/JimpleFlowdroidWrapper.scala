@@ -751,7 +751,8 @@ class JimpleFlowdroidWrapper(apkPath : String,
             List[SootClass]().asJava // Soot bug with lambdas
         }
       }
-      val strSubClasses = subclasses.asScala.map(c => JimpleFlowdroidWrapper.stringNameOfClass(c)).toSet + cname
+      val strSubClasses = subclasses.asScala.map(c =>
+        JimpleFlowdroidWrapper.stringNameOfClass(c)).toSet + cname
       acc  + (cname -> strSubClasses)
     }
   }
