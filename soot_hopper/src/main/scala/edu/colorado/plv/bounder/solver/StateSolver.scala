@@ -3,10 +3,12 @@ package edu.colorado.plv.bounder.solver
 import edu.colorado.plv.bounder.ir.{TAddr, TMessage, TNullVal}
 import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.lifestate.LifeState._
-import edu.colorado.plv.bounder.symbolicexecutor.state._
+import edu.colorado.plv.bounder.symbolicexecutor.state.{HeapPtEdge, _}
 import org.slf4j.LoggerFactory
 import scalaz.Memo
 import upickle.default._
+
+import scala.collection.immutable
 
 trait Assumptions
 
@@ -493,6 +495,69 @@ trait StateSolver[T] {
   }
   val canSubsumeMemo: ((State,State)) => Boolean =
     Memo.mutableHashMapMemo((s:(State,State)) => canSubsume(s._1,s._2))
+
+  def canSubsume(s1: State,s2:State, maxLen: Option[Int] = None):Boolean = canSubsumeSlow(s1,s2,maxLen)
+  /**
+   * Consider rearrangments of pure vars that could result in subsumption
+   * @param s1 subsuming state
+   * @param s2 contained state
+   * @return
+   */
+  def canSubsumeSlow(s1:State, s2:State, maxLen:Option[Int] = None):Boolean = {
+    // Check if stack sizes or locations are different
+    if(s1.callStack.size != s2.callStack.size)
+      return false
+
+    val stackLocsMatch = (s1.callStack zip s2.callStack).forall{
+      case (fr1,fr2) => fr1.methodLoc == fr2.methodLoc
+    }
+    if(!stackLocsMatch)
+      return false
+
+    // Check if more fields are defined in the subsuming state (more fields means can't possibly subsume)
+    def fieldNameCount(s:State): Map[String,Int] = {
+      val fieldSeq: immutable.Iterable[String] = s.heapConstraints.collect{
+        case (FieldPtEdge(_,name),_) => name
+      }
+      fieldSeq.groupBy(l=>l).map(t=>(t._1,t._2.size))
+    }
+    val s1FieldCount: Map[String, Int] = fieldNameCount(s1)
+    val s2FieldCount: Map[String, Int] = fieldNameCount(s2)
+    val s1FieldSet = s1FieldCount.keySet
+    val s2FieldSet = s2FieldCount.keySet
+    if(s1FieldSet.size > s2FieldSet.size)
+      return false
+
+    if(s1FieldSet.exists(fld => s1FieldCount(fld) > s2FieldCount.getOrElse(fld,-1)))
+      return false
+
+
+    //TODO: below is brute force approach to see if considering pure var rearrangments fixes the issue
+    val pv1 = s1.pureVars()
+    val pv2 = s2.pureVars()
+    val allPv = pv1.union(pv2).toList
+    // map s2 to somethign where all pvs are strictly larger
+    val maxID = allPv.maxBy(_.id)
+
+    // Swap all pureVars to pureVars above the max found in either state
+    // This way swapping doesn't interfere with itself
+    val (s2Above,pvToTemp) = allPv.foldLeft((s2.copy(nextAddr = maxID.id + 1), Map[PureVar,PureVar]())){
+      case ((st,nl),pv) =>
+        val (freshPv,st2) = st.nextPv()
+        (st2.swapPv(pv,freshPv),nl + (pv -> freshPv))
+    }
+    val normalCanSubsume = canSubsumeFast(s1,s2,maxLen)
+    val out: Boolean = allPv.permutations.exists{ perm =>
+      val s2Swapped = (allPv zip perm).foldLeft(s2Above){
+        case (s,(oldPv,newPv)) => s.swapPv(pvToTemp(oldPv),newPv)
+      }
+      canSubsumeFast(s1,s2Swapped,maxLen)
+    }
+    if (out != normalCanSubsume) {
+      println()
+    }
+    out
+  }
   /**
    * Check if formula s2 is entirely contained within s1.  Used to determine if subsumption is sound.
    *
@@ -500,7 +565,24 @@ trait StateSolver[T] {
    * @param s2 contained state
    * @return false if there exists a trace in s2 that is not in s1 otherwise true
    */
-  def canSubsume(s1: State, s2: State, maxLen: Option[Int] = None): Boolean = {
+  def canSubsumeFast(s1: State, s2: State, maxLen: Option[Int] = None): Boolean = {
+
+    // TODO: remove debug code below ===
+    def dbg(s1:State,s2:State):Unit = {
+      val s1pv = s1.pureVars()
+      val s2pv = s2.pureVars()
+      def stateFieldNamesInHeap(s:State):Set[String] = s.heapConstraints.collect{
+        case (FieldPtEdge(_,fname),_) => fname
+      }.toSet
+
+      val s1fld = stateFieldNamesInHeap(s1)
+      val s2fld = stateFieldNamesInHeap(s2)
+      if (s1pv.size < s2pv.size && s2fld.forall(v => s1fld.contains(v))) {
+        println()
+      }
+    }
+    // TODO: debug code above ===
+
     // Currently, the stack is strictly the app call string
     // When adding more abstraction to the stack, this needs to be modified
     if(!stackCanSubsume(s1.callStack, s2.callStack)) {
@@ -509,6 +591,7 @@ trait StateSolver[T] {
     }
     if(!s1.heapConstraints.forall { case (k, v) => s2.heapConstraints.get(k).contains(v) }) {
       logger.info(s"Heap no subsume STATE1: $s1  STATE2: $s2")
+//      dbg(s1,s2)
       return false
     }
     // TODO: encode inequality of heap cells in smt formula?

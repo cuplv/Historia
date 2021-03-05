@@ -251,10 +251,10 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 
     callees.par.exists { c =>
       if (relevantHeap(c, state)) {
-        printCache(s"method: $m calls $c - heap relevant to state: $state")
+//        printCache(s"method: $m calls $c - heap relevant to state: $state")
         true
       } else if (relevantTrace(c, state)) {
-        printCache(s"method: $m calls $c trace relevant to state: $state")
+//        printCache(s"method: $m calls $c trace relevant to state: $state")
       true
       } else
         false

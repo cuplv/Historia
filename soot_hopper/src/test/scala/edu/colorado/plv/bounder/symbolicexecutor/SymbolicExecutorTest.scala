@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, NoTypeSolving}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, PrettyPrinting, Qry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, IPathNode, PrettyPrinting, Qry}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.AnyFunSuite
@@ -366,8 +366,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
   }
   test("Test dynamic dispatch2") {
     List(
-      (".*query2.*".r,Witnessed),
-//      (".*query1.*".r, Proven) //TODO: timeout here
+//      (".*query2.*".r,Witnessed),
+      (".*query1.*".r, Proven) //TODO: timeout here
     ).map { case (queryL, expectedResult) =>
       val src =
         s"""package com.example.createdestroy;
@@ -420,9 +420,11 @@ class SymbolicExecutorTest extends AnyFunSuite {
         val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
           new SpecSpace(Set(ActivityLifecycle.init_first_callback)), cha)
-        val config = SymbolicExecutorConfig(
+        val config = SymbolicExecutorConfig( //=======
           stepLimit = Some(110), w, transfer,
-          component = Some(List("com.example.createdestroy.MyActivity.*")))
+          component = Some(List("com.example.createdestroy.MyActivity.*")),
+//          outputMode = DBOutputMode("/Users/shawnmeier/Desktop/bounder_debug_data/deref2.db")
+        )
         val symbolicExecutor = config.getSymbolicExecutor
         val i = lineForRegex(queryL, src)
         val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",

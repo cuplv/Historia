@@ -19,7 +19,7 @@ sealed trait Loc{
 object Loc{
   implicit val rw:RW[Loc] = RW.merge(macroRW[CallbackMethodInvoke], macroRW[CallinMethodReturn],
     AppLoc.rw, macroRW[CallbackMethodReturn], macroRW[InternalMethodReturn], macroRW[CallinMethodInvoke],
-    macroRW[InternalMethodInvoke]
+    macroRW[InternalMethodInvoke], GroupedCallinMethodReturn.rw, GroupedCallinMethodInvoke.rw
   )
 }
 
@@ -66,7 +66,8 @@ object MethodLoc {
 trait LineLoc
 object LineLoc{
   implicit val rw:RW[LineLoc] = upickle.default.readwriter[ujson.Value].bimap[LineLoc](
-    x => ujson.Obj("id" -> System.identityHashCode(x), "str" -> x.toString),
+    x =>
+      ujson.Obj("id" -> System.identityHashCode(x), "str" -> x.toString),
     json => json match {
       case ujson.Str(v) => TestIRLineLoc (v.toInt,"")
       case ujson.Obj(v) => TestIRLineLoc (v("id").num.toInt, v("str").str)

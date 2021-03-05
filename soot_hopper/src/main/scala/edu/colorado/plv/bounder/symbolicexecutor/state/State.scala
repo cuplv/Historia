@@ -452,7 +452,7 @@ case object PureVal{
   implicit val rw:RW[PureVal] = RW.merge(
     macroRW[NullVal.type], macroRW[TopVal.type],
     macroRW[IntVal],macroRW[BoolVal],macroRW[StringVal],
-    macroRW[SubclassOf],macroRW[ClassType],macroRW[SuperclassOf])
+    macroRW[SubclassOf],macroRW[ClassType],macroRW[SuperclassOf], macroRW[OneOfClass])
 }
 
 case object NullVal extends PureVal{

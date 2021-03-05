@@ -36,14 +36,20 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
     oId
   }
   def writeNode(node: DBPathNode): Unit = {
-    val qryState = node.qry match{
-      case SomeQry(_,_) => "live"
-      case BottomQry(_,_) => "refuted"
-      case WitnessedQry(_,_) => "witnessed"
+    try {
+      val qryState = node.qry match {
+        case SomeQry(_, _) => "live"
+        case BottomQry(_, _) => "refuted"
+        case WitnessedQry(_, _) => "witnessed"
+      }
+      val loc = write(node.qry.loc)
+      val writeFuture = db.run(witnessQry +=
+        (node.thisID, qryState, write(node.qry.state), loc, node.subsumedID, node.succID, node.depth))
+      Await.result(writeFuture, 20 seconds)
+    } catch{
+      case t : Throwable =>
+        println(t) // pokemon error handling!
     }
-    val writeFuture = db.run(witnessQry +=
-      (node.thisID,qryState, write(node.qry.state), write(node.qry.loc),node.subsumedID, node.succID, node.depth))
-    Await.result(writeFuture, 20 seconds)
   }
   def readNode(id: Int):IPathNode = {
     val q = witnessQry.filter(_.id === id)
