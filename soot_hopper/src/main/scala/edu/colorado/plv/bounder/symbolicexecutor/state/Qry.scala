@@ -31,6 +31,7 @@ object Qry {
                                 methodName:String,
                                 line:Int,
                                 callinMatches:Regex):Set[Qry] ={
+    implicit val ch = ex.getClassHierarchy
     val locs = w.findLineInMethod(className, methodName,line)
     val callinLocals = locs.flatMap(a => {
       w.cmdAtLocation(a) match{
@@ -59,6 +60,7 @@ object Qry {
                                w:IRWrapper[M,C],
                                className:String,
                                methodName:String, line:Int):Set[Qry] = {
+    implicit val ch = ex.getClassHierarchy
     val locs = w.findLineInMethod(className, methodName,line)
 
     val derefLocs: Iterable[AppLoc] = locs.filter(a => w.cmdAtLocation(a) match {

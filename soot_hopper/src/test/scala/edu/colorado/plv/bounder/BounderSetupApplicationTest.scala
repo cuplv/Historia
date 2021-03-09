@@ -35,15 +35,15 @@ class BounderSetupApplicationTest extends AnyFunSuite {
   }
 
   test("State serialization"){
-    val v: List[PureExpr] = List(SubclassOf("foo"), ClassType("bar"), IntVal(3), PureVar(7))
+    val v: List[PureExpr] = List(IntVal(3), PureVar(7))
     val serialized = write(v)
     val deserialized = read[List[PureExpr]](serialized)
     assert(v === deserialized)
   }
 
   private val js = (name:String) => ujson.Value(Resource.getAsString(name)).obj
-  test("Deserialize old json loc with system identity hash code only"){
-    val v = read[DBPathNode](js("TestStates/badJson"))
-    println(v)
-  }
+//  test("Deserialize old json loc with system identity hash code only"){
+//    val v = read[DBPathNode](js("TestStates/badJson"))
+//    println(v)
+//  }
 }

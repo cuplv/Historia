@@ -10,6 +10,8 @@ import upickle.default.{ReadWriter => RW, macroRW}
  * @tparam C Command type for the underlying representation
  */
 trait IRWrapper[M,C]{
+  def getInterfaces: Set[String]
+
   def getAllMethods : Iterable[MethodLoc]
   def getOverrideChain( method : MethodLoc) : Seq[MethodLoc]
   def findMethodLoc(className: String, methodName: String):Iterable[MethodLoc]

@@ -46,6 +46,8 @@ class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] 
   override def degreeOut(cmd: AppLoc): Int = ???
 
   override def degreeIn(cmd: AppLoc): Int = ???
+
+  override def getInterfaces: Set[String] = ???
 }
 
 /**
@@ -82,8 +84,10 @@ case class TestIRMethodLoc(clazz:String, name:String, args:List[Option[LocalWrap
 
 object TestIRMethodLoc{
   implicit val rw = upickle.default.readwriter[ujson.Value].bimap[MethodLoc](
-    x => ujson.Arr(x.simpleName, x.classType, x.argTypes),
-    json => TestIRMethodLoc(json(0).str, json(1).str, ???)
+    x =>
+      ujson.Arr(x.simpleName, x.classType, x.argTypes),
+    json =>
+      TestIRMethodLoc(json(0).str, json(1).str, ???)
   )
 }
 

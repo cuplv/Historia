@@ -36,13 +36,14 @@ object ClassHierarchyConstraints{
   val Primitive = primitiveTypes.mkString("|").r
 
   implicit val rw:RW[ClassHierarchyConstraints] = upickle.default.readwriter[ujson.Value].bimap[ClassHierarchyConstraints](
-    x => ujson.Obj("hierarchy" -> x.getTypes),
+    x => ujson.Obj("hierarchy" -> x.getTypes, "interfaces" -> x.getInterfaces),
     json => {
       val hiearchy = json("hierarchy").obj.map{
         case (k,v) => k->v.arr.map(_.str).toSet
       }.toMap
+      val interfaces = json("interfaces").arr.map(_.str).toSet
       val ctx = new Context
-      new ClassHierarchyConstraints(ctx, ctx.mkSolver(), hiearchy)
+      new ClassHierarchyConstraints(ctx, ctx.mkSolver(), hiearchy,interfaces)
     }
   )
 
@@ -63,7 +64,8 @@ import upickle.default.{ReadWriter => RW, macroRW}
  * @param types mapping from super types to sub types
  */
 class ClassHierarchyConstraints(ctx: Context, solver: Solver, types : Map[String,Set[String]],
-                                useZ3TypeSolver: StateTypeSolving = NoTypeSolving ) {
+                                interfaces:Set[String],useZ3TypeSolver: StateTypeSolving = NoTypeSolving ) {
+  def getInterfaces:Set[String] = interfaces
 //  def leastUpperBound(classesToGroup: Set[String]): String ={
 //    if(classesToGroup.isEmpty)
 //      return "java.lang.Object"
@@ -79,7 +81,7 @@ class ClassHierarchyConstraints(ctx: Context, solver: Solver, types : Map[String
 //    }
 //    typeWithMostSuperTypes
 //  }
-
+  def isInterface(name:String):Boolean = interfaces.contains(name)
   def getSolver: Solver = solver
   def getCtx: Context = ctx
   // Treat primitive values as subtypes of their boxed types
@@ -176,33 +178,33 @@ class ClassHierarchyConstraints(ctx: Context, solver: Solver, types : Map[String
     }
   }
 
-  def typeSetForPureVar(v:PureVar, state:State):Set[String] = {
-    def typeSet(const: PureConstraint):Set[String] = const match{
-      case PureConstraint(_, TypeComp, SuperclassOf(c)) => getSupertypesOf(c)
-      case PureConstraint(_, TypeComp, SubclassOf(c)) => getSubtypesOf(c)
-      case PureConstraint(_, TypeComp, ClassType(c)) => Set(c)
-      case PureConstraint(_, TypeComp, OneOfClass(c)) => c.flatMap(getSubtypesOf)
-      case _ => Set()
-    }
-    state.pureFormula.foldLeft(None:Option[Set[String]]){
-      case (None,p@PureConstraint(p2, TypeComp, _)) if p2 == v =>
-        Some(typeSet(p))
-      case (Some(acc),p@PureConstraint(p2, TypeComp, _)) if p2 == v =>
-        Some(acc.intersect(typeSet(p)))
-      case (acc,_) =>
-        acc
-    }.getOrElse(getSubtypesOf("java.lang.Object"))
-  }
-  def pureVarTypeMap(state:State):Map[PureVar, Set[String]] = {
-    val pvMap: Map[PureVar, Set[String]] =
-      state.pureVars().map(p => (p,typeSetForPureVar(p,state))).toMap
-    val pvMap2 = state.pureFormula.foldLeft(pvMap){
-      case(acc, PureConstraint(p1:PureVar, Equals, p2:PureVar)) => {
-        val newPvClasses = acc(p1).intersect(acc(p2))
-        acc + (p1->newPvClasses) + (p2 -> newPvClasses)
-      }
-      case (acc,_) => acc
-    }
-    pvMap2
-  }
+  //def typeSetForPureVar(v:PureVar, state:State):Set[String] = {
+  //  def typeSet(const: PureConstraint):Set[String] = const match{
+  //    case PureConstraint(_, TypeComp, SuperclassOf(c)) => getSupertypesOf(c)
+  //    case PureConstraint(_, TypeComp, SubclassOf(c)) => getSubtypesOf(c)
+  //    case PureConstraint(_, TypeComp, ClassType(c)) => Set(c)
+  //    case PureConstraint(_, TypeComp, OneOfClass(c)) => c.flatMap(getSubtypesOf)
+  //    case _ => Set()
+  //  }
+  //  state.pureFormula.foldLeft(None:Option[Set[String]]){
+  //    case (None,p@PureConstraint(p2, TypeComp, _)) if p2 == v =>
+  //      Some(typeSet(p))
+  //    case (Some(acc),p@PureConstraint(p2, TypeComp, _)) if p2 == v =>
+  //      Some(acc.intersect(typeSet(p)))
+  //    case (acc,_) =>
+  //      acc
+  //  }.getOrElse(getSubtypesOf("java.lang.Object"))
+  //}
+  //def pureVarTypeMap(state:State):Map[PureVar, Set[String]] = {
+  //  val pvMap: Map[PureVar, Set[String]] =
+  //    state.pureVars().map(p => (p,typeSetForPureVar(p,state))).toMap
+  //  val pvMap2 = state.pureFormula.foldLeft(pvMap){
+  //    case(acc, PureConstraint(p1:PureVar, Equals, p2:PureVar)) => {
+  //      val newPvClasses = acc(p1).intersect(acc(p2))
+  //      acc + (p1->newPvClasses) + (p2 -> newPvClasses)
+  //    }
+  //    case (acc,_) => acc
+  //  }
+  //  pvMap2
+  //}
 }

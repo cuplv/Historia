@@ -736,6 +736,11 @@ class JimpleFlowdroidWrapper(apkPath : String,
     }
   }
 
+  override def getInterfaces: Set[String] = {
+    val out = Scene.v().getClasses.asScala.filter(_.isInterface).toSet.map(JimpleFlowdroidWrapper.stringNameOfClass)
+    out
+  }
+
   override def getClassHierarchy: Map[String, Set[String]] = {
     val hierarchy: Hierarchy = Scene.v().getActiveHierarchy
     Scene.v().getClasses().asScala.foldLeft(Map[String, Set[String]]()){ (acc,v) =>

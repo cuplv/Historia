@@ -366,7 +366,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
   }
   test("Test dynamic dispatch2") {
     List(
-//      (".*query2.*".r,Witnessed),
+      (".*query2.*".r,Witnessed),
       (".*query1.*".r, Proven) //TODO: timeout here
     ).map { case (queryL, expectedResult) =>
       val src =

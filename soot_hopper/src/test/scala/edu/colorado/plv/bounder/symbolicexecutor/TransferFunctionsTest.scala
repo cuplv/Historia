@@ -17,7 +17,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     Map("java.lang.Object" -> Set("String", "Foo", "Bar", "java.lang.Object"),
       "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
 
-  val miniCha = new ClassHierarchyConstraints(ctx, solver, hierarchy)
+  val miniCha = new ClassHierarchyConstraints(ctx, solver, hierarchy, Set("java.lang.Runnable"))
   val tr = (ir:TestIR, cha:ClassHierarchyConstraints) => new TransferFunctions(ir, new SpecSpace(Set()),cha)
   def testCmdTransfer(cmd:AppLoc => CmdWrapper, post:State, testIRMethod: TestIRMethodLoc):Set[State] = {
     val preloc = AppLoc(testIRMethod,TestIRLineLoc(1), isPre=true)
@@ -64,7 +64,8 @@ class TransferFunctionsTest extends AnyFunSuite {
       heapConstraints = Map(FieldPtEdge(otherPv, "o") -> NullVal),
       pureFormula = Set(),
       traceAbstraction = Set(),
-      0
+      typeConstraints = Map(),
+      nextAddr = 0
     )
 
     val pre = testCmdTransfer(cmd, post, fooMethod)
@@ -82,7 +83,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     val post = State(
       CallStackFrame(fooMethodReturn, None, Map(StackVar("bar") -> nullPv))::Nil,
       heapConstraints = Map(),
-      pureFormula = Set(PureConstraint(nullPv,Equals, NullVal)), Set(),0)
+      pureFormula = Set(PureConstraint(nullPv,Equals, NullVal)),Map(), Set(),0)
     val prestate: Set[State] = testCmdTransfer(cmd, post,fooMethod)
     println(s"poststate: $post")
     println(s"prestate: $prestate")
@@ -97,7 +98,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     val post = State(
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("bar") -> nullPv))::Nil,
       heapConstraints = Map(),
-      pureFormula = Set(PureConstraint(nullPv,Equals, NullVal)), Set(),0)
+      pureFormula = Set(PureConstraint(nullPv,Equals, NullVal)),Map(), Set(),0)
     val prestate: Set[State] = testCmdTransfer(cmd, post,fooMethod)
     println(s"poststate: $post")
     println(s"prestate: ${prestate}")
@@ -124,7 +125,9 @@ class TransferFunctionsTest extends AnyFunSuite {
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("@this") -> recPv))::Nil,
       heapConstraints = Map(),
       pureFormula = Set(),
-      traceAbstraction = Set(otheri),0)
+      traceAbstraction = Set(otheri),
+      typeConstraints = Map(),
+      nextAddr = 0)
 
     println(s"post: ${post.toString}")
     println(s"preloc: $preloc")
@@ -151,7 +154,8 @@ class TransferFunctionsTest extends AnyFunSuite {
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("@this") -> recPv))::Nil,
       heapConstraints = Map(),
       pureFormula = Set(),
-      traceAbstraction = Set(AbstractTrace(iFooA, Nil, Map("a"->recPv))),0)
+      typeConstraints = Map(),
+      traceAbstraction = Set(AbstractTrace(iFooA, Nil, Map("a"->recPv))),nextAddr = 0)
     println(s"post: ${post.toString}")
     val prestate: Set[State] = trf.transfer(post,preloc, postloc)
     println(s"pre: ${prestate.toString}")

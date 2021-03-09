@@ -340,6 +340,7 @@ trait StateSolver[T] {
   protected def mkDistinctT(tList : Iterable[T]):T
   protected def encodeTypeConsteraints:StateTypeSolving
   protected def persist: ClassHierarchyConstraints
+  private implicit val ch = persist
 
   def toAST(heap: Map[HeapPtEdge, PureExpr]): T={
     // The only constraint we get from the heap is that domain elements must be distinct
@@ -377,8 +378,9 @@ trait StateSolver[T] {
     )
 
     val typeConstraints = if(encodeTypeConsteraints == SolverTypeSolving) {
-      // Encode type constraints in Z3
-      val typeConstraints = persist.pureVarTypeMap(state)
+//      // Encode type constraints in Z3
+      val typeConstraints = state.typeConstraints.map{  case (k,v) => k -> v.typeSet(ch)}
+//      val typeConstraints = persist.pureVarTypeMap(state)
       typeConstraints.keySet.filter(pv => state.pureFormula.exists{
         case PureConstraint(v1, TypeComp,_) =>  v1 == pv
         case _ => false
@@ -447,13 +449,12 @@ trait StateSolver[T] {
     if(state.isSimplified) Some(state) else {
       // Drop useless constraints
       val state2 = state.copy(pureFormula = state.pureFormula.filter{
-        case PureConstraint(_, TypeComp, SubclassOf("java.lang.Object")) => false
         case PureConstraint(v1,Equals,v2) if v1==v2 => false
         case _ => true
       })
       // If no type possible for a pure var, state is not feasible
-      val pvMap2 = persist.pureVarTypeMap(state)
-      if(pvMap2.exists(a => a._2.isEmpty)){
+      val pvMap2: Map[PureVar, TypeSet] = state.typeConstraints
+      if(pvMap2.exists(a => a._2.isEmpty(persist))){
         return None
       }
       push()
@@ -537,7 +538,7 @@ trait StateSolver[T] {
     val pv2 = s2.pureVars()
     val allPv = pv1.union(pv2).toList
     // map s2 to somethign where all pvs are strictly larger
-    val maxID = allPv.maxBy(_.id)
+    val maxID = if(allPv.nonEmpty) allPv.maxBy(_.id) else PureVar(5)
 
     // Swap all pureVars to pureVars above the max found in either state
     // This way swapping doesn't interfere with itself
@@ -547,6 +548,7 @@ trait StateSolver[T] {
         (st2.swapPv(pv,freshPv),nl + (pv -> freshPv))
     }
     val normalCanSubsume = canSubsumeFast(s1,s2,maxLen)
+    //TODO: extremely slow permutations
     val out: Boolean = allPv.permutations.exists{ perm =>
       val s2Swapped = (allPv zip perm).foldLeft(s2Above){
         case (s,(oldPv,newPv)) => s.swapPv(pvToTemp(oldPv),newPv)
@@ -586,21 +588,25 @@ trait StateSolver[T] {
     // Currently, the stack is strictly the app call string
     // When adding more abstraction to the stack, this needs to be modified
     if(!stackCanSubsume(s1.callStack, s2.callStack)) {
-      logger.info(s"Stack no subsume STATE1: $s1  STATE2: $s2")
+//      logger.info(s"Stack no subsume STATE1: $s1  STATE2: $s2")
       return false
     }
     if(!s1.heapConstraints.forall { case (k, v) => s2.heapConstraints.get(k).contains(v) }) {
-      logger.info(s"Heap no subsume STATE1: $s1  STATE2: $s2")
+//      logger.info(s"Heap no subsume STATE1: $s1  STATE2: $s2")
 //      dbg(s1,s2)
       return false
     }
-    // TODO: encode inequality of heap cells in smt formula?
+    // TODO: if tc says two things can't be equal then smt formula says they can't be equal
 
+    // check if each pure var in the subsuming state represents a greater than or equal set of types
     if(encodeTypeConsteraints == SetInclusionTypeSolving){
-      val s1TypeMap = persist.pureVarTypeMap(s1)
-      val s2TypeMap = persist.pureVarTypeMap(s2)
-      val typesSubsume =
-        s1TypeMap.keySet.forall(pv => s2TypeMap.get(pv).exists(tset => s1TypeMap(pv).union(tset) == s1TypeMap(pv)))
+      val s1TypeMap = s1.typeConstraints
+      val s2TypeMap = s2.typeConstraints
+      val typesSubsume = s1TypeMap.forall{case (pv,ts) =>
+        val opts2Val = s2TypeMap.get(pv)
+        opts2Val.forall(ts.contains) //s1 type set contains s2 type set and pv must exist in s2
+      }
+//        s1TypeMap.keySet.forall(pv => s2TypeMap.get(pv).exists(tset => s1TypeMap(pv).union(tset) == s1TypeMap(pv)))
       if(!typesSubsume){
         return false
       }
@@ -610,15 +616,21 @@ trait StateSolver[T] {
 
     val pureFormulaEnc = {
 
-      val typeFun = createTypeFun()
       // TODO: add type encoding here
       val (negTC1, tC2) = if(encodeTypeConsteraints == SolverTypeSolving) {
-        val state1Types = persist.pureVarTypeMap(s1).map{
-          case (pv,ts) => mkTypeConstraint(typeFun, toAST(pv), ts)
+        val typeFun = createTypeFun()
+        val state1Types = s1.typeConstraints.map{case (pv,v) =>
+          mkTypeConstraint(typeFun, toAST(pv), v.typeSet(ch))
         }
-        val state2Types = persist.pureVarTypeMap(s2).map{
-          case (pv,ts) => mkTypeConstraint(typeFun, toAST(pv), ts)
+        val state2Types = s2.typeConstraints.map{case (pv,v) =>
+          mkTypeConstraint(typeFun, toAST(pv), v.typeSet(ch))
         }
+//        val state1Types = persist.pureVarTypeMap(s1).map{
+//          case (pv,ts) => mkTypeConstraint(typeFun, toAST(pv), ts)
+//        }
+//        val state2Types = persist.pureVarTypeMap(s2).map{
+//          case (pv,ts) => mkTypeConstraint(typeFun, toAST(pv), ts)
+//        }
         val notS1TypesEncoded = state1Types.foldLeft(mkBoolVal(false)){
           (acc,v) => mkOr(acc, mkNot(v))
         }
@@ -674,15 +686,15 @@ trait StateSolver[T] {
       printDbgModel(messageTranslator, s1.traceAbstraction.union(s2.traceAbstraction), "")
     }
     pop()
-    if(ti){
-      logger.info(s"Pure or Trace no subsume STATE1: " +
-        s"$s1  " +
-        s"STATE2: $s2")
-    }else{
-      logger.info(s"Subsumed STATE1: " +
-        s"${s1.toString.replace("\n"," ")}  " +
-        s"STATE2: ${s2.toString.replace("\n"," ")}")
-    }
+//    if(ti){
+//      logger.info(s"Pure or Trace no subsume STATE1: " +
+//        s"$s1  " +
+//        s"STATE2: $s2")
+//    }else{
+//      logger.info(s"Subsumed STATE1: " +
+//        s"${s1.toString.replace("\n"," ")}  " +
+//        s"STATE2: ${s2.toString.replace("\n"," ")}")
+//    }
     !ti
   }
 

@@ -5,6 +5,7 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, SubclassOf, S
 import org.scalatest.funsuite.AnyFunSuite
 
 class ClassHierarchyConstraintsTest extends AnyFunSuite {
+  //TODO: test hierarchy constraints for TypeSet
   test("Subtype"){
     val ctx = new Context
     val hierarchy : Map[String, Set[String]] =
@@ -12,7 +13,7 @@ class ClassHierarchyConstraintsTest extends AnyFunSuite {
         "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
     val solver = ctx.mkSolver()
 
-    val ch = new ClassHierarchyConstraints(ctx, solver, hierarchy, SolverTypeSolving)
+    val ch = new ClassHierarchyConstraints(ctx, solver, hierarchy,Set("Runnable"), SolverTypeSolving)
     assert(solver.check() == Status.SATISFIABLE)
 
     assert(solver.check() == Status.SATISFIABLE)

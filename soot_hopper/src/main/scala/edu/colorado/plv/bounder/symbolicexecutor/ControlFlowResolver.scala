@@ -107,11 +107,10 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     val localType = fr.base.localType
     state.heapConstraints.exists {
       case (FieldPtEdge(p, otherFieldName), _) if fname == otherFieldName =>
-        //        val res = state.pvTypeUpperBound(p).forall(wrapper.canAlias(localType, _))
         val posLocalTypes = cha.getSubtypesOf(localType)
-        val pureTypes = cha.typeSetForPureVar(p, state)
-        val res = posLocalTypes.exists(t => pureTypes.contains(t))
-        res
+        posLocalTypes.exists { lt =>
+          state.typeConstraints.get(p).forall(_.subtypeOfCanAlias(lt,cha))
+        }
       case _ => false
     }
   }
@@ -266,7 +265,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     aliasPos.exists { aliasPo =>
       (aliasPo zip locals).forall {
         case (LSPure(v: PureVar), Some(local: LocalWrapper)) =>
-          cha.typeSetForPureVar(v, state).forall(wrapper.canAlias(_, local.localType))
+          state.typeConstraints.get(v).forall(_.subtypeOfCanAlias(local.localType,cha))
+//          cha.typeSetForPureVar(v, state).forall(wrapper.canAlias(_, local.localType))
         case (LSPure(v: PureVar), Some(NullConst)) => ???
         case (LSPure(v: PureVar), Some(i: IntConst)) => ???
         case (LSPure(v: PureVar), Some(i: StringConst)) => ???

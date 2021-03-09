@@ -15,7 +15,7 @@ class Z3ModelGeneratorTest extends AnyFunSuite {
       fmwName="void foo()", fooMethod)
     val pureVar = PureVar(State.getId())
     val frame = CallStackFrame(dummyLoc, None, Map(StackVar("this") -> pureVar))
-    val state = State(List(frame), Map(), Set(), Set(),0)
+    val state = State(List(frame), Map(), Set(),Map(), Set(),0)
     val qryR1 = SomeQry(state, dummyLoc)
 
     val barPred = I(CBEnter,Set(("","void bar()")), List("a"))

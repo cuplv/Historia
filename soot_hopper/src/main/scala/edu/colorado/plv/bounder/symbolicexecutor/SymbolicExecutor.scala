@@ -41,6 +41,7 @@ case class SymbolicExecutorConfig[M,C](stepLimit: Option[Int],
   def getSymbolicExecutor =
     new SymbolicExecutor[M, C](this)}
 class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
+
   implicit var pathMode = config.outputMode
   val ctx = new Context
   val solver = {
@@ -54,7 +55,9 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     solver
   }
   val cha =
-    new ClassHierarchyConstraints(ctx, solver, config.w.getClassHierarchy, config.stateTypeSolving)
+    new ClassHierarchyConstraints(ctx, solver, config.w.getClassHierarchy,config.w.getInterfaces, config.stateTypeSolving)
+
+  def getClassHierarchy = cha
   val transfer = config.transfer(cha)
 
   val appCodeResolver = new DefaultAppCodeResolver[M,C](config.w)

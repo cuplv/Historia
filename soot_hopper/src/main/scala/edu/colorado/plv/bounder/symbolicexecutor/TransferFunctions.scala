@@ -48,6 +48,7 @@ object TransferFunctions{
 class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
                              classHierarchyConstraints: ClassHierarchyConstraints) {
   private val resolver = new DefaultAppCodeResolver(w)
+  private implicit val ch = classHierarchyConstraints
   def defineVarsAs(state: State, comb: List[(Option[RVal], Option[PureExpr])]):State =
     comb.foldLeft(state){
       case (stateNext, (None,_)) => stateNext
@@ -133,9 +134,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
           case _::Some(rec)::_ =>
             val (recV,stateWithRec) = s2.getOrDefine(rec)
             val pureFormulaConstrainingReceiver = stateWithRec.pureFormula +
-              PureConstraint(recV, TypeComp, OneOfClass(targets)) +
+//              PureConstraint(recV, TypeComp, OneOfClass(targets)) +
               PureConstraint(recV, NotEquals, NullVal)
-            stateWithRec.copy(pureFormula =pureFormulaConstrainingReceiver)
+            stateWithRec.copy(pureFormula =pureFormulaConstrainingReceiver).constrainOneOfType(recV, targets, ch)
           case _ => s2
         }
       }
@@ -163,9 +164,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
           case _::Some(rec)::_ =>
             val (recV,stateWithRec) = s2.getOrDefine(rec)
             val pureFormulaConstrainingReceiver = stateWithRec.pureFormula +
-              PureConstraint(recV, TypeComp, SubclassOf(invokeType)) +
+//              PureConstraint(recV, TypeComp, SubclassOf(invokeType)) +
               PureConstraint(recV, NotEquals, NullVal)
-            stateWithRec.copy(pureFormula =pureFormulaConstrainingReceiver)
+            stateWithRec.copy(pureFormula =pureFormulaConstrainingReceiver).constrainUpperType(recV, invokeType, ch)
           case _ => s2
         }
       }
@@ -232,9 +233,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       // Value is discarded if static call ===========
       val (receiverValue,stateWithRec) = state0.getOrDefine(LocalWrapper("@this",invokeType))
       val stateWithRecTypeCst = stateWithRec.copy(pureFormula = stateWithRec.pureFormula +
-        PureConstraint(receiverValue, TypeComp, SubclassOf(invokeType)) +
+//        PureConstraint(receiverValue, TypeComp, SubclassOf(invokeType)) +
         PureConstraint(receiverValue, NotEquals, NullVal)
-      )
+      ).constrainUpperType(receiverValue, invokeType,ch)
 
       // Get values associated with arguments in state
       val frameArgVals: List[Option[PureExpr]] =
@@ -432,8 +433,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     postState.copy(traceAbstraction = newTraceAbs)
   }
 
-  def pureCanAlias(pv:PureVar, otherType:String, state:State):Boolean =
-    classHierarchyConstraints.typeSetForPureVar(pv,state).contains(otherType)
+//  def pureCanAlias(pv:PureVar, otherType:String, state:State):Boolean =
+//    classHierarchyConstraints.typeSetForPureVar(pv,state).contains(otherType)
 
   private def exprContainsV(value: PureVar, expr:PureExpr):Boolean = expr match{
     case p:PureVar => value == p
@@ -463,9 +464,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
             // If x = new T and x->v^ then v^<:T
             // v^ != null since new instruction never returns null
             Set(sWithoutLVal.copy(pureFormula = state.pureFormula
-              + PureConstraint(v, TypeComp, ClassType(className))
+//              + PureConstraint(v, TypeComp, ClassType(className))
               + PureConstraint(v, NotEquals, NullVal)
-            ))
+            ).constrainIsType(v,className,ch))
           }
         case Some(_:PureVal) => Set() // new cannot return anything but a pointer
         case None => Set(state) // Do nothing if variable x is not in state
@@ -504,7 +505,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
           val possibleHeapCells = state1.heapConstraints.filter {
             case (FieldPtEdge(pv, heapFieldName), _) =>
               val fieldEq = fieldName == heapFieldName
-              val canAlias = pureCanAlias(pv,base.localType,state1)
+//              val canAlias = pureCanAlias(pv,base.localType,state1)
+              val canAlias = state1.typeConstraints
+                .get(pv).forall(_.subtypeOfCanAlias(base.localType,ch))
               fieldEq && canAlias
             case _ =>
               false
@@ -537,7 +540,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val possibleHeapCells = state2.heapConstraints.filter {
         case (FieldPtEdge(pv, heapFieldName), _) =>
           val fieldEq = fieldName == heapFieldName
-          val canAlias = pureCanAlias(pv,base.localType,state2)
+//          val canAlias = pureCanAlias(pv,base.localType,state2)
+          val canAlias = state2.typeConstraints.get(pv).forall(_.subtypeOfCanAlias(base.localType, ch))
           fieldEq && canAlias
         case _ =>
           false
@@ -592,17 +596,19 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         assumeInState(b,state,negate=true).toSet
     case AssignCmd(l,Cast(castT, local),cmdloc) =>
       val state1 = state.get(local) match{
-        case Some(v) => state.copy(pureFormula = state.pureFormula + PureConstraint(v, TypeComp, SubclassOf(castT)))
+        case Some(v:PureVar) => state.constrainUpperType(v, castT, ch)
+        case _ => ???
+//          .copy(pureFormula = state.pureFormula + PureConstraint(v, TypeComp, SubclassOf(castT)))
         case None => state
       }
       cmdTransfer(AssignCmd(l,local,cmdloc),state1)
     case AssignCmd(l:LocalWrapper, StaticFieldReference(declaringClass, fname, containedType), _) =>
       if(state.containsLocal(l)){
-        val v = state.get(l).get
+        val v = state.get(l).get.asInstanceOf[PureVar]
         val state1 = state.clearLVal(l)
         Set(state1.copy(heapConstraints = state1.heapConstraints + (StaticPtEdge(declaringClass,fname) -> v),
-          pureFormula = state1.pureFormula + PureConstraint(v, TypeComp, SubclassOf(containedType))
-        ))
+//          pureFormula = state1.pureFormula + PureConstraint(v, TypeComp, SubclassOf(containedType))
+        ).constrainUpperType(v,containedType,ch))
       }else Set(state)
     case AssignCmd(StaticFieldReference(declaringClass,fieldName,_), l,_) =>
       val edge = StaticPtEdge(declaringClass, fieldName)
