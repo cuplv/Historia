@@ -69,7 +69,7 @@ object LSAny extends LSParamConstraint {
 case class LSConstConstraint(pureExpr: PureExpr, trace:AbstractTrace) extends LSParamConstraint{
   override def optTraceAbs: Option[AbstractTrace] = Some(trace)
 }
-trait TypeSet{
+sealed trait TypeSet{
   def typeSet(ch: ClassHierarchyConstraints): Set[String]
 
   def optionalConstrainUpper(upper:Option[String], ch:ClassHierarchyConstraints):TypeSet = upper match{
@@ -91,13 +91,13 @@ trait TypeSet{
 
 }
 object TypeSet{
+  implicit var rw:RW[TypeSet] = RW.merge(macroRW[EmptyTypeSet.type], BoundedTypeSet.rw, DisjunctTypeSet.rw)
   def isClass(className: String, ch:ClassHierarchyConstraints) = {
     if(ch.isInterface(className))
       throw new IllegalArgumentException(s"$className is an interface")
     BoundedTypeSet(Some(className), Some(className), Set())
   }
 
-  implicit var rw:RW[TypeSet] = RW.merge(macroRW[EmptyTypeSet.type], macroRW[BoundedTypeSet], macroRW[DisjunctTypeSet])
   def subclassOf(name:String, hierarchyConstraints: ClassHierarchyConstraints):TypeSet = {
     if(hierarchyConstraints.isInterface(name))
       BoundedTypeSet(None,None,Set(name))
@@ -204,6 +204,9 @@ case class BoundedTypeSet(upper:Option[String], lower:Option[String], interfaces
     }
   }
 }
+object BoundedTypeSet{
+  implicit var rw:RW[BoundedTypeSet] = macroRW
+}
 case class DisjunctTypeSet(oneOf: Set[TypeSet]) extends TypeSet{
   private def filterOp(op: TypeSet => TypeSet):TypeSet = {
     val outSet = oneOf.map(op).filter{
@@ -243,6 +246,9 @@ case class DisjunctTypeSet(oneOf: Set[TypeSet]) extends TypeSet{
 
   override def typeSet(ch: ClassHierarchyConstraints): Set[String] =
     oneOf.flatMap(_.typeSet(ch))
+}
+object DisjunctTypeSet{
+  implicit var rw:RW[DisjunctTypeSet] = macroRW
 }
 
 //TODO: this case class is getting to the point where pattern matches are unreadable
