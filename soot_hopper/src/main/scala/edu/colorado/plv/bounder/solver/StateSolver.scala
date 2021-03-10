@@ -547,17 +547,30 @@ trait StateSolver[T] {
         val (freshPv,st2) = st.nextPv()
         (st2.swapPv(pv,freshPv),nl + (pv -> freshPv))
     }
-    val normalCanSubsume = canSubsumeFast(s1,s2,maxLen)
-    //TODO: extremely slow permutations
+//    val normalCanSubsume = canSubsumeFast(s1,s2,maxLen)
+    //TODO: extremely slow permutations there is probably a better way
     val out: Boolean = allPv.permutations.exists{ perm =>
-      val s2Swapped = (allPv zip perm).foldLeft(s2Above){
-        case (s,(oldPv,newPv)) => s.swapPv(pvToTemp(oldPv),newPv)
+      // Break early for combinations that don't match type constraints
+      val allCanMatch = (allPv zip perm).forall{
+        case (oldPv, newPv) =>
+          val optionals1TC = s1.typeConstraints.get(newPv)
+          val optionals2TC = s2.typeConstraints.get(oldPv)
+          (optionals1TC, optionals2TC) match{
+            case (Some(tc1), Some(tc2)) => tc1.contains(tc2)
+            case _ => true
+          }
       }
-      canSubsumeFast(s1,s2Swapped,maxLen)
+      if(allCanMatch) {
+
+        val s2Swapped = (allPv zip perm).foldLeft(s2Above) {
+          case (s, (oldPv, newPv)) => s.swapPv(pvToTemp(oldPv), newPv)
+        }
+        canSubsumeFast(s1, s2Swapped, maxLen)
+      }else false
     }
-    if (out != normalCanSubsume) {
-      println()
-    }
+//    if (out != normalCanSubsume) {
+//      println()
+//    }
     out
   }
   /**
@@ -568,22 +581,6 @@ trait StateSolver[T] {
    * @return false if there exists a trace in s2 that is not in s1 otherwise true
    */
   def canSubsumeFast(s1: State, s2: State, maxLen: Option[Int] = None): Boolean = {
-
-    // TODO: remove debug code below ===
-    def dbg(s1:State,s2:State):Unit = {
-      val s1pv = s1.pureVars()
-      val s2pv = s2.pureVars()
-      def stateFieldNamesInHeap(s:State):Set[String] = s.heapConstraints.collect{
-        case (FieldPtEdge(_,fname),_) => fname
-      }.toSet
-
-      val s1fld = stateFieldNamesInHeap(s1)
-      val s2fld = stateFieldNamesInHeap(s2)
-      if (s1pv.size < s2pv.size && s2fld.forall(v => s1fld.contains(v))) {
-        println()
-      }
-    }
-    // TODO: debug code above ===
 
     // Currently, the stack is strictly the app call string
     // When adding more abstraction to the stack, this needs to be modified

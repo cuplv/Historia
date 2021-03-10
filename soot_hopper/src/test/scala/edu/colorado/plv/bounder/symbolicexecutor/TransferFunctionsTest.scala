@@ -58,8 +58,8 @@ class TransferFunctionsTest extends AnyFunSuite {
       val thisLocal = LocalWrapper("@this", "java.lang.Object")
       AssignCmd(FieldReference(thisLocal, "Object", "Object", "o"), NullConst, loc)
     }
-    val basePv = PureVar(State.getId())
-    val otherPv = PureVar(State.getId())
+    val basePv = PureVar(State.getId_TESTONLY())
+    val otherPv = PureVar(State.getId_TESTONLY())
     val post = State(CallStackFrame(fooMethodReturn, None, Map(StackVar("@this") -> basePv))::Nil,
       heapConstraints = Map(FieldPtEdge(otherPv, "o") -> NullVal),
       pureFormula = Set(),
@@ -79,7 +79,7 @@ class TransferFunctionsTest extends AnyFunSuite {
   }
   test("Transfer assign new local") {
     val cmd= (loc:AppLoc) => AssignCmd(LocalWrapper("bar","java.lang.Object"),NewCommand("String"),loc)
-    val nullPv = PureVar(State.getId())
+    val nullPv = PureVar(State.getId_TESTONLY())
     val post = State(
       CallStackFrame(fooMethodReturn, None, Map(StackVar("bar") -> nullPv))::Nil,
       heapConstraints = Map(),
@@ -94,7 +94,7 @@ class TransferFunctionsTest extends AnyFunSuite {
   }
   test("Transfer assign local local") {
     val cmd= (loc:AppLoc) => AssignCmd(LocalWrapper("bar","Object"),LocalWrapper("baz","String"),loc)
-    val nullPv = PureVar(State.getId())
+    val nullPv = PureVar(State.getId_TESTONLY())
     val post = State(
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("bar") -> nullPv))::Nil,
       heapConstraints = Map(),
@@ -119,7 +119,7 @@ class TransferFunctionsTest extends AnyFunSuite {
       lhs,
       iFooA)
     val tr = new TransferFunctions(ir, new SpecSpace(Set(spec)),miniCha)
-    val recPv = PureVar(State.getId())
+    val recPv = PureVar(State.getId_TESTONLY())
     val otheri = AbstractTrace(I(CBExit, Set(("a","a")), "b"::Nil), Nil, Map())
     val post = State(
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("@this") -> recPv))::Nil,
@@ -149,7 +149,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     val postloc = AppLoc(fooMethod,TestIRLineLoc(1), isPre=true)
     val ir = new TestIR(Set(MethodTransition(preloc, postloc)))
     val trf = tr(ir,miniCha)
-    val recPv = PureVar(State.getId())
+    val recPv = PureVar(State.getId_TESTONLY())
     val post = State(
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("@this") -> recPv))::Nil,
       heapConstraints = Map(),

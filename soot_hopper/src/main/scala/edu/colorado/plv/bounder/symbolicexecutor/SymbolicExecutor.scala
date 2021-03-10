@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import com.microsoft.z3.Context
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, Loc, MethodLoc, SpecialInvoke, StaticInvoke, VirtualInvoke}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, NoTypeSolving, StateTypeSolving, Z3StateSolver}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, IPathNode, MemoryOutputMode$, OutputMode, PathNode, Qry, SomeQry, WitnessedQry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, FrameworkLocation, IPathNode, MemoryOutputMode$, OutputMode, PathNode, Qry, SomeQry, SubsumableLocation, SwapLoc, WitnessedQry}
 import soot.SootMethod
 
 import scala.annotation.tailrec
@@ -43,6 +43,7 @@ case class SymbolicExecutorConfig[M,C](stepLimit: Option[Int],
 class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
 
   implicit var pathMode = config.outputMode
+  implicit var w = config.w
   val ctx = new Context
   val solver = {
     val solver = ctx.mkSolver
@@ -99,32 +100,6 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     }
   }
 
-  sealed trait SubsumableLocation
-  case class CodeLocation(loc:Loc)extends SubsumableLocation
-  case object FrameworkLocation extends SubsumableLocation
-  object SwapLoc {
-    def unapply(loc: Loc): Option[SubsumableLocation] = loc match {
-      case _: CallbackMethodInvoke => Some(FrameworkLocation)
-      case _: CallbackMethodReturn => None
-      case AppLoc(_,_,false) => None
-      case a@AppLoc(_,_,true) if config.w.degreeIn(a) > 1 => Some(CodeLocation(a))
-      case _: CallinMethodInvoke => None // message locations don't remember program counter so subsumption is unsound
-      case _: CallinMethodReturn => None
-      case _: GroupedCallinMethodInvoke => None
-      case _: GroupedCallinMethodReturn => None
-      case _: InternalMethodInvoke => None
-      case _: InternalMethodReturn => None
-      case a@AppLoc(_,_,true) =>
-        config.w.cmdAtLocation(a) match {
-          case InvokeCmd(_, _) => Some(CodeLocation(a))
-          case AssignCmd(_, VirtualInvoke(_,_,_,_),_) => Some(CodeLocation(a))
-          case AssignCmd(_, SpecialInvoke(_,_,_,_),_) => Some(CodeLocation(a))
-          case AssignCmd(_, StaticInvoke(_,_,_),_) => Some(CodeLocation(a))
-          case _ => None
-        }
-    }
-    def apply(loc:Loc):Option[SubsumableLocation] = unapply(loc)
-  }
 
   def isSubsumed(qry: Qry, nVisited: Map[SubsumableLocation,Map[Int,Set[IPathNode]]]):Option[IPathNode] = qry match{
     case SomeQry(state,SwapLoc(loc)) if nVisited.contains(loc) =>

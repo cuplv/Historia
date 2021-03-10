@@ -12,7 +12,13 @@ import scala.collection.View
 
 object State {
   private var id:Int = -1
-  def getId():Int = {
+
+  /**
+   * Only use in tests
+   * //TODO: move to test file
+   * @return
+   */
+  def getId_TESTONLY():Int = {
     id = id + 1
     id
   }
@@ -450,16 +456,36 @@ case class State(callStack: List[CallStackFrame],
    * @param newPv
    */
   def swapPv(oldPv : PureVar, newPv: PureVar):State = {
-    this.copy(
-      callStack = callStack.map(f => stackSwapPv(oldPv, newPv, f)),
-      heapConstraints = heapConstraints.map(hc => heapSwapPv(oldPv, newPv, hc)),
-      pureFormula = pureFormula.map(pf => pureSwapPv(oldPv, newPv, pf)),
-      traceAbstraction = traceAbstraction.map(ta => traceSwapPv(oldPv,newPv, ta)),
-      typeConstraints = typeConstraints.map{
-        case (k,v) if k == oldPv => (newPv, v)
-        case (k,v) => (k,v)
-      }
-    )
+    if(oldPv == newPv)
+      this
+    else {
+      this.copy(
+        callStack = callStack.map(f => stackSwapPv(oldPv, newPv, f)),
+        heapConstraints = heapConstraints.map(hc => heapSwapPv(oldPv, newPv, hc)),
+        pureFormula = pureFormula.map(pf => pureSwapPv(oldPv, newPv, pf)),
+        traceAbstraction = traceAbstraction.map(ta => traceSwapPv(oldPv, newPv, ta)),
+        typeConstraints = typeConstraints.map {
+          case (k, v) if k == oldPv => (newPv, v)
+          case (k, v) => (k, v)
+        }
+      )
+    }
+  }
+
+  /**
+   * move newPV to a fresh pure variable and then swap all instances of oldPV to newPV
+   * @param oldPv
+   * @param newPv
+   * @return
+   */
+  def swapPvUnique(oldPv:PureVar, newPv:PureVar):State = {
+    if(oldPv == newPv)
+      this
+    else {
+      val freshPv = PureVar(nextAddr)
+      val sFresh = this.copy(nextAddr = nextAddr + 1).swapPv(newPv, freshPv)
+      sFresh.swapPv(oldPv, newPv)
+    }
   }
   def simplify[T](solver : StateSolver[T]):Option[State] = {
     //TODO: garbage collect abstract variables and heap cells not reachable from the trace abstraction or spec
