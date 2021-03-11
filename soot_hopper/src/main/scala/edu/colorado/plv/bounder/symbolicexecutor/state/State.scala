@@ -165,7 +165,10 @@ case class BoundedTypeSet(upper:Option[String], lower:Option[String], interfaces
     this.copy(upper = Some(name), lower = Some(name))
   }
 
+  private var empty:Option[Boolean] = None
   override def isEmpty(hierarchyConstraints: ClassHierarchyConstraints): Boolean = {
+    if(empty.isDefined)
+      return empty.get
     val shouldBeSubClassOfAll = interfaces ++ upper
     assert(shouldBeSubClassOfAll.nonEmpty, "Empty type constraint")
     val typeSets = shouldBeSubClassOfAll.toList.map(hierarchyConstraints.getSubtypesOf)
@@ -178,10 +181,12 @@ case class BoundedTypeSet(upper:Option[String], lower:Option[String], interfaces
       }else
         false
     }
-    lower match{
+    val res = lower match{
       case None => isIntersectEmpty(typeSets.tail, typeSets.head)
       case Some(v) => isIntersectEmpty(typeSets, hierarchyConstraints.getSupertypesOf(v))
     }
+    empty = Some(res)
+    res
   }
 
 
@@ -486,13 +491,6 @@ case class State(callStack: List[CallStackFrame],
       val sFresh = this.copy(nextAddr = nextAddr + 1).swapPv(newPv, freshPv)
       sFresh.swapPv(oldPv, newPv)
     }
-  }
-  def simplify[T](solver : StateSolver[T]):Option[State] = {
-    //TODO: garbage collect abstract variables and heap cells not reachable from the trace abstraction or spec
-    solver.push()
-    val simpl = solver.simplify(this)
-    solver.pop()
-    simpl
   }
 
   // helper functions to find pure variable

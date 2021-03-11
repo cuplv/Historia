@@ -376,6 +376,7 @@ class Z3StateSolverTest extends AnyFunSuite {
   }
   test("Not I(a.foo) |> a.foo does not contain empty trace"){
     val statesolver = getStateSolver()
+    implicit val zctx = statesolver.getSolverCtx
 
     // Lifestate atoms for next few tests
     val foo_a = I(CBEnter, Set(("", "foo")), "a" :: Nil)
@@ -648,6 +649,7 @@ class Z3StateSolverTest extends AnyFunSuite {
 
   test("Trace contained in abstraction") {
     val statesolver = getStateSolver()
+    implicit val zctx = statesolver.getSolverCtx
 
     val foo = FwkMethod("foo", "")
     val bar = FwkMethod("bar", "")
@@ -774,8 +776,6 @@ class Z3StateSolverTest extends AnyFunSuite {
   }
 
   private def getStateSolver(stateTypeSolving: StateTypeSolving = NoTypeSolving) : Z3StateSolver = {
-    val ctx = new Context
-    val solver: Solver = ctx.mkSolver()
     val hierarchy: Map[String, Set[String]] =
       Map("java.lang.Object" -> Set("String", "Foo", "Bar",
         "com.example.createdestroy.MyFragment",
@@ -789,7 +789,7 @@ class Z3StateSolverTest extends AnyFunSuite {
         "rx.Single" -> Set("rx.Single")
     )
 
-    val pc = new ClassHierarchyConstraints(ctx, solver, hierarchy,Set("java.lang.Runnable"), stateTypeSolving)
+    val pc = new ClassHierarchyConstraints(hierarchy,Set("java.lang.Runnable"), stateTypeSolving)
     new Z3StateSolver(pc)
   }
 

@@ -17,7 +17,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     Map("java.lang.Object" -> Set("String", "Foo", "Bar", "java.lang.Object"),
       "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
 
-  val miniCha = new ClassHierarchyConstraints(ctx, solver, hierarchy, Set("java.lang.Runnable"))
+  val miniCha = new ClassHierarchyConstraints(hierarchy, Set("java.lang.Runnable"))
   val tr = (ir:TestIR, cha:ClassHierarchyConstraints) => new TransferFunctions(ir, new SpecSpace(Set()),cha)
   def testCmdTransfer(cmd:AppLoc => CmdWrapper, post:State, testIRMethod: TestIRMethodLoc):Set[State] = {
     val preloc = AppLoc(testIRMethod,TestIRLineLoc(1), isPre=true)

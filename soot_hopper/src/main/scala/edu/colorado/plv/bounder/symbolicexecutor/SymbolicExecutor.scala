@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import com.microsoft.z3.Context
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, Loc, MethodLoc, SpecialInvoke, StaticInvoke, VirtualInvoke}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, NoTypeSolving, StateTypeSolving, Z3StateSolver}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, FrameworkLocation, IPathNode, MemoryOutputMode$, OutputMode, PathNode, Qry, SomeQry, SubsumableLocation, SwapLoc, WitnessedQry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, FrameworkLocation, IPathNode, MemoryOutputMode$, OutputMode, PathNode, Qry, SomeQry, StateSet, SubsumableLocation, SwapLoc, WitnessedQry}
 import soot.SootMethod
 
 import scala.annotation.tailrec
@@ -44,19 +44,9 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
 
   implicit var pathMode = config.outputMode
   implicit var w = config.w
-  val ctx = new Context
-  val solver = {
-    val solver = ctx.mkSolver
-    val params = ctx.mkParams()
-    config.z3Timeout match{
-      case Some(v) => params.add("timeout", v*1000)
-      case None =>
-    }
-    solver.setParameters(params)
-    solver
-  }
+
   val cha =
-    new ClassHierarchyConstraints(ctx, solver, config.w.getClassHierarchy,config.w.getInterfaces, config.stateTypeSolving)
+    new ClassHierarchyConstraints(config.w.getClassHierarchy,config.w.getInterfaces, config.stateTypeSolving)
 
   def getClassHierarchy = cha
   val transfer = config.transfer(cha)
@@ -101,13 +91,11 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   }
 
 
-  def isSubsumed(qry: Qry, nVisited: Map[SubsumableLocation,Map[Int,Set[IPathNode]]]):Option[IPathNode] = qry match{
-    case SomeQry(state,SwapLoc(loc)) if nVisited.contains(loc) =>
-      nVisited(loc).getOrElse(qry.state.callStack.size, Set()).find(a => {
-        val possiblySubsumingState = a.qry.state
-        val res = stateSolver.canSubsume(possiblySubsumingState, state)
-        res
-      })
+  def isSubsumed(pathNode:IPathNode,
+                 nVisited: Map[SubsumableLocation,Map[Int,StateSet]]):Option[IPathNode] = pathNode.qry match{
+    case SomeQry(_,SwapLoc(loc)) if nVisited.contains(loc) =>
+      val root = nVisited(loc).getOrElse(pathNode.qry.state.callStack.size, StateSet.init)
+      StateSet.findSubsuming(pathNode, root,(s1,s2) => stateSolver.canSubsume(s1,s2))
     case _ => None
   }
 
@@ -122,7 +110,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   @tailrec
   final def executeBackward(qrySet: List[IPathNode], limit:Int,
                             refutedSubsumedOrWitnessed: Set[IPathNode] = Set(),
-                            visited:Map[SubsumableLocation,Map[Int,Set[IPathNode]]] = Map()):Set[IPathNode] = {
+                            visited:Map[SubsumableLocation,Map[Int,StateSet]] = Map()):Set[IPathNode] = {
 
     if(qrySet.isEmpty){
       return refutedSubsumedOrWitnessed ++ qrySet
@@ -153,15 +141,16 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       case p:IPathNode if p.depth > limit =>
         refutedSubsumedOrWitnessed.union(qrySet.toSet)
       case p@PathNode(qry:SomeQry,false) =>
-        isSubsumed(qry, visited) match{
+        isSubsumed(p, visited) match{
           case v@Some(_) =>
             executeBackward(qrySet.tail, limit, refutedSubsumedOrWitnessed + p.setSubsumed(v), visited)
           case None =>
             val stackSize = p.qry.state.callStack.size
             val newVisited = SwapLoc(current.qry.loc) match{
               case Some(v) =>
-                val stackSizeToNode = visited.getOrElse(v,Map[Int,Set[IPathNode]]())
-                val nodeSet = stackSizeToNode.getOrElse(stackSize, Set()) + p
+                val stackSizeToNode: Map[Int, StateSet] = visited.getOrElse(v,Map[Int,StateSet]())
+                val nodeSetAtLoc: StateSet = stackSizeToNode.getOrElse(stackSize, StateSet.init)
+                val nodeSet = StateSet.add(p, nodeSetAtLoc)
                 val newStackSizeToNode = stackSizeToNode + (stackSize -> nodeSet)
                 visited + (v -> newStackSizeToNode)
               case None => visited
@@ -184,7 +173,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       //TODO: combine all callin locs that behave the same in the control flow resolver
       predecessorLocations.flatMap(l => {
         val newStates = transfer.transfer(state,l,loc)
-        newStates.map(state => state.simplify(stateSolver) match {
+        newStates.map(state => stateSolver.simplify(state) match {
           case Some(state) if stateSolver.witnessed(state) =>
             WitnessedQry(state, l)
           case Some(state) => SomeQry(state, l)
