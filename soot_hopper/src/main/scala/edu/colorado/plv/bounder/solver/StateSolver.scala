@@ -378,7 +378,6 @@ trait StateSolver[T, C <: SolverCtx] {
   def toAST(state: State, typeToSolverConst: Map[String, T],
             messageTranslator: MessageTranslator,
             maxWitness: Option[Int] = None)(implicit zctx: C): T = {
-    state.pureVars()
     val pure = state.pureFormula
     // typeFun is a function from addresses to concrete types in the program
     val typeFun = createTypeFun()

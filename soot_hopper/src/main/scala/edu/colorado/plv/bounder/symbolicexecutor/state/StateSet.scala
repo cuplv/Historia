@@ -97,11 +97,11 @@ object StateSet {
     }
 
     val out = iFind((local ++ heap).toList, pathNode, stateSet)
-    val (dbgOut,dbgCount) = dbgAllSubs(pathNode, stateSet, canSubsume)
-    println(s"baseCount: $dbgCount  fastCount: $fastCount")
-    if(dbgOut != out){
-      println("ERROR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-    }
+//    val (dbgOut,dbgCount) = dbgAllSubs(pathNode, stateSet, canSubsume)
+//    println(s"baseCount: $dbgCount  fastCount: $fastCount")
+//    if(dbgOut != out){
+//      println("ERROR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+//    }
 
     out
   }
