@@ -135,6 +135,13 @@ case object EmptyTypeSet extends TypeSet {
 }
 
 case class BoundedTypeSet(upper:Option[String], lower:Option[String], interfaces: Set[String]) extends TypeSet{
+  override def toString:String = (upper,lower) match{
+    case (Some(upper),Some(lower)) => s"<:$upper >:$lower" + interfaces.headOption.map("<: I( " + _ + ")").getOrElse("")
+    case (Some(upper),None) => s"<:$upper" + interfaces.headOption.map("<: I( " + _ + ")").getOrElse("")
+    case (None,Some(lower)) => s">:$lower" + interfaces.headOption.map("<: I( " + _ + ")").getOrElse("")
+    case (None,None) => s":none " + interfaces.headOption.map("<: I( " + _ + ")").getOrElse("")
+
+  }
   override def constrainSubtypeOf(name: String, hierarchyConstraints: ClassHierarchyConstraints): TypeSet = {
     val newTS = if(hierarchyConstraints.isInterface(name))
       this.copy(interfaces = interfaces + name)
@@ -251,6 +258,9 @@ object BoundedTypeSet{
   implicit var rw:RW[BoundedTypeSet] = macroRW
 }
 case class DisjunctTypeSet(oneOf: Set[TypeSet]) extends TypeSet{
+  override def toString():String = {
+    oneOf.headOption.map(_.toString()).getOrElse(":nonedisj")
+  }
   private def filterOp(op: TypeSet => TypeSet):TypeSet = {
     val outSet = oneOf.map(op).filter{
       case EmptyTypeSet => false
@@ -454,7 +464,8 @@ case class State(callStack: List[CallStackFrame],
     val heapString = s"   heap: ${heapConstraints.map(a => a._1.toString + "->" +  a._2.toString).mkString(" * ")}    "
     val pureFormulaString = "   pure: " + pureFormula.map(a => a.toString).mkString(" && ") +"    "
     val traceString = s"   trace: ${traceAbstraction.mkString(" ; ")}"
-    s"($stackString $heapString   $pureFormulaString $traceString)"
+    val typeString = s"    types: ${typeConstraints.map{case (k,v) => k.toString + ":" + v.toString}}"
+    s"($stackString $heapString   $pureFormulaString $typeString $traceString)"
   }
   def containsLocal(localWrapper: LocalWrapper):Boolean = {
     val sVar = StackVar(localWrapper.name)

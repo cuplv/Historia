@@ -475,8 +475,10 @@ trait StateSolver[T, C <: SolverCtx] {
       state
     }else {
       state.copy(pureFormula = state.pureFormula.filter{
-        case PureConstraint(lhs, NotEquals, _) if !markedSet.contains(lhs) => false
-        case PureConstraint(_, NotEquals, rhs) if !markedSet.contains(rhs) => false
+        case PureConstraint(lhs:PureVar, NotEquals, _) if !markedSet.contains(lhs) =>
+          false
+        case PureConstraint(_, NotEquals, rhs:PureVar) if !markedSet.contains(rhs) =>
+          false
         case PureConstraint(lhs, _, rhs) => markedSet.contains(lhs) || markedSet.contains(rhs)
         case _ => true
       }, typeConstraints = state.typeConstraints.filter{
