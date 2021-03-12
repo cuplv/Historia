@@ -684,7 +684,6 @@ trait StateSolver[T, C <: SolverCtx] {
     val startTime = System.currentTimeMillis()
     val perm = BounderUtil.allMap(pv1 -- removeFromPermS1,pvToTemp -- removeFromPermS2)
 //    val perm = allPvNoLocals.permutations.grouped(40)
-    val normalCanSubsume = canSubsumeFast(s1,s2,maxLen)
     val out: Boolean = perm.par.exists{perm =>
       // Break early for combinations that don't match type constraints
 //      val allCanMatch = (allPv zip perm).forall {
@@ -711,9 +710,10 @@ trait StateSolver[T, C <: SolverCtx] {
       println(s"  state2: $s2")
     }
 
-    if (!out && normalCanSubsume) {
-      println()
-    }
+//    val normalCanSubsume = canSubsumeFast(s1,s2,maxLen)
+//    if (!out && normalCanSubsume) {
+//      println()
+//    }
     out
   }
 

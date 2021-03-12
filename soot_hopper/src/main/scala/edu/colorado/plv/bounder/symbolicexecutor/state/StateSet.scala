@@ -32,6 +32,8 @@ object StateSet {
   private def heapEdgesFromState(state:State):Seq[String] = {
     val unsortedHeap = state.heapConstraints.toSeq.map{
       case (FieldPtEdge(_,name),_) => s"##$name"
+      case (StaticPtEdge(clazz,name),_) => s"##$name#$clazz"
+      case (ArrayPtEdge(_,_),_) => s"####Array"
     }
     unsortedHeap.sorted
   }

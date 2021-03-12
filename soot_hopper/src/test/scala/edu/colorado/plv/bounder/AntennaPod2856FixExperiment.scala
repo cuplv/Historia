@@ -24,7 +24,7 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
     )),cha)
   private val prettyPrinting = new PrettyPrinting()
 
-  ignore("Fix: Prove updateUI is not reachable where getActivity returns null under a simple spec.") {
+  test("Fix: Prove updateUI is not reachable where getActivity returns null under a simple spec.") {
     //TODO: currently timing out
     val w = new JimpleFlowdroidWrapper(apkFix,CHACallGraph)
     val config = SymbolicExecutorConfig(
@@ -40,7 +40,7 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
     assert(BounderUtil.interpretResult(result) == Proven)
   }
 
-  ignore("Bug: Fails to prove updateUI is not reachable where getActivity returns null with same spec.") {
+  test("Bug: Fails to prove updateUI is not reachable where getActivity returns null with same spec.") {
     // TODO: currently timing out
     val w = new JimpleFlowdroidWrapper(apkBug,CHACallGraph)
     val config = SymbolicExecutorConfig(
@@ -69,7 +69,7 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
     prettyPrinting.dumpDebugInfo(result, "antennapod_witness1_2856")
     assert(BounderUtil.interpretResult(result) == Witnessed)
   }
-  ignore("Fix: GetActivity may return null in certain locations"){
+  test("Fix: GetActivity may return null in certain locations"){
     // TODO: currently timing out, should witness
     val w = new JimpleFlowdroidWrapper(apkFix,CHACallGraph)
     val config = SymbolicExecutorConfig(

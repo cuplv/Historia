@@ -261,7 +261,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         throw new IllegalStateException("Abstract state should always have a " +
           "stack when returning from internal method.")
       }
-      out
+      out.map(_.copy(nextCmd = Some(al)))
     case (retloc@AppLoc(mloc, line, false), mRet: InternalMethodReturn) =>
       val retVal:Map[StackVar, PureExpr] = w.cmdAtLocation(retloc) match{
         case AssignCmd(tgt, _:Invoke, _) =>
