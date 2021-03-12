@@ -20,6 +20,7 @@ trait IRWrapper[M,C]{
   def makeCmd(cmd:C, method:M, loc:Option[AppLoc] = None): CmdWrapper
   def degreeOut(cmd: AppLoc):Int
   def degreeIn(cmd: AppLoc):Int
+  def isLoopHead(cmd:AppLoc):Boolean
   def commandPredecessors(cmdWrapper:CmdWrapper): List[AppLoc]
   def commandNext(cmdWrapper:CmdWrapper):List[AppLoc]
 

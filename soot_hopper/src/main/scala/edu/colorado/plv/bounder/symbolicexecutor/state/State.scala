@@ -640,7 +640,10 @@ case class State(callStack: List[CallStackFrame],
     val pureVarFromConst = pureFormula.flatMap{
       case PureConstraint(p1,_,p2) => Set() ++ pureVarOpt(p1) ++ pureVarOpt(p2)
     }
-    pureVarFromHeap ++ pureVarFromLocals ++ pureVarFromConst ++ typeConstraints.keySet
+    val pureVarFromTrace = traceAbstraction.flatMap{
+      case AbstractTrace(_, _, modelVars) => modelVars.collect{case (_,pv: PureVar) => pv}
+    }
+    pureVarFromHeap ++ pureVarFromLocals ++ pureVarFromConst ++ typeConstraints.keySet ++ pureVarFromTrace
   }
   def isNull(pv:PureVar):Boolean = {
     pureFormula.contains(PureConstraint(pv,Equals,NullVal))

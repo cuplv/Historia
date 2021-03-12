@@ -9,10 +9,12 @@ import scala.collection.immutable
 case class Z3SolverCtx(ctx: Context, solver:Solver) extends SolverCtx
 class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends StateSolver[AST,Z3SolverCtx] {
 
-  val ctx = new Context()
-  val solver = ctx.mkSolver()
+//  val ctx = new Context()
+//  val solver = ctx.mkSolver()
+  val ctx = ThreadLocal.withInitial[Context](() => new Context())
+  val solver = ThreadLocal.withInitial(() => ctx.get().mkSolver)
   override def getSolverCtx: Z3SolverCtx = {
-    Z3SolverCtx(ctx, solver)
+    Z3SolverCtx(ctx.get(), solver.get())
   }
 
   private def addrSort(implicit zctx:Z3SolverCtx) = zctx.ctx.mkUninterpretedSort("Addr")

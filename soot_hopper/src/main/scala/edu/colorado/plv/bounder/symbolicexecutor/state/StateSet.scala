@@ -115,7 +115,7 @@ object SwapLoc {
     case _: CallbackMethodInvoke => Some(FrameworkLocation)
     case _: CallbackMethodReturn => None
     case AppLoc(_,_,false) => None
-    case a@AppLoc(_,_,true) if w.degreeIn(a) > 1 => Some(CodeLocation(a))
+    case a@AppLoc(_,_,true) if w.isLoopHead(a) => Some(CodeLocation(a))
     case _: CallinMethodInvoke => None // message locations don't remember program counter so subsumption is unsound
     case _: CallinMethodReturn => None
     case _: GroupedCallinMethodInvoke => None

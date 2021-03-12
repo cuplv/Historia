@@ -1,12 +1,14 @@
 package edu.colorado.plv.bounder.solver
 
 import com.microsoft.z3.AST
+import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{TAddr, TMessage, TNullVal}
 import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.lifestate.LifeState._
 import edu.colorado.plv.bounder.symbolicexecutor.state.{HeapPtEdge, _}
 import org.slf4j.LoggerFactory
 import scalaz.Memo
+
 import scala.collection.parallel.CollectionConverters._
 import upickle.default._
 
@@ -444,6 +446,43 @@ trait StateSolver[T, C <: SolverCtx] {
 
   }
 
+  /**
+   * Remove all pure variables that are not reachable from a local, heap edge, or trace constraint
+   * TODO: note that this could be optimized by dropping pure variables that are not reachable from a framework "registered" set when quiescent
+   * @param state
+   * @return
+   */
+  def gcPureVars(state:State):State = {
+    // TODO: garbage collect constraint, if all purevar can't be reached from reg or stack var and state is satisfiable
+    val allPv = state.pureVars()
+
+    // marked pure vars
+    val localPVs = state.callStack.flatMap{
+      case CallStackFrame(_, _, locals) => locals.collect{case (_,pv:PureVar) => pv}
+    }.toSet
+    val heapPVs = state.heapConstraints.flatMap{
+      case (FieldPtEdge(pv1, _), pv2) => Set(pv1,pv2)
+      case (StaticPtEdge(_,_), pv) => Set(pv)
+      case (ArrayPtEdge(pv1,pv2),pv3) => Set(pv1,pv2,pv3)
+    }.toSet
+    val tracePVs = state.traceAbstraction.flatMap{
+      case AbstractTrace(_, _, modelVars) => modelVars.collect{case (_, pv: PureVar) => pv}
+    }
+    val markedSet = localPVs ++ heapPVs ++ tracePVs
+    // TODO: Currently, pv contains no relations that requires the "mark" phase of
+    //  mark and sweep so we just move to sweep.
+    //  all sources of heap edges are part of the root set since the framework may point to them.
+    if (allPv == markedSet){
+      state
+    }else {
+      state.copy(pureFormula = state.pureFormula.filter{
+        case PureConstraint(lhs, NotEquals, _) if !markedSet.contains(lhs) => false
+        case PureConstraint(_, NotEquals, rhs) if !markedSet.contains(rhs) => false
+        case PureConstraint(lhs, _, rhs) => markedSet.contains(lhs) || markedSet.contains(rhs)
+        case _ => true
+      })
+    }
+  }
   def reduceStatePureVars(state: State): State = {
     assert(state.isSimplified, "reduceStatePureVars must be called on feasible state.")
     // TODO: test for trace enforcing that pure vars are equivalent
@@ -495,10 +534,10 @@ trait StateSolver[T, C <: SolverCtx] {
       val simpleAst = solverSimplify(ast, state2, messageTranslator, maxWitness.isDefined)
 
       pop()
-      // TODO: garbage collect constraint, if all purevar can't be reached from reg or stack var and state is satisfiable
-      simpleAst.map(_ =>
-        reduceStatePureVars(state2.setSimplified())
-      )
+      simpleAst.map{_ =>
+        val reducedState = reduceStatePureVars(state2.setSimplified())
+        gcPureVars(reducedState)
+      }
     }
   }
 
@@ -556,25 +595,71 @@ trait StateSolver[T, C <: SolverCtx] {
       return false
 
 
+
     //TODO: below is brute force approach to see if considering pure var rearrangments fixes the issue
-    val pv1 = s1.pureVars()
-    val pv2 = s2.pureVars()
+    val pv1: Set[PureVar] = s1.pureVars()
+    val pv2: Set[PureVar] = s2.pureVars()
     val allPv = pv1.union(pv2).toList
     // map s2 to somethign where all pvs are strictly larger
     val maxID = if (allPv.nonEmpty) allPv.maxBy(_.id) else PureVar(5)
 
+
     // Swap all pureVars to pureVars above the max found in either state
     // This way swapping doesn't interfere with itself
-    val (s2Above, pvToTemp) = allPv.foldLeft((s2.copy(nextAddr = maxID.id + 1), Map[PureVar, PureVar]())) {
+    val (s2Above, pvToTemp) = pv2.foldLeft((s2.copy(nextAddr = maxID.id + 1), Set[PureVar]())) {
       case ((st, nl), pv) =>
         val (freshPv, st2) = st.nextPv()
-        (st2.swapPv(pv, freshPv), nl + (pv -> freshPv))
+        (st2.swapPv(pv, freshPv), nl + freshPv)
     }
-    //    val normalCanSubsume = canSubsumeFast(s1,s2,maxLen)
+
+    // swap shared locals
+    def levelLocalPv(s:State):Map[(String,Int), PureVar] = {
+      s.callStack.zipWithIndex.flatMap{
+        case (CallStackFrame(_,_,locals), level) =>
+          locals.collect{case (StackVar(name),pValue:PureVar) => ((name,level),pValue)}
+      }.toMap
+    }
+    val s1LocalMap = levelLocalPv(s1)
+    val s2LocalMap = levelLocalPv(s2Above)
+    val overlap = s1LocalMap.keySet.intersect(s2LocalMap.keySet)
+
+    // Create mapping that must exist if subsumption is to occur, none if not feasible
+    val s2LocalSwapMapOpt = overlap.foldLeft(Some(Map()):Option[Map[PureVar,PureVar]]){
+      case (None,_) => None
+      case (Some(acc),v) => {
+        val s1Val = s1LocalMap(v)
+        val s2Val = s2LocalMap(v)
+        if(acc.contains(s1Val) && (acc(s1Val) != s2Val)){
+          // Cannot subsume if two locals in subsuming state map to the same pure var and the subsumee maps to different
+          // e.g.
+          // s1: foo -> a * bar -> b * baz -> b
+          // s2: foo -> c * bar -> b * baz -> a
+          // s1 cannot subsume s2 since the heap `foo -> @1, bar -> @2, baz -> @3` is in s2 but not s1
+          None
+        }else{
+          Some(acc + (s1Val -> s2Val))
+        }
+      }
+    }
+
+    if(s2LocalSwapMapOpt.isEmpty)
+      return false
+
+    val s2LocalSwapped = s2LocalSwapMapOpt.get.foldLeft(s2Above){
+      case (acc,(newPv,oldPv)) => acc.swapPv(oldPv, newPv)
+    }
+    val removeFromPermS1 = overlap.map(k => s1LocalMap(k))
+//    val allPvNoLocals = allPv.filter(v => !removeFromPerm.contains(v))
+    val removeFromPermS2 = overlap.map(k => s2LocalMap(k))
+
+
+
     //TODO: extremely slow permutations there is probably a better way
-    val perm = allPv.permutations.grouped(16)
-    // TODO: add toList.par back in
-    val out: Boolean = perm.exists{group => group.toList.exists { perm =>
+    val startTime = System.currentTimeMillis()
+    val perm = BounderUtil.allMap(pv1 -- removeFromPermS1,pvToTemp -- removeFromPermS2)
+//    val perm = allPvNoLocals.permutations.grouped(40)
+    val normalCanSubsume = canSubsumeFast(s1,s2,maxLen)
+    val out: Boolean = perm.par.exists{perm =>
       // Break early for combinations that don't match type constraints
 //      val allCanMatch = (allPv zip perm).forall {
 //        case (oldPv, newPv) =>
@@ -587,16 +672,22 @@ trait StateSolver[T, C <: SolverCtx] {
 //      }
 //      if (allCanMatch) {
 
-        val s2Swapped = (allPv zip perm).foldLeft(s2Above) {
-          case (s, (oldPv, newPv)) => s.swapPv(pvToTemp(oldPv), newPv)
+        val s2Swapped = perm.foldLeft(s2LocalSwapped) {
+          case (s, (newPv, oldPv)) => s.swapPv(oldPv, newPv)
         }
         canSubsumeFast(s1, s2Swapped, maxLen)
 //      } else false
     }
-  }
-    //    if (out != normalCanSubsume) {
-    //      println()
-    //    }
+    val elapsedTime = System.currentTimeMillis() - startTime
+    if(elapsedTime > 1000) {
+      println(s"Subsumption time: $elapsedTime pvCount: ${allPv.size} Subsumption result: $out")
+      println(s"  state1: $s1")
+      println(s"  state2: $s2")
+    }
+
+    if (!out && normalCanSubsume) {
+      println()
+    }
     out
   }
 

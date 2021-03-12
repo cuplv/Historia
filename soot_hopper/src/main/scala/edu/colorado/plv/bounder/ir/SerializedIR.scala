@@ -48,6 +48,8 @@ class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] 
   override def degreeIn(cmd: AppLoc): Int = ???
 
   override def getInterfaces: Set[String] = ???
+
+  override def isLoopHead(cmd: AppLoc): Boolean = ???
 }
 
 /**

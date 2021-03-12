@@ -12,6 +12,7 @@ import soot.jimple.internal._
 import soot.jimple.spark.SparkTransformer
 import soot.jimple.toolkits.callgraph.{CHATransformer, CallGraph}
 import soot.jimple._
+import soot.jimple.toolkits.annotation.logic.LoopFinder
 import soot.util.Chain
 import soot.{ArrayType, Body, BooleanType, ByteType, CharType, DoubleType, FloatType, Hierarchy, IntType, LongType, RefType, Scene, ShortType, SootClass, SootMethod, SootMethodRef, Type, Value}
 
@@ -563,6 +564,61 @@ class JimpleFlowdroidWrapper(apkPath : String,
     val unitGraph = getUnitGraph(ll.method.retrieveActiveBody())
     unitGraph.getPredsOf(ll.cmd).size()
   }
+
+  private val memLoopHeadOld = Memo.mutableHashMapMemo{(cmd:AppLoc) => {
+    val ll = cmd.line.asInstanceOf[JimpleLineLoc]
+    val unitGraph = getUnitGraph(ll.method.retrieveActiveBody())
+    val scmd: soot.Unit = ll.cmd
+    val predsOfTarget = unitGraph.getPredsOf(scmd)
+
+    @tailrec
+    def iFindCycle(workList:List[soot.Unit], visited: Set[soot.Unit]):Boolean =
+      if(workList.isEmpty)
+        false
+      else {
+        val head = workList.head
+        val tail = workList.tail
+        if(visited.contains(head))
+          iFindCycle(tail,visited)
+        else {
+          val predsOfHead = unitGraph.getPredsOf(head)
+          if (predsOfHead.contains(scmd))
+            true
+          else {
+            val successors = unitGraph.getSuccsOf(head).asScala.toList
+            iFindCycle(successors ++ tail, visited + head)
+          }
+        }
+      }
+    if (predsOfTarget.size() < 2){
+      false
+    }else {
+      iFindCycle(unitGraph.getSuccsOf(scmd).asScala.toList, Set())
+    }
+  }}
+  private val memoGetMethodLoops = Memo.mutableHashMapMemo{(m:SootMethod) =>
+    val finder = new LoopFinder()
+    finder.getLoops(m.getActiveBody).asScala.map(l => l.getHead)
+  }
+  override def isLoopHead(cmd: AppLoc): Boolean = {
+    val ll = cmd.line.asInstanceOf[JimpleLineLoc]
+    ll.cmd match{
+      case s:Stmt => {
+        val method = cmd.method.asInstanceOf[JimpleMethodLoc].method
+        val loops: mutable.Set[Stmt] = memoGetMethodLoops(method)
+        if(loops.isEmpty)
+          false
+        else {
+          val out = loops.contains(s)
+          out
+        }
+      }
+      case i =>
+        throw new IllegalStateException(s"Got $i which is not a Stmt, " +
+          s"TODO: figure out when we would get a Unit that is not a Stmt here.")
+    }
+  }
+
   override def commandPredecessors(cmdWrapper : CmdWrapper):List[AppLoc] =
     cmdWrapper.getLoc match{
     case AppLoc(methodWrapper @ JimpleMethodLoc(_),JimpleLineLoc(cmd,sootMethod), true) => {

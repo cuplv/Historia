@@ -46,7 +46,8 @@ Compile / resourceDirectory := baseDirectory.value / "src" / "main" / "resources
 
 //Compile / unmanagedResourceDirectories += baseDirectory.value / "src/main/resources"
 //Test / unmanagedResourceDirectories += baseDirectory.value / "src/main/resources"
-parallelExecution in Test := false
+// uncomment below if parallel tests become a problem
+//parallelExecution in Test := false
 javaOptions += "-Xmx15G"
 
 //lazy val configTest = settingKey[String]("example")

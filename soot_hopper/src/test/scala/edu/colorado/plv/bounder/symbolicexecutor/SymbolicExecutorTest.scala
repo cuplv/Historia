@@ -364,10 +364,10 @@ class SymbolicExecutorTest extends AnyFunSuite {
       makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
     }
   }
-  ignore("Test dynamic dispatch2") {
+  test("Test dynamic dispatch2") {
     List(
       (".*query2.*".r,Witnessed),
-      //(".*query1.*".r, Proven) //TODO: timeout here
+      (".*query1.*".r, Proven) //TODO: timeout here?
     ).map { case (queryL, expectedResult) =>
       val src =
         s"""package com.example.createdestroy;
@@ -493,7 +493,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void onCreate(android.os.Bundle)",20)
       val result = symbolicExecutor.executeBackward(query)
-      prettyPrinting.dumpDebugInfo(result,"MkApk")
+      prettyPrinting.dumpDebugInfo(result,"DisaliasedObj")
+      prettyPrinting.dotWitTree(result, "DisaliasedObj.dot",true)
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Witnessed)
 

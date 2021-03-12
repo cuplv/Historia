@@ -27,6 +27,18 @@ object BounderUtil {
     else Timeout
   }
 
+  def allMap[T](n1:Set[T], n2:Set[T]):List[Map[T,T]] = {
+    if(n1.isEmpty){
+      List(n2.map(n => n->n).toMap)
+    }else if(n2.isEmpty){
+      List(n1.map(n => n->n).toMap)
+    }else{
+      val h = n1.head
+      n2.flatMap{tgt =>
+        allMap(n1.tail,n2 - tgt).map( v => v + (h -> tgt))
+      }.toList
+    }
+  }
   def repeatingPerm[T](elems:Int=>Iterable[T], genSize: Int): Iterable[List[T]] = {
     val acc = mutable.ListBuffer[List[T]]()
     def repeatingPermRec(elems: Int=>Iterable[T], depth: Int, partResult: List[T]): Unit = depth match {

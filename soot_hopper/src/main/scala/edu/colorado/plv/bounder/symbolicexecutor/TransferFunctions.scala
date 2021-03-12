@@ -160,15 +160,15 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         // Pop stack and set command just processed
         val s2 = s.copy(callStack = s.callStack.tail, nextCmd = Some(tgt))
         // If dynamic invoke, restrict receiver type by the callin we just came from
-        invars match{
+        val out = invars match{
           case _::Some(rec)::_ =>
             val (recV,stateWithRec) = s2.getOrDefine(rec)
-            val pureFormulaConstrainingReceiver = stateWithRec.pureFormula +
-//              PureConstraint(recV, TypeComp, SubclassOf(invokeType)) +
-              PureConstraint(recV, NotEquals, NullVal)
+            val pureFormulaConstrainingReceiver = stateWithRec.pureFormula + PureConstraint(recV, NotEquals, NullVal)
             stateWithRec.copy(pureFormula =pureFormulaConstrainingReceiver).constrainUpperType(recV, invokeType, ch)
-          case _ => s2
+          case _ =>
+            s2
         }
+        out
       }
     case (AppLoc(_, _, true), AppLoc(_, _, false)) => Set(postState)
     case (appLoc@AppLoc(c1, m1, false), postLoc@AppLoc(c2, m2, true)) if c1 == c2 && m1 == m2 =>
