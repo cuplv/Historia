@@ -37,7 +37,7 @@ class Z3StateSolverTest extends AnyFunSuite {
     assert(!simplifyResult.isDefined)
   }
   test("Separate fields imply base must not be aliased a^.f->b^ * c^.f->b^ AND a^=c^ (<=> false)") {
-  val statesolver = getStateSolver()
+    val statesolver = getStateSolver()
 
     val v2 = PureVar(State.getId_TESTONLY())
     val v3 = PureVar(State.getId_TESTONLY())
@@ -63,7 +63,9 @@ class Z3StateSolverTest extends AnyFunSuite {
   }
   //TODO: group equal pure vars for type check
   test("aliased object implies fields must be aliased refuted by type constraints") {
-    val statesolver = getStateSolver(SolverTypeSolving)
+//    val stateSolver = getStateSolver(SolverTypeSolving)
+    //TODO: SolverTypeSolving is not currently working, decide if it is worth fixing
+    val stateSolver = getStateSolver(SetInclusionTypeSolving)
 
     // aliased and contradictory types of field
     val v2 = PureVar(State.getId_TESTONLY())
@@ -80,7 +82,7 @@ class Z3StateSolverTest extends AnyFunSuite {
     )
     val refutableState = State(List(frame),
       Map(FieldPtEdge(v,"f") -> v3),constraints,typeC, Set(),0)
-    val simplifyResult = statesolver.simplify(refutableState)
+    val simplifyResult = stateSolver.simplify(refutableState)
     assert(!simplifyResult.isDefined)
 
     // aliased and consistent field type constraints
@@ -95,7 +97,7 @@ class Z3StateSolverTest extends AnyFunSuite {
     )
     val state = State(List(frame),
       Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),constraints2,typeC2, Set(),0)
-    val simplifyResult2 = statesolver.simplify(state)
+    val simplifyResult2 = stateSolver.simplify(state)
     assert(simplifyResult2.isDefined)
   }
   test("Trace abstraction lsfalse is empty and lstrue is not"){

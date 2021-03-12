@@ -76,6 +76,8 @@ case class LSConstConstraint(pureExpr: PureExpr, trace:AbstractTrace) extends LS
   override def optTraceAbs: Option[AbstractTrace] = Some(trace)
 }
 sealed trait TypeSet{
+  def join(tc2: TypeSet, ch:ClassHierarchyConstraints):TypeSet
+
   def typeSet(ch: ClassHierarchyConstraints): Set[String]
 
   def optionalConstrainUpper(upper:Option[String], ch:ClassHierarchyConstraints):TypeSet = upper match{
@@ -93,6 +95,7 @@ sealed trait TypeSet{
   def constrainSubtypeOf(name:String, hierarchyConstraints: ClassHierarchyConstraints):TypeSet
   def constrainSupertypeOf(name:String, hierarchyConstraints: ClassHierarchyConstraints):TypeSet
   def constrainIsType(name:String, hierarchyConstraints: ClassHierarchyConstraints):TypeSet
+  def setInterfaces(iFaces:Set[String]):TypeSet
   def isEmpty(hierarchyConstraints: ClassHierarchyConstraints):Boolean
 
 }
@@ -125,6 +128,10 @@ case object EmptyTypeSet extends TypeSet {
   override def subtypeOfCanAlias(localType: String, ch: ClassHierarchyConstraints): Boolean = false
 
   override def typeSet(ch: ClassHierarchyConstraints): Set[String] = Set()
+
+  override def join(tc2: TypeSet, ch:ClassHierarchyConstraints): TypeSet = tc2
+
+  override def setInterfaces(iFaces: Set[String]): TypeSet = EmptyTypeSet
 }
 
 case class BoundedTypeSet(upper:Option[String], lower:Option[String], interfaces: Set[String]) extends TypeSet{
@@ -214,6 +221,31 @@ case class BoundedTypeSet(upper:Option[String], lower:Option[String], interfaces
       case None => cSub
     }
   }
+
+  override def join(tc2: TypeSet, ch:ClassHierarchyConstraints): TypeSet = {
+    val merged:TypeSet = tc2 match{
+      case EmptyTypeSet => EmptyTypeSet
+      case BoundedTypeSet(Some(upper), Some(lower), ifaces) =>
+        val upperc = this.constrainSubtypeOf(upper,ch)
+        val lowerc = upperc.constrainSupertypeOf(lower,ch)
+        lowerc.setInterfaces(ifaces ++ this.interfaces)
+      case BoundedTypeSet(Some(upper), None, ifaces) =>
+        val upperc: TypeSet = this.constrainSubtypeOf(upper,ch)
+        upperc.setInterfaces(ifaces ++ this.interfaces)
+      case BoundedTypeSet(None, Some(lower), ifaces) =>
+        val lowerc = this.constrainSupertypeOf(lower,ch)
+        lowerc.setInterfaces(ifaces ++ this.interfaces)
+      case BoundedTypeSet(None,None,ifaces) =>
+        this.setInterfaces(ifaces)
+      case dts@DisjunctTypeSet(_) => dts.join(this,ch)
+    }
+    if(merged.isEmpty(ch)){
+      EmptyTypeSet
+    }else
+      merged
+  }
+
+  override def setInterfaces(iFaces: Set[String]): TypeSet = this.copy(interfaces = iFaces)
 }
 object BoundedTypeSet{
   implicit var rw:RW[BoundedTypeSet] = macroRW
@@ -257,6 +289,11 @@ case class DisjunctTypeSet(oneOf: Set[TypeSet]) extends TypeSet{
 
   override def typeSet(ch: ClassHierarchyConstraints): Set[String] =
     oneOf.flatMap(_.typeSet(ch))
+
+  override def join(tc2: TypeSet, ch:ClassHierarchyConstraints): TypeSet =
+    this.copy(oneOf = oneOf.map(_.join(tc2,ch)))
+
+  override def setInterfaces(iFaces: Set[String]): TypeSet = this.copy(oneOf.map(_.setInterfaces(iFaces)))
 }
 object DisjunctTypeSet{
   implicit var rw:RW[DisjunctTypeSet] = macroRW

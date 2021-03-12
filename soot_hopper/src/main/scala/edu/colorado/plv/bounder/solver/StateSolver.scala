@@ -453,7 +453,6 @@ trait StateSolver[T, C <: SolverCtx] {
    * @return
    */
   def gcPureVars(state:State):State = {
-    // TODO: garbage collect constraint, if all purevar can't be reached from reg or stack var and state is satisfiable
     val allPv = state.pureVars()
 
     // marked pure vars
@@ -480,27 +479,50 @@ trait StateSolver[T, C <: SolverCtx] {
         case PureConstraint(_, NotEquals, rhs) if !markedSet.contains(rhs) => false
         case PureConstraint(lhs, _, rhs) => markedSet.contains(lhs) || markedSet.contains(rhs)
         case _ => true
+      }, typeConstraints = state.typeConstraints.filter{
+        case (pv,_) => markedSet.contains(pv)
       })
     }
   }
-  def reduceStatePureVars(state: State): State = {
+  def reduceStatePureVars(state: State): Option[State] = {
     assert(state.isSimplified, "reduceStatePureVars must be called on feasible state.")
     // TODO: test for trace enforcing that pure vars are equivalent
-    val swappedForSmallerPv = state.pureFormula.foldLeft(state) {
-      case (acc, pc@PureConstraint(v1@PureVar(id1), Equals, v2@PureVar(id2))) if id1 < id2 =>
-        acc.copy(pureFormula = acc.pureFormula - pc).swapPv(v2, v1)
-      case (acc, pc@PureConstraint(v1@PureVar(id1), Equals, v2@PureVar(id2))) if id1 > id2 =>
-        acc.copy(pureFormula = acc.pureFormula - pc).swapPv(v1, v2)
-      case (acc, pc@PureConstraint(PureVar(id1), Equals, PureVar(id2))) if id1 == id2 =>
-        acc.copy(pureFormula = acc.pureFormula - pc)
+    def mergePV(state:State,oldPv:PureVar, newPv:PureVar):Option[State] = {
+      val pv1tc = state.typeConstraints.get(oldPv)
+      val pv2tc = state.typeConstraints.get(newPv)
+      val joinedTc = (pv1tc,pv2tc) match{
+        case (Some(tc),None) => Some(tc)
+        case (None,Some(tc)) => Some(tc)
+        case (None,None) => None
+        case (Some(tc1),Some(tc2)) => Some(tc1.join(tc2,ch))
+      }
+      joinedTc match{
+        case Some(EmptyTypeSet) => None
+        case Some(tc) => Some(state.swapPv(oldPv,newPv).copy(typeConstraints = state.typeConstraints + (newPv -> tc)))
+        case None => Some(state.swapPv(oldPv,newPv))
+      }
+    }
+    val swappedForSmallerPvOpt = state.pureFormula.foldLeft(Some(state):Option[State]) {
+      case (Some(acc), pc@PureConstraint(v1@PureVar(id1), Equals, v2@PureVar(id2))) if id1 < id2 =>
+//        acc.copy(pureFormula = acc.pureFormula - pc).swapPv(v2, v1)
+        mergePV(acc.copy(pureFormula = acc.pureFormula - pc),v2, v1)
+      case (Some(acc), pc@PureConstraint(v1@PureVar(id1), Equals, v2@PureVar(id2))) if id1 > id2 =>
+//        acc.copy(pureFormula = acc.pureFormula - pc).swapPv(v1, v2)
+        mergePV(acc.copy(pureFormula = acc.pureFormula - pc),v1, v2)
+      case (Some(acc), pc@PureConstraint(PureVar(id1), Equals, PureVar(id2))) if id1 == id2 =>
+        Some(acc.copy(pureFormula = acc.pureFormula - pc))
       case (acc, _) => acc
     }
+    if(swappedForSmallerPvOpt.isEmpty)
+      return None
+    val swappedForSmallerPv = swappedForSmallerPvOpt.get
     val allPv = swappedForSmallerPv.pureVars()
-    if (allPv.nonEmpty) {
+    val out = if (allPv.nonEmpty) {
       val maxPvValue = allPv.map { case PureVar(id) => id }.max
       swappedForSmallerPv.copy(nextAddr = maxPvValue + 1)
     } else
       swappedForSmallerPv
+    Some(out)
   }
 
   def simplify(state: State, maxWitness: Option[Int] = None): Option[State] = {
@@ -534,9 +556,11 @@ trait StateSolver[T, C <: SolverCtx] {
       val simpleAst = solverSimplify(ast, state2, messageTranslator, maxWitness.isDefined)
 
       pop()
-      simpleAst.map{_ =>
+      if(simpleAst.isEmpty)
+        None
+      else {
         val reducedState = reduceStatePureVars(state2.setSimplified())
-        gcPureVars(reducedState)
+        reducedState.map(gcPureVars)
       }
     }
   }
