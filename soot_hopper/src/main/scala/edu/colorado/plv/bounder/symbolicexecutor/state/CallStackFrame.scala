@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
-import edu.colorado.plv.bounder.ir.{CallbackMethodReturn, CallinMethodReturn, GroupedCallinMethodReturn, InternalMethodReturn, Loc}
+import edu.colorado.plv.bounder.ir.{CallbackMethodReturn, CallinMethodReturn, GroupedCallinMethodReturn, InternalMethodReturn, Loc, SkippedInternalMethodReturn}
 import upickle.default.{macroRW, ReadWriter => RW}
 
 
@@ -14,6 +14,7 @@ sealed case class CallStackFrame(methodLoc : Loc,
     case _:CallinMethodReturn => true
     case _:InternalMethodReturn => true
     case _:GroupedCallinMethodReturn => true
+    case _:SkippedInternalMethodReturn => true
     case v =>
       throw new IllegalStateException(s"$v is not a return location")
   })

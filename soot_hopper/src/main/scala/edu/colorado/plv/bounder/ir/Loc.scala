@@ -1,4 +1,5 @@
 package edu.colorado.plv.bounder.ir
+import edu.colorado.plv.bounder.symbolicexecutor.RelevanceRelation
 import upickle.default.{read, write}
 import upickle.default.{macroRW, ReadWriter => RW}
 
@@ -19,7 +20,8 @@ sealed trait Loc{
 object Loc{
   implicit val rw:RW[Loc] = RW.merge(macroRW[CallbackMethodInvoke], macroRW[CallinMethodReturn],
     AppLoc.rw, macroRW[CallbackMethodReturn], macroRW[InternalMethodReturn], macroRW[CallinMethodInvoke],
-    macroRW[InternalMethodInvoke], GroupedCallinMethodReturn.rw, GroupedCallinMethodInvoke.rw
+    macroRW[InternalMethodInvoke], GroupedCallinMethodReturn.rw, GroupedCallinMethodInvoke.rw,
+    SkippedInternalMethodInvoke.rw,SkippedInternalMethodReturn.rw
   )
 }
 
@@ -154,4 +156,18 @@ case class InternalMethodReturn(clazz:String, name:String, loc:MethodLoc) extend
 }
 object InternalMethodReturn{
   implicit val rw:RW[InternalMethodReturn] = macroRW
+}
+
+case class SkippedInternalMethodInvoke(clazz:String, name:String, loc:MethodLoc) extends Loc{
+  override def msgSig: Option[String] = None
+}
+object SkippedInternalMethodInvoke{
+  implicit val rw:RW[SkippedInternalMethodInvoke] = macroRW
+}
+
+case class SkippedInternalMethodReturn(clazz:String, name:String, rel:RelevanceRelation, loc:MethodLoc) extends Loc{
+  override def msgSig: Option[String] = None
+}
+object SkippedInternalMethodReturn{
+  implicit val rw:RW[SkippedInternalMethodReturn] = macroRW
 }

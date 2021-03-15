@@ -1,7 +1,5 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
-import java.net.URL
-
 import better.files.{File, Resource}
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodReturn, IRWrapper, InternalMethodReturn, JimpleFlowdroidWrapper, JimpleMethodLoc, LineLoc, Loc, MethodLoc, UnresolvedMethodTarget}
 
@@ -35,7 +33,9 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
   protected val excludedClasses = "dummyMainClass".r
 
   val appMethods = ir.getAllMethods.filter(m => !isFrameworkClass(m.classType)).toSet
-  def getCallbacks:Set[MethodLoc] = appMethods.filter(resolveCallbackEntry(_).isDefined)
+  private def iGetCallbacks():Set[MethodLoc] = appMethods.filter(resolveCallbackEntry(_).isDefined)
+  private val callbacks:Set[MethodLoc] = iGetCallbacks()
+  override def getCallbacks:Set[MethodLoc] = callbacks
   def isFrameworkClass(fullClassName:String):Boolean = fullClassName match{
     case FrameworkExtensions.extensionRegex() => true
     case _ => false

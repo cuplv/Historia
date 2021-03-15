@@ -230,10 +230,57 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val state0 = postState.setNextCmd(None)
 
       // Always define receiver to reduce dynamic dispatch imprecision
-      // Value is discarded if static call ===========
+      // Value is discarded if static call
       val (receiverValue,stateWithRec) = state0.getOrDefine(LocalWrapper("@this",invokeType))
       val stateWithRecTypeCst = stateWithRec.copy(pureFormula = stateWithRec.pureFormula +
 //        PureConstraint(receiverValue, TypeComp, SubclassOf(invokeType)) +
+        PureConstraint(receiverValue, NotEquals, NullVal)
+      ).constrainUpperType(receiverValue, invokeType,ch)
+
+      // Get values associated with arguments in state
+      val frameArgVals: List[Option[PureExpr]] =
+        (0 until cmd.params.length).map(i => stateWithRecTypeCst.get(LocalWrapper(s"@parameter$i", "_"))).toList
+
+      // Combine args and params into list of tuples
+      val allArgs = receiverOption :: argOptions
+      val allParams: Seq[Option[PureExpr]] = (Some(receiverValue)::frameArgVals)
+      val argsAndVals: List[(Option[RVal], Option[PureExpr])] = allArgs zip allParams
+
+      // Possible stack frames for source of call being a callback or internal method call
+      val out = if (stateWithRecTypeCst.callStack.size == 1) {
+        val newStackFrames: List[CallStackFrame] =
+          BounderUtil.resolveMethodReturnForAppLoc(resolver, al).map(mr => CallStackFrame(mr, None, Map()))
+        val newStacks = newStackFrames.map{frame =>
+          frame :: (if (stateWithRecTypeCst.callStack.isEmpty) Nil else stateWithRecTypeCst.callStack.tail)}
+        val nextStates = newStacks.map(newStack => stateWithRecTypeCst.copy(callStack = newStack))
+        nextStates.map(nextState => defineVarsAs(nextState, argsAndVals)).toSet
+      }else if (stateWithRecTypeCst.callStack.size > 1){
+        val state1 = stateWithRecTypeCst.copy(callStack = stateWithRecTypeCst.callStack.tail)
+        Set(defineVarsAs(state1, argsAndVals))
+      }else{
+        throw new IllegalStateException("Abstract state should always have a " +
+          "stack when returning from internal method.")
+      }
+      out.map(_.copy(nextCmd = Some(al)))
+    case (SkippedInternalMethodInvoke(invokeType, _,_), al@AppLoc(_, _, true)) =>
+      val cmd = w.cmdAtLocation(al) match{
+        case InvokeCmd(inv : Invoke, _) => inv
+        case AssignCmd(_, inv: Invoke, _) => inv
+        case c => throw new IllegalStateException(s"Malformed invoke command $c")
+      }
+      val receiverOption: Option[RVal] = cmd match{
+        case v:VirtualInvoke => Some(v.target)
+        case s:SpecialInvoke => Some(s.target)
+        case _:StaticInvoke => None
+      }
+      val argOptions: List[Option[RVal]] = cmd.params.map(Some(_))
+      val state0 = postState.setNextCmd(None)
+
+      // Always define receiver to reduce dynamic dispatch imprecision
+      // Value is discarded if static call
+      val (receiverValue,stateWithRec) = state0.getOrDefine(LocalWrapper("@this",invokeType))
+      val stateWithRecTypeCst = stateWithRec.copy(pureFormula = stateWithRec.pureFormula +
+        //        PureConstraint(receiverValue, TypeComp, SubclassOf(invokeType)) +
         PureConstraint(receiverValue, NotEquals, NullVal)
       ).constrainUpperType(receiverValue, invokeType,ch)
 
@@ -273,6 +320,18 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       // TODO: add @this to prove non-static invokes faster
       val newFrame = CallStackFrame(mRet, Some(AppLoc(mloc,line,true)), retVal)
       Set(postState.copy(callStack = newFrame::postState.callStack, nextCmd = None))
+    case (retloc@AppLoc(mloc, line, false), mRet: SkippedInternalMethodReturn) =>
+      val retVal:Map[StackVar, PureExpr] = w.cmdAtLocation(retloc) match{
+        case AssignCmd(tgt, _:Invoke, _) =>
+          postState.get(tgt).map(v => Map(StackVar("@ret") -> v)).getOrElse(Map())
+        case InvokeCmd(_,_) => Map()
+        case _ => throw new IllegalStateException(s"malformed bytecode, source: $retloc  target: $mRet")
+      }
+      // Create call stack frame with return value
+      // TODO: add @this to prove non-static invokes faster
+      val newFrame = CallStackFrame(mRet, Some(AppLoc(mloc,line,true)), retVal)
+      Set(postState.copy(callStack = newFrame::postState.callStack, nextCmd = None))
+    case (SkippedInternalMethodReturn(_,_,_,_), SkippedInternalMethodInvoke(_,_,_)) => Set(postState)
     case (mr@InternalMethodReturn(_,_,_), cmd@AppLoc(_,_,false)) =>
       w.cmdAtLocation(cmd) match{
         case ReturnCmd(_,_) => Set(postState)

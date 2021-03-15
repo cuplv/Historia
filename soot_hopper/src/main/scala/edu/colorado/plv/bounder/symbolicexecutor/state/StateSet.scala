@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, SpecialInvoke, StaticInvoke, VirtualInvoke}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SpecialInvoke, StaticInvoke, VirtualInvoke}
 
 sealed trait StateRefinementEdge {
   def contains(other: StateRefinementEdge): Boolean
@@ -124,6 +124,8 @@ object SwapLoc {
     case _: GroupedCallinMethodReturn => None
     case _: InternalMethodInvoke => None
     case _: InternalMethodReturn => None
+    case _: SkippedInternalMethodReturn => None
+    case _: SkippedInternalMethodInvoke => None
     case a@AppLoc(_,_,true) =>
       w.cmdAtLocation(a) match {
         case InvokeCmd(_, _) => Some(CodeLocation(a))

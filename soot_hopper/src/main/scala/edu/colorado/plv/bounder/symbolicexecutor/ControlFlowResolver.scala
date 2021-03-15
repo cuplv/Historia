@@ -5,12 +5,38 @@ import edu.colorado.plv.bounder.ir.{Invoke, _}
 import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, FieldPtEdge, LSParamConstraint, LSPure, PureVar, State, StaticPtEdge}
-import org.scalactic.anyvals.NonEmptySet
 import scalaz.Memo
+
+import upickle.default.{macroRW, ReadWriter => RW}
 
 import scala.collection.mutable
 import scala.collection.parallel.CollectionConverters.ImmutableIterableIsParallelizable
+import scala.collection.parallel.immutable.ParIterable
 import scala.util.matching.Regex
+sealed trait RelevanceRelation{
+  def join(other: RelevanceRelation):RelevanceRelation
+}
+object RelevanceRelation{
+  implicit val rw:RW[RelevanceRelation] = RW.merge(macroRW[RelevantMethod.type], macroRW[NotRelevantMethod.type],
+    DropHeapCellsMethod.rw)
+}
+case object RelevantMethod extends RelevanceRelation {
+  override def join(other: RelevanceRelation): RelevanceRelation = RelevantMethod
+}
+case object NotRelevantMethod extends RelevanceRelation {
+  override def join(other: RelevanceRelation): RelevanceRelation = other
+}
+case class DropHeapCellsMethod(names:Set[String]) extends RelevanceRelation {
+  override def join(other: RelevanceRelation): RelevanceRelation = other match{
+    case DropHeapCellsMethod(otherNames) => DropHeapCellsMethod(names.union(otherNames))
+    case RelevantMethod => RelevantMethod
+    case NotRelevantMethod => this
+  }
+}
+object DropHeapCellsMethod{
+  implicit var rw:RW[DropHeapCellsMethod] = macroRW[DropHeapCellsMethod]
+}
+
 /**
  * Functions to resolve control flow edges while maintaining context sensitivity.
  */
@@ -121,7 +147,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       case AssignCmd(_, fr: FieldReference, _) => fieldCanPt(fr, state)
       case AssignCmd(StaticFieldReference(clazz, name, _), _, _) =>
         val out = state.heapConstraints.contains(StaticPtEdge(clazz, name))
-        out //&& !manuallyExcludedStaticField(name) //TODO:
+        out //&& !manuallyExcludedStaticField(name) //TODO: remove dbg code
 
       case AssignCmd(_, StaticFieldReference(clazz, name, _), _) =>
         val out = state.heapConstraints.contains(StaticPtEdge(clazz, name))
@@ -229,35 +255,64 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     ).flatMap{ case (_,v) => v}.toSet
   }
   val callinNames:MethodLoc => Set[String] = Memo.mutableHashMapMemo{iCallinNames}
-  def relevantMethodBody(m: MethodLoc, state: State): Boolean = {
-    val fnSet = state.fieldNameSet()
+
+  def shouldDropMethod(state:State, heapCellsInState: Set[String], callees: Iterable[MethodLoc]):RelevanceRelation = {
+//    if(state.pureVars().size > 8){ //TODO: better lose precision condition
+    if (false){ //TODO: check if this is still needed
+      val allHeapCellsThatCouldBeModified = callees.foldLeft(Set[String]()){(acc,v) =>
+        val modifiedAndInState = heapNamesModified(v).intersect(heapCellsInState)
+        acc.union(modifiedAndInState)}
+      DropHeapCellsMethod(allHeapCellsThatCouldBeModified)
+    }else{
+      RelevantMethod
+    }
+  }
+  def relevantMethodBody(m: MethodLoc, state: State): RelevanceRelation = {
+    val fnSet: Set[String] = state.fieldNameSet()
     val mSet = state.traceMethodSet()
     if (resolver.isFrameworkClass(m.classType))
-      return false // body can only be relevant to app heap or trace if method is in the app
+      return NotRelevantMethod // body can only be relevant to app heap or trace if method is in the app
 
     val allCalls = memoizedallCalls(m) + m
-    val callees = allCalls.par.filter { m =>
-      val fnOverlap = fnSet.exists { fn =>
-        val hn = iHeapNamesModified(m)
-        hn.contains(fn)
-      }
-      lazy val mSetOverlap = mSet.exists{ci =>
+    val traceRelevantCallees = allCalls.par.filter{ m =>
+      mSet.exists{ci =>
         val cin = callinNames(m)
         cin.contains(ci)
       }
-      fnOverlap || mSetOverlap
+    }
+    if (traceRelevantCallees.nonEmpty){
+      val traceExists = traceRelevantCallees.exists{callee =>
+        relevantTrace(callee,state)
+      }
+      if(traceExists)
+        return RelevantMethod
+    }
+    val heapRelevantCallees: ParIterable[MethodLoc] = allCalls.par.filter { callee =>
+      val hn: Set[String] = heapNamesModified(callee)
+      fnSet.exists { fn =>
+        hn.contains(fn)
+      }
+    }
+    val heapExists= heapRelevantCallees.exists{ callee => relevantHeap(callee,state)}
+    if(heapExists) {
+      // Method may modify a heap cell in the current state
+      // We may decide to drop heap cells and skip the method to scale
+      shouldDropMethod(state, fnSet, heapRelevantCallees.seq)
+    } else{
+      NotRelevantMethod
     }
 
-    callees.par.exists { c =>
-      if (relevantHeap(c, state)) {
-//        printCache(s"method: $m calls $c - heap relevant to state: $state")
-        true
-      } else if (relevantTrace(c, state)) {
-//        printCache(s"method: $m calls $c trace relevant to state: $state")
-      true
-      } else
-        false
-    }
+
+//    callees.par.exists { c =>
+//      if (relevantHeap(c, state)) {
+////        printCache(s"method: $m calls $c - heap relevant to state: $state")
+//        true
+//      } else if (relevantTrace(c, state)) {
+////        printCache(s"method: $m calls $c trace relevant to state: $state")
+//        true
+//      } else
+//        false
+//    }
   }
 
   def existsIAlias(locals: List[Option[RVal]], dir: MessageType, sig: (String, String), state: State): Boolean = {
@@ -266,7 +321,6 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       (aliasPo zip locals).forall {
         case (LSPure(v: PureVar), Some(local: LocalWrapper)) =>
           state.typeConstraints.get(v).forall(_.subtypeOfCanAlias(local.localType,cha))
-//          cha.typeSetForPureVar(v, state).forall(wrapper.canAlias(_, local.localType))
         case (LSPure(v: PureVar), Some(NullConst)) => ???
         case (LSPure(v: PureVar), Some(i: IntConst)) => ???
         case (LSPure(v: PureVar), Some(i: StringConst)) => ???
@@ -275,12 +329,15 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     }
   }
 
-  def relevantMethod(loc: Loc, state: State): Boolean = loc match {
+  def relevantMethod(loc: Loc, state: State): RelevanceRelation = loc match {
     case InternalMethodReturn(_, _, m) =>
       val callees: Set[MethodLoc] = memoizedallCalls(m)
-      val out = (callees + m).exists(c => relevantMethodBody(c, state))
+      val out = (callees + m).foldLeft(NotRelevantMethod:RelevanceRelation){(acc,c) =>
+        val curRel = relevantMethodBody(c, state)
+        acc.join(curRel)
+      }
       out
-    case CallinMethodReturn(_, _) => true
+    case CallinMethodReturn(_, _) => RelevantMethod
     case CallbackMethodReturn(clazz, name, rloc, Some(retLine)) => {
       val retVars =
         if (rloc.isStatic)
@@ -296,8 +353,15 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
           existsIAlias(None :: locs.tail, CBEnter, (clazz, name), state)
         res
       }
-      val relevantBody = relevantMethodBody(rloc, state)
-      iExists || relevantBody
+      val relevantBody = relevantMethodBody(rloc, state) match{
+        case NotRelevantMethod => false
+        case DropHeapCellsMethod(_) => true
+        case RelevantMethod => true
+      }
+      if(iExists || relevantBody)
+        RelevantMethod
+      else
+        NotRelevantMethod
     }
     case _ => throw new IllegalStateException("relevantMethod only for method returns")
   }
@@ -310,16 +374,18 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       case i => i
     }
     val out:Set[Loc] = groups.keySet.map{k =>
-      //TODO: find least upper bound for receiver=========
       val classesToGroup = groups(k).map{
         case CallinMethodReturn(fmwClazz,_) => fmwClazz
         case InternalMethodReturn(clazz,_, _) => clazz
-        case _ => throw new IllegalStateException()
+        case SkippedInternalMethodReturn(clazz, name, rel, loc) => clazz
+        case v =>
+          throw new IllegalStateException(s"${v}")
       }
       groups(k).collectFirst{
         case CallinMethodReturn(_,name) =>
           GroupedCallinMethodReturn(classesToGroup,name)
         case imr@InternalMethodReturn(_,_,_) => imr
+        case imr@SkippedInternalMethodReturn(_, _, _, _) => imr
       }.getOrElse(throw new IllegalStateException())
     }
     out
@@ -346,28 +412,53 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
           val unresolvedTargets: UnresolvedMethodTarget =
             wrapper.makeInvokeTargets(loc)
           val resolved: Set[Loc] = resolver.resolveCallLocation(unresolvedTargets)
-          if(resolved.par.forall(m => !relevantMethod(m,state)))
-            List(l.copy(isPre = true)) // skip if all method targets are not relevant
-          else {
-            mergeEquivalentCallins(resolved, state)
-          }
+          val resolvedSkipIrrelevant = resolved.par.map{m => (relevantMethod(m,state),m) match{
+            case (RelevantMethod,_) => m
+            case (NotRelevantMethod, InternalMethodReturn(clazz, name, loc)) =>
+              SkippedInternalMethodReturn(clazz, name,NotRelevantMethod,loc)
+            case _ => throw new IllegalStateException("")
+          }}
+          mergeEquivalentCallins(resolvedSkipIrrelevant.seq.toSet, state)
+//          if(resolved.par.forall{m =>
+//            relevantMethod(m,state) match{
+//              case NotRelevantMethod => true
+//              case _ => false
+//            }
+//          })
+//            List(l.copy(isPre = true)) // skip if all method targets are not relevant
+//          else {
+//            mergeEquivalentCallins(resolved, state)
+//          }
         }
         case AssignCmd(tgt, _:Invoke,loc) => {
           val unresolvedTargets =
             wrapper.makeInvokeTargets(loc)
           val resolved = resolver.resolveCallLocation(unresolvedTargets)
-          if (state.get(tgt).isDefined)
-            mergeEquivalentCallins(resolved,state)
-          else {
-            if(resolved.par.forall(m => !relevantMethod(m,state)))
-              List(l.copy(isPre = true)) // skip if all method targets are not relevant
-            else
-              mergeEquivalentCallins(resolved,state)
-          }
+          val resolvedSkipIrrelevant = resolved.par.map{m => (relevantMethod(m,state),m) match{
+            case (RelevantMethod,_) => m
+            case (NotRelevantMethod, InternalMethodReturn(clazz, name, loc)) =>
+              SkippedInternalMethodReturn(clazz, name,NotRelevantMethod,loc)
+            case _ => throw new IllegalStateException("")
+          }}
+          mergeEquivalentCallins(resolvedSkipIrrelevant.seq.toSet, state)
+//          if (state.get(tgt).isDefined)
+//            mergeEquivalentCallins(resolved,state)
+//          else {
+//            if(resolved.par.forall{m =>
+//              relevantMethod(m,state) match{
+//                case NotRelevantMethod => true
+//                case _ => false
+//              }})
+//              List(l.copy(isPre = true)) // skip if all method targets are not relevant
+//            else
+//              mergeEquivalentCallins(resolved,state)
+//          }
         }
         case _ => List(l.copy(isPre=true))
       }
     }
+    case (SkippedInternalMethodReturn(clazz,name,_,loc),_) =>
+      List(SkippedInternalMethodInvoke(clazz,name,loc))
     case (CallinMethodReturn(clazz, name),_) =>
       // TODO: nested callbacks not currently handled
       List(CallinMethodInvoke(clazz,name))
@@ -385,8 +476,11 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
         locCb.flatMap{case AppLoc(method,line,_) => resolver.resolveCallbackExit(method, Some(line))}
       }).toList
       val componentFiltered = res.filter(callbackInComponent)
-      val res1 = componentFiltered.filter(relevantMethod(_,state))
-      res1
+      componentFiltered.filter{m => relevantMethod(m,state) match{
+        case RelevantMethod => true
+        case DropHeapCellsMethod(_) => true
+        case NotRelevantMethod => false
+      }}
     case (CallbackMethodReturn(_,_, loc, Some(line)),_) =>
       AppLoc(loc, line, isPre = false)::Nil
     case (CallinMethodInvoke(fmwClazz, fmwName),Nil) =>
@@ -403,6 +497,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     case (InternalMethodReturn(_,_,loc), _) =>
       wrapper.makeMethodRetuns(loc)
     case (InternalMethodInvoke(_, _, _), CallStackFrame(_,Some(returnLoc:AppLoc),_)::_) => List(returnLoc)
+    case (SkippedInternalMethodInvoke(_, _, _), CallStackFrame(_,Some(returnLoc:AppLoc),_)::_) => List(returnLoc)
     case (InternalMethodInvoke(_, _, loc), _) =>
       val locations = wrapper.appCallSites(loc, resolver)
         .filter(loc => !resolver.isFrameworkClass(loc.containingMethod.get.classType))
