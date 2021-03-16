@@ -27,7 +27,7 @@ object BounderUtil {
     else Timeout
   }
 
-  def allMap[T](n1:Set[T], n2:Set[T]):List[Map[T,T]] = {
+  def allMap[T](n1:Set[T], n2:Set[T], canMap: (T,T) => Boolean):List[Map[T,T]] = {
     if(n1.isEmpty){
       List(n2.map(n => n->n).toMap)
     }else if(n2.isEmpty){
@@ -35,7 +35,11 @@ object BounderUtil {
     }else{
       val h = n1.head
       n2.flatMap{tgt =>
-        allMap(n1.tail,n2 - tgt).map( v => v + (h -> tgt))
+        if(canMap(h,tgt)) {
+          val next = allMap(n1.tail, n2 - tgt, canMap)
+          next.map(v => v + (h -> tgt))
+        }else
+          List()
       }.toList
     }
   }

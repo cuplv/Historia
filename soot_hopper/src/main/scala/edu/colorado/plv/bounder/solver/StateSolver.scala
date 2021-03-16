@@ -684,7 +684,16 @@ trait StateSolver[T, C <: SolverCtx] {
 
     //TODO: extremely slow permutations there is probably a better way
     val startTime = System.currentTimeMillis()
-    val perm = BounderUtil.allMap(pv1 -- removeFromPermS1,pvToTemp -- removeFromPermS2)
+    //filter out pure var pairings early if they can't be subsumed type wise
+    def canMap(pv1:PureVar, pv2:PureVar):Boolean = {
+      val tc1 = s1.typeConstraints.get(pv1)
+      val tc2 = s2Above.typeConstraints.get(pv2)
+      if(tc2.isEmpty)
+        return true
+      val out = tc1.forall(_.contains(tc2.get))
+      out
+    }
+    val perm = BounderUtil.allMap(pv1 -- removeFromPermS1,pvToTemp -- removeFromPermS2,canMap)
 //    val perm = allPvNoLocals.permutations.grouped(40)
     val out: Boolean = perm.par.exists{perm =>
       val s2Swapped = perm.foldLeft(s2LocalSwapped) {
