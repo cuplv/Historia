@@ -8,7 +8,7 @@ import soot.SootMethod
 
 import scala.annotation.tailrec
 import scala.collection.MapView
-import scala.collection.parallel.CollectionConverters.ImmutableSetIsParallelizable
+import scala.collection.parallel.CollectionConverters.{ImmutableSetIsParallelizable, IterableIsParallelizable}
 import upickle.default._
 
 sealed trait CallGraphSource
@@ -171,7 +171,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     case SomeQry(state, loc) =>
       val predecessorLocations = controlFlowResolver.resolvePredicessors(loc,state)
       //TODO: combine all callin locs that behave the same in the control flow resolver
-      predecessorLocations.flatMap(l => {
+      predecessorLocations.par.flatMap(l => {
         val newStates = transfer.transfer(state,l,loc)
         newStates.map(state => stateSolver.simplify(state) match {
           case Some(state) if stateSolver.witnessed(state) =>
@@ -180,7 +180,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
           case None =>
             BottomQry(state,l)
         })
-      }).toSet
+      }).seq.toSet
     case BottomQry(_,_) => Set()
     case WitnessedQry(_,_) => Set()
   }

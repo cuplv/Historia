@@ -271,8 +271,20 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   val callinNames:MethodLoc => Set[String] = Memo.mutableHashMapMemo{iCallinNames}
 
   def shouldDropMethod(state:State, heapCellsInState: Set[String], callees: Iterable[MethodLoc]):RelevanceRelation = {
-//    if(state.pureVars().size > 8){ //TODO: better lose precision condition
-    if(false){ //TODO: better lose precision condition
+//    if(false){ //TODO: better lose precision condition
+    val heapNamesModifiedByCallee =
+      callees.foldLeft(Set[String]()){(acc,callee) => acc.union(heapNamesModified(callee))}
+    //pure variables are sequentially instantiated, so a higher pure variable is more removed from query
+    val smallestPvTouched = state.heapConstraints.foldLeft(Integer.MAX_VALUE){
+      case (acc, (FieldPtEdge(PureVar(id1), name),PureVar(id2))) if heapNamesModifiedByCallee.contains(name) =>
+        if(acc > id1 || acc > id2) List(id1,id2).min else acc
+      case (acc, (FieldPtEdge(PureVar(id1), name),_)) if heapNamesModifiedByCallee.contains(name) =>
+        if(acc > id1) id1 else acc
+      case (acc, (StaticPtEdge(_,name), PureVar(pv))) if heapNamesModifiedByCallee.contains(name) =>
+        if(acc > pv) pv else acc
+      case (acc,_) => acc
+    }
+    if(smallestPvTouched > 8){ //TODO: better lose precision condition
       val allHeapCellsThatCouldBeModified = callees.foldLeft(Set[String]()){(acc,v) =>
         val modifiedAndInState = heapNamesModified(v).intersect(heapCellsInState)
         acc.union(modifiedAndInState)}

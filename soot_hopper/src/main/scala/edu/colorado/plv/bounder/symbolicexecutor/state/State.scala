@@ -668,7 +668,19 @@ case class State(callStack: List[CallStackFrame],
     ???
   }
 
+  private var pvCache:Option[Set[PureVar]] = None
   def pureVars():Set[PureVar] = {
+    val out = pvCache match{
+      case None =>
+        val computed = iPureVars()
+        pvCache = Some(computed)
+        computed
+      case Some(v) => v
+    }
+    out
+  }
+
+  private def iPureVars():Set[PureVar] = {
     val pureVarOpt = (a:PureExpr) => a match {
       case p: PureVar => Some(p)
       case _ => None
@@ -747,7 +759,7 @@ object PureExpr{
 
 // primitive values
 sealed abstract class PureVal(v:Any) extends PureExpr {
-  override def substitute(toSub : PureExpr, subFor : PureVar) : PureVal = this
+  override def substitute(toSub : PureExpr, subFor : PureVar) : PureVal = ???
 
   def >(p : PureVal) : Boolean = sys.error("GT for arbitrary PureVal")
   def <(p : PureVal) : Boolean = sys.error("LT for arbitrary PureVal")
