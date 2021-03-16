@@ -77,6 +77,31 @@ class TransferFunctionsTest extends AnyFunSuite {
       && state.pureFormula.contains(PureConstraint(basePv,NotEquals, otherPv))))
     assert(pre.count(state => state.heapConstraints.isEmpty) == 1)
   }
+
+  test("Transfer with aliased base of heap cell") {
+    val cmd = (loc:AppLoc) => {
+      val thisLocal = LocalWrapper("@this", "java.lang.Object")
+      AssignCmd(FieldReference(thisLocal, "Object", "Object", "o"), NullConst, loc)
+    }
+    val basePv = PureVar(State.getId_TESTONLY())
+    val otherPv = PureVar(State.getId_TESTONLY())
+    val post = State(CallStackFrame(fooMethodReturn, None, Map(StackVar("@this") -> basePv))::Nil,
+      heapConstraints = Map(FieldPtEdge(basePv, "o") -> otherPv),
+      pureFormula = Set(),
+      traceAbstraction = Set(),
+      typeConstraints = Map(),
+      nextAddr = 0
+    )
+
+    val pre = testCmdTransfer(cmd, post, fooMethod)
+    println(s"pre: ${pre})")
+    println(s"post: ${post}")
+    assert(pre.size == 2)
+    assert(1 == pre.count(state =>
+      state.heapConstraints.size == 1
+        && state.pureFormula.contains(PureConstraint(basePv,NotEquals, basePv))))
+    assert(pre.count(state => state.heapConstraints.isEmpty) == 1)
+  }
   test("Transfer assign new local") {
     val cmd= (loc:AppLoc) => AssignCmd(LocalWrapper("bar","java.lang.Object"),NewCommand("String"),loc)
     val nullPv = PureVar(State.getId_TESTONLY())
