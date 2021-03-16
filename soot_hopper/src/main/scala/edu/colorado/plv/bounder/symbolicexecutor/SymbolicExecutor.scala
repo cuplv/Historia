@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import com.microsoft.z3.Context
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, Loc, MethodLoc, SpecialInvoke, StaticInvoke, VirtualInvoke}
-import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, NoTypeSolving, StateTypeSolving, Z3StateSolver}
+import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SetInclusionTypeSolving, StateTypeSolving, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, FrameworkLocation, IPathNode, MemoryOutputMode$, OutputMode, PathNode, Qry, SomeQry, StateSet, SubsumableLocation, SwapLoc, WitnessedQry}
 import soot.SootMethod
 
@@ -35,7 +35,7 @@ case class SymbolicExecutorConfig[M,C](stepLimit: Option[Int],
                                        printProgress : Boolean = sys.env.getOrElse("DEBUG","false").toBoolean,
                                        z3Timeout : Option[Int] = None,
                                        component : Option[Seq[String]] = None,
-                                       stateTypeSolving: StateTypeSolving = NoTypeSolving,
+                                       stateTypeSolving: StateTypeSolving = SetInclusionTypeSolving,
                                        outputMode : OutputMode = MemoryOutputMode$
                                       ){
   def getSymbolicExecutor =

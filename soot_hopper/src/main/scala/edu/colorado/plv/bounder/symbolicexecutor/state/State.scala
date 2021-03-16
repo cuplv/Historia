@@ -259,7 +259,7 @@ object BoundedTypeSet{
 }
 case class DisjunctTypeSet(oneOf: Set[TypeSet]) extends TypeSet{
   override def toString():String = {
-    oneOf.headOption.map(_.toString()).getOrElse(":nonedisj")
+    oneOf.headOption.map(_.toString() + " disj").getOrElse(":nonedisj")
   }
   private def filterOp(op: TypeSet => TypeSet):TypeSet = {
     val outSet = oneOf.map(op).filter{

@@ -577,12 +577,14 @@ trait StateSolver[T, C <: SolverCtx] {
   }
 
   private def filterTypeConstraintsFromPf(pure: Set[PureConstraint]): Set[PureConstraint] = pure.filter {
-    case PureConstraint(_, TypeComp, _) => false
+    case PureConstraint(_, TypeComp, _) => throw new IllegalStateException("TODO: remove TypeComp")
     case _ => true
   }
 
 
-  def canSubsume(s1: State, s2: State, maxLen: Option[Int] = None): Boolean = canSubsumeSlow(s1, s2, maxLen)
+  def canSubsume(s1: State, s2: State, maxLen: Option[Int] = None): Boolean ={
+    canSubsumeSlow(s1, s2, maxLen)
+  }
 
   /**
    * Consider rearrangments of pure vars that could result in subsumption
@@ -685,23 +687,11 @@ trait StateSolver[T, C <: SolverCtx] {
     val perm = BounderUtil.allMap(pv1 -- removeFromPermS1,pvToTemp -- removeFromPermS2)
 //    val perm = allPvNoLocals.permutations.grouped(40)
     val out: Boolean = perm.par.exists{perm =>
-      // Break early for combinations that don't match type constraints
-//      val allCanMatch = (allPv zip perm).forall {
-//        case (oldPv, newPv) =>
-//          val optionals1TC = s1.typeConstraints.get(newPv)
-//          val optionals2TC = s2.typeConstraints.get(oldPv)
-//          (optionals1TC, optionals2TC) match {
-//            case (Some(tc1), Some(tc2)) => tc1.contains(tc2)
-//            case _ => true
-//          }
-//      }
-//      if (allCanMatch) {
-
-        val s2Swapped = perm.foldLeft(s2LocalSwapped) {
-          case (s, (newPv, oldPv)) => s.swapPv(oldPv, newPv)
-        }
-        canSubsumeFast(s1, s2Swapped, maxLen)
-//      } else false
+      val s2Swapped = perm.foldLeft(s2LocalSwapped) {
+        case (s, (newPv, oldPv)) => s.swapPv(oldPv, newPv)
+      }
+      val out1 = canSubsumeFast(s1, s2Swapped, maxLen)
+      out1
     }
     val elapsedTime = System.currentTimeMillis() - startTime
     if(elapsedTime > 1000) {
@@ -718,7 +708,7 @@ trait StateSolver[T, C <: SolverCtx] {
   }
 
   def canSubsumeSolver(s1: State, s2: State, maxLen: Option[Int] = None): Boolean = {
-    implicit var zctx = getSolverCtx
+    implicit val zctx = getSolverCtx
 
     // Currently, the stack is strictly the app call string
     // When adding more abstraction to the stack, this needs to be modified
@@ -808,7 +798,7 @@ trait StateSolver[T, C <: SolverCtx] {
    * @return false if there exists a trace in s2 that is not in s1 otherwise true
    */
   def canSubsumeFast(s1: State, s2: State, maxLen: Option[Int] = None): Boolean = {
-    implicit var zctx = getSolverCtx
+    implicit val zctx = getSolverCtx
 
     // Currently, the stack is strictly the app call string
     // When adding more abstraction to the stack, this needs to be modified

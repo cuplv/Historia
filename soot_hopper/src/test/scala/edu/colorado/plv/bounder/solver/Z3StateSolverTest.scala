@@ -777,7 +777,7 @@ class Z3StateSolverTest extends AnyFunSuite {
     //TODO: test "and", "scoped abstract traces"
   }
 
-  private def getStateSolver(stateTypeSolving: StateTypeSolving = NoTypeSolving) : Z3StateSolver = {
+  private def getStateSolver(stateTypeSolving: StateTypeSolving = SetInclusionTypeSolving) : Z3StateSolver = {
     val hierarchy: Map[String, Set[String]] =
       Map("java.lang.Object" -> Set("String", "Foo", "Bar",
         "com.example.createdestroy.MyFragment",

@@ -49,7 +49,7 @@ object ClassHierarchyConstraints{
 }
 
 sealed trait StateTypeSolving
-case object NoTypeSolving extends StateTypeSolving
+//case object NoTypeSolving extends StateTypeSolving //TODO: no typesolving is unsound due to subsumption
 case object SolverTypeSolving extends StateTypeSolving
 case object SetInclusionTypeSolving extends StateTypeSolving
 import upickle.default.{write,read}
