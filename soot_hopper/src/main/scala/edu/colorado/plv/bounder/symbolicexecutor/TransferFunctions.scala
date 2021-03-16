@@ -104,7 +104,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         case _ => outState
       }
       val outState2 = outState1.map(s2 => s2.copy(callStack = frame::s2.callStack, nextCmd = None))
-
       val out = outState2.map{ oState =>
         //clear assigned var from stack if exists
         val statesWithClearedReturn = inVars.head match{
@@ -114,7 +113,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         }
         statesWithClearedReturn
       }
-      out //TODO: check that this works ====
+      out
     case (cminv@GroupedCallinMethodInvoke(targets, _), tgt@AppLoc(_,_,true)) =>
       assert(postState.callStack.nonEmpty, "Bad control flow, abstract stack must be non-empty.")
       val invars = inVarsForCall(tgt)
@@ -310,7 +309,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       }
       out.map(_.copy(nextCmd = Some(al)))
     case (retloc@AppLoc(mloc, line, false), mRet: InternalMethodReturn) =>
-      val retVal:Map[StackVar, PureExpr] = w.cmdAtLocation(retloc) match{
+      val cmd = w.cmdAtLocation(retloc)
+      val retVal:Map[StackVar, PureExpr] = cmd match{
         case AssignCmd(tgt, _:Invoke, _) =>
           postState.get(tgt).map(v => Map(StackVar("@ret") -> v)).getOrElse(Map())
         case InvokeCmd(_,_) => Map()
@@ -319,18 +319,22 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       // Create call stack frame with return value
       // TODO: add @this to prove non-static invokes faster
       val newFrame = CallStackFrame(mRet, Some(AppLoc(mloc,line,true)), retVal)
-      Set(postState.copy(callStack = newFrame::postState.callStack, nextCmd = None))
-    case (retloc@AppLoc(mloc, line, false), mRet: SkippedInternalMethodReturn) =>
-      val retVal:Map[StackVar, PureExpr] = w.cmdAtLocation(retloc) match{
-        case AssignCmd(tgt, _:Invoke, _) =>
-          postState.get(tgt).map(v => Map(StackVar("@ret") -> v)).getOrElse(Map())
-        case InvokeCmd(_,_) => Map()
-        case _ => throw new IllegalStateException(s"malformed bytecode, source: $retloc  target: $mRet")
+      val clearedLVal = cmd match{
+        case AssignCmd(target, _, _) => postState.clearLVal(target)
+        case _ => postState
       }
+      Set(clearedLVal.copy(callStack = newFrame::postState.callStack, nextCmd = None))
+    case (retLoc@AppLoc(mloc, line, false), mRet@SkippedInternalMethodReturn(_, _, rel, _)) =>
       // Create call stack frame with return value
-      // TODO: add @this to prove non-static invokes faster
-      val newFrame = CallStackFrame(mRet, Some(AppLoc(mloc,line,true)), retVal)
-      Set(postState.copy(callStack = newFrame::postState.callStack, nextCmd = None))
+      val newFrame = CallStackFrame(mRet, Some(AppLoc(mloc,line,true)), Map())
+      // Remove assigned variable from the abstract state
+      val clearedLval = w.cmdAtLocation(retLoc) match{
+        case AssignCmd(target, _:Invoke, _) => postState.clearLVal(target)
+        case _ => postState
+      }
+      val withStackFrame = clearedLval.copy(callStack = newFrame :: postState.callStack, nextCmd = None)
+      val withPrecisionLoss = rel.applyPrecisionLossForSkip(withStackFrame)
+      Set(withPrecisionLoss)
     case (SkippedInternalMethodReturn(_,_,_,_), SkippedInternalMethodInvoke(_,_,_)) => Set(postState)
     case (mr@InternalMethodReturn(_,_,_), cmd@AppLoc(_,_,false)) =>
       w.cmdAtLocation(cmd) match{

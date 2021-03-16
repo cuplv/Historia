@@ -4,9 +4,8 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{Invoke, _}
 import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, FieldPtEdge, LSParamConstraint, LSPure, PureVar, State, StaticPtEdge}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, FieldPtEdge, LSParamConstraint, LSPure, PureVar, State, StaticPtEdge}
 import scalaz.Memo
-
 import upickle.default.{macroRW, ReadWriter => RW}
 
 import scala.collection.mutable
@@ -15,6 +14,7 @@ import scala.collection.parallel.immutable.ParIterable
 import scala.util.matching.Regex
 sealed trait RelevanceRelation{
   def join(other: RelevanceRelation):RelevanceRelation
+  def applyPrecisionLossForSkip(state:State):State
 }
 object RelevanceRelation{
   implicit val rw:RW[RelevanceRelation] = RW.merge(macroRW[RelevantMethod.type], macroRW[NotRelevantMethod.type],
@@ -22,9 +22,14 @@ object RelevanceRelation{
 }
 case object RelevantMethod extends RelevanceRelation {
   override def join(other: RelevanceRelation): RelevanceRelation = RelevantMethod
+
+  override def applyPrecisionLossForSkip(state: State): State =
+    throw new IllegalStateException("No precision loss for relevant method.")
 }
 case object NotRelevantMethod extends RelevanceRelation {
   override def join(other: RelevanceRelation): RelevanceRelation = other
+
+  override def applyPrecisionLossForSkip(state: State): State = state
 }
 case class DropHeapCellsMethod(names:Set[String]) extends RelevanceRelation {
   override def join(other: RelevanceRelation): RelevanceRelation = other match{
@@ -32,6 +37,15 @@ case class DropHeapCellsMethod(names:Set[String]) extends RelevanceRelation {
     case RelevantMethod => RelevantMethod
     case NotRelevantMethod => this
   }
+
+  override def applyPrecisionLossForSkip(state: State): State = state.copy(
+    heapConstraints = state.heapConstraints.filter{
+      case (FieldPtEdge(_,fName),_) => !names.contains(fName)
+      case (StaticPtEdge(_,fieldName),_) => !names.contains(fieldName)
+      case (ArrayPtEdge(_,_),_) =>
+        ???
+    }
+  )
 }
 object DropHeapCellsMethod{
   implicit var rw:RW[DropHeapCellsMethod] = macroRW[DropHeapCellsMethod]
@@ -170,30 +184,30 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   }
 
   //TODO: manuallyExcluded.* methods are for debugging scalability issues
-  val excludedCaller =
-    List(
-      ".*ItemDescriptionFragment.*",
-      ".*PlaybackController.*initServiceNot.*",
-      ".*PlaybackController.*release.*",
-      ".*PlaybackController.*bindToService.*",
-    ).mkString("|").r
-  /**
-   * Experiment to see if better relevance filtering would improve performance
-   * @param caller
-   * @param callee
-   * @return
-   */
-  def manuallyExcludedCallSite(caller:MethodLoc, callee:CallinMethodReturn):Boolean = {
-    if (excludedCaller.matches(caller.classType + ";" + caller.simpleName)){
-      printCache(s"excluding $caller calls $callee")
-      true
-    }else{
-      false
-    }
-  }
-  def manuallyExcludedStaticField(fieldName:String):Boolean = {
-    fieldName == "isRunning"
-  }
+//  val excludedCaller =
+//    List(
+//      ".*ItemDescriptionFragment.*",
+//      ".*PlaybackController.*initServiceNot.*",
+//      ".*PlaybackController.*release.*",
+//      ".*PlaybackController.*bindToService.*",
+//    ).mkString("|").r
+//  /**
+//   * Experiment to see if better relevance filtering would improve performance
+//   * @param caller
+//   * @param callee
+//   * @return
+//   */
+//  def manuallyExcludedCallSite(caller:MethodLoc, callee:CallinMethodReturn):Boolean = {
+//    if (excludedCaller.matches(caller.classType + ";" + caller.simpleName)){
+//      printCache(s"excluding $caller calls $callee")
+//      true
+//    }else{
+//      false
+//    }
+//  }
+//  def manuallyExcludedStaticField(fieldName:String):Boolean = {
+//    fieldName == "isRunning"
+//  }
 
   def relevantTrace(m: MethodLoc, state: State): Boolean = {
     val calls: Set[CallinMethodReturn] = directCallsGraph(m).flatMap {
@@ -258,7 +272,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 
   def shouldDropMethod(state:State, heapCellsInState: Set[String], callees: Iterable[MethodLoc]):RelevanceRelation = {
 //    if(state.pureVars().size > 8){ //TODO: better lose precision condition
-    if (false){ //TODO: check if this is still needed
+    if(false){ //TODO: better lose precision condition
       val allHeapCellsThatCouldBeModified = callees.foldLeft(Set[String]()){(acc,v) =>
         val modifiedAndInState = heapNamesModified(v).intersect(heapCellsInState)
         acc.union(modifiedAndInState)}
@@ -416,9 +430,13 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
             case (RelevantMethod,_) => m
             case (NotRelevantMethod, InternalMethodReturn(clazz, name, loc)) =>
               SkippedInternalMethodReturn(clazz, name,NotRelevantMethod,loc)
-            case _ => throw new IllegalStateException("")
+            case (d:DropHeapCellsMethod, InternalMethodReturn(clazz, name, loc)) =>
+              SkippedInternalMethodReturn(clazz,name,d,loc)
+            case v =>
+              throw new IllegalStateException(s"$v")
           }}
-          mergeEquivalentCallins(resolvedSkipIrrelevant.seq.toSet, state)
+          val out = mergeEquivalentCallins(resolvedSkipIrrelevant.seq.toSet, state)
+          out
 //          if(resolved.par.forall{m =>
 //            relevantMethod(m,state) match{
 //              case NotRelevantMethod => true
@@ -438,9 +456,12 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
             case (RelevantMethod,_) => m
             case (NotRelevantMethod, InternalMethodReturn(clazz, name, loc)) =>
               SkippedInternalMethodReturn(clazz, name,NotRelevantMethod,loc)
+            case (d:DropHeapCellsMethod, InternalMethodReturn(clazz, name, loc)) =>
+              SkippedInternalMethodReturn(clazz,name,d,loc)
             case _ => throw new IllegalStateException("")
           }}
-          mergeEquivalentCallins(resolvedSkipIrrelevant.seq.toSet, state)
+          val out = mergeEquivalentCallins(resolvedSkipIrrelevant.seq.toSet, state)
+          out
 //          if (state.get(tgt).isDefined)
 //            mergeEquivalentCallins(resolved,state)
 //          else {

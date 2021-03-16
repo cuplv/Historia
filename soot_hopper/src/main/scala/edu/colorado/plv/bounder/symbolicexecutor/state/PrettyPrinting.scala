@@ -178,7 +178,7 @@ class PrettyPrinting(mode : OutputMode = MemoryOutputMode$) {
           case _ => false
         }, s"$fname.refuted")
         printTraces(qrySet.filter{
-          case PathNode(_, false) => true
+          case PathNode(_, true) => true
           case _ => false
         }, s"$fname.subsumed")
         printTraces(qrySet.filter{
