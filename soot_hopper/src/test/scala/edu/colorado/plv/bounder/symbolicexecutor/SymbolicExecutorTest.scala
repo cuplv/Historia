@@ -874,4 +874,86 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     makeApkWithSources(Map("MyFragment.java"->src), MkApk.RXBase, test)
   }
+  test("Minimal motivating example") {
+    List(
+      ("sub.unsubscribe();", Proven, "withUnsub"),
+      ("", Witnessed, "noUnsub")
+    ).map { case (destroyLine, expectedResult,fileSuffix) =>
+      val src =
+        s"""
+          |package com.example.createdestroy;
+          |import android.app.Activity;
+          |import android.content.Context;
+          |import android.net.Uri;
+          |import android.os.Bundle;
+          |
+          |import androidx.fragment.app.Fragment;
+          |
+          |import android.util.Log;
+          |import android.view.LayoutInflater;
+          |import android.view.View;
+          |import android.view.ViewGroup;
+          |
+          |import rx.Single;
+          |import rx.Subscription;
+          |import rx.android.schedulers.AndroidSchedulers;
+          |import rx.schedulers.Schedulers;
+          |import rx.functions.Action1;
+          |
+          |
+          |public class MyFragment extends Fragment implements Action1<Object>{
+          |    Subscription sub;
+          |
+          |    @Override
+          |    public void onActivityCreated(Bundle savedInstanceState){
+          |        sub = Single.create(subscriber -> {
+          |            subscriber.onSuccess(3);
+          |        }).subscribe(this);
+          |    }
+          |
+          |    @Override
+          |    public void call(Object o){
+          |         Activity act = getActivity(); //query1 : act != null
+          |         act.toString();
+          |    }
+          |
+          |    @Override
+          |    public void onDestroy(){
+          |        $destroyLine
+          |    }
+          |}
+          |""".stripMargin
+
+      val test: String => Unit = apk => {
+        assert(apk != null)
+        val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
+        val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
+          new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
+            FragmentGetActivityNullSpec.getActivityNonNull,
+            RxJavaSpec.call,
+            RxJavaSpec.subscribeDoesNotReturnNull,
+            RxJavaSpec.subscribeIsUniqueAndNonNull
+          )), cha)
+        val config = SymbolicExecutorConfig(
+          stepLimit = Some(300), w, transfer,
+          component = Some(List("com.example.createdestroy.MyFragment.*")))
+        val symbolicExecutor = config.getSymbolicExecutor
+        val line = lineForRegex(".*query1.*".r, src)
+        val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
+          "com.example.createdestroy.MyFragment",
+          "void call(java.lang.Object)", line,
+          ".*getActivity.*".r)
+
+        val result = symbolicExecutor.executeBackward(query)
+        val fname = s"Motiv_$fileSuffix"
+        prettyPrinting.dumpDebugInfo(result, fname)
+        prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true)
+        assert(result.nonEmpty)
+        assert(BounderUtil.interpretResult(result) == expectedResult)
+
+      }
+
+      makeApkWithSources(Map("MyFragment.java" -> src), MkApk.RXBase, test)
+    }
+  }
 }

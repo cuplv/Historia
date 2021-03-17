@@ -37,7 +37,11 @@ object Qry {
       w.cmdAtLocation(a) match{
         case AssignCmd(target : LocalWrapper, i:Invoke, loc) if callinMatches.matches(i.targetMethod) =>
           Some((target,loc.copy(isPre = false)))
-        case _ => None
+        case InvokeCmd(i,loc) if callinMatches.matches(i.targetMethod) =>
+          throw new IllegalStateException("Callin return not assigned to variable.")
+        case c =>
+          println(c)
+          None
       }
     })
     assert(callinLocals.size == 1, s"Wrong number of locations found while making query " +

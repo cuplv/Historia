@@ -183,14 +183,18 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     )
   }
 
-  //TODO: manuallyExcluded.* methods are for debugging scalability issues
+//  TODO: manuallyExcluded.* methods are for debugging scalability issues
 //  val excludedCaller =
 //    List(
 //      ".*ItemDescriptionFragment.*",
+//      ".*PlaybackController.*"
 //      ".*PlaybackController.*initServiceNot.*",
 //      ".*PlaybackController.*release.*",
 //      ".*PlaybackController.*bindToService.*",
 //    ).mkString("|").r
+//
+//  val excludedCallee = List(".*PlaybackController.*").mkString("|").r
+//
 //  /**
 //   * Experiment to see if better relevance filtering would improve performance
 //   * @param caller
@@ -199,6 +203,9 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 //   */
 //  def manuallyExcludedCallSite(caller:MethodLoc, callee:CallinMethodReturn):Boolean = {
 //    if (excludedCaller.matches(caller.classType + ";" + caller.simpleName)){
+//      printCache(s"excluding $caller calls $callee")
+//      true
+//    }else if (excludedCallee.matches(???)){
 //      printCache(s"excluding $caller calls $callee")
 //      true
 //    }else{
@@ -224,7 +231,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       Set(CIEnter, CIExit).exists{cdir =>
         val relI = state.findIFromCurrent(cdir, (call.fmwClazz, call.fmwName))
         relI.nonEmpty
-      } //&& !manuallyExcludedCallSite(m,call) // TODO==== manually excluded call sites
+      } //&& !manuallyExcludedCallSite(m,call) // TODO manually excluded call sites
     }
   }
 
@@ -271,20 +278,20 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   val callinNames:MethodLoc => Set[String] = Memo.mutableHashMapMemo{iCallinNames}
 
   def shouldDropMethod(state:State, heapCellsInState: Set[String], callees: Iterable[MethodLoc]):RelevanceRelation = {
-//    if(false){ //TODO: better lose precision condition
-    val heapNamesModifiedByCallee =
-      callees.foldLeft(Set[String]()){(acc,callee) => acc.union(heapNamesModified(callee))}
-    //pure variables are sequentially instantiated, so a higher pure variable is more removed from query
-    val smallestPvTouched = state.heapConstraints.foldLeft(Integer.MAX_VALUE){
-      case (acc, (FieldPtEdge(PureVar(id1), name),PureVar(id2))) if heapNamesModifiedByCallee.contains(name) =>
-        if(acc > id1 || acc > id2) List(id1,id2).min else acc
-      case (acc, (FieldPtEdge(PureVar(id1), name),_)) if heapNamesModifiedByCallee.contains(name) =>
-        if(acc > id1) id1 else acc
-      case (acc, (StaticPtEdge(_,name), PureVar(pv))) if heapNamesModifiedByCallee.contains(name) =>
-        if(acc > pv) pv else acc
-      case (acc,_) => acc
-    }
-    if(smallestPvTouched > 8){ //TODO: better lose precision condition
+    if(false){ //TODO: better lose precision condition
+//    val heapNamesModifiedByCallee =
+//      callees.foldLeft(Set[String]()){(acc,callee) => acc.union(heapNamesModified(callee))}
+//    //pure variables are sequentially instantiated, so a higher pure variable is more removed from query
+//    val smallestPvTouched = state.heapConstraints.foldLeft(Integer.MAX_VALUE){
+//      case (acc, (FieldPtEdge(PureVar(id1), name),PureVar(id2))) if heapNamesModifiedByCallee.contains(name) =>
+//        if(acc > id1 || acc > id2) List(id1,id2).min else acc
+//      case (acc, (FieldPtEdge(PureVar(id1), name),_)) if heapNamesModifiedByCallee.contains(name) =>
+//        if(acc > id1) id1 else acc
+//      case (acc, (StaticPtEdge(_,name), PureVar(pv))) if heapNamesModifiedByCallee.contains(name) =>
+//        if(acc > pv) pv else acc
+//      case (acc,_) => acc
+//    }
+//    if(smallestPvTouched > 3){ //TODO: better lose precision condition
       val allHeapCellsThatCouldBeModified = callees.foldLeft(Set[String]()){(acc,v) =>
         val modifiedAndInState = heapNamesModified(v).intersect(heapCellsInState)
         acc.union(modifiedAndInState)}
@@ -293,6 +300,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       RelevantMethod
     }
   }
+
   def relevantMethodBody(m: MethodLoc, state: State): RelevanceRelation = {
     val fnSet: Set[String] = state.fieldNameSet()
     val mSet = state.traceMethodSet()
@@ -357,6 +365,13 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 
   def relevantMethod(loc: Loc, state: State): RelevanceRelation = loc match {
     case InternalMethodReturn(_, _, m) =>
+//      //TODO: ==== DBG code remove later
+//      val dbgExcluded = List(".*PlaybackController.*").mkString("|").r
+//      val mname = m.simpleName + ";" + m.classType
+//      if(dbgExcluded.matches(mname))
+//        return NotRelevantMethod
+//
+//      //TODO: ==== DBG code remove later
       val callees: Set[MethodLoc] = memoizedallCalls(m)
       val out = (callees + m).foldLeft(NotRelevantMethod:RelevanceRelation){(acc,c) =>
         val curRel = relevantMethodBody(c, state)
