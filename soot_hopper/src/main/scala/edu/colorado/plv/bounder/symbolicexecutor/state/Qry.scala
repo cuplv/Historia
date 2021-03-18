@@ -40,7 +40,6 @@ object Qry {
         case InvokeCmd(i,loc) if callinMatches.matches(i.targetMethod) =>
           throw new IllegalStateException("Callin return not assigned to variable.")
         case c =>
-          println(c)
           None
       }
     })
