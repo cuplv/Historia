@@ -319,6 +319,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
         relevantTrace(callee,state)
       }
       if(traceExists)
+        println(s"Trace relevant method: $m state: $state")
         return RelevantMethod
     }
     val heapRelevantCallees: ParIterable[MethodLoc] = allCalls.par.filter { callee =>
@@ -372,12 +373,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 //        return NotRelevantMethod
 //
 //      //TODO: ==== DBG code remove later
-      val callees: Set[MethodLoc] = memoizedallCalls(m)
-      val out = (callees + m).foldLeft(NotRelevantMethod:RelevanceRelation){(acc,c) =>
-        val curRel = relevantMethodBody(c, state)
-        acc.join(curRel)
-      }
-      out
+      relevantMethodBody(m,state)
     case CallinMethodReturn(_, _) => RelevantMethod
     case CallbackMethodReturn(clazz, name, rloc, Some(retLine)) => {
       val retVars =
@@ -437,7 +433,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       cmd match {
         case cmd if wrapper.isMethodEntry(cmd) =>
           val methodEntries = BounderUtil.resolveMethodEntryForAppLoc(resolver,l )
-          val out = methodEntries.filter(state.entryPossible(_))
+          val out = methodEntries.filter(state.entryPossible)
           out
         case _ => // normal control flow
           val pred = wrapper.commandPredecessors(cmd)
