@@ -940,8 +940,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
           new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
             FragmentGetActivityNullSpec.getActivityNonNull,
             RxJavaSpec.call,
-//            RxJavaSpec.subscribeDoesNotReturnNull,
-//            RxJavaSpec.subscribeIsUniqueAndNonNull
+            RxJavaSpec.subscribeDoesNotReturnNull,
+            RxJavaSpec.subscribeIsUniqueAndNonNull
           )), cha)
         val config = SymbolicExecutorConfig(
           stepLimit = Some(300), w, transfer,
