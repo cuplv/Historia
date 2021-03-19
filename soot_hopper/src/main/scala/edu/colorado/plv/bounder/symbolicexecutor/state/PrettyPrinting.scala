@@ -3,9 +3,11 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 import better.files.Dsl.SymbolicOperations
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.ir.{AppLoc, CmdWrapper, IRWrapper, Loc}
+import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Loc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn}
 import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, SymbolicExecutorConfig}
+import org.apache.log4j.{EnhancedPatternLayout, PatternLayout}
 
+import scala.annotation.tailrec
 import scala.io.Source
 
 class PrettyPrinting(mode : OutputMode = MemoryOutputMode$) {
@@ -53,7 +55,7 @@ class PrettyPrinting(mode : OutputMode = MemoryOutputMode$) {
       .replace("<","\\<")
       .replace("-","\\-")
       .replace("\"","\\\"").replace("|","\\|")
-  private def iDotNode(qrySet:Set[IPathNode],seen:Set[IPathNode],
+  private def iDotNode(qrySet:Set[PrintingPathNode],seen:Set[IPathNode],
                        procNodes:Set[String],procEdges:Set[String],
                        includeSubsEdges:Boolean):(Set[String],Set[String]) = {
     if(qrySet.isEmpty){
@@ -64,28 +66,58 @@ class PrettyPrinting(mode : OutputMode = MemoryOutputMode$) {
         case None => qrySet.tail
         case Some(v) => qrySet.tail + v
       }
-      val curString = sanitizeStringForDot(cur.qry.toString)
+      val curString = sanitizeStringForDot(cur.str)
 
       val init = if(cur.succ.isDefined) "" else "INITIAL: "
-      val subs = if(cur.subsumed.isDefined)"SUBSUMED: " else ""
-      val nextProcNodes = procNodes + s"""n${System.identityHashCode(cur)} [label="${init}${subs}${curString}"]"""
+      val subs = if(cur.pn.subsumed.isDefined)"SUBSUMED: " else ""
+      val nextProcNodes = procNodes + s"""n${System.identityHashCode(cur.pn)} [label="${init}${subs}${curString}"]"""
       // TODO: add subsumption edges
       // TODO: add subsumption labels
       val nextProcEdges = cur.succ match {
         case Some(v) =>
-          assert(!v.subsumed.isDefined)
-          procEdges + s"""n${System.identityHashCode(cur)} -> n${System.identityHashCode(v)}"""
+          assert(v.pn.subsumed.isEmpty)
+          procEdges + s"""n${System.identityHashCode(cur.pn)} -> n${System.identityHashCode(v.pn)}"""
         case None => procEdges
       }
       val subsumedEdges =
-        if (includeSubsEdges)cur.subsumed.map(v =>
-          s"\n    n${System.identityHashCode(v)}->n${System.identityHashCode(cur)}").getOrElse("") else ""
-      iDotNode(rest, seen + cur, nextProcNodes, nextProcEdges + subsumedEdges, includeSubsEdges)
+        if (includeSubsEdges)cur.pn.subsumed.map(v =>
+          s"\n    n${System.identityHashCode(v)}->n${System.identityHashCode(cur.pn)}").getOrElse("") else ""
+      iDotNode(rest, seen + cur.pn, nextProcNodes, nextProcEdges + subsumedEdges, includeSubsEdges)
     }
   }
-  def dotWitTree(qrySet : Set[IPathNode], outFile:String, includeSubsEdges:Boolean) = {
+  case class PrintingPathNode(pn:IPathNode,  skip: IPathNode => Boolean,
+                              prettyPrint:Qry => String = p => p.toString) {
+    def succ:Option[PrintingPathNode] = {
+      @tailrec
+      def nextNode(pn:IPathNode):Option[IPathNode] = {
+        pn.succ match{
+          case Some(nextP) if skip(nextP) => nextNode(nextP)
+          case v => v
+        }
+      }
+      nextNode(pn).map(PrintingPathNode(_,skip))
+    }
+    def str:String = prettyPrint(pn.qry)
+  }
+  def dotWitTree(qrySet : Set[IPathNode], outFile:String, includeSubsEdges:Boolean, skipCmd:Boolean = false) = {
     val pw = File(s"${outDir.get}/$outFile" )
-    val (nodes,edges) = iDotNode(qrySet,Set(),Set(),Set(), includeSubsEdges)
+    val skipf: IPathNode => Boolean = p =>
+      p.qry.loc match {
+        case AppLoc(method, line, isPre) =>
+          skipCmd
+        case CallinMethodReturn(fmwClazz, fmwName) => skipCmd
+        case CallinMethodInvoke(fmwClazz, fmwName) => skipCmd
+        case GroupedCallinMethodInvoke(targetClasses, fmwName) => skipCmd
+        case GroupedCallinMethodReturn(targetClasses, fmwName) => skipCmd
+        case CallbackMethodInvoke(fmwClazz, fmwName, loc) => false
+        case CallbackMethodReturn(fmwClazz, fmwName, loc, line) => false
+        case InternalMethodInvoke(clazz, name, loc) => skipCmd
+        case InternalMethodReturn(clazz, name, loc) => skipCmd
+        case SkippedInternalMethodInvoke(clazz, name, loc) => skipCmd
+        case SkippedInternalMethodReturn(clazz, name, rel, loc) => skipCmd
+      }
+    val printQry = qrySet.map(q => PrintingPathNode(q, skipf, p => p.toString))
+    val (nodes,edges) = iDotNode(printQry,Set(),Set(),Set(), includeSubsEdges)
     if(pw.exists()) pw.delete()
     pw.createFile()
     pw.write(

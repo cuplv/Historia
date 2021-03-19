@@ -867,6 +867,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
       val result = symbolicExecutor.executeBackward(query)
       prettyPrinting.dumpDebugInfo(result,"MkApk")
+      prettyPrinting.dotWitTree(result, "OldMotiv.dot",includeSubsEdges = true)
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Proven)
 
@@ -903,7 +904,15 @@ class SymbolicExecutorTest extends AnyFunSuite {
           |
           |public class MyFragment extends Fragment implements Action1<Object>{
           |    Subscription sub;
-          |
+          |    //TODO: add callback with irrelevant subscribe
+          |    //@Override
+          |    //public void onViewCreated(View view, Bundle savedInstanceState) {
+          |    //    Single.create(subscriber -> {
+          |    //        subscriber.onSuccess(4);
+          |    //    }).subscribe(r -> {
+          |    //        r.toString();
+          |    //    });
+          |    //}
           |    @Override
           |    public void onActivityCreated(Bundle savedInstanceState){
           |        sub = Single.create(subscriber -> {
@@ -931,8 +940,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
           new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
             FragmentGetActivityNullSpec.getActivityNonNull,
             RxJavaSpec.call,
-            RxJavaSpec.subscribeDoesNotReturnNull,
-            RxJavaSpec.subscribeIsUniqueAndNonNull
+//            RxJavaSpec.subscribeDoesNotReturnNull,
+//            RxJavaSpec.subscribeIsUniqueAndNonNull
           )), cha)
         val config = SymbolicExecutorConfig(
           stepLimit = Some(300), w, transfer,
@@ -947,9 +956,10 @@ class SymbolicExecutorTest extends AnyFunSuite {
         val result = symbolicExecutor.executeBackward(query)
         val fname = s"Motiv_$fileSuffix"
         prettyPrinting.dumpDebugInfo(result, fname)
-        prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true)
+        prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
         assert(result.nonEmpty)
-        assert(BounderUtil.interpretResult(result) == expectedResult)
+        val interpretedResult = BounderUtil.interpretResult(result)
+        assert(interpretedResult == expectedResult)
 
       }
 
