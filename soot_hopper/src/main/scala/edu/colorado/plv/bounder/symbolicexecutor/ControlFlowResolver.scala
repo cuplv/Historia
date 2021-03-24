@@ -148,23 +148,34 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     case VirtualInvoke(LocalWrapper(_, baseType), _, _, _) => Some(baseType)
   }
 
-  private def fieldCanPt(fr: FieldReference, state: State): Boolean = {
+  private def fieldCanPt(fr: FieldReference, state: State, tgt:Option[RVal]): Boolean = {
     val fname = fr.name
-    val localType = fr.base.localType
+    val baseLocalType = fr.base.localType
     state.heapConstraints.exists {
-      case (FieldPtEdge(p, otherFieldName), _) if fname == otherFieldName =>
-        val posLocalTypes = cha.getSubtypesOf(localType)
-        posLocalTypes.exists { lt =>
+      case (FieldPtEdge(p, otherFieldName), matTgt) if fname == otherFieldName =>
+        val posLocalTypes = cha.getSubtypesOf(baseLocalType)
+        val existsBaseType = posLocalTypes.exists { lt =>
           state.typeConstraints.get(p).forall(_.subtypeOfCanAlias(lt,cha))
         }
+        if(existsBaseType){
+          (tgt,matTgt) match{
+            case (Some(LocalWrapper(_,tgtLocalType)),mt:PureVar) =>
+              // Check if local that is assigned to or from can possibly alias materialized heap cell
+              val possibleTgtTypes = cha.getSubtypesOf(tgtLocalType)
+              val res = state.typeConstraints.get(mt)
+                .map(ts => ts.typeSet(cha).exists(v =>possibleTgtTypes.contains(v)))
+              res.getOrElse(true)
+            case _ => true
+          }
+        }else false
       case _ => false
     }
   }
 
   def relevantHeap(m: MethodLoc, state: State): Boolean = {
     def canModifyHeap(c: CmdWrapper): Boolean = c match {
-      case AssignCmd(fr: FieldReference, _, _) => fieldCanPt(fr, state)
-      case AssignCmd(_, fr: FieldReference, _) => fieldCanPt(fr, state)
+      case AssignCmd(fr: FieldReference, tgt, _) => fieldCanPt(fr, state,Some(tgt))
+      case AssignCmd(src, fr: FieldReference, _) => fieldCanPt(fr, state,Some(src))
       case AssignCmd(StaticFieldReference(clazz, name, _), _, _) =>
         val out = state.heapConstraints.contains(StaticPtEdge(clazz, name))
         out //&& !manuallyExcludedStaticField(name) //TODO: remove dbg code
@@ -238,7 +249,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
         state.findIFromCurrent(cdir, (call.fmwClazz, call.fmwName))
       }
     }
-    //TODO: check if method call can alias all params =====
+    //Check if method call can alias all params
 
     def matchesType(pair: (LSParamConstraint, Option[RVal])):Boolean = pair match{
       case (_,None) => true
@@ -246,7 +257,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       case (LSPure(lsV:PureVar), Some(LocalWrapper(_, localType))) =>
         state.typeConstraints.get(lsV).forall{ts =>
           val res = ts.constrainSubtypeOf(localType, cha)
-          !res.isEmpty(cha) //TODO: bug here ==============
+          !res.isEmpty(cha)
         }
       case (LSModelVar(s,t), Some(LocalWrapper(name,localType))) =>
         true //TODO: could make more precise by matching receivers and arg types
@@ -357,12 +368,12 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   def relevantMethodBody(m: MethodLoc, state: State): RelevanceRelation = {
     val fnSet: Set[String] = state.fieldNameSet()
     val mSet = state.traceMethodSet()
-    if (resolver.isFrameworkClass(m.classType))
+    if (resolver.isFrameworkClass(m.classType)) {
       return NotRelevantMethod // body can only be relevant to app heap or trace if method is in the app
+    }
 
     val allCalls = memoizedallCalls(m) + m
-    //TODO: add par back here
-    val traceRelevantCallees = allCalls.filter{ m =>
+    val traceRelevantCallees = allCalls.par.filter{ m =>
       mSet.exists{ci =>
         val cin = callinNames(m)
         cin.contains(ci)
@@ -372,12 +383,13 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       val traceExists = traceRelevantCallees.exists{callee =>
         relevantTrace(callee,state)
       }
-      if(traceExists)
+      if(traceExists) {
         println(s"Trace relevant method: $m state: $state")
         return RelevantMethod
+      }
     }
     //TODO: add par back here
-    val heapRelevantCallees = allCalls.filter { callee =>
+    val heapRelevantCallees = allCalls.par.filter { callee =>
       val hn: Set[String] = heapNamesModified(callee)
       fnSet.exists { fn =>
         hn.contains(fn)
@@ -385,6 +397,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     }
     val heapExists= heapRelevantCallees.exists{ callee => relevantHeap(callee,state)}
     if(heapExists) {
+      println(s"Heap relevant method: $m state: $state")
       // Method may modify a heap cell in the current state
       // We may decide to drop heap cells and skip the method to scale
       shouldDropMethod(state, fnSet, heapRelevantCallees.seq)
@@ -421,13 +434,6 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 
   def relevantMethod(loc: Loc, state: State): RelevanceRelation = loc match {
     case InternalMethodReturn(_, _, m) =>
-//      //TODO: ==== DBG code remove later
-//      val dbgExcluded = List(".*PlaybackController.*").mkString("|").r
-//      val mname = m.simpleName + ";" + m.classType
-//      if(dbgExcluded.matches(mname))
-//        return NotRelevantMethod
-//
-//      //TODO: ==== DBG code remove later
       relevantMethodBody(m,state)
     case CallinMethodReturn(_, _) => RelevantMethod
     case CallbackMethodReturn(clazz, name, rloc, Some(retLine)) => {
@@ -439,7 +445,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
               case _ => None
             }
           } else List(None)
-      val iExists = retVars.exists { retVar =>
+      val iExists = retVars.exists { retVar => //TODO: ==== check types to rule out aliasing of CBEnter/Exit
         val locs: List[Option[RVal]] = retVar :: rloc.getArgs
         val res = existsIAlias(locs, CBExit, (clazz, name), state) ||
           existsIAlias(None :: locs.tail, CBEnter, (clazz, name), state)

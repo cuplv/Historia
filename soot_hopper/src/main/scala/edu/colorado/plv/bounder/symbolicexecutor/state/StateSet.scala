@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SpecialInvoke, StaticInvoke, VirtualInvoke}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, If, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SpecialInvoke, StaticInvoke, SwitchCmd, ThrowCmd, VirtualInvoke}
 
 sealed trait StateRefinementEdge {
   def contains(other: StateRefinementEdge): Boolean
@@ -118,6 +118,13 @@ object SwapLoc {
     case _: CallbackMethodReturn => None
     case AppLoc(_,_,false) => None
     case a@AppLoc(_,_,true) if w.isLoopHead(a) => Some(CodeLocation(a))
+    case a@AppLoc(method, line, true) => {
+      val cmd = w.cmdAtLocation(a)
+      cmd match {
+        case InvokeCmd(method, loc) =>Some(CodeLocation(a))
+        case _ => None
+      }
+    }
     case _: CallinMethodInvoke => None // message locations don't remember program counter so subsumption is unsound
     case _: CallinMethodReturn => None
     case _: GroupedCallinMethodInvoke => None

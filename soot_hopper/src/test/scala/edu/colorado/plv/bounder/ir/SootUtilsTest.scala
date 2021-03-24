@@ -16,7 +16,7 @@ class SootUtilsTest extends AnyFunSuite {
   assert(test_interproc_1 != null)
   BounderSetupApplication.loadApk(test_interproc_1, FlowdroidCallGraph)
 
-  test("findMethodLoc should find a location based on a classname and line number."){
+  ignore("findMethodLoc should find a location based on a classname and line number."){
     val res = SootUtils.findMethodLoc(
       "com.example.test_interproc_1.MainActivity", "java.lang.String objectString()")
     assert(res.isDefined)
@@ -31,7 +31,7 @@ class SootUtilsTest extends AnyFunSuite {
     assert(!res2.isDefined)
   }
 
-  test("findLineInMethod should find a UnitLoc"){
+  ignore("findLineInMethod should find a UnitLoc"){
     val res = SootUtils.findMethodLoc(
       "com.example.test_interproc_1.MainActivity", "java.lang.String objectString()")
 

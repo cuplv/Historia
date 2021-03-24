@@ -364,9 +364,9 @@ class SymbolicExecutorTest extends AnyFunSuite {
       makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
     }
   }
-  test("Test dynamic dispatch2") { //TODO: ====== un-ignore
+  test("Test dynamic dispatch2") {
     List(
-      (".*query2.*".r,Witnessed), //TODO:==================== uncomment
+      (".*query2.*".r,Witnessed),
       (".*query1.*".r, Proven)
     ).map { case (queryL, expectedResult) =>
       val src =
@@ -382,7 +382,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
            |
            |
            |public class MyActivity extends AppCompatActivity {
-           |    Object o = null;
+           |    String o = null;
            |    Subscription subscription;
            |    Runnable r = null;
            |    Runnable r2 = null;
@@ -400,7 +400,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
            |        r = new Runnable(){
            |          @Override
            |          public void run(){
-           |            o = new Object();
+           |            o = new String();
            |          }
            |        };
            |    }
@@ -976,20 +976,20 @@ class SymbolicExecutorTest extends AnyFunSuite {
         assert(result.nonEmpty)
         val interpretedResult = BounderUtil.interpretResult(result)
         assert(interpretedResult == expectedResult)
-//        val onViewCreatedInTree: Set[List[IPathNode]] = result.flatMap{node =>
-//            findInWitnessTree(node, (p: IPathNode) =>
-//              p.qry.loc.msgSig.exists(m => m.contains("onViewCreated(")))
-//        }
-//        if(onViewCreatedInTree.nonEmpty) {
-//          println("--- witness ---")
-//          onViewCreatedInTree.head.foreach{v =>
-//            println(v.qry.loc)
-//            println(v.qry.state)
-//            println()
-//          }
-//          println("--- end witness ---")
-//        }
-//        assert(onViewCreatedInTree.isEmpty)
+        val onViewCreatedInTree: Set[List[IPathNode]] = result.flatMap{node =>
+            findInWitnessTree(node, (p: IPathNode) =>
+              p.qry.loc.msgSig.exists(m => m.contains("onViewCreated(")))
+        }
+        if(onViewCreatedInTree.nonEmpty) {
+          println("--- witness ---")
+          onViewCreatedInTree.head.foreach{v =>
+            println(v.qry.loc)
+            println(v.qry.state)
+            println()
+          }
+          println("--- end witness ---")
+        }
+        assert(onViewCreatedInTree.isEmpty)
       }
 
       makeApkWithSources(Map("MyFragment.java" -> src), MkApk.RXBase, test)
