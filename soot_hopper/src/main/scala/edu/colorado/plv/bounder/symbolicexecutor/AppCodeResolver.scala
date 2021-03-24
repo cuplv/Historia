@@ -69,7 +69,11 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
 //      methodLocs.map(loc => InternalMethodReturn(clazz, method, _))
 //  }
 
+  private val CLINIT = "void <clinit>()"
   override def resolveCallbackExit(method: MethodLoc, retCmdLoc: Option[LineLoc]): Option[Loc] = {
+    if(method.simpleName == CLINIT){
+      return Some(CallbackMethodReturn("java.lang.Object", CLINIT,method, retCmdLoc))
+    }
     val overrides = ir.getOverrideChain(method)
     if(overrides.size == 1 && overrides.last.classType == "java.lang.Object" && overrides.last.simpleName == "<init>"){
       // Object init is not considered a callback

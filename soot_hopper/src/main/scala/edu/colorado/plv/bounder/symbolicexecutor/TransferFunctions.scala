@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.ir.{NullConst, _}
 import edu.colorado.plv.bounder.lifestate.LifeState._
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.TransferFunctions.{relevantAliases, relevantAliases2}
+import edu.colorado.plv.bounder.symbolicexecutor.TransferFunctions.{inVarsForCall, relevantAliases, relevantAliases2}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import upickle.default._
 
@@ -43,6 +43,25 @@ object TransferFunctions{
       if(existsNAtInd) rval else None
     }
   }
+  private def inVarsForCall(i:Invoke):List[Option[RVal]] = i match{
+    case i@VirtualInvoke(tgt, _, _, _) =>
+      Some(tgt) :: i.params.map(Some(_))
+    case i@SpecialInvoke(tgt, _, _, _) =>
+      Some(tgt) :: i.params.map(Some(_))
+    case i@StaticInvoke(_, _, _) =>
+      None :: i.params.map(Some(_))
+  }
+  def inVarsForCall[M,C](source: AppLoc, w:IRWrapper[M,C]):List[Option[RVal]] = {
+    w.cmdAtLocation(source) match {
+      case AssignCmd(local : LocalWrapper, i:Invoke, _) =>
+        Some(local) :: inVarsForCall(i)
+      case InvokeCmd(i: Invoke, _) =>
+        None :: inVarsForCall(i)
+      case v =>
+        //Note: jimple should restrict so that assign only occurs to locals from invoke
+        throw new IllegalStateException(s"$v is not a call to a method")
+    }
+  }
 }
 
 class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
@@ -67,7 +86,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     case (source@AppLoc(_, _, false), cmret@CallinMethodReturn(_, _)) =>
       // traverse back over the retun of a callin
       val (pkg, name) = msgCmdToMsg(cmret)
-      val inVars: List[Option[RVal]] = inVarsForCall(source)
+      val inVars: List[Option[RVal]] = inVarsForCall(source,w)
       val relAliases = relevantAliases2(postState, CIExit, (pkg,name),inVars)
       val frame = CallStackFrame(target, Some(source.copy(isPre = true)), Map())
       val (rvals, state0) = getOrDefineRVals(relAliases, postState)
@@ -93,7 +112,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       // traverse back over the retun of a callin
       //TODO: Deduplicate with code of CallinMethodReturn
       val (pkg, name) = msgCmdToMsg(cmret)
-      val inVars: List[Option[RVal]] = inVarsForCall(source)
+      val inVars: List[Option[RVal]] = inVarsForCall(source,w)
       val relAliases = relevantAliases2(postState, CIExit, (pkg,name),inVars)
       val frame = CallStackFrame(target, Some(source.copy(isPre = true)), Map())
       val (rvals, state0) = getOrDefineRVals(relAliases, postState)
@@ -116,7 +135,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       out
     case (cminv@GroupedCallinMethodInvoke(targets, _), tgt@AppLoc(_,_,true)) =>
       assert(postState.callStack.nonEmpty, "Bad control flow, abstract stack must be non-empty.")
-      val invars = inVarsForCall(tgt)
+      val invars = inVarsForCall(tgt,w)
       val (pkg,name) = msgCmdToMsg(cminv)
       val relAliases = relevantAliases2(postState, CIEnter, (pkg,name),invars)
       val ostates:Set[State] = {
@@ -146,7 +165,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       Set(postState)
     case (cminv@CallinMethodInvoke(invokeType, _), tgt@AppLoc(_, _, true)) =>
       assert(postState.callStack.nonEmpty, "Bad control flow, abstract stack must be non-empty.")
-      val invars = inVarsForCall(tgt)
+      val invars = inVarsForCall(tgt,w)
       val (pkg,name) = msgCmdToMsg(cminv)
       val relAliases = relevantAliases2(postState, CIEnter, (pkg,name),invars)
       val ostates:Set[State] = {
@@ -238,7 +257,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
 
       // Get values associated with arguments in state
       val frameArgVals: List[Option[PureExpr]] =
-        (0 until cmd.params.length).map(i => stateWithRecTypeCst.get(LocalWrapper(s"@parameter$i", "_"))).toList
+        cmd.params.indices.map(i => stateWithRecTypeCst.get(LocalWrapper(s"@parameter$i", "_"))).toList
 
       // Combine args and params into list of tuples
       val allArgs = receiverOption :: argOptions
@@ -345,26 +364,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     case t =>
       println(t)
       ???
-  }
-
-  private def inVarsForCall(i:Invoke):List[Option[RVal]] = i match{
-    case i@VirtualInvoke(tgt, _, _, _) =>
-      Some(tgt) :: i.params.map(Some(_))
-    case i@SpecialInvoke(tgt, _, _, _) =>
-      Some(tgt) :: i.params.map(Some(_))
-    case i@StaticInvoke(_, _, _) =>
-      None :: i.params.map(Some(_))
-  }
-  private def inVarsForCall(source: AppLoc):List[Option[RVal]] = {
-    w.cmdAtLocation(source) match {
-      case AssignCmd(local : LocalWrapper, i:Invoke, _) =>
-        Some(local) :: inVarsForCall(i)
-      case InvokeCmd(i: Invoke, _) =>
-        None :: inVarsForCall(i)
-      case v =>
-        println(v) //Note: jimple should restrict so that assign only occurs to locals from invoke
-        ???
-    }
   }
 
   /**

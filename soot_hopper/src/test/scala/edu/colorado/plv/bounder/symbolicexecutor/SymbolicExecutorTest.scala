@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SetInclusionTypeSolving}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, IPathNode, PrettyPrinting, Qry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, IPathNode, OutputMode, PrettyPrinting, Qry}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.AnyFunSuite
@@ -364,9 +364,9 @@ class SymbolicExecutorTest extends AnyFunSuite {
       makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
     }
   }
-  test("Test dynamic dispatch2") {
+  test("Test dynamic dispatch2") { //TODO: ====== un-ignore
     List(
-      (".*query2.*".r,Witnessed),
+      (".*query2.*".r,Witnessed), //TODO:==================== uncomment
       (".*query1.*".r, Proven)
     ).map { case (queryL, expectedResult) =>
       val src =
@@ -421,7 +421,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
           new SpecSpace(Set(ActivityLifecycle.init_first_callback)), cha)
         val config = SymbolicExecutorConfig(
-          stepLimit = Some(110), w, transfer,
+          stepLimit = Some(200), w, transfer,
           component = Some(List("com.example.createdestroy.MyActivity.*")),
 //          outputMode = DBOutputMode("/Users/shawnmeier/Desktop/bounder_debug_data/deref2.db")
         )
@@ -687,7 +687,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         )),cha)
       val config = SymbolicExecutorConfig(
         stepLimit = Some(200), w, transfer,
-        component = Some(List("com.example.createdestroy.MyActivity.*")),stateTypeSolving = SetInclusionTypeSolving)
+        component = Some(List("com.example.createdestroy.MyActivity.*")))
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void lambda$onCreate$1$MyActivity(java.lang.Object)",31)
@@ -859,6 +859,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val config = SymbolicExecutorConfig(
         stepLimit = Some(300), w, transfer,
         component = Some(List("com.example.createdestroy.MyFragment.*")))
+      implicit val om: OutputMode = config.outputMode
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
         "com.example.createdestroy.MyFragment",
@@ -875,6 +876,20 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     makeApkWithSources(Map("MyFragment.java"->src), MkApk.RXBase, test)
   }
+
+  def findInWitnessTree(node: IPathNode, nodeToFind: IPathNode => Boolean)
+                       (implicit om: OutputMode): Option[List[IPathNode]] = {
+    if(nodeToFind(node))
+      Some(List(node))
+    else{
+      node.succ match{
+        case Some(v) => findInWitnessTree(v, nodeToFind).map(v => node::v)
+        case None => None
+      }
+    }
+  }
+
+
   test("Minimal motivating example") {
     List(
       ("sub.unsubscribe();", Proven, "withUnsub"),
@@ -905,14 +920,14 @@ class SymbolicExecutorTest extends AnyFunSuite {
           |public class MyFragment extends Fragment implements Action1<Object>{
           |    Subscription sub;
           |    //TODO: add callback with irrelevant subscribe
-          |    //@Override
-          |    //public void onViewCreated(View view, Bundle savedInstanceState) {
-          |    //    Single.create(subscriber -> {
-          |    //        subscriber.onSuccess(4);
-          |    //    }).subscribe(r -> {
-          |    //        r.toString();
-          |    //    });
-          |    //}
+          |    @Override
+          |    public void onViewCreated(View view, Bundle savedInstanceState) {
+          |        Single.create(subscriber -> {
+          |            subscriber.onSuccess(4);
+          |        }).subscribe(r -> {
+          |            r.toString();
+          |        });
+          |    }
           |    @Override
           |    public void onActivityCreated(Bundle savedInstanceState){
           |        sub = Single.create(subscriber -> {
@@ -944,8 +959,9 @@ class SymbolicExecutorTest extends AnyFunSuite {
             RxJavaSpec.subscribeIsUniqueAndNonNull
           )), cha)
         val config = SymbolicExecutorConfig(
-          stepLimit = Some(300), w, transfer,
-          component = Some(List("com.example.createdestroy.MyFragment.*")))
+          stepLimit = Some(80), w, transfer,
+          component = Some(List("com.example.createdestroy.*MyFragment.*")))
+        implicit val om = config.outputMode
         val symbolicExecutor = config.getSymbolicExecutor
         val line = lineForRegex(".*query1.*".r, src)
         val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
@@ -960,7 +976,20 @@ class SymbolicExecutorTest extends AnyFunSuite {
         assert(result.nonEmpty)
         val interpretedResult = BounderUtil.interpretResult(result)
         assert(interpretedResult == expectedResult)
-
+//        val onViewCreatedInTree: Set[List[IPathNode]] = result.flatMap{node =>
+//            findInWitnessTree(node, (p: IPathNode) =>
+//              p.qry.loc.msgSig.exists(m => m.contains("onViewCreated(")))
+//        }
+//        if(onViewCreatedInTree.nonEmpty) {
+//          println("--- witness ---")
+//          onViewCreatedInTree.head.foreach{v =>
+//            println(v.qry.loc)
+//            println(v.qry.state)
+//            println()
+//          }
+//          println("--- end witness ---")
+//        }
+//        assert(onViewCreatedInTree.isEmpty)
       }
 
       makeApkWithSources(Map("MyFragment.java" -> src), MkApk.RXBase, test)

@@ -3,8 +3,9 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{Invoke, _}
 import edu.colorado.plv.bounder.lifestate.LifeState
+import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSAnyVal}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, FieldPtEdge, LSParamConstraint, LSPure, PureVar, State, StaticPtEdge}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, FieldPtEdge, LSAny, LSConstConstraint, LSModelVar, LSParamConstraint, LSPure, PureVar, State, StaticPtEdge}
 import scalaz.Memo
 import upickle.default.{macroRW, ReadWriter => RW}
 
@@ -63,7 +64,12 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   def callbackInComponent(loc: Loc): Boolean = loc match {
     case CallbackMethodReturn(_, _, methodLoc, _) =>
       val className = methodLoc.classType
-      componentR.forall(_.exists(r => r.matches(className)))
+      //componentR.forall(_.exists(r => r.matches(className)))
+      componentR match{
+        case Some(rList) =>
+          rList.exists(r => r.matches(className))
+        case None => true
+      }
     case _ => throw new IllegalStateException("callbackInComponent should only be called on callback returns")
   }
 
@@ -218,7 +224,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 
   def relevantTrace(m: MethodLoc, state: State): Boolean = {
     val calls: Set[CallinMethodReturn] = directCallsGraph(m).flatMap {
-      case v: CallinMethodReturn => Some(v)
+      case v: CallinMethodReturn =>
+        Some(v)
       case _: InternalMethodInvoke => None
       case _: InternalMethodReturn => None
       case v =>
@@ -226,13 +233,59 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
         ???
     }
     // Find any call that matches a spec in the abstract trace
-    // TODO: later this should be refined based on type information
-    calls.exists { call =>
-      Set(CIEnter, CIExit).exists{cdir =>
-        val relI = state.findIFromCurrent(cdir, (call.fmwClazz, call.fmwName))
-        relI.nonEmpty
-      } //&& !manuallyExcludedCallSite(m,call) // TODO manually excluded call sites
+    val relI: Set[(I, List[LSParamConstraint])] = calls.flatMap { call =>
+      Set(CIEnter, CIExit).flatMap{ cdir =>
+        state.findIFromCurrent(cdir, (call.fmwClazz, call.fmwName))
+      }
     }
+    //TODO: check if method call can alias all params =====
+
+    def matchesType(pair: (LSParamConstraint, Option[RVal])):Boolean = pair match{
+      case (_,None) => true
+      case (_:LSConstConstraint,_) => ???
+      case (LSPure(lsV:PureVar), Some(LocalWrapper(_, localType))) =>
+        state.typeConstraints.get(lsV).forall{ts =>
+          val res = ts.constrainSubtypeOf(localType, cha)
+          !res.isEmpty(cha) //TODO: bug here ==============
+        }
+      case (LSModelVar(s,t), Some(LocalWrapper(name,localType))) =>
+        true //TODO: could make more precise by matching receivers and arg types
+      case (LSAny, _) =>
+        true
+
+    }
+    def relIExistsForCmd(tgt: List[Option[RVal]],inv:Invoke):Boolean = {
+      val relIHere: Set[(I, List[LSParamConstraint])] = relI.filter{ i =>
+        i._1.signatures.contains((inv.targetClass, inv.targetMethod))
+      }
+      relIHere.exists(v => v match{
+        case (_,lsPar) =>
+          val zipped: List[(LSParamConstraint, Option[RVal])] = lsPar zip tgt
+          val res = zipped.forall(matchesType)
+          res
+      })
+    }
+
+    if (relI.nonEmpty) {
+      val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) => cmdAtLocationNopIfUnknown(v).mkPre)
+      BounderUtil.graphExists[CmdWrapper](start = returns,
+        next = n =>
+          wrapper.commandPredecessors(n).map((v: AppLoc) => cmdAtLocationNopIfUnknown(v).mkPre).toSet,
+        exists = {
+          case ReturnCmd(returnVar, loc) => false
+          case AssignCmd(target, invCmd: Invoke, loc) =>
+            relIExistsForCmd(TransferFunctions.inVarsForCall(loc,wrapper), invCmd)
+          case AssignCmd(target, source, loc) => false
+          case InvokeCmd(method:Invoke, loc) =>
+            relIExistsForCmd(TransferFunctions.inVarsForCall(loc,wrapper), method)
+          case If(b, trueLoc, loc) => false
+          case NopCmd(loc) => false
+          case SwitchCmd(key, targets, loc) => false
+          case ThrowCmd(loc) => false
+        }
+      )
+    } else
+      false
   }
 
   def iHeapNamesModified(m:MethodLoc):Set[String] = {
@@ -308,7 +361,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       return NotRelevantMethod // body can only be relevant to app heap or trace if method is in the app
 
     val allCalls = memoizedallCalls(m) + m
-    val traceRelevantCallees = allCalls.par.filter{ m =>
+    //TODO: add par back here
+    val traceRelevantCallees = allCalls.filter{ m =>
       mSet.exists{ci =>
         val cin = callinNames(m)
         cin.contains(ci)
@@ -322,7 +376,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
         println(s"Trace relevant method: $m state: $state")
         return RelevantMethod
     }
-    val heapRelevantCallees: ParIterable[MethodLoc] = allCalls.par.filter { callee =>
+    //TODO: add par back here
+    val heapRelevantCallees = allCalls.filter { callee =>
       val hn: Set[String] = heapNamesModified(callee)
       fnSet.exists { fn =>
         hn.contains(fn)
@@ -520,11 +575,12 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
         locCb.flatMap{case AppLoc(method,line,_) => resolver.resolveCallbackExit(method, Some(line))}
       }).toList
       val componentFiltered = res.filter(callbackInComponent)
-      componentFiltered.filter{m => relevantMethod(m,state) match{
+      val res2 = componentFiltered.filter{m => relevantMethod(m,state) match{
         case RelevantMethod => true
         case DropHeapCellsMethod(_) => true
         case NotRelevantMethod => false
       }}
+      res2
     case (CallbackMethodReturn(_,_, loc, Some(line)),_) =>
       AppLoc(loc, line, isPre = false)::Nil
     case (CallinMethodInvoke(fmwClazz, fmwName),Nil) =>

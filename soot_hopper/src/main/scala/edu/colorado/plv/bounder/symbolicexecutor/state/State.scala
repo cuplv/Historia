@@ -208,8 +208,9 @@ case class BoundedTypeSet(upper:Option[String], lower:Option[String], interfaces
     set match{
       case EmptyTypeSet => false
       case BoundedTypeSet(upperBound, lowerBound, iface) =>
-        val s2: TypeSet = this.optionalConstrainUpper(upperBound,ch).optionalConstrainLower(lowerBound,ch)
-        !iface.foldLeft(s2){case (acc,v) => acc.constrainSubtypeOf(v,ch)}.isEmpty(ch)
+        val thisTS = this.typeSet(ch)
+        val otherTS = set.typeSet(ch)
+        otherTS.forall(v => thisTS.contains(v))
       case DisjunctTypeSet(oneOf) => oneOf.forall(ts => this.contains(ts))
     }
 
@@ -220,13 +221,17 @@ case class BoundedTypeSet(upper:Option[String], lower:Option[String], interfaces
     }
   }
 
+  private var typeSetCache : Option[Set[String]] = None
   override def typeSet(ch: ClassHierarchyConstraints): Set[String] = {
-    val subtypes = (interfaces ++ upper).map(ch.getSubtypesOf)
-    val cSub = subtypes.reduce((acc,v) => acc.intersect(v))
-    lower match{
-      case Some(l) => cSub.intersect(ch.getSupertypesOf(l))
-      case None => cSub
+    if(typeSetCache.isEmpty) {
+      val subtypes = (interfaces ++ upper).map(ch.getSubtypesOf)
+      val cSub = subtypes.reduce((acc, v) => acc.intersect(v))
+      typeSetCache = Some(lower match {
+        case Some(l) => cSub.intersect(ch.getSupertypesOf(l))
+        case None => cSub
+      })
     }
+    typeSetCache.get
   }
 
   override def join(tc2: TypeSet, ch:ClassHierarchyConstraints): TypeSet = {
@@ -262,14 +267,15 @@ case class DisjunctTypeSet(oneOf: Set[TypeSet]) extends TypeSet{
     oneOf.headOption.map(_.toString() + " disj").getOrElse(":nonedisj")
   }
   private def filterOp(op: TypeSet => TypeSet):TypeSet = {
-    val outSet = oneOf.map(op).filter{
+    val outSet = oneOf.map(op).filter {
       case EmptyTypeSet => false
       case _ => true
     }
-    if(outSet.isEmpty)
+    if (outSet.isEmpty) {
       EmptyTypeSet
-    else
+    } else {
       DisjunctTypeSet(outSet)
+    }
   }
   override def constrainSubtypeOf(name: String, hierarchyConstraints: ClassHierarchyConstraints): TypeSet = {
     filterOp(ts => ts.constrainSubtypeOf(name,hierarchyConstraints))
@@ -283,8 +289,16 @@ case class DisjunctTypeSet(oneOf: Set[TypeSet]) extends TypeSet{
     filterOp(ts => ts.constrainIsType(name,hierarchyConstraints))
   }
 
-  override def isEmpty(hierarchyConstraints: ClassHierarchyConstraints): Boolean =
-    oneOf.exists(v => v.isEmpty(hierarchyConstraints))
+  private var empty: Option[Boolean]= None
+  override def isEmpty(hierarchyConstraints: ClassHierarchyConstraints): Boolean = {
+    if(empty.isDefined) {
+      empty.get
+    } else {
+      val res = oneOf.forall(v => v.isEmpty(hierarchyConstraints))
+      empty = Some(res)
+      res
+    }
+  }
 
   override def subtypeOfCanAlias(localType: String, ch: ClassHierarchyConstraints): Boolean =
     oneOf.exists(_.subtypeOfCanAlias(localType,ch))
@@ -293,12 +307,20 @@ case class DisjunctTypeSet(oneOf: Set[TypeSet]) extends TypeSet{
     case d:DisjunctTypeSet if this == d => true
     case DisjunctTypeSet(otherOneOf) =>
       //TODO: this is likely to be slow
-      otherOneOf.forall(other => oneOf.exists(thisD => thisD.contains(other)))
+      val thisTs = typeSet(ch)
+      val otherTs = set.typeSet(ch)
+      otherTs.forall(v => thisTs.contains(v))
+//      otherOneOf.forall(other => oneOf.exists(thisD => thisD.contains(other)))
     case _ => oneOf.exists(_.contains(set))
   }
 
-  override def typeSet(ch: ClassHierarchyConstraints): Set[String] =
-    oneOf.flatMap(_.typeSet(ch))
+  private var typeSetCache: Option[Set[String]] = None
+  override def typeSet(ch: ClassHierarchyConstraints): Set[String] = {
+    if(typeSetCache.isEmpty) {
+      typeSetCache = Some(oneOf.flatMap(_.typeSet(ch)))
+    }
+    typeSetCache.get
+  }
 
   override def join(tc2: TypeSet, ch:ClassHierarchyConstraints): TypeSet =
     this.copy(oneOf = oneOf.map(_.join(tc2,ch)))

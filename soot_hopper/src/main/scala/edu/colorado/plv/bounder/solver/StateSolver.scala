@@ -379,7 +379,7 @@ trait StateSolver[T, C <: SolverCtx] {
 
   def toAST(state: State, typeToSolverConst: Map[String, T],
             messageTranslator: MessageTranslator,
-            maxWitness: Option[Int] = None)(implicit zctx: C): T = {
+            maxWitness: Option[Int] = None, encode : StateTypeSolving)(implicit zctx: C): T = {
     val pure = state.pureFormula
     // typeFun is a function from addresses to concrete types in the program
     val typeFun = createTypeFun()
@@ -394,7 +394,7 @@ trait StateSolver[T, C <: SolverCtx] {
       mkAnd(acc, toAST(v))
     )
 
-    val typeConstraints = if (encodeTypeConsteraints == SolverTypeSolving) {
+    val typeConstraints = if (encode == SolverTypeSolving) {
       //      // Encode type constraints in Z3
       val typeConstraints = state.typeConstraints.map { case (k, v) => k -> v.typeSet(ch) }
       //      val typeConstraints = persist.pureVarTypeMap(state)
@@ -543,13 +543,17 @@ trait StateSolver[T, C <: SolverCtx] {
       push()
       val messageTranslator = MessageTranslator(List(state2))
 
-      //TODO: below should only be if z3 state solver is selected for types ======
-//      val usedTypes = pvMap2.flatMap { case (_, tc) => tc.typeSet(ch) }.toSet
-
-//      val (typesAreUniqe, typeMap) = mkTypeConstraints(usedTypes)
-      val typesAreUniqe= mkBoolVal(true)
-      val typeMap = Map[String,T]()
-      val ast = mkAnd(typesAreUniqe, toAST(state2, typeMap, messageTranslator, maxWitness))
+      // Only encode types in Z3 for subsumption check due to slow-ness
+      val encode = SetInclusionTypeSolving
+      val (typesAreUniqe, typeMap) =if(encode == SolverTypeSolving) {
+        val usedTypes = pvMap2.flatMap { case (_, tc) => tc.typeSet(ch) }.toSet
+        mkTypeConstraints(usedTypes)
+      }else {
+        val typesAreUniqe = mkBoolVal(true)
+        val typeMap = Map[String, T]()
+        (typesAreUniqe,typeMap)
+      }
+      val ast = mkAnd(typesAreUniqe, toAST(state2, typeMap, messageTranslator, maxWitness, encode))
 
       if (maxWitness.isDefined) {
         println(s"State ${System.identityHashCode(state2)} encoding: ")
@@ -699,7 +703,7 @@ trait StateSolver[T, C <: SolverCtx] {
       val s2Swapped = perm.foldLeft(s2LocalSwapped) {
         case (s, (newPv, oldPv)) => s.swapPv(oldPv, newPv)
       }
-      val out1 = canSubsumeFast(s1, s2Swapped, maxLen)
+      val out1 = canSubsumeNoCombinations(s1, s2Swapped, maxLen)
       out1
     }
     val elapsedTime = System.currentTimeMillis() - startTime
@@ -801,12 +805,13 @@ trait StateSolver[T, C <: SolverCtx] {
 
   /**
    * Check if formula s2 is entirely contained within s1.  Used to determine if subsumption is sound.
+   * Does not consider re-ordering of pure variables
    *
    * @param s1 subsuming state
    * @param s2 contained state
    * @return false if there exists a trace in s2 that is not in s1 otherwise true
    */
-  def canSubsumeFast(s1: State, s2: State, maxLen: Option[Int] = None): Boolean = {
+  def canSubsumeNoCombinations(s1: State, s2: State, maxLen: Option[Int] = None): Boolean = {
     implicit val zctx = getSolverCtx
 
     // Currently, the stack is strictly the app call string
