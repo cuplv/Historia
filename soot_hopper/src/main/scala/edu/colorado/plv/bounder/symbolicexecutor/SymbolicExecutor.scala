@@ -126,7 +126,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
         println("Framework location query")
         println(s"    State: ${current.qry.state}")
         println(s"    Loc  : ${current.qry.loc}")
-        println(s"    Subsumed:${current.subsumed}")
+//        println(s"    Subsumed:${current.subsumed}")
         println(s"    depth: ${current.depth}")
         println(s"    size of worklist: ${qrySet.size}")
       case _ =>
@@ -171,7 +171,6 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   def executeStep(qry:Qry):Set[Qry] = qry match{
     case SomeQry(state, loc) =>
       val predecessorLocations = controlFlowResolver.resolvePredicessors(loc,state)
-      //TODO: combine all callin locs that behave the same in the control flow resolver
       predecessorLocations.par.flatMap(l => {
         val newStates = transfer.transfer(state,l,loc)
         newStates.map(state => stateSolver.simplify(state) match {

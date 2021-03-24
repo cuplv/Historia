@@ -19,7 +19,9 @@ case class RunConfig(mode:RunMode = Default,
                      outFolder:Option[String] = None,
                      componentFilter:Option[Seq[String]] = None,
                      baseDir:Option[String] = None,
-                     baseDirOut: Option[String] = None
+                     baseDirOut: Option[String] = None,
+                     specSet: SpecSetOption = TopSpecSet,
+                     stepLimit:Int = 100
                     ){
   val baseDirVar = "${baseDir}"
   val outDirVar = "${baseDirOut}"
@@ -121,7 +123,7 @@ object Driver {
       )
     }
     OParser.parse(parser, args, RunConfig()) match {
-      case Some(cfg@RunConfig(Verify, _, _, componentFilter, _, _)) =>
+      case Some(cfg@RunConfig(Verify, _, _, componentFilter, _, _, specSet,stepLimit)) =>
         val cfgw = write(cfg)
         val apkPath = cfg.getApkPath
         val outFolder = cfg.getOutFolder
@@ -137,7 +139,7 @@ object Driver {
           }
           case None => MemoryOutputMode$
         }
-        val res = runAnalysis(apkPath, componentFilter,pathMode)
+        val res = runAnalysis(apkPath, componentFilter,pathMode, specSet.getSpecSet(),stepLimit)
         val interpretedRes = BounderUtil.interpretResult(res)
         println(interpretedRes)
         outFolder.foreach { outF =>
@@ -151,26 +153,19 @@ object Driver {
     }
   }
 
-  def runAnalysis(apkPath: String, componentFilter:Option[Seq[String]], mode:OutputMode): Set[IPathNode] = {
+  def runAnalysis(apkPath: String, componentFilter:Option[Seq[String]], mode:OutputMode,
+                  specSet: Set[LSSpec], stepLimit:Int): Set[IPathNode] = {
     val startTime = System.currentTimeMillis()
     try {
       //TODO: read location from json config
-      //TODO: read spec from json config
       val callGraph = CHACallGraph
 //      val callGraph = FlowdroidCallGraph // flowdroid call graph immediately fails with "unreachable"
       val w = new JimpleFlowdroidWrapper(apkPath, callGraph)
-      //TODO: un-hard code spec
-      val specSet = Set(FragmentGetActivityNullSpec.getActivityNull,
-        FragmentGetActivityNullSpec.getActivityNonNull,
-        RxJavaSpec.call,
-        RxJavaSpec.subscribeDoesNotReturnNull,
-        RxJavaSpec.subscribeIsUniqueAndNonNull
-      )
       val transfer = (cha: ClassHierarchyConstraints) =>
         new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(specSet), cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(400), w, transfer, component = componentFilter, outputMode = mode)
-      val symbolicExecutor = config.getSymbolicExecutor
+        stepLimit = Some(stepLimit), w, transfer, component = componentFilter, outputMode = mode)
+      val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
       val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
         "de.danoeh.antennapod.fragment.ExternalPlayerFragment",
         "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)", 200,
@@ -180,4 +175,43 @@ object Driver {
       println(s"analysis time: ${(System.currentTimeMillis() - startTime) / 1000} seconds")
     }
   }
+
 }
+
+trait SpecSetOption{
+  def getSpecSet():Set[LSSpec]
+}
+object SpecSetOption{
+  val testSpecSet: Map[String,Set[LSSpec]] = Map(
+    "AntennaPod" -> Set(FragmentGetActivityNullSpec.getActivityNull,
+    FragmentGetActivityNullSpec.getActivityNonNull,
+    RxJavaSpec.call,
+    RxJavaSpec.subscribeDoesNotReturnNull,
+    RxJavaSpec.subscribeIsUniqueAndNonNull
+  ))
+  implicit val rw:RW[SpecSetOption] = upickle.default.readwriter[String].bimap[SpecSetOption](
+    {
+      case SpecFile(fname) => s"file:$fname"
+      case TestSpec(name) => s"testSpec:$name"
+      case TopSpecSet => s"top"
+    },
+    str => str.split(":").toList match{
+      case "file"::fname::Nil => SpecFile(fname)
+      case "testSpec"::name::Nil => TestSpec(name)
+      case "top"::Nil => TopSpecSet
+    }
+  )
+}
+case class SpecFile(fname:String) extends SpecSetOption {
+  //TODO: write parser for spec set
+  override def getSpecSet(): Set[LSSpec] = ???
+}
+
+case class TestSpec(name:String) extends SpecSetOption {
+  override def getSpecSet(): Set[LSSpec] = SpecSetOption.testSpecSet(name)
+}
+
+case object TopSpecSet extends SpecSetOption {
+  override def getSpecSet(): Set[LSSpec] = Set()
+}
+

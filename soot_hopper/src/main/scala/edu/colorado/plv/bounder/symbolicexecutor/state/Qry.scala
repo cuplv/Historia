@@ -97,6 +97,19 @@ object Qry {
 
 
 }
+sealed trait InitialQuery{
+  def make[M,C](sym:SymbolicExecutor[M,C], w:IRWrapper[M,C]):Qry
+}
+case class Reachable(className:String, methodName:String, line:Integer) extends InitialQuery {
+  override def make[M, C](sym: SymbolicExecutor[M, C], w: IRWrapper[M, C]): Qry = ???
+}
+case class ReceiverNonNull(className:String, methodName:String, line:Integer) extends InitialQuery {
+  override def make[M, C](sym: SymbolicExecutor[M, C], w: IRWrapper[M, C]): Qry = ???
+}
+case class CallinReturnNull(className:String, methodName:String, line:Integer, callinRegex:String) extends InitialQuery{
+  override def make[M, C](sym: SymbolicExecutor[M, C], w: IRWrapper[M, C]): Qry =
+    Qry.makeCallinReturnNull(sym,w, )
+}
 
 sealed trait Qry {
   def loc: Loc

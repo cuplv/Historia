@@ -384,11 +384,10 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
         relevantTrace(callee,state)
       }
       if(traceExists) {
-        println(s"Trace relevant method: $m state: $state")
+//        println(s"Trace relevant method: $m state: $state")
         return RelevantMethod
       }
     }
-    //TODO: add par back here
     val heapRelevantCallees = allCalls.par.filter { callee =>
       val hn: Set[String] = heapNamesModified(callee)
       fnSet.exists { fn =>
@@ -397,7 +396,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     }
     val heapExists= heapRelevantCallees.exists{ callee => relevantHeap(callee,state)}
     if(heapExists) {
-      println(s"Heap relevant method: $m state: $state")
+//      println(s"Heap relevant method: $m state: $state")
       // Method may modify a heap cell in the current state
       // We may decide to drop heap cells and skip the method to scale
       shouldDropMethod(state, fnSet, heapRelevantCallees.seq)
