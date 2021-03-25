@@ -1,5 +1,7 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
+import java.util.NoSuchElementException
+
 import better.files.{File, Resource}
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodReturn, CmdWrapper, FieldReference, IRWrapper, InternalMethodReturn, Invoke, InvokeCmd, JimpleFlowdroidWrapper, JimpleMethodLoc, LineLoc, Loc, MethodLoc, SpecialInvoke, StaticInvoke, UnresolvedMethodTarget, VirtualInvoke}
@@ -18,16 +20,27 @@ trait AppCodeResolver {
   def getCallbacks: Set[MethodLoc]
 }
 object FrameworkExtensions{
-  private val url = Resource.getUrl("FrameworkExtensions.txt")
-  protected val frameworkExtPath = url.getPath
-  val extensionStrings: List[String] = {
-    val source = Source.fromFile(frameworkExtPath)
+  private val urlPos = List("FrameworkExtensions.txt",
+    "/Resources/FrameworkExtensions.txt",
+    "Resources/FrameworkExtensions.txt")
+  private val frameworkExtPaths: Seq[String] = urlPos.flatMap{ p =>
     try {
-      source.getLines.toList
-    }finally{
-      source.close
+      Some(Resource.getUrl(p).getPath)
+    }catch {
+      case _:Throwable=>
+        None
     }
   }
+  val extensionStrings: List[String] = urlPos.flatMap{ (frameworkExtPath:String) =>
+//    val source = Source.fromFile(frameworkExtPath)
+    try {
+      val source = Resource.getAsString(frameworkExtPath)
+      Some(source.split("\n").toList)
+    }catch{
+      case _:Throwable => None
+    }
+  }.head
+
   val extensionRegex: Regex = extensionStrings.mkString("|").r
 }
 

@@ -62,3 +62,8 @@ assemblyMergeStrategy in assembly := {
   case PathList("META-INF", xs @ _*) => MergeStrategy.discard
   case x => MergeStrategy.first
 }
+
+mainClass in assembly := Some("edu.colorado.plv.bounder.Driver")
+//unmanagedResources in Compile := Seq() //we don't want to add resources from "src/main/resources" to inner jar
+
+//mappings in assembly += (file("src/main/resources/filename.json"),"path/to/resource/in/onejar")
