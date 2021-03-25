@@ -135,7 +135,7 @@ class PrettyPrinting(mode : OutputMode = MemoryOutputMode$) {
     val containingMethod = loc.containingMethod
     val w = resolver.getWrapper
     val rets: Set[CmdWrapper] = w.makeMethodRetuns(containingMethod.get).toSet
-      .map((v: AppLoc) => resolver.cmdAtLocationNopIfUnknown(v).mkPre)
+      .map((v: AppLoc) => BounderUtil.cmdAtLocationNopIfUnknown(v,w).mkPre)
     val outf = File(outDir.get) / outFile
     if(outf.exists()) outf.delete()
     case class NodesAndEdges(nodes: Map[CmdWrapper,Int], ind:Int, edges:Set[(Int,Int)] = Set()){

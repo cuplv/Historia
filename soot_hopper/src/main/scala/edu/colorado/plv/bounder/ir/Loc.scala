@@ -65,7 +65,9 @@ object MethodLoc {
   )
 }
 
-trait LineLoc
+trait LineLoc{
+  def lineNumber:Int
+}
 object LineLoc{
   implicit val rw:RW[LineLoc] = upickle.default.readwriter[ujson.Value].bimap[LineLoc](
     x =>

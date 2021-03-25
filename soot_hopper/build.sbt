@@ -53,3 +53,12 @@ javaOptions += "-Xmx15G"
 //lazy val configTest = settingKey[String]("example")
 
 //configTest := baseDirectory.value.toString()
+
+// ignore unit tests when assembling fat jar
+test in assembly := {}
+
+// ignore duplicate slf4j during assembly of fat jar
+assemblyMergeStrategy in assembly := {
+  case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+  case x => MergeStrategy.first
+}

@@ -2,17 +2,18 @@ package edu.colorado.plv.bounder
 
 import better.files.File
 import edu.colorado.plv.bounder.Driver.{Default, RunMode}
-import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
+import edu.colorado.plv.bounder.ir.{JimpleFlowdroidWrapper, LineLoc}
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NI}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, RxJavaSpec, SpecSignatures, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, FlowdroidCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{DBOutputMode, IPathNode, MemoryOutputMode$, OutputMode, PathNode, PrettyPrinting, Qry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{DBOutputMode, IPathNode, InitialQuery, MemoryOutputMode$, OutputMode, PathNode, PrettyPrinting, Qry, ReceiverNonNull}
 import scopt.OParser
 import soot.SootMethod
 import upickle.core.AbortException
 import upickle.default.{macroRW, read, write, ReadWriter => RW}
 import OptionPickler._
+import soot.coffi.CFG
 
 case class RunConfig(mode:RunMode = Default,
                      apkPath:String = "",
@@ -21,7 +22,9 @@ case class RunConfig(mode:RunMode = Default,
                      baseDir:Option[String] = None,
                      baseDirOut: Option[String] = None,
                      specSet: SpecSetOption = TopSpecSet,
-                     stepLimit:Int = 100
+                     initialQuery: Option[InitialQuery] = None,
+                     limit:Int = 100,
+                     samples:Int = 5
                     ){
   val baseDirVar = "${baseDir}"
   val outDirVar = "${baseDirOut}"
@@ -78,6 +81,7 @@ object Driver {
   case object Verify extends RunMode
   case object Info extends RunMode
   case object Default extends RunMode
+  case object SampleDeref extends RunMode
 
   def main(args: Array[String]): Unit = {
     val builder = OParser.builder[RunConfig]
@@ -85,9 +89,10 @@ object Driver {
       import builder._
       OParser.sequence(
         programName("Bounder"),
-        opt[String]('m',"mode").optional().text("run mode [dottree, ...]").action{
+        opt[String]('m',"mode").optional().text("run mode [verify, info, sampleDeref]").action{
           case ("verify",c) => c.copy(mode = Verify)
           case ("info",c) => c.copy(mode = Info)
+          case ("sampleDeref",c) => c.copy(mode = SampleDeref)
           case (m,_) => throw new IllegalArgumentException(s"Unsupported mode $m")
         },
         opt[String]('a', "apkFile").optional().text("Compiled Android application").action{
@@ -119,14 +124,21 @@ object Driver {
         opt[String]('b', "baseDir").optional().text("Substitute for ${baseDir} in config file")
           .action((v,c) => c.copy(baseDir = Some(v))),
         opt[String]('u', "baseDirOut").optional().text("Substitute for ${baseDirOut} in config file")
-          .action((v,c) => c.copy(baseDirOut = Some(v)))
+          .action((v,c) => c.copy(baseDirOut = Some(v))),
+        opt[Int]('l', name="limit").optional().text("Step limit for verify")
+          .action((v,c) => c.copy(limit = v)) ,
+        opt[Int]('s', name="samples").optional().text("Number of samples")
+          .action((v,c) => c.copy(limit = v))
       )
     }
     OParser.parse(parser, args, RunConfig()) match {
-      case Some(cfg@RunConfig(Verify, _, _, componentFilter, _, _, specSet,stepLimit)) =>
+      case Some(cfg@RunConfig(Verify, _, _, componentFilter, _, _, specSet,_,_,_)) =>
         val cfgw = write(cfg)
         val apkPath = cfg.getApkPath
         val outFolder = cfg.getOutFolder
+        val initialQuery = cfg.initialQuery
+          .getOrElse(throw new IllegalArgumentException("Initial query must be defined for verify"))
+        val stepLimit = cfg.limit
 
         val pathMode:OutputMode = outFolder match{
           case Some(outF) =>{
@@ -139,7 +151,7 @@ object Driver {
           }
           case None => MemoryOutputMode$
         }
-        val res = runAnalysis(apkPath, componentFilter,pathMode, specSet.getSpecSet(),stepLimit)
+        val res = runAnalysis(apkPath, componentFilter,pathMode, specSet.getSpecSet(),stepLimit, initialQuery)
         val interpretedRes = BounderUtil.interpretResult(res)
         println(interpretedRes)
         outFolder.foreach { outF =>
@@ -149,12 +161,59 @@ object Driver {
           val resFile = File(outF) / "result.txt"
           resFile.overwrite(interpretedRes.toString)
         }
+      case Some(cfg@RunConfig(SampleDeref, _, _, _, _, _, _,_,_,_)) =>
+        val apkPath: String = cfg.getApkPath
+        val outFolder: String = cfg.outFolder
+          .getOrElse(throw new IllegalArgumentException("Out folder must be defined for sampling"))
+        val samples = cfg.samples
+        sampleDeref(samples,apkPath, outFolder, cfg)
       case v => throw new IllegalArgumentException(s"Argument parsing failed: $v")
+    }
+  }
+  def detectProguard(apkPath:String):Boolean = {
+    val callGraph = CHACallGraph
+    //      val callGraph = FlowdroidCallGraph // flowdroid call graph immediately fails with "unreachable"
+    val w = new JimpleFlowdroidWrapper(apkPath, callGraph)
+    val transfer = (cha: ClassHierarchyConstraints) =>
+      new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set()), cha)
+    val config = SymbolicExecutorConfig(
+      stepLimit = Some(5), w, transfer, component = None)
+    val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
+    val proguardMethod = ".* [a-z][(].*".r
+    val proguardClass = ".*[.][a-z]".r
+    symbolicExecutor.appCodeResolver.appMethods.exists{m =>
+      proguardClass.matches(m.classType) && proguardMethod.matches(m.simpleName)
+    }
+  }
+
+  def sampleDeref(n:Int, apkPath:String, outFolder:String, cfg: RunConfig) = {
+    val callGraph = CHACallGraph
+    //      val callGraph = FlowdroidCallGraph // flowdroid call graph immediately fails with "unreachable"
+    val w = new JimpleFlowdroidWrapper(apkPath, callGraph)
+    val transfer = (cha: ClassHierarchyConstraints) =>
+      new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set()), cha)
+    val config = SymbolicExecutorConfig(
+      stepLimit = Some(n), w, transfer, component = None)
+    val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
+
+    (0 to n).map{ind =>
+      val outName = s"sample$ind"
+      val f = File(outFolder) / s"$outName.json"
+      val appLoc = symbolicExecutor.appCodeResolver.sampleDeref()
+      val name = appLoc.method.simpleName
+      val clazz = appLoc.method.classType
+      val line = appLoc.line.lineNumber
+      val qry = ReceiverNonNull(clazz, name, line)
+      val writeCFG = cfg.copy(initialQuery = Some(qry),
+          mode = Verify, outFolder = cfg.outFolder.map(v => v + "/" + outName))
+      if(f.exists()) f.delete()
+      f.createFile()
+      f.write(write(writeCFG))
     }
   }
 
   def runAnalysis(apkPath: String, componentFilter:Option[Seq[String]], mode:OutputMode,
-                  specSet: Set[LSSpec], stepLimit:Int): Set[IPathNode] = {
+                  specSet: Set[LSSpec], stepLimit:Int, initialQuery: InitialQuery): Set[IPathNode] = {
     val startTime = System.currentTimeMillis()
     try {
       //TODO: read location from json config
@@ -166,10 +225,11 @@ object Driver {
       val config = SymbolicExecutorConfig(
         stepLimit = Some(stepLimit), w, transfer, component = componentFilter, outputMode = mode)
       val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
-      val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
-        "de.danoeh.antennapod.fragment.ExternalPlayerFragment",
-        "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)", 200,
-        callinMatches = ".*getActivity.*".r)
+//      val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
+//        "de.danoeh.antennapod.fragment.ExternalPlayerFragment",
+//        "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)", 200,
+//        callinMatches = ".*getActivity.*".r)
+      val query = initialQuery.make(symbolicExecutor,w)
       symbolicExecutor.executeBackward(query)
     } finally {
       println(s"analysis time: ${(System.currentTimeMillis() - startTime) / 1000} seconds")

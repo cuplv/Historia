@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder
 
-import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, InternalMethodInvoke, InternalMethodReturn, Loc}
+import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CmdNotImplemented, CmdWrapper, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Loc, NopCmd}
 import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, SymbolicExecutorConfig}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, PathNode, SomeQry, WitnessedQry}
 
@@ -130,6 +130,20 @@ object BounderUtil {
       }
       case _ =>
         throw new IllegalArgumentException
+    }
+  }
+  /**
+   * Normally we crash on unsupported instructions, but when determining relevance, all we care about is invokes
+   * Since relevance scans lots of methods,
+   *
+   * @param loc
+   * @return
+   */
+  def cmdAtLocationNopIfUnknown[M,C](loc: AppLoc, wrapper:IRWrapper[M,C]): CmdWrapper = {
+    try {
+      wrapper.cmdAtLocation(loc)
+    } catch {
+      case CmdNotImplemented(_) => NopCmd(loc)
     }
   }
 }

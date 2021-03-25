@@ -878,5 +878,7 @@ case class JimpleLineLoc(cmd: soot.Unit, method: SootMethod) extends LineLoc{
     case _ =>
       ???
   }
+
+  override def lineNumber: Int = cmd.getJavaSourceStartLineNumber
 }
 

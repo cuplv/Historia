@@ -96,6 +96,8 @@ object TestIRMethodLoc{
 
 case class TestIRLineLoc(line:Int, desc:String = "") extends LineLoc {
   override def toString: String = if(desc == "") line.toString else desc
+
+  override def lineNumber: Int = line
 }
 object TestIRLineLoc{
   implicit val rw:RW[TestIRMethodLoc] = macroRW

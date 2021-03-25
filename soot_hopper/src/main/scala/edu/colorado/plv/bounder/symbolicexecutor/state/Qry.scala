@@ -2,7 +2,8 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.symbolicexecutor.{SymbolicExecutor}
+import edu.colorado.plv.bounder.symbolicexecutor.SymbolicExecutor
+import ujson.Value
 import upickle.default.{macroRW, ReadWriter => RW}
 
 import scala.util.matching.Regex
@@ -98,17 +99,62 @@ object Qry {
 
 }
 sealed trait InitialQuery{
-  def make[M,C](sym:SymbolicExecutor[M,C], w:IRWrapper[M,C]):Qry
+  def make[M,C](sym:SymbolicExecutor[M,C], w:IRWrapper[M,C]):Set[Qry]
+}
+object InitialQuery{
+  private def vToJ(v:(String,Any)):(String,Value) = v match{
+    case (k,v:String) => k -> ujson.Str(v)
+    case (k,v:Integer) => k -> ujson.Num(v.toDouble)
+  }
+  implicit val rw:RW[InitialQuery] = upickle.default.readwriter[ujson.Value].bimap[InitialQuery](
+    {
+      case Reachable(className, methodName, line) =>
+        val m = Map(
+          "t" -> "Reachable",
+          "className" -> className,
+          "methodName" -> methodName,
+          "line" -> line
+        ).map(vToJ)
+        ujson.Obj.from(m)
+      case ReceiverNonNull(className, methodName, line) =>
+        val m = Map(
+          "t" -> "ReceiverNonNull",
+          "className" -> className,
+          "methodName" -> methodName,
+          "line" -> line
+        ).map(vToJ)
+        ujson.Obj.from(m)
+      case CallinReturnNull(className, methodName, line, callinRegex) =>
+        val m = Map(
+          "t" -> "CallinReturnNull",
+          "className" -> className,
+          "methodName" -> methodName,
+          "line" -> line,
+          "callinRegex" -> callinRegex
+        ).map(vToJ)
+        ujson.Obj.from(m)
+    },
+    json => json.obj("t").str match{
+      case "Reachable" => Reachable(json.obj("className").str, json.obj("methodName").str,json.obj("line").num.toInt)
+      case "ReceiverNonNull" =>
+        ReceiverNonNull(json.obj("className").str, json.obj("methodName").str,json.obj("line").num.toInt)
+      case "CallinReturnNull" =>
+        CallinReturnNull(json.obj("className").str, json.obj("methodName").str,json.obj("line").num.toInt,
+          json.obj("callinRegex").str)
+    }
+  )
 }
 case class Reachable(className:String, methodName:String, line:Integer) extends InitialQuery {
-  override def make[M, C](sym: SymbolicExecutor[M, C], w: IRWrapper[M, C]): Qry = ???
+  override def make[M, C](sym: SymbolicExecutor[M, C], w: IRWrapper[M, C]): Set[Qry] =
+    Qry.makeReach(sym,w,className, methodName, line)
 }
 case class ReceiverNonNull(className:String, methodName:String, line:Integer) extends InitialQuery {
-  override def make[M, C](sym: SymbolicExecutor[M, C], w: IRWrapper[M, C]): Qry = ???
+  override def make[M, C](sym: SymbolicExecutor[M, C], w: IRWrapper[M, C]): Set[Qry] =
+    Qry.makeReceiverNonNull(sym,w, className, methodName, line)
 }
 case class CallinReturnNull(className:String, methodName:String, line:Integer, callinRegex:String) extends InitialQuery{
-  override def make[M, C](sym: SymbolicExecutor[M, C], w: IRWrapper[M, C]): Qry =
-    Qry.makeCallinReturnNull(sym,w, )
+  override def make[M, C](sym: SymbolicExecutor[M, C], w: IRWrapper[M, C]): Set[Qry] =
+    Qry.makeCallinReturnNull(sym,w, className, methodName, line, callinRegex.r)
 }
 
 sealed trait Qry {

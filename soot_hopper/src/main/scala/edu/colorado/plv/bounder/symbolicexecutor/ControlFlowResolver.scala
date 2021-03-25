@@ -82,20 +82,6 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     unresolvedTargets.flatMap(target => resolver.resolveCallLocation(target))
   }
 
-  /**
-   * Normally we crash on unsupported instructions, but when determining relevance, all we care about is invokes
-   * Since relevance scans lots of methods,
-   *
-   * @param loc
-   * @return
-   */
-  def cmdAtLocationNopIfUnknown(loc: AppLoc): CmdWrapper = {
-    try {
-      wrapper.cmdAtLocation(loc)
-    } catch {
-      case CmdNotImplemented(_) => NopCmd(loc)
-    }
-  }
 
   var printCacheCache = mutable.Set[String]()
 
@@ -192,10 +178,11 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       case _: SwitchCmd => false
     }
 
-    val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) => cmdAtLocationNopIfUnknown(v).mkPre)
+    val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) =>
+      BounderUtil.cmdAtLocationNopIfUnknown(v,wrapper).mkPre)
     BounderUtil.graphExists[CmdWrapper](start = returns,
       next = n =>
-        wrapper.commandPredecessors(n).map((v: AppLoc) => cmdAtLocationNopIfUnknown(v).mkPre).toSet,
+        wrapper.commandPredecessors(n).map((v: AppLoc) => BounderUtil.cmdAtLocationNopIfUnknown(v,wrapper).mkPre).toSet,
       exists = canModifyHeap
     )
   }
@@ -278,10 +265,12 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     }
 
     if (relI.nonEmpty) {
-      val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) => cmdAtLocationNopIfUnknown(v).mkPre)
+      val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) =>
+        BounderUtil.cmdAtLocationNopIfUnknown(v,wrapper).mkPre)
       BounderUtil.graphExists[CmdWrapper](start = returns,
         next = n =>
-          wrapper.commandPredecessors(n).map((v: AppLoc) => cmdAtLocationNopIfUnknown(v).mkPre).toSet,
+          wrapper.commandPredecessors(n).map((v: AppLoc) =>
+            BounderUtil.cmdAtLocationNopIfUnknown(v,wrapper).mkPre).toSet,
         exists = {
           case ReturnCmd(returnVar, loc) => false
           case AssignCmd(target, invCmd: Invoke, loc) =>
@@ -313,9 +302,11 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       case _: ThrowCmd => None
       case _: SwitchCmd => None
     }
-    val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) => cmdAtLocationNopIfUnknown(v).mkPre)
+    val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) =>
+      BounderUtil.cmdAtLocationNopIfUnknown(v,wrapper).mkPre)
     BounderUtil.graphFixpoint[CmdWrapper, Set[String]](start = returns,Set(),Set(),
-      next = n => wrapper.commandPredecessors(n).map((v: AppLoc) => cmdAtLocationNopIfUnknown(v).mkPre).toSet,
+      next = n => wrapper.commandPredecessors(n).map((v: AppLoc) =>
+        BounderUtil.cmdAtLocationNopIfUnknown(v,wrapper).mkPre).toSet,
       comp = (acc,v) => acc ++ modifiedNames(v),
       join = (a,b) => a.union(b)
     ).flatMap{ case (_,v) => v}.toSet
@@ -332,9 +323,11 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       case _: ThrowCmd => None
       case _: SwitchCmd => None
     }
-    val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) => cmdAtLocationNopIfUnknown(v).mkPre)
+    val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) =>
+      BounderUtil.cmdAtLocationNopIfUnknown(v,wrapper).mkPre)
     BounderUtil.graphFixpoint[CmdWrapper, Set[String]](start = returns,Set(),Set(),
-      next = n => wrapper.commandPredecessors(n).map((v: AppLoc) => cmdAtLocationNopIfUnknown(v).mkPre).toSet,
+      next = n => wrapper.commandPredecessors(n).map((v: AppLoc) =>
+        BounderUtil.cmdAtLocationNopIfUnknown(v,wrapper).mkPre).toSet,
       comp = (acc,v) => acc ++ modifiedNames(v),
       join = (a,b) => a.union(b)
     ).flatMap{ case (_,v) => v}.toSet
