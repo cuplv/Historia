@@ -7,7 +7,7 @@ import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NI}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, RxJavaSpec, SpecSignatures, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, FlowdroidCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{DBOutputMode, IPathNode, InitialQuery, MemoryOutputMode$, OutputMode, PathNode, PrettyPrinting, Qry, ReceiverNonNull}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{DBOutputMode, DBPathNode, IPathNode, InitialQuery, MemoryOutputMode$, OutputMode, PathNode, PrettyPrinting, Qry, ReceiverNonNull}
 import scopt.OParser
 import soot.{Scene, SootMethod}
 import upickle.core.AbortException
@@ -82,6 +82,15 @@ object Driver {
   case object Info extends RunMode
   case object Default extends RunMode
   case object SampleDeref extends RunMode
+  case object ReadDB extends RunMode
+
+  def readDB(cfg: RunConfig): Unit = {
+    val dbPath = File(cfg.getOutFolder.get) / "paths.db"
+    val db = DBOutputMode(dbPath.toString())
+    val liveNodes: Set[IPathNode] = db.getLive().map(v=>v)
+    val pp = new PrettyPrinting(db)
+    pp.dumpDebugInfo(liveNodes, "out", Some(cfg.outFolder.get))
+  }
 
   def main(args: Array[String]): Unit = {
     val builder = OParser.builder[RunConfig]
@@ -93,6 +102,7 @@ object Driver {
           case ("verify",c) => c.copy(mode = Verify)
           case ("info",c) => c.copy(mode = Info)
           case ("sampleDeref",c) => c.copy(mode = SampleDeref)
+          case ("readDB",c) => c.copy(mode = ReadDB)
           case (m,_) => throw new IllegalArgumentException(s"Unsupported mode $m")
         },
         opt[String]('a', "apkFile").optional().text("Compiled Android application").action{
@@ -165,6 +175,8 @@ object Driver {
         }
       case Some(cfg@RunConfig(SampleDeref, _, _, _, _, _, _,_,_,_)) =>
         sampleDeref(cfg)
+      case Some(cfg@RunConfig(ReadDB, _, _, _, _, _, _,_,_,_)) =>
+        readDB(cfg)
       case v => throw new IllegalArgumentException(s"Argument parsing failed: $v")
     }
   }

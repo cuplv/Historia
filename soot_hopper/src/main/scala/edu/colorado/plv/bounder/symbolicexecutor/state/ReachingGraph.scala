@@ -1,7 +1,9 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 import edu.colorado.plv.bounder.ir.{Loc, MethodLoc}
 import javax.naming.InitialContext
+import slick.dbio.Effect
 import slick.jdbc.SQLiteProfile.api._
+import slick.sql.FixedSqlStreamingAction
 import soot.jimple.parser.node.AEmptyMethodBody
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -12,6 +14,8 @@ import upickle.default.{read, write}
 
 import scala.language.postfixOps
 
+import better.files.File
+
 trait ReachingGraph {
   def getPredecessors(qry:Qry) : Iterable[Qry]
   def getSuccessors(qry:Qry) : Iterable[Qry]
@@ -21,20 +25,34 @@ sealed trait OutputMode
 case object MemoryOutputMode$ extends OutputMode
 
 case class DBOutputMode(dbfile:String) extends OutputMode{
+  val dbf = File(dbfile)
   private val witnessQry = TableQuery[WitnessTable]
   private val methodQry = TableQuery[MethodTable]
   private val callEdgeQry = TableQuery[CallEdgeTable]
+
   val db = Database.forURL(s"jdbc:sqlite:$dbfile",driver="org.sqlite.JDBC")
-  val setup = DBIO.seq(witnessQry.schema.create,
-    methodQry.schema.create,
-    callEdgeQry.schema.create)
-  Await.result(db.run(setup), 20 seconds)
+  if(!dbf.exists()) {
+    val setup = DBIO.seq(witnessQry.schema.create,
+      methodQry.schema.create,
+      callEdgeQry.schema.create)
+    Await.result(db.run(setup), 20 seconds)
+  }
   private var id = 0
   def nextId:Int = {
     val oId = id
     id = id + 1
     oId
   }
+
+  def getLive():Set[DBPathNode] = {
+    val q = witnessQry.map(_.pred).distinct
+    val allPreds: Seq[Int] = Await.result(db.run(q.result), 30 seconds).flatten
+    //TODO: following is slow, should probably remember which nodes are terminal
+    val q2 = for{n <- witnessQry if(!allPreds.contains(n))} yield n.id
+    val nonTermNodes = Await.result(db.run(q2.result), 30 seconds).map(readNode)
+    nonTermNodes.toSet
+  }
+
   def writeNode(node: DBPathNode): Unit = {
     try {
       val qryState = node.qry match {
@@ -51,7 +69,7 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
         println(t) // pokemon error handling!
     }
   }
-  def readNode(id: Int):IPathNode = {
+  def readNode(id: Int):DBPathNode = {
     val q = witnessQry.filter(_.id === id)
     val qFuture = db.run(q.result)
     val res = Await.result(qFuture, 20 seconds)

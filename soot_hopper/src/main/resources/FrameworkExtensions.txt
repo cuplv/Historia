@@ -30,6 +30,7 @@ org.eclipse.*
 org.hamcrest.*
 org.intellij.*
 org.jsoup.*
+org.jetbrains.anko.*
 org.objenesis.*
 org.shredzone.*
 org.xml.sax.*
@@ -37,3 +38,5 @@ retrofit2.*
 rx.*
 soot.*
 sun.*
+fr.louisbl.cordova.gpslocation.*
+nl.xservices.plugins.*
