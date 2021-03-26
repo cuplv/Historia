@@ -68,6 +68,7 @@ object Qry {
                                fieldOrMethod: Option[Regex] = None
                               ):Set[Qry] = {
     implicit val ch = ex.getClassHierarchy
+
     val locs = w.findLineInMethod(className, methodName,line)
     val isTarget = fieldOrMethod.getOrElse("(.*)".r)
     val derefLocs = locs.filter(a => w.cmdAtLocation(a) match {

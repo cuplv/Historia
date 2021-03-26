@@ -4,6 +4,12 @@ organization := "edu.colorado.plv.bounder"
 version := "0.1"
 mainClass in (Compile, run) := Some("edu.colorado.plv.bounder.Driver")
 scalaVersion := "2.13.1"
+
+
+resolvers += "Maven Central Server" at "https://repo1.maven.org/maven2"
+
+resolvers += "Typesafe Server" at "https://repo.typesafe.com/typesafe/releases"
+
 unmanagedJars in Compile += baseDirectory.value / "lib/soot-infoflow-cmd-jar-with-dependencies.jar"
 unmanagedJars in Compile += baseDirectory.value / "lib/com.microsoft.z3.jar"
 //libraryDependencies += "ca.mcgill.sable" % "soot" % "4.1.0"
