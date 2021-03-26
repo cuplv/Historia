@@ -5,6 +5,7 @@ com.android.*
 com.aocate.presto.*
 com.bumptech.glide.*
 com.bytehamster.*
+com.fasterxml.jackson.*
 com.github.bumptech.glide.*
 com.google.*
 com.joanzapata.*
