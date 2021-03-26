@@ -63,25 +63,31 @@ object Qry {
   def makeReceiverNonNull[M,C](ex: SymbolicExecutor[M,C],
                                w:IRWrapper[M,C],
                                className:String,
-                               methodName:String, line:Int):Set[Qry] = {
+                               methodName:String,
+                               line:Int,
+                               fieldOrMethod: Option[Regex] = None
+                              ):Set[Qry] = {
     implicit val ch = ex.getClassHierarchy
     val locs = w.findLineInMethod(className, methodName,line)
-
-    val derefLocs: Iterable[AppLoc] = locs.filter(a => w.cmdAtLocation(a) match {
+    val isTarget = fieldOrMethod.getOrElse("(.*)".r)
+    val derefLocs = locs.filter(a => w.cmdAtLocation(a) match {
       case AssignCmd(_, _:VirtualInvoke, _) => true
       case AssignCmd(_, _:SpecialInvoke, _) => true
       case InvokeCmd(_:VirtualInvoke,_) => true
       case InvokeCmd(_:SpecialInvoke,_) => true
+      case AssignCmd(_, FieldReference(base,_,_, isTarget(name)),_) => true
       case _ => false
     })
 
-    assert(derefLocs.size == 1)
+//    assert(derefLocs.size == 1)
     // Get location of query
-    val derefLoc: AppLoc = derefLocs.iterator.next
+    // Find last dereference on line if not specified
+    val derefLoc: AppLoc = derefLocs.toList.last
     // Get name of variable that should not be null
     val varname = w.cmdAtLocation(derefLoc) match {
       case AssignCmd(_, VirtualInvoke(localWrapper,_,_,_), _) => localWrapper
       case InvokeCmd(VirtualInvoke(localWrapper,_,_,_),_) => localWrapper
+      case AssignCmd(_, FieldReference(base,_,_,_),_)  => base
       case _ => ???
     }
 

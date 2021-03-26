@@ -18,6 +18,9 @@ import soot.options.Options
 import scala.jdk.CollectionConverters._
 
 object BounderSetupApplication {
+  def reset():Unit = {
+    G.reset()
+  }
 
   val androidHome = sys.env("ANDROID_HOME")
 

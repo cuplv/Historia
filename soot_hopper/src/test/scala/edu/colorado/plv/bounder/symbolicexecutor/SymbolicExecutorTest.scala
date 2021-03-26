@@ -241,7 +241,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           |    protected void onCreate(Bundle savedInstanceState) {
           |        super.onCreate(savedInstanceState);
           |        setO();
-          |        Log.i("b", o.toString());
+          |        Log.i("b", o.toString()); //query1
           |    }
           |    protected void setO() {
           |        while (this.o $op null){
@@ -270,8 +270,9 @@ class SymbolicExecutorTest extends AnyFunSuite {
           stepLimit = Some(200), w, transfer,
           component = Some(List("com.example.createdestroy.MyActivity.*")))
         val symbolicExecutor = config.getSymbolicExecutor
+        val line = lineForRegex(".*query1.*".r, src)
         val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
-          "void onCreate(android.os.Bundle)", 20)
+          "void onCreate(android.os.Bundle)", line, Some(".*toString.*".r))
 
         val i = lineForRegex(".*initializeabc.*".r, src)
         //Dump dot of while method

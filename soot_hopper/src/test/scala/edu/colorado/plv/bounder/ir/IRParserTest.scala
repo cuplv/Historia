@@ -19,5 +19,13 @@ class IRParserTest extends AnyFunSuite {
     assert(res2.sootString == "de.danoeh.antennapod.core.util.NetworkUtils")
     val res3 = IRParser.parseReflectiveRef("Lde/danoeh/antennapod/core/gpoddernet/model/GpodnetEpisodeAction$Action;")
     assert(res3.sootString == "de.danoeh.antennapod.core.gpoddernet.model.GpodnetEpisodeAction$Action")
+
+    val name4 = "[Loo/o;"
+    val res4 = IRParser.parseReflectiveRef(name4)
+    assert(res4.sootString == "oo.o[]")
+
+    val name5 = "[C"
+    val res5 = IRParser.parseReflectiveRef(name5)
+    assert(res5.sootString == "char[]")
   }
 }
