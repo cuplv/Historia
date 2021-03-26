@@ -9,7 +9,7 @@ import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, FlowdroidCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{DBOutputMode, IPathNode, InitialQuery, MemoryOutputMode$, OutputMode, PathNode, PrettyPrinting, Qry, ReceiverNonNull}
 import scopt.OParser
-import soot.SootMethod
+import soot.{Scene, SootMethod}
 import upickle.core.AbortException
 import upickle.default.{macroRW, read, write, ReadWriter => RW}
 import OptionPickler._
@@ -135,7 +135,9 @@ object Driver {
       case Some(cfg@RunConfig(Verify, _, _, componentFilter, _, _, specSet,_,_,_)) =>
         val cfgw = write(cfg)
         val apkPath = cfg.getApkPath
-        val outFolder = cfg.getOutFolder
+        val outFolder: Option[String] = cfg.getOutFolder
+        // Create output directory if not exists
+        outFolder.map(path => File(path).createIfNotExists(asDirectory = true))
         val initialQuery = cfg.initialQuery
           .getOrElse(throw new IllegalArgumentException("Initial query must be defined for verify"))
         val stepLimit = cfg.limit
@@ -162,31 +164,36 @@ object Driver {
           resFile.overwrite(interpretedRes.toString)
         }
       case Some(cfg@RunConfig(SampleDeref, _, _, _, _, _, _,_,_,_)) =>
-        val apkPath: String = cfg.getApkPath
-        val outFolder: String = cfg.outFolder
-          .getOrElse(throw new IllegalArgumentException("Out folder must be defined for sampling"))
-        val samples = cfg.samples
-        sampleDeref(samples,apkPath, outFolder, cfg)
+        sampleDeref(cfg)
       case v => throw new IllegalArgumentException(s"Argument parsing failed: $v")
     }
   }
-  def detectProguard(apkPath:String):Boolean = {
-    val callGraph = CHACallGraph
-    //      val callGraph = FlowdroidCallGraph // flowdroid call graph immediately fails with "unreachable"
-    val w = new JimpleFlowdroidWrapper(apkPath, callGraph)
-    val transfer = (cha: ClassHierarchyConstraints) =>
-      new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set()), cha)
-    val config = SymbolicExecutorConfig(
-      stepLimit = Some(5), w, transfer, component = None)
-    val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
-    val proguardMethod = ".* [a-z][(].*".r
-    val proguardClass = ".*[.][a-z]".r
-    symbolicExecutor.appCodeResolver.appMethods.exists{m =>
-      proguardClass.matches(m.classType) && proguardMethod.matches(m.simpleName)
+  def detectProguard(apkPath:String):Boolean =
+    try {
+      val callGraph = CHACallGraph
+      //      val callGraph = FlowdroidCallGraph // flowdroid call graph immediately fails with "unreachable"
+      val w = new JimpleFlowdroidWrapper(apkPath, callGraph)
+      val transfer = (cha: ClassHierarchyConstraints) =>
+        new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set()), cha)
+      val config = SymbolicExecutorConfig(
+        stepLimit = Some(5), w, transfer, component = None)
+      val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
+      val proguardMethod = ".* [a-z][(].*".r
+      val proguardClass = ".*[.][a-z]".r
+      symbolicExecutor.appCodeResolver.appMethods.exists { m =>
+        proguardClass.matches(m.classType) && proguardMethod.matches(m.simpleName)
+      }
+    }finally{
+      BounderSetupApplication.reset()
     }
-  }
 
-  def sampleDeref(n:Int, apkPath:String, outFolder:String, cfg: RunConfig) = {
+
+
+  def sampleDeref(cfg: RunConfig) = {
+    val apkPath = cfg.getApkPath
+    val n = cfg.samples
+    val outFolder = cfg.getOutFolder.getOrElse(
+      throw new IllegalArgumentException("Out folder must be defined for sampling"))
     val callGraph = CHACallGraph
     //      val callGraph = FlowdroidCallGraph // flowdroid call graph immediately fails with "unreachable"
     val w = new JimpleFlowdroidWrapper(apkPath, callGraph)
@@ -196,7 +203,7 @@ object Driver {
       stepLimit = Some(n), w, transfer, component = None)
     val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
 
-    (0 to n).map{ind =>
+    (0 until n).map{ind =>
       val outName = s"sample$ind"
       val f = File(outFolder) / s"$outName.json"
       val appLoc = symbolicExecutor.appCodeResolver.sampleDeref()
