@@ -41,7 +41,7 @@ class PrettyPrinting(mode : OutputMode = MemoryOutputMode$) {
       case pn@PathNode(_: SomeQry, false) => Some(("live",pn))
       case pn@PathNode(_ :WitnessedQry, _) => Some(("witnessed", pn))
       case pn@PathNode(_:BottomQry, false) => Some(("refuted",pn))
-      case pn@PathNode(_:SomeQry, true) => Some((s"subsumed by:\n -- ${qryString(pn.qry)}\n", pn))
+      case pn@PathNode(_:SomeQry, true) => Some((s"subsumed by:\n -- ${qryString(pn.subsumed.get.qry)}\n", pn))
       case _ => None
     }
     val traces = live.map(a => a._1 + "\n    " + witnessToTrace(Some(a._2)).mkString("\n    ")).mkString("\n")
