@@ -131,7 +131,7 @@ object InitialQuery{
           "line" -> line
         ).map(vToJ)
         ujson.Obj.from(m)
-      case CallinReturnNull(className, methodName, line, callinRegex) =>
+      case CallinReturnNonNull(className, methodName, line, callinRegex) =>
         val m = Map(
           "t" -> "CallinReturnNull",
           "className" -> className,
@@ -145,8 +145,8 @@ object InitialQuery{
       case "Reachable" => Reachable(json.obj("className").str, json.obj("methodName").str,json.obj("line").num.toInt)
       case "ReceiverNonNull" =>
         ReceiverNonNull(json.obj("className").str, json.obj("methodName").str,json.obj("line").num.toInt)
-      case "CallinReturnNull" =>
-        CallinReturnNull(json.obj("className").str, json.obj("methodName").str,json.obj("line").num.toInt,
+      case "CallinReturnNonNull" =>
+        CallinReturnNonNull(json.obj("className").str, json.obj("methodName").str,json.obj("line").num.toInt,
           json.obj("callinRegex").str)
     }
   )
@@ -159,7 +159,8 @@ case class ReceiverNonNull(className:String, methodName:String, line:Integer) ex
   override def make[M, C](sym: SymbolicExecutor[M, C], w: IRWrapper[M, C]): Set[Qry] =
     Qry.makeReceiverNonNull(sym,w, className, methodName, line)
 }
-case class CallinReturnNull(className:String, methodName:String, line:Integer, callinRegex:String) extends InitialQuery{
+case class CallinReturnNonNull(className:String, methodName:String,
+                               line:Integer, callinRegex:String) extends InitialQuery{
   override def make[M, C](sym: SymbolicExecutor[M, C], w: IRWrapper[M, C]): Set[Qry] =
     Qry.makeCallinReturnNull(sym,w, className, methodName, line, callinRegex.r)
 }

@@ -2,18 +2,16 @@ package edu.colorado.plv.bounder
 
 import better.files.File
 import edu.colorado.plv.bounder.Driver.{Default, RunMode}
-import edu.colorado.plv.bounder.ir.{JimpleFlowdroidWrapper, LineLoc}
-import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NI}
-import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, RxJavaSpec, SpecSignatures, SpecSpace}
+import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
+import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
+import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, FlowdroidCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{DBOutputMode, DBPathNode, IPathNode, InitialQuery, MemoryOutputMode$, OutputMode, PathNode, PrettyPrinting, Qry, ReceiverNonNull}
+import edu.colorado.plv.bounder.symbolicexecutor.state._
+import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
 import scopt.OParser
-import soot.{Scene, SootMethod}
+import soot.SootMethod
 import upickle.core.AbortException
 import upickle.default.{macroRW, read, write, ReadWriter => RW}
-import OptionPickler._
-import soot.coffi.CFG
 
 case class RunConfig(mode:RunMode = Default,
                      apkPath:String = "",
@@ -143,7 +141,7 @@ object Driver {
     }
     OParser.parse(parser, args, RunConfig()) match {
       case Some(cfg@RunConfig(Verify, _, _, componentFilter, _, _, specSet,_,_,_)) =>
-        val cfgw = write(cfg)
+//        val cfgw = write(cfg)
         val apkPath = cfg.getApkPath
         val outFolder: Option[String] = cfg.getOutFolder
         // Create output directory if not exists
@@ -261,13 +259,14 @@ trait SpecSetOption{
   def getSpecSet():Set[LSSpec]
 }
 object SpecSetOption{
-  val testSpecSet: Map[String,Set[LSSpec]] = Map(
+  val testSpecSet: Map[String, Set[LSSpec]] = Map(
     "AntennaPod" -> Set(FragmentGetActivityNullSpec.getActivityNull,
-    FragmentGetActivityNullSpec.getActivityNonNull,
-    RxJavaSpec.call,
-    RxJavaSpec.subscribeDoesNotReturnNull,
-    RxJavaSpec.subscribeIsUniqueAndNonNull
-  ))
+      FragmentGetActivityNullSpec.getActivityNonNull,
+      RxJavaSpec.call,
+      RxJavaSpec.subscribeDoesNotReturnNull,
+      RxJavaSpec.subscribeIsUniqueAndNonNull,
+      ActivityLifecycle.activityCreatedOnlyFirst
+    ))
   implicit val rw:RW[SpecSetOption] = upickle.default.readwriter[String].bimap[SpecSetOption](
     {
       case SpecFile(fname) => s"file:$fname"

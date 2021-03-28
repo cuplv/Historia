@@ -78,7 +78,7 @@ RUN apt-get install -y sqlite
 
 COPY . /home/bounder/
 ENV LD_LIBRARY_PATH=/usr/lib/
-RUN cd /home/bounder/; sbt compile 
+RUN cd /home/bounder/; sbt assembly
 
 RUN mkdir /home/bounder_host
 
