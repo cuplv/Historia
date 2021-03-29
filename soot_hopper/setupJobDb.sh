@@ -1,3 +1,4 @@
 #!/bin/bash
 #docker pull postgres
-docker run --name bounder-db -e POSTGRES_PASSWORD=$(cat ~/.pgpass) -e POSTGRES_USER="bounder" -d postgres
+PASS=$(sed 's/.*://' < ~/.pgpass)
+docker run --name bounder-db -p 5433:5432 -e POSTGRES_PASSWORD=$PASS -d postgres 
