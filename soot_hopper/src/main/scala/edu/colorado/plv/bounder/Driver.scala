@@ -13,6 +13,8 @@ import soot.SootMethod
 import upickle.core.AbortException
 import upickle.default.{macroRW, read, write, ReadWriter => RW}
 
+import scala.util.matching.Regex
+
 case class RunConfig(mode:RunMode = Default,
                      apkPath:String = "",
                      outFolder:Option[String] = None,
@@ -229,6 +231,17 @@ object Driver {
     }
   }
 
+  def dotMethod(apkPath:String, matches:Regex) = {
+    val callGraph = CHACallGraph
+    //      val callGraph = FlowdroidCallGraph // flowdroid call graph immediately fails with "unreachable"
+    val w = new JimpleFlowdroidWrapper(apkPath, callGraph)
+    val transfer = (cha: ClassHierarchyConstraints) =>
+      new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set()), cha)
+    val config = SymbolicExecutorConfig(
+      stepLimit = Some(0), w, transfer, component = None)
+    val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
+    //TODO:
+  }
   def runAnalysis(apkPath: String, componentFilter:Option[Seq[String]], mode:OutputMode,
                   specSet: Set[LSSpec], stepLimit:Int, initialQuery: InitialQuery): Set[IPathNode] = {
     val startTime = System.currentTimeMillis()

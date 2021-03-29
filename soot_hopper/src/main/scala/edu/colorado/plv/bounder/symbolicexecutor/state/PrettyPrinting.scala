@@ -14,8 +14,8 @@ class PrettyPrinting(mode : OutputMode = MemoryOutputMode$) {
   implicit val thisMode = mode
   val outDir = sys.env.get("OUT_DIR")
 
-  val templateFile = getClass.getResource("/pageTemplate.html").getPath
-  val template = Source.fromFile(templateFile).getLines().mkString
+//  val templateFile = getClass.getResource("/pageTemplate.html").getPath
+//  val template = Source.fromFile(templateFile).getLines().mkString
   def qryString(q : Qry):String = q match{
     case SomeQry(state,loc) =>
       loc.toString +

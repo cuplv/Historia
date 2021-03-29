@@ -21,7 +21,7 @@ object Qry {
     val containingMethodPos: List[Loc] = BounderUtil.resolveMethodReturnForAppLoc(ex.getAppCodeResolver, targetLoc)
     containingMethodPos.map{method =>
       val queryStack = List(CallStackFrame(method, None,Map()))
-      val state0 = State.topState.copy(callStack = queryStack)
+      val state0 = State.topState.copy(callStack = queryStack, nextCmd = Some(targetLoc))
       SomeQry(state0, targetLoc)
     }.toSet
   }
@@ -55,7 +55,7 @@ object Qry {
       val queryStack = List(CallStackFrame(pos, None, Map()))
       val state = State.topState.copy(callStack = queryStack)
       val (pv,state1) = state.getOrDefine(local)
-      val state2 = state1.copy(pureFormula = Set(PureConstraint(pv, Equals, NullVal)))
+      val state2 = state1.copy(pureFormula = Set(PureConstraint(pv, Equals, NullVal)), nextCmd = Some(location))
       SomeQry(state2, location)
     }.toSet
   }
@@ -99,7 +99,8 @@ object Qry {
 
 
       val (pureVar, state1) = state0.getOrDefine(varname)
-      SomeQry(state1.copy(pureFormula = Set(PureConstraint(pureVar, Equals, NullVal))), derefLoc)
+      SomeQry(state1.copy(pureFormula = Set(PureConstraint(pureVar, Equals, NullVal)),
+        nextCmd = Some(derefLoc)), derefLoc)
     }.toSet
   }
 

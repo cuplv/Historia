@@ -8,6 +8,7 @@ import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.TransferFunctions.{inVarsForCall, relevantAliases, relevantAliases2}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import upickle.default._
+import edu.colorado.plv.bounder.symbolicexecutor.state.PrettyPrinting
 
 object TransferFunctions{
   /**
