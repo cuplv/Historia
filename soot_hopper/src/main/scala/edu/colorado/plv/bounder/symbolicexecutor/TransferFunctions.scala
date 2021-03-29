@@ -535,7 +535,14 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         case None => Set(state) // Do nothing if variable x is not in state
       }
     case AssignCmd(lw: LocalWrapper, ThisWrapper(thisTypename),a) =>
-      cmdTransfer(AssignCmd(lw, LocalWrapper("@this", thisTypename),a),state)
+      val out = cmdTransfer(AssignCmd(lw, LocalWrapper("@this", thisTypename),a),state)
+      out.map{s =>
+        s.get(LocalWrapper("@this", thisTypename)) match{
+          case Some(v) =>
+            s.copy(pureFormula = s.pureFormula + PureConstraint(v, NotEquals, NullVal))
+          case None => s
+        }
+      }
     case AssignCmd(lhs: LocalWrapper,rhs:LocalWrapper,_) => //
       // x = y
       val lhsv = state.get(lhs) // Find what lhs pointed to if anything
