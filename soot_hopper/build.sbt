@@ -14,9 +14,9 @@ unmanagedJars in Compile += baseDirectory.value / "lib/soot-infoflow-cmd-jar-wit
 unmanagedJars in Compile += baseDirectory.value / "lib/com.microsoft.z3.jar"
 //libraryDependencies += "ca.mcgill.sable" % "soot" % "4.1.0"
 
-libraryDependencies += "com.fasterxml.jackson.core" % "jackson-core" % "2.7.9" % "compile"
-libraryDependencies += "org.scala-graph" %% "graph-core" % "1.13.2" % "compile"
-libraryDependencies += "org.scala-graph" %% "graph-dot" % "1.13.0" % "compile"
+//libraryDependencies += "com.fasterxml.jackson.core" % "jackson-core" % "2.7.9" % "compile"
+//libraryDependencies += "org.scala-graph" %% "graph-core" % "1.13.2" % "compile"
+//libraryDependencies += "org.scala-graph" %% "graph-dot" % "1.13.0" % "compile"
 libraryDependencies += "com.github.scopt" % "scopt_2.13" % "4.0.0-RC2" % "compile"
 libraryDependencies += "org.scala-lang.modules" % "scala-parallel-collections_2.13" % "1.0.0" % "compile"
 libraryDependencies += "org.scalactic" %% "scalactic" % "3.2.2"
