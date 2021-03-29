@@ -15,44 +15,48 @@ import upickle.default.{macroRW, read, write, ReadWriter => RW}
 
 import scala.util.matching.Regex
 
-case class RunConfig(mode:RunMode = Default,
-                     apkPath:String = "",
+case class Action(mode:RunMode = Default,
+                  baseDirOut: Option[String] = None,
+                  baseDirApk:Option[String] = None,
+                  config: RunConfig = RunConfig()
+                 ){
+  val baseDirVar = "${baseDir}"
+  val outDirVar = "${baseDirOut}"
+  def getApkPath:String = baseDirApk match{
+    case Some(baseDir) => {
+      assert(config.apkPath.contains(baseDirVar),
+        s"Apk path has no $baseDirVar to substitute.  APK path value: ${config.apkPath}")
+      config.apkPath.replace(baseDirVar, baseDir)
+    }
+    case None => {
+      assert(!config.apkPath.contains(baseDirVar))
+      config.apkPath
+    }
+  }
+  def getOutFolder:String = baseDirOut match{
+    case Some(outDirBase) => {
+      config.outFolder.map { outF =>
+        assert(outF.contains(outDirVar), s"Out dir has no $outDirVar to substitute.  OutDir value: $outF")
+        outF.replace(outDirVar, outDirBase)
+      }.get
+    }
+    case None => {
+      config.outFolder.map { outF =>
+        assert(!outF.contains(baseDirVar))
+        outF
+      }
+    }.get
+  }
+}
+
+case class RunConfig(apkPath:String = "",
                      outFolder:Option[String] = None,
                      componentFilter:Option[Seq[String]] = None,
-                     baseDir:Option[String] = None,
-                     baseDirOut: Option[String] = None,
                      specSet: SpecSetOption = TopSpecSet,
                      initialQuery: Option[InitialQuery] = None,
                      limit:Int = 100,
                      samples:Int = 5
                     ){
-  val baseDirVar = "${baseDir}"
-  val outDirVar = "${baseDirOut}"
-  def getApkPath:String = baseDir match{
-    case Some(baseDir) => {
-      assert(apkPath.contains(baseDirVar), s"Apk path has no $baseDirVar to substitute.  APK path value: $apkPath")
-      apkPath.replace(baseDirVar, baseDir)
-    }
-    case None => {
-      assert(!apkPath.contains(baseDirVar))
-      apkPath
-    }
-  }
-
-  def getOutFolder:Option[String] = baseDirOut match{
-    case Some(outDirBase) => {
-      outFolder.map { outF =>
-        assert(outF.contains(outDirVar), s"Out dir has no $outDirVar to substitute.  OutDir value: $outF")
-        outF.replace(outDirVar, outDirBase)
-      }
-    }
-    case None => {
-      outFolder.map { outF =>
-        assert(!outF.contains(baseDirVar))
-        outF
-      }
-    }
-  }
 }
 
 object RunConfig{
@@ -70,12 +74,6 @@ object Driver {
       }
     )
 
-    def unapply(arg: String): Option[RunMode] = arg.toLowerCase() match{
-      case "verify" => Some(Verify)
-      case "info" => Some(Info)
-      case "default" => Some(Default)
-      case v => throw new IllegalArgumentException(s"Cannot parse $v as run mode")
-    }
   }
   sealed trait RunMode
   case object Verify extends RunMode
@@ -84,16 +82,16 @@ object Driver {
   case object SampleDeref extends RunMode
   case object ReadDB extends RunMode
 
-  def readDB(cfg: RunConfig): Unit = {
-    val dbPath = File(cfg.getOutFolder.get) / "paths.db"
+  def readDB(cfg: RunConfig, outFolder:File): Unit = {
+    val dbPath = outFolder / "paths.db"
     val db = DBOutputMode(dbPath.toString())
-    val liveNodes: Set[IPathNode] = db.getLive().map(v=>v)
+    val liveNodes: Set[IPathNode] = db.getTerminal().map(v=>v)
     val pp = new PrettyPrinting(db)
-    pp.dumpDebugInfo(liveNodes, "out", Some(cfg.outFolder.get))
+    pp.dumpDebugInfo(liveNodes, "out", Some(outFolder.toString))
   }
 
   def main(args: Array[String]): Unit = {
-    val builder = OParser.builder[RunConfig]
+    val builder = OParser.builder[Action]
     val parser = {
       import builder._
       OParser.sequence(
@@ -105,21 +103,16 @@ object Driver {
           case ("readDB",c) => c.copy(mode = ReadDB)
           case (m,_) => throw new IllegalArgumentException(s"Unsupported mode $m")
         },
-        opt[String]('a', "apkFile").optional().text("Compiled Android application").action{
-          case (v,c) => c.copy(apkPath = v)
-        },
-        opt[String]('o', "outFolder").optional().text("folder to output analysis artifacts").action{
-          case (v,c) => c.copy(outFolder = Some(v))
-        },
-        opt[Seq[String]]('f', "filter").optional()
-          .valueName("com\\.example\\.foo\\.*,com\\.exaple\\.bar.* ...")
-          .action((x, c) => c.copy(componentFilter = Some(x)))
-          .text("Regex matching packages to analyze.  Note: use single back slash for regex escape on CLI."),
+        opt[String]('b', "baseDirApk").optional().text("Substitute for ${baseDir} in config file")
+          .action((v,c) => c.copy(baseDirApk = Some(v))),
+        opt[String]('u', "baseDirOut").optional().text("Substitute for ${baseDirOut} in config file")
+          .action((v,c) => c.copy(baseDirOut = Some(v))),
         opt[java.io.File]('c', "config").optional()
           .text("Json config file, use full option names as config keys.").action{(v,c) => {
             try {
               val readConfig = read[RunConfig](v)
-              readConfig.copy(baseDir = c.baseDir, baseDirOut = c.baseDirOut)
+//              readConfig.copy(baseDir = c.baseDir, baseDirOut = c.baseDirOut)
+              c.copy(config = readConfig)
             }catch{
               case t:AbortException =>
                 System.err.println(s"parseing json exception: ${t.clue}")
@@ -131,81 +124,108 @@ object Driver {
             }
           }
         },
-        opt[String]('b', "baseDir").optional().text("Substitute for ${baseDir} in config file")
-          .action((v,c) => c.copy(baseDir = Some(v))),
-        opt[String]('u', "baseDirOut").optional().text("Substitute for ${baseDirOut} in config file")
-          .action((v,c) => c.copy(baseDirOut = Some(v))),
-        opt[Int]('l', name="limit").optional().text("Step limit for verify")
-          .action((v,c) => c.copy(limit = v)) ,
-        opt[Int]('s', name="samples").optional().text("Number of samples")
-          .action((v,c) => c.copy(limit = v))
+//        opt[String]('a', "apkFile").optional().text("Compiled Android application").action{
+//          case (v,c) => c.copy(apkPath = v)
+//        },
+//        opt[String]('o', "outFolder").optional().text("folder to output analysis artifacts").action{
+//          case (v,c) => c.copy(outFolder = Some(v))
+//        },
+//        opt[Seq[String]]('f', "filter").optional()
+//          .valueName("com\\.example\\.foo\\.*,com\\.exaple\\.bar.* ...")
+//          .action((x, c) => c.copy(componentFilter = Some(x)))
+//          .text("Regex matching packages to analyze.  Note: use single back slash for regex escape on CLI."),
+
+//        opt[Int]('l', name="limit").optional().text("Step limit for verify")
+//          .action((v,c) => c.copy(limit = v)) ,
+//        opt[Int]('s', name="samples").optional().text("Number of samples")
+//          .action((v,c) => c.copy(limit = v))
       )
     }
-    OParser.parse(parser, args, RunConfig()) match {
-      case Some(cfg@RunConfig(Verify, _, _, componentFilter, _, _, specSet,_,_,_)) =>
+    OParser.parse(parser, args, Action()) match {
+      case Some(act@Action(Verify, _, _, cfg)) =>
+        val componentFilter = cfg.componentFilter
+        val specSet = cfg.specSet
 //        val cfgw = write(cfg)
-        val apkPath = cfg.getApkPath
-        val outFolder: Option[String] = cfg.getOutFolder
+        val apkPath = act.getApkPath
+        val outFolder: String = act.getOutFolder
         // Create output directory if not exists
-        outFolder.map(path => File(path).createIfNotExists(asDirectory = true))
+        File(outFolder).createIfNotExists(asDirectory = true)
         val initialQuery = cfg.initialQuery
           .getOrElse(throw new IllegalArgumentException("Initial query must be defined for verify"))
         val stepLimit = cfg.limit
-
-        val pathMode:OutputMode = outFolder match{
-          case Some(outF) =>{
-            val outFile = (File(outF) / "paths.db")
-            if(outFile.exists) {
-              implicit val opt = File.CopyOptions(overwrite = true)
-              outFile.moveTo(File(outF) / "paths.db1")
-            }
-            DBOutputMode(outFile.canonicalPath)
-          }
-          case None => MemoryOutputMode$
+        val outFile = (File(outFolder) / "paths.db")
+        if(outFile.exists) {
+          implicit val opt = File.CopyOptions(overwrite = true)
+          outFile.moveTo(File(outFolder) / "paths.db1")
         }
+        DBOutputMode(outFile.canonicalPath)
+        val pathMode = DBOutputMode(outFile.canonicalPath)
+//        val pathMode:OutputMode = outFolder match{
+//          case Some(outF) =>{
+//            val outFile = (File(outF) / "paths.db")
+//            if(outFile.exists) {
+//              implicit val opt = File.CopyOptions(overwrite = true)
+//              outFile.moveTo(File(outF) / "paths.db1")
+//            }
+//            DBOutputMode(outFile.canonicalPath)
+//          }
+//          case None => MemoryOutputMode$
+//        }
         val res = runAnalysis(apkPath, componentFilter,pathMode, specSet.getSpecSet(),stepLimit, initialQuery)
         val interpretedRes = BounderUtil.interpretResult(res)
         println(interpretedRes)
-        outFolder.foreach { outF =>
-          val outName = apkPath.split("/").last
-          //TODO: pretty printing too slow
-//          (new PrettyPrinting(pathMode)).dumpDebugInfo(res, outName, Some(outF))
-          val resFile = File(outF) / "result.txt"
-          resFile.overwrite(interpretedRes.toString)
-        }
-      case Some(cfg@RunConfig(SampleDeref, _, _, _, _, _, _,_,_,_)) =>
-        sampleDeref(cfg)
-      case Some(cfg@RunConfig(ReadDB, _, _, _, _, _, _,_,_,_)) =>
-        readDB(cfg)
+//        val outName = apkPath.split("/").last
+        val resFile = File(outFolder) / "result.txt"
+        resFile.overwrite(interpretedRes.toString)
+      case Some(act@Action(SampleDeref,_,_,cfg)) =>
+        //TODO: set base dir
+        sampleDeref(cfg, act.getApkPath, act.getOutFolder)
+      case Some(act@Action(ReadDB,_,_,cfg)) =>
+        readDB(cfg, File(act.getOutFolder))
       case v => throw new IllegalArgumentException(s"Argument parsing failed: $v")
     }
   }
-  def detectProguard(apkPath:String):Boolean =
-    try {
-      val callGraph = CHACallGraph
-      //      val callGraph = FlowdroidCallGraph // flowdroid call graph immediately fails with "unreachable"
-      val w = new JimpleFlowdroidWrapper(apkPath, callGraph)
-      val transfer = (cha: ClassHierarchyConstraints) =>
-        new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set()), cha)
-      val config = SymbolicExecutorConfig(
-        stepLimit = Some(5), w, transfer, component = None)
-      val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
-      val proguardMethod = ".* [a-z][(].*".r
-      val proguardClass = ".*[.][a-z]".r
-      symbolicExecutor.appCodeResolver.appMethods.exists { m =>
-        proguardClass.matches(m.classType) && proguardMethod.matches(m.simpleName)
-      }
-    }finally{
-      BounderSetupApplication.reset()
+  def detectProguard(apkPath:String):Boolean = {
+    import sys.process._
+    val cmd = (File(BounderSetupApplication.androidHome) / "tools" /"bin"/"apkanalyzer").toString
+//    val stdout = new StringBuilder
+    var stdout:List[String] = List()
+    val stderr = new StringBuilder
+
+    val status = s"$cmd -h dex packages ${apkPath.replace(" ","\\ ")}".!(ProcessLogger(v => {
+      stdout = v::stdout
+    }, stderr append _))
+    if(status != 0){
+      throw new IllegalArgumentException(s"apk: $apkPath  error: $stderr")
+//      return true
     }
+    stdout.exists(v => v.contains("a.a.a."))
+
+    //    try {
+//      val callGraph = CHACallGraph
+//      //      val callGraph = FlowdroidCallGraph // flowdroid call graph immediately fails with "unreachable"
+//      val w = new JimpleFlowdroidWrapper(apkPath, callGraph)
+//      val transfer = (cha: ClassHierarchyConstraints) =>
+//        new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set()), cha)
+//      val config = SymbolicExecutorConfig(
+//        stepLimit = Some(5), w, transfer, component = None)
+//      val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
+//      val proguardMethod = ".* [a-z][(].*".r
+//      val proguardClass = ".*[.][a-z]".r
+//      symbolicExecutor.appCodeResolver.appMethods.exists { m =>
+//        proguardClass.matches(m.classType) && proguardMethod.matches(m.simpleName)
+//      }
+//    }finally{
+//      BounderSetupApplication.reset()
+//    }
+  }
 
 
-
-  def sampleDeref(cfg: RunConfig) = {
-    val apkPath = cfg.getApkPath
+  def sampleDeref(cfg: RunConfig, apkPath:String, outFolder:String) = {
+//    val apkPath = cfg.getApkPath
     val n = cfg.samples
-    val outFolder = cfg.getOutFolder.getOrElse(
-      throw new IllegalArgumentException("Out folder must be defined for sampling"))
+//    val outFolder = cfg.getOutFolder.getOrElse(
+//      throw new IllegalArgumentException("Out folder must be defined for sampling"))
     val callGraph = CHACallGraph
     //      val callGraph = FlowdroidCallGraph // flowdroid call graph immediately fails with "unreachable"
     val w = new JimpleFlowdroidWrapper(apkPath, callGraph)
@@ -224,7 +244,7 @@ object Driver {
       val line = appLoc.line.lineNumber
       val qry = ReceiverNonNull(clazz, name, line)
       val writeCFG = cfg.copy(initialQuery = Some(qry),
-          mode = Verify, outFolder = cfg.outFolder.map(v => v + "/" + outName))
+        outFolder = cfg.outFolder.map(v => v + "/" + outName))
       if(f.exists()) f.delete()
       f.createFile()
       f.write(write(writeCFG))
@@ -260,10 +280,18 @@ object Driver {
 //        "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)", 200,
 //        callinMatches = ".*getActivity.*".r)
       val query = initialQuery.make(symbolicExecutor,w)
-      symbolicExecutor.executeBackward(query)
+      val res = symbolicExecutor.executeBackward(query)
+
+      mode match{
+        case m@DBOutputMode(_) => m.writeLiveAtEnd(res)
+        case _ =>
+      }
+
+      res
     } finally {
       println(s"analysis time: ${(System.currentTimeMillis() - startTime) / 1000} seconds")
     }
+
   }
 
 }
@@ -306,3 +334,6 @@ case object TopSpecSet extends SpecSetOption {
   override def getSpecSet(): Set[LSSpec] = Set()
 }
 
+class ExperimentsDb{
+
+}

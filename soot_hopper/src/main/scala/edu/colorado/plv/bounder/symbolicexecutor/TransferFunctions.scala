@@ -691,13 +691,16 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     case AssignCmd(lhs:LocalWrapper, ArrayReference(base, index),_) =>
       state.get(lhs) match{
         case Some(v) =>
-          val (basev,state1) = state.getOrDefine(base)
-          val (indexv,state2) = state1.getOrDefine(index)
-          val arrayRef = ArrayPtEdge(basev, indexv)
-          Set(state2.copy(heapConstraints = state2.heapConstraints + (arrayRef -> v)).clearLVal(lhs))
+          //TODO: We currently do not precisely track array references
+          // Dropping the constraint should be sound but not precise
+//          val (basev,state1) = state.getOrDefine(base)
+//          val (indexv,state2) = state1.getOrDefine(index)
+//          val arrayRef = ArrayPtEdge(basev, indexv)
+//          Set(state2.copy(heapConstraints = state2.heapConstraints + (arrayRef -> v)).clearLVal(lhs))
+          Set(state.clearLVal(lhs))
         case None => Set(state)
       }
-    case AssignCmd(ArrayReference(base,index), lhs:LocalWrapper,_) =>
+    case AssignCmd(ArrayReference(base,index), lhs,_) =>
       val possibleAliases = state.heapConstraints.filter{
         case (ArrayPtEdge(_,_),_) => true
         case _ => false

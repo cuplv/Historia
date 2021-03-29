@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import com.microsoft.z3.Context
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, Loc, MethodLoc, SpecialInvoke, StaticInvoke, VirtualInvoke}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SetInclusionTypeSolving, SolverTypeSolving, StateTypeSolving, Z3StateSolver}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, FrameworkLocation, IPathNode, MemoryOutputMode$, OutputMode, PathNode, Qry, SomeQry, StateSet, SubsumableLocation, SwapLoc, WitnessedQry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, FrameworkLocation, IPathNode, MemoryOutputMode, OutputMode, PathNode, Qry, SomeQry, StateSet, SubsumableLocation, SwapLoc, WitnessedQry}
 import soot.SootMethod
 
 import scala.annotation.tailrec
@@ -37,7 +37,7 @@ case class SymbolicExecutorConfig[M,C](stepLimit: Option[Int],
                                        component : Option[Seq[String]] = None,
 //                                       stateTypeSolving: StateTypeSolving = SetInclusionTypeSolving,
                                        stateTypeSolving: StateTypeSolving = SolverTypeSolving,
-                                       outputMode : OutputMode = MemoryOutputMode$
+                                       outputMode : OutputMode = MemoryOutputMode
                                       ){
   def getSymbolicExecutor =
     new SymbolicExecutor[M, C](this)}

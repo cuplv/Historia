@@ -10,7 +10,7 @@ import org.apache.log4j.{EnhancedPatternLayout, PatternLayout}
 import scala.annotation.tailrec
 import scala.io.Source
 
-class PrettyPrinting(mode : OutputMode = MemoryOutputMode$) {
+class PrettyPrinting(mode : OutputMode = MemoryOutputMode) {
   implicit val thisMode = mode
   val outDir = sys.env.get("OUT_DIR")
 

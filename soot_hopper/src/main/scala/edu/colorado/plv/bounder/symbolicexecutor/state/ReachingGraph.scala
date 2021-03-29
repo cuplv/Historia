@@ -11,9 +11,9 @@ import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import upickle.default.{macroRW, ReadWriter => RW}
 import upickle.default.{read, write}
+import java.util.concurrent.atomic.AtomicInteger
 
 import scala.language.postfixOps
-
 import better.files.File
 
 trait ReachingGraph {
@@ -22,84 +22,116 @@ trait ReachingGraph {
 }
 
 sealed trait OutputMode
-case object MemoryOutputMode$ extends OutputMode
+
+case object MemoryOutputMode extends OutputMode
 
 case class DBOutputMode(dbfile:String) extends OutputMode{
+
   val dbf = File(dbfile)
   private val witnessQry = TableQuery[WitnessTable]
   private val methodQry = TableQuery[MethodTable]
   private val callEdgeQry = TableQuery[CallEdgeTable]
+  private val liveAtEnd = TableQuery[LiveAtEnd]
 
   val db = Database.forURL(s"jdbc:sqlite:$dbfile",driver="org.sqlite.JDBC")
   if(!dbf.exists()) {
     val setup = DBIO.seq(witnessQry.schema.create,
       methodQry.schema.create,
-      callEdgeQry.schema.create)
+      callEdgeQry.schema.create,
+      liveAtEnd.schema.create)
     Await.result(db.run(setup), 20 seconds)
   }
-  private var id = 0
+  private val id = new AtomicInteger(0)
   def nextId:Int = {
-    val oId = id
-    id = id + 1
-    oId
+    id.getAndAdd(1)
   }
 
-  def getLive():Set[DBPathNode] = {
-    val q = witnessQry.map(_.pred).distinct
-    val allPreds: Seq[Int] = Await.result(db.run(q.result), 30 seconds).flatten
-    //TODO: following is slow, should probably remember which nodes are terminal
-    val q2 = for{n <- witnessQry if(!allPreds.contains(n))} yield n.id
-    val nonTermNodes = Await.result(db.run(q2.result), 30 seconds).map(readNode)
-    nonTermNodes.toSet
+  def getTerminal():Set[DBPathNode] = {
+    val qLive = for{
+      liveId <- liveAtEnd
+      n <- witnessQry if(liveId.nodeID === n.id)
+    } yield n
+//    val qRef = for{
+//      n <- witnessQry if(n.queryState === "refuted")
+//    } yield n
+    val qRef = witnessQry.filter(_.queryState === "refuted")
+    val qWit = witnessQry.filter(_.queryState === "witnessed")
+    val qSubs = witnessQry.filter(_.subsumingState.isDefined)
+    val live = db.run(qLive.result)
+    val t = 600 seconds
+    val resLive = Await.result(live, t).map(rowToNode).toSet
+    val resRef = Await.result(db.run(qRef.result),t).map(rowToNode).toSet
+    val resWit = Await.result(db.run(qWit.result),t).map(rowToNode).toSet
+    val resSubs = Await.result(db.run(qSubs.result),t).map(rowToNode).toSet
+    resLive.union(resRef).union(resWit).union(resSubs)
+  }
+
+  def writeLiveAtEnd(witness: Set[IPathNode]):Unit = {
+    val ids = witness.map(n => n.asInstanceOf[DBPathNode].thisID)
+    val writeFuture = db.run(liveAtEnd ++= ids)
+    Await.result(writeFuture, 30 seconds)
   }
 
   def writeNode(node: DBPathNode): Unit = {
-    try {
-      val qryState = node.qry match {
-        case SomeQry(_, _) => "live"
-        case BottomQry(_, _) => "refuted"
-        case WitnessedQry(_, _) => "witnessed"
-      }
-      val loc = write(node.qry.loc)
-      val writeFuture = db.run(witnessQry +=
-        (node.thisID, qryState, write(node.qry.state), loc, node.subsumedID, node.succID, node.depth))
-      Await.result(writeFuture, 20 seconds)
-    } catch{
-      case t : Throwable =>
-        println(t) // pokemon error handling!
+    val qryState = node.qry match {
+      case SomeQry(_, _) => "live"
+      case BottomQry(_, _) => "refuted"
+      case WitnessedQry(_, _) => "witnessed"
     }
+    val loc = write(node.qry.loc)
+    val writeFuture = db.run(witnessQry +=
+      (node.thisID, qryState, write(node.qry.state), loc, node.subsumedID, node.succID, node.depth))
+    Await.result(writeFuture, 30 seconds)
+  }
+
+  def setSubsumed(node: DBPathNode, subsuming:Option[DBPathNode]) = {
+    val id = node.thisID
+    val q = for(n <- witnessQry if n.id === id) yield n.subsumingState
+    val q2 = q.update(subsuming.map(_.thisID))
+    Await.result(db.run(q2), 30 seconds)
   }
   def readNode(id: Int):DBPathNode = {
     val q = witnessQry.filter(_.id === id)
     val qFuture = db.run(q.result)
-    val res = Await.result(qFuture, 20 seconds)
+    val res: Seq[(Int, String, String, String, Option[Int], Option[Int], Int)] = Await.result(qFuture, 30 seconds)
     assert(res.size == 1, s"Failed to find unique node id: $id actual size: ${res.size}")
-    val queryState: String = res.head._2
-    val loc: Loc = read[Loc](res.head._4)
-    val subsumingId: Option[Int] = res.head._5
-    val pred: Option[Int] = res.head._6
-    val state: State = read[State](res.head._3)
-    val qry = queryState match{
-      case "live" => SomeQry(state,loc)
-      case "refuted" => BottomQry(state,loc)
-      case "witnessed" => WitnessedQry(state,loc)
-    }
-    val depth = res.head._7
-    DBPathNode(qry,id,pred,subsumingId,depth)
+    rowToNode(res.head)
   }
-  def writeMethod(method: MethodLoc,isCallback:Boolean):Unit ={
+
+  private def rowToNode(res: (Int, String, String, String, Option[Int], Option[Int], Int)) = {
+    val id = res._1
+    val queryState: String = res._2
+    val loc: Loc = read[Loc](res._4)
+    val subsumingId: Option[Int] = res._5
+    val pred: Option[Int] = res._6
+    val state: State = read[State](res._3)
+    val qry = queryState match {
+      case "live" => SomeQry(state, loc)
+      case "refuted" => BottomQry(state, loc)
+      case "witnessed" => WitnessedQry(state, loc)
+    }
+    val depth = res._7
+    DBPathNode(qry, id, pred, subsumingId, depth)
+  }
+
+  def writeMethod(method: MethodLoc, isCallback:Boolean):Unit ={
     val writeFuture = db.run(methodQry +=
       (nextId, method.simpleName, method.classType, method.bodyToString,isCallback))
-    Await.result(writeFuture, 20 seconds)
+    Await.result(writeFuture, 30 seconds)
   }
   def writeCallEdge(srcName:String, srcClass:String, tgtName:String,tgtClass:String, isCallin:Boolean):Unit = {
     val wf = db.run(callEdgeQry += (nextId, srcName,srcClass,tgtName,tgtClass,isCallin))
-    Await.result(wf, 20 seconds)
+    Await.result(wf, 30 seconds)
   }
 
 }
 object DBOutputMode{
   implicit val rw:RW[DBOutputMode] = macroRW
+}
+
+class LiveAtEnd(tag:Tag) extends Table[(Int)](tag,"LIVEATEND"){
+  def nodeID = column[Int]("NODE_ID", O.PrimaryKey)
+  def * = (nodeID)
 }
 
 class WitnessTable(tag:Tag) extends Table[(Int,String,String,String,Option[Int],Option[Int],Int)](tag,"PATH"){
@@ -133,10 +165,10 @@ class CallEdgeTable(tag:Tag) extends Table[(Int,String,String,String,String,Bool
 
 object PathNode{
   def apply(qry:Qry, succ: Option[IPathNode], subsumed: Option[IPathNode])
-           (implicit mode: OutputMode = MemoryOutputMode$):IPathNode = {
+           (implicit mode: OutputMode = MemoryOutputMode):IPathNode = {
     val depth = succ.map(_.depth + 1).getOrElse(1)
     mode match {
-      case MemoryOutputMode$ =>
+      case MemoryOutputMode =>
         MemoryPathNode(qry, succ, subsumed, depth)
       case m@DBOutputMode(_) =>
         val id = m.nextId
@@ -158,7 +190,7 @@ sealed trait IPathNode{
   def qry:Qry
   def succ(implicit mode : OutputMode):Option[IPathNode]
   def subsumed(implicit mode : OutputMode): Option[IPathNode]
-  def setSubsumed(v: Option[IPathNode]):IPathNode
+  def setSubsumed(v: Option[IPathNode])(implicit mode: OutputMode):IPathNode
 }
 
 case class MemoryPathNode(qry: Qry, succV : Option[IPathNode], subsumedV: Option[IPathNode], depth:Int) extends IPathNode {
@@ -169,7 +201,7 @@ case class MemoryPathNode(qry: Qry, succV : Option[IPathNode], subsumedV: Option
     qrystr + "\n" + succstr
   }
 
-  override def setSubsumed(v: Option[IPathNode]): IPathNode = this.copy(subsumedV = v)
+  override def setSubsumed(v: Option[IPathNode])(implicit mode: OutputMode): IPathNode = this.copy(subsumedV = v)
 
   override def succ(implicit mode: OutputMode): Option[IPathNode] = succV
 
@@ -181,10 +213,13 @@ case class DBPathNode(qry:Qry, thisID:Int,
                       subsumedID: Option[Int], depth:Int) extends IPathNode {
   override def succ(implicit db:OutputMode): Option[IPathNode] = succID.map(db.asInstanceOf[DBOutputMode].readNode)
 
-  override def subsumed(implicit db:OutputMode): Option[IPathNode] = subsumedID.map(db.asInstanceOf[DBOutputMode].readNode)
+  override def subsumed(implicit db:OutputMode): Option[IPathNode] =
+    subsumedID.map(db.asInstanceOf[DBOutputMode].readNode)
 
-  override def setSubsumed(v: Option[IPathNode]): IPathNode =
+  override def setSubsumed(v: Option[IPathNode])(implicit db:OutputMode): IPathNode = {
+    db.asInstanceOf[DBOutputMode].setSubsumed(this,v.asInstanceOf[Option[DBPathNode]])
     this.copy(subsumedID = v.map(v2 => v2.asInstanceOf[DBPathNode].thisID))
+  }
 }
 object DBPathNode{
   implicit val rw:RW[DBPathNode] = macroRW

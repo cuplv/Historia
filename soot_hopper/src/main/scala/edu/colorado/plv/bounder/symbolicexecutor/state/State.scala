@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, StateSolver}
-import edu.colorado.plv.bounder.ir.{AppLoc, BoolConst, CallbackMethodInvoke, CallbackMethodReturn, ClassConst, IntConst, InternalMethodInvoke, InternalMethodReturn, LVal, Loc, LocalWrapper, MessageType, NullConst, RVal, StringConst}
+import edu.colorado.plv.bounder.ir.{AppLoc, BoolConst, CallbackMethodInvoke, CallbackMethodReturn, ClassConst, ConstVal, IntConst, InternalMethodInvoke, InternalMethodReturn, LVal, Loc, LocalWrapper, MessageType, NullConst, RVal, StringConst}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAnyVal, LSPred, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state.State.findIAF
@@ -611,6 +611,7 @@ case class State(callStack: List[CallStackFrame],
     case NullConst => Some(NullVal)
     case BoolConst(v) => Some(BoolVal(v))
     case ClassConst(clazz) => Some(ClassVal(clazz))
+    case ConstVal(_) => Some(TopVal)//TODO: For now losing precision with floats longs chars etc
     case l =>
       println(l)
       ???

@@ -120,6 +120,8 @@ object JimpleFlowdroidWrapper{
       val op1 = makeRVal(div.getOp1)
       val op2 = makeRVal(div.getOp2)
       Binop(op1, Sub, op2)
+    case neg :JNegExpr =>
+      Binop(IntConst(0), Sub, makeRVal(neg.getOp))
     case lt : JLeExpr =>
       val op1 = makeRVal(lt.getOp1)
       val op2 = makeRVal(lt.getOp2)
@@ -150,6 +152,14 @@ object JimpleFlowdroidWrapper{
       val op1 = makeRVal(jcomp.getOp1)
       val op2 = makeRVal(jcomp.getOp2)
       Binop(op1,Eq, op2)
+    case jcomp: JCmplExpr =>
+      val op1 = makeRVal(jcomp.getOp1)
+      val op2 = makeRVal(jcomp.getOp2)
+      Binop(op1,Eq,op2)
+    case jcomp: JCmpgExpr =>
+      val op1 = makeRVal(jcomp.getOp1)
+      val op2 = makeRVal(jcomp.getOp2)
+      Binop(op1,Eq,op2)
     case i : JInstanceOfExpr =>
       val targetClassType = JimpleFlowdroidWrapper.stringNameOfType(i.getCheckType)
       val target = makeRVal(i.getOp).asInstanceOf[LocalWrapper]
@@ -174,7 +184,7 @@ object JimpleFlowdroidWrapper{
 
     case v =>
       //println(v)
-      throw CmdNotImplemented(s"Command not implemented: $v  type: ${v.getType}")
+      throw CmdNotImplemented(s"Command not implemented: $v  type: ${v.getClass}")
   }
   protected def makeVal(box: Value):RVal = box match{
     case a : JimpleLocal=>
@@ -463,7 +473,11 @@ class JimpleFlowdroidWrapper(apkPath : String,
   }
 
   protected val getUnitGraph: Body => EnhancedUnitGraphFixed = Memo.mutableHashMapMemo {b =>
-    new EnhancedUnitGraphFixed(b)}
+    // Soot EnhancedUnitGraph is not thread safe
+    this.synchronized {
+      new EnhancedUnitGraphFixed(b)
+    }
+  }
   protected def getAppMethods(resolver: AppCodeResolver):Set[SootMethod] = {
     if(appMethodCache.isEmpty) {
       val classes = Scene.v().getApplicationClasses
@@ -762,34 +776,38 @@ class JimpleFlowdroidWrapper(apkPath : String,
     })
   }
 
-
-  override def makeMethodRetuns(method: MethodLoc): List[AppLoc] = {
-    val smethod = method.asInstanceOf[JimpleMethodLoc]
-    val rets = mutable.ListBuffer[AppLoc]()
-    try{
-      smethod.method.getActiveBody()
-    }catch{
-      case t: Throwable =>
+  private val iMakeMethodReturns = Memo.mutableHashMapMemo {(method:MethodLoc)=>
+    this.synchronized{
+      val smethod = method.asInstanceOf[JimpleMethodLoc]
+      val rets = mutable.ListBuffer[AppLoc]()
+      try{
+        smethod.method.getActiveBody()
+      }catch{
+        case t: Throwable =>
         //println(t)
-    }
-    if (smethod.method.hasActiveBody) {
-      smethod.method.getActiveBody.getUnits.forEach((u: soot.Unit) => {
-        if (u.isInstanceOf[JReturnStmt] || u.isInstanceOf[JReturnVoidStmt]) {
-          val lineloc = JimpleLineLoc(u, smethod.method)
-          rets.addOne(AppLoc(smethod, lineloc, false))
-        }
-      })
-      rets.toList
-    }else{
-      // TODO: for some reason no active bodies for R or BuildConfig generated classes?
-      // note: these typically don't have any meaningful implementation anyway
-      val classString = smethod.method.getDeclaringClass.toString
-      if (! (classString.contains(".R$") || classString.contains("BuildConfig") || classString.endsWith(".R"))){
-        //TODO: figure out why some app methods don't have active bodies
-//        println(s"Method $method has no active body, consider adding it to FrameworkExtensions.txt")
       }
-      List()
+      if (smethod.method.hasActiveBody) {
+        smethod.method.getActiveBody.getUnits.forEach((u: soot.Unit) => {
+          if (u.isInstanceOf[JReturnStmt] || u.isInstanceOf[JReturnVoidStmt]) {
+            val lineloc = JimpleLineLoc(u, smethod.method)
+            rets.addOne(AppLoc(smethod, lineloc, false))
+          }
+        })
+        rets.toList
+      }else{
+        // TODO: for some reason no active bodies for R or BuildConfig generated classes?
+        // note: these typically don't have any meaningful implementation anyway
+        val classString = smethod.method.getDeclaringClass.toString
+        if (! (classString.contains(".R$") || classString.contains("BuildConfig") || classString.endsWith(".R"))){
+          //TODO: figure out why some app methods don't have active bodies
+          //        println(s"Method $method has no active body, consider adding it to FrameworkExtensions.txt")
+        }
+        List()
+      }
     }
+  }
+  override def makeMethodRetuns(method: MethodLoc): List[AppLoc] = {
+    iMakeMethodReturns(method)
   }
 
   override def getInterfaces: Set[String] = {
