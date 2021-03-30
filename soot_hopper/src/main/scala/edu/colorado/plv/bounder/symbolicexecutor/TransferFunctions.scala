@@ -751,21 +751,35 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
   }
 
 
+  def localCanAliasPV(v:RVal, state:State) = v match{
+    case LocalWrapper(_,localType) =>
+      state.pureVars.exists{ p =>
+        state.typeConstraints.get(p) match{
+          case Some(tc) => tc.subtypeOfCanAlias(localType,ch)
+          case _ => true
+        }
+      }
+    case _ => false
+  }
   def assumeInState(bExp:RVal, state:State, negate: Boolean): Option[State] = bExp match{
     case BoolConst(b) if b != negate => Some(state)
     case BoolConst(b) if b == negate => None
     case Binop(v1, op, v2) =>
-      val (v1Val,state0) = state.getOrDefine2(v1)
-      val (v2Val,state1) = state0.getOrDefine2(v2)
-      //TODO: Handle boolean expressions, integer expressions, etc
-      // it is sound, but not precise, to drop constraints
-      Some((op, negate) match{
-        case (Eq,false) => state1.copy(pureFormula = state1.pureFormula + PureConstraint(v1Val, Equals, v2Val))
-        case (Ne,false) => state1.copy(pureFormula = state1.pureFormula + PureConstraint(v1Val, NotEquals, v2Val))
-        case (Eq,true) => state1.copy(pureFormula = state1.pureFormula + PureConstraint(v1Val, NotEquals, v2Val))
-        case (Ne,true) => state1.copy(pureFormula = state1.pureFormula + PureConstraint(v1Val, Equals, v2Val))
-        case _ => state
-      })
+      if (true || List(v1,v2).exists(localCanAliasPV(_,state))) { // TODO: probably remove this
+        val (v1Val, state0) = state.getOrDefine2(v1)
+        val (v2Val, state1) = state0.getOrDefine2(v2)
+        //TODO: Handle boolean expressions, integer expressions, etc
+        // it is sound, but not precise, to drop constraints
+        Some((op, negate) match {
+          case (Eq, false) => state1.copy(pureFormula = state1.pureFormula + PureConstraint(v1Val, Equals, v2Val))
+          case (Ne, false) => state1.copy(pureFormula = state1.pureFormula + PureConstraint(v1Val, NotEquals, v2Val))
+          case (Eq, true) => state1.copy(pureFormula = state1.pureFormula + PureConstraint(v1Val, NotEquals, v2Val))
+          case (Ne, true) => state1.copy(pureFormula = state1.pureFormula + PureConstraint(v1Val, Equals, v2Val))
+          case _ => state
+        })
+      }else{
+        Some(state) // Note that this heuristic breaks the motivating example
+      }
     case v =>
       throw new IllegalStateException(s"Invalid rval for assumeInState: $v")
   }

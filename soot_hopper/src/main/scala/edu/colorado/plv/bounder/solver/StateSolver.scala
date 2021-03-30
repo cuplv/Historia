@@ -37,7 +37,7 @@ trait StateSolver[T, C <: SolverCtx] {
   /**
    * forall int condition is true
    *
-   * @param cond
+   * @param cond condition inside the forall statement
    */
   protected def mkForallInt(min: T, max: T, cond: T => T)(implicit zctx: C): T
 
@@ -109,6 +109,7 @@ trait StateSolver[T, C <: SolverCtx] {
                                messageTranslator: MessageTranslator, logDbg: Boolean = false)(implicit zctx: C): Option[T]
 
   protected def mkTypeConstraints(types: Set[String])(implicit zctx: C): (T, Map[String, T])
+  protected def mkConstConstraintsMap(pvs: Set[PureVal])(implicit zctx: C): (T, Map[PureVal, T])
 
   protected def mkTypeConstraintForAddrExpr(typeFun: T, typeToSolverConst: Map[String, T],
                                             addr: T, tc: Set[String])(implicit zctx: C): T
@@ -131,9 +132,13 @@ trait StateSolver[T, C <: SolverCtx] {
   // function for argument i -> msg -> addr
   protected def mkArgFun()(implicit zctx: C): T
 
-  // function to test if addr is null
-  // Uses uninterpreted function isNullFn : addr -> bool
-  protected def mkIsNull(addr: T)(implicit zctx: C): T
+//  // function to test if addr is null
+//  // Uses uninterpreted function isNullFn : addr -> bool
+//  protected def mkIsNull(addr: T)(implicit zctx: C): T
+//
+//  protected def mkIntValueConstraint(addr:T)(implicit zctx: C): T
+//
+  protected def mkConstValueConstraint(addr:T)(implicit zctx:C):T
 
   // Get enum value for I based on index
   protected def mkIName(enum: T, enumNum: Int)(implicit zctx: C): T
@@ -152,27 +157,36 @@ trait StateSolver[T, C <: SolverCtx] {
   def printDbgModel(messageTranslator: MessageTranslator, traceabst: Set[AbstractTrace],
                     lenUID: String)(implicit zctx: C): Unit
 
-  def compareConstValueOf(rhs: T, op: CmpOp, pureVal: PureVal)(implicit zctx: C): T = {
+  def compareConstValueOf(rhs: T, op: CmpOp, pureVal: PureVal, constMap: Map[PureVal, T])(implicit zctx: C): T = {
     (pureVal, op) match {
-      case (NullVal, Equals) => mkIsNull(rhs)
-      case (NullVal, NotEquals) => mkNot(mkIsNull(rhs))
-      case (v, Equals) if v == pureVal => mkBoolVal(true)
-      case (ClassVal(_), _) => mkBoolVal(true) //TODO: add class vals if necessary for precision
-      case (IntVal(_), _) => mkBoolVal(true)
+      case (TopVal, _) => mkBoolVal(b = true)
+      case (ClassVal(_), _) => mkBoolVal(b = true) //TODO: add class vals if necessary for precision
+      case (v:PureVal, Equals) => mkEq(constMap(v), mkConstValueConstraint(rhs))
+      case (v:PureVal, NotEquals) => mkNot(mkEq(constMap(v), mkConstValueConstraint(rhs)))
+      case (_:PureVal, _) => mkBoolVal(b = true)
+//      case (NullVal, Equals) => mkIsNull(rhs)
+//      case (NullVal, NotEquals) => mkNot(mkIsNull(rhs))
+////      case (v, Equals) if v == pureVal =>
+////        mkBoolVal(true)
+////        ??? // TODO:  make sure this case didn't do anything bad
+//      case (IntVal(v), Equals) =>
+//        // Covers boolean case as well
+//        mkAnd(mkEq(mkIntVal(v), mkIntValueConstraint(rhs)),
+//          mkNot(mkIsNull(rhs)))
+//      case (IntVal(v), NotEquals) =>
+//        mkNot(mkEq(mkIntVal(v), mkIntValueConstraint(rhs))) // Covers boolean case as well
+//      case (_:PureVal, Equals) =>
+//        mkNot(mkIsNull(rhs)) // any constant other than null is non-null
       case v =>
         println(v)
         ???
     }
   }
 
-  def toAST(p: PureConstraint)(implicit zctx: C): T = p match {
+  def toAST(p: PureConstraint, constMap: Map[PureVal, T])(implicit zctx: C): T = p match {
     // TODO: field constraints based on containing object constraints
-    case PureConstraint(lhs: PureVar, TypeComp, rhs: TypeConstraint) =>
-      throw new IllegalStateException("Pure constraints should be filtered out before here.")
-    //      val typeSet = persist.typeSetForPureVar(lhs,state)
-    //      mkTypeConstraint(typeFun, toAST(lhs), rhs)
-    case PureConstraint(v: PureVal, op, rhs) => compareConstValueOf(toAST(rhs), op, v)
-    case PureConstraint(lhs, op, v: PureVal) => compareConstValueOf(toAST(lhs), op, v)
+    case PureConstraint(v: PureVal, op, rhs) => compareConstValueOf(toAST(rhs), op, v,constMap)
+    case PureConstraint(lhs, op, v: PureVal) => compareConstValueOf(toAST(lhs), op, v,constMap)
     case PureConstraint(lhs, op, rhs) =>
       toAST(toAST(lhs), op, toAST(rhs))
     case _ => ???
@@ -195,8 +209,8 @@ trait StateSolver[T, C <: SolverCtx] {
    * Formula representing truth of "m is at position index in traceFn"
    *
    * @param index   index of the message (ArithExpr)
-   * @param m
-   * @param messageTranslator
+   * @param m observed message
+   * @param messageTranslator mapping from observed messages to z3 representation
    * @param traceFn : Int->Msg
    * @return
    */
@@ -271,8 +285,8 @@ trait StateSolver[T, C <: SolverCtx] {
   }
 
 
-  private def allITraceAbs(traceAbstractionSet: Set[AbstractTrace], includeArrow: Boolean = false): Set[I] =
-    traceAbstractionSet.flatMap(a => allI(a, includeArrow))
+  private def allITraceAbs(traceAbstractionSet: Set[AbstractTrace]): Set[I] =
+    traceAbstractionSet.flatMap(a => allI(a, includeArrow = true))
 
   private def allI(pred: LSPred): Set[I] = pred match {
     case i@I(_, _, _) => Set(i)
@@ -377,9 +391,18 @@ trait StateSolver[T, C <: SolverCtx] {
     heapAst
   }
 
+  def getPureValSet(pf:Set[PureConstraint]):Set[PureVal] = {
+    pf.flatMap{
+      case PureConstraint(lhs:PureVal, _, rhs:PureVal) => Set(lhs,rhs)
+      case PureConstraint(_, _, rhs:PureVal) => Set(rhs)
+      case PureConstraint(lhs:PureVal, _, _) => Set(lhs)
+      case _ => Set()
+    }
+  }
   def toAST(state: State, typeToSolverConst: Map[String, T],
             messageTranslator: MessageTranslator,
-            maxWitness: Option[Int] = None, encode : StateTypeSolving)(implicit zctx: C): T = {
+            maxWitness: Option[Int] = None, encode : StateTypeSolving,
+            constMap:Map[PureVal, T])(implicit zctx: C): T = {
     val pure = state.pureFormula
     // typeFun is a function from addresses to concrete types in the program
     val typeFun = createTypeFun()
@@ -390,8 +413,10 @@ trait StateSolver[T, C <: SolverCtx] {
       case PureConstraint(_, TypeComp, _) => false
       case _ => true
     }
+
+
     val pureAst = pureNoTypes.foldLeft(mkBoolVal(true))((acc, v) =>
-      mkAnd(acc, toAST(v))
+      mkAnd(acc, toAST(v, constMap))
     )
 
     val typeConstraints = if (encode == SolverTypeSolving) {
@@ -421,7 +446,7 @@ trait StateSolver[T, C <: SolverCtx] {
   }
 
   case class MessageTranslator(states: List[State])(implicit zctx: C) {
-    private val alli = allITraceAbs(states.flatMap(_.traceAbstraction).toSet, includeArrow = true)
+    private val alli = allITraceAbs(states.flatMap(_.traceAbstraction).toSet)
     private val inameToI: Map[String, Set[I]] = alli.groupBy(_.identitySignature)
     private val inamelist = "OTHEROTHEROTHER" :: inameToI.keySet.toList
     private val iNameIntMap: Map[String, Int] = inamelist.zipWithIndex.toMap
@@ -553,7 +578,11 @@ trait StateSolver[T, C <: SolverCtx] {
         val typeMap = Map[String, T]()
         (typesAreUniqe,typeMap)
       }
-      val ast = mkAnd(typesAreUniqe, toAST(state2, typeMap, messageTranslator, maxWitness, encode))
+
+      val (uniqueConst, constMap) = mkConstConstraintsMap(getPureValSet(state2.pureFormula))
+      val ast = mkAnd(uniqueConst,
+        mkAnd(typesAreUniqe,
+          toAST(state2, typeMap, messageTranslator, maxWitness, encode,constMap)))
 
       if (maxWitness.isDefined) {
         println(s"State ${System.identityHashCode(state2)} encoding: ")
@@ -632,7 +661,7 @@ trait StateSolver[T, C <: SolverCtx] {
     val pv1: Set[PureVar] = s1.pureVars()
     val pv2: Set[PureVar] = s2.pureVars()
     val allPv = pv1.union(pv2).toList
-    // map s2 to somethign where all pvs are strictly larger
+    // map s2 to something where all pvs are strictly larger
     val maxID = if (allPv.nonEmpty) allPv.maxBy(_.id) else PureVar(5)
 
 
@@ -690,12 +719,29 @@ trait StateSolver[T, C <: SolverCtx] {
     val startTime = System.currentTimeMillis()
     //filter out pure var pairings early if they can't be subsumed type wise
     def canMap(pv1:PureVar, pv2:PureVar):Boolean = {
+      // Check if pv mapping is possible from types
       val tc1 = s1.typeConstraints.get(pv1)
       val tc2 = s2Above.typeConstraints.get(pv2)
       if(tc2.isEmpty)
         return true
-      val out = tc1.forall(_.contains(tc2.get))
-      out
+      val typeCanSubs = tc1.forall(_.contains(tc2.get))
+
+      def firstConstConstraint(pv : PureVar, s:State):Option[PureVal] = {
+        s.pureFormula.collectFirst{
+          case PureConstraint(lhs, Equals, pval:PureVal) if lhs == pv => pval
+        }
+      }
+      val cc1 = firstConstConstraint(pv1, s1)
+      val cc2 = firstConstConstraint(pv2, s2Above)
+      val constCanSub = (cc1,cc2) match{
+        case (None,None) => true
+        case (None,Some(_)) => true
+        case (Some(TopVal), _) => true
+        case (Some(v1), Some(v2)) => v1 == v2
+        case (Some(_), None) => false
+      }
+
+      typeCanSubs && constCanSub
     }
     val perm = BounderUtil.allMap(pv1 -- removeFromPermS1,pvToTemp -- removeFromPermS2,canMap)
 //    val perm = allPvNoLocals.permutations.grouped(40)
@@ -754,13 +800,14 @@ trait StateSolver[T, C <: SolverCtx] {
     val s1pf = filterTypeConstraintsFromPf(s1.pureFormula)
     val s2pf = filterTypeConstraintsFromPf(s2.pureFormula)
 
+    val (uniqueConst, constMap) = mkConstConstraintsMap(getPureValSet(s1pf ++ s2pf))
     // Pure formula that are not type constraints
     val negs1pure = s1pf.foldLeft(notS1TypesEncoded) {
-      case (acc, constraint) => mkOr(mkNot(toAST(constraint)), acc)
+      case (acc, constraint) => mkOr(mkNot(toAST(constraint,constMap)), acc)
     }
 
     val s2pure = s2pf.foldLeft(s2TypesEncoded) {
-      case (acc, constraint) => mkAnd(toAST(constraint), acc)
+      case (acc, constraint) => mkAnd(toAST(constraint,constMap), acc)
     }
 
     // encode locals
@@ -795,7 +842,7 @@ trait StateSolver[T, C <: SolverCtx] {
       case None => fp
     }
     // pureFormulaEnc._3 is assertion that all types are unique
-    mkAssert(mkAnd(uniqueType, f))
+    mkAssert(mkAnd(uniqueConst,mkAnd(uniqueType, f)))
     val ti = checkSAT()
 
     pop()
@@ -845,7 +892,6 @@ trait StateSolver[T, C <: SolverCtx] {
 
     val pureFormulaEnc = {
 
-      // TODO: add type encoding here
       val (negTC1, tC2, uniqueType) = if (encodeTypeConsteraints == SolverTypeSolving) {
         val typeFun = createTypeFun()
         val allTypes = List(s1, s2).flatMap(_.typeConstraints.flatMap { case (_, v) => v.typeSet(ch) }).toSet
@@ -874,16 +920,18 @@ trait StateSolver[T, C <: SolverCtx] {
       val s1pf = filterTypeConstraintsFromPf(s1.pureFormula)
       val s2pf = filterTypeConstraintsFromPf(s2.pureFormula)
 
+      val (uniqueConst, constMap) = mkConstConstraintsMap(getPureValSet(s1pf ++ s2pf))
+
       // Pure formula that are not type constraints
       val negs1pure = s1pf.foldLeft(negTC1) {
-        case (acc, constraint) => mkOr(mkNot(toAST(constraint)), acc)
+        case (acc, constraint) => mkOr(mkNot(toAST(constraint, constMap)), acc)
       }
 
       val s2pure = s2pf.foldLeft(tC2) {
-        case (acc, constraint) => mkAnd(toAST(constraint), acc)
+        case (acc, constraint) => mkAnd(toAST(constraint, constMap), acc)
       }
 
-      (negs1pure, s2pure, uniqueType)
+      (negs1pure, s2pure, uniqueType, uniqueConst)
     }
 
     val messageTranslator = MessageTranslator(List(s1, s2))
@@ -911,7 +959,8 @@ trait StateSolver[T, C <: SolverCtx] {
       case None => fp
     }
     // pureFormulaEnc._3 is assertion that all types are unique
-    mkAssert(mkAnd(pureFormulaEnc._3, f))
+    // pureFormulaEnc._4 is unique const assertion
+    mkAssert(mkAnd(pureFormulaEnc._4 ,mkAnd(pureFormulaEnc._3, f)))
     val ti = checkSAT()
     if (ti && maxLen.isDefined) {
       println(s"===formula: $f")
@@ -981,15 +1030,17 @@ trait StateSolver[T, C <: SolverCtx] {
     val encodedAbs: Set[T] =
       state.traceAbstraction.map(encodeTraceAbs(_, messageTranslator, traceFn, len, Some("")))
     val pf = filterTypeConstraintsFromPf(state.pureFormula)
+
+    val (uniqueConst, constMap) = mkConstConstraintsMap(getPureValSet(pf))
     val s2pure = pf.foldLeft(mkBoolVal(true)) {
-      case (acc, constraint) => mkAnd(toAST(constraint), acc)
+      case (acc, constraint) => mkAnd(toAST(constraint,constMap), acc)
     }
 
     val distinctAddr: Map[Int, T] = (0 until 10).map(v => (v, mkAddrConst(v))).toMap
     val assertDistinct = mkDistinctT(distinctAddr.keySet.map(distinctAddr(_)))
     val encodedTrace = encodeTrace(traceFn, trace, messageTranslator, distinctAddr)
-    mkAnd(mkEq(len, mkIntVal(trace.length)),
-      mkAnd(encodedAbs.foldLeft(mkAnd(assertDistinct, s2pure))((a, b) => mkAnd(a, b)), encodedTrace)
+    mkAnd(uniqueConst, mkAnd(mkEq(len, mkIntVal(trace.length)),
+      mkAnd(encodedAbs.foldLeft(mkAnd(assertDistinct, s2pure))((a, b) => mkAnd(a, b)), encodedTrace))
     )
   }
 

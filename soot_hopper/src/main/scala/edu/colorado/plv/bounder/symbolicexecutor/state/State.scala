@@ -797,6 +797,7 @@ sealed abstract class PureVal(v:Any) extends PureExpr {
 //    case _ => false
 //  }
   override def toString : String = v.toString
+  def z3Tag:Option[String]
 }
 case object PureVal{
   implicit val rw:RW[PureVal] = RW.merge(
@@ -806,12 +807,25 @@ case object PureVal{
 
 case object NullVal extends PureVal{
   override def toString:String = "NULL"
+
+  override def z3Tag: Option[String] = Some("NULL")
 }
-case class IntVal(v : Int) extends PureVal(v)
-case class BoolVal(v : Boolean) extends PureVal(v)
-case class StringVal(v : String) extends PureVal(v)
-case class ClassVal(name:String) extends PureVal(name)
-case object TopVal extends PureVal(null)
+case class IntVal(v : Int) extends PureVal(v){
+  override def z3Tag: Option[String] = Some(s"I$v")
+}
+//TODO: is BoolVal ever actually used?
+case class BoolVal(v : Boolean) extends PureVal(v) {
+  override def z3Tag: Option[String] = Some(s"B$v")
+}
+case class StringVal(v : String) extends PureVal(v) {
+  override def z3Tag: Option[String] = Some(s"S${v.hashCode}")
+}
+case class ClassVal(name:String) extends PureVal(name) {
+  override def z3Tag: Option[String] = Some(s"C$name")
+}
+case object TopVal extends PureVal(null) {
+  override def z3Tag: Option[String] = None
+}
 
 sealed trait TypeConstraint
 case class SubclassOf(clazz: String) extends TypeConstraint{

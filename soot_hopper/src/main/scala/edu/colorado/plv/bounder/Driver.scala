@@ -306,7 +306,7 @@ object SpecSetOption{
       RxJavaSpec.call,
       RxJavaSpec.subscribeDoesNotReturnNull,
       RxJavaSpec.subscribeIsUniqueAndNonNull,
-      ActivityLifecycle.activityCreatedOnlyFirst
+      ActivityLifecycle.Fragment_activityCreatedOnlyFirst
     ))
   implicit val rw:RW[SpecSetOption] = upickle.default.readwriter[String].bimap[SpecSetOption](
     {

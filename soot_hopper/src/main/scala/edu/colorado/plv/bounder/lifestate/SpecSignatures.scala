@@ -199,7 +199,7 @@ object ActivityLifecycle {
       SpecSignatures.Activity_init_entry)
 
   //TODO: =====  Checking if this spec can replace the "unique" return from subscribe
-  val activityCreatedOnlyFirst = LSSpec(
+  val Fragment_activityCreatedOnlyFirst = LSSpec(
     And(
       Not(SpecSignatures.Fragment_onDestroy_exit),
       Not(SpecSignatures.Fragment_onActivityCreated_entry)

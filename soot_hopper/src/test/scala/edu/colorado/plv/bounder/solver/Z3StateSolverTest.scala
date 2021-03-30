@@ -24,7 +24,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     withFixture(test.toNoArgTest(FixtureParam(SetInclusionTypeSolving)))
     withFixture(test.toNoArgTest(FixtureParam(SolverTypeSolving)))
   }
-  test("null not null") { f =>
+  test("value not value") { f =>
     println(s"fixture param: $f")
     val (stateSolver,_) = getStateSolver(f.typeSolving)
 
@@ -33,7 +33,18 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val refutableState = State(List(frame),
       Map(FieldPtEdge(v,"f") -> v2),constraints,Map(),Set(),0)
     val simplifyResult = stateSolver.simplify(refutableState)
-    assert(!simplifyResult.isDefined)
+    assert(simplifyResult.isEmpty)
+
+    val constraints2 = Set(PureConstraint(v2, NotEquals, IntVal(0)), PureConstraint(v2, Equals, IntVal(0)))
+    val refutableState2 = refutableState.copy(pureFormula = constraints2)
+    val simplifyResult2 = stateSolver.simplify(refutableState2)
+    assert(simplifyResult2.isEmpty)
+
+    val constraints3 = Set(PureConstraint(v2, NotEquals, IntVal(0)), PureConstraint(v2, Equals, IntVal(1)))
+    val refutableState3 = refutableState.copy(pureFormula = constraints3)
+    val simplifyResult3 = stateSolver.simplify(refutableState3)
+    assert(simplifyResult3.isDefined)
+
   }
   test("alias") { f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)

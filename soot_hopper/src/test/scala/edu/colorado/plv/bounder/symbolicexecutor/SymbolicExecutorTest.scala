@@ -95,6 +95,123 @@ class SymbolicExecutorTest extends AnyFunSuite {
     prettyPrinting.dumpDebugInfo(result, "test_interproc_2_onResumeReach")
     assert(BounderUtil.interpretResult(result) == Witnessed)
   }
+
+  test("Test read string literal") {
+    val src =
+      """package com.example.createdestroy;
+        |import androidx.appcompat.app.AppCompatActivity;
+        |import android.os.Bundle;
+        |import android.util.Log;
+        |
+        |import rx.Single;
+        |import rx.Subscription;
+        |import rx.android.schedulers.AndroidSchedulers;
+        |import rx.schedulers.Schedulers;
+        |
+        |
+        |public class MyActivity extends AppCompatActivity {
+        |    Object o = null;
+        |    Subscription subscription;
+        |
+        |    @Override
+        |    protected void onCreate(Bundle savedInstanceState) {
+        |        o = "";
+        |        Log.i("b", o.toString()); //query1
+        |    }
+        |
+        |    @Override
+        |    protected void onDestroy() {
+        |        o = null;
+        |    }
+        |}""".stripMargin
+
+    val test: String => Unit = apk => {
+      assert(apk != null)
+      val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
+      val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
+        new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
+          FragmentGetActivityNullSpec.getActivityNonNull,
+          ActivityLifecycle.init_first_callback,
+          RxJavaSpec.call,
+          //          RxJavaSpec.subscribeDoesNotReturnNull
+        )), cha)
+      val config = SymbolicExecutorConfig(
+        stepLimit = Some(50), w, transfer,
+        component = Some(List("com.example.createdestroy.MyActivity.*")))
+      val symbolicExecutor = config.getSymbolicExecutor
+      val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
+        "void onCreate(android.os.Bundle)", lineForRegex(".*query1.*".r,src))
+      val result = symbolicExecutor.executeBackward(query)
+      prettyPrinting.dumpDebugInfo(result, "readLiteral")
+      assert(result.nonEmpty)
+      assert(BounderUtil.interpretResult(result) == Proven)
+
+    }
+
+    makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
+  }
+  test("Test irrelevant condition") {
+    val src =
+      """package com.example.createdestroy;
+        |import androidx.appcompat.app.AppCompatActivity;
+        |import android.os.Bundle;
+        |import android.util.Log;
+        |
+        |import rx.Single;
+        |import rx.Subscription;
+        |import rx.android.schedulers.AndroidSchedulers;
+        |import rx.schedulers.Schedulers;
+        |
+        |
+        |public class MyActivity extends AppCompatActivity {
+        |    String o = null;
+        |    Boolean o2 = null;
+        |    Subscription subscription;
+        |
+        |    @Override
+        |    protected void onResume() {
+        |       o = "someString";
+        |    }
+        |
+        |    @Override
+        |    protected void onPause() {
+        |        if (o2 == null){
+        |           o2 = true;
+        |        }
+        |        o.toString(); //query1
+        |        o = null;
+        |    }
+        |}""".stripMargin
+
+    val test: String => Unit = apk => {
+      assert(apk != null)
+      val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
+      val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
+        new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
+          FragmentGetActivityNullSpec.getActivityNonNull,
+          ActivityLifecycle.init_first_callback,
+          ActivityLifecycle.onPause_onlyafter_onResume_init
+//          RxJavaSpec.call,
+          //          RxJavaSpec.subscribeDoesNotReturnNull
+        )), cha)
+      val config = SymbolicExecutorConfig(
+        stepLimit = Some(50), w, transfer,
+        component = Some(List("com.example.createdestroy.MyActivity.*")))
+      val symbolicExecutor = config.getSymbolicExecutor
+      val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
+        "void onPause()", lineForRegex(".*query1.*".r,src))
+
+//      prettyPrinting.dotMethod( query.head.loc, symbolicExecutor.controlFlowResolver, "onPauseCond.dot")
+
+      val result = symbolicExecutor.executeBackward(query)
+      prettyPrinting.dumpDebugInfo(result, "irrelevantConditional")
+      assert(result.nonEmpty)
+      assert(BounderUtil.interpretResult(result) == Proven)
+
+    }
+
+    makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
+  }
   test("Test internal object method call") {
     val src = """package com.example.createdestroy;
                 |import androidx.appcompat.app.AppCompatActivity;
@@ -506,7 +623,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
   test("Boolean conditional") {
     // TODO: add (false,Proven) when bool vals are handled precisely
-    List((true,Witnessed)).map { case (initial, expectedResult) =>
+    List((true,Witnessed), (false, Proven)).map { case (initial, expectedResult) =>
       val src =
         s"""package com.example.createdestroy;
           |import androidx.appcompat.app.AppCompatActivity;
@@ -538,6 +655,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           |            Log.i("b", o.toString());
           |        }
           |        o = null;
+          |        initialized = false;
           |    }
           |}""".stripMargin
 
@@ -547,7 +665,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
           new SpecSpace(Set()), cha)
         val config = SymbolicExecutorConfig(
-          stepLimit = Some(60), w, transfer,
+          stepLimit = Some(200), w, transfer,
           component = Some(List("com.example.createdestroy.MyActivity.*")))
         val symbolicExecutor = config.getSymbolicExecutor
         val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
@@ -616,7 +734,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           FragmentGetActivityNullSpec.getActivityNonNull,
           ActivityLifecycle.init_first_callback,
           RxJavaSpec.call,
-          ActivityLifecycle.activityCreatedOnlyFirst,
+          ActivityLifecycle.Fragment_activityCreatedOnlyFirst,
           RxJavaSpec.subscribeDoesNotReturnNull,
           RxJavaSpec.subscribeIsUniqueAndNonNull
         )),cha)
@@ -684,7 +802,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           FragmentGetActivityNullSpec.getActivityNonNull,
           ActivityLifecycle.init_first_callback,
           RxJavaSpec.call,
-          ActivityLifecycle.activityCreatedOnlyFirst
+          ActivityLifecycle.Fragment_activityCreatedOnlyFirst
 //          RxJavaSpec.subscribeDoesNotReturnNull,
 //          RxJavaSpec.subscribeIsUniqueAndNonNull
         )),cha)
@@ -768,7 +886,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
           FragmentGetActivityNullSpec.getActivityNonNull,
           RxJavaSpec.call,
-          ActivityLifecycle.activityCreatedOnlyFirst
+          ActivityLifecycle.Fragment_activityCreatedOnlyFirst
 //          RxJavaSpec.subscribeIsUniqueAndNonNull
         )),cha)
       val config = SymbolicExecutorConfig(
@@ -857,7 +975,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
           FragmentGetActivityNullSpec.getActivityNonNull,
           RxJavaSpec.call,
-          ActivityLifecycle.activityCreatedOnlyFirst,
+          ActivityLifecycle.Fragment_activityCreatedOnlyFirst,
           RxJavaSpec.subscribeDoesNotReturnNull,
           RxJavaSpec.subscribeIsUniqueAndNonNull
         )),cha)
@@ -960,7 +1078,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
             FragmentGetActivityNullSpec.getActivityNonNull,
             RxJavaSpec.call,
-            ActivityLifecycle.activityCreatedOnlyFirst, //TODO: ==== testing if this can replace unique sub
+            ActivityLifecycle.Fragment_activityCreatedOnlyFirst,
             //            RxJavaSpec.subscribeDoesNotReturnNull,
 //            RxJavaSpec.subscribeIsUniqueAndNonNull
           )), cha)
@@ -1052,7 +1170,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
           FragmentGetActivityNullSpec.getActivityNonNull,
           RxJavaSpec.call,
-          ActivityLifecycle.activityCreatedOnlyFirst
+          ActivityLifecycle.Fragment_activityCreatedOnlyFirst
 //          RxJavaSpec.subscribeDoesNotReturnNull,
 //          RxJavaSpec.subscribeIsUniqueAndNonNull
         )), cha)

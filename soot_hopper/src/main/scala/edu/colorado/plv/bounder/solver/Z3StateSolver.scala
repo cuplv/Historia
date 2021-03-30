@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.solver
 
 import com.microsoft.z3._
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSAnyVal, LSVar}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, PureVar, State, TypeConstraint}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, PureVal, PureVar, State, TypeConstraint}
 
 import scala.collection.immutable
 
@@ -177,6 +177,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
   }
 
   def tsort(implicit zctx:Z3SolverCtx): UninterpretedSort = zctx.ctx.mkUninterpretedSort("ClassTypes")
+  def constsort(implicit zctx:Z3SolverCtx): UninterpretedSort = zctx.ctx.mkUninterpretedSort("ConstVals")
   private def equalToOneOf(e : Expr, vals : Array[Expr])(implicit zctx:Z3SolverCtx):BoolExpr = {
     val ctx = zctx.ctx
     ctx.mkOr(vals.map(v => ctx.mkEq(e,v)):_*)
@@ -266,10 +267,22 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
     ctx.mkFuncDecl(s"argfun_", Array(ctx.mkIntSort(), ctx.mkUninterpretedSort("Msg")), addrSort)
   }
 
-  override protected def mkIsNull(addr:AST)(implicit zctx:Z3SolverCtx): AST = {
+//  override protected def mkIsNull(addr:AST)(implicit zctx:Z3SolverCtx): AST = {
+//    val ctx = zctx.ctx
+//    val isNullFun = ctx.mkFuncDecl("isNullFn", addrSort, ctx.mkBoolSort())
+//    isNullFun.apply(addr.asInstanceOf[Expr])
+//  }
+//
+//  override protected def mkIntValueConstraint(addr:AST)(implicit zctx:Z3SolverCtx): AST = {
+//    val ctx = zctx.ctx
+//    val intConstFn = ctx.mkFuncDecl("intConstFn", addrSort, ctx.mkIntSort())
+//    intConstFn.apply(addr.asInstanceOf[Expr])
+//  }
+
+  protected def mkConstValueConstraint(addr:AST)(implicit zctx:Z3SolverCtx):AST = {
     val ctx = zctx.ctx
-    val isNullFun = ctx.mkFuncDecl("isNullFn", addrSort, ctx.mkBoolSort())
-    isNullFun.apply(addr.asInstanceOf[Expr])
+    val constFn = ctx.mkFuncDecl("constFn", addrSort, constsort)
+    constFn.apply(addr.asInstanceOf[Expr])
   }
 
   override protected def mkIName(enum:AST, enumNum:Int)(implicit zctx:Z3SolverCtx): AST = enum.asInstanceOf[EnumSort].getConst(enumNum)
@@ -306,11 +319,21 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
 
   override protected def persist: ClassHierarchyConstraints = persistentConstraints
 
+
+
   override protected def mkTypeConstraints(types: Set[String])(implicit zctx: Z3SolverCtx): (AST, Map[String, AST]) = {
     val ctx = zctx.ctx
     val typeMap = types.map(t => (t-> ctx.mkConst(s"type_$t", tsort))).toMap
     val allConstraints: immutable.Iterable[Expr] = typeMap.map{case (_,c) => c}
     val unique = mkDistinctT(allConstraints)
     (unique, typeMap)
+  }
+
+  protected def mkConstConstraintsMap(pvs: Set[PureVal])(implicit zctx: Z3SolverCtx): (AST, Map[PureVal, AST]) = {
+    val ctx = zctx.ctx
+    val constMap = pvs.flatMap(t => t.z3Tag.map(tag => (t-> ctx.mkConst(s"const_${tag}", constsort)))).toMap
+    val allConstraints: immutable.Iterable[Expr] = constMap.map{case (_,c) => c}
+    val unique = mkDistinctT(allConstraints)
+    (unique, constMap)
   }
 }
