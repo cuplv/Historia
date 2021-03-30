@@ -2,6 +2,8 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, If, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SpecialInvoke, StaticInvoke, SwitchCmd, ThrowCmd, VirtualInvoke}
 
+import scala.collection.parallel.CollectionConverters.ImmutableIterableIsParallelizable
+
 sealed trait StateRefinementEdge {
   def contains(other: StateRefinementEdge): Boolean
 
@@ -9,7 +11,9 @@ sealed trait StateRefinementEdge {
 
 
 
-case class StateSet(edges: Map[String, StateSet], states: Set[IPathNode])
+case class StateSet(edges: Map[String, StateSet], states: Set[IPathNode]){
+  def allStates: Set[IPathNode] = states.union(edges.flatMap{ case(_,v) => v.allStates}.toSet)
+}
 
 sealed trait PVMap
 case class OnePVMap(tgt:PureVar) extends PVMap
@@ -76,7 +80,7 @@ object StateSet {
     val heap = heapEdgesFromState(pathNode.qry.state)
     var fastCount:Int = 0
     def iFind(edges: List[String], pathNode:IPathNode, current:StateSet):Option[IPathNode] = {
-      val currentCanSubs = current.states.find{ subsuming =>
+      val currentCanSubs = current.states.par.find{ subsuming =>
         fastCount = fastCount + 1
         canSubsume(subsuming.qry.state, pathNode.qry.state)
       }
@@ -121,7 +125,12 @@ object SwapLoc {
     case a@AppLoc(method, line, true) => {
       val cmd = w.cmdAtLocation(a)
       cmd match {
-        case InvokeCmd(method, loc) =>Some(CodeLocation(a))
+        case InvokeCmd(_, _) => Some(CodeLocation(a))
+        case AssignCmd(_, VirtualInvoke(_,_,_,_),_) => Some(CodeLocation(a))
+        case AssignCmd(_, SpecialInvoke(_,_,_,_),_) => Some(CodeLocation(a))
+        case AssignCmd(_, StaticInvoke(_,_,_),_) => Some(CodeLocation(a))
+        case ReturnCmd(returnVar, loc) =>
+          Some(CodeLocation(a)) //TODO: check if this improves things==========
         case _ => None
       }
     }
@@ -133,14 +142,6 @@ object SwapLoc {
     case _: InternalMethodReturn => None
     case _: SkippedInternalMethodReturn => None
     case _: SkippedInternalMethodInvoke => None
-    case a@AppLoc(_,_,true) =>
-      w.cmdAtLocation(a) match {
-        case InvokeCmd(_, _) => Some(CodeLocation(a))
-        case AssignCmd(_, VirtualInvoke(_,_,_,_),_) => Some(CodeLocation(a))
-        case AssignCmd(_, SpecialInvoke(_,_,_,_),_) => Some(CodeLocation(a))
-        case AssignCmd(_, StaticInvoke(_,_,_),_) => Some(CodeLocation(a))
-        case _ => None
-      }
   }
   def apply[M,C](loc:Loc)(implicit w:IRWrapper[M,C]):Option[SubsumableLocation] =
     unapply(loc)

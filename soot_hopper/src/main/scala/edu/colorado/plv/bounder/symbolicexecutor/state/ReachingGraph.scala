@@ -16,6 +16,8 @@ import java.util.concurrent.atomic.AtomicInteger
 import scala.language.postfixOps
 import better.files.File
 
+import scala.collection.immutable
+
 trait ReachingGraph {
   def getPredecessors(qry:Qry) : Iterable[Qry]
   def getSuccessors(qry:Qry) : Iterable[Qry]
@@ -46,6 +48,36 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
     id.getAndAdd(1)
   }
 
+  private val longTimeout = 600 seconds
+
+  /**
+   * Get all states grouped by location
+   * @return
+   */
+  def statesBeforeLoc(locLike:String):Map[Loc,Set[(Loc,State,Int, Option[Int])]] = {
+    val q = for{
+      n <- witnessQry
+      nsucc <- witnessQry if (n.pred === nsucc.id) && (nsucc.nodeLoc like locLike)
+    } yield (nsucc.nodeLoc, n.nodeLoc, n.nodeState,n.id, n.subsumingState)
+    val res: Seq[(String, String,String,Int, Option[Int])] = Await.result(db.run(q.result), longTimeout)
+    val grouped: Map[String, Seq[(String, String, String,Int, Option[Int])]] = res.groupBy(_._1)
+    val out = grouped.map{case (tgtLoc,predset) => (read[Loc](tgtLoc),
+        predset.map{ case (_,stateLoc, state,id, optInt) =>
+          (read[Loc](stateLoc), read[State](state), id, optInt) }.toSet )}
+    out
+  }
+  def statesAtLoc(locLike:String):Map[Loc,Set[(State,Int, Option[Int])]] = {
+    val q = for{
+      n <- witnessQry if (n.nodeLoc like locLike)
+    } yield (n.nodeLoc, n.nodeState,n.id, n.subsumingState)
+    val res: Seq[(String, String, Int, Option[Int])] = Await.result(db.run(q.result), longTimeout)
+    val grouped: Map[String, Seq[(String, String,Int, Option[Int])]] = res.groupBy(_._1)
+    val out = grouped.map{case (tgtLoc,predset) => (read[Loc](tgtLoc),
+      predset.map{ case (_, state,id, optInt) =>
+        (read[State](state), id, optInt) }.toSet )}
+    out
+  }
+
   def getTerminal():Set[DBPathNode] = {
     val qLive = for{
       liveId <- liveAtEnd
@@ -58,11 +90,10 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
     val qWit = witnessQry.filter(_.queryState === "witnessed")
     val qSubs = witnessQry.filter(_.subsumingState.isDefined)
     val live = db.run(qLive.result)
-    val t = 600 seconds
-    val resLive = Await.result(live, t).map(rowToNode).toSet
-    val resRef = Await.result(db.run(qRef.result),t).map(rowToNode).toSet
-    val resWit = Await.result(db.run(qWit.result),t).map(rowToNode).toSet
-    val resSubs = Await.result(db.run(qSubs.result),t).map(rowToNode).toSet
+    val resLive = Await.result(live, longTimeout).map(rowToNode).toSet
+    val resRef = Await.result(db.run(qRef.result),longTimeout).map(rowToNode).toSet
+    val resWit = Await.result(db.run(qWit.result),longTimeout).map(rowToNode).toSet
+    val resSubs = Await.result(db.run(qSubs.result),longTimeout).map(rowToNode).toSet
     resLive.union(resRef).union(resWit).union(resSubs)
   }
 

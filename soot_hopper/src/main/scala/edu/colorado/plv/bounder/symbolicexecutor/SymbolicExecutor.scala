@@ -1,15 +1,13 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
-import com.microsoft.z3.Context
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, Loc, MethodLoc, SpecialInvoke, StaticInvoke, VirtualInvoke}
+import edu.colorado.plv.bounder.ir.{CallinMethodReturn, IRWrapper, InternalMethodReturn}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SetInclusionTypeSolving, SolverTypeSolving, StateTypeSolving, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, FrameworkLocation, IPathNode, MemoryOutputMode, OutputMode, PathNode, Qry, SomeQry, StateSet, SubsumableLocation, SwapLoc, WitnessedQry}
-import soot.SootMethod
 
 import scala.annotation.tailrec
-import scala.collection.MapView
 import scala.collection.parallel.CollectionConverters.{ImmutableSetIsParallelizable, IterableIsParallelizable}
 import upickle.default._
+import collection.mutable.PriorityQueue
 
 sealed trait CallGraphSource
 case object FlowdroidCallGraph extends CallGraphSource
@@ -96,7 +94,19 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
                  nVisited: Map[SubsumableLocation,Map[Int,StateSet]]):Option[IPathNode] = pathNode.qry match{
     case SomeQry(_,SwapLoc(loc)) if nVisited.contains(loc) =>
       val root = nVisited(loc).getOrElse(pathNode.qry.state.callStack.size, StateSet.init)
-      StateSet.findSubsuming(pathNode, root,(s1,s2) => stateSolver.canSubsume(s1,s2))
+      val res = StateSet.findSubsuming(pathNode, root,(s1,s2) => stateSolver.canSubsume(s1,s2))
+
+      //=== test code ===
+      // Note this was to test if state set is working correctly, it appears to be
+      //val allState = root.allStates
+      //val resOld = allState.find(old => stateSolver.canSubsume(old.qry.state,pathNode.qry.state))
+
+      //if(resOld.isDefined != res.isDefined){
+      //  println("diff")
+      //}
+      // === end test code ==
+
+      res
     case _ => None
   }
 
