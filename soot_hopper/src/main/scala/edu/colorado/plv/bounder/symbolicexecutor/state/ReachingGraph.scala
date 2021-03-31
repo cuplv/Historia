@@ -50,6 +50,9 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
 
   private val longTimeout = 600 seconds
 
+  def markDeadend():Unit = {
+
+  }
   /**
    * Get all states grouped by location
    * @return
@@ -142,7 +145,7 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
       case "witnessed" => WitnessedQry(state, loc)
     }
     val depth = res._7
-    DBPathNode(qry, id, pred, subsumingId, depth)
+    DBPathNode(qry, id, pred, subsumingId, depth,-1)
   }
 
   def writeMethod(method: MethodLoc, isCallback:Boolean):Unit ={
@@ -193,38 +196,44 @@ class CallEdgeTable(tag:Tag) extends Table[(Int,String,String,String,String,Bool
   def isCallin = column[Boolean]("IS_CALLIN")
   def * = (id,srcName,srcClass,tgtName,tgtClass,isCallin)
 }
-
+trait OrdCount extends Ordering[IPathNode]{
+  def delta(current:Qry):Int
+}
 object PathNode{
   def apply(qry:Qry, succ: Option[IPathNode], subsumed: Option[IPathNode])
-           (implicit mode: OutputMode = MemoryOutputMode):IPathNode = {
+           (implicit ord: OrdCount, mode: OutputMode = MemoryOutputMode):IPathNode = {
     val depth = succ.map(_.depth + 1).getOrElse(1)
+    val ordDepth = succ.map(_.ordDepth + ord.delta(qry)).getOrElse(1)
     mode match {
       case MemoryOutputMode =>
-        MemoryPathNode(qry, succ, subsumed, depth)
+        MemoryPathNode(qry, succ, subsumed, depth,ordDepth)
       case m@DBOutputMode(_) =>
         val id = m.nextId
         val succID = succ.map(n => n.asInstanceOf[DBPathNode].thisID)
         val subsumedID = subsumed.map(n => n.asInstanceOf[DBPathNode].thisID)
-        val thisNode = DBPathNode(qry, id, succID, subsumedID,depth)
+        val thisNode = DBPathNode(qry, id, succID, subsumedID,depth,ordDepth)
         m.writeNode(thisNode)
         thisNode
     }
   }
   def unapply(node : IPathNode): Option[(Qry, Boolean)] = node match{
-    case MemoryPathNode(qry,_,subsumed,_) => Some((qry,subsumed.isDefined))
-    case DBPathNode(qry,_, _,subsumedID,_) =>
+    case MemoryPathNode(qry,_,subsumed,_,_) => Some((qry,subsumed.isDefined))
+    case DBPathNode(qry,_, _,subsumedID,_,_) =>
       Some((qry,subsumedID.isDefined))
   }
 }
+
 sealed trait IPathNode{
   def depth:Int
+  def ordDepth:Int
   def qry:Qry
   def succ(implicit mode : OutputMode):Option[IPathNode]
   def subsumed(implicit mode : OutputMode): Option[IPathNode]
   def setSubsumed(v: Option[IPathNode])(implicit mode: OutputMode):IPathNode
 }
 
-case class MemoryPathNode(qry: Qry, succV : Option[IPathNode], subsumedV: Option[IPathNode], depth:Int) extends IPathNode {
+case class MemoryPathNode(qry: Qry, succV : Option[IPathNode], subsumedV: Option[IPathNode], depth:Int,
+                          ordDepth:Int) extends IPathNode {
   override def toString:String = {
     val qrystr = qry.toString
     val succstr = succV.map((a: IPathNode) =>
@@ -241,7 +250,7 @@ case class MemoryPathNode(qry: Qry, succV : Option[IPathNode], subsumedV: Option
 
 case class DBPathNode(qry:Qry, thisID:Int,
                       succID:Option[Int],
-                      subsumedID: Option[Int], depth:Int) extends IPathNode {
+                      subsumedID: Option[Int], depth:Int, ordDepth:Int) extends IPathNode {
   override def succ(implicit db:OutputMode): Option[IPathNode] = succID.map(db.asInstanceOf[DBOutputMode].readNode)
 
   override def subsumed(implicit db:OutputMode): Option[IPathNode] =

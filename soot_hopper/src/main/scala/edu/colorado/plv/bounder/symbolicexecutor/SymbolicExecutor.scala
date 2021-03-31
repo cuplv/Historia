@@ -1,12 +1,13 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
-import edu.colorado.plv.bounder.ir.{CallinMethodReturn, IRWrapper, InternalMethodReturn}
+import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, SkippedInternalMethodInvoke, SkippedInternalMethodReturn}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SetInclusionTypeSolving, SolverTypeSolving, StateTypeSolving, Z3StateSolver}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, FrameworkLocation, IPathNode, MemoryOutputMode, OutputMode, PathNode, Qry, SomeQry, StateSet, SubsumableLocation, SwapLoc, WitnessedQry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, FrameworkLocation, IPathNode, MemoryOutputMode, OrdCount, OutputMode, PathNode, Qry, SomeQry, StateSet, SubsumableLocation, SwapLoc, WitnessedQry}
 
 import scala.annotation.tailrec
 import scala.collection.parallel.CollectionConverters.{ImmutableSetIsParallelizable, IterableIsParallelizable}
 import upickle.default._
+
 import collection.mutable.PriorityQueue
 
 sealed trait CallGraphSource
@@ -74,6 +75,61 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
 
   def getControlFlowResolver = controlFlowResolver
   val stateSolver = new Z3StateSolver(cha)
+
+  implicit object StackThenHeapOrder extends OrdCount{
+    override def delta(current: Qry): Int = current.loc match {
+      case CallbackMethodInvoke(_, _, _) => 1
+      case CallbackMethodReturn(_, _, _, _) => 1
+      case _ => 0
+    }
+    // return positive if p1 should be first
+    // return negative if p2 should be first
+    override def compare(p1: IPathNode, p2: IPathNode): Int = {
+      val s1 = p1.qry.state
+      val s2 = p2.qry.state
+      if(s1.callStack.size != s2.callStack.size)
+        return s2.callStack.size - s1.callStack.size
+
+      (p1.qry.loc, p2.qry.loc) match{
+        case (AppLoc(m1,l1,isPre1), AppLoc(m2,l2,isPre2)) if m1 == m2 && l1 == l2 =>
+          if(isPre1 == isPre2)
+            0
+          else if(isPre1)
+            -1 // p2 is post line and should go first
+          else {
+            1 // p1 is post line and should go first
+          }
+        case (a1@AppLoc(m1,_,_), a2@AppLoc(m2,_,_)) if m1 == m2 =>
+          val c1 = w.commandTopologicalOrder(w.cmdAtLocation(a1))
+          val c2 = w.commandTopologicalOrder(w.cmdAtLocation(a2))
+          c1 - c2 // reversed because topological order increases from beginning of function
+        case _ =>{
+          if(p2.depth != p1.depth)
+            p2.depth - p1.depth
+          else
+            s2.heapConstraints.size - s1.heapConstraints.size
+        }
+      }
+    }
+  }
+//  implicit object PVCountOrdering extends OrdCount{
+//    override def delta(current: Qry): Int = 0
+//
+//    override def compare(x: IPathNode, y: IPathNode): Int = y.qry.state.pureVars.size - x.qry.state.pureVars.size
+//  }
+//  implicit object CallbackCountOrdering extends OrdCount{
+//    def compare(a:IPathNode, b:IPathNode) = b.ordDepth - a.ordDepth
+//
+//    override def delta(current: Qry): Int = current.loc match {
+//      case CallbackMethodInvoke(_, _, _) => 1
+//      case CallbackMethodReturn(_, _, _, _) => 1
+//      case _ => 0
+//    }
+//  }
+//  implicit object DepthOrdering extends OrdCount{
+//    def compare(a:IPathNode, b:IPathNode) = b.depth - a.depth
+//    override def delta(current:Qry):Int = 1
+//  }
   /**
    *
    * @param qry - a source location and an assertion to prove
@@ -82,8 +138,10 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
    */
   def executeBackward(qry: Set[Qry]) : Set[IPathNode] = {
     val pathNodes = qry.map(PathNode(_,None,None))
+    val queue = PriorityQueue[IPathNode]()
+    queue.addAll(pathNodes)
     config.stepLimit match{
-      case Some(limit) => executeBackward(pathNodes.toList, limit)
+      case Some(limit) => executeBackward(queue, limit)
       case None =>
         ???
     }
@@ -119,14 +177,27 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
    * @return
    */
   @tailrec
-  final def executeBackward(qrySet: List[IPathNode], limit:Int,
+  final def executeBackward(qrySet: PriorityQueue[IPathNode], limit:Int,
                             refutedSubsumedOrWitnessed: Set[IPathNode] = Set(),
                             visited:Map[SubsumableLocation,Map[Int,StateSet]] = Map()):Set[IPathNode] = {
 
     if(qrySet.isEmpty){
-      return refutedSubsumedOrWitnessed ++ qrySet
+      return refutedSubsumedOrWitnessed
     }
-    val current = qrySet.head
+    val current = qrySet.dequeue()
+
+    // TODO: search for this state and its negation in priority queue and combine states dropping constraint if so
+    qrySet.toList.find{oq =>
+      val loceq = oq.qry.loc == current.qry.loc
+      val stackEq = oq.qry.state.callStack == current.qry.state.callStack
+      val heapEq = oq.qry.state.heapConstraints == current.qry.state.heapConstraints
+      loceq && stackEq && heapEq
+    } match{
+      case Some(v) =>
+        println(v)
+        ???
+      case None =>
+    }
 
 //    if (config.printProgress && current.depth % 10 == 0 ){
 //      println(s"CurrentNodeSteps: ${current.depth} queries: ${qrySet.size}")
@@ -139,22 +210,24 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
 //        println(s"    Subsumed:${current.subsumed}")
         println(s"    depth: ${current.depth}")
         println(s"    size of worklist: ${qrySet.size}")
+        println(s"    ord depth: ${current.ordDepth}")
       case _ =>
     }
 
     current match {
       case p@PathNode(_:SomeQry, true) =>
-        executeBackward(qrySet.tail, limit, refutedSubsumedOrWitnessed + p, visited)
+        executeBackward(qrySet, limit, refutedSubsumedOrWitnessed + p, visited)
       case p@PathNode(_:BottomQry,_) =>
-        executeBackward(qrySet.tail, limit, refutedSubsumedOrWitnessed + p, visited)
-      case PathNode(_:WitnessedQry,_) =>
-        refutedSubsumedOrWitnessed.union(qrySet.toSet)
+        executeBackward(qrySet, limit, refutedSubsumedOrWitnessed + p, visited)
+      case p@PathNode(_:WitnessedQry,_) =>
+        refutedSubsumedOrWitnessed.union(qrySet.toSet) + p
       case p:IPathNode if p.depth > limit =>
-        refutedSubsumedOrWitnessed.union(qrySet.toSet)
+        executeBackward(qrySet, limit, refutedSubsumedOrWitnessed + p, visited)
+//        refutedSubsumedOrWitnessed.union(qrySet.toSet)
       case p@PathNode(qry:SomeQry,false) =>
         isSubsumed(p, visited) match{
           case v@Some(_) =>
-            executeBackward(qrySet.tail, limit, refutedSubsumedOrWitnessed + p.setSubsumed(v), visited)
+            executeBackward(qrySet, limit, refutedSubsumedOrWitnessed + p.setSubsumed(v), visited)
           case None =>
             val stackSize = p.qry.state.callStack.size
             val newVisited = SwapLoc(current.qry.loc) match{
@@ -167,7 +240,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
               case None => visited
             }
             val nextQry = executeStep(qry).map(q => PathNode(q, Some(p), None))
-            val nextQrySet = qrySet.tail.appendedAll(nextQry)
+            val nextQrySet = qrySet.addAll(nextQry)
             executeBackward(nextQrySet, limit, refutedSubsumedOrWitnessed, newVisited)
         }
     }

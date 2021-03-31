@@ -53,7 +53,6 @@ import soot.util.Chain;
  */
 
 public class EnhancedUnitGraphFixed extends UnitGraph {
-    List<String> foo = new ArrayList<String>();
     // This keeps a map from the beginning of each guarded block
     // to the corresponding special EHNopStmt.
     // protected Hashtable<GuardedBlock, Unit> try2nop = null;

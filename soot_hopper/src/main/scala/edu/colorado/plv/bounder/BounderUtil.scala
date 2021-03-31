@@ -19,12 +19,16 @@ object BounderUtil {
       case PathNode(_: WitnessedQry, _) => false
       case PathNode(_: SomeQry, true) => true
       case PathNode(_: SomeQry, false) => false
-    }) if(result.size > 0) Proven else Unreachable
-    else if(result.exists{
+    }) {
+      return if(result.size > 0) Proven else Unreachable
+    }
+    if(result.exists{
       case PathNode(_: WitnessedQry, _) => true
       case _ => false
-    }) Witnessed
-    else Timeout
+    }) {
+      return Witnessed
+    }
+    Timeout
   }
 
   def allMap[T](n1:Set[T], n2:Set[T], canMap: (T,T) => Boolean):List[Map[T,T]] = {

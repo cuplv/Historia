@@ -21,6 +21,8 @@ trait IRWrapper[M,C]{
   def degreeOut(cmd: AppLoc):Int
   def degreeIn(cmd: AppLoc):Int
   def isLoopHead(cmd:AppLoc):Boolean
+
+  def commandTopologicalOrder(cmdWrapper:CmdWrapper):Int
   def commandPredecessors(cmdWrapper:CmdWrapper): List[AppLoc]
   def commandNext(cmdWrapper:CmdWrapper):List[AppLoc]
 

@@ -50,6 +50,8 @@ class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] 
   override def getInterfaces: Set[String] = ???
 
   override def isLoopHead(cmd: AppLoc): Boolean = ???
+
+  override def commandTopologicalOrder(cmdWrapper: CmdWrapper): Int = ???
 }
 
 /**

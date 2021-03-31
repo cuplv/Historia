@@ -13,6 +13,7 @@ import soot.jimple.spark.SparkTransformer
 import soot.jimple.toolkits.callgraph.{CHATransformer, CallGraph}
 import soot.jimple._
 import soot.jimple.toolkits.annotation.logic.LoopFinder
+import soot.toolkits.graph.PseudoTopologicalOrderer
 import soot.util.Chain
 import soot.{ArrayType, Body, BooleanType, ByteType, CharType, DoubleType, FloatType, Hierarchy, IntType, LongType, RefType, Scene, ShortType, SootClass, SootMethod, SootMethodRef, Type, Value}
 
@@ -633,6 +634,25 @@ class JimpleFlowdroidWrapper(apkPath : String,
     }
   }
 
+  private val iTopoForMethod: SootMethod => Map[soot.Unit, Int] = Memo.mutableHashMapMemo {
+    (method:SootMethod) => {
+      val unitGraph: EnhancedUnitGraphFixed = getUnitGraph(method.retrieveActiveBody())
+      val topo = new PseudoTopologicalOrderer[soot.Unit]()
+      val uList = topo.newList(unitGraph, false).asScala.zipWithIndex
+      uList.toMap
+    }
+
+  }
+  override def commandTopologicalOrder(cmdWrapper:CmdWrapper):Int = {
+    cmdWrapper.getLoc match {
+      case AppLoc(JimpleMethodLoc(_), JimpleLineLoc(cmd, sootMethod), _) => {
+        val topo = iTopoForMethod(sootMethod)
+        topo(cmd)
+      }
+      case v =>
+        throw new IllegalStateException(s"Bad argument for commandTopologicalOrder ${v}")
+    }
+  }
   override def commandPredecessors(cmdWrapper : CmdWrapper):List[AppLoc] =
     cmdWrapper.getLoc match{
     case AppLoc(methodWrapper @ JimpleMethodLoc(_),JimpleLineLoc(cmd,sootMethod), true) => {
