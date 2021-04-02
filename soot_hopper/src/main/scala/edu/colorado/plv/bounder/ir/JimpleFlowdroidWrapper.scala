@@ -10,10 +10,10 @@ import scalaz.Memo
 import soot.jimple.infoflow.entryPointCreators.SimulatedCodeElementTag
 import soot.jimple.internal._
 import soot.jimple.spark.SparkTransformer
-import soot.jimple.toolkits.callgraph.{CHATransformer, CallGraph}
+import soot.jimple.toolkits.callgraph.{CHATransformer, CallGraph, TopologicalOrderer}
 import soot.jimple._
 import soot.jimple.toolkits.annotation.logic.LoopFinder
-import soot.toolkits.graph.PseudoTopologicalOrderer
+import soot.toolkits.graph.{PseudoTopologicalOrderer, SlowPseudoTopologicalOrderer}
 import soot.util.Chain
 import soot.{ArrayType, Body, BooleanType, ByteType, CharType, DoubleType, FloatType, Hierarchy, IntType, LongType, RefType, Scene, ShortType, SootClass, SootMethod, SootMethodRef, Type, Value}
 
@@ -637,7 +637,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
   private val iTopoForMethod: SootMethod => Map[soot.Unit, Int] = Memo.mutableHashMapMemo {
     (method:SootMethod) => {
       val unitGraph: EnhancedUnitGraphFixed = getUnitGraph(method.retrieveActiveBody())
-      val topo = new PseudoTopologicalOrderer[soot.Unit]()
+      val topo = new SlowPseudoTopologicalOrderer[soot.Unit]()
       val uList = topo.newList(unitGraph, false).asScala.zipWithIndex
       uList.toMap
     }

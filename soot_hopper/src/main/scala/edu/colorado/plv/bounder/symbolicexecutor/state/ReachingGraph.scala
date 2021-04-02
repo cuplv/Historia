@@ -16,8 +16,6 @@ import java.util.concurrent.atomic.AtomicInteger
 import scala.language.postfixOps
 import better.files.File
 
-import scala.collection.immutable
-
 trait ReachingGraph {
   def getPredecessors(qry:Qry) : Iterable[Qry]
   def getSuccessors(qry:Qry) : Iterable[Qry]
@@ -34,12 +32,14 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
   private val methodQry = TableQuery[MethodTable]
   private val callEdgeQry = TableQuery[CallEdgeTable]
   private val liveAtEnd = TableQuery[LiveAtEnd]
+  private val graphQuery = TableQuery[WitnessGraph]
 
   val db = Database.forURL(s"jdbc:sqlite:$dbfile",driver="org.sqlite.JDBC")
   if(!dbf.exists()) {
     val setup = DBIO.seq(witnessQry.schema.create,
       methodQry.schema.create,
       callEdgeQry.schema.create,
+      graphQuery.schema.create,
       liveAtEnd.schema.create)
     Await.result(db.run(setup), 20 seconds)
   }
@@ -51,23 +51,24 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
   private val longTimeout = 600 seconds
 
   def markDeadend():Unit = {
-
+    ???
   }
   /**
    * Get all states grouped by location
    * @return
    */
   def statesBeforeLoc(locLike:String):Map[Loc,Set[(Loc,State,Int, Option[Int])]] = {
-    val q = for{
-      n <- witnessQry
-      nsucc <- witnessQry if (n.pred === nsucc.id) && (nsucc.nodeLoc like locLike)
-    } yield (nsucc.nodeLoc, n.nodeLoc, n.nodeState,n.id, n.subsumingState)
-    val res: Seq[(String, String,String,Int, Option[Int])] = Await.result(db.run(q.result), longTimeout)
-    val grouped: Map[String, Seq[(String, String, String,Int, Option[Int])]] = res.groupBy(_._1)
-    val out = grouped.map{case (tgtLoc,predset) => (read[Loc](tgtLoc),
-        predset.map{ case (_,stateLoc, state,id, optInt) =>
-          (read[Loc](stateLoc), read[State](state), id, optInt) }.toSet )}
-    out
+//    val q = for{
+//      n <- witnessQry
+//      nsucc <- witnessQry if (n.pred === nsucc.id) && (nsucc.nodeLoc like locLike)
+//    } yield (nsucc.nodeLoc, n.nodeLoc, n.nodeState,n.id, n.subsumingState)
+//    val res: Seq[(String, String,String,Int, Option[Int])] = Await.result(db.run(q.result), longTimeout)
+//    val grouped: Map[String, Seq[(String, String, String,Int, Option[Int])]] = res.groupBy(_._1)
+//    val out = grouped.map{case (tgtLoc,predset) => (read[Loc](tgtLoc),
+//        predset.map{ case (_,stateLoc, state,id, optInt) =>
+//          (read[Loc](stateLoc), read[State](state), id, optInt) }.toSet )}
+//    out
+    ??? //TODO: refactor for graph representation change
   }
   def statesAtLoc(locLike:String):Map[Loc,Set[(State,Int, Option[Int])]] = {
     val q = for{
@@ -114,8 +115,11 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
     }
     val loc = write(node.qry.loc)
     val writeFuture = db.run(witnessQry +=
-      (node.thisID, qryState, write(node.qry.state), loc, node.subsumedID, node.succID, node.depth))
+      (node.thisID, qryState, write(node.qry.state), loc, node.subsumedID, node.depth))
     Await.result(writeFuture, 30 seconds)
+    val edges: Seq[(Int, Int)] = node.succ(this).map(sid => (node.thisID,sid.asInstanceOf[DBPathNode].thisID))
+    val writeGraphFuture = db.run(graphQuery ++= edges)
+    Await.result(writeGraphFuture,30 seconds)
   }
 
   def setSubsumed(node: DBPathNode, subsuming:Option[DBPathNode]) = {
@@ -127,24 +131,27 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
   def readNode(id: Int):DBPathNode = {
     val q = witnessQry.filter(_.id === id)
     val qFuture = db.run(q.result)
-    val res: Seq[(Int, String, String, String, Option[Int], Option[Int], Int)] = Await.result(qFuture, 30 seconds)
+    val res: Seq[(Int, String, String, String, Option[Int], Int)] = Await.result(qFuture, 30 seconds)
     assert(res.size == 1, s"Failed to find unique node id: $id actual size: ${res.size}")
     rowToNode(res.head)
   }
 
-  private def rowToNode(res: (Int, String, String, String, Option[Int], Option[Int], Int)) = {
+  private def rowToNode(res: (Int, String, String, String, Option[Int], Int)) = {
     val id = res._1
     val queryState: String = res._2
     val loc: Loc = read[Loc](res._4)
     val subsumingId: Option[Int] = res._5
-    val pred: Option[Int] = res._6
+
+    val succQry = for (edge <- graphQuery if edge.src === id) yield edge.tgt
+
+    val pred: List[Int] = Await.result(db.run(succQry.result), 30 seconds).toList
     val state: State = read[State](res._3)
     val qry = queryState match {
       case "live" => SomeQry(state, loc)
       case "refuted" => BottomQry(state, loc)
       case "witnessed" => WitnessedQry(state, loc)
     }
-    val depth = res._7
+    val depth = res._6
     DBPathNode(qry, id, pred, subsumingId, depth,-1)
   }
 
@@ -168,15 +175,20 @@ class LiveAtEnd(tag:Tag) extends Table[(Int)](tag,"LIVEATEND"){
   def * = (nodeID)
 }
 
-class WitnessTable(tag:Tag) extends Table[(Int,String,String,String,Option[Int],Option[Int],Int)](tag,"PATH"){
+class WitnessGraph(tag:Tag) extends Table[(Int,Int)](tag, "GRAPH"){
+  def src = column[Int]("SRC", O.PrimaryKey)
+  def tgt = column[Int]("TGT")
+  def * = (src,tgt)
+}
+
+class WitnessTable(tag:Tag) extends Table[(Int,String,String,String,Option[Int],Int)](tag,"PATH"){
   def id = column[Int]("NODE_ID", O.PrimaryKey)
   def queryState = column[String]("QUERY_STATE")
   def nodeState = column[String]("NODE_STATE")
   def nodeLoc = column[String]("NODE_LOC")
   def subsumingState = column[Option[Int]]("SUBSUMING_STATE")
-  def pred = column[Option[Int]]("PRED")
   def depth = column[Int]("DEPTH")
-  def * = (id,queryState,nodeState,nodeLoc,subsumingState,pred,depth)
+  def * = (id,queryState,nodeState,nodeLoc,subsumingState,depth)
 }
 class MethodTable(tag:Tag) extends Table[(Int,String,String,String,Boolean)](tag, "Methods"){
   def id = column[Int]("METHOD_ID", O.PrimaryKey)
@@ -200,10 +212,10 @@ trait OrdCount extends Ordering[IPathNode]{
   def delta(current:Qry):Int
 }
 object PathNode{
-  def apply(qry:Qry, succ: Option[IPathNode], subsumed: Option[IPathNode])
+  def apply(qry:Qry, succ: List[IPathNode], subsumed: Option[IPathNode])
            (implicit ord: OrdCount, mode: OutputMode = MemoryOutputMode):IPathNode = {
-    val depth = succ.map(_.depth + 1).getOrElse(1)
-    val ordDepth = succ.map(_.ordDepth + ord.delta(qry)).getOrElse(1)
+    val depth = if (succ.isEmpty) 0 else succ.map(_.depth).max + 1
+    val ordDepth =  if (succ.isEmpty) 0 else succ.map(_.ordDepth).max + ord.delta(qry)
     mode match {
       case MemoryOutputMode =>
         MemoryPathNode(qry, succ, subsumed, depth,ordDepth)
@@ -227,31 +239,34 @@ sealed trait IPathNode{
   def depth:Int
   def ordDepth:Int
   def qry:Qry
-  def succ(implicit mode : OutputMode):Option[IPathNode]
+  def succ(implicit mode : OutputMode):List[IPathNode]
   def subsumed(implicit mode : OutputMode): Option[IPathNode]
   def setSubsumed(v: Option[IPathNode])(implicit mode: OutputMode):IPathNode
+  def copyWithNewLoc(upd: Loc=>Loc):IPathNode
 }
 
-case class MemoryPathNode(qry: Qry, succV : Option[IPathNode], subsumedV: Option[IPathNode], depth:Int,
+case class MemoryPathNode(qry: Qry, succV : List[IPathNode], subsumedV: Option[IPathNode], depth:Int,
                           ordDepth:Int) extends IPathNode {
   override def toString:String = {
     val qrystr = qry.toString
-    val succstr = succV.map((a: IPathNode) =>
+    val succstr = succV.headOption.map((a: IPathNode) =>
       a.toString).getOrElse("")
     qrystr + "\n" + succstr
   }
 
   override def setSubsumed(v: Option[IPathNode])(implicit mode: OutputMode): IPathNode = this.copy(subsumedV = v)
 
-  override def succ(implicit mode: OutputMode): Option[IPathNode] = succV
+  override def succ(implicit mode: OutputMode): List[IPathNode] = succV
 
   override def subsumed(implicit mode: OutputMode): Option[IPathNode] = subsumedV
+
+  override def copyWithNewLoc(upd:Loc=>Loc): IPathNode = this.copy(qry.copyWithNewLoc(upd))
 }
 
 case class DBPathNode(qry:Qry, thisID:Int,
-                      succID:Option[Int],
+                      succID:List[Int],
                       subsumedID: Option[Int], depth:Int, ordDepth:Int) extends IPathNode {
-  override def succ(implicit db:OutputMode): Option[IPathNode] = succID.map(db.asInstanceOf[DBOutputMode].readNode)
+  override def succ(implicit db:OutputMode): List[IPathNode] = succID.map(db.asInstanceOf[DBOutputMode].readNode)
 
   override def subsumed(implicit db:OutputMode): Option[IPathNode] =
     subsumedID.map(db.asInstanceOf[DBOutputMode].readNode)
@@ -260,6 +275,8 @@ case class DBPathNode(qry:Qry, thisID:Int,
     db.asInstanceOf[DBOutputMode].setSubsumed(this,v.asInstanceOf[Option[DBPathNode]])
     this.copy(subsumedID = v.map(v2 => v2.asInstanceOf[DBPathNode].thisID))
   }
+
+  override def copyWithNewLoc(upd:Loc=>Loc): IPathNode = this.copy(qry.copyWithNewLoc(upd))
 }
 object DBPathNode{
   implicit val rw:RW[DBPathNode] = macroRW

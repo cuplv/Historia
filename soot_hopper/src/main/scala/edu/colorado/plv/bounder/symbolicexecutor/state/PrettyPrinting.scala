@@ -27,10 +27,11 @@ class PrettyPrinting(mode : OutputMode = MemoryOutputMode) {
       "WITNESSED: " + loc.toString +
         "\n       state: " + state.toString.replaceAll("\n"," ")
   }
-  def witnessToTrace(pn:Option[IPathNode]):List[String] = pn match{
-    case Some(p@PathNode(q, _)) =>
-      qryString(q) :: witnessToTrace(p.succ)
-    case None => Nil
+  def witnessToTrace(pn:List[IPathNode]):List[String] = pn match{
+    case (p@PathNode(q, _))::t =>
+      val branch = if(t.nonEmpty) " -- branch" else ""
+      qryString(q) + branch :: witnessToTrace(p.succ)
+    case Nil => Nil
     case v =>
       println(v)
       ???
@@ -44,7 +45,7 @@ class PrettyPrinting(mode : OutputMode = MemoryOutputMode) {
       case pn@PathNode(_:SomeQry, true) => Some((s"subsumed by:\n -- ${qryString(pn.subsumed.get.qry)}\n", pn))
       case _ => None
     }
-    val traces = live.map(a => a._1 + "\n    " + witnessToTrace(Some(a._2)).mkString("\n    ")).mkString("\n")
+    val traces = live.map(a => a._1 + "\n    " + witnessToTrace(List(a._2)).mkString("\n    ")).mkString("\n")
     if(pw.exists()) pw.delete()
     pw.createFile()
       .append(traces)
@@ -89,13 +90,13 @@ class PrettyPrinting(mode : OutputMode = MemoryOutputMode) {
                               prettyPrint:Qry => String = p => p.toString) {
     def succ:Option[PrintingPathNode] = {
       @tailrec
-      def nextNode(pn:IPathNode):Option[IPathNode] = {
+      def nextNode(pn:IPathNode):List[IPathNode] = {
         pn.succ match{
-          case Some(nextP) if skip(nextP) => nextNode(nextP)
+          case List(nextP) if skip(nextP) => nextNode(nextP)
           case v => v
         }
       }
-      nextNode(pn).map(PrintingPathNode(_,skip))
+      nextNode(pn).headOption.map(PrintingPathNode(_,skip))
     }
     def str:String = prettyPrint(pn.qry)
   }

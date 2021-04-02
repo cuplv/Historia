@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
-import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, SkippedInternalMethodInvoke, SkippedInternalMethodReturn}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, If, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SwitchCmd, ThrowCmd}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SetInclusionTypeSolving, SolverTypeSolving, StateTypeSolving, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, FrameworkLocation, IPathNode, MemoryOutputMode, OrdCount, OutputMode, PathNode, Qry, SomeQry, StateSet, SubsumableLocation, SwapLoc, WitnessedQry}
 
@@ -9,6 +9,7 @@ import scala.collection.parallel.CollectionConverters.{ImmutableSetIsParalleliza
 import upickle.default._
 
 import collection.mutable.PriorityQueue
+import scala.collection.mutable
 
 sealed trait CallGraphSource
 case object FlowdroidCallGraph extends CallGraphSource
@@ -88,12 +89,18 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       val s1 = p1.qry.state
       val s2 = p2.qry.state
       if(s1.callStack.size != s2.callStack.size)
-        return s2.callStack.size - s1.callStack.size
+        return s1.callStack.size - s2.callStack.size //TODO: is this the correct order?
 
+      val stack1 = p1.qry.state.callStack.map(sf => sf.methodLoc)
+      val stack2 = p2.qry.state.callStack.map(sf => sf.methodLoc)
       (p1.qry.loc, p2.qry.loc) match{
-        case (AppLoc(m1,l1,isPre1), AppLoc(m2,l2,isPre2)) if m1 == m2 && l1 == l2 =>
-          if(isPre1 == isPre2)
+        case (_,_) if p2.ordDepth != p1.ordDepth =>
+          // process shorter traces first
+          p2.ordDepth - p1.ordDepth
+        case (AppLoc(m1,l1,isPre1), AppLoc(m2,l2,isPre2)) if m1 == m2 && l1 == l2  && stack1 == stack2 =>
+          if(isPre1 == isPre2) {
             0
+          }
           else if(isPre1)
             -1 // p2 is post line and should go first
           else {
@@ -103,11 +110,22 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
           val c1 = w.commandTopologicalOrder(w.cmdAtLocation(a1))
           val c2 = w.commandTopologicalOrder(w.cmdAtLocation(a2))
           c1 - c2 // reversed because topological order increases from beginning of function
+        case (CallbackMethodReturn(fmwClazz, fmwName, loc, _), AppLoc(mloc, lineloc, _)) if mloc == loc =>
+          1
+        case (AppLoc(mloc, lineloc, _), CallbackMethodReturn(fmwClazz, fmwName, loc, _)) if mloc == loc =>
+          -1
+        case (_:AppLoc, _:InternalMethodInvoke) if stack1 == stack2 => -1
+        case (_:InternalMethodInvoke, _:AppLoc) if stack1 == stack2 => 1
+        case (_:AppLoc, _) if stack1 == stack2 =>
+          1 //Always prefer appLoc
+        case (_, _:AppLoc) if stack1 == stack2 =>
+          -1
         case _ =>{
-          if(p2.depth != p1.depth)
-            p2.depth - p1.depth
-          else
-            s2.heapConstraints.size - s1.heapConstraints.size
+          p2.depth - p1.depth
+//          if(p2.depth != p1.depth)
+//            p2.depth - p1.depth
+//          else
+//            s2.heapConstraints.size - s1.heapConstraints.size
         }
       }
     }
@@ -137,7 +155,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
    *         Trace will contain a tree of backward executions for triage.
    */
   def executeBackward(qry: Set[Qry]) : Set[IPathNode] = {
-    val pathNodes = qry.map(PathNode(_,None,None))
+    val pathNodes = qry.map(PathNode(_,Nil,None))
     val queue = PriorityQueue[IPathNode]()
     queue.addAll(pathNodes)
     config.stepLimit match{
@@ -168,11 +186,67 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     case _ => None
   }
 
+  private def groupAndTransferPostIfCmd(qrySet:mutable.PriorityQueue[IPathNode]):mutable.PriorityQueue[IPathNode] = {
+    //TODO: is copy needed here?
+    val qrySet2 = qrySet.clone
+    val groups: Map[Option[AppLoc], List[IPathNode]] = qrySet2.toList.groupBy{ pn => pn.qry.loc match {
+      case l@AppLoc(_,_,false) =>
+        val cmd = w.cmdAtLocation(l)
+        cmd match{
+          case If(_,_,_) => Some(l)
+          case _ => None
+        }
+      case _ => None
+    }}
+    val newQ = mutable.PriorityQueue[IPathNode]()
+    groups.foreach{
+      case (None,v) => newQ.addAll(v)
+      case (Some(l),v) if v.size == 1 => newQ.addAll(v)
+      case (Some(l),v) =>
+        val groups = v.groupBy(v2 => v2.qry.state.nextCmd.get)
+        if(groups.size == 1)
+          newQ.addAll(v)
+        else if(groups.size == 2) {
+//          println(groups)
+          val (_, group1) = groups.head
+          val (_, group2) = groups.last
+          val subsPairs: Seq[(IPathNode, Option[IPathNode])] = group1.map{ v1 =>
+            val g2Subs = group2.find(v2 =>
+              // Test if states are equivalent
+              stateSolver.canSubsume(v1.qry.state,v2.qry.state) && stateSolver.canSubsume(v2.qry.state,v1.qry.state)
+            )
+            (v1,g2Subs)
+          }.filter{case (_,g2s) => g2s.nonEmpty}
+
+          // For each subsumed pair, switch the location of the subsuming state to before the if and
+          val preIf: Seq[IPathNode] = subsPairs.map{case (k,_) => k.copyWithNewLoc({
+            case AppLoc(m,l,false) => AppLoc(m,l,true)
+            case _ => throw new IllegalStateException(s"Loc match error: $k")
+          })}
+          newQ.addAll(preIf)
+
+          // drop the pair from the set that transfers over the if
+          val subsPairAllSet = subsPairs.flatMap{case (k,v) => List(k) ++ v }
+
+          // Add other branches
+          val v2 = v.toSet -- subsPairAllSet
+          newQ.addAll(v2)
+
+
+        } else {
+          throw new IllegalStateException("More than two target branches for condition statement")
+        }
+
+      case (_,v) =>
+        throw new IllegalStateException(s"If edge with more than 2 successors: ${v.map(_.toString).mkString(";;")}")
+    }
+    newQ
+  }
   /**
    *
-   * @param qrySet
-   * @param limit
-   * @param refutedSubsumedOrWitnessed
+   * @param qrySet Work list of locations and states to process
+   * @param limit Step limit to terminate at
+   * @param refutedSubsumedOrWitnessed Terminal nodes
    * @param visited Map of visited states StackSize -> Location -> Set[State]
    * @return
    */
@@ -181,27 +255,20 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
                             refutedSubsumedOrWitnessed: Set[IPathNode] = Set(),
                             visited:Map[SubsumableLocation,Map[Int,StateSet]] = Map()):Set[IPathNode] = {
 
-    if(qrySet.isEmpty){
+    //TODO: This is way too sensitive to queue ordering, figure out something better
+    val qrySetIG = groupAndTransferPostIfCmd(qrySet)
+    if(qrySetIG.isEmpty){
       return refutedSubsumedOrWitnessed
     }
-    val current = qrySet.dequeue()
 
-    // TODO: search for this state and its negation in priority queue and combine states dropping constraint if so
-    qrySet.toList.find{oq =>
-      val loceq = oq.qry.loc == current.qry.loc
-      val stackEq = oq.qry.state.callStack == current.qry.state.callStack
-      val heapEq = oq.qry.state.heapConstraints == current.qry.state.heapConstraints
-      loceq && stackEq && heapEq
-    } match{
-      case Some(v) =>
-        println(v)
-        ???
-      case None =>
-    }
+    val current = qrySetIG.dequeue()
 
-//    if (config.printProgress && current.depth % 10 == 0 ){
-//      println(s"CurrentNodeSteps: ${current.depth} queries: ${qrySet.size}")
-//    }
+//    println()
+//    println(s"current loc: ${current.qry.loc}")
+//    println("--------------------")
+
+
+    //TODO: uncomment:
     current.qry.loc match{
       case SwapLoc(FrameworkLocation) =>
         println("Framework location query")
@@ -209,25 +276,25 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
         println(s"    Loc  : ${current.qry.loc}")
 //        println(s"    Subsumed:${current.subsumed}")
         println(s"    depth: ${current.depth}")
-        println(s"    size of worklist: ${qrySet.size}")
+        println(s"    size of worklist: ${qrySetIG.size}")
         println(s"    ord depth: ${current.ordDepth}")
       case _ =>
     }
 
     current match {
       case p@PathNode(_:SomeQry, true) =>
-        executeBackward(qrySet, limit, refutedSubsumedOrWitnessed + p, visited)
+        executeBackward(qrySetIG, limit, refutedSubsumedOrWitnessed + p, visited)
       case p@PathNode(_:BottomQry,_) =>
-        executeBackward(qrySet, limit, refutedSubsumedOrWitnessed + p, visited)
+        executeBackward(qrySetIG, limit, refutedSubsumedOrWitnessed + p, visited)
       case p@PathNode(_:WitnessedQry,_) =>
-        refutedSubsumedOrWitnessed.union(qrySet.toSet) + p
+        refutedSubsumedOrWitnessed.union(qrySetIG.toSet) + p
       case p:IPathNode if p.depth > limit =>
-        executeBackward(qrySet, limit, refutedSubsumedOrWitnessed + p, visited)
-//        refutedSubsumedOrWitnessed.union(qrySet.toSet)
+//        executeBackward(qrySetIG, limit, refutedSubsumedOrWitnessed + p, visited)
+        refutedSubsumedOrWitnessed.union(qrySetIG.toSet)
       case p@PathNode(qry:SomeQry,false) =>
         isSubsumed(p, visited) match{
           case v@Some(_) =>
-            executeBackward(qrySet, limit, refutedSubsumedOrWitnessed + p.setSubsumed(v), visited)
+            executeBackward(qrySetIG, limit, refutedSubsumedOrWitnessed + p.setSubsumed(v), visited)
           case None =>
             val stackSize = p.qry.state.callStack.size
             val newVisited = SwapLoc(current.qry.loc) match{
@@ -239,8 +306,8 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
                 visited + (v -> newStackSizeToNode)
               case None => visited
             }
-            val nextQry = executeStep(qry).map(q => PathNode(q, Some(p), None))
-            val nextQrySet = qrySet.addAll(nextQry)
+            val nextQry = executeStep(qry).map(q => PathNode(q, List(p), None))
+            val nextQrySet = qrySetIG.addAll(nextQry)
             executeBackward(nextQrySet, limit, refutedSubsumedOrWitnessed, newVisited)
         }
     }

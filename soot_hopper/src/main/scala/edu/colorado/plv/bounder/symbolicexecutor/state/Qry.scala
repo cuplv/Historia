@@ -170,16 +170,21 @@ sealed trait Qry {
   def loc: Loc
   def state: State
   def toString:String
+  def copyWithNewLoc(upd: Loc => Loc):Qry
 }
 //Query consists of a location and an abstract state defined at the program point just before that location.
 case class SomeQry(state:State, loc: Loc) extends Qry {
   override def toString:String = loc.toString + "  " + state.toString
+
+  override def copyWithNewLoc(upd: Loc => Loc): Qry = this.copy(loc = upd(loc))
 }
 // Infeasible precondition, path refuted
 case class BottomQry(state:State, loc:Loc) extends Qry {
   override def toString:String = "!!!refuted!!! loc: " + loc.toString + " state: " + state.toString
+  override def copyWithNewLoc(upd: Loc => Loc): Qry = this.copy(loc = upd(loc))
 }
 
 case class WitnessedQry(state:State, loc:Loc) extends Qry {
   override def toString:String = "!!!witnessed!!! loc: " + loc.toString + " state: " + state.toString
+  override def copyWithNewLoc(upd: Loc => Loc): Qry = this.copy(loc = upd(loc))
 }

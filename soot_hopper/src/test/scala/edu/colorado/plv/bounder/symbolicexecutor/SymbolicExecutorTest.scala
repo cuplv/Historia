@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SetInclusionTypeSolving}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, IPathNode, OutputMode, PrettyPrinting, Qry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, FieldPtEdge, IPathNode, OutputMode, PrettyPrinting, Qry}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.AnyFunSuite
@@ -197,16 +197,27 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val config = SymbolicExecutorConfig(
         stepLimit = Some(50), w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
+      implicit val om = config.outputMode
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void onPause()", lineForRegex(".*query1.*".r,src))
 
-//      prettyPrinting.dotMethod( query.head.loc, symbolicExecutor.controlFlowResolver, "onPauseCond.dot")
+      prettyPrinting.dotMethod( query.head.loc, symbolicExecutor.controlFlowResolver, "onPauseCond.dot")
 
-      val result = symbolicExecutor.executeBackward(query)
+      val result: Set[IPathNode] = symbolicExecutor.executeBackward(query)
       prettyPrinting.dumpDebugInfo(result, "irrelevantConditional")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Proven)
+      // Search refutation state for materialized "o2" field
+      // Should not be in there since conditional is not relevant
+      val o2ExistsInRef = result.exists((p:IPathNode) => findInWitnessTree(p, //TODO: non-deterministic failure, probably issue with priority queue order
+        {pn => pn.qry.state.heapConstraints.exists{
+          case (FieldPtEdge(_,fieldName),_) if fieldName == "o2" =>
+            println(pn.qry.state)
+            true
+          case _ => false
+        }}).isDefined)
+      assert(!o2ExistsInRef)
 
     }
 
@@ -399,7 +410,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
         val result = symbolicExecutor.executeBackward(query)
         prettyPrinting.dumpDebugInfo(result, "whileTest")
-        prettyPrinting.dotWitTree(result, "whileTest", true) //TODO: remove
+//        prettyPrinting.dotWitTree(result, "whileTest", true) //TODO: remove
         assert(result.nonEmpty)
         assert(BounderUtil.interpretResult(result) == expectedResult)
 
@@ -605,7 +616,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           RxJavaSpec.subscribeIsUniqueAndNonNull
         )),cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(60), w, transfer,
+        stepLimit = Some(120), w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
@@ -622,7 +633,6 @@ class SymbolicExecutorTest extends AnyFunSuite {
   }
 
   test("Boolean conditional") {
-    // TODO: add (false,Proven) when bool vals are handled precisely
     List((true,Witnessed), (false, Proven)).map { case (initial, expectedResult) =>
       val src =
         s"""package com.example.createdestroy;
@@ -1006,8 +1016,10 @@ class SymbolicExecutorTest extends AnyFunSuite {
       Some(List(node))
     else{
       node.succ match{
-        case Some(v) => findInWitnessTree(v, nodeToFind).map(v => node::v)
-        case None => None
+        case Nil => None
+        case v => v.collectFirst{
+          case v2 if findInWitnessTree(v2, nodeToFind).isDefined => findInWitnessTree(v2,nodeToFind).get
+        }
       }
     }
   }

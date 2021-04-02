@@ -130,7 +130,7 @@ object SwapLoc {
         case AssignCmd(_, SpecialInvoke(_,_,_,_),_) => Some(CodeLocation(a))
         case AssignCmd(_, StaticInvoke(_,_,_),_) => Some(CodeLocation(a))
         case ReturnCmd(returnVar, loc) =>
-          Some(CodeLocation(a)) //TODO: check if this improves things==========
+          Some(CodeLocation(a)) //TODO: check if this improves things
         case _ => None
       }
     }

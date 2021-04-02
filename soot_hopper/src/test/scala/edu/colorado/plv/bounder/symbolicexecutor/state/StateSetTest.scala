@@ -22,7 +22,7 @@ class StateSetTest extends AnyFunSuite {
   test("Add state"){
     //TODO: state set is work in progress and not used yet
     def pn(state:State):IPathNode = {
-      MemoryPathNode(SomeQry(state,AppLoc(fooMethod,lineLoc, false)),None,None,5,0)
+      MemoryPathNode(SomeQry(state,AppLoc(fooMethod,lineLoc, false)),Nil,None,5,0)
     }
     val set = StateSet.init
     val pv0 = PureVar(0)
