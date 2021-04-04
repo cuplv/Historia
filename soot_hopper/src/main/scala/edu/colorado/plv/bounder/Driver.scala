@@ -149,6 +149,7 @@ object Driver {
         val apkPath = act.getApkPath
         val outFolder: String = act.getOutFolder
         // Create output directory if not exists
+        // TODO: move db creation code to better location
         File(outFolder).createIfNotExists(asDirectory = true)
         val initialQuery = cfg.initialQuery
           .getOrElse(throw new IllegalArgumentException("Initial query must be defined for verify"))
@@ -171,7 +172,7 @@ object Driver {
 //          }
 //          case None => MemoryOutputMode$
 //        }
-        val res = runAnalysis(apkPath, componentFilter,pathMode, specSet.getSpecSet(),stepLimit, initialQuery)
+        val res = runAnalysis(cfg,apkPath, componentFilter,pathMode, specSet.getSpecSet(),stepLimit, initialQuery)
         val interpretedRes = BounderUtil.interpretResult(res)
         println(interpretedRes)
 //        val outName = apkPath.split("/").last
@@ -262,7 +263,7 @@ object Driver {
     val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
     //TODO:
   }
-  def runAnalysis(apkPath: String, componentFilter:Option[Seq[String]], mode:OutputMode,
+  def runAnalysis(cfg:RunConfig, apkPath: String, componentFilter:Option[Seq[String]], mode:OutputMode,
                   specSet: Set[LSSpec], stepLimit:Int, initialQuery: InitialQuery): Set[IPathNode] = {
     val startTime = System.currentTimeMillis()
     try {
@@ -279,8 +280,15 @@ object Driver {
 //        "de.danoeh.antennapod.fragment.ExternalPlayerFragment",
 //        "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)", 200,
 //        callinMatches = ".*getActivity.*".r)
-      val query = initialQuery.make(symbolicExecutor,w)
-      val res = symbolicExecutor.executeBackward(query)
+      val query: Set[Qry] = initialQuery.make(symbolicExecutor,w)
+
+      val initialize: Set[IPathNode] => Unit = mode match{
+        case mode@DBOutputMode(_) => (startingNodes:Set[IPathNode]) =>
+          startingNodes.map{pathNode => mode.initializeQuery(pathNode, cfg, initialQuery) }
+        case _ => (_:Set[IPathNode]) => ()
+      }
+
+      val res = symbolicExecutor.run(query, initialize)
 
       mode match{
         case m@DBOutputMode(_) => m.writeLiveAtEnd(res)
@@ -318,6 +326,7 @@ object SpecSetOption{
       case "file"::fname::Nil => SpecFile(fname)
       case "testSpec"::name::Nil => TestSpec(name)
       case "top"::Nil => TopSpecSet
+      case _ => throw new IllegalArgumentException(s"Failure parsing SpecSetOption: $str")
     }
   )
 }

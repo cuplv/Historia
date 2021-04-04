@@ -80,7 +80,8 @@ object StateSet {
     val heap = heapEdgesFromState(pathNode.qry.state)
     var fastCount:Int = 0
     def iFind(edges: List[String], pathNode:IPathNode, current:StateSet):Option[IPathNode] = {
-      val currentCanSubs = current.states.par.find{ subsuming =>
+      //TODO: add par back in?
+      val currentCanSubs = current.states.find{ subsuming =>
         fastCount = fastCount + 1
         canSubsume(subsuming.qry.state, pathNode.qry.state)
       }
@@ -122,18 +123,19 @@ object SwapLoc {
     case _: CallbackMethodReturn => None
     case AppLoc(_,_,false) => None
     case a@AppLoc(_,_,true) if w.isLoopHead(a) => Some(CodeLocation(a))
-    case a@AppLoc(method, line, true) => {
-      val cmd = w.cmdAtLocation(a)
-      cmd match {
-        case InvokeCmd(_, _) => Some(CodeLocation(a))
-        case AssignCmd(_, VirtualInvoke(_,_,_,_),_) => Some(CodeLocation(a))
-        case AssignCmd(_, SpecialInvoke(_,_,_,_),_) => Some(CodeLocation(a))
-        case AssignCmd(_, StaticInvoke(_,_,_),_) => Some(CodeLocation(a))
-        case ReturnCmd(returnVar, loc) =>
-          Some(CodeLocation(a)) //TODO: check if this improves things
-        case _ => None
-      }
-    }
+    case AppLoc(_,_,_) => None
+//    case a@AppLoc(method, line, true) => {
+//      val cmd = w.cmdAtLocation(a)
+//      cmd match {
+////        case InvokeCmd(_, _) => Some(CodeLocation(a)) //TODO: commented out due to breaking path condition skipping
+////        case AssignCmd(_, VirtualInvoke(_,_,_,_),_) => Some(CodeLocation(a))
+////        case AssignCmd(_, SpecialInvoke(_,_,_,_),_) => Some(CodeLocation(a))
+////        case AssignCmd(_, StaticInvoke(_,_,_),_) => Some(CodeLocation(a))
+////        case ReturnCmd(returnVar, loc) =>
+////          Some(CodeLocation(a)) //TODO: check if this improves things
+//        case _ => None
+//      }
+//    }
     case _: CallinMethodInvoke => None // message locations don't remember program counter so subsumption is unsound
     case _: CallinMethodReturn => None
     case _: GroupedCallinMethodInvoke => None

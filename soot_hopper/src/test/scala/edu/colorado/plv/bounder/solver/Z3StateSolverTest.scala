@@ -270,7 +270,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     // NI(a.bar(),a.baz()) |> I(c.bar()) ; I(b.baz())
     val niaa = AbstractTrace(niBarBaz, c_bar::b_baz::Nil, Map("a"->p1, "c"->p1, "b"->p2))
     val state2 = State(Nil,Map(),Set(),Map(), Set(niaa),0)
-    val res2 = stateSolver.simplify(state2)
+    val res2 = stateSolver.simplify(state2, Some(10))
     assert(res2.isDefined)
   }
   test("Trace abstraction NI(a.bar(),a.baz()) |> I(c.bar()) |> I(b.baz() && a = b (<=> false) ") { f =>
@@ -738,7 +738,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
       trace = TMessage(CIEnter, foo, TAddr(1)::Nil)::Nil
     ))
 
-    // NI(x.foo(), x.bar()) ! models empty
+    // empty ! models NI(x.foo(), x.bar())
     assert(!stateSolver.traceInAbstraction(
       state.copy(traceAbstraction = Set(AbstractTrace(ni_foo_x_bar_x,Nil,Map()))),
       Nil))
@@ -750,7 +750,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
         trace
       ))
 
-    // NI(x.foo(),x.bar()) |> x.foo() models empty
+    // empty(trace) models NI(x.foo(),x.bar()) |> x.foo()
     assert(
       stateSolver.traceInAbstraction(
         state.copy(traceAbstraction = Set(AbstractTrace(ni_foo_x_bar_x, i_foo_x::Nil,Map()))),

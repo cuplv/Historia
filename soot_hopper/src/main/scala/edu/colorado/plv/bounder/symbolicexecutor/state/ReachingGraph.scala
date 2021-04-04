@@ -1,5 +1,5 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
-import edu.colorado.plv.bounder.ir.{Loc, MethodLoc}
+import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, InternalMethodInvoke, InternalMethodReturn, Loc, MethodLoc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn}
 import javax.naming.InitialContext
 import slick.dbio.Effect
 import slick.jdbc.SQLiteProfile.api._
@@ -15,6 +15,9 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import scala.language.postfixOps
 import better.files.File
+import edu.colorado.plv.bounder.RunConfig
+
+import scala.annotation.tailrec
 
 trait ReachingGraph {
   def getPredecessors(qry:Qry) : Iterable[Qry]
@@ -33,6 +36,7 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
   private val callEdgeQry = TableQuery[CallEdgeTable]
   private val liveAtEnd = TableQuery[LiveAtEnd]
   private val graphQuery = TableQuery[WitnessGraph]
+  private val initialQueries = TableQuery[InitialQueryTable]
 
   val db = Database.forURL(s"jdbc:sqlite:$dbfile",driver="org.sqlite.JDBC")
   if(!dbf.exists()) {
@@ -40,7 +44,9 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
       methodQry.schema.create,
       callEdgeQry.schema.create,
       graphQuery.schema.create,
-      liveAtEnd.schema.create)
+      liveAtEnd.schema.create,
+      initialQueries.schema.create
+    )
     Await.result(db.run(setup), 20 seconds)
   }
   private val id = new AtomicInteger(0)
@@ -50,25 +56,61 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
 
   private val longTimeout = 600 seconds
 
+  def startMeta():String = {
+    import java.time.Instant
+    val startTime = Instant.now.getEpochSecond
+    val res = ujson.Obj("StartTime" -> startTime, "Status" -> "Started").toString
+    res
+  }
+  def initializeQuery(initial:IPathNode, config:RunConfig, initialQuery: InitialQuery):Unit = {
+    val initialDB = initial.asInstanceOf[DBPathNode]
+    val maxID: Option[Int] = Await.result(db.run(initialQueries.map(_.id).max.result), 30 seconds)
+    val currentID = maxID.getOrElse(0) + 1
+    val meta = startMeta()
+    val initialQueryRow = (currentID, initialDB.thisID,
+      write[InitialQuery](initialQuery), write[RunConfig](config), meta)
+    Await.result(db.run(initialQueries += initialQueryRow), 30 seconds)
+  }
   def markDeadend():Unit = {
     ???
   }
+
   /**
    * Get all states grouped by location
    * @return
    */
-  def statesBeforeLoc(locLike:String):Map[Loc,Set[(Loc,State,Int, Option[Int])]] = {
-//    val q = for{
-//      n <- witnessQry
-//      nsucc <- witnessQry if (n.pred === nsucc.id) && (nsucc.nodeLoc like locLike)
-//    } yield (nsucc.nodeLoc, n.nodeLoc, n.nodeState,n.id, n.subsumingState)
-//    val res: Seq[(String, String,String,Int, Option[Int])] = Await.result(db.run(q.result), longTimeout)
-//    val grouped: Map[String, Seq[(String, String, String,Int, Option[Int])]] = res.groupBy(_._1)
-//    val out = grouped.map{case (tgtLoc,predset) => (read[Loc](tgtLoc),
-//        predset.map{ case (_,stateLoc, state,id, optInt) =>
-//          (read[Loc](stateLoc), read[State](state), id, optInt) }.toSet )}
-//    out
-    ??? //TODO: refactor for graph representation change
+  def liveTraces():List[List[DBPathNode]] = {
+//    val liveq = liveAtEnd.map(_.nodeID) //.map(_.nodeID)
+    val liveq = for{
+      liveId <- liveAtEnd
+      n <- witnessQry if n.id === liveId.nodeID
+    } yield n
+    val nodePaths = Await.result(db.run(liveq.result), 30 seconds)
+      .map(v => rowToNode(v)::Nil).toList
+    @tailrec
+    def traceBack(paths: List[List[DBPathNode]],
+                  completed: List[List[DBPathNode]]):List[List[DBPathNode]] = paths match{
+      case (h::t1)::t2 =>
+        val succs = h.succ(this)
+        if(succs.isEmpty)
+          traceBack(t2, (h::t1)::completed)
+        else
+          traceBack((succs.head.asInstanceOf[DBPathNode] :: h :: t1)::t2, completed)
+      case Nil => completed
+    }
+    traceBack(nodePaths, Nil).map(t => t.reverse)
+  }
+  def printObsMessages(nodes:List[DBPathNode]):List[String] = {
+    nodes.flatMap{n =>
+      n.qry.loc match {
+        case c @ CallinMethodReturn(fmwClazz, fmwName) => Some(c.toString)
+        case c @ CallinMethodInvoke(fmwClazz, fmwName) => Some(c.toString)
+        case c @ GroupedCallinMethodInvoke(targetClasses, fmwName) => Some(c.toString)
+        case c @ GroupedCallinMethodReturn(targetClasses, fmwName) => Some(c.toString)
+        case c @ CallbackMethodInvoke(fmwClazz, fmwName, loc) => Some(c.toString)
+        case c @ CallbackMethodReturn(fmwClazz, fmwName, loc, line) => Some(c.toString)
+        case _ => None
+      }}
   }
   def statesAtLoc(locLike:String):Map[Loc,Set[(State,Int, Option[Int])]] = {
     val q = for{
@@ -180,6 +222,14 @@ class WitnessGraph(tag:Tag) extends Table[(Int,Int)](tag, "GRAPH"){
   def tgt = column[Int]("TGT")
   def * = (src,tgt)
 }
+class InitialQueryTable(tag:Tag) extends Table[(Int, Int, String, String, String)](tag, "INITIAL_QUERY"){
+  def id = column[Int]("QUERY_ID", O.PrimaryKey)
+  def startingNodeID = column[Int]("STARTING_NODE_ID")
+  def initialQuery = column[String]("INITIAL_QUERY")
+  def config = column[String]("CONFIG")
+  def metadata = column[String]("META")
+  def * = (id,startingNodeID, initialQuery, config, metadata)
+}
 
 class WitnessTable(tag:Tag) extends Table[(Int,String,String,String,Option[Int],Int)](tag,"PATH"){
   def id = column[Int]("NODE_ID", O.PrimaryKey)
@@ -236,6 +286,7 @@ object PathNode{
 }
 
 sealed trait IPathNode{
+
   def depth:Int
   def ordDepth:Int
   def qry:Qry
@@ -243,6 +294,13 @@ sealed trait IPathNode{
   def subsumed(implicit mode : OutputMode): Option[IPathNode]
   def setSubsumed(v: Option[IPathNode])(implicit mode: OutputMode):IPathNode
   def copyWithNewLoc(upd: Loc=>Loc):IPathNode
+  def mergeEquiv(other:IPathNode):IPathNode
+  def copyWithNewQry(newQry:Qry):IPathNode
+  final def addAlternate(alternatePath: IPathNode): IPathNode = {
+    val alternates = qry.state.alternateCmd
+    val newState = qry.state.copy(alternateCmd = alternatePath.qry.state.nextCmd ++ alternates)
+    this.copyWithNewQry(qry.copyWithNewState(newState))
+  }
 }
 
 case class MemoryPathNode(qry: Qry, succV : List[IPathNode], subsumedV: Option[IPathNode], depth:Int,
@@ -261,6 +319,16 @@ case class MemoryPathNode(qry: Qry, succV : List[IPathNode], subsumedV: Option[I
   override def subsumed(implicit mode: OutputMode): Option[IPathNode] = subsumedV
 
   override def copyWithNewLoc(upd:Loc=>Loc): IPathNode = this.copy(qry.copyWithNewLoc(upd))
+
+  override def mergeEquiv(other: IPathNode): IPathNode = {
+    val newNextCmd = qry.state.nextCmd.toSet ++ other.qry.state.nextCmd.toSet
+    val newState = qry.state.copy(nextCmd = newNextCmd.toList)
+    val newQry = qry.copyWithNewState(newState)
+    val newSuccV = succV ++ other.asInstanceOf[MemoryPathNode].succV
+    this.copy(qry = newQry, succV = newSuccV)
+  }
+
+  override def copyWithNewQry(newQry: Qry): IPathNode = this.copy(qry=newQry)
 }
 
 case class DBPathNode(qry:Qry, thisID:Int,
@@ -276,7 +344,18 @@ case class DBPathNode(qry:Qry, thisID:Int,
     this.copy(subsumedID = v.map(v2 => v2.asInstanceOf[DBPathNode].thisID))
   }
 
+  //TODO: Delete later
   override def copyWithNewLoc(upd:Loc=>Loc): IPathNode = this.copy(qry.copyWithNewLoc(upd))
+
+  override def copyWithNewQry(newQry: Qry): IPathNode = this.copy(qry=newQry)
+
+  override def mergeEquiv(other: IPathNode): IPathNode = {
+    val newNextCmd = qry.state.nextCmd.toSet ++ other.qry.state.nextCmd.toSet
+    val newState = qry.state.copy(nextCmd = newNextCmd.toList)
+    val newQry = qry.copyWithNewState(newState)
+    val newSuccID = succID ++ other.asInstanceOf[DBPathNode].succID
+    this.copy(qry = newQry, succID = newSuccID)
+  }
 }
 object DBPathNode{
   implicit val rw:RW[DBPathNode] = macroRW

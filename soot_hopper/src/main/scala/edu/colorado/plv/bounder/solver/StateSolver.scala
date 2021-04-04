@@ -745,7 +745,8 @@ trait StateSolver[T, C <: SolverCtx] {
     }
     val perm = BounderUtil.allMap(pv1 -- removeFromPermS1,pvToTemp -- removeFromPermS2,canMap)
 //    val perm = allPvNoLocals.permutations.grouped(40)
-    val out: Boolean = perm.par.exists{perm =>
+    //TODO: add par back in?
+    val out: Boolean = perm.exists{perm =>
       val s2Swapped = perm.foldLeft(s2LocalSwapped) {
         case (s, (newPv, oldPv)) => s.swapPv(oldPv, newPv)
       }

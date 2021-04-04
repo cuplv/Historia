@@ -366,7 +366,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     }
 
     val allCalls = memoizedallCalls(m) + m
-    val traceRelevantCallees = allCalls.par.filter{ m =>
+    //TODO: add par back in?
+    val traceRelevantCallees = allCalls.filter{ m =>
       mSet.exists{ci =>
         val cin = callinNames(m)
         cin.contains(ci)
@@ -381,7 +382,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
         return RelevantMethod
       }
     }
-    val heapRelevantCallees = allCalls.par.filter { callee =>
+    //TODO: add par back in?
+    val heapRelevantCallees = allCalls.filter { callee =>
       val hn: Set[String] = heapNamesModified(callee)
       fnSet.exists { fn =>
         hn.contains(fn)
@@ -502,7 +504,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
           val unresolvedTargets: UnresolvedMethodTarget =
             wrapper.makeInvokeTargets(loc)
           val resolved: Set[Loc] = resolver.resolveCallLocation(unresolvedTargets)
-          val resolvedSkipIrrelevant = resolved.par.map{m => (relevantMethod(m,state),m) match{
+          //TODO: add par back in?
+          val resolvedSkipIrrelevant = resolved.map{m => (relevantMethod(m,state),m) match{
             case (RelevantMethod,_) => m
             case (NotRelevantMethod, InternalMethodReturn(clazz, name, loc)) =>
               SkippedInternalMethodReturn(clazz, name,NotRelevantMethod,loc)
@@ -513,22 +516,13 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
           }}
           val out = mergeEquivalentCallins(resolvedSkipIrrelevant.seq.toSet, state)
           out
-//          if(resolved.par.forall{m =>
-//            relevantMethod(m,state) match{
-//              case NotRelevantMethod => true
-//              case _ => false
-//            }
-//          })
-//            List(l.copy(isPre = true)) // skip if all method targets are not relevant
-//          else {
-//            mergeEquivalentCallins(resolved, state)
-//          }
         }
         case AssignCmd(tgt, _:Invoke,loc) => {
           val unresolvedTargets =
             wrapper.makeInvokeTargets(loc)
           val resolved = resolver.resolveCallLocation(unresolvedTargets)
-          val resolvedSkipIrrelevant = resolved.par.map{m => (relevantMethod(m,state),m) match{
+          //TODO: add par back in?
+          val resolvedSkipIrrelevant = resolved.map{m => (relevantMethod(m,state),m) match{
             case (RelevantMethod,_) => m
             case (NotRelevantMethod, InternalMethodReturn(clazz, name, loc)) =>
               SkippedInternalMethodReturn(clazz, name,NotRelevantMethod,loc)
@@ -538,18 +532,6 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
           }}
           val out = mergeEquivalentCallins(resolvedSkipIrrelevant.seq.toSet, state)
           out
-//          if (state.get(tgt).isDefined)
-//            mergeEquivalentCallins(resolved,state)
-//          else {
-//            if(resolved.par.forall{m =>
-//              relevantMethod(m,state) match{
-//                case NotRelevantMethod => true
-//                case _ => false
-//              }})
-//              List(l.copy(isPre = true)) // skip if all method targets are not relevant
-//            else
-//              mergeEquivalentCallins(resolved,state)
-//          }
         }
         case _ => List(l.copy(isPre=true))
       }

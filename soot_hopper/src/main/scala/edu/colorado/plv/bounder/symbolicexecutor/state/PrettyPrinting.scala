@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 import better.files.Dsl.SymbolicOperations
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Loc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn}
+import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, LineLoc, Loc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn}
 import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, SymbolicExecutorConfig}
 import org.apache.log4j.{EnhancedPatternLayout, PatternLayout}
 
@@ -149,8 +149,11 @@ class PrettyPrinting(mode : OutputMode = MemoryOutputMode) {
       def getNodes:Set[String] = {
         nodes.map{
           case (cmd,ind) if w.isMethodEntry(cmd) =>
-            s"""n$ind [label="ENTRY: ${sanitizeStringForDot(cmd.toString)}"]"""
-          case (cmd,ind) => s"""n$ind [label="${sanitizeStringForDot(cmd.toString)}"]"""
+            val line = cmd.getLoc.line.lineNumber
+            s"""n$ind [label="ENTRY: line:$line top:${w.commandTopologicalOrder(cmd)} : ${sanitizeStringForDot(cmd.toString)}"]"""
+          case (cmd,ind) =>
+            val line = cmd.getLoc.line.lineNumber
+            s"""n$ind [label="line:$line top:${w.commandTopologicalOrder(cmd)} : ${sanitizeStringForDot(cmd.toString)}"]"""
         }.toSet
       }
       def getEdges:Set[String] = {

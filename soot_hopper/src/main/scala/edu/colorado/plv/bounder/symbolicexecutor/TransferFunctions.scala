@@ -97,7 +97,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         case Some(revar:LocalWrapper)::_ => outState.map(s3 => s3.clearLVal(revar))
         case _ => outState
       }
-      val outState2 = outState1.map(s2 => s2.copy(callStack = frame::s2.callStack, nextCmd = None))
+      val outState2 = outState1.map(s2 => s2.copy(callStack = frame::s2.callStack, nextCmd = List(source)))
 
       val out = outState2.map{ oState =>
         //clear assigned var from stack if exists
@@ -123,7 +123,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         case Some(revar:LocalWrapper)::_ => outState.map(s3 => s3.clearLVal(revar))
         case _ => outState
       }
-      val outState2 = outState1.map(s2 => s2.copy(callStack = frame::s2.callStack, nextCmd = None))
+      val outState2 = outState1.map(s2 => s2.copy(callStack = frame::s2.callStack, nextCmd = List(source)))
       val out = outState2.map{ oState =>
         //clear assigned var from stack if exists
         val statesWithClearedReturn = inVars.head match{
@@ -144,13 +144,15 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         val state1 = traceAllPredTransfer(CIEnter, (pkg, name), rvals, state0)
         Set(state1)
       }
-
+      //Only add receiver if this or callin return is in abstract trace
+      val traceNeedRec = List(CIEnter, CIExit).exists( dir => postState.findIFromCurrent(dir, (pkg,name)).nonEmpty)
+      val cfNeedRec = postState.alternateCmd.nonEmpty
       ostates.map{s =>
         // Pop stack and set command just processed
-        val s2 = s.copy(callStack = s.callStack.tail, nextCmd = Some(tgt))
+        val s2 = s.copy(callStack = s.callStack.tail, nextCmd = List(cminv))
         // If dynamic invoke, restrict receiver type by the callin we just came from
         invars match{
-          case _::Some(rec)::_ =>
+          case _::Some(rec)::_ if traceNeedRec || cfNeedRec =>
             val (recV,stateWithRec) = s2.getOrDefine(rec)
             val pureFormulaConstrainingReceiver = stateWithRec.pureFormula +
 //              PureConstraint(recV, TypeComp, OneOfClass(targets)) +
@@ -158,12 +160,12 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
             stateWithRec.copy(pureFormula =pureFormulaConstrainingReceiver).constrainOneOfType(recV, targets, ch)
           case _ => s2
         }
-      }
+      }.map(_.copy(nextCmd = List(source)))
 
     case (GroupedCallinMethodReturn(_,_), GroupedCallinMethodInvoke(_,_)) =>
-      Set(postState)
+      Set(postState).map(_.copy(nextCmd = List(source)))
     case (CallinMethodReturn(_, _), CallinMethodInvoke(_, _)) =>
-      Set(postState)
+      Set(postState).map(_.copy(nextCmd = List(source)))
     case (cminv@CallinMethodInvoke(invokeType, _), tgt@AppLoc(_, _, true)) =>
       assert(postState.callStack.nonEmpty, "Bad control flow, abstract stack must be non-empty.")
       val invars = inVarsForCall(tgt,w)
@@ -174,13 +176,15 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         val state1 = traceAllPredTransfer(CIEnter, (pkg, name), rvals, state0)
         Set(state1)
       }
-
+      //Only add receiver if this or callin return is in abstract trace
+      val traceNeedRec = List(CIEnter, CIExit).exists( dir => postState.findIFromCurrent(dir, (pkg,name)).nonEmpty)
+      val cfNeedRec = postState.alternateCmd.nonEmpty
       ostates.map{s =>
         // Pop stack and set command just processed
-        val s2 = s.copy(callStack = s.callStack.tail, nextCmd = Some(tgt))
+        val s2 = s.copy(callStack = s.callStack.tail, nextCmd = List(tgt))
         // If dynamic invoke, restrict receiver type by the callin we just came from
         val out = invars match{
-          case _::Some(rec)::_ =>
+          case _::Some(rec)::_ if traceNeedRec || cfNeedRec =>
             val (recV,stateWithRec) = s2.getOrDefine(rec)
             val pureFormulaConstrainingReceiver = stateWithRec.pureFormula + PureConstraint(recV, NotEquals, NullVal)
             stateWithRec.copy(pureFormula =pureFormulaConstrainingReceiver).constrainUpperType(recV, invokeType, ch)
@@ -191,7 +195,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       }
     case (AppLoc(_, _, true), AppLoc(_, _, false)) => Set(postState)
     case (appLoc@AppLoc(c1, m1, false), postLoc@AppLoc(c2, m2, true)) if c1 == c2 && m1 == m2 =>
-      cmdTransfer(w.cmdAtLocation(appLoc), postState).map(_.setNextCmd(Some(postLoc)))
+      cmdTransfer(w.cmdAtLocation(appLoc), postState).map(_.setNextCmd(List(postLoc)))
     case (AppLoc(containingMethod, m, true), cmInv@CallbackMethodInvoke(fc1, fn1, l1)) =>
       // If call doesn't match return on stack, return bottom
       // Target loc of CallbackMethodInvoke means just before callback is invoked
@@ -209,7 +213,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val (inVals, state0) = getOrDefineRVals(relAliases,postState)
       val state1 = traceAllPredTransfer(CBEnter, (pkg,name), inVals, state0)
       val b = newSpecInstanceTransfer(CBEnter, (pkg, name), invars, cmInv, state1)
-      b.map(s => s.copy(callStack = if(s.callStack.isEmpty) Nil else s.callStack.tail, nextCmd = None))
+      b.map(s => s.copy(callStack = if(s.callStack.isEmpty) Nil else s.callStack.tail, nextCmd = List(source)))
     case (CallbackMethodInvoke(_, _, _), targetLoc@CallbackMethodReturn(_,_,mloc, _)) =>
       // Case where execution goes to the exit of another callback
       // TODO: nested callbacks not supported yet, assuming we can't go back to callin entry
@@ -229,11 +233,10 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       // Note: no newSpecInstanceTransfer since this is an in-message
       val (rVals, state0) = getOrDefineRVals(relAliases, pre_push)
       val state1 = traceAllPredTransfer(CBExit, (pkg, name), rVals, state0)
-      Set(state1)
+      Set(state1).map(_.copy(nextCmd = List(source)))
     case (CallbackMethodReturn(_,_,mloc1,_), AppLoc(mloc2,_,false)) =>
       assert(mloc1 == mloc2)
-      assert(postState.nextCmd.isEmpty)
-      Set(postState) // transfer handled by processing callbackmethodreturn, nothing to do here
+      Set(postState).map(_.copy(nextCmd = List(source)))
     case (InternalMethodInvoke(invokeType, _,_), al@AppLoc(_, _, true)) =>
       val cmd = w.cmdAtLocation(al) match{
         case InvokeCmd(inv : Invoke, _) => inv
@@ -246,15 +249,24 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         case _:StaticInvoke => None
       }
       val argOptions: List[Option[RVal]] = cmd.params.map(Some(_))
-      val state0 = postState.setNextCmd(None)
+      val state0 = postState.setNextCmd(List(source))
 
       // Always define receiver to reduce dynamic dispatch imprecision
       // Value is discarded if static call
-      val (receiverValue,stateWithRec) = state0.getOrDefine(LocalWrapper("@this",invokeType))
-      val stateWithRecTypeCst = stateWithRec.copy(pureFormula = stateWithRec.pureFormula +
+      //TODO============
+      //TODO: check if skipped internal method and don't materialize receiver or other args
+      //TODO: implemented this, check that it works
+      val (receiverValue,stateWithRec) = if(postState.alternateCmd.nonEmpty){
+        val (recV,st) = state0.getOrDefine(LocalWrapper("@this",invokeType))
+        (Some(recV),st)
+      }else (state0.get(LocalWrapper("@this",invokeType)), state0)
+      val stateWithRecPf = stateWithRec.copy(pureFormula = stateWithRec.pureFormula ++
 //        PureConstraint(receiverValue, TypeComp, SubclassOf(invokeType)) +
-        PureConstraint(receiverValue, NotEquals, NullVal)
-      ).constrainUpperType(receiverValue, invokeType,ch)
+        receiverValue.map(PureConstraint(_, NotEquals, NullVal))
+      )
+      val stateWithRecTypeCst = if(receiverValue.isDefined)
+        stateWithRecPf.constrainUpperType(receiverValue.get.asInstanceOf[PureVar], invokeType,ch)
+      else stateWithRecPf
 
       // Get values associated with arguments in state
       val frameArgVals: List[Option[PureExpr]] =
@@ -262,7 +274,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
 
       // Combine args and params into list of tuples
       val allArgs = receiverOption :: argOptions
-      val allParams: Seq[Option[PureExpr]] = (Some(receiverValue)::frameArgVals)
+      val allParams: Seq[Option[PureExpr]] = (receiverValue::frameArgVals)
       val argsAndVals: List[(Option[RVal], Option[PureExpr])] = allArgs zip allParams
 
       // Possible stack frames for source of call being a callback or internal method call
@@ -280,7 +292,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         throw new IllegalStateException("Abstract state should always have a " +
           "stack when returning from internal method.")
       }
-      out.map(_.copy(nextCmd = Some(al)))
+      out.map(_.copy(nextCmd = List(al)))
     case (SkippedInternalMethodInvoke(invokeType, _,_), al@AppLoc(_, _, true)) =>
       val cmd = w.cmdAtLocation(al) match{
         case InvokeCmd(inv : Invoke, _) => inv
@@ -293,7 +305,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         case _:StaticInvoke => None
       }
       val argOptions: List[Option[RVal]] = cmd.params.map(Some(_))
-      val state0 = postState.setNextCmd(None)
+      val state0 = postState.setNextCmd(List(source))
 
       // Always define receiver to reduce dynamic dispatch imprecision
       // Value is discarded if static call
@@ -327,7 +339,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         throw new IllegalStateException("Abstract state should always have a " +
           "stack when returning from internal method.")
       }
-      out.map(_.copy(nextCmd = Some(al)))
+      out.map(_.copy(nextCmd = List(al)))
     case (retloc@AppLoc(mloc, line, false), mRet: InternalMethodReturn) =>
       val cmd = w.cmdAtLocation(retloc)
       val retVal:Map[StackVar, PureExpr] = cmd match{
@@ -343,7 +355,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         case AssignCmd(target, _, _) => postState.clearLVal(target)
         case _ => postState
       }
-      Set(clearedLVal.copy(callStack = newFrame::postState.callStack, nextCmd = None))
+      Set(clearedLVal.copy(callStack = newFrame::postState.callStack, nextCmd = List(retloc)))
     case (retLoc@AppLoc(mloc, line, false), mRet@SkippedInternalMethodReturn(_, _, rel, _)) =>
       // Create call stack frame with return value
       val newFrame = CallStackFrame(mRet, Some(AppLoc(mloc,line,true)), Map())
@@ -352,7 +364,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         case AssignCmd(target, _:Invoke, _) => postState.clearLVal(target)
         case _ => postState
       }
-      val withStackFrame = clearedLval.copy(callStack = newFrame :: postState.callStack, nextCmd = None)
+      val withStackFrame = clearedLval.copy(callStack = newFrame :: postState.callStack, nextCmd = List(retLoc))
       val withPrecisionLoss = rel.applyPrecisionLossForSkip(withStackFrame)
       Set(withPrecisionLoss)
     case (SkippedInternalMethodReturn(_,_,_,_), SkippedInternalMethodInvoke(_,_,_)) => Set(postState)
@@ -510,13 +522,13 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       exprContainsV(value,base) || exprContainsV(value,index) || exprContainsV(value,ptVal)
   }
 
-  def cmdTransfer(cmd:CmdWrapper, state:State):Set[State] = cmd match{
-    case AssignCmd(lhs:LocalWrapper, TopExpr(_),_) => Set(state.clearLVal(lhs))
-    case AssignCmd(lhs@LocalWrapper(_, _), NewCommand(className),_) =>
+  def cmdTransfer(cmd:CmdWrapper, state:State):Set[State] = cmd match {
+    case AssignCmd(lhs: LocalWrapper, TopExpr(_), _) => Set(state.clearLVal(lhs))
+    case AssignCmd(lhs@LocalWrapper(_, _), NewCommand(className), _) =>
       // x = new T
       state.get(lhs) match {
-        case Some(v:PureVar) =>
-          if(heapCellReferencesV(v,state)) {
+        case Some(v: PureVar) =>
+          if (heapCellReferencesV(v, state)) {
             // If x->v^ and some heap cell references v^, the state is not possible
             // new command does not call constructor, it just creates an instance with all null vals
             // <init>(...) is the constructor and is called in the instruction after the new instruction
@@ -527,37 +539,37 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
             // If x = new T and x->v^ then v^<:T
             // v^ != null since new instruction never returns null
             Set(sWithoutLVal.copy(pureFormula = state.pureFormula
-//              + PureConstraint(v, TypeComp, ClassType(className))
+              //              + PureConstraint(v, TypeComp, ClassType(className))
               + PureConstraint(v, NotEquals, NullVal)
-            ).constrainIsType(v,className,ch))
+            ).constrainIsType(v, className, ch))
           }
-        case Some(_:PureVal) => Set() // new cannot return anything but a pointer
+        case Some(_: PureVal) => Set() // new cannot return anything but a pointer
         case None => Set(state) // Do nothing if variable x is not in state
       }
-    case AssignCmd(lw: LocalWrapper, ThisWrapper(thisTypename),a) =>
-      val out = cmdTransfer(AssignCmd(lw, LocalWrapper("@this", thisTypename),a),state)
-      out.map{s =>
-        s.get(LocalWrapper("@this", thisTypename)) match{
+    case AssignCmd(lw: LocalWrapper, ThisWrapper(thisTypename), a) =>
+      val out = cmdTransfer(AssignCmd(lw, LocalWrapper("@this", thisTypename), a), state)
+      out.map { s =>
+        s.get(LocalWrapper("@this", thisTypename)) match {
           case Some(v) =>
             s.copy(pureFormula = s.pureFormula + PureConstraint(v, NotEquals, NullVal))
           case None => s
         }
       }
-    case AssignCmd(lhs: LocalWrapper,rhs:LocalWrapper,_) => //
+    case AssignCmd(lhs: LocalWrapper, rhs: LocalWrapper, _) => //
       // x = y
       val lhsv = state.get(lhs) // Find what lhs pointed to if anything
-      lhsv.map(pexpr =>{
+      lhsv.map(pexpr => {
         // remove lhs from abstract state (since it is assigned here)
         val state2 = state.clearLVal(lhs)
         if (state2.containsLocal(rhs)) {
           // rhs constrained by refutation state, lhs should be equivalent
-          Set(state2.copy(pureFormula = state2.pureFormula + PureConstraint(pexpr,Equals, state2.get(rhs).get)))
-        } else{
+          Set(state2.copy(pureFormula = state2.pureFormula + PureConstraint(pexpr, Equals, state2.get(rhs).get)))
+        } else {
           // rhs unconstrained by refutation state, should now be same as lhs
           val state3 = state2.defineAs(rhs, pexpr)
           Set(state3)
         }
-      }).getOrElse{
+      }).getOrElse {
         Set(state) // if lhs points to nothing, no change in state
       }
     case ReturnCmd(Some(v), _) =>
@@ -566,24 +578,24 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val state1 = state.clearLVal(fakeRetLocal)
       Set(retv.map(state1.defineAs(v, _)).getOrElse(state))
     case ReturnCmd(None, _) => Set(state)
-    case AssignCmd(lhs:LocalWrapper, FieldReference(base, fieldType, _, fieldName), _) =>
+    case AssignCmd(lhs: LocalWrapper, FieldReference(base, fieldType, _, fieldName), _) =>
       // x = y.f
-      state.get(lhs) match{
-        case Some(lhsV) =>{
+      state.get(lhs) match {
+        case Some(lhsV) => {
           val (basev, state1) = state.getOrDefine(base)
           // get all heap cells with correct field name that can alias
           val possibleHeapCells = state1.heapConstraints.filter {
             case (FieldPtEdge(pv, heapFieldName), _) =>
               val fieldEq = fieldName == heapFieldName
-//              val canAlias = pureCanAlias(pv,base.localType,state1)
+              //              val canAlias = pureCanAlias(pv,base.localType,state1)
               val canAlias = state1.typeConstraints
-                .get(pv).forall(_.subtypeOfCanAlias(base.localType,ch))
+                .get(pv).forall(_.subtypeOfCanAlias(base.localType, ch))
               fieldEq && canAlias
             case _ =>
               false
           }
-          val statesWhereBaseAliasesExisting:Set[State] = possibleHeapCells.map{
-            case (FieldPtEdge(p,_), heapV) =>
+          val statesWhereBaseAliasesExisting: Set[State] = possibleHeapCells.map {
+            case (FieldPtEdge(p, _), heapV) =>
               state1.copy(pureFormula = state1.pureFormula +
                 PureConstraint(basev, Equals, p) +
                 PureConstraint(lhsV, Equals, heapV))
@@ -592,8 +604,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
           val heapCell = FieldPtEdge(basev, fieldName)
           val stateWhereNoHeapCellIsAliased = state1.copy(
             heapConstraints = state1.heapConstraints + (heapCell -> lhsV),
-            pureFormula = state1.pureFormula ++ possibleHeapCells.map{
-              case (FieldPtEdge(p,_),_) => PureConstraint(p, NotEquals, basev)
+            pureFormula = state1.pureFormula ++ possibleHeapCells.map {
+              case (FieldPtEdge(p, _), _) => PureConstraint(p, NotEquals, basev)
               case _ => throw new IllegalStateException()
             }
           )
@@ -602,15 +614,15 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         }
         case None => Set(state)
       }
-    case AssignCmd(FieldReference(base, fieldType, _,fieldName), rhs, _) =>
+    case AssignCmd(FieldReference(base, fieldType, _, fieldName), rhs, _) =>
       // x.f = y
-      val (basev,state2) = state.getOrDefine(base)
+      val (basev, state2) = state.getOrDefine(base)
 
       // get all heap cells with correct field name that can alias
       val possibleHeapCells = state2.heapConstraints.filter {
         case (FieldPtEdge(pv, heapFieldName), _) =>
           val fieldEq = fieldName == heapFieldName
-//          val canAlias = pureCanAlias(pv,base.localType,state2)
+          //          val canAlias = pureCanAlias(pv,base.localType,state2)
           val canAlias = state2.typeConstraints.get(pv).forall(_.subtypeOfCanAlias(base.localType, ch))
           fieldEq && canAlias
         case _ =>
@@ -623,14 +635,14 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       // Enumerate over existing base values that could alias assignment
       // Enumerate permutations of heap cell and rhs
       // TODO: remove repeatingPerm here since only one possible rhs
-      val perm = BounderUtil.repeatingPerm(a => if(a ==0) possibleHeapCells else possibleRhs , 2)
-      val casesWithHeapCellAlias: Set[State] = perm.map{
-        case (pte@FieldPtEdge(heapPv, _), tgtVal:PureExpr)::(rhsPureExpr:PureExpr,state3:State)::Nil =>
+      val perm = BounderUtil.repeatingPerm(a => if (a == 0) possibleHeapCells else possibleRhs, 2)
+      val casesWithHeapCellAlias: Set[State] = perm.map {
+        case (pte@FieldPtEdge(heapPv, _), tgtVal: PureExpr) :: (rhsPureExpr: PureExpr, state3: State) :: Nil =>
           val withPureConstraint = state3.copy(pureFormula = state3.pureFormula + PureConstraint(basev, Equals, heapPv))
           val swapped = withPureConstraint.copy(
             heapConstraints = withPureConstraint.heapConstraints - pte,
             pureFormula = withPureConstraint.pureFormula +
-              PureConstraint( tgtVal, Equals, rhsPureExpr) +
+              PureConstraint(tgtVal, Equals, rhsPureExpr) +
               PureConstraint(heapPv, NotEquals, NullVal) // Base must be non null for normal control flow
           )
           swapped
@@ -638,32 +650,34 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
           println(v)
           ???
       }.toSet
-      val caseWithNoAlias = state2.copy(pureFormula = state2.pureFormula ++ possibleHeapCells.flatMap{
-        case (FieldPtEdge(pv, _),_) => Some(PureConstraint(basev, NotEquals, pv))
+      val caseWithNoAlias = state2.copy(pureFormula = state2.pureFormula ++ possibleHeapCells.flatMap {
+        case (FieldPtEdge(pv, _), _) => Some(PureConstraint(basev, NotEquals, pv))
         case _ => None
       })
       casesWithHeapCellAlias + caseWithNoAlias
-    case AssignCmd(target :LocalWrapper, source, _) if source.isConst =>
-      state.get(target) match{
+    case AssignCmd(target: LocalWrapper, source, _) if source.isConst =>
+      state.get(target) match {
         case Some(v) =>
           val src = Set(state.getOrDefine2(source))
-          src.map{
+          src.map {
             case (pexp, s2) => s2.copy(pureFormula = s2.pureFormula + PureConstraint(v, Equals, pexp)).clearLVal(target)
           }
         case None => Set(state)
       }
-    case _:InvokeCmd => Set(state)// Invoke not relevant and skipped
-    case AssignCmd(_, _:Invoke, _) => Set(state)
-    //TODO: handle if, when transfering over if, assume b was true.
-      // Note: ignoring if stmts is sound but not precise
-      // TODO: needed info about where control flow came from. If statement is encountered on both branches through the unit graph
-    case If(b,trueLoc,_) =>
-      assert(state.nextCmd.isDefined, "Malformed transfer, next command must be defined to transfer If node.")
-      val stateLocationFrom: AppLoc = state.nextCmd.get
-      if(stateLocationFrom == trueLoc)
-        assumeInState(b,state,negate=false).toSet
-      else
-        assumeInState(b,state,negate=true).toSet
+    case _: InvokeCmd => Set(state) // Invoke not relevant and skipped
+    case AssignCmd(_, _: Invoke, _) => Set(state)
+    case If(b, trueLoc, _) =>
+      if (state.nextCmd.toSet.size == 1) {
+        val stateLocationFrom: Loc = state.nextCmd.head
+        if (stateLocationFrom == trueLoc)
+          assumeInState(b, state, negate = false).toSet
+        else
+          assumeInState(b, state, negate = true).toSet
+      } else if (state.nextCmd.toSet.size == 2){
+        Set(state) // When both true and false branch is represented by current state, do not materialize anything
+      }else{
+        throw new IllegalStateException(s"If should only have 1 or 2 next commands, next commands: ${state.nextCmd}")
+      }
     case AssignCmd(l,Cast(castT, local),cmdloc) =>
       val state1 = state.get(local) match{
         case Some(v:PureVar) => state.constrainUpperType(v, castT, ch)

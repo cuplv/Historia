@@ -21,7 +21,7 @@ object Qry {
     val containingMethodPos: List[Loc] = BounderUtil.resolveMethodReturnForAppLoc(ex.getAppCodeResolver, targetLoc)
     containingMethodPos.map{method =>
       val queryStack = List(CallStackFrame(method, None,Map()))
-      val state0 = State.topState.copy(callStack = queryStack, nextCmd = Some(targetLoc))
+      val state0 = State.topState.copy(callStack = queryStack, nextCmd = List(targetLoc))
       SomeQry(state0, targetLoc)
     }.toSet
   }
@@ -55,7 +55,7 @@ object Qry {
       val queryStack = List(CallStackFrame(pos, None, Map()))
       val state = State.topState.copy(callStack = queryStack)
       val (pv,state1) = state.getOrDefine(local)
-      val state2 = state1.copy(pureFormula = Set(PureConstraint(pv, Equals, NullVal)), nextCmd = Some(location))
+      val state2 = state1.copy(pureFormula = Set(PureConstraint(pv, Equals, NullVal)), nextCmd = List(location))
       SomeQry(state2, location)
     }.toSet
   }
@@ -100,7 +100,7 @@ object Qry {
 
       val (pureVar, state1) = state0.getOrDefine(varname)
       SomeQry(state1.copy(pureFormula = Set(PureConstraint(pureVar, Equals, NullVal)),
-        nextCmd = Some(derefLoc)), derefLoc)
+        nextCmd = List(derefLoc)), derefLoc)
     }.toSet
   }
 
@@ -171,20 +171,25 @@ sealed trait Qry {
   def state: State
   def toString:String
   def copyWithNewLoc(upd: Loc => Loc):Qry
+  def copyWithNewState(state:State):Qry
 }
 //Query consists of a location and an abstract state defined at the program point just before that location.
 case class SomeQry(state:State, loc: Loc) extends Qry {
   override def toString:String = loc.toString + "  " + state.toString
 
   override def copyWithNewLoc(upd: Loc => Loc): Qry = this.copy(loc = upd(loc))
+
+  override def copyWithNewState(state: State): Qry = this.copy(state = state)
 }
 // Infeasible precondition, path refuted
 case class BottomQry(state:State, loc:Loc) extends Qry {
   override def toString:String = "!!!refuted!!! loc: " + loc.toString + " state: " + state.toString
   override def copyWithNewLoc(upd: Loc => Loc): Qry = this.copy(loc = upd(loc))
+  override def copyWithNewState(state: State): Qry = this.copy(state = state)
 }
 
 case class WitnessedQry(state:State, loc:Loc) extends Qry {
   override def toString:String = "!!!witnessed!!! loc: " + loc.toString + " state: " + state.toString
   override def copyWithNewLoc(upd: Loc => Loc): Qry = this.copy(loc = upd(loc))
+  override def copyWithNewState(state: State): Qry = this.copy(state = state)
 }

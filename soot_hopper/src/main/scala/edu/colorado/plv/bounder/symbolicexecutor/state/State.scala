@@ -349,7 +349,9 @@ case class State(callStack: List[CallStackFrame],
                  typeConstraints: Map[PureVar, TypeSet],
                  traceAbstraction: Set[AbstractTrace],
                  nextAddr:Int,
-                 nextCmd: Option[AppLoc] = None) {
+                 nextCmd: List[Loc] = Nil,
+                 alternateCmd: List[Loc] = Nil
+                ) {
 
 //  if(!typeConstraints.keySet.forall{case PureVar(id) => id < nextAddr}){
 //    assert(false)
@@ -432,7 +434,7 @@ case class State(callStack: List[CallStackFrame],
     this
   }
 
-  def setNextCmd(cmd: Option[AppLoc]):State = this.copy(nextCmd = cmd)
+  def setNextCmd(cmd: List[Loc]):State = this.copy(nextCmd = cmd)
 
   def nextPv() = (PureVar(nextAddr), this.copy(nextAddr = nextAddr+1))
 

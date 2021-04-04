@@ -16,6 +16,7 @@ sealed trait Loc{
   }
   def msgSig : Option[String]
   def toString:String
+  def isEntry:Option[Boolean]
 }
 object Loc{
   implicit val rw:RW[Loc] = RW.merge(macroRW[CallbackMethodInvoke], macroRW[CallinMethodReturn],
@@ -89,6 +90,8 @@ object LineLoc{
 case class AppLoc(method: MethodLoc, line: LineLoc, isPre:Boolean) extends Loc {
   override def toString: String = (if(isPre) "pre-" else "post-" ) + line.toString()
   override def msgSig = Some(s"[Int] ${method.simpleName}")
+
+  override def isEntry: Option[Boolean] = None
 }
 object AppLoc{
   implicit val rw:RW[AppLoc] = macroRW
@@ -98,6 +101,8 @@ case class CallinMethodReturn(fmwClazz : String, fmwName:String) extends Loc {
   override def toString:String = "[CI Ret] " + fmwName
 
   override def msgSig: Option[String] = Some(s"[CI Ret] ${fmwClazz} ${fmwName}" )
+
+  override def isEntry: Option[Boolean] = Some(false)
 }
 object CallinMethodReturn{
   implicit val rw:RW[CallinMethodReturn] = macroRW
@@ -107,6 +112,8 @@ case class CallinMethodInvoke(fmwClazz : String, fmwName:String) extends Loc {
   override def toString:String = "[CI Inv] " + fmwName
 
   override def msgSig: Option[String] = Some(s"[CI Inv] ${fmwClazz} ${fmwName}")
+
+  override def isEntry: Option[Boolean] = Some(true)
 }
 object CallinMethodInvoke{
   implicit val rw:RW[CallinMethodInvoke] = macroRW
@@ -115,6 +122,8 @@ object CallinMethodInvoke{
 case class GroupedCallinMethodInvoke(targetClasses: Set[String], fmwName:String) extends Loc {
   override def toString:String = "[CI Inv merge] " + fmwName
   override def msgSig: Option[String] = Some(s"[CI Inv] ${targetClasses.head} ${fmwName}")
+
+  override def isEntry: Option[Boolean] = Some(true)
 }
 object GroupedCallinMethodInvoke{
   implicit val rw:RW[GroupedCallinMethodInvoke] = macroRW
@@ -124,6 +133,8 @@ object GroupedCallinMethodInvoke{
 case class GroupedCallinMethodReturn(targetClasses: Set[String], fmwName:String) extends Loc {
   override def toString:String = "[CI Ret merge] " + fmwName
   override def msgSig: Option[String] = Some(s"[CI Ret] ${targetClasses.head} ${fmwName}")
+
+  override def isEntry: Option[Boolean] = Some(false)
 }
 object GroupedCallinMethodReturn{
   implicit val rw:RW[GroupedCallinMethodReturn] = macroRW
@@ -132,6 +143,8 @@ object GroupedCallinMethodReturn{
 case class CallbackMethodInvoke(fmwClazz: String, fmwName: String, loc:MethodLoc) extends Loc {
   override def toString:String = "[CB Inv] " + fmwName
   override def msgSig: Option[String] = Some(s"[CB Inv] ${fmwClazz} ${fmwName}")
+
+  override def isEntry: Option[Boolean] = Some(true)
 }
 object CallbackMethodInvoke{
   implicit val rw:RW[CallbackMethodInvoke] = macroRW
@@ -141,6 +154,8 @@ object CallbackMethodInvoke{
 case class CallbackMethodReturn(fmwClazz: String, fmwName:String, loc:MethodLoc, line:Option[LineLoc]) extends Loc {
   override def toString:String = "[CB Ret] " + fmwName
   override def msgSig: Option[String] = Some(s"")
+
+  override def isEntry: Option[Boolean] = Some(false)
 }
 object CallbackMethodReturn{
   implicit val rw:RW[CallbackMethodReturn] = macroRW
@@ -148,6 +163,8 @@ object CallbackMethodReturn{
 
 case class InternalMethodInvoke(clazz:String, name:String, loc:MethodLoc) extends Loc {
   override def msgSig: Option[String] = None
+
+  override def isEntry: Option[Boolean] = Some(true)
 }
 object InternalMethodInvoke{
   implicit val rw:RW[InternalMethodInvoke] = macroRW
@@ -155,6 +172,8 @@ object InternalMethodInvoke{
 
 case class InternalMethodReturn(clazz:String, name:String, loc:MethodLoc) extends Loc {
   override def msgSig: Option[String] = None
+
+  override def isEntry: Option[Boolean] = Some(false)
 }
 object InternalMethodReturn{
   implicit val rw:RW[InternalMethodReturn] = macroRW
@@ -162,6 +181,8 @@ object InternalMethodReturn{
 
 case class SkippedInternalMethodInvoke(clazz:String, name:String, loc:MethodLoc) extends Loc{
   override def msgSig: Option[String] = None
+
+  override def isEntry: Option[Boolean] = Some(true)
 }
 object SkippedInternalMethodInvoke{
   implicit val rw:RW[SkippedInternalMethodInvoke] = macroRW
@@ -169,6 +190,8 @@ object SkippedInternalMethodInvoke{
 
 case class SkippedInternalMethodReturn(clazz:String, name:String, rel:RelevanceRelation, loc:MethodLoc) extends Loc{
   override def msgSig: Option[String] = None
+
+  override def isEntry: Option[Boolean] = Some(false)
 }
 object SkippedInternalMethodReturn{
   implicit val rw:RW[SkippedInternalMethodReturn] = macroRW
