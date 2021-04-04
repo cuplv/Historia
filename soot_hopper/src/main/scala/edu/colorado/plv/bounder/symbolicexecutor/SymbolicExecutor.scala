@@ -145,65 +145,9 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
           ??? //TODO: any missed cases possible?
       }
       iCompare(stack1,stack2)
-
-//      (p1.qry.loc, p2.qry.loc) match{
-//        case (_,_) if p2.ordDepth != p1.ordDepth =>
-//          // process shorter traces first
-//          p2.ordDepth - p1.ordDepth
-//        case (_:AppLoc, exitMsg) if exitMsg.isEntry == Some(false) => //&& stack1 == stack2.tail =>
-//          1
-//        case (exitMsg, _:AppLoc) if exitMsg.isEntry == Some(false) => //&& stack1.tail == stack2  =>
-//          -1
-//
-//        case (a1@AppLoc(m1,_,_), a2@AppLoc(m2,_,_)) if m1 == m2 =>
-//          val c1 = w.commandTopologicalOrder(w.cmdAtLocation(a1))
-//          val c2 = w.commandTopologicalOrder(w.cmdAtLocation(a2))
-//          c1 - c2 // reversed because topological order increases from beginning of function
-//        case (CallbackMethodReturn(fmwClazz, fmwName, loc, _), AppLoc(mloc, lineloc, _)) if mloc == loc =>
-//          // Callback return should be processed before commands in callback
-//          1
-//        case (AppLoc(mloc, lineloc, _), CallbackMethodReturn(fmwClazz, fmwName, loc, _)) if mloc == loc =>
-//          -1
-//        case (a1:AppLoc, i2:InternalMethodReturn) if stack1 == stack2 =>
-//          // if at the same stack level, internal method return should be processed before app commands
-//          -1
-//        case (_:InternalMethodReturn, _:AppLoc) if stack1 == stack2 =>
-//          1
-//        case (_:AppLoc, _) if stack1 == stack2 =>
-//          1 //Always prefer appLoc
-//        case (_, _:AppLoc) if stack1 == stack2 =>
-//          -1
-//        case (l1,l2) if stack1.nonEmpty && stack2.nonEmpty && stack1.tail == stack2.tail =>
-//          (l1.isEntry,l2.isEntry) match{
-//            case (v1,v2) if v1 == v2 => p2.depth - p1.depth
-//            case (Some(true),_) => -1
-//            case (_,Some(true)) => 1
-//            case (Some(false),_) => 1
-//            case (_, Some(false)) => -1
-//          }
-//        case _ =>
-//          p2.depth - p1.depth
-//      }
     }
   }
-//  implicit object PVCountOrdering extends OrdCount{
-//    override def delta(current: Qry): Int = 0
-//
-//    override def compare(x: IPathNode, y: IPathNode): Int = y.qry.state.pureVars.size - x.qry.state.pureVars.size
-//  }
-//  implicit object CallbackCountOrdering extends OrdCount{
-//    def compare(a:IPathNode, b:IPathNode) = b.ordDepth - a.ordDepth
-//
-//    override def delta(current: Qry): Int = current.loc match {
-//      case CallbackMethodInvoke(_, _, _) => 1
-//      case CallbackMethodReturn(_, _, _, _) => 1
-//      case _ => 0
-//    }
-//  }
-//  implicit object DepthOrdering extends OrdCount{
-//    def compare(a:IPathNode, b:IPathNode) = b.depth - a.depth
-//    override def delta(current:Qry):Int = 1
-//  }
+
   /**
    *
    * @param qry - a source location and an assertion to prove
@@ -213,7 +157,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   def run(qry: Set[Qry], initialize: Set[IPathNode] => Unit = _ => ()) : Set[IPathNode] = {
     val pathNodes = qry.map(PathNode(_,Nil,None))
     initialize(pathNodes)
-    val queue = new PriorityQueue[IPathNode]()(LexicalStackThenTopo)
+    val queue = new GrouperQ
     queue.addAll(pathNodes)
     config.stepLimit match{
       case Some(limit) => executeBackward(queue, limit)
@@ -250,55 +194,82 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       s1.pureFormula == s2.pureFormula &&
       s1.traceAbstraction == s2.traceAbstraction
   }
-
-  private def groupAndTransferPostIfCmd(qrySet: mutable.PriorityQueue[IPathNode]):mutable.PriorityQueue[IPathNode] = {
-    val qrySet2  = qrySet.clone
-    sealed trait GroupType
-    case class IfGroup(loc:AppLoc) extends GroupType
-    case class InvokeGroup(loc:Option[Loc]) extends GroupType
-    // Group states by next command to process, stack (excluding locals), and trace length
-    val groups = qrySet2.toList.groupBy{ pn =>
-      val stack = pn.qry.state.callStack
-      val groupStack = stack.map(sf => (sf.methodLoc, sf.retLoc))
-      lazy val retLoc = InvokeGroup(stack.head.retLoc)
-      pn.qry.loc match {
-        case l@AppLoc(_,_,false) =>
-          val cmd = w.cmdAtLocation(l)
-          cmd match{
-            case If(_,_,_) => Some((IfGroup(l),groupStack,pn.ordDepth))
-            case _ => None
+  sealed trait GroupType
+  case class IfGroup(loc:AppLoc) extends GroupType
+  case class InvokeGroup(loc:Option[Loc]) extends GroupType
+  private def nodeGroup(pn:IPathNode):Option[(GroupType, List[(Loc, Option[Loc])], Int)] = {
+    val stack = pn.qry.state.callStack
+    val groupStack = stack.map(sf => (sf.methodLoc, sf.retLoc))
+    lazy val retLoc = InvokeGroup(stack.head.retLoc)
+    pn.qry.loc match {
+      case l@AppLoc(_,_,false) =>
+        val cmd = w.cmdAtLocation(l)
+        cmd match{
+          case If(_,_,_) => Some((IfGroup(l),groupStack,pn.ordDepth))
+          case _ => None
+        }
+      case InternalMethodInvoke(_, _, _) =>
+        Some((retLoc,groupStack.tail,pn.ordDepth))
+      case CallinMethodInvoke(_, _) =>
+        Some((retLoc,groupStack.tail,pn.ordDepth))
+      case GroupedCallinMethodInvoke(_, _) =>
+        Some((retLoc,groupStack.tail,pn.ordDepth))
+      case SkippedInternalMethodInvoke(_, _, _) =>
+        Some((retLoc,groupStack.tail,pn.ordDepth))
+      case _ => None
+    }
+  }
+  class GrouperQ {
+    val qrySet = new mutable.PriorityQueue[IPathNode]()(LexicalStackThenTopo)
+    val groupedQrySet = new mutable.PriorityQueue[IPathNode]()(LexicalStackThenTopo)
+    def isEmpty():Boolean = qrySet.isEmpty && groupedQrySet.isEmpty
+    def size():Int = qrySet.size + groupedQrySet.size
+    def toSet():Set[IPathNode] = qrySet.toSet ++ groupedQrySet.toSet
+    def addAll(pathNodes:Set[IPathNode]):Unit =
+      qrySet.addAll(pathNodes)
+    private def group(qryList: List[IPathNode]): List[IPathNode] = {
+      // Group states by next command to process, stack (excluding locals), and trace length
+      val groups: Map[Option[(GroupType, List[(Loc, Option[Loc])], Int)], List[IPathNode]] = qryList.groupBy(nodeGroup)
+      groups.flatMap {
+        case (None, v) => v
+        case (Some(group), v) =>
+          val nodeSet = v.toSet
+          val groupedNodes: Set[IPathNode] = nodeSet.foldLeft(Set[IPathNode]()) { case (acc, pathNode) =>
+            acc.find(otherPathNode => equivStates(otherPathNode.qry.state, pathNode.qry.state)) match {
+              case Some(other) =>
+                (acc - other) + other.mergeEquiv(pathNode)
+              case None => acc + pathNode
+            }
           }
-        case InternalMethodInvoke(_, _, _) =>
-          Some((retLoc,groupStack.tail,pn.ordDepth))
-        case CallinMethodInvoke(_, _) =>
-          Some((retLoc,groupStack.tail,pn.ordDepth))
-        case GroupedCallinMethodInvoke(_, _) =>
-          Some((retLoc,groupStack.tail,pn.ordDepth))
-        case SkippedInternalMethodInvoke(_, _, _) =>
-          Some((retLoc,groupStack.tail,pn.ordDepth))
-        case _ => None
+          val groupedWithAlt: Set[IPathNode] = groupedNodes.map { n =>
+            val otherNodes = nodeSet - n
+            otherNodes.foldLeft(n) { case (acc, v) => acc.addAlternate(v) }
+          }
+          groupedWithAlt
+      }.toList
+    }
+    def nextWithGrouping():IPathNode = {
+      if(groupedQrySet.nonEmpty){
+        groupedQrySet.dequeue()
+      }else {
+        val next = qrySet.dequeue()
+        val currentGroup = nodeGroup(next)
+        if (currentGroup.isDefined) {
+          val toGroup = mutable.ListBuffer[IPathNode]()
+          toGroup += next
+          while (qrySet.nonEmpty && nodeGroup(qrySet.head) == currentGroup) {
+            toGroup += qrySet.dequeue()
+          }
+          val grouped = group(toGroup.toList)
+          groupedQrySet.addAll(grouped)
+          groupedQrySet.dequeue()
+        } else {
+          next
+        }
       }
     }
-    val newQ = new mutable.PriorityQueue[IPathNode]()(LexicalStackThenTopo)
-    groups.foreach{
-      case (None,v) => newQ.addAll(v)
-      case (Some(group),v) =>
-        val nodeSet = v.toSet
-        val groupedNodes: Set[IPathNode] = nodeSet.foldLeft(Set[IPathNode]()){ case (acc,pathNode) =>
-          acc.find(otherPathNode => equivStates(otherPathNode.qry.state,pathNode.qry.state)) match {
-            case Some(other) =>
-              (acc - other) + other.mergeEquiv(pathNode)
-            case None => acc + pathNode
-          }
-        }
-        val groupedWithAlt = groupedNodes.map{n =>
-          val otherNodes = nodeSet - n
-          otherNodes.foldLeft(n){case (acc,v) => acc.addAlternate(v)}
-        }
-        newQ.addAll(groupedWithAlt)
-    }
-    newQ
   }
+
 
   /**
    *
@@ -309,17 +280,17 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
    * @return
    */
   @tailrec
-  final def executeBackward(qrySet: PriorityQueue[IPathNode], limit:Int,
+  final def executeBackward(qrySet: GrouperQ, limit:Int,
                             refutedSubsumedOrWitnessed: Set[IPathNode] = Set(),
                             visited:Map[SubsumableLocation,Map[Int,StateSet]] = Map()):Set[IPathNode] = {
 
     //TODO: This is way too sensitive to queue ordering, figure out something better
-    val qrySetIG = groupAndTransferPostIfCmd(qrySet)
-    if(qrySetIG.isEmpty){
+//    val qrySetIG = groupAndTransferPostIfCmd(qrySet)
+    if(qrySet.isEmpty){
       return refutedSubsumedOrWitnessed
     }
 
-    val current = qrySetIG.dequeue()
+    val current = qrySet.nextWithGrouping()
 
 //    println()
     val curTop = current.qry.loc match{
@@ -327,61 +298,44 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       case _ => None
     }
     //TODO: uncomment dbg code
-    val tmpPrint = current.ordDepth == 2 && List("39","40","39","44", "onPause").exists(v => current.qry.loc.toString.contains(v)) &&
-      current.qry.state.callStack.exists(_.methodLoc.toString.contains("onPause"))
-    if (true || tmpPrint) {
-      val loc = current.qry.loc
-      println(s"current loc: $loc ordDepth: ${current.ordDepth} topo: ${curTop}")
-//      println(s"    ${current.qry.state}")
-//      println(s"    subsLoc: ${SwapLoc(loc)}")
-    }
+//    val tmpPrint = current.ordDepth == 2 && List("39","40","39","44", "onPause").exists(v => current.qry.loc.toString.contains(v)) &&
+//      current.qry.state.callStack.exists(_.methodLoc.toString.contains("onPause"))
+//    if (true || tmpPrint) {
+//      val loc = current.qry.loc
+//      println(s"current loc: $loc ordDepth: ${current.ordDepth} topo: ${curTop}")
+////      println(s"    ${current.qry.state}")
+////      println(s"    subsLoc: ${SwapLoc(loc)}")
+//    }
 //    println("--------------------")
 
 
     //TODO: uncomment:
-//    current.qry.loc match{
-//      case SwapLoc(FrameworkLocation) =>
-//        println("Framework location query")
-//        println(s"    State: ${current.qry.state}")
-//        println(s"    Loc  : ${current.qry.loc}")
-//        println(s"    depth: ${current.depth}")
-//        println(s"    size of worklist: ${qrySetIG.size}")
-//        println(s"    ord depth: ${current.ordDepth}")
-//      case _ =>
-//    }
+    current.qry.loc match{
+      case SwapLoc(FrameworkLocation) =>
+        println("Framework location query")
+        println(s"    State: ${current.qry.state}")
+        println(s"    Loc  : ${current.qry.loc}")
+        println(s"    depth: ${current.depth}")
+        println(s"    size of worklist: ${qrySet.size}")
+        println(s"    ord depth: ${current.ordDepth}")
+      case _ =>
+    }
 
     current match {
       case p@PathNode(_:SomeQry, true) =>
-        if(tmpPrint) {
-//          println(s"    ${p.qry.state}")
-        }
-        executeBackward(qrySetIG, limit, refutedSubsumedOrWitnessed + p, visited)
+        executeBackward(qrySet, limit, refutedSubsumedOrWitnessed + p, visited)
       case p@PathNode(_:BottomQry,_) =>
-        if(tmpPrint) {
-          println(s"     ${p.qry.state}")
-          println("      refuted")
-        }
-        executeBackward(qrySetIG, limit, refutedSubsumedOrWitnessed + p, visited)
+        executeBackward(qrySet, limit, refutedSubsumedOrWitnessed + p, visited)
       case p@PathNode(_:WitnessedQry,_) =>
-        if(tmpPrint) {
-//          println(s"     ${p.qry.state}")
-        }
-        refutedSubsumedOrWitnessed.union(qrySetIG.toSet) + p
+        refutedSubsumedOrWitnessed.union(qrySet.toSet) + p
       case p:IPathNode if p.depth > limit =>
 //        executeBackward(qrySetIG, limit, refutedSubsumedOrWitnessed + p, visited)
-        refutedSubsumedOrWitnessed.union(qrySetIG.toSet)
+        refutedSubsumedOrWitnessed.union(qrySet.toSet)
       case p@PathNode(qry:SomeQry,false) =>
         isSubsumed(p, visited) match{
           case v@Some(_) =>
-            if(tmpPrint) {
-//              println(s"     ${p.qry.state}")
-              println("    subsumed")
-            }
-            executeBackward(qrySetIG, limit, refutedSubsumedOrWitnessed + p.setSubsumed(v), visited)
+            executeBackward(qrySet, limit, refutedSubsumedOrWitnessed + p.setSubsumed(v), visited)
           case None =>
-            if(tmpPrint) {
-//              println(s"     ${p.qry.state}")
-            }
             val stackSize = p.qry.state.callStack.size
             val newVisited = SwapLoc(current.qry.loc) match{
               case Some(v) =>
@@ -393,8 +347,8 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
               case None => visited
             }
             val nextQry = executeStep(qry).map(q => PathNode(q, List(p), None))
-            val nextQrySet = qrySetIG.addAll(nextQry)
-            executeBackward(nextQrySet, limit, refutedSubsumedOrWitnessed, newVisited)
+            qrySet.addAll(nextQry)
+            executeBackward(qrySet, limit, refutedSubsumedOrWitnessed, newVisited)
         }
     }
   }

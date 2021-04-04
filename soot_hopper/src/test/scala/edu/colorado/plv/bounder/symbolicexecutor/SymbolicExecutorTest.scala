@@ -590,84 +590,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
     }
   }
-  ignore("Test dynamic dispatch2") { //TODO: un-ignore ======================
-    List(
-      (".*query2.*".r,Witnessed),
-      (".*query1.*".r, Proven)
-    ).map { case (queryL, expectedResult) =>
-      val src =
-        s"""package com.example.createdestroy;
-           |import androidx.appcompat.app.AppCompatActivity;
-           |import android.os.Bundle;
-           |import android.util.Log;
-           |
-           |import rx.Single;
-           |import rx.Subscription;
-           |import rx.android.schedulers.AndroidSchedulers;
-           |import rx.schedulers.Schedulers;
-           |
-           |
-           |public class MyActivity extends AppCompatActivity {
-           |    String o = null;
-           |    Subscription subscription;
-           |    Runnable r = null;
-           |    Runnable r2 = null;
-           |
-           |    @Override
-           |    protected void onCreate(Bundle savedInstanceState) {
-           |        super.onCreate(savedInstanceState);
-           |        r = new Runnable(){
-           |          @Override
-           |          public void run(){
-           |            o = null;
-           |          }
-           |        };
-           |        r2 = r;
-           |        r = new Runnable(){
-           |          @Override
-           |          public void run(){
-           |            o = new String();
-           |          }
-           |        };
-           |    }
-           |
-           |    @Override
-           |    protected void onDestroy() {
-           |        super.onDestroy();
-           |        r.run();
-           |        o.toString(); //query1 no NPE
-           |        r2.run();
-           |        o.toString(); //query2 NPE
-           |    }
-           |}""".stripMargin
 
-      val test: String => Unit = apk => {
-        assert(apk != null)
-        val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
-        val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-          new SpecSpace(Set(ActivityLifecycle.init_first_callback)), cha)
-        val config = SymbolicExecutorConfig(
-          stepLimit = Some(200), w, transfer,
-          component = Some(List("com.example.createdestroy.MyActivity.*")),
-//          outputMode = DBOutputMode("/Users/shawnmeier/Desktop/bounder_debug_data/deref2.db")
-        )
-        val symbolicExecutor = config.getSymbolicExecutor
-        val i = lineForRegex(queryL, src)
-        val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
-          ".*onDestroy.*", i)
-
-
-        val result = symbolicExecutor.run(query)
-        prettyPrinting.dumpDebugInfo(result, "dynamicDispatchTest2")
-        prettyPrinting.dotWitTree(result, "dynamicDispatchTest2", true)
-        assert(result.nonEmpty)
-        assert(BounderUtil.interpretResult(result) == expectedResult)
-
-      }
-
-      makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
-    }
-  }
   test("Test method call on disaliased object") {
     val src = """package com.example.createdestroy;
                 |import androidx.appcompat.app.AppCompatActivity;
@@ -1310,5 +1233,84 @@ class SymbolicExecutorTest extends AnyFunSuite {
     }
 
     makeApkWithSources(Map("MyFragment.java" -> src), MkApk.RXBase, test)
+  }
+  test("Test dynamic dispatch2") {
+    List(
+      (".*query2.*".r,Witnessed),
+      (".*query1.*".r, Proven)
+    ).map { case (queryL, expectedResult) =>
+      val src =
+        s"""package com.example.createdestroy;
+           |import androidx.appcompat.app.AppCompatActivity;
+           |import android.os.Bundle;
+           |import android.util.Log;
+           |
+           |import rx.Single;
+           |import rx.Subscription;
+           |import rx.android.schedulers.AndroidSchedulers;
+           |import rx.schedulers.Schedulers;
+           |
+           |
+           |public class MyActivity extends AppCompatActivity {
+           |    String o = null;
+           |    Subscription subscription;
+           |    Runnable r = null;
+           |    Runnable r2 = null;
+           |
+           |    @Override
+           |    protected void onCreate(Bundle savedInstanceState) {
+           |        super.onCreate(savedInstanceState);
+           |        r = new Runnable(){
+           |          @Override
+           |          public void run(){
+           |            o = null;
+           |          }
+           |        };
+           |        r2 = r;
+           |        r = new Runnable(){
+           |          @Override
+           |          public void run(){
+           |            o = new String();
+           |          }
+           |        };
+           |    }
+           |
+           |    @Override
+           |    protected void onDestroy() {
+           |        super.onDestroy();
+           |        r.run();
+           |        o.toString(); //query1 no NPE
+           |        r2.run();
+           |        o.toString(); //query2 NPE
+           |    }
+           |}""".stripMargin
+
+      val test: String => Unit = apk => {
+        assert(apk != null)
+        val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
+        val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
+          new SpecSpace(Set(ActivityLifecycle.init_first_callback)), cha)
+        val config = SymbolicExecutorConfig(
+          stepLimit = Some(200), w, transfer,
+          component = Some(List("com.example.createdestroy.MyActivity.*")),
+          //          outputMode = DBOutputMode("/Users/shawnmeier/Desktop/bounder_debug_data/deref2.db")
+        )
+        val symbolicExecutor = config.getSymbolicExecutor
+        val i = lineForRegex(queryL, src)
+        val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
+          ".*onDestroy.*", i)
+
+
+        val result = symbolicExecutor.run(query)
+        prettyPrinting.dumpDebugInfo(result, "dynamicDispatchTest2")
+        prettyPrinting.dotWitTree(result, "dynamicDispatchTest2", true)
+        assert(result.nonEmpty)
+        assert(BounderUtil.interpretResult(result) == expectedResult)
+
+      }
+
+      makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
+      println(s"test: $queryL done ==================================")
+    }
   }
 }
