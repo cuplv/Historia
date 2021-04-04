@@ -1,4 +1,6 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
+import java.util.Objects
+
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, InternalMethodInvoke, InternalMethodReturn, Loc, MethodLoc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn}
 import javax.naming.InitialContext
 import slick.dbio.Effect
@@ -310,6 +312,11 @@ case class MemoryPathNode(qry: Qry, succV : List[IPathNode], subsumedV: Option[I
     val succstr = succV.headOption.map((a: IPathNode) =>
       a.toString).getOrElse("")
     qrystr + "\n" + succstr
+  }
+
+  override def hashCode(): Int = {
+    // Exclude successors from hash code
+    Objects.hash(qry,depth,ordDepth)
   }
 
   override def setSubsumed(v: Option[IPathNode])(implicit mode: OutputMode): IPathNode = this.copy(subsumedV = v)

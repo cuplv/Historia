@@ -243,8 +243,14 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     case _ => None
   }
 
-  private def equivStates(s1:State, s2:State):Boolean =
-    stateSolver.canSubsume(s1,s2) && stateSolver.canSubsume(s1,s2)
+  private def equivStates(s1:State, s2:State):Boolean = {
+//    stateSolver.canSubsume(s1,s2) && stateSolver.canSubsume(s1,s2)
+    s1.callStack == s2.callStack &&
+      s1.heapConstraints == s2.heapConstraints &&
+      s1.pureFormula == s2.pureFormula &&
+      s1.traceAbstraction == s2.traceAbstraction
+  }
+
   private def groupAndTransferPostIfCmd(qrySet: mutable.PriorityQueue[IPathNode]):mutable.PriorityQueue[IPathNode] = {
     val qrySet2  = qrySet.clone
     sealed trait GroupType
@@ -276,7 +282,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     val newQ = new mutable.PriorityQueue[IPathNode]()(LexicalStackThenTopo)
     groups.foreach{
       case (None,v) => newQ.addAll(v)
-      case (Some(_),v) =>
+      case (Some(group),v) =>
         val nodeSet = v.toSet
         val groupedNodes: Set[IPathNode] = nodeSet.foldLeft(Set[IPathNode]()){ case (acc,pathNode) =>
           acc.find(otherPathNode => equivStates(otherPathNode.qry.state,pathNode.qry.state)) match {
@@ -286,72 +292,14 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
           }
         }
         val groupedWithAlt = groupedNodes.map{n =>
-          (nodeSet - n).foldLeft(n){case (acc,v) => acc.addAlternate(v)}
+          val otherNodes = nodeSet - n
+          otherNodes.foldLeft(n){case (acc,v) => acc.addAlternate(v)}
         }
         newQ.addAll(groupedWithAlt)
     }
     newQ
   }
-  private def groupAndTransferPostIfCmdOld(qrySet:mutable.PriorityQueue[IPathNode]):mutable.PriorityQueue[IPathNode] = {
-    //TODO: is copy needed here?
-    val qrySet2 = qrySet.clone
-    val groups: Map[Option[(AppLoc,Int,String)], List[IPathNode]] = qrySet2.toList.groupBy{ pn => pn.qry.loc match {
-      case l@AppLoc(_,_,false) =>
-        val cmd = w.cmdAtLocation(l)
-        cmd match{
-          case If(_,_,_) => Some((l,pn.ordDepth,"if"))
-          case _ => None
-        }
-      case _ => None
-    }}
-    ???
-    val newQ = mutable.PriorityQueue[IPathNode]()
-    groups.foreach{
-      case (None,v) => newQ.addAll(v)
-      case (Some(l),v) if v.size == 1 => newQ.addAll(v)
-      case (Some((_,_,"if")),v) =>
-        val targetGroups = v.groupBy{v2 =>
-          assert(v2.qry.state.nextCmd.size == 1, "Post state of if must have exactly one nextCmd")
-          v2.qry.state.nextCmd.head
-        }
-        if(targetGroups.size == 1)
-          newQ.addAll(v)
-        else if(targetGroups.size == 2) {
-//          println(groups)
-          val (_, group1) = targetGroups.head
-          val (_, group2) = targetGroups.last
-          val subsPairs: Seq[(IPathNode, Option[IPathNode])] = group1.map{ v1 =>
-            val g2Subs = group2.find(v2 =>
-              // Test if states are equivalent
-              stateSolver.canSubsume(v1.qry.state,v2.qry.state) && stateSolver.canSubsume(v2.qry.state,v1.qry.state)
-            )
-            (v1,g2Subs)
-          }.filter{case (_,g2s) => g2s.nonEmpty}
 
-          // For each subsumed pair, switch the location of the subsuming state to before the if and
-          val preIf: Seq[IPathNode] = subsPairs.map{case (k,_) => k.copyWithNewLoc({
-            case AppLoc(m,l,false) => AppLoc(m,l,true)
-            case _ => throw new IllegalStateException(s"Loc match error: $k")
-          })}
-          newQ.addAll(preIf)
-
-          // drop the pair from the set that transfers over the if
-          val subsPairAllSet = subsPairs.flatMap{case (k,v) => List(k) ++ v }
-
-          // Add other branches
-          val v2 = v.toSet -- subsPairAllSet
-          newQ.addAll(v2)
-
-
-        } else {
-          throw new IllegalStateException("More than two target branches for condition statement")
-        }
-
-      case (_,v) =>
-        throw new IllegalStateException(s"If edge with more than 2 successors: ${v.map(_.toString).mkString(";;")}")
-    }
-    newQ
-  }
   /**
    *
    * @param qrySet Work list of locations and states to process
