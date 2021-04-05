@@ -83,6 +83,29 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val simplifyResult3 = stateSolver.simplify(unrefutableState2)
     assert(simplifyResult3.isDefined)
   }
+  test("Transitive equality should be refuted by type constraints") { f=>
+    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val v2 = PureVar(State.getId_TESTONLY())
+    val v3 = PureVar(State.getId_TESTONLY())
+    val v4 = PureVar(State.getId_TESTONLY())
+    val refutableState = State(List(frame),
+      Map(),
+      Set(PureConstraint(v2, Equals, v3),PureConstraint(v3, Equals, v4)),
+      Map(v2->BoundedTypeSet(Some("String"),None,Set()),
+        //        v3->BoundedTypeSet(Some("String"),None,Set()),
+        v4->BoundedTypeSet(Some("Foo"),None,Set())),
+      Set(),0)
+    val simplifyResult = stateSolver.simplify(refutableState)
+    assert(!simplifyResult.isDefined)
+
+    val refutableState2 = State(List(frame),
+      Map(),
+      Set(PureConstraint(v2, Equals, v3),PureConstraint(v3, Equals, v4), PureConstraint(v2, NotEquals, v4)),
+      Map(),
+      Set(),0)
+    val simplifyResult2 = stateSolver.simplify(refutableState2)
+    assert(!simplifyResult2.isDefined)
+  }
   test("test feasibility of constraints before GC") { f=>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
     val v2 = PureVar(State.getId_TESTONLY())

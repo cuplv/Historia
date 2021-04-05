@@ -529,17 +529,52 @@ trait StateSolver[T, C <: SolverCtx] {
         case None => Some(state.swapPv(oldPv,newPv))
       }
     }
-    val swappedForSmallerPvOpt = state.pureFormula.foldLeft(Some(state):Option[State]) {
-      case (Some(acc), pc@PureConstraint(v1@PureVar(id1), Equals, v2@PureVar(id2))) if id1 < id2 =>
-//        acc.copy(pureFormula = acc.pureFormula - pc).swapPv(v2, v1)
-        mergePV(acc.copy(pureFormula = acc.pureFormula - pc),v2, v1)
-      case (Some(acc), pc@PureConstraint(v1@PureVar(id1), Equals, v2@PureVar(id2))) if id1 > id2 =>
-//        acc.copy(pureFormula = acc.pureFormula - pc).swapPv(v1, v2)
-        mergePV(acc.copy(pureFormula = acc.pureFormula - pc),v1, v2)
-      case (Some(acc), pc@PureConstraint(PureVar(id1), Equals, PureVar(id2))) if id1 == id2 =>
-        Some(acc.copy(pureFormula = acc.pureFormula - pc))
-      case (acc, _) => acc
+    def containsEq(state: State):Boolean = {
+      state.pureFormula.exists{
+        case PureConstraint(lhs:PureVar, Equals, rhs:PureVar) => true
+        case _ => false
+      }
     }
+    def existsNegation(pc:PureConstraint, state:State):Boolean = pc match{
+      case PureConstraint(lhs, Equals, rhs) => state.pureFormula.exists{
+        case PureConstraint(lhs1, NotEquals, rhs1) if lhs == lhs1 && rhs == rhs1 => true
+        case PureConstraint(lhs1, NotEquals, rhs1) if lhs == rhs1 && rhs == lhs1 => true
+        case _ => false
+      }
+      case PureConstraint(lhs, NotEquals, rhs) => state.pureFormula.exists{
+        case PureConstraint(lhs1, Equals, rhs1) if lhs == lhs1 && rhs == rhs1 => true
+        case PureConstraint(lhs1, Equals, rhs1) if lhs == rhs1 && rhs == lhs1 => true
+        case _ => false
+      }
+    }
+    // Iterate until all equal variables are cleared
+    var swappedForSmallerPvOpt:Option[State] = Some(state)
+
+    while(swappedForSmallerPvOpt.isDefined && containsEq(swappedForSmallerPvOpt.get)) {
+      swappedForSmallerPvOpt = {
+        swappedForSmallerPvOpt.get.pureFormula.foldLeft(Some(swappedForSmallerPvOpt.get): Option[State]) {
+          case (Some(acc), pc@PureConstraint(v1@PureVar(id1), Equals, v2@PureVar(id2))) if id1 < id2 =>
+            if (existsNegation(pc, acc)) {
+              None
+            } else {
+              val res = mergePV(acc.copy(pureFormula = acc.pureFormula - pc), v2, v1)
+              res
+            }
+          case (Some(acc), pc@PureConstraint(v1@PureVar(id1), Equals, v2@PureVar(id2))) if id1 > id2 =>
+            if (existsNegation(pc, acc)) {
+              None
+            } else {
+              val res = mergePV(acc.copy(pureFormula = acc.pureFormula - pc), v1, v2)
+              res
+            }
+          case (Some(acc), pc@PureConstraint(PureVar(id1), Equals, PureVar(id2))) if id1 == id2 =>
+            Some(acc.copy(pureFormula = acc.pureFormula - pc))
+          case (acc, _) =>
+            acc
+        }
+      }
+    }
+
     if(swappedForSmallerPvOpt.isEmpty)
       return None
     val swappedForSmallerPv = swappedForSmallerPvOpt.get
