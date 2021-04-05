@@ -589,7 +589,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     case ReturnCmd(None, _) => Set(state)
     case AssignCmd(lhs: LocalWrapper, FieldReference(base, fieldType, _, fieldName), _) =>
       // x = y.f
-      state.get(lhs) match {
+      state.get(lhs) match { //TODO: some kind of imprecision here or in the simplification shown by "Test dynamic dispatch 2"
         case Some(lhsV) => {
           val (basev, state1) = state.getOrDefine(base)
           // get all heap cells with correct field name that can alias

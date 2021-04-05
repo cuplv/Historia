@@ -1239,6 +1239,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
       (".*query2.*".r,Witnessed),
       (".*query1.*".r, Proven)
     ).map { case (queryL, expectedResult) =>
+      //TODO: This generates way way way too many states, figure out what is going on
+      //TODO: Version of this test with "Runnable" instead of "SomethingAble"
       val src =
         s"""package com.example.createdestroy;
            |import androidx.appcompat.app.AppCompatActivity;
@@ -1254,20 +1256,23 @@ class SymbolicExecutorTest extends AnyFunSuite {
            |public class MyActivity extends AppCompatActivity {
            |    String o = null;
            |    Subscription subscription;
-           |    Runnable r = null;
-           |    Runnable r2 = null;
+           |    interface SomethingAble{
+           |      void run();
+           |    }
+           |    SomethingAble r = null;
+           |    SomethingAble r2 = null;
            |
            |    @Override
            |    protected void onCreate(Bundle savedInstanceState) {
            |        super.onCreate(savedInstanceState);
-           |        r = new Runnable(){
+           |        r = new SomethingAble(){
            |          @Override
            |          public void run(){
            |            o = null;
            |          }
            |        };
            |        r2 = r;
-           |        r = new Runnable(){
+           |        r = new SomethingAble(){
            |          @Override
            |          public void run(){
            |            o = new String();
@@ -1282,6 +1287,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
            |        o.toString(); //query1 no NPE
            |        r2.run();
            |        o.toString(); //query2 NPE
+           |        r.run();
            |    }
            |}""".stripMargin
 
@@ -1302,8 +1308,9 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
 
         val result = symbolicExecutor.run(query)
-        prettyPrinting.dumpDebugInfo(result, "dynamicDispatchTest2")
-        prettyPrinting.dotWitTree(result, "dynamicDispatchTest2", true)
+        //TODO: fix pretty printing
+//        prettyPrinting.dumpDebugInfo(result, "dynamicDispatchTest2")
+//        prettyPrinting.dotWitTree(result, "dynamicDispatchTest2", true)
         assert(result.nonEmpty)
         assert(BounderUtil.interpretResult(result) == expectedResult)
 
