@@ -4,7 +4,7 @@ import better.files.Resource
 import edu.colorado.plv.bounder.ir.{TestIR, _}
 import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSSpec}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
-import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
+import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SetInclusionTypeSolving, SolverTypeSolving, StateTypeSolving, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import org.scalatest.funsuite.AnyFunSuite
 import com.microsoft.z3.Context
@@ -16,6 +16,10 @@ class TransferFunctionsTest extends AnyFunSuite {
   val hierarchy: Map[String, Set[String]] =
     Map("java.lang.Object" -> Set("String", "Foo", "Bar", "java.lang.Object"),
       "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
+  private def getStateSolver(stateTypeSolving: StateTypeSolving = SolverTypeSolving):(Z3StateSolver, ClassHierarchyConstraints) = {
+    val pc = new ClassHierarchyConstraints(hierarchy,Set(), stateTypeSolving)
+    (new Z3StateSolver(pc),pc)
+  }
 
   val miniCha = new ClassHierarchyConstraints(hierarchy, Set("java.lang.Runnable"))
   val tr = (ir:TestIR, cha:ClassHierarchyConstraints) => new TransferFunctions(ir, new SpecSpace(Set()),cha)
@@ -132,6 +136,34 @@ class TransferFunctionsTest extends AnyFunSuite {
     assert(formula.contains(PureConstraint(nullPv,Equals, NullVal)))
     assert(prestate.head.callStack.head.locals.contains(StackVar("baz")))
     assert(!prestate.head.callStack.head.locals.contains(StackVar("bar")))
+  }
+  test("Transfer assign from materialized heap cell") {
+    val (stSolver, cha) = getStateSolver()
+    val x = LocalWrapper("x","Object")
+    // bar := x.f
+    // post{x -> v-4 bar -> p-5 * v-1.f -> v-2}
+    val cmd= (loc:AppLoc) => AssignCmd(LocalWrapper("bar","Object"),FieldReference(x,"Object","Object","f"),loc)
+    val nullPv = PureVar(State.getId_TESTONLY())
+    val post = State(
+      CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None,
+        Map(StackVar("x") -> PureVar(4), StackVar("bar") -> PureVar(5)))::Nil,
+      heapConstraints = Map(FieldPtEdge(PureVar(1),"f") -> PureVar(2)),
+      pureFormula = Set(PureConstraint(nullPv,Equals, NullVal)),
+      Map(PureVar(2) -> BoundedTypeSet(Some("Foo"), None,Set()),
+        PureVar(5) -> BoundedTypeSet(Some("String"), None, Set())), Set(),0)
+    val prestates: Set[State] = testCmdTransfer(cmd, post,fooMethod)
+    prestates.foreach { prestate =>
+      println(s"prestate: ${prestate}")
+    }
+    println(s"poststate: $post")
+
+    val res = prestates.map(prestate => stSolver.simplify(prestate))
+    res.foreach{prestate =>
+      println(s"simplified: ${prestate}")
+    }
+    assert(res.size == 2)
+    assert(res.exists(v => v.isEmpty))
+    assert(res.exists{v => v.isDefined && v.get.heapConstraints.size == 2 && v.get.get(x) == Some(PureVar(4))})
   }
   private val iFooA: I = I(CBEnter, Set(("", "foo")), "_" :: "a" :: Nil)
   test("Add matcher and phi abstraction when crossing callback entry") {
