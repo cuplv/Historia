@@ -594,7 +594,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
           val (basev, state1) = state.getOrDefine(base)
           // get all heap cells with correct field name that can alias
           val possibleHeapCells = state1.heapConstraints.filter {
-            case (FieldPtEdge(pv, heapFieldName), _) =>
+            case (FieldPtEdge(pv, heapFieldName), materializedTgt) =>
               val fieldEq = fieldName == heapFieldName
               //              val canAlias = pureCanAlias(pv,base.localType,state1)
               val canAlias = state1.typeConstraints
