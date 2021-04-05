@@ -27,11 +27,12 @@ class PrettyPrinting(mode : OutputMode = MemoryOutputMode) {
       "WITNESSED: " + loc.toString +
         "\n       state: " + state.toString.replaceAll("\n"," ")
   }
-  def witnessToTrace(pn:List[IPathNode]):List[String] = pn match{
+  @tailrec
+  final def witnessToTrace(pn:List[IPathNode], acc:List[String] = List()):List[String] = pn match{
     case (p@PathNode(q, _))::t =>
       val branch = if(t.nonEmpty) " -- branch" else ""
-      qryString(q) + branch :: witnessToTrace(p.succ)
-    case Nil => Nil
+      witnessToTrace(p.succ, qryString(q) + branch::acc)
+    case Nil => acc
     case v =>
       println(v)
       ???
@@ -45,10 +46,15 @@ class PrettyPrinting(mode : OutputMode = MemoryOutputMode) {
       case pn@PathNode(_:SomeQry, true) => Some((s"subsumed by:\n -- ${qryString(pn.subsumed.get.qry)}\n", pn))
       case _ => None
     }
-    val traces = live.map(a => a._1 + "\n    " + witnessToTrace(List(a._2)).mkString("\n    ")).mkString("\n")
+    println(s"live traces: ${live.size}")
     if(pw.exists()) pw.delete()
     pw.createFile()
-      .append(traces)
+    live.zipWithIndex.foreach{case (a,ind) =>
+      println(s"Writing trace $ind / ${live.size}")
+      pw.append(a._1 + "\n    " + witnessToTrace(List(a._2).reverse).mkString("\n    "))
+      pw.append("\n")
+    }
+//      .append(traces)
   }
 
   private def sanitizeStringForDot(str:String):String =

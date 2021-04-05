@@ -31,7 +31,7 @@ class RXJavaSubscribe_TestApp extends AnyFunSuite{
       "example.com.rxjavasubscribebug.PlayerFragment",
       "void lambda$onActivityCreated$1$PlayerFragment(java.lang.Object)",64,
       callinMatches = ".*getActivity.*".r)
-    val result = symbolicExecutor.run(query)
+    val result = symbolicExecutor.run(query).flatMap(a => a._2)
     assert(BounderUtil.interpretResult(result) == Proven)
     assert(result.nonEmpty)
   }

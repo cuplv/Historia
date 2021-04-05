@@ -1,6 +1,7 @@
 package edu.colorado.plv.bounder
 
 import better.files.File
+import edu.colorado.plv.bounder.BounderUtil.{Proven, ResultSummary, Timeout, Unreachable, Witnessed}
 import edu.colorado.plv.bounder.Driver.{Default, RunMode}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
@@ -13,6 +14,7 @@ import soot.SootMethod
 import upickle.core.AbortException
 import upickle.default.{macroRW, read, write, ReadWriter => RW}
 
+import scala.collection.mutable.ListBuffer
 import scala.util.matching.Regex
 
 case class Action(mode:RunMode = Default,
@@ -173,11 +175,8 @@ object Driver {
 //          case None => MemoryOutputMode$
 //        }
         val res = runAnalysis(cfg,apkPath, componentFilter,pathMode, specSet.getSpecSet(),stepLimit, initialQuery)
-        val interpretedRes = BounderUtil.interpretResult(res)
-        println(interpretedRes)
-//        val outName = apkPath.split("/").last
         val resFile = File(outFolder) / "result.txt"
-        resFile.overwrite(interpretedRes.toString)
+        resFile.overwrite(res)
       case Some(act@Action(SampleDeref,_,_,cfg)) =>
         //TODO: set base dir
         sampleDeref(cfg, act.getApkPath, act.getOutFolder)
@@ -264,7 +263,7 @@ object Driver {
     //TODO:
   }
   def runAnalysis(cfg:RunConfig, apkPath: String, componentFilter:Option[Seq[String]], mode:OutputMode,
-                  specSet: Set[LSSpec], stepLimit:Int, initialQuery: InitialQuery): Set[IPathNode] = {
+                  specSet: Set[LSSpec], stepLimit:Int, initialQuery: InitialQuery): String = {
     val startTime = System.currentTimeMillis()
     try {
       //TODO: read location from json config
@@ -281,25 +280,46 @@ object Driver {
 //        "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)", 200,
 //        callinMatches = ".*getActivity.*".r)
       val query: Set[Qry] = initialQuery.make(symbolicExecutor,w)
-
-      val initialize: Set[IPathNode] => Unit = mode match{
-        case mode@DBOutputMode(_) => (startingNodes:Set[IPathNode]) =>
-          startingNodes.map{pathNode => mode.initializeQuery(pathNode, cfg, initialQuery) }
-        case _ => (_:Set[IPathNode]) => ()
+      val out = new ListBuffer[String]()
+      val initialize: IPathNode => Int = mode match{
+        case mode@DBOutputMode(_) => (startingNode:IPathNode) =>
+          val id = mode.initializeQuery(startingNode, cfg, initialQuery)
+          val tOut = s"initial query: $initialQuery   id: $id"
+          println(tOut)
+          out += tOut
+          id
+        case _ => (_:IPathNode) => 0
       }
 
-      val res = symbolicExecutor.run(query, initialize)
+      val results = symbolicExecutor.run(query, initialize)
 
-      mode match{
-        case m@DBOutputMode(_) => m.writeLiveAtEnd(res)
-        case _ =>
-      }
-
-      res
+      results.map{ res =>
+        mode match {
+          case m@DBOutputMode(_) =>
+            val interpretedRes = BounderUtil.interpretResult(res._2)
+            val tOut = s"id: ${res._1}   result: ${interpretedRes}"
+            println(tOut)
+            out += tOut
+            m.writeLiveAtEnd(res._2, res._1, interpretedRes.toString)
+            interpretedRes
+          case _ => BounderUtil.interpretResult(res._2)
+        }
+      }.reduce{ reduceResults }.toString
     } finally {
       println(s"analysis time: ${(System.currentTimeMillis() - startTime) / 1000} seconds")
     }
 
+  }
+  def reduceResults(a:ResultSummary, b:ResultSummary):ResultSummary = {
+    (a,b) match {
+      case (Witnessed, _) => Witnessed
+      case (_, Witnessed) => Witnessed
+      case (_, Timeout) => Timeout
+      case (Timeout, _) => Timeout
+      case (Unreachable, v2) => v2
+      case (v1, Unreachable) => v1
+      case (v1,v2) if v1 == v2 => v1
+    }
   }
 
 }

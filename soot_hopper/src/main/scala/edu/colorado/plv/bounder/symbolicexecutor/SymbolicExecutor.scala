@@ -151,18 +151,18 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   /**
    *
    * @param qry - a source location and an assertion to prove
-   * @return None if the assertion at that location is unreachable, Some(Trace) if it is reachable.
-   *         Trace will contain a tree of backward executions for triage.
+   * @return  (id, Terminal path nodes)
    */
-  def run(qry: Set[Qry], initialize: Set[IPathNode] => Unit = _ => ()) : Set[IPathNode] = {
-    val pathNodes = qry.map(PathNode(_,Nil,None))
-    initialize(pathNodes)
-    val queue = new GrouperQ
-    queue.addAll(pathNodes)
-    config.stepLimit match{
-      case Some(limit) => executeBackward(queue, limit)
-      case None =>
-        ???
+  def run(qry: Set[Qry], initialize: IPathNode => Int = _ => 0) : Set[(Int,Set[IPathNode])] = {
+    qry.map(PathNode(_,Nil,None)).map { pathNodes =>
+      val id = initialize(pathNodes)
+      val queue = new GrouperQ
+      queue.addAll(Set(pathNodes))
+      config.stepLimit match {
+        case Some(limit) => (id, executeBackward(queue, limit))
+        case None =>
+          ???
+      }
     }
   }
 
