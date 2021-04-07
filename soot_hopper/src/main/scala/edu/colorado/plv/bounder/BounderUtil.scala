@@ -6,6 +6,7 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, Pa
 
 import scala.annotation.tailrec
 import scala.collection.mutable
+import scala.util.matching.Regex
 
 object BounderUtil {
   trait ResultSummary
@@ -149,6 +150,10 @@ object BounderUtil {
     } catch {
       case CmdNotImplemented(_) => NopCmd(loc)
     }
+  }
+  def lineForRegex(r:Regex, in:String):Int = {
+    val lines = in.split("\n")
+    lines.indexWhere(r.matches(_)) + 1 // source code line numbers start at 1
   }
 }
 

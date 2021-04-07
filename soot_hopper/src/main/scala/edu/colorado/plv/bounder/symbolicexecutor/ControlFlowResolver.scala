@@ -220,6 +220,17 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 //    fieldName == "isRunning"
 //  }
 
+//  //TODO test method: exclude after testing if itemdescriptionFrag is problem
+//  def testExclusions(relI: Set[(I, List[LSParamConstraint])], m: MethodLoc):Boolean = {
+////    val exclusions = Set("ItemDescriptionFragment", "PlaybackController")
+////    val isExcluded = exclusions.exists(v => m.toString.contains(v))
+//    if((!m.toString.contains("ExternalPlayerFragment")) && relI.nonEmpty){
+//      println(s"excluding $m reli: ${relI.map(_._1).mkString(",")}")
+//      true
+//    }else
+//      false
+//  }
+
   def relevantTrace(m: MethodLoc, state: State): Boolean = {
     val calls: Set[CallinMethodReturn] = directCallsGraph(m).flatMap {
       case v: CallinMethodReturn =>
@@ -264,7 +275,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       })
     }
 
-    if (relI.nonEmpty) {
+    //TODO remove commented code for test exclusions
+    if (relI.nonEmpty) { //&& !testExclusions(relI, m)
       val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) =>
         BounderUtil.cmdAtLocationNopIfUnknown(v,wrapper).mkPre)
       BounderUtil.graphExists[CmdWrapper](start = returns,
@@ -504,8 +516,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
           val unresolvedTargets: UnresolvedMethodTarget =
             wrapper.makeInvokeTargets(loc)
           val resolved: Set[Loc] = resolver.resolveCallLocation(unresolvedTargets)
-          //TODO: add par back in?
-          val resolvedSkipIrrelevant = resolved.map{m => (relevantMethod(m,state),m) match{
+          val resolvedSkipIrrelevant = resolved.par.map{m => (relevantMethod(m,state),m) match{
             case (RelevantMethod,_) => m
             case (NotRelevantMethod, InternalMethodReturn(clazz, name, loc)) =>
               SkippedInternalMethodReturn(clazz, name,NotRelevantMethod,loc)
@@ -521,8 +532,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
           val unresolvedTargets =
             wrapper.makeInvokeTargets(loc)
           val resolved = resolver.resolveCallLocation(unresolvedTargets)
-          //TODO: add par back in?
-          val resolvedSkipIrrelevant = resolved.map{m => (relevantMethod(m,state),m) match{
+          val resolvedSkipIrrelevant = resolved.par.map{m => (relevantMethod(m,state),m) match{
             case (RelevantMethod,_) => m
             case (NotRelevantMethod, InternalMethodReturn(clazz, name, loc)) =>
               SkippedInternalMethodReturn(clazz, name,NotRelevantMethod,loc)

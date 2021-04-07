@@ -41,7 +41,8 @@ object MkApk {
         val stdout = new StringBuilder
         val stderr = new StringBuilder
 //        val status = "ls -al FRED" ! ProcessLogger(stdout append _, stderr append _)
-        Process("./gradlew assembleDebug", appDir.toJava) ! ProcessLogger(stdout append _, stderr append _)
+        Process("./gradlew assembleDebug", appDir.toJava) ! ProcessLogger(v => stdout.append(v + "\n"),
+          v => stderr.append(v + "\n"))
         logger.info(s"Gradle stdout: $stdout")
         logger.info(s"Gradle stderr: $stderr")
         val apkFile = appDir / "app" / "build" / "outputs/apk/debug/app-debug.apk"

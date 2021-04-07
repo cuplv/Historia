@@ -32,7 +32,7 @@ class PrettyPrinting(mode : OutputMode = MemoryOutputMode) {
     case (p@PathNode(q, _))::t =>
       val branch = if(t.nonEmpty) " -- branch" else ""
       witnessToTrace(p.succ, qryString(q) + branch::acc)
-    case Nil => acc
+    case Nil => acc.reverse
     case v =>
       println(v)
       ???
@@ -51,7 +51,7 @@ class PrettyPrinting(mode : OutputMode = MemoryOutputMode) {
     pw.createFile()
     live.zipWithIndex.foreach{case (a,ind) =>
       println(s"Writing trace $ind / ${live.size}")
-      pw.append(a._1 + "\n    " + witnessToTrace(List(a._2).reverse).mkString("\n    "))
+      pw.append(a._1 + "\n    " + witnessToTrace(List(a._2)).mkString("\n    "))
       pw.append("\n")
     }
 //      .append(traces)

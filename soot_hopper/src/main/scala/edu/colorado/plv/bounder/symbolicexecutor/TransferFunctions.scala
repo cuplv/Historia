@@ -353,14 +353,44 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         case InvokeCmd(_,_) => Map()
         case _ => throw new IllegalStateException(s"malformed bytecode, source: $retloc  target: $mRet")
       }
-      // Create call stack frame with return value
-      // TODO: add @this to prove non-static invokes faster
-      val newFrame = CallStackFrame(mRet, Some(AppLoc(mloc,line,true)), retVal)
-      val clearedLVal = cmd match{
-        case AssignCmd(target, _, _) => postState.clearLVal(target)
-        case _ => postState
+      val inv = cmd match{
+        case InvokeCmd(inv : Invoke, _) => inv
+        case AssignCmd(_, inv: Invoke, _) => inv
+        case c => throw new IllegalStateException(s"Malformed invoke command $c")
       }
-      Set(clearedLVal.copy(callStack = newFrame::postState.callStack, nextCmd = List(target), alternateCmd = Nil))
+      val receiverOption: Option[RVal] = inv match{
+        case v:VirtualInvoke => Some(v.target)
+        case s:SpecialInvoke => Some(s.target)
+        case _:StaticInvoke => None
+      }
+
+      // Return bottom if path condition prohibits reciever from taking this method
+      val refutedByMaterializedReceiver = receiverOption.flatMap(postState.get) match{
+        case Some(pureV:PureVar) =>
+          val tc = postState.typeConstraints.get(pureV)
+          if(tc.nonEmpty && !tc.get.subtypeOfCanAlias(mRet.clazz, ch)) {
+            println("Prevented dynamic dispatch branch") //TODO: remove print statement and other dbg code
+            println(tc) // TODO: need something smarter here, jumping back into lots of places that shouldn't be possible
+            println(mRet)
+            tc.get.subtypeOfCanAlias(mRet.clazz,ch)
+            true
+          } else {
+            false
+          }
+        case _ => false
+      }
+      if(refutedByMaterializedReceiver){
+        Set()
+      }else {
+        // Create call stack frame with return value
+        // TODO: add @this to prove non-static invokes faster
+        val newFrame = CallStackFrame(mRet, Some(AppLoc(mloc, line, true)), retVal)
+        val clearedLVal = cmd match {
+          case AssignCmd(target, _, _) => postState.clearLVal(target)
+          case _ => postState
+        }
+        Set(clearedLVal.copy(callStack = newFrame :: postState.callStack, nextCmd = List(target), alternateCmd = Nil))
+      }
     case (retLoc@AppLoc(mloc, line, false), mRet@SkippedInternalMethodReturn(_, _, rel, _)) =>
       // Create call stack frame with return value
       val newFrame = CallStackFrame(mRet, Some(AppLoc(mloc,line,true)), Map())

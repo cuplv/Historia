@@ -8,7 +8,7 @@ import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
 import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state._
-import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, SparkCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
 import scopt.OParser
 import soot.SootMethod
 import upickle.core.AbortException
@@ -267,7 +267,8 @@ object Driver {
     val startTime = System.currentTimeMillis()
     try {
       //TODO: read location from json config
-      val callGraph = CHACallGraph
+//      val callGraph = CHACallGraph
+      val callGraph = SparkCallGraph
 //      val callGraph = FlowdroidCallGraph // flowdroid call graph immediately fails with "unreachable"
       val w = new JimpleFlowdroidWrapper(apkPath, callGraph)
       val transfer = (cha: ClassHierarchyConstraints) =>
