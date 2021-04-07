@@ -91,40 +91,10 @@ object BounderSetupApplication {
     val setup = new SetupApplication(config)
     G.reset()
     setup.constructCallgraph()
-//    // Use flowdroid definition of callbacks
-//    val setupApplicationClass =
-//      Class.forName("soot.jimple.infoflow.android.SetupApplication")
-//    List("initializeSoot", "parseAppResources").foreach(methodname => {
-//      val method = setupApplicationClass.getDeclaredMethod(methodname)
-//      method.setAccessible(true)
-//      method.invoke(setup)
-//    })
-//    Options.v().set_process_multiple_dex(true)
-//    Options.v.set_keep_line_number(true)
-//    val ssp = Class.forName("soot.jimple.infoflow.sourcesSinks.definitions.ISourceSinkDefinitionProvider")
-//    val calculateCallbacks =
-//      setupApplicationClass.getDeclaredMethod("calculateCallbacks", ssp)
-
-//    calculateCallbacks.setAccessible(true)
-//    calculateCallbacks.invoke(setup, null)
-//    val scc = Class.forName("soot.SootClass")
-//    val createMainMethod =
-//      setupApplicationClass.getDeclaredMethod("createMainMethod", scc)
-//    createMainMethod.setAccessible(true)
-//    createMainMethod.invoke(setup, null)
-//
-//    // Hacky way of setting up call graph without running flowdroid
-//    if(generateFlowdroidCallGraph) {
-//      val constructCg =
-//        setupApplicationClass.getDeclaredMethod("constructCallgraphInternal")
-//      constructCg.setAccessible(true)
-//      constructCg.invoke(setup)
-//    }
   }
   def loadApkNonFlowdroid(path : String):Unit ={
     G.reset()
     val platformsDir = androidHome + "/platforms"
-    //TODO: below should be "/Users/shawnmeier/Library/Android/sdk/platforms"
     Options.v.set_allow_phantom_refs(true)
     //Options.v.set_output_format(1) //TODO: dbg output?
     Options.v.set_output_format(Options.output_format_none)

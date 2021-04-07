@@ -497,10 +497,69 @@ class JimpleFlowdroidWrapper(apkPath : String,
       newLocal
     }
   }
+
+  private def instrumentSootMethod(method: SootMethod):Unit = {
+
+    // Retrieve global field representing all values pointed to by the framework
+    val entryPoint = Scene.v().getSootClass(JimpleFlowdroidWrapper.cgEntryPointName)
+    val globalField = entryPoint.getFieldByName("global")
+    assert(globalField.getType.toString == "java.lang.Object")
+
+    val unitChain = method.getActiveBody.getUnits
+    unitChain.clear()
+    method.getActiveBody.asInstanceOf[JimpleBody].insertIdentityStmts(method.getDeclaringClass)
+    // Write receiver to global field
+    if(!method.isStatic){
+      val ident = unitChain.getFirst
+      val receiver = ident.asInstanceOf[JIdentityStmt].getLeftOp
+      assert(receiver.isInstanceOf[JimpleLocal])
+      // Receiver added to global framework points to set
+      Jimple.v().newAssignStmt(Jimple.v().newStaticFieldRef(globalField.makeRef()), receiver)
+    }
+    //TODO: write all parameters to global field
+    (0 until method.getParameterCount).foreach{p =>
+      ???
+    }
+
+
+    //TODO: read global field cast to correct type and return
+    if(method.getReturnType.toString == "void"){
+      unitChain.add(Jimple.v().newReturnVoidStmt())
+    } else{
+      //TODO: if it can return a framework type, instantiate and assign to global field
+      ??? //TODO: if return object, read from global field and cast then return
+    }
+  }
+  private def instrumentCallins(): Unit ={
+    // Use CHA call graph to find used callins
+    CHATransformer.v().transform()
+    val cg = Scene.v().getCallGraph
+
+    @tailrec
+    def instrumentLoop(workList: Set[SootMethod], visited:Set[SootMethod] = Set()):Unit = {
+      if(workList.nonEmpty){
+        val currentMethod = workList.head
+        val currentMethodDeclaringClass = JimpleFlowdroidWrapper.stringNameOfClass(currentMethod.getDeclaringClass)
+        if(resolver.isFrameworkClass(currentMethodDeclaringClass)){
+          instrumentSootMethod(currentMethod)
+        }
+        val called = cg.edgesOutOf(currentMethod).asScala.map(e => e.tgt()).toSet -- visited
+        instrumentLoop(workList.tail ++ called, visited + currentMethod)
+      }
+    }
+    instrumentLoop(callbacks)
+  }
   private val fwkInstantiatedClasses = mutable.Set[SootClass]()
 
   private val initialClasses = Set("android.app.Activity", "androidx.fragment.app.Fragment",
     "android.app.Fragment", "android.view.View", "android.app.Application") //TODO:
+  /**
+   * Classes that the android framework may create on its own.
+   * These are things like fragments and activities that are declared in the XML file.
+   * //TODO: an improved version of this would scan the xml file for references
+   * @param c target class in the android app
+   * @return true if the framework can reflectively initialize
+   */
   def canReflectiveRef(c: SootClass): Boolean = {
 
     val strName = JimpleFlowdroidWrapper.stringNameOfClass(c)
@@ -602,7 +661,6 @@ class JimpleFlowdroidWrapper(apkPath : String,
       //        ("double-set-old", "hybrid"),
       //        ("double-set-new", "hybrid")
     )
-//    CHATransformer.v().transform()
     val appMethodList: List[SootMethod] = resolver.appMethods.toList.map(v => v.asInstanceOf[JimpleMethodLoc].method)
     Scene.v().setReachableMethods(new ReachableMethods(Scene.v().getCallGraph, appMethodList.asJava))
     val reachable2 = Scene.v().getReachableMethods
@@ -635,6 +693,9 @@ class JimpleFlowdroidWrapper(apkPath : String,
     entryPointBody.getUnits.add(Jimple.v().newReturnVoidStmt())
 //    entryPointBody.validate()
     Scene.v().setEntryPoints(List(entryMethod).asJava)
+
+    instrumentCallins()
+
     SparkTransformer.v().transform("", opt.asJava)
   }
 
