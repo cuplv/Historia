@@ -151,25 +151,25 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   /**
    *
    * @param qry - a source location and an assertion to prove
-   * @return None if the assertion at that location is unreachable, Some(Trace) if it is reachable.
-   *         Trace will contain a tree of backward executions for triage.
+   * @return  (id, Terminal path nodes)
    */
-  def run(qry: Set[Qry], initialize: Set[IPathNode] => Unit = _ => ()) : Set[IPathNode] = {
-    val pathNodes = qry.map(PathNode(_,Nil,None))
-    initialize(pathNodes)
-    val queue = new GrouperQ
-    queue.addAll(pathNodes)
-    config.stepLimit match{
-      case Some(limit) => executeBackward(queue, limit)
-      case None =>
-        ???
+  def run(qry: Set[Qry], initialize: IPathNode => Int = _ => 0) : Set[(Int,Set[IPathNode])] = {
+    qry.map(PathNode(_,Nil,None)).map { pathNodes =>
+      val id = initialize(pathNodes)
+      val queue = new GrouperQ
+      queue.addAll(Set(pathNodes))
+      config.stepLimit match {
+        case Some(limit) => (id, executeBackward(queue, limit))
+        case None =>
+          ???
+      }
     }
   }
 
 
   def isSubsumed(pathNode:IPathNode,
-                 nVisited: Map[SubsumableLocation,Map[Int,StateSet]]):Option[IPathNode] = pathNode.qry match{
-    case SomeQry(_,SwapLoc(loc)) if nVisited.contains(loc) =>
+                 nVisited: Map[SubsumableLocation,Map[Int,StateSet]]):Option[IPathNode] = pathNode match{
+    case SwapLoc(loc) if pathNode.qry.isInstanceOf[SomeQry] && nVisited.contains(loc) =>
       val root = nVisited(loc).getOrElse(pathNode.qry.state.callStack.size, StateSet.init)
       val res = StateSet.findSubsuming(pathNode, root,(s1,s2) => stateSolver.canSubsume(s1,s2))
 
@@ -310,7 +310,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
 
 
     //TODO: uncomment:
-    current.qry.loc match{
+    current match{
       case SwapLoc(FrameworkLocation) =>
         println("Framework location query")
         println(s"    State: ${current.qry.state}")
@@ -337,14 +337,14 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
             executeBackward(qrySet, limit, refutedSubsumedOrWitnessed + p.setSubsumed(v), visited)
           case None =>
             val stackSize = p.qry.state.callStack.size
-            val newVisited = SwapLoc(current.qry.loc) match{
-              case Some(v) =>
+            val newVisited = current match{
+              case SwapLoc(v) =>
                 val stackSizeToNode: Map[Int, StateSet] = visited.getOrElse(v,Map[Int,StateSet]())
                 val nodeSetAtLoc: StateSet = stackSizeToNode.getOrElse(stackSize, StateSet.init)
                 val nodeSet = StateSet.add(p, nodeSetAtLoc)
                 val newStackSizeToNode = stackSizeToNode + (stackSize -> nodeSet)
                 visited + (v -> newStackSizeToNode)
-              case None => visited
+              case _ => visited
             }
             val nextQry = executeStep(qry).map(q => PathNode(q, List(p), None))
             qrySet.addAll(nextQry)
@@ -361,8 +361,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   def executeStep(qry:Qry):Set[Qry] = qry match{
     case SomeQry(state, loc) =>
       val predecessorLocations = controlFlowResolver.resolvePredicessors(loc,state)
-      //TODO: add par back in?
-      predecessorLocations.flatMap(l => {
+      predecessorLocations.par.flatMap(l => {
         val newStates = transfer.transfer(state,l,loc)
         newStates.map(state => stateSolver.simplify(state) match {
           case Some(state) if stateSolver.witnessed(state) =>

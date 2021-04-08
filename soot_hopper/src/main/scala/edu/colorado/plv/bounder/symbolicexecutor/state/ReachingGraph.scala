@@ -18,8 +18,10 @@ import java.util.concurrent.atomic.AtomicInteger
 import scala.language.postfixOps
 import better.files.File
 import edu.colorado.plv.bounder.RunConfig
+import ujson.{Obj, Value}
 
 import scala.annotation.tailrec
+import scala.collection.mutable
 
 trait ReachingGraph {
   def getPredecessors(qry:Qry) : Iterable[Qry]
@@ -64,7 +66,25 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
     val res = ujson.Obj("StartTime" -> startTime, "Status" -> "Started").toString
     res
   }
-  def initializeQuery(initial:IPathNode, config:RunConfig, initialQuery: InitialQuery):Unit = {
+  def finishMeta(oldMeta:String, status:String):String = {
+    import java.time.Instant
+    val endTime = Instant.now.getEpochSecond
+    val oldMetaParsed = ujson.read(oldMeta)
+    val newMeta = oldMetaParsed match{
+      case Obj(v) =>
+        v + ("EndTime" -> ujson.Num(endTime)) + ("Status" -> ujson.Str(status))
+    }
+    ujson.write(ujson.Obj.from(newMeta))
+  }
+
+  /**
+   *
+   * @param initial path node initially explored
+   * @param config run configuration
+   * @param initialQuery location and type of query
+   * @return id for query
+   */
+  def initializeQuery(initial:IPathNode, config:RunConfig, initialQuery: InitialQuery):Int = {
     val initialDB = initial.asInstanceOf[DBPathNode]
     val maxID: Option[Int] = Await.result(db.run(initialQueries.map(_.id).max.result), 30 seconds)
     val currentID = maxID.getOrElse(0) + 1
@@ -72,6 +92,7 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
     val initialQueryRow = (currentID, initialDB.thisID,
       write[InitialQuery](initialQuery), write[RunConfig](config), meta)
     Await.result(db.run(initialQueries += initialQueryRow), 30 seconds)
+    currentID
   }
   def markDeadend():Unit = {
     ???
@@ -145,10 +166,15 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
     resLive.union(resRef).union(resWit).union(resSubs)
   }
 
-  def writeLiveAtEnd(witness: Set[IPathNode]):Unit = {
+  def writeLiveAtEnd(witness: Set[IPathNode], finalizeQryId:Int, status:String):Unit = {
     val ids = witness.map(n => n.asInstanceOf[DBPathNode].thisID)
     val writeFuture = db.run(liveAtEnd ++= ids)
     Await.result(writeFuture, 30 seconds)
+    val updateMetadata = for(q <- initialQueries if q.id === finalizeQryId)yield q.metadata
+    val meta = Await.result(db.run(updateMetadata.result), 30 seconds)
+    assert(meta.size == 1)
+    val updatedMeta = finishMeta(meta.head, status)
+    Await.result(db.run(updateMetadata.update(updatedMeta)), 30 seconds)
   }
 
   def writeNode(node: DBPathNode): Unit = {

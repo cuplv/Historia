@@ -31,7 +31,8 @@ object FrameworkExtensions{
         None
     }
   }
-  val extensionStrings: List[String] = urlPos.flatMap{ (frameworkExtPath:String) =>
+  val extensionStrings: List[String] = JimpleFlowdroidWrapper.cgEntryPointName::
+    urlPos.flatMap{ (frameworkExtPath:String) =>
 //    val source = Source.fromFile(frameworkExtPath)
     try {
       val source = Resource.getAsString(frameworkExtPath)

@@ -115,14 +115,14 @@ object StateSet {
 }
 
 sealed trait SubsumableLocation
-case class CodeLocation(loc:Loc)extends SubsumableLocation
+case class CodeLocation(loc:Loc, cbCount:Int)extends SubsumableLocation
 case object FrameworkLocation extends SubsumableLocation
 object SwapLoc {
-  def unapply[M,C](loc: Loc)(implicit w:IRWrapper[M,C]): Option[SubsumableLocation] = loc match {
+  def unapply[M,C](pathNode:IPathNode)(implicit w:IRWrapper[M,C]): Option[SubsumableLocation] = pathNode.qry.loc match {
     case _: CallbackMethodInvoke => Some(FrameworkLocation)
     case _: CallbackMethodReturn => None
     case AppLoc(_,_,false) => None
-    case a@AppLoc(_,_,true) if w.isLoopHead(a) => Some(CodeLocation(a))
+    case a@AppLoc(_,_,true) if w.isLoopHead(a) => Some(CodeLocation(a, pathNode.ordDepth))
     case AppLoc(_,_,_) => None
 //    case a@AppLoc(method, line, true) => {
 //      val cmd = w.cmdAtLocation(a)
@@ -145,6 +145,4 @@ object SwapLoc {
     case _: SkippedInternalMethodReturn => None
     case _: SkippedInternalMethodInvoke => None
   }
-  def apply[M,C](loc:Loc)(implicit w:IRWrapper[M,C]):Option[SubsumableLocation] =
-    unapply(loc)
 }

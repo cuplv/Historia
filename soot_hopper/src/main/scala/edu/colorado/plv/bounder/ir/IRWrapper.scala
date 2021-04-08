@@ -1,7 +1,8 @@
 package edu.colorado.plv.bounder.ir
 
 import edu.colorado.plv.bounder.symbolicexecutor.AppCodeResolver
-import upickle.default.{ReadWriter => RW, macroRW}
+import edu.colorado.plv.bounder.symbolicexecutor.state.State
+import upickle.default.{macroRW, ReadWriter => RW}
 
 // Interface to handle all the messy parts of interacting with the underlying IR representation
 /**

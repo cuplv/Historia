@@ -9,22 +9,19 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode,
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.AnyFunSuite
-import soot.SootMethod
+import soot.{Scene, SootMethod}
 
 import scala.util.matching.Regex
 
 class SymbolicExecutorTest extends AnyFunSuite {
 
   private val prettyPrinting = new PrettyPrinting()
-  def lineForRegex(r:Regex, in:String):Int = {
-    val lines = in.split("\n")
-    lines.indexWhere(r.matches(_)) + 1 // source code line numbers start at 1
-  }
+  val cgMode = SparkCallGraph
 
   test("Symbolic Executor should prove an intraprocedural deref"){
     val test_interproc_1 = getClass.getResource("/test_interproc_1.apk").getPath
     assert(test_interproc_1 != null)
-    val w = new JimpleFlowdroidWrapper(test_interproc_1, PatchedFlowdroidCallGraph)
+    val w = new JimpleFlowdroidWrapper(test_interproc_1, cgMode)
     val transfer =  (cha:ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set()),cha)
     val config = SymbolicExecutorConfig(
@@ -34,18 +31,17 @@ class SymbolicExecutorTest extends AnyFunSuite {
       "com.example.test_interproc_1.MainActivity",
       "java.lang.String objectString()",21)
     // Call symbolic executor
-
-    val result: Set[IPathNode] = symbolicExecutor.run(query)
+    val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a._2)
+    prettyPrinting.dumpDebugInfo(result, "test_interproc_1_derefSafe")
     assert(result.size == 1)
     assert(result.iterator.next.qry.isInstanceOf[BottomQry])
-    prettyPrinting.dumpDebugInfo(result, "test_interproc_1_derefSafe")
   }
 
 
   test("Symbolic Executor should prove an inter-callback deref"){
     val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath
     assert(test_interproc_1 != null)
-    val w = new JimpleFlowdroidWrapper(test_interproc_1, PatchedFlowdroidCallGraph)
+    val w = new JimpleFlowdroidWrapper(test_interproc_1, cgMode)
 
     val transfer = (cha:ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod,soot.Unit](w, ActivityLifecycle.spec,cha)
@@ -55,7 +51,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     val query = Qry.makeReceiverNonNull(symbolicExecutor, w,
       "com.example.test_interproc_2.MainActivity",
       "void onPause()",27)
-    val result: Set[IPathNode] = symbolicExecutor.run(query)
+    val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a._2)
 //    PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/foo.dot")
 //    PrettyPrinting.printWitnessTraces(result, outFile="/Users/shawnmeier/Desktop/foo.witnesses")
     prettyPrinting.dumpDebugInfo(result, "test_interproc_2_derefSafe")
@@ -65,7 +61,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
   test("Symbolic executor should witness onPause"){
     val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath
     assert(test_interproc_1 != null)
-    val w = new JimpleFlowdroidWrapper(test_interproc_1, PatchedFlowdroidCallGraph)
+    val w = new JimpleFlowdroidWrapper(test_interproc_1, cgMode)
     val transfer = (cha:ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod,soot.Unit](w, ActivityLifecycle.spec,cha)
     val config = SymbolicExecutorConfig(
@@ -74,7 +70,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     val query = Qry.makeReach(symbolicExecutor, w,
       "com.example.test_interproc_2.MainActivity",
       "void onPause()",25)
-    val result: Set[IPathNode] = symbolicExecutor.run(query)
+    val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a._2)
 //    PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/witnessOnPause.dot")
     prettyPrinting.dumpDebugInfo(result, "test_interproc_2_onPauseReach")
     assert(BounderUtil.interpretResult(result) == Witnessed)
@@ -82,7 +78,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
   test("Symbolic executor should witness onResume"){
     val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath
     assert(test_interproc_1 != null)
-    val w = new JimpleFlowdroidWrapper(test_interproc_1, PatchedFlowdroidCallGraph)
+    val w = new JimpleFlowdroidWrapper(test_interproc_1, cgMode)
     val transfer = (cha:ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod,soot.Unit](w, ActivityLifecycle.spec,cha)
     val config = SymbolicExecutorConfig(
@@ -91,7 +87,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     val query = Qry.makeReach(symbolicExecutor, w,
       "com.example.test_interproc_2.MainActivity",
       "void onResume()",20)
-    val result: Set[IPathNode] = symbolicExecutor.run(query)
+    val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a._2)
     prettyPrinting.dumpDebugInfo(result, "test_interproc_2_onResumeReach")
     assert(BounderUtil.interpretResult(result) == Witnessed)
   }
@@ -127,7 +123,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
+      val w = new JimpleFlowdroidWrapper(apk, cgMode)
       val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
         new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
           FragmentGetActivityNullSpec.getActivityNonNull,
@@ -140,8 +136,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
-        "void onCreate(android.os.Bundle)", lineForRegex(".*query1.*".r,src))
-      val result = symbolicExecutor.run(query)
+        "void onCreate(android.os.Bundle)", BounderUtil.lineForRegex(".*query1.*".r,src))
+      val result = symbolicExecutor.run(query).flatMap(a => a._2)
       prettyPrinting.dumpDebugInfo(result, "readLiteral")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Proven)
@@ -174,7 +170,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         |
         |    @Override
         |    protected void onResume() {
-        |        List<String> l = new ArrayList<String>();
+        |        List<String> l = new ArrayList<String>(); //query0
         |        l.add("hi there");
         |        String s2 = null;
         |        for(String s : l){
@@ -189,7 +185,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
+      val w = new JimpleFlowdroidWrapper(apk, cgMode)
       val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
         new SpecSpace(Set(//FragmentGetActivityNullSpec.getActivityNull,
 //          FragmentGetActivityNullSpec.getActivityNonNull,
@@ -203,12 +199,21 @@ class SymbolicExecutorTest extends AnyFunSuite {
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       implicit val om = config.outputMode
       val symbolicExecutor = config.getSymbolicExecutor
+
+      // Entry of oncreate should be reachable (debugging spark issue)
+      val queryEntry = Qry.makeReach(symbolicExecutor, w,
+        "com.example.createdestroy.MyActivity","void onResume()",
+        BounderUtil.lineForRegex(".*query0.*".r,src))
+      val resultEntry = symbolicExecutor.run(queryEntry).flatMap(a => a._2)
+      assert(BounderUtil.interpretResult(resultEntry) == Witnessed)
+
+      // Dereference in loop should witness since we do not have a spec for the list
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
-        "void onResume()", lineForRegex(".*query1.*".r,src))
+        "void onResume()", BounderUtil.lineForRegex(".*query1.*".r,src))
 
       prettyPrinting.dotMethod( query.head.loc, symbolicExecutor.controlFlowResolver, "onPauseCond.dot")
 
-      val result: Set[IPathNode] = symbolicExecutor.run(query)
+      val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a._2)
       prettyPrinting.dumpDebugInfo(result, "forEach")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Witnessed)
@@ -281,7 +286,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
+      val w = new JimpleFlowdroidWrapper(apk, cgMode)
       val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
         new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
           FragmentGetActivityNullSpec.getActivityNonNull,
@@ -296,18 +301,18 @@ class SymbolicExecutorTest extends AnyFunSuite {
       implicit val om = config.outputMode
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
-        "void onPause()", lineForRegex(".*query1.*".r,src))
+        "void onPause()", BounderUtil.lineForRegex(".*query1.*".r,src))
 
       prettyPrinting.dotMethod( query.head.loc, symbolicExecutor.controlFlowResolver, "onPauseCond.dot")
 
-      val result: Set[IPathNode] = symbolicExecutor.run(query)
+      val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a._2)
       prettyPrinting.dumpDebugInfo(result, "irrelevantConditional")
       prettyPrinting.dotWitTree(result, "irrelevantConditional.dot",true)
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Proven)
       // Search refutation state for materialized "o2" field
       // Should not be in there since conditional is not relevant
-      val o2ExistsInRef = result.exists((p:IPathNode) => findInWitnessTree(p, //TODO: non-deterministic failure, probably issue with priority queue order
+      val o2ExistsInRef = result.exists((p:IPathNode) => findInWitnessTree(p,
         {pn => pn.qry.state.heapConstraints.exists{
           case (FieldPtEdge(_,fieldName),_) if fieldName == "o2" =>
             println(pn.qry.state)
@@ -355,7 +360,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
+      val w = new JimpleFlowdroidWrapper(apk, cgMode)
       val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
         new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
           FragmentGetActivityNullSpec.getActivityNonNull,
@@ -369,7 +374,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void onCreate(android.os.Bundle)",20)
-      val result = symbolicExecutor.run(query)
+      val result = symbolicExecutor.run(query).flatMap(a => a._2)
       prettyPrinting.dumpDebugInfo(result,"setField")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Proven)
@@ -418,7 +423,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
+      val w = new JimpleFlowdroidWrapper(apk, cgMode)
       val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
         new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
           FragmentGetActivityNullSpec.getActivityNonNull,
@@ -432,7 +437,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void onCreate(android.os.Bundle)",22)
-      val result = symbolicExecutor.run(query)
+      val result = symbolicExecutor.run(query).flatMap(a => a._2)
       prettyPrinting.dumpDebugInfo(result,"assignFromTest")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Proven)
@@ -483,7 +488,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
       val test: String => Unit = apk => {
         assert(apk != null)
-        val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
+        val w = new JimpleFlowdroidWrapper(apk, cgMode)
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
           new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
             FragmentGetActivityNullSpec.getActivityNonNull,
@@ -495,19 +500,18 @@ class SymbolicExecutorTest extends AnyFunSuite {
           stepLimit = Some(200), w, transfer,
           component = Some(List("com.example.createdestroy.MyActivity.*")))
         val symbolicExecutor = config.getSymbolicExecutor
-        val line = lineForRegex(".*query1.*".r, src)
+        val line = BounderUtil.lineForRegex(".*query1.*".r, src)
         val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
           "void onCreate(android.os.Bundle)", line, Some(".*toString.*".r))
 
-        val i = lineForRegex(".*initializeabc.*".r, src)
+        val i = BounderUtil.lineForRegex(".*initializeabc.*".r, src)
         //Dump dot of while method
         val query2 = Qry.makeReach(symbolicExecutor, w,
           "com.example.createdestroy.MyActivity", "void setO()",i )
         prettyPrinting.dotMethod(query2.head.loc,symbolicExecutor.controlFlowResolver, "setO.dot")
 
-        val result = symbolicExecutor.run(query)
+        val result = symbolicExecutor.run(query).flatMap(a => a._2)
         prettyPrinting.dumpDebugInfo(result, "whileTest")
-//        prettyPrinting.dotWitTree(result, "whileTest", true) //TODO: remove
         assert(result.nonEmpty)
         assert(BounderUtil.interpretResult(result) == expectedResult)
 
@@ -567,19 +571,19 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
       val test: String => Unit = apk => {
         assert(apk != null)
-        val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
+        val w = new JimpleFlowdroidWrapper(apk, cgMode)
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
           new SpecSpace(Set(ActivityLifecycle.init_first_callback)), cha)
         val config = SymbolicExecutorConfig(
           stepLimit = Some(200), w, transfer,
           component = Some(List("com.example.createdestroy.MyActivity.*")))
         val symbolicExecutor = config.getSymbolicExecutor
-        val i = lineForRegex(queryL, src)
+        val i = BounderUtil.lineForRegex(queryL, src)
         val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity.*",
           ".*run.*", i)
 
 
-        val result = symbolicExecutor.run(query)
+        val result = symbolicExecutor.run(query).flatMap(a => a._2)
         prettyPrinting.dumpDebugInfo(result, "dynamicDispatchTest")
         prettyPrinting.dotWitTree(result, "dynamicDispatchTest", true)
         assert(result.nonEmpty)
@@ -626,7 +630,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
+      val w = new JimpleFlowdroidWrapper(apk, cgMode)
       val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
         new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
           FragmentGetActivityNullSpec.getActivityNonNull,
@@ -641,7 +645,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void onCreate(android.os.Bundle)",20)
-      val result = symbolicExecutor.run(query)
+      val result = symbolicExecutor.run(query).flatMap(a => a._2)
       prettyPrinting.dumpDebugInfo(result,"DisaliasedObj")
       prettyPrinting.dotWitTree(result, "DisaliasedObj.dot",true)
       assert(result.nonEmpty)
@@ -691,20 +695,20 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
       val test: String => Unit = apk => {
         assert(apk != null)
-        val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
+        val w = new JimpleFlowdroidWrapper(apk, cgMode)
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
           new SpecSpace(Set()), cha)
         val config = SymbolicExecutorConfig(
           stepLimit = Some(200), w, transfer,
           component = Some(List("com.example.createdestroy.MyActivity.*")))
         val symbolicExecutor = config.getSymbolicExecutor
-        val line = lineForRegex(".*query1.*".r,src)
+        val line = BounderUtil.lineForRegex(".*query1.*".r,src)
         val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
           "void onDestroy()", 28)
 
         prettyPrinting.dotMethod(query.head.loc, symbolicExecutor.controlFlowResolver, "onDestroy_if_not_drop.dot")
 
-        val result = symbolicExecutor.run(query)
+        val result = symbolicExecutor.run(query).flatMap(a => a._2)
         prettyPrinting.dumpDebugInfo(result, s"BoolTest_initial_$initial")
         assert(result.nonEmpty)
         assert(BounderUtil.interpretResult(result) == expectedResult, s"Initial value: $initial")
@@ -762,7 +766,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
+      val w = new JimpleFlowdroidWrapper(apk, cgMode)
       val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
         new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
           FragmentGetActivityNullSpec.getActivityNonNull,
@@ -778,7 +782,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void lambda$onCreate$1$MyActivity(java.lang.Object)",31)
-      val result = symbolicExecutor.run(query)
+      val result = symbolicExecutor.run(query).flatMap(a => a._2)
       prettyPrinting.dumpDebugInfo(result,"ProveFieldDerefWithSubscribe")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Proven)
@@ -829,7 +833,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
+      val w = new JimpleFlowdroidWrapper(apk, cgMode)
       val transfer = (cha:ClassHierarchyConstraints) =>
         new TransferFunctions[SootMethod, soot.Unit](w,
         new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
@@ -846,7 +850,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void lambda$onCreate$1$MyActivity(java.lang.Object)",31)
-      val result = symbolicExecutor.run(query)
+      val result = symbolicExecutor.run(query).flatMap(a => a._2)
       prettyPrinting.dumpDebugInfo(result,"WitnessFieldDerefWithSubscribe")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Witnessed)
@@ -855,7 +859,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
   }
-  test("Test prove dereference of return from getActivity") { //TODO:====== test above this line for swapping unique subscribe return
+  test("Test prove dereference of return from getActivity") {
     val src =
       """
         |package com.example.createdestroy;
@@ -915,7 +919,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
+      val w = new JimpleFlowdroidWrapper(apk, cgMode)
       val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
         new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
           FragmentGetActivityNullSpec.getActivityNonNull,
@@ -932,7 +936,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         "void lambda$onActivityCreated$1$MyFragment(java.lang.Object)",43,
         ".*getActivity.*".r)
 
-      val result = symbolicExecutor.run(query)
+      val result = symbolicExecutor.run(query).flatMap(a => a._2)
       prettyPrinting.dumpDebugInfo(result,"ProveSafeGetActivityWithSubscribe")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Proven)
@@ -1004,7 +1008,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
+      val w = new JimpleFlowdroidWrapper(apk, cgMode)
       val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
         new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
           FragmentGetActivityNullSpec.getActivityNonNull,
@@ -1023,7 +1027,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         "void lambda$onActivityCreated$1$MyFragment(java.lang.Object)",43,
         ".*getActivity.*".r)
 
-      val result = symbolicExecutor.run(query)
+      val result = symbolicExecutor.run(query).flatMap(a => a._2)
       prettyPrinting.dumpDebugInfo(result,"MkApk")
       prettyPrinting.dotWitTree(result, "OldMotiv.dot",includeSubsEdges = true)
       assert(result.nonEmpty)
@@ -1047,7 +1051,140 @@ class SymbolicExecutorTest extends AnyFunSuite {
       }
     }
   }
+  test("Minimal motivating example with irrelevant unsubscribe") {
+    List(
+      ("sub.unsubscribe();", Proven, "withUnsub"),
+      ("", Witnessed, "noUnsub")
+    ).map { case (destroyLine, expectedResult,fileSuffix) =>
+      val src =
+        s"""
+           |package com.example.createdestroy;
+           |import android.app.Activity;
+           |import android.content.Context;
+           |import android.net.Uri;
+           |import android.os.Bundle;
+           |
+           |import androidx.fragment.app.Fragment;
+           |
+           |import android.util.Log;
+           |import android.view.LayoutInflater;
+           |import android.view.View;
+           |import android.view.ViewGroup;
+           |
+           |import rx.Single;
+           |import rx.Subscription;
+           |import rx.android.schedulers.AndroidSchedulers;
+           |import rx.schedulers.Schedulers;
+           |import rx.functions.Action1;
+           |
+           |
+           |public class ExternalPlayerFragment extends Fragment implements Action1<Object>{
+           |    Subscription sub;
+           |    @Override
+           |    public void onActivityCreated(Bundle savedInstanceState){
+           |        sub = Single.create(subscriber -> {
+           |            subscriber.onSuccess(3);
+           |        }).subscribe(this);
+           |    }
+           |
+           |    @Override
+           |    public void call(Object o){
+           |         Activity act = getActivity(); //query1 : act != null
+           |         act.toString();
+           |    }
+           |
+           |    @Override
+           |    public void onDestroy(){
+           |        $destroyLine
+           |    }
+           |}
+           |""".stripMargin
+      val src2 =
+        """
+           |package com.example.createdestroy;
+           |import android.app.Activity;
+           |import android.content.Context;
+           |import android.net.Uri;
+           |import android.os.Bundle;
+           |
+           |import androidx.fragment.app.Fragment;
+           |
+           |import android.util.Log;
+           |import android.view.LayoutInflater;
+           |import android.view.View;
+           |import android.view.ViewGroup;
+           |
+           |import rx.Single;
+           |import rx.Subscription;
+           |import rx.android.schedulers.AndroidSchedulers;
+           |import rx.schedulers.Schedulers;
+           |import rx.functions.Action1;
+           |
+           |public class  ItemDescriptionFragment extends Fragment {
+           |    Subscription otherSub;
+           |    @Override
+           |    public void onViewCreated(View view, Bundle savedInstanceState) {
+           |        otherSub = Single.create(subscriber -> {
+           |            subscriber.onSuccess(4);
+           |        }).subscribe(r -> {
+           |            r.toString();
+           |        });
+           |    }
+           |    @Override
+           |    public void onDestroy(){
+           |        otherSub.unsubscribe();
+           |    }
+           |}""".stripMargin
 
+      val test: String => Unit = apk => {
+        assert(apk != null)
+        val w = new JimpleFlowdroidWrapper(apk, cgMode)
+        val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
+          new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
+            FragmentGetActivityNullSpec.getActivityNonNull,
+            RxJavaSpec.call,
+            ActivityLifecycle.Fragment_activityCreatedOnlyFirst,
+            //            RxJavaSpec.subscribeDoesNotReturnNull,
+            //            RxJavaSpec.subscribeIsUniqueAndNonNull
+          )), cha)
+        val config = SymbolicExecutorConfig(
+          stepLimit = Some(80), w, transfer,
+          component = None)
+        implicit val om = config.outputMode
+        val symbolicExecutor = config.getSymbolicExecutor
+        val line = BounderUtil.lineForRegex(".*query1.*".r, src)
+        val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
+          "com.example.createdestroy.ExternalPlayerFragment",
+          "void call(java.lang.Object)", line,
+          ".*getActivity.*".r)
+
+        val result = symbolicExecutor.run(query).flatMap(a => a._2)
+        val fname = s"IrrelevantUnsub_$fileSuffix"
+        prettyPrinting.dumpDebugInfo(result, fname)
+        prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
+        assert(result.nonEmpty)
+        val interpretedResult = BounderUtil.interpretResult(result)
+        assert(interpretedResult == expectedResult)
+        val onViewCreatedInTree: Set[List[IPathNode]] = result.flatMap{node =>
+          findInWitnessTree(node, (p: IPathNode) =>
+            p.qry.loc.msgSig.exists(m => m.contains("onViewCreated(")))
+        }
+        if(onViewCreatedInTree.nonEmpty) {
+          println("--- witness ---")
+          onViewCreatedInTree.head.foreach{v =>
+            println(v.qry.loc)
+            println(v.qry.state)
+            println()
+          }
+          println("--- end witness ---")
+        }
+        assert(onViewCreatedInTree.isEmpty)
+      }
+
+      makeApkWithSources(Map("ExternalPlayerFragment.java" -> src,
+        "ItemDescriptionFragment.java" -> src2), MkApk.RXBase, test)
+    }
+  }
 
   test("Minimal motivating example") {
     List(
@@ -1109,7 +1246,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
       val test: String => Unit = apk => {
         assert(apk != null)
-        val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
+        val w = new JimpleFlowdroidWrapper(apk, cgMode)
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
           new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
             FragmentGetActivityNullSpec.getActivityNonNull,
@@ -1123,13 +1260,13 @@ class SymbolicExecutorTest extends AnyFunSuite {
           component = Some(List("com.example.createdestroy.*MyFragment.*")))
         implicit val om = config.outputMode
         val symbolicExecutor = config.getSymbolicExecutor
-        val line = lineForRegex(".*query1.*".r, src)
+        val line = BounderUtil.lineForRegex(".*query1.*".r, src)
         val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
           "com.example.createdestroy.MyFragment",
           "void call(java.lang.Object)", line,
           ".*getActivity.*".r)
 
-        val result = symbolicExecutor.run(query)
+        val result = symbolicExecutor.run(query).flatMap(a => a._2)
         val fname = s"Motiv_$fileSuffix"
         prettyPrinting.dumpDebugInfo(result, fname)
         prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
@@ -1201,7 +1338,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
+      val w = new JimpleFlowdroidWrapper(apk, cgMode)
       val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
         new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
           FragmentGetActivityNullSpec.getActivityNonNull,
@@ -1215,7 +1352,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         component = Some(List("com.example.createdestroy.*MyFragment.*")))
       implicit val om = config.outputMode
       val symbolicExecutor = config.getSymbolicExecutor
-      val line = lineForRegex(".*query1.*".r, src)
+      val line = BounderUtil.lineForRegex(".*query1.*".r, src)
       val query = Qry.makeReach(symbolicExecutor, w, "com.example.createdestroy.MyFragment",
         "void call(java.lang.Object)",line)
 //      val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
@@ -1223,7 +1360,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 //        "void call(java.lang.Object)", line,
 //        ".*getActivity.*".r)
 
-      val result = symbolicExecutor.run(query)
+      val result = symbolicExecutor.run(query).flatMap(a => a._2)
       val fname = s"UnreachableLocation"
       prettyPrinting.dumpDebugInfo(result, fname)
       prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
@@ -1293,7 +1430,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
       val test: String => Unit = apk => {
         assert(apk != null)
-        val w = new JimpleFlowdroidWrapper(apk, CHACallGraph)
+        val w = new JimpleFlowdroidWrapper(apk, cgMode)
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
           new SpecSpace(Set(ActivityLifecycle.init_first_callback)), cha)
         val config = SymbolicExecutorConfig(
@@ -1302,12 +1439,12 @@ class SymbolicExecutorTest extends AnyFunSuite {
           //          outputMode = DBOutputMode("/Users/shawnmeier/Desktop/bounder_debug_data/deref2.db")
         )
         val symbolicExecutor = config.getSymbolicExecutor
-        val i = lineForRegex(queryL, src)
+        val i = BounderUtil.lineForRegex(queryL, src)
         val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
           ".*onDestroy.*", i)
 
 
-        val result = symbolicExecutor.run(query)
+        val result = symbolicExecutor.run(query).flatMap(a => a._2)
         //TODO: fix pretty printing
 //        prettyPrinting.dumpDebugInfo(result, "dynamicDispatchTest2")
 //        prettyPrinting.dotWitTree(result, "dynamicDispatchTest2", true)

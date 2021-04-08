@@ -215,10 +215,11 @@ case class BoundedTypeSet(upper:Option[String], lower:Option[String], interfaces
     }
 
   override def subtypeOfCanAlias(localType: String, ch: ClassHierarchyConstraints): Boolean = {
-    this.constrainIsType(localType,ch) match{
-      case EmptyTypeSet => false
-      case _ => true
-    }
+//    this.constrainIsType(localType,ch) match{
+//      case EmptyTypeSet => false
+//      case _ => true
+//    }
+    typeSet(ch).exists(v => ch.getSubtypesOf(localType).contains(v))
   }
 
   private var typeSetCache : Option[Set[String]] = None
