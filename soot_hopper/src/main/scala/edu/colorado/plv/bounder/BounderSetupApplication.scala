@@ -111,7 +111,7 @@ object BounderSetupApplication {
     Scene.v.addBasicClass("java.lang.ref.Finalizer", SootClass.SIGNATURES)
 //    val excludedList = FrameworkExtensions.extensionStrings
 //    Options.v().set_exclude(excludedList.asJava)
-    Options.v().set_no_bodies_for_excluded(true)
+    Options.v().set_no_bodies_for_excluded(false)
     Options.v.set_whole_program(true)
     Options.v.set_process_dir(List(path).asJava)
     Options.v.set_android_jars(platformsDir)

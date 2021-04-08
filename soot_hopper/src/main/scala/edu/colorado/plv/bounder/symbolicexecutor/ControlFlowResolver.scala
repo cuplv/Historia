@@ -526,6 +526,9 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
               throw new IllegalStateException(s"$v")
           }}
           val out = mergeEquivalentCallins(resolvedSkipIrrelevant.seq.toSet, state)
+          //TODO: remove dbg code
+          if(out.isEmpty)
+            println(s"empty pred location $l")
           out
         }
         case AssignCmd(tgt, _:Invoke,loc) => {
@@ -540,7 +543,10 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
               SkippedInternalMethodReturn(clazz,name,d,loc)
             case _ => throw new IllegalStateException("")
           }}
-          val out = mergeEquivalentCallins(resolvedSkipIrrelevant.seq.toSet, state)
+          val out: Set[Loc] = mergeEquivalentCallins(resolvedSkipIrrelevant.seq.toSet, state)
+          //TODO: remove dbg code
+          if(out.isEmpty)
+            println(s"empty pred location $l")
           out
         }
         case _ => List(l.copy(isPre=true))
