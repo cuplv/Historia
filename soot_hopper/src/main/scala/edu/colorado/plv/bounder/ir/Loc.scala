@@ -10,6 +10,7 @@ import scala.util.matching.Regex
  * TODO: find a way to make the type system enforce locations are not used cross wrapper implementations
  */
 sealed trait Loc{
+  //TODO: containing method is inconsistent should also return methods for internal methods and callbacks
   def containingMethod:Option[MethodLoc] = this match{
     case AppLoc(method, _,_) => Some(method)
     case _ => None

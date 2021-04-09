@@ -1,6 +1,7 @@
 package edu.colorado.plv.bounder.ir
 
 import edu.colorado.plv.bounder.symbolicexecutor.AppCodeResolver
+import edu.colorado.plv.bounder.symbolicexecutor.state.TypeSet
 import upickle.default.{macroRW, ReadWriter => RW}
 
 class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] {
@@ -52,6 +53,10 @@ class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] 
   override def isLoopHead(cmd: AppLoc): Boolean = ???
 
   override def commandTopologicalOrder(cmdWrapper: CmdWrapper): Int = ???
+
+  override def pointsToSet(loc: MethodLoc, local: LocalWrapper): TypeSet = ???
+
+  override def getThisVar(methodLoc: Loc): Option[LocalWrapper] = ???
 }
 
 /**

@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, StateSolver}
-import edu.colorado.plv.bounder.ir.{AppLoc, BoolConst, CallbackMethodInvoke, CallbackMethodReturn, ClassConst, ConstVal, IntConst, InternalMethodInvoke, InternalMethodReturn, LVal, Loc, LocalWrapper, MessageType, NullConst, RVal, StringConst}
+import edu.colorado.plv.bounder.ir.{AppLoc, BoolConst, CallbackMethodInvoke, CallbackMethodReturn, ClassConst, ConstVal, IRWrapper, IntConst, InternalMethodInvoke, InternalMethodReturn, LVal, Loc, LocalWrapper, MessageType, MethodLoc, NullConst, RVal, StringConst}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAnyVal, LSPred, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state.State.findIAF
@@ -76,7 +76,13 @@ case class LSConstConstraint(pureExpr: PureExpr, trace:AbstractTrace) extends LS
   override def optTraceAbs: Option[AbstractTrace] = Some(trace)
 }
 sealed trait TypeSet{
-  def join(tc2: TypeSet, ch:ClassHierarchyConstraints):TypeSet
+  /**
+   * Set of types that must match this type constraint and tc2
+   * @param tc2 other type set that value must also be a member of
+   * @param ch class hierarchy
+   * @return new type set, possibly empty
+   */
+  def meet(tc2: TypeSet, ch:ClassHierarchyConstraints):TypeSet
 
   def typeSet(ch: ClassHierarchyConstraints): Set[String]
 
@@ -129,7 +135,7 @@ case object EmptyTypeSet extends TypeSet {
 
   override def typeSet(ch: ClassHierarchyConstraints): Set[String] = Set()
 
-  override def join(tc2: TypeSet, ch:ClassHierarchyConstraints): TypeSet = tc2
+  override def meet(tc2: TypeSet, ch:ClassHierarchyConstraints): TypeSet = tc2
 
   override def setInterfaces(iFaces: Set[String]): TypeSet = EmptyTypeSet
 }
@@ -235,7 +241,7 @@ case class BoundedTypeSet(upper:Option[String], lower:Option[String], interfaces
     typeSetCache.get
   }
 
-  override def join(tc2: TypeSet, ch:ClassHierarchyConstraints): TypeSet = {
+  override def meet(tc2: TypeSet, ch:ClassHierarchyConstraints): TypeSet = {
     val merged:TypeSet = tc2 match{
       case EmptyTypeSet => EmptyTypeSet
       case BoundedTypeSet(Some(upper), Some(lower), ifaces) =>
@@ -250,7 +256,7 @@ case class BoundedTypeSet(upper:Option[String], lower:Option[String], interfaces
         lowerc.setInterfaces(ifaces ++ this.interfaces)
       case BoundedTypeSet(None,None,ifaces) =>
         this.setInterfaces(ifaces)
-      case dts@DisjunctTypeSet(_) => dts.join(this,ch)
+      case dts@DisjunctTypeSet(_) => dts.meet(this,ch)
     }
     if(merged.isEmpty(ch)){
       EmptyTypeSet
@@ -323,8 +329,8 @@ case class DisjunctTypeSet(oneOf: Set[TypeSet]) extends TypeSet{
     typeSetCache.get
   }
 
-  override def join(tc2: TypeSet, ch:ClassHierarchyConstraints): TypeSet =
-    this.copy(oneOf = oneOf.map(_.join(tc2,ch)))
+  override def meet(tc2: TypeSet, ch:ClassHierarchyConstraints): TypeSet =
+    this.copy(oneOf = oneOf.map(_.meet(tc2,ch)))
 
   override def setInterfaces(iFaces: Set[String]): TypeSet = this.copy(oneOf.map(_.setInterfaces(iFaces)))
 }
@@ -384,11 +390,14 @@ case class State(callStack: List[CallStackFrame],
   }
 
   def constrainUpperType(pv:PureVar, clazz:String, hierarchy:ClassHierarchyConstraints):State = {
-    val newTC = typeConstraints.get(pv) match{
-      case Some(v) => v.constrainSubtypeOf(clazz,hierarchy)
-      case None => TypeSet.subclassOf(clazz,hierarchy)
-    }
-    this.copy(typeConstraints = typeConstraints + (pv -> newTC))
+    if(clazz != "_") {
+      val newTC = typeConstraints.get(pv) match {
+        case Some(v) => v.constrainSubtypeOf(clazz, hierarchy)
+        case None => TypeSet.subclassOf(clazz, hierarchy)
+      }
+      this.copy(typeConstraints = typeConstraints + (pv -> newTC))
+    } else
+      this
   }
 
   /**
@@ -478,7 +487,7 @@ case class State(callStack: List[CallStackFrame],
     def sfString(sfl:List[CallStackFrame], frames: Int):String = (sfl,frames) match{
       case (sf::t, fr) if fr > 0 =>
         val locals: Map[StackVar, PureExpr] = sf.locals
-        s"${sf.methodLoc.msgSig.getOrElse("")} " +
+        s"${sf.exitLoc.msgSig.getOrElse("")} " +
           s"locals: " + locals.map(k => k._1.toString + " -> " + k._2.toString).mkString(",") + "     " +
           sfString(t, fr-1)
       case (Nil,_) => ""
@@ -649,29 +658,50 @@ case class State(callStack: List[CallStackFrame],
   }
 
   //TODO: this should probably be the behavior of getOrDefine, refactor later
-  def getOrDefine2(l : RVal)(implicit ch:ClassHierarchyConstraints): (PureExpr, State) = l match{
-    case l:LocalWrapper => getOrDefine(l)
+  def getOrDefine2[M,C](l : RVal, method:MethodLoc)(implicit ch:ClassHierarchyConstraints, w:IRWrapper[M,C]): (PureExpr, State) = l match{
+    case l:LocalWrapper => getOrDefine(l, Some(method))
     case v if v.isConst => (get(l).getOrElse(???),this)
     case _ =>
       ???
   }
-  def getOrDefine(l : RVal)(implicit ch: ClassHierarchyConstraints): (PureVar,State) = l match{
+  def getOrDefine[M,C](l : RVal, method:Option[MethodLoc])
+                      (implicit ch: ClassHierarchyConstraints, w:IRWrapper[M,C]): (PureVar,State) = l match{
     case LocalWrapper(name,localType) =>
       val cshead = callStack.headOption.getOrElse(???) //TODO: add new stack frame if empty?
+      val thisVar:Option[LocalWrapper] = w.getThisVar(cshead.exitLoc)
+      val ts: Option[TypeSet] = method.map(w.pointsToSet(_, LocalWrapper(name,localType)))
+      //TODO: constrain types based on points to set
       val cstail = if (callStack.isEmpty) Nil else callStack.tail
       cshead.locals.get(StackVar(name)) match {
         case Some(v@PureVar(_)) => (v, this)
+        case None if thisVar.contains(l) && cshead.locals.contains(StackVar("@this")) =>
+          // case where we are getting/defining the variable representing "this" typically "r0"
+          // note that "@this" is defined when processing the caller and may constrain the types
+          // further than the type system
+          val thisV = cshead.locals(StackVar("@this")).asInstanceOf[PureVar]
+          val newStack = cshead.copy(locals = cshead.locals + (StackVar(name) -> thisV)) :: cstail
+          val combinedTs: Option[(PureVar,TypeSet)] = (typeConstraints.get(thisV),ts) match{
+            case (Some(ts1),Some(ts2)) => Some(thisV -> ts1.meet(ts2,ch))
+            case (Some(ts),_) => Some(thisV->ts)
+            case (_,Some(ts)) => Some(thisV->ts)
+            case _ => None
+          }
+          val state = this.copy(callStack = newStack, nextAddr = nextAddr,
+            typeConstraints = this.typeConstraints ++ combinedTs)
+          (thisV, state)
         case None =>
           val newident = PureVar(nextAddr)
-//          (newident, State(
-//            callStack = cshead.copy(locals = cshead.locals + (StackVar(name) -> newident)) :: cstail,
-//            heapConstraints,
-//            pureFormula + PureConstraint(newident, TypeComp, SubclassOf(localType)),
-//            traceAbstraction,
-//            nextAddr + 1
-//          ))
           val newStack = cshead.copy(locals = cshead.locals + (StackVar(name) -> newident)) :: cstail
-          (newident, this.copy(callStack = newStack, nextAddr = nextAddr + 1).constrainUpperType(newident, localType, ch))
+          val combinedTs: Option[(PureVar,TypeSet)] = (typeConstraints.get(newident),ts) match{
+            case (Some(ts1),Some(ts2)) => Some(newident -> ts1.meet(ts2,ch))
+            case (Some(ts),_) => Some(newident->ts)
+            case (_,Some(ts)) => Some(newident->ts)
+            case _ => None
+          }
+          val state = this.copy(callStack = newStack, nextAddr = nextAddr + 1,
+            typeConstraints = this.typeConstraints ++ combinedTs )
+          val st2 = state.constrainUpperType(newident, localType, ch)
+          (newident, st2)
       }
     case v =>
       ??? //TODO: should probably restrict this function to only take locals

@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.ir
 
 import edu.colorado.plv.bounder.symbolicexecutor.AppCodeResolver
-import edu.colorado.plv.bounder.symbolicexecutor.state.State
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BoundedTypeSet, State, TypeSet}
 import upickle.default.{macroRW, ReadWriter => RW}
 
 // Interface to handle all the messy parts of interacting with the underlying IR representation
@@ -11,6 +11,8 @@ import upickle.default.{macroRW, ReadWriter => RW}
  * @tparam C Command type for the underlying representation
  */
 trait IRWrapper[M,C]{
+  def getThisVar(methodLoc: Loc): Option[LocalWrapper]
+
   def getInterfaces: Set[String]
 
   def getAllMethods : Iterable[MethodLoc]
@@ -22,6 +24,7 @@ trait IRWrapper[M,C]{
   def degreeOut(cmd: AppLoc):Int
   def degreeIn(cmd: AppLoc):Int
   def isLoopHead(cmd:AppLoc):Boolean
+  def pointsToSet(loc:MethodLoc, local: LocalWrapper):TypeSet
 
   def commandTopologicalOrder(cmdWrapper:CmdWrapper):Int
   def commandPredecessors(cmdWrapper:CmdWrapper): List[AppLoc]
@@ -36,6 +39,7 @@ trait IRWrapper[M,C]{
   def appCallSites(method : MethodLoc, resolver:AppCodeResolver): Seq[AppLoc]
   def makeMethodRetuns(method: MethodLoc) : List[AppLoc]
   def getClassHierarchy : Map[String, Set[String]]
+  @deprecated
   def canAlias(type1:String, type2:String):Boolean
   def isSuperClass(type1:String, type2:String):Boolean
 }

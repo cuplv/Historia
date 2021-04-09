@@ -539,6 +539,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
            |
            |public class MyActivity extends AppCompatActivity {
            |    Object o = null;
+           |    Object o2 = new Object();
            |    Subscription subscription;
            |    Runnable r1 = null;
            |    Runnable r2 = null;
@@ -553,7 +554,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
            |            o.toString(); //query1
            |          }
            |        };
-           |        Object o2 = null;
+           |        o2 = null;
            |        r2 = new Runnable(){
            |          @Override
            |          public void run(){
@@ -566,6 +567,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
            |    protected void onDestroy() {
            |        super.onDestroy();
            |        r1.run();
+           |        //r2.run();
            |    }
            |}""".stripMargin
 

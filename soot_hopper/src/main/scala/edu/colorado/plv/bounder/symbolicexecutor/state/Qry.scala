@@ -32,6 +32,7 @@ object Qry {
                                 methodName:String,
                                 line:Int,
                                 callinMatches:Regex):Set[Qry] ={
+    implicit val wr = w
     implicit val ch = ex.getClassHierarchy
     val locs = w.findLineInMethod(className, methodName,line)
     val callinLocals = locs.flatMap(a => {
@@ -54,7 +55,7 @@ object Qry {
     containingMethodPos.map { pos =>
       val queryStack = List(CallStackFrame(pos, None, Map()))
       val state = State.topState.copy(callStack = queryStack)
-      val (pv,state1) = state.getOrDefine(local)
+      val (pv,state1) = state.getOrDefine(local, None)
       val state2 = state1.copy(pureFormula = Set(PureConstraint(pv, Equals, NullVal)), nextCmd = List(location))
       SomeQry(state2, location)
     }.toSet
@@ -67,6 +68,7 @@ object Qry {
                                line:Int,
                                fieldOrMethod: Option[Regex] = None
                               ):Set[Qry] = {
+    implicit val wr = w
     implicit val ch = ex.getClassHierarchy
 
     val locs = w.findLineInMethod(className, methodName,line)
@@ -96,9 +98,7 @@ object Qry {
     cbexits.map { cbexit =>
       val queryStack = List(CallStackFrame(cbexit, None, Map()))
       val state0 = State.topState.copy(callStack = queryStack)
-
-
-      val (pureVar, state1) = state0.getOrDefine(varname)
+      val (pureVar, state1) = state0.getOrDefine(varname, None)
       SomeQry(state1.copy(pureFormula = Set(PureConstraint(pureVar, Equals, NullVal)),
         nextCmd = List(derefLoc)), derefLoc)
     }.toSet
