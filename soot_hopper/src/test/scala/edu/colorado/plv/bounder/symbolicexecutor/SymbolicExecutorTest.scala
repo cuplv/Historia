@@ -1456,7 +1456,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       }
 
       makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
-      println(s"test: $queryL done ==================================")
+      println(s"test: $queryL done")
     }
   }
 }
