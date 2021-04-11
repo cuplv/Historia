@@ -10,6 +10,7 @@ import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, SparkCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
 import scopt.OParser
+import slick.jdbc.JdbcBackend.Database
 import soot.SootMethod
 import upickle.core.AbortException
 import upickle.default.{macroRW, read, write, ReadWriter => RW}
@@ -83,6 +84,7 @@ object Driver {
   case object Default extends RunMode
   case object SampleDeref extends RunMode
   case object ReadDB extends RunMode
+  case object ExpLoop extends RunMode
 
   def readDB(cfg: RunConfig, outFolder:File): Unit = {
     val dbPath = outFolder / "paths.db"
@@ -103,6 +105,7 @@ object Driver {
           case ("info",c) => c.copy(mode = Info)
           case ("sampleDeref",c) => c.copy(mode = SampleDeref)
           case ("readDB",c) => c.copy(mode = ReadDB)
+          case ("expLoop",c) => c.copy(mode = ExpLoop)
           case (m,_) => throw new IllegalArgumentException(s"Unsupported mode $m")
         },
         opt[String]('b', "baseDirApk").optional().text("Substitute for ${baseDir} in config file")
@@ -133,6 +136,13 @@ object Driver {
       case None => throw new IllegalArgumentException("Argument parsing failed")
     }
   }
+
+  def expLoop(act: Action): Unit = {
+    val expDb = new ExperimentsDb
+    expDb.loop()
+    println()
+  }
+
   def runAction(act:Action):Unit = act match{
     case act@Action(Verify, _, _, cfg) =>
       val componentFilter = cfg.componentFilter
@@ -176,6 +186,8 @@ object Driver {
       sampleDeref(cfg, act.getApkPath, act.getOutFolder)
     case act@Action(ReadDB,_,_,cfg) =>
       readDB(cfg, File(act.getOutFolder))
+    case act@Action(ExpLoop, _,_,_) =>
+      expLoop(act)
     case v => throw new IllegalArgumentException(s"Invalid action: $v")
   }
   def detectProguard(apkPath:String):Boolean = {
@@ -362,5 +374,18 @@ case object TopSpecSet extends SpecSetOption {
 }
 
 class ExperimentsDb{
+  println("Initializing database")
+  private val home = scala.util.Properties.envOrElse("HOME", throw new IllegalStateException())
+  private val (database,username,password) = (File(home) / ".pgpass")
+    .contentAsString.stripLineEnd.split(":").toList match{
+      case _::_::db::un::pw::Nil => (db,un,pw)
+      case _ => throw new IllegalStateException("Malformed pgpass")
+    }
+  private val connectionUrl = s"jdbc:postgresql://localhost/${database}?user=${username}&password=${password}"
+  def loop() = {
+//    import scala.slick.driver.PostgresDriver.simple._
+    import slick.jdbc.PostgresProfile
+    val db = Database.forURL(connectionUrl, driver = "org.postgresql.Driver")
 
+  }
 }
