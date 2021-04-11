@@ -31,14 +31,14 @@ class IRParser extends RegexParsers{
 
 
   def decl : Parser[String] = ("L" | "I")
-  def arrayDecl : Parser[String] = ("[" | "alksjdfasdf")
+  def arrayDecl : Parser[String] = ("[")
   def primitive :Parser[TRef] = ("C" | "Z" | "B") ^^ {
     case "C" => PrimRef("char")
     case "Z" => PrimRef("int")
     case "B" => PrimRef("boolean")
   } //TODO: probably more prim types
 
-  def identifier : Parser[String] = """[a-zA-Z][a-zA-Z0-9$]*""".r ^^ {a=>a}
+  def identifier : Parser[String] = """[a-zA-Z][a-zA-Z0-9$_]*""".r ^^ {a=>a}
   def reflectiveQualifiedName: Parser[List[String]] =
     identifier ~ ";" ^^ {case v ~ _ => v::Nil} |
       identifier ~ "/" ~ reflectiveQualifiedName ^^ {case v ~ _ ~ l => v::l}

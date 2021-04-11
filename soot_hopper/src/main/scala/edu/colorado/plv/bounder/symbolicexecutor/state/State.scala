@@ -360,7 +360,7 @@ case class State(callStack: List[CallStackFrame],
                  alternateCmd: List[Loc] = Nil
                 ) {
 
-//  if(!typeConstraints.keySet.forall{case PureVar(id) => id < nextAddr}){
+  //  if(!typeConstraints.keySet.forall{case PureVar(id) => id < nextAddr}){
 //    assert(false)
 //  }
 
@@ -382,11 +382,14 @@ case class State(callStack: List[CallStackFrame],
   }
 
   def constrainIsType(pv: PureVar, className: String, ch: ClassHierarchyConstraints): State = {
-    val newTC = typeConstraints.get(pv) match{
-      case Some(v) => v.constrainIsType(className,ch)
-      case None => TypeSet.isClass(className,ch)
-    }
-    this.copy(typeConstraints = typeConstraints + (pv->newTC))
+    if(className != "_") {
+      val newTC = typeConstraints.get(pv) match {
+        case Some(v) => v.constrainIsType(className, ch)
+        case None => TypeSet.isClass(className, ch)
+      }
+      this.copy(typeConstraints = typeConstraints + (pv -> newTC))
+    } else
+      this
   }
 
   def constrainUpperType(pv:PureVar, clazz:String, hierarchy:ClassHierarchyConstraints):State = {
@@ -607,12 +610,38 @@ case class State(callStack: List[CallStackFrame],
   def contains(p:PureVar):Boolean = {
      callStackContains(p) || heapContains(p) || pureFormulaContains(p) || traceAbstractionContains(p)
   }
+
+  /**
+   * get local without searching for @this
+   * @param localWrapper local to find
+   * @return pointed to value
+   */
+  def testGet(localWrapper: LocalWrapper): Option[PureExpr] ={
+    callStack match{
+      case CallStackFrame(_,_,locals)::_ => locals.get(StackVar(localWrapper.name))
+      case _ => None
+    }
+  }
+
+
   // If an RVal exists in the state, get it
   // for a field ref, e.g. x.f if x doesn't exist, create x
   // if x.f doesn't exist and x does
-  def get(l:RVal):Option[PureExpr] = l match {
-    case LocalWrapper(name,_) =>
+  def get[M,C](l:RVal)(implicit ch: ClassHierarchyConstraints, w:IRWrapper[M,C]):Option[PureExpr] = l match {
+    case lw@LocalWrapper(name,_) =>
       callStack match{
+        case CallStackFrame(exitLoc,_,locals)::_ if exitLoc.containingMethod.isDefined =>
+          if(locals.contains(StackVar(name)))
+            locals.get(StackVar(name)) //TODO:====== check that containingMethod does something reasonable here
+          else {
+            val thisV = exitLoc.containingMethod.flatMap(w.getThisVar)
+            thisV.flatMap{
+              case tv if tv == lw =>
+                val r = locals.get(StackVar("@this"))
+                r
+              case _ => None
+            }
+          }
         case CallStackFrame(_,_,locals)::_ => locals.get(StackVar(name))
         case Nil => None
       }
@@ -630,49 +659,61 @@ case class State(callStack: List[CallStackFrame],
   }
   // TODO: does this ever need to "clobber" old value?
   //TODO: refactor so local always points to pv
-  def defineAs(l : RVal, pureExpr: PureExpr)(implicit ch:ClassHierarchyConstraints): State = l match{
-    case LocalWrapper(localName, localType) =>
-      val cshead: CallStackFrame = callStack.headOption.getOrElse{
-        throw new IllegalStateException("Expected non-empty stack")
-      }
-      if(cshead.locals.contains(StackVar(localName))){
-        val v = cshead.locals.get(StackVar(localName))
-        this.copy(pureFormula = pureFormula + PureConstraint(v.get , Equals, pureExpr))
-      }else {
-        val csheadNew = cshead.copy(locals = cshead.locals + (StackVar(localName) -> pureExpr))
-        pureExpr match {
-          case pureVar:PureVar =>
-            this.copy(callStack = csheadNew :: callStack.tail).constrainUpperType (pureVar, localType, ch)
-          case v =>
-            println(s"TODO: defineAs used on value: ${v}")
-            ???
+  def defineAs[M,C](l : RVal, pureExpr: PureExpr)
+                   (implicit ch:ClassHierarchyConstraints, w:IRWrapper[M,C]): State = {
+    val cshead: CallStackFrame = callStack.headOption.getOrElse{
+      throw new IllegalStateException("Expected non-empty stack")
+    }
+    val l2 = cshead.exitLoc.containingMethod match{
+      case Some(v) if w.getThisVar(v).contains(l) =>
+        LocalWrapper("@this","_")
+      case _ => l
+    }
+    l2 match{
+      case LocalWrapper(localName, localType) =>
+
+        if(cshead.locals.contains(StackVar(localName))){
+          val v = cshead.locals.get(StackVar(localName))
+          this.copy(pureFormula = pureFormula + PureConstraint(v.get , Equals, pureExpr))
+        }else {
+          val csheadNew = cshead.copy(locals = cshead.locals + (StackVar(localName) -> pureExpr))
+          pureExpr match {
+            case pureVar:PureVar =>
+              this.copy(callStack = csheadNew :: callStack.tail).constrainUpperType (pureVar, localType, ch)
+            case v =>
+              println(s"TODO: defineAs used on value: ${v}")
+              ???
+          }
+//            pureFormula = pureFormula + PureConstraint(pureExpr, TypeComp, SubclassOf(localType)))
         }
-//          pureFormula = pureFormula + PureConstraint(pureExpr, TypeComp, SubclassOf(localType)))
-      }
-    case v if v.isConst =>
-      val v2 = get(v).get
-      this.copy(pureFormula = this.pureFormula + PureConstraint(v2, Equals, pureExpr))
-    case v =>
-      println(v)
-      ???
+      case v if v.isConst =>
+        val v2 = get(v).get
+        this.copy(pureFormula = this.pureFormula + PureConstraint(v2, Equals, pureExpr))
+      case v =>
+        println(v)
+        ???
+    }
   }
 
   //TODO: this should probably be the behavior of getOrDefine, refactor later
-  def getOrDefine2[M,C](l : RVal, method:MethodLoc)(implicit ch:ClassHierarchyConstraints, w:IRWrapper[M,C]): (PureExpr, State) = l match{
+  def getOrDefine2[M,C](l : RVal, method:MethodLoc)
+                       (implicit ch:ClassHierarchyConstraints, w:IRWrapper[M,C]): (PureExpr, State) = l match{
     case l:LocalWrapper => getOrDefine(l, Some(method))
-    case v if v.isConst => (get(l).getOrElse(???),this)
+    case v if v.isConst =>
+      (get(l).getOrElse(???),this)
     case _ =>
       ???
   }
   def getOrDefine[M,C](l : RVal, method:Option[MethodLoc])
                       (implicit ch: ClassHierarchyConstraints, w:IRWrapper[M,C]): (PureVar,State) = l match{
-    case LocalWrapper(name,localType) =>
+    case lw@LocalWrapper(name,localType) =>
       val cshead = callStack.headOption.getOrElse(???) //TODO: add new stack frame if empty?
       val thisVar:Option[LocalWrapper] = w.getThisVar(cshead.exitLoc)
       val ts: Option[TypeSet] = method.map(w.pointsToSet(_, LocalWrapper(name,localType)))
       //TODO: constrain types based on points to set
       val cstail = if (callStack.isEmpty) Nil else callStack.tail
-      cshead.locals.get(StackVar(name)) match {
+//      cshead.locals.get(StackVar(name)) match {
+      get(lw) match {
         case Some(v@PureVar(_)) => (v, this)
         case None if thisVar.contains(l) && cshead.locals.contains(StackVar("@this")) =>
           // case where we are getting/defining the variable representing "this" typically "r0"

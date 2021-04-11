@@ -32,7 +32,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       "java.lang.String objectString()",21)
     // Call symbolic executor
     val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a._2)
-    prettyPrinting.dumpDebugInfo(result, "test_interproc_1_derefSafe")
+//    prettyPrinting.dumpDebugInfo(result, "test_interproc_1_derefSafe")
     assert(result.size == 1)
     assert(result.iterator.next.qry.isInstanceOf[BottomQry])
   }
@@ -54,7 +54,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a._2)
 //    PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/foo.dot")
 //    PrettyPrinting.printWitnessTraces(result, outFile="/Users/shawnmeier/Desktop/foo.witnesses")
-    prettyPrinting.dumpDebugInfo(result, "test_interproc_2_derefSafe")
+//    prettyPrinting.dumpDebugInfo(result, "test_interproc_2_derefSafe")
     assert(BounderUtil.interpretResult(result) == Proven)
     assert(result.nonEmpty)
   }
@@ -72,7 +72,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       "void onPause()",25)
     val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a._2)
 //    PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/witnessOnPause.dot")
-    prettyPrinting.dumpDebugInfo(result, "test_interproc_2_onPauseReach")
+//    prettyPrinting.dumpDebugInfo(result, "test_interproc_2_onPauseReach")
     assert(BounderUtil.interpretResult(result) == Witnessed)
   }
   test("Symbolic executor should witness onResume"){
@@ -88,7 +88,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       "com.example.test_interproc_2.MainActivity",
       "void onResume()",20)
     val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a._2)
-    prettyPrinting.dumpDebugInfo(result, "test_interproc_2_onResumeReach")
+//    prettyPrinting.dumpDebugInfo(result, "test_interproc_2_onResumeReach")
     assert(BounderUtil.interpretResult(result) == Witnessed)
   }
 
@@ -138,7 +138,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void onCreate(android.os.Bundle)", BounderUtil.lineForRegex(".*query1.*".r,src))
       val result = symbolicExecutor.run(query).flatMap(a => a._2)
-      prettyPrinting.dumpDebugInfo(result, "readLiteral")
+//      prettyPrinting.dumpDebugInfo(result, "readLiteral")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Proven)
 
@@ -211,10 +211,10 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void onResume()", BounderUtil.lineForRegex(".*query1.*".r,src))
 
-      prettyPrinting.dotMethod( query.head.loc, symbolicExecutor.controlFlowResolver, "onPauseCond.dot")
+//      prettyPrinting.dotMethod( query.head.loc, symbolicExecutor.controlFlowResolver, "onPauseCond.dot")
 
       val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a._2)
-      prettyPrinting.dumpDebugInfo(result, "forEach")
+//      prettyPrinting.dumpDebugInfo(result, "forEach")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Witnessed)
       // Search refutation state for materialized "o2" field
@@ -303,11 +303,11 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void onPause()", BounderUtil.lineForRegex(".*query1.*".r,src))
 
-      prettyPrinting.dotMethod( query.head.loc, symbolicExecutor.controlFlowResolver, "onPauseCond.dot")
+//      prettyPrinting.dotMethod( query.head.loc, symbolicExecutor.controlFlowResolver, "onPauseCond.dot")
 
       val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a._2)
-      prettyPrinting.dumpDebugInfo(result, "irrelevantConditional")
-      prettyPrinting.dotWitTree(result, "irrelevantConditional.dot",true)
+//      prettyPrinting.dumpDebugInfo(result, "irrelevantConditional")
+//      prettyPrinting.dotWitTree(result, "irrelevantConditional.dot",true)
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Proven)
       // Search refutation state for materialized "o2" field
@@ -375,7 +375,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void onCreate(android.os.Bundle)",20)
       val result = symbolicExecutor.run(query).flatMap(a => a._2)
-      prettyPrinting.dumpDebugInfo(result,"setField")
+//      prettyPrinting.dumpDebugInfo(result,"setField")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Proven)
 
@@ -438,7 +438,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void onCreate(android.os.Bundle)",22)
       val result = symbolicExecutor.run(query).flatMap(a => a._2)
-      prettyPrinting.dumpDebugInfo(result,"assignFromTest")
+//      prettyPrinting.dumpDebugInfo(result,"assignFromTest")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Proven)
 
@@ -508,10 +508,10 @@ class SymbolicExecutorTest extends AnyFunSuite {
         //Dump dot of while method
         val query2 = Qry.makeReach(symbolicExecutor, w,
           "com.example.createdestroy.MyActivity", "void setO()",i )
-        prettyPrinting.dotMethod(query2.head.loc,symbolicExecutor.controlFlowResolver, "setO.dot")
+//        prettyPrinting.dotMethod(query2.head.loc,symbolicExecutor.controlFlowResolver, "setO.dot")
 
         val result = symbolicExecutor.run(query).flatMap(a => a._2)
-        prettyPrinting.dumpDebugInfo(result, "whileTest")
+//        prettyPrinting.dumpDebugInfo(result, "whileTest")
         assert(result.nonEmpty)
         assert(BounderUtil.interpretResult(result) == expectedResult)
 
@@ -586,8 +586,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
 
         val result = symbolicExecutor.run(query).flatMap(a => a._2)
-        prettyPrinting.dumpDebugInfo(result, "dynamicDispatchTest")
-        prettyPrinting.dotWitTree(result, "dynamicDispatchTest", true)
+//        prettyPrinting.dumpDebugInfo(result, "dynamicDispatchTest")
+//        prettyPrinting.dotWitTree(result, "dynamicDispatchTest", true)
         assert(result.nonEmpty)
         assert(BounderUtil.interpretResult(result) == expectedResult)
 
@@ -648,8 +648,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void onCreate(android.os.Bundle)",20)
       val result = symbolicExecutor.run(query).flatMap(a => a._2)
-      prettyPrinting.dumpDebugInfo(result,"DisaliasedObj")
-      prettyPrinting.dotWitTree(result, "DisaliasedObj.dot",true)
+//      prettyPrinting.dumpDebugInfo(result,"DisaliasedObj")
+//      prettyPrinting.dotWitTree(result, "DisaliasedObj.dot",true)
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Witnessed)
 
@@ -708,10 +708,10 @@ class SymbolicExecutorTest extends AnyFunSuite {
         val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
           "void onDestroy()", 28)
 
-        prettyPrinting.dotMethod(query.head.loc, symbolicExecutor.controlFlowResolver, "onDestroy_if_not_drop.dot")
+//        prettyPrinting.dotMethod(query.head.loc, symbolicExecutor.controlFlowResolver, "onDestroy_if_not_drop.dot")
 
         val result = symbolicExecutor.run(query).flatMap(a => a._2)
-        prettyPrinting.dumpDebugInfo(result, s"BoolTest_initial_$initial")
+//        prettyPrinting.dumpDebugInfo(result, s"BoolTest_initial_$initial")
         assert(result.nonEmpty)
         assert(BounderUtil.interpretResult(result) == expectedResult, s"Initial value: $initial")
 
@@ -785,7 +785,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void lambda$onCreate$1$MyActivity(java.lang.Object)",31)
       val result = symbolicExecutor.run(query).flatMap(a => a._2)
-      prettyPrinting.dumpDebugInfo(result,"ProveFieldDerefWithSubscribe")
+//      prettyPrinting.dumpDebugInfo(result,"ProveFieldDerefWithSubscribe")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Proven)
     }
@@ -853,7 +853,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void lambda$onCreate$1$MyActivity(java.lang.Object)",31)
       val result = symbolicExecutor.run(query).flatMap(a => a._2)
-      prettyPrinting.dumpDebugInfo(result,"WitnessFieldDerefWithSubscribe")
+//      prettyPrinting.dumpDebugInfo(result,"WitnessFieldDerefWithSubscribe")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Witnessed)
 
@@ -939,7 +939,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         ".*getActivity.*".r)
 
       val result = symbolicExecutor.run(query).flatMap(a => a._2)
-      prettyPrinting.dumpDebugInfo(result,"ProveSafeGetActivityWithSubscribe")
+//      prettyPrinting.dumpDebugInfo(result,"ProveSafeGetActivityWithSubscribe")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Proven)
 
@@ -1030,8 +1030,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
         ".*getActivity.*".r)
 
       val result = symbolicExecutor.run(query).flatMap(a => a._2)
-      prettyPrinting.dumpDebugInfo(result,"MkApk")
-      prettyPrinting.dotWitTree(result, "OldMotiv.dot",includeSubsEdges = true)
+//      prettyPrinting.dumpDebugInfo(result,"MkApk")
+//      prettyPrinting.dotWitTree(result, "OldMotiv.dot",includeSubsEdges = true)
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result) == Proven)
 
@@ -1162,8 +1162,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
         val result = symbolicExecutor.run(query).flatMap(a => a._2)
         val fname = s"IrrelevantUnsub_$fileSuffix"
-        prettyPrinting.dumpDebugInfo(result, fname)
-        prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
+//        prettyPrinting.dumpDebugInfo(result, fname)
+//        prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
         assert(result.nonEmpty)
         val interpretedResult = BounderUtil.interpretResult(result)
         assert(interpretedResult == expectedResult)
@@ -1270,8 +1270,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
         val result = symbolicExecutor.run(query).flatMap(a => a._2)
         val fname = s"Motiv_$fileSuffix"
-        prettyPrinting.dumpDebugInfo(result, fname)
-        prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
+//        prettyPrinting.dumpDebugInfo(result, fname)
+//        prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
         assert(result.nonEmpty)
         val interpretedResult = BounderUtil.interpretResult(result)
         assert(interpretedResult == expectedResult)
@@ -1364,8 +1364,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
       val result = symbolicExecutor.run(query).flatMap(a => a._2)
       val fname = s"UnreachableLocation"
-      prettyPrinting.dumpDebugInfo(result, fname)
-      prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
+//      prettyPrinting.dumpDebugInfo(result, fname)
+//      prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
       assert(result.nonEmpty)
       val interpretedResult = BounderUtil.interpretResult(result)
       assert(interpretedResult == Proven)

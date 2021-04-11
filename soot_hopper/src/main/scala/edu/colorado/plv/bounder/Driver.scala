@@ -55,7 +55,7 @@ case class RunConfig(apkPath:String = "",
                      outFolder:Option[String] = None,
                      componentFilter:Option[Seq[String]] = None,
                      specSet: SpecSetOption = TopSpecSet,
-                     initialQuery: Option[InitialQuery] = None,
+                     initialQuery: List[InitialQuery] = Nil,
                      limit:Int = 100,
                      samples:Int = 5
                     ){
@@ -126,64 +126,57 @@ object Driver {
             }
           }
         },
-//        opt[String]('a', "apkFile").optional().text("Compiled Android application").action{
-//          case (v,c) => c.copy(apkPath = v)
-//        },
-//        opt[String]('o', "outFolder").optional().text("folder to output analysis artifacts").action{
-//          case (v,c) => c.copy(outFolder = Some(v))
-//        },
-//        opt[Seq[String]]('f', "filter").optional()
-//          .valueName("com\\.example\\.foo\\.*,com\\.exaple\\.bar.* ...")
-//          .action((x, c) => c.copy(componentFilter = Some(x)))
-//          .text("Regex matching packages to analyze.  Note: use single back slash for regex escape on CLI."),
-
-//        opt[Int]('l', name="limit").optional().text("Step limit for verify")
-//          .action((v,c) => c.copy(limit = v)) ,
-//        opt[Int]('s', name="samples").optional().text("Number of samples")
-//          .action((v,c) => c.copy(limit = v))
       )
     }
-    OParser.parse(parser, args, Action()) match {
-      case Some(act@Action(Verify, _, _, cfg)) =>
-        val componentFilter = cfg.componentFilter
-        val specSet = cfg.specSet
-//        val cfgw = write(cfg)
-        val apkPath = act.getApkPath
-        val outFolder: String = act.getOutFolder
+    OParser.parse(parser, args, Action()) match{
+      case Some(act) => runAction(act)
+      case None => throw new IllegalArgumentException("Argument parsing failed")
+    }
+  }
+  def runAction(act:Action):Unit = act match{
+    case act@Action(Verify, _, _, cfg) =>
+      val componentFilter = cfg.componentFilter
+      val specSet = cfg.specSet
+        //        val cfgw = write(cfg)
+      val apkPath = act.getApkPath
+      val outFolder: String = act.getOutFolder
         // Create output directory if not exists
         // TODO: move db creation code to better location
-        File(outFolder).createIfNotExists(asDirectory = true)
-        val initialQuery = cfg.initialQuery
-          .getOrElse(throw new IllegalArgumentException("Initial query must be defined for verify"))
-        val stepLimit = cfg.limit
-        val outFile = (File(outFolder) / "paths.db")
-        if(outFile.exists) {
-          implicit val opt = File.CopyOptions(overwrite = true)
-          outFile.moveTo(File(outFolder) / "paths.db1")
-        }
-        DBOutputMode(outFile.canonicalPath)
-        val pathMode = DBOutputMode(outFile.canonicalPath)
-//        val pathMode:OutputMode = outFolder match{
-//          case Some(outF) =>{
-//            val outFile = (File(outF) / "paths.db")
-//            if(outFile.exists) {
-//              implicit val opt = File.CopyOptions(overwrite = true)
-//              outFile.moveTo(File(outF) / "paths.db1")
-//            }
-//            DBOutputMode(outFile.canonicalPath)
-//          }
-//          case None => MemoryOutputMode$
-//        }
-        val res = runAnalysis(cfg,apkPath, componentFilter,pathMode, specSet.getSpecSet(),stepLimit, initialQuery)
-        val resFile = File(outFolder) / "result.txt"
-        resFile.overwrite(res)
-      case Some(act@Action(SampleDeref,_,_,cfg)) =>
-        //TODO: set base dir
-        sampleDeref(cfg, act.getApkPath, act.getOutFolder)
-      case Some(act@Action(ReadDB,_,_,cfg)) =>
-        readDB(cfg, File(act.getOutFolder))
-      case v => throw new IllegalArgumentException(s"Argument parsing failed: $v")
-    }
+      File(outFolder).createIfNotExists(asDirectory = true)
+      val initialQuery = cfg.initialQuery
+      if(initialQuery.isEmpty)
+        throw new IllegalArgumentException("Initial query must be defined for verify")
+      val stepLimit = cfg.limit
+      val outFile = (File(outFolder) / "paths.db")
+      if(outFile.exists) {
+      implicit val opt = File.CopyOptions(overwrite = true)
+      outFile.moveTo(File(outFolder) / "paths.db1")
+      }
+      DBOutputMode(outFile.canonicalPath)
+      val pathMode = DBOutputMode(outFile.canonicalPath)
+        //        val pathMode:OutputMode = outFolder match{
+        //          case Some(outF) =>{
+        //            val outFile = (File(outF) / "paths.db")
+        //            if(outFile.exists) {
+        //              implicit val opt = File.CopyOptions(overwrite = true)
+        //              outFile.moveTo(File(outF) / "paths.db1")
+        //            }
+        //            DBOutputMode(outFile.canonicalPath)
+        //          }
+        //          case None => MemoryOutputMode$
+        //        }
+      val res = runAnalysis(cfg,apkPath, componentFilter,pathMode, specSet.getSpecSet(),stepLimit, initialQuery)
+      initialQuery.zip(res).zipWithIndex.foreach { case (iq, ind) =>
+        val resFile = File(outFolder) / s"result_${ind}.txt"
+        resFile.overwrite(write(iq._1))
+        resFile.append(iq._2)
+      }
+    case act@Action(SampleDeref,_,_,cfg) =>
+      //TODO: set base dir
+      sampleDeref(cfg, act.getApkPath, act.getOutFolder)
+    case act@Action(ReadDB,_,_,cfg) =>
+      readDB(cfg, File(act.getOutFolder))
+    case v => throw new IllegalArgumentException(s"Invalid action: $v")
   }
   def detectProguard(apkPath:String):Boolean = {
     import sys.process._
@@ -235,20 +228,20 @@ object Driver {
       stepLimit = Some(n), w, transfer, component = None)
     val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
 
-    (0 until n).map{ind =>
-      val outName = s"sample$ind"
-      val f = File(outFolder) / s"$outName.json"
+    val queries = (0 until n).map{_ =>
       val appLoc = symbolicExecutor.appCodeResolver.sampleDeref()
       val name = appLoc.method.simpleName
       val clazz = appLoc.method.classType
       val line = appLoc.line.lineNumber
-      val qry = ReceiverNonNull(clazz, name, line)
-      val writeCFG = cfg.copy(initialQuery = Some(qry),
-        outFolder = cfg.outFolder.map(v => v + "/" + outName))
-      if(f.exists()) f.delete()
-      f.createFile()
-      f.write(write(writeCFG))
-    }
+      ReceiverNonNull(clazz, name, line)
+    }.toList
+    val outName = s"sample"
+    val f = File(outFolder) / s"$outName.json"
+    val writeCFG = cfg.copy(initialQuery = queries,
+      outFolder = cfg.outFolder.map(v => v + "/" + outName))
+    if(f.exists()) f.delete()
+    f.createFile()
+    f.write(write(writeCFG))
   }
 
   def dotMethod(apkPath:String, matches:Regex) = {
@@ -263,7 +256,7 @@ object Driver {
     //TODO:
   }
   def runAnalysis(cfg:RunConfig, apkPath: String, componentFilter:Option[Seq[String]], mode:OutputMode,
-                  specSet: Set[LSSpec], stepLimit:Int, initialQuery: InitialQuery): String = {
+                  specSet: Set[LSSpec], stepLimit:Int, initialQueries: List[InitialQuery]): List[String] = {
     val startTime = System.currentTimeMillis()
     try {
       //TODO: read location from json config
@@ -280,32 +273,36 @@ object Driver {
 //        "de.danoeh.antennapod.fragment.ExternalPlayerFragment",
 //        "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)", 200,
 //        callinMatches = ".*getActivity.*".r)
-      val query: Set[Qry] = initialQuery.make(symbolicExecutor,w)
-      val out = new ListBuffer[String]()
-      val initialize: IPathNode => Int = mode match{
-        case mode@DBOutputMode(_) => (startingNode:IPathNode) =>
-          val id = mode.initializeQuery(startingNode, cfg, initialQuery)
-          val tOut = s"initial query: $initialQuery   id: $id"
-          println(tOut)
-          out += tOut
-          id
-        case _ => (_:IPathNode) => 0
-      }
-
-      val results = symbolicExecutor.run(query, initialize)
-
-      results.map{ res =>
-        mode match {
-          case m@DBOutputMode(_) =>
-            val interpretedRes = BounderUtil.interpretResult(res._2)
-            val tOut = s"id: ${res._1}   result: ${interpretedRes}"
+      initialQueries.map{ initialQuery =>
+        val query: Set[Qry] = initialQuery.make(symbolicExecutor, w)
+        val out = new ListBuffer[String]()
+        val initialize: IPathNode => Int = mode match {
+          case mode@DBOutputMode(_) => (startingNode: IPathNode) =>
+            val id = mode.initializeQuery(startingNode, cfg, initialQuery)
+            val tOut = s"initial query: $initialQuery   id: $id"
             println(tOut)
             out += tOut
-            m.writeLiveAtEnd(res._2, res._1, interpretedRes.toString)
-            interpretedRes
-          case _ => BounderUtil.interpretResult(res._2)
+            id
+          case _ => (_: IPathNode) => 0
         }
-      }.reduce{ reduceResults }.toString
+
+        val results = symbolicExecutor.run(query, initialize)
+
+        results.map { res =>
+          mode match {
+            case m@DBOutputMode(_) =>
+              val interpretedRes = BounderUtil.interpretResult(res._2)
+              val tOut = s"id: ${res._1}   result: ${interpretedRes}"
+              println(tOut)
+              out += tOut
+              m.writeLiveAtEnd(res._2, res._1, interpretedRes.toString)
+              interpretedRes
+            case _ => BounderUtil.interpretResult(res._2)
+          }
+        }.reduce {
+          reduceResults
+        }.toString
+      }
     } finally {
       println(s"analysis time: ${(System.currentTimeMillis() - startTime) / 1000} seconds")
     }

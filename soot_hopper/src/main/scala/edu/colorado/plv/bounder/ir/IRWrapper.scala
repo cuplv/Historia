@@ -12,6 +12,7 @@ import upickle.default.{macroRW, ReadWriter => RW}
  */
 trait IRWrapper[M,C]{
   def getThisVar(methodLoc: Loc): Option[LocalWrapper]
+  def getThisVar(methodLoc: MethodLoc): Option[LocalWrapper]
 
   def getInterfaces: Set[String]
 

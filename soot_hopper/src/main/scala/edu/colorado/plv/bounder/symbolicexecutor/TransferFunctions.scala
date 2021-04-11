@@ -365,43 +365,43 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         case _:StaticInvoke => None
       }
 
-      // Return bottom if path condition prohibits reciever from taking this method
-      val refutedByMaterializedReceiver = receiverOption.flatMap(postState.get) match{
-        case Some(pureV:PureVar) =>
-          val tc = postState.typeConstraints.get(pureV)
-          if(tc.nonEmpty && !tc.get.subtypeOfCanAlias(mRet.clazz, ch)) {
-            println("Prevented dynamic dispatch branch") //TODO: remove print statement and other dbg code
-            println(tc) // TODO: need something smarter here, jumping back into lots of places that shouldn't be possible
-            println(mRet)
-            tc.get.subtypeOfCanAlias(mRet.clazz,ch)
-            true
-          } else {
-            false
-          }
-        case _ => false
+      // If receiver variable is materialized, use that,
+      // otherwise check if it is the "@this" var and use materialized "@this" if it exists
+      val materializedReceiver = receiverOption.flatMap(recVar =>
+        if(postState.get(recVar).isDefined){
+          postState.get(recVar)
+        }else if(w.getThisVar(retloc).contains(recVar)){
+          // invoke on variable representing @this
+          val r = postState.get(LocalWrapper("@this", "_"))
+          r
+        }else None
+      )
+      // Create call stack frame with return value
+      val receiverTypesFromPT: Option[TypeSet] = receiverOption.map{
+        case rec@LocalWrapper(_,_) =>
+          w.pointsToSet(mloc, rec)
+        case _ => throw new IllegalStateException()
       }
-      if(refutedByMaterializedReceiver){
-        Set()
-      }else {
-        // Create call stack frame with return value
-        // TODO: add @this to prove non-static invokes faster
-        val receiverTypesFromPT: Option[TypeSet] = receiverOption.map{ rec =>
-          w.pointsToSet(mloc, rec.asInstanceOf[LocalWrapper])
-        }
-        val newFrame = CallStackFrame(mRet, Some(AppLoc(mloc, line, true)), retVal)
-        val clearedLVal = cmd match {
-          case AssignCmd(target, _, _) => postState.clearLVal(target)
-          case _ => postState
-        }
-        val stateWithFrame =
-          clearedLVal.copy(callStack = newFrame :: postState.callStack, nextCmd = List(target), alternateCmd = Nil)
-        // Constraint receiver by current points to set  TODO: apply this to other method transfers ====
-        if(receiverTypesFromPT.isDefined) {
-          val (thisV, stateWThis) = stateWithFrame.getOrDefine(LocalWrapper("@this", "_"),None)
-          Set(stateWThis.copy(typeConstraints = stateWThis.typeConstraints + (thisV->receiverTypesFromPT.get)))
+      val newFrame = CallStackFrame(mRet, Some(AppLoc(mloc, line, true)), retVal)
+      val clearedLVal = cmd match {
+        case AssignCmd(target, _, _) => postState.clearLVal(target)
+        case _ => postState
+      }
+      val stateWithFrame =
+        clearedLVal.copy(callStack = newFrame :: postState.callStack, nextCmd = List(target), alternateCmd = Nil)
+      // Constraint receiver by current points to set  TODO: apply this to other method transfers ====
+      if(receiverTypesFromPT.isDefined) {
+        val (thisV, stateWThis) = if(materializedReceiver.isEmpty) {
+          stateWithFrame.getOrDefine(LocalWrapper("@this", "_"),None)
         } else {
-          Set(stateWithFrame)
+          val v:PureVar = materializedReceiver.get.asInstanceOf[PureVar]
+          (v,stateWithFrame.defineAs(LocalWrapper("@this","_"), v))
         }
+        val pts = stateWThis.typeConstraints.get(thisV).map(_.meet(receiverTypesFromPT.get,ch))
+          .getOrElse(receiverTypesFromPT.get)
+        Set(stateWThis.copy(typeConstraints = stateWThis.typeConstraints + (thisV->pts)))
+      } else {
+        Set(stateWithFrame)
       }
     case (retLoc@AppLoc(mloc, line, false), mRet@SkippedInternalMethodReturn(_, _, rel, _)) =>
       // Create call stack frame with return value
@@ -417,9 +417,17 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       Set(withPrecisionLoss)
     case (SkippedInternalMethodReturn(_,_,_,_), SkippedInternalMethodInvoke(_,_,_)) =>
       Set(postState).map(_.copy(nextCmd = List(source), alternateCmd = Nil))
-    case (mr@InternalMethodReturn(_,_,_), cmd@AppLoc(_,_,false)) =>
+    case (mr@InternalMethodReturn(_,_,_), cmd@AppLoc(m,_,false)) =>
+      // if @this is defined, constrain to be subtype of receiver class
+      val postStateWithThisTC = postState.get(LocalWrapper("@this","_")) match{
+        case Some(thisPv:PureVar) if postState.typeConstraints.contains(thisPv)=>
+          val oldTc = postState.typeConstraints(thisPv)
+          val newTc = oldTc.constrainSubtypeOf(m.classType, ch)
+          postState.copy(typeConstraints = postState.typeConstraints + (thisPv -> newTc))
+        case _ => postState
+      }
       val out = w.cmdAtLocation(cmd) match{
-        case ReturnCmd(_,_) => Set(postState)
+        case ReturnCmd(_,_) => Set(postStateWithThisTC)
         case _ => throw new IllegalStateException(s"malformed bytecode, source: $mr  target: ${cmd}")
       }
       out.map(_.copy(nextCmd = List(source), alternateCmd = Nil))

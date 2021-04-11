@@ -1,9 +1,10 @@
 package edu.colorado.plv.bounder.ir
 
 import edu.colorado.plv.bounder.symbolicexecutor.AppCodeResolver
-import edu.colorado.plv.bounder.symbolicexecutor.state.TypeSet
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BoundedTypeSet, TypeSet}
 import upickle.default.{macroRW, ReadWriter => RW}
 
+//TODO: serialize IR and points to, This should be able to continue where other left off
 class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] {
   override def findMethodLoc(className: String, methodName: String): Iterable[MethodLoc] = ???
 
@@ -54,9 +55,11 @@ class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] 
 
   override def commandTopologicalOrder(cmdWrapper: CmdWrapper): Int = ???
 
-  override def pointsToSet(loc: MethodLoc, local: LocalWrapper): TypeSet = ???
+  override def pointsToSet(loc: MethodLoc, local: LocalWrapper): TypeSet = BoundedTypeSet(None,None,Set())
 
-  override def getThisVar(methodLoc: Loc): Option[LocalWrapper] = ???
+  override def getThisVar(methodLoc: Loc): Option[LocalWrapper] = None
+
+  override def getThisVar(methodLoc: MethodLoc): Option[LocalWrapper] = ???
 }
 
 /**

@@ -751,6 +751,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
       //        ("field-based", "true"),
       //("simple-edges-bidirectional", "true"),
       //        ("geom-app-only", "true"),
+      // ("geom-pta", "true"), // enable context sensitivity in spark pta
       ("simulate-natives", "true"),
       ("propagator", "worklist"),
       ("verbose", "true"),
@@ -1302,10 +1303,14 @@ class JimpleFlowdroidWrapper(apkPath : String,
   }
 
   override def getThisVar(methodLoc: Loc): Option[LocalWrapper] = {
-    methodLoc.containingMethod.map {
+    methodLoc.containingMethod.flatMap{getThisVar}
+  }
+  override def getThisVar(methodLoc: MethodLoc): Option[LocalWrapper] = {
+    methodLoc match {
+      case JimpleMethodLoc(method) if method.isStatic => None
       case JimpleMethodLoc(method) =>
         val l = method.getActiveBody.getThisLocal
-        LocalWrapper(l.getName, JimpleFlowdroidWrapper.stringNameOfType(l.getType))
+        Some(LocalWrapper(l.getName, JimpleFlowdroidWrapper.stringNameOfType(l.getType)))
       case _ => throw new IllegalArgumentException()
     }
   }

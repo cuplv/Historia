@@ -138,7 +138,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     assert(!prestate.head.callStack.head.locals.contains(StackVar("bar")))
   }
   test("Transfer assign from materialized heap cell") {
-    val (stSolver, cha) = getStateSolver()
+    implicit val (stSolver, cha) = getStateSolver()
     val x = LocalWrapper("x","Object")
     // bar := x.f
     // post{x -> v-4 bar -> p-5 * v-1.f -> v-2}
@@ -163,7 +163,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     }
     assert(res.size == 2)
     assert(res.exists(v => v.isEmpty))
-    assert(res.exists{v => v.isDefined && v.get.heapConstraints.size == 2 && v.get.get(x) == Some(PureVar(4))})
+    assert(res.exists{v => v.isDefined && v.get.heapConstraints.size == 2 && v.get.testGet(x) == Some(PureVar(4))})
   }
   private val iFooA: I = I(CBEnter, Set(("", "foo")), "_" :: "a" :: Nil)
   test("Add matcher and phi abstraction when crossing callback entry") {

@@ -166,6 +166,7 @@ case class InternalMethodInvoke(clazz:String, name:String, loc:MethodLoc) extend
   override def msgSig: Option[String] = None
 
   override def isEntry: Option[Boolean] = Some(true)
+  override def containingMethod:Option[MethodLoc] = Some(loc)
 }
 object InternalMethodInvoke{
   implicit val rw:RW[InternalMethodInvoke] = macroRW
@@ -175,6 +176,7 @@ case class InternalMethodReturn(clazz:String, name:String, loc:MethodLoc) extend
   override def msgSig: Option[String] = None
 
   override def isEntry: Option[Boolean] = Some(false)
+  override def containingMethod:Option[MethodLoc] = Some(loc)
 }
 object InternalMethodReturn{
   implicit val rw:RW[InternalMethodReturn] = macroRW
@@ -182,8 +184,8 @@ object InternalMethodReturn{
 
 case class SkippedInternalMethodInvoke(clazz:String, name:String, loc:MethodLoc) extends Loc{
   override def msgSig: Option[String] = None
-
   override def isEntry: Option[Boolean] = Some(true)
+  override def containingMethod:Option[MethodLoc] = Some(loc)
 }
 object SkippedInternalMethodInvoke{
   implicit val rw:RW[SkippedInternalMethodInvoke] = macroRW
@@ -191,8 +193,8 @@ object SkippedInternalMethodInvoke{
 
 case class SkippedInternalMethodReturn(clazz:String, name:String, rel:RelevanceRelation, loc:MethodLoc) extends Loc{
   override def msgSig: Option[String] = None
-
   override def isEntry: Option[Boolean] = Some(false)
+  override def containingMethod:Option[MethodLoc] = Some(loc)
 }
 object SkippedInternalMethodReturn{
   implicit val rw:RW[SkippedInternalMethodReturn] = macroRW
