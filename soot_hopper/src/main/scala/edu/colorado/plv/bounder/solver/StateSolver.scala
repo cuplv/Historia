@@ -521,7 +521,7 @@ trait StateSolver[T, C <: SolverCtx] {
         case (Some(tc),None) => Some(tc)
         case (None,Some(tc)) => Some(tc)
         case (None,None) => None
-        case (Some(tc1),Some(tc2)) => Some(tc1.join(tc2,ch))
+        case (Some(tc1),Some(tc2)) => Some(tc1.meet(tc2,ch))
       }
       joinedTc match{
         case Some(EmptyTypeSet) => None
@@ -667,7 +667,7 @@ trait StateSolver[T, C <: SolverCtx] {
       return false
 
     val stackLocsMatch = (s1.callStack zip s2.callStack).forall {
-      case (fr1, fr2) => fr1.methodLoc == fr2.methodLoc
+      case (fr1, fr2) => fr1.exitLoc == fr2.exitLoc
     }
     if (!stackLocsMatch)
       return false

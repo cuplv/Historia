@@ -30,7 +30,7 @@ class CreateDestroySubscribe_TestApp extends AnyFunSuite{
   val symbolicExecutor = config.getSymbolicExecutor
   private val prettyPrinting = new PrettyPrinting()
 
-  test("Prove location in stack trace is unreachable under a simple spec.") {
+  ignore("Prove location in stack trace is unreachable under a simple spec.") {
     val clazzes = Scene.v().getClasses.asScala.filter(c => c.toString.contains("MainActivity"))
 
     // No null pointer exception line 31
@@ -42,7 +42,7 @@ class CreateDestroySubscribe_TestApp extends AnyFunSuite{
     assert(BounderUtil.interpretResult(result) == Proven)
     assert(result.nonEmpty)
   }
-  test("Witness call reachability"){
+  ignore("Witness call reachability"){
     // Line 31 is reachable
     val query2 = Qry.makeReach(symbolicExecutor,w,
       "com.example.createdestroy.MainActivity",

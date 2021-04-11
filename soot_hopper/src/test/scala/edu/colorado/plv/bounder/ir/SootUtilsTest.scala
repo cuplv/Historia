@@ -83,7 +83,7 @@ class SootUtilsTest extends AnyFunSuite {
       "com.example.test_interproc_2.MainActivity",
       "void onPause()",27)
     val l = query.find{
-      case SomeQry(s,_) if s.callStack.head.methodLoc.isInstanceOf[CallbackMethodReturn] => true
+      case SomeQry(s,_) if s.callStack.head.exitLoc.isInstanceOf[CallbackMethodReturn] => true
       case _ => false
     }.get.loc
 
@@ -119,7 +119,7 @@ class SootUtilsTest extends AnyFunSuite {
       "void onCreate(android.os.Bundle)",16)
 
     val l = query.find{
-      case SomeQry(s,_) if s.callStack.head.methodLoc.isInstanceOf[CallbackMethodReturn] => true
+      case SomeQry(s,_) if s.callStack.head.exitLoc.isInstanceOf[CallbackMethodReturn] => true
       case _ => false
     }.get.loc
 

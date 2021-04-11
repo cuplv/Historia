@@ -5,11 +5,11 @@ import upickle.default.{macroRW, ReadWriter => RW}
 
 
 //TODO: state should probably define all locals as pointing to pv, pv can then be constrained by pure expr
-sealed case class CallStackFrame(methodLoc : Loc,
-                          retLoc: Option[Loc],
-                          locals: Map[StackVar, PureExpr]){
+sealed case class CallStackFrame(exitLoc : Loc,
+                                 retLoc: Option[Loc],
+                                 locals: Map[StackVar, PureExpr]){
   // TODO: Loc type is probably too general, this assert could be removed
-  assert(methodLoc match{
+  assert(exitLoc match{
     case _:CallbackMethodReturn => true
     case _:CallinMethodReturn => true
     case _:InternalMethodReturn => true
@@ -19,9 +19,9 @@ sealed case class CallStackFrame(methodLoc : Loc,
       throw new IllegalStateException(s"$v is not a return location")
   })
   override def toString:String = {
-    "[" + methodLoc.toString + " locals: " + locals.map(k => k._1.toString + ":" + k._2.toString).mkString(",") + "]"
+    "[" + exitLoc.toString + " locals: " + locals.map(k => k._1.toString + ":" + k._2.toString).mkString(",") + "]"
   }
-  def removeStackVar(v: StackVar):CallStackFrame = CallStackFrame(methodLoc, retLoc, locals.-(v))
+  def removeStackVar(v: StackVar):CallStackFrame = CallStackFrame(exitLoc, retLoc, locals.-(v))
 }
 object CallStackFrame{
   implicit val rw:RW[CallStackFrame] = macroRW

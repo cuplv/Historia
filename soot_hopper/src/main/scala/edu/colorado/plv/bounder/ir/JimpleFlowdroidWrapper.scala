@@ -5,7 +5,7 @@ import java.util
 import edu.colorado.plv.bounder.{BounderSetupApplication, BounderUtil}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor._
-import edu.colorado.plv.bounder.symbolicexecutor.state.State
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BoundedTypeSet, DisjunctTypeSet, State, TypeSet}
 import edu.colorado.plv.fixedsoot.{EnhancedUnitGraphFixed, SparkAppOnlyTransformer}
 import scalaz.Memo
 import soot.jimple.infoflow.entryPointCreators.SimulatedCodeElementTag
@@ -17,7 +17,7 @@ import soot.jimple.toolkits.annotation.logic.LoopFinder
 import soot.options.Options
 import soot.toolkits.graph.{PseudoTopologicalOrderer, SlowPseudoTopologicalOrderer}
 import soot.util.Chain
-import soot.{ArrayType, Body, BooleanType, ByteType, CharType, DoubleType, FloatType, G, Hierarchy, IntType, Local, LongType, Modifier, RefType, Scene, ShortType, SootClass, SootField, SootMethod, SootMethodRef, Type, Value}
+import soot.{AnySubType, ArrayType, Body, BooleanType, ByteType, CharType, DoubleType, FloatType, G, Hierarchy, IntType, Local, LongType, Modifier, RefType, Scene, ShortType, SootClass, SootField, SootMethod, SootMethodRef, Type, Value}
 
 import scala.annotation.tailrec
 import scala.collection.immutable.Queue
@@ -33,6 +33,8 @@ object JimpleFlowdroidWrapper{
     name
   }
   def stringNameOfType(t : Type) : String = t match {
+    case v:AnySubType =>
+      throw new IllegalStateException("String name of type only applicable to single types")
     case t:RefType =>
       val str = t.toString
       str
@@ -749,10 +751,11 @@ class JimpleFlowdroidWrapper(apkPath : String,
       //        ("field-based", "true"),
       //("simple-edges-bidirectional", "true"),
       //        ("geom-app-only", "true"),
+      // ("geom-pta", "true"), // enable context sensitivity in spark pta
       ("simulate-natives", "true"),
       ("propagator", "worklist"),
       ("verbose", "true"),
-      ("on-fly-cg", "true"), //TODO: trying to comment this out and see if it fixes things
+      ("on-fly-cg", "true"),
       ("double-set-old", "hybrid"),
       ("double-set-new", "hybrid"),
       ("set-impl", "double"),
@@ -1169,6 +1172,8 @@ class JimpleFlowdroidWrapper(apkPath : String,
   //TODO: check that this function covers all cases
   private val callSiteCache = mutable.HashMap[MethodLoc, Seq[AppLoc]]()
   override def appCallSites(method_in: MethodLoc, resolver:AppCodeResolver): Seq[AppLoc] = {
+    if(method_in.simpleName == "void <clinit>()")
+      return List()
     val method = method_in.asInstanceOf[JimpleMethodLoc]
     callSiteCache.getOrElse(method, {
       val m = method.asInstanceOf[JimpleMethodLoc]
@@ -1261,6 +1266,55 @@ class JimpleFlowdroidWrapper(apkPath : String,
     val subclasses = Scene.v.getActiveHierarchy.getSubclassesOfIncluding(type1Soot)
     val res = subclasses.contains(type2Soot)
     res
+  }
+
+  override def pointsToSet(loc: MethodLoc, local: LocalWrapper): TypeSet = {
+    if (ClassHierarchyConstraints.Primitive.matches(local.localType)){
+      return BoundedTypeSet(Some(local.localType), None, Set())
+    }
+    val sootMethod = loc.asInstanceOf[JimpleMethodLoc].method
+    val pt = Scene.v().getPointsToAnalysis
+    val reaching = sootMethod.getActiveBody.getLocals.asScala.find(l => l.getName == local.name) match{
+      case Some(sootLocal) =>
+        pt.reachingObjects(sootLocal)
+      case None if local.name == "@this" =>
+        pt.reachingObjects(sootMethod.getActiveBody.getThisLocal)
+      case None =>
+        ???
+    }
+    val reachingTypes = reaching.possibleTypes()
+    val out:Set[TypeSet] = reachingTypes.asScala.toSet.map{ (t:Type) => t match {
+      case t: RefType => {
+        val strName = JimpleFlowdroidWrapper.stringNameOfType(t)
+        if (t.getSootClass.isInterface)
+          BoundedTypeSet(None, None, Set(strName))
+        else
+          BoundedTypeSet(Some(strName), None, Set())
+      }
+      case t: AnySubType => //TODO: what generates this? Can we add a unit test for it?
+        val strName = JimpleFlowdroidWrapper.stringNameOfType(t.getBase)
+        BoundedTypeSet(Some(strName), None, Set())
+      case t: Type =>
+        val strName = JimpleFlowdroidWrapper.stringNameOfType(t)
+        BoundedTypeSet(Some(strName), Some(strName), Set())
+    }}
+    if(out.size == 1)
+      out.head
+    else
+      DisjunctTypeSet(out)
+  }
+
+  override def getThisVar(methodLoc: Loc): Option[LocalWrapper] = {
+    methodLoc.containingMethod.flatMap{getThisVar}
+  }
+  override def getThisVar(methodLoc: MethodLoc): Option[LocalWrapper] = {
+    methodLoc match {
+      case JimpleMethodLoc(method) if method.isStatic => None
+      case JimpleMethodLoc(method) =>
+        val l = method.getActiveBody.getThisLocal
+        Some(LocalWrapper(l.getName, JimpleFlowdroidWrapper.stringNameOfType(l.getType)))
+      case _ => throw new IllegalArgumentException()
+    }
   }
 }
 

@@ -122,8 +122,8 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       }
 
       // comparing things from the base of the stack up, reversing for convenience
-      val stack1 = ((None,Some(p1.qry.loc)):: p1.qry.state.callStack.map(sf => (Some(sf.methodLoc),sf.retLoc))).reverse
-      val stack2 = ((None,Some(p2.qry.loc)):: p2.qry.state.callStack.map(sf => (Some(sf.methodLoc),sf.retLoc))).reverse
+      val stack1 = ((None,Some(p1.qry.loc)):: p1.qry.state.callStack.map(sf => (Some(sf.exitLoc),sf.retLoc))).reverse
+      val stack2 = ((None,Some(p2.qry.loc)):: p2.qry.state.callStack.map(sf => (Some(sf.exitLoc),sf.retLoc))).reverse
 
       def iCompare(s1: List[(Option[Loc], Option[Loc])], s2:List[(Option[Loc], Option[Loc])]):Int = (s1,s2) match{
         case (Nil,Nil) =>
@@ -199,7 +199,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   case class InvokeGroup(loc:Option[Loc]) extends GroupType
   private def nodeGroup(pn:IPathNode):Option[(GroupType, List[(Loc, Option[Loc])], Int)] = {
     val stack = pn.qry.state.callStack
-    val groupStack = stack.map(sf => (sf.methodLoc, sf.retLoc))
+    val groupStack = stack.map(sf => (sf.exitLoc, sf.retLoc))
     lazy val retLoc = InvokeGroup(stack.head.retLoc)
     pn.qry.loc match {
       case l@AppLoc(_,_,false) =>

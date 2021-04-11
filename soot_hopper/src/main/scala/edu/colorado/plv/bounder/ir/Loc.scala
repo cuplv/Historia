@@ -10,6 +10,7 @@ import scala.util.matching.Regex
  * TODO: find a way to make the type system enforce locations are not used cross wrapper implementations
  */
 sealed trait Loc{
+  //TODO: containing method is inconsistent should also return methods for internal methods and callbacks
   def containingMethod:Option[MethodLoc] = this match{
     case AppLoc(method, _,_) => Some(method)
     case _ => None
@@ -165,6 +166,7 @@ case class InternalMethodInvoke(clazz:String, name:String, loc:MethodLoc) extend
   override def msgSig: Option[String] = None
 
   override def isEntry: Option[Boolean] = Some(true)
+  override def containingMethod:Option[MethodLoc] = Some(loc)
 }
 object InternalMethodInvoke{
   implicit val rw:RW[InternalMethodInvoke] = macroRW
@@ -174,6 +176,7 @@ case class InternalMethodReturn(clazz:String, name:String, loc:MethodLoc) extend
   override def msgSig: Option[String] = None
 
   override def isEntry: Option[Boolean] = Some(false)
+  override def containingMethod:Option[MethodLoc] = Some(loc)
 }
 object InternalMethodReturn{
   implicit val rw:RW[InternalMethodReturn] = macroRW
@@ -181,8 +184,8 @@ object InternalMethodReturn{
 
 case class SkippedInternalMethodInvoke(clazz:String, name:String, loc:MethodLoc) extends Loc{
   override def msgSig: Option[String] = None
-
   override def isEntry: Option[Boolean] = Some(true)
+  override def containingMethod:Option[MethodLoc] = Some(loc)
 }
 object SkippedInternalMethodInvoke{
   implicit val rw:RW[SkippedInternalMethodInvoke] = macroRW
@@ -190,8 +193,8 @@ object SkippedInternalMethodInvoke{
 
 case class SkippedInternalMethodReturn(clazz:String, name:String, rel:RelevanceRelation, loc:MethodLoc) extends Loc{
   override def msgSig: Option[String] = None
-
   override def isEntry: Option[Boolean] = Some(false)
+  override def containingMethod:Option[MethodLoc] = Some(loc)
 }
 object SkippedInternalMethodReturn{
   implicit val rw:RW[SkippedInternalMethodReturn] = macroRW
