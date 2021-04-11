@@ -76,6 +76,8 @@ RUN  cd /root/android-sdk-linux/cmdline-tools/bin \
 RUN apt-get update
 RUN apt-get install -y sqlite
 
+ARG COMMITHASH=unknown
+RUN echo $COMMITHASH >/home/bounder/commithash.txt
 COPY . /home/bounder/
 ENV LD_LIBRARY_PATH=/usr/lib/
 RUN cd /home/bounder/; sbt assembly

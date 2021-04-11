@@ -1,2 +1,3 @@
 #!/bin/bash
-docker build -t bounder:latest .
+HASH=$(git rev-parse HEAD)
+docker build --build-arg COMMITHASH="${HASH}"   -t bounder:latest .
