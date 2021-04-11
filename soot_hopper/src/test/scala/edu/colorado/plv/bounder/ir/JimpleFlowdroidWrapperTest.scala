@@ -99,21 +99,26 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
         |    Boolean o2 = null;
         |    Subscription subscription;
         |    static String o3 = "foo";
+        |    Runnable r = null;
         |
         |    @Override
         |    protected void onResume() {
-        |        List<String> l = new ArrayList<String>(); //query0
-        |        l.add(o3);
-        |        String s2 = null;
+        |        List<Runnable> l = new ArrayList<Runnable>(); //query0
+        |        r = new Runnable(){
+        |          @Override
+        |          public void run(){}
+        |        };
+        |        l.add(r);
         |        Iterator it = l.iterator(); // query1 does this call edge exist?
         |        it.hasNext(); //query2 does this call edge exist?
-        |        for(String s : l){
-        |            s.toString();
+        |        for(Runnable r2 : l){
+        |           r2.run(); //query4 should have many edges
         |        }
         |    }
         |
         |    @Override
         |    protected void onPause() {
+        |      r.run(); //query3 should have exactly one edge
         |    }
         |}""".stripMargin
 
@@ -137,23 +142,23 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
       val targets: UnresolvedMethodTarget = w.makeInvokeTargets(loc)
       assert(targets.loc.nonEmpty)
 
-      val jm = query.head.loc.asInstanceOf[AppLoc].method.asInstanceOf[JimpleMethodLoc].method
-      val locals = jm.getActiveBody.getLocals
-      val pt = Scene.v().getPointsToAnalysis
-      val ro = locals.asScala.map{l => l -> pt.reachingObjects(l)}.toMap
-      println(ro)
-
-      val ep = Scene.v().getEntryPoints.get(0)
-      val ro2 = ep.getActiveBody.getLocals.asScala.map{l => l-> pt.reachingObjects(l)}.toMap
-      val allocL = ep.getActiveBody.getLocals.asScala.find(l => l.toString().contains("alloc"))
-      val posT = ro2(allocL.get).possibleTypes()
-      val dummies = posT.asScala.filter(t => t.toString.contains("Dummy"))
-      println(posT)
-
-      val arrayList = Scene.v().getSootClass("java.util.ArrayList")
-      val iterMethod = arrayList.getMethod("java.util.Iterator iterator()")
-      val ro3 = iterMethod.getActiveBody.getLocals.asScala.map{l => l-> pt.reachingObjects(l)}.toMap
-      println(ro3)
+//      val jm = query.head.loc.asInstanceOf[AppLoc].method.asInstanceOf[JimpleMethodLoc].method
+//      val locals = jm.getActiveBody.getLocals
+//      val pt = Scene.v().getPointsToAnalysis
+//      val ro = locals.asScala.map{l => l -> pt.reachingObjects(l)}.toMap
+//      println(ro)
+//
+//      val ep = Scene.v().getEntryPoints.get(0)
+//      val ro2 = ep.getActiveBody.getLocals.asScala.map{l => l-> pt.reachingObjects(l)}.toMap
+//      val allocL = ep.getActiveBody.getLocals.asScala.find(l => l.toString().contains("alloc"))
+//      val posT = ro2(allocL.get).possibleTypes()
+//      val dummies = posT.asScala.filter(t => t.toString.contains("Dummy"))
+//      println(posT)
+//
+//      val arrayList = Scene.v().getSootClass("java.util.ArrayList")
+//      val iterMethod = arrayList.getMethod("java.util.Iterator iterator()")
+//      val ro3 = iterMethod.getActiveBody.getLocals.asScala.map{l => l-> pt.reachingObjects(l)}.toMap
+//      println(ro3)
 
 
 
@@ -164,6 +169,23 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
       val loc2 = query2.head.loc.asInstanceOf[AppLoc]
       val targets2: UnresolvedMethodTarget = w.makeInvokeTargets(loc2)
       assert(targets2.loc.nonEmpty)
+
+      val query3 = Qry.makeReceiverNonNull(config.getSymbolicExecutor, w,
+        "com.example.createdestroy.MyActivity",
+        "void onPause()",
+        BounderUtil.lineForRegex(".*query3.*".r,src), Some(".*iterator.*".r))
+      val loc3 = query3.head.loc.asInstanceOf[AppLoc]
+      val targets3: UnresolvedMethodTarget = w.makeInvokeTargets(loc3)
+      assert(targets3.loc.size == 1)
+
+
+      val query4 = Qry.makeReceiverNonNull(config.getSymbolicExecutor, w,
+        "com.example.createdestroy.MyActivity",
+        "void onResume()",
+        BounderUtil.lineForRegex(".*query4.*".r,src), Some(".*iterator.*".r))
+      val loc4 = query4.head.loc.asInstanceOf[AppLoc]
+      val targets4: UnresolvedMethodTarget = w.makeInvokeTargets(loc4)
+      assert(targets4.loc.size > 1)
     }
     makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
   }

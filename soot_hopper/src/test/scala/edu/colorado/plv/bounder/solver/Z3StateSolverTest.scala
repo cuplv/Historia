@@ -646,7 +646,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val p2t = BoundedTypeSet(Some("Foo"), None, Set())
     val loc = AppLoc(fooMethod, TestIRLineLoc(1), isPre = false)
 
-    assert(p1t.join(p2t,cha).isEmpty(cha))
+    assert(p1t.meet(p2t,cha).isEmpty(cha))
 
 
     val ifoo = I(CBEnter, Set(("", "foo")), "a" :: Nil)

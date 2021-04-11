@@ -40,3 +40,4 @@ soot.*
 sun.*
 fr.louisbl.cordova.gpslocation.*
 nl.xservices.plugins.*
+org.simpleframework.*
