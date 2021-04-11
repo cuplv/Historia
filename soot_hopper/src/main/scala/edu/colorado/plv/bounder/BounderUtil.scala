@@ -1,14 +1,20 @@
 package edu.colorado.plv.bounder
 
+import better.files.File
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CmdNotImplemented, CmdWrapper, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Loc, NopCmd}
 import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, SymbolicExecutorConfig}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, PathNode, SomeQry, WitnessedQry}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
+import scala.sys.process.{Process, ProcessLogger, stderr}
 import scala.util.matching.Regex
 
 object BounderUtil {
+  def systemID(): String = {
+    
+  }
+
   trait ResultSummary
   case object Proven extends ResultSummary
   case object Witnessed extends ResultSummary
@@ -155,6 +161,42 @@ object BounderUtil {
     val lines = in.split("\n")
     lines.indexWhere(r.matches(_)) + 1 // source code line numbers start at 1
   }
+
+  // Compute a hash of a file
+  // The output of this function should match the output of running "md5 -q <file>"
+  def computeHash(path: String): String = {
+    import java.security.{MessageDigest, DigestInputStream}
+    import java.io.{File, FileInputStream}
+
+    val buffer = new Array[Byte](8192)
+    val md5 = MessageDigest.getInstance("MD5")
+
+    val dis = new DigestInputStream(new FileInputStream(new File(path)), md5)
+    try { while (dis.read(buffer) != -1) { } } finally { dis.close() }
+
+    md5.digest.map("%02x".format(_)).mkString
+  }
+  def runCmdFileOut(cmd:String, runDir:File):Boolean = {
+    val stdoutF = runDir / "stdout.txt"
+    val stderrF = runDir / "stderr.txt"
+    if(stdoutF.exists()) stdoutF.delete()
+    if(stderrF.exists()) stderrF.delete()
+    val p = Process(cmd)
+    val res: Int = p ! ProcessLogger(v => stdoutF.append(v + "\n"), v => stderrF.append(v + "\n"))
+    res == 0
+  }
+  def runCmdStdout(cmd:String):String = {
+    val stdout = new StringBuilder
+    val stderr = new StringBuilder
+    val p = Process(s"ls",
+      File("/Users/shawnmeier/").toJava,
+      "DYLD_LIBRARY_PATH"->"/Users/shawnmeier/software/z3/build")
+    val res = p ! ProcessLogger(v => stdout.append(v + "\n"),v => stderr.append(v + "\n"))
+    if(res != 0)
+      throw new RuntimeException(s"runnint cmd: ${cmd} failed\n error: ${stderr.toString}")
+    stdout.toString
+  }
+
 }
 
 /**

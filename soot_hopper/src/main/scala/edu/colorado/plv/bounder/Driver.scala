@@ -1,5 +1,8 @@
 package edu.colorado.plv.bounder
 
+import java.sql.Timestamp
+import java.util.Date
+
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil.{Proven, ResultSummary, Timeout, Unreachable, Witnessed}
 import edu.colorado.plv.bounder.Driver.{Default, RunMode}
@@ -10,12 +13,16 @@ import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, SparkCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
 import scopt.OParser
-import slick.jdbc.JdbcBackend.Database
+
+import scala.concurrent.Await
+import slick.jdbc.PostgresProfile.api._
 import soot.SootMethod
 import upickle.core.AbortException
 import upickle.default.{macroRW, read, write, ReadWriter => RW}
 
+import scala.concurrent.duration._
 import scala.collection.mutable.ListBuffer
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.matching.Regex
 
 case class Action(mode:RunMode = Default,
@@ -375,17 +382,183 @@ case object TopSpecSet extends SpecSetOption {
 
 class ExperimentsDb{
   println("Initializing database")
+  import scala.language.postfixOps
   private val home = scala.util.Properties.envOrElse("HOME", throw new IllegalStateException())
-  private val (database,username,password) = (File(home) / ".pgpass")
+  private val (hostname,port,database,username,password) = (File(home) / ".pgpass")
     .contentAsString.stripLineEnd.split(":").toList match{
-      case _::_::db::un::pw::Nil => (db,un,pw)
+      case hn::p::db::un::pw::Nil => (hn,p,db,un,pw)
       case _ => throw new IllegalStateException("Malformed pgpass")
     }
-  private val connectionUrl = s"jdbc:postgresql://localhost/${database}?user=${username}&password=${password}"
+  private val connectionUrl = s"jdbc:postgresql://${hostname}:${port}/${database}?user=${username}&password=${password}"
+  val db = Database.forURL(connectionUrl, driver = "org.postgresql.Driver")
   def loop() = {
-//    import scala.slick.driver.PostgresDriver.simple._
-    import slick.jdbc.PostgresProfile
-    val db = Database.forURL(connectionUrl, driver = "org.postgresql.Driver")
+    val owner:String = BounderUtil.systemID()
+    acquireJob(owner)
+    println(db)
+  }
 
+
+  //  CREATE TABLE jobs(
+//    id integer,
+//    status varchar(20),
+//    config varchar,
+//    started timestamp without time zone,
+//    ended timestamp without time zone,
+//    owner varchar
+//      PRIMARY KEY(id)
+//  );
+  private val jobQry = TableQuery[Jobs]
+  def createJob(config:File): Unit ={
+    val configContents = config.contentAsString
+    Await.result(
+      db.run(jobQry += (0, "new", configContents, None, None, "")),
+      40 seconds)
+  }
+  def acquireJob(owner:String): Option[JobRow] = {
+    val q = for(
+      j <- jobQry if j.status === "new"
+    ) yield j
+    val pendingJob = Await.result(
+      db.run(q.take(1).result), 30 seconds
+    )
+    if(pendingJob.isEmpty){
+      None
+    }else{
+      val row = pendingJob.head
+      val date = new Date()
+      val startTime = new Timestamp(date.getTime)
+      val updQ = jobQry.filter(j => j.jobId === row._1 && j.status === "new")
+          .map(v => (v.owner,v.status, v.started)).update(owner, "acquired", Some(startTime))
+      Await.result(db.run(updQ.transactionally).map { res =>
+        Some(row)
+      }.recover {
+        case _: java.sql.SQLException => None
+      }, 30 seconds)
+    }
+  }
+  type JobRow = (Int, String, String,Option[Timestamp], Option[Timestamp], String)
+  class Jobs(tag:Tag) extends Table[JobRow](tag,"jobs"){
+    val jobId = column[Int]("id",O.PrimaryKey,O.AutoInc)
+    val status = column[String]("status")
+    val config = column[String]("config")
+    val started = column[Option[Timestamp]]("started")
+    val ended = column[Option[Timestamp]]("ended")
+    val owner = column[String]("owner")
+    def * = (jobId,status,config, started, ended, owner)
+  }
+  //  CREATE TABLE results(
+  //    id SERIAL PRIMARY KEY,
+  //    jobid integer,
+  //    qry varchar,
+  //    result varchar,
+  //    stderr varchar,
+  //    stdout varchar,
+  //    resultdata int,
+  //    apkHash varchar,
+  //    bounderJarHash varchar,
+  //    owner varchar
+  //  );
+  case class ResultDir(jobId:Int, f:File){
+    def getDBResults :List[DBResult]= {
+      val resDataId:Option[Int] = if(???){
+        val outDat = ???
+        Some(createData(outDat))
+      }else None
+      ???
+    }
+  }
+  case class DBResult(id:Int, jobid:Int, qry:String, result:String, stderr:String, stdout:String,
+                      resultData:Option[Int], apkHash:String, bounderJarHash:String, owner:String)
+  class Results(tag:Tag) extends Table[DBResult](tag,"results"){
+    val id = column[Int]("id", O.PrimaryKey, O.AutoInc)
+    val jobId = column[Int]("jobid")
+    val qry = column[String]("qry")
+    val result = column[String]("result")
+    val stderr = column[String]("stderr")
+    val stdout = column[String]("stdout")
+    val resultData = column[Option[Int]]("resultdata")
+    val apkHash = column[String]("apkHash")
+    val bounderJarHash = column[String]("bounderJarHash")
+    val owner = column[String]("owner")
+    val * = (id,jobId,qry,result,stderr,stdout,resultData, apkHash, bounderJarHash, owner) <> (DBResult.tupled, DBResult.unapply)
+  }
+  val resultsQry = TableQuery[Results]
+  def finishSuccess(d : ResultDir) = {
+    val resData = d.getDBResults
+    resData.foreach{d =>
+      Await.result(db.run(resultsQry += d), 30 seconds)
+    }
+    val q = for(
+      j <- jobQry if j.jobId === d.jobId
+    ) yield j.status
+    db.run(q.update("completed"))
+  }
+  def finishFail(d:ResultDir) = {
+    val resData = d.getDBResults
+    resData.foreach{d =>
+      Await.result(db.run(resultsQry += d), 30 seconds)
+    }
+    val q = for(
+      j <- jobQry if j.jobId === d.jobId
+    ) yield j.status
+    db.run(q.update("failed"))
+  }
+  //  CREATE TABLE resultdata(
+  //    id integer,
+  //    data bytea,
+  //    PRIMARY KEY(id)
+  //  )
+  val resultDataQuery = TableQuery[ResultData]
+  def createData(data:File):Int = {
+    val dataBytes = data.loadBytes
+//    val insertQuery = items returning items.map(_.id) into ((item, id) => item.copy(id = id))
+    val insertQuery = resultDataQuery returning resultDataQuery.map(_.id) into ((data,id) =>  id)
+    Await.result(db.run(insertQuery += (0,dataBytes)), 90 seconds)
+  }
+  def getData(id:Int, outFile:File) = {
+    val qry = for {
+      row <- resultDataQuery if row.id === id
+    } yield row.data
+    val bytes: Seq[Array[Byte]] = Await.result(
+      db.run(qry.take(1).result), 60 seconds
+    )
+    if(bytes.size == 1){
+      outFile.writeByteArray(bytes.head)
+      true
+    } else
+      false
+  }
+  class ResultData(tag:Tag) extends Table[(Int,Array[Byte])](tag,"resultdata"){
+    val id = column[Int]("id", O.PrimaryKey,O.AutoInc)
+    val data = column[Array[Byte]]("data")
+    def * = (id,data)
+  }
+
+  //CREATE TABLE apks (apkname text, img bytea);
+  private val apkQry = TableQuery[ApkTable]
+  def uploadApk(name:String, apkFile:File):Int = {
+    val apkDat = apkFile.loadBytes
+    Await.result(
+      db.run(apkQry += (name,apkDat)),
+      30 seconds
+    )
+  }
+  def downloadApk(name:String, outFile:File) :Boolean= {
+    val qry = for {
+      row <- apkQry if row.name === name
+    } yield row.img
+    val bytes: Seq[Array[Byte]] = Await.result(
+      db.run(qry.take(1).result), 60 seconds
+    )
+    if(bytes.size == 1){
+      outFile.writeByteArray(bytes.head)
+      true
+    } else
+      false
+  }
+  class ApkTable(tag:Tag) extends Table[(String,Array[Byte])](tag, "apks"){
+    def name = column[String]("apkname")
+    def img = column[Array[Byte]]("img")
+    def * = (name,img)
   }
 }
