@@ -1172,6 +1172,8 @@ class JimpleFlowdroidWrapper(apkPath : String,
   //TODO: check that this function covers all cases
   private val callSiteCache = mutable.HashMap[MethodLoc, Seq[AppLoc]]()
   override def appCallSites(method_in: MethodLoc, resolver:AppCodeResolver): Seq[AppLoc] = {
+    if(method_in.simpleName == "void <clinit>()")
+      return List()
     val method = method_in.asInstanceOf[JimpleMethodLoc]
     callSiteCache.getOrElse(method, {
       val m = method.asInstanceOf[JimpleMethodLoc]

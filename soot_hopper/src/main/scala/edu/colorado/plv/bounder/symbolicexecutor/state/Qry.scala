@@ -89,9 +89,13 @@ object Qry {
     // Get name of variable that should not be null
     val varname = w.cmdAtLocation(derefLoc) match {
       case AssignCmd(_, VirtualInvoke(localWrapper,_,_,_), _) => localWrapper
+      case AssignCmd(_, SpecialInvoke(localWrapper,_,_,_), _) => localWrapper
       case InvokeCmd(VirtualInvoke(localWrapper,_,_,_),_) => localWrapper
+      case InvokeCmd(SpecialInvoke(localWrapper,_,_,_),_) => localWrapper
       case AssignCmd(_, FieldReference(base,_,_,_),_)  => base
-      case _ => ???
+      case o =>
+        println(o)
+        ???
     }
 
     val cbexits = BounderUtil.resolveMethodReturnForAppLoc(ex.getAppCodeResolver, derefLoc)

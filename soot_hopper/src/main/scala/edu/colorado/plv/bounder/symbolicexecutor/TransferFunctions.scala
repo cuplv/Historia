@@ -247,7 +247,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val cmd = w.cmdAtLocation(al) match{
         case InvokeCmd(inv : Invoke, _) => inv
         case AssignCmd(_, inv: Invoke, _) => inv
-        case c => throw new IllegalStateException(s"Malformed invoke command $c")
+        case c =>
+          throw new IllegalStateException(s"Malformed invoke command $c")
       }
       val receiverOption: Option[RVal] = cmd match{
         case v:VirtualInvoke => Some(v.target)
