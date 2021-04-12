@@ -7,12 +7,19 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, Pa
 
 import scala.annotation.tailrec
 import scala.collection.mutable
-import scala.sys.process.{Process, ProcessLogger, stderr}
+import scala.sys.process._
 import scala.util.matching.Regex
 
 object BounderUtil {
+  private var sidCache:Option[String] = None
   def systemID(): String = {
-    
+    if(sidCache.isEmpty)
+      sidCache = Some(runCmdStdout("uname -a").trim)
+
+    sidCache.get
+  }
+  def isMac():Boolean = {
+    runCmdStdout("uname").trim == "Darwin" //TODO: add other uname results for other mac variants
   }
 
   trait ResultSummary
@@ -176,21 +183,29 @@ object BounderUtil {
 
     md5.digest.map("%02x".format(_)).mkString
   }
+  // "DYLD_LIBRARY_PATH"->"/Users/shawnmeier/software/z3/build") TODO: set dyld?
+  lazy val mac = isMac()
+  val dy = scala.util.Properties.envOrElse("DYLD_LIBRARY_PATH",scala.util.Properties.envOrElse("Z3_LIB",
+    throw new RuntimeException("Must set DYLD_LIBRARY_PATH for z3.  Mac restrictions may apply." +
+      "See https://en.wikipedia.org/wiki/System_Integrity_Protection#Functions")))
   def runCmdFileOut(cmd:String, runDir:File):Boolean = {
     val stdoutF = runDir / "stdout.txt"
     val stderrF = runDir / "stderr.txt"
     if(stdoutF.exists()) stdoutF.delete()
     if(stderrF.exists()) stderrF.delete()
-    val p = Process(cmd)
+    val p = if(mac) {
+      Process(cmd, runDir.toJava, "Z3_LIB" -> dy)
+    } else {
+      println("Not mac")
+      Process(cmd)
+    }
     val res: Int = p ! ProcessLogger(v => stdoutF.append(v + "\n"), v => stderrF.append(v + "\n"))
     res == 0
   }
   def runCmdStdout(cmd:String):String = {
     val stdout = new StringBuilder
     val stderr = new StringBuilder
-    val p = Process(s"ls",
-      File("/Users/shawnmeier/").toJava,
-      "DYLD_LIBRARY_PATH"->"/Users/shawnmeier/software/z3/build")
+    val p = Process(cmd)
     val res = p ! ProcessLogger(v => stdout.append(v + "\n"),v => stderr.append(v + "\n"))
     if(res != 0)
       throw new RuntimeException(s"runnint cmd: ${cmd} failed\n error: ${stderr.toString}")

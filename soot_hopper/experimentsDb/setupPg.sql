@@ -1,21 +1,21 @@
 CREATE TABLE jobs(
 	id SERIAL PRIMARY KEY,
-	status varchar(20), 
+	status varchar, 
 	config varchar, 
 	started timestamp without time zone,
         ended timestamp without time zone,
-	owner varchar
+	owner varchar,
+	stderr varchar,
+	stdout varchar
 );
 CREATE TABLE results(
 	id SERIAL PRIMARY KEY,
 	jobid integer,
 	qry varchar,
 	result varchar,
-	stderr varchar,
-	stdout varchar,
 	resultdata int,
-	apkHash varchar,
-	bounderJarHash varchar,
+	apkhash varchar,
+	bounderjarhash varchar,
 	owner varchar
 );
 CREATE TABLE apks (apkname text, img bytea);

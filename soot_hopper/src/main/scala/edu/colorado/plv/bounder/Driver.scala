@@ -1,5 +1,6 @@
 package edu.colorado.plv.bounder
 
+import java.io.{PrintWriter, StringWriter}
 import java.sql.Timestamp
 import java.util.Date
 
@@ -34,8 +35,8 @@ case class Action(mode:RunMode = Default,
   val outDirVar = "${baseDirOut}"
   def getApkPath:String = baseDirApk match{
     case Some(baseDir) => {
-      assert(config.apkPath.contains(baseDirVar),
-        s"Apk path has no $baseDirVar to substitute.  APK path value: ${config.apkPath}")
+//      assert(config.apkPath.contains(baseDirVar),
+//        s"Apk path has no $baseDirVar to substitute.  APK path value: ${config.apkPath}")
       config.apkPath.replace(baseDirVar, baseDir)
     }
     case None => {
@@ -46,7 +47,7 @@ case class Action(mode:RunMode = Default,
   def getOutFolder:String = baseDirOut match{
     case Some(outDirBase) => {
       config.outFolder.map { outF =>
-        assert(outF.contains(outDirVar), s"Out dir has no $outDirVar to substitute.  OutDir value: $outF")
+//        assert(outF.contains(outDirVar), s"Out dir has no $outDirVar to substitute.  OutDir value: $outF")
         outF.replace(outDirVar, outDirBase)
       }.get
     }
@@ -380,10 +381,13 @@ case object TopSpecSet extends SpecSetOption {
   override def getSpecSet(): Set[LSSpec] = Set()
 }
 
-class ExperimentsDb{
+class ExperimentsDb(bounderJar:Option[String] = None){
   println("Initializing database")
   import scala.language.postfixOps
   private val home = scala.util.Properties.envOrElse("HOME", throw new IllegalStateException())
+  private val jarPath = bounderJar.getOrElse(scala.util.Properties.envOrElse("BOUNDER_JAR",
+    throw new RuntimeException("Bounder jar must be defined by BOUNDER_JAR environment variable")))
+  private val bounderJarHash = BounderUtil.computeHash(jarPath)
   private val (hostname,port,database,username,password) = (File(home) / ".pgpass")
     .contentAsString.stripLineEnd.split(":").toList match{
       case hn::p::db::un::pw::Nil => (hn,p,db,un,pw)
@@ -391,10 +395,60 @@ class ExperimentsDb{
     }
   private val connectionUrl = s"jdbc:postgresql://${hostname}:${port}/${database}?user=${username}&password=${password}"
   val db = Database.forURL(connectionUrl, driver = "org.postgresql.Driver")
+
+
   def loop() = {
-    val owner:String = BounderUtil.systemID()
-    acquireJob(owner)
-    println(db)
+    while(true) {
+      val owner: String = BounderUtil.systemID()
+      val job: Option[JobRow] = acquireJob(owner)
+      if(job.isDefined) {
+        println(s"--got job: ${job.get}")
+        processJob(job.get)
+      }else {
+        println("--no jobs waiting")
+      }
+
+      Thread.sleep(5000)
+    }
+
+  }
+  def processJob(jobRow: JobRow) = {
+      File.usingTemporaryDirectory(){(baseDir:File) =>
+        try {
+          println(s"working directory: ${baseDir.toString}")
+          val cfg = read[RunConfig](jobRow.config)
+          val apkId = cfg.apkPath.replace("${baseDir}","")
+          val apkPath = baseDir / "target.apk"
+          if(!downloadApk(apkId, apkPath))
+            throw new RuntimeException("Failed to download apk")
+
+          val runCfg = cfg.copy(outFolder = Some(baseDir.toString),apkPath = apkPath.toString )
+          val cfgFile = (baseDir / "config.json")
+          cfgFile.append(write(runCfg))
+          val z3Override = if(BounderUtil.mac)
+            s"""-Djava.library.path="${BounderUtil.dy}""""
+          else
+            ""
+          setJobStartTime(jobRow.jobId)
+          val cmd = s"java ${z3Override} -jar ${jarPath} -m verify -c ${cfgFile.toString} -u ${baseDir.toString}"
+          BounderUtil.runCmdFileOut(cmd, baseDir)
+          setEndTime(jobRow.jobId)
+          val resDir = ResultDir(jobRow.jobId, baseDir)
+          val stdoutF = baseDir / "stdout.txt"
+          val stdout = if(stdoutF.exists()) stdoutF.contentAsString else ""
+          val stderrF = baseDir / "stderr.txt"
+          val stderr = if(stderrF.exists())stderrF.contentAsString else ""
+          finishSuccess(resDir,stdout, stderr)
+        }catch{
+          case t:Throwable =>
+            println(s"exception ${t.toString}")
+            val sr = new StringWriter()
+            val pr = new PrintWriter(sr)
+            t.printStackTrace(pr)
+            val exn = sr.toString
+            finishFail(jobRow.jobId, t.toString + "\n" + exn)
+        }
+      }
   }
 
 
@@ -411,10 +465,27 @@ class ExperimentsDb{
   def createJob(config:File): Unit ={
     val configContents = config.contentAsString
     Await.result(
-      db.run(jobQry += (0, "new", configContents, None, None, "")),
+      db.run(jobQry += JobRow(0, "new", configContents, None, None, "",Some(""),Some(""))),
       40 seconds)
   }
+  def setJobStartTime(id:Int) = {
+    val date = new Date()
+    val startTime = Some(new Timestamp(date.getTime))
+    val q = for(
+      j <- jobQry if j.jobId === id
+    ) yield j.started
+    Await.result(db.run(q.update(startTime)), 30 seconds)
+  }
+  def setEndTime(id:Int) = {
+    val date = new Date()
+    val endTime = Some(new Timestamp(date.getTime))
+    val q = for(
+      j <- jobQry if j.jobId === id
+    )yield j.ended
+    Await.result(db.run(q.update(endTime)), 30 seconds)
+  }
   def acquireJob(owner:String): Option[JobRow] = {
+    //TODO: make sure this returns NONE if something else succeeds
     val q = for(
       j <- jobQry if j.status === "new"
     ) yield j
@@ -425,10 +496,8 @@ class ExperimentsDb{
       None
     }else{
       val row = pendingJob.head
-      val date = new Date()
-      val startTime = new Timestamp(date.getTime)
-      val updQ = jobQry.filter(j => j.jobId === row._1 && j.status === "new")
-          .map(v => (v.owner,v.status, v.started)).update(owner, "acquired", Some(startTime))
+      val updQ = jobQry.filter(j => j.jobId === row.jobId && j.status === "new")
+          .map(v => (v.owner,v.status)).update(owner, "acquired")
       Await.result(db.run(updQ.transactionally).map { res =>
         Some(row)
       }.recover {
@@ -436,7 +505,18 @@ class ExperimentsDb{
       }, 30 seconds)
     }
   }
-  type JobRow = (Int, String, String,Option[Timestamp], Option[Timestamp], String)
+  case class JobRow(jobId:Int, status:String, config:String,started:Option[Timestamp],
+                    ended:Option[Timestamp], owner:String, stderr:Option[String], stdout:Option[String])
+//  CREATE TABLE jobs(
+//    id SERIAL PRIMARY KEY,
+//    status varchar,
+//    config varchar,
+//    started timestamp without time zone,
+//    ended timestamp without time zone,
+//    owner varchar,
+//    stderr varchar,
+//    stdout varchar
+//  );
   class Jobs(tag:Tag) extends Table[JobRow](tag,"jobs"){
     val jobId = column[Int]("id",O.PrimaryKey,O.AutoInc)
     val status = column[String]("status")
@@ -444,7 +524,9 @@ class ExperimentsDb{
     val started = column[Option[Timestamp]]("started")
     val ended = column[Option[Timestamp]]("ended")
     val owner = column[String]("owner")
-    def * = (jobId,status,config, started, ended, owner)
+    val stderr = column[Option[String]]("stderr")
+    val stdout = column[Option[String]]("stdout")
+    def * = (jobId,status,config, started, ended, owner,stderr,stdout) <> (JobRow.tupled, JobRow.unapply)
   }
   //  CREATE TABLE results(
   //    id SERIAL PRIMARY KEY,
@@ -460,48 +542,54 @@ class ExperimentsDb{
   //  );
   case class ResultDir(jobId:Int, f:File){
     def getDBResults :List[DBResult]= {
-      val resDataId:Option[Int] = if(???){
-        val outDat = ???
-        Some(createData(outDat))
-      }else None
-      ???
-    }
+      val apkHash = BounderUtil.computeHash((f / "target.apk").toString)
+      val resultSummaries = f.glob("result_*.txt").map{resF =>
+        val resD = resF.contentAsString
+        val res = resD.reverse.takeWhile(_ != '}').reverse
+        val loc = resD.takeWhile(_ != '}') + '}'
+        (loc,res)
+      }
+      val resDataId:Option[Int] = {
+        val outDat = f.zip()
+        val d = Some(createData(outDat))
+        outDat.delete()
+        d
+      }
+      resultSummaries.map { rs =>
+        DBResult(id = 0, jobid = jobId,qry = rs._1, result = rs._2,resultData = resDataId, apkHash = apkHash,
+          bounderJarHash = bounderJarHash, owner = BounderUtil.systemID())
+      }
+    }.toList
   }
-  case class DBResult(id:Int, jobid:Int, qry:String, result:String, stderr:String, stdout:String,
+  case class DBResult(id:Int, jobid:Int, qry:String, result:String,
                       resultData:Option[Int], apkHash:String, bounderJarHash:String, owner:String)
   class Results(tag:Tag) extends Table[DBResult](tag,"results"){
     val id = column[Int]("id", O.PrimaryKey, O.AutoInc)
     val jobId = column[Int]("jobid")
     val qry = column[String]("qry")
     val result = column[String]("result")
-    val stderr = column[String]("stderr")
-    val stdout = column[String]("stdout")
     val resultData = column[Option[Int]]("resultdata")
-    val apkHash = column[String]("apkHash")
-    val bounderJarHash = column[String]("bounderJarHash")
+    val apkHash = column[String]("apkhash")
+    val bounderJarHash = column[String]("bounderjarhash")
     val owner = column[String]("owner")
-    val * = (id,jobId,qry,result,stderr,stdout,resultData, apkHash, bounderJarHash, owner) <> (DBResult.tupled, DBResult.unapply)
+    val * = (id,jobId,qry,result,resultData, apkHash, bounderJarHash, owner) <> (DBResult.tupled, DBResult.unapply)
   }
   val resultsQry = TableQuery[Results]
-  def finishSuccess(d : ResultDir) = {
+  def finishSuccess(d : ResultDir, stdout:String, stderr:String) = {
     val resData = d.getDBResults
     resData.foreach{d =>
       Await.result(db.run(resultsQry += d), 30 seconds)
     }
     val q = for(
       j <- jobQry if j.jobId === d.jobId
-    ) yield j.status
-    db.run(q.update("completed"))
+    ) yield (j.status, j.stdout, j.stderr)
+    Await.result(db.run(q.update(("completed",Some(stdout),Some(stderr)))), 30 seconds)
   }
-  def finishFail(d:ResultDir) = {
-    val resData = d.getDBResults
-    resData.foreach{d =>
-      Await.result(db.run(resultsQry += d), 30 seconds)
-    }
+  def finishFail(id:Int, exn:String) = {
     val q = for(
-      j <- jobQry if j.jobId === d.jobId
+      j <- jobQry if j.jobId === id
     ) yield j.status
-    db.run(q.update("failed"))
+    Await.result(db.run(q.update("failed: " + exn)), 30 seconds)
   }
   //  CREATE TABLE resultdata(
   //    id integer,
