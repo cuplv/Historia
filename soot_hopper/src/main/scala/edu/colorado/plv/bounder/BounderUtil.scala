@@ -1,14 +1,27 @@
 package edu.colorado.plv.bounder
 
+import better.files.File
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CmdNotImplemented, CmdWrapper, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Loc, NopCmd}
 import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, SymbolicExecutorConfig}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, PathNode, SomeQry, WitnessedQry}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
+import scala.sys.process._
 import scala.util.matching.Regex
 
 object BounderUtil {
+  private var sidCache:Option[String] = None
+  def systemID(): String = {
+    if(sidCache.isEmpty)
+      sidCache = Some(runCmdStdout("uname -a").trim)
+
+    sidCache.get
+  }
+  def isMac():Boolean = {
+    runCmdStdout("uname").trim == "Darwin" //TODO: add other uname results for other mac variants
+  }
+
   trait ResultSummary
   case object Proven extends ResultSummary
   case object Witnessed extends ResultSummary
@@ -155,6 +168,79 @@ object BounderUtil {
     val lines = in.split("\n")
     lines.indexWhere(r.matches(_)) + 1 // source code line numbers start at 1
   }
+
+  // Compute a hash of a file
+  // The output of this function should match the output of running "md5 -q <file>"
+  def computeHash(path: String): String = {
+    import java.security.{MessageDigest, DigestInputStream}
+    import java.io.{File, FileInputStream}
+
+    val buffer = new Array[Byte](8192)
+    val md5 = MessageDigest.getInstance("MD5")
+
+    val dis = new DigestInputStream(new FileInputStream(new File(path)), md5)
+    try { while (dis.read(buffer) != -1) { } } finally { dis.close() }
+
+    md5.digest.map("%02x".format(_)).mkString
+  }
+  // "DYLD_LIBRARY_PATH"->"/Users/shawnmeier/software/z3/build") TODO: set dyld?
+  lazy val mac = isMac()
+  val dy = scala.util.Properties.envOrElse("DYLD_LIBRARY_PATH",
+    scala.util.Properties.envOrElse("Z3_LIB",
+      scala.util.Properties.envOrElse("LD_LIBRARY_PATH",
+        throw new RuntimeException("Must set DYLD_LIBRARY_PATH for z3.  Mac restrictions may apply." +
+          "See https://en.wikipedia.org/wiki/System_Integrity_Protection#Functions"))))
+  def runCmdFileOut(cmd:String, runDir:File):Boolean = {
+    val stdoutF = runDir / "stdout.txt"
+    val stderrF = runDir / "stderr.txt"
+    if(stdoutF.exists()) stdoutF.delete()
+    if(stderrF.exists()) stderrF.delete()
+    val p = if(mac) {
+      Process(cmd, runDir.toJava, "Z3_LIB" -> dy)
+    } else {
+      println("Not mac")
+      Process(cmd)
+    }
+    val res: Int = p ! ProcessLogger(v => stdoutF.append(v + "\n"), v => stderrF.append(v + "\n"))
+    res == 0
+  }
+  sealed trait RunResult
+  case object RunTimeout extends RunResult
+  case object RunSuccess extends RunResult
+  case object RunFail extends RunResult
+
+  def runCmdTimeout(cmd:String, runDir:File, timeout:Int):RunResult = {
+    //TODO: test this and possibly use for exp
+    val stdoutF = runDir / "stdout.txt"
+    val stderrF = runDir / "stderr.txt"
+    if(stdoutF.exists()) stdoutF.delete()
+    if(stderrF.exists()) stderrF.delete()
+    val cmdTimeout = s"timeout ${timeout}s $cmd"
+    val p = if(mac) {
+      Process(cmdTimeout, runDir.toJava, "Z3_LIB" -> dy)
+    } else {
+      println("Not mac")
+      Process(cmdTimeout)
+    }
+    val res: Int = p ! ProcessLogger(v => stdoutF.append(v + "\n"), v => stderrF.append(v + "\n"))
+    if(res == 0){
+      RunSuccess
+    }else if(res == 124){
+      RunTimeout
+    }else{
+      RunFail
+    }
+  }
+  def runCmdStdout(cmd:String):String = {
+    val stdout = new StringBuilder
+    val stderr = new StringBuilder
+    val p = Process(cmd)
+    val res = p ! ProcessLogger(v => stdout.append(v + "\n"),v => stderr.append(v + "\n"))
+    if(res != 0)
+      throw new RuntimeException(s"runnint cmd: ${cmd} failed\n error: ${stderr.toString}")
+    stdout.toString
+  }
+
 }
 
 /**
