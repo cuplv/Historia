@@ -1,3 +1,3 @@
 #!/bin/bash
-docker tag bounder:latest cuplv/bounder:latest
+docker tag bounder:100 cuplv/bounder:latest
 docker push cuplv/bounder:latest

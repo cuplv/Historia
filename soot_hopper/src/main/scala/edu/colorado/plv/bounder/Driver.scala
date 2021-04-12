@@ -393,6 +393,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
       case hn::p::db::un::pw::Nil => (hn,p,db,un,pw)
       case _ => throw new IllegalStateException("Malformed pgpass")
     }
+  // note use host.docker.internal:3333:postgres:postgres:[pass] for docker container ~/.pgpass
   private val connectionUrl = s"jdbc:postgresql://${hostname}:${port}/${database}?user=${username}&password=${password}"
   val db = Database.forURL(connectionUrl, driver = "org.postgresql.Driver")
 
