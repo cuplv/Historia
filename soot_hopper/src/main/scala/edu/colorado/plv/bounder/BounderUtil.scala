@@ -185,9 +185,11 @@ object BounderUtil {
   }
   // "DYLD_LIBRARY_PATH"->"/Users/shawnmeier/software/z3/build") TODO: set dyld?
   lazy val mac = isMac()
-  val dy = scala.util.Properties.envOrElse("DYLD_LIBRARY_PATH",scala.util.Properties.envOrElse("Z3_LIB",
-    throw new RuntimeException("Must set DYLD_LIBRARY_PATH for z3.  Mac restrictions may apply." +
-      "See https://en.wikipedia.org/wiki/System_Integrity_Protection#Functions")))
+  val dy = scala.util.Properties.envOrElse("DYLD_LIBRARY_PATH",
+    scala.util.Properties.envOrElse("Z3_LIB",
+      scala.util.Properties.envOrElse("LD_LIBRARY_PATH",
+        throw new RuntimeException("Must set DYLD_LIBRARY_PATH for z3.  Mac restrictions may apply." +
+          "See https://en.wikipedia.org/wiki/System_Integrity_Protection#Functions"))))
   def runCmdFileOut(cmd:String, runDir:File):Boolean = {
     val stdoutF = runDir / "stdout.txt"
     val stderrF = runDir / "stderr.txt"
@@ -201,6 +203,33 @@ object BounderUtil {
     }
     val res: Int = p ! ProcessLogger(v => stdoutF.append(v + "\n"), v => stderrF.append(v + "\n"))
     res == 0
+  }
+  sealed trait RunResult
+  case object RunTimeout extends RunResult
+  case object RunSuccess extends RunResult
+  case object RunFail extends RunResult
+
+  def runCmdTimeout(cmd:String, runDir:File, timeout:Int):RunResult = {
+    //TODO: test this and possibly use for exp
+    val stdoutF = runDir / "stdout.txt"
+    val stderrF = runDir / "stderr.txt"
+    if(stdoutF.exists()) stdoutF.delete()
+    if(stderrF.exists()) stderrF.delete()
+    val cmdTimeout = s"timeout ${timeout}s $cmd"
+    val p = if(mac) {
+      Process(cmdTimeout, runDir.toJava, "Z3_LIB" -> dy)
+    } else {
+      println("Not mac")
+      Process(cmdTimeout)
+    }
+    val res: Int = p ! ProcessLogger(v => stdoutF.append(v + "\n"), v => stderrF.append(v + "\n"))
+    if(res == 0){
+      RunSuccess
+    }else if(res == 124){
+      RunTimeout
+    }else{
+      RunFail
+    }
   }
   def runCmdStdout(cmd:String):String = {
     val stdout = new StringBuilder
