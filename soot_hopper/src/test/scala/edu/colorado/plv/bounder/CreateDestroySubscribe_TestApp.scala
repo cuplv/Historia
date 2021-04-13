@@ -18,8 +18,8 @@ class CreateDestroySubscribe_TestApp extends AnyFunSuite{
   val w = new JimpleFlowdroidWrapper(apk,CHACallGraph)
   val specSpace = new SpecSpace(Set(ActivityLifecycle.onPause_onlyafter_onResume_init,
     ActivityLifecycle.init_first_callback,
-    RxJavaSpec.subscribeIsUniqueAndNonNull,
-    RxJavaSpec.subscribeDoesNotReturnNull,
+    RxJavaSpec.subscribeIsUnique,
+//    RxJavaSpec.subscribeDoesNotReturnNull,
     RxJavaSpec.call))
   val transfer = (cha:ClassHierarchyConstraints) =>  {
     new TransferFunctions[SootMethod, soot.Unit](w, specSpace,cha)

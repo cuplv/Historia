@@ -1,14 +1,76 @@
 package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.ir.MessageType
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSFalse, LSPred, LSSpec, LSTrue, NI, Not, Or}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CmpOp, Equals, NullVal, PureExpr, PureVal}
+import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSFalse, LSPred, LSSpec, LSTrue, LifeStateParser, NI, Not, Or}
+import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CmpOp, Equals, NotEquals, NullVal, PureExpr, PureVal, Subtype}
 
 import scala.util.parsing.combinator._
 import upickle.default.{macroRW, ReadWriter => RW}
 
-object LifeState extends RegexParsers {
+import scala.util.matching.Regex
+
+
+object LifeState {
+
+  object LifeStateParser extends RegexParsers {
+    // TODO: identifier should handle arrays, for now use java.util.List_ instead of java.util.List[]
+    def identifier: Parser[String] = """[a-zA-Z][a-zA-Z0-9$_.]*""".r ^^ { a => a }
+
+    def empty: Parser[String] = "_"
+
+    def parMatcher:Parser[String] = identifier | empty //TODO: and const
+
+    def mDir: Parser[MessageType] = ( "ciret" | "cbret" | "ci" | "cb") ^^ {
+      case "ci" => CIEnter
+      case "cb" => CBEnter
+      case "ciret" => CIExit
+      case "cbret" => CBExit
+    }
+    def sep = "&&"
+    def quote = """""""
+    def op: Parser[CmpOp] = ("<:"|"="|"!=")^^ {
+      case "<:" => Subtype
+      case "=" => Equals
+      case "!=" => NotEquals
+    }
+    def constr:Parser[LSConstraint] = identifier ~ op ~ identifier ^^ {
+      case id1 ~ op ~ id2 =>
+        LSConstraint(id1, op, id2)
+
+    }
+    def constrs:Parser[List[LSConstraint]] = repsep(constr,sep)
+
+    def lsVarList:Parser[List[String]] = repsep(parMatcher,",")
+
+    def sigmatcher:Parser[String] = """[a-zA-Z_.]"""
+    def params = repsep(parMatcher, ",")
+
+    def rf(v:String):String = v.replace("_","[^,()]*")
+
+    def i: Parser[I] = "I(" ~ mDir ~ "[" ~ lsVarList ~"]" ~ identifier ~ identifier ~"(" ~ params ~ ")" ~ constr ~ ")" ^^ {
+      case _ ~ pmDir ~ _ ~ vars ~ _ ~ ret ~ sName ~ _ ~ para ~ _ ~ LSConstraint(v1, Subtype, v2) ~ _ =>
+        assert(vars.size < 2 || vars(1) == "_" || vars(1) == v1, "Can only specify receiver type in I")
+        val p = para.map(rf)
+        val sigRegex = rf(ret) +" " + sName + "\\(" +  p.mkString(",") + "\\)"
+        val ident = ret + "__" + sName + "__" + p.mkString("___")
+        val scm = SubClassMatcher(v2, sigRegex, ident)
+        I(pmDir, scm, vars)
+      case _ => throw new IllegalArgumentException("Can only specify receiver type in I")
+    }
+  }
+  def parseI(str:String):I = {
+    val res: LifeStateParser.ParseResult[I] = LifeStateParser.parseAll(LifeStateParser.i, str)
+    if(res.successful)
+      res.get
+    else
+      throw new IllegalArgumentException(res.toString)
+  }
+  def parseIFile(str:String):Seq[I] = {
+    str.split("\n").filter(v => !v.trim.startsWith("#") && !(v.trim == "")).map(parseI)
+  }
+
   var id = 0
   def nextLsVar():String = {
     val lsVar = "v" + id
@@ -34,7 +96,7 @@ object LifeState extends RegexParsers {
   case class LSConstraint(v1:String,op:CmpOp,v2:String )
 
   sealed trait LSPred {
-    def contains(mt:MessageType,sig: (String, String)):Boolean
+    def contains(mt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints):Boolean
 
     def lsVar: Set[String]
   }
@@ -49,41 +111,80 @@ object LifeState extends RegexParsers {
     override def lsVar: Set[String] = l1.lsVar.union(l2.lsVar)
     override def toString:String = s"(${l1.toString} AND ${l2.toString})"
 
-    override def contains(mt:MessageType, sig: (String, String)): Boolean = l1.contains(mt,sig) || l2.contains(mt,sig)
+    override def contains(mt:MessageType, sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean =
+      l1.contains(mt,sig) || l2.contains(mt,sig)
   }
   case class Not(l: LSPred) extends LSPred {
     override def lsVar: Set[String] = l.lsVar
     override def toString:String = s"(NOT ${l.toString})"
 
-    override def contains(mt:MessageType,sig: (String, String)): Boolean = l.contains(mt,sig)
+    override def contains(mt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean =
+      l.contains(mt,sig)
   }
   case class Or(l1:LSPred, l2:LSPred) extends LSPred {
     override def lsVar: Set[String] = l1.lsVar.union(l2.lsVar)
     override def toString:String = s"(${l1.toString} OR ${l2.toString})"
-    override def contains(mt:MessageType,sig: (String, String)): Boolean = l1.contains(mt, sig) || l2.contains(mt,sig)
+    override def contains(mt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean =
+      l1.contains(mt, sig) || l2.contains(mt,sig)
   }
   case object LSTrue extends LSPred {
     override def lsVar: Set[String] = Set.empty
-    override def contains(mt:MessageType,sig: (String, String)): Boolean = false
+    override def contains(mt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean = false
   }
   case object LSFalse extends LSPred {
     override def lsVar: Set[String] = Set.empty
-    override def contains(mt:MessageType,sig: (String, String)): Boolean = false
+    override def contains(mt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean = false
   }
 
   sealed trait LSAtom extends LSPred {
-    def getAtomSig:String
+//    def getAtomSig:String
     def identitySignature:String
   }
   object LSAtom{
     implicit val rw:RW[LSAtom] = RW.merge(I.rw, NI.rw)
   }
 
+  sealed trait SignatureMatcher{
+    def matchesSubSig(subsig:String):Boolean
+    def matches(sig:(String,String))(implicit ch:ClassHierarchyConstraints):Boolean
+    def identifier:String
+  }
+  object SignatureMatcher{
+    implicit val rw:RW[SignatureMatcher] = RW.merge(SetSignatureMatcher.rw, SubClassMatcher.rw)
+  }
+  case class SetSignatureMatcher(sigSet : Set[(String,String)]) extends SignatureMatcher {
+    override def matches(sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean = sigSet.contains(sig)
+
+    override def matchesSubSig(subsig: String): Boolean = sigSet.exists(v => subsig == v._2)
+
+    private val sortedSig = sigSet.toList.sorted
+    override def identifier: String =s"${sortedSig.head._1}_${sortedSig.head._2}"
+  }
+  object SetSignatureMatcher{
+    implicit val rw:RW[SetSignatureMatcher] = macroRW
+  }
+  case class SubClassMatcher(baseSubtypeOf:String, sig:String, ident:String) extends SignatureMatcher {
+    lazy val sigR:Regex = sig.r
+    override def matches(sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean = {
+      if(ch.typeExists(baseSubtypeOf)) { // Specs may not match any type if library has not been included in apk
+        ch.getSubtypesOf(baseSubtypeOf).contains(sig._1) && matchesSubSig(sig._2)
+      } else false
+    }
+
+    override def matchesSubSig(subsig: String): Boolean = {
+      sigR.matches(subsig)
+    }
+
+    override def identifier: String = ident
+  }
+  object SubClassMatcher{
+    implicit val rw:RW[SubClassMatcher] = macroRW
+  }
   // A method with a signature in "signatures" has been invoed
   // lsVars: element 0 is return value, element 1 is reciever, rest of the elements are arguemnts
   // A string of "_" means "don't care"
   // primitives are parsed as in java "null", "true", "false", numbers etc.
-  case class I(mt: MessageType, signatures: Set[(String, String)], lsVars : List[String]) extends LSAtom {
+  case class I(mt: MessageType, signatures: SignatureMatcher, lsVars : List[String]) extends LSAtom {
     def constVals(constraints: Set[LSConstraint]):List[Option[(CmpOp, PureExpr)]] = lsVars.map{
       case LifeState.LSConst(v) => Some((Equals, v))
       case LifeState.LSVar(v) =>
@@ -95,25 +196,26 @@ object LifeState extends RegexParsers {
         }
       case _ => None
     }
-    private val sortedSig = signatures.toList.sorted
+//    private val sortedSig = signatures.toList.sorted
     override def lsVar: Set[String] = lsVars.filter(vname => LifeState.LSVar.matches(vname)).toSet
 
     def getVar(i: Int): String = lsVars(i)
 
 
-    override def getAtomSig: String = {
-      s"I(${sortedSig.mkString(":")})"
-    }
+//    override def getAtomSig: String = {
+//      s"I(${sortedSig.mkString(":")})"
+//    }
 
     // Uesed for naming uninterpreted functions in z3 solver
     override def identitySignature: String = {
       // Note: this does not include varnames or
       // any other info that would distinguish this I from another with the same metods
-      s"I_${mt.toString}_${sortedSig.head._1}_${sortedSig.head._2}"
+      s"I_${mt.toString}_${signatures.identifier}"
     }
     override def toString:String = s"I($mt $identitySignature ( ${lsVars.mkString(",")} )"
 
-    override def contains(omt:MessageType,sig: (String, String)): Boolean = signatures.contains(sig) && omt == mt
+    override def contains(omt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean =
+      omt == mt && signatures.matches(sig)
   }
   object I{
     implicit val rw:RW[I] = macroRW
@@ -122,12 +224,13 @@ object LifeState extends RegexParsers {
   case class NI(i1:I, i2:I) extends LSAtom{
     def lsVar: Set[String] = i1.lsVar.union(i2.lsVar)
 
-    override def getAtomSig: String = s"NI(${i1.getAtomSig}, ${i2.getAtomSig})"
+//    override def getAtomSig: String = s"NI(${i1.getAtomSig}, ${i2.getAtomSig})"
 
     override def identitySignature: String = s"${i1.identitySignature}_${i2.identitySignature}"
     override def toString:String = s"NI( ${i1.toString} , ${i2.toString} )"
 
-    override def contains(mt:MessageType,sig: (String, String)): Boolean = i1.contains(mt, sig) || i2.contains(mt, sig)
+    override def contains(mt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean =
+      i1.contains(mt, sig) || i2.contains(mt, sig)
   }
   object NI{
     implicit val rw:RW[NI] = macroRW
@@ -150,21 +253,21 @@ object LifeState extends RegexParsers {
      */
     case class Edge(src: (Int, String), tgt: (Int, String))
 
-    def getEdgeSet: Set[Edge] = {
-      val varmap: Map[String, Set[(Int, String)]] =
-        predicates.foldLeft(Map[String, Set[(Int,String)]]()) { (acc, predicate) => {
-          predicate.lsVar.zipWithIndex.foldLeft(acc){(iacc, v) => {
-            val oldSet: Set[(Int, String)] = iacc.getOrElse(v._1, Set())
-            val newPar: (Int, String) = (v._2, predicate.getAtomSig)
-            iacc + (v._1 -> (oldSet + newPar))
-          }
-         }
-        }}
-      varmap.flatMap(a => {
-        val l = BounderUtil.repeatingPerm(_=> a._2, 2)
-        l.map(b => Edge(b.head, b(1))).toSet
-      }).toSet
-    }
+//    def getEdgeSet: Set[Edge] = {
+//      val varmap: Map[String, Set[(Int, String)]] =
+//        predicates.foldLeft(Map[String, Set[(Int,String)]]()) { (acc, predicate) => {
+//          predicate.lsVar.zipWithIndex.foldLeft(acc){(iacc, v) => {
+//            val oldSet: Set[(Int, String)] = iacc.getOrElse(v._1, Set())
+//            val newPar: (Int, String) = (v._2, predicate.getAtomSig)
+//            iacc + (v._1 -> (oldSet + newPar))
+//          }
+//         }
+//        }}
+//      varmap.flatMap(a => {
+//        val l = BounderUtil.repeatingPerm(_=> a._2, 2)
+//        l.map(b => Edge(b.head, b(1))).toSet
+//      }).toSet
+//    }
   }
 }
 object SpecSpace{
@@ -184,18 +287,19 @@ object SpecSpace{
 /**
  * Representation of a set of possible lifestate specs */
 class SpecSpace(specs: Set[LSSpec]) {
-  private val iset: Map[(MessageType, (String, String)), I] = {
-    val allISpecs = specs.flatMap(SpecSpace.allI)
-    val collected = allISpecs.groupBy(i => (i.mt, i.signatures))
-    collected.flatMap{
-      case (k,v) =>
-        val setOfVarLists = v.map(_.lsVars)
-        val maxL = setOfVarLists.foldLeft(0)((acc,v) => if(v.size > acc)v.size else acc)
-        val blankVars = (0 until maxL).map(ind =>
-          if(setOfVarLists.exists(l=> (l.size > ind) && !LifeState.LSAnyVal.matches(l(ind)))) "v" else "_")
-        k._2.map(v => (k._1,v)->I(k._1,k._2,blankVars.toList))
-    }
-  }
+  private val allISpecs: Map[MessageType, Set[I]] = specs.flatMap(SpecSpace.allI).groupBy(i => i.mt)
+//  private val iset: Map[(MessageType, (String, String)), I] = {
+//    val allISpecs = specs.flatMap(SpecSpace.allI)
+//    val collected = allISpecs.groupBy(i => (i.mt, i.signatures))
+//    collected.flatMap{
+//      case (k,v) =>
+//        val setOfVarLists = v.map(_.lsVars)
+//        val maxL = setOfVarLists.foldLeft(0)((acc,v) => if(v.size > acc)v.size else acc)
+//        val blankVars = (0 until maxL).map(ind =>
+//          if(setOfVarLists.exists(l=> (l.size > ind) && !LifeState.LSAnyVal.matches(l(ind)))) "v" else "_")
+//        k._2.map(v => (k._1,v)->I(k._1,k._2,blankVars.toList))
+//    }
+//  }
 
   private var freshLSVarIndex = 0
   def nextFreshLSVar():String = {
@@ -210,8 +314,11 @@ class SpecSpace(specs: Set[LSSpec]) {
    * @param sig class name and method signature (e.g. void foo(java.lang.Object))
    * @return Some(I) if I exists, None otherwise.
    */
-  def getIWithFreshVars(mt: MessageType, sig: (String, String)):Option[I] = {
-    iset.get(mt,sig).map{i =>
+  def getIWithFreshVars(mt: MessageType, sig: (String, String))(implicit ch : ClassHierarchyConstraints):Option[I] = {
+//    iset.get(mt,sig).map{i =>
+//      i.copy(lsVars = i.lsVars.map(a => if(a != "_") nextFreshLSVar() else "_"))
+//    }
+    allISpecs.getOrElse(mt,Set()).find(i => i.signatures.matches(sig)).map{ i =>
       i.copy(lsVars = i.lsVars.map(a => if(a != "_") nextFreshLSVar() else "_"))
     }
   }
@@ -223,9 +330,9 @@ class SpecSpace(specs: Set[LSSpec]) {
    * @param name
    * @return
    */
-  def specsBySig(mt: MessageType, pkg:String, name:String):Set[LSSpec] = {
+  def specsBySig(mt: MessageType, pkg:String, name:String)(implicit ch: ClassHierarchyConstraints):Set[LSSpec] = {
     // TODO: cache specs in hash map
-    val specsForSig = specs.filter(a => a.target.signatures.contains((pkg,name)) && a.target.mt == mt)
+    val specsForSig = specs.filter(a => a.target.mt == mt && a.target.signatures.matches((pkg,name)))
     specsForSig
   }
 
