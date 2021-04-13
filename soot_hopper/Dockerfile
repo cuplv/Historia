@@ -78,9 +78,10 @@ RUN apt-get install -y sqlite
 
 ARG COMMITHASH=unknown
 RUN echo $COMMITHASH >/home/bounder/commithash.txt
+RUN rm -r /home/bounder 2>/dev/null
 COPY . /home/bounder/
 ENV LD_LIBRARY_PATH=/usr/lib/
-RUN cd /home/bounder/; sbt assembly
+#RUN cd /home/bounder/; sbt assembly
 
 RUN mkdir /home/bounder_host
 ENV BOUNDER_JAR=/home/bounder/target/scala-2.13/soot_hopper-assembly-0.1.jar

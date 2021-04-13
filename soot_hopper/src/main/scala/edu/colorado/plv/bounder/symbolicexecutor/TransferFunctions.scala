@@ -473,10 +473,11 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val newFrame = CallStackFrame(mRet, Some(AppLoc(mloc,line,true)), Map())
       // Remove assigned variable from the abstract state
       val clearedLval = w.cmdAtLocation(retLoc) match{
-        case AssignCmd(target, _:Invoke, _) => postState.clearLVal(target)
+        case AssignCmd(target, _:Invoke, _) =>
+          postState.clearLVal(target)
         case _ => postState
       }
-      val withStackFrame = clearedLval.copy(callStack = newFrame :: postState.callStack, nextCmd = List(target),
+      val withStackFrame = clearedLval.copy(callStack = newFrame :: clearedLval.callStack, nextCmd = List(target),
         alternateCmd = Nil)
       val withPrecisionLoss = rel.applyPrecisionLossForSkip(withStackFrame)
       Set(withPrecisionLoss)
@@ -846,19 +847,22 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         case None => Set(state)
       }
     case AssignCmd(ArrayReference(base,index), lhs,_) =>
-      val possibleAliases = state.heapConstraints.filter{
+      val possibleAliases: Map[HeapPtEdge, PureExpr] = state.heapConstraints.filter{
         case (ArrayPtEdge(_,_),_) => true
         case _ => false
       }
       if (possibleAliases.isEmpty)
         Set(state)
-      else
-        ???
+      else {
+        //TODO: handle arrays more precisely
+        Set(state.copy(heapConstraints = state.heapConstraints -- possibleAliases.keySet))
+      }
 
     case AssignCmd(lhs:LocalWrapper, ArrayLength(l),_) =>
       state.get(lhs) match{
         case Some(v) =>
-          ???
+          //TODO: handle arrays more precisely
+          Set(state.clearLVal(lhs).copy(pureFormula = state.pureFormula + PureConstraint(v, NotEquals, NullVal)))
         case None => Set(state)
       }
     case AssignCmd(_:LocalWrapper, CaughtException(_), _) =>

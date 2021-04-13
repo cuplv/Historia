@@ -531,15 +531,18 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
           val out = mergeEquivalentCallins(resolvedSkipIrrelevant.seq.toSet, state)
           //TODO: remove dbg code
           if(out.isEmpty)
-            println(s"empty pred location $l")
+            println(s"empty pred location (possible cg unsoundness) $l")
           out
         }
-        case AssignCmd(tgt, _:Invoke,loc) => {
+        case AssignCmd(tgt:LocalWrapper, _:Invoke,loc) => {
           val unresolvedTargets =
             wrapper.makeInvokeTargets(loc)
           val resolved = resolver.resolveCallLocation(unresolvedTargets)
           val resolvedSkipIrrelevant = resolved.par.map{m => (relevantMethod(m,state),m) match{
             case (RelevantMethod,_) => m
+            case (NotRelevantMethod, InternalMethodReturn(_, _, _)) if state.containsLocal(tgt) =>
+              // don't skip method if return value is materialized
+              m
             case (NotRelevantMethod, InternalMethodReturn(clazz, name, loc)) =>
               SkippedInternalMethodReturn(clazz, name,NotRelevantMethod,loc)
             case (d:DropHeapCellsMethod, InternalMethodReturn(clazz, name, loc)) =>
@@ -549,9 +552,11 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
           val out: Set[Loc] = mergeEquivalentCallins(resolvedSkipIrrelevant.seq.toSet, state)
           //TODO: remove dbg code
           if(out.isEmpty)
-            println(s"empty pred location $l")
+            println(s"empty pred location (possible cg unsoundness) $l")
           out
         }
+        case AssignCmd(tgt, inv:Invoke,_) =>
+          throw new IllegalStateException(s"Invoke cmd assigns to non-local: $tgt  invoke: $inv")
         case _ => List(l.copy(isPre=true))
       }
     }
