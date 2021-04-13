@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import better.files.Resource
 import edu.colorado.plv.bounder.ir.{TestIR, _}
-import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSSpec}
+import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSSpec, SetSignatureMatcher, SignatureMatcher}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SetInclusionTypeSolving, SolverTypeSolving, StateTypeSolving, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
@@ -20,6 +20,8 @@ class TransferFunctionsTest extends AnyFunSuite {
     val pc = new ClassHierarchyConstraints(hierarchy,Set(), stateTypeSolving)
     (new Z3StateSolver(pc),pc)
   }
+
+  implicit def set2SigMat(s:Set[(String,String)]):SignatureMatcher = SetSignatureMatcher(s)
 
   val miniCha = new ClassHierarchyConstraints(hierarchy, Set("java.lang.Runnable"))
   val tr = (ir:TestIR, cha:ClassHierarchyConstraints) => new TransferFunctions(ir, new SpecSpace(Set()),cha)

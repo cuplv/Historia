@@ -19,8 +19,8 @@ class RXJavaSubscribe_TestApp extends AnyFunSuite{
         FragmentGetActivityNullSpec.getActivityNonNull,
         ActivityLifecycle.init_first_callback,
         RxJavaSpec.call,
-        RxJavaSpec.subscribeDoesNotReturnNull,
-        RxJavaSpec.subscribeIsUniqueAndNonNull
+//        RxJavaSpec.subscribeDoesNotReturnNull,
+        RxJavaSpec.subscribeIsUnique
       )),cha)
     val config = SymbolicExecutorConfig(
       stepLimit = Some(200), w,transfer,

@@ -350,8 +350,8 @@ object SpecSetOption{
     "AntennaPod" -> Set(FragmentGetActivityNullSpec.getActivityNull,
       FragmentGetActivityNullSpec.getActivityNonNull,
       RxJavaSpec.call,
-      RxJavaSpec.subscribeDoesNotReturnNull,
-      RxJavaSpec.subscribeIsUniqueAndNonNull,
+//      RxJavaSpec.subscribeDoesNotReturnNull,
+      RxJavaSpec.subscribeIsUnique,
       ActivityLifecycle.Fragment_activityCreatedOnlyFirst
     ))
   implicit val rw:RW[SpecSetOption] = upickle.default.readwriter[String].bimap[SpecSetOption](
@@ -393,7 +393,8 @@ class ExperimentsDb(bounderJar:Option[String] = None){
       case hn::p::db::un::pw::Nil => (hn,p,db,un,pw)
       case _ => throw new IllegalStateException("Malformed pgpass")
     }
-  // note use host.docker.internal:3333:postgres:postgres:[pass] for docker container ~/.pgpass
+  // note use host.docker.internal:3333:postgres:postgres:[pass] for docker container ~/.pgpass on mac
+  // use flag
   private val connectionUrl = s"jdbc:postgresql://${hostname}:${port}/${database}?user=${username}&password=${password}"
   val db = Database.forURL(connectionUrl, driver = "org.postgresql.Driver")
 

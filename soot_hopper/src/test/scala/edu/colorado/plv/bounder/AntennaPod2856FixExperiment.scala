@@ -19,8 +19,8 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
     new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
       FragmentGetActivityNullSpec.getActivityNonNull,
       RxJavaSpec.call,
-      RxJavaSpec.subscribeDoesNotReturnNull,
-      RxJavaSpec.subscribeIsUniqueAndNonNull
+//      RxJavaSpec.subscribeDoesNotReturnNull,
+      RxJavaSpec.subscribeIsUnique
     )),cha)
   private val prettyPrinting = new PrettyPrinting()
 

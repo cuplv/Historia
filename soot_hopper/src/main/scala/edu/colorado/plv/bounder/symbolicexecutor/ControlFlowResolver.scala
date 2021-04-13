@@ -59,6 +59,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
                                resolver: AppCodeResolver,
                                cha: ClassHierarchyConstraints,
                                component: Option[List[String]]) {
+  private implicit val ch = cha
   private val componentR: Option[List[Regex]] = component.map(_.map(_.r))
 
   def callbackInComponent(loc: Loc): Boolean = loc match {
@@ -263,9 +264,9 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
         true
 
     }
-    def relIExistsForCmd(tgt: List[Option[RVal]],inv:Invoke):Boolean = {
+    def relIExistsForCmd(tgt: List[Option[RVal]],inv:Invoke)(implicit ch:ClassHierarchyConstraints):Boolean = {
       val relIHere: Set[(I, List[LSParamConstraint])] = relI.filter{ i =>
-        i._1.signatures.contains((inv.targetClass, inv.targetMethod))
+        i._1.signatures.matches((inv.targetClass, inv.targetMethod))
       }
       relIHere.exists(v => v match{
         case (_,lsPar) =>
@@ -372,7 +373,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 
   def relevantMethodBody(m: MethodLoc, state: State): RelevanceRelation = {
     val fnSet: Set[String] = state.fieldNameSet()
-    val mSet = state.traceMethodSet()
+//    val mSet: Set[String] = state.traceMethodSet()
     if (resolver.isFrameworkClass(m.classType)) {
       return NotRelevantMethod // body can only be relevant to app heap or trace if method is in the app
     }
@@ -380,10 +381,12 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     val allCalls = memoizedallCalls(m) + m
     //TODO: add par back in?
     val traceRelevantCallees = allCalls.filter{ m =>
-      mSet.exists{ci =>
-        val cin = callinNames(m)
-        cin.contains(ci)
-      }
+//      mSet.exists{ci =>
+//        val cin: Set[String] = callinNames(m)
+//        cin.contains(ci)
+//      }
+      val ciN = callinNames(m)
+      ciN.exists(state.fastIMatches)
     }
     if (traceRelevantCallees.nonEmpty){
       val traceExists = traceRelevantCallees.exists{callee =>

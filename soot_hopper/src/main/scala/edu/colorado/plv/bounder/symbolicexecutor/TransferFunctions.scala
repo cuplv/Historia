@@ -1,16 +1,36 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
+import better.files.Resource
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{NullConst, _}
 import edu.colorado.plv.bounder.lifestate.LifeState._
-import edu.colorado.plv.bounder.lifestate.SpecSpace
+import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.TransferFunctions.{inVarsForCall, relevantAliases, relevantAliases2}
+import edu.colorado.plv.bounder.symbolicexecutor.FrameworkExtensions.urlPos
+import edu.colorado.plv.bounder.symbolicexecutor.TransferFunctions.{inVarsForCall, nonNullCallins, relevantAliases, relevantAliases2}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import upickle.default._
 import edu.colorado.plv.bounder.symbolicexecutor.state.PrettyPrinting
 
 object TransferFunctions{
+  private val nonNullDefUrl = List(
+    "NonNullReturnCallins.txt",
+    "NonNullReturnCallins",
+    "/resources/NonNullReturnCallins.txt",
+    "resources/NonNullReturnCallins.txt",
+  )
+  lazy val nonNullCallins: Seq[I] =
+    nonNullDefUrl.flatMap{ (path:String) =>
+      //    val source = Source.fromFile(frameworkExtPath)
+      try {
+        val source = Resource.getAsString(path)
+        Some(LifeState.parseIFile(source))
+      }catch{
+        case t:IllegalArgumentException => throw t //exception thrown when parsing fails
+        case _:Throwable => None // deal with instability of java jar file resource resolution
+      }
+    }.head
+
   /**
    * Get set of things that if aliased, change the trace abstraction state
    * TODO: this is over approx
@@ -21,7 +41,8 @@ object TransferFunctions{
    */
   def relevantAliases(pre: State,
                       dir: MessageType,
-                      signature: (String, String)) :Set[List[LSParamConstraint]]  = {
+                      signature: (String, String))(implicit
+                                                   ch:ClassHierarchyConstraints) :Set[List[LSParamConstraint]]  = {
     val relevantI: Set[(I, List[LSParamConstraint])] = pre.findIFromCurrent(dir, signature)
     relevantI.map{
       case (I(_, _, vars),p)=> p
@@ -33,7 +54,7 @@ object TransferFunctions{
   def relevantAliases2(pre:State,
                        dir:MessageType,
                        signature: (String,String),
-                       lst : List[Option[RVal]]):List[Option[RVal]] = {
+                       lst : List[Option[RVal]])(implicit ch:ClassHierarchyConstraints):List[Option[RVal]] = {
     val relevantI = pre.findIFromCurrent(dir,signature)
     lst.zipWithIndex.map{ case (rval,ind) =>
       val existsNAtInd = relevantI.exists{i =>
@@ -87,42 +108,72 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
   def transfer(postState: State, target: Loc, source: Loc): Set[State] = (source, target) match {
     case (source@AppLoc(m, _, false), cmret@CallinMethodReturn(_, _)) =>
       // traverse back over the retun of a callin
-      val (pkg, name) = msgCmdToMsg(cmret)
-      val inVars: List[Option[RVal]] = inVarsForCall(source,w)
-      val relAliases = relevantAliases2(postState, CIExit, (pkg,name),inVars)
-      val frame = CallStackFrame(target, Some(source.copy(isPre = true)), Map())
-      val (rvals, state0) = getOrDefineRVals(m,relAliases, postState)
-      val state1 = traceAllPredTransfer(CIExit, (pkg,name),rvals, state0)
-      val outState = newSpecInstanceTransfer(source.method, CIExit, (pkg, name), inVars, cmret, state1)
-      val outState1: Set[State] = inVars match{
-        case Some(revar:LocalWrapper)::_ => outState.map(s3 => s3.clearLVal(revar))
-        case _ => outState
-      }
-      val outState2 = outState1.map(s2 => s2.copy(callStack = frame::s2.callStack, nextCmd = List(target),
-        alternateCmd = Nil))
-
-      val out = outState2.map{ oState =>
-        //clear assigned var from stack if exists
-        val statesWithClearedReturn = inVars.head match{
-          case Some(v:LocalWrapper) => oState.clearLVal(v)
-          case None => oState
-          case v => throw new IllegalStateException(s"Malformed IR. Callin result assigned to non-local: $v")
-        }
-        statesWithClearedReturn
-      }
-      out
+//      val (pkg, name) = msgCmdToMsg(cmret)
+//      val inVars: List[Option[RVal]] = inVarsForCall(source,w)
+//      val relAliases = relevantAliases2(postState, CIExit, (pkg,name),inVars)
+//      val frame = CallStackFrame(target, Some(source.copy(isPre = true)), Map())
+//      val (rvals, state0) = getOrDefineRVals(m,relAliases, postState)
+//      val state1 = traceAllPredTransfer(CIExit, (pkg,name),rvals, state0)
+//      val outState = newSpecInstanceTransfer(source.method, CIExit, (pkg, name), inVars, cmret, state1)
+//      val outState1: Set[State] = inVars match{
+//        case Some(revar:LocalWrapper)::_ => outState.map(s3 => s3.clearLVal(revar))
+//        case _ => outState
+//      }
+//      val outState2 = outState1.map(s2 => s2.copy(callStack = frame::s2.callStack, nextCmd = List(target),
+//        alternateCmd = Nil))
+//
+//      val out = outState2.map{ oState =>
+//        //clear assigned var from stack if exists
+//        val statesWithClearedReturn = inVars.head match{
+//          case Some(v:LocalWrapper) => oState.clearLVal(v)
+//          case None => oState
+//          case v => throw new IllegalStateException(s"Malformed IR. Callin result assigned to non-local: $v")
+//        }
+//        statesWithClearedReturn
+//      }
+//      out
+      // TODO: remove CallinMethodReturn and replace with grouped
+      val g = GroupedCallinMethodReturn(Set(cmret.fmwClazz), cmret.fmwName)
+      transfer(postState,g,source)
     case (source@AppLoc(m, _, false), cmret@GroupedCallinMethodReturn(_, _)) =>
       // traverse back over the retun of a callin
-      //TODO: Deduplicate with code of CallinMethodReturn
+
+      // if post state has materialized value for receiver, assume non-null
+      val cmd = w.cmdAtLocation(source)
+      val inv = cmd match{
+        case InvokeCmd(inv : Invoke, _) => inv
+        case AssignCmd(_, inv: Invoke, _) => inv
+        case c => throw new IllegalStateException(s"Malformed invoke command $c")
+      }
+      val receiverOption: Option[LocalWrapper] = inv match{
+        case v:VirtualInvoke => Some(v.target)
+        case s:SpecialInvoke => Some(s.target)
+        case _:StaticInvoke => None
+      }
+      val postState2 = if(receiverOption.exists{postState.containsLocal}) {
+        val localV = postState.get(receiverOption.get).get
+        postState.copy(pureFormula = postState.pureFormula + PureConstraint(localV, NotEquals, NullVal))
+      } else postState
+
       val (pkg, name) = msgCmdToMsg(cmret)
       val inVars: List[Option[RVal]] = inVarsForCall(source,w)
-      val relAliases = relevantAliases2(postState, CIExit, (pkg,name),inVars)
+      val relAliases = relevantAliases2(postState2, CIExit, (pkg,name),inVars)
       val frame = CallStackFrame(target, Some(source.copy(isPre = true)), Map())
-      val (rvals, state0) = getOrDefineRVals(m,relAliases, postState)
+      val (rvals, state0) = getOrDefineRVals(m,relAliases, postState2)
       val state1 = traceAllPredTransfer(CIExit, (pkg,name),rvals, state0)
       val outState = newSpecInstanceTransfer(source.method, CIExit, (pkg, name), inVars, cmret, state1)
+      // if retVar is materialized and assigned, clear it from the state
       val outState1: Set[State] = inVars match{
-        case Some(revar:LocalWrapper)::_ => outState.map(s3 => s3.clearLVal(revar))
+        case Some(retVar:LocalWrapper)::_ =>
+          val outState11 = if (nonNullCallins.exists(i => i.contains(CIExit, (pkg,name))))
+            // if non-null return callins defines this method, assume that the materialized return value is non null
+            outState.map{s =>
+              if(s.containsLocal(retVar))
+                s.copy(pureFormula = s.pureFormula + PureConstraint(s.get(retVar).get, NotEquals, NullVal))
+              else s
+            }
+          else outState
+          outState11.map(s3 => s3.clearLVal(retVar))
         case _ => outState
       }
       val outState2 = outState1.map(s2 => s2.copy(callStack = frame::s2.callStack, nextCmd = List(target),
@@ -306,13 +357,20 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         case AssignCmd(_, inv: Invoke, _) => inv
         case c => throw new IllegalStateException(s"Malformed invoke command $c")
       }
-      val receiverOption: Option[RVal] = cmd match{
+      val receiverOption: Option[LocalWrapper] = cmd match{
         case v:VirtualInvoke => Some(v.target)
         case s:SpecialInvoke => Some(s.target)
         case _:StaticInvoke => None
       }
+
+      // receiver must be non-null for invoke to be possible
+      val postState2 = if(receiverOption.exists{postState.containsLocal}) {
+        val localV = postState.get(receiverOption.get).get
+        postState.copy(pureFormula = postState.pureFormula + PureConstraint(localV, NotEquals, NullVal))
+      } else postState
+
       val argOptions: List[Option[RVal]] = cmd.params.map(Some(_))
-      val state0 = postState.setNextCmd(List(source))
+      val state0 = postState2.setNextCmd(List(source))
 
       // Always define receiver to reduce dynamic dispatch imprecision
       // Value is discarded if static call
@@ -360,20 +418,26 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         case AssignCmd(_, inv: Invoke, _) => inv
         case c => throw new IllegalStateException(s"Malformed invoke command $c")
       }
-      val receiverOption: Option[RVal] = inv match{
+      val receiverOption: Option[LocalWrapper] = inv match{
         case v:VirtualInvoke => Some(v.target)
         case s:SpecialInvoke => Some(s.target)
         case _:StaticInvoke => None
       }
 
+      val postState2 = if(receiverOption.exists{postState.containsLocal}) {
+        val localV = postState.get(receiverOption.get).get
+        postState.copy(pureFormula = postState.pureFormula + PureConstraint(localV, NotEquals, NullVal))
+      } else postState
+
+
       // If receiver variable is materialized, use that,
       // otherwise check if it is the "@this" var and use materialized "@this" if it exists
       val materializedReceiver = receiverOption.flatMap(recVar =>
-        if(postState.get(recVar).isDefined){
-          postState.get(recVar)
+        if(postState2.get(recVar).isDefined){
+          postState2.get(recVar)
         }else if(w.getThisVar(retloc).contains(recVar)){
           // invoke on variable representing @this
-          val r = postState.get(LocalWrapper("@this", "_"))
+          val r = postState2.get(LocalWrapper("@this", "_"))
           r
         }else None
       )
@@ -385,11 +449,11 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       }
       val newFrame = CallStackFrame(mRet, Some(AppLoc(mloc, line, true)), retVal)
       val clearedLVal = cmd match {
-        case AssignCmd(target, _, _) => postState.clearLVal(target)
-        case _ => postState
+        case AssignCmd(target, _, _) => postState2.clearLVal(target)
+        case _ => postState2
       }
       val stateWithFrame =
-        clearedLVal.copy(callStack = newFrame :: postState.callStack, nextCmd = List(target), alternateCmd = Nil)
+        clearedLVal.copy(callStack = newFrame :: postState2.callStack, nextCmd = List(target), alternateCmd = Nil)
       // Constraint receiver by current points to set  TODO: apply this to other method transfers ====
       if(receiverTypesFromPT.isDefined) {
         val (thisV, stateWThis) = if(materializedReceiver.isEmpty) {
