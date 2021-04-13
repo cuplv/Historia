@@ -39,7 +39,7 @@ class Z3ModelGenerator extends ModelGenerator {
                              predSpace : PredicateSpace) : Unit = qry match {
     case SomeQry(State(stack, heap, pure, _,_,_,_,_), loc) => {
       val targetSig = loc.msgSig.get
-      val edges = predSpace.getEdgeSet
+//      val edges = predSpace.getEdgeSet
       ???
     }
     case _ =>

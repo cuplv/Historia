@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.solver
 import com.microsoft.z3.{BoolExpr, Context, EnumSort, Expr, FuncDecl, Solver, Sort, UninterpretedSort}
 import edu.colorado.plv.bounder.ir.{AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, InternalMethodInvoke, InternalMethodReturn, Loc}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints.primitiveTypes
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, Equals, OneOfClass, PureConstraint, PureVar, State, SubclassOf, SuperclassOf, TypeComp, TypeConstraint}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, Equals, OneOfClass, PureConstraint, PureVar, State, SubclassOf, SuperclassOf, Subtype, TypeConstraint}
 import org.scalactic.anyvals.NonEmptySet
 import scalaz.Memo
 import soot.ShortType
@@ -92,6 +92,7 @@ class ClassHierarchyConstraints(types : Map[String,Set[String]],
     case InternalMethodReturn(clazz, _,_) => Some(clazz)
     case _ => throw new IllegalArgumentException("Loc is not method entry/exit")
   }
+  def typeExists(tname:String):Boolean = types.contains(tname)
   def getSubtypesOf(tname:String):Set[String] = {
     if (tname.endsWith("[]")){
       val arrayBase = tname.replaceFirst("\\[\\]","")

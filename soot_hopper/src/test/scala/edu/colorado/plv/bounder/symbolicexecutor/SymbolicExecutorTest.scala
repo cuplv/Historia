@@ -429,7 +429,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
           FragmentGetActivityNullSpec.getActivityNonNull,
           ActivityLifecycle.init_first_callback,
           RxJavaSpec.call,
-          RxJavaSpec.subscribeDoesNotReturnNull
+          RxJavaSpec.subscribeIsUnique
+          //          RxJavaSpec.subscribeDoesNotReturnNull
         )),cha)
       val config = SymbolicExecutorConfig(
         stepLimit = Some(200), w, transfer,
@@ -494,7 +495,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
             FragmentGetActivityNullSpec.getActivityNonNull,
             ActivityLifecycle.init_first_callback,
             RxJavaSpec.call,
-            RxJavaSpec.subscribeDoesNotReturnNull
+            RxJavaSpec.subscribeIsUnique
+//            RxJavaSpec.subscribeDoesNotReturnNull
           )), cha)
         val config = SymbolicExecutorConfig(
           stepLimit = Some(200), w, transfer,
@@ -638,8 +640,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
           FragmentGetActivityNullSpec.getActivityNonNull,
           ActivityLifecycle.init_first_callback,
           RxJavaSpec.call,
-          RxJavaSpec.subscribeDoesNotReturnNull,
-          RxJavaSpec.subscribeIsUniqueAndNonNull
+//          RxJavaSpec.subscribeDoesNotReturnNull,
+          RxJavaSpec.subscribeIsUnique
         )),cha)
       val config = SymbolicExecutorConfig(
         stepLimit = Some(120), w, transfer,
@@ -775,8 +777,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
           ActivityLifecycle.init_first_callback,
           RxJavaSpec.call,
           ActivityLifecycle.Fragment_activityCreatedOnlyFirst,
-          RxJavaSpec.subscribeDoesNotReturnNull,
-          RxJavaSpec.subscribeIsUniqueAndNonNull
+//          RxJavaSpec.subscribeDoesNotReturnNull,
+          RxJavaSpec.subscribeIsUnique
         )),cha)
       val config = SymbolicExecutorConfig(
         stepLimit = Some(200), w, transfer,
@@ -1016,8 +1018,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
           FragmentGetActivityNullSpec.getActivityNonNull,
           RxJavaSpec.call,
           ActivityLifecycle.Fragment_activityCreatedOnlyFirst,
-          RxJavaSpec.subscribeDoesNotReturnNull,
-          RxJavaSpec.subscribeIsUniqueAndNonNull
+//          RxJavaSpec.subscribeDoesNotReturnNull,
+          RxJavaSpec.subscribeIsUnique
         )),cha)
       val config = SymbolicExecutorConfig(
         stepLimit = Some(300), w, transfer,
