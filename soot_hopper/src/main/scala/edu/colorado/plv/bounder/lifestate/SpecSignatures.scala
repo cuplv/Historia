@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSConstraint, LSFalse, LSSpec, NI, Not, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSConstraint, LSFalse, LSSpec, NI, Not, Or, SetSignatureMatcher}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{Equals, NotEquals}
 
 object SpecSignatures {
@@ -11,6 +11,7 @@ object SpecSignatures {
   // TODO: type constraints on runtime value of LS vars instead of syntactic matching of signature
   //    e.g. the following would eliminate the need for enumerating activity types
   //    I(void onActivityCreated(), _::a, a<:Activity)
+  //TODO: replace SetSignatureMatcher with subtype
   val activityTypeSet = Set(
     "androidx.appcompat.app.AppCompatActivity",
     "androidx.fragment.app.FragmentActivity",
@@ -19,29 +20,29 @@ object SpecSignatures {
   )
 
   // Activity lifecycle
-  val Activity_onResume_entry = I(CBEnter, activityTypeSet.map((_, "void onResume()")), List("_", "a"))
-  val Activity_onResume_exit = I(CBExit, activityTypeSet.map((_, "void onResume()")), List("_", "a"))
+  val Activity_onResume_entry = I(CBEnter, SetSignatureMatcher(activityTypeSet.map((_, "void onResume()"))), List("_", "a"))
+  val Activity_onResume_exit = I(CBExit, SetSignatureMatcher(activityTypeSet.map((_, "void onResume()"))), List("_", "a"))
   val Activity_onCreate_exit =
-    I(CBExit, activityTypeSet.map((_, "void onCreate(android.os.Bundle)")), List("_", "a"))
-  val Activity_onPause_entry = I(CBEnter, activityTypeSet.map((_, "void onPause()")), List("_", "a"))
-  val Activity_onPause_exit = I(CBExit, activityTypeSet.map((_, "void onPause()")), List("_", "a"))
+    I(CBExit, SetSignatureMatcher(activityTypeSet.map((_, "void onCreate(android.os.Bundle)"))), List("_", "a"))
+  val Activity_onPause_entry = I(CBEnter, SetSignatureMatcher(activityTypeSet.map((_, "void onPause()"))), List("_", "a"))
+  val Activity_onPause_exit = I(CBExit, SetSignatureMatcher(activityTypeSet.map((_, "void onPause()"))), List("_", "a"))
   val Activity_init_exit = I(CBExit,
-    (activityTypeSet + "java.lang.Object").map((_, "void <init>()")), List("_", "a"))
+    SetSignatureMatcher((activityTypeSet + "java.lang.Object").map((_, "void <init>()"))), List("_", "a"))
 
   val Activity_init_entry: I = Activity_init_exit.copy(mt = CBEnter)
 
   // Fragment getActivity
-  val Fragment_getActivity_Signatures = Set(
+  val Fragment_getActivity_Signatures = SetSignatureMatcher(Set(
     ("android.app.Fragment","android.app.Activity getActivity()"),
     ("android.support.v4.app.Fragment","android.support.v4.app.FragmentActivity getActivity()"),
     ("android.support.v4.app.FragmentHostCallback","android.app.Activity getActivity()"),
     ("androidx.fragment.app.Fragment","androidx.fragment.app.FragmentActivity getActivity()")
-  )
+  ))
   val Fragment_get_activity_exit_null = I(CIExit, Fragment_getActivity_Signatures, "@null"::"f"::Nil)
 
   val Fragment_get_activity_exit = I(CIExit, Fragment_getActivity_Signatures, "a"::"f"::Nil)
 
-  val Fragment_onActivityCreated_Signatures = Set(
+  val Fragment_onActivityCreated_Signatures = SetSignatureMatcher(Set(
     ("android.app.DialogFragment","void onActivityCreated(android.os.Bundle)"),
     ("android.app.Fragment","void onActivityCreated(android.os.Bundle)"),
     ("android.arch.lifecycle.ReportFragment","void onActivityCreated(android.os.Bundle)"),
@@ -54,11 +55,11 @@ object SpecSignatures {
     ("androidx.fragment.app.DialogFragment","void onActivityCreated(android.os.Bundle)"),
     ("androidx.fragment.app.Fragment","void onActivityCreated(android.os.Bundle)"),
     ("androidx.lifecycle.ReportFragment","void onActivityCreated(android.os.Bundle)"),
-  )
+  ))
 
   val Fragment_onActivityCreated_entry = I(CBEnter, Fragment_onActivityCreated_Signatures, "_"::"f"::Nil)
 
-  val Fragment_onDestroy_Signatures = Set(
+  val Fragment_onDestroy_Signatures = SetSignatureMatcher(Set(
     ("android.app.Fragment","void onDestroy()"),
     ("android.app.Fragment","void onDestroyOptionsMenu()"),
     ("android.app.Fragment","void onDestroyView()"),
@@ -74,16 +75,16 @@ object SpecSignatures {
     ("androidx.fragment.app.FragmentActivity","void onDestroy()"),
     ("androidx.fragment.app.ListFragment","void onDestroyView()"),
     ("androidx.lifecycle.ReportFragment","void onDestroy()"),
-  )
+  ))
   val Fragment_onDestroy_exit = I(CBExit, Fragment_onDestroy_Signatures, "_"::"f"::Nil)
 
   // rxjava
-  val RxJava_call = Set(
+  val RxJava_call = SetSignatureMatcher(Set(
     ("rx.functions.Action1","void call(java.lang.Object)"),
-  )
+  ))
   val RxJava_call_entry = I(CBEnter, RxJava_call, "_"::"l"::Nil)
 
-  val RxJava_unsubscribe = Set(
+  val RxJava_unsubscribe = SetSignatureMatcher(Set(
     ("retrofit2.adapter.rxjava.CallArbiter","void unsubscribe()"),
     ("rx.SingleSubscriber","void unsubscribe()"),
     ("rx.Subscriber","void unsubscribe()"),
@@ -156,12 +157,12 @@ object SpecSignatures {
     ("rx.subscriptions.Subscriptions","rx.Subscription unsubscribed()"),
     ("rx.subscriptions.Subscriptions$FutureSubscription","void unsubscribe()"),
     ("rx.subscriptions.Subscriptions$Unsubscribed","void unsubscribe()"),
-  )
+  ))
   val RxJava_unsubscribe_exit = I(CIExit, RxJava_unsubscribe, "_"::"s"::Nil)
 
-  val RxJava_subscribe = Set(
+  val RxJava_subscribe = SetSignatureMatcher(Set(
     ("rx.Single", "rx.Subscription subscribe(rx.functions.Action1)")
-  )
+  ))
   val RxJava_subscribe_exit = I(CIExit, RxJava_subscribe, "s"::"_"::"l"::Nil)
   val RxJava_subscribe_exit_null = RxJava_subscribe_exit.copy(lsVars = "@null"::Nil)
 }
@@ -179,10 +180,9 @@ object RxJavaSpec{
     SpecSignatures.RxJava_subscribe_exit,
     SpecSignatures.RxJava_unsubscribe_exit)
   val call = LSSpec(subUnsub, SpecSignatures.RxJava_call_entry)
-  val subscribeDoesNotReturnNull = LSSpec(LSFalse, SpecSignatures.RxJava_subscribe_exit_null)
-  val subscribeIsUniqueAndNonNull = LSSpec(Not(SpecSignatures.RxJava_subscribe_exit.copy(lsVars = "s"::Nil)),
-    SpecSignatures.RxJava_subscribe_exit,Set(LSConstraint("s",NotEquals,"@null"))
-  )
+//  val subscribeDoesNotReturnNull = LSSpec(LSFalse, SpecSignatures.RxJava_subscribe_exit_null)
+  val subscribeIsUnique = LSSpec(Not(SpecSignatures.RxJava_subscribe_exit.copy(lsVars = "s"::Nil)),
+    SpecSignatures.RxJava_subscribe_exit) //,Set(LSConstraint("s",NotEquals,"@null")  )
 }
 
 object ActivityLifecycle {

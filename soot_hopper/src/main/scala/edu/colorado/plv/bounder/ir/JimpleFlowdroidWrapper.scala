@@ -760,7 +760,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
       ("double-set-new", "hybrid"),
       ("set-impl", "double"),
       ("merge-stringbuffer", "true")
-//              ("dump-html","true") //TODO: disable for performance
+//              ("dump-html","true") //disable for performance
       //      ("lazy-pts", "true")
     )
     val appMethodList: List[SootMethod] = resolver.appMethods.toList.map(v => v.asInstanceOf[JimpleMethodLoc].method)

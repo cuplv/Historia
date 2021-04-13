@@ -410,7 +410,7 @@ trait StateSolver[T, C <: SolverCtx] {
     // pure formula are for asserting that two abstract addresses alias each other or not
     //  as well as asserting upper and lower bounds on concrete types associated with addresses
     val pureNoTypes = pure.filter {
-      case PureConstraint(_, TypeComp, _) => false
+      case PureConstraint(_, Subtype, _) => throw new IllegalArgumentException()
       case _ => true
     }
 
@@ -424,7 +424,7 @@ trait StateSolver[T, C <: SolverCtx] {
       val typeConstraints = state.typeConstraints.map { case (k, v) => k -> v.typeSet(ch) }
       //      val typeConstraints = persist.pureVarTypeMap(state)
       typeConstraints.keySet.filter(pv => state.pureFormula.exists {
-        case PureConstraint(v1, TypeComp, _) => v1 == pv
+        case PureConstraint(v1, Subtype, _) => throw new IllegalArgumentException()
         case _ => false
       })
       mkAnd(typeConstraints.map { case (pv, ts) => mkTypeConstraintForAddrExpr(typeFun, typeToSolverConst, toAST(pv), ts) }.toList)
@@ -459,8 +459,8 @@ trait StateSolver[T, C <: SolverCtx] {
     def nameFun: T = mkINameFn(enum)
 
     def iForMsg(m: TMessage): Option[I] = {
-      val possibleI = alli.filter(ci =>
-        ci.signatures.contains(m.fwkSig.get) && ci.mt == m.mType)
+      val possibleI = alli.filter(ci => ci.contains(ci.mt,m.fwkSig.get))
+//        ci.signatures.matches(m.fwkSig.get) && ci.mt == m.mType)
       assert(possibleI.size < 2)
       possibleI.headOption
     }
@@ -645,7 +645,7 @@ trait StateSolver[T, C <: SolverCtx] {
   }
 
   private def filterTypeConstraintsFromPf(pure: Set[PureConstraint]): Set[PureConstraint] = pure.filter {
-    case PureConstraint(_, TypeComp, _) => throw new IllegalStateException("TODO: remove TypeComp")
+    case PureConstraint(_, Subtype, _) => throw new IllegalStateException("TODO: remove TypeComp")
     case _ => true
   }
 

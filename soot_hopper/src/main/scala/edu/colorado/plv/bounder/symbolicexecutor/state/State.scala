@@ -25,12 +25,13 @@ object State {
   def topState:State =
     State(Nil,Map(),Set(),Map(),Set(),0)
 
-  def findIAF(messageType: MessageType, tuple: (String, String), pred: LSPred):Set[I] = pred match{
-    case i@I(mt, sigs, _) if mt == messageType && sigs.contains(tuple) => Set(i)
-    case NI(i1,i2) => Set(i1,i2).flatMap(findIAF(messageType, tuple, _))
-    case And(l1,l2) => findIAF(messageType,tuple,l1).union(findIAF(messageType,tuple,l2))
-    case Or(l1,l2) => findIAF(messageType,tuple,l1).union(findIAF(messageType,tuple,l2))
-    case Not(l) => findIAF(messageType, tuple, l)
+  def findIAF(messageType: MessageType, signature: (String, String),
+              pred: LSPred)(implicit ch:ClassHierarchyConstraints):Set[I] = pred match{
+    case i@I(mt, sigs, _) if mt == messageType && sigs.matches(signature) => Set(i)
+    case NI(i1,i2) => Set(i1,i2).flatMap(findIAF(messageType, signature, _))
+    case And(l1,l2) => findIAF(messageType,signature,l1).union(findIAF(messageType,signature,l2))
+    case Or(l1,l2) => findIAF(messageType,signature,l1).union(findIAF(messageType,signature,l2))
+    case Not(l) => findIAF(messageType, signature, l)
     case _ => Set()
   }
   implicit var rw:RW[State] = macroRW
@@ -413,15 +414,17 @@ case class State(callStack: List[CallStackFrame],
     case ArrayPtEdge(_,_) => None
   }
 
-  /**
-   * Use for over approximate relevant methods
-   * @return set of simple method names referenced by trace abstraction
-   */
-  def traceMethodSet():Set[String] =
-    traceAbstraction.flatMap{ at =>
-      val allISet = SpecSpace.allI(at.a)
-      allISet.flatMap(i => i.signatures.map(_._2))
-    }
+  //  /**
+  //   * Use for over approximate relevant methods
+  //   * @return set of simple method names referenced by trace abstraction
+  //   */
+  //  def traceMethodSet():Set[String] = ???
+  ////    traceAbstraction.flatMap{ at =>
+  ////      val allISet = SpecSpace.allI(at.a)
+  ////      allISet.flatMap(i => i.signatures.map(_._2))
+  ////    }
+  private lazy val allICache: Set[I] = traceAbstraction.flatMap{at =>SpecSpace.allI(at.a)}
+  def fastIMatches(subsignature: String):Boolean = allICache.exists(i => i.signatures.matchesSubSig(subsignature))
 
   def entryPossible(loc: Loc): Boolean = loc match{
     case CallbackMethodInvoke(clazz, name, _) =>
@@ -455,7 +458,9 @@ case class State(callStack: List[CallStackFrame],
     case AbstractTrace(_,_,mv) => mv.get(lsvar).map(LSPure)
   }
 
-  def findIFromCurrent(dir: MessageType, signature: (String, String)): Set[(I, List[LSParamConstraint])] = {
+  def findIFromCurrent(dir: MessageType,
+                       signature: (String, String))(implicit
+                                                    ch:ClassHierarchyConstraints): Set[(I, List[LSParamConstraint])] = {
     //TODO: constant constraints
     traceAbstraction.flatMap(ar =>{
       val iset = findIAF(dir,signature,ar.a)
@@ -822,7 +827,7 @@ object StackVar{
 sealed trait CmpOp
 object CmpOp{
   implicit val rw:RW[CmpOp] = RW.merge(
-    macroRW[Equals.type], macroRW[NotEquals.type], macroRW[TypeComp.type])
+    macroRW[Equals.type], macroRW[NotEquals.type], macroRW[Subtype.type])
 }
 case object Equals extends CmpOp{
   override def toString:String = " == "
@@ -830,8 +835,8 @@ case object Equals extends CmpOp{
 case object NotEquals extends CmpOp{
   override def toString:String = " != "
 }
-case object TypeComp extends CmpOp{
-  override def toString:String = ""
+case object Subtype extends CmpOp{
+  override def toString:String = "<:"
 }
 
 case class PureConstraint(lhs:PureExpr, op: CmpOp, rhs:PureExpr) {

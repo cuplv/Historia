@@ -1,12 +1,13 @@
 package edu.colorado.plv.bounder.synthesis
 
 import edu.colorado.plv.bounder.ir.{CBEnter, CallbackMethodInvoke, LocalWrapper, TestIRMethodLoc}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSPred, NI, PredicateSpace}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSPred, NI, PredicateSpace, SetSignatureMatcher, SignatureMatcher}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, PureVar, SomeQry, StackVar, State}
 import org.scalatest.funsuite.AnyFunSuite
 
 class Z3ModelGeneratorTest extends AnyFunSuite {
 
+  implicit def set2SigMat(s:Set[(String,String)]):SignatureMatcher = SetSignatureMatcher(s)
   val fooMethod = TestIRMethodLoc("","foo", List(Some(LocalWrapper("@this","Object"))))
   ignore("Encode Node Reachability"){
     // TODO: implement model generator
