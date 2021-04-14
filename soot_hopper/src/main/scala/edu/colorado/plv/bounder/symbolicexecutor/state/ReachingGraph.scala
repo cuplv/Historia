@@ -41,8 +41,10 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
   private val liveAtEnd = TableQuery[LiveAtEnd]
   private val graphQuery = TableQuery[WitnessGraph]
   private val initialQueries = TableQuery[InitialQueryTable]
+  import slick.jdbc.SQLiteProfile.api._
 
-  val db = Database.forURL(s"jdbc:sqlite:$dbfile",driver="org.sqlite.JDBC")
+//  val db = Database.forURL(s"jdbc:sqlite:$dbfile",driver="org.sqlite.JDBC")
+  val db = Database.forURL(s"jdbc:sqlite:$dbfile",Map("maxConnections" -> "1"))
   if(!dbf.exists()) {
     val setup = DBIO.seq(witnessQry.schema.create,
       methodQry.schema.create,
@@ -171,10 +173,10 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
     val writeFuture = db.run(liveAtEnd ++= ids)
     Await.result(writeFuture, 30 seconds)
     val updateMetadata = for(q <- initialQueries if q.id === finalizeQryId)yield q.metadata
-    val meta = Await.result(db.run(updateMetadata.result), 30 seconds)
+    val meta = Await.result(db.run(updateMetadata.result), 600 seconds)
     assert(meta.size == 1)
     val updatedMeta = finishMeta(meta.head, status)
-    Await.result(db.run(updateMetadata.update(updatedMeta)), 30 seconds)
+    Await.result(db.run(updateMetadata.update(updatedMeta)), 600 seconds)
   }
 
   def writeNode(node: DBPathNode): Unit = {

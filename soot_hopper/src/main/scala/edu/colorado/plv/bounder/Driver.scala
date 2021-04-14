@@ -2,12 +2,13 @@ package edu.colorado.plv.bounder
 
 import java.io.{PrintWriter, StringWriter}
 import java.sql.Timestamp
+import java.time.Instant
 import java.util.Date
 
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil.{Proven, ResultSummary, Timeout, Unreachable, Witnessed}
 import edu.colorado.plv.bounder.Driver.{Default, RunMode}
-import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
+import edu.colorado.plv.bounder.ir.{JimpleFlowdroidWrapper, Loc}
 import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
 import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
@@ -29,7 +30,9 @@ import scala.util.matching.Regex
 case class Action(mode:RunMode = Default,
                   baseDirOut: Option[String] = None,
                   baseDirApk:Option[String] = None,
-                  config: RunConfig = RunConfig()
+                  config: RunConfig = RunConfig(),
+                  filter:Option[String] = None, // for making allderef queries - only process classes beginning with
+                  tag:Option[String] = None
                  ){
   val baseDirVar = "${baseDir}"
   val outDirVar = "${baseDirOut}"
@@ -66,7 +69,8 @@ case class RunConfig(apkPath:String = "",
                      specSet: SpecSetOption = TopSpecSet,
                      initialQuery: List[InitialQuery] = Nil,
                      limit:Int = 100,
-                     samples:Int = 5
+                     samples:Int = 5,
+                     tag:String = ""
                     ){
 }
 
@@ -93,8 +97,9 @@ object Driver {
   case object SampleDeref extends RunMode
   case object ReadDB extends RunMode
   case object ExpLoop extends RunMode
+  case object MakeAllDeref extends RunMode
 
-  def readDB(cfg: RunConfig, outFolder:File): Unit = {
+  def readDB(outFolder:File): Unit = {
     val dbPath = outFolder / "paths.db"
     val db = DBOutputMode(dbPath.toString())
     val liveNodes: Set[IPathNode] = db.getTerminal().map(v=>v)
@@ -108,12 +113,13 @@ object Driver {
       import builder._
       OParser.sequence(
         programName("Bounder"),
-        opt[String]('m',"mode").optional().text("run mode [verify, info, sampleDeref]").action{
+        opt[String]('m',"mode").required().text("run mode [verify, info, sampleDeref]").action{
           case ("verify",c) => c.copy(mode = Verify)
           case ("info",c) => c.copy(mode = Info)
           case ("sampleDeref",c) => c.copy(mode = SampleDeref)
           case ("readDB",c) => c.copy(mode = ReadDB)
           case ("expLoop",c) => c.copy(mode = ExpLoop)
+          case ("makeAllDeref",c) => c.copy(mode = MakeAllDeref)
           case (m,_) => throw new IllegalArgumentException(s"Unsupported mode $m")
         },
         opt[String]('b', "baseDirApk").optional().text("Substitute for ${baseDir} in config file")
@@ -137,6 +143,12 @@ object Driver {
             }
           }
         },
+        opt[String]('f',"filter").optional()
+          .text("Package filter for sampling(currently only supported by makeAllDeref)")
+          .action((v,c) => c.copy(filter = Some(v))),
+        opt[String]('t', "tag").optional()
+          .text("Tag for experiment, recorded when running")
+          .action((v,c) => c.copy(tag = Some(v)))
       )
     }
     OParser.parse(parser, args, Action()) match{
@@ -152,7 +164,7 @@ object Driver {
   }
 
   def runAction(act:Action):Unit = act match{
-    case act@Action(Verify, _, _, cfg) =>
+    case act@Action(Verify,_, _, cfg,_,_) =>
       val componentFilter = cfg.componentFilter
       val specSet = cfg.specSet
         //        val cfgw = write(cfg)
@@ -172,36 +184,28 @@ object Driver {
       }
       DBOutputMode(outFile.canonicalPath)
       val pathMode = DBOutputMode(outFile.canonicalPath)
-        //        val pathMode:OutputMode = outFolder match{
-        //          case Some(outF) =>{
-        //            val outFile = (File(outF) / "paths.db")
-        //            if(outFile.exists) {
-        //              implicit val opt = File.CopyOptions(overwrite = true)
-        //              outFile.moveTo(File(outF) / "paths.db1")
-        //            }
-        //            DBOutputMode(outFile.canonicalPath)
-        //          }
-        //          case None => MemoryOutputMode$
-        //        }
-      val res = runAnalysis(cfg,apkPath, componentFilter,pathMode, specSet.getSpecSet(),stepLimit, initialQuery)
+      val res: Seq[(Int, Loc, ResultSummary, Long)] =
+        runAnalysis(cfg,apkPath, componentFilter,pathMode, specSet.getSpecSet(),stepLimit, initialQuery)
       initialQuery.zip(res).zipWithIndex.foreach { case (iq, ind) =>
         val resFile = File(outFolder) / s"result_${ind}.txt"
-        resFile.overwrite(write(iq._1))
-        resFile.append(iq._2)
+        resFile.overwrite(ujson.Arr(write(iq._1),iq._2._1.toString, write(iq._2._2),
+          iq._2._3.toString, iq._2._4.toString).toString) // [qry,id,loc, res, time]
+//        resFile.append(iq._2)
       }
-    case act@Action(SampleDeref,_,_,cfg) =>
+    case act@Action(SampleDeref,_,_,cfg,_,_) =>
       //TODO: set base dir
       sampleDeref(cfg, act.getApkPath, act.getOutFolder)
-    case act@Action(ReadDB,_,_,cfg) =>
-      readDB(cfg, File(act.getOutFolder))
-    case act@Action(ExpLoop, _,_,_) =>
+    case act@Action(ReadDB,_,_,_,_,_) =>
+      readDB(File(act.getOutFolder))
+    case act@Action(ExpLoop,_, _,_,_,_) =>
       expLoop(act)
+    case act@Action(MakeAllDeref,_,_,cfg,_,tag) =>
+      makeAllDeref(act.getApkPath, act.filter, File(act.getOutFolder),cfg, tag)
     case v => throw new IllegalArgumentException(s"Invalid action: $v")
   }
   def detectProguard(apkPath:String):Boolean = {
     import sys.process._
     val cmd = (File(BounderSetupApplication.androidHome) / "tools" /"bin"/"apkanalyzer").toString
-//    val stdout = new StringBuilder
     var stdout:List[String] = List()
     val stderr = new StringBuilder
 
@@ -210,37 +214,35 @@ object Driver {
     }, stderr append _))
     if(status != 0){
       throw new IllegalArgumentException(s"apk: $apkPath  error: $stderr")
-//      return true
     }
     stdout.exists(v => v.contains("a.a.a."))
-
-    //    try {
-//      val callGraph = CHACallGraph
-//      //      val callGraph = FlowdroidCallGraph // flowdroid call graph immediately fails with "unreachable"
-//      val w = new JimpleFlowdroidWrapper(apkPath, callGraph)
-//      val transfer = (cha: ClassHierarchyConstraints) =>
-//        new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set()), cha)
-//      val config = SymbolicExecutorConfig(
-//        stepLimit = Some(5), w, transfer, component = None)
-//      val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
-//      val proguardMethod = ".* [a-z][(].*".r
-//      val proguardClass = ".*[.][a-z]".r
-//      symbolicExecutor.appCodeResolver.appMethods.exists { m =>
-//        proguardClass.matches(m.classType) && proguardMethod.matches(m.simpleName)
-//      }
-//    }finally{
-//      BounderSetupApplication.reset()
-//    }
   }
 
-
-  def sampleDeref(cfg: RunConfig, apkPath:String, outFolder:String) = {
-//    val apkPath = cfg.getApkPath
-    val n = cfg.samples
-//    val outFolder = cfg.getOutFolder.getOrElse(
-//      throw new IllegalArgumentException("Out folder must be defined for sampling"))
+  def makeAllDeref(apkPath:String, filter:Option[String],
+                   outFolder:File, cfg:RunConfig, tag:Option[String]) = {
     val callGraph = CHACallGraph
-    //      val callGraph = FlowdroidCallGraph // flowdroid call graph immediately fails with "unreachable"
+    val w = new JimpleFlowdroidWrapper(apkPath, callGraph)
+    val transfer = (cha: ClassHierarchyConstraints) =>
+      new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set()), cha)
+    val config = SymbolicExecutorConfig(
+      stepLimit = Some(0), w, transfer, component = None)
+    val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
+    val appClasses = symbolicExecutor.appCodeResolver.appMethods.map(m => m.classType)
+    val filtered = appClasses.filter(c => filter.forall(c.startsWith))
+    val initialQueries = filtered.map(c => AllReceiversNonNull(c))
+    initialQueries.foreach{q =>
+      //TODO: should we group more classes together in a job?
+      val cfgOut = cfg.outFolder.get
+      val cfg2 = cfg.copy(initialQuery = List(q),
+        tag = tag.getOrElse(""), outFolder = Some(cfgOut +"/"+ q.className))
+      val fname = outFolder / s"${q.className}.json"
+      if(fname.exists())fname.delete()
+      fname.append(write(cfg2))
+    }
+  }
+  def sampleDeref(cfg: RunConfig, apkPath:String, outFolder:String) = {
+    val n = cfg.samples
+    val callGraph = CHACallGraph
     val w = new JimpleFlowdroidWrapper(apkPath, callGraph)
     val transfer = (cha: ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set()), cha)
@@ -276,7 +278,8 @@ object Driver {
     //TODO:
   }
   def runAnalysis(cfg:RunConfig, apkPath: String, componentFilter:Option[Seq[String]], mode:OutputMode,
-                  specSet: Set[LSSpec], stepLimit:Int, initialQueries: List[InitialQuery]): List[String] = {
+                  specSet: Set[LSSpec], stepLimit:Int,
+                  initialQueries: List[InitialQuery]): List[(Int,Loc,ResultSummary,Long)] = {
     val startTime = System.currentTimeMillis()
     try {
       //TODO: read location from json config
@@ -293,7 +296,7 @@ object Driver {
 //        "de.danoeh.antennapod.fragment.ExternalPlayerFragment",
 //        "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)", 200,
 //        callinMatches = ".*getActivity.*".r)
-      initialQueries.map{ initialQuery =>
+      initialQueries.flatMap{ initialQuery =>
         val query: Set[Qry] = initialQuery.make(symbolicExecutor, w)
         val out = new ListBuffer[String]()
         val initialize: IPathNode => Int = mode match {
@@ -306,22 +309,24 @@ object Driver {
           case _ => (_: IPathNode) => 0
         }
 
-        val results = symbolicExecutor.run(query, initialize)
+        val results: Set[(Int,Loc,Set[IPathNode],Long)] = symbolicExecutor.run(query, initialize)
 
         results.map { res =>
           mode match {
             case m@DBOutputMode(_) =>
-              val interpretedRes = BounderUtil.interpretResult(res._2)
+              val interpretedRes = (res._1, res._2,BounderUtil.interpretResult(res._3),res._4)
               val tOut = s"id: ${res._1}   result: ${interpretedRes}"
               println(tOut)
               out += tOut
-              m.writeLiveAtEnd(res._2, res._1, interpretedRes.toString)
+              m.writeLiveAtEnd(res._3, res._1, interpretedRes.toString)
               interpretedRes
-            case _ => BounderUtil.interpretResult(res._2)
+            case _ => (res._1, res._2,BounderUtil.interpretResult(res._3), res._4)
           }
-        }.reduce {
-          reduceResults
-        }.toString
+        }.groupBy(v => (v._1,v._2)).map{case ((id,loc),groupedResults) =>
+          val finalRes = groupedResults.map(_._3).reduce(reduceResults)
+          val finalTime = groupedResults.map(_._4).sum
+          (id,loc,finalRes,finalTime)
+        }.toList
       }
     } finally {
       println(s"analysis time: ${(System.currentTimeMillis() - startTime) / 1000} seconds")
@@ -421,10 +426,25 @@ class ExperimentsDb(bounderJar:Option[String] = None){
           val cfg = read[RunConfig](jobRow.config)
           val apkId = cfg.apkPath.replace("${baseDir}","")
           val apkPath = baseDir / "target.apk"
+
+          println(s"downloading apk: $apkId")
+          val apkStartTime = Instant.now.getEpochSecond
           if(!downloadApk(apkId, apkPath))
             throw new RuntimeException("Failed to download apk")
+          println(s"done downloading apk: ${Instant.now.getEpochSecond - apkStartTime}")
 
-          val runCfg = cfg.copy(outFolder = Some(baseDir.toString),apkPath = apkPath.toString )
+          // check if inputs are current and download them otherwise
+          val inputId = jobRow.inputid
+          val bounderJar = baseDir / "bounder.jar"
+          val specFile = baseDir / "specFile.txt"
+          getInputs(inputId, bounderJar, specFile)
+          //TODO: probably cache these
+
+          // create directory for output
+          val outF = File(cfg.outFolder.get.replace("${baseDirOut}",baseDir.toString))
+          outF.createDirectories()
+          // TODO: read results of new structure
+          val runCfg = cfg.copy(apkPath = apkPath.toString, specSet = SpecFile(specFile.toString) )
           val cfgFile = (baseDir / "config.json")
           cfgFile.append(write(runCfg))
           val z3Override = if(BounderUtil.mac)
@@ -432,10 +452,10 @@ class ExperimentsDb(bounderJar:Option[String] = None){
           else
             ""
           setJobStartTime(jobRow.jobId)
-          val cmd = s"java ${z3Override} -jar ${jarPath} -m verify -c ${cfgFile.toString} -u ${baseDir.toString}"
+          val cmd = s"java ${z3Override} -jar ${bounderJar.toString} -m verify -c ${cfgFile.toString} -u ${outF.toString}"
           BounderUtil.runCmdFileOut(cmd, baseDir)
           setEndTime(jobRow.jobId)
-          val resDir = ResultDir(jobRow.jobId, baseDir)
+          val resDir = ResultDir(jobRow.jobId, baseDir, if(cfg.tag!="") Some(cfg.tag) else None)
           val stdoutF = baseDir / "stdout.txt"
           val stdout = if(stdoutF.exists()) stdoutF.contentAsString else ""
           val stderrF = baseDir / "stderr.txt"
@@ -464,10 +484,10 @@ class ExperimentsDb(bounderJar:Option[String] = None){
 //      PRIMARY KEY(id)
 //  );
   private val jobQry = TableQuery[Jobs]
-  def createJob(config:File): Unit ={
+  def createJob(config:File, jobTag:Option[String], inputs:Int): Unit ={
     val configContents = config.contentAsString
     Await.result(
-      db.run(jobQry += JobRow(0, "new", configContents, None, None, "",Some(""),Some(""))),
+      db.run(jobQry += JobRow(0, "new", configContents, None, None, "",Some(""),Some(""), jobTag,inputs)),
       40 seconds)
   }
   def setJobStartTime(id:Int) = {
@@ -508,7 +528,8 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     }
   }
   case class JobRow(jobId:Int, status:String, config:String,started:Option[Timestamp],
-                    ended:Option[Timestamp], owner:String, stderr:Option[String], stdout:Option[String])
+                    ended:Option[Timestamp], owner:String, stderr:Option[String],
+                    stdout:Option[String], jobTag:Option[String],inputid:Int)
 //  CREATE TABLE jobs(
 //    id SERIAL PRIMARY KEY,
 //    status varchar,
@@ -517,7 +538,8 @@ class ExperimentsDb(bounderJar:Option[String] = None){
 //    ended timestamp without time zone,
 //    owner varchar,
 //    stderr varchar,
-//    stdout varchar
+//    stdout varchar,
+//      inputid Int
 //  );
   class Jobs(tag:Tag) extends Table[JobRow](tag,"jobs"){
     val jobId = column[Int]("id",O.PrimaryKey,O.AutoInc)
@@ -528,7 +550,9 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     val owner = column[String]("owner")
     val stderr = column[Option[String]]("stderr")
     val stdout = column[Option[String]]("stdout")
-    def * = (jobId,status,config, started, ended, owner,stderr,stdout) <> (JobRow.tupled, JobRow.unapply)
+    val jobtag = column[Option[String]]("jobtag")
+    val inputid = column[Int]("inputid")
+    def * = (jobId,status,config, started, ended, owner,stderr,stdout,jobtag,inputid) <> (JobRow.tupled, JobRow.unapply)
   }
   //  CREATE TABLE results(
   //    id SERIAL PRIMARY KEY,
@@ -542,14 +566,17 @@ class ExperimentsDb(bounderJar:Option[String] = None){
   //    bounderJarHash varchar,
   //    owner varchar
   //  );
-  case class ResultDir(jobId:Int, f:File){
+  case class ResultDir(jobId:Int, f:File, jobTag:Option[String]){
     def getDBResults :List[DBResult]= {
       val apkHash = BounderUtil.computeHash((f / "target.apk").toString)
-      val resultSummaries = f.glob("result_*.txt").map{resF =>
-        val resD = resF.contentAsString
-        val res = resD.reverse.takeWhile(_ != '}').reverse
-        val loc = resD.takeWhile(_ != '}') + '}'
-        (loc,res)
+      val resultSummaries = f.glob("**/result_*.txt").map{resF =>
+        // [qry,id,loc, res, time]
+        val resD = ujson.read(resF.contentAsString)
+        val res = resD(3).str
+        val qry = resD(0).str
+        val loc = resD(2).str
+        val qTime = resD(4).num
+        (qry,loc,res,qTime)
       }
       val resDataId:Option[Int] = {
         val outDat = f.zip()
@@ -558,23 +585,29 @@ class ExperimentsDb(bounderJar:Option[String] = None){
         d
       }
       resultSummaries.map { rs =>
-        DBResult(id = 0, jobid = jobId,qry = rs._1, result = rs._2,resultData = resDataId, apkHash = apkHash,
-          bounderJarHash = bounderJarHash, owner = BounderUtil.systemID())
+        DBResult(id = 0, jobid = jobId,qry = rs._1, loc = rs._2, result = rs._3, queryTime = rs._4.toLong
+          ,resultData = resDataId, apkHash = apkHash,
+          bounderJarHash = bounderJarHash, owner = BounderUtil.systemID(), jobTag = jobTag)
       }
     }.toList
   }
-  case class DBResult(id:Int, jobid:Int, qry:String, result:String,
-                      resultData:Option[Int], apkHash:String, bounderJarHash:String, owner:String)
+  case class DBResult(id:Int, jobid:Int, qry:String, loc:String, result:String, queryTime:Long,
+                      resultData:Option[Int], apkHash:String, bounderJarHash:String, owner:String,
+                      jobTag: Option[String])
   class Results(tag:Tag) extends Table[DBResult](tag,"results"){
     val id = column[Int]("id", O.PrimaryKey, O.AutoInc)
     val jobId = column[Int]("jobid")
-    val qry = column[String]("qry")
+    val qry = column[String]("qry") // query can represent multiple locs
+    val loc = column[String]("loc") // specific location in code where
     val result = column[String]("result")
+    val queryTime = column[Long]("querytime")
     val resultData = column[Option[Int]]("resultdata")
     val apkHash = column[String]("apkhash")
     val bounderJarHash = column[String]("bounderjarhash")
     val owner = column[String]("owner")
-    val * = (id,jobId,qry,result,resultData, apkHash, bounderJarHash, owner) <> (DBResult.tupled, DBResult.unapply)
+    val jobtag = column[Option[String]]("jobtag")
+    val * = (id,jobId,qry,loc,result,queryTime, resultData, apkHash,
+      bounderJarHash, owner, jobtag) <> (DBResult.tupled, DBResult.unapply)
   }
   val resultsQry = TableQuery[Results]
   def finishSuccess(d : ResultDir, stdout:String, stderr:String) = {
@@ -650,5 +683,43 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     def name = column[String]("apkname")
     def img = column[Array[Byte]]("img")
     def * = (name,img)
+  }
+
+  // config - points to spec and jar in apktable (TODO: rename apktable to filestore or something)
+  //  CREATE TABLE config (
+  //    id SERIAL PRIMARY KEY,
+  //    bounderjar text,
+  //    specfile text,
+  //    notes text
+  //  );
+  case class RunInputs(id:Int, bounderjar:String, specfile:String, notes:String)
+  // values in bounderjar and specfile are md5hash of files
+  class Inputs(tag:Tag) extends Table[RunInputs](tag,"inputs"){
+    def id = column[Int]("id", O.PrimaryKey, O.AutoInc)
+    def bounderjar = column[String]("bounderjar")
+    def specfile = column[String]("specfile")
+    def notes = column[String]("notes")
+    def * = (id,bounderjar, specfile, notes) <> (RunInputs.tupled, RunInputs.unapply)
+  }
+  private val inputsQuery = TableQuery[Inputs]
+  def createConfig(specFile:File, bounderJar:File, notes:String):Int = {
+    val bounderJarHash =  BounderUtil.computeHash(bounderJar.toString)
+    val specFileHash =  BounderUtil.computeHash(specFile.toString)
+    uploadApk("jar_" + bounderJarHash, bounderJar)
+    uploadApk("spec_" + specFileHash, specFile)
+    val runInputs = RunInputs(0,bounderJarHash, specFileHash, notes)
+
+    val insertQuery = inputsQuery returning inputsQuery.map(_.id) into ((_,id) =>  id)
+    Await.result(db.run(insertQuery += runInputs), 30 seconds)
+  }
+  def getInputs(id:Int, bounderJar:File, specFile:File) = {
+    val q1 = for {
+      inp <- inputsQuery if inp.id === id
+    } yield (inp.bounderjar,inp.specfile)
+    val inputFiles = Await.result(db.run(q1.result), 30 seconds)
+    assert(inputFiles.size == 1)
+    val (bounderJarHash, specFileHash) = inputFiles.head
+    downloadApk("jar_" + bounderJarHash, bounderJar)
+    downloadApk("spec_" + specFileHash, specFile)
   }
 }

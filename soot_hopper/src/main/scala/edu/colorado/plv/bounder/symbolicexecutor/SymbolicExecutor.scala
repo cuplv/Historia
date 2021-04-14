@@ -1,5 +1,7 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
+import java.time.Instant
+
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, If, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SwitchCmd, ThrowCmd, VirtualInvoke}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SetInclusionTypeSolving, SolverTypeSolving, StateTypeSolving, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, DBPathNode, FrameworkLocation, IPathNode, MemoryOutputMode, OrdCount, OutputMode, PathNode, Qry, SomeQry, State, StateSet, SubsumableLocation, SwapLoc, WitnessedQry}
@@ -153,13 +155,16 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
    * @param qry - a source location and an assertion to prove
    * @return  (id, Terminal path nodes)
    */
-  def run(qry: Set[Qry], initialize: IPathNode => Int = _ => 0) : Set[(Int,Set[IPathNode])] = {
-    qry.map(PathNode(_,Nil,None)).map { pathNodes =>
+  def run(qry: Set[Qry], initialize: IPathNode => Int = _ => 0) : Set[(Int,Loc,Set[IPathNode],Long)] = {
+    qry.map{ q =>
+      val pathNodes = PathNode(q,Nil,None)
+      val startTime = Instant.now.getEpochSecond
       val id = initialize(pathNodes)
       val queue = new GrouperQ
       queue.addAll(Set(pathNodes))
       config.stepLimit match {
-        case Some(limit) => (id, executeBackward(queue, limit))
+        case Some(limit) =>
+          (id,q.loc , executeBackward(queue, limit),Instant.now.getEpochSecond - startTime)
         case None =>
           ???
       }

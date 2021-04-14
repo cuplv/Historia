@@ -37,7 +37,7 @@ class CreateDestroySubscribe_TestApp extends AnyFunSuite{
     val query = Qry.makeReceiverNonNull(symbolicExecutor, w,
       "com.example.createdestroy.MainActivity",
       "void lambda$onCreate$1$MainActivity(java.lang.Object)",31)
-    val result = symbolicExecutor.run(query).flatMap(a => a._2)
+    val result = symbolicExecutor.run(query).flatMap(a => a._3)
     prettyPrinting.dumpDebugInfo(result, "CreateDestroySubscribe_TestApp")
     assert(BounderUtil.interpretResult(result) == Proven)
     assert(result.nonEmpty)
@@ -47,7 +47,7 @@ class CreateDestroySubscribe_TestApp extends AnyFunSuite{
     val query2 = Qry.makeReach(symbolicExecutor,w,
       "com.example.createdestroy.MainActivity",
       "void lambda$onCreate$1$MainActivity(java.lang.Object)",31)
-    val result2 = symbolicExecutor.run(query2).flatMap(a => a._2)
+    val result2 = symbolicExecutor.run(query2).flatMap(a => a._3)
     prettyPrinting.dumpDebugInfo(result2, "CreateDestroySubscribe_TestApp_reach")
     assert(result2.nonEmpty)
     assert(BounderUtil.interpretResult(result2) == Witnessed)

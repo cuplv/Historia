@@ -732,7 +732,8 @@ case class State(callStack: List[CallStackFrame],
             case (_,Some(ts)) => Some(thisV->ts)
             case _ => None
           }
-          val state = this.copy(callStack = newStack, nextAddr = nextAddr,
+          val state = this.copy(callStack = newStack, nextAddr = nextAddr,pureFormula = this.pureFormula +
+            PureConstraint(thisV, NotEquals, NullVal),
             typeConstraints = this.typeConstraints ++ combinedTs)
           (thisV, state)
         case None =>
