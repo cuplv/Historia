@@ -7,10 +7,10 @@ import java.util.Date
 
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil.{Proven, ResultSummary, Timeout, Unreachable, Witnessed}
-import edu.colorado.plv.bounder.Driver.{Default, RunMode}
+import edu.colorado.plv.bounder.Driver.{Default, LocResult, RunMode}
 import edu.colorado.plv.bounder.ir.{JimpleFlowdroidWrapper, Loc}
 import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
-import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
+import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivityNullSpec, LifeState, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, SparkCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
@@ -19,6 +19,7 @@ import scopt.OParser
 import scala.concurrent.Await
 import slick.jdbc.PostgresProfile.api._
 import soot.SootMethod
+import ujson.Value
 import upickle.core.AbortException
 import upickle.default.{macroRW, read, write, ReadWriter => RW}
 
@@ -162,6 +163,11 @@ object Driver {
     expDb.loop()
     println()
   }
+  // [qry,id,loc, res, time]
+  case class LocResult(q:InitialQuery, sqliteId:Int, loc:Loc, resultSummary: ResultSummary, time:Long)
+  object LocResult{
+    implicit var rw:RW[LocResult] = macroRW
+  }
 
   def runAction(act:Action):Unit = act match{
     case act@Action(Verify,_, _, cfg,_,_) =>
@@ -179,17 +185,17 @@ object Driver {
       val stepLimit = cfg.limit
       val outFile = (File(outFolder) / "paths.db")
       if(outFile.exists) {
-      implicit val opt = File.CopyOptions(overwrite = true)
-      outFile.moveTo(File(outFolder) / "paths.db1")
+        implicit val opt = File.CopyOptions(overwrite = true)
+        outFile.moveTo(File(outFolder) / "paths.db1")
       }
       DBOutputMode(outFile.canonicalPath)
       val pathMode = DBOutputMode(outFile.canonicalPath)
-      val res: Seq[(Int, Loc, ResultSummary, Long)] =
+      val res: Seq[(InitialQuery,Int, Loc, ResultSummary, Long)] =
         runAnalysis(cfg,apkPath, componentFilter,pathMode, specSet.getSpecSet(),stepLimit, initialQuery)
-      initialQuery.zip(res).zipWithIndex.foreach { case (iq, ind) =>
+      res.zipWithIndex.foreach { case (iq, ind) =>
         val resFile = File(outFolder) / s"result_${ind}.txt"
-        resFile.overwrite(ujson.Arr(write(iq._1),iq._2._1.toString, write(iq._2._2),
-          iq._2._3.toString, iq._2._4.toString).toString) // [qry,id,loc, res, time]
+        resFile.overwrite(write(LocResult(iq._1,iq._2, iq._3,
+          iq._4, iq._5))) // [qry,id,loc, res, time] //TODO: less dumb serialized format
 //        resFile.append(iq._2)
       }
     case act@Action(SampleDeref,_,_,cfg,_,_) =>
@@ -279,7 +285,7 @@ object Driver {
   }
   def runAnalysis(cfg:RunConfig, apkPath: String, componentFilter:Option[Seq[String]], mode:OutputMode,
                   specSet: Set[LSSpec], stepLimit:Int,
-                  initialQueries: List[InitialQuery]): List[(Int,Loc,ResultSummary,Long)] = {
+                  initialQueries: List[InitialQuery]): List[(InitialQuery,Int,Loc,ResultSummary,Long)] = {
     val startTime = System.currentTimeMillis()
     try {
       //TODO: read location from json config
@@ -311,7 +317,7 @@ object Driver {
 
         val results: Set[(Int,Loc,Set[IPathNode],Long)] = symbolicExecutor.run(query, initialize)
 
-        results.map { res =>
+        val allRes = results.map { res =>
           mode match {
             case m@DBOutputMode(_) =>
               val interpretedRes = (res._1, res._2,BounderUtil.interpretResult(res._3),res._4)
@@ -322,11 +328,13 @@ object Driver {
               interpretedRes
             case _ => (res._1, res._2,BounderUtil.interpretResult(res._3), res._4)
           }
-        }.groupBy(v => (v._1,v._2)).map{case ((id,loc),groupedResults) =>
+        }
+        val grouped = allRes.groupBy(v => (v._1,v._2)).map{case ((id,loc),groupedResults) =>
           val finalRes = groupedResults.map(_._3).reduce(reduceResults)
           val finalTime = groupedResults.map(_._4).sum
-          (id,loc,finalRes,finalTime)
+          (initialQuery,id,loc,finalRes,finalTime)
         }.toList
+        grouped
       }
     } finally {
       println(s"analysis time: ${(System.currentTimeMillis() - startTime) / 1000} seconds")
@@ -375,7 +383,7 @@ object SpecSetOption{
 }
 case class SpecFile(fname:String) extends SpecSetOption {
   //TODO: write parser for spec set
-  override def getSpecSet(): Set[LSSpec] = ???
+  override def getSpecSet(): Set[LSSpec] = LifeState.parseSpecFile(File(fname).contentAsString)
 }
 
 case class TestSpec(name:String) extends SpecSetOption {
@@ -571,12 +579,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
       val apkHash = BounderUtil.computeHash((f / "target.apk").toString)
       val resultSummaries = f.glob("**/result_*.txt").map{resF =>
         // [qry,id,loc, res, time]
-        val resD = ujson.read(resF.contentAsString)
-        val res = resD(3).str
-        val qry = resD(0).str
-        val loc = resD(2).str
-        val qTime = resD(4).num
-        (qry,loc,res,qTime)
+        read[LocResult](resF.contentAsString)
       }
       val resDataId:Option[Int] = {
         val outDat = f.zip()
@@ -585,7 +588,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
         d
       }
       resultSummaries.map { rs =>
-        DBResult(id = 0, jobid = jobId,qry = rs._1, loc = rs._2, result = rs._3, queryTime = rs._4.toLong
+        DBResult(id = 0, jobid = jobId,qry = write(rs.q), loc = write(rs.loc), result = write[ResultSummary](rs.resultSummary), queryTime = rs.time
           ,resultData = resDataId, apkHash = apkHash,
           bounderJarHash = bounderJarHash, owner = BounderUtil.systemID(), jobTag = jobTag)
       }

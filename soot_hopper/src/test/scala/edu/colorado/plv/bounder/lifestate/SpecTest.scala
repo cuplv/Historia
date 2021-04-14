@@ -54,6 +54,21 @@ class SpecTest extends AnyFunSuite {
     assert(!i1.signatures.matches(("MyRunnable","foobar foo(java.lang.List, Bundle)")))
     val i2 = LifeState.parseI("I(ciret [_,v,_] rx.Subscription subscribe(rx.functions.Action1) v<:rx.Single)")
     assert(i2.mt == CIExit)
+    val i3 = LifeState.parseI("I(ciret [_,v,_] rx.Subscription\n subscribe(rx.functions.Action1) v<:rx.Single)")
+    assert(i3.mt == CIExit)
+
+    val ifile =
+      """
+        |! I(ciret [_,v,_] rx.Subscription subscribe(rx.functions.Action1) v<:rx.Single)
+        |   <= I(ciret [_,v,_] rx.Subscription subscribe(rx.functions.Action1) v<:rx.Single);
+        |NI(I(ciret [_,v,_] rx.Subscription subscribe(rx.functions.Action1) v<:rx.Single),
+        |     I(ciret [_,v,_] rx.Subscription subscribe(rx.functions.Action1) v<:rx.Single))
+        |   <= I(ciret [_,v,_] rx.Subscription subscribe(rx.functions.Action1) v<:rx.Single)
+        |""".stripMargin
+    val i4 = LifeState.parseSpecFile(ifile)
+    println(i4)
+    val i5 = LifeState.parseSpecFile("\n")
+    assert(i5.isEmpty)
 
   }
   test("Antennapod: Each I in spec signatures corresponds to a method or interface in the framework"){

@@ -3,12 +3,13 @@ package edu.colorado.plv.bounder
 import better.files.File
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CmdNotImplemented, CmdWrapper, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Loc, NopCmd}
 import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, SymbolicExecutorConfig}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, PathNode, SomeQry, WitnessedQry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, InitialQuery, PathNode, SomeQry, WitnessedQry}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.sys.process._
 import scala.util.matching.Regex
+import upickle.default.{macroRW, read, write, ReadWriter => RW}
 
 object BounderUtil {
   private var sidCache:Option[String] = None
@@ -23,6 +24,23 @@ object BounderUtil {
   }
 
   trait ResultSummary
+  object ResultSummary{
+    implicit val rw:RW[ResultSummary] = upickle.default.readwriter[String].bimap[ResultSummary](
+      {
+        case Proven => "Proven"
+        case Witnessed => "Witnessed"
+        case Timeout => "Timeout"
+        case Unreachable => "Unreachable"
+      }
+      ,
+      {
+        case "Proven" => Proven
+        case "Timeout" => Timeout
+        case "Unreachable" => Unreachable
+        case "Witnessed" => Witnessed
+      }
+    )
+  }
   case object Proven extends ResultSummary
   case object Witnessed extends ResultSummary
   case object Timeout extends ResultSummary

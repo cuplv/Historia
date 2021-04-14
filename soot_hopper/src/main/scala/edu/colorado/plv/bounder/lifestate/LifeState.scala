@@ -59,6 +59,31 @@ object LifeState {
         I(pmDir, scm, vars)
       case _ => throw new IllegalArgumentException("Can only specify receiver type in I")
     }
+    def ni : Parser[NI] = "NI(" ~ i ~ "," ~ i ~ ")" ^^{
+      case _ ~ i1 ~ _ ~ i2 ~ _ => NI(i1,i2)
+    }
+    def lsAtom : Parser[LSAtom] = ni | i
+
+    val lsTrueConst = "@(TRUE|true|True)".r ^^ {case _ => LSTrue}
+    val lsFalseConst = "@(false|False|FALSE)".r ^^ {case _ => LSFalse}
+//    val lsNullConst = "@(?:null|Null|NULL)".r ^^ {case _ => LSNullConst}
+    val lsConst = lsTrueConst | lsFalseConst
+    val andTerm = "&&"
+    def lsAnd : Parser[LSPred] = lsPred ~ andTerm ~ lsPred ^^{ case lhs ~ _ ~ rhs => And(lhs,rhs)}
+    def lsOr : Parser [LSPred] = lsPred ~ "||" ~ lsPred ^^ {case lhs ~ _ ~ rhs => Or(lhs,rhs)}
+    val notTerm = "!"
+    def lsNot = ( notTerm ~ lsPred ) ^^ { case _ ~ p => Not(p)}
+    def lsGroup : Parser[LSPred] = "{" ~> lsPred <~ "}" ^^ {case p  => p}
+    def lsPred : Parser[LSPred] =  lsConst | lsAtom | lsNot |  lsAnd | lsOr
+
+    def lsRuleUnc : Parser[LSSpec] = ( lsPred ~ "<=" ~ i) ^^ {
+      case pred ~ _ ~ tgt => LSSpec(pred, tgt)
+    }
+//    def lsRuleCon : Parser[LSSpec] = ( lsPred ~ "<=" ~ i ~ "&&" ~ constrs ~ ";" )^^ {
+//      case pred ~ _ ~ tgt ~ _ ~ cst ~ _ => LSSpec(pred,tgt, cst.toSet)
+//    }
+    def lsRule : Parser[LSSpec] = lsRuleUnc //| lsRuleCon
+    def lsRules :Parser[List[LSSpec]] = repsep(lsRule,";")
   }
   def parseI(str:String):I = {
     val res: LifeStateParser.ParseResult[I] = LifeStateParser.parseAll(LifeStateParser.i, str)
@@ -69,6 +94,18 @@ object LifeState {
   }
   def parseIFile(str:String):Seq[I] = {
     str.split("\n").filter(v => !v.trim.startsWith("#") && !(v.trim == "")).map(parseI)
+  }
+
+  def parseSpecFile(str:String):Set[LSSpec] = {
+    val withoutComments = str.split("\n").filter{v => !v.trim.startsWith("#") && !v.trim.isEmpty }.mkString("\n")
+    if(withoutComments == ""){
+      return Set() // This is dumb, I shouldn't need to do this
+    }
+    val res = LifeStateParser.parseAll(LifeStateParser.lsRules, withoutComments)
+    if(res.successful)
+      res.get.toSet
+    else
+      throw new IllegalArgumentException(res.toString)
   }
 
   var id = 0

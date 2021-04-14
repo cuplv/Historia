@@ -44,6 +44,7 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
   import slick.jdbc.SQLiteProfile.api._
 
 //  val db = Database.forURL(s"jdbc:sqlite:$dbfile",driver="org.sqlite.JDBC")
+  Class.forName("org.sqlite.JDBC") // force resolution of sqlite driver
   val db = Database.forURL(s"jdbc:sqlite:$dbfile",Map("maxConnections" -> "1"))
   if(!dbf.exists()) {
     val setup = DBIO.seq(witnessQry.schema.create,
