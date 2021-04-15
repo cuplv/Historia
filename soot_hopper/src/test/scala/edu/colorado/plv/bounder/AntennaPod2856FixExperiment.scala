@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{PrettyPrinting, Qry}
-import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, ControlFlowResolver, DefaultAppCodeResolver, FlowdroidCallGraph, PatchedFlowdroidCallGraph, SparkCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, ControlFlowResolver, DefaultAppCodeResolver, FlowdroidCallGraph, PatchedFlowdroidCallGraph, QueryFinished, SparkCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
 
@@ -35,9 +35,9 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
       "de.danoeh.antennapod.fragment.ExternalPlayerFragment",
       "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)",200,
       callinMatches = ".*getActivity.*".r)
-    val result = symbolicExecutor.run(query).flatMap(a => a._3)
+    val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
     prettyPrinting.dumpDebugInfo(result, "antennapod_fix_2856")
-    assert(BounderUtil.interpretResult(result) == Proven)
+    assert(BounderUtil.interpretResult(result,QueryFinished) == Proven)
   }
 
   ignore("Bug: Fails to prove updateUI is not reachable where getActivity returns null with same spec.") {
@@ -51,9 +51,9 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
       "de.danoeh.antennapod.fragment.ExternalPlayerFragment",
       "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)",193,
       callinMatches = ".*getActivity.*".r)
-    val result = symbolicExecutor.run(query).flatMap(a => a._3)
+    val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
     prettyPrinting.dumpDebugInfo(result, "antennapod_bug_2856")
-    assert(BounderUtil.interpretResult(result) == Witnessed)
+    assert(BounderUtil.interpretResult(result,QueryFinished) == Witnessed)
   }
   ignore("Fix: updateUI is reachable under a simple spec.") {
     // TODO: currently timing out, should witness
@@ -65,9 +65,9 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
     val query = Qry.makeReach(symbolicExecutor, w,
       "de.danoeh.antennapod.fragment.ExternalPlayerFragment",
       "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)",200)
-    val result = symbolicExecutor.run(query).flatMap(a => a._3)
+    val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
     prettyPrinting.dumpDebugInfo(result, "antennapod_witness1_2856")
-    assert(BounderUtil.interpretResult(result) == Witnessed)
+    assert(BounderUtil.interpretResult(result,QueryFinished) == Witnessed)
   }
   ignore("Fix: GetActivity may return null in certain locations"){
     // TODO: currently timing out, should witness
@@ -80,10 +80,10 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
       "de.danoeh.antennapod.fragment.CompletedDownloadsFragment",
       "void onViewCreated(android.view.View,android.os.Bundle)",112,
       callinMatches = ".*getActivity.*".r)
-    val result = symbolicExecutor.run(query).flatMap(a => a._3)
+    val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
 
     prettyPrinting.dumpDebugInfo(result, "antennapod_witness2_2856")
-    assert(BounderUtil.interpretResult(result) == Witnessed)
+    assert(BounderUtil.interpretResult(result, QueryFinished) == Witnessed)
   }
 
 }

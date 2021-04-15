@@ -1,17 +1,40 @@
 package edu.colorado.plv.bounder.solver
 
 import com.microsoft.z3.{Context, Status}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, SubclassOf, SuperclassOf}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BoundedTypeSet, ClassType, DisjunctTypeSet, SubclassOf, SuperclassOf}
 import org.scalatest.funsuite.AnyFunSuite
 
 class ClassHierarchyConstraintsTest extends AnyFunSuite {
   //TODO: test hierarchy constraints for TypeSet
-  test("Subtype"){
-    val hierarchy : Map[String, Set[String]] =
-      Map("java.lang.Object" -> Set("String", "Foo", "Bar", "java.lang.Object"),
-        "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
+  val hierarchy : Map[String, Set[String]] =
+    Map("java.lang.Object" -> Set("String", "Foo", "Bar", "java.lang.Object"),
+      "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"), "Runnable" -> Set("Foo","Bar"))
+  implicit val ch = new ClassHierarchyConstraints(hierarchy,Set("Runnable"), SolverTypeSolving)
 
-    val ch = new ClassHierarchyConstraints(hierarchy,Set("Runnable"), SolverTypeSolving)
+
+  test("contains"){
+    //TODO: contains method of DisjunctTypeSet is clearly not working:
+    // p-2:<:com.example.createdestroy.MyActivity$1<: I( com.example.createdestroy.MyActivity$SomethingAble) disj,
+    // p-2:<:com.example.createdestroy.MyActivity$1 >:com.example.createdestroy.MyActivity$1<: I( com.example.createdestroy.MyActivity$SomethingAble) disj)
+    val bts = BoundedTypeSet(Some("Foo"), None, Set())
+    val isTs = BoundedTypeSet(Some("Foo"), Some("Foo"),Set())
+    assert(bts.contains(isTs))
+
+    val isTsIface = BoundedTypeSet(Some("Foo"), Some("Foo"), Set("Runnable"))
+    assert(bts.contains(isTsIface))
+    assert(isTs.contains(isTsIface))
+
+    val dBts = DisjunctTypeSet(Set(bts))
+    val dIsTs = DisjunctTypeSet(Set(isTs))
+    assert(dBts.contains(dIsTs))
+    assert(bts.contains(dIsTs))
+    assert(dBts.contains(isTs))
+    //=========
+
+  }
+  test("Subtype"){
+
+
     val stateSolver:StateSolver[com.microsoft.z3.AST, Z3SolverCtx] = new Z3StateSolver(ch)
     implicit val zctx = stateSolver.getSolverCtx
 
@@ -34,5 +57,6 @@ class ClassHierarchyConstraintsTest extends AnyFunSuite {
 //    assert(solver.check() == Status.UNSATISFIABLE)
 
   }
+
 
 }

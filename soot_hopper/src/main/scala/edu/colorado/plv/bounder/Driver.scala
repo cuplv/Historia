@@ -18,6 +18,7 @@ import scopt.OParser
 
 import scala.concurrent.Await
 import slick.jdbc.PostgresProfile.api._
+import slick.jdbc.SQLActionBuilder
 import soot.SootMethod
 import ujson.Value
 import upickle.core.AbortException
@@ -71,7 +72,8 @@ case class RunConfig(apkPath:String = "",
                      initialQuery: List[InitialQuery] = Nil,
                      limit:Int = 100,
                      samples:Int = 5,
-                     tag:String = ""
+                     tag:String = "",
+                     timeLimit:Int = 600
                     ){
 }
 
@@ -296,7 +298,8 @@ object Driver {
       val transfer = (cha: ClassHierarchyConstraints) =>
         new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(specSet), cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(stepLimit), w, transfer, component = componentFilter, outputMode = mode)
+        stepLimit = Some(stepLimit), w, transfer, component = componentFilter, outputMode = mode,
+        timeLimit = cfg.timeLimit)
       val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
 //      val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
 //        "de.danoeh.antennapod.fragment.ExternalPlayerFragment",
@@ -315,18 +318,20 @@ object Driver {
           case _ => (_: IPathNode) => 0
         }
 
-        val results: Set[(Int,Loc,Set[IPathNode],Long)] = symbolicExecutor.run(query, initialize)
+        //        (Int,Loc,Set[IPathNode],Long)
+        val results: Set[symbolicExecutor.QueryData] = symbolicExecutor.run(query, initialize)
 
         val allRes = results.map { res =>
           mode match {
             case m@DBOutputMode(_) =>
-              val interpretedRes = (res._1, res._2,BounderUtil.interpretResult(res._3),res._4)
-              val tOut = s"id: ${res._1}   result: ${interpretedRes}"
+              val interpretedRes = (res.queryId, res.location,
+                BounderUtil.interpretResult(res.terminals, res.result),res.runTime)
+              val tOut = s"id: ${res.queryId}   result: ${interpretedRes}"
               println(tOut)
               out += tOut
-              m.writeLiveAtEnd(res._3, res._1, interpretedRes.toString)
+              m.writeLiveAtEnd(res.terminals, res.queryId, interpretedRes.toString)
               interpretedRes
-            case _ => (res._1, res._2,BounderUtil.interpretResult(res._3), res._4)
+            case _ => (res.queryId, res.location,BounderUtil.interpretResult(res.terminals, res.result), res.runTime)
           }
         }
         val grouped = allRes.groupBy(v => (v._1,v._2)).map{case ((id,loc),groupedResults) =>
@@ -410,6 +415,14 @@ class ExperimentsDb(bounderJar:Option[String] = None){
   // use flag
   private val connectionUrl = s"jdbc:postgresql://${hostname}:${port}/${database}?user=${username}&password=${password}"
   val db = Database.forURL(connectionUrl, driver = "org.postgresql.Driver")
+  def runSql(q: String) = {
+    import slick.jdbc.H2Profile.api._
+    import slick.jdbc.GetResult
+    case class Count(n:Int)
+    implicit val getCountResult = GetResult(r => Count(r.<<))
+    val sql: SQLActionBuilder = sql"""select count(*) from results;"""
+    db.run(sql.as[Count].headOption)
+  }
 
 
   def loop() = {

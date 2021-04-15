@@ -39,10 +39,16 @@ case class SymbolicExecutorConfig[M,C](stepLimit: Option[Int],
                                        component : Option[Seq[String]] = None,
 //                                       stateTypeSolving: StateTypeSolving = SetInclusionTypeSolving,
                                        stateTypeSolving: StateTypeSolving = SolverTypeSolving,
-                                       outputMode : OutputMode = MemoryOutputMode
+                                       outputMode : OutputMode = MemoryOutputMode,
+                                       timeLimit : Int = 6000
                                       ){
   def getSymbolicExecutor =
     new SymbolicExecutor[M, C](this)}
+sealed trait QueryResult
+case object QueryFinished extends QueryResult
+case class QueryInterrupted(reason:String) extends QueryResult
+
+case class QueryInterruptedException(terminals:Set[IPathNode], reason:String) extends Exception
 class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
 
   implicit var pathMode = config.outputMode
@@ -150,23 +156,32 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     }
   }
 
+
+  case class QueryData(queryId:Int, location:Loc, terminals: Set[IPathNode], runTime:Long, result : QueryResult)
+
   /**
    *
    * @param qry - a source location and an assertion to prove
    * @return  (id, Terminal path nodes)
    */
-  def run(qry: Set[Qry], initialize: IPathNode => Int = _ => 0) : Set[(Int,Loc,Set[IPathNode],Long)] = {
+  def run(qry: Set[Qry], initialize: IPathNode => Int = _ => 0) : Set[QueryData] = {
     qry.map{ q =>
-      val pathNodes = PathNode(q,Nil,None)
+      val pathNodes = PathNode(q, Nil, None)
       val startTime = Instant.now.getEpochSecond
       val id = initialize(pathNodes)
       val queue = new GrouperQ
       queue.addAll(Set(pathNodes))
-      config.stepLimit match {
-        case Some(limit) =>
-          (id,q.loc , executeBackward(queue, limit),Instant.now.getEpochSecond - startTime)
-        case None =>
-          ???
+      try {
+        config.stepLimit match {
+          case Some(limit) =>
+            QueryData(id, q.loc, executeBackward(queue, limit, startTime + config.timeLimit),
+              Instant.now.getEpochSecond - startTime, QueryFinished)
+          case None =>
+            ???
+        }
+      }catch{
+        case QueryInterruptedException(terminals, reason) =>
+          QueryData(id, q.loc, terminals, Instant.now.getEpochSecond - startTime, QueryInterrupted(reason))
       }
     }
   }
@@ -285,10 +300,13 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
    * @return
    */
   @tailrec
-  final def executeBackward(qrySet: GrouperQ, limit:Int,
+  final def executeBackward(qrySet: GrouperQ, limit:Int, deadline:Long,
                             refutedSubsumedOrWitnessed: Set[IPathNode] = Set(),
-                            visited:Map[SubsumableLocation,Map[Int,StateSet]] = Map()):Set[IPathNode] = {
+                            visited:Map[SubsumableLocation, Map[Int,StateSet]] = Map()):Set[IPathNode] = {
 
+    if(Instant.now.getEpochSecond > deadline){
+      throw QueryInterruptedException(qrySet.toSet() ++ refutedSubsumedOrWitnessed, "timeout")
+    }
     //TODO: This is way too sensitive to queue ordering, figure out something better
 //    val qrySetIG = groupAndTransferPostIfCmd(qrySet)
     if(qrySet.isEmpty){
@@ -328,9 +346,9 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
 
     current match {
       case p@PathNode(_:SomeQry, true) =>
-        executeBackward(qrySet, limit, refutedSubsumedOrWitnessed + p, visited)
+        executeBackward(qrySet, limit,deadline, refutedSubsumedOrWitnessed + p, visited)
       case p@PathNode(_:BottomQry,_) =>
-        executeBackward(qrySet, limit, refutedSubsumedOrWitnessed + p, visited)
+        executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p, visited)
       case p@PathNode(_:WitnessedQry,_) =>
         refutedSubsumedOrWitnessed.union(qrySet.toSet) + p
       case p:IPathNode if p.depth > limit =>
@@ -339,7 +357,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       case p@PathNode(qry:SomeQry,false) =>
         isSubsumed(p, visited) match{
           case v@Some(_) =>
-            executeBackward(qrySet, limit, refutedSubsumedOrWitnessed + p.setSubsumed(v), visited)
+            executeBackward(qrySet, limit,deadline, refutedSubsumedOrWitnessed + p.setSubsumed(v), visited)
           case None =>
             val stackSize = p.qry.state.callStack.size
             val newVisited = current match{
@@ -353,7 +371,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
             }
             val nextQry = executeStep(qry).map(q => PathNode(q, List(p), None))
             qrySet.addAll(nextQry)
-            executeBackward(qrySet, limit, refutedSubsumedOrWitnessed, newVisited)
+            executeBackward(qrySet, limit,deadline, refutedSubsumedOrWitnessed, newVisited)
         }
     }
   }

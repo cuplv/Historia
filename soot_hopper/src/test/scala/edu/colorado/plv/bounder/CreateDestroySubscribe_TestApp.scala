@@ -6,7 +6,7 @@ import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{PrettyPrinting, Qry}
-import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, ControlFlowResolver, DefaultAppCodeResolver, FlowdroidCallGraph, PatchedFlowdroidCallGraph, SparkCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, ControlFlowResolver, DefaultAppCodeResolver, FlowdroidCallGraph, PatchedFlowdroidCallGraph, QueryFinished, SparkCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.{Scene, SootMethod}
 
@@ -37,9 +37,9 @@ class CreateDestroySubscribe_TestApp extends AnyFunSuite{
     val query = Qry.makeReceiverNonNull(symbolicExecutor, w,
       "com.example.createdestroy.MainActivity",
       "void lambda$onCreate$1$MainActivity(java.lang.Object)",31)
-    val result = symbolicExecutor.run(query).flatMap(a => a._3)
+    val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
     prettyPrinting.dumpDebugInfo(result, "CreateDestroySubscribe_TestApp")
-    assert(BounderUtil.interpretResult(result) == Proven)
+    assert(BounderUtil.interpretResult(result,QueryFinished) == Proven)
     assert(result.nonEmpty)
   }
   ignore("Witness call reachability"){
@@ -47,10 +47,10 @@ class CreateDestroySubscribe_TestApp extends AnyFunSuite{
     val query2 = Qry.makeReach(symbolicExecutor,w,
       "com.example.createdestroy.MainActivity",
       "void lambda$onCreate$1$MainActivity(java.lang.Object)",31)
-    val result2 = symbolicExecutor.run(query2).flatMap(a => a._3)
+    val result2 = symbolicExecutor.run(query2).flatMap(a => a.terminals)
     prettyPrinting.dumpDebugInfo(result2, "CreateDestroySubscribe_TestApp_reach")
     assert(result2.nonEmpty)
-    assert(BounderUtil.interpretResult(result2) == Witnessed)
+    assert(BounderUtil.interpretResult(result2,QueryFinished) == Witnessed)
   }
 
 }

@@ -640,11 +640,27 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     case p:PureVar => value == p
     case _:PureVal => false
   }
-  private def heapCellReferencesV(value:PureVar, state: State): Boolean = state.heapConstraints.exists{
-    case (FieldPtEdge(base, _), ptVal) => value == base || exprContainsV(value,ptVal)
+  private def heapCellReferencesVAndIsNonNull(value:PureVar, state: State): Boolean = state.heapConstraints.exists{
+    case (FieldPtEdge(base, _), ptVal) =>
+      if(value == base || exprContainsV(value,ptVal)) {
+        ptVal != NullVal &&
+          (!state.pureFormula.exists{
+            case PureConstraint(lhs, Equals, NullVal) if lhs == ptVal => true
+            case PureConstraint(NullVal, Equals, rhs) if rhs == ptVal => true
+            case _ => false
+          })
+      } else false
     case (StaticPtEdge(_,_),ptVal) => exprContainsV(value,ptVal)
     case (ArrayPtEdge(base,index),ptVal) =>
       exprContainsV(value,base) || exprContainsV(value,index) || exprContainsV(value,ptVal)
+  }
+  private def localReferencesV(pureVar: PureVar, state: State): Boolean ={
+    state.callStack.exists{sf =>
+      sf.locals.exists{
+        case (_,v) =>
+          v == pureVar
+      }
+    }
   }
 
   def cmdTransfer(cmd:CmdWrapper, state:State):Set[State] = cmd match {
@@ -653,7 +669,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       // x = new T
       state.get(lhs) match {
         case Some(v: PureVar) =>
-          if (heapCellReferencesV(v, state)) {
+          if (heapCellReferencesVAndIsNonNull(v, state) || localReferencesV(v,state.clearLVal(lhs))) {
             // If x->v^ and some heap cell references v^, the state is not possible
             // new command does not call constructor, it just creates an instance with all null vals
             // <init>(...) is the constructor and is called in the instruction after the new instruction
@@ -661,9 +677,16 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
           } else {
             // x is assigned here so remove it from the pre-state
             val sWithoutLVal = state.clearLVal(lhs)
+            val sWithoutNullHeapCells = sWithoutLVal.copy(heapConstraints = sWithoutLVal.heapConstraints.filter{
+              case (FieldPtEdge(base, _),_) if base == v =>
+                // Previously, we checked for non-null heap cells that contain the value v
+                // and would have refuted before now
+                false
+              case _ => true
+            })
             // If x = new T and x->v^ then v^<:T
             // v^ != null since new instruction never returns null
-            Set(sWithoutLVal.copy(pureFormula = state.pureFormula
+            Set(sWithoutNullHeapCells.copy(pureFormula = state.pureFormula
               //              + PureConstraint(v, TypeComp, ClassType(className))
               + PureConstraint(v, NotEquals, NullVal)
             ).constrainIsType(v, className, ch))

@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder
 
 import better.files.File
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CmdNotImplemented, CmdWrapper, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Loc, NopCmd}
-import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, SymbolicExecutorConfig}
+import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, QueryFinished, QueryInterrupted, SymbolicExecutorConfig}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, InitialQuery, PathNode, SomeQry, WitnessedQry}
 
 import scala.annotation.tailrec
@@ -31,6 +31,7 @@ object BounderUtil {
         case Witnessed => "Witnessed"
         case Timeout => "Timeout"
         case Unreachable => "Unreachable"
+        case Interrupted(reason) => s"I$reason"
       }
       ,
       {
@@ -38,6 +39,7 @@ object BounderUtil {
         case "Timeout" => Timeout
         case "Unreachable" => Unreachable
         case "Witnessed" => Witnessed
+        case v => Interrupted(v.drop(1))
       }
     )
   }
@@ -45,22 +47,28 @@ object BounderUtil {
   case object Witnessed extends ResultSummary
   case object Timeout extends ResultSummary
   case object Unreachable extends ResultSummary
-  def interpretResult(result: Set[IPathNode]):ResultSummary = {
-    if(result.forall {
-      case PathNode(_: BottomQry, _) => true
-      case PathNode(_: WitnessedQry, _) => false
-      case PathNode(_: SomeQry, true) => true
-      case PathNode(_: SomeQry, false) => false
-    }) {
-      return if(result.size > 0) Proven else Unreachable
+  case class Interrupted(reason:String) extends ResultSummary
+  def interpretResult(result: Set[IPathNode], queryResult : symbolicexecutor.QueryResult):ResultSummary = {
+    queryResult match {
+      case QueryInterrupted(reason) => Interrupted(reason)
+      case QueryFinished => {
+        if(result.forall {
+          case PathNode(_: BottomQry, _) => true
+          case PathNode(_: WitnessedQry, _) => false
+          case PathNode(_: SomeQry, true) => true
+          case PathNode(_: SomeQry, false) => false
+        }) {
+          return if(result.size > 0) Proven else Unreachable
+        }
+        if(result.exists{
+          case PathNode(_: WitnessedQry, _) => true
+          case _ => false
+        }) {
+          return Witnessed
+        }
+        Timeout
+      }
     }
-    if(result.exists{
-      case PathNode(_: WitnessedQry, _) => true
-      case _ => false
-    }) {
-      return Witnessed
-    }
-    Timeout
   }
 
   def allMap[T](n1:Set[T], n2:Set[T], canMap: (T,T) => Boolean):List[Map[T,T]] = {
