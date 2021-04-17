@@ -472,16 +472,23 @@ class ExperimentsDb(bounderJar:Option[String] = None){
             s"""-Djava.library.path="${BounderUtil.dy}""""
           else
             ""
+          println("Starting Verifier")
           setJobStartTime(jobRow.jobId)
           val cmd = s"java ${z3Override} -jar ${bounderJar.toString} -m verify -c ${cfgFile.toString} -u ${outF.toString}"
           BounderUtil.runCmdFileOut(cmd, baseDir)
           setEndTime(jobRow.jobId)
+          println("Finished Verifier Writing Results")
           val resDir = ResultDir(jobRow.jobId, baseDir, if(cfg.tag!="") Some(cfg.tag) else None)
           val stdoutF = baseDir / "stdout.txt"
           val stdout = if(stdoutF.exists()) stdoutF.contentAsString else ""
           val stderrF = baseDir / "stderr.txt"
           val stderr = if(stderrF.exists())stderrF.contentAsString else ""
+          // Delete files that aren't needed working directory will be uploaded
+          val uploadStartTime = Instant.now.getEpochSecond
+          println("uploading results")
+          bounderJar.delete()
           finishSuccess(resDir,stdout, stderr)
+          println(s"done uploading results: ${Instant.now.getEpochSecond - uploadStartTime}")
         }catch{
           case t:Throwable =>
             println(s"exception ${t.toString}")
@@ -589,7 +596,9 @@ class ExperimentsDb(bounderJar:Option[String] = None){
   //  );
   case class ResultDir(jobId:Int, f:File, jobTag:Option[String]){
     def getDBResults :List[DBResult]= {
-      val apkHash = BounderUtil.computeHash((f / "target.apk").toString)
+      val apk = f / "target.apk"
+      val apkHash = BounderUtil.computeHash(apk.toString)
+      apk.delete()
       val resultSummaries = f.glob("**/result_*.txt").map{resF =>
         // [qry,id,loc, res, time]
         read[LocResult](resF.contentAsString)
@@ -610,6 +619,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
   case class DBResult(id:Int, jobid:Int, qry:String, loc:String, result:String, queryTime:Long,
                       resultData:Option[Int], apkHash:String, bounderJarHash:String, owner:String,
                       jobTag: Option[String])
+
   class Results(tag:Tag) extends Table[DBResult](tag,"results"){
     val id = column[Int]("id", O.PrimaryKey, O.AutoInc)
     val jobId = column[Int]("jobid")
@@ -626,6 +636,47 @@ class ExperimentsDb(bounderJar:Option[String] = None){
       bounderJarHash, owner, jobtag) <> (DBResult.tupled, DBResult.unapply)
   }
   val resultsQry = TableQuery[Results]
+  def getCCParams(cc: AnyRef) =
+    cc.getClass.getDeclaredFields.foldLeft(Map.empty[String, Any]) { (a, f) =>
+      f.setAccessible(true)
+      a + (f.getName -> f.get(cc))
+    }
+  def downloadResults(outFolder:File, filterResult:String, limit:Option[Int]) = {
+    val rand = SimpleFunction.nullary[Double]("rand")
+    val getJobs = for {
+      job <- jobQry
+      res <- resultsQry if job.jobId === res.jobId && res.result === filterResult
+    } yield (job,res)
+    val jobRows = Await.result(db.run(getJobs.result), 90 seconds)
+
+    val limitJobRows = if(limit.isDefined) jobRows.take(limit.get) else jobRows
+
+    val dataToDownload = limitJobRows.map{case (job, res) =>
+      val cfg = read[RunConfig](job.config)
+      val sOut:String = cfg.outFolder.get.replace("${baseDirOut}","").dropWhile(_ == "/")
+      outFolder.createDirectoryIfNotExists(true)
+      val currentOut = File(outFolder.toString + "/" +  sOut)
+      println("out folder: " + currentOut)
+      currentOut.createDirectoryIfNotExists(true)
+
+      val resDir = currentOut / s"res_${res.id}"
+//      (resDir / "id").append(res.id.toString)
+      resDir.createIfNotExists(true)
+      getCCParams(res).foreach{case (k,v) => (resDir / s"res_$k").append(v.toString)}
+      getCCParams(job).foreach{case (k,v) => (resDir / s"job_$k").append(v.toString)}
+
+      (res.resultData, currentOut)
+    }.toSet
+
+    dataToDownload.foreach{
+      case (Some(d), out) =>
+        println(s"downloading data $d to directory $out")
+        val dataDir = out / s"data_$d"
+        dataDir.createIfNotExists(true)
+        val data = (dataDir / "data.zip")
+        getData(d, data)
+    }
+  }
   def finishSuccess(d : ResultDir, stdout:String, stderr:String) = {
     val resData = d.getDBResults
     resData.foreach{d =>

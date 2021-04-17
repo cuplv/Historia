@@ -80,7 +80,8 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       case _ =>
     }
   }
-  writeIR()
+  // Dump debug info from soot analysis to sqlite
+//  writeIR() //TODO: add debug flag to toggle this
 
   def getControlFlowResolver = controlFlowResolver
   val stateSolver = new Z3StateSolver(cha)
