@@ -3,12 +3,15 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.symbolicexecutor.SymbolicExecutor
+import soot.{SootClass, SootMethod}
 import ujson.Value
 import upickle.default.{macroRW, ReadWriter => RW}
 
+import scala.jdk.CollectionConverters.CollectionHasAsScala
 import scala.util.matching.Regex
 
 object Qry {
+
   implicit val rw:RW[Qry] = RW.merge(macroRW[SomeQry], macroRW[BottomQry], macroRW[WitnessedQry])
 
   def makeReach[M,C](ex: SymbolicExecutor[M,C],
@@ -59,6 +62,43 @@ object Qry {
       val state2 = state1.copy(pureFormula = Set(PureConstraint(pv, Equals, NullVal)), nextCmd = List(location))
       SomeQry(state2, location)
     }.toSet
+  }
+
+  def makeAllReceiverNonNull[M,C](ex:SymbolicExecutor[M,C],w:IRWrapper[M,C],className: String): Set[Qry] = {
+    //TODO: clean up this method
+    implicit val wra = w
+    implicit val ch = ex.cha
+    val jw = w.asInstanceOf[JimpleFlowdroidWrapper]
+    val c = jw.getClassByName(className)
+    val qrys: Iterable[Option[Set[SomeQry]]] = for {
+      cl <-c
+      m <- cl.getMethods.asScala
+      cmd <- m.getActiveBody.getUnits.asScala.map(v => jw.makeCmd(v,m, Some(AppLoc(JimpleMethodLoc(m),JimpleLineLoc(v,m),true))))
+    } yield {
+      val clName = JimpleFlowdroidWrapper.stringNameOfClass(cl)
+      val mName = m.getSubSignature
+      val baseV = cmd match {
+        case AssignCmd(_, VirtualInvoke(localWrapper,_,_,_), _) => Some(localWrapper)
+        case AssignCmd(_, SpecialInvoke(localWrapper,_,_,_), _) => Some(localWrapper)
+        case InvokeCmd(VirtualInvoke(localWrapper,_,_,_),_) => Some(localWrapper)
+        case InvokeCmd(SpecialInvoke(localWrapper,_,_,_),_) => Some(localWrapper)
+        case AssignCmd(_, FieldReference(base,_,_,_),_)  => Some(base)
+        case AssignCmd(FieldReference(base,_,_,_),_,_)  => Some(base)
+        case _ => None
+      }
+      baseV.map { v =>
+        val cbexits = BounderUtil.resolveMethodReturnForAppLoc(ex.getAppCodeResolver, cmd.getLoc)
+        cbexits.map { cbexit =>
+          val queryStack = List(CallStackFrame(cbexit, None, Map()))
+          val state0 = State.topState.copy(callStack = queryStack)
+          val (pureVar, state1) = state0.getOrDefine(v, None)
+          SomeQry(state1.copy(pureFormula = Set(PureConstraint(pureVar, Equals, NullVal)),
+            nextCmd = List(cmd.getLoc)), cmd.getLoc)
+        }.toSet
+      }
+    }
+
+    qrys.flatten.flatten.toSet
   }
 
   def makeReceiverNonNull[M,C](ex: SymbolicExecutor[M,C],
@@ -145,6 +185,12 @@ object InitialQuery{
           "callinRegex" -> callinRegex
         ).map(vToJ)
         ujson.Obj.from(m)
+      case AllReceiversNonNull(className) =>
+        val m = Map(
+          "t" -> "AllReceiversNonNull",
+          "className" -> className
+        ).map(vToJ)
+        ujson.Obj.from(m)
     },
     json => json.obj("t").str match{
       case "Reachable" => Reachable(json.obj("className").str, json.obj("methodName").str,json.obj("line").num.toInt)
@@ -153,6 +199,8 @@ object InitialQuery{
       case "CallinReturnNonNull" =>
         CallinReturnNonNull(json.obj("className").str, json.obj("methodName").str,json.obj("line").num.toInt,
           json.obj("callinRegex").str)
+      case "AllReceiversNonNull" =>
+        AllReceiversNonNull(json.obj("className").str)
     }
   )
 }
@@ -163,6 +211,10 @@ case class Reachable(className:String, methodName:String, line:Integer) extends 
 case class ReceiverNonNull(className:String, methodName:String, line:Integer) extends InitialQuery {
   override def make[M, C](sym: SymbolicExecutor[M, C], w: IRWrapper[M, C]): Set[Qry] =
     Qry.makeReceiverNonNull(sym,w, className, methodName, line)
+}
+case class AllReceiversNonNull(className:String) extends InitialQuery {
+  override def make[M, C](sym: SymbolicExecutor[M, C], w: IRWrapper[M, C]): Set[Qry] =
+    Qry.makeAllReceiverNonNull(sym,w,className)
 }
 case class CallinReturnNonNull(className:String, methodName:String,
                                line:Integer, callinRegex:String) extends InitialQuery{

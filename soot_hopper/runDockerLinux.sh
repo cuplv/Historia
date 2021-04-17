@@ -1,7 +1,8 @@
 #!/bin/bash
 if [ $# -eq 0 ]
 	then
-		docker run --net=host -it cuplv/bounder bash 
+		#CMD=$(cat ~/dcmd)
+		docker run --rm --net=host -it cuplv/bounder bash
 		#-c "java -jar $BOUNDER_JAR --mode expLoop"
 	else
 		DATADIR=$(realpath $1)

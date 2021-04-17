@@ -187,7 +187,7 @@ object JimpleFlowdroidWrapper{
     case s : JAndExpr => TopExpr(s.toString + " : JAndExpr")
     case s : JOrExpr => TopExpr(s.toString + " : JOrExpr")
     case s : JUshrExpr => TopExpr(s.toString + " : JUshrExpr")
-
+    case s : JRemExpr => TopExpr(s.toString + " : JRemExpr")
     case v =>
       //println(v)
       throw CmdNotImplemented(s"Command not implemented: $v  type: ${v.getClass}")

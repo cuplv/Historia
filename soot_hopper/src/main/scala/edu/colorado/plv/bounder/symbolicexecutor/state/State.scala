@@ -272,7 +272,8 @@ object BoundedTypeSet{
 }
 case class DisjunctTypeSet(oneOf: Set[TypeSet]) extends TypeSet{
   override def toString():String = {
-    oneOf.headOption.map(_.toString() + " disj").getOrElse(":nonedisj")
+    //oneOf.headOption.map(_.toString() + " disj").getOrElse(":nonedisj")
+    s"[${oneOf.take(2).map(_.toString).mkString(",")} disj]"
   }
   private def filterOp(op: TypeSet => TypeSet):TypeSet = {
     val outSet = oneOf.map(op).filter {
@@ -732,7 +733,8 @@ case class State(callStack: List[CallStackFrame],
             case (_,Some(ts)) => Some(thisV->ts)
             case _ => None
           }
-          val state = this.copy(callStack = newStack, nextAddr = nextAddr,
+          val state = this.copy(callStack = newStack, nextAddr = nextAddr,pureFormula = this.pureFormula +
+            PureConstraint(thisV, NotEquals, NullVal),
             typeConstraints = this.typeConstraints ++ combinedTs)
           (thisV, state)
         case None =>
