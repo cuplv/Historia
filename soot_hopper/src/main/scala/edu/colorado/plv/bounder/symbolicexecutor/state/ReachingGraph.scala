@@ -150,6 +150,28 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
     out
   }
 
+  def getNoPred():Set[DBPathNode] = {
+    // TODO: there is probably a more efficient way to do this
+    // get edges
+    val qAllEdge = for {
+      n <- graphQuery
+    } yield (n.src,n.tgt)
+    val allEdge = Await.result(db.run(qAllEdge.result), 900 seconds)
+    val isTgt: Map[Int, Seq[(Int, Int)]] = allEdge.groupBy{
+      case (_,tgt) => tgt
+    }
+    val isSrc = allEdge.groupBy{
+      case(src,_) => src
+    }
+    val tgtButNotSrc: Set[Int] = isTgt.keySet.removedAll(isSrc.keySet)
+
+    tgtButNotSrc.flatMap((nodeId: Int) => {
+      val q = for {
+        n <- witnessQry if (n.id === nodeId)
+      } yield n
+      Await.result(db.run(q.result), 30 seconds)
+    }).map(rowToNode)
+  }
   def getTerminal():Set[DBPathNode] = {
     val qLive = for{
       liveId <- liveAtEnd

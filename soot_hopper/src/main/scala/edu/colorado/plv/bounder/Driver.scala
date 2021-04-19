@@ -20,7 +20,7 @@ import scala.concurrent.Await
 import slick.jdbc.PostgresProfile.api._
 import slick.jdbc.SQLActionBuilder
 import soot.SootMethod
-import ujson.Value
+import ujson.{Value, validate}
 import upickle.core.AbortException
 import upickle.default.{macroRW, read, write, ReadWriter => RW}
 
@@ -102,12 +102,17 @@ object Driver {
   case object ExpLoop extends RunMode
   case object MakeAllDeref extends RunMode
 
-  def readDB(outFolder:File): Unit = {
+  def readDB(outFolder:File, findNoPred:Boolean = false): Unit = {
     val dbPath = outFolder / "paths.db"
     val db = DBOutputMode(dbPath.toString())
     val liveNodes: Set[IPathNode] = db.getTerminal().map(v=>v)
     val pp = new PrettyPrinting(db)
     pp.dumpDebugInfo(liveNodes, "out", Some(outFolder.toString))
+
+    if(findNoPred){
+      val noPredNodes: Set[IPathNode] = db.getNoPred().map(v=>v)
+      pp.dumpDebugInfo(noPredNodes, "noPred", Some(outFolder.toString))
+    }
   }
 
   def main(args: Array[String]): Unit = {

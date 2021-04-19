@@ -119,6 +119,7 @@ object Qry {
       case InvokeCmd(_:VirtualInvoke,_) => true
       case InvokeCmd(_:SpecialInvoke,_) => true
       case AssignCmd(_, FieldReference(base,_,_, isTarget(name)),_) => true
+      case AssignCmd(_, FieldReference(base,_,_, isTarget()),_) => true
       case _ => false
     })
 
@@ -168,14 +169,17 @@ object InitialQuery{
           "line" -> line
         ).map(vToJ)
         ujson.Obj.from(m)
-      case ReceiverNonNull(className, methodName, line) =>
+      case ReceiverNonNull(className, methodName, line, matcher) =>
+
         val m = Map(
           "t" -> "ReceiverNonNull",
           "className" -> className,
           "methodName" -> methodName,
           "line" -> line
-        ).map(vToJ)
-        ujson.Obj.from(m)
+        )
+        val m2 = if(matcher.isEmpty) m else m + ("matcher" -> matcher.get)
+        val m3 = m2.map(vToJ)
+        ujson.Obj.from(m3)
       case CallinReturnNonNull(className, methodName, line, callinRegex) =>
         val m = Map(
           "t" -> "CallinReturnNull",
@@ -195,7 +199,8 @@ object InitialQuery{
     json => json.obj("t").str match{
       case "Reachable" => Reachable(json.obj("className").str, json.obj("methodName").str,json.obj("line").num.toInt)
       case "ReceiverNonNull" =>
-        ReceiverNonNull(json.obj("className").str, json.obj("methodName").str,json.obj("line").num.toInt)
+        val matcher = if(json.obj.contains("matcher")) Some(json.obj("matcher").str) else None
+        ReceiverNonNull(json.obj("className").str, json.obj("methodName").str,json.obj("line").num.toInt, matcher)
       case "CallinReturnNonNull" =>
         CallinReturnNonNull(json.obj("className").str, json.obj("methodName").str,json.obj("line").num.toInt,
           json.obj("callinRegex").str)
@@ -208,9 +213,10 @@ case class Reachable(className:String, methodName:String, line:Integer) extends 
   override def make[M, C](sym: SymbolicExecutor[M, C], w: IRWrapper[M, C]): Set[Qry] =
     Qry.makeReach(sym,w,className, methodName, line)
 }
-case class ReceiverNonNull(className:String, methodName:String, line:Integer) extends InitialQuery {
+case class ReceiverNonNull(className:String, methodName:String, line:Integer,
+                           receiverMatcher:Option[String] = None) extends InitialQuery {
   override def make[M, C](sym: SymbolicExecutor[M, C], w: IRWrapper[M, C]): Set[Qry] =
-    Qry.makeReceiverNonNull(sym,w, className, methodName, line)
+    Qry.makeReceiverNonNull(sym,w, className, methodName, line,fieldOrMethod = receiverMatcher.map(_.r))
 }
 case class AllReceiversNonNull(className:String) extends InitialQuery {
   override def make[M, C](sym: SymbolicExecutor[M, C], w: IRWrapper[M, C]): Set[Qry] =
