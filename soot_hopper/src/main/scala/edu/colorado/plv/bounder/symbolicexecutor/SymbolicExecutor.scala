@@ -51,7 +51,7 @@ case class QueryInterrupted(reason:String) extends QueryResult
 case class QueryInterruptedException(terminals:Set[IPathNode], reason:String) extends Exception
 class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
 
-  implicit var pathMode = config.outputMode
+  implicit var pathMode: OutputMode = config.outputMode
   implicit var w = config.w
 
   val cha =
@@ -63,7 +63,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   val appCodeResolver = new DefaultAppCodeResolver[M,C](config.w)
   def getAppCodeResolver = appCodeResolver
   val controlFlowResolver =
-    new ControlFlowResolver[M,C](config.w,appCodeResolver, cha, config.component.map(_.toList))
+    new ControlFlowResolver[M,C](config.w,appCodeResolver, cha, config.component.map(_.toList), config)
   def writeIR():Unit = {
     val callbacks = appCodeResolver.getCallbacks
     config.outputMode match {
@@ -165,26 +165,26 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
    * @param qry - a source location and an assertion to prove
    * @return  (id, Terminal path nodes)
    */
-  def run(qry: Set[Qry], initialize: IPathNode => Int = _ => 0) : Set[QueryData] = {
-    qry.map{ q =>
-      val pathNodes = PathNode(q, Nil, None)
+  def run(qry: Set[Qry], initialize: Set[IPathNode] => Int = _ => 0) : Set[QueryData] = {
+    qry.groupBy(_.loc).map{ case(loc,qs) =>
+      val pathNodes = qs.map(PathNode(_, Nil, None))
       val startTime = Instant.now.getEpochSecond
       val id = initialize(pathNodes)
       val queue = new GrouperQ
-      queue.addAll(Set(pathNodes))
+      queue.addAll(pathNodes)
       try {
         config.stepLimit match {
           case Some(limit) =>
-            QueryData(id, q.loc, executeBackward(queue, limit, startTime + config.timeLimit),
+            QueryData(id, loc, executeBackward(queue, limit, startTime + config.timeLimit),
               Instant.now.getEpochSecond - startTime, QueryFinished)
           case None =>
             ???
         }
       }catch{
         case QueryInterruptedException(terminals, reason) =>
-          QueryData(id, q.loc, terminals, Instant.now.getEpochSecond - startTime, QueryInterrupted(reason))
+          QueryData(id, loc, terminals, Instant.now.getEpochSecond - startTime, QueryInterrupted(reason))
       }
-    }
+    }.toSet
   }
 
 

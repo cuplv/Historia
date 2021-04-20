@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.ir.{Invoke, _}
 import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSAnyVal}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, FieldPtEdge, LSAny, LSConstConstraint, LSModelVar, LSParamConstraint, LSPure, PureVar, State, StaticPtEdge}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, FieldPtEdge, LSAny, LSConstConstraint, LSModelVar, LSParamConstraint, LSPure, OutputMode, PrettyPrinting, PureVar, State, StaticPtEdge}
 import scalaz.Memo
 import upickle.default.{macroRW, ReadWriter => RW}
 
@@ -58,7 +58,7 @@ object DropHeapCellsMethod{
 class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
                                resolver: AppCodeResolver,
                                cha: ClassHierarchyConstraints,
-                               component: Option[List[String]]) {
+                               component: Option[List[String]], config:SymbolicExecutorConfig[M,C]) { //TODO: remove pathMode here
   private implicit val ch = cha
   private val componentR: Option[List[Regex]] = component.map(_.map(_.r))
 
@@ -499,6 +499,11 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   }
   def resolvePredicessors(loc:Loc, state: State):Iterable[Loc] = (loc,state.callStack) match{
     case (l@AppLoc(_,_,true),_) => {
+      //TODO: remove dbg code =====
+//      val pp = new PrettyPrinting(config.outputMode)
+//      pp.dotMethod(loc,this, "/Users/shawnmeier/Documents/source/bounder/experiments/inspectRun/itkach.aard2/itkach.slob.Slob$4/method.dot")
+
+      //end remove dbg code
       val cmd: CmdWrapper = wrapper.cmdAtLocation(l)
       cmd match {
         case cmd if wrapper.isMethodEntry(cmd) =>

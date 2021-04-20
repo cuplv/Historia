@@ -70,13 +70,13 @@ object Qry {
     implicit val ch = ex.cha
     val jw = w.asInstanceOf[JimpleFlowdroidWrapper]
     val c = jw.getClassByName(className)
-    val qrys: Iterable[Option[Set[SomeQry]]] = for {
+    val cmds = (for {
       cl <-c
       m <- cl.getMethods.asScala
       cmd <- m.getActiveBody.getUnits.asScala.map(v => jw.makeCmd(v,m, Some(AppLoc(JimpleMethodLoc(m),JimpleLineLoc(v,m),true))))
-    } yield {
-      val clName = JimpleFlowdroidWrapper.stringNameOfClass(cl)
-      val mName = m.getSubSignature
+    } yield cmd).toSet
+
+    val qrys = cmds.map{cmd =>
       val baseV = cmd match {
         case AssignCmd(_, VirtualInvoke(localWrapper,_,_,_), _) => Some(localWrapper)
         case AssignCmd(_, SpecialInvoke(localWrapper,_,_,_), _) => Some(localWrapper)
@@ -88,17 +88,17 @@ object Qry {
       }
       baseV.map { v =>
         val cbexits = BounderUtil.resolveMethodReturnForAppLoc(ex.getAppCodeResolver, cmd.getLoc)
-        cbexits.map { cbexit =>
-          val queryStack = List(CallStackFrame(cbexit, None, Map()))
-          val state0 = State.topState.copy(callStack = queryStack)
-          val (pureVar, state1) = state0.getOrDefine(v, None)
-          SomeQry(state1.copy(pureFormula = Set(PureConstraint(pureVar, Equals, NullVal)),
-            nextCmd = List(cmd.getLoc)), cmd.getLoc)
-        }.toSet
+        assert(cbexits.nonEmpty, s"Malformed IR, method has no returns:  ${cmd.getLoc.method}")
+        val queryStack = List(CallStackFrame(cbexits.head, None, Map()))
+        val state0 = State.topState.copy(callStack = queryStack)
+        val (pureVar, state1) = state0.getOrDefine(v, None)
+        SomeQry(state1.copy(pureFormula = Set(PureConstraint(pureVar, Equals, NullVal)),
+          nextCmd = List(cmd.getLoc)), cmd.getLoc)
       }
     }
 
-    qrys.flatten.flatten.toSet
+    val out = qrys.flatten
+    out.map(a => a)
   }
 
   def makeReceiverNonNull[M,C](ex: SymbolicExecutor[M,C],

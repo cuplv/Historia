@@ -1,6 +1,7 @@
 package edu.colorado.plv.bounder.ir
 
 import java.util
+import java.util.Objects
 
 import edu.colorado.plv.bounder.{BounderSetupApplication, BounderUtil}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
@@ -15,7 +16,8 @@ import soot.jimple.toolkits.callgraph.{CHATransformer, CallGraph, ReachableMetho
 import soot.jimple._
 import soot.jimple.toolkits.annotation.logic.LoopFinder
 import soot.options.Options
-import soot.toolkits.graph.{PseudoTopologicalOrderer, SlowPseudoTopologicalOrderer}
+import soot.toolkits.graph.pdg.EnhancedUnitGraph
+import soot.toolkits.graph.{PseudoTopologicalOrderer, SlowPseudoTopologicalOrderer, UnitGraph}
 import soot.util.Chain
 import soot.{AnySubType, ArrayType, Body, BooleanType, ByteType, CharType, DoubleType, FloatType, G, Hierarchy, IntType, Local, LongType, Modifier, RefType, Scene, ShortType, SootClass, SootField, SootMethod, SootMethodRef, Type, Value}
 
@@ -866,9 +868,11 @@ class JimpleFlowdroidWrapper(apkPath : String,
     AppLoc(JimpleMethodLoc(containingMethod),JimpleLineLoc(u,containingMethod),false)
   }
 
-  protected val getUnitGraph: Body => EnhancedUnitGraphFixed = Memo.mutableHashMapMemo {b =>
-    // Soot EnhancedUnitGraph is not thread safe
-    this.synchronized {
+  protected val getUnitGraph: Body => UnitGraph = Memo.mutableHashMapMemo {b =>
+    // Method bodies are not thread safe
+    b.synchronized {
+
+//      new EnhancedUnitGraph(b) //TODO:
       new EnhancedUnitGraphFixed(b)
     }
   }
@@ -1029,7 +1033,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
 
   private val iTopoForMethod: SootMethod => Map[soot.Unit, Int] = Memo.mutableHashMapMemo {
     (method:SootMethod) => {
-      val unitGraph: EnhancedUnitGraphFixed = getUnitGraph(method.retrieveActiveBody())
+      val unitGraph: UnitGraph = getUnitGraph(method.retrieveActiveBody())
       val topo = new SlowPseudoTopologicalOrderer[soot.Unit]()
       val uList = topo.newList(unitGraph, false).asScala.zipWithIndex
       uList.toMap
@@ -1359,6 +1363,23 @@ case class JimpleLineLoc(cmd: soot.Unit, method: SootMethod) extends LineLoc{
     case cmd :JReturnVoidStmt => Some("void")
     case _ =>
       ???
+  }
+
+  override def hashCode(): Int =
+    Objects.hash(cmd.getJavaSourceStartLineNumber, method.getName, method.getDeclaringClass.getName)
+
+  /**
+   * Note: soot.Unit does not have reasonable implementation of .equals
+   */
+  override def equals(obj: Any): Boolean = obj match{
+    case other: JimpleLineLoc =>
+      lazy val lineEq = other.cmd.getJavaSourceStartLineNumber == cmd.getJavaSourceStartLineNumber
+      lazy val methodEq = other.method == method
+      lazy val cmdEq = other.cmd.toString() == cmd.toString()
+      val res = lineEq && methodEq && cmdEq
+      res
+    case _ =>
+      false
   }
 
   override def lineNumber: Int = cmd.getJavaSourceStartLineNumber

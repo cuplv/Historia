@@ -313,14 +313,14 @@ object Driver {
       initialQueries.flatMap{ initialQuery =>
         val query: Set[Qry] = initialQuery.make(symbolicExecutor, w)
         val out = new ListBuffer[String]()
-        val initialize: IPathNode => Int = mode match {
-          case mode@DBOutputMode(_) => (startingNode: IPathNode) =>
+        val initialize: Set[IPathNode] => Int = mode match {
+          case mode@DBOutputMode(_) => (startingNode: Set[IPathNode]) =>
             val id = mode.initializeQuery(startingNode, cfg, initialQuery)
             val tOut = s"initial query: $initialQuery   id: $id"
             println(tOut)
             out += tOut
             id
-          case _ => (_: IPathNode) => 0
+          case _ => (_: Set[IPathNode]) => 0
         }
 
         //        (Int,Loc,Set[IPathNode],Long)

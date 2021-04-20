@@ -87,14 +87,16 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
    * @param initialQuery location and type of query
    * @return id for query
    */
-  def initializeQuery(initial:IPathNode, config:RunConfig, initialQuery: InitialQuery):Int = {
-    val initialDB = initial.asInstanceOf[DBPathNode]
+  def initializeQuery(initial:Set[IPathNode], config:RunConfig, initialQuery: InitialQuery):Int = {
+    val initialDBNodes = initial.map(_.asInstanceOf[DBPathNode])
     val maxID: Option[Int] = Await.result(db.run(initialQueries.map(_.id).max.result), 30 seconds)
     val currentID = maxID.getOrElse(0) + 1
     val meta = startMeta()
-    val initialQueryRow = (currentID, initialDB.thisID,
-      write[InitialQuery](initialQuery), write[RunConfig](config), meta)
-    Await.result(db.run(initialQueries += initialQueryRow), 30 seconds)
+    initialDBNodes.foreach { initialDB =>
+      val initialQueryRow = (currentID, initialDB.thisID,
+        write[InitialQuery](initialQuery), write[RunConfig](config), meta)
+      Await.result(db.run(initialQueries += initialQueryRow), 30 seconds)
+    }
     currentID
   }
   def markDeadend():Unit = {
