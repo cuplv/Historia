@@ -31,6 +31,7 @@ object ClassHierarchyConstraints{
     byteType,
     longType,
     doubleType,
+    charType,
     floatType,
     booleanType)
   val Primitive = primitiveTypes.mkString("|").r
