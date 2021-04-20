@@ -504,7 +504,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
 
   private def dummyClassForFrameworkClass(c:SootClass):SootClass = {
     val pkg = c.getPackageName
-    val name = "Dummy" + c.getShortName
+    val name = "Dummy_______" + c.getShortName
     Scene.v().addBasicClass(pkg + "." + name,SootClass.HIERARCHY)
     val dummyClass = Scene.v().getSootClass(pkg + "." + name)
     dummyClass.setApplicationClass()
@@ -803,19 +803,24 @@ class JimpleFlowdroidWrapper(apkPath : String,
     val allocLocal = Jimple.v().newLocal("alloc", objectClazz.getType)
     entryPointBody.getLocals.add(allocLocal)
 
-    // create new instance of each framework type and assign to allocLocal
-    Scene.v().getClasses.asScala.toList.foreach{ v =>
-      if(resolver.isFrameworkClass(JimpleFlowdroidWrapper.stringNameOfClass(v))){
-        if(v.getName == "java.util.Iterator"){ // TODO: change to isInterface if this works
+    Scene.v().getClasses.asScala.toList.foreach{v =>
+      if(resolver.isFrameworkClass(JimpleFlowdroidWrapper.stringNameOfClass(v))) {
+        // if framework interface with no implementors, make a dummy implementor
+        if (v.isInterface && Scene.v().getActiveHierarchy.getImplementersOf(v).size() == 0) {
           val dummy = dummyClassForFrameworkClass(v)
           entryPointBody.getUnits.add(
             Jimple.v().newAssignStmt(allocLocal, Jimple.v().newNewExpr(dummy.getType))
           )
           entryPointBody.getUnits.add(
             Jimple.v().newAssignStmt(
-              Jimple.v().newStaticFieldRef(globalField.makeRef()),allocLocal)
+              Jimple.v().newStaticFieldRef(globalField.makeRef()), allocLocal)
           )
         }
+      }
+    }
+    // create new instance of each framework type and assign to allocLocal
+    Scene.v().getClasses.asScala.toList.foreach{ v =>
+      if(resolver.isFrameworkClass(JimpleFlowdroidWrapper.stringNameOfClass(v)) && !v.isInterface){
         v.setApplicationClass()
         entryPointBody.getUnits.add(
           Jimple.v().newAssignStmt(allocLocal, Jimple.v().newNewExpr(v.getType))
@@ -836,9 +841,10 @@ class JimpleFlowdroidWrapper(apkPath : String,
 
 
 //    val c = Scene.v().loadClassAndSupport(JimpleFlowdroidWrapper.cgEntryPointName)
-    Scene.v().setEntryPoints(List(entryMethod).asJava)
     // swap callin bodies out so that they only read/write values to the global field
     instrumentCallins()
+
+    Scene.v().setEntryPoints(List(entryMethod).asJava)
 
     Scene.v().releaseActiveHierarchy()
     Scene.v().releasePointsToAnalysis()
@@ -1112,6 +1118,56 @@ class JimpleFlowdroidWrapper(apkPath : String,
     val line = appLoc.line.asInstanceOf[JimpleLineLoc]
     val edgesOut = cg.edgesOutOf(line.cmd)
 
+    //TODO: why is shared preferences dummy not getting to call site?
+    val dbg = false // TODO: switch to false for exp run
+    def dbgInvTargetTypes(inv: InvokeExpr):Unit = {
+      val pt = Scene.v().getPointsToAnalysis
+      inv match{
+        case vi: JVirtualInvokeExpr =>
+          val base = vi.getBase.asInstanceOf[JimpleLocal]
+          val ro = pt.reachingObjects(base)
+          val types = ro.possibleTypes()
+          println(types)
+        case ifi: JInterfaceInvokeExpr =>
+          val base = ifi.getBase.asInstanceOf[JimpleLocal]
+          val t = base.getType match{
+            case r:RefType =>
+              val isIface = r.getSootClass.isInterface
+              val isAbstr = r.getSootClass.isAbstract
+              val impl = if(isIface) {
+                Scene.v().getActiveHierarchy.getDirectImplementersOf(r.getSootClass)
+              } else {Scene.v().getActiveHierarchy.getDirectSubclassesOf(r.getSootClass)}
+              println(impl)
+
+          }
+          val ro = pt.reachingObjects(base)
+          val types = ro.possibleTypes()
+          println(types)
+        case _ =>
+          ???
+      }
+    }
+    if(dbg && edgesOut.isEmpty)
+      line.cmd match{
+        case v : JInvokeStmt =>
+          val invExpr = v.getInvokeExpr
+          dbgInvTargetTypes(invExpr)
+          println(v)
+          ???
+        case v: JAssignStmt =>
+          val left = v.getRightOp
+          left match{
+            case e: InvokeExpr =>
+              dbgInvTargetTypes(e)
+              ???
+            case v =>
+              println(v)
+              ???
+          }
+        case v =>
+          println(v)
+          ???
+      }
     // A class may be statically initialized at any location where it is first used
     // Soot adds a <clinit> edge to any static invoke site.
     // We assume that <clinit> is a callback for simplicity.

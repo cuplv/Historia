@@ -41,3 +41,4 @@ sun.*
 fr.louisbl.cordova.gpslocation.*
 nl.xservices.plugins.*
 org.simpleframework.*
+com.ibm.*

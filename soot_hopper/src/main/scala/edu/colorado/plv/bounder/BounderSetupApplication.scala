@@ -129,6 +129,7 @@ object BounderSetupApplication {
 //    Options.v.setPhaseOption("cg.cha", "on")
     Scene.v.loadBasicClasses()
     Scene.v.loadNecessaryClasses()
+    Scene.v.loadDynamicClasses() //TODO:=======
     PackManager.v.getPack("wjpp").apply()
     PackManager.v.runPacks()
 //    CHATransformer.v().transform()
