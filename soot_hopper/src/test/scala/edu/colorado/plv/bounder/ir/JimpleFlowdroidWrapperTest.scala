@@ -87,6 +87,8 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
         |import java.util.List;
         |import java.util.ArrayList;
         |import java.util.Iterator;
+        |import android.content.Context;
+        |import android.content.SharedPreferences;
         |
         |import rx.Single;
         |import rx.Subscription;
@@ -118,11 +120,15 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
         |        for(Runnable r2 : l){
         |           r2.run(); //query4 should have many edges
         |        }
+        |      SharedPreferences pref = this.getSharedPreferences("", Context.MODE_PRIVATE);
+        |      SharedPreferences.Editor editor = pref.edit(); //query5
+        |      editor.putInt("foo",3);
         |    }
         |
         |    @Override
         |    protected void onPause() {
         |      r.run(); //query3 should have exactly one edge
+        |
         |    }
         |}""".stripMargin
 
@@ -146,28 +152,37 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
       val targets: UnresolvedMethodTarget = w.makeInvokeTargets(loc)
 
       //TODO: dbg code
-//      val jm = query.head.loc.asInstanceOf[AppLoc].method.asInstanceOf[JimpleMethodLoc].method
-//      val locals = jm.getActiveBody.getLocals
-//      val pt = Scene.v().getPointsToAnalysis
-//      val ro = locals.asScala.map{l => l -> pt.reachingObjects(l).possibleTypes()}.toMap
+      val onResumeMethod = query.head.loc.asInstanceOf[AppLoc].method.asInstanceOf[JimpleMethodLoc].method
+      val locals = onResumeMethod.getActiveBody.getLocals
+      val units = onResumeMethod.getActiveBody.getUnits
+      val callEdges = units.asScala.map(u => (u,Scene.v().getCallGraph.edgesOutOf(u)))
+      val pt = Scene.v().getPointsToAnalysis
+      val onResumeMethod_locals = locals.asScala.map{l => l -> pt.reachingObjects(l).possibleTypes()}.toMap
 //      val r6ContainsTwo = ro.filter(v => v._1.getName == "$r6").head._2.asScala.filter(t => t.toString.contains("MyActivity"))
-//      println(ro)
-//
-//      val ep = Scene.v().getEntryPoints.get(0)
-//      val ro2 = ep.getActiveBody.getLocals.asScala.map{l => l-> pt.reachingObjects(l)}.toMap
-//      val allocL = ep.getActiveBody.getLocals.asScala.find(l => l.toString().contains("alloc"))
-//      val posT = ro2(allocL.get).possibleTypes()
+      println(onResumeMethod_locals.size)
+      // target of getSharedPreferences
+      val getSharedPref = Scene.v().getSootClass("android.content.ContextWrapper").getMethod("android.content.SharedPreferences getSharedPreferences(java.lang.String,int)")
+      val getSharedPref_localMap = getSharedPref.getActiveBody.getLocals.asScala.map{l => l.getName->pt.reachingObjects(l).possibleTypes()}
+      val fieldLoc_getSharedPref = getSharedPref_localMap.find(_._1.contains("tmplocal")).get._2
+      val fieldLocSP_contains = fieldLoc_getSharedPref.asScala.filter(_.toString().contains("SharedPreferences"))
+      //
+      val ep = Scene.v().getEntryPoints.get(0)
+      val ro2 = ep.getActiveBody.getLocals.asScala.map{l => l-> pt.reachingObjects(l)}.toMap
+      val allocL = ep.getActiveBody.getLocals.asScala.find(l => l.toString().contains("alloc"))
+      val posT = ro2(allocL.get).possibleTypes()
+      val sharedPref = posT.asScala.filter(t => t.toString.contains("SharedPreferences"))
+      println(getSharedPref_localMap.size)
 //      val dummies = posT.asScala.filter(t => t.toString.contains("Dummy"))
 //      val posTContainsTwo = posT.asScala.filter(t => t.toString.contains("MyActivity$2"))
 //      val posTContainsOne = posT.asScala.filter(t => t.toString.contains("MyActivity$1"))
 //      val ro2ContainsOne = ro2.filter{case (local, pts) => pts.possibleTypes().asScala.exists(t => t.toString.contains("MyActivity$1"))}
 //      val ro2ContainsTwo = ro2.filter{case (local, pts) => pts.possibleTypes().asScala.exists(t => t.toString.contains("MyActivity$2"))}
-//      println(posT)
+//      println(posT.size)
 //
 //      val arrayList = Scene.v().getSootClass("java.util.ArrayList")
 //      val iterMethod = arrayList.getMethod("java.util.Iterator iterator()")
 //      val ro3 = iterMethod.getActiveBody.getLocals.asScala.map{l => l-> pt.reachingObjects(l)}.toMap
-//      println(ro3)
+//      println(ro3.size)
       // dbg code end
 
 
@@ -200,7 +215,17 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
       assert(targets4.loc.count(m => m.classType == "com.example.createdestroy.MyActivity$1") == 1)
 
       //TODO: following assertion should probably work, perhaps <init> of MyActivity$2 is adding to fwk pts
+      // leaked via Object.<init>
       //assert(!targets4.loc.exists(m => m.classType == "com.example.createdestroy.MyActivity$2"))
+
+      val query5 = Qry.makeReceiverNonNull(config.getSymbolicExecutor, w,
+        "com.example.createdestroy.MyActivity",
+        "void onResume()",
+        BounderUtil.lineForRegex(".*query5.*".r,src), Some(".*iterator.*".r))
+      val loc5 = query5.head.loc.asInstanceOf[AppLoc]
+      val targets5 = w.makeInvokeTargets(loc5)
+      assert(targets5.loc.nonEmpty)
+      println("TODO") // Why no shared pref from getSharedPreferences?
     }
     makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
   }

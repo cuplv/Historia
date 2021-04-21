@@ -22,6 +22,7 @@ package edu.colorado.plv.fixedsoot;
  * #L%
  */
 
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -29,15 +30,14 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import soot.G;
 import soot.Local;
 import soot.PointsToAnalysis;
 import soot.Scene;
 import soot.SceneTransformer;
-import soot.Singletons;
 import soot.SootClass;
 import soot.SootMethod;
 import soot.SourceLocator;
+import soot.Type;
 import soot.Unit;
 import soot.Value;
 import soot.jimple.DefinitionStmt;
@@ -46,6 +46,7 @@ import soot.jimple.ReachingTypeDumper;
 import soot.jimple.Stmt;
 import soot.jimple.spark.builder.ContextInsensitiveBuilder;
 import soot.jimple.spark.geom.geomPA.GeomPointsTo;
+import soot.jimple.spark.internal.TypeManager;
 import soot.jimple.spark.ondemand.DemandCSPointsTo;
 import soot.jimple.spark.pag.AllocDotField;
 import soot.jimple.spark.pag.AllocNode;
@@ -69,6 +70,7 @@ import soot.options.SparkOptions;
 import soot.tagkit.Host;
 import soot.tagkit.StringTag;
 import soot.tagkit.Tag;
+import soot.util.BitVector;
 import soot.util.Chain;
 
 /**
@@ -76,17 +78,17 @@ import soot.util.Chain;
  *
  * @author Ondrej Lhotak
  */
-public class SparkAppOnlyTransformer extends SceneTransformer {
-    private static final Logger logger = LoggerFactory.getLogger(SparkAppOnlyTransformer.class);
+public class SparkTransformerDBG extends SceneTransformer {
+    private static final Logger logger = LoggerFactory.getLogger(SparkTransformerDBG.class);
 //    private static final SparkAppOnlyTransformer v = new SparkAppOnlyTransformer();
 
     private List<SootMethod> callbacks;
-    public SparkAppOnlyTransformer(List<SootMethod> callbacks) {
+    public SparkTransformerDBG(List<SootMethod> callbacks) {
         this.callbacks = callbacks;
     }
 
-    public static SparkAppOnlyTransformer v() {
-        throw new IllegalArgumentException("not implemented");
+    public static SparkTransformerDBG v() {
+        return new SparkTransformerDBG(Collections.EMPTY_LIST);
     }
 
     protected void internalTransform(String phaseName, Map<String, String> options) {
@@ -105,13 +107,6 @@ public class SparkAppOnlyTransformer extends SceneTransformer {
         final PAG pag = b.setup(opts);
         b.build();
 
-        // Add over-approximate allocations to callback entry points
-        for(SootMethod callback : callbacks){
-            int parameterCount= callback.getParameterCount();
-            for(int i = 0; i < parameterCount; ++i){
-                Chain<Local> locals = callback.getActiveBody().getLocals();
-            }
-        }
 
         Date endBuild = new Date();
         reportTime("Pointer Assignment Graph", startBuild, endBuild);
@@ -123,6 +118,14 @@ public class SparkAppOnlyTransformer extends SceneTransformer {
         Date startTM = new Date();
         pag.getTypeManager().makeTypeMask();
         Date endTM = new Date();
+
+        // dbg code ===
+            TypeManager typeManager = pag.getTypeManager();
+            BitVector t =
+                typeManager.get(Scene.v().getSootClass("android.content.Dummy_______SharedPreferences").getType());
+
+        // ====
+
         reportTime("Type masks", startTM, endTM);
         if (opts.force_gc()) {
             doGC();

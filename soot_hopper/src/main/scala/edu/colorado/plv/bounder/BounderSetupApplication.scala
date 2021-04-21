@@ -4,13 +4,13 @@ import java.io.{File, FileOutputStream}
 
 import edu.colorado.plv.bounder.symbolicexecutor.{CallGraphSource, FlowdroidCallGraph, FrameworkExtensions, PatchedFlowdroidCallGraph}
 import javax.tools.{JavaCompiler, ToolProvider}
-import soot.jimple.infoflow.InfoflowConfiguration.{AliasingAlgorithm, CallgraphAlgorithm, CodeEliminationMode}
-import soot.jimple.infoflow.android.{InfoflowAndroidConfiguration, SetupApplication}
-import soot.jimple.infoflow.android.callbacks.{AndroidCallbackDefinition, DefaultCallbackAnalyzer}
-import soot.jimple.infoflow.android.callbacks.filters.{AlienHostComponentFilter, ApplicationCallbackFilter, UnreachableConstructorFilter}
-import soot.jimple.infoflow.android.entryPointCreators.AndroidEntryPointCreator
-import soot.jimple.infoflow.android.manifest.ProcessManifest
-import soot.jimple.infoflow.android.resources.{ARSCFileParser, LayoutFileParser}
+//import soot.jimple.infoflow.InfoflowConfiguration.{AliasingAlgorithm, CallgraphAlgorithm, CodeEliminationMode}
+//import soot.jimple.infoflow.android.{InfoflowAndroidConfiguration, SetupApplication}
+//import soot.jimple.infoflow.android.callbacks.{AndroidCallbackDefinition, DefaultCallbackAnalyzer}
+//import soot.jimple.infoflow.android.callbacks.filters.{AlienHostComponentFilter, ApplicationCallbackFilter, UnreachableConstructorFilter}
+//import soot.jimple.infoflow.android.entryPointCreators.AndroidEntryPointCreator
+//import soot.jimple.infoflow.android.manifest.ProcessManifest
+//import soot.jimple.infoflow.android.resources.{ARSCFileParser, LayoutFileParser}
 import soot.jimple.toolkits.callgraph.CHATransformer
 import soot.{G, Main, PackManager, Scene, SootClass, SootMethod}
 import soot.options.Options
@@ -74,23 +74,24 @@ object BounderSetupApplication {
     case _ => loadApkNonFlowdroid(path)
   }
   def loadApkFlowdroid(path:String) : Unit = {
-    // Create call graph and pointer analysis with flowdroid main method
-    val config = new InfoflowAndroidConfiguration
-    val platformsDir = androidHome + "/platforms"
-    config.getAnalysisFileConfig.setAndroidPlatformDir(platformsDir)
-    config.getAnalysisFileConfig.setTargetAPKFile(path)
-    // TODO: figure out how to load apk without generating flowdroid callgraph
-    config.setCallgraphAlgorithm(CallgraphAlgorithm.VTA)
-    config.setMergeDexFiles(true)
-//    config.setAliasingAlgorithm(AliasingAlgorithm.PtsBased)
-    config.setEnableLineNumbers(true)
-    config.setExcludeSootLibraryClasses(false)
-    config.setCodeEliminationMode(CodeEliminationMode.NoCodeElimination)
-    config.setOneComponentAtATime(false)
-    config.getSourceSinkConfig.setEnableLifecycleSources(true)
-    val setup = new SetupApplication(config)
-    G.reset()
-    setup.constructCallgraph()
+//    // Create call graph and pointer analysis with flowdroid main method
+//    val config = new InfoflowAndroidConfiguration
+//    val platformsDir = androidHome + "/platforms"
+//    config.getAnalysisFileConfig.setAndroidPlatformDir(platformsDir)
+//    config.getAnalysisFileConfig.setTargetAPKFile(path)
+//    // TODO: figure out how to load apk without generating flowdroid callgraph
+//    config.setCallgraphAlgorithm(CallgraphAlgorithm.VTA)
+//    config.setMergeDexFiles(true)
+////    config.setAliasingAlgorithm(AliasingAlgorithm.PtsBased)
+//    config.setEnableLineNumbers(true)
+//    config.setExcludeSootLibraryClasses(false)
+//    config.setCodeEliminationMode(CodeEliminationMode.NoCodeElimination)
+//    config.setOneComponentAtATime(false)
+//    config.getSourceSinkConfig.setEnableLifecycleSources(true)
+//    val setup = new SetupApplication(config)
+//    G.reset()
+//    setup.constructCallgraph()
+    ???
   }
   def loadApkNonFlowdroid(path : String):Unit ={
     G.reset()
@@ -158,47 +159,37 @@ object BounderSetupApplication {
 //    Options.v.set_ignore_resolution_errors(true)
     Scene.v().loadBasicClasses()
     Scene.v().loadNecessaryClasses()
-    val manifest = new ProcessManifest(path)
-    val entryPoints = manifest.getEntryPointClasses.asScala.flatMap(epName => {
-      val sootClass = Scene.v().getSootClassUnsafe(epName)
-      if (sootClass == null) None else Some(sootClass)
-    })
-    val resources = new ARSCFileParser();
-    resources.parse(path)
-
-    val layoutFileParser = new LayoutFileParser(manifest.getPackageName, resources)
-    val config = new InfoflowAndroidConfiguration
-    config.getAnalysisFileConfig.setTargetAPKFile(path)
-    config.getAnalysisFileConfig.setAndroidPlatformDir(platformsDir)
-    val callbackAnalyzer = new DefaultCallbackAnalyzer(config, entryPoints.asJava,"AndroidCallbacks.txt")
-
-    // Prevent inner classes of components from being callbacks associated with other components
-    callbackAnalyzer.addCallbackFilter(new AlienHostComponentFilter(entryPoints.asJava))
-
-    // Restrict to application callbacks
-    callbackAnalyzer.addCallbackFilter(new ApplicationCallbackFilter(entryPoints.asJava))
-
-    // Filter out objects with no factory method or allocation site
-    callbackAnalyzer.addCallbackFilter(new UnreachableConstructorFilter)
-
-    callbackAnalyzer.collectCallbackMethods()
-
-    layoutFileParser.parseLayoutFile(path)
+//    val manifest = new ProcessManifest(path)
+//    val entryPoints = manifest.getEntryPointClasses.asScala.flatMap(epName => {
+//      val sootClass = Scene.v().getSootClassUnsafe(epName)
+//      if (sootClass == null) None else Some(sootClass)
+//    })
+//    val resources = new ARSCFileParser();
+//    resources.parse(path)
+//
+//    val layoutFileParser = new LayoutFileParser(manifest.getPackageName, resources)
+//    val config = new InfoflowAndroidConfiguration
+//    config.getAnalysisFileConfig.setTargetAPKFile(path)
+//    config.getAnalysisFileConfig.setAndroidPlatformDir(platformsDir)
+//    val callbackAnalyzer = new DefaultCallbackAnalyzer(config, entryPoints.asJava,"AndroidCallbacks.txt")
+//
+//    // Prevent inner classes of components from being callbacks associated with other components
+//    callbackAnalyzer.addCallbackFilter(new AlienHostComponentFilter(entryPoints.asJava))
+//
+//    // Restrict to application callbacks
+//    callbackAnalyzer.addCallbackFilter(new ApplicationCallbackFilter(entryPoints.asJava))
+//
+//    // Filter out objects with no factory method or allocation site
+//    callbackAnalyzer.addCallbackFilter(new UnreachableConstructorFilter)
+//
+//    callbackAnalyzer.collectCallbackMethods()
+//
+//    layoutFileParser.parseLayoutFile(path)
 
     //Note: This function works but does not find the entry points, use the loadApk to call
     // flowdroid's main method creation
 
-    //Below is a hacky way I was trying to do the same thing, but it got too tedious
-//    var callbackMethods = collection.mutable.Map[SootClass, AndroidCallbackDefinition]()
-//    var entrypointsMut = collection.mutable.Set[SootClass]()
-//    var done = false
-//    while(done){
-//      val entryPointCreator = new AndroidEntryPointCreator(manifest, entryPoints.asJava)
-//      callbackAnalyzer.getCallbackMethods.asScala.foreach(a => callbackMethods.put(a.getO1,a.getO2))
-//      callbackAnalyzer.getDynamicManifestComponents
-//      println(callbackMethods)
-//      done = true
-//    }
+
 
     PackManager.v.getPack("cg").apply()
     Scene.v.getOrMakeFastHierarchy

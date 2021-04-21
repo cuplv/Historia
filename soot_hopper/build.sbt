@@ -12,7 +12,7 @@ resolvers += "Typesafe Server" at "https://repo.typesafe.com/typesafe/releases"
 
 unmanagedJars in Compile += baseDirectory.value / "lib/soot-infoflow-cmd-jar-with-dependencies.jar"
 unmanagedJars in Compile += baseDirectory.value / "lib/com.microsoft.z3.jar"
-//libraryDependencies += "ca.mcgill.sable" % "soot" % "4.1.0"
+libraryDependencies += "ca.mcgill.sable" % "soot" % "4.1.0"
 
 //libraryDependencies += "com.fasterxml.jackson.core" % "jackson-core" % "2.7.9" % "compile"
 //libraryDependencies += "org.scala-graph" %% "graph-core" % "1.13.2" % "compile"
