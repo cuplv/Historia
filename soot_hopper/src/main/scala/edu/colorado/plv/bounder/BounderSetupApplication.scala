@@ -118,18 +118,19 @@ object BounderSetupApplication {
     Options.v.set_src_prec(Options.src_prec_apk_class_jimple)
     Options.v.set_keep_offset(false) //don't create tag that holds bytecode offset
     Options.v.set_keep_line_number(true)
-    Options.v.set_throw_analysis(Options.throw_analysis_dalvik)
+//    Options.v.set_throw_analysis(Options.throw_analysis_dalvik) //TODO: disabled, is this needed?
     Options.v.set_process_multiple_dex(true)
     Options.v.set_ignore_resolution_errors(true) //TODO: what does this do?
 //    Options.v.setPhaseOption("jb", "use-original-names:true")
     val classpath = s"${platformsDir}/android-26/android.jar"
     //TODO: construct classpath
+    Options.v.set_force_android_jar(classpath) //TODO:=============== this is added
     Options.v.set_soot_classpath(classpath)
     Main.v.autoSetOptions()
 //    Options.v.setPhaseOption("cg.cha", "on")
     Scene.v.loadBasicClasses()
     Scene.v.loadNecessaryClasses()
-    Scene.v.loadDynamicClasses() //TODO:=======
+    Scene.v.loadDynamicClasses()
     PackManager.v.getPack("wjpp").apply()
     PackManager.v.runPacks()
 //    CHATransformer.v().transform()

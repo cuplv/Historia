@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed}
-import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
+import edu.colorado.plv.bounder.ir.{JimpleFlowdroidWrapper, JimpleMethodLoc}
 import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SetInclusionTypeSolving}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BottomQry, DBOutputMode, FieldPtEdge, IPathNode, OutputMode, PrettyPrinting, Qry}
@@ -11,6 +11,7 @@ import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.AnyFunSuite
 import soot.{Scene, SootMethod}
 
+import scala.jdk.CollectionConverters.CollectionHasAsScala
 import scala.util.matching.Regex
 
 class SymbolicExecutorTest extends AnyFunSuite {
@@ -768,14 +769,23 @@ class SymbolicExecutorTest extends AnyFunSuite {
                 |    protected void onCreate(Bundle savedInstanceState) {
                 |        super.onCreate(savedInstanceState);
                 |        (new MyActivity()).setO();
-                |        Log.i("b", o.toString());
+                |        Log.i("b", o.toString()); //query1
                 |    }
                 |    protected void setO() {
                 |        this.o = new Object();
                 |    }
+                |    class Foo{
+                |        void run(){
+                |            o = new Object();
+                |        }
+                |    }
                 |
                 |    @Override
                 |    protected void onDestroy() {
+                |        Foo f = new Foo(); // Test for object sensitivity
+                |        if(o != null){
+                |             //f.run();
+                |        }
                 |        super.onDestroy();
                 |        o = null;
                 |    }
@@ -796,11 +806,27 @@ class SymbolicExecutorTest extends AnyFunSuite {
         stepLimit = Some(120), w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       val symbolicExecutor = config.getSymbolicExecutor
+      val line = BounderUtil.lineForRegex(".*query1.*".r, src)
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
-        "void onCreate(android.os.Bundle)",20)
+        "void onCreate(android.os.Bundle)",line)
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
 //      prettyPrinting.dumpDebugInfo(result,"DisaliasedObj")
 //      prettyPrinting.dotWitTree(result, "DisaliasedObj.dot",true)
+      //dbg code:
+//      val l = query.head.loc.containingMethod.get.asInstanceOf[JimpleMethodLoc]
+//      val pta = Scene.v().getPointsToAnalysis
+//      val ptl = l.method.getActiveBody.getLocals.asScala.map{l =>
+//        (l,pta.reachingObjects(l))
+//      }
+//      val ptf = l.method.getDeclaringClass.getFields.asScala.map{f =>
+////        f -> pta.reachingObjects(???, f)
+//      }
+//      val ctx = l.method.context()
+//      println(ptl)
+//      println(ptf)
+//      println(ctx)
+//
+//      //end dbg code
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result,QueryFinished) == Witnessed)
 

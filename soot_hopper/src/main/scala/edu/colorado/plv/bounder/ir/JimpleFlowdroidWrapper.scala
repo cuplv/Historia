@@ -3,6 +3,7 @@ package edu.colorado.plv.bounder.ir
 import java.util
 import java.util.Objects
 
+import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper.cgEntryPointName
 import edu.colorado.plv.bounder.{BounderSetupApplication, BounderUtil}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor._
@@ -535,68 +536,77 @@ class JimpleFlowdroidWrapper(apkPath : String,
     dummyClass
   }
   private def instrumentSootMethod(method: SootMethod):Unit = {
+    method.getDeclaringClass.setApplicationClass()
+    method.setPhantom(false)
     if(!method.hasActiveBody){
-      return
+      //TODO:============ create active body for methods that don't have one
+      //TODO: does this work?
+      //TODO: this may be the source of remaining cg imprecision?
+
+      val entryPointBody = Jimple.v().newBody(method)
+      if(!method.isConcrete()){
+        // instrument native methods
+        val mod = method.getModifiers & ( ~Modifier.NATIVE ) & ( ~ Modifier.ABSTRACT )
+        method.setModifiers(mod)
+      }
+      method.setActiveBody(entryPointBody)
     }
-    try {
-      method.getDeclaringClass.setApplicationClass()
-      method.getDeclaringClass.setInScene(true)
-      // Retrieve global field representing all values pointed to by the framework
-      val entryPoint = Scene.v().getSootClass(JimpleFlowdroidWrapper.cgEntryPointName)
-      val globalField = entryPoint.getFieldByName("global")
-      assert(globalField.getType.toString == "java.lang.Object")
+    method.getDeclaringClass.setInScene(true)
+    // Retrieve global field representing all values pointed to by the framework
+    val entryPoint = Scene.v().getSootClass(JimpleFlowdroidWrapper.cgEntryPointName)
+    val globalField = entryPoint.getFieldByName("global")
+    assert(globalField.getType.toString == "java.lang.Object")
 
-      val unitChain = method.getActiveBody.getUnits
+    val unitChain = method.getActiveBody.getUnits
 
-      // Remove exceptions from body
-      method.getActiveBody.getTraps.clear()
+    // Remove exceptions from body
+    method.getActiveBody.getTraps.clear()
 
-      unitChain.clear()
-      method.getActiveBody.asInstanceOf[JimpleBody].insertIdentityStmts(method.getDeclaringClass)
-      // Write receiver to global field
-      if(!method.isStatic){
-        val ident = unitChain.getFirst
-        val receiver = ident.asInstanceOf[JIdentityStmt].getLeftOp
-        assert(receiver.isInstanceOf[JimpleLocal])
-        // Receiver added to global framework points to set
-        unitChain.add(
-          Jimple.v().newAssignStmt(Jimple.v().newStaticFieldRef(globalField.makeRef()), receiver)
-        )
-      }
-      // write all parameters to global field
-      val parmIdents = unitChain.asScala.flatMap{
-        case i:JIdentityStmt if i.getLeftOp.toString().contains(s"parameter") => Some(i)
-        case _ => None
-      }.toList
-
-      parmIdents.foreach { i =>
-        val t = i.getRightOp.getType
-        t match{
-          case _:RefType =>
-            unitChain.add(Jimple.v().newAssignStmt(Jimple.v().newStaticFieldRef(globalField.makeRef()), i.getLeftOp))
-          case _ =>
-            ()
-        }
-      }
-
-      //read global field cast to correct type and return
-      if(method.getReturnType.toString == "void"){
-        unitChain.add(Jimple.v().newReturnVoidStmt())
-      } else{
-        // get global static field, cast to correct type and return
-        val v = getFwkValue(method, method.getReturnType, globalField, false)
-        unitChain.add(Jimple.v().newReturnStmt(v))
-      }
-      method.getActiveBody.validate()
-    }catch{
-      case t:Throwable =>
-        println(t)
-        throw t
+    unitChain.clear()
+    method.getActiveBody.asInstanceOf[JimpleBody].insertIdentityStmts(method.getDeclaringClass)
+    // Write receiver to global field
+    if(!method.isStatic){
+      val ident = unitChain.getFirst
+      val receiver = ident.asInstanceOf[JIdentityStmt].getLeftOp
+      assert(receiver.isInstanceOf[JimpleLocal])
+      // Receiver added to global framework points to set
+      unitChain.add(
+        Jimple.v().newAssignStmt(Jimple.v().newStaticFieldRef(globalField.makeRef()), receiver)
+      )
     }
+    // write all parameters to global field
+    val parmIdents = unitChain.asScala.flatMap{
+      case i:JIdentityStmt if i.getLeftOp.toString().contains(s"parameter") => Some(i)
+      case _ => None
+    }.toList
+
+    parmIdents.foreach { i =>
+      val t = i.getRightOp.getType
+      t match{
+        case _:RefType =>
+          unitChain.add(Jimple.v().newAssignStmt(Jimple.v().newStaticFieldRef(globalField.makeRef()), i.getLeftOp))
+        case _ =>
+          ()
+      }
+    }
+
+    //read global field cast to correct type and return
+    if(method.getReturnType.toString == "void"){
+      unitChain.add(Jimple.v().newReturnVoidStmt())
+    } else{
+      // get global static field, cast to correct type and return
+      val v = getFwkValue(method, method.getReturnType, globalField, false)
+      unitChain.add(Jimple.v().newReturnStmt(v))
+    }
+    method.getActiveBody.validate()
+
   }
   private def instrumentCallins(): Unit ={
-    // Use CHA call graph to find used callins
+
+
+
     CHATransformer.v().transform()
+    // Use CHA call graph to find used callins
     val cg = Scene.v().getCallGraph
 
     @tailrec
@@ -605,10 +615,21 @@ class JimpleFlowdroidWrapper(apkPath : String,
         val currentMethod = workList.head
         val currentMethodDeclaringClass = JimpleFlowdroidWrapper.stringNameOfClass(currentMethod.getDeclaringClass)
         if(resolver.isFrameworkClass(currentMethodDeclaringClass)){
-          instrumentSootMethod(currentMethod)
+          instrumentSootMethod(currentMethod) //LayoutInflater has null bodies, make sure this adjusts phantom methods
         }
-        val called = cg.edgesOutOf(currentMethod).asScala.map(e => e.tgt()).toSet -- visited
+        val called: Iterator[SootMethod] =
+          cg.edgesOutOf(currentMethod).asScala.map(e => e.tgt()).filter(tgt => !visited.contains(tgt))
         instrumentLoop(workList.tail ++ called, visited + currentMethod)
+      }else{
+        Scene.v().getClasses.asScala.foreach{c =>
+          if(!c.isInterface && resolver.isFrameworkClass(JimpleFlowdroidWrapper.stringNameOfClass(c))){
+            c.getMethods.asScala.foreach { m =>
+              if(!visited.contains(m) && m.getDeclaringClass.getName != cgEntryPointName) {
+                instrumentSootMethod(m) //LayoutInflater has null bodies, make sure this adjusts phantom methods
+              }
+            }
+          }
+        } //TODO:======================
       }
     }
     instrumentLoop(callbacks)
@@ -761,8 +782,8 @@ class JimpleFlowdroidWrapper(apkPath : String,
       ("double-set-old", "hybrid"),
       ("double-set-new", "hybrid"),
       ("set-impl", "double"),
+//      ("dump-html","true"), //TODO: disable for performance
       ("merge-stringbuffer", "true")
-//              ("dump-html","true") //disable for performance
       //      ("lazy-pts", "true")
     )
     val appMethodList: List[SootMethod] = resolver.appMethods.toList.map(v => v.asInstanceOf[JimpleMethodLoc].method)

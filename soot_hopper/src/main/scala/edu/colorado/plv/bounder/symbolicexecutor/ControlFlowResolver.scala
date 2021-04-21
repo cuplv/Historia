@@ -7,6 +7,7 @@ import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSAnyVal}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, FieldPtEdge, LSAny, LSConstConstraint, LSModelVar, LSParamConstraint, LSPure, OutputMode, PrettyPrinting, PureVar, State, StaticPtEdge}
 import scalaz.Memo
+import soot.Scene
 import upickle.default.{macroRW, ReadWriter => RW}
 
 import scala.collection.mutable
@@ -535,8 +536,9 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
           }}
           val out = mergeEquivalentCallins(resolvedSkipIrrelevant.seq.toSet, state)
           if(out.isEmpty) {
-            println(s"empty pred location (possible cg unsoundness) $l")
-            throw QueryInterruptedException(Set(),"cgunsound")
+            Scene.v()
+            println(s"empty pred location (possible cg unsoundness) loc: $l inMethod: ${l.method}")
+            //throw QueryInterruptedException(Set(),"cgunsound")
           }
           out
         }
@@ -557,8 +559,9 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
           }}
           val out: Set[Loc] = mergeEquivalentCallins(resolvedSkipIrrelevant.seq.toSet, state)
           if(out.isEmpty) {
-            println(s"empty pred location (possible cg unsoundness) $l")
-            throw QueryInterruptedException(Set(),"cgunsound")
+            Scene.v()
+            println(s"empty pred location (possible cg unsoundness) $l inMethod: ${l.method}")
+            //throw QueryInterruptedException(Set(),"cgunsound")
           }
           out
         }

@@ -108,6 +108,10 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
         |          @Override
         |          public void run(){}
         |        };
+        |        Runnable run3 = new Runnable(){
+        |          @Override
+        |          public void run(){}
+        |        };
         |        l.add(r);
         |        Iterator it = l.iterator(); // query1 does this call edge exist?
         |        it.hasNext(); //query2 does this call edge exist?
@@ -140,12 +144,13 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
         BounderUtil.lineForRegex(".*query1.*".r,src), Some(".*iterator.*".r))
       val loc = query.head.loc.asInstanceOf[AppLoc]
       val targets: UnresolvedMethodTarget = w.makeInvokeTargets(loc)
-      assert(targets.loc.nonEmpty)
 
+      //TODO: dbg code
 //      val jm = query.head.loc.asInstanceOf[AppLoc].method.asInstanceOf[JimpleMethodLoc].method
 //      val locals = jm.getActiveBody.getLocals
 //      val pt = Scene.v().getPointsToAnalysis
-//      val ro = locals.asScala.map{l => l -> pt.reachingObjects(l)}.toMap
+//      val ro = locals.asScala.map{l => l -> pt.reachingObjects(l).possibleTypes()}.toMap
+//      val r6ContainsTwo = ro.filter(v => v._1.getName == "$r6").head._2.asScala.filter(t => t.toString.contains("MyActivity"))
 //      println(ro)
 //
 //      val ep = Scene.v().getEntryPoints.get(0)
@@ -153,14 +158,20 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
 //      val allocL = ep.getActiveBody.getLocals.asScala.find(l => l.toString().contains("alloc"))
 //      val posT = ro2(allocL.get).possibleTypes()
 //      val dummies = posT.asScala.filter(t => t.toString.contains("Dummy"))
+//      val posTContainsTwo = posT.asScala.filter(t => t.toString.contains("MyActivity$2"))
+//      val posTContainsOne = posT.asScala.filter(t => t.toString.contains("MyActivity$1"))
+//      val ro2ContainsOne = ro2.filter{case (local, pts) => pts.possibleTypes().asScala.exists(t => t.toString.contains("MyActivity$1"))}
+//      val ro2ContainsTwo = ro2.filter{case (local, pts) => pts.possibleTypes().asScala.exists(t => t.toString.contains("MyActivity$2"))}
 //      println(posT)
 //
 //      val arrayList = Scene.v().getSootClass("java.util.ArrayList")
 //      val iterMethod = arrayList.getMethod("java.util.Iterator iterator()")
 //      val ro3 = iterMethod.getActiveBody.getLocals.asScala.map{l => l-> pt.reachingObjects(l)}.toMap
 //      println(ro3)
+      // dbg code end
 
 
+      assert(targets.loc.nonEmpty)
 
       val query2 = Qry.makeReceiverNonNull(config.getSymbolicExecutor, w,
         "com.example.createdestroy.MyActivity",
@@ -186,6 +197,10 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
       val loc4 = query4.head.loc.asInstanceOf[AppLoc]
       val targets4: UnresolvedMethodTarget = w.makeInvokeTargets(loc4)
       assert(targets4.loc.size > 1)
+      assert(targets4.loc.count(m => m.classType == "com.example.createdestroy.MyActivity$1") == 1)
+
+      //TODO: following assertion should probably work, perhaps <init> of MyActivity$2 is adding to fwk pts
+      //assert(!targets4.loc.exists(m => m.classType == "com.example.createdestroy.MyActivity$2"))
     }
     makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
   }
