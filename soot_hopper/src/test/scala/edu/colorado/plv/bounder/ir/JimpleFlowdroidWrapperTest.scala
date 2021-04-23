@@ -66,7 +66,7 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
           //          RxJavaSpec.subscribeDoesNotReturnNull
         )), cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(50), w, transfer,
+        stepLimit = 50, w, transfer,
         component = None)
       val query = Qry.makeReach(config.getSymbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void onCreate(android.os.Bundle)",
@@ -143,7 +143,7 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
           //          RxJavaSpec.subscribeDoesNotReturnNull
         )), cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(50), w, transfer,
+        stepLimit = 50, w, transfer,
         component = None)
       val query = Qry.makeReceiverNonNull(config.getSymbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void onResume()",
@@ -164,7 +164,7 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
       val getSharedPref = Scene.v().getSootClass("android.content.ContextWrapper").getMethod("android.content.SharedPreferences getSharedPreferences(java.lang.String,int)")
       val getSharedPref_localMap = getSharedPref.getActiveBody.getLocals.asScala.map{l => l.getName->pt.reachingObjects(l).possibleTypes()}
       val fieldLoc_getSharedPref = getSharedPref_localMap.find(_._1.contains("tmplocal")).get._2
-      val fieldLocSP_contains = fieldLoc_getSharedPref.asScala.filter(_.toString().contains("SharedPreferences"))
+      val fieldLocSP_contains = fieldLoc_getSharedPref.asScala.filter(_.toString().contains("MyActivity$2"))
       //
       val ep = Scene.v().getEntryPoints.get(0)
       val ro2 = ep.getActiveBody.getLocals.asScala.map{l => l-> pt.reachingObjects(l)}.toMap
@@ -214,7 +214,7 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
       assert(targets4.loc.size > 1)
       assert(targets4.loc.count(m => m.classType == "com.example.createdestroy.MyActivity$1") == 1)
 
-      //TODO: following assertion should probably work, perhaps <init> of MyActivity$2 is adding to fwk pts
+      //TODO: following assertion should probably work if we can get any level of context sensitivity
       // leaked via Object.<init>
       //assert(!targets4.loc.exists(m => m.classType == "com.example.createdestroy.MyActivity$2"))
 

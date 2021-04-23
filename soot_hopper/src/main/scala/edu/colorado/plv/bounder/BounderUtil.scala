@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder
 import better.files.File
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CmdNotImplemented, CmdWrapper, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Loc, NopCmd}
 import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, QueryFinished, QueryInterrupted, SymbolicExecutorConfig}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, InitialQuery, PathNode, SomeQry, WitnessedQry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, InitialQuery, OutputMode, PathNode, SomeQry, WitnessedQry}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -21,6 +21,50 @@ object BounderUtil {
   }
   def isMac():Boolean = {
     runCmdStdout("uname").trim == "Darwin" //TODO: add other uname results for other mac variants
+  }
+  sealed trait MaxPathCharacterization
+  case object SingleMethod extends MaxPathCharacterization
+  case object SingleCallbackMultiMethod extends MaxPathCharacterization
+  case object MultiCallback extends MaxPathCharacterization
+  object MaxPathCharacterization{
+    implicit val rw:RW[MaxPathCharacterization] = upickle.default.readwriter[String].bimap[MaxPathCharacterization](
+      {
+        case SingleMethod => "SingleMethod"
+        case SingleCallbackMultiMethod => "SingleCallbackMultiMethod"
+        case MultiCallback => "MultiCallback"
+      },
+      {
+        case "SingleMethod" => SingleMethod
+        case "SingleCallbackMultiMethod" => SingleCallbackMultiMethod
+        case "MultiCallback" => MultiCallback
+      }
+    )
+  }
+
+  def reduceCharacterization(c1:MaxPathCharacterization, c2:MaxPathCharacterization):MaxPathCharacterization =
+    (c1,c2) match{
+      case (SingleMethod,v) => v
+      case (v,SingleMethod) => v
+      case (SingleCallbackMultiMethod,v) => v
+      case (v,SingleCallbackMultiMethod) => v
+      case (MultiCallback,MultiCallback) => MultiCallback
+    }
+  def characterizeMaxPath(result: Set[IPathNode])(implicit mode : OutputMode):MaxPathCharacterization = {
+
+    def characterizePath(node:IPathNode)(implicit mode : OutputMode):MaxPathCharacterization = {
+      val methodsInPath:List[Loc] = node.methodsInPath
+      methodsInPath.foldLeft(SingleMethod:MaxPathCharacterization){(acc,v) => v match {
+        case CallbackMethodInvoke(_,_,_) => reduceCharacterization(acc,MultiCallback)
+        case CallbackMethodReturn(_, _, _,_) => reduceCharacterization(acc,MultiCallback)
+        case InternalMethodReturn(_, _, _) => reduceCharacterization(acc,SingleCallbackMultiMethod)
+        case InternalMethodInvoke(_, _, _) => reduceCharacterization(acc,SingleCallbackMultiMethod)
+        case _ => acc // callins and skipped internal methods
+      }}
+    }
+
+    if(result.nonEmpty){
+      (result.map(characterizePath)).reduce(reduceCharacterization)
+    } else SingleMethod
   }
 
   trait ResultSummary

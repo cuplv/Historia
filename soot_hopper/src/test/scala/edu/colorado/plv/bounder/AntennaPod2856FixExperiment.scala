@@ -28,7 +28,7 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
     //TODO: currently timing out
     val w = new JimpleFlowdroidWrapper(apkFix,CHACallGraph)
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(400), w,transfer(w),
+      stepLimit = 400, w,transfer(w),
       component = Some(List("de\\.danoeh\\.antennapod\\.fragment\\.ExternalPlayerFragment.*")))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
@@ -44,7 +44,7 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
     // TODO: currently timing out
     val w = new JimpleFlowdroidWrapper(apkBug,CHACallGraph)
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(400), w,transfer(w),
+      stepLimit = 400, w,transfer(w),
       component = Some(List("de\\.danoeh\\.antennapod\\.fragment\\.ExternalPlayerFragment.*")))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
@@ -59,7 +59,7 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
     // TODO: currently timing out, should witness
     val w = new JimpleFlowdroidWrapper(apkFix,CHACallGraph)
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(400), w,transfer(w),
+      stepLimit = 400, w,transfer(w),
       component = Some(List("de\\.danoeh\\.antennapod\\.fragment\\.ExternalPlayerFragment.*")))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = Qry.makeReach(symbolicExecutor, w,
@@ -73,7 +73,7 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
     // TODO: currently timing out, should witness
     val w = new JimpleFlowdroidWrapper(apkFix,CHACallGraph)
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(50), w,transfer(w),
+      stepLimit = 50, w,transfer(w),
       component = Some(List("de\\.danoeh\\.antennapod\\.fragment\\.CompletedDownloadsFragment.*")))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = Qry.makeCallinReturnNull(symbolicExecutor, w,

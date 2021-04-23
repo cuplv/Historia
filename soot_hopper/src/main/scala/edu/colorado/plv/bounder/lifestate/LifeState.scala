@@ -15,9 +15,33 @@ import scala.util.matching.Regex
 object LifeState {
 
   object LifeStateParser extends RegexParsers {
+    sealed trait Ast
+    case class AstID(s:String) extends Ast
+    case class AstNI(v1:AstID, v2:AstID) extends Ast
+    case class AstNot(v1:Ast) extends Ast
+    case class AstOr(v1:Ast, v2:Ast) extends Ast
+    case class AstAnd(v1:Ast, v2:Ast) extends Ast
+    case object AstTrue extends Ast
+    case object AstFalse extends Ast
+
+    sealed trait Line
+    case class AstMac(id:AstID, i:I) extends Line
+    case class AstRule(v1:Ast, tgt:AstID) extends Line
     // TODO: identifier should handle arrays, for now use java.util.List_ instead of java.util.List[]
     def identifier: Parser[String] = """[a-zA-Z][a-zA-Z0-9$_.]*""".r ^^ { a => a }
 
+    def macroIdentifier:Parser[AstID] = """#[a-zA-Z][a-zA-Z0-9_]*""".r ^^ {
+      case ident => AstID(ident.drop(1))
+    }
+
+    def astMac:Parser[AstMac] = macroIdentifier ~ "=" ~ i ^^{
+      case id ~ _ ~ lhs => AstMac(id, lhs)
+    }
+
+    //parse everything except I
+    def lsRule :Parser[AstRule] = ???
+
+    // parse I
     def empty: Parser[String] = "_"
 
     def parMatcher:Parser[String] = identifier | empty //TODO: and const
@@ -29,7 +53,6 @@ object LifeState {
       case "cbret" => CBExit
     }
     def sep = "&&"
-    def quote = """""""
     def op: Parser[CmpOp] = ("<:"|"="|"!=")^^ {
       case "<:" => Subtype
       case "=" => Equals
@@ -44,7 +67,6 @@ object LifeState {
 
     def lsVarList:Parser[List[String]] = repsep(parMatcher,",")
 
-    def sigmatcher:Parser[String] = """[a-zA-Z_.]"""
     def params = repsep(parMatcher, ",")
 
     def rf(v:String):String = v.replace("_","[^,()]*")
@@ -59,31 +81,34 @@ object LifeState {
         I(pmDir, scm, vars)
       case _ => throw new IllegalArgumentException("Can only specify receiver type in I")
     }
-    def ni : Parser[NI] = "NI(" ~ i ~ "," ~ i ~ ")" ^^{
-      case _ ~ i1 ~ _ ~ i2 ~ _ => NI(i1,i2)
-    }
-    def lsAtom : Parser[LSAtom] = ni | i
-
     val lsTrueConst = "@(TRUE|true|True)".r ^^ {case _ => LSTrue}
     val lsFalseConst = "@(false|False|FALSE)".r ^^ {case _ => LSFalse}
-//    val lsNullConst = "@(?:null|Null|NULL)".r ^^ {case _ => LSNullConst}
+    //    val lsNullConst = "@(?:null|Null|NULL)".r ^^ {case _ => LSNullConst}
     val lsConst = lsTrueConst | lsFalseConst
     val andTerm = "&&"
-    def lsAnd : Parser[LSPred] = lsPred ~ andTerm ~ lsPred ^^{ case lhs ~ _ ~ rhs => And(lhs,rhs)}
-    def lsOr : Parser [LSPred] = lsPred ~ "||" ~ lsPred ^^ {case lhs ~ _ ~ rhs => Or(lhs,rhs)}
     val notTerm = "!"
-    def lsNot = ( notTerm ~ lsPred ) ^^ { case _ ~ p => Not(p)}
-    def lsGroup : Parser[LSPred] = "{" ~> lsPred <~ "}" ^^ {case p  => p}
-    def lsPred : Parser[LSPred] =  lsConst | lsAtom | lsNot |  lsAnd | lsOr
 
-    def lsRuleUnc : Parser[LSSpec] = ( lsPred ~ "<=" ~ i) ^^ {
-      case pred ~ _ ~ tgt => LSSpec(pred, tgt)
-    }
-//    def lsRuleCon : Parser[LSSpec] = ( lsPred ~ "<=" ~ i ~ "&&" ~ constrs ~ ";" )^^ {
-//      case pred ~ _ ~ tgt ~ _ ~ cst ~ _ => LSSpec(pred,tgt, cst.toSet)
+//    def ni : Parser[NI] = "NI(" ~ i ~ "," ~ i ~ ")" ^^{
+//      case _ ~ i1 ~ _ ~ i2 ~ _ => NI(i1,i2)
 //    }
-    def lsRule : Parser[LSSpec] = lsRuleUnc //| lsRuleCon
-    def lsRules :Parser[List[LSSpec]] = repsep(lsRule,";")
+//    def lsAtom : Parser[LSAtom] = ni | i
+//
+//
+//    def lsAnd : Parser[LSPred] = lsPred ~ andTerm ~ lsPred ^^{ case lhs ~ _ ~ rhs => And(lhs,rhs)}
+//    def lsOr : Parser [LSPred] = lsPred ~ "||" ~ lsPred ^^ {case lhs ~ _ ~ rhs => Or(lhs,rhs)}
+//    def lsNot =
+//      ( notTerm ~> (lsAtom | macroIdentifier) ) ^^ { case p => Not(p)}
+//    def lsGroup : Parser[LSPred] =
+//      "{" ~> lsPred <~ "}" ^^ {case p  => p}
+//    def lsPred : Parser[LSPred] =  lsAnd | lsOr | macroIdentifier | lsNot | lsAtom | lsConst
+//
+//    //    def lsRuleLHS:Parser[LSAtom] = i | macroIdentifier
+//    def lsRuleUnc : Parser[LSSpec] = ( lsPred ~ "<=" ~ i) ^^ {
+//      case pred ~ _ ~ (tgt:I) => LSSpec(pred, tgt)
+//    }
+//
+//    def lsRule : Parser[LSSpec] = lsRuleUnc //| lsRuleCon
+//    def lsLine :Parser[LSMacroAndSpec] = lsRuleUnc
   }
   def parseI(str:String):I = {
     val res: LifeStateParser.ParseResult[I] = LifeStateParser.parseAll(LifeStateParser.i, str)
@@ -96,16 +121,19 @@ object LifeState {
     str.split("\n").filter(v => !v.trim.startsWith("#") && !(v.trim == "")).map(parseI)
   }
 
-  def parseSpecFile(str:String):Set[LSSpec] = {
+  def parseSpec(str:String):Set[LSSpec] = {
     val withoutComments = str.split("\n").filter{v => !v.trim.startsWith("#") && !v.trim.isEmpty }.mkString("\n")
     if(withoutComments == ""){
       return Set() // This is dumb, I shouldn't need to do this
     }
-    val res = LifeStateParser.parseAll(LifeStateParser.lsRules, withoutComments)
-    if(res.successful)
-      res.get.toSet
-    else
-      throw new IllegalArgumentException(res.toString)
+    val lines = withoutComments.split(";").map(_.trim).filter(_ != "")
+    val res = lines.map(line => {
+      val lineRes = LifeStateParser.parseAll(???, line)
+      if (lineRes.successful) {
+        lineRes.get
+      } else throw new IllegalStateException(lineRes.toString)
+    })
+    res.toSet
   }
 
   var id = 0
@@ -272,7 +300,21 @@ object LifeState {
   object NI{
     implicit val rw:RW[NI] = macroRW
   }
-  case class LSSpec(pred:LSPred, target: I, rhsConstraints: Set[LSConstraint] = Set())
+  sealed trait LSMacroAndSpec
+  case class LSSpec(pred:LSPred, target: I, rhsConstraints: Set[LSConstraint] = Set()) extends LSMacroAndSpec
+
+  case class MacroID(name:String) extends LSAtom {
+    // Parser should substitute all of these
+    override def identitySignature: String =
+      throw new IllegalStateException()
+
+    override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean =
+      throw new IllegalStateException()
+
+    override def lsVar: Set[String] =
+      throw new IllegalStateException()
+  }
+  case class LSMacro(name:MacroID, pred:LSPred) extends LSMacroAndSpec
 
   // Class that holds a graph of possible predicates and alias relations between the predicates.
   // Generated from a fast pre analysis of the applications.

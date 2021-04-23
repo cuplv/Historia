@@ -460,8 +460,8 @@ class CallGraphWrapper(cg: CallGraph) extends CallGraphProvider{
   }
 
   def edgesOutOf(unit: soot.Unit): Set[SootMethod] = {
-    val out = cg.edgesOutOf(unit).asScala.map(e => e.tgt())
-    out.toSet
+    val out = cg.edgesOutOf(unit).asScala.map(e => e.tgt()).toSet
+    out
   }
   def edgesOutOfMethod(method: SootMethod):Set[SootMethod] = {
     cg.edgesOutOf(method).asScala.map(e => e.tgt()).toSet
@@ -553,7 +553,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
     dummyClass.validate()
     dummyClass
   }
-  private def instrumentSootMethod(method: SootMethod):Unit = {
+  private def instrumentSootMethod(method: SootMethod, registerArgs:Boolean = true):Unit = {
     method.getDeclaringClass.setApplicationClass()
     method.setPhantom(false)
     if(!method.hasActiveBody){
@@ -588,9 +588,11 @@ class JimpleFlowdroidWrapper(apkPath : String,
       val receiver = ident.asInstanceOf[JIdentityStmt].getLeftOp
       assert(receiver.isInstanceOf[JimpleLocal])
       // Receiver added to global framework points to set
-      unitChain.add(
-        Jimple.v().newAssignStmt(Jimple.v().newStaticFieldRef(globalField.makeRef()), receiver)
-      )
+      if(registerArgs) {
+        unitChain.add(
+          Jimple.v().newAssignStmt(Jimple.v().newStaticFieldRef(globalField.makeRef()), receiver)
+        )
+      }
     }
     // write all parameters to global field
     val parmIdents = unitChain.asScala.flatMap{
@@ -598,13 +600,15 @@ class JimpleFlowdroidWrapper(apkPath : String,
       case _ => None
     }.toList
 
-    parmIdents.foreach { i =>
-      val t = i.getRightOp.getType
-      t match{
-        case _:RefType =>
-          unitChain.add(Jimple.v().newAssignStmt(Jimple.v().newStaticFieldRef(globalField.makeRef()), i.getLeftOp))
-        case _ =>
-          ()
+    if(registerArgs) {
+      parmIdents.foreach { i =>
+        val t = i.getRightOp.getType
+        t match{
+          case _:RefType =>
+            unitChain.add(Jimple.v().newAssignStmt(Jimple.v().newStaticFieldRef(globalField.makeRef()), i.getLeftOp))
+          case _ =>
+            ()
+        }
       }
     }
 
@@ -623,8 +627,10 @@ class JimpleFlowdroidWrapper(apkPath : String,
     Scene.v().getClasses.asScala.foreach{c =>
       if(!c.isInterface && resolver.isFrameworkClass(JimpleFlowdroidWrapper.stringNameOfClass(c))){
         c.getMethods.asScala.foreach { m =>
-          if( m.getDeclaringClass.getName != cgEntryPointName) {
-            instrumentSootMethod(m) //LayoutInflater has null bodies, make sure this adjusts phantom methods
+          // exclude synthetic entry point from instrumentation
+          if((m.getDeclaringClass.getName != cgEntryPointName)) {
+            //Don't write receiver of default constructor to global var
+            instrumentSootMethod(m, m.getSubSignature != "void <init>()")
           }
         }
       }
@@ -896,19 +902,20 @@ class JimpleFlowdroidWrapper(apkPath : String,
       //        ("field-based", "true"),
       //("simple-edges-bidirectional", "true"),
       //        ("geom-app-only", "true"),
-      // ("geom-pta", "true"), // enable context sensitivity in spark pta
-      ("simulate-natives", "false"),
+//      ("geom-pta", "true"), // enable context sensitivity in spark pta
+//      ("geom-trans","true"),
+      //("simulate-natives", "false"),
       ("propagator", "worklist"),
 //      ("propagator", "iter"), // Did not solve issue
       ("verbose", "true"),
       ("on-fly-cg", "true"),
-      ("double-set-old", "hybrid"),
-      ("double-set-new", "hybrid"),
-      ("set-impl", "double"),
+      //("double-set-old", "hybrid"),
+      //("double-set-new", "hybrid"),
+//      ("set-impl", "double"),
       ("apponly","false"),
-//      ("dump-html","true"), //TODO: disable for performance
+      //("dump-html","true"), //TODO: disable for performance ====
       ("ignore-types", "false"),
-      ("merge-stringbuffer", "true")
+      //("merge-stringbuffer", "true")
       //      ("lazy-pts", "true")
     )
     //=========

@@ -83,7 +83,7 @@ class SootUtilsTest extends AnyFunSuite {
       val transfer = (cha: ClassHierarchyConstraints) =>
         new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set(testSpec)), cha)
       val config: SymbolicExecutorConfig[SootMethod, soot.Unit] = SymbolicExecutorConfig(
-        stepLimit = Some(50), w, transfer, printProgress = true, z3Timeout = Some(30))
+        stepLimit = 50, w, transfer, printProgress = true, z3Timeout = Some(30))
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w,
         "com.example.test_interproc_2.MainActivity",
@@ -120,7 +120,7 @@ class SootUtilsTest extends AnyFunSuite {
       val transfer = (cha: ClassHierarchyConstraints) =>
         new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set(testSpec)), cha)
       val config: SymbolicExecutorConfig[SootMethod, soot.Unit] = SymbolicExecutorConfig(
-        stepLimit = Some(50), w, transfer, printProgress = true, z3Timeout = Some(30))
+        stepLimit = 50, w, transfer, printProgress = true, z3Timeout = Some(30))
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeReach(symbolicExecutor, w,
         "com.example.test_interproc_2.MainActivity",

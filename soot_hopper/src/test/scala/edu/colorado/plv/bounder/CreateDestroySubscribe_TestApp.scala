@@ -25,7 +25,7 @@ class CreateDestroySubscribe_TestApp extends AnyFunSuite{
     new TransferFunctions[SootMethod, soot.Unit](w, specSpace,cha)
   }
   val config = SymbolicExecutorConfig(
-    stepLimit = Some(200), w,transfer,
+    stepLimit = 200, w,transfer,
     component = Some(List("com.example.createdestroy.MainActivity.*")))
   val symbolicExecutor = config.getSymbolicExecutor
   private val prettyPrinting = new PrettyPrinting()

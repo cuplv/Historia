@@ -6,7 +6,7 @@ import java.time.Instant
 import java.util.Date
 
 import better.files.File
-import edu.colorado.plv.bounder.BounderUtil.{Proven, ResultSummary, Timeout, Unreachable, Witnessed}
+import edu.colorado.plv.bounder.BounderUtil.{MaxPathCharacterization, Proven, ResultSummary, Timeout, Unreachable, Witnessed, characterizeMaxPath}
 import edu.colorado.plv.bounder.Driver.{Default, LocResult, RunMode}
 import edu.colorado.plv.bounder.ir.{JimpleFlowdroidWrapper, Loc}
 import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
@@ -70,10 +70,10 @@ case class RunConfig(apkPath:String = "",
                      componentFilter:Option[Seq[String]] = None,
                      specSet: SpecSetOption = TopSpecSet,
                      initialQuery: List[InitialQuery] = Nil,
-                     limit:Int = 100,
+                     limit:Int = -1,
                      samples:Int = 5,
                      tag:String = "",
-                     timeLimit:Int = 600
+                     timeLimit:Int = 1200 // max clock time per query
                     ){
 }
 
@@ -171,7 +171,8 @@ object Driver {
     println()
   }
   // [qry,id,loc, res, time]
-  case class LocResult(q:InitialQuery, sqliteId:Int, loc:Loc, resultSummary: ResultSummary, time:Long)
+  case class LocResult(q:InitialQuery, sqliteId:Int, loc:Loc, resultSummary: ResultSummary,
+                       maxPathCharacterization: MaxPathCharacterization, time:Long)
   object LocResult{
     implicit var rw:RW[LocResult] = macroRW
   }
@@ -195,14 +196,13 @@ object Driver {
         implicit val opt = File.CopyOptions(overwrite = true)
         outFile.moveTo(File(outFolder) / "paths.db1")
       }
-      DBOutputMode(outFile.canonicalPath)
       val pathMode = DBOutputMode(outFile.canonicalPath)
-      val res: Seq[(InitialQuery,Int, Loc, ResultSummary, Long)] =
+      val res: Seq[(InitialQuery,Int, Loc, (ResultSummary, MaxPathCharacterization), Long)] =
         runAnalysis(cfg,apkPath, componentFilter,pathMode, specSet.getSpecSet(),stepLimit, initialQuery)
       res.zipWithIndex.foreach { case (iq, ind) =>
         val resFile = File(outFolder) / s"result_${ind}.txt"
         resFile.overwrite(write(LocResult(iq._1,iq._2, iq._3,
-          iq._4, iq._5))) // [qry,id,loc, res, time] //TODO: less dumb serialized format
+          iq._4._1, iq._4._2, iq._5))) // [qry,id,loc, res, time] //TODO: less dumb serialized format
 //        resFile.append(iq._2)
       }
     case act@Action(SampleDeref,_,_,cfg,_,_) =>
@@ -238,7 +238,7 @@ object Driver {
     val transfer = (cha: ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set()), cha)
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(0), w, transfer, component = None)
+      stepLimit = 0, w, transfer, component = None)
     val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
     val appClasses = symbolicExecutor.appCodeResolver.appMethods.map(m => m.classType)
     val filtered = appClasses.filter(c => filter.forall(c.startsWith))
@@ -260,7 +260,7 @@ object Driver {
     val transfer = (cha: ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set()), cha)
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(n), w, transfer, component = None)
+      stepLimit = n, w, transfer, component = None)
     val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
 
     val queries = (0 until n).map{_ =>
@@ -286,13 +286,13 @@ object Driver {
     val transfer = (cha: ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set()), cha)
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(0), w, transfer, component = None)
+      stepLimit = 0, w, transfer, component = None)
     val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
     //TODO:
   }
   def runAnalysis(cfg:RunConfig, apkPath: String, componentFilter:Option[Seq[String]], mode:OutputMode,
                   specSet: Set[LSSpec], stepLimit:Int,
-                  initialQueries: List[InitialQuery]): List[(InitialQuery,Int,Loc,ResultSummary,Long)] = {
+                  initialQueries: List[InitialQuery]): List[(InitialQuery,Int,Loc,(ResultSummary,MaxPathCharacterization),Long)] = {
     val startTime = System.currentTimeMillis()
     try {
       //TODO: read location from json config
@@ -303,7 +303,7 @@ object Driver {
       val transfer = (cha: ClassHierarchyConstraints) =>
         new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(specSet), cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(stepLimit), w, transfer, component = componentFilter, outputMode = mode,
+        stepLimit = stepLimit, w, transfer, component = componentFilter, outputMode = mode,
         timeLimit = cfg.timeLimit)
       val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
 //      val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
@@ -326,22 +326,27 @@ object Driver {
         //        (Int,Loc,Set[IPathNode],Long)
         val results: Set[symbolicExecutor.QueryData] = symbolicExecutor.run(query, initialize)
 
-        val allRes = results.map { res =>
+        val allRes: Set[(Int, Loc, ResultSummary, MaxPathCharacterization, Long)] = results.map { res =>
           mode match {
             case m@DBOutputMode(_) =>
               val interpretedRes = (res.queryId, res.location,
-                BounderUtil.interpretResult(res.terminals, res.result),res.runTime)
+                BounderUtil.interpretResult(res.terminals, res.result),
+                BounderUtil.characterizeMaxPath(res.terminals)(mode)
+                ,res.runTime)
               val tOut = s"id: ${res.queryId}   result: ${interpretedRes}"
               println(tOut)
               out += tOut
               m.writeLiveAtEnd(res.terminals, res.queryId, interpretedRes.toString)
               interpretedRes
-            case _ => (res.queryId, res.location,BounderUtil.interpretResult(res.terminals, res.result), res.runTime)
+            case _ => (res.queryId, res.location,BounderUtil.interpretResult(res.terminals, res.result),
+              BounderUtil.characterizeMaxPath(res.terminals)(mode), res.runTime)
           }
         }
         val grouped = allRes.groupBy(v => (v._1,v._2)).map{case ((id,loc),groupedResults) =>
-          val finalRes = groupedResults.map(_._3).reduce(reduceResults)
-          val finalTime = groupedResults.map(_._4).sum
+          val res = groupedResults.map(_._3).reduce(reduceResults)
+          val characterizedMaxPath: MaxPathCharacterization = groupedResults.map(_._4).reduce(BounderUtil.reduceCharacterization)
+          val finalTime = groupedResults.map(_._5).sum
+          val finalRes = (res,characterizedMaxPath)
           (initialQuery,id,loc,finalRes,finalTime)
         }.toList
         grouped
@@ -393,7 +398,7 @@ object SpecSetOption{
 }
 case class SpecFile(fname:String) extends SpecSetOption {
   //TODO: write parser for spec set
-  override def getSpecSet(): Set[LSSpec] = LifeState.parseSpecFile(File(fname).contentAsString)
+  override def getSpecSet(): Set[LSSpec] = LifeState.parseSpec(File(fname).contentAsString)
 }
 
 case class TestSpec(name:String) extends SpecSetOption {
@@ -615,7 +620,11 @@ class ExperimentsDb(bounderJar:Option[String] = None){
         d
       }
       resultSummaries.map { rs =>
-        DBResult(id = 0, jobid = jobId,qry = write(rs.q), loc = write(rs.loc), result = write[ResultSummary](rs.resultSummary), queryTime = rs.time
+        val resultRow = ujson.Obj(
+          "summary" -> ujson.Str(write[ResultSummary](rs.resultSummary)),
+          "maxPathCh" -> ujson.Str(write[MaxPathCharacterization](rs.maxPathCharacterization))
+        ).toString
+        DBResult(id = 0, jobid = jobId,qry = write(rs.q), loc = write(rs.loc), result = resultRow, queryTime = rs.time
           ,resultData = resDataId, apkHash = apkHash,
           bounderJarHash = bounderJarHash, owner = BounderUtil.systemID(), jobTag = jobTag)
       }

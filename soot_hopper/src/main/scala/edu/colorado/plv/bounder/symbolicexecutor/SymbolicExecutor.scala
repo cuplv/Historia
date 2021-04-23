@@ -22,7 +22,7 @@ case object AppOnlyCallGraph extends CallGraphSource
 
 /**
  * //TODO: ugly lambda due to wanting to configure transfer functions externally but still need cha
- * @param stepLimit Number of back steps to take from assertion before timeout
+ * @param stepLimit Number of back steps to take from assertion before timeout (-1 for no limit)
  * @param w  IR representation defined by IRWrapper interface
  * @param transfer transfer functions over app transitions including callin/callback boundaries
  * @param printProgress print steps taken
@@ -31,7 +31,7 @@ case object AppOnlyCallGraph extends CallGraphSource
  * @tparam M
  * @tparam C
  */
-case class SymbolicExecutorConfig[M,C](stepLimit: Option[Int],
+case class SymbolicExecutorConfig[M,C](stepLimit: Int,
                                        w :  IRWrapper[M,C],
                                        transfer : ClassHierarchyConstraints => TransferFunctions[M,C],
                                        printProgress : Boolean = sys.env.getOrElse("DEBUG","false").toBoolean,
@@ -167,22 +167,23 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
    */
   def run(qry: Set[Qry], initialize: Set[IPathNode] => Int = _ => 0) : Set[QueryData] = {
     qry.groupBy(_.loc).map{ case(loc,qs) =>
-      val pathNodes = qs.map(PathNode(_, Nil, None))
       val startTime = Instant.now.getEpochSecond
-      val id = initialize(pathNodes)
-      val queue = new GrouperQ
-      queue.addAll(pathNodes)
+      var id = -1
       try {
-        config.stepLimit match {
-          case Some(limit) =>
-            QueryData(id, loc, executeBackward(queue, limit, startTime + config.timeLimit),
-              Instant.now.getEpochSecond - startTime, QueryFinished)
-          case None =>
-            ???
-        }
+        val pathNodes = qs.map(PathNode(_, Nil, None))
+        id = initialize(pathNodes)
+        val queue = new GrouperQ
+        queue.addAll(pathNodes)
+        val deadline = if(config.timeLimit > -1)startTime + config.timeLimit else -1
+        QueryData(id, loc, executeBackward(queue, config.stepLimit, deadline),
+          Instant.now.getEpochSecond - startTime, QueryFinished)
       }catch{
         case QueryInterruptedException(terminals, reason) =>
           QueryData(id, loc, terminals, Instant.now.getEpochSecond - startTime, QueryInterrupted(reason))
+        case t:Throwable =>
+          // print stack trace to stderr and continue
+          t.printStackTrace(System.err)
+          QueryData(id, loc, Set(), Instant.now.getEpochSecond - startTime, QueryInterrupted(t.getClass.toString))
       }
     }.toSet
   }
@@ -295,7 +296,8 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   /**
    *
    * @param qrySet Work list of locations and states to process
-   * @param limit Step limit to terminate at
+   * @param limit Step limit to terminate at (set to -1 for no limit)
+   * @param deadline unix time to terminate if verification not complete (-1 for no limit)
    * @param refutedSubsumedOrWitnessed Terminal nodes
    * @param visited Map of visited states StackSize -> Location -> Set[State]
    * @return
@@ -305,7 +307,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
                             refutedSubsumedOrWitnessed: Set[IPathNode] = Set(),
                             visited:Map[SubsumableLocation, Map[Int,StateSet]] = Map()):Set[IPathNode] = {
 
-    if(Instant.now.getEpochSecond > deadline){
+    if(deadline > -1 && Instant.now.getEpochSecond > deadline){
       throw QueryInterruptedException(qrySet.toSet() ++ refutedSubsumedOrWitnessed, "timeout")
     }
     //TODO: This is way too sensitive to queue ordering, figure out something better
@@ -347,20 +349,27 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
 
     current match {
       case p@PathNode(_:SomeQry, true) =>
+        // current node is subsumed
+        // TODO: this branch is probably unreachable
         executeBackward(qrySet, limit,deadline, refutedSubsumedOrWitnessed + p, visited)
       case p@PathNode(_:BottomQry,_) =>
+        // current node is refuted
         executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p, visited)
       case p@PathNode(_:WitnessedQry,_) =>
+        // current node is witnessed
         refutedSubsumedOrWitnessed.union(qrySet.toSet) + p
-      case p:IPathNode if p.depth > limit =>
-//        executeBackward(qrySetIG, limit, refutedSubsumedOrWitnessed + p, visited)
+      case p:IPathNode if limit > 0 && p.depth > limit =>
+        // max steps reached
         refutedSubsumedOrWitnessed.union(qrySet.toSet)
       case p@PathNode(qry:SomeQry,false) =>
+        // live path node
         isSubsumed(p, visited) match{
           case v@Some(_) =>
+            // Path node discovered to be subsumed
             executeBackward(qrySet, limit,deadline, refutedSubsumedOrWitnessed + p.setSubsumed(v), visited)
           case None =>
             val stackSize = p.qry.state.callStack.size
+            // Add to invariant map if invariant location is tracked
             val newVisited = current match{
               case SwapLoc(v) =>
                 val stackSizeToNode: Map[Int, StateSet] = visited.getOrElse(v,Map[Int,StateSet]())

@@ -99,7 +99,7 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
     }
     currentID
   }
-  def markDeadend():Unit = {
+  def markAndDeleteRefuted():Unit = {
     ???
   }
 
@@ -196,7 +196,7 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
   def writeLiveAtEnd(witness: Set[IPathNode], finalizeQryId:Int, status:String):Unit = {
     val ids = witness.map(n => n.asInstanceOf[DBPathNode].thisID)
     val writeFuture = db.run(liveAtEnd ++= ids)
-    Await.result(writeFuture, 30 seconds)
+    Await.result(writeFuture, 600 seconds)
     val updateMetadata = for(q <- initialQueries if q.id === finalizeQryId)yield q.metadata
     val meta = Await.result(db.run(updateMetadata.result), 600 seconds)
     assert(meta.size == 1)
@@ -340,7 +340,23 @@ object PathNode{
   }
 }
 
-sealed trait IPathNode{
+sealed trait IPathNode {
+  def methodsInPath(implicit mode : OutputMode): List[Loc] = {
+    def getMethod(qry:Qry):Option[Loc] = qry.loc match {
+      case AppLoc(_, _, _) => None
+      case _ => Some(qry.loc)
+    }
+    import scala.collection.mutable.ListBuffer
+
+    var out = new ListBuffer[Loc]()
+    var currentNode:Option[IPathNode] = Some(this)
+    while(currentNode.nonEmpty) {
+      out ++= getMethod(currentNode.get.qry)
+      currentNode = currentNode.get.succ.headOption
+    }
+    out.toList
+  }
+
 
   def depth:Int
   def ordDepth:Int

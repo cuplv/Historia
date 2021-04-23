@@ -1,9 +1,9 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed}
+import edu.colorado.plv.bounder.BounderUtil.{MultiCallback, Proven, SingleCallbackMultiMethod, SingleMethod, Witnessed}
 import edu.colorado.plv.bounder.ir.{JimpleFlowdroidWrapper, JimpleMethodLoc}
-import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
+import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivityNullSpec, LifeState, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SetInclusionTypeSolving}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BottomQry, DBOutputMode, FieldPtEdge, IPathNode, OutputMode, PrettyPrinting, Qry}
 import edu.colorado.plv.bounder.testutils.MkApk
@@ -26,7 +26,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
     val transfer =  (cha:ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set()),cha)
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(8), w,transfer, printProgress = true)
+      stepLimit = 8, w,transfer, printProgress = true)
+    implicit val om: OutputMode = config.outputMode
     val symbolicExecutor = config.getSymbolicExecutor
     val query = Qry.makeReceiverNonNull(symbolicExecutor, w,
       "com.example.test_interproc_1.MainActivity",
@@ -36,6 +37,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 //    prettyPrinting.dumpDebugInfo(result, "test_interproc_1_derefSafe")
     assert(result.size == 1)
     assert(result.iterator.next.qry.isInstanceOf[BottomQry])
+    assert(BounderUtil.characterizeMaxPath(result)== SingleMethod)
   }
 
 
@@ -47,7 +49,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     val transfer = (cha:ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod,soot.Unit](w, ActivityLifecycle.spec,cha)
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(160), w,transfer,  z3Timeout = Some(30), component = Some(List("com\\.example\\.test_interproc_2.*")))
+      stepLimit = 160, w,transfer,  z3Timeout = Some(30), component = Some(List("com\\.example\\.test_interproc_2.*")))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = Qry.makeReceiverNonNull(symbolicExecutor, w,
       "com.example.test_interproc_2.MainActivity",
@@ -66,7 +68,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     val transfer = (cha:ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod,soot.Unit](w, ActivityLifecycle.spec,cha)
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(50), w,transfer,  z3Timeout = Some(30))
+      stepLimit = 50, w,transfer,  z3Timeout = Some(30))
     val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
     val query = Qry.makeReach(symbolicExecutor, w,
       "com.example.test_interproc_2.MainActivity",
@@ -83,7 +85,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     val transfer = (cha:ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod,soot.Unit](w, ActivityLifecycle.spec,cha)
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(50), w,transfer,  z3Timeout = Some(30))
+      stepLimit = 50, w,transfer,  z3Timeout = Some(30))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = Qry.makeReach(symbolicExecutor, w,
       "com.example.test_interproc_2.MainActivity",
@@ -133,7 +135,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           //          RxJavaSpec.subscribeDoesNotReturnNull
         )), cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(50), w, transfer,
+        stepLimit = 50, w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
@@ -196,7 +198,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           //          RxJavaSpec.subscribeDoesNotReturnNull
         )), cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(50), w, transfer,
+        stepLimit = 50, w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       implicit val om = config.outputMode
       val symbolicExecutor = config.getSymbolicExecutor
@@ -297,7 +299,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           //          RxJavaSpec.subscribeDoesNotReturnNull
         )), cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(60), w, transfer,
+        stepLimit = 60, w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       implicit val om = config.outputMode
       val symbolicExecutor = config.getSymbolicExecutor
@@ -383,7 +385,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
             //          RxJavaSpec.subscribeDoesNotReturnNull
           )), cha)
         val config = SymbolicExecutorConfig(
-          stepLimit = Some(200), w, transfer,
+          stepLimit = 200, w, transfer,
           component = Some(List("com.example.createdestroy.MyActivity.*")))
         val symbolicExecutor = config.getSymbolicExecutor
         val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
@@ -442,8 +444,9 @@ class SymbolicExecutorTest extends AnyFunSuite {
 //          RxJavaSpec.subscribeDoesNotReturnNull
         )),cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(200), w, transfer,
+        stepLimit = 200, w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
+      implicit val om = config.outputMode
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void onCreate(android.os.Bundle)",20)
@@ -451,6 +454,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 //      prettyPrinting.dumpDebugInfo(result,"setField")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result,QueryFinished) == Proven)
+      assert(BounderUtil.characterizeMaxPath(result) == SingleCallbackMultiMethod)
 
     }
 
@@ -506,7 +510,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           //          RxJavaSpec.subscribeDoesNotReturnNull
         )),cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(200), w, transfer,
+        stepLimit = 200, w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
@@ -569,7 +573,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           //          RxJavaSpec.subscribeDoesNotReturnNull
         )), cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(50), w, transfer,
+        stepLimit = 50, w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       implicit val om = config.outputMode
       val symbolicExecutor = config.getSymbolicExecutor
@@ -649,7 +653,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 //            RxJavaSpec.subscribeDoesNotReturnNull
           )), cha)
         val config = SymbolicExecutorConfig(
-          stepLimit = Some(200), w, transfer,
+          stepLimit = 200, w, transfer,
           component = Some(List("com.example.createdestroy.MyActivity.*")))
         val symbolicExecutor = config.getSymbolicExecutor
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
@@ -729,7 +733,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
           new SpecSpace(Set(ActivityLifecycle.init_first_callback)), cha)
         val config = SymbolicExecutorConfig(
-          stepLimit = Some(200), w, transfer,
+          stepLimit = 200, w, transfer,
           component = Some(List("com.example.createdestroy.MyActivity.*")))
         val symbolicExecutor = config.getSymbolicExecutor
         val i = BounderUtil.lineForRegex(queryL, src)
@@ -803,7 +807,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           RxJavaSpec.subscribeIsUnique
         )),cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(120), w, transfer,
+        stepLimit = 120, w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       val symbolicExecutor = config.getSymbolicExecutor
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
@@ -878,7 +882,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
           new SpecSpace(Set()), cha)
         val config = SymbolicExecutorConfig(
-          stepLimit = Some(200), w, transfer,
+          stepLimit = 200, w, transfer,
           component = Some(List("com.example.createdestroy.MyActivity.*")))
         val symbolicExecutor = config.getSymbolicExecutor
         val line = BounderUtil.lineForRegex(".*query1.*".r,src)
@@ -956,7 +960,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           RxJavaSpec.subscribeIsUnique
         )),cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(200), w, transfer,
+        stepLimit = 200, w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
@@ -1024,7 +1028,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 //          RxJavaSpec.subscribeIsUniqueAndNonNull
         )),cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(200), w, transfer,
+        stepLimit = 200, w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
@@ -1107,7 +1111,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 //          RxJavaSpec.subscribeIsUniqueAndNonNull
         )),cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(300), w, transfer,
+        stepLimit = 300, w, transfer,
         component = Some(List("com.example.createdestroy.MyFragment.*")))
       val symbolicExecutor = config.getSymbolicExecutor
       val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
@@ -1197,7 +1201,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           RxJavaSpec.subscribeIsUnique
         )),cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(300), w, transfer,
+        stepLimit = 300, w, transfer,
         component = Some(List("com.example.createdestroy.MyFragment.*")))
       implicit val om: OutputMode = config.outputMode
       val symbolicExecutor = config.getSymbolicExecutor
@@ -1327,7 +1331,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
             //            RxJavaSpec.subscribeIsUniqueAndNonNull
           )), cha)
         val config = SymbolicExecutorConfig(
-          stepLimit = Some(80), w, transfer,
+          stepLimit = 80, w, transfer,
           component = None)
         implicit val om = config.outputMode
         val symbolicExecutor = config.getSymbolicExecutor
@@ -1344,6 +1348,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         assert(result.nonEmpty)
         val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
         assert(interpretedResult == expectedResult)
+        assert(BounderUtil.characterizeMaxPath(result) == MultiCallback)
         val onViewCreatedInTree: Set[List[IPathNode]] = result.flatMap{node =>
           findInWitnessTree(node, (p: IPathNode) =>
             p.qry.loc.msgSig.exists(m => m.contains("onViewCreated(")))
@@ -1435,7 +1440,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 //            RxJavaSpec.subscribeIsUniqueAndNonNull
           )), cha)
         val config = SymbolicExecutorConfig(
-          stepLimit = Some(80), w, transfer,
+          stepLimit = 80, w, transfer,
           component = Some(List("com.example.createdestroy.*MyFragment.*")))
         implicit val om = config.outputMode
         val symbolicExecutor = config.getSymbolicExecutor
@@ -1527,7 +1532,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 //          RxJavaSpec.subscribeIsUniqueAndNonNull
         )), cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = Some(80), w, transfer,
+        stepLimit = 80, w, transfer,
         component = Some(List("com.example.createdestroy.*MyFragment.*")))
       implicit val om = config.outputMode
       val symbolicExecutor = config.getSymbolicExecutor
@@ -1613,7 +1618,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
           new SpecSpace(Set(ActivityLifecycle.init_first_callback)), cha)
         val config = SymbolicExecutorConfig(
-          stepLimit = Some(200), w, transfer,
+          stepLimit = 200, w, transfer,
           component = Some(List("com.example.createdestroy.MyActivity.*")),
           //          outputMode = DBOutputMode("/Users/shawnmeier/Desktop/bounder_debug_data/deref2.db")
         )
@@ -1634,5 +1639,48 @@ class SymbolicExecutorTest extends AnyFunSuite {
       makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
       println(s"test: $queryL done")
     }
+  }
+  test("Test missing callback") {
+    val src = """package com.example.createdestroy;
+                |import androidx.appcompat.app.AppCompatActivity;
+                |import android.os.Bundle;
+                |import android.util.Log;
+                |
+                |import rx.Single;
+                |import rx.Subscription;
+                |import rx.android.schedulers.AndroidSchedulers;
+                |import rx.schedulers.Schedulers;
+                |
+                |
+                |public class MyActivity extends AppCompatActivity {
+                |    Object o = null;
+                |
+                |    @Override
+                |    protected void onDestroy() {
+                |        o = null; // query1
+                |    }
+                |}""".stripMargin
+
+    val test: String => Unit = apk => {
+      assert(apk != null)
+      val w = new JimpleFlowdroidWrapper(apk, cgMode)
+
+      val parsed = LifeState.parseSpec(???)
+      val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
+        new SpecSpace(parsed),cha)
+      val config = SymbolicExecutorConfig(
+        stepLimit = 120, w, transfer,
+        component = Some(List("com.example.createdestroy.MyActivity.*")))
+      val symbolicExecutor = config.getSymbolicExecutor
+      val line = BounderUtil.lineForRegex(".*query1.*".r, src)
+      val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
+        "void onCreate(android.os.Bundle)",line)
+      val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
+      assert(result.nonEmpty)
+      assert(BounderUtil.interpretResult(result,QueryFinished) == Witnessed)
+
+    }
+
+    makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
   }
 }

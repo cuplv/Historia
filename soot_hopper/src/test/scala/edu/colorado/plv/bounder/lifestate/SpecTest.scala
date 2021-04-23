@@ -57,18 +57,19 @@ class SpecTest extends AnyFunSuite {
     val i3 = LifeState.parseI("I(ciret [_,v,_] rx.Subscription\n subscribe(rx.functions.Action1) v<:rx.Single)")
     assert(i3.mt == CIExit)
 
-    val ifile =
-      """
-        |! I(ciret [_,v,_] rx.Subscription subscribe(rx.functions.Action1) v<:rx.Single)
-        |   <= I(ciret [_,v,_] rx.Subscription subscribe(rx.functions.Action1) v<:rx.Single);
-        |NI(I(ciret [_,v,_] rx.Subscription subscribe(rx.functions.Action1) v<:rx.Single),
-        |     I(ciret [_,v,_] rx.Subscription subscribe(rx.functions.Action1) v<:rx.Single))
-        |   <= I(ciret [_,v,_] rx.Subscription subscribe(rx.functions.Action1) v<:rx.Single)
-        |""".stripMargin
-    val i4 = LifeState.parseSpecFile(ifile)
-    println(i4)
-    val i5 = LifeState.parseSpecFile("\n")
-    assert(i5.isEmpty)
+    //|$SUB = I(ciret [_,v,_] rx.Subscription subscribe(rx.functions.Action1) v<:rx.Single);
+    //
+    //|NI($SUB,$SUB)
+    //|   <= $SUB ;
+//    val ifile =
+//      """
+//        | I(ciret [_,v,_] rx.Subscription subscribe(rx.functions.Action1) v<:rx.Single)
+//        |  <= I(ciret [_,v,_] rx.Subscription subscribe(rx.functions.Action1) v<:rx.Single);
+//        |""".stripMargin
+//    val i4 = LifeState.parseSpec(ifile)
+//    println(i4)
+//    val i5 = LifeState.parseSpec("\n")
+//    assert(i5.isEmpty)
 
   }
   test("Antennapod: Each I in spec signatures corresponds to a method or interface in the framework"){
@@ -78,7 +79,7 @@ class SpecTest extends AnyFunSuite {
     val transfer =  (cha:ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set()),cha)
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(8), w,transfer, printProgress = true)
+      stepLimit = 8, w,transfer, printProgress = true)
     val symbolicExecutor = config.getSymbolicExecutor
     implicit val ch = symbolicExecutor.cha
 
@@ -102,7 +103,7 @@ class SpecTest extends AnyFunSuite {
     val transfer =  (cha:ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set()),cha)
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(8), w,transfer, printProgress = true)
+      stepLimit = 8, w,transfer, printProgress = true)
     val symbolicExecutor = config.getSymbolicExecutor
     implicit val ch = symbolicExecutor.cha
 //    BounderSetupApplication.loadApk(apk, CHACallGraph)

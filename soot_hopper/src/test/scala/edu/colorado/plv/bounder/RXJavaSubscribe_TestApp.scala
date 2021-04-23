@@ -23,7 +23,7 @@ class RXJavaSubscribe_TestApp extends AnyFunSuite{
         RxJavaSpec.subscribeIsUnique
       )),cha)
     val config = SymbolicExecutorConfig(
-      stepLimit = Some(200), w,transfer,
+      stepLimit = 200, w,transfer,
       component = Some(List("example.com.rxjavasubscribebug.PlayerFragment.*")))
     val symbolicExecutor = config.getSymbolicExecutor
 
