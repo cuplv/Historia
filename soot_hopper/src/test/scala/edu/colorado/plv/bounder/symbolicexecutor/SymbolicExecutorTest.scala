@@ -3,6 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{MultiCallback, Proven, SingleCallbackMultiMethod, SingleMethod, Witnessed}
 import edu.colorado.plv.bounder.ir.{JimpleFlowdroidWrapper, JimpleMethodLoc}
+import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
 import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivityNullSpec, LifeState, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SetInclusionTypeSolving}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BottomQry, DBOutputMode, FieldPtEdge, IPathNode, OutputMode, PrettyPrinting, Qry}
@@ -22,9 +23,10 @@ class SymbolicExecutorTest extends AnyFunSuite {
   test("Symbolic Executor should prove an intraprocedural deref"){
     val test_interproc_1 = getClass.getResource("/test_interproc_1.apk").getPath
     assert(test_interproc_1 != null)
-    val w = new JimpleFlowdroidWrapper(test_interproc_1, cgMode)
+    val specs:Set[LSSpec] = Set()
+    val w = new JimpleFlowdroidWrapper(test_interproc_1, cgMode,specs)
     val transfer =  (cha:ClassHierarchyConstraints) =>
-      new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set()),cha)
+      new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(specs),cha)
     val config = SymbolicExecutorConfig(
       stepLimit = 8, w,transfer, printProgress = true)
     implicit val om: OutputMode = config.outputMode
@@ -44,7 +46,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
   test("Symbolic Executor should prove an inter-callback deref"){
     val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath
     assert(test_interproc_1 != null)
-    val w = new JimpleFlowdroidWrapper(test_interproc_1, cgMode)
+    val w = new JimpleFlowdroidWrapper(test_interproc_1, cgMode, ActivityLifecycle.spec.getSpecs)
 
     val transfer = (cha:ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod,soot.Unit](w, ActivityLifecycle.spec,cha)
@@ -64,7 +66,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
   test("Symbolic executor should witness onPause"){
     val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath
     assert(test_interproc_1 != null)
-    val w = new JimpleFlowdroidWrapper(test_interproc_1, cgMode)
+    val w = new JimpleFlowdroidWrapper(test_interproc_1, cgMode,ActivityLifecycle.spec.getSpecs)
     val transfer = (cha:ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod,soot.Unit](w, ActivityLifecycle.spec,cha)
     val config = SymbolicExecutorConfig(
@@ -81,7 +83,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
   test("Symbolic executor should witness onResume"){
     val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath
     assert(test_interproc_1 != null)
-    val w = new JimpleFlowdroidWrapper(test_interproc_1, cgMode)
+    val w = new JimpleFlowdroidWrapper(test_interproc_1, cgMode, ActivityLifecycle.spec.getSpecs)
     val transfer = (cha:ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod,soot.Unit](w, ActivityLifecycle.spec,cha)
     val config = SymbolicExecutorConfig(
@@ -126,14 +128,15 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val w = new JimpleFlowdroidWrapper(apk, cgMode)
+      val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+        FragmentGetActivityNullSpec.getActivityNonNull,
+        ActivityLifecycle.init_first_callback,
+        RxJavaSpec.call,
+        //          RxJavaSpec.subscribeDoesNotReturnNull
+      )
+      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
       val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-        new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
-          FragmentGetActivityNullSpec.getActivityNonNull,
-          ActivityLifecycle.init_first_callback,
-          RxJavaSpec.call,
-          //          RxJavaSpec.subscribeDoesNotReturnNull
-        )), cha)
+        new SpecSpace(specs), cha)
       val config = SymbolicExecutorConfig(
         stepLimit = 50, w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
@@ -188,15 +191,16 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val w = new JimpleFlowdroidWrapper(apk, cgMode)
+      val specs:Set[LSSpec] = Set(//FragmentGetActivityNullSpec.getActivityNull,
+        //          FragmentGetActivityNullSpec.getActivityNonNull,
+        //          ActivityLifecycle.init_first_callback,
+        //          ActivityLifecycle.onPause_onlyafter_onResume_init
+        //          RxJavaSpec.call,
+        //          RxJavaSpec.subscribeDoesNotReturnNull
+      )
+      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
       val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-        new SpecSpace(Set(//FragmentGetActivityNullSpec.getActivityNull,
-//          FragmentGetActivityNullSpec.getActivityNonNull,
-//          ActivityLifecycle.init_first_callback,
-//          ActivityLifecycle.onPause_onlyafter_onResume_init
-          //          RxJavaSpec.call,
-          //          RxJavaSpec.subscribeDoesNotReturnNull
-        )), cha)
+        new SpecSpace(specs), cha)
       val config = SymbolicExecutorConfig(
         stepLimit = 50, w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
@@ -289,15 +293,16 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val w = new JimpleFlowdroidWrapper(apk, cgMode)
+      val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+        FragmentGetActivityNullSpec.getActivityNonNull,
+        ActivityLifecycle.init_first_callback,
+        ActivityLifecycle.onPause_onlyafter_onResume_init
+        //          RxJavaSpec.call,
+        //          RxJavaSpec.subscribeDoesNotReturnNull
+      )
+      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
       val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-        new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
-          FragmentGetActivityNullSpec.getActivityNonNull,
-          ActivityLifecycle.init_first_callback,
-          ActivityLifecycle.onPause_onlyafter_onResume_init
-//          RxJavaSpec.call,
-          //          RxJavaSpec.subscribeDoesNotReturnNull
-        )), cha)
+        new SpecSpace(specs), cha)
       val config = SymbolicExecutorConfig(
         stepLimit = 60, w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
@@ -376,14 +381,15 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
       val test: String => Unit = apk => {
         assert(apk != null)
-        val w = new JimpleFlowdroidWrapper(apk, cgMode)
+        val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+          FragmentGetActivityNullSpec.getActivityNonNull,
+          ActivityLifecycle.init_first_callback,
+          RxJavaSpec.call,
+          //          RxJavaSpec.subscribeDoesNotReturnNull
+        )
+        val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-          new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
-            FragmentGetActivityNullSpec.getActivityNonNull,
-            ActivityLifecycle.init_first_callback,
-            RxJavaSpec.call,
-            //          RxJavaSpec.subscribeDoesNotReturnNull
-          )), cha)
+          new SpecSpace(specs), cha)
         val config = SymbolicExecutorConfig(
           stepLimit = 200, w, transfer,
           component = Some(List("com.example.createdestroy.MyActivity.*")))
@@ -435,14 +441,15 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val w = new JimpleFlowdroidWrapper(apk, cgMode)
+      val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+        FragmentGetActivityNullSpec.getActivityNonNull,
+        ActivityLifecycle.init_first_callback,
+        RxJavaSpec.call,
+        //          RxJavaSpec.subscribeDoesNotReturnNull
+      )
+      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
       val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-        new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
-          FragmentGetActivityNullSpec.getActivityNonNull,
-          ActivityLifecycle.init_first_callback,
-          RxJavaSpec.call,
-//          RxJavaSpec.subscribeDoesNotReturnNull
-        )),cha)
+        new SpecSpace(specs),cha)
       val config = SymbolicExecutorConfig(
         stepLimit = 200, w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
@@ -500,15 +507,16 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val w = new JimpleFlowdroidWrapper(apk, cgMode)
+      val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+        FragmentGetActivityNullSpec.getActivityNonNull,
+        ActivityLifecycle.init_first_callback,
+        RxJavaSpec.call,
+        RxJavaSpec.subscribeIsUnique
+        //          RxJavaSpec.subscribeDoesNotReturnNull
+      )
+      val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
       val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-        new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
-          FragmentGetActivityNullSpec.getActivityNonNull,
-          ActivityLifecycle.init_first_callback,
-          RxJavaSpec.call,
-          RxJavaSpec.subscribeIsUnique
-          //          RxJavaSpec.subscribeDoesNotReturnNull
-        )),cha)
+        new SpecSpace(specs),cha)
       val config = SymbolicExecutorConfig(
         stepLimit = 200, w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
@@ -563,15 +571,16 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val w = new JimpleFlowdroidWrapper(apk, cgMode)
+      val specs:Set[LSSpec] = Set(//FragmentGetActivityNullSpec.getActivityNull,
+        //          FragmentGetActivityNullSpec.getActivityNonNull,
+        //          ActivityLifecycle.init_first_callback,
+        //          ActivityLifecycle.onPause_onlyafter_onResume_init
+        //          RxJavaSpec.call,
+        //          RxJavaSpec.subscribeDoesNotReturnNull
+      )
+      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
       val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-        new SpecSpace(Set(//FragmentGetActivityNullSpec.getActivityNull,
-          //          FragmentGetActivityNullSpec.getActivityNonNull,
-          //          ActivityLifecycle.init_first_callback,
-          //          ActivityLifecycle.onPause_onlyafter_onResume_init
-          //          RxJavaSpec.call,
-          //          RxJavaSpec.subscribeDoesNotReturnNull
-        )), cha)
+        new SpecSpace(specs), cha)
       val config = SymbolicExecutorConfig(
         stepLimit = 50, w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
@@ -643,15 +652,16 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
       val test: String => Unit = apk => {
         assert(apk != null)
-        val w = new JimpleFlowdroidWrapper(apk, cgMode)
+        val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+          FragmentGetActivityNullSpec.getActivityNonNull,
+          ActivityLifecycle.init_first_callback,
+          RxJavaSpec.call,
+          RxJavaSpec.subscribeIsUnique
+          //            RxJavaSpec.subscribeDoesNotReturnNull
+        )
+        val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-          new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
-            FragmentGetActivityNullSpec.getActivityNonNull,
-            ActivityLifecycle.init_first_callback,
-            RxJavaSpec.call,
-            RxJavaSpec.subscribeIsUnique
-//            RxJavaSpec.subscribeDoesNotReturnNull
-          )), cha)
+          new SpecSpace(specs), cha)
         val config = SymbolicExecutorConfig(
           stepLimit = 200, w, transfer,
           component = Some(List("com.example.createdestroy.MyActivity.*")))
@@ -729,9 +739,10 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
       val test: String => Unit = apk => {
         assert(apk != null)
-        val w = new JimpleFlowdroidWrapper(apk, cgMode)
+        val specs = Set(ActivityLifecycle.init_first_callback)
+        val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-          new SpecSpace(Set(ActivityLifecycle.init_first_callback)), cha)
+          new SpecSpace(specs), cha)
         val config = SymbolicExecutorConfig(
           stepLimit = 200, w, transfer,
           component = Some(List("com.example.createdestroy.MyActivity.*")))
@@ -797,15 +808,16 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val w = new JimpleFlowdroidWrapper(apk, cgMode)
+      val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+        FragmentGetActivityNullSpec.getActivityNonNull,
+        ActivityLifecycle.init_first_callback,
+        RxJavaSpec.call,
+        //          RxJavaSpec.subscribeDoesNotReturnNull,
+        RxJavaSpec.subscribeIsUnique
+      )
+      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
       val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-        new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
-          FragmentGetActivityNullSpec.getActivityNonNull,
-          ActivityLifecycle.init_first_callback,
-          RxJavaSpec.call,
-//          RxJavaSpec.subscribeDoesNotReturnNull,
-          RxJavaSpec.subscribeIsUnique
-        )),cha)
+        new SpecSpace(specs),cha)
       val config = SymbolicExecutorConfig(
         stepLimit = 120, w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
@@ -878,9 +890,10 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
       val test: String => Unit = apk => {
         assert(apk != null)
-        val w = new JimpleFlowdroidWrapper(apk, cgMode)
+        val specs:Set[LSSpec] = Set()
+        val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-          new SpecSpace(Set()), cha)
+          new SpecSpace(specs), cha)
         val config = SymbolicExecutorConfig(
           stepLimit = 200, w, transfer,
           component = Some(List("com.example.createdestroy.MyActivity.*")))
@@ -949,16 +962,16 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val w = new JimpleFlowdroidWrapper(apk, cgMode)
+      val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+        FragmentGetActivityNullSpec.getActivityNonNull,
+        ActivityLifecycle.init_first_callback,
+        RxJavaSpec.call,
+        ActivityLifecycle.Fragment_activityCreatedOnlyFirst,
+        RxJavaSpec.subscribeIsUnique
+      )
+      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
       val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-        new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
-          FragmentGetActivityNullSpec.getActivityNonNull,
-          ActivityLifecycle.init_first_callback,
-          RxJavaSpec.call,
-          ActivityLifecycle.Fragment_activityCreatedOnlyFirst,
-//          RxJavaSpec.subscribeDoesNotReturnNull,
-          RxJavaSpec.subscribeIsUnique
-        )),cha)
+        new SpecSpace(specs),cha)
       val config = SymbolicExecutorConfig(
         stepLimit = 200, w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
@@ -1016,17 +1029,19 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val w = new JimpleFlowdroidWrapper(apk, cgMode)
+      val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+        FragmentGetActivityNullSpec.getActivityNonNull,
+        ActivityLifecycle.init_first_callback,
+        RxJavaSpec.call,
+        ActivityLifecycle.Fragment_activityCreatedOnlyFirst
+        //          RxJavaSpec.subscribeDoesNotReturnNull,
+        //          RxJavaSpec.subscribeIsUniqueAndNonNull
+      )
+      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+
       val transfer = (cha:ClassHierarchyConstraints) =>
         new TransferFunctions[SootMethod, soot.Unit](w,
-        new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
-          FragmentGetActivityNullSpec.getActivityNonNull,
-          ActivityLifecycle.init_first_callback,
-          RxJavaSpec.call,
-          ActivityLifecycle.Fragment_activityCreatedOnlyFirst
-//          RxJavaSpec.subscribeDoesNotReturnNull,
-//          RxJavaSpec.subscribeIsUniqueAndNonNull
-        )),cha)
+        new SpecSpace(specs),cha)
       val config = SymbolicExecutorConfig(
         stepLimit = 200, w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
@@ -1102,14 +1117,15 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val w = new JimpleFlowdroidWrapper(apk, cgMode)
+      val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+        FragmentGetActivityNullSpec.getActivityNonNull,
+        RxJavaSpec.call,
+        ActivityLifecycle.Fragment_activityCreatedOnlyFirst
+        //          RxJavaSpec.subscribeIsUniqueAndNonNull
+      )
+      val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
       val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-        new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
-          FragmentGetActivityNullSpec.getActivityNonNull,
-          RxJavaSpec.call,
-          ActivityLifecycle.Fragment_activityCreatedOnlyFirst
-//          RxJavaSpec.subscribeIsUniqueAndNonNull
-        )),cha)
+        new SpecSpace(specs),cha)
       val config = SymbolicExecutorConfig(
         stepLimit = 300, w, transfer,
         component = Some(List("com.example.createdestroy.MyFragment.*")))
@@ -1191,15 +1207,16 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val w = new JimpleFlowdroidWrapper(apk, cgMode)
+      val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+        FragmentGetActivityNullSpec.getActivityNonNull,
+        RxJavaSpec.call,
+        ActivityLifecycle.Fragment_activityCreatedOnlyFirst,
+        //          RxJavaSpec.subscribeDoesNotReturnNull,
+        RxJavaSpec.subscribeIsUnique
+      )
+      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
       val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-        new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
-          FragmentGetActivityNullSpec.getActivityNonNull,
-          RxJavaSpec.call,
-          ActivityLifecycle.Fragment_activityCreatedOnlyFirst,
-//          RxJavaSpec.subscribeDoesNotReturnNull,
-          RxJavaSpec.subscribeIsUnique
-        )),cha)
+        new SpecSpace(specs),cha)
       val config = SymbolicExecutorConfig(
         stepLimit = 300, w, transfer,
         component = Some(List("com.example.createdestroy.MyFragment.*")))
@@ -1321,15 +1338,16 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
       val test: String => Unit = apk => {
         assert(apk != null)
-        val w = new JimpleFlowdroidWrapper(apk, cgMode)
+        val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+          FragmentGetActivityNullSpec.getActivityNonNull,
+          RxJavaSpec.call,
+          ActivityLifecycle.Fragment_activityCreatedOnlyFirst,
+          //            RxJavaSpec.subscribeDoesNotReturnNull,
+          //            RxJavaSpec.subscribeIsUniqueAndNonNull
+        )
+        val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-          new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
-            FragmentGetActivityNullSpec.getActivityNonNull,
-            RxJavaSpec.call,
-            ActivityLifecycle.Fragment_activityCreatedOnlyFirst,
-            //            RxJavaSpec.subscribeDoesNotReturnNull,
-            //            RxJavaSpec.subscribeIsUniqueAndNonNull
-          )), cha)
+          new SpecSpace(specs), cha)
         val config = SymbolicExecutorConfig(
           stepLimit = 80, w, transfer,
           component = None)
@@ -1430,15 +1448,16 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
       val test: String => Unit = apk => {
         assert(apk != null)
-        val w = new JimpleFlowdroidWrapper(apk, cgMode)
+        val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+          FragmentGetActivityNullSpec.getActivityNonNull,
+          RxJavaSpec.call,
+          ActivityLifecycle.Fragment_activityCreatedOnlyFirst,
+          //            RxJavaSpec.subscribeDoesNotReturnNull,
+          //            RxJavaSpec.subscribeIsUniqueAndNonNull
+        )
+        val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-          new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
-            FragmentGetActivityNullSpec.getActivityNonNull,
-            RxJavaSpec.call,
-            ActivityLifecycle.Fragment_activityCreatedOnlyFirst,
-            //            RxJavaSpec.subscribeDoesNotReturnNull,
-//            RxJavaSpec.subscribeIsUniqueAndNonNull
-          )), cha)
+          new SpecSpace(specs), cha)
         val config = SymbolicExecutorConfig(
           stepLimit = 80, w, transfer,
           component = Some(List("com.example.createdestroy.*MyFragment.*")))
@@ -1522,15 +1541,16 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val w = new JimpleFlowdroidWrapper(apk, cgMode)
+      val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+        FragmentGetActivityNullSpec.getActivityNonNull,
+        RxJavaSpec.call,
+        ActivityLifecycle.Fragment_activityCreatedOnlyFirst
+        //          RxJavaSpec.subscribeDoesNotReturnNull,
+        //          RxJavaSpec.subscribeIsUniqueAndNonNull
+      )
+      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
       val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-        new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
-          FragmentGetActivityNullSpec.getActivityNonNull,
-          RxJavaSpec.call,
-          ActivityLifecycle.Fragment_activityCreatedOnlyFirst
-//          RxJavaSpec.subscribeDoesNotReturnNull,
-//          RxJavaSpec.subscribeIsUniqueAndNonNull
-        )), cha)
+        new SpecSpace(specs), cha)
       val config = SymbolicExecutorConfig(
         stepLimit = 80, w, transfer,
         component = Some(List("com.example.createdestroy.*MyFragment.*")))
@@ -1614,9 +1634,10 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
       val test: String => Unit = apk => {
         assert(apk != null)
-        val w = new JimpleFlowdroidWrapper(apk, cgMode)
+        val specs = Set(ActivityLifecycle.init_first_callback)
+        val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-          new SpecSpace(Set(ActivityLifecycle.init_first_callback)), cha)
+          new SpecSpace(specs), cha)
         val config = SymbolicExecutorConfig(
           stepLimit = 200, w, transfer,
           component = Some(List("com.example.createdestroy.MyActivity.*")),
@@ -1656,29 +1677,31 @@ class SymbolicExecutorTest extends AnyFunSuite {
                 |    Object o = null;
                 |
                 |    @Override
-                |    protected void onDestroy() {
-                |        o = null; // query1
+                |    protected void onPause() {
+                |        o.toString(); // query1
                 |    }
                 |}""".stripMargin
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val w = new JimpleFlowdroidWrapper(apk, cgMode)
+      val specs = ActivityLifecycle.spec
+      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
 
-      val parsed = LifeState.parseSpec(???)
+//      val parsed = LifeState.parseSpec(ActivityLifecycle.spec)
       val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-        new SpecSpace(parsed),cha)
+        specs,cha)
       val config = SymbolicExecutorConfig(
         stepLimit = 120, w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       val symbolicExecutor = config.getSymbolicExecutor
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
-        "void onCreate(android.os.Bundle)",line)
+        "void onPause()",line)
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result,QueryFinished) == Witnessed)
-
+      prettyPrinting.dumpDebugInfo(result, "missingCb")
+//      ??? //TODO: this unit test shouldn't be passing
     }
 
     makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)

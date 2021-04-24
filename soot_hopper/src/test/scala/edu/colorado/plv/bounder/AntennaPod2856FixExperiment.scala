@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{PrettyPrinting, Qry}
-import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, ControlFlowResolver, DefaultAppCodeResolver, FlowdroidCallGraph, PatchedFlowdroidCallGraph, QueryFinished, SparkCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, QueryFinished, SymbolicExecutorConfig, TransferFunctions}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
 
@@ -14,19 +14,20 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
   assert(apkFix != null)
   private val apkBug = getClass.getResource("/Antennapod-bug-2856-free-debug.apk").getPath
   assert(apkBug != null)
+  private val spec = Set(FragmentGetActivityNullSpec.getActivityNull,
+    FragmentGetActivityNullSpec.getActivityNonNull,
+    RxJavaSpec.call,
+    //      RxJavaSpec.subscribeDoesNotReturnNull,
+    RxJavaSpec.subscribeIsUnique
+  )
   private val transfer = (w:JimpleFlowdroidWrapper) =>
     (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod,soot.Unit](w,
-    new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
-      FragmentGetActivityNullSpec.getActivityNonNull,
-      RxJavaSpec.call,
-//      RxJavaSpec.subscribeDoesNotReturnNull,
-      RxJavaSpec.subscribeIsUnique
-    )),cha)
+    new SpecSpace(spec),cha)
   private val prettyPrinting = new PrettyPrinting()
 
   ignore("Fix: Prove updateUI is not reachable where getActivity returns null under a simple spec.") {
     //TODO: currently timing out
-    val w = new JimpleFlowdroidWrapper(apkFix,CHACallGraph)
+    val w = new JimpleFlowdroidWrapper(apkFix,CHACallGraph,spec)
     val config = SymbolicExecutorConfig(
       stepLimit = 400, w,transfer(w),
       component = Some(List("de\\.danoeh\\.antennapod\\.fragment\\.ExternalPlayerFragment.*")))
@@ -42,7 +43,7 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
 
   ignore("Bug: Fails to prove updateUI is not reachable where getActivity returns null with same spec.") {
     // TODO: currently timing out
-    val w = new JimpleFlowdroidWrapper(apkBug,CHACallGraph)
+    val w = new JimpleFlowdroidWrapper(apkBug,CHACallGraph,spec)
     val config = SymbolicExecutorConfig(
       stepLimit = 400, w,transfer(w),
       component = Some(List("de\\.danoeh\\.antennapod\\.fragment\\.ExternalPlayerFragment.*")))
@@ -57,7 +58,7 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
   }
   ignore("Fix: updateUI is reachable under a simple spec.") {
     // TODO: currently timing out, should witness
-    val w = new JimpleFlowdroidWrapper(apkFix,CHACallGraph)
+    val w = new JimpleFlowdroidWrapper(apkFix,CHACallGraph,spec)
     val config = SymbolicExecutorConfig(
       stepLimit = 400, w,transfer(w),
       component = Some(List("de\\.danoeh\\.antennapod\\.fragment\\.ExternalPlayerFragment.*")))
@@ -71,7 +72,7 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
   }
   ignore("Fix: GetActivity may return null in certain locations"){
     // TODO: currently timing out, should witness
-    val w = new JimpleFlowdroidWrapper(apkFix,CHACallGraph)
+    val w = new JimpleFlowdroidWrapper(apkFix,CHACallGraph,spec)
     val config = SymbolicExecutorConfig(
       stepLimit = 50, w,transfer(w),
       component = Some(List("de\\.danoeh\\.antennapod\\.fragment\\.CompletedDownloadsFragment.*")))

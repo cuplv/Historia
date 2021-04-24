@@ -10,6 +10,7 @@ import edu.colorado.plv.bounder.BounderUtil.{MaxPathCharacterization, Proven, Re
 import edu.colorado.plv.bounder.Driver.{Default, LocResult, RunMode}
 import edu.colorado.plv.bounder.ir.{JimpleFlowdroidWrapper, Loc}
 import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
+import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
 import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivityNullSpec, LifeState, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state._
@@ -234,7 +235,7 @@ object Driver {
   def makeAllDeref(apkPath:String, filter:Option[String],
                    outFolder:File, cfg:RunConfig, tag:Option[String]) = {
     val callGraph = CHACallGraph
-    val w = new JimpleFlowdroidWrapper(apkPath, callGraph)
+    val w = new JimpleFlowdroidWrapper(apkPath, callGraph, Set())
     val transfer = (cha: ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set()), cha)
     val config = SymbolicExecutorConfig(
@@ -256,7 +257,7 @@ object Driver {
   def sampleDeref(cfg: RunConfig, apkPath:String, outFolder:String) = {
     val n = cfg.samples
     val callGraph = CHACallGraph
-    val w = new JimpleFlowdroidWrapper(apkPath, callGraph)
+    val w = new JimpleFlowdroidWrapper(apkPath, callGraph, Set())
     val transfer = (cha: ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set()), cha)
     val config = SymbolicExecutorConfig(
@@ -282,7 +283,7 @@ object Driver {
   def dotMethod(apkPath:String, matches:Regex) = {
     val callGraph = CHACallGraph
     //      val callGraph = FlowdroidCallGraph // flowdroid call graph immediately fails with "unreachable"
-    val w = new JimpleFlowdroidWrapper(apkPath, callGraph)
+    val w = new JimpleFlowdroidWrapper(apkPath, callGraph, Set())
     val transfer = (cha: ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set()), cha)
     val config = SymbolicExecutorConfig(
@@ -299,7 +300,7 @@ object Driver {
 //      val callGraph = CHACallGraph
       val callGraph = SparkCallGraph
 //      val callGraph = FlowdroidCallGraph // flowdroid call graph immediately fails with "unreachable"
-      val w = new JimpleFlowdroidWrapper(apkPath, callGraph)
+      val w = new JimpleFlowdroidWrapper(apkPath, callGraph, specSet)
       val transfer = (cha: ClassHierarchyConstraints) =>
         new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(specSet), cha)
       val config = SymbolicExecutorConfig(
@@ -692,6 +693,15 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     }
   }
   def finishSuccess(d : ResultDir, stdout:String, stderr:String) = {
+    val owner: String = BounderUtil.systemID()
+    val iamowner = for(
+      j <- jobQry if j.jobId === d.jobId
+    ) yield (j.jobId, j.owner)
+    val jobRows = Await.result(db.run(iamowner.result), 30 seconds)
+    if(jobRows.size != 1 || jobRows.head._2 != owner)
+      throw new IllegalStateException(s"Concurrency exception, I am $owner and found " +
+        s"jobs Jobs: ${jobRows.mkString(";")} ")
+    
     val resData = d.getDBResults
     resData.foreach{d =>
       Await.result(db.run(resultsQry += d), 30 seconds)
@@ -744,7 +754,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     val apkDat = apkFile.loadBytes
     Await.result(
       db.run(apkQry += (name,apkDat)),
-      30 seconds
+      120 seconds
     )
   }
   def downloadApk(name:String, outFile:File) :Boolean= {

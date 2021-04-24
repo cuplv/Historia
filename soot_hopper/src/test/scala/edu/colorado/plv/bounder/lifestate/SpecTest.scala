@@ -75,13 +75,13 @@ class SpecTest extends AnyFunSuite {
   test("Antennapod: Each I in spec signatures corresponds to a method or interface in the framework"){
     val apk = getClass.getResource("/Antennapod-fix-2856-app-free-debug.apk").getPath
     assert(apk != null)
-    val w = new JimpleFlowdroidWrapper(apk,SparkCallGraph)
+    val w = new JimpleFlowdroidWrapper(apk,SparkCallGraph, Set())
     val transfer =  (cha:ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set()),cha)
     val config = SymbolicExecutorConfig(
       stepLimit = 8, w,transfer, printProgress = true)
     val symbolicExecutor = config.getSymbolicExecutor
-    implicit val ch = symbolicExecutor.cha
+    implicit val ch = w.getClassHierarchyConstraints
 
     assert(findIInFwk(SpecSignatures.Activity_onPause_entry))
     assert(findIInFwk(SpecSignatures.Activity_init_exit))
@@ -99,13 +99,13 @@ class SpecTest extends AnyFunSuite {
   test("RXJavaSubscribe: Each I in spec signatures corresponds to a method or interface in the framework"){
     val apk = getClass.getResource("/RXJavaSubscribe-fix-debug.apk").getPath
     assert(apk != null)
-    val w = new JimpleFlowdroidWrapper(apk,SparkCallGraph)
+    val w = new JimpleFlowdroidWrapper(apk,SparkCallGraph, Set())
     val transfer =  (cha:ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set()),cha)
     val config = SymbolicExecutorConfig(
       stepLimit = 8, w,transfer, printProgress = true)
     val symbolicExecutor = config.getSymbolicExecutor
-    implicit val ch = symbolicExecutor.cha
+    implicit val ch = w.getClassHierarchyConstraints
 //    BounderSetupApplication.loadApk(apk, CHACallGraph)
 
 //    findIInFwkForall(SpecSignatures.Fragment_get_activity_exit_null
@@ -120,8 +120,8 @@ class SpecTest extends AnyFunSuite {
   test("Dummy test to print framework types"){
     val apk = getClass.getResource("/RXJavaSubscribe-fix-debug.apk").getPath
     assert(apk != null)
-    BounderSetupApplication.loadApk(apk, PatchedFlowdroidCallGraph)
-    val w = new JimpleFlowdroidWrapper(apk,PatchedFlowdroidCallGraph)
+    BounderSetupApplication.loadApk(apk, SparkCallGraph)
+    val w = new JimpleFlowdroidWrapper(apk,SparkCallGraph, Set())
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
     val frameworkMethods = Scene.v().getClasses.asScala.flatMap{clazz =>
       val clazzname = JimpleFlowdroidWrapper.stringNameOfClass(clazz)

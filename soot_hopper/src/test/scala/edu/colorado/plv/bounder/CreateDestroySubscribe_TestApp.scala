@@ -15,12 +15,13 @@ import scala.jdk.CollectionConverters.CollectionHasAsScala
 class CreateDestroySubscribe_TestApp extends AnyFunSuite{
   val apk = getClass.getResource("/CreateDestroySubscribe-debug.apk").getPath
   assert(apk != null)
-  val w = new JimpleFlowdroidWrapper(apk,CHACallGraph)
   val specSpace = new SpecSpace(Set(ActivityLifecycle.onPause_onlyafter_onResume_init,
     ActivityLifecycle.init_first_callback,
     RxJavaSpec.subscribeIsUnique,
-//    RxJavaSpec.subscribeDoesNotReturnNull,
+    //    RxJavaSpec.subscribeDoesNotReturnNull,
     RxJavaSpec.call))
+  val w = new JimpleFlowdroidWrapper(apk,CHACallGraph, specSpace.getSpecs)
+
   val transfer = (cha:ClassHierarchyConstraints) =>  {
     new TransferFunctions[SootMethod, soot.Unit](w, specSpace,cha)
   }

@@ -67,7 +67,7 @@ object Qry {
   def makeAllReceiverNonNull[M,C](ex:SymbolicExecutor[M,C],w:IRWrapper[M,C],className: String): Set[Qry] = {
     //TODO: clean up this method
     implicit val wra = w
-    implicit val ch = ex.cha
+    implicit val ch = w.getClassHierarchyConstraints
     val jw = w.asInstanceOf[JimpleFlowdroidWrapper]
     val c = jw.getClassByName(className)
     val cmds = (for {

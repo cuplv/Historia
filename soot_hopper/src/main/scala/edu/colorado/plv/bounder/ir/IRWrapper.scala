@@ -1,5 +1,7 @@
 package edu.colorado.plv.bounder.ir
 
+import edu.colorado.plv.bounder.lifestate.SpecSpace
+import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.AppCodeResolver
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoundedTypeSet, State, TypeSet}
 import upickle.default.{macroRW, ReadWriter => RW}
@@ -39,7 +41,8 @@ trait IRWrapper[M,C]{
   def makeInvokeTargets(invoke:AppLoc):UnresolvedMethodTarget
   def appCallSites(method : MethodLoc, resolver:AppCodeResolver): Seq[AppLoc]
   def makeMethodRetuns(method: MethodLoc) : List[AppLoc]
-  def getClassHierarchy : Map[String, Set[String]]
+
+  def getClassHierarchyConstraints:ClassHierarchyConstraints
   @deprecated
   def canAlias(type1:String, type2:String):Boolean
   def isSuperClass(type1:String, type2:String):Boolean

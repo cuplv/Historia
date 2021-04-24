@@ -4,6 +4,9 @@ import java.util
 import java.util.Objects
 
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper.cgEntryPointName
+import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSSpec, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
+import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
 import edu.colorado.plv.bounder.{BounderSetupApplication, BounderUtil}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor._
@@ -468,25 +471,72 @@ class CallGraphWrapper(cg: CallGraph) extends CallGraphProvider{
   }
 }
 
+/**
+ * Expose functionality of Soot/spark to analysis
+ * //TODO: make this fully contain soot functionality
+ * @param apkPath path to app under analysis
+ * @param callGraphSource Spark app only, flowdroid, cha etc.
+ * @param toOverride override callbacks that may be missing (e.g. onResume so that onPause may be executed)
+ */
 class JimpleFlowdroidWrapper(apkPath : String,
-                             callGraphSource: CallGraphSource) extends IRWrapper[SootMethod, soot.Unit] {
+                             callGraphSource: CallGraphSource,
+                             toOverride:Set[LSSpec]
+                            ) extends IRWrapper[SootMethod, soot.Unit] {
 
   BounderSetupApplication.loadApk(apkPath, callGraphSource)
 
 
-//  private var unitGraphCache : scala.collection.mutable.Map[Body, EnhancedUnitGraphFixed] =
-//    scala.collection.mutable.Map()
-  private var appMethodCache : scala.collection.mutable.Set[SootMethod] = scala.collection.mutable.Set()
+  private implicit val cha =
+    new ClassHierarchyConstraints(getClassHierarchy,getInterfaces)
+  override def getClassHierarchyConstraints:ClassHierarchyConstraints = cha
+  private val appMethodCache : scala.collection.mutable.Set[SootMethod] = scala.collection.mutable.Set()
 
   val resolver = new DefaultAppCodeResolver[SootMethod, soot.Unit](this)
 
   val callbacks: Set[SootMethod] = resolver.getCallbacks.flatMap{
     case JimpleMethodLoc(method) => Some(method)
   }
+  // ** Override all overridable callbacks that affect spec **
+  private def overrideCallbacks():Unit = {
+    val ch = Scene.v.getActiveHierarchy
+    val appClasses: Set[String] = resolver.appMethods.map(m => m.classType)
+    def findSuperMatching(sc:SootClass, sig:SignatureMatcher):Option[SootMethod] = {
+      val sName = JimpleFlowdroidWrapper.stringNameOfClass(sc)
+      val current = sc.getMethods.asScala.find{m =>
+        val methodSignature = m.getSubSignature
+        sig.matches((sName, methodSignature))
+      }
+      if(current.isEmpty && sc != Scene.v().getObjectType.getSootClass){
+        findSuperMatching(sc.getSuperclass, sig)
+      }else current
+    }
+    def overrideAllCBForI(sig: LifeState.SignatureMatcher):Unit = {
+      val baseTypes: Set[String] = sig match{
+        case SubClassMatcher(baseSubtypeOf, sig, ident) => Set(baseSubtypeOf)
+        case SetSignatureMatcher(sigSet) => sigSet.collect{
+          case (c,_) => c
+        }
+      }
+      baseTypes.foreach{t =>
+        val sc = Scene.v().getSootClass(t)
+        val appClassesImplementing = ch.getSubclassesOf(sc).asScala
+          .filter(sc2 => appClasses.contains(JimpleFlowdroidWrapper.stringNameOfClass(sc2)))
+        ??? //TODO:=====================
+      }
+    }
+    val iSet = toOverride.flatMap(s => allI(s,includeRhs = false))
+    iSet.foreach {
+      case I(CBExit, sig, _) => overrideAllCBForI(sig)
+    }
+  }
+  overrideCallbacks()
 
-  var id = 0
+
+  // ** Instrument framework methods to generate app only call graph **
+  // TODO: factor these out into their own class
+  private var id = 0
   private val entryMethodTypeToLocal = mutable.HashMap[(SootMethod,Type), Local]()
-  def freshSootVar(method:SootMethod,t: Type,locals: Chain[Local], units: Chain[soot.Unit], globalField:SootField):Local = {
+  def freshSootVar(method:SootMethod,t: Type,locals: Chain[Local]):Local = {
     if (entryMethodTypeToLocal.contains((method,t))){
       entryMethodTypeToLocal((method,t))
     }else {
@@ -700,13 +750,13 @@ class JimpleFlowdroidWrapper(apkPath : String,
     }else
       Some(c)
   }
-  def fwkInstantiate(entryMethod:SootMethod, c:SootClass,globalField:SootField):Unit = {
+  private def fwkInstantiate(entryMethod:SootMethod, c:SootClass,globalField:SootField):Unit = {
     val fwkCanInit = resolver.isFrameworkClass(JimpleFlowdroidWrapper.stringNameOfClass(c)) || canReflectiveRef(c)
     if(fwkCanInit) {
       val entryPointBody = entryMethod.getActiveBody
       val units = entryPointBody.getUnits
       val locals = entryPointBody.getLocals
-      val recVar: Local = freshSootVar(entryMethod,c.getType, locals,units,globalField)
+      val recVar: Local = freshSootVar(entryMethod,c.getType, locals)
       c.getType match{
         case _:RefType =>
           units.add(Jimple.v().newAssignStmt(Jimple.v().newStaticFieldRef(globalField.makeRef()), recVar))
@@ -724,14 +774,14 @@ class JimpleFlowdroidWrapper(apkPath : String,
   }
 
   private val objectClazz = Scene.v().getObjectType().getSootClass()
-  def getFwkObj(method: SootMethod, c:SootClass, globalField:SootField, instantiate:Boolean = true):Local = {
+  private def getFwkObj(method: SootMethod, c:SootClass, globalField:SootField, instantiate:Boolean = true):Local = {
     if(instantiate){
       fwkInstantiate(method, c,globalField)
     }
     val body = method.getActiveBody
     val units = body.getUnits
     val locals: Chain[Local] = body.getLocals
-    val recVar: Local = freshSootVar(method,objectClazz.getType, locals,units,globalField)
+    val recVar: Local = freshSootVar(method,objectClazz.getType, locals)
     val ref: StaticFieldRef = Jimple.v().newStaticFieldRef(globalField.makeRef())
     val get = Jimple.v().newAssignStmt(recVar, ref)
     //TODO: removed cast since it seems to be causing issues, see if this causes different issues
@@ -746,12 +796,12 @@ class JimpleFlowdroidWrapper(apkPath : String,
   }
   private def localForPrim(method:SootMethod, t:Type, v:Value, globalField:SootField):Local = {
     val units = method.getActiveBody.getUnits
-    val freshV = freshSootVar(method, t, method.getActiveBody.getLocals, units, globalField)
+    val freshV = freshSootVar(method, t, method.getActiveBody.getLocals)
     units.add(Jimple.v().newAssignStmt(freshV, v))
     freshV
   }
 
-  def getFwkValue(entryMethod: SootMethod, t:Type, globalField:SootField, instantiate:Boolean):Local = t match {
+  private def getFwkValue(entryMethod: SootMethod, t:Type, globalField:SootField, instantiate:Boolean):Local = t match {
     case v:RefType =>
       getFwkObj(entryMethod, v.getSootClass, globalField,instantiate)
     case v:IntType =>
@@ -767,7 +817,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
     case v =>
       localForPrim(entryMethod,v, NullConstant.v(),globalField)
   }
-  def addCallbackToMain(entryMethod: SootMethod, cb:SootMethod, globalField:SootField) = {
+  private def addCallbackToMain(entryMethod: SootMethod, cb:SootMethod, globalField:SootField) = {
     val entryPointBody = entryMethod.getActiveBody
     val units = entryPointBody.getUnits
     val args = cb.getParameterTypes.asScala.map{paramType => getFwkValue(entryMethod, paramType, globalField,true)}
@@ -1376,7 +1426,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
     out
   }
 
-  override def getClassHierarchy: Map[String, Set[String]] = {
+  private def getClassHierarchy: Map[String, Set[String]] = {
     val hierarchy: Hierarchy = Scene.v().getActiveHierarchy
     Scene.v().getClasses().asScala.foldLeft(Map[String, Set[String]]()){ (acc,v) =>
       val cname = JimpleFlowdroidWrapper.stringNameOfClass(v)
@@ -1462,6 +1512,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
       case _ => throw new IllegalArgumentException()
     }
   }
+
 }
 
 case class JimpleMethodLoc(method: SootMethod) extends MethodLoc {

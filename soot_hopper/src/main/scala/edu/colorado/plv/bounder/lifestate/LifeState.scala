@@ -15,6 +15,8 @@ import scala.util.matching.Regex
 object LifeState {
 
   object LifeStateParser extends RegexParsers {
+    //Note: this parser is only used for the "NonNullReturnCallins.txt"
+    // specification are written in scala in the Specifications.scala source file
     sealed trait Ast
     case class AstID(s:String) extends Ast
     case class AstNI(v1:AstID, v2:AstID) extends Ast
@@ -217,6 +219,7 @@ object LifeState {
   object SignatureMatcher{
     implicit val rw:RW[SignatureMatcher] = RW.merge(SetSignatureMatcher.rw, SubClassMatcher.rw)
   }
+  @deprecated //TODO: get rid of this version
   case class SetSignatureMatcher(sigSet : Set[(String,String)]) extends SignatureMatcher {
     override def matches(sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean = sigSet.contains(sig)
 
@@ -224,6 +227,7 @@ object LifeState {
 
     private val sortedSig = sigSet.toList.sorted
     override def identifier: String =s"${sortedSig.head._1}_${sortedSig.head._2}"
+
   }
   object SetSignatureMatcher{
     implicit val rw:RW[SetSignatureMatcher] = macroRW
@@ -241,6 +245,7 @@ object LifeState {
     }
 
     override def identifier: String = ident
+
   }
   object SubClassMatcher{
     implicit val rw:RW[SubClassMatcher] = macroRW
@@ -359,14 +364,16 @@ object SpecSpace{
     case LSTrue => Set()
     case LSFalse => Set()
   }
-  def allI(spec:LSSpec):Set[I] = spec match{
-    case LSSpec(pred, target,_) => allI(pred).union(allI(target))
+  def allI(spec:LSSpec, includeRhs:Boolean = true):Set[I] = spec match{
+    case LSSpec(pred, target,_) if includeRhs => allI(pred).union(allI(target))
+    case LSSpec(pred, target,_) => allI(pred)
   }
 }
 /**
  * Representation of a set of possible lifestate specs */
 class SpecSpace(specs: Set[LSSpec]) {
-  private val allISpecs: Map[MessageType, Set[I]] = specs.flatMap(SpecSpace.allI).groupBy(i => i.mt)
+  def getSpecs:Set[LSSpec] = specs
+  private val allISpecs: Map[MessageType, Set[I]] = specs.flatMap(SpecSpace.allI(_)).groupBy(i => i.mt)
 //  private val iset: Map[(MessageType, (String, String)), I] = {
 //    val allISpecs = specs.flatMap(SpecSpace.allI)
 //    val collected = allISpecs.groupBy(i => (i.mt, i.signatures))

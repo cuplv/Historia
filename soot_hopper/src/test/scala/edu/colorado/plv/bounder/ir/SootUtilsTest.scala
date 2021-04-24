@@ -76,7 +76,7 @@ class SootUtilsTest extends AnyFunSuite {
     this.synchronized {
       val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath
       assert(test_interproc_1 != null)
-      val w = new JimpleFlowdroidWrapper(test_interproc_1, FlowdroidCallGraph)
+      val w = new JimpleFlowdroidWrapper(test_interproc_1, FlowdroidCallGraph, Set())
       val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
       val testSpec = LSSpec(NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
         SpecSignatures.Activity_onPause_entry)
@@ -112,7 +112,7 @@ class SootUtilsTest extends AnyFunSuite {
     this.synchronized {
       val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath()
       assert(test_interproc_1 != null)
-      val w = new JimpleFlowdroidWrapper(test_interproc_1, FlowdroidCallGraph)
+      val w = new JimpleFlowdroidWrapper(test_interproc_1, FlowdroidCallGraph, Set())
       val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
       //    val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
       val testSpec = LSSpec(NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),

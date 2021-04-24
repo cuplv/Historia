@@ -38,7 +38,7 @@ case class SymbolicExecutorConfig[M,C](stepLimit: Int,
                                        z3Timeout : Option[Int] = None,
                                        component : Option[Seq[String]] = None,
 //                                       stateTypeSolving: StateTypeSolving = SetInclusionTypeSolving,
-                                       stateTypeSolving: StateTypeSolving = SolverTypeSolving,
+//                                       stateTypeSolving: StateTypeSolving = SolverTypeSolving,
                                        outputMode : OutputMode = MemoryOutputMode,
                                        timeLimit : Int = 6000
                                       ){
@@ -51,11 +51,11 @@ case class QueryInterrupted(reason:String) extends QueryResult
 case class QueryInterruptedException(terminals:Set[IPathNode], reason:String) extends Exception
 class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
 
-  implicit var pathMode: OutputMode = config.outputMode
-  implicit var w = config.w
+  implicit val pathMode: OutputMode = config.outputMode
+  implicit val w = config.w
+  private val cha = w.getClassHierarchyConstraints
 
-  val cha =
-    new ClassHierarchyConstraints(config.w.getClassHierarchy,config.w.getInterfaces, config.stateTypeSolving)
+
 
   def getClassHierarchy = cha
   val transfer = config.transfer(cha)

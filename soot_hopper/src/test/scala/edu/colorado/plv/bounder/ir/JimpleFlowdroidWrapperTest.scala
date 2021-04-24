@@ -57,14 +57,15 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val w = new JimpleFlowdroidWrapper(apk, f.cgSource)
+      val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+        FragmentGetActivityNullSpec.getActivityNonNull,
+        ActivityLifecycle.init_first_callback,
+        RxJavaSpec.call,
+        //          RxJavaSpec.subscribeDoesNotReturnNull
+      )
+      val w = new JimpleFlowdroidWrapper(apk, f.cgSource, specs)
       val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-        new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
-          FragmentGetActivityNullSpec.getActivityNonNull,
-          ActivityLifecycle.init_first_callback,
-          RxJavaSpec.call,
-          //          RxJavaSpec.subscribeDoesNotReturnNull
-        )), cha)
+        new SpecSpace(specs), cha)
       val config = SymbolicExecutorConfig(
         stepLimit = 50, w, transfer,
         component = None)
@@ -134,14 +135,15 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val w = new JimpleFlowdroidWrapper(apk, f.cgSource)
+      val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+        FragmentGetActivityNullSpec.getActivityNonNull,
+        ActivityLifecycle.init_first_callback,
+        RxJavaSpec.call,
+        //          RxJavaSpec.subscribeDoesNotReturnNull
+      )
+      val w = new JimpleFlowdroidWrapper(apk, f.cgSource, specs)
       val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-        new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
-          FragmentGetActivityNullSpec.getActivityNonNull,
-          ActivityLifecycle.init_first_callback,
-          RxJavaSpec.call,
-          //          RxJavaSpec.subscribeDoesNotReturnNull
-        )), cha)
+        new SpecSpace(specs), cha)
       val config = SymbolicExecutorConfig(
         stepLimit = 50, w, transfer,
         component = None)

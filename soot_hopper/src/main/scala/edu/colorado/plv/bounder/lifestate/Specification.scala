@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSConstraint, LSFalse, LSSpec, NI, Not, Or, SetSignatureMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSConstraint, LSFalse, LSSpec, NI, Not, Or, SetSignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{Equals, NotEquals}
 
 object SpecSignatures {
@@ -20,12 +20,18 @@ object SpecSignatures {
   )
 
   // Activity lifecycle
-  val Activity_onResume_entry = I(CBEnter, SetSignatureMatcher(activityTypeSet.map((_, "void onResume()"))), List("_", "a"))
-  val Activity_onResume_exit = I(CBExit, SetSignatureMatcher(activityTypeSet.map((_, "void onResume()"))), List("_", "a"))
+  val Activity_onResume = SubClassMatcher("android.app.Activity", "void onResume\\(\\)", "Activity_onResume")
+  val Activity_onResume_entry =
+    I(CBEnter, Activity_onResume, List("_", "a"))
+  val Activity_onResume_exit =
+    I(CBExit, Activity_onResume, List("_", "a"))
   val Activity_onCreate_exit =
     I(CBExit, SetSignatureMatcher(activityTypeSet.map((_, "void onCreate(android.os.Bundle)"))), List("_", "a"))
-  val Activity_onPause_entry = I(CBEnter, SetSignatureMatcher(activityTypeSet.map((_, "void onPause()"))), List("_", "a"))
-  val Activity_onPause_exit = I(CBExit, SetSignatureMatcher(activityTypeSet.map((_, "void onPause()"))), List("_", "a"))
+//  val Activity_onPause_entry = I(CBEnter, SetSignatureMatcher(activityTypeSet.map((_, "void onPause()"))), List("_", "a"))
+//  val Activity_onPause_exit = I(CBExit, SetSignatureMatcher(activityTypeSet.map((_, "void onPause()"))), List("_", "a"))
+  val Activity_onPause = SubClassMatcher("android.app.Activity","void onPause\\(\\)", "Activity_onPause")
+  val Activity_onPause_entry = I(CBEnter, Activity_onPause, List("_", "a"))
+  val Activity_onPause_exit = I(CBExit, Activity_onPause, List("_", "a"))
   val Activity_init_exit = I(CBExit,
     SetSignatureMatcher((activityTypeSet + "java.lang.Object").map((_, "void <init>()"))), List("_", "a"))
 

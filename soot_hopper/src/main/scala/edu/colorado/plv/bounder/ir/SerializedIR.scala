@@ -1,5 +1,7 @@
 package edu.colorado.plv.bounder.ir
 
+import edu.colorado.plv.bounder.lifestate.SpecSpace
+import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.AppCodeResolver
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoundedTypeSet, TypeSet}
 import upickle.default.{macroRW, ReadWriter => RW}
@@ -35,8 +37,6 @@ class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] 
 
   override def appCallSites(method: MethodLoc, resolver: AppCodeResolver): Seq[AppLoc] = ???
 
-  override def getClassHierarchy: Map[String, Set[String]] = ???
-
   override def canAlias(type1: String, type2: String): Boolean = true
 
   override def makeMethodRetuns(method: MethodLoc): List[AppLoc] = ???
@@ -60,6 +60,8 @@ class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] 
   override def getThisVar(methodLoc: Loc): Option[LocalWrapper] = None
 
   override def getThisVar(methodLoc: MethodLoc): Option[LocalWrapper] = ???
+
+  override def getClassHierarchyConstraints: ClassHierarchyConstraints = ???
 }
 
 /**

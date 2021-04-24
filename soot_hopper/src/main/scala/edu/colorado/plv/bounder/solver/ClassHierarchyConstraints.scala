@@ -62,7 +62,7 @@ import upickle.default.{ReadWriter => RW, macroRW}
  * @param types mapping from super types to sub types
  */
 class ClassHierarchyConstraints(types : Map[String,Set[String]],
-                                interfaces:Set[String],useZ3TypeSolver: StateTypeSolving = SetInclusionTypeSolving ) {
+                                interfaces:Set[String],useZ3TypeSolver: StateTypeSolving = SolverTypeSolving ) {
   def getInterfaces:Set[String] = interfaces
   def intersectUpper(t1:String, t2:String):Set[String] = {
     if(types(t1).contains(t2))

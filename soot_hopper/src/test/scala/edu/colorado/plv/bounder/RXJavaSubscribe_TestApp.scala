@@ -13,15 +13,16 @@ class RXJavaSubscribe_TestApp extends AnyFunSuite{
   test("Prove location in stack trace is unreachable under a simple spec.") {
     val apk = getClass.getResource("/RXJavaSubscribe-fix-debug.apk").getPath
     assert(apk != null)
-    val w = new JimpleFlowdroidWrapper(apk,CHACallGraph)
+    val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+      FragmentGetActivityNullSpec.getActivityNonNull,
+      ActivityLifecycle.init_first_callback,
+      RxJavaSpec.call,
+      //        RxJavaSpec.subscribeDoesNotReturnNull,
+      RxJavaSpec.subscribeIsUnique
+    )
+    val w = new JimpleFlowdroidWrapper(apk,CHACallGraph, specs)
     val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod,soot.Unit](w,
-      new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
-        FragmentGetActivityNullSpec.getActivityNonNull,
-        ActivityLifecycle.init_first_callback,
-        RxJavaSpec.call,
-//        RxJavaSpec.subscribeDoesNotReturnNull,
-        RxJavaSpec.subscribeIsUnique
-      )),cha)
+      new SpecSpace(specs),cha)
     val config = SymbolicExecutorConfig(
       stepLimit = 200, w,transfer,
       component = Some(List("example.com.rxjavasubscribebug.PlayerFragment.*")))
