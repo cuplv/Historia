@@ -1698,10 +1698,9 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void onPause()",line)
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
+      prettyPrinting.dumpDebugInfo(result, "missingCb")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result,QueryFinished) == Witnessed)
-      prettyPrinting.dumpDebugInfo(result, "missingCb")
-//      ??? //TODO: this unit test shouldn't be passing
     }
 
     makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)

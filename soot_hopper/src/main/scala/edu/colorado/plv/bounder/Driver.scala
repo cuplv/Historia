@@ -701,7 +701,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     if(jobRows.size != 1 || jobRows.head._2 != owner)
       throw new IllegalStateException(s"Concurrency exception, I am $owner and found " +
         s"jobs Jobs: ${jobRows.mkString(";")} ")
-    
+
     val resData = d.getDBResults
     resData.foreach{d =>
       Await.result(db.run(resultsQry += d), 30 seconds)

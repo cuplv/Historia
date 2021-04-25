@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.ir
 
 import java.util
-import java.util.Objects
+import java.util.{Collections, Objects}
 
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper.cgEntryPointName
 import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSSpec, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
@@ -486,50 +486,12 @@ class JimpleFlowdroidWrapper(apkPath : String,
   BounderSetupApplication.loadApk(apkPath, callGraphSource)
 
 
-  private implicit val cha =
-    new ClassHierarchyConstraints(getClassHierarchy,getInterfaces)
-  override def getClassHierarchyConstraints:ClassHierarchyConstraints = cha
+//  private val preInstrumentationCha =
+//    new ClassHierarchyConstraints(getClassHierarchy,getInterfaces)
+
   private val appMethodCache : scala.collection.mutable.Set[SootMethod] = scala.collection.mutable.Set()
 
   val resolver = new DefaultAppCodeResolver[SootMethod, soot.Unit](this)
-
-  val callbacks: Set[SootMethod] = resolver.getCallbacks.flatMap{
-    case JimpleMethodLoc(method) => Some(method)
-  }
-  // ** Override all overridable callbacks that affect spec **
-  private def overrideCallbacks():Unit = {
-    val ch = Scene.v.getActiveHierarchy
-    val appClasses: Set[String] = resolver.appMethods.map(m => m.classType)
-    def findSuperMatching(sc:SootClass, sig:SignatureMatcher):Option[SootMethod] = {
-      val sName = JimpleFlowdroidWrapper.stringNameOfClass(sc)
-      val current = sc.getMethods.asScala.find{m =>
-        val methodSignature = m.getSubSignature
-        sig.matches((sName, methodSignature))
-      }
-      if(current.isEmpty && sc != Scene.v().getObjectType.getSootClass){
-        findSuperMatching(sc.getSuperclass, sig)
-      }else current
-    }
-    def overrideAllCBForI(sig: LifeState.SignatureMatcher):Unit = {
-      val baseTypes: Set[String] = sig match{
-        case SubClassMatcher(baseSubtypeOf, sig, ident) => Set(baseSubtypeOf)
-        case SetSignatureMatcher(sigSet) => sigSet.collect{
-          case (c,_) => c
-        }
-      }
-      baseTypes.foreach{t =>
-        val sc = Scene.v().getSootClass(t)
-        val appClassesImplementing = ch.getSubclassesOf(sc).asScala
-          .filter(sc2 => appClasses.contains(JimpleFlowdroidWrapper.stringNameOfClass(sc2)))
-        ??? //TODO:=====================
-      }
-    }
-    val iSet = toOverride.flatMap(s => allI(s,includeRhs = false))
-    iSet.foreach {
-      case I(CBExit, sig, _) => overrideAllCBForI(sig)
-    }
-  }
-  overrideCallbacks()
 
 
   // ** Instrument framework methods to generate app only call graph **
@@ -557,9 +519,9 @@ class JimpleFlowdroidWrapper(apkPath : String,
     val name = "Dummy_______" + c.getShortName
     val dummyClass = Scene.v().getSootClass(pkg + "." + name)
     dummyClass.setLibraryClass()
-    val someField: SootField = Scene.v.makeSootField("someField", objectClazz.getType,
-      Modifier.PUBLIC)
-    dummyClass.addField(someField) //TODO:========= does this work?
+//    val someField: SootField = Scene.v.makeSootField("someField", objectClazz.getType,
+//      Modifier.PUBLIC)
+//    dummyClass.addField(someField)
     val dummyType = dummyClass.getType
     val anySubType = AnySubType.v(dummyType)
     dummyType.setAnySubType(anySubType)
@@ -925,8 +887,15 @@ class JimpleFlowdroidWrapper(apkPath : String,
     entryPointBody.getUnits.add(Jimple.v().newAssignStmt(Jimple.v()
       .newStaticFieldRef(globalField.makeRef()), allocLocal))
 
+
+
+    overrideCallbacks()
+    resolver.invalidateCallbacks()
+
     // add each callback to main method
-    callbacks.foreach { cb => addCallbackToMain(entryMethod, cb, globalField) }
+    resolver.getCallbacks.flatMap{
+      case JimpleMethodLoc(method) => Some(method)
+    }.foreach { cb => addCallbackToMain(entryMethod, cb, globalField) }
 
     // return statement validate and set entry points for spark analysis
     entryPointBody.getUnits.add(Jimple.v().newReturnVoidStmt())
@@ -988,22 +957,114 @@ class JimpleFlowdroidWrapper(apkPath : String,
 //    PhaseOptions.v.setPhaseOption(sparkTransform, "simplify-offline:true")
 //    PackManager.v.getPack("cg").apply()
   }
-
+  val preCallbacks: Set[SootMethod] = resolver.getCallbacks.flatMap{
+    case JimpleMethodLoc(method) => Some(method)
+  }
   val cg: CallGraphProvider = callGraphSource match{
     case SparkCallGraph =>
       buildSparkCallGraph()
       new CallGraphWrapper(Scene.v().getCallGraph)
     case CHACallGraph =>
-      Scene.v().setEntryPoints(callbacks.toList.asJava)
+      Scene.v().setEntryPoints(preCallbacks.toList.asJava)
       CHATransformer.v().transform()
       new CallGraphWrapper(Scene.v().getCallGraph)
     case AppOnlyCallGraph =>
       val chacg: CallGraph = Scene.v().getCallGraph
-      new AppOnlyCallGraph(chacg, callbacks, this, resolver)
+      new AppOnlyCallGraph(chacg, preCallbacks, this, resolver)
     case FlowdroidCallGraph => new CallGraphWrapper(Scene.v().getCallGraph)
     case PatchedFlowdroidCallGraph =>
       new PatchingCallGraphWrapper(Scene.v().getCallGraph, getAppMethods(resolver))
   }
+
+
+
+
+  val cha =
+    new ClassHierarchyConstraints(getClassHierarchy,getInterfaces)
+
+  override def getClassHierarchyConstraints:ClassHierarchyConstraints = cha
+  // ** Override all overridable callbacks that affect spec **
+  private def overrideCallbacks():Unit = {
+    val ch = Scene.v.getActiveHierarchy
+    val cha =
+      new ClassHierarchyConstraints(getClassHierarchy,getInterfaces)
+
+    val appClasses: Set[String] = resolver.appMethods.map(m => m.classType)
+    def findSuperMatching(sc:SootClass, sig:SignatureMatcher):Option[SootMethod] = {
+      val sName = JimpleFlowdroidWrapper.stringNameOfClass(sc)
+      val current = sc.getMethods.asScala.find{m =>
+        val methodSignature = m.getSubSignature
+        sig.matches((sName, methodSignature))(cha)
+      }
+      if(current.isEmpty && sc != Scene.v().getObjectType.getSootClass){
+        findSuperMatching(sc.getSuperclass, sig)
+      }else current
+    }
+    def overrideNonExistentCallback(c:SootClass, m:SootMethod):Unit = {
+      val mName = m.getName
+      val mod = m.getModifiers & (~ Modifier.ABSTRACT)
+      val retType = m.getReturnType
+      val parType = m.getParameterTypes
+      val newMethod = Scene.v().makeSootMethod(mName, parType, retType, mod)
+
+      c.addMethod(newMethod)
+      val body = Jimple.v().newBody(newMethod)
+      body.insertIdentityStmts(c)
+      newMethod.setActiveBody(body)
+
+      val units = body.getUnits
+      val invExpr = Jimple.v().newSpecialInvokeExpr(body.getThisLocal, m.makeRef(),
+        body.getParameterLocals)
+      if(JimpleFlowdroidWrapper.stringNameOfType(retType) == "void") {
+        val invCmd = Jimple.v().newInvokeStmt(invExpr)
+        units.add(invCmd)
+        units.add(Jimple.v().newReturnVoidStmt())
+      }else{
+        val tmpLocal = Jimple.v().newLocal("tmp__", retType)
+        body.getLocals.add(tmpLocal)
+        val assignCmd = Jimple.v().newAssignStmt(tmpLocal,invExpr)
+        units.add(assignCmd)
+        units.add(Jimple.v().newReturnStmt(tmpLocal))
+      }
+      body.validate()
+    }
+    def overrideAllCBForI(sig: LifeState.SignatureMatcher):Unit = {
+      val baseTypes: Set[String] = sig match{
+        case SubClassMatcher(baseSubtypeOf, sig, ident) => Set(baseSubtypeOf)
+        case SetSignatureMatcher(sigSet) => sigSet.collect{
+          case (c,_) => c
+        }
+      }
+      baseTypes.foreach{t =>
+        val sc = Scene.v().getSootClass(t)
+        val subClasses: List[SootClass] = try{
+          ch.getSubclassesOf(sc).asScala.toList
+        } catch{
+              // TODO: figure out why soot does this
+          case _:NullPointerException => List()
+        }
+        val appClassesImplementing = subClasses
+          .filter(sc2 => appClasses.contains(JimpleFlowdroidWrapper.stringNameOfClass(sc2)))
+        appClassesImplementing.foreach{c =>
+          val callbackExists = c.getMethods.asScala.exists{m =>
+            sig.matchesSubSig(m.getSubSignature)
+          }
+          if(!callbackExists) {
+            val superMethod = findSuperMatching(c, sig)
+            superMethod.foreach(superMethod => overrideNonExistentCallback(c,superMethod))
+            c.validate()
+          }
+        }
+      }
+    }
+    val iSet = toOverride.flatMap(s => allI(s,includeRhs = false))
+    iSet.foreach {
+      case I(CBExit, sig, _) => overrideAllCBForI(sig)
+      case I(CBEnter, sig, _) => overrideAllCBForI(sig)
+      case _ => ()
+    }
+  }
+
 
   private def cmdToLoc(u : soot.Unit, containingMethod:SootMethod): AppLoc = {
     AppLoc(JimpleMethodLoc(containingMethod),JimpleLineLoc(u,containingMethod),false)
@@ -1551,7 +1612,8 @@ case class JimpleMethodLoc(method: SootMethod) extends MethodLoc {
   override def isInterface: Boolean = method.getDeclaringClass.isInterface
 }
 case class JimpleLineLoc(cmd: soot.Unit, method: SootMethod) extends LineLoc{
-  override def toString: String = "line: " + cmd.getJavaSourceStartLineNumber() + " " + cmd.toString()
+  lazy val cmdString: String = cmd.toString
+  override def toString: String = "line: " + cmd.getJavaSourceStartLineNumber() + " " + cmdString
   def returnTypeIfReturn :Option[String] = cmd match{
     case cmd :JReturnVoidStmt => Some("void")
     case _ =>
@@ -1568,8 +1630,8 @@ case class JimpleLineLoc(cmd: soot.Unit, method: SootMethod) extends LineLoc{
     case other: JimpleLineLoc =>
       lazy val lineEq = other.cmd.getJavaSourceStartLineNumber == cmd.getJavaSourceStartLineNumber
       lazy val methodEq = other.method == method
-      lazy val cmdEq = other.cmd.toString() == cmd.toString()
-      val res = lineEq && methodEq && cmdEq
+      lazy val cmdEq = other.cmdString == cmdString
+      val res = lineEq && methodEq &&  cmdEq
       res
     case _ =>
       false

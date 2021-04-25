@@ -49,10 +49,14 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
 
   protected val excludedClasses = "dummyMainClass".r
 
-  val appMethods = ir.getAllMethods.filter(m => !isFrameworkClass(m.classType)).toSet
+  var appMethods = ir.getAllMethods.filter(m => !isFrameworkClass(m.classType)).toSet
   private def iGetCallbacks():Set[MethodLoc] = appMethods.filter(resolveCallbackEntry(_).isDefined)
-  private val callbacks:Set[MethodLoc] = iGetCallbacks()
+  private var callbacks:Set[MethodLoc] = iGetCallbacks()
   override def getCallbacks:Set[MethodLoc] = callbacks
+  def invalidateCallbacks() = {
+    appMethods = ir.getAllMethods.filter(m => !isFrameworkClass(m.classType)).toSet
+    callbacks = iGetCallbacks()
+  }
 
   @tailrec
   final def sampleDeref():AppLoc = {

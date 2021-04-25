@@ -56,6 +56,22 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
     )
     Await.result(db.run(setup), 20 seconds)
   }
+//  // TODO turn off synchronous mode sqlite
+//  // PRAGMA schema.synchronous = OFF
+  def turnOffFSync():Unit = {
+    import slick.driver.H2Driver.api._
+    import slick.jdbc.GetResult
+    import slick.jdbc.SQLActionBuilder
+    import scala.concurrent.Await
+    case class StrRes(s:String)
+    implicit val getStrResult = GetResult(r => StrRes(r.<<))
+    val schema = witnessQry.schema
+//    schema.synchronized()
+    val res = Await.result(db.run(sql"""PRAGMA synchronous = OFF;""".as[StrRes]), 30 seconds)
+    res
+  }
+  turnOffFSync()
+
   private val id = new AtomicInteger(0)
   def nextId:Int = {
     id.getAndAdd(1)

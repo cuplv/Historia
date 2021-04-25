@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NI}
 import edu.colorado.plv.bounder.lifestate.{SpecSignatures, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state._
-import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, ControlFlowResolver, DefaultAppCodeResolver, FlowdroidCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, ControlFlowResolver, DefaultAppCodeResolver, FlowdroidCallGraph, SparkCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
 
@@ -14,7 +14,7 @@ import scala.annotation.tailrec
 class SootUtilsTest extends AnyFunSuite {
   val test_interproc_1 = getClass.getResource("/test_interproc_1.apk").getPath()
   assert(test_interproc_1 != null)
-  BounderSetupApplication.loadApk(test_interproc_1, FlowdroidCallGraph)
+  BounderSetupApplication.loadApk(test_interproc_1, SparkCallGraph)
 
   test("findMethodLoc should find a location based on a classname and line number."){
     this.synchronized { //TODO: does this fix issue when running all unit tests?
@@ -76,7 +76,7 @@ class SootUtilsTest extends AnyFunSuite {
     this.synchronized {
       val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath
       assert(test_interproc_1 != null)
-      val w = new JimpleFlowdroidWrapper(test_interproc_1, FlowdroidCallGraph, Set())
+      val w = new JimpleFlowdroidWrapper(test_interproc_1, SparkCallGraph, Set())
       val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
       val testSpec = LSSpec(NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
         SpecSignatures.Activity_onPause_entry)
@@ -112,7 +112,7 @@ class SootUtilsTest extends AnyFunSuite {
     this.synchronized {
       val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath()
       assert(test_interproc_1 != null)
-      val w = new JimpleFlowdroidWrapper(test_interproc_1, FlowdroidCallGraph, Set())
+      val w = new JimpleFlowdroidWrapper(test_interproc_1, SparkCallGraph, Set())
       val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
       //    val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
       val testSpec = LSSpec(NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
