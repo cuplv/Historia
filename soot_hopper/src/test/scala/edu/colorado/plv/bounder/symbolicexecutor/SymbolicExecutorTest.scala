@@ -321,9 +321,9 @@ class SymbolicExecutorTest extends AnyFunSuite {
       // Search refutation state for materialized "o2" field
       // Should not be in there since conditional is not relevant
       val o2ExistsInRef = result.exists((p:IPathNode) => findInWitnessTree(p,
-        {pn => pn.qry.state.heapConstraints.exists{
+        {pn => pn.qry.getState.get.heapConstraints.exists{
           case (FieldPtEdge(_,fieldName),_) if fieldName == "o2" =>
-            println(pn.qry.state)
+            println(pn.qry.getState)
             true
           case _ => false
         }}).isDefined)
@@ -1375,7 +1375,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           println("--- witness ---")
           onViewCreatedInTree.head.foreach{v =>
             println(v.qry.loc)
-            println(v.qry.state)
+            println(v.qry.getState)
             println()
           }
           println("--- end witness ---")
@@ -1484,7 +1484,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           println("--- witness ---")
           onViewCreatedInTree.head.foreach{v =>
             println(v.qry.loc)
-            println(v.qry.state)
+            println(v.qry.getState)
             println()
           }
           println("--- end witness ---")

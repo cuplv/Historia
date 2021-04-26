@@ -17,7 +17,7 @@ class PrettyPrinting(mode : OutputMode = MemoryOutputMode) {
 //  val templateFile = getClass.getResource("/pageTemplate.html").getPath
 //  val template = Source.fromFile(templateFile).getLines().mkString
   def qryString(q : Qry):String = q match{
-    case SomeQry(state,loc) =>
+    case LiveQry(state,loc) =>
       loc.toString +
         "\n       state: " + state.toString.replaceAll("\n"," ")
     case BottomQry(state,loc) =>
@@ -40,10 +40,10 @@ class PrettyPrinting(mode : OutputMode = MemoryOutputMode) {
   def printTraces(result: Set[IPathNode], outFile: String): Unit = {
     val pw = File(outFile)
     val live = result.flatMap{
-      case pn@PathNode(_: SomeQry, false) => Some(("live",pn))
+      case pn@PathNode(_: LiveQry, false) => Some(("live",pn))
       case pn@PathNode(_ :WitnessedQry, _) => Some(("witnessed", pn))
       case pn@PathNode(_:BottomQry, false) => Some(("refuted",pn))
-      case pn@PathNode(_:SomeQry, true) => Some((s"subsumed by:\n -- ${qryString(pn.subsumed.get.qry)}\n", pn))
+      case pn@PathNode(_:LiveQry, true) => Some((s"subsumed by:\n -- ${qryString(pn.subsumed.get.qry)}\n", pn))
       case _ => None
     }
     println(s"live traces: ${live.size}")
@@ -224,7 +224,7 @@ class PrettyPrinting(mode : OutputMode = MemoryOutputMode) {
           case _ => false
         }, s"$fname.subsumed")
         printTraces(qrySet.filter{
-          case PathNode(_:SomeQry, false) => true
+          case PathNode(_:LiveQry, false) => true
           case _ => false
         }, s"$fname.live")
       case None =>

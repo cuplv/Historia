@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder
 import better.files.File
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CmdNotImplemented, CmdWrapper, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Loc, NopCmd}
 import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, QueryFinished, QueryInterrupted, SymbolicExecutorConfig}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, InitialQuery, OutputMode, PathNode, SomeQry, WitnessedQry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, InitialQuery, OutputMode, PathNode, LiveQry, WitnessedQry}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -99,8 +99,8 @@ object BounderUtil {
         if(result.forall {
           case PathNode(_: BottomQry, _) => true
           case PathNode(_: WitnessedQry, _) => false
-          case PathNode(_: SomeQry, true) => true
-          case PathNode(_: SomeQry, false) => false
+          case PathNode(_: LiveQry, true) => true
+          case PathNode(_: LiveQry, false) => false
         }) {
           return if(result.size > 0) Proven else Unreachable
         }

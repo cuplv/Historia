@@ -942,6 +942,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
 //    SparkTransformer.v().transform("", opt.asJava)
 
     SparkTransformer.v().transform("", opt.asJava)
+
 //    PackManager.v.getPack("spark").apply()
 //    SparkTransformer.v().transform("", opt.asJava)
 //    import soot.PackManager

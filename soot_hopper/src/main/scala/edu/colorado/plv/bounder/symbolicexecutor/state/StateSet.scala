@@ -52,8 +52,8 @@ object StateSet {
       case Nil =>
         current.copy(states = current.states + state)//
     }
-    val local = localEdgeFromState(pathNode.qry.state)
-    val heap = heapEdgesFromState(pathNode.qry.state)
+    val local = localEdgeFromState(pathNode.qry.getState.get)
+    val heap = heapEdgesFromState(pathNode.qry.getState.get)
     iEdges(local ++ heap,pathNode, stateSet)
   }
   private def dbgAllSubs(pathNode:IPathNode, stateSet:StateSet, canSubsume: (State,State)=> Boolean):(Option[IPathNode], Int) = {
@@ -61,7 +61,7 @@ object StateSet {
     def iDbg(pathNode:IPathNode, stateSet:StateSet, canSubsume: (State,State)=> Boolean):Option[IPathNode] = {
       val res = stateSet.states.find { subsuming =>
         subsCount = subsCount + 1
-        canSubsume(subsuming.qry.state, pathNode.qry.state)
+        canSubsume(subsuming.qry.getState.get, pathNode.qry.getState.get)
       }
       object Subs {
         def unapply(s: StateSet): Option[IPathNode] = {
@@ -76,14 +76,14 @@ object StateSet {
     (iDbg(pathNode, stateSet, canSubsume), subsCount)
   }
   def findSubsuming(pathNode:IPathNode, stateSet:StateSet, canSubsume: (State,State)=> Boolean):Option[IPathNode] = {
-    val local = localEdgeFromState(pathNode.qry.state)
-    val heap = heapEdgesFromState(pathNode.qry.state)
+    val local = localEdgeFromState(pathNode.qry.getState.get)
+    val heap = heapEdgesFromState(pathNode.qry.getState.get)
     var fastCount:Int = 0
     def iFind(edges: List[String], pathNode:IPathNode, current:StateSet):Option[IPathNode] = {
       //TODO: add par back in?
       val currentCanSubs = current.states.find{ subsuming =>
         fastCount = fastCount + 1
-        canSubsume(subsuming.qry.state, pathNode.qry.state)
+        canSubsume(subsuming.qry.getState.get, pathNode.qry.getState.get)
       }
       if(currentCanSubs.isDefined)
         return currentCanSubs

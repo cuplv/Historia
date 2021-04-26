@@ -74,7 +74,8 @@ case class RunConfig(apkPath:String = "",
                      limit:Int = -1,
                      samples:Int = 5,
                      tag:String = "",
-                     timeLimit:Int = 1200 // max clock time per query
+                     timeLimit:Int = 1200, // max clock time per query
+                     truncateOut:Boolean = true
                     ){
 }
 
@@ -105,7 +106,7 @@ object Driver {
 
   def readDB(outFolder:File, findNoPred:Boolean = false): Unit = {
     val dbPath = outFolder / "paths.db"
-    val db = DBOutputMode(dbPath.toString())
+    val db = DBOutputMode(dbPath.toString(), truncate = false)
     val liveNodes: Set[IPathNode] = db.getTerminal().map(v=>v)
     val pp = new PrettyPrinting(db)
     pp.dumpDebugInfo(liveNodes, "out", Some(outFolder.toString))
@@ -197,7 +198,7 @@ object Driver {
         implicit val opt = File.CopyOptions(overwrite = true)
         outFile.moveTo(File(outFolder) / "paths.db1")
       }
-      val pathMode = DBOutputMode(outFile.canonicalPath)
+      val pathMode = DBOutputMode(outFile.canonicalPath, cfg.truncateOut)
       val res: Seq[(InitialQuery,Int, Loc, (ResultSummary, MaxPathCharacterization), Long)] =
         runAnalysis(cfg,apkPath, componentFilter,pathMode, specSet.getSpecSet(),stepLimit, initialQuery)
       res.zipWithIndex.foreach { case (iq, ind) =>
@@ -315,7 +316,7 @@ object Driver {
         val query: Set[Qry] = initialQuery.make(symbolicExecutor, w)
         val out = new ListBuffer[String]()
         val initialize: Set[IPathNode] => Int = mode match {
-          case mode@DBOutputMode(_) => (startingNode: Set[IPathNode]) =>
+          case mode@DBOutputMode(_,_) => (startingNode: Set[IPathNode]) =>
             val id = mode.initializeQuery(startingNode, cfg, initialQuery)
             val tOut = s"initial query: $initialQuery   id: $id"
             println(tOut)
@@ -329,7 +330,7 @@ object Driver {
 
         val allRes: Set[(Int, Loc, ResultSummary, MaxPathCharacterization, Long)] = results.map { res =>
           mode match {
-            case m@DBOutputMode(_) =>
+            case m@DBOutputMode(_,_) =>
               val interpretedRes = (res.queryId, res.location,
                 BounderUtil.interpretResult(res.terminals, res.result),
                 BounderUtil.characterizeMaxPath(res.terminals)(mode)
@@ -657,7 +658,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
       a + (f.getName -> f.get(cc))
     }
   def downloadResults(outFolder:File, filterResult:String, limit:Option[Int]) = {
-    val rand = SimpleFunction.nullary[Double]("rand")
+    //    val rand = SimpleFunction.nullary[Double]("rand")
     val getJobs = for {
       job <- jobQry
       res <- resultsQry if job.jobId === res.jobId && res.result === filterResult
@@ -668,15 +669,15 @@ class ExperimentsDb(bounderJar:Option[String] = None){
 
     val dataToDownload = limitJobRows.map{case (job, res) =>
       val cfg = read[RunConfig](job.config)
-      val sOut:String = cfg.outFolder.get.replace("${baseDirOut}","").dropWhile(_ == "/")
-      outFolder.createDirectoryIfNotExists(true)
+      val sOut:String = cfg.outFolder.get.replace("${baseDirOut}","").dropWhile(_ == '/')
+      outFolder.createDirectoryIfNotExists(createParents = true)
       val currentOut = File(outFolder.toString + "/" +  sOut)
       println("out folder: " + currentOut)
-      currentOut.createDirectoryIfNotExists(true)
+      currentOut.createDirectoryIfNotExists(createParents = true)
 
       val resDir = currentOut / s"res_${res.id}"
 //      (resDir / "id").append(res.id.toString)
-      resDir.createIfNotExists(true)
+      resDir.createIfNotExists(asDirectory = true)
       getCCParams(res).foreach{case (k,v) => (resDir / s"res_$k").append(v.toString)}
       getCCParams(job).foreach{case (k,v) => (resDir / s"job_$k").append(v.toString)}
 
@@ -687,12 +688,13 @@ class ExperimentsDb(bounderJar:Option[String] = None){
       case (Some(d), out) =>
         println(s"downloading data $d to directory $out")
         val dataDir = out / s"data_$d"
-        dataDir.createIfNotExists(true)
+        dataDir.createIfNotExists(asDirectory = true)
         val data = (dataDir / "data.zip")
         getData(d, data)
+      case (None,_) => ()
     }
   }
-  def finishSuccess(d : ResultDir, stdout:String, stderr:String) = {
+  def finishSuccess(d : ResultDir, stdout:String, stderr:String): Int = {
     val owner: String = BounderUtil.systemID()
     val iamowner = for(
       j <- jobQry if j.jobId === d.jobId
@@ -711,7 +713,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     ) yield (j.status, j.stdout, j.stderr)
     Await.result(db.run(q.update(("completed",Some(stdout),Some(stderr)))), 30 seconds)
   }
-  def finishFail(id:Int, exn:String) = {
+  def finishFail(id:Int, exn:String): Int = {
     val q = for(
       j <- jobQry if j.jobId === id
     ) yield j.status

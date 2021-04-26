@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.synthesis
 import com.microsoft.z3.{AST, BoolExpr, Context, Expr, IntExpr, IntNum}
 import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSAtom, PredicateSpace}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{PureVar, Qry, ReachingGraph, SomeQry, State}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{PureVar, Qry, ReachingGraph, LiveQry, State}
 
 import scala.annotation.tailrec
 
@@ -37,7 +37,7 @@ class Z3ModelGenerator extends ModelGenerator {
 
   def encodeNodeReachability(qry:Qry, pred: LifeState.LSPred, theta: Map[String, PureVar],
                              predSpace : PredicateSpace) : Unit = qry match {
-    case SomeQry(State(stack, heap, pure, _,_,_,_,_), loc) => {
+    case LiveQry(State(stack, heap, pure, _,_,_,_,_), loc) => {
       val targetSig = loc.msgSig.get
 //      val edges = predSpace.getEdgeSet
       ???

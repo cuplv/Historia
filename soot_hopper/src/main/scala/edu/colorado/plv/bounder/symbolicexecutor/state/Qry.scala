@@ -2,8 +2,8 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir._
+import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.SymbolicExecutor
-import soot.{SootClass, SootMethod}
 import ujson.Value
 import upickle.default.{macroRW, ReadWriter => RW}
 
@@ -12,7 +12,7 @@ import scala.util.matching.Regex
 
 object Qry {
 
-  implicit val rw:RW[Qry] = RW.merge(macroRW[SomeQry], macroRW[BottomQry], macroRW[WitnessedQry])
+  implicit val rw:RW[Qry] = RW.merge(macroRW[LiveQry], macroRW[BottomQry], macroRW[WitnessedQry])
 
   def makeReach[M,C](ex: SymbolicExecutor[M,C],
                      w:IRWrapper[M,C],
@@ -25,7 +25,7 @@ object Qry {
     containingMethodPos.map{method =>
       val queryStack = List(CallStackFrame(method, None,Map()))
       val state0 = State.topState.copy(callStack = queryStack, nextCmd = List(targetLoc))
-      SomeQry(state0, targetLoc)
+      LiveQry(state0, targetLoc)
     }.toSet
   }
 
@@ -35,8 +35,8 @@ object Qry {
                                 methodName:String,
                                 line:Int,
                                 callinMatches:Regex):Set[Qry] ={
-    implicit val wr = w
-    implicit val ch = ex.getClassHierarchy
+    implicit val wr: IRWrapper[M, C] = w
+    implicit val ch: ClassHierarchyConstraints = ex.getClassHierarchy
     val locs = w.findLineInMethod(className, methodName,line)
     val callinLocals = locs.flatMap(a => {
       w.cmdAtLocation(a) match{
@@ -60,20 +60,21 @@ object Qry {
       val state = State.topState.copy(callStack = queryStack)
       val (pv,state1) = state.getOrDefine(local, None)
       val state2 = state1.copy(pureFormula = Set(PureConstraint(pv, Equals, NullVal)), nextCmd = List(location))
-      SomeQry(state2, location)
+      LiveQry(state2, location)
     }.toSet
   }
 
   def makeAllReceiverNonNull[M,C](ex:SymbolicExecutor[M,C],w:IRWrapper[M,C],className: String): Set[Qry] = {
     //TODO: clean up this method
-    implicit val wra = w
-    implicit val ch = w.getClassHierarchyConstraints
+    implicit val wra: IRWrapper[M, C] = w
+    implicit val ch: ClassHierarchyConstraints = w.getClassHierarchyConstraints
     val jw = w.asInstanceOf[JimpleFlowdroidWrapper]
     val c = jw.getClassByName(className)
     val cmds = (for {
       cl <-c
       m <- cl.getMethods.asScala
-      cmd <- m.getActiveBody.getUnits.asScala.map(v => jw.makeCmd(v,m, Some(AppLoc(JimpleMethodLoc(m),JimpleLineLoc(v,m),true))))
+      cmd <- m.getActiveBody.getUnits.asScala
+        .map(v => jw.makeCmd(v,m, Some(AppLoc(JimpleMethodLoc(m),JimpleLineLoc(v,m),isPre = true))))
     } yield cmd).toSet
 
     val qrys = cmds.map{cmd =>
@@ -92,7 +93,7 @@ object Qry {
         val queryStack = List(CallStackFrame(cbexits.head, None, Map()))
         val state0 = State.topState.copy(callStack = queryStack)
         val (pureVar, state1) = state0.getOrDefine(v, None)
-        SomeQry(state1.copy(pureFormula = Set(PureConstraint(pureVar, Equals, NullVal)),
+        LiveQry(state1.copy(pureFormula = Set(PureConstraint(pureVar, Equals, NullVal)),
           nextCmd = List(cmd.getLoc)), cmd.getLoc)
       }
     }
@@ -108,8 +109,8 @@ object Qry {
                                line:Int,
                                fieldOrMethod: Option[Regex] = None
                               ):Set[Qry] = {
-    implicit val wr = w
-    implicit val ch = ex.getClassHierarchy
+    implicit val wr: IRWrapper[M, C] = w
+    implicit val ch: ClassHierarchyConstraints = ex.getClassHierarchy
 
     val locs = w.findLineInMethod(className, methodName,line)
     val isTarget = fieldOrMethod.getOrElse("(.*)".r)
@@ -144,7 +145,7 @@ object Qry {
       val queryStack = List(CallStackFrame(cbexit, None, Map()))
       val state0 = State.topState.copy(callStack = queryStack)
       val (pureVar, state1) = state0.getOrDefine(varname, None)
-      SomeQry(state1.copy(pureFormula = Set(PureConstraint(pureVar, Equals, NullVal)),
+      LiveQry(state1.copy(pureFormula = Set(PureConstraint(pureVar, Equals, NullVal)),
         nextCmd = List(derefLoc)), derefLoc)
     }.toSet
   }
@@ -158,6 +159,7 @@ object InitialQuery{
   private def vToJ(v:(String,Any)):(String,Value) = v match{
     case (k,v:String) => k -> ujson.Str(v)
     case (k,v:Integer) => k -> ujson.Num(v.toDouble)
+    case (_,v) => throw new IllegalArgumentException(s"type ${v.getClass.toString} not supported")
   }
   implicit val rw:RW[InitialQuery] = upickle.default.readwriter[ujson.Value].bimap[InitialQuery](
     {
@@ -230,28 +232,37 @@ case class CallinReturnNonNull(className:String, methodName:String,
 
 sealed trait Qry {
   def loc: Loc
-  def state: State
+  def getState: Option[State]
   def toString:String
-  def copyWithNewLoc(upd: Loc => Loc):Qry
   def copyWithNewState(state:State):Qry
 }
 //Query consists of a location and an abstract state defined at the program point just before that location.
-case class SomeQry(state:State, loc: Loc) extends Qry {
-  override def toString:String = loc.toString + "  " + state.toString
-
-  override def copyWithNewLoc(upd: Loc => Loc): Qry = this.copy(loc = upd(loc))
+case class LiveQry(state:State, loc: Loc) extends Qry {
+  override def toString:String = loc.toString + "  " + getState.toString
 
   override def copyWithNewState(state: State): Qry = this.copy(state = state)
+
+  override def getState: Option[State] = Some(state)
+}
+// A live query where we didn't retain the state to save space
+// This query can only come from reading the output of a truncated run
+//TODO: alter types so that getState doesn't need to return option
+case class LiveTruncatedQry(loc:Loc) extends Qry{
+  override def getState: Option[State] = None
+
+  override def copyWithNewState(state: State): Qry = this
 }
 // Infeasible precondition, path refuted
 case class BottomQry(state:State, loc:Loc) extends Qry {
-  override def toString:String = "!!!refuted!!! loc: " + loc.toString + " state: " + state.toString
-  override def copyWithNewLoc(upd: Loc => Loc): Qry = this.copy(loc = upd(loc))
+  override def toString:String = "!!!refuted!!! loc: " + loc.toString + " state: " + getState.toString
   override def copyWithNewState(state: State): Qry = this.copy(state = state)
+
+  override def getState: Option[State] = Some(state)
 }
 
 case class WitnessedQry(state:State, loc:Loc) extends Qry {
-  override def toString:String = "!!!witnessed!!! loc: " + loc.toString + " state: " + state.toString
-  override def copyWithNewLoc(upd: Loc => Loc): Qry = this.copy(loc = upd(loc))
+  override def toString:String = "!!!witnessed!!! loc: " + loc.toString + " state: " + getState.toString
   override def copyWithNewState(state: State): Qry = this.copy(state = state)
+
+  override def getState: Option[State] = Some(state)
 }

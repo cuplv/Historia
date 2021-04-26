@@ -32,7 +32,12 @@ sealed trait OutputMode
 
 case object MemoryOutputMode extends OutputMode
 
-case class DBOutputMode(dbfile:String) extends OutputMode{
+/**
+ *
+ * @param dbfile sqlite file to write detailed results
+ * @param truncate ommit states for less important nodes, value does not matter if only reading
+ */
+case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
 
   val dbf = File(dbfile)
   private val witnessQry = TableQuery[WitnessTable]
@@ -65,10 +70,10 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
     import scala.concurrent.Await
     case class StrRes(s:String)
     implicit val getStrResult = GetResult(r => StrRes(r.<<))
-    val schema = witnessQry.schema
-//    schema.synchronized()
     val res = Await.result(db.run(sql"""PRAGMA synchronous = OFF;""".as[StrRes]), 30 seconds)
-    res
+    val res2 = Await.result(db.run(sql"""PRAGMA journal_mode=WAL;""".as[StrRes]), 30 seconds)
+    //    println(res)
+    //    println(res2)
   }
   turnOffFSync()
 
@@ -220,17 +225,35 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
     Await.result(db.run(updateMetadata.update(updatedMeta)), 600 seconds)
   }
 
+  private def shouldTruncate(loc:Loc):Boolean = {
+    if(truncate)
+      loc match {
+        case AppLoc(_, _, _) => true
+        case SkippedInternalMethodInvoke(_, _, _) => true
+        case SkippedInternalMethodReturn(_, _, _, _) => true
+        case InternalMethodInvoke(_, _, _) => true
+        case InternalMethodReturn(_, _, _) => true
+        case _ => false
+      }
+    else false
+  }
   def writeNode(node: DBPathNode): Unit = {
     val qryState = node.qry match {
-      case SomeQry(_, _) => "live"
+      case LiveQry(_, _) => "live"
       case BottomQry(_, _) => "refuted"
       case WitnessedQry(_, _) => "witnessed"
+      case LiveTruncatedQry(_) => throw new IllegalArgumentException("Cannot write truncated node")
     }
     val loc = write(node.qry.loc)
+    val stateStr = if(shouldTruncate(node.qry.loc))
+      ""
+    else
+      write[State](node.qry.getState.get)
     val writeFuture = db.run(witnessQry +=
-      (node.thisID, qryState, write(node.qry.state), loc, node.subsumedID, node.depth))
+      (node.thisID, qryState, stateStr, loc, node.subsumedID, node.depth))
     Await.result(writeFuture, 30 seconds)
-    val edges: Seq[(Int, Int)] = node.succ(this).map(sid => (node.thisID,sid.asInstanceOf[DBPathNode].thisID))
+//    val edges: Seq[(Int, Int)] = node.succ(this).map(sid => (node.thisID,sid.asInstanceOf[DBPathNode].thisID))
+    val edges:Seq[(Int,Int)] = node.succID.map(sid => (node.thisID, sid))
     val writeGraphFuture = db.run(graphQuery ++= edges)
     Await.result(writeGraphFuture,30 seconds)
   }
@@ -258,11 +281,13 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
     val succQry = for (edge <- graphQuery if edge.src === id) yield edge.tgt
 
     val pred: List[Int] = Await.result(db.run(succQry.result), 30 seconds).toList
-    val state: State = read[State](res._3)
-    val qry = queryState match {
-      case "live" => SomeQry(state, loc)
-      case "refuted" => BottomQry(state, loc)
-      case "witnessed" => WitnessedQry(state, loc)
+    val stateOpt: Option[State] = if(res._3 == "") None else Some( read[State](res._3) )
+    val qry = (queryState,stateOpt) match {
+      case ("live", Some(state)) => LiveQry(state, loc)
+      case ("refuted", Some(state)) => BottomQry(state, loc)
+      case ("witnessed", Some(state)) => WitnessedQry(state, loc)
+      case ("live", None) => LiveTruncatedQry(loc)
+      case _ => throw new IllegalStateException("Wrong query for missing serialized state")
     }
     val depth = res._6
     DBPathNode(qry, id, pred, subsumingId, depth,-1)
@@ -340,7 +365,7 @@ object PathNode{
     mode match {
       case MemoryOutputMode =>
         MemoryPathNode(qry, succ, subsumed, depth,ordDepth)
-      case m@DBOutputMode(_) =>
+      case m@DBOutputMode(_,_) =>
         val id = m.nextId
         val succID = succ.map(n => n.asInstanceOf[DBPathNode].thisID)
         val subsumedID = subsumed.map(n => n.asInstanceOf[DBPathNode].thisID)
@@ -380,12 +405,11 @@ sealed trait IPathNode {
   def succ(implicit mode : OutputMode):List[IPathNode]
   def subsumed(implicit mode : OutputMode): Option[IPathNode]
   def setSubsumed(v: Option[IPathNode])(implicit mode: OutputMode):IPathNode
-  def copyWithNewLoc(upd: Loc=>Loc):IPathNode
   def mergeEquiv(other:IPathNode):IPathNode
   def copyWithNewQry(newQry:Qry):IPathNode
   final def addAlternate(alternatePath: IPathNode): IPathNode = {
-    val alternates = qry.state.alternateCmd
-    val newState = qry.state.copy(alternateCmd = alternatePath.qry.state.nextCmd ++ alternates)
+    val alternates = qry.getState.get.alternateCmd
+    val newState = qry.getState.get.copy(alternateCmd = alternatePath.qry.getState.get.nextCmd ++ alternates)
     this.copyWithNewQry(qry.copyWithNewState(newState))
   }
 }
@@ -410,11 +434,9 @@ case class MemoryPathNode(qry: Qry, succV : List[IPathNode], subsumedV: Option[I
 
   override def subsumed(implicit mode: OutputMode): Option[IPathNode] = subsumedV
 
-  override def copyWithNewLoc(upd:Loc=>Loc): IPathNode = this.copy(qry.copyWithNewLoc(upd))
-
   override def mergeEquiv(other: IPathNode): IPathNode = {
-    val newNextCmd = qry.state.nextCmd.toSet ++ other.qry.state.nextCmd.toSet
-    val newState = qry.state.copy(nextCmd = newNextCmd.toList)
+    val newNextCmd = qry.getState.get.nextCmd.toSet ++ other.qry.getState.get.nextCmd.toSet
+    val newState = qry.getState.get.copy(nextCmd = newNextCmd.toList)
     val newQry = qry.copyWithNewState(newState)
     val newSuccV = succV ++ other.asInstanceOf[MemoryPathNode].succV
     this.copy(qry = newQry, succV = newSuccV)
@@ -436,14 +458,11 @@ case class DBPathNode(qry:Qry, thisID:Int,
     this.copy(subsumedID = v.map(v2 => v2.asInstanceOf[DBPathNode].thisID))
   }
 
-  //TODO: Delete later
-  override def copyWithNewLoc(upd:Loc=>Loc): IPathNode = this.copy(qry.copyWithNewLoc(upd))
-
   override def copyWithNewQry(newQry: Qry): IPathNode = this.copy(qry=newQry)
 
   override def mergeEquiv(other: IPathNode): IPathNode = {
-    val newNextCmd = qry.state.nextCmd.toSet ++ other.qry.state.nextCmd.toSet
-    val newState = qry.state.copy(nextCmd = newNextCmd.toList)
+    val newNextCmd = qry.getState.get.nextCmd.toSet ++ other.qry.getState.get.nextCmd.toSet
+    val newState = qry.getState.get.copy(nextCmd = newNextCmd.toList)
     val newQry = qry.copyWithNewState(newState)
     val newSuccID = succID ++ other.asInstanceOf[DBPathNode].succID
     this.copy(qry = newQry, succID = newSuccID)
