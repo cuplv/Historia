@@ -1,9 +1,11 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import com.microsoft.z3.Context
-import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodReturn, LocalWrapper, TestIRLineLoc, TestIRMethodLoc}
+import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodReturn, BitTypeSet, LocalWrapper, TestIRLineLoc, TestIRMethodLoc, TypeSet}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SolverTypeSolving, Z3StateSolver}
 import org.scalatest.funsuite.AnyFunSuite
+
+import scala.collection.BitSet
 
 class StateSetTest extends AnyFunSuite {
   val ctx = new Context
@@ -12,7 +14,19 @@ class StateSetTest extends AnyFunSuite {
       "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
   val solver = ctx.mkSolver()
 
-  val ch = new ClassHierarchyConstraints(hierarchy,Set("Runnable"), SolverTypeSolving)
+  private val classToInt: Map[String, Int] = hierarchy.keySet.zipWithIndex.toMap
+  val intToClass: Map[Int, String] = classToInt.map(k => (k._2, k._1))
+
+  object BoundedTypeSet {
+    def apply(someString: Some[String], none: None.type, value: Set[Nothing]): TypeSet = someString match{
+      case Some(v) =>
+        val types = hierarchy(v).map(classToInt)
+        val bitSet = BitSet() ++ types
+        BitTypeSet(bitSet)
+    }
+  }
+
+  val ch = new ClassHierarchyConstraints(hierarchy,Set("Runnable"),intToClass, SolverTypeSolving)
   val stateSolver = new Z3StateSolver(ch)
 
   private val fooMethod = TestIRMethodLoc("","foo", List(Some(LocalWrapper("@this","Object"))))

@@ -74,7 +74,7 @@ case class RunConfig(apkPath:String = "",
                      limit:Int = -1,
                      samples:Int = 5,
                      tag:String = "",
-                     timeLimit:Int = 1200, // max clock time per query
+                     timeLimit:Int = 600, // max clock time per query
                      truncateOut:Boolean = true
                     ){
 }

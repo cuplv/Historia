@@ -10,20 +10,34 @@ import org.scalatest.funsuite.AnyFunSuite
 import com.microsoft.z3.Context
 import upickle.default.read
 
+import scala.collection.BitSet
+
 class TransferFunctionsTest extends AnyFunSuite {
   val ctx = new Context
   val solver = ctx.mkSolver()
   val hierarchy: Map[String, Set[String]] =
     Map("java.lang.Object" -> Set("String", "Foo", "Bar", "java.lang.Object"),
       "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"))
-  private def getStateSolver(stateTypeSolving: StateTypeSolving = SolverTypeSolving):(Z3StateSolver, ClassHierarchyConstraints) = {
-    val pc = new ClassHierarchyConstraints(hierarchy,Set(), stateTypeSolving)
-    (new Z3StateSolver(pc),pc)
+
+  private val classToInt: Map[String, Int] = hierarchy.keySet.zipWithIndex.toMap
+  val intToClass: Map[Int, String] = classToInt.map(k => (k._2, k._1))
+
+  object BoundedTypeSet {
+    def apply(someString: Some[String], none: None.type, value: Set[Nothing]): TypeSet = someString match{
+      case Some(v) =>
+        val types = hierarchy(v).map(classToInt)
+        val bitSet = BitSet() ++ types
+        BitTypeSet(bitSet)
+    }
+  }
+  val miniCha = new ClassHierarchyConstraints(hierarchy,Set("java.lang.Runnable"),
+    intToClass)
+  private def getStateSolver():(Z3StateSolver, ClassHierarchyConstraints) = {
+    (new Z3StateSolver(miniCha),miniCha)
   }
 
   implicit def set2SigMat(s:Set[(String,String)]):SignatureMatcher = SetSignatureMatcher(s)
 
-  val miniCha = new ClassHierarchyConstraints(hierarchy, Set("java.lang.Runnable"))
   val tr = (ir:TestIR, cha:ClassHierarchyConstraints) => new TransferFunctions(ir, new SpecSpace(Set()),cha)
   def testCmdTransfer(cmd:AppLoc => CmdWrapper, post:State, testIRMethod: TestIRMethodLoc):Set[State] = {
     val preloc = AppLoc(testIRMethod,TestIRLineLoc(1), isPre=true)

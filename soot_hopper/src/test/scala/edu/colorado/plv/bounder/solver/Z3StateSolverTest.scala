@@ -8,6 +8,8 @@ import edu.colorado.plv.bounder.symbolicexecutor.state._
 import org.scalatest.Outcome
 import org.scalatest.funsuite.{AnyFunSuite, FixtureAnyFunSuite}
 
+import scala.collection.BitSet
+
 class Z3StateSolverTest extends FixtureAnyFunSuite {
 
   private val fooMethod = TestIRMethodLoc("","foo", List(Some(LocalWrapper("@this","Object"))))
@@ -17,6 +19,30 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
   private val frame = CallStackFrame(dummyLoc, None, Map(StackVar("x") -> v))
   private val state = State.topState
   case class FixtureParam(typeSolving: StateTypeSolving)
+
+  val hierarchy: Map[String, Set[String]] =
+    Map("java.lang.Object" -> Set("String", "Foo", "Bar",
+      "com.example.createdestroy.MyFragment",
+      "rx.Single",
+      "com.example.createdestroy.-$$Lambda$MyFragment$hAOPQ7FFP1lMCJX7gGOvwmZq1uk",
+      "java.lang.Object"),
+      "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"),
+      "com.example.createdestroy.MyFragment" -> Set("com.example.createdestroy.MyFragment"),
+      "com.example.createdestroy.-$$Lambda$MyFragment$hAOPQ7FFP1lMCJX7gGOvwmZq1uk" ->
+        Set("com.example.createdestroy.-$$Lambda$MyFragment$hAOPQ7FFP1lMCJX7gGOvwmZq1uk"),
+      "rx.Single" -> Set("rx.Single")
+    )
+  private val classToInt: Map[String, Int] = hierarchy.keySet.zipWithIndex.toMap
+  val intToClass: Map[Int, String] = classToInt.map(k => (k._2, k._1))
+
+  object BoundedTypeSet {
+    def apply(someString: Some[String], none: None.type, value: Set[Nothing]): TypeSet = someString match{
+      case Some(v) =>
+        val types = hierarchy(v).map(classToInt)
+        val bitSet = BitSet() ++ types
+        BitTypeSet(bitSet)
+    }
+  }
 
   implicit def set2SigMat(s:Set[(String,String)]):SignatureMatcher = SetSignatureMatcher(s)
 
@@ -650,7 +676,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val p2t = BoundedTypeSet(Some("Foo"), None, Set())
     val loc = AppLoc(fooMethod, TestIRLineLoc(1), isPre = false)
 
-    assert(p1t.meet(p2t,cha).isEmpty(cha))
+    assert(p1t.intersect(p2t).isEmpty())
 
 
     val ifoo = I(CBEnter, Set(("", "foo")), "a" :: Nil)
@@ -865,20 +891,9 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
   }
 
   private def getStateSolver(stateTypeSolving: StateTypeSolving = SetInclusionTypeSolving):(Z3StateSolver, ClassHierarchyConstraints) = {
-    val hierarchy: Map[String, Set[String]] =
-      Map("java.lang.Object" -> Set("String", "Foo", "Bar",
-        "com.example.createdestroy.MyFragment",
-        "rx.Single",
-        "com.example.createdestroy.-$$Lambda$MyFragment$hAOPQ7FFP1lMCJX7gGOvwmZq1uk",
-        "java.lang.Object"),
-        "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"),
-        "com.example.createdestroy.MyFragment" -> Set("com.example.createdestroy.MyFragment"),
-        "com.example.createdestroy.-$$Lambda$MyFragment$hAOPQ7FFP1lMCJX7gGOvwmZq1uk" ->
-          Set("com.example.createdestroy.-$$Lambda$MyFragment$hAOPQ7FFP1lMCJX7gGOvwmZq1uk"),
-        "rx.Single" -> Set("rx.Single")
-    )
 
-    val pc = new ClassHierarchyConstraints(hierarchy,Set("java.lang.Runnable"), stateTypeSolving)
+
+    val pc = new ClassHierarchyConstraints(hierarchy,Set("java.lang.Runnable"),intToClass, stateTypeSolving)
     (new Z3StateSolver(pc),pc)
   }
 

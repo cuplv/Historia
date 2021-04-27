@@ -397,7 +397,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
           "void onCreate(android.os.Bundle)", BounderUtil.lineForRegex(".*query1.*".r, src))
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
-//        prettyPrinting.dumpDebugInfo(result, "alias")
+        prettyPrinting.dumpDebugInfo(result, "alias")
         assert(result.nonEmpty)
         assert(BounderUtil.interpretResult(result,QueryFinished) == expected)
 
@@ -458,7 +458,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val query = Qry.makeReceiverNonNull(symbolicExecutor, w, "com.example.createdestroy.MyActivity",
         "void onCreate(android.os.Bundle)",20)
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
-//      prettyPrinting.dumpDebugInfo(result,"setField")
+      prettyPrinting.dumpDebugInfo(result,"setField")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result,QueryFinished) == Proven)
       assert(BounderUtil.characterizeMaxPath(result) == SingleCallbackMultiMethod)

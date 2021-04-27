@@ -136,34 +136,33 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     case VirtualInvoke(LocalWrapper(_, baseType), _, _, _) => Some(baseType)
   }
 
-  private def fieldCanPt(fr: FieldReference, state: State, tgt:Option[RVal]): Boolean = {
+  private def fieldCanPt(fr: FieldReference,m:MethodLoc, state: State, tgt:Option[RVal]): Boolean = {
     val fname = fr.name
-    val baseLocalType = fr.base.localType
+    val baseLocal = fr.base
     state.heapConstraints.exists {
       case (FieldPtEdge(p, otherFieldName), matTgt) if fname == otherFieldName =>
-        val posLocalTypes = cha.getSubtypesOf(baseLocalType)
-        val existsBaseType = posLocalTypes.exists { lt =>
-          state.typeConstraints.get(p).forall(_.subtypeOfCanAlias(lt,cha))
-        }
+        val baseLocalPTS = wrapper.pointsToSet(m,baseLocal)
+        val existsBaseType =
+          state.typeConstraints.get(p).forall{materializedBaseTS =>
+            baseLocalPTS.intersectNonEmpty(materializedBaseTS)
+          }
+
         if(existsBaseType){
           (tgt,matTgt) match{
-            case (Some(LocalWrapper(_,tgtLocalType)),mt:PureVar) =>
-              // Check if local that is assigned to or from can possibly alias materialized heap cell
-              val possibleTgtTypes = cha.getSubtypesOf(tgtLocalType)
-              val res = state.typeConstraints.get(mt)
-                .map(ts => ts.typeSet(cha).exists(v =>possibleTgtTypes.contains(v)))
-              res.getOrElse(true)
+            case (Some(tgtLocal:LocalWrapper),mt:PureVar) =>
+              state.canAlias(mt,m,tgtLocal,wrapper)
             case _ => true
           }
         }else false
       case _ => false
     }
+
   }
 
   def relevantHeap(m: MethodLoc, state: State): Boolean = {
     def canModifyHeap(c: CmdWrapper): Boolean = c match {
-      case AssignCmd(fr: FieldReference, tgt, _) => fieldCanPt(fr, state,Some(tgt))
-      case AssignCmd(src, fr: FieldReference, _) => fieldCanPt(fr, state,Some(src))
+      case AssignCmd(fr: FieldReference, tgt, _) => fieldCanPt(fr,m, state,Some(tgt))
+      case AssignCmd(src, fr: FieldReference, _) => fieldCanPt(fr,m, state,Some(src))
       case AssignCmd(StaticFieldReference(clazz, name, _), _, _) =>
         val out = state.heapConstraints.contains(StaticPtEdge(clazz, name))
         out //&& !manuallyExcludedStaticField(name) //TODO: remove dbg code
@@ -254,10 +253,14 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     def matchesType(pair: (LSParamConstraint, Option[RVal])):Boolean = pair match{
       case (_,None) => true
       case (_:LSConstConstraint,_) => ???
-      case (LSPure(lsV:PureVar), Some(LocalWrapper(_, localType))) =>
+      case (LSPure(lsV:PureVar), Some(localWr:LocalWrapper)) =>
+
         state.typeConstraints.get(lsV).forall{ts =>
-          val res = ts.constrainSubtypeOf(localType, cha)
-          !res.isEmpty(cha)
+//          val res = ts.constrainSubtypeOf(localType, cha)
+//          !res.isEmpty(cha)
+          val localPt = wrapper.pointsToSet(m, localWr)
+          val intersect = ts.intersect(localPt)
+          !intersect.isEmpty()
         }
       case (LSModelVar(s,t), Some(LocalWrapper(name,localType))) =>
         true //TODO: could make more precise by matching receivers and arg types
@@ -428,12 +431,14 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 //    }
   }
 
-  def existsIAlias(locals: List[Option[RVal]], dir: MessageType, sig: (String, String), state: State): Boolean = {
+  def existsIAlias(locals: List[Option[RVal]], m:MethodLoc,
+                   dir: MessageType, sig: (String, String), state: State): Boolean = {
     val aliasPos = TransferFunctions.relevantAliases(state, dir, sig)
     aliasPos.exists { aliasPo =>
       (aliasPo zip locals).forall {
         case (LSPure(v: PureVar), Some(local: LocalWrapper)) =>
-          state.typeConstraints.get(v).forall(_.subtypeOfCanAlias(local.localType,cha))
+//          state.typeConstraints.get(v).forall(_.subtypeOfCanAlias(local.localType,cha))
+          state.canAlias(v,m, local,wrapper)
         case (LSPure(v: PureVar), Some(NullConst)) => ???
         case (LSPure(v: PureVar), Some(i: IntConst)) => ???
         case (LSPure(v: PureVar), Some(i: StringConst)) => ???
@@ -446,7 +451,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     case InternalMethodReturn(_, _, m) =>
       relevantMethodBody(m,state)
     case CallinMethodReturn(_, _) => RelevantMethod
-    case CallbackMethodReturn(clazz, name, rloc, Some(retLine)) => {
+    case cr@CallbackMethodReturn(clazz, name, rloc, Some(retLine)) => {
       val retVars =
         if (rloc.isStatic)
           wrapper.makeMethodRetuns(rloc).map { retloc =>
@@ -457,8 +462,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
           } else List(None)
       val iExists = retVars.exists { retVar => //TODO: ==== check types to rule out aliasing of CBEnter/Exit
         val locs: List[Option[RVal]] = retVar :: rloc.getArgs
-        val res = existsIAlias(locs, CBExit, (clazz, name), state) ||
-          existsIAlias(None :: locs.tail, CBEnter, (clazz, name), state)
+        val res = existsIAlias(locs,cr.containingMethod.get, CBExit, (clazz, name), state) ||
+          existsIAlias(None :: locs.tail,cr.containingMethod.get, CBEnter, (clazz, name), state)
         res
       }
       val relevantBody = relevantMethodBody(rloc, state) match{

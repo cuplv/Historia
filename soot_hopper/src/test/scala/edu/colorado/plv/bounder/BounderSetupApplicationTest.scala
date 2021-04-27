@@ -1,12 +1,15 @@
 package edu.colorado.plv.bounder
 
 import better.files.Resource
+import edu.colorado.plv.bounder.ir.{BitTypeSet, JimpleFlowdroidWrapper, TopTypeSet, TypeSet}
 import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.symbolicexecutor.{FlowdroidCallGraph, SparkCallGraph}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BoundedTypeSet, ClassType, DBPathNode, DisjunctTypeSet, EmptyTypeSet, IntVal, PureExpr, PureVar, State, SubclassOf, TypeConstraint}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, DBPathNode, IntVal, PureExpr, PureVar, State, SubclassOf, TypeConstraint}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.Scene
 import upickle.default._
+
+import scala.collection.BitSet
 
 class BounderSetupApplicationTest extends AnyFunSuite {
   val trikita_apk = getClass.getResource("/trikita.slide_4.apk").getPath
@@ -45,10 +48,10 @@ class BounderSetupApplicationTest extends AnyFunSuite {
     assert(stateRead == State.topState)
 
 //    val bTS = BoundedTypeSet(Some("Object"), None, Set())
-    val bTS = EmptyTypeSet
+    val bTS:TypeSet = TopTypeSet
     val sbts = write(bTS)
     val s2 = State.topState.copy(typeConstraints =
-      Map(PureVar(1) -> DisjunctTypeSet(Set(bTS))))
+      Map(PureVar(1) -> bTS))
     val s2ser = write(s2)
     val s2deser = read[State](s2ser)
     assert(s2 == s2deser)

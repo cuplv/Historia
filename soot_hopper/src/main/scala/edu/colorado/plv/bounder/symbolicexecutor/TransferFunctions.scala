@@ -462,7 +462,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
           val v:PureVar = materializedReceiver.get.asInstanceOf[PureVar]
           (v,stateWithFrame.defineAs(LocalWrapper("@this","_"), v))
         }
-        val pts = stateWThis.typeConstraints.get(thisV).map(_.meet(receiverTypesFromPT.get,ch))
+        val pts = stateWThis.typeConstraints.get(thisV).map(_.intersect(receiverTypesFromPT.get))
           .getOrElse(receiverTypesFromPT.get)
         Set(stateWThis.copy(typeConstraints = stateWThis.typeConstraints + (thisV->pts)))
       } else {
@@ -488,7 +488,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val postStateWithThisTC = postState.get(LocalWrapper("@this","_")) match{
         case Some(thisPv:PureVar) if postState.typeConstraints.contains(thisPv)=>
           val oldTc = postState.typeConstraints(thisPv)
-          val newTc = oldTc.constrainSubtypeOf(m.classType, ch)
+          val newTc = oldTc.filterSubTypeOf(Set(m.classType))
           postState.copy(typeConstraints = postState.typeConstraints + (thisPv -> newTc))
         case _ => postState
       }
@@ -735,9 +735,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
           val possibleHeapCells = state1.heapConstraints.filter {
             case (FieldPtEdge(pv, heapFieldName), materializedTgt) =>
               val fieldEq = fieldName == heapFieldName
-              //              val canAlias = pureCanAlias(pv,base.localType,state1)
-              val canAlias = state1.typeConstraints
-                .get(pv).forall(_.subtypeOfCanAlias(base.localType, ch))
+              //TODO: === check that contianing method works here
+              val canAlias = state1.canAlias(pv,l.containingMethod.get, base,w)
               fieldEq && canAlias
             case _ =>
               false
@@ -770,8 +769,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val possibleHeapCells = state2.heapConstraints.filter {
         case (FieldPtEdge(pv, heapFieldName), _) =>
           val fieldEq = fieldName == heapFieldName
-          //          val canAlias = pureCanAlias(pv,base.localType,state2)
-          val canAlias = state2.typeConstraints.get(pv).forall(_.subtypeOfCanAlias(base.localType, ch))
+          val canAlias = state2.canAlias(pv,l.containingMethod.get, base,w)
           fieldEq && canAlias
         case _ =>
           false
@@ -916,35 +914,31 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
   }
 
 
-  def localCanAliasPV(v:RVal, state:State) = v match{
-    case LocalWrapper(_,localType) =>
-      state.pureVars.exists{ p =>
-        state.typeConstraints.get(p) match{
-          case Some(tc) => tc.subtypeOfCanAlias(localType,ch)
-          case _ => true
-        }
-      }
-    case _ => false
-  }
+//  def localCanAliasPV(v:RVal, state:State) = v match{
+//    case lw@LocalWrapper(_,localType) =>
+//      state.pureVars.exists{ p =>
+//        state.typeConstraints.get(p) match{
+//          case Some(tc) => tc.subtypeOfCanAlias(localType,ch)
+//          case _ => true
+//        }
+//      }
+//    case _ => false
+//  }
   def assumeInState(method:MethodLoc, bExp:RVal, state:State, negate: Boolean): Option[State] = bExp match{
     case BoolConst(b) if b != negate => Some(state)
     case BoolConst(b) if b == negate => None
     case Binop(v1, op, v2) =>
-      if (true || List(v1,v2).exists(localCanAliasPV(_,state))) { // TODO: probably remove this
-        val (v1Val, state0) = state.getOrDefine2(v1, method)
-        val (v2Val, state1) = state0.getOrDefine2(v2, method)
-        //TODO: Handle boolean expressions, integer expressions, etc
-        // it is sound, but not precise, to drop constraints
-        Some((op, negate) match {
-          case (Eq, false) => state1.copy(pureFormula = state1.pureFormula + PureConstraint(v1Val, Equals, v2Val))
-          case (Ne, false) => state1.copy(pureFormula = state1.pureFormula + PureConstraint(v1Val, NotEquals, v2Val))
-          case (Eq, true) => state1.copy(pureFormula = state1.pureFormula + PureConstraint(v1Val, NotEquals, v2Val))
-          case (Ne, true) => state1.copy(pureFormula = state1.pureFormula + PureConstraint(v1Val, Equals, v2Val))
-          case _ => state
-        })
-      }else{
-        Some(state) // Note that this heuristic breaks the motivating example
-      }
+      val (v1Val, state0) = state.getOrDefine2(v1, method)
+      val (v2Val, state1) = state0.getOrDefine2(v2, method)
+      //TODO: Handle boolean expressions, integer expressions, etc
+      // it is sound, but not precise, to drop constraints
+      Some((op, negate) match {
+        case (Eq, false) => state1.copy(pureFormula = state1.pureFormula + PureConstraint(v1Val, Equals, v2Val))
+        case (Ne, false) => state1.copy(pureFormula = state1.pureFormula + PureConstraint(v1Val, NotEquals, v2Val))
+        case (Eq, true) => state1.copy(pureFormula = state1.pureFormula + PureConstraint(v1Val, NotEquals, v2Val))
+        case (Ne, true) => state1.copy(pureFormula = state1.pureFormula + PureConstraint(v1Val, Equals, v2Val))
+        case _ => state
+      })
     case v =>
       throw new IllegalStateException(s"Invalid rval for assumeInState: $v")
   }

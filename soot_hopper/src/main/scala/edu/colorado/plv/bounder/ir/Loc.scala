@@ -18,6 +18,8 @@ sealed trait Loc{
   def msgSig : Option[String]
   def toString:String
   def isEntry:Option[Boolean]
+  private lazy val iSerialized= write(this)
+  def serialized:String = iSerialized
 }
 object Loc{
   implicit val rw:RW[Loc] = RW.merge(macroRW[CallbackMethodInvoke], macroRW[CallinMethodReturn],
@@ -69,6 +71,7 @@ object MethodLoc {
 
 trait LineLoc{
   def lineNumber:Int
+  def containingMethod:MethodLoc
 }
 object LineLoc{
   implicit val rw:RW[LineLoc] = upickle.default.readwriter[ujson.Value].bimap[LineLoc](
@@ -157,6 +160,8 @@ case class CallbackMethodReturn(fmwClazz: String, fmwName:String, loc:MethodLoc,
   override def msgSig: Option[String] = Some(s"")
 
   override def isEntry: Option[Boolean] = Some(false)
+  override def containingMethod:Option[MethodLoc] =
+    line.map(_.containingMethod)
 }
 object CallbackMethodReturn{
   implicit val rw:RW[CallbackMethodReturn] = macroRW

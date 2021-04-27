@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.solver
 
 import com.microsoft.z3.AST
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.ir.{TAddr, TMessage, TNullVal}
+import edu.colorado.plv.bounder.ir.{TAddr, TMessage, TNullVal, TypeSet}
 import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.lifestate.LifeState._
 import edu.colorado.plv.bounder.symbolicexecutor.state.{HeapPtEdge, _}
@@ -108,11 +108,11 @@ trait StateSolver[T, C <: SolverCtx] {
                                state: State,
                                messageTranslator: MessageTranslator, logDbg: Boolean = false)(implicit zctx: C): Option[T]
 
-  protected def mkTypeConstraints(types: Set[String])(implicit zctx: C): (T, Map[String, T])
+  protected def mkTypeConstraints(types: Set[Int])(implicit zctx: C): (T, Map[Int, T])
   protected def mkConstConstraintsMap(pvs: Set[PureVal])(implicit zctx: C): (T, Map[PureVal, T])
 
-  protected def mkTypeConstraintForAddrExpr(typeFun: T, typeToSolverConst: Map[String, T],
-                                            addr: T, tc: Set[String])(implicit zctx: C): T
+  protected def mkTypeConstraintForAddrExpr(typeFun: T, typeToSolverConst: Map[Int, T],
+                                            addr: T, tc: Set[Int])(implicit zctx: C): T
 
   protected def createTypeFun()(implicit zctx: C): T
 
@@ -399,7 +399,7 @@ trait StateSolver[T, C <: SolverCtx] {
       case _ => Set()
     }
   }
-  def toAST(state: State, typeToSolverConst: Map[String, T],
+  def toAST(state: State, typeToSolverConst: Map[Int, T],
             messageTranslator: MessageTranslator,
             maxWitness: Option[Int] = None, encode : StateTypeSolving,
             constMap:Map[PureVal, T])(implicit zctx: C): T = {
@@ -421,13 +421,12 @@ trait StateSolver[T, C <: SolverCtx] {
 
     val typeConstraints = if (encode == SolverTypeSolving) {
       //      // Encode type constraints in Z3
-      val typeConstraints = state.typeConstraints.map { case (k, v) => k -> v.typeSet(ch) }
+      val typeConstraints = state.typeConstraints.map { case (k, v) => k -> v.getValues }
       //      val typeConstraints = persist.pureVarTypeMap(state)
-      typeConstraints.keySet.filter(pv => state.pureFormula.exists {
-        case PureConstraint(v1, Subtype, _) => throw new IllegalArgumentException()
-        case _ => false
-      })
-      mkAnd(typeConstraints.map { case (pv, ts) => mkTypeConstraintForAddrExpr(typeFun, typeToSolverConst, toAST(pv), ts) }.toList)
+      mkAnd(typeConstraints.map {
+        case (pv, Some(ts)) => mkTypeConstraintForAddrExpr(typeFun, typeToSolverConst, toAST(pv), ts)
+        case _ => mkBoolVal(true)
+      }.toList)
     } else mkBoolVal(true)
 
     val heapAst = toAST(state.heapConstraints)
@@ -521,10 +520,10 @@ trait StateSolver[T, C <: SolverCtx] {
         case (Some(tc),None) => Some(tc)
         case (None,Some(tc)) => Some(tc)
         case (None,None) => None
-        case (Some(tc1),Some(tc2)) => Some(tc1.meet(tc2,ch))
+        case (Some(tc1),Some(tc2)) => Some(tc1.intersect(tc2))
       }
       joinedTc match{
-        case Some(EmptyTypeSet) => None
+        case Some(tc) if tc.isEmpty() => None
         case Some(tc) => Some(state.swapPv(oldPv,newPv).copy(typeConstraints = state.typeConstraints + (newPv -> tc)))
         case None => Some(state.swapPv(oldPv,newPv))
       }
@@ -597,7 +596,7 @@ trait StateSolver[T, C <: SolverCtx] {
       })
       // If no type possible for a pure var, state is not feasible
       val pvMap2: Map[PureVar, TypeSet] = state.typeConstraints
-      if (pvMap2.exists(a => a._2.isEmpty(persist))) {
+      if (pvMap2.exists(a => a._2.isEmpty())) {
         return None
       }
       push()
@@ -606,11 +605,11 @@ trait StateSolver[T, C <: SolverCtx] {
       // Only encode types in Z3 for subsumption check due to slow-ness
       val encode = SetInclusionTypeSolving
       val (typesAreUniqe, typeMap) =if(encode == SolverTypeSolving) {
-        val usedTypes = pvMap2.flatMap { case (_, tc) => tc.typeSet(ch) }.toSet
+        val usedTypes = pvMap2.flatMap { case (_, tc) => tc.getValues.getOrElse(Set()) }.toSet
         mkTypeConstraints(usedTypes)
       }else {
         val typesAreUniqe = mkBoolVal(true)
-        val typeMap = Map[String, T]()
+        val typeMap = Map[Int, T]()
         (typesAreUniqe,typeMap)
       }
 
@@ -817,13 +816,20 @@ trait StateSolver[T, C <: SolverCtx] {
 
 
     val typeFun = createTypeFun()
-    val allTypes = List(s1, s2).flatMap(_.typeConstraints.flatMap { case (_, v) => v.typeSet(ch) }).toSet
+    val allTypes = List(s1, s2).flatMap(_.typeConstraints.flatMap { case (_, v) => v.getValues.getOrElse(Set()) }).toSet
     val (uniqueType, typeMap) = mkTypeConstraints(allTypes)
-    val state1Types = s1.typeConstraints.map { case (pv, v) =>
-      mkTypeConstraintForAddrExpr(typeFun, typeMap, toAST(pv), v.typeSet(ch))
+    val state1Types = s1.typeConstraints.flatMap {
+      case (pv, v) =>
+        val typeValues = v.getValues
+        if(typeValues.isDefined)
+          Some(mkTypeConstraintForAddrExpr(typeFun, typeMap, toAST(pv), typeValues.get))
+        else None
     }
-    val state2Types = s2.typeConstraints.map { case (pv, v) =>
-      mkTypeConstraintForAddrExpr(typeFun, typeMap, toAST(pv), v.typeSet(ch))
+    val state2Types = s2.typeConstraints.flatMap { case (pv, v) =>
+      val typeValues = v.getValues
+      if(typeValues.isDefined)
+        Some(mkTypeConstraintForAddrExpr(typeFun, typeMap, toAST(pv), typeValues.get))
+      else None
     }
 
     val notS1TypesEncoded = state1Types.foldLeft(mkBoolVal(false)) {
@@ -930,13 +936,19 @@ trait StateSolver[T, C <: SolverCtx] {
 
       val (negTC1, tC2, uniqueType) = if (encodeTypeConsteraints == SolverTypeSolving) {
         val typeFun = createTypeFun()
-        val allTypes = List(s1, s2).flatMap(_.typeConstraints.flatMap { case (_, v) => v.typeSet(ch) }).toSet
+        val allTypes = List(s1, s2).flatMap(_.typeConstraints.flatMap { case (_, v) => v.getValues.getOrElse(Set()) }).toSet
         val (uniqueType, typeMap) = mkTypeConstraints(allTypes)
-        val state1Types = s1.typeConstraints.map { case (pv, v) =>
-          mkTypeConstraintForAddrExpr(typeFun, typeMap, toAST(pv), v.typeSet(ch))
+        val state1Types = s1.typeConstraints.flatMap { case (pv, v) =>
+          val typeValues = v.getValues
+          if(typeValues.isDefined)
+            Some(mkTypeConstraintForAddrExpr(typeFun, typeMap, toAST(pv), typeValues.get))
+          else None
         }
-        val state2Types = s2.typeConstraints.map { case (pv, v) =>
-          mkTypeConstraintForAddrExpr(typeFun, typeMap, toAST(pv), v.typeSet(ch))
+        val state2Types = s2.typeConstraints.flatMap { case (pv, v) =>
+          val typeValues = v.getValues
+          if(typeValues.isDefined)
+            Some(mkTypeConstraintForAddrExpr(typeFun, typeMap, toAST(pv), typeValues.get))
+          else None
         }
         //        val state1Types = persist.pureVarTypeMap(s1).map{
         //          case (pv,ts) => mkTypeConstraint(typeFun, toAST(pv), ts)

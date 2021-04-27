@@ -182,13 +182,13 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
     val ctx = zctx.ctx
     ctx.mkOr(vals.map(v => ctx.mkEq(e,v)):_*)
   }
-  def equalToOneOfTypes(e: Expr, typeToSolverConst: Map[String,AST],
-                        types: Set[String])(implicit zctx:Z3SolverCtx):BoolExpr = {
+  def equalToOneOfTypes(e: Expr, typeToSolverConst: Map[Int,AST],
+                        types: Set[Int])(implicit zctx:Z3SolverCtx):BoolExpr = {
     val solverTypes = types.map(typeToSolverConst).map(_.asInstanceOf[Expr])
     equalToOneOf(e,solverTypes.toArray)
   }
-  override protected def mkTypeConstraintForAddrExpr(typeFun: AST, typeToSolverConst:Map[String,AST],
-                                                     addr:AST, tc:Set[String])(implicit zctx:Z3SolverCtx): AST = {
+  override protected def mkTypeConstraintForAddrExpr(typeFun: AST, typeToSolverConst:Map[Int,AST],
+                                                     addr:AST, tc:Set[Int])(implicit zctx:Z3SolverCtx): AST = {
     //    persistentConstraints.exprTypeConstraint(
     //      typeFun.asInstanceOf[FuncDecl].apply(addr.asInstanceOf[Expr]),tc)
     equalToOneOfTypes(typeFun.asInstanceOf[FuncDecl].apply(addr.asInstanceOf[Expr]),typeToSolverConst,tc)
@@ -321,7 +321,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
 
 
 
-  override protected def mkTypeConstraints(types: Set[String])(implicit zctx: Z3SolverCtx): (AST, Map[String, AST]) = {
+  override protected def mkTypeConstraints(types: Set[Int])(implicit zctx: Z3SolverCtx): (AST, Map[Int, AST]) = {
     val ctx = zctx.ctx
     val typeMap = types.map(t => (t-> ctx.mkConst(s"type_$t", tsort))).toMap
     val allConstraints: immutable.Iterable[Expr] = typeMap.map{case (_,c) => c}

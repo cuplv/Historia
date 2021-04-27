@@ -1,14 +1,14 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, StateSolver}
-import edu.colorado.plv.bounder.ir.{AppLoc, BoolConst, CallbackMethodInvoke, CallbackMethodReturn, ClassConst, ConstVal, IRWrapper, IntConst, InternalMethodInvoke, InternalMethodReturn, LVal, Loc, LocalWrapper, MessageType, MethodLoc, NullConst, RVal, StringConst}
+import edu.colorado.plv.bounder.ir.{AppLoc, BitTypeSet, BoolConst, CallbackMethodInvoke, CallbackMethodReturn, ClassConst, ConstVal, EmptyTypeSet, IRWrapper, IntConst, InternalMethodInvoke, InternalMethodReturn, LVal, Loc, LocalWrapper, MessageType, MethodLoc, NullConst, RVal, StringConst, TopTypeSet, TypeSet}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAnyVal, LSPred, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state.State.findIAF
 import upickle.default.{macroRW, ReadWriter => RW}
 
 import scala.annotation.tailrec
-import scala.collection.View
+import scala.collection.{BitSet, View}
 
 object State {
   private var id:Int = -1
@@ -76,269 +76,296 @@ object LSAny extends LSParamConstraint {
 case class LSConstConstraint(pureExpr: PureExpr, trace:AbstractTrace) extends LSParamConstraint{
   override def optTraceAbs: Option[AbstractTrace] = Some(trace)
 }
-sealed trait TypeSet{
-  /**
-   * Set of types that must match this type constraint and tc2
-   * @param tc2 other type set that value must also be a member of
-   * @param ch class hierarchy
-   * @return new type set, possibly empty
-   */
-  def meet(tc2: TypeSet, ch:ClassHierarchyConstraints):TypeSet
 
-  def typeSet(ch: ClassHierarchyConstraints): Set[String]
+//sealed trait TypeSet
+//object TypeSet{
+//  implicit var rw:RW[TypeSet] = RW.merge(PrimitiveTypeSet.rw, OneOfTypeSet.rw)
+//}
+//case class PrimitiveTypeSet(prim:String) extends TypeSet
+//object PrimitiveTypeSet{
+//  implicit var rw:RW[PrimitiveTypeSet] = macroRW
+//}
+//case class OneOfTypeSet(s:BitSet) extends TypeSet
+//object OneOfTypeSet{
+//  implicit var rw:RW[OneOfTypeSet] = macroRW
+////  implicit var rw:RW[OneOfTypeSet] = upickle.default.readwriter[String].bimap[OneOfTypeSet](
+////    {
+////      ts =>
+////        ???
+////    },
+////    {
+////      st =>
+////        ???
+////    }
+////  )
+//}
 
-  def optionalConstrainUpper(upper:Option[String], ch:ClassHierarchyConstraints):TypeSet = upper match{
-    case Some(v) => this.constrainSubtypeOf(v,ch)
-    case None => this
-  }
-  def optionalConstrainLower(lower:Option[String], ch:ClassHierarchyConstraints):TypeSet = lower match{
-    case Some(v) => this.constrainSupertypeOf(v, ch)
-    case None => this
-  }
-  def subtypeOfCanAlias(localType: String, ch: ClassHierarchyConstraints): Boolean
+//sealed trait TypeSet {
+  //  /**
+  //   * Set of types that must match this type constraint and tc2
+  //   * @param tc2 other type set that value must also be a member of
+  //   * @param ch class hierarchy
+  //   * @return new type set, possibly empty
+  //   */
+  //  def meet(tc2: TypeSet, ch:ClassHierarchyConstraints):TypeSet
+  //
+  //  def typeSet(ch: ClassHierarchyConstraints): Set[String]
+  //
+  //  def optionalConstrainUpper(upper:Option[String], ch:ClassHierarchyConstraints):TypeSet = upper match{
+  //    case Some(v) => this.constrainSubtypeOf(v,ch)
+  //    case None => this
+  //  }
+  //  def optionalConstrainLower(lower:Option[String], ch:ClassHierarchyConstraints):TypeSet = lower match{
+  //    case Some(v) => this.constrainSupertypeOf(v, ch)
+  //    case None => this
+  //  }
+  //  def subtypeOfCanAlias(localType: String, ch: ClassHierarchyConstraints): Boolean
+  //
+  //  def contains(set: TypeSet)(implicit ch:ClassHierarchyConstraints): Boolean
+  //
+  //  def constrainSubtypeOf(name:String, hierarchyConstraints: ClassHierarchyConstraints):TypeSet
+  //  def constrainSupertypeOf(name:String, hierarchyConstraints: ClassHierarchyConstraints):TypeSet
+  //  def constrainIsType(name:String, hierarchyConstraints: ClassHierarchyConstraints):TypeSet
+  //  def setInterfaces(iFaces:Set[String]):TypeSet
+  //  def isEmpty(hierarchyConstraints: ClassHierarchyConstraints):Boolean
 
-  def contains(set: TypeSet)(implicit ch:ClassHierarchyConstraints): Boolean
+//}
 
-  def constrainSubtypeOf(name:String, hierarchyConstraints: ClassHierarchyConstraints):TypeSet
-  def constrainSupertypeOf(name:String, hierarchyConstraints: ClassHierarchyConstraints):TypeSet
-  def constrainIsType(name:String, hierarchyConstraints: ClassHierarchyConstraints):TypeSet
-  def setInterfaces(iFaces:Set[String]):TypeSet
-  def isEmpty(hierarchyConstraints: ClassHierarchyConstraints):Boolean
-
-}
-object TypeSet{
-  implicit var rw:RW[TypeSet] = RW.merge(macroRW[EmptyTypeSet.type], BoundedTypeSet.rw, DisjunctTypeSet.rw)
-  def isClass(className: String, ch:ClassHierarchyConstraints) = {
-    if(ch.isInterface(className))
-      throw new IllegalArgumentException(s"$className is an interface")
-    BoundedTypeSet(Some(className), Some(className), Set())
-  }
-
-  def subclassOf(name:String, hierarchyConstraints: ClassHierarchyConstraints):TypeSet = {
-    if(hierarchyConstraints.isInterface(name))
-      BoundedTypeSet(None,None,Set(name))
-    else
-      BoundedTypeSet(upper = Some(name),None,Set())
-  }
-}
-case object EmptyTypeSet extends TypeSet {
-  override def constrainSubtypeOf(name: String, hc: ClassHierarchyConstraints): TypeSet = EmptyTypeSet
-  override def constrainSupertypeOf(name: String, hc: ClassHierarchyConstraints): TypeSet = EmptyTypeSet
-  override def constrainIsType(name: String, hc: ClassHierarchyConstraints): TypeSet = EmptyTypeSet
-  override def isEmpty(hierarchyConstraints:ClassHierarchyConstraints): Boolean = true
-
-  override def contains(set: TypeSet)(implicit ch:ClassHierarchyConstraints): Boolean = set match{
-    case EmptyTypeSet => true
-    case _ => false
-  }
-
-  override def subtypeOfCanAlias(localType: String, ch: ClassHierarchyConstraints): Boolean = false
-
-  override def typeSet(ch: ClassHierarchyConstraints): Set[String] = Set()
-
-  override def meet(tc2: TypeSet, ch:ClassHierarchyConstraints): TypeSet = tc2
-
-  override def setInterfaces(iFaces: Set[String]): TypeSet = EmptyTypeSet
-}
-
-case class BoundedTypeSet(upper:Option[String], lower:Option[String], interfaces: Set[String]) extends TypeSet{
-  override def toString:String = (upper,lower) match{
-    case (Some(upper),Some(lower)) => s"<:$upper >:$lower" + interfaces.headOption.map("<: I( " + _ + ")").getOrElse("")
-    case (Some(upper),None) => s"<:$upper" + interfaces.headOption.map("<: I( " + _ + ")").getOrElse("")
-    case (None,Some(lower)) => s">:$lower" + interfaces.headOption.map("<: I( " + _ + ")").getOrElse("")
-    case (None,None) => s":none " + interfaces.headOption.map("<: I( " + _ + ")").getOrElse("")
-
-  }
-  override def constrainSubtypeOf(name: String, hierarchyConstraints: ClassHierarchyConstraints): TypeSet = {
-    val newTS = if(hierarchyConstraints.isInterface(name))
-      this.copy(interfaces = interfaces + name)
-    else {
-      upper match{
-        case Some(v) if hierarchyConstraints.getSubtypesOf(name).contains(v) => this
-        case Some(v) if hierarchyConstraints.getSubtypesOf(v).contains(name) => this.copy(upper = Some(name))
-        case None => this.copy(upper = Some(name))
-        case _ => EmptyTypeSet
-      }
-    }
-    if(newTS.isEmpty(hierarchyConstraints)) EmptyTypeSet else newTS
-  }
-
-  override def constrainSupertypeOf(name: String, hierarchyConstraints: ClassHierarchyConstraints): TypeSet = {
-    if(hierarchyConstraints.isInterface(name))
-      throw new IllegalArgumentException(s"$name is an interface")
-    val newTS = lower match{
-      case Some(v) if hierarchyConstraints.getSubtypesOf(v).contains(name) => this
-      case Some(v) if hierarchyConstraints.getSubtypesOf(name).contains(v) => this.copy(lower = Some(name))
-      case None => this.copy(lower = Some(name))
-      case _ =>
-        EmptyTypeSet
-    }
-    if(newTS.isEmpty(hierarchyConstraints)) EmptyTypeSet else newTS
-  }
-
-  override def constrainIsType(name: String, hierarchyConstraints: ClassHierarchyConstraints): TypeSet = {
-    if(lower.exists(!hierarchyConstraints.getSubtypesOf(name).contains(_)))
-      return EmptyTypeSet // name doesn't contain lower bound as subclass
-    if(upper.exists(!hierarchyConstraints.getSubtypesOf(_).contains(name)))
-      return EmptyTypeSet // name isn't a subclass of upper
-    if(interfaces.exists(iface => !hierarchyConstraints.getSubtypesOf(iface).contains(name)))
-      return EmptyTypeSet // name doesn't implement one of the interfaces
-    this.copy(upper = Some(name), lower = Some(name))
-  }
-
-  private var empty:Option[Boolean] = None
-  override def isEmpty(hierarchyConstraints: ClassHierarchyConstraints): Boolean = {
-    if(empty.isDefined)
-      return empty.get
-    val shouldBeSubClassOfAll = interfaces ++ upper
-    assert(shouldBeSubClassOfAll.nonEmpty, "Empty type constraint")
-    val typeSets = shouldBeSubClassOfAll.toList.map(hierarchyConstraints.getSubtypesOf)
-    @tailrec
-    def isIntersectEmpty(typeSets:List[Set[String]], acc: Set[String]):Boolean = {
-      if(acc.isEmpty)
-        return true // no types can satisfy all constraints
-      if(typeSets.nonEmpty) {
-        isIntersectEmpty(typeSets.tail, acc.intersect(typeSets.head))
-      }else
-        false
-    }
-    val res = lower match{
-      case None => isIntersectEmpty(typeSets.tail, typeSets.head)
-      case Some(v) => isIntersectEmpty(typeSets, hierarchyConstraints.getSupertypesOf(v))
-    }
-    empty = Some(res)
-    res
-  }
-
-
-  override def contains(set: TypeSet)(implicit ch: ClassHierarchyConstraints): Boolean =
-    set match{
-      case EmptyTypeSet => false
-      case BoundedTypeSet(upperBound, lowerBound, iface) =>
-        val thisTS = this.typeSet(ch)
-        val otherTS = set.typeSet(ch)
-        otherTS.forall(v => thisTS.contains(v))
-      case DisjunctTypeSet(oneOf) => oneOf.forall(ts => this.contains(ts))
-    }
-
-  override def subtypeOfCanAlias(localType: String, ch: ClassHierarchyConstraints): Boolean = {
-//    this.constrainIsType(localType,ch) match{
+//object TypeSet {
+//
+//}
+//  implicit var rw:RW[TypeSet] = RW.merge(macroRW[EmptyTypeSet.type], BoundedTypeSet.rw, DisjunctTypeSet.rw)
+//  def isClass(className: String, ch:ClassHierarchyConstraints) = {
+//    if(ch.isInterface(className))
+//      throw new IllegalArgumentException(s"$className is an interface")
+//    BoundedTypeSet(Some(className), Some(className), Set())
+//  }
+//
+//  def subclassOf(name:String, hierarchyConstraints: ClassHierarchyConstraints):TypeSet = {
+//    if(hierarchyConstraints.isInterface(name))
+//      BoundedTypeSet(None,None,Set(name))
+//    else
+//      BoundedTypeSet(upper = Some(name),None,Set())
+//  }
+//}
+//case object EmptyTypeSet extends TypeSet {
+//  override def constrainSubtypeOf(name: String, hc: ClassHierarchyConstraints): TypeSet = EmptyTypeSet
+//  override def constrainSupertypeOf(name: String, hc: ClassHierarchyConstraints): TypeSet = EmptyTypeSet
+//  override def constrainIsType(name: String, hc: ClassHierarchyConstraints): TypeSet = EmptyTypeSet
+//  override def isEmpty(hierarchyConstraints:ClassHierarchyConstraints): Boolean = true
+//
+//  override def contains(set: TypeSet)(implicit ch:ClassHierarchyConstraints): Boolean = set match{
+//    case EmptyTypeSet => true
+//    case _ => false
+//  }
+//
+//  override def subtypeOfCanAlias(localType: String, ch: ClassHierarchyConstraints): Boolean = false
+//
+//  override def typeSet(ch: ClassHierarchyConstraints): Set[String] = Set()
+//
+//  override def meet(tc2: TypeSet, ch:ClassHierarchyConstraints): TypeSet = tc2
+//
+//  override def setInterfaces(iFaces: Set[String]): TypeSet = EmptyTypeSet
+//}
+//
+//case class BoundedTypeSet(upper:Option[String], lower:Option[String], interfaces: Set[String]) extends TypeSet{
+//  override def toString:String = (upper,lower) match{
+//    case (Some(upper),Some(lower)) => s"<:$upper >:$lower" + interfaces.headOption.map("<: I( " + _ + ")").getOrElse("")
+//    case (Some(upper),None) => s"<:$upper" + interfaces.headOption.map("<: I( " + _ + ")").getOrElse("")
+//    case (None,Some(lower)) => s">:$lower" + interfaces.headOption.map("<: I( " + _ + ")").getOrElse("")
+//    case (None,None) => s":none " + interfaces.headOption.map("<: I( " + _ + ")").getOrElse("")
+//
+//  }
+//  override def constrainSubtypeOf(name: String, hierarchyConstraints: ClassHierarchyConstraints): TypeSet = {
+//    val newTS = if(hierarchyConstraints.isInterface(name))
+//      this.copy(interfaces = interfaces + name)
+//    else {
+//      upper match{
+//        case Some(v) if hierarchyConstraints.getSubtypesOf(name).contains(v) => this
+//        case Some(v) if hierarchyConstraints.getSubtypesOf(v).contains(name) => this.copy(upper = Some(name))
+//        case None => this.copy(upper = Some(name))
+//        case _ => EmptyTypeSet
+//      }
+//    }
+//    if(newTS.isEmpty(hierarchyConstraints)) EmptyTypeSet else newTS
+//  }
+//
+//  override def constrainSupertypeOf(name: String, hierarchyConstraints: ClassHierarchyConstraints): TypeSet = {
+//    if(hierarchyConstraints.isInterface(name))
+//      throw new IllegalArgumentException(s"$name is an interface")
+//    val newTS = lower match{
+//      case Some(v) if hierarchyConstraints.getSubtypesOf(v).contains(name) => this
+//      case Some(v) if hierarchyConstraints.getSubtypesOf(name).contains(v) => this.copy(lower = Some(name))
+//      case None => this.copy(lower = Some(name))
+//      case _ =>
+//        EmptyTypeSet
+//    }
+//    if(newTS.isEmpty(hierarchyConstraints)) EmptyTypeSet else newTS
+//  }
+//
+//  override def constrainIsType(name: String, hierarchyConstraints: ClassHierarchyConstraints): TypeSet = {
+//    if(lower.exists(!hierarchyConstraints.getSubtypesOf(name).contains(_)))
+//      return EmptyTypeSet // name doesn't contain lower bound as subclass
+//    if(upper.exists(!hierarchyConstraints.getSubtypesOf(_).contains(name)))
+//      return EmptyTypeSet // name isn't a subclass of upper
+//    if(interfaces.exists(iface => !hierarchyConstraints.getSubtypesOf(iface).contains(name)))
+//      return EmptyTypeSet // name doesn't implement one of the interfaces
+//    this.copy(upper = Some(name), lower = Some(name))
+//  }
+//
+//  private var empty:Option[Boolean] = None
+//  override def isEmpty(hierarchyConstraints: ClassHierarchyConstraints): Boolean = {
+//    if(empty.isDefined)
+//      return empty.get
+//    val shouldBeSubClassOfAll = interfaces ++ upper
+//    assert(shouldBeSubClassOfAll.nonEmpty, "Empty type constraint")
+//    val typeSets = shouldBeSubClassOfAll.toList.map(hierarchyConstraints.getSubtypesOf)
+//    @tailrec
+//    def isIntersectEmpty(typeSets:List[Set[String]], acc: Set[String]):Boolean = {
+//      if(acc.isEmpty)
+//        return true // no types can satisfy all constraints
+//      if(typeSets.nonEmpty) {
+//        isIntersectEmpty(typeSets.tail, acc.intersect(typeSets.head))
+//      }else
+//        false
+//    }
+//    val res = lower match{
+//      case None => isIntersectEmpty(typeSets.tail, typeSets.head)
+//      case Some(v) => isIntersectEmpty(typeSets, hierarchyConstraints.getSupertypesOf(v))
+//    }
+//    empty = Some(res)
+//    res
+//  }
+//
+//
+//  override def contains(set: TypeSet)(implicit ch: ClassHierarchyConstraints): Boolean =
+//    set match{
+//      case EmptyTypeSet => false
+//      case BoundedTypeSet(upperBound, lowerBound, iface) =>
+//        val thisTS = this.typeSet(ch)
+//        val otherTS = set.typeSet(ch)
+//        otherTS.forall(v => thisTS.contains(v))
+//      case DisjunctTypeSet(oneOf) => oneOf.forall(ts => this.contains(ts))
+//    }
+//
+//  override def subtypeOfCanAlias(localType: String, ch: ClassHierarchyConstraints): Boolean = {
+////    this.constrainIsType(localType,ch) match{
+////      case EmptyTypeSet => false
+////      case _ => true
+////    }
+//    typeSet(ch).exists(v => ch.getSubtypesOf(localType).contains(v))
+//  }
+//
+//  private var typeSetCache : Option[Set[String]] = None
+//  override def typeSet(ch: ClassHierarchyConstraints): Set[String] = {
+//    if(typeSetCache.isEmpty) {
+//      val subtypes = (interfaces ++ upper).map(ch.getSubtypesOf)
+//      val cSub = subtypes.reduce((acc, v) => acc.intersect(v))
+//      typeSetCache = Some(lower match {
+//        case Some(l) => cSub.intersect(ch.getSupertypesOf(l))
+//        case None => cSub
+//      })
+//    }
+//    typeSetCache.get
+//  }
+//
+//  override def meet(tc2: TypeSet, ch:ClassHierarchyConstraints): TypeSet = {
+//    val merged:TypeSet = tc2 match{
+//      case EmptyTypeSet => EmptyTypeSet
+//      case BoundedTypeSet(Some(upper), Some(lower), ifaces) =>
+//        val upperc = this.constrainSubtypeOf(upper,ch)
+//        val lowerc = upperc.constrainSupertypeOf(lower,ch)
+//        lowerc.setInterfaces(ifaces ++ this.interfaces)
+//      case BoundedTypeSet(Some(upper), None, ifaces) =>
+//        val upperc: TypeSet = this.constrainSubtypeOf(upper,ch)
+//        upperc.setInterfaces(ifaces ++ this.interfaces)
+//      case BoundedTypeSet(None, Some(lower), ifaces) =>
+//        val lowerc = this.constrainSupertypeOf(lower,ch)
+//        lowerc.setInterfaces(ifaces ++ this.interfaces)
+//      case BoundedTypeSet(None,None,ifaces) =>
+//        this.setInterfaces(ifaces)
+//      case dts@DisjunctTypeSet(_) => dts.meet(this,ch)
+//    }
+//    if(merged.isEmpty(ch)){
+//      EmptyTypeSet
+//    }else
+//      merged
+//  }
+//
+//  override def setInterfaces(iFaces: Set[String]): TypeSet = this.copy(interfaces = iFaces)
+//}
+//object BoundedTypeSet{
+//  implicit var rw:RW[BoundedTypeSet] = macroRW
+//}
+//case class DisjunctTypeSet(oneOf: Set[TypeSet]) extends TypeSet{
+//  override def toString():String = {
+//    //oneOf.headOption.map(_.toString() + " disj").getOrElse(":nonedisj")
+//    s"[${oneOf.take(2).map(_.toString).mkString(",")} disj]"
+//  }
+//  private def filterOp(op: TypeSet => TypeSet):TypeSet = {
+//    val outSet = oneOf.map(op).filter {
 //      case EmptyTypeSet => false
 //      case _ => true
 //    }
-    typeSet(ch).exists(v => ch.getSubtypesOf(localType).contains(v))
-  }
-
-  private var typeSetCache : Option[Set[String]] = None
-  override def typeSet(ch: ClassHierarchyConstraints): Set[String] = {
-    if(typeSetCache.isEmpty) {
-      val subtypes = (interfaces ++ upper).map(ch.getSubtypesOf)
-      val cSub = subtypes.reduce((acc, v) => acc.intersect(v))
-      typeSetCache = Some(lower match {
-        case Some(l) => cSub.intersect(ch.getSupertypesOf(l))
-        case None => cSub
-      })
-    }
-    typeSetCache.get
-  }
-
-  override def meet(tc2: TypeSet, ch:ClassHierarchyConstraints): TypeSet = {
-    val merged:TypeSet = tc2 match{
-      case EmptyTypeSet => EmptyTypeSet
-      case BoundedTypeSet(Some(upper), Some(lower), ifaces) =>
-        val upperc = this.constrainSubtypeOf(upper,ch)
-        val lowerc = upperc.constrainSupertypeOf(lower,ch)
-        lowerc.setInterfaces(ifaces ++ this.interfaces)
-      case BoundedTypeSet(Some(upper), None, ifaces) =>
-        val upperc: TypeSet = this.constrainSubtypeOf(upper,ch)
-        upperc.setInterfaces(ifaces ++ this.interfaces)
-      case BoundedTypeSet(None, Some(lower), ifaces) =>
-        val lowerc = this.constrainSupertypeOf(lower,ch)
-        lowerc.setInterfaces(ifaces ++ this.interfaces)
-      case BoundedTypeSet(None,None,ifaces) =>
-        this.setInterfaces(ifaces)
-      case dts@DisjunctTypeSet(_) => dts.meet(this,ch)
-    }
-    if(merged.isEmpty(ch)){
-      EmptyTypeSet
-    }else
-      merged
-  }
-
-  override def setInterfaces(iFaces: Set[String]): TypeSet = this.copy(interfaces = iFaces)
-}
-object BoundedTypeSet{
-  implicit var rw:RW[BoundedTypeSet] = macroRW
-}
-case class DisjunctTypeSet(oneOf: Set[TypeSet]) extends TypeSet{
-  override def toString():String = {
-    //oneOf.headOption.map(_.toString() + " disj").getOrElse(":nonedisj")
-    s"[${oneOf.take(2).map(_.toString).mkString(",")} disj]"
-  }
-  private def filterOp(op: TypeSet => TypeSet):TypeSet = {
-    val outSet = oneOf.map(op).filter {
-      case EmptyTypeSet => false
-      case _ => true
-    }
-    if (outSet.isEmpty) {
-      EmptyTypeSet
-    } else {
-      DisjunctTypeSet(outSet)
-    }
-  }
-  override def constrainSubtypeOf(name: String, hierarchyConstraints: ClassHierarchyConstraints): TypeSet = {
-    filterOp(ts => ts.constrainSubtypeOf(name,hierarchyConstraints))
-  }
-
-  override def constrainSupertypeOf(name: String, hierarchyConstraints: ClassHierarchyConstraints): TypeSet = {
-    filterOp(ts => ts.constrainSupertypeOf(name,hierarchyConstraints))
-  }
-
-  override def constrainIsType(name: String, hierarchyConstraints: ClassHierarchyConstraints): TypeSet = {
-    filterOp(ts => ts.constrainIsType(name,hierarchyConstraints))
-  }
-
-  private var empty: Option[Boolean]= None
-  override def isEmpty(hierarchyConstraints: ClassHierarchyConstraints): Boolean = {
-    if(empty.isDefined) {
-      empty.get
-    } else {
-      val res = oneOf.forall(v => v.isEmpty(hierarchyConstraints))
-      empty = Some(res)
-      res
-    }
-  }
-
-  override def subtypeOfCanAlias(localType: String, ch: ClassHierarchyConstraints): Boolean =
-    oneOf.exists(_.subtypeOfCanAlias(localType,ch))
-
-  override def contains(set: TypeSet)(implicit ch: ClassHierarchyConstraints): Boolean = set match{
-    case d:DisjunctTypeSet if this == d => true
-    case DisjunctTypeSet(otherOneOf) =>
-      //TODO: this is likely to be slow
-      val thisTs = typeSet(ch)
-      val otherTs = set.typeSet(ch)
-      otherTs.forall(v => thisTs.contains(v))
-//      otherOneOf.forall(other => oneOf.exists(thisD => thisD.contains(other)))
-    case _ => oneOf.exists(_.contains(set))
-  }
-
-  private var typeSetCache: Option[Set[String]] = None
-  override def typeSet(ch: ClassHierarchyConstraints): Set[String] = {
-    if(typeSetCache.isEmpty) {
-      typeSetCache = Some(oneOf.flatMap(_.typeSet(ch)))
-    }
-    typeSetCache.get
-  }
-
-  override def meet(tc2: TypeSet, ch:ClassHierarchyConstraints): TypeSet =
-    this.copy(oneOf = oneOf.map(_.meet(tc2,ch)))
-
-  override def setInterfaces(iFaces: Set[String]): TypeSet = this.copy(oneOf.map(_.setInterfaces(iFaces)))
-}
-object DisjunctTypeSet{
-  implicit var rw:RW[DisjunctTypeSet] = macroRW
-}
+//    if (outSet.isEmpty) {
+//      EmptyTypeSet
+//    } else {
+//      DisjunctTypeSet(outSet)
+//    }
+//  }
+//  override def constrainSubtypeOf(name: String, hierarchyConstraints: ClassHierarchyConstraints): TypeSet = {
+//    filterOp(ts => ts.constrainSubtypeOf(name,hierarchyConstraints))
+//  }
+//
+//  override def constrainSupertypeOf(name: String, hierarchyConstraints: ClassHierarchyConstraints): TypeSet = {
+//    filterOp(ts => ts.constrainSupertypeOf(name,hierarchyConstraints))
+//  }
+//
+//  override def constrainIsType(name: String, hierarchyConstraints: ClassHierarchyConstraints): TypeSet = {
+//    filterOp(ts => ts.constrainIsType(name,hierarchyConstraints))
+//  }
+//
+//  private var empty: Option[Boolean]= None
+//  override def isEmpty(hierarchyConstraints: ClassHierarchyConstraints): Boolean = {
+//    if(empty.isDefined) {
+//      empty.get
+//    } else {
+//      val res = oneOf.forall(v => v.isEmpty(hierarchyConstraints))
+//      empty = Some(res)
+//      res
+//    }
+//  }
+//
+//  override def subtypeOfCanAlias(localType: String, ch: ClassHierarchyConstraints): Boolean =
+//    oneOf.exists(_.subtypeOfCanAlias(localType,ch))
+//
+//  override def contains(set: TypeSet)(implicit ch: ClassHierarchyConstraints): Boolean = set match{
+//    case d:DisjunctTypeSet if this == d => true
+//    case DisjunctTypeSet(otherOneOf) =>
+//      //TODO: this is likely to be slow
+//      val thisTs = typeSet(ch)
+//      val otherTs = set.typeSet(ch)
+//      otherTs.forall(v => thisTs.contains(v))
+////      otherOneOf.forall(other => oneOf.exists(thisD => thisD.contains(other)))
+//    case _ => oneOf.exists(_.contains(set))
+//  }
+//
+//  private var typeSetCache: Option[Set[String]] = None
+//  override def typeSet(ch: ClassHierarchyConstraints): Set[String] = {
+//    if(typeSetCache.isEmpty) {
+//      typeSetCache = Some(oneOf.flatMap(_.typeSet(ch)))
+//    }
+//    typeSetCache.get
+//  }
+//
+//  override def meet(tc2: TypeSet, ch:ClassHierarchyConstraints): TypeSet =
+//    this.copy(oneOf = oneOf.map(_.meet(tc2,ch)))
+//
+//  override def setInterfaces(iFaces: Set[String]): TypeSet = this.copy(oneOf.map(_.setInterfaces(iFaces)))
+//}
+//object DisjunctTypeSet{
+//  implicit var rw:RW[DisjunctTypeSet] = macroRW
+//}
 
 //TODO: this case class is getting to the point where pattern matches are unreadable
 /**
@@ -362,47 +389,50 @@ case class State(callStack: List[CallStackFrame],
                  alternateCmd: List[Loc] = Nil
                 ) {
 
-  //  if(!typeConstraints.keySet.forall{case PureVar(id) => id < nextAddr}){
+//  if(!typeConstraints.keySet.forall{case PureVar(id) => id < nextAddr}){
 //    assert(false)
 //  }
-
   def constrainOneOfType(pv: PureVar, classNames: Set[String], ch:ClassHierarchyConstraints):State = {
-    if(typeConstraints.contains(pv)){
-      val oldTc = typeConstraints(pv)
-      val constraints = classNames.map{className => oldTc.constrainSubtypeOf(className,ch)}
-      val flatConstraints = constraints.flatMap{
-        case DisjunctTypeSet(oneOf) => oneOf
-        case v => Set(v)
-      }
-      this.copy(typeConstraints = typeConstraints + (pv -> DisjunctTypeSet(flatConstraints)))
-    }else {
-      val constraints = classNames.map { className =>
-        TypeSet.subclassOf(className,ch)
-      }
-      this.copy(typeConstraints = typeConstraints + (pv -> DisjunctTypeSet(constraints)))
+    if(classNames.contains("_")) {
+      return this
     }
+    if(classNames.isEmpty){
+      return this.copy(typeConstraints = typeConstraints + (pv -> EmptyTypeSet))
+    }
+    val typeSets: Set[BitSet] = classNames.map(n => ch.classToIntCache(n))
+    val mask = BitTypeSet(typeSets.reduce((a,b) => a.union(b)))
+    val newTS = typeConstraints.get(pv).map(_.intersect(mask)).getOrElse(mask)
+    this.copy(typeConstraints = typeConstraints + (pv -> newTS))
   }
 
   def constrainIsType(pv: PureVar, className: String, ch: ClassHierarchyConstraints): State = {
-    if(className != "_") {
-      val newTC = typeConstraints.get(pv) match {
-        case Some(v) => v.constrainIsType(className, ch)
-        case None => TypeSet.isClass(className, ch)
-      }
-      this.copy(typeConstraints = typeConstraints + (pv -> newTC))
-    } else
-      this
+    if(className == "_") {
+      return this
+    }
+    val mask = BitTypeSet(ch.classToIntCache(className))
+    val newTS = typeConstraints.get(pv).map(_.intersect(mask)).getOrElse(mask)
+    this.copy(typeConstraints= typeConstraints + (pv -> newTS))
   }
 
-  def constrainUpperType(pv:PureVar, clazz:String, hierarchy:ClassHierarchyConstraints):State = {
-    if(clazz != "_") {
-      val newTC = typeConstraints.get(pv) match {
-        case Some(v) => v.constrainSubtypeOf(clazz, hierarchy)
-        case None => TypeSet.subclassOf(clazz, hierarchy)
-      }
-      this.copy(typeConstraints = typeConstraints + (pv -> newTC))
-    } else
-      this
+  def constrainUpperType(pv:PureVar, clazz:String, ch:ClassHierarchyConstraints):State = {
+    if(clazz == "_"){
+      return this
+    }
+    val newTc = typeConstraints.get(pv) match{
+      case Some(tc) => tc.filterSubTypeOf(Set(clazz))(ch)
+      case None =>
+        TopTypeSet
+    }
+    this.copy(typeConstraints = typeConstraints + (pv -> newTc))
+  }
+
+  def canAlias[M,C](pv:PureVar, method:MethodLoc, lw:LocalWrapper, w:IRWrapper[M,C]):Boolean = {
+    typeConstraints.get(pv) match{
+      case Some(pvPt) =>
+        val pt = w.pointsToSet(method,lw)
+        pt.intersectNonEmpty(pvPt)
+      case None => true
+    }
   }
 
   /**
@@ -415,15 +445,6 @@ case class State(callStack: List[CallStackFrame],
     case ArrayPtEdge(_,_) => None
   }
 
-  //  /**
-  //   * Use for over approximate relevant methods
-  //   * @return set of simple method names referenced by trace abstraction
-  //   */
-  //  def traceMethodSet():Set[String] = ???
-  ////    traceAbstraction.flatMap{ at =>
-  ////      val allISet = SpecSpace.allI(at.a)
-  ////      allISet.flatMap(i => i.signatures.map(_._2))
-  ////    }
   private lazy val allICache: Set[I] = traceAbstraction.flatMap{at =>SpecSpace.allI(at.a)}
   def fastIMatches(subsignature: String):Boolean = allICache.exists(i => i.signatures.matchesSubSig(subsignature))
 
@@ -728,7 +749,8 @@ case class State(callStack: List[CallStackFrame],
           val thisV = cshead.locals(StackVar("@this")).asInstanceOf[PureVar]
           val newStack = cshead.copy(locals = cshead.locals + (StackVar(name) -> thisV)) :: cstail
           val combinedTs: Option[(PureVar,TypeSet)] = (typeConstraints.get(thisV),ts) match{
-            case (Some(ts1),Some(ts2)) => Some(thisV -> ts1.meet(ts2,ch))
+            case (Some(ts1),Some(ts2)) =>
+              Some(thisV -> ts1.intersect(ts2))
             case (Some(ts),_) => Some(thisV->ts)
             case (_,Some(ts)) => Some(thisV->ts)
             case _ => None
@@ -741,7 +763,7 @@ case class State(callStack: List[CallStackFrame],
           val newident = PureVar(nextAddr)
           val newStack = cshead.copy(locals = cshead.locals + (StackVar(name) -> newident)) :: cstail
           val combinedTs: Option[(PureVar,TypeSet)] = (typeConstraints.get(newident),ts) match{
-            case (Some(ts1),Some(ts2)) => Some(newident -> ts1.meet(ts2,ch))
+            case (Some(ts1),Some(ts2)) => Some(newident -> ts1.intersect(ts2))
             case (Some(ts),_) => Some(newident->ts)
             case (_,Some(ts)) => Some(newident->ts)
             case _ => None

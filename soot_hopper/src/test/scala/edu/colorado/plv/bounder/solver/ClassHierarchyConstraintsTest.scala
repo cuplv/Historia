@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.solver
 
 import com.microsoft.z3.{Context, Status}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BoundedTypeSet, ClassType, DisjunctTypeSet, SubclassOf, SuperclassOf}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, SubclassOf, SuperclassOf}
 import org.scalatest.funsuite.AnyFunSuite
 
 class ClassHierarchyConstraintsTest extends AnyFunSuite {
@@ -9,29 +9,10 @@ class ClassHierarchyConstraintsTest extends AnyFunSuite {
   val hierarchy : Map[String, Set[String]] =
     Map("java.lang.Object" -> Set("String", "Foo", "Bar", "java.lang.Object"),
       "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"), "Runnable" -> Set("Foo","Bar"))
-  implicit val ch = new ClassHierarchyConstraints(hierarchy,Set("Runnable"), SolverTypeSolving)
+  implicit val ch = new ClassHierarchyConstraints(hierarchy,Set("Runnable"),
+    hierarchy.keySet.zipWithIndex.map{case (k,v) => v->k}.toMap, SolverTypeSolving)
 
 
-  test("contains"){
-    //TODO: contains method of DisjunctTypeSet is clearly not working:
-    // p-2:<:com.example.createdestroy.MyActivity$1<: I( com.example.createdestroy.MyActivity$SomethingAble) disj,
-    // p-2:<:com.example.createdestroy.MyActivity$1 >:com.example.createdestroy.MyActivity$1<: I( com.example.createdestroy.MyActivity$SomethingAble) disj)
-    val bts = BoundedTypeSet(Some("Foo"), None, Set())
-    val isTs = BoundedTypeSet(Some("Foo"), Some("Foo"),Set())
-    assert(bts.contains(isTs))
-
-    val isTsIface = BoundedTypeSet(Some("Foo"), Some("Foo"), Set("Runnable"))
-    assert(bts.contains(isTsIface))
-    assert(isTs.contains(isTsIface))
-
-    val dBts = DisjunctTypeSet(Set(bts))
-    val dIsTs = DisjunctTypeSet(Set(isTs))
-    assert(dBts.contains(dIsTs))
-    assert(bts.contains(dIsTs))
-    assert(dBts.contains(isTs))
-    //=========
-
-  }
   test("Subtype"){
 
 

@@ -1,5 +1,6 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
-import java.util.Objects
+import java.util.{Objects, Properties}
+import java.util.concurrent.{ArrayBlockingQueue, ConcurrentLinkedQueue, Executors}
 
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, InternalMethodInvoke, InternalMethodReturn, Loc, MethodLoc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn}
 import javax.naming.InitialContext
@@ -9,7 +10,8 @@ import slick.sql.FixedSqlStreamingAction
 import soot.jimple.parser.node.AEmptyMethodBody
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Await, Future}
+import scala.util.{Failure, Success}
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration._
 import upickle.default.{macroRW, ReadWriter => RW}
 import upickle.default.{read, write}
@@ -18,10 +20,12 @@ import java.util.concurrent.atomic.AtomicInteger
 import scala.language.postfixOps
 import better.files.File
 import edu.colorado.plv.bounder.RunConfig
+import slick.util.AsyncExecutor
 import ujson.{Obj, Value}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
+import scala.jdk.CollectionConverters.SeqHasAsJava
 
 trait ReachingGraph {
   def getPredecessors(qry:Qry) : Iterable[Qry]
@@ -38,6 +42,8 @@ case object MemoryOutputMode extends OutputMode
  * @param truncate ommit states for less important nodes, value does not matter if only reading
  */
 case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
+//  val ex = Executors.newFixedThreadPool(10)
+//  implicit val ec:AsyncExecutor = ExecutionContext.fromExecutor(ex)
 
   val dbf = File(dbfile)
   private val witnessQry = TableQuery[WitnessTable]
@@ -50,7 +56,9 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
 
 //  val db = Database.forURL(s"jdbc:sqlite:$dbfile",driver="org.sqlite.JDBC")
   Class.forName("org.sqlite.JDBC") // force resolution of sqlite driver
-  val db = Database.forURL(s"jdbc:sqlite:$dbfile",Map("maxConnections" -> "1"))
+  val prop = new Properties
+  prop.setProperty("maxConnections","10")
+  val db = Database.forURL(url = s"jdbc:sqlite:$dbfile",prop=prop, driver=null)
   if(!dbf.exists()) {
     val setup = DBIO.seq(witnessQry.schema.create,
       methodQry.schema.create,
@@ -215,6 +223,7 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
   }
 
   def writeLiveAtEnd(witness: Set[IPathNode], finalizeQryId:Int, status:String):Unit = {
+    flushQueues()
     val ids = witness.map(n => n.asInstanceOf[DBPathNode].thisID)
     val writeFuture = db.run(liveAtEnd ++= ids)
     Await.result(writeFuture, 600 seconds)
@@ -223,20 +232,52 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
     assert(meta.size == 1)
     val updatedMeta = finishMeta(meta.head, status)
     Await.result(db.run(updateMetadata.update(updatedMeta)), 600 seconds)
+//    ex.shutdown()
   }
 
-  private def shouldTruncate(loc:Loc):Boolean = {
+  private def shouldTruncate(loc:Loc):Boolean =
     if(truncate)
       loc match {
+        case _:CallbackMethodReturn => false
+        case _:CallbackMethodInvoke => true
         case AppLoc(_, _, _) => true
         case SkippedInternalMethodInvoke(_, _, _) => true
         case SkippedInternalMethodReturn(_, _, _, _) => true
         case InternalMethodInvoke(_, _, _) => true
         case InternalMethodReturn(_, _, _) => true
-        case _ => false
+
+        case _ => true
       }
     else false
+
+
+  private val writeNodeQueue = new ConcurrentLinkedQueue[WitTableRow]()
+  private val graphQueue = new ConcurrentLinkedQueue[(Int,Int)]()
+  def flushQueues() = {
+    this.synchronized {
+      val writeNodes = mutable.ListBuffer[WitTableRow]()
+      while (!writeNodeQueue.isEmpty) {
+        writeNodes.addOne(writeNodeQueue.poll())
+      }
+      val writeFuture = db.run(witnessQry ++= writeNodes)
+
+      val writeGraph = mutable.ListBuffer[(Int,Int)]()
+      while (!graphQueue.isEmpty) {
+        writeGraph.addOne(graphQueue.poll())
+      }
+      val graphFuture = db.run(graphQuery ++= writeGraph)
+      Await.result(writeFuture, 600 seconds)
+      Await.result(graphFuture, 600 seconds)
+    }
   }
+  def addAndFlush(v:WitTableRow, v2:Seq[(Int,Int)]) = {
+    writeNodeQueue.add(v)
+    graphQueue.addAll(v2.asJava)
+    if(writeNodeQueue.size() > 1000 || graphQueue.size() > 1000){
+      flushQueues()
+    }
+  }
+
   def writeNode(node: DBPathNode): Unit = {
     val qryState = node.qry match {
       case LiveQry(_, _) => "live"
@@ -244,44 +285,51 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
       case WitnessedQry(_, _) => "witnessed"
       case LiveTruncatedQry(_) => throw new IllegalArgumentException("Cannot write truncated node")
     }
-    val loc = write(node.qry.loc)
+    val loc = node.qry.loc.serialized
     val stateStr = if(shouldTruncate(node.qry.loc))
       ""
     else
       write[State](node.qry.getState.get)
-    val writeFuture = db.run(witnessQry +=
-      (node.thisID, qryState, stateStr, loc, node.subsumedID, node.depth))
-    Await.result(writeFuture, 30 seconds)
-//    val edges: Seq[(Int, Int)] = node.succ(this).map(sid => (node.thisID,sid.asInstanceOf[DBPathNode].thisID))
+    val row = WitTableRow(node.thisID, qryState, stateStr, loc, node.subsumedID, node.depth)
     val edges:Seq[(Int,Int)] = node.succID.map(sid => (node.thisID, sid))
-    val writeGraphFuture = db.run(graphQuery ++= edges)
-    Await.result(writeGraphFuture,30 seconds)
+    addAndFlush(row,edges)
+//    val writeFuture = db.run(witnessQry +=
+//      row)
+//    val writeGraphFuture = db.run(graphQuery ++= edges)
+//    Await.result(writeFuture, 30 seconds)
+//    Await.result(writeGraphFuture,30 seconds)
   }
 
   def setSubsumed(node: DBPathNode, subsuming:Option[DBPathNode]) = {
+    flushQueues()
     val id = node.thisID
     val q = for(n <- witnessQry if n.id === id) yield n.subsumingState
     val q2 = q.update(subsuming.map(_.thisID))
-    Await.result(db.run(q2), 30 seconds)
+    val future = db.run(q2)
+//    future.onComplete{
+//      case Success(n) => assert(n == 1)
+//      case Failure(e) => throw e
+//    }
+    Await.result(future, 30 seconds)
   }
   def readNode(id: Int):DBPathNode = {
     val q = witnessQry.filter(_.id === id)
     val qFuture = db.run(q.result)
-    val res: Seq[(Int, String, String, String, Option[Int], Int)] = Await.result(qFuture, 30 seconds)
+    val res: Seq[WitTableRow] = Await.result(qFuture, 30 seconds)
     assert(res.size == 1, s"Failed to find unique node id: $id actual size: ${res.size}")
     rowToNode(res.head)
   }
 
-  private def rowToNode(res: (Int, String, String, String, Option[Int], Int)) = {
-    val id = res._1
-    val queryState: String = res._2
-    val loc: Loc = read[Loc](res._4)
-    val subsumingId: Option[Int] = res._5
+  private def rowToNode(res:WitTableRow) = {
+    val id = res.id
+    val queryState: String = res.queryState
+    val loc: Loc = read[Loc](res.nodeLoc)
+    val subsumingId: Option[Int] = res.subsumingState
 
     val succQry = for (edge <- graphQuery if edge.src === id) yield edge.tgt
 
     val pred: List[Int] = Await.result(db.run(succQry.result), 30 seconds).toList
-    val stateOpt: Option[State] = if(res._3 == "") None else Some( read[State](res._3) )
+    val stateOpt: Option[State] = if(queryState == "") None else Some( read[State](queryState) )
     val qry = (queryState,stateOpt) match {
       case ("live", Some(state)) => LiveQry(state, loc)
       case ("refuted", Some(state)) => BottomQry(state, loc)
@@ -289,7 +337,7 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
       case ("live", None) => LiveTruncatedQry(loc)
       case _ => throw new IllegalStateException("Wrong query for missing serialized state")
     }
-    val depth = res._6
+    val depth = res.depth
     DBPathNode(qry, id, pred, subsumingId, depth,-1)
   }
 
@@ -327,14 +375,18 @@ class InitialQueryTable(tag:Tag) extends Table[(Int, Int, String, String, String
   def * = (id,startingNodeID, initialQuery, config, metadata)
 }
 
-class WitnessTable(tag:Tag) extends Table[(Int,String,String,String,Option[Int],Int)](tag,"PATH"){
+case class WitTableRow(id:Int, queryState:String, nodeState:String, nodeLoc:String,
+                       subsumingState:Option[Int],
+                       depth:Int
+                      )
+class WitnessTable(tag:Tag) extends Table[WitTableRow](tag,"PATH"){
   def id = column[Int]("NODE_ID", O.PrimaryKey)
   def queryState = column[String]("QUERY_STATE")
   def nodeState = column[String]("NODE_STATE")
   def nodeLoc = column[String]("NODE_LOC")
   def subsumingState = column[Option[Int]]("SUBSUMING_STATE")
   def depth = column[Int]("DEPTH")
-  def * = (id,queryState,nodeState,nodeLoc,subsumingState,depth)
+  def * = (id,queryState,nodeState,nodeLoc,subsumingState,depth) <> (WitTableRow.tupled, WitTableRow.unapply)
 }
 class MethodTable(tag:Tag) extends Table[(Int,String,String,String,Boolean)](tag, "Methods"){
   def id = column[Int]("METHOD_ID", O.PrimaryKey)

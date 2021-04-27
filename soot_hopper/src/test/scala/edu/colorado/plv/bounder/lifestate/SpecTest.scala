@@ -43,10 +43,12 @@ class SpecTest extends AnyFunSuite {
 //  }
 
   test("Should parse I and match subtypes") {
-    implicit val ch = new ClassHierarchyConstraints(Map(
+    val clMap = Map(
       "rx.Single" -> Set("rx.Single","otherthing"),
       "Runnable" -> Set("MyRunnable")
-    ), Set("Runnable"))
+    )
+    implicit val ch = new ClassHierarchyConstraints(clMap, Set("Runnable"),
+      clMap.keySet.zipWithIndex.map{case (k,v) => v->k }.toMap)
     val i1 = LifeState.parseI("""I(ci [_, v, _] foobar foo(java.lang.List, _ ) v<:rx.Single )""")
     assert(i1.mt == CIEnter)
     assert(i1.signatures.matches(("rx.Single","foobar foo(java.lang.List, int)")))

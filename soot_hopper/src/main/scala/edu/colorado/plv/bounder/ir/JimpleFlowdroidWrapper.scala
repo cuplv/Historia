@@ -10,23 +10,25 @@ import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
 import edu.colorado.plv.bounder.{BounderSetupApplication, BounderUtil}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor._
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BoundedTypeSet, DisjunctTypeSet, State, TypeSet}
 import edu.colorado.plv.fixedsoot.{EnhancedUnitGraphFixed, SparkTransformerDBG}
 import scalaz.Memo
 import soot.jimple.internal._
 import soot.jimple.spark.SparkTransformer
 import soot.jimple.toolkits.callgraph.{CHATransformer, CallGraph, ReachableMethods, TopologicalOrderer}
 import soot.jimple._
+import soot.jimple.spark.pag.{AllocNode, Node, PAG}
+import soot.jimple.spark.sets.{DoublePointsToSet, EmptyPointsToSet, HybridPointsToSet, P2SetVisitor}
 import soot.jimple.toolkits.annotation.logic.LoopFinder
+import soot.jimple.toolkits.pointer.DumbPointerAnalysis
 import soot.options.Options
 import soot.toolkits.graph.pdg.EnhancedUnitGraph
 import soot.toolkits.graph.{PseudoTopologicalOrderer, SlowPseudoTopologicalOrderer, UnitGraph}
 import soot.util.Chain
-import soot.{AnySubType, ArrayType, Body, BooleanType, ByteType, CharType, DoubleType, FloatType, G, Hierarchy, IntType, Local, LongType, Modifier, PackManager, RefType, Scene, ShortType, SootClass, SootField, SootMethod, SootMethodRef, Type, Value}
+import soot.{AnySubType, ArrayType, Body, BooleanType, ByteType, CharType, DoubleType, FloatType, G, Hierarchy, IntType, Local, LongType, Modifier, PackManager, PointsToSet, RefType, Scene, ShortType, SootClass, SootField, SootMethod, SootMethodRef, Type, Value}
 
 import scala.annotation.tailrec
 import scala.collection.immutable.Queue
-import scala.collection.{MapView, mutable}
+import scala.collection.{BitSet, MapView, mutable}
 import scala.jdk.CollectionConverters._
 import scala.util.matching.Regex
 
@@ -979,16 +981,32 @@ class JimpleFlowdroidWrapper(apkPath : String,
 
 
 
-
+  def getAllPtRegions():Map[Int,String] = {
+    val pt = Scene.v().getPointsToAnalysis
+    pt match{
+      case _:DumbPointerAnalysis => Map()
+      case v:PAG =>
+        val out = mutable.HashMap[Int,String]()
+        v.getAllocNodeNumberer.forEach(n => {
+          val number = n.getNumber
+          assert(!out.contains(number), s"Malformed number $number for node ${n}")
+          val typeName = JimpleFlowdroidWrapper.stringNameOfType(n.getType)
+          out.addOne(number, typeName)
+        })
+        out.toMap
+      case _ =>
+        throw new IllegalArgumentException()
+    }
+  }
   val cha =
-    new ClassHierarchyConstraints(getClassHierarchy,getInterfaces)
+    new ClassHierarchyConstraints(getClassHierarchy,getInterfaces,getAllPtRegions()) //TODO: get int values from pt for types
 
   override def getClassHierarchyConstraints:ClassHierarchyConstraints = cha
   // ** Override all overridable callbacks that affect spec **
   private def overrideCallbacks():Unit = {
     val ch = Scene.v.getActiveHierarchy
     val cha =
-      new ClassHierarchyConstraints(getClassHierarchy,getInterfaces)
+      new ClassHierarchyConstraints(getClassHierarchy,getInterfaces,getAllPtRegions())
 
     val appClasses: Set[String] = resolver.appMethods.map(m => m.classType)
     def findSuperMatching(sc:SootClass, sig:SignatureMatcher):Option[SootMethod] = {
@@ -1526,13 +1544,66 @@ class JimpleFlowdroidWrapper(apkPath : String,
     res
   }
 
+  private val jimpleGetBitSet : DoublePointsToSet =>BitSet = Memo.mutableHashMapMemo{ pt =>
+    val out = mutable.BitSet()
+    val oldSet = pt.getOldSet.asInstanceOf[HybridPointsToSet]
+    val newSet = pt.getNewSet.asInstanceOf[HybridPointsToSet]
+    List(oldSet,newSet).foreach(_.forall((n: Node) => out.add(n.getNumber)))
+    out
+  }
+//  case class JimpleTypeSet(pt:DoublePointsToSet) extends TypeSet {
+//    private lazy val nonNative: DeserializedTypeSet = DeserializedTypeSet(jimpleGetBitSet(pt), None)
+//    override def serialize(): String = "typeset:" //TODO:
+//
+//    override def intersect(other: TypeSet): TypeSet = other match{
+//      case EmptyTypeSet => EmptyTypeSet
+//      case TopTypeSet => this
+//      case JimpleTypeSet(otherPt) =>
+//        ???
+//      case _ => EmptyTypeSet
+//    }
+//
+//    override def isEmpty(): Boolean = pt.isEmpty
+//
+//    override def intersectNonEmpty(other: TypeSet): Boolean = other match{
+//      case JimpleTypeSet(otherPt) => pt.hasNonEmptyIntersection(otherPt)
+//      case v =>
+//        nonNative.intersectNonEmpty(other)
+//    }
+//
+//    override def getValues: Option[Set[Int]] = ???
+//
+//    override def contains(other: TypeSet): Boolean = ???
+//
+//    override def filterSubTypeOf(types: Set[String])(implicit ch:ClassHierarchyConstraints): TypeSet = {
+//      if(!types.exists(v => ch.getSubtypesOf(v).contains(JimpleFlowdroidWrapper.stringNameOfType(pt.getType))))
+//        return EmptyTypeSet
+//      val bitSet = jimpleGetBitSet(pt)
+//      val newSet = bitSet.filter{v =>
+//        val strName = ch.intToString(v)
+//        val supers = ch.getSupertypesOf(strName)
+//        types.exists(supers.contains)
+//      }
+//      DeserializedTypeSet(newSet, None)
+//    }
+//
+//    override def convertFromNative: TypeSet =
+//      nonNative
+//  }
+
+  override def pointsToSet(fr: FieldReference): TypeSet = {
+    ???
+  }
   override def pointsToSet(loc: MethodLoc, local: LocalWrapper): TypeSet = {
     if (ClassHierarchyConstraints.Primitive.matches(local.localType)){
-      return BoundedTypeSet(Some(local.localType), None, Set())
+//      return BoundedTypeSet(Some(local.localType), None, Set())
+//      return PrimitiveTypeSet(local.localType)
+//      BitTypeSet(BitSet(), Some(local.localType))
+      return PrimTypeSet(local.localType)
     }
     val sootMethod = loc.asInstanceOf[JimpleMethodLoc].method
     val pt = Scene.v().getPointsToAnalysis
-    val reaching = sootMethod.getActiveBody.getLocals.asScala.find(l => l.getName == local.name) match{
+    val reaching: PointsToSet = sootMethod.getActiveBody.getLocals.asScala.find(l => l.getName == local.name) match{
       case Some(sootLocal) =>
         pt.reachingObjects(sootLocal)
       case None if local.name == "@this" =>
@@ -1540,26 +1611,34 @@ class JimpleFlowdroidWrapper(apkPath : String,
       case None =>
         ???
     }
-    val reachingTypes = reaching.possibleTypes()
-    val out:Set[TypeSet] = reachingTypes.asScala.toSet.map{ (t:Type) => t match {
-      case t: RefType => {
-        val strName = JimpleFlowdroidWrapper.stringNameOfType(t)
-        if (t.getSootClass.isInterface)
-          BoundedTypeSet(None, None, Set(strName))
-        else
-          BoundedTypeSet(Some(strName), None, Set())
-      }
-      case t: AnySubType => //TODO: what generates this? Can we add a unit test for it?
-        val strName = JimpleFlowdroidWrapper.stringNameOfType(t.getBase)
-        BoundedTypeSet(Some(strName), None, Set())
-      case t: Type =>
-        val strName = JimpleFlowdroidWrapper.stringNameOfType(t)
-        BoundedTypeSet(Some(strName), Some(strName), Set())
-    }}
-    if(out.size == 1)
-      out.head
-    else
-      DisjunctTypeSet(out)
+    reaching match{
+      case d:DoublePointsToSet =>
+        BitTypeSet(jimpleGetBitSet(d))
+      case e:EmptyPointsToSet =>
+        EmptyTypeSet
+    }
+//    JimpleTypeSet(reaching.asInstanceOf[DoublePointsToSet])
+//    reaching.
+//    val reachingTypes = reaching.possibleTypes()
+//    val out:Set[TypeSet] = reachingTypes.asScala.toSet.map{ (t:Type) => t match {
+//      case t: RefType => {
+//        val strName = JimpleFlowdroidWrapper.stringNameOfType(t)
+//        if (t.getSootClass.isInterface)
+//          BoundedTypeSet(None, None, Set(strName))
+//        else
+//          BoundedTypeSet(Some(strName), None, Set())
+//      }
+//      case t: AnySubType => //TODO: what generates this? Can we add a unit test for it?
+//        val strName = JimpleFlowdroidWrapper.stringNameOfType(t.getBase)
+//        BoundedTypeSet(Some(strName), None, Set())
+//      case t: Type =>
+//        val strName = JimpleFlowdroidWrapper.stringNameOfType(t)
+//        BoundedTypeSet(Some(strName), Some(strName), Set())
+//    }}
+//    if(out.size == 1)
+//      out.head
+//    else
+//      DisjunctTypeSet(out)
   }
 
   override def getThisVar(methodLoc: Loc): Option[LocalWrapper] = {
@@ -1639,5 +1718,7 @@ case class JimpleLineLoc(cmd: soot.Unit, method: SootMethod) extends LineLoc{
   }
 
   override def lineNumber: Int = cmd.getJavaSourceStartLineNumber
+
+  override def containingMethod: MethodLoc = JimpleMethodLoc(method)
 }
 
