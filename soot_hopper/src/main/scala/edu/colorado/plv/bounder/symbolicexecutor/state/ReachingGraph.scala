@@ -3,15 +3,9 @@ import java.util.{Objects, Properties}
 import java.util.concurrent.{ArrayBlockingQueue, ConcurrentLinkedQueue, Executors}
 
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, InternalMethodInvoke, InternalMethodReturn, Loc, MethodLoc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn}
-import javax.naming.InitialContext
-import slick.dbio.Effect
 import slick.jdbc.SQLiteProfile.api._
-import slick.sql.FixedSqlStreamingAction
-import soot.jimple.parser.node.AEmptyMethodBody
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.{Failure, Success}
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.Await
 import scala.concurrent.duration._
 import upickle.default.{macroRW, ReadWriter => RW}
 import upickle.default.{read, write}
@@ -20,8 +14,9 @@ import java.util.concurrent.atomic.AtomicInteger
 import scala.language.postfixOps
 import better.files.File
 import edu.colorado.plv.bounder.RunConfig
-import slick.util.AsyncExecutor
-import ujson.{Obj, Value}
+import slick.jdbc
+import slick.jdbc.SQLiteProfile
+import ujson.Obj
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -42,10 +37,7 @@ case object MemoryOutputMode extends OutputMode
  * @param truncate ommit states for less important nodes, value does not matter if only reading
  */
 case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
-//  val ex = Executors.newFixedThreadPool(10)
-//  implicit val ec:AsyncExecutor = ExecutionContext.fromExecutor(ex)
 
-  val dbf = File(dbfile)
   private val witnessQry = TableQuery[WitnessTable]
   private val methodQry = TableQuery[MethodTable]
   private val callEdgeQry = TableQuery[CallEdgeTable]
@@ -54,12 +46,7 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
   private val initialQueries = TableQuery[InitialQueryTable]
   import slick.jdbc.SQLiteProfile.api._
 
-//  val db = Database.forURL(s"jdbc:sqlite:$dbfile",driver="org.sqlite.JDBC")
-  Class.forName("org.sqlite.JDBC") // force resolution of sqlite driver
-  val prop = new Properties
-  prop.setProperty("maxConnections","10")
-  val db = Database.forURL(url = s"jdbc:sqlite:$dbfile",prop=prop, driver=null)
-  if(!dbf.exists()) {
+  val setupTables = (idb:jdbc.SQLiteProfile.backend.DatabaseDef) => {if(!File(dbfile).exists()) {
     val setup = DBIO.seq(witnessQry.schema.create,
       methodQry.schema.create,
       callEdgeQry.schema.create,
@@ -67,23 +54,11 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
       liveAtEnd.schema.create,
       initialQueries.schema.create
     )
-    Await.result(db.run(setup), 20 seconds)
-  }
-//  // TODO turn off synchronous mode sqlite
-//  // PRAGMA schema.synchronous = OFF
-  def turnOffFSync():Unit = {
-    import slick.driver.H2Driver.api._
-    import slick.jdbc.GetResult
-    import slick.jdbc.SQLActionBuilder
-    import scala.concurrent.Await
-    case class StrRes(s:String)
-    implicit val getStrResult = GetResult(r => StrRes(r.<<))
-    val res = Await.result(db.run(sql"""PRAGMA synchronous = OFF;""".as[StrRes]), 30 seconds)
-    val res2 = Await.result(db.run(sql"""PRAGMA journal_mode=WAL;""".as[StrRes]), 30 seconds)
-    //    println(res)
-    //    println(res2)
-  }
-  turnOffFSync()
+    Await.result(idb.run(setup), 20 seconds)
+  }}
+
+  private val db = DBOutputMode.getDBForF(dbfile, setupTables)
+
 
   private val id = new AtomicInteger(0)
   def nextId:Int = {
@@ -261,12 +236,12 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
       }
       val writeFuture = db.run(witnessQry ++= writeNodes)
 
+      Await.result(writeFuture, 600 seconds)
       val writeGraph = mutable.ListBuffer[(Int,Int)]()
       while (!graphQueue.isEmpty) {
         writeGraph.addOne(graphQueue.poll())
       }
       val graphFuture = db.run(graphQuery ++= writeGraph)
-      Await.result(writeFuture, 600 seconds)
       Await.result(graphFuture, 600 seconds)
     }
   }
@@ -313,6 +288,7 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
     Await.result(future, 30 seconds)
   }
   def readNode(id: Int):DBPathNode = {
+    flushQueues()
     val q = witnessQry.filter(_.id === id)
     val qFuture = db.run(q.result)
     val res: Seq[WitTableRow] = Await.result(qFuture, 30 seconds)
@@ -329,13 +305,15 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
     val succQry = for (edge <- graphQuery if edge.src === id) yield edge.tgt
 
     val pred: List[Int] = Await.result(db.run(succQry.result), 30 seconds).toList
-    val stateOpt: Option[State] = if(queryState == "") None else Some( read[State](queryState) )
+    val stateOpt: Option[State] = if(res.nodeState == "") None else Some( read[State](res.nodeState) )
     val qry = (queryState,stateOpt) match {
       case ("live", Some(state)) => LiveQry(state, loc)
       case ("refuted", Some(state)) => BottomQry(state, loc)
       case ("witnessed", Some(state)) => WitnessedQry(state, loc)
       case ("live", None) => LiveTruncatedQry(loc)
-      case _ => throw new IllegalStateException("Wrong query for missing serialized state")
+      case ("refuted",None) => BottomTruncatedQry(loc)
+      case ("witnessed",None) => WitnessedTruncatedQry(loc)
+      case (queryState,_) => throw new IllegalStateException(s"Wrong query for missing serialized state: $queryState")
     }
     val depth = res.depth
     DBPathNode(qry, id, pred, subsumingId, depth,-1)
@@ -353,7 +331,43 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
 
 }
 object DBOutputMode{
+
   implicit val rw:RW[DBOutputMode] = macroRW
+  private val dbs = mutable.HashMap[String, jdbc.SQLiteProfile.backend.DatabaseDef]()
+  def getDBForF(dbfile:String,
+                setupTables: jdbc.SQLiteProfile.backend.DatabaseDef => Any): jdbc.SQLiteProfile.backend.DatabaseDef = {
+    if (!dbs.contains(dbfile)) {
+      val db: jdbc.SQLiteProfile.backend.DatabaseDef = {
+        Class.forName("org.sqlite.JDBC") // force resolution of sqlite driver
+        val prop = new Properties
+        prop.setProperty("maxConnections", "1")
+        Database.forURL(url = s"jdbc:sqlite:$dbfile", prop = prop, driver = "org.sqlite.JDBC")
+      }
+      //  val db = Database.forURL(s"jdbc:sqlite:$dbfile",driver="org.sqlite.JDBC")
+      setupTables(db)
+
+      //  // TODO turn off synchronous mode sqlite
+      //  // PRAGMA schema.synchronous = OFF
+      def turnOffFSync(): Unit = {
+        import slick.driver.H2Driver.api._
+        import slick.jdbc.GetResult
+        import slick.jdbc.SQLActionBuilder
+        import scala.concurrent.Await
+        case class StrRes(s: String)
+        implicit val getStrResult = GetResult(r => StrRes(r.<<))
+        val res = Await.result(db.run(sql"""PRAGMA synchronous = OFF;""".as[StrRes]), 30 seconds)
+        //TODO: === was journal_mode=WAL the issue?
+        val res2 = Await.result(db.run(sql"""PRAGMA journal_mode=WAL;""".as[StrRes]), 30 seconds)
+        //    println(res)
+        //    println(res2)
+      }
+
+      turnOffFSync()
+      dbs.addOne((dbfile,db))
+    }
+    dbs(dbfile)
+  }
+  protected var dbInitialized = false
 }
 
 class LiveAtEnd(tag:Tag) extends Table[(Int)](tag,"LIVEATEND"){

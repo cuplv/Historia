@@ -427,14 +427,14 @@ class ExperimentsDb(bounderJar:Option[String] = None){
   // use flag
   private val connectionUrl = s"jdbc:postgresql://${hostname}:${port}/${database}?user=${username}&password=${password}"
   val db = Database.forURL(connectionUrl, driver = "org.postgresql.Driver")
-  def runSql(q: String) = {
-    import slick.jdbc.H2Profile.api._
-    import slick.jdbc.GetResult
-    case class Count(n:Int)
-    implicit val getCountResult = GetResult(r => Count(r.<<))
-    val sql: SQLActionBuilder = sql"""select count(*) from results;"""
-    db.run(sql.as[Count].headOption)
-  }
+//  def runSql(q: String) = {
+//    import slick.jdbc.H2Profile.api._
+//    import slick.jdbc.GetResult
+//    case class Count(n:Int)
+//    implicit val getCountResult = GetResult(r => Count(r.<<))
+//    val sql: SQLActionBuilder = sql"""select count(*) from results;"""
+//    db.run(sql.as[Count].headOption)
+//  }
 
 
   def loop() = {
@@ -661,7 +661,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     //    val rand = SimpleFunction.nullary[Double]("rand")
     val getJobs = for {
       job <- jobQry
-      res <- resultsQry if job.jobId === res.jobId && res.result === filterResult
+      res <- resultsQry if job.jobId === res.jobId && (res.result like filterResult)
     } yield (job,res)
     val jobRows = Await.result(db.run(getJobs.result), 90 seconds)
 
@@ -756,7 +756,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     val apkDat = apkFile.loadBytes
     Await.result(
       db.run(apkQry += (name,apkDat)),
-      120 seconds
+      300 seconds
     )
   }
   def downloadApk(name:String, outFile:File) :Boolean= {
@@ -764,7 +764,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
       row <- apkQry if row.name === name
     } yield row.img
     val bytes: Seq[Array[Byte]] = Await.result(
-      db.run(qry.take(1).result), 60 seconds
+      db.run(qry.take(1).result), 300 seconds
     )
     if(bytes.size == 1){
       outFile.writeByteArray(bytes.head)
@@ -803,7 +803,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     val runInputs = RunInputs(0,bounderJarHash, specFileHash, notes)
 
     val insertQuery = inputsQuery returning inputsQuery.map(_.id) into ((_,id) =>  id)
-    Await.result(db.run(insertQuery += runInputs), 30 seconds)
+    Await.result(db.run(insertQuery += runInputs), 300 seconds)
   }
   def getInputs(id:Int, bounderJar:File, specFile:File) = {
     val q1 = for {

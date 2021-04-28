@@ -804,7 +804,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
 
 
   def buildSparkCallGraph() = {
-      //    Scene.v().setEntryPoints(callbacks.toList.asJava)
+    //    Scene.v().setEntryPoints(callbacks.toList.asJava)
     val appClasses: Set[SootClass] = getAppMethods(resolver).flatMap { a =>
       val cname = JimpleFlowdroidWrapper.stringNameOfClass(a.getDeclaringClass)
       if (!resolver.isFrameworkClass(cname)) {
@@ -939,26 +939,8 @@ class JimpleFlowdroidWrapper(apkPath : String,
       //("merge-stringbuffer", "true")
       //      ("lazy-pts", "true")
     )
-    //=========
     CHATransformer.v().transform()
-//    SparkTransformer.v().transform("", opt.asJava)
-
     SparkTransformer.v().transform("", opt.asJava)
-
-//    PackManager.v.getPack("spark").apply()
-//    SparkTransformer.v().transform("", opt.asJava)
-//    import soot.PackManager
-//    import soot.PhaseOptions
-//    import soot.Transform
-//    val sparkTransform = PackManager.v.getTransform("cg.spark")
-//    PhaseOptions.v.setPhaseOption(sparkTransform, "enabled:true") //enable spark transformation
-//    PhaseOptions.v.setPhaseOption(sparkTransform, "verbose:true")
-//    PhaseOptions.v.setPhaseOption(sparkTransform, "set-impl:bit")
-//    PhaseOptions.v.setPhaseOption(sparkTransform, "on-fly-cg:true")
-//    PhaseOptions.v.setPhaseOption(sparkTransform, "apponly:false")
-//    PhaseOptions.v.setPhaseOption(sparkTransform, "force-gc:true")
-//    PhaseOptions.v.setPhaseOption(sparkTransform, "simplify-offline:true")
-//    PackManager.v.getPack("cg").apply()
   }
   val preCallbacks: Set[SootMethod] = resolver.getCallbacks.flatMap{
     case JimpleMethodLoc(method) => Some(method)
@@ -989,8 +971,14 @@ class JimpleFlowdroidWrapper(apkPath : String,
         val out = mutable.HashMap[Int,String]()
         v.getAllocNodeNumberer.forEach(n => {
           val number = n.getNumber
-          assert(!out.contains(number), s"Malformed number $number for node ${n}")
           val typeName = JimpleFlowdroidWrapper.stringNameOfType(n.getType)
+          assert(!out.contains(number) || out(number) == typeName, s"Malformed number $number for node ${n}")
+          out.addOne(number, typeName)
+        })
+        v.allocSources().forEach(n => {
+          val number = n.getNumber
+          val typeName = JimpleFlowdroidWrapper.stringNameOfType(n.getType)
+          assert(!out.contains(number) || out(number) == typeName, s"Malformed number $number for node ${n}")
           out.addOne(number, typeName)
         })
         out.toMap

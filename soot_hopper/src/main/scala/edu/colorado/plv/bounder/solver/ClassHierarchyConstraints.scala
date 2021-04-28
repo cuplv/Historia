@@ -72,8 +72,13 @@ class ClassHierarchyConstraints(types : Map[String,Set[String]],
                                 useZ3TypeSolver: StateTypeSolving = SolverTypeSolving ) {
   def intToString(v: Int) = intToClass(v)
 
-  lazy val classToIntCache: Map[String, BitSet] = intToClass.groupBy{case (_,v) => v}
+  private lazy val iclassToIntCache: Map[String, BitSet] = intToClass.groupBy{case (_,v) => v}
     .map{case (k,v) => k -> BitSet.fromSpecific(v.keySet)}
+  def classToIntCache(str: String) = {
+    // if iclassToIntCache does not contain type, points to analysis did not find an allocation site
+    iclassToIntCache.getOrElse(str, BitSet())
+  }
+
   def classToInts(clazz:String):BitSet = classToIntCache(clazz)
 
   def getIntToClass:Map[Int, String] = intToClass

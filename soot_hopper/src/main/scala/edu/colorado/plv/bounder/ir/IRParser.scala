@@ -29,6 +29,7 @@ object IRParser{
 
 class IRParser extends RegexParsers{
 
+  //TODO: This duplicates soot.dexpler.Util.dottedClassName
 
   def decl : Parser[String] = ("L" | "I")
   def arrayDecl : Parser[String] = ("[")

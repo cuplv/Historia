@@ -71,7 +71,7 @@ object BounderSetupApplication {
   def loadApk(path:String, callGraph:CallGraphSource) : Unit = callGraph match{
     case PatchedFlowdroidCallGraph => loadApkFlowdroid(path)
     case FlowdroidCallGraph => loadApkFlowdroid(path)
-    case _ => loadApkNonFlowdroid(path)
+    case _ => loadApk(path)
   }
   def loadApkFlowdroid(path:String) : Unit = {
 //    // Create call graph and pointer analysis with flowdroid main method
@@ -93,7 +93,7 @@ object BounderSetupApplication {
 //    setup.constructCallgraph()
     ???
   }
-  def loadApkNonFlowdroid(path : String):Unit ={
+  def loadApk(path : String):Unit ={
     G.reset()
     val platformsDir = androidHome + "/platforms"
     Options.v.set_allow_phantom_refs(true)
@@ -121,17 +121,17 @@ object BounderSetupApplication {
     Options.v.set_keep_line_number(true)
 //    Options.v.set_throw_analysis(Options.throw_analysis_dalvik) //TODO: disabled, is this needed?
     Options.v.set_process_multiple_dex(true)
-    Options.v.set_ignore_resolution_errors(true) //TODO: what does this do?
+    Options.v.set_ignore_resolution_errors(true)
 //    Options.v.setPhaseOption("jb", "use-original-names:true")
     val classpath = s"${platformsDir}/android-26/android.jar"
     //TODO: construct classpath
-    Options.v.set_force_android_jar(classpath) //TODO:=============== this is added
+    Options.v.set_force_android_jar(classpath)
     Options.v.set_soot_classpath(classpath)
     Main.v.autoSetOptions()
 //    Options.v.setPhaseOption("cg.cha", "on")
-    Scene.v.loadBasicClasses()
+//    Scene.v.loadBasicClasses() // called by loadNecessaryClasses
     Scene.v.loadNecessaryClasses()
-    Scene.v.loadDynamicClasses()
+//    Scene.v.loadDynamicClasses() // called by loadNecessaryClasses
     PackManager.v.getPack("wjpp").apply()
     PackManager.v.runPacks()
 //    CHATransformer.v().transform()

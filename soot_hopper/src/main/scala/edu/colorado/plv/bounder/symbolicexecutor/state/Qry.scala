@@ -252,6 +252,16 @@ case class LiveTruncatedQry(loc:Loc) extends Qry{
 
   override def copyWithNewState(state: State): Qry = this
 }
+case class WitnessedTruncatedQry(loc:Loc) extends Qry{
+  override def getState: Option[State] = None
+
+  override def copyWithNewState(state: State): Qry = this
+}
+case class BottomTruncatedQry(loc:Loc) extends Qry{
+  override def getState: Option[State] = None
+
+  override def copyWithNewState(state: State): Qry = this
+}
 // Infeasible precondition, path refuted
 case class BottomQry(state:State, loc:Loc) extends Qry {
   override def toString:String = "!!!refuted!!! loc: " + loc.toString + " state: " + getState.toString
