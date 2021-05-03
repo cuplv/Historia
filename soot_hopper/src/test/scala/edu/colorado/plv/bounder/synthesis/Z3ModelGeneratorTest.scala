@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.synthesis
 
 import edu.colorado.plv.bounder.ir.{CBEnter, CallbackMethodInvoke, LocalWrapper, TestIRMethodLoc}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSPred, NI, PredicateSpace, SetSignatureMatcher, SignatureMatcher}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, PureVar, LiveQry, StackVar, State}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, LiveQry, PureVar, StackVar, State, StateFormula}
 import org.scalatest.funsuite.AnyFunSuite
 
 class Z3ModelGeneratorTest extends AnyFunSuite {
@@ -16,7 +16,7 @@ class Z3ModelGeneratorTest extends AnyFunSuite {
       fmwName="void foo()", fooMethod)
     val pureVar = PureVar(State.getId_TESTONLY())
     val frame = CallStackFrame(dummyLoc, None, Map(StackVar("this") -> pureVar))
-    val state = State(List(frame), Map(), Set(),Map(), Set(),0)
+    val state = State(StateFormula(List(frame), Map(), Set(),Map(), Set()),0)
     val qryR1 = LiveQry(state, dummyLoc)
 
     val barPred = I(CBEnter,Set(("","void bar()")), List("a"))

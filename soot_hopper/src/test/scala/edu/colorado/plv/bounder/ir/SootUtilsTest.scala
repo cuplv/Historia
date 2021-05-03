@@ -100,10 +100,12 @@ class SootUtilsTest extends AnyFunSuite {
     assert(entryloc.isDefined)
 
     println("---")
+    val tr = Set(AbstractTrace(SpecSignatures.Activity_onPause_entry, Nil, Map()))
     val retPause = iterPredUntil(Set(l), symbolicExecutor.controlFlowResolver, {
       case CallbackMethodReturn(_, name, _, _) if name.contains("onPause") => true
       case _ => false
-    }, State.topState.copy(traceAbstraction = Set(AbstractTrace(SpecSignatures.Activity_onPause_entry, Nil, Map()))), 20)
+    }, State.topState.copy(sf =
+      State.topState.sf.copy(traceAbstraction = tr)), 20)
     assert(retPause.isDefined)
   }
   test("iterate to parameter assignments onCreate"){

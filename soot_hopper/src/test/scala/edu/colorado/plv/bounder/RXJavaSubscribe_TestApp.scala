@@ -4,7 +4,7 @@ import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.LifeState.LSFalse
 import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.state.{PrettyPrinting, Qry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{CallinReturnNonNull, PrettyPrinting, Qry}
 import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, QueryFinished, SymbolicExecutorConfig, TransferFunctions}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
@@ -28,10 +28,10 @@ class RXJavaSubscribe_TestApp extends AnyFunSuite{
       component = Some(List("example.com.rxjavasubscribebug.PlayerFragment.*")))
     val symbolicExecutor = config.getSymbolicExecutor
 
-    val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
+    val query = CallinReturnNonNull(
       "example.com.rxjavasubscribebug.PlayerFragment",
       "void lambda$onActivityCreated$1$PlayerFragment(java.lang.Object)",64,
-      callinMatches = ".*getActivity.*".r)
+      ".*getActivity.*")
     val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
     assert(BounderUtil.interpretResult(result,QueryFinished) == Proven)
     assert(result.nonEmpty)

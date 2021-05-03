@@ -1,9 +1,7 @@
 package edu.colorado.plv.bounder.ir
 
-import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.AppCodeResolver
-import edu.colorado.plv.bounder.symbolicexecutor.state.{State}
 import upickle.default.{macroRW, ReadWriter => RW}
 
 import scala.collection.BitSet
@@ -24,6 +22,7 @@ trait IRWrapper[M,C]{
   def getOverrideChain( method : MethodLoc) : Seq[MethodLoc]
   def findMethodLoc(className: String, methodName: String):Iterable[MethodLoc]
   def findLineInMethod(className:String, methodName:String, line:Int):Iterable[AppLoc]
+  def findInMethod(className:String, methodName:String, toFind: CmdWrapper => Boolean):Iterable[AppLoc]
   def makeMethodTargets(source: MethodLoc): Set[MethodLoc]
   def makeCmd(cmd:C, method:M, loc:Option[AppLoc] = None): CmdWrapper
   def degreeOut(cmd: AppLoc):Int
@@ -32,15 +31,14 @@ trait IRWrapper[M,C]{
 
   // points to analysis
   def pointsToSet(loc:MethodLoc, local: LocalWrapper):TypeSet
-  def pointsToSet(fr:FieldReference):TypeSet
 
   def commandTopologicalOrder(cmdWrapper:CmdWrapper):Int
   def commandPredecessors(cmdWrapper:CmdWrapper): List[AppLoc]
   def commandNext(cmdWrapper:CmdWrapper):List[AppLoc]
 
-  /**
-   * Is this the first command in containing method
-   */
+//  /**
+//   * Is this the first command in containing method
+//   */
   def isMethodEntry(cmdWrapper: CmdWrapper): Boolean
   def cmdAtLocation(loc:AppLoc) :CmdWrapper
   def makeInvokeTargets(invoke:AppLoc):UnresolvedMethodTarget
@@ -61,7 +59,7 @@ sealed trait TypeSet{
   def serialize():String
   def intersect(other:TypeSet):TypeSet
   def intersectNonEmpty(other:TypeSet):Boolean
-  def isEmpty():Boolean
+  def isEmpty:Boolean
 
   /**
    * Get set of integers representing types that can inhabit this type set
@@ -83,7 +81,7 @@ case object TopTypeSet extends TypeSet {
 
   override def intersect(other: TypeSet): TypeSet = other
 
-  override def isEmpty(): Boolean = false
+  override def isEmpty: Boolean = false
 
   override def getValues: Option[Set[Int]] = None
 
@@ -98,7 +96,7 @@ case object EmptyTypeSet extends TypeSet{
 
   override def intersect(other: TypeSet): TypeSet = EmptyTypeSet
 
-  override def isEmpty(): Boolean = true
+  override def isEmpty: Boolean = true
 
   override def getValues: Option[Set[Int]] = Some(Set())
 
@@ -117,7 +115,7 @@ case class PrimTypeSet(name:String) extends TypeSet {
 
   override def intersect(other: TypeSet): TypeSet = if(contains(other)) this else EmptyTypeSet
 
-  override def isEmpty(): Boolean = false
+  override def isEmpty: Boolean = false
 
   /**
    * Get set of integers representing types that can inhabit this type set
@@ -138,7 +136,7 @@ case class PrimTypeSet(name:String) extends TypeSet {
     if(types.contains(name)) this else EmptyTypeSet
 
 
-  override def intersectNonEmpty(other: TypeSet): Boolean = !intersect(other).isEmpty()
+  override def intersectNonEmpty(other: TypeSet): Boolean = !intersect(other).isEmpty
 }
 case class BitTypeSet(s:BitSet) extends TypeSet {
   override def serialize(): String = "DeserializedTypeSet:"
@@ -150,7 +148,7 @@ case class BitTypeSet(s:BitSet) extends TypeSet {
     case EmptyTypeSet => EmptyTypeSet
   }
 
-  override def isEmpty(): Boolean = s.isEmpty
+  override def isEmpty: Boolean = s.isEmpty
 
   override def getValues: Option[Set[Int]] = {
     Some(s.toSet)
@@ -176,13 +174,13 @@ case class BitTypeSet(s:BitSet) extends TypeSet {
     BitTypeSet(newSet)
   }
   // TODO: may be faster way with bitsets
-  override def intersectNonEmpty(other: TypeSet): Boolean = !intersect(other).isEmpty()
+  override def intersectNonEmpty(other: TypeSet): Boolean = !intersect(other).isEmpty
 }
 object TypeSet{
   implicit var rw:RW[TypeSet] = upickle.default.readwriter[String].bimap[TypeSet](
     ts => ts.serialize()
     ,
-    st => TopTypeSet //TODO: currently not bothering to serialize type sets
+    _ => TopTypeSet //TODO: currently not bothering to serialize type sets
   )
 }
 
@@ -203,7 +201,7 @@ object CmdWrapper{
 /**
  *
  * @param returnVar None if void return otherwise local returned by cmd
- * @param loc
+ * @param loc location of command in app
  */
 case class ReturnCmd(returnVar: Option[RVal], loc:AppLoc) extends CmdWrapper(loc) {
   override def mkPre: CmdWrapper = this.copy(loc=loc.copy(isPre = true))
@@ -299,7 +297,7 @@ object RVal{
 /**
  * Currently unsupported rval treated as doing anything.
  * To add support for command, create an ast node and add it to the IRWrappers
- * @param str
+ * @param str string representation of ommitted command for debugging
  */
 case class TopExpr(str:String) extends RVal {
   override def isConst: Boolean = false
@@ -342,8 +340,6 @@ sealed trait Invoke extends RVal {
   def targetMethod:String
   def params:List[RVal]
   def targetOptional: Option[LocalWrapper]
-  def paramTypes:List[String] =
-    ???
 }
 object Invoke{
   implicit val rw:RW[Invoke] = RW.merge(macroRW[VirtualInvoke], macroRW[SpecialInvoke], macroRW[StaticInvoke])

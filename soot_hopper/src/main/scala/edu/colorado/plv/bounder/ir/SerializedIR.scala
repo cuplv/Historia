@@ -64,7 +64,7 @@ class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] 
 
   override def getClassHierarchyConstraints: ClassHierarchyConstraints = ???
 
-  override def pointsToSet(fr: FieldReference): TypeSet = ???
+  override def findInMethod(className: String, methodName: String, toFind: CmdWrapper => Boolean): Iterable[AppLoc] = ???
 }
 
 /**
@@ -115,6 +115,8 @@ case class TestIRLineLoc(line:Int, desc:String = "") extends LineLoc {
   override def lineNumber: Int = line
 
   override def containingMethod: MethodLoc = ???
+
+  override def isFirstLocInMethod: Boolean = ???
 }
 object TestIRLineLoc{
   implicit val rw:RW[TestIRMethodLoc] = macroRW

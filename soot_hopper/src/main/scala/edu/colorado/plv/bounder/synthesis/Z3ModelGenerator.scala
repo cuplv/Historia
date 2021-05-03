@@ -37,7 +37,7 @@ class Z3ModelGenerator extends ModelGenerator {
 
   def encodeNodeReachability(qry:Qry, pred: LifeState.LSPred, theta: Map[String, PureVar],
                              predSpace : PredicateSpace) : Unit = qry match {
-    case LiveQry(State(stack, heap, pure, _,_,_,_,_), loc) => {
+    case LiveQry(State(_, _, _, _), loc) => {
       val targetSig = loc.msgSig.get
 //      val edges = predSpace.getEdgeSet
       ???

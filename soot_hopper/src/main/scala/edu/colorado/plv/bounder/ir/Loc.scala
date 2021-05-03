@@ -18,7 +18,7 @@ sealed trait Loc{
   def msgSig : Option[String]
   def toString:String
   def isEntry:Option[Boolean]
-  private lazy val iSerialized= write(this)
+  def iSerialized:String
   def serialized:String = iSerialized
 }
 object Loc{
@@ -72,6 +72,7 @@ object MethodLoc {
 trait LineLoc{
   def lineNumber:Int
   def containingMethod:MethodLoc
+  def isFirstLocInMethod:Boolean
 }
 object LineLoc{
   implicit val rw:RW[LineLoc] = upickle.default.readwriter[ujson.Value].bimap[LineLoc](
@@ -96,6 +97,8 @@ case class AppLoc(method: MethodLoc, line: LineLoc, isPre:Boolean) extends Loc {
   override def msgSig = Some(s"[Int] ${method.simpleName}")
 
   override def isEntry: Option[Boolean] = None
+  private lazy val iser= write(this)
+  override def iSerialized: String = iser
 }
 object AppLoc{
   implicit val rw:RW[AppLoc] = macroRW
@@ -107,6 +110,8 @@ case class CallinMethodReturn(fmwClazz : String, fmwName:String) extends Loc {
   override def msgSig: Option[String] = Some(s"[CI Ret] ${fmwClazz} ${fmwName}" )
 
   override def isEntry: Option[Boolean] = Some(false)
+  private lazy val iser= write(this)
+  override def iSerialized: String = iser
 }
 object CallinMethodReturn{
   implicit val rw:RW[CallinMethodReturn] = macroRW
@@ -118,6 +123,8 @@ case class CallinMethodInvoke(fmwClazz : String, fmwName:String) extends Loc {
   override def msgSig: Option[String] = Some(s"[CI Inv] ${fmwClazz} ${fmwName}")
 
   override def isEntry: Option[Boolean] = Some(true)
+  private lazy val iser= write(this)
+  override def iSerialized: String = iser
 }
 object CallinMethodInvoke{
   implicit val rw:RW[CallinMethodInvoke] = macroRW
@@ -128,6 +135,8 @@ case class GroupedCallinMethodInvoke(targetClasses: Set[String], fmwName:String)
   override def msgSig: Option[String] = Some(s"[CI Inv] ${targetClasses.head} ${fmwName}")
 
   override def isEntry: Option[Boolean] = Some(true)
+  private lazy val iser= write(this)
+  override def iSerialized: String = iser
 }
 object GroupedCallinMethodInvoke{
   implicit val rw:RW[GroupedCallinMethodInvoke] = macroRW
@@ -139,6 +148,8 @@ case class GroupedCallinMethodReturn(targetClasses: Set[String], fmwName:String)
   override def msgSig: Option[String] = Some(s"[CI Ret] ${targetClasses.head} ${fmwName}")
 
   override def isEntry: Option[Boolean] = Some(false)
+  private lazy val iser= write(this)
+  override def iSerialized: String = iser
 }
 object GroupedCallinMethodReturn{
   implicit val rw:RW[GroupedCallinMethodReturn] = macroRW
@@ -149,6 +160,8 @@ case class CallbackMethodInvoke(fmwClazz: String, fmwName: String, loc:MethodLoc
   override def msgSig: Option[String] = Some(s"[CB Inv] ${fmwClazz} ${fmwName}")
 
   override def isEntry: Option[Boolean] = Some(true)
+  private lazy val iser= write(this)
+  override def iSerialized: String = iser
 }
 object CallbackMethodInvoke{
   implicit val rw:RW[CallbackMethodInvoke] = macroRW
@@ -162,6 +175,8 @@ case class CallbackMethodReturn(fmwClazz: String, fmwName:String, loc:MethodLoc,
   override def isEntry: Option[Boolean] = Some(false)
   override def containingMethod:Option[MethodLoc] =
     line.map(_.containingMethod)
+  private lazy val iser= write(this)
+  override def iSerialized: String = iser
 }
 object CallbackMethodReturn{
   implicit val rw:RW[CallbackMethodReturn] = macroRW
@@ -172,6 +187,8 @@ case class InternalMethodInvoke(clazz:String, name:String, loc:MethodLoc) extend
 
   override def isEntry: Option[Boolean] = Some(true)
   override def containingMethod:Option[MethodLoc] = Some(loc)
+  private lazy val iser= write(this)
+  override def iSerialized: String = iser
 }
 object InternalMethodInvoke{
   implicit val rw:RW[InternalMethodInvoke] = macroRW
@@ -182,6 +199,8 @@ case class InternalMethodReturn(clazz:String, name:String, loc:MethodLoc) extend
 
   override def isEntry: Option[Boolean] = Some(false)
   override def containingMethod:Option[MethodLoc] = Some(loc)
+  private lazy val iser= write(this)
+  override def iSerialized: String = iser
 }
 object InternalMethodReturn{
   implicit val rw:RW[InternalMethodReturn] = macroRW
@@ -191,6 +210,8 @@ case class SkippedInternalMethodInvoke(clazz:String, name:String, loc:MethodLoc)
   override def msgSig: Option[String] = None
   override def isEntry: Option[Boolean] = Some(true)
   override def containingMethod:Option[MethodLoc] = Some(loc)
+  private lazy val iser= write(this)
+  override def iSerialized: String = iser
 }
 object SkippedInternalMethodInvoke{
   implicit val rw:RW[SkippedInternalMethodInvoke] = macroRW
@@ -200,6 +221,8 @@ case class SkippedInternalMethodReturn(clazz:String, name:String, rel:RelevanceR
   override def msgSig: Option[String] = None
   override def isEntry: Option[Boolean] = Some(false)
   override def containingMethod:Option[MethodLoc] = Some(loc)
+  private lazy val iser= write(this)
+  override def iSerialized: String = iser
 }
 object SkippedInternalMethodReturn{
   implicit val rw:RW[SkippedInternalMethodReturn] = macroRW

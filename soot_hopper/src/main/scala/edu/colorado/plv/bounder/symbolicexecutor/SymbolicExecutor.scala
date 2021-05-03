@@ -2,9 +2,10 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import java.time.Instant
 
+import edu.colorado.plv.bounder.{BounderUtil, RunConfig}
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, If, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SwitchCmd, ThrowCmd, VirtualInvoke}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SetInclusionTypeSolving, SolverTypeSolving, StateTypeSolving, Z3StateSolver}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, DBPathNode, FrameworkLocation, IPathNode, LiveQry, LiveTruncatedQry, MemoryOutputMode, OrdCount, OutputMode, PathNode, Qry, State, StateSet, SubsumableLocation, SwapLoc, WitnessedQry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, DBPathNode, FrameworkLocation, IPathNode, InitialQuery, LiveQry, LiveTruncatedQry, MemoryOutputMode, OrdCount, OutputMode, PathNode, Qry, State, StateSet, SubsumableLocation, SwapLoc, WitnessedQry}
 
 import scala.annotation.tailrec
 import scala.collection.parallel.CollectionConverters.{ImmutableSetIsParallelizable, IterableIsParallelizable}
@@ -158,21 +159,28 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
 
   /**
    *
-   * @param qry - a source location and an assertion to prove
    * @return  (id, Terminal path nodes)
    */
-  def run(qry: Set[Qry], initialize: Set[IPathNode] => Int = _ => 0) : Set[QueryData] = {
+  def run(initialQuery: InitialQuery, outputMode:OutputMode = MemoryOutputMode,
+          cfg:RunConfig = RunConfig()) : Set[QueryData] = {
+    val qry = initialQuery.make(this,w)
     qry.groupBy(_.loc).map{ case(loc,qs) =>
       val startTime = Instant.now.getEpochSecond
       var id = -1
       try {
         val pathNodes = qs.map(PathNode(_, Nil, None))
-        id = initialize(pathNodes)
+        id = outputMode.initializeQuery(loc,cfg,initialQuery)
         val queue = new GrouperQ
         queue.addAll(pathNodes)
         val deadline = if(config.timeLimit > -1)startTime + config.timeLimit else -1
-        QueryData(id, loc, executeBackward(queue, config.stepLimit, deadline),
-          Instant.now.getEpochSecond - startTime, QueryFinished)
+        val res: Set[IPathNode] = executeBackward(queue, config.stepLimit, deadline)
+
+        val interpretedRes = BounderUtil.interpretResult(res, QueryFinished)
+        val char = BounderUtil.characterizeMaxPath(res)
+        val endTime: Long = Instant.now.getEpochSecond - startTime
+        outputMode.writeLiveAtEnd(res, id, interpretedRes.toString,interpretedRes,char,endTime)
+        QueryData(id, loc, res,
+          endTime, QueryFinished)
       }catch{
         case QueryInterruptedException(terminals, reason) =>
           QueryData(id, loc, terminals, Instant.now.getEpochSecond - startTime, QueryInterrupted(reason))
@@ -390,7 +398,8 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   def executeStep(qry:Qry):Set[Qry] = qry match{
     case LiveQry(state, loc) =>
       val predecessorLocations = controlFlowResolver.resolvePredicessors(loc,state)
-      predecessorLocations.par.flatMap(l => {
+      //predecessorLocations.par.flatMap(l => {
+      predecessorLocations.flatMap(l => {
         val newStates = transfer.transfer(state,l,loc)
         newStates.map(state => stateSolver.simplify(state) match {
           case Some(state) if stateSolver.witnessed(state) =>

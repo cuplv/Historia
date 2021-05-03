@@ -2,6 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir._
+import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.SymbolicExecutor
 import ujson.Value
@@ -24,7 +25,7 @@ object Qry {
     val containingMethodPos: List[Loc] = BounderUtil.resolveMethodReturnForAppLoc(ex.getAppCodeResolver, targetLoc)
     containingMethodPos.map{method =>
       val queryStack = List(CallStackFrame(method, None,Map()))
-      val state0 = State.topState.copy(callStack = queryStack, nextCmd = List(targetLoc))
+      val state0 = State.topState.copy(sf = State.topState.sf.copy(callStack = queryStack), nextCmd = List(targetLoc))
       LiveQry(state0, targetLoc)
     }.toSet
   }
@@ -57,9 +58,9 @@ object Qry {
 
     containingMethodPos.map { pos =>
       val queryStack = List(CallStackFrame(pos, None, Map()))
-      val state = State.topState.copy(callStack = queryStack)
+      val state = State.topState.copy(sf = State.topState.sf.copy(callStack = queryStack))
       val (pv,state1) = state.getOrDefine(local, None)
-      val state2 = state1.copy(pureFormula = Set(PureConstraint(pv, Equals, NullVal)), nextCmd = List(location))
+      val state2 = state1.addPureConstraint(PureConstraint(pv, Equals, NullVal)).copy(nextCmd = List(location))
       LiveQry(state2, location)
     }.toSet
   }
@@ -91,9 +92,9 @@ object Qry {
         val cbexits = BounderUtil.resolveMethodReturnForAppLoc(ex.getAppCodeResolver, cmd.getLoc)
         assert(cbexits.nonEmpty, s"Malformed IR, method has no returns:  ${cmd.getLoc.method}")
         val queryStack = List(CallStackFrame(cbexits.head, None, Map()))
-        val state0 = State.topState.copy(callStack = queryStack)
+        val state0 = State.topState.copy(sf = State.topState.sf.copy(callStack = queryStack))
         val (pureVar, state1) = state0.getOrDefine(v, None)
-        LiveQry(state1.copy(pureFormula = Set(PureConstraint(pureVar, Equals, NullVal)),
+        LiveQry(state1.addPureConstraint(PureConstraint(pureVar, Equals, NullVal)).copy(
           nextCmd = List(cmd.getLoc)), cmd.getLoc)
       }
     }
@@ -143,9 +144,9 @@ object Qry {
     val cbexits = BounderUtil.resolveMethodReturnForAppLoc(ex.getAppCodeResolver, derefLoc)
     cbexits.map { cbexit =>
       val queryStack = List(CallStackFrame(cbexit, None, Map()))
-      val state0 = State.topState.copy(callStack = queryStack)
+      val state0 = State.topState.copy(sf = State.topState.sf.copy(callStack = queryStack))
       val (pureVar, state1) = state0.getOrDefine(varname, None)
-      LiveQry(state1.copy(pureFormula = Set(PureConstraint(pureVar, Equals, NullVal)),
+      LiveQry(state1.addPureConstraint(PureConstraint(pureVar, Equals, NullVal)).copy(
         nextCmd = List(derefLoc)), derefLoc)
     }.toSet
   }
@@ -228,6 +229,26 @@ case class CallinReturnNonNull(className:String, methodName:String,
                                line:Integer, callinRegex:String) extends InitialQuery{
   override def make[M, C](sym: SymbolicExecutor[M, C], w: IRWrapper[M, C]): Set[Qry] =
     Qry.makeCallinReturnNull(sym,w, className, methodName, line, callinRegex.r)
+}
+
+case class DisallowedCallin(className:String, methodName:String, s:LSSpec) extends InitialQuery{
+  assert(s.target.mt == CIEnter, "Disallow must be callin entry.")
+  private def invokeMatches(i:Invoke)(implicit ch:ClassHierarchyConstraints):Boolean = {
+    val iClazz = i.targetClass
+    val iSign = i.targetMethod
+    s.target.signatures.matches(iClazz, iSign)
+  }
+
+  private def isMatchingCallin(cmd:CmdWrapper)(implicit ch:ClassHierarchyConstraints):Boolean = cmd match {
+    case AssignCmd(_, i:Invoke, _) => invokeMatches(i)
+    case InvokeCmd(method, _) => invokeMatches(method)
+    case _ => false
+  }
+  override def make[M, C](sym: SymbolicExecutor[M, C], w: IRWrapper[M, C]): Set[Qry] = {
+    implicit val ch = w.getClassHierarchyConstraints
+    val locations = w.findInMethod(className, methodName, cmd => isMatchingCallin(cmd)).toSet
+    locations.map(c => LiveQry(State.topState, c.copy(isPre = false)))
+  }
 }
 
 sealed trait Qry {

@@ -23,7 +23,7 @@ object State {
     id
   }
   def topState:State =
-    State(Nil,Map(),Set(),Map(),Set(),0)
+    State(StateFormula(Nil,Map(),Set(),Map(),Set()),0)
 
   def findIAF(messageType: MessageType, signature: (String, String),
               pred: LSPred)(implicit ch:ClassHierarchyConstraints):Set[I] = pred match{
@@ -77,297 +77,6 @@ case class LSConstConstraint(pureExpr: PureExpr, trace:AbstractTrace) extends LS
   override def optTraceAbs: Option[AbstractTrace] = Some(trace)
 }
 
-//sealed trait TypeSet
-//object TypeSet{
-//  implicit var rw:RW[TypeSet] = RW.merge(PrimitiveTypeSet.rw, OneOfTypeSet.rw)
-//}
-//case class PrimitiveTypeSet(prim:String) extends TypeSet
-//object PrimitiveTypeSet{
-//  implicit var rw:RW[PrimitiveTypeSet] = macroRW
-//}
-//case class OneOfTypeSet(s:BitSet) extends TypeSet
-//object OneOfTypeSet{
-//  implicit var rw:RW[OneOfTypeSet] = macroRW
-////  implicit var rw:RW[OneOfTypeSet] = upickle.default.readwriter[String].bimap[OneOfTypeSet](
-////    {
-////      ts =>
-////        ???
-////    },
-////    {
-////      st =>
-////        ???
-////    }
-////  )
-//}
-
-//sealed trait TypeSet {
-  //  /**
-  //   * Set of types that must match this type constraint and tc2
-  //   * @param tc2 other type set that value must also be a member of
-  //   * @param ch class hierarchy
-  //   * @return new type set, possibly empty
-  //   */
-  //  def meet(tc2: TypeSet, ch:ClassHierarchyConstraints):TypeSet
-  //
-  //  def typeSet(ch: ClassHierarchyConstraints): Set[String]
-  //
-  //  def optionalConstrainUpper(upper:Option[String], ch:ClassHierarchyConstraints):TypeSet = upper match{
-  //    case Some(v) => this.constrainSubtypeOf(v,ch)
-  //    case None => this
-  //  }
-  //  def optionalConstrainLower(lower:Option[String], ch:ClassHierarchyConstraints):TypeSet = lower match{
-  //    case Some(v) => this.constrainSupertypeOf(v, ch)
-  //    case None => this
-  //  }
-  //  def subtypeOfCanAlias(localType: String, ch: ClassHierarchyConstraints): Boolean
-  //
-  //  def contains(set: TypeSet)(implicit ch:ClassHierarchyConstraints): Boolean
-  //
-  //  def constrainSubtypeOf(name:String, hierarchyConstraints: ClassHierarchyConstraints):TypeSet
-  //  def constrainSupertypeOf(name:String, hierarchyConstraints: ClassHierarchyConstraints):TypeSet
-  //  def constrainIsType(name:String, hierarchyConstraints: ClassHierarchyConstraints):TypeSet
-  //  def setInterfaces(iFaces:Set[String]):TypeSet
-  //  def isEmpty(hierarchyConstraints: ClassHierarchyConstraints):Boolean
-
-//}
-
-//object TypeSet {
-//
-//}
-//  implicit var rw:RW[TypeSet] = RW.merge(macroRW[EmptyTypeSet.type], BoundedTypeSet.rw, DisjunctTypeSet.rw)
-//  def isClass(className: String, ch:ClassHierarchyConstraints) = {
-//    if(ch.isInterface(className))
-//      throw new IllegalArgumentException(s"$className is an interface")
-//    BoundedTypeSet(Some(className), Some(className), Set())
-//  }
-//
-//  def subclassOf(name:String, hierarchyConstraints: ClassHierarchyConstraints):TypeSet = {
-//    if(hierarchyConstraints.isInterface(name))
-//      BoundedTypeSet(None,None,Set(name))
-//    else
-//      BoundedTypeSet(upper = Some(name),None,Set())
-//  }
-//}
-//case object EmptyTypeSet extends TypeSet {
-//  override def constrainSubtypeOf(name: String, hc: ClassHierarchyConstraints): TypeSet = EmptyTypeSet
-//  override def constrainSupertypeOf(name: String, hc: ClassHierarchyConstraints): TypeSet = EmptyTypeSet
-//  override def constrainIsType(name: String, hc: ClassHierarchyConstraints): TypeSet = EmptyTypeSet
-//  override def isEmpty(hierarchyConstraints:ClassHierarchyConstraints): Boolean = true
-//
-//  override def contains(set: TypeSet)(implicit ch:ClassHierarchyConstraints): Boolean = set match{
-//    case EmptyTypeSet => true
-//    case _ => false
-//  }
-//
-//  override def subtypeOfCanAlias(localType: String, ch: ClassHierarchyConstraints): Boolean = false
-//
-//  override def typeSet(ch: ClassHierarchyConstraints): Set[String] = Set()
-//
-//  override def meet(tc2: TypeSet, ch:ClassHierarchyConstraints): TypeSet = tc2
-//
-//  override def setInterfaces(iFaces: Set[String]): TypeSet = EmptyTypeSet
-//}
-//
-//case class BoundedTypeSet(upper:Option[String], lower:Option[String], interfaces: Set[String]) extends TypeSet{
-//  override def toString:String = (upper,lower) match{
-//    case (Some(upper),Some(lower)) => s"<:$upper >:$lower" + interfaces.headOption.map("<: I( " + _ + ")").getOrElse("")
-//    case (Some(upper),None) => s"<:$upper" + interfaces.headOption.map("<: I( " + _ + ")").getOrElse("")
-//    case (None,Some(lower)) => s">:$lower" + interfaces.headOption.map("<: I( " + _ + ")").getOrElse("")
-//    case (None,None) => s":none " + interfaces.headOption.map("<: I( " + _ + ")").getOrElse("")
-//
-//  }
-//  override def constrainSubtypeOf(name: String, hierarchyConstraints: ClassHierarchyConstraints): TypeSet = {
-//    val newTS = if(hierarchyConstraints.isInterface(name))
-//      this.copy(interfaces = interfaces + name)
-//    else {
-//      upper match{
-//        case Some(v) if hierarchyConstraints.getSubtypesOf(name).contains(v) => this
-//        case Some(v) if hierarchyConstraints.getSubtypesOf(v).contains(name) => this.copy(upper = Some(name))
-//        case None => this.copy(upper = Some(name))
-//        case _ => EmptyTypeSet
-//      }
-//    }
-//    if(newTS.isEmpty(hierarchyConstraints)) EmptyTypeSet else newTS
-//  }
-//
-//  override def constrainSupertypeOf(name: String, hierarchyConstraints: ClassHierarchyConstraints): TypeSet = {
-//    if(hierarchyConstraints.isInterface(name))
-//      throw new IllegalArgumentException(s"$name is an interface")
-//    val newTS = lower match{
-//      case Some(v) if hierarchyConstraints.getSubtypesOf(v).contains(name) => this
-//      case Some(v) if hierarchyConstraints.getSubtypesOf(name).contains(v) => this.copy(lower = Some(name))
-//      case None => this.copy(lower = Some(name))
-//      case _ =>
-//        EmptyTypeSet
-//    }
-//    if(newTS.isEmpty(hierarchyConstraints)) EmptyTypeSet else newTS
-//  }
-//
-//  override def constrainIsType(name: String, hierarchyConstraints: ClassHierarchyConstraints): TypeSet = {
-//    if(lower.exists(!hierarchyConstraints.getSubtypesOf(name).contains(_)))
-//      return EmptyTypeSet // name doesn't contain lower bound as subclass
-//    if(upper.exists(!hierarchyConstraints.getSubtypesOf(_).contains(name)))
-//      return EmptyTypeSet // name isn't a subclass of upper
-//    if(interfaces.exists(iface => !hierarchyConstraints.getSubtypesOf(iface).contains(name)))
-//      return EmptyTypeSet // name doesn't implement one of the interfaces
-//    this.copy(upper = Some(name), lower = Some(name))
-//  }
-//
-//  private var empty:Option[Boolean] = None
-//  override def isEmpty(hierarchyConstraints: ClassHierarchyConstraints): Boolean = {
-//    if(empty.isDefined)
-//      return empty.get
-//    val shouldBeSubClassOfAll = interfaces ++ upper
-//    assert(shouldBeSubClassOfAll.nonEmpty, "Empty type constraint")
-//    val typeSets = shouldBeSubClassOfAll.toList.map(hierarchyConstraints.getSubtypesOf)
-//    @tailrec
-//    def isIntersectEmpty(typeSets:List[Set[String]], acc: Set[String]):Boolean = {
-//      if(acc.isEmpty)
-//        return true // no types can satisfy all constraints
-//      if(typeSets.nonEmpty) {
-//        isIntersectEmpty(typeSets.tail, acc.intersect(typeSets.head))
-//      }else
-//        false
-//    }
-//    val res = lower match{
-//      case None => isIntersectEmpty(typeSets.tail, typeSets.head)
-//      case Some(v) => isIntersectEmpty(typeSets, hierarchyConstraints.getSupertypesOf(v))
-//    }
-//    empty = Some(res)
-//    res
-//  }
-//
-//
-//  override def contains(set: TypeSet)(implicit ch: ClassHierarchyConstraints): Boolean =
-//    set match{
-//      case EmptyTypeSet => false
-//      case BoundedTypeSet(upperBound, lowerBound, iface) =>
-//        val thisTS = this.typeSet(ch)
-//        val otherTS = set.typeSet(ch)
-//        otherTS.forall(v => thisTS.contains(v))
-//      case DisjunctTypeSet(oneOf) => oneOf.forall(ts => this.contains(ts))
-//    }
-//
-//  override def subtypeOfCanAlias(localType: String, ch: ClassHierarchyConstraints): Boolean = {
-////    this.constrainIsType(localType,ch) match{
-////      case EmptyTypeSet => false
-////      case _ => true
-////    }
-//    typeSet(ch).exists(v => ch.getSubtypesOf(localType).contains(v))
-//  }
-//
-//  private var typeSetCache : Option[Set[String]] = None
-//  override def typeSet(ch: ClassHierarchyConstraints): Set[String] = {
-//    if(typeSetCache.isEmpty) {
-//      val subtypes = (interfaces ++ upper).map(ch.getSubtypesOf)
-//      val cSub = subtypes.reduce((acc, v) => acc.intersect(v))
-//      typeSetCache = Some(lower match {
-//        case Some(l) => cSub.intersect(ch.getSupertypesOf(l))
-//        case None => cSub
-//      })
-//    }
-//    typeSetCache.get
-//  }
-//
-//  override def meet(tc2: TypeSet, ch:ClassHierarchyConstraints): TypeSet = {
-//    val merged:TypeSet = tc2 match{
-//      case EmptyTypeSet => EmptyTypeSet
-//      case BoundedTypeSet(Some(upper), Some(lower), ifaces) =>
-//        val upperc = this.constrainSubtypeOf(upper,ch)
-//        val lowerc = upperc.constrainSupertypeOf(lower,ch)
-//        lowerc.setInterfaces(ifaces ++ this.interfaces)
-//      case BoundedTypeSet(Some(upper), None, ifaces) =>
-//        val upperc: TypeSet = this.constrainSubtypeOf(upper,ch)
-//        upperc.setInterfaces(ifaces ++ this.interfaces)
-//      case BoundedTypeSet(None, Some(lower), ifaces) =>
-//        val lowerc = this.constrainSupertypeOf(lower,ch)
-//        lowerc.setInterfaces(ifaces ++ this.interfaces)
-//      case BoundedTypeSet(None,None,ifaces) =>
-//        this.setInterfaces(ifaces)
-//      case dts@DisjunctTypeSet(_) => dts.meet(this,ch)
-//    }
-//    if(merged.isEmpty(ch)){
-//      EmptyTypeSet
-//    }else
-//      merged
-//  }
-//
-//  override def setInterfaces(iFaces: Set[String]): TypeSet = this.copy(interfaces = iFaces)
-//}
-//object BoundedTypeSet{
-//  implicit var rw:RW[BoundedTypeSet] = macroRW
-//}
-//case class DisjunctTypeSet(oneOf: Set[TypeSet]) extends TypeSet{
-//  override def toString():String = {
-//    //oneOf.headOption.map(_.toString() + " disj").getOrElse(":nonedisj")
-//    s"[${oneOf.take(2).map(_.toString).mkString(",")} disj]"
-//  }
-//  private def filterOp(op: TypeSet => TypeSet):TypeSet = {
-//    val outSet = oneOf.map(op).filter {
-//      case EmptyTypeSet => false
-//      case _ => true
-//    }
-//    if (outSet.isEmpty) {
-//      EmptyTypeSet
-//    } else {
-//      DisjunctTypeSet(outSet)
-//    }
-//  }
-//  override def constrainSubtypeOf(name: String, hierarchyConstraints: ClassHierarchyConstraints): TypeSet = {
-//    filterOp(ts => ts.constrainSubtypeOf(name,hierarchyConstraints))
-//  }
-//
-//  override def constrainSupertypeOf(name: String, hierarchyConstraints: ClassHierarchyConstraints): TypeSet = {
-//    filterOp(ts => ts.constrainSupertypeOf(name,hierarchyConstraints))
-//  }
-//
-//  override def constrainIsType(name: String, hierarchyConstraints: ClassHierarchyConstraints): TypeSet = {
-//    filterOp(ts => ts.constrainIsType(name,hierarchyConstraints))
-//  }
-//
-//  private var empty: Option[Boolean]= None
-//  override def isEmpty(hierarchyConstraints: ClassHierarchyConstraints): Boolean = {
-//    if(empty.isDefined) {
-//      empty.get
-//    } else {
-//      val res = oneOf.forall(v => v.isEmpty(hierarchyConstraints))
-//      empty = Some(res)
-//      res
-//    }
-//  }
-//
-//  override def subtypeOfCanAlias(localType: String, ch: ClassHierarchyConstraints): Boolean =
-//    oneOf.exists(_.subtypeOfCanAlias(localType,ch))
-//
-//  override def contains(set: TypeSet)(implicit ch: ClassHierarchyConstraints): Boolean = set match{
-//    case d:DisjunctTypeSet if this == d => true
-//    case DisjunctTypeSet(otherOneOf) =>
-//      //TODO: this is likely to be slow
-//      val thisTs = typeSet(ch)
-//      val otherTs = set.typeSet(ch)
-//      otherTs.forall(v => thisTs.contains(v))
-////      otherOneOf.forall(other => oneOf.exists(thisD => thisD.contains(other)))
-//    case _ => oneOf.exists(_.contains(set))
-//  }
-//
-//  private var typeSetCache: Option[Set[String]] = None
-//  override def typeSet(ch: ClassHierarchyConstraints): Set[String] = {
-//    if(typeSetCache.isEmpty) {
-//      typeSetCache = Some(oneOf.flatMap(_.typeSet(ch)))
-//    }
-//    typeSetCache.get
-//  }
-//
-//  override def meet(tc2: TypeSet, ch:ClassHierarchyConstraints): TypeSet =
-//    this.copy(oneOf = oneOf.map(_.meet(tc2,ch)))
-//
-//  override def setInterfaces(iFaces: Set[String]): TypeSet = this.copy(oneOf.map(_.setInterfaces(iFaces)))
-//}
-//object DisjunctTypeSet{
-//  implicit var rw:RW[DisjunctTypeSet] = macroRW
-//}
-
-//TODO: this case class is getting to the point where pattern matches are unreadable
 /**
  *
  * @param callStack Application only call stack abstraction, emtpy stack or callin on top means framework control.
@@ -376,164 +85,34 @@ case class LSConstConstraint(pureExpr: PureExpr, trace:AbstractTrace) extends LS
  *                    - null/not null
  *                    - type bounds
  * @param traceAbstraction Trace required to reach this point in the program execution
- * @param nextAddr Int val of next pure val to be declared
- * @param nextCmd Command just processed while executing backwards.
  */
-case class State(callStack: List[CallStackFrame],
-                 heapConstraints: Map[HeapPtEdge, PureExpr],
-                 pureFormula: Set[PureConstraint],
-                 typeConstraints: Map[PureVar, TypeSet],
-                 traceAbstraction: Set[AbstractTrace],
-                 nextAddr:Int,
-                 nextCmd: List[Loc] = Nil,
-                 alternateCmd: List[Loc] = Nil
-                ) {
-
-//  if(!typeConstraints.keySet.forall{case PureVar(id) => id < nextAddr}){
-//    assert(false)
-//  }
-  def constrainOneOfType(pv: PureVar, classNames: Set[String], ch:ClassHierarchyConstraints):State = {
-    if(classNames.contains("_")) {
-      return this
-    }
-    if(classNames.isEmpty){
-      return this.copy(typeConstraints = typeConstraints + (pv -> EmptyTypeSet))
-    }
-    val typeSets: Set[BitSet] = classNames.map(n => ch.classToIntCache(n))
-    val mask = BitTypeSet(typeSets.reduce((a,b) => a.union(b)))
-    val newTS = typeConstraints.get(pv).map(_.intersect(mask)).getOrElse(mask)
-    this.copy(typeConstraints = typeConstraints + (pv -> newTS))
-  }
-
-  def constrainIsType(pv: PureVar, className: String, ch: ClassHierarchyConstraints): State = {
-    if(className == "_") {
-      return this
-    }
-    val mask = BitTypeSet(ch.classToIntCache(className))
-    val newTS = typeConstraints.get(pv).map(_.intersect(mask)).getOrElse(mask)
-    this.copy(typeConstraints= typeConstraints + (pv -> newTS))
-  }
-
-  def constrainUpperType(pv:PureVar, clazz:String, ch:ClassHierarchyConstraints):State = {
-    if(clazz == "_"){
-      return this
-    }
-    val newTc = typeConstraints.get(pv) match{
-      case Some(tc) => tc.filterSubTypeOf(Set(clazz))(ch)
-      case None =>
-        TopTypeSet
-    }
-    this.copy(typeConstraints = typeConstraints + (pv -> newTc))
-  }
-
-  def canAlias[M,C](pv:PureVar, method:MethodLoc, lw:LocalWrapper, w:IRWrapper[M,C]):Boolean = {
-    typeConstraints.get(pv) match{
-      case Some(pvPt) =>
-        val pt = w.pointsToSet(method,lw)
-        pt.intersectNonEmpty(pvPt)
-      case None => true
-    }
-  }
-
-  /**
-   * Use for over approximate relevant methods
-   * @return set of field names that could be referenced by abstract state
-   */
-  def fieldNameSet():Set[String] = heapConstraints.keySet.flatMap{
-    case FieldPtEdge(_,fieldName) => Some(fieldName)
-    case StaticPtEdge(_, fieldName) => Some(fieldName)
-    case ArrayPtEdge(_,_) => None
-  }
-
-  private lazy val allICache: Set[I] = traceAbstraction.flatMap{at =>SpecSpace.allI(at.a)}
-  def fastIMatches(subsignature: String):Boolean = allICache.exists(i => i.signatures.matchesSubSig(subsignature))
-
-  def entryPossible(loc: Loc): Boolean = loc match{
-    case CallbackMethodInvoke(clazz, name, _) =>
-      callStack.headOption match{
-        case Some(CallStackFrame(CallbackMethodReturn(clazz2, name2,_,_),_,_)) =>
-          clazz == clazz2 && name == name2
-        case None => true
-        case _ => false
-      }
-    case InternalMethodInvoke(clazz,name,_) =>
-      callStack.headOption match{
-        case Some(CallStackFrame(InternalMethodReturn(clazz2, name2,_),_,_)) =>
-          clazz == clazz2 && name == name2
-        case None => true
-        case _ => false
-      }
-    case v => throw new IllegalStateException(s"$v is not a entry location")
-  }
-
+case class StateFormula(callStack: List[CallStackFrame],
+                        heapConstraints: Map[HeapPtEdge, PureExpr],
+                        pureFormula: Set[PureConstraint],
+                        typeConstraints: Map[PureVar, TypeSet],
+                        traceAbstraction: Set[AbstractTrace]){
+  // Remember if this state has been checked for satisfiability
   var isSimplified = false
-  def setSimplified(): State = {
+  def setSimplified(): StateFormula = {
     isSimplified = true
     this
   }
-
-  def setNextCmd(cmd: List[Loc]):State = this.copy(nextCmd = cmd)
-
-  def nextPv() = (PureVar(nextAddr), this.copy(nextAddr = nextAddr+1))
-
-  def lsVarConstraint(f: AbstractTrace, lsvar: String): Option[LSParamConstraint] = f match{
-    case AbstractTrace(_,_,mv) => mv.get(lsvar).map(LSPure)
-  }
-
-  def findIFromCurrent(dir: MessageType,
-                       signature: (String, String))(implicit
-                                                    ch:ClassHierarchyConstraints): Set[(I, List[LSParamConstraint])] = {
-    //TODO: constant constraints
-    traceAbstraction.flatMap(ar =>{
-      val iset = findIAF(dir,signature,ar.a)
-      iset.map(i => (i, i.lsVars.map{
-        case LifeState.LSVar(mv) =>
-          ar.modelVars.get(mv).map(LSPure).getOrElse(LSModelVar(mv,ar))
-        case LifeState.LSConst(constV) => LSConstConstraint(constV, ar)
-        case LifeState.LSAnyVal() => LSAny
-      }))
-    })
-  }
-
-
-  private def pformulaVars(p:PureExpr):Set[PureVar] = p match{
-    case p:PureVar => Set(p)
-    case _ => Set()
-  }
-  private def tformulaVars(t : LSPred):Set[PureVar] = t match{
-    case And(lhs,rhs) => tformulaVars(lhs).union(tformulaVars(rhs))
-    case Or(lhs,rhs) => tformulaVars(lhs).union(tformulaVars(rhs))
-    case Not(v) => tformulaVars(v)
-    case _ => Set()
-  }
-  private def formulaVars(trace: AbstractTrace):Set[PureVar] = {
-    tformulaVars(trace.a).union(trace.modelVars.flatMap{
-      case (_,v) => pformulaVars(v)
-    }.toSet)
-  }
-  def allTraceVar():Set[PureVar] = traceAbstraction.flatMap(formulaVars)
-
-  override def toString:String = {
-    def sfString(sfl:List[CallStackFrame], frames: Int):String = (sfl,frames) match{
-      case (sf::t, fr) if fr > 0 =>
-        val locals: Map[StackVar, PureExpr] = sf.locals
-        s"${sf.exitLoc.msgSig.getOrElse("")} " +
-          s"locals: " + locals.map(k => k._1.toString + " -> " + k._2.toString).mkString(",") + "     " +
-          sfString(t, fr-1)
-      case (Nil,_) => ""
-      case (_::_,_) => "..."
+  lazy val allICache: Set[I] = traceAbstraction.flatMap{at =>SpecSpace.allI(at.a)}
+  def swapPv(oldPv : PureVar, newPv: PureVar):StateFormula = {
+    if(oldPv == newPv)
+      this
+    else {
+      this.copy(
+        callStack = callStack.map(f => stackSwapPv(oldPv, newPv, f)),
+        heapConstraints = heapConstraints.map(hc => heapSwapPv(oldPv, newPv, hc)),
+        pureFormula = pureFormula.map(pf => pureSwapPv(oldPv, newPv, pf)),
+        traceAbstraction = traceAbstraction.map(ta => traceSwapPv(oldPv, newPv, ta)),
+        typeConstraints = typeConstraints.map {
+          case (k, v) if k == oldPv => (newPv, v)
+          case (k, v) => (k, v)
+        }
+      )
     }
-    val stackString = sfString(callStack, 2)
-
-    val heapString = s"   heap: ${heapConstraints.map(a => a._1.toString + "->" +  a._2.toString).mkString(" * ")}    "
-    val pureFormulaString = "   pure: " + pureFormula.map(a => a.toString).mkString(" && ") +"    "
-    val traceString = s"   trace: ${traceAbstraction.mkString(" ; ")}"
-    val typeString = s"    types: ${typeConstraints.map{case (k,v) => k.toString + ":" + v.toString}}"
-    s"($stackString $heapString   $pureFormulaString $typeString $traceString)"
-  }
-  def containsLocal(localWrapper: LocalWrapper):Boolean = {
-    val sVar = StackVar(localWrapper.name)
-    callStack.headOption.exists(f => f.locals.contains(sVar))
   }
 
   private def pureExprSwap[T<:PureExpr](oldPv : PureVar, newPv : PureVar, expr:T): T = expr match{
@@ -567,27 +146,150 @@ case class State(callStack: List[CallStackFrame],
     tr.copy(modelVars = nmv)
   }
 
-  /**
-   *
-   * @param oldPv
-   * @param newPv
-   */
+  def iPureVars():Set[PureVar] = {
+    val pureVarOpt = (a:PureExpr) => a match {
+      case p: PureVar => Some(p)
+      case _ => None
+    }
+    val pureVarOptH = (a:HeapPtEdge) => a match {
+      case FieldPtEdge(p, _) => Some(p)
+      case ArrayPtEdge(p, _) => Some(p)
+      case _ => None
+    }
+    val pureVarFromLocals: Set[PureVar] = callStack.headOption match {
+      case Some(CallStackFrame(_, _, locals)) =>
+        locals.flatMap(a => pureVarOpt(a._2)).toSet
+      case None => Set()
+    }
+    val pureVarFromHeap = heapConstraints
+      .flatMap(a => Set() ++ pureVarOptH(a._1) ++ pureVarOpt(a._2)).toSet
+    val pureVarFromConst = pureFormula.flatMap{
+      case PureConstraint(p1,_,p2) => Set() ++ pureVarOpt(p1) ++ pureVarOpt(p2)
+    }
+    val pureVarFromTrace = traceAbstraction.flatMap{
+      case AbstractTrace(_, _, modelVars) => modelVars.collect{case (_,pv: PureVar) => pv}
+    }
+    pureVarFromHeap ++ pureVarFromLocals ++ pureVarFromConst ++ typeConstraints.keySet ++ pureVarFromTrace
+  }
+}
+object StateFormula{
+  implicit var rw:RW[StateFormula] = macroRW
+}
+
+/**
+ *
+ * @param nextAddr Int val of next pure val to be declared
+ * @param nextCmd Command just processed while executing backwards.
+ */
+case class State(sf:StateFormula,
+                 nextAddr:Int,
+                 nextCmd: List[Loc] = Nil,
+                 alternateCmd: List[Loc] = Nil
+                ) {
+  def isSimplified:Boolean = sf.isSimplified
+  def setSimplified():State = {
+    sf.setSimplified()
+    this
+  }
+  // sf accessors
+  def callStack: List[CallStackFrame] = sf.callStack
+  def heapConstraints: Map[HeapPtEdge, PureExpr] = sf.heapConstraints
+  def pureFormula: Set[PureConstraint] = sf.pureFormula
+  def typeConstraints: Map[PureVar, TypeSet] = sf.typeConstraints
+  def traceAbstraction: Set[AbstractTrace] = sf.traceAbstraction
+
+  // sf copy methods
+  def addTypeConstraint(pv:PureVar, typeSet:TypeSet):State =
+    this.copy(sf = sf.copy(typeConstraints = sf.typeConstraints + (pv -> typeSet)))
+  def addPureConstraint(p:PureConstraint):State = {
+    this.copy(sf = sf.copy(pureFormula = sf.pureFormula + p))
+  }
   def swapPv(oldPv : PureVar, newPv: PureVar):State = {
-    if(oldPv == newPv)
-      this
-    else {
-      this.copy(
-        callStack = callStack.map(f => stackSwapPv(oldPv, newPv, f)),
-        heapConstraints = heapConstraints.map(hc => heapSwapPv(oldPv, newPv, hc)),
-        pureFormula = pureFormula.map(pf => pureSwapPv(oldPv, newPv, pf)),
-        traceAbstraction = traceAbstraction.map(ta => traceSwapPv(oldPv, newPv, ta)),
-        typeConstraints = typeConstraints.map {
-          case (k, v) if k == oldPv => (newPv, v)
-          case (k, v) => (k, v)
-        }
-      )
+    this.copy(sf = sf.swapPv(oldPv, newPv))
+  }
+  def removePureConstraint(pc:PureConstraint) = {
+    this.copy(sf = sf.copy(pureFormula = sf.pureFormula - pc))
+  }
+  def setCallStack(callStack: List[CallStackFrame]):State =
+    this.copy(sf = sf.copy(callStack = callStack))
+
+  def constrainOneOfType(pv: PureVar, classNames: Set[String], ch:ClassHierarchyConstraints):State = {
+    if(classNames.contains("_")) {
+      return this
+    }
+    if(classNames.isEmpty){
+//      return this.copy(typeConstraints = typeConstraints + (pv -> EmptyTypeSet))
+      addTypeConstraint(pv,EmptyTypeSet)
+    }
+    val typeSets: Set[BitSet] = classNames.map(n => ch.classToIntCache(n))
+    val mask = BitTypeSet(typeSets.reduce((a,b) => a.union(b)))
+    val newTS = sf.typeConstraints.get(pv).map(_.intersect(mask)).getOrElse(mask)
+//    this.copy(typeConstraints = typeConstraints + (pv -> newTS))
+    addTypeConstraint(pv,newTS)
+  }
+
+  def constrainIsType(pv: PureVar, className: String, ch: ClassHierarchyConstraints): State = {
+    if(className == "_") {
+      return this
+    }
+    val mask = BitTypeSet(ch.classToIntCache(className))
+    val newTS = sf.typeConstraints.get(pv).map(_.intersect(mask)).getOrElse(mask)
+//    this.copy(typeConstraints= typeConstraints + (pv -> newTS))
+    addTypeConstraint(pv,newTS)
+  }
+
+  def constrainUpperType(pv:PureVar, clazz:String, ch:ClassHierarchyConstraints):State = {
+    if(clazz == "_"){
+      return this
+    }
+    val newTc = sf.typeConstraints.get(pv) match{
+      case Some(tc) => tc.filterSubTypeOf(Set(clazz))(ch)
+      case None =>
+        TopTypeSet
+    }
+    addTypeConstraint(pv,newTc)
+  }
+
+  def canAlias[M,C](pv:PureVar, method:MethodLoc, lw:LocalWrapper, w:IRWrapper[M,C]):Boolean = {
+    sf.typeConstraints.get(pv) match{
+      case Some(pvPt) =>
+        val pt = w.pointsToSet(method,lw)
+        pt.intersectNonEmpty(pvPt)
+      case None => true
     }
   }
+
+  /**
+   * Use for over approximate relevant methods
+   * @return set of field names that could be referenced by abstract state
+   */
+  def fieldNameSet():Set[String] = sf.heapConstraints.keySet.flatMap{
+    case FieldPtEdge(_,fieldName) => Some(fieldName)
+    case StaticPtEdge(_, fieldName) => Some(fieldName)
+    case ArrayPtEdge(_,_) => None
+  }
+
+  def allICache:Set[I] = sf.allICache
+  def fastIMatches(subsignature: String):Boolean = allICache.exists(i => i.signatures.matchesSubSig(subsignature))
+
+  def entryPossible(loc: Loc): Boolean = loc match{
+    case CallbackMethodInvoke(clazz, name, _) =>
+      sf.callStack.headOption match{
+        case Some(CallStackFrame(CallbackMethodReturn(clazz2, name2,_,_),_,_)) =>
+          clazz == clazz2 && name == name2
+        case None => true
+        case _ => false
+      }
+    case InternalMethodInvoke(clazz,name,_) =>
+      sf.callStack.headOption match{
+        case Some(CallStackFrame(InternalMethodReturn(clazz2, name2,_),_,_)) =>
+          clazz == clazz2 && name == name2
+        case None => true
+        case _ => false
+      }
+    case v => throw new IllegalStateException(s"$v is not a entry location")
+  }
+
 
   /**
    * move newPV to a fresh pure variable and then swap all instances of oldPV to newPV
@@ -600,9 +302,73 @@ case class State(callStack: List[CallStackFrame],
       this
     else {
       val freshPv = PureVar(nextAddr)
-      val sFresh = this.copy(nextAddr = nextAddr + 1).swapPv(newPv, freshPv)
-      sFresh.swapPv(oldPv, newPv)
+      val sFresh = this.copy(nextAddr = nextAddr + 1, sf = sf.swapPv(newPv, freshPv))
+      sFresh.copy(sf = sFresh.sf.swapPv(oldPv, newPv))
     }
+  }
+
+  def setNextCmd(cmd: List[Loc]):State = this.copy(nextCmd = cmd)
+
+  def nextPv() = (PureVar(nextAddr), this.copy(nextAddr = nextAddr+1))
+
+  def lsVarConstraint(f: AbstractTrace, lsvar: String): Option[LSParamConstraint] = f match{
+    case AbstractTrace(_,_,mv) => mv.get(lsvar).map(LSPure)
+  }
+
+  def findIFromCurrent(dir: MessageType,
+                       signature: (String, String))(implicit
+                                                    ch:ClassHierarchyConstraints): Set[(I, List[LSParamConstraint])] = {
+    //TODO: constant constraints
+    sf.traceAbstraction.flatMap(ar =>{
+      val iset = findIAF(dir,signature,ar.a)
+      iset.map(i => (i, i.lsVars.map{
+        case LifeState.LSVar(mv) =>
+          ar.modelVars.get(mv).map(LSPure).getOrElse(LSModelVar(mv,ar))
+        case LifeState.LSConst(constV) => LSConstConstraint(constV, ar)
+        case LifeState.LSAnyVal() => LSAny
+      }))
+    })
+  }
+
+
+  private def pformulaVars(p:PureExpr):Set[PureVar] = p match{
+    case p:PureVar => Set(p)
+    case _ => Set()
+  }
+  private def tformulaVars(t : LSPred):Set[PureVar] = t match{
+    case And(lhs,rhs) => tformulaVars(lhs).union(tformulaVars(rhs))
+    case Or(lhs,rhs) => tformulaVars(lhs).union(tformulaVars(rhs))
+    case Not(v) => tformulaVars(v)
+    case _ => Set()
+  }
+  private def formulaVars(trace: AbstractTrace):Set[PureVar] = {
+    tformulaVars(trace.a).union(trace.modelVars.flatMap{
+      case (_,v) => pformulaVars(v)
+    }.toSet)
+  }
+  def allTraceVar():Set[PureVar] = sf.traceAbstraction.flatMap(formulaVars)
+
+  override def toString:String = {
+    def sfString(sfl:List[CallStackFrame], frames: Int):String = (sfl,frames) match{
+      case (sf::t, fr) if fr > 0 =>
+        val locals: Map[StackVar, PureExpr] = sf.locals
+        s"${sf.exitLoc.msgSig.getOrElse("")} " +
+          s"locals: " + locals.map(k => k._1.toString + " -> " + k._2.toString).mkString(",") + "     " +
+          sfString(t, fr-1)
+      case (Nil,_) => ""
+      case (_::_,_) => "..."
+    }
+    val stackString = sfString(sf.callStack, 2)
+
+    val heapString = s"   heap: ${sf.heapConstraints.map(a => a._1.toString + "->" +  a._2.toString).mkString(" * ")}    "
+    val pureFormulaString = "   pure: " + sf.pureFormula.map(a => a.toString).mkString(" && ") +"    "
+    val traceString = s"   trace: ${sf.traceAbstraction.mkString(" ; ")}"
+    val typeString = s"    types: ${sf.typeConstraints.map{case (k,v) => k.toString + ":" + v.toString}}"
+    s"($stackString $heapString   $pureFormulaString $typeString $traceString)"
+  }
+  def containsLocal(localWrapper: LocalWrapper):Boolean = {
+    val sVar = StackVar(localWrapper.name)
+    sf.callStack.headOption.exists(f => f.locals.contains(sVar))
   }
 
   // helper functions to find pure variable
@@ -611,7 +377,7 @@ case class State(callStack: List[CallStackFrame],
     case _ => false
   }
   private def callStackContains(p :PureVar):Boolean = {
-    callStack.exists({
+    sf.callStack.exists({
       case CallStackFrame(_,_,locals) => locals.exists(r => expressionContains(r._2,p))
     })
   }
@@ -622,13 +388,13 @@ case class State(callStack: List[CallStackFrame],
   }
 
   private def heapContains(p:PureVar):Boolean =
-    heapConstraints.exists(r => expressionContains(r._2,p) || ptEdgeContains(r._1,p))
+    sf.heapConstraints.exists(r => expressionContains(r._2,p) || ptEdgeContains(r._1,p))
 
   private def pureFormulaContains(p: PureVar): Boolean =
-    pureFormula.exists(c => expressionContains(c.lhs,p) || expressionContains(c.rhs,p))
+    sf.pureFormula.exists(c => expressionContains(c.lhs,p) || expressionContains(c.rhs,p))
 
   def traceAbstractionContains(p: PureVar): Boolean = {
-    traceAbstraction.exists(_.modelVars.exists{
+    sf.traceAbstraction.exists(_.modelVars.exists{
       case (k,v) if v == p => true
       case _ => false
     })
@@ -644,7 +410,7 @@ case class State(callStack: List[CallStackFrame],
    * @return pointed to value
    */
   def testGet(localWrapper: LocalWrapper): Option[PureExpr] ={
-    callStack match{
+    sf.callStack match{
       case CallStackFrame(_,_,locals)::_ => locals.get(StackVar(localWrapper.name))
       case _ => None
     }
@@ -656,7 +422,7 @@ case class State(callStack: List[CallStackFrame],
   // if x.f doesn't exist and x does
   def get[M,C](l:RVal)(implicit ch: ClassHierarchyConstraints, w:IRWrapper[M,C]):Option[PureExpr] = l match {
     case lw@LocalWrapper(name,_) =>
-      callStack match{
+      sf.callStack match{
         case CallStackFrame(exitLoc,_,locals)::_ if exitLoc.containingMethod.isDefined =>
           if(locals.contains(StackVar(name)))
             locals.get(StackVar(name)) //TODO:====== check that containingMethod does something reasonable here
@@ -688,7 +454,7 @@ case class State(callStack: List[CallStackFrame],
   //TODO: refactor so local always points to pv
   def defineAs[M,C](l : RVal, pureExpr: PureExpr)
                    (implicit ch:ClassHierarchyConstraints, w:IRWrapper[M,C]): State = {
-    val cshead: CallStackFrame = callStack.headOption.getOrElse{
+    val cshead: CallStackFrame = sf.callStack.headOption.getOrElse{
       throw new IllegalStateException("Expected non-empty stack")
     }
     val l2 = cshead.exitLoc.containingMethod match{
@@ -701,12 +467,14 @@ case class State(callStack: List[CallStackFrame],
 
         if(cshead.locals.contains(StackVar(localName))){
           val v = cshead.locals.get(StackVar(localName))
-          this.copy(pureFormula = pureFormula + PureConstraint(v.get , Equals, pureExpr))
+//          this.copy(sf = sf.copy(pureFormula = sf.pureFormula + PureConstraint(v.get , Equals, pureExpr)))
+          addPureConstraint(PureConstraint(v.get, Equals, pureExpr))
         }else {
           val csheadNew = cshead.copy(locals = cshead.locals + (StackVar(localName) -> pureExpr))
           pureExpr match {
             case pureVar:PureVar =>
-              this.copy(callStack = csheadNew :: callStack.tail).constrainUpperType (pureVar, localType, ch)
+              this.copy(sf = sf.copy(callStack = csheadNew :: sf.callStack.tail))
+                .constrainUpperType (pureVar, localType, ch)
             case v =>
               println(s"TODO: defineAs used on value: ${v}")
               ???
@@ -715,7 +483,8 @@ case class State(callStack: List[CallStackFrame],
         }
       case v if v.isConst =>
         val v2 = get(v).get
-        this.copy(pureFormula = this.pureFormula + PureConstraint(v2, Equals, pureExpr))
+//        this.copy(pureFormula = this.pureFormula + PureConstraint(v2, Equals, pureExpr))
+        addPureConstraint(PureConstraint(v2, Equals, pureExpr))
       case v =>
         println(v)
         ???
@@ -734,11 +503,11 @@ case class State(callStack: List[CallStackFrame],
   def getOrDefine[M,C](l : RVal, method:Option[MethodLoc])
                       (implicit ch: ClassHierarchyConstraints, w:IRWrapper[M,C]): (PureVar,State) = l match{
     case lw@LocalWrapper(name,localType) =>
-      val cshead = callStack.headOption.getOrElse(???) //TODO: add new stack frame if empty?
+      val cshead = sf.callStack.headOption.getOrElse(???) //TODO: add new stack frame if empty?
       val thisVar:Option[LocalWrapper] = w.getThisVar(cshead.exitLoc)
       val ts: Option[TypeSet] = method.map(w.pointsToSet(_, LocalWrapper(name,localType)))
       //TODO: constrain types based on points to set
-      val cstail = if (callStack.isEmpty) Nil else callStack.tail
+      val cstail = if (sf.callStack.isEmpty) Nil else sf.callStack.tail
 //      cshead.locals.get(StackVar(name)) match {
       get(lw) match {
         case Some(v@PureVar(_)) => (v, this)
@@ -748,28 +517,28 @@ case class State(callStack: List[CallStackFrame],
           // further than the type system
           val thisV = cshead.locals(StackVar("@this")).asInstanceOf[PureVar]
           val newStack = cshead.copy(locals = cshead.locals + (StackVar(name) -> thisV)) :: cstail
-          val combinedTs: Option[(PureVar,TypeSet)] = (typeConstraints.get(thisV),ts) match{
+          val combinedTs: Option[(PureVar,TypeSet)] = (sf.typeConstraints.get(thisV),ts) match{
             case (Some(ts1),Some(ts2)) =>
               Some(thisV -> ts1.intersect(ts2))
             case (Some(ts),_) => Some(thisV->ts)
             case (_,Some(ts)) => Some(thisV->ts)
             case _ => None
           }
-          val state = this.copy(callStack = newStack, nextAddr = nextAddr,pureFormula = this.pureFormula +
+          val state = this.copy(sf = sf.copy(callStack = newStack,pureFormula = sf.pureFormula +
             PureConstraint(thisV, NotEquals, NullVal),
-            typeConstraints = this.typeConstraints ++ combinedTs)
+            typeConstraints = sf.typeConstraints ++ combinedTs), nextAddr = nextAddr)
           (thisV, state)
         case None =>
           val newident = PureVar(nextAddr)
           val newStack = cshead.copy(locals = cshead.locals + (StackVar(name) -> newident)) :: cstail
-          val combinedTs: Option[(PureVar,TypeSet)] = (typeConstraints.get(newident),ts) match{
+          val combinedTs: Option[(PureVar,TypeSet)] = (sf.typeConstraints.get(newident),ts) match{
             case (Some(ts1),Some(ts2)) => Some(newident -> ts1.intersect(ts2))
             case (Some(ts),_) => Some(newident->ts)
             case (_,Some(ts)) => Some(newident->ts)
             case _ => None
           }
-          val state = this.copy(callStack = newStack, nextAddr = nextAddr + 1,
-            typeConstraints = this.typeConstraints ++ combinedTs )
+          val state = this.copy(sf = sf.copy(callStack = newStack,typeConstraints = sf.typeConstraints ++ combinedTs),
+            nextAddr = nextAddr + 1)
           val st2 = state.constrainUpperType(newident, localType, ch)
           (newident, st2)
       }
@@ -782,10 +551,10 @@ case class State(callStack: List[CallStackFrame],
    * @param l variable being assigned
    * @return new state
    */
-  def clearLVal(l : LVal): State = (l,callStack) match {
+  def clearLVal(l : LVal): State = (l,sf.callStack) match {
     case (LocalWrapper(name,_), cshead::cstail) =>
       val newCsHead = cshead.removeStackVar(StackVar(name))
-      this.copy(newCsHead::cstail)
+      this.copy(sf = sf.copy(callStack = newCsHead::cstail))
     case _ =>
       ???
   }
@@ -798,7 +567,7 @@ case class State(callStack: List[CallStackFrame],
   def pureVars():Set[PureVar] = {
     val out = pvCache match{
       case None =>
-        val computed = iPureVars()
+        val computed = sf.iPureVars()
         pvCache = Some(computed)
         computed
       case Some(v) => v
@@ -806,33 +575,8 @@ case class State(callStack: List[CallStackFrame],
     out
   }
 
-  private def iPureVars():Set[PureVar] = {
-    val pureVarOpt = (a:PureExpr) => a match {
-      case p: PureVar => Some(p)
-      case _ => None
-    }
-    val pureVarOptH = (a:HeapPtEdge) => a match {
-      case FieldPtEdge(p, _) => Some(p)
-      case ArrayPtEdge(p, _) => Some(p)
-      case _ => None
-    }
-    val pureVarFromLocals: Set[PureVar] = callStack.headOption match {
-      case Some(CallStackFrame(_, _, locals)) =>
-        locals.flatMap(a => pureVarOpt(a._2)).toSet
-      case None => Set()
-    }
-    val pureVarFromHeap = heapConstraints
-      .flatMap(a => Set() ++ pureVarOptH(a._1) ++ pureVarOpt(a._2)).toSet
-    val pureVarFromConst = pureFormula.flatMap{
-      case PureConstraint(p1,_,p2) => Set() ++ pureVarOpt(p1) ++ pureVarOpt(p2)
-    }
-    val pureVarFromTrace = traceAbstraction.flatMap{
-      case AbstractTrace(_, _, modelVars) => modelVars.collect{case (_,pv: PureVar) => pv}
-    }
-    pureVarFromHeap ++ pureVarFromLocals ++ pureVarFromConst ++ typeConstraints.keySet ++ pureVarFromTrace
-  }
   def isNull(pv:PureVar):Boolean = {
-    pureFormula.contains(PureConstraint(pv,Equals,NullVal))
+    sf.pureFormula.contains(PureConstraint(pv,Equals,NullVal))
   }
 }
 

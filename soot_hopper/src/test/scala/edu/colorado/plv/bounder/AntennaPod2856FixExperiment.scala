@@ -4,7 +4,7 @@ import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.state.{PrettyPrinting, Qry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{CallinReturnNonNull, PrettyPrinting, Qry, Reachable}
 import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, QueryFinished, SymbolicExecutorConfig, TransferFunctions}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
@@ -32,10 +32,10 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
       stepLimit = 400, w,transfer(w),
       component = Some(List("de\\.danoeh\\.antennapod\\.fragment\\.ExternalPlayerFragment.*")))
     val symbolicExecutor = config.getSymbolicExecutor
-    val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
+    val query = CallinReturnNonNull(
       "de.danoeh.antennapod.fragment.ExternalPlayerFragment",
       "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)",200,
-      callinMatches = ".*getActivity.*".r)
+      ".*getActivity.*")
     val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
     prettyPrinting.dumpDebugInfo(result, "antennapod_fix_2856")
     assert(BounderUtil.interpretResult(result,QueryFinished) == Proven)
@@ -48,10 +48,10 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
       stepLimit = 400, w,transfer(w),
       component = Some(List("de\\.danoeh\\.antennapod\\.fragment\\.ExternalPlayerFragment.*")))
     val symbolicExecutor = config.getSymbolicExecutor
-    val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
+    val query = CallinReturnNonNull(
       "de.danoeh.antennapod.fragment.ExternalPlayerFragment",
       "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)",193,
-      callinMatches = ".*getActivity.*".r)
+      ".*getActivity.*")
     val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
     prettyPrinting.dumpDebugInfo(result, "antennapod_bug_2856")
     assert(BounderUtil.interpretResult(result,QueryFinished) == Witnessed)
@@ -63,7 +63,7 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
       stepLimit = 400, w,transfer(w),
       component = Some(List("de\\.danoeh\\.antennapod\\.fragment\\.ExternalPlayerFragment.*")))
     val symbolicExecutor = config.getSymbolicExecutor
-    val query = Qry.makeReach(symbolicExecutor, w,
+    val query = Reachable(
       "de.danoeh.antennapod.fragment.ExternalPlayerFragment",
       "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)",200)
     val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
@@ -77,10 +77,10 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
       stepLimit = 50, w,transfer(w),
       component = Some(List("de\\.danoeh\\.antennapod\\.fragment\\.CompletedDownloadsFragment.*")))
     val symbolicExecutor = config.getSymbolicExecutor
-    val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
+    val query = CallinReturnNonNull(
       "de.danoeh.antennapod.fragment.CompletedDownloadsFragment",
       "void onViewCreated(android.view.View,android.os.Bundle)",112,
-      callinMatches = ".*getActivity.*".r)
+      ".*getActivity.*")
     val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
 
     prettyPrinting.dumpDebugInfo(result, "antennapod_witness2_2856")

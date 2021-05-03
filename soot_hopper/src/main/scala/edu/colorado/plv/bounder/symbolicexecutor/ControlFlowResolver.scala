@@ -40,14 +40,14 @@ case class DropHeapCellsMethod(names:Set[String]) extends RelevanceRelation {
     case NotRelevantMethod => this
   }
 
-  override def applyPrecisionLossForSkip(state: State): State = state.copy(
+  override def applyPrecisionLossForSkip(state: State): State = state.copy(sf = state.sf.copy(
     heapConstraints = state.heapConstraints.filter{
       case (FieldPtEdge(_,fName),_) => !names.contains(fName)
       case (StaticPtEdge(_,fieldName),_) => !names.contains(fieldName)
       case (ArrayPtEdge(_,_),_) =>
         ???
     }
-  )
+  ))
 }
 object DropHeapCellsMethod{
   implicit var rw:RW[DropHeapCellsMethod] = macroRW[DropHeapCellsMethod]
@@ -512,7 +512,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       //end remove dbg code
       val cmd: CmdWrapper = wrapper.cmdAtLocation(l)
       cmd match {
-        case cmd if wrapper.isMethodEntry(cmd) =>
+        case cmd if l.line.isFirstLocInMethod => // wrapper.isMethodEntry(cmd) => //==================================
           val methodEntries = BounderUtil.resolveMethodEntryForAppLoc(resolver,l )
           val out = methodEntries.filter(state.entryPossible)
           out

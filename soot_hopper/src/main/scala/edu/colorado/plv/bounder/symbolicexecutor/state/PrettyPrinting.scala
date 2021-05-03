@@ -10,8 +10,8 @@ import org.apache.log4j.{EnhancedPatternLayout, PatternLayout}
 import scala.annotation.tailrec
 import scala.io.Source
 
-class PrettyPrinting(mode : OutputMode = MemoryOutputMode) {
-  implicit val thisMode = mode
+class PrettyPrinting() {
+//  implicit val thisMode = mode
   val outDir = sys.env.get("OUT_DIR")
 
 //  val templateFile = getClass.getResource("/pageTemplate.html").getPath
@@ -26,9 +26,14 @@ class PrettyPrinting(mode : OutputMode = MemoryOutputMode) {
     case WitnessedQry(state,loc) =>
       "WITNESSED: " + loc.toString +
         "\n       state: " + state.toString.replaceAll("\n"," ")
+    case LiveTruncatedQry(loc) => loc.toString
+    case BottomTruncatedQry(loc) => "REFUTED: " + loc.toString
+    case WitnessedTruncatedQry(loc) => "WITNESSED: " + loc.toString
   }
   @tailrec
-  final def witnessToTrace(pn:List[IPathNode], acc:List[String] = List()):List[String] = pn match{
+  final def witnessToTrace(pn:List[IPathNode],
+                           acc:List[String] = List())
+                          (implicit mode : OutputMode = MemoryOutputMode):List[String] = pn match{
     case (p@PathNode(q, _))::t =>
       val branch = if(t.nonEmpty) " -- branch" else ""
       witnessToTrace(p.succ, qryString(q) + branch::acc)
@@ -37,7 +42,7 @@ class PrettyPrinting(mode : OutputMode = MemoryOutputMode) {
       println(v)
       ???
   }
-  def printTraces(result: Set[IPathNode], outFile: String): Unit = {
+  def printTraces(result: Set[IPathNode], outFile: String)(implicit mode : OutputMode = MemoryOutputMode): Unit = {
     val pw = File(outFile)
     val live = result.flatMap{
       case pn@PathNode(_: LiveQry, false) => Some(("live",pn))
@@ -64,7 +69,8 @@ class PrettyPrinting(mode : OutputMode = MemoryOutputMode) {
       .replace("\"","\\\"").replace("|","\\|")
   private def iDotNode(qrySet:Set[PrintingPathNode],seen:Set[IPathNode],
                        procNodes:Set[String],procEdges:Set[String],
-                       includeSubsEdges:Boolean):(Set[String],Set[String]) = {
+                       includeSubsEdges:Boolean)
+                      (implicit mode : OutputMode = MemoryOutputMode):(Set[String],Set[String]) = {
     if(qrySet.isEmpty){
       (procNodes,procEdges)
     }else {
@@ -93,7 +99,8 @@ class PrettyPrinting(mode : OutputMode = MemoryOutputMode) {
     }
   }
   case class PrintingPathNode(pn:IPathNode,  skip: IPathNode => Boolean,
-                              prettyPrint:Qry => String = p => p.toString) {
+                              prettyPrint:Qry => String = p => p.toString)
+                             (implicit mode : OutputMode = MemoryOutputMode) {
     def succ:Option[PrintingPathNode] = {
       @tailrec
       def nextNode(pn:IPathNode):List[IPathNode] = {
@@ -204,7 +211,7 @@ class PrettyPrinting(mode : OutputMode = MemoryOutputMode) {
    * @param fileName base name of output files
    * @param outDir2 override env variable out
    */
-  def dumpDebugInfo(qrySet:Set[IPathNode],fileName: String, outDir2 : Option[String] = None):Unit = {
+  def dumpDebugInfo(qrySet:Set[IPathNode],fileName: String, outDir2 : Option[String] = None)(implicit mode : OutputMode = MemoryOutputMode):Unit = {
     val outDir3 = if(outDir2.isDefined) outDir2 else outDir
     outDir3 match{
       case Some(baseDir) =>

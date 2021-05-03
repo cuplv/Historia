@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import scala.language.postfixOps
 import better.files.File
+import edu.colorado.plv.bounder.BounderUtil.{MaxPathCharacterization, ResultSummary}
 import edu.colorado.plv.bounder.RunConfig
 import slick.jdbc
 import slick.jdbc.SQLiteProfile
@@ -27,9 +28,19 @@ trait ReachingGraph {
   def getSuccessors(qry:Qry) : Iterable[Qry]
 }
 
-sealed trait OutputMode
+sealed trait OutputMode{
+  def initializeQuery(startingNodes:Loc, cfg:RunConfig, initialQuery:InitialQuery):Int
+  def writeLiveAtEnd(witness: Set[IPathNode], finalizeQryId:Int, status:String,result:ResultSummary,
+                     maxPathCharacterization: MaxPathCharacterization, runTime:Long):Unit
+}
 
-case object MemoryOutputMode extends OutputMode
+case object MemoryOutputMode extends OutputMode {
+  override def initializeQuery(startingNodes: Loc, cfg: RunConfig, initialQuery: InitialQuery): Int= -1
+
+  override def writeLiveAtEnd(witness: Set[IPathNode], finalizeQryId: Int, status: String,
+                              result: ResultSummary,
+                              maxPathCharacterization: MaxPathCharacterization, runTime: Long): Unit = ()
+}
 
 /**
  *
@@ -37,6 +48,7 @@ case object MemoryOutputMode extends OutputMode
  * @param truncate ommit states for less important nodes, value does not matter if only reading
  */
 case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
+  assert(dbfile.endsWith(".db"), s"Bad db file name $dbfile must end with '.db'")
 
   private val witnessQry = TableQuery[WitnessTable]
   private val methodQry = TableQuery[MethodTable]
@@ -57,8 +69,8 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
     Await.result(idb.run(setup), 20 seconds)
   }}
 
-  private val db = DBOutputMode.getDBForF(dbfile, setupTables)
-
+//  private val db = DBOutputMode.getDBForF(dbfile, setupTables)
+  private val db = DBOutputMode.getDBForF(dbfile,setupTables)
 
   private val id = new AtomicInteger(0)
   def nextId:Int = {
@@ -91,20 +103,17 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
    * @param initialQuery location and type of query
    * @return id for query
    */
-  def initializeQuery(initial:Set[IPathNode], config:RunConfig, initialQuery: InitialQuery):Int = {
-    val initialDBNodes = initial.map(_.asInstanceOf[DBPathNode])
+  override def initializeQuery(initial:Loc, config:RunConfig, initialQuery: InitialQuery):Int = {
+//    val initialDBNodes = initial.map(_.asInstanceOf[DBPathNode])
     val maxID: Option[Int] = Await.result(db.run(initialQueries.map(_.id).max.result), 30 seconds)
+//    val maxID: Option[Int] = initialQueries.map(_.id).max
     val currentID = maxID.getOrElse(0) + 1
     val meta = startMeta()
-    initialDBNodes.foreach { initialDB =>
-      val initialQueryRow = (currentID, initialDB.thisID,
-        write[InitialQuery](initialQuery), write[RunConfig](config), meta)
-      Await.result(db.run(initialQueries += initialQueryRow), 30 seconds)
-    }
+    val initialQueryStr = write[InitialQuery](initialQuery)
+    val initialQueryRow = (currentID, write[Loc](initial),
+      initialQueryStr, write[RunConfig](config), meta, "","")
+    Await.result(db.run(initialQueries += initialQueryRow), 30 seconds)
     currentID
-  }
-  def markAndDeleteRefuted():Unit = {
-    ???
   }
 
   /**
@@ -197,62 +206,85 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
     resLive.union(resRef).union(resWit).union(resSubs)
   }
 
-  def writeLiveAtEnd(witness: Set[IPathNode], finalizeQryId:Int, status:String):Unit = {
+  def writeLiveAtEnd(witness: Set[IPathNode], finalizeQryId:Int, status:String,result:ResultSummary,
+                     maxPathCharacterization: MaxPathCharacterization, runtime:Long):Unit = {
+    flushQueues()
+    witness.foreach{n =>
+      val dbn = n.asInstanceOf[DBPathNode]
+      if(!isNodeWritten(dbn)){
+        writeNode(dbn)
+      }
+    }
     flushQueues()
     val ids = witness.map(n => n.asInstanceOf[DBPathNode].thisID)
     val writeFuture = db.run(liveAtEnd ++= ids)
     Await.result(writeFuture, 600 seconds)
-    val updateMetadata = for(q <- initialQueries if q.id === finalizeQryId)yield q.metadata
+    val updateMetadata = for(q <- initialQueries if q.id === finalizeQryId)yield (q.metadata,q.result,q.interp)
     val meta = Await.result(db.run(updateMetadata.result), 600 seconds)
-    assert(meta.size == 1)
-    val updatedMeta = finishMeta(meta.head, status)
-    Await.result(db.run(updateMetadata.update(updatedMeta)), 600 seconds)
+    assert(meta.size == 1, "No metadata, be sure to call startMeta() on DBOutputMode")
+    val updatedMeta = finishMeta(meta.head._1, status)
+    Await.result(db.run(updateMetadata.update(updatedMeta, write(result),
+      write(maxPathCharacterization))), 600 seconds)
 //    ex.shutdown()
   }
 
-  private def shouldTruncate(loc:Loc):Boolean =
-    if(truncate)
-      loc match {
-        case _:CallbackMethodReturn => false
-        case _:CallbackMethodInvoke => true
-        case AppLoc(_, _, _) => true
-        case SkippedInternalMethodInvoke(_, _, _) => true
-        case SkippedInternalMethodReturn(_, _, _, _) => true
-        case InternalMethodInvoke(_, _, _) => true
-        case InternalMethodReturn(_, _, _) => true
-
-        case _ => true
-      }
-    else false
 
 
-  private val writeNodeQueue = new ConcurrentLinkedQueue[WitTableRow]()
-  private val graphQueue = new ConcurrentLinkedQueue[(Int,Int)]()
+//  private val writeNodeQueue = new ConcurrentLinkedQueue[WitTableRow]()
+//  private val graphQueue = new ConcurrentLinkedQueue[(Int,Int)]()
+  private val writeNodeQueue = new ArrayBlockingQueue[WitTableRow](10000)
+  private val graphQueue = new ArrayBlockingQueue[(Int,Int)](10000)
   def flushQueues() = {
+
+    println(s"write node size ${writeNodeQueue.size()}")
+    println(s"graph queue size ${graphQueue.size()}")
+    val startTime = System.currentTimeMillis()
     this.synchronized {
-      val writeNodes = mutable.ListBuffer[WitTableRow]()
-      while (!writeNodeQueue.isEmpty) {
-        writeNodes.addOne(writeNodeQueue.poll())
-      }
-      val writeFuture = db.run(witnessQry ++= writeNodes)
+      if(!writeNodeQueue.isEmpty) {
+        val writeNodes = mutable.ListBuffer[WitTableRow]()
+        while (!writeNodeQueue.isEmpty) {
+          writeNodes.addOne(writeNodeQueue.poll())
+        }
+        val writeFuture = db.run(witnessQry ++= writeNodes)
 
-      Await.result(writeFuture, 600 seconds)
-      val writeGraph = mutable.ListBuffer[(Int,Int)]()
-      while (!graphQueue.isEmpty) {
-        writeGraph.addOne(graphQueue.poll())
+        Await.result(writeFuture, 600 seconds)
       }
-      val graphFuture = db.run(graphQuery ++= writeGraph)
-      Await.result(graphFuture, 600 seconds)
+      if(!graphQueue.isEmpty) {
+        val writeGraph = mutable.ListBuffer[(Int, Int)]()
+        while (!graphQueue.isEmpty) {
+          writeGraph.addOne(graphQueue.poll())
+        }
+        val graphFuture = db.run(graphQuery ++= writeGraph)
+        Await.result(graphFuture, 600 seconds)
+      }
     }
+    val runtime = (System.currentTimeMillis() - startTime)/1000
+    println(s"runtime: $runtime")
   }
-  def addAndFlush(v:WitTableRow, v2:Seq[(Int,Int)]) = {
-    writeNodeQueue.add(v)
-    graphQueue.addAll(v2.asJava)
-    if(writeNodeQueue.size() > 1000 || graphQueue.size() > 1000){
+  def queueNodeWrite(v:WitTableRow, v2:Seq[(Int,Int)]) = {
+    // batch together sqlite queries to reduce fsync
+    if(!writeNodeQueue.offer(v)){
       flushQueues()
+      writeNodeQueue.add(v)
     }
+    v2.foreach{v =>
+      if(!graphQueue.offer(v)){
+        flushQueues()
+        graphQueue.add(v)
+      }
+    }
+//    graphQueue.addAll(v2.asJava)
+//    if(writeNodeQueue.size() > 1000000 || graphQueue.size() > 1000000){
+//      flushQueues()
+//    }
   }
 
+  def isNodeWritten(node:DBPathNode):Boolean = {
+    val q = for (
+      n <- witnessQry if n.id === node.thisID
+    ) yield n.id
+    Await.result(db.run(q.result), 30 seconds).nonEmpty
+  }
   def writeNode(node: DBPathNode): Unit = {
     val qryState = node.qry match {
       case LiveQry(_, _) => "live"
@@ -261,13 +293,14 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
       case LiveTruncatedQry(_) => throw new IllegalArgumentException("Cannot write truncated node")
     }
     val loc = node.qry.loc.serialized
-    val stateStr = if(shouldTruncate(node.qry.loc))
+    val stateStr = if(false && truncate)
       ""
     else
       write[State](node.qry.getState.get)
+//    val stateStr = write[State](node.qry.getState.get)
     val row = WitTableRow(node.thisID, qryState, stateStr, loc, node.subsumedID, node.depth)
     val edges:Seq[(Int,Int)] = node.succID.map(sid => (node.thisID, sid))
-    addAndFlush(row,edges)
+    queueNodeWrite(row,edges)
 //    val writeFuture = db.run(witnessQry +=
 //      row)
 //    val writeGraphFuture = db.run(graphQuery ++= edges)
@@ -281,18 +314,17 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
     val q = for(n <- witnessQry if n.id === id) yield n.subsumingState
     val q2 = q.update(subsuming.map(_.thisID))
     val future = db.run(q2)
-//    future.onComplete{
-//      case Success(n) => assert(n == 1)
-//      case Failure(e) => throw e
-//    }
     Await.result(future, 30 seconds)
   }
   def readNode(id: Int):DBPathNode = {
-    flushQueues()
     val q = witnessQry.filter(_.id === id)
-    val qFuture = db.run(q.result)
-    val res: Seq[WitTableRow] = Await.result(qFuture, 30 seconds)
+    var res: Seq[WitTableRow] = Await.result(db.run(q.result), 30 seconds)
+    if(res.size < 1){
+      flushQueues()
+      res = Await.result(db.run(q.result), 30 seconds)
+    }
     assert(res.size == 1, s"Failed to find unique node id: $id actual size: ${res.size}")
+
     rowToNode(res.head)
   }
 
@@ -332,6 +364,11 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
 }
 object DBOutputMode{
 
+  import slick.jdbc.GetResult
+  import slick.jdbc.SQLActionBuilder
+  case class StrRes(s: String)
+  implicit val getStrResult = GetResult(r => StrRes(r.<<))
+
   implicit val rw:RW[DBOutputMode] = macroRW
   private val dbs = mutable.HashMap[String, jdbc.SQLiteProfile.backend.DatabaseDef]()
   def getDBForF(dbfile:String,
@@ -341,23 +378,25 @@ object DBOutputMode{
         Class.forName("org.sqlite.JDBC") // force resolution of sqlite driver
         val prop = new Properties
         prop.setProperty("maxConnections", "1")
-        Database.forURL(url = s"jdbc:sqlite:$dbfile", prop = prop, driver = "org.sqlite.JDBC")
+//        prop.setProperty("connectionPool" ,"disabled")
+        prop.setProperty("keepAliveConnection","true")
+//        Database.forURL(url = s"jdbc:sqlite:$dbfile", prop = prop, driver = "org.sqlite.JDBC")
+
+        Database.forURL(url = s"jdbc:sqlite:$dbfile", prop = prop, driver = "org.sqlite.JDBC",
+          keepAliveConnection = true)
       }
-      //  val db = Database.forURL(s"jdbc:sqlite:$dbfile",driver="org.sqlite.JDBC")
       setupTables(db)
 
       //  // TODO turn off synchronous mode sqlite
       //  // PRAGMA schema.synchronous = OFF
       def turnOffFSync(): Unit = {
+
         import slick.driver.H2Driver.api._
-        import slick.jdbc.GetResult
-        import slick.jdbc.SQLActionBuilder
-        import scala.concurrent.Await
-        case class StrRes(s: String)
-        implicit val getStrResult = GetResult(r => StrRes(r.<<))
         val res = Await.result(db.run(sql"""PRAGMA synchronous = OFF;""".as[StrRes]), 30 seconds)
         //TODO: === was journal_mode=WAL the issue?
-        val res2 = Await.result(db.run(sql"""PRAGMA journal_mode=WAL;""".as[StrRes]), 30 seconds)
+//        val res2 = Await.result(db.run(sql"""PRAGMA journal_mode=WAL;""".as[StrRes]), 30 seconds)
+        val res2 = Await.result(db.run(sql"""PRAGMA journal_mode=MEMORY;""".as[StrRes]), 30 seconds)
+
         //    println(res)
         //    println(res2)
       }
@@ -367,7 +406,13 @@ object DBOutputMode{
     }
     dbs(dbfile)
   }
-  protected var dbInitialized = false
+//  def closeDB() = {
+////    import slick.driver.H2Driver.api._
+////    dbs.zipWithIndex.foreach { case ((name, db),ind) =>
+////      println(s"Closing database $name $ind")
+////      Await.result(db.run(sql""".backup ${name}""".as[StrRes]), 1200 seconds)
+////    }
+//  }
 }
 
 class LiveAtEnd(tag:Tag) extends Table[(Int)](tag,"LIVEATEND"){
@@ -376,17 +421,19 @@ class LiveAtEnd(tag:Tag) extends Table[(Int)](tag,"LIVEATEND"){
 }
 
 class WitnessGraph(tag:Tag) extends Table[(Int,Int)](tag, "GRAPH"){
-  def src = column[Int]("SRC", O.PrimaryKey)
+  def src = column[Int]("SRC") //, O.PrimaryKey)
   def tgt = column[Int]("TGT")
   def * = (src,tgt)
 }
-class InitialQueryTable(tag:Tag) extends Table[(Int, Int, String, String, String)](tag, "INITIAL_QUERY"){
+class InitialQueryTable(tag:Tag) extends Table[(Int, String, String, String, String, String,String)](tag, "INITIAL_QUERY"){
   def id = column[Int]("QUERY_ID", O.PrimaryKey)
-  def startingNodeID = column[Int]("STARTING_NODE_ID")
+  def startingLoc = column[String]("STARTING_LOC")
   def initialQuery = column[String]("INITIAL_QUERY")
   def config = column[String]("CONFIG")
   def metadata = column[String]("META")
-  def * = (id,startingNodeID, initialQuery, config, metadata)
+  def result = column[String]("RESULT")
+  def interp = column[String]("INTERP")
+  def * = (id,startingLoc, initialQuery, config, metadata,result,interp)
 }
 
 case class WitTableRow(id:Int, queryState:String, nodeState:String, nodeLoc:String,
@@ -424,6 +471,22 @@ trait OrdCount extends Ordering[IPathNode]{
   def delta(current:Qry):Int
 }
 object PathNode{
+
+  private def shouldTruncate(loc:Loc):Boolean =
+    loc match {
+      case _:CallbackMethodReturn => false
+      case _:CallbackMethodInvoke => false
+      case AppLoc(method,line,isPre) =>
+        !line.isFirstLocInMethod || !isPre
+      case SkippedInternalMethodInvoke(_, _, _) => true
+      case SkippedInternalMethodReturn(_, _, _, _) => true
+      case InternalMethodInvoke(_, _, _) => false
+      case InternalMethodReturn(_, _, _) => false
+      case CallbackMethodReturn(_,_,_,_) => false
+      case CallbackMethodInvoke(_,_,_) => false
+
+      case _ => true
+    }
   def apply(qry:Qry, succ: List[IPathNode], subsumed: Option[IPathNode])
            (implicit ord: OrdCount, mode: OutputMode = MemoryOutputMode):IPathNode = {
     val depth = if (succ.isEmpty) 0 else succ.map(_.depth).max + 1
@@ -433,10 +496,24 @@ object PathNode{
         MemoryPathNode(qry, succ, subsumed, depth,ordDepth)
       case m@DBOutputMode(_,_) =>
         val id = m.nextId
-        val succID = succ.map(n => n.asInstanceOf[DBPathNode].thisID)
+
+        val succID = if(m.truncate) {
+          val jumpSucc = succ.flatMap(n =>
+            if(shouldTruncate(n.qry.loc) && n.succ.nonEmpty)
+              n.asInstanceOf[DBPathNode].succID
+            else
+              List(n.asInstanceOf[DBPathNode].thisID)
+            )
+            // if successors have no successors then they are intial so write them
+            if(jumpSucc.isEmpty) succ.map(n => n.asInstanceOf[DBPathNode].thisID) else jumpSucc
+        } else {
+          succ.map(n => n.asInstanceOf[DBPathNode].thisID)
+        }
         val subsumedID = subsumed.map(n => n.asInstanceOf[DBPathNode].thisID)
         val thisNode = DBPathNode(qry, id, succID, subsumedID,depth,ordDepth)
-        m.writeNode(thisNode)
+        if(!shouldTruncate(qry.loc) || !m.truncate || succ.isEmpty) {
+          m.writeNode(thisNode)
+        }
         thisNode
     }
   }
@@ -514,7 +591,8 @@ case class MemoryPathNode(qry: Qry, succV : List[IPathNode], subsumedV: Option[I
 case class DBPathNode(qry:Qry, thisID:Int,
                       succID:List[Int],
                       subsumedID: Option[Int], depth:Int, ordDepth:Int) extends IPathNode {
-  override def succ(implicit db:OutputMode): List[IPathNode] = succID.map(db.asInstanceOf[DBOutputMode].readNode)
+  override def succ(implicit db:OutputMode): List[IPathNode] =
+    succID.map(db.asInstanceOf[DBOutputMode].readNode)
 
   override def subsumed(implicit db:OutputMode): Option[IPathNode] =
     subsumedID.map(db.asInstanceOf[DBOutputMode].readNode)

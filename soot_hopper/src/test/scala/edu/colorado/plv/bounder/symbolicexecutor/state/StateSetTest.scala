@@ -42,13 +42,13 @@ class StateSetTest extends AnyFunSuite {
     val pv0 = PureVar(0)
     val pv1 = PureVar(1)
     val locals1 = Map(StackVar("foo")->pv0)
-    val s1 = State.topState.copy(
+    val s1 = State.topState.copy(sf = State.topState.sf.copy(
       callStack = CallStackFrame(dummyLoc,None,locals1)::Nil,
       typeConstraints = Map(
         pv0-> BoundedTypeSet(Some("Foo"),None,Set()),
         pv1-> BoundedTypeSet(Some("String"),None,Set())
       ),
-      heapConstraints = Map(FieldPtEdge(pv0,"f")->pv1),
+      heapConstraints = Map(FieldPtEdge(pv0,"f")->pv1)),
       nextAddr = 3
     )
 

@@ -50,8 +50,8 @@ class BounderSetupApplicationTest extends AnyFunSuite {
 //    val bTS = BoundedTypeSet(Some("Object"), None, Set())
     val bTS:TypeSet = TopTypeSet
     val sbts = write(bTS)
-    val s2 = State.topState.copy(typeConstraints =
-      Map(PureVar(1) -> bTS))
+    val s2 = State.topState.copy(sf = State.topState.sf.copy(typeConstraints =
+      Map(PureVar(1) -> bTS)))
     val s2ser = write(s2)
     val s2deser = read[State](s2ser)
     assert(s2 == s2deser)

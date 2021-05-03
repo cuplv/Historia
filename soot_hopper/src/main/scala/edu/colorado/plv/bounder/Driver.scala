@@ -106,9 +106,9 @@ object Driver {
 
   def readDB(outFolder:File, findNoPred:Boolean = false): Unit = {
     val dbPath = outFolder / "paths.db"
-    val db = DBOutputMode(dbPath.toString(), truncate = false)
+    implicit val db = DBOutputMode(dbPath.toString(), truncate = false)
     val liveNodes: Set[IPathNode] = db.getTerminal().map(v=>v)
-    val pp = new PrettyPrinting(db)
+    val pp = new PrettyPrinting()
     pp.dumpDebugInfo(liveNodes, "out", Some(outFolder.toString))
 
     if(findNoPred){
@@ -312,22 +312,24 @@ object Driver {
 //        "de.danoeh.antennapod.fragment.ExternalPlayerFragment",
 //        "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)", 200,
 //        callinMatches = ".*getActivity.*".r)
+      //TODO: This logic is overly complicated and should be moved into the OutputMode==============
       initialQueries.flatMap{ initialQuery =>
-        val query: Set[Qry] = initialQuery.make(symbolicExecutor, w)
+//        val query: Set[Qry] = initialQuery.make(symbolicExecutor, w)
         val out = new ListBuffer[String]()
-        val initialize: Set[IPathNode] => Int = mode match {
-          case mode@DBOutputMode(_,_) => (startingNode: Set[IPathNode]) =>
-            val id = mode.initializeQuery(startingNode, cfg, initialQuery)
-            val tOut = s"initial query: $initialQuery   id: $id"
-            println(tOut)
-            out += tOut
-            id
-          case _ => (_: Set[IPathNode]) => 0
-        }
+//        val initialize: Loc => Int = mode match {
+//          case mode@DBOutputMode(_,_) => (startingNode: Set[IPathNode]) =>
+//            val id = mode.initializeQuery(startingNode, cfg, initialQuery)
+//            val tOut = s"initial query: $initialQuery   id: $id"
+//            println(tOut)
+//            out += tOut
+//            id
+//          case _ => (_: Set[IPathNode]) => 0
+//        }
 
         //        (Int,Loc,Set[IPathNode],Long)
-        val results: Set[symbolicExecutor.QueryData] = symbolicExecutor.run(query, initialize)
+        val results: Set[symbolicExecutor.QueryData] = symbolicExecutor.run(initialQuery, mode,cfg)
 
+        //TODO: get this info out of outputMode instead======================
         val allRes: Set[(Int, Loc, ResultSummary, MaxPathCharacterization, Long)] = results.map { res =>
           mode match {
             case m@DBOutputMode(_,_) =>
@@ -338,7 +340,7 @@ object Driver {
               val tOut = s"id: ${res.queryId}   result: ${interpretedRes}"
               println(tOut)
               out += tOut
-              m.writeLiveAtEnd(res.terminals, res.queryId, interpretedRes.toString)
+//              m.writeLiveAtEnd(res.terminals, res.queryId, interpretedRes.toString)
               interpretedRes
             case _ => (res.queryId, res.location,BounderUtil.interpretResult(res.terminals, res.result),
               BounderUtil.characterizeMaxPath(res.terminals)(mode), res.runTime)
@@ -453,64 +455,79 @@ class ExperimentsDb(bounderJar:Option[String] = None){
 
   }
   def processJob(jobRow: JobRow) = {
-      File.usingTemporaryDirectory(){(baseDir:File) =>
-        try {
-          println(s"working directory: ${baseDir.toString}")
-          val cfg = read[RunConfig](jobRow.config)
-          val apkId = cfg.apkPath.replace("${baseDir}","")
-          val apkPath = baseDir / "target.apk"
+    val iProcess = (baseDir:File) =>
+      try {
+        println(s"working directory: ${baseDir.toString}")
+        val cfg = read[RunConfig](jobRow.config)
+        val apkId = cfg.apkPath.replace("${baseDir}","")
+        val apkPath = baseDir / "target.apk"
 
-          println(s"downloading apk: $apkId")
-          val apkStartTime = Instant.now.getEpochSecond
-          if(!downloadApk(apkId, apkPath))
-            throw new RuntimeException("Failed to download apk")
-          println(s"done downloading apk: ${Instant.now.getEpochSecond - apkStartTime}")
+        println(s"downloading apk: $apkId")
+        val apkStartTime = Instant.now.getEpochSecond
+        if(!downloadApk(apkId, apkPath))
+          throw new RuntimeException("Failed to download apk")
+        println(s"done downloading apk: ${Instant.now.getEpochSecond - apkStartTime}")
 
-          // check if inputs are current and download them otherwise
-          val inputId = jobRow.inputid
-          val bounderJar = baseDir / "bounder.jar"
-          val specFile = baseDir / "specFile.txt"
-          getInputs(inputId, bounderJar, specFile)
-          //TODO: probably cache these
+        // check if inputs are current and download them otherwise
+        val inputId = jobRow.inputid
+        val bounderJar = baseDir / "bounder.jar"
+        val specFile = baseDir / "specFile.txt"
+        getInputs(inputId, bounderJar, specFile)
+        //TODO: probably cache these
 
-          // create directory for output
-          val outF = File(cfg.outFolder.get.replace("${baseDirOut}",baseDir.toString))
-          outF.createDirectories()
-          // TODO: read results of new structure
-          val runCfg = cfg.copy(apkPath = apkPath.toString, specSet = SpecFile(specFile.toString) )
-          val cfgFile = (baseDir / "config.json")
-          cfgFile.append(write(runCfg))
-          val z3Override = if(BounderUtil.mac)
-            s"""-Djava.library.path="${BounderUtil.dy}""""
-          else
-            ""
-          println("Starting Verifier")
-          setJobStartTime(jobRow.jobId)
-          val cmd = s"java ${z3Override} -jar ${bounderJar.toString} -m verify -c ${cfgFile.toString} -u ${outF.toString}"
-          BounderUtil.runCmdFileOut(cmd, baseDir)
-          setEndTime(jobRow.jobId)
-          println("Finished Verifier Writing Results")
-          val resDir = ResultDir(jobRow.jobId, baseDir, if(cfg.tag!="") Some(cfg.tag) else None)
-          val stdoutF = baseDir / "stdout.txt"
-          val stdout = if(stdoutF.exists()) stdoutF.contentAsString else ""
-          val stderrF = baseDir / "stderr.txt"
-          val stderr = if(stderrF.exists())stderrF.contentAsString else ""
-          // Delete files that aren't needed working directory will be uploaded
-          val uploadStartTime = Instant.now.getEpochSecond
-          println("uploading results")
-          bounderJar.delete()
-          finishSuccess(resDir,stdout, stderr)
-          println(s"done uploading results: ${Instant.now.getEpochSecond - uploadStartTime}")
-        }catch{
-          case t:Throwable =>
-            println(s"exception ${t.toString}")
-            val sr = new StringWriter()
-            val pr = new PrintWriter(sr)
-            t.printStackTrace(pr)
-            val exn = sr.toString
-            finishFail(jobRow.jobId, t.toString + "\n" + exn)
-        }
+        // create directory for output
+        val outF = File(cfg.outFolder.get.replace("${baseDirOut}",baseDir.toString))
+        outF.createDirectories()
+        // TODO: read results of new structure
+        val runCfg = cfg.copy(apkPath = apkPath.toString, specSet = SpecFile(specFile.toString) )
+        val cfgFile = (baseDir / "config.json")
+        cfgFile.append(write(runCfg))
+        val z3Override = if(BounderUtil.mac)
+          s"""-Djava.library.path="${BounderUtil.dy}""""
+        else
+          ""
+        println("Starting Verifier")
+        setJobStartTime(jobRow.jobId)
+        val cmd = s"java ${z3Override} -jar ${bounderJar.toString} -m verify -c ${cfgFile.toString} -u ${outF.toString}"
+        BounderUtil.runCmdFileOut(cmd, baseDir)
+        setEndTime(jobRow.jobId)
+        println("Finished Verifier Writing Results")
+        val resDir = ResultDir(jobRow.jobId, baseDir, if(cfg.tag!="") Some(cfg.tag) else None)
+        val stdoutF = baseDir / "stdout.txt"
+        val stdout = if(stdoutF.exists()) stdoutF.contentAsString else ""
+        val stderrF = baseDir / "stderr.txt"
+        val stderr = if(stderrF.exists())stderrF.contentAsString else ""
+        // Delete files that aren't needed working directory will be uploaded
+        val uploadStartTime = Instant.now.getEpochSecond
+        println("uploading results")
+        bounderJar.delete()
+        finishSuccess(resDir,stdout, stderr)
+        println(s"done uploading results: ${Instant.now.getEpochSecond - uploadStartTime}")
+      }catch{
+        case t:Throwable =>
+          println(s"exception ${t.toString}")
+          val sr = new StringWriter()
+          val pr = new PrintWriter(sr)
+          t.printStackTrace(pr)
+          val exn = sr.toString
+          finishFail(jobRow.jobId, t.toString + "\n" + exn)
+
+    }
+    if(File("/dev/shm").exists()){
+      //If on linux system, use ramdisk
+      val outDir = File("/dev/shm/bounder_out_tmp")
+      try{
+        outDir.createDirectory()
+        iProcess(outDir)
+      }finally{
+        outDir.delete()
       }
+
+    }else{
+      //Use temp directory
+      File.usingTemporaryDirectory(){iProcess}
+    }
+
   }
 
 

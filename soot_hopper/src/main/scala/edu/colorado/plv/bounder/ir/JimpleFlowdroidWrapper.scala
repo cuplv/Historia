@@ -1173,9 +1173,10 @@ class JimpleFlowdroidWrapper(apkPath : String,
 
 
   override def makeCmd(cmd: soot.Unit, method: SootMethod,
-                       locOpt:Option[AppLoc] = None): CmdWrapper = JimpleFlowdroidWrapper.makeCmd(cmd,method,locOpt)
+                       locOpt:Option[AppLoc] = None): CmdWrapper =
+    JimpleFlowdroidWrapper.makeCmd(cmd,method,locOpt)
 
-  override def degreeOut(cmd : AppLoc) = {
+  override def degreeOut(cmd : AppLoc): Int = {
     val ll = cmd.line.asInstanceOf[JimpleLineLoc]
     val unitGraph = getUnitGraph(ll.method.retrieveActiveBody())
     unitGraph.getSuccsOf(ll.cmd).size()
@@ -1225,7 +1226,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
   override def isLoopHead(cmd: AppLoc): Boolean = {
     val ll = cmd.line.asInstanceOf[JimpleLineLoc]
     ll.cmd match{
-      case s:Stmt => {
+      case s:Stmt =>
         val method = cmd.method.asInstanceOf[JimpleMethodLoc].method
         val loops: mutable.Set[Stmt] = memoGetMethodLoops(method)
         if(loops.isEmpty)
@@ -1234,7 +1235,6 @@ class JimpleFlowdroidWrapper(apkPath : String,
           val out = loops.contains(s)
           out
         }
-      }
       case i =>
         throw new IllegalStateException(s"Got $i which is not a Stmt, " +
           s"TODO: figure out when we would get a Unit that is not a Stmt here.")
@@ -1251,6 +1251,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
 
   }
   override def commandTopologicalOrder(cmdWrapper:CmdWrapper):Int = {
+
     cmdWrapper.getLoc match {
       case AppLoc(JimpleMethodLoc(_), JimpleLineLoc(cmd, sootMethod), _) => {
         val topo = iTopoForMethod(sootMethod)
@@ -1265,14 +1266,14 @@ class JimpleFlowdroidWrapper(apkPath : String,
     case AppLoc(methodWrapper @ JimpleMethodLoc(_),JimpleLineLoc(cmd,sootMethod), true) => {
       val unitGraph = getUnitGraph(sootMethod.retrieveActiveBody())
       val predCommands = unitGraph.getPredsOf(cmd).asScala
-      predCommands.map(cmd => AppLoc(methodWrapper,JimpleLineLoc(cmd,sootMethod), false)).toList
+      predCommands.map(cmd => AppLoc(methodWrapper,JimpleLineLoc(cmd,sootMethod), isPre = false)).toList
     }
     case v =>
         throw new IllegalStateException(s"Bad argument for command predecessor ${v}")
   }
   override def commandNext(cmdWrapper: CmdWrapper):List[AppLoc] =
     cmdWrapper.getLoc match{
-      case AppLoc(method, line, _) => List(AppLoc(method,line,true))
+      case AppLoc(method, line, _) => List(AppLoc(method,line,isPre = true))
       case _ =>
         throw new IllegalStateException("command after pre location doesn't exist")
     }
@@ -1295,7 +1296,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
       }else {false}
     }
     case AppLoc(_, _,false) => false // exit of command is not entry let transfer one more time
-    case _ => ???
+    case _ => false
   }
 
   override def findLineInMethod(className: String, methodName: String, line: Int): Iterable[AppLoc] = {
@@ -1304,8 +1305,18 @@ class JimpleFlowdroidWrapper(apkPath : String,
       val activeBody = loc.method.retrieveActiveBody()
       val units: Iterable[soot.Unit] = activeBody.getUnits.asScala
       val unitsForLine = units.filter(a => a.getJavaSourceStartLineNumber == line)
-      unitsForLine.map((a:soot.Unit) => AppLoc(loc, JimpleLineLoc(a,loc.method),true))
+      unitsForLine.map((a:soot.Unit) => AppLoc(loc, JimpleLineLoc(a,loc.method),isPre = true))
     })
+  }
+
+  def findInMethod(className:String, methodName:String, toFind: CmdWrapper => Boolean):Iterable[AppLoc] = {
+    val locs = for{
+      clazz <- getClassByName(className)
+      method <- clazz.getMethods().asScala
+      loc <- method.getActiveBody.getUnits.asScala.map(cmd => cmdToLoc(cmd, method))
+    } yield loc
+    locs.filter(al => toFind(cmdAtLocation(al)))
+    ???
   }
 
   def makeMethodTargets(source: MethodLoc): Set[MethodLoc] = {
@@ -1539,54 +1550,9 @@ class JimpleFlowdroidWrapper(apkPath : String,
     List(oldSet,newSet).foreach(_.forall((n: Node) => out.add(n.getNumber)))
     out
   }
-//  case class JimpleTypeSet(pt:DoublePointsToSet) extends TypeSet {
-//    private lazy val nonNative: DeserializedTypeSet = DeserializedTypeSet(jimpleGetBitSet(pt), None)
-//    override def serialize(): String = "typeset:" //TODO:
-//
-//    override def intersect(other: TypeSet): TypeSet = other match{
-//      case EmptyTypeSet => EmptyTypeSet
-//      case TopTypeSet => this
-//      case JimpleTypeSet(otherPt) =>
-//        ???
-//      case _ => EmptyTypeSet
-//    }
-//
-//    override def isEmpty(): Boolean = pt.isEmpty
-//
-//    override def intersectNonEmpty(other: TypeSet): Boolean = other match{
-//      case JimpleTypeSet(otherPt) => pt.hasNonEmptyIntersection(otherPt)
-//      case v =>
-//        nonNative.intersectNonEmpty(other)
-//    }
-//
-//    override def getValues: Option[Set[Int]] = ???
-//
-//    override def contains(other: TypeSet): Boolean = ???
-//
-//    override def filterSubTypeOf(types: Set[String])(implicit ch:ClassHierarchyConstraints): TypeSet = {
-//      if(!types.exists(v => ch.getSubtypesOf(v).contains(JimpleFlowdroidWrapper.stringNameOfType(pt.getType))))
-//        return EmptyTypeSet
-//      val bitSet = jimpleGetBitSet(pt)
-//      val newSet = bitSet.filter{v =>
-//        val strName = ch.intToString(v)
-//        val supers = ch.getSupertypesOf(strName)
-//        types.exists(supers.contains)
-//      }
-//      DeserializedTypeSet(newSet, None)
-//    }
-//
-//    override def convertFromNative: TypeSet =
-//      nonNative
-//  }
 
-  override def pointsToSet(fr: FieldReference): TypeSet = {
-    ???
-  }
   override def pointsToSet(loc: MethodLoc, local: LocalWrapper): TypeSet = {
     if (ClassHierarchyConstraints.Primitive.matches(local.localType)){
-//      return BoundedTypeSet(Some(local.localType), None, Set())
-//      return PrimitiveTypeSet(local.localType)
-//      BitTypeSet(BitSet(), Some(local.localType))
       return PrimTypeSet(local.localType)
     }
     val sootMethod = loc.asInstanceOf[JimpleMethodLoc].method
@@ -1596,8 +1562,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
         pt.reachingObjects(sootLocal)
       case None if local.name == "@this" =>
         pt.reachingObjects(sootMethod.getActiveBody.getThisLocal)
-      case None =>
-        ???
+      case None => throw new IllegalStateException(s"No points to set for method: ${loc} and local: ${local}")
     }
     reaching match{
       case d:DoublePointsToSet =>
@@ -1605,28 +1570,6 @@ class JimpleFlowdroidWrapper(apkPath : String,
       case e:EmptyPointsToSet =>
         EmptyTypeSet
     }
-//    JimpleTypeSet(reaching.asInstanceOf[DoublePointsToSet])
-//    reaching.
-//    val reachingTypes = reaching.possibleTypes()
-//    val out:Set[TypeSet] = reachingTypes.asScala.toSet.map{ (t:Type) => t match {
-//      case t: RefType => {
-//        val strName = JimpleFlowdroidWrapper.stringNameOfType(t)
-//        if (t.getSootClass.isInterface)
-//          BoundedTypeSet(None, None, Set(strName))
-//        else
-//          BoundedTypeSet(Some(strName), None, Set())
-//      }
-//      case t: AnySubType => //TODO: what generates this? Can we add a unit test for it?
-//        val strName = JimpleFlowdroidWrapper.stringNameOfType(t.getBase)
-//        BoundedTypeSet(Some(strName), None, Set())
-//      case t: Type =>
-//        val strName = JimpleFlowdroidWrapper.stringNameOfType(t)
-//        BoundedTypeSet(Some(strName), Some(strName), Set())
-//    }}
-//    if(out.size == 1)
-//      out.head
-//    else
-//      DisjunctTypeSet(out)
   }
 
   override def getThisVar(methodLoc: Loc): Option[LocalWrapper] = {
@@ -1648,7 +1591,6 @@ case class JimpleMethodLoc(method: SootMethod) extends MethodLoc {
   def string(clazz: SootClass):String = JimpleFlowdroidWrapper.stringNameOfClass(clazz)
   def string(t:Type) :String = JimpleFlowdroidWrapper.stringNameOfType(t)
   override def simpleName: String = {
-//    val n = method.getName
     method.getSubSignature
   }
 
@@ -1681,7 +1623,7 @@ case class JimpleMethodLoc(method: SootMethod) extends MethodLoc {
 }
 case class JimpleLineLoc(cmd: soot.Unit, method: SootMethod) extends LineLoc{
   lazy val cmdString: String = cmd.toString
-  override def toString: String = "line: " + cmd.getJavaSourceStartLineNumber() + " " + cmdString
+  override def toString: String = "line: " + cmd.getJavaSourceStartLineNumber + " " + cmdString
   def returnTypeIfReturn :Option[String] = cmd match{
     case cmd :JReturnVoidStmt => Some("void")
     case _ =>
@@ -1708,5 +1650,12 @@ case class JimpleLineLoc(cmd: soot.Unit, method: SootMethod) extends LineLoc{
   override def lineNumber: Int = cmd.getJavaSourceStartLineNumber
 
   override def containingMethod: MethodLoc = JimpleMethodLoc(method)
+
+  override def isFirstLocInMethod: Boolean = {
+    val unitBoxes = method.retrieveActiveBody().getUnits
+    if(unitBoxes.size > 0){
+      cmd.equals(unitBoxes.getFirst)
+    }else {false}
+  }
 }
 
