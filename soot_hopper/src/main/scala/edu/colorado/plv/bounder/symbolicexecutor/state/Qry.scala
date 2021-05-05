@@ -4,7 +4,7 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.SymbolicExecutor
+import edu.colorado.plv.bounder.symbolicexecutor.{SymbolicExecutor, TransferFunctions}
 import ujson.Value
 import upickle.default.{macroRW, ReadWriter => RW}
 
@@ -16,10 +16,9 @@ object Qry {
   implicit val rw:RW[Qry] = RW.merge(macroRW[LiveQry], macroRW[BottomQry], macroRW[WitnessedQry])
 
   def makeReach[M,C](ex: SymbolicExecutor[M,C],
-                     w:IRWrapper[M,C],
                      className:String,
                      methodName:String, line:Int):Set[Qry] = {
-    val locs = w.findLineInMethod(className, methodName,line)
+    val locs = ex.w.findLineInMethod(className, methodName,line)
     assert(locs.nonEmpty, "found no locations")
     val targetLoc = locs.head
     val containingMethodPos: List[Loc] = BounderUtil.resolveMethodReturnForAppLoc(ex.getAppCodeResolver, targetLoc)
@@ -31,16 +30,15 @@ object Qry {
   }
 
   def makeCallinReturnNull[M,C](ex: SymbolicExecutor[M,C],
-                                w:IRWrapper[M,C],
                                 className:String,
                                 methodName:String,
                                 line:Int,
                                 callinMatches:Regex):Set[Qry] ={
-    implicit val wr: IRWrapper[M, C] = w
+    implicit val wr: IRWrapper[M, C] = ex.w
     implicit val ch: ClassHierarchyConstraints = ex.getClassHierarchy
-    val locs = w.findLineInMethod(className, methodName,line)
+    val locs = wr.findLineInMethod(className, methodName,line)
     val callinLocals = locs.flatMap(a => {
-      w.cmdAtLocation(a) match{
+      wr.cmdAtLocation(a) match{
         case AssignCmd(target : LocalWrapper, i:Invoke, loc) if callinMatches.matches(i.targetMethod) =>
           Some((target,loc.copy(isPre = false)))
         case InvokeCmd(i,loc) if callinMatches.matches(i.targetMethod) =>
@@ -65,11 +63,11 @@ object Qry {
     }.toSet
   }
 
-  def makeAllReceiverNonNull[M,C](ex:SymbolicExecutor[M,C],w:IRWrapper[M,C],className: String): Set[Qry] = {
+  def makeAllReceiverNonNull[M,C](ex:SymbolicExecutor[M,C],className: String): Set[Qry] = {
     //TODO: clean up this method
-    implicit val wra: IRWrapper[M, C] = w
-    implicit val ch: ClassHierarchyConstraints = w.getClassHierarchyConstraints
-    val jw = w.asInstanceOf[JimpleFlowdroidWrapper]
+    implicit val wra: IRWrapper[M, C] = ex.w
+    implicit val ch: ClassHierarchyConstraints = wra.getClassHierarchyConstraints
+    val jw = wra.asInstanceOf[JimpleFlowdroidWrapper]
     val c = jw.getClassByName(className)
     val cmds = (for {
       cl <-c
@@ -104,18 +102,17 @@ object Qry {
   }
 
   def makeReceiverNonNull[M,C](ex: SymbolicExecutor[M,C],
-                               w:IRWrapper[M,C],
                                className:String,
                                methodName:String,
                                line:Int,
                                fieldOrMethod: Option[Regex] = None
                               ):Set[Qry] = {
-    implicit val wr: IRWrapper[M, C] = w
+    implicit val wr: IRWrapper[M, C] = ex.w
     implicit val ch: ClassHierarchyConstraints = ex.getClassHierarchy
 
-    val locs = w.findLineInMethod(className, methodName,line)
+    val locs = wr.findLineInMethod(className, methodName,line)
     val isTarget = fieldOrMethod.getOrElse("(.*)".r)
-    val derefLocs = locs.filter(a => w.cmdAtLocation(a) match {
+    val derefLocs = locs.filter(a => wr.cmdAtLocation(a) match {
       case AssignCmd(_, _:VirtualInvoke, _) => true
       case AssignCmd(_, _:SpecialInvoke, _) => true
       case InvokeCmd(_:VirtualInvoke,_) => true
@@ -130,7 +127,7 @@ object Qry {
     // Find last dereference on line if not specified
     val derefLoc: AppLoc = derefLocs.toList.last
     // Get name of variable that should not be null
-    val varname = w.cmdAtLocation(derefLoc) match {
+    val varname = wr.cmdAtLocation(derefLoc) match {
       case AssignCmd(_, VirtualInvoke(localWrapper,_,_,_), _) => localWrapper
       case AssignCmd(_, SpecialInvoke(localWrapper,_,_,_), _) => localWrapper
       case InvokeCmd(VirtualInvoke(localWrapper,_,_,_),_) => localWrapper
@@ -154,7 +151,7 @@ object Qry {
 
 }
 sealed trait InitialQuery{
-  def make[M,C](sym:SymbolicExecutor[M,C], w:IRWrapper[M,C]):Set[Qry]
+  def make[M,C](sym:SymbolicExecutor[M,C]):Set[Qry]
 }
 object InitialQuery{
   private def vToJ(v:(String,Any)):(String,Value) = v match{
@@ -213,41 +210,56 @@ object InitialQuery{
   )
 }
 case class Reachable(className:String, methodName:String, line:Integer) extends InitialQuery {
-  override def make[M, C](sym: SymbolicExecutor[M, C], w: IRWrapper[M, C]): Set[Qry] =
-    Qry.makeReach(sym,w,className, methodName, line)
+  override def make[M, C](sym: SymbolicExecutor[M, C]): Set[Qry] =
+    Qry.makeReach(sym,className, methodName, line)
 }
 case class ReceiverNonNull(className:String, methodName:String, line:Integer,
                            receiverMatcher:Option[String] = None) extends InitialQuery {
-  override def make[M, C](sym: SymbolicExecutor[M, C], w: IRWrapper[M, C]): Set[Qry] =
-    Qry.makeReceiverNonNull(sym,w, className, methodName, line,fieldOrMethod = receiverMatcher.map(_.r))
+  override def make[M, C](sym: SymbolicExecutor[M, C]): Set[Qry] =
+    Qry.makeReceiverNonNull(sym, className, methodName, line,fieldOrMethod = receiverMatcher.map(_.r))
 }
 case class AllReceiversNonNull(className:String) extends InitialQuery {
-  override def make[M, C](sym: SymbolicExecutor[M, C], w: IRWrapper[M, C]): Set[Qry] =
-    Qry.makeAllReceiverNonNull(sym,w,className)
+  override def make[M, C](sym: SymbolicExecutor[M, C]): Set[Qry] =
+    Qry.makeAllReceiverNonNull(sym,className)
 }
 case class CallinReturnNonNull(className:String, methodName:String,
                                line:Integer, callinRegex:String) extends InitialQuery{
-  override def make[M, C](sym: SymbolicExecutor[M, C], w: IRWrapper[M, C]): Set[Qry] =
-    Qry.makeCallinReturnNull(sym,w, className, methodName, line, callinRegex.r)
+  override def make[M, C](sym: SymbolicExecutor[M, C]): Set[Qry] =
+    Qry.makeCallinReturnNull(sym, className, methodName, line, callinRegex.r)
 }
 
 case class DisallowedCallin(className:String, methodName:String, s:LSSpec) extends InitialQuery{
   assert(s.target.mt == CIEnter, "Disallow must be callin entry.")
-  private def invokeMatches(i:Invoke)(implicit ch:ClassHierarchyConstraints):Boolean = {
+  private def invokeMatches(i:Invoke)(implicit ch:ClassHierarchyConstraints):Option[(String,String)] = {
     val iClazz = i.targetClass
     val iSign = i.targetMethod
-    s.target.signatures.matches(iClazz, iSign)
+    val res = s.target.signatures.matches(iClazz, iSign)
+    if(res) Some(iClazz, iSign) else None
   }
 
-  private def isMatchingCallin(cmd:CmdWrapper)(implicit ch:ClassHierarchyConstraints):Boolean = cmd match {
+  private def getMatchingCallin(cmd:CmdWrapper)
+                               (implicit ch:ClassHierarchyConstraints):Option[(String,String)] = cmd match {
     case AssignCmd(_, i:Invoke, _) => invokeMatches(i)
     case InvokeCmd(method, _) => invokeMatches(method)
-    case _ => false
+    case _ => None
   }
-  override def make[M, C](sym: SymbolicExecutor[M, C], w: IRWrapper[M, C]): Set[Qry] = {
-    implicit val ch = w.getClassHierarchyConstraints
-    val locations = w.findInMethod(className, methodName, cmd => isMatchingCallin(cmd)).toSet
-    locations.map(c => LiveQry(State.topState, c.copy(isPre = false)))
+  override def make[M, C](sym: SymbolicExecutor[M, C]): Set[Qry] = {
+    //TODO: Bug where this is empty
+    implicit val ch = sym.w.getClassHierarchyConstraints
+    val locations: Set[AppLoc] = sym.w.findInMethod(className, methodName, cmd => getMatchingCallin(cmd).isDefined).toSet
+//    val containingMethodPos =
+//      locations.flatMap(location => BounderUtil.resolveMethodReturnForAppLoc(sym.getAppCodeResolver, location))
+    locations.map { location =>
+      val cmd = sym.w.cmdAtLocation(location)
+      val retLoc = BounderUtil.resolveMethodReturnForAppLoc(sym.getAppCodeResolver, location)
+      val sf = CallStackFrame(retLoc.head, None, Map())
+      val state = State.topState.copy(sf = State.topState.sf.copy(callStack = sf :: Nil))
+      val allVar = TransferFunctions.inVarsForCall(location,sym.w)
+      val stateWithDisallow = sym.transfer.newSpecInstanceTransfer(location.method,
+        CIEnter, getMatchingCallin(cmd).get, allVar, state,Some(s))
+      assert(stateWithDisallow.size == 1)
+      LiveQry(stateWithDisallow.head, location.copy(isPre = true))
+    }
   }
 }
 

@@ -1037,7 +1037,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
     }
     def overrideAllCBForI(sig: LifeState.SignatureMatcher):Unit = {
       val baseTypes: Set[String] = sig match{
-        case SubClassMatcher(baseSubtypeOf, sig, ident) => Set(baseSubtypeOf)
+        case SubClassMatcher(baseSubtypeOf, sig, ident) => baseSubtypeOf
         case SetSignatureMatcher(sigSet) => sigSet.collect{
           case (c,_) => c
         }
@@ -1316,7 +1316,6 @@ class JimpleFlowdroidWrapper(apkPath : String,
       loc <- method.getActiveBody.getUnits.asScala.map(cmd => cmdToLoc(cmd, method))
     } yield loc
     locs.filter(al => toFind(cmdAtLocation(al)))
-    ???
   }
 
   def makeMethodTargets(source: MethodLoc): Set[MethodLoc] = {

@@ -523,7 +523,7 @@ trait StateSolver[T, C <: SolverCtx] {
         case (Some(tc1),Some(tc2)) => Some(tc1.intersect(tc2))
       }
       joinedTc match{
-        case Some(tc) if tc.isEmpty() => None
+        case Some(tc) if tc.isEmpty => None
         case Some(tc) => Some(state.swapPv(oldPv,newPv).addTypeConstraint(newPv,tc)) //.copy(typeConstraints = state.typeConstraints + (newPv -> tc)))
         case None => Some(state.swapPv(oldPv,newPv))
       }
@@ -599,7 +599,7 @@ trait StateSolver[T, C <: SolverCtx] {
       }))
       // If no type possible for a pure var, state is not feasible
       val pvMap2: Map[PureVar, TypeSet] = state.typeConstraints
-      if (pvMap2.exists(a => a._2.isEmpty())) {
+      if (pvMap2.exists{ a => a._2.isEmpty }) {
         return None
       }
       push()

@@ -84,7 +84,7 @@ class SootUtilsTest extends AnyFunSuite {
     val config: SymbolicExecutorConfig[SootMethod, soot.Unit] = SymbolicExecutorConfig(
       stepLimit = 50, w, transfer, printProgress = true, z3Timeout = Some(30))
     val symbolicExecutor = config.getSymbolicExecutor
-    val query = Qry.makeReceiverNonNull(symbolicExecutor, w,
+    val query = Qry.makeReceiverNonNull(symbolicExecutor,
       "com.example.test_interproc_2.MainActivity",
       "void onPause()", 27)
     val l = query.find {
@@ -122,7 +122,7 @@ class SootUtilsTest extends AnyFunSuite {
     val config: SymbolicExecutorConfig[SootMethod, soot.Unit] = SymbolicExecutorConfig(
       stepLimit = 50, w, transfer, printProgress = true, z3Timeout = Some(30))
     val symbolicExecutor = config.getSymbolicExecutor
-    val query = Qry.makeReach(symbolicExecutor, w,
+    val query = Qry.makeReach(symbolicExecutor,
       "com.example.test_interproc_2.MainActivity",
       "void onCreate(android.os.Bundle)", 16)
 

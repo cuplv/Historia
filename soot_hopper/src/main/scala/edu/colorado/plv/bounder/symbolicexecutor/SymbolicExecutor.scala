@@ -163,7 +163,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
    */
   def run(initialQuery: InitialQuery, outputMode:OutputMode = MemoryOutputMode,
           cfg:RunConfig = RunConfig()) : Set[QueryData] = {
-    val qry = initialQuery.make(this,w)
+    val qry = initialQuery.make(this)
     qry.groupBy(_.loc).map{ case(loc,qs) =>
       val startTime = Instant.now.getEpochSecond
       var id = -1

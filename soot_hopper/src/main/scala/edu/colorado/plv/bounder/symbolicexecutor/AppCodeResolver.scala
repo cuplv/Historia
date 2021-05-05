@@ -126,12 +126,6 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
       }
     }
   }
-//  override def resolveCallLocation(tgt: UnresolvedMethodTarget): Set[Loc] = tgt match{
-//    case UnresolvedMethodTarget(clazz, method, _) if isFrameworkClass(clazz) =>
-//      Set(CallinMethodReturn(clazz, method, None))
-//    case UnresolvedMethodTarget(clazz, method, methodLocs) =>
-//      methodLocs.map(loc => InternalMethodReturn(clazz, method, _))
-//  }
 
   private val CLINIT = "void <clinit>()"
   override def resolveCallbackExit(method: MethodLoc, retCmdLoc: Option[LineLoc]): Option[Loc] = {
@@ -145,7 +139,9 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     }
     if (overrides.size > 0) {
       val leastPrecise: MethodLoc = overrides.last
-      Some(CallbackMethodReturn(leastPrecise.classType, leastPrecise.simpleName, method, retCmdLoc))
+//      Some(CallbackMethodReturn(leastPrecise.classType, leastPrecise.simpleName, method, retCmdLoc))
+      //TODO: swapped out callback to contain target type instead of overridden type check that this works
+      Some(CallbackMethodReturn(method.classType, leastPrecise.simpleName, method, retCmdLoc))
     } else None
 
   }
@@ -166,7 +162,8 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     }
     if (overrides.size > 0) {
       val leastPrecise: MethodLoc = overrides.last
-      Some(CallbackMethodInvoke(leastPrecise.classType, leastPrecise.simpleName, method))
+//      Some(CallbackMethodInvoke(leastPrecise.classType, leastPrecise.simpleName, method))
+      Some(CallbackMethodInvoke(method.classType, leastPrecise.simpleName, method))
     } else None
   }
 }

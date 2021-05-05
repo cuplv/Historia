@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.ir
 
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
+import edu.colorado.plv.bounder.lifestate.{ActivityLifecycleSpec, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.Qry
 import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, CallGraphSource, FlowdroidCallGraph, SparkCallGraph, SymbolicExecutorConfig, TransferFunctions}
@@ -59,7 +59,7 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
       assert(apk != null)
       val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
         FragmentGetActivityNullSpec.getActivityNonNull,
-        ActivityLifecycle.init_first_callback,
+        ActivityLifecycleSpec.init_first_callback,
         RxJavaSpec.call,
         //          RxJavaSpec.subscribeDoesNotReturnNull
       )
@@ -69,7 +69,7 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
       val config = SymbolicExecutorConfig(
         stepLimit = 50, w, transfer,
         component = None)
-      val query = Qry.makeReach(config.getSymbolicExecutor, w, "com.example.createdestroy.MyActivity",
+      val query = Qry.makeReach(config.getSymbolicExecutor, "com.example.createdestroy.MyActivity",
         "void onCreate(android.os.Bundle)",
         BounderUtil.lineForRegex(".*query1.*".r,src))
       val loc = query.head.loc.asInstanceOf[AppLoc]
@@ -88,6 +88,7 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
         |import java.util.List;
         |import java.util.ArrayList;
         |import java.util.Iterator;
+        |import android.view.View;
         |import android.content.Context;
         |import android.content.SharedPreferences;
         |
@@ -124,6 +125,8 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
         |      SharedPreferences pref = this.getSharedPreferences("", Context.MODE_PRIVATE);
         |      SharedPreferences.Editor editor = pref.edit(); //query5
         |      editor.putInt("foo",3);
+        |      View v = findViewById(3);
+        |      v.setVisibility(View.GONE); //query6 should have an edge
         |    }
         |
         |    @Override
@@ -137,7 +140,7 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
       assert(apk != null)
       val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
         FragmentGetActivityNullSpec.getActivityNonNull,
-        ActivityLifecycle.init_first_callback,
+        ActivityLifecycleSpec.init_first_callback,
         RxJavaSpec.call,
         //          RxJavaSpec.subscribeDoesNotReturnNull
       )
@@ -147,7 +150,7 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
       val config = SymbolicExecutorConfig(
         stepLimit = 50, w, transfer,
         component = None)
-      val query = Qry.makeReceiverNonNull(config.getSymbolicExecutor, w, "com.example.createdestroy.MyActivity",
+      val query = Qry.makeReceiverNonNull(config.getSymbolicExecutor, "com.example.createdestroy.MyActivity",
         "void onResume()",
         BounderUtil.lineForRegex(".*query1.*".r,src), Some(".*iterator.*".r))
       val loc = query.head.loc.asInstanceOf[AppLoc]
@@ -190,7 +193,7 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
 
       assert(targets.loc.nonEmpty)
 
-      val query2 = Qry.makeReceiverNonNull(config.getSymbolicExecutor, w,
+      val query2 = Qry.makeReceiverNonNull(config.getSymbolicExecutor,
         "com.example.createdestroy.MyActivity",
         "void onResume()",
         BounderUtil.lineForRegex(".*query2.*".r,src), Some(".*iterator.*".r))
@@ -198,7 +201,7 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
       val targets2: UnresolvedMethodTarget = w.makeInvokeTargets(loc2)
       assert(targets2.loc.nonEmpty)
 
-      val query3 = Qry.makeReceiverNonNull(config.getSymbolicExecutor, w,
+      val query3 = Qry.makeReceiverNonNull(config.getSymbolicExecutor,
         "com.example.createdestroy.MyActivity",
         "void onPause()",
         BounderUtil.lineForRegex(".*query3.*".r,src), Some(".*iterator.*".r))
@@ -207,7 +210,7 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
       assert(targets3.loc.size == 1)
 
 
-      val query4 = Qry.makeReceiverNonNull(config.getSymbolicExecutor, w,
+      val query4 = Qry.makeReceiverNonNull(config.getSymbolicExecutor,
         "com.example.createdestroy.MyActivity",
         "void onResume()",
         BounderUtil.lineForRegex(".*query4.*".r,src), Some(".*iterator.*".r))
@@ -220,14 +223,20 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
       // leaked via Object.<init>
       //assert(!targets4.loc.exists(m => m.classType == "com.example.createdestroy.MyActivity$2"))
 
-      val query5 = Qry.makeReceiverNonNull(config.getSymbolicExecutor, w,
+      val query5 = Qry.makeReceiverNonNull(config.getSymbolicExecutor,
         "com.example.createdestroy.MyActivity",
         "void onResume()",
         BounderUtil.lineForRegex(".*query5.*".r,src), Some(".*iterator.*".r))
       val loc5 = query5.head.loc.asInstanceOf[AppLoc]
       val targets5 = w.makeInvokeTargets(loc5)
       assert(targets5.loc.nonEmpty)
-      println("TODO") // Why no shared pref from getSharedPreferences?
+      val query6 = Qry.makeReceiverNonNull(config.getSymbolicExecutor,
+        "com.example.createdestroy.MyActivity",
+        "void onResume()",
+        BounderUtil.lineForRegex(".*query6.*".r,src), Some(".*setVisibility.*".r))
+      val loc6 = query6.head.loc.asInstanceOf[AppLoc]
+      val targets6 = w.makeInvokeTargets(loc6)
+      assert(targets6.loc.nonEmpty)
     }
     makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
   }

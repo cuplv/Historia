@@ -162,7 +162,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val frame = CallStackFrame(target, Some(source.copy(isPre = true)), Map())
       val (rvals, state0) = getOrDefineRVals(m,relAliases, postState2)
       val state1 = traceAllPredTransfer(CIExit, (pkg,name),rvals, state0)
-      val outState = newSpecInstanceTransfer(source.method, CIExit, (pkg, name), inVars, cmret, state1)
+      val outState = newSpecInstanceTransfer(source.method, CIExit, (pkg, name), inVars, state1)
       // if retVar is materialized and assigned, clear it from the state
       val outState1: Set[State] = inVars match{
         case Some(retVar:LocalWrapper)::_ =>
@@ -271,7 +271,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val relAliases = relevantAliases2(postState, CBEnter, (pkg,name),invars)
       val (inVals, state0) = getOrDefineRVals(containingMethod, relAliases,postState)
       val state1 = traceAllPredTransfer(CBEnter, (pkg,name), inVals, state0)
-      val b = newSpecInstanceTransfer(containingMethod, CBEnter, (pkg, name), invars, cmInv, state1)
+      val b = newSpecInstanceTransfer(containingMethod, CBEnter, (pkg, name), invars, state1)
       b.map(s => s.copy(sf = s.sf.copy(callStack = if(s.callStack.isEmpty) Nil else s.callStack.tail),
         nextCmd = List(target),
         alternateCmd = Nil))
@@ -512,15 +512,15 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
 
   /**
    * For a back message with a given package and name, instantiate each rule as a new trace abstraction
-   *
-   * @param loc callback invoke or callin return
+   * @param appMethod method associated with callin or callback transfer
+   *                  (callback for callback invoke/return, containing method for callin/return)
    * @param postState state at point in app just before back message
    * @return a new trace abstraction for each possible rule
    */
-  def newSpecInstanceTransfer(targetMethod:MethodLoc, mt: MessageType,
+  def newSpecInstanceTransfer(appMethod:MethodLoc, mt: MessageType,
                               sig:(String,String), allVar:List[Option[RVal]],
-                              loc: Loc, postState: State): Set[State] = {
-    val specsBySignature: Set[LSSpec] = specSpace.specsBySig(mt, sig._1, sig._2)
+                              postState: State, disallow:Option[LSSpec] = None): Set[State] = {
+    val specsBySignature = if(disallow.isDefined) disallow.toSet else specSpace.specsBySig(mt, sig._1, sig._2)
 
 
     val postStatesByConstAssume: Set[(LSSpec,State)] = specsBySignature.flatMap{ (s:LSSpec) =>
@@ -537,7 +537,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         //  Negation of RHS of spec requires False unless defined
         val posState: State = definedCv.foldLeft(postState) {
           case (st, (pureExpr, op,stateVar)) =>
-            val (vv, st1) = st.getOrDefine(stateVar, Some(targetMethod))
+            val (vv, st1) = st.getOrDefine(stateVar, Some(appMethod))
             st1.addPureConstraint(PureConstraint(vv, op, pureExpr))
         }
         val out = Set((s,posState))
@@ -559,7 +559,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         val state2 = parameterPairing.foldLeft(newPostState) {
           case (cstate, (LSAnyVal(), _)) => cstate
           case (cstate, (LSConst(_), _)) => cstate
-          case (cstate, (_, Some(rval))) => cstate.getOrDefine(rval,Some(targetMethod))._2
+          case (cstate, (_, Some(rval))) => cstate.getOrDefine(rval,Some(appMethod))._2
           case (cstate, _) => cstate
         }
         val lsVarConstraints = parameterPairing.flatMap {
@@ -582,7 +582,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
   /**
    * Get input and output vars of executing part of the app responsible for an observed message
    * Note: all vars used in invoke or assign/invoke can be in post state
-   * @param loc
+   * @param loc transfer location (not AppLoc)
    * @return (pkg, function name)
    */
   private def msgCmdToMsg(loc: Loc): (String, String) =
@@ -621,7 +621,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
             i :: pred.rightOfArrow, pred.modelVars ++ modelVarConstraints)
         case None => pred
       }
-    } else pred
+    } else
+      pred
   }
 
   /**

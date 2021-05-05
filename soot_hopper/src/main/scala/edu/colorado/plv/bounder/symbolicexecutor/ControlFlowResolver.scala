@@ -260,7 +260,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 //          !res.isEmpty(cha)
           val localPt = wrapper.pointsToSet(m, localWr)
           val intersect = ts.intersect(localPt)
-          !intersect.isEmpty()
+          !intersect.isEmpty
         }
       case (LSModelVar(s,t), Some(LocalWrapper(name,localType))) =>
         true //TODO: could make more precise by matching receivers and arg types
@@ -461,9 +461,9 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
             }
           } else List(None)
       val iExists = retVars.exists { retVar => //TODO: ==== check types to rule out aliasing of CBEnter/Exit
-        val locs: List[Option[RVal]] = retVar :: rloc.getArgs
-        val res = existsIAlias(locs,cr.containingMethod.get, CBExit, (clazz, name), state) ||
-          existsIAlias(None :: locs.tail,cr.containingMethod.get, CBEnter, (clazz, name), state)
+        val locals: List[Option[RVal]] = retVar :: rloc.getArgs
+        val res = existsIAlias(locals,cr.containingMethod.get, CBExit, (clazz, name), state) ||
+          existsIAlias(None :: locals.tail,cr.containingMethod.get, CBEnter, (clazz, name), state)
         res
       }
       val relevantBody = relevantMethodBody(rloc, state) match{
@@ -505,14 +505,9 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   }
   def resolvePredicessors(loc:Loc, state: State):Iterable[Loc] = (loc,state.callStack) match{
     case (l@AppLoc(_,_,true),_) => {
-      //TODO: remove dbg code =====
-//      val pp = new PrettyPrinting(config.outputMode)
-//      pp.dotMethod(loc,this, "/Users/shawnmeier/Documents/source/bounder/experiments/inspectRun/itkach.aard2/itkach.slob.Slob$4/method.dot")
-
-      //end remove dbg code
       val cmd: CmdWrapper = wrapper.cmdAtLocation(l)
       cmd match {
-        case cmd if l.line.isFirstLocInMethod => // wrapper.isMethodEntry(cmd) => //==================================
+        case cmd if l.line.isFirstLocInMethod =>
           val methodEntries = BounderUtil.resolveMethodEntryForAppLoc(resolver,l )
           val out = methodEntries.filter(state.entryPossible)
           out

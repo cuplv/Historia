@@ -11,7 +11,7 @@ import edu.colorado.plv.bounder.Driver.{Default, LocResult, RunMode}
 import edu.colorado.plv.bounder.ir.{JimpleFlowdroidWrapper, Loc}
 import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
 import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
-import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivityNullSpec, LifeState, RxJavaSpec, SpecSpace}
+import edu.colorado.plv.bounder.lifestate.{ActivityLifecycleSpec, FragmentGetActivityNullSpec, LifeState, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, SparkCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
@@ -384,7 +384,7 @@ object SpecSetOption{
       RxJavaSpec.call,
 //      RxJavaSpec.subscribeDoesNotReturnNull,
       RxJavaSpec.subscribeIsUnique,
-      ActivityLifecycle.Fragment_activityCreatedOnlyFirst
+      ActivityLifecycleSpec.Fragment_activityCreatedOnlyFirst
     ))
   implicit val rw:RW[SpecSetOption] = upickle.default.readwriter[String].bimap[SpecSetOption](
     {

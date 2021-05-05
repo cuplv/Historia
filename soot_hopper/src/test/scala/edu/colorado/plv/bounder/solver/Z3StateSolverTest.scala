@@ -3,17 +3,16 @@ package edu.colorado.plv.bounder.solver
 import better.files.Resource
 import com.microsoft.z3._
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSFalse, LSTrue, LSVar, NI, Not, Or, SetSignatureMatcher, SignatureMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSFalse, LSTrue, NI, Not, Or, SetSignatureMatcher, SignatureMatcher}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
-import org.scalatest.Outcome
-import org.scalatest.funsuite.{AnyFunSuite, FixtureAnyFunSuite}
+import org.scalatest.funsuite.FixtureAnyFunSuite
 
 import scala.collection.BitSet
 
 class Z3StateSolverTest extends FixtureAnyFunSuite {
 
   private val fooMethod = TestIRMethodLoc("","foo", List(Some(LocalWrapper("@this","Object"))))
-  private val dummyLoc = CallbackMethodReturn(fmwClazz = "",
+  private val dummyLoc = CallbackMethodReturn(tgtClazz = "",
      fmwName="void foo()", fooMethod, None)
   private val v = PureVar(State.getId_TESTONLY())
   private val frame = CallStackFrame(dummyLoc, None, Map(StackVar("x") -> v))
@@ -681,7 +680,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val p2t = BoundedTypeSet(Some("Foo"), None, Set())
     val loc = AppLoc(fooMethod, TestIRLineLoc(1), isPre = false)
 
-    assert(p1t.intersect(p2t).isEmpty())
+    assert(p1t.intersect(p2t).isEmpty)
 
 
     val ifoo = I(CBEnter, Set(("", "foo")), "a" :: Nil)

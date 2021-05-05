@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
-import edu.colorado.plv.bounder.lifestate.{ActivityLifecycle, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
+import edu.colorado.plv.bounder.lifestate.{ActivityLifecycleSpec, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{PrettyPrinting, Qry, Reachable, ReceiverNonNull}
 import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, ControlFlowResolver, DefaultAppCodeResolver, FlowdroidCallGraph, PatchedFlowdroidCallGraph, QueryFinished, SparkCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
@@ -15,8 +15,8 @@ import scala.jdk.CollectionConverters.CollectionHasAsScala
 class CreateDestroySubscribe_TestApp extends AnyFunSuite{
   val apk = getClass.getResource("/CreateDestroySubscribe-debug.apk").getPath
   assert(apk != null)
-  val specSpace = new SpecSpace(Set(ActivityLifecycle.onPause_onlyafter_onResume_init,
-    ActivityLifecycle.init_first_callback,
+  val specSpace = new SpecSpace(Set(ActivityLifecycleSpec.onPause_onlyafter_onResume_init,
+    ActivityLifecycleSpec.init_first_callback,
     RxJavaSpec.subscribeIsUnique,
     //    RxJavaSpec.subscribeDoesNotReturnNull,
     RxJavaSpec.call))

@@ -12,7 +12,7 @@ class Z3ModelGeneratorTest extends AnyFunSuite {
   ignore("Encode Node Reachability"){
     // TODO: implement model generator
     val gen = new Z3ModelGenerator()
-    val dummyLoc = CallbackMethodInvoke(fmwClazz = "",
+    val dummyLoc = CallbackMethodInvoke(tgtClazz = "",
       fmwName="void foo()", fooMethod)
     val pureVar = PureVar(State.getId_TESTONLY())
     val frame = CallStackFrame(dummyLoc, None, Map(StackVar("this") -> pureVar))

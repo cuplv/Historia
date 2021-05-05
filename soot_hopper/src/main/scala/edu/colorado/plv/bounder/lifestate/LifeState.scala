@@ -219,7 +219,7 @@ object LifeState {
   object SignatureMatcher{
     implicit val rw:RW[SignatureMatcher] = RW.merge(SetSignatureMatcher.rw, SubClassMatcher.rw)
   }
-  @deprecated //TODO: get rid of this version
+  @Deprecated
   case class SetSignatureMatcher(sigSet : Set[(String,String)]) extends SignatureMatcher {
     override def matches(sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean = sigSet.contains(sig)
 
@@ -232,12 +232,26 @@ object LifeState {
   object SetSignatureMatcher{
     implicit val rw:RW[SetSignatureMatcher] = macroRW
   }
-  case class SubClassMatcher(baseSubtypeOf:String, sig:String, ident:String) extends SignatureMatcher {
-    lazy val sigR:Regex = sig.r
+
+  /**
+   *
+   * @param baseSubtypeOf match any callin where the defining class is a subtype of this
+   * @param signatureMatcher regular expression matching soot style signature
+   * @param ident unique name for matcher used by trace solver
+   */
+  case class SubClassMatcher(baseSubtypeOf:Set[String], signatureMatcher:String, ident:String) extends SignatureMatcher {
+    assert(!signatureMatcher.contains('(') || signatureMatcher.contains('\\'),
+      "Signature matcher is regular exppression. Parentheses must be escaped. e.g. \\\\(\\\\)")
+    lazy val sigR:Regex = signatureMatcher.r
     override def matches(sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean = {
-      if(ch.typeExists(baseSubtypeOf)) { // Specs may not match any type if library has not been included in apk
-        ch.getSubtypesOf(baseSubtypeOf).contains(sig._1) && matchesSubSig(sig._2)
-      } else false
+      if(!matchesSubSig(sig._2)){
+        return false
+      }
+      baseSubtypeOf.exists { bt =>
+        if (ch.typeExists(bt)) { // Specs may not match any type if library has not been included in apk
+          ch.getSubtypesOf(bt).contains(sig._1)
+        } else false
+      }
     }
 
     override def matchesSubSig(subsig: String): Boolean = {
@@ -248,6 +262,8 @@ object LifeState {
 
   }
   object SubClassMatcher{
+    def apply(baseSubtypeOf:String, signatureMatcher: String, ident:String):SubClassMatcher =
+      SubClassMatcher(Set(baseSubtypeOf), signatureMatcher, ident)
     implicit val rw:RW[SubClassMatcher] = macroRW
   }
   // A method with a signature in "signatures" has been invoed
@@ -374,18 +390,7 @@ object SpecSpace{
 class SpecSpace(specs: Set[LSSpec]) {
   def getSpecs:Set[LSSpec] = specs
   private val allISpecs: Map[MessageType, Set[I]] = specs.flatMap(SpecSpace.allI(_)).groupBy(i => i.mt)
-//  private val iset: Map[(MessageType, (String, String)), I] = {
-//    val allISpecs = specs.flatMap(SpecSpace.allI)
-//    val collected = allISpecs.groupBy(i => (i.mt, i.signatures))
-//    collected.flatMap{
-//      case (k,v) =>
-//        val setOfVarLists = v.map(_.lsVars)
-//        val maxL = setOfVarLists.foldLeft(0)((acc,v) => if(v.size > acc)v.size else acc)
-//        val blankVars = (0 until maxL).map(ind =>
-//          if(setOfVarLists.exists(l=> (l.size > ind) && !LifeState.LSAnyVal.matches(l(ind)))) "v" else "_")
-//        k._2.map(v => (k._1,v)->I(k._1,k._2,blankVars.toList))
-//    }
-//  }
+
 
   private var freshLSVarIndex = 0
   def nextFreshLSVar():String = {

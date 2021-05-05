@@ -500,6 +500,13 @@ case class State(sf:StateFormula,
     case _ =>
       ???
   }
+
+  /**
+   *
+   * @param l rVal to define, usually a local
+   * @param method method where rVal exists (for points to set)
+   * @return
+   */
   def getOrDefine[M,C](l : RVal, method:Option[MethodLoc])
                       (implicit ch: ClassHierarchyConstraints, w:IRWrapper[M,C]): (PureVar,State) = l match{
     case lw@LocalWrapper(name,localType) =>

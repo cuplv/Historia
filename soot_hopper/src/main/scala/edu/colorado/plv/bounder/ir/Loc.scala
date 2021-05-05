@@ -155,9 +155,9 @@ object GroupedCallinMethodReturn{
   implicit val rw:RW[GroupedCallinMethodReturn] = macroRW
 }
 
-case class CallbackMethodInvoke(fmwClazz: String, fmwName: String, loc:MethodLoc) extends Loc {
+case class CallbackMethodInvoke(tgtClazz: String, fmwName: String, loc:MethodLoc) extends Loc {
   override def toString:String = "[CB Inv] " + fmwName
-  override def msgSig: Option[String] = Some(s"[CB Inv] ${fmwClazz} ${fmwName}")
+  override def msgSig: Option[String] = Some(s"[CB Inv] ${tgtClazz} ${fmwName}")
 
   override def isEntry: Option[Boolean] = Some(true)
   private lazy val iser= write(this)
@@ -168,7 +168,7 @@ object CallbackMethodInvoke{
 }
 
 // post state of return on callback
-case class CallbackMethodReturn(fmwClazz: String, fmwName:String, loc:MethodLoc, line:Option[LineLoc]) extends Loc {
+case class CallbackMethodReturn(tgtClazz: String, fmwName:String, loc:MethodLoc, line:Option[LineLoc]) extends Loc {
   override def toString:String = "[CB Ret] " + fmwName
   override def msgSig: Option[String] = Some(s"")
 

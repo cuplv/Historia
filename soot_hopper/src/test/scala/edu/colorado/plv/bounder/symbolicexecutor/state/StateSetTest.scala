@@ -31,7 +31,7 @@ class StateSetTest extends AnyFunSuite {
 
   private val fooMethod = TestIRMethodLoc("","foo", List(Some(LocalWrapper("@this","Object"))))
   private val lineLoc = TestIRLineLoc(-1)
-  private val dummyLoc = CallbackMethodReturn(fmwClazz = "",
+  private val dummyLoc = CallbackMethodReturn(tgtClazz = "",
     fmwName="void foo()", fooMethod, None)
   test("Add state"){
     //TODO: state set is work in progress and not used yet
