@@ -139,6 +139,8 @@ case class PrimTypeSet(name:String) extends TypeSet {
   override def intersectNonEmpty(other: TypeSet): Boolean = !intersect(other).isEmpty
 }
 case class BitTypeSet(s:BitSet) extends TypeSet {
+  def stringRep(ch:ClassHierarchyConstraints):String =
+    "{" + s.take(3).map(ch.intToString).mkString(",") + "}"
   override def serialize(): String = "DeserializedTypeSet:"
 
   override def intersect(other: TypeSet): TypeSet = other match{

@@ -250,11 +250,40 @@ case class State(sf:StateFormula,
     addTypeConstraint(pv,newTc)
   }
 
+  def canAliasPv(pv1:PureVar, pv2:PureVar):Boolean ={
+    val typeCanAlias = (sf.typeConstraints.get(pv1), sf.typeConstraints.get(pv2)) match {
+      case (Some(t1), Some(t2)) =>
+        t1.intersectNonEmpty(t2)
+      case _ => true
+    }
+    lazy val constraintCanAlias = sf.pureFormula.forall{
+      case PureConstraint(v1, NotEquals, v2) => pv1 != v1 || pv2 != v2
+      case _ => true
+    }
+    typeCanAlias && constraintCanAlias
+  }
+  def canAliasPe[M,C](pv:PureVar, lv:PureExpr):Boolean = lv match {
+    case pureVal: PureVal => true // equality is handled by StateSolver
+    case pv2@PureVar(_) => canAliasPv(pv, pv2)
+  }
+  def canAliasEE(pe1:PureExpr, pe2:PureExpr):Boolean = pe1 match {
+    case pureVal: PureVal => pe2 match{
+      case _:PureVal => true // equality is handled by StateSolver
+      case pv2:PureVar => canAliasPe(pv2, pureVal)
+    }
+    case pv@PureVar(_) => canAliasPe(pv,pe2)
+  }
   def canAlias[M,C](pv:PureVar, method:MethodLoc, lw:LocalWrapper, w:IRWrapper[M,C]):Boolean = {
+    implicit val wr = w
     sf.typeConstraints.get(pv) match{
       case Some(pvPt) =>
-        val pt = w.pointsToSet(method,lw)
-        pt.intersectNonEmpty(pvPt)
+        val pt = w.pointsToSet(method, lw)
+        if(containsLocal(lw)){
+          val lv = get(lw).get
+          canAliasPe(pv,lv) && pt.intersectNonEmpty(pvPt)
+        }else {
+          pt.intersectNonEmpty(pvPt)
+        }
       case None => true
     }
   }
@@ -420,8 +449,9 @@ case class State(sf:StateFormula,
   // If an RVal exists in the state, get it
   // for a field ref, e.g. x.f if x doesn't exist, create x
   // if x.f doesn't exist and x does
-  def get[M,C](l:RVal)(implicit ch: ClassHierarchyConstraints, w:IRWrapper[M,C]):Option[PureExpr] = l match {
+  def get[M,C](l:RVal)(implicit w:IRWrapper[M,C]):Option[PureExpr] = l match {
     case lw@LocalWrapper(name,_) =>
+//      val ch = w.getClassHierarchyConstraints
       sf.callStack match{
         case CallStackFrame(exitLoc,_,locals)::_ if exitLoc.containingMethod.isDefined =>
           if(locals.contains(StackVar(name)))

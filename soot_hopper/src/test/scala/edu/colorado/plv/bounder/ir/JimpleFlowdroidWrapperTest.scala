@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.ir
 
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.lifestate.{ActivityLifecycleSpec, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
+import edu.colorado.plv.bounder.lifestate.{LifecycleSpec, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.Qry
 import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, CallGraphSource, FlowdroidCallGraph, SparkCallGraph, SymbolicExecutorConfig, TransferFunctions}
@@ -59,7 +59,7 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
       assert(apk != null)
       val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
         FragmentGetActivityNullSpec.getActivityNonNull,
-        ActivityLifecycleSpec.init_first_callback,
+        LifecycleSpec.init_first_callback,
         RxJavaSpec.call,
         //          RxJavaSpec.subscribeDoesNotReturnNull
       )
@@ -91,7 +91,7 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
         |import android.view.View;
         |import android.content.Context;
         |import android.content.SharedPreferences;
-        |
+        |import android.os.Handler;
         |import rx.Single;
         |import rx.Subscription;
         |import rx.android.schedulers.AndroidSchedulers;
@@ -104,6 +104,7 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
         |    Subscription subscription;
         |    static String o3 = "foo";
         |    Runnable r = null;
+        |    Object setByMethod = null;
         |
         |    @Override
         |    protected void onResume() {
@@ -127,6 +128,19 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
         |      editor.putInt("foo",3);
         |      View v = findViewById(3);
         |      v.setVisibility(View.GONE); //query6 should have an edge
+        |
+        |      Runnable r3 = new Runnable(){
+        |        @Override
+        |        public void run(){}
+        |      };
+        |      Handler h = new Handler();
+        |      h.postDelayed(r3,2); //query7 should not have edge to "run"
+        |      (new MyActivity()).someMethod(); //query8 should have some edge
+        |      setByMethod.toString(); // query_10
+        |    }
+        |    protected void someMethod(){
+        |      setByMethod = new Object();
+        |      setByMethod.toString(); // query9
         |    }
         |
         |    @Override
@@ -140,7 +154,7 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
       assert(apk != null)
       val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
         FragmentGetActivityNullSpec.getActivityNonNull,
-        ActivityLifecycleSpec.init_first_callback,
+        LifecycleSpec.init_first_callback,
         RxJavaSpec.call,
         //          RxJavaSpec.subscribeDoesNotReturnNull
       )
@@ -237,6 +251,38 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
       val loc6 = query6.head.loc.asInstanceOf[AppLoc]
       val targets6 = w.makeInvokeTargets(loc6)
       assert(targets6.loc.nonEmpty)
+
+      //TODO: does extra run edge here cause a problem?  I think probably not since the path is just refuted
+      val query7 = Qry.makeReceiverNonNull(config.getSymbolicExecutor,
+        "com.example.createdestroy.MyActivity",
+        "void onResume()",
+        BounderUtil.lineForRegex(".*query7.*".r,src), Some(".*iterator.*".r))
+      val loc7 = query7.head.loc.asInstanceOf[AppLoc]
+      val targets7 = w.makeInvokeTargets(loc7)
+
+      val query8 = Qry.makeReceiverNonNull(config.getSymbolicExecutor,
+        "com.example.createdestroy.MyActivity",
+        "void onResume()",
+        BounderUtil.lineForRegex(".*query8.*".r,src), Some(".*iterator.*".r))
+      val loc8 = query8.head.loc.asInstanceOf[AppLoc]
+      val targets8 = w.makeInvokeTargets(loc8)
+      assert(targets8.loc.nonEmpty)
+
+      val query9 = Qry.makeReceiverNonNull(config.getSymbolicExecutor,
+        "com.example.createdestroy.MyActivity",
+        "void someMethod()",
+        BounderUtil.lineForRegex(".*query9.*".r,src), Some(".*iterator.*".r))
+      val loc9 = query9.head.loc.asInstanceOf[AppLoc]
+      val targets9 = w.makeInvokeTargets(loc9)
+      assert(targets9.loc.nonEmpty)
+
+      val query10 = Qry.makeReceiverNonNull(config.getSymbolicExecutor,
+        "com.example.createdestroy.MyActivity",
+        "void onResume()",
+        BounderUtil.lineForRegex(".*query_10.*".r,src), Some(".*iterator.*".r))
+      val loc10 = query10.head.loc.asInstanceOf[AppLoc]
+      val targets10 = w.makeInvokeTargets(loc10)
+      assert(targets10.loc.nonEmpty)
     }
     makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
   }

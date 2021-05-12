@@ -3,11 +3,12 @@ package edu.colorado.plv.bounder.solver
 import better.files.Resource
 import com.microsoft.z3._
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSFalse, LSTrue, NI, Not, Or, SetSignatureMatcher, SignatureMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSFalse, LSTrue, NI, Not, Or, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import org.scalatest.funsuite.FixtureAnyFunSuite
 
 import scala.collection.BitSet
+import scala.language.implicitConversions
 
 class Z3StateSolverTest extends FixtureAnyFunSuite {
 
@@ -637,6 +638,42 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     assert(stateSolver.canSubsume(fewerPure, morePure))
 
   }
+  test("I(x.foo()) && I(x.bar()) |> y.foo() cannot subsume I(x.foo()) && I(x.bar()) |> y.bar()") { f =>
+    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    // I(x.foo()) && I(x.bar())
+    val fooM = SubClassMatcher("","foo","foo")
+    val barM = SubClassMatcher("","bar","bar")
+    val iFoo = I(CBEnter, fooM, "a" :: Nil)
+    val iBar = I(CBEnter, barM, "a" :: Nil)
+    val iFoo_b = I(CBEnter, fooM, "b" :: Nil)
+    val iBar_b = I(CBEnter, barM, "b" :: Nil)
+    val foobar = And(iFoo,iBar)
+    def s(t:AbstractTrace):State = {
+      State.topState.copy(sf = State.topState.sf.copy(traceAbstraction = Set(t)))
+    }
+    val followsFoo = AbstractTrace(foobar, iFoo_b::Nil,Map())
+    val followsBar = AbstractTrace(foobar, iBar_b::Nil, Map())
+    val res = stateSolver.canSubsume(s(followsFoo),s(followsBar))
+    assert(!res)
+
+    // a: I(v = findView(a)) && NI( onDestroy(a) , onCreate(a))
+    val fv = SubClassMatcher("","findView","findView")
+    val de = SubClassMatcher("","onDestroy","onDestroy")
+    val cr = SubClassMatcher("","onCreate","onCreate")
+    val findView = I(CIExit, fv, "v"::"a"::Nil)
+    val onDestroy = I(CBExit, de, "_"::"a"::Nil)
+    val onCreate = I(CBEnter, cr, "_"::"a"::Nil)
+    val a = And(findView, NI(onDestroy, onCreate))
+
+    val subsumer = AbstractTrace(a, I(CBEnter, cr, "_"::"b"::Nil)::
+      I(CIExit,fv,"v"::"b"::Nil)::Nil,Map())
+
+    val subsumee = AbstractTrace(a, I(CBExit,de,"_"::"b"::Nil)::Nil,Map())
+    val res2 = stateSolver.canSubsume(s(subsumer),s(subsumee))
+    assert(!res2)
+    val res3 = stateSolver.canSubsume(s(subsumee), s(subsumer))
+    println(res3)
+  }
   test("Subsumption of unrelated trace constraint") { f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
 
@@ -771,7 +808,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
 
   test("Trace contained in abstraction") { f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
-    implicit val zctx = stateSolver.getSolverCtx
+    implicit val zCTX: Z3SolverCtx = stateSolver.getSolverCtx
 
     val foo = FwkMethod("foo", "")
     val bar = FwkMethod("bar", "")

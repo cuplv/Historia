@@ -510,6 +510,7 @@ trait StateSolver[T, C <: SolverCtx] {
       }))
     }
   }
+
   def reduceStatePureVars(state: State): Option[State] = {
     assert(state.isSimplified, "reduceStatePureVars must be called on feasible state.")
     // TODO: test for trace enforcing that pure vars are equivalent
@@ -607,6 +608,7 @@ trait StateSolver[T, C <: SolverCtx] {
 
       // Only encode types in Z3 for subsumption check due to slow-ness
       val encode = SetInclusionTypeSolving
+//      val encode = SolverTypeSolving
       val (typesAreUniqe, typeMap) =if(encode == SolverTypeSolving) {
         val usedTypes = pvMap2.flatMap { case (_, tc) => tc.getValues.getOrElse(Set()) }.toSet
         mkTypeConstraints(usedTypes)
@@ -631,8 +633,10 @@ trait StateSolver[T, C <: SolverCtx] {
       if(simpleAst.isEmpty)
         None
       else {
-        val reducedState = reduceStatePureVars(state2.setSimplified())
-        reducedState.map(s => gcPureVars(s).setSimplified())
+        val reducedState = if(encode == SetInclusionTypeSolving)
+          reduceStatePureVars(state2.setSimplified()).map(gcPureVars)
+        else Some(state2)
+        reducedState.map(_.setSimplified())
       }
     }
   }
@@ -787,6 +791,13 @@ trait StateSolver[T, C <: SolverCtx] {
       val s2Swapped = perm.foldLeft(s2LocalSwapped) {
         case (s, (newPv, oldPv)) => s.swapPv(oldPv, newPv)
       }
+
+      //TODO: dbg code =============
+      if(simplify(s2Swapped).isEmpty){
+        println("===========")
+      }
+      //end dbg code
+
       val out1 = canSubsumeNoCombinations(s1, s2Swapped, maxLen)
       out1
     }
@@ -802,97 +813,6 @@ trait StateSolver[T, C <: SolverCtx] {
 //      println()
 //    }
     out
-  }
-
-  def canSubsumeSolver(s1: State, s2: State, maxLen: Option[Int] = None): Boolean = {
-    implicit val zctx = getSolverCtx
-
-    // Currently, the stack is strictly the app call string
-    // When adding more abstraction to the stack, this needs to be modified
-    if (!stackCanSubsume(s1.callStack, s2.callStack)) {
-      //      logger.info(s"Stack no subsume STATE1: $s1  STATE2: $s2")
-      return false
-    }
-
-    // check if each pure var in the subsuming state represents a greater than or equal set of types
-    push()
-
-
-    val typeFun = createTypeFun()
-    val allTypes = List(s1, s2).flatMap(_.typeConstraints.flatMap { case (_, v) => v.getValues.getOrElse(Set()) }).toSet
-    val (uniqueType, typeMap) = mkTypeConstraints(allTypes)
-    val state1Types = s1.typeConstraints.flatMap {
-      case (pv, v) =>
-        val typeValues = v.getValues
-        if(typeValues.isDefined)
-          Some(mkTypeConstraintForAddrExpr(typeFun, typeMap, toAST(pv), typeValues.get))
-        else None
-    }
-    val state2Types = s2.typeConstraints.flatMap { case (pv, v) =>
-      val typeValues = v.getValues
-      if(typeValues.isDefined)
-        Some(mkTypeConstraintForAddrExpr(typeFun, typeMap, toAST(pv), typeValues.get))
-      else None
-    }
-
-    val notS1TypesEncoded = state1Types.foldLeft(mkBoolVal(false)) {
-      (acc, v) => mkOr(acc, mkNot(v))
-    }
-    val s2TypesEncoded = state2Types.foldLeft(mkBoolVal(true)) {
-      (acc, v) => mkAnd(acc, v)
-    }
-
-    val s1pf = filterTypeConstraintsFromPf(s1.pureFormula)
-    val s2pf = filterTypeConstraintsFromPf(s2.pureFormula)
-
-    val (uniqueConst, constMap) = mkConstConstraintsMap(getPureValSet(s1pf ++ s2pf))
-    // Pure formula that are not type constraints
-    val negs1pure = s1pf.foldLeft(notS1TypesEncoded) {
-      case (acc, constraint) => mkOr(mkNot(toAST(constraint,constMap)), acc)
-    }
-
-    val s2pure = s2pf.foldLeft(s2TypesEncoded) {
-      case (acc, constraint) => mkAnd(toAST(constraint,constMap), acc)
-    }
-
-    // encode locals
-
-    ???
-    // encode heap constraints
-    ???
-
-    // encode trace abstraction
-    val messageTranslator = MessageTranslator(List(s1, s2))
-    val len = mkIntVar(s"len_")
-    val traceFun = mkTraceFn("0")
-
-    val phi = s2.traceAbstraction.foldLeft(s2pure) {
-      case (acc, v) => mkAnd(acc, encodeTraceAbs(v, messageTranslator,
-        traceFn = traceFun, len, absUID = Some("0")))
-    }
-    val negPhi = s1.traceAbstraction.foldLeft(negs1pure) {
-      case (acc, v) => mkOr(acc, encodeTraceAbs(v, messageTranslator,
-        traceFn = traceFun, len, absUID = Some("1"), negate = true))
-    }
-
-    val fp = mkAnd(
-      negPhi,
-      phi)
-    // limit trace length for debug
-    val f = maxLen match {
-      case Some(v) =>
-        // Print formula when debug mode enabled
-        println(s"formula:\n $fp")
-        mkAnd(mkLt(len, mkIntVal(v)), fp)
-      case None => fp
-    }
-    // pureFormulaEnc._3 is assertion that all types are unique
-    mkAssert(mkAnd(uniqueConst,mkAnd(uniqueType, f)))
-    val ti = checkSAT()
-
-    pop()
-
-    !ti
   }
 
   /**

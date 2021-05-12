@@ -2,7 +2,7 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.LifeState.LSFalse
-import edu.colorado.plv.bounder.lifestate.{ActivityLifecycleSpec, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
+import edu.colorado.plv.bounder.lifestate.{LifecycleSpec, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{CallinReturnNonNull, PrettyPrinting, Qry}
 import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, QueryFinished, SymbolicExecutorConfig, TransferFunctions}
@@ -15,7 +15,7 @@ class RXJavaSubscribe_TestApp extends AnyFunSuite{
     assert(apk != null)
     val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
       FragmentGetActivityNullSpec.getActivityNonNull,
-      ActivityLifecycleSpec.init_first_callback,
+      LifecycleSpec.init_first_callback,
       RxJavaSpec.call,
       //        RxJavaSpec.subscribeDoesNotReturnNull,
       RxJavaSpec.subscribeIsUnique

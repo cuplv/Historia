@@ -387,9 +387,10 @@ object SpecSpace{
 }
 /**
  * Representation of a set of possible lifestate specs */
-class SpecSpace(specs: Set[LSSpec]) {
-  def getSpecs:Set[LSSpec] = specs
-  private val allISpecs: Map[MessageType, Set[I]] = specs.flatMap(SpecSpace.allI(_)).groupBy(i => i.mt)
+class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
+  def getSpecs:Set[LSSpec] = enableSpecs
+  private val allISpecs: Map[MessageType, Set[I]] =
+    (enableSpecs ++ disallowSpecs).flatMap(SpecSpace.allI(_)).groupBy(i => i.mt)
 
 
   private var freshLSVarIndex = 0
@@ -406,12 +407,38 @@ class SpecSpace(specs: Set[LSSpec]) {
    * @return Some(I) if I exists, None otherwise.
    */
   def getIWithFreshVars(mt: MessageType, sig: (String, String))(implicit ch : ClassHierarchyConstraints):Option[I] = {
-//    iset.get(mt,sig).map{i =>
+    //    iset.get(mt,sig).map{i =>
+    //      i.copy(lsVars = i.lsVars.map(a => if(a != "_") nextFreshLSVar() else "_"))
+    //    }
+    def merge(v:(String,String)):String = v match{
+      case ("_",v) => v
+      case (v,_) => v
+    }
+    var solverSig:Option[String] = None
+    val out = allISpecs.getOrElse(mt,Set()).filter{i =>
+      if(i.signatures.matches(sig)) {
+        if (solverSig.isDefined) {
+          assert(i.identitySignature == solverSig.get,
+            s"Multiple I identity signatures match method: ${sig} I1: ${i.identitySignature} I2: ${solverSig.get}")
+        } else {
+          solverSig = Some(i.identitySignature)
+        }
+        true
+      } else
+        false
+    }
+//    .map{ i =>
 //      i.copy(lsVars = i.lsVars.map(a => if(a != "_") nextFreshLSVar() else "_"))
 //    }
-    allISpecs.getOrElse(mt,Set()).find(i => i.signatures.matches(sig)).map{ i =>
-      i.copy(lsVars = i.lsVars.map(a => if(a != "_") nextFreshLSVar() else "_"))
+//    out.headOption //TODO: probably should merge here
+    // Compute intersection of defined variables
+    val parList = out.foldLeft(List():List[String]){
+      case (acc,I(_,_,vars)) =>
+        acc.zipAll(vars,"_","_").map(merge)
     }
+    val parListFresh = parList.map(a => if(a!="_") nextFreshLSVar() else "_")
+
+    out.headOption.map(v => v.copy(lsVars = parListFresh)) //TODO: copy I with intersection of defined vars
   }
 
   /**
@@ -423,7 +450,13 @@ class SpecSpace(specs: Set[LSSpec]) {
    */
   def specsBySig(mt: MessageType, pkg:String, name:String)(implicit ch: ClassHierarchyConstraints):Set[LSSpec] = {
     // TODO: cache specs in hash map
-    val specsForSig = specs.filter(a => a.target.mt == mt && a.target.signatures.matches((pkg,name)))
+    val getI = getIWithFreshVars(mt, (pkg,name)).map(_.identitySignature)
+    val specsForSig = enableSpecs.filter(a => a.target.mt == mt && a.target.signatures.matches((pkg,name)))
+    val identSigs: Set[String] = specsForSig.map(_.target.identitySignature) ++ getI
+    identSigs.reduceOption((a:String,b:String) => {
+      assert(a == b, s"Mismatched identity signatures: ${a} and ${b}")
+      a
+    })
     specsForSig
   }
 

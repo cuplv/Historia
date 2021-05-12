@@ -169,12 +169,14 @@ object CallbackMethodInvoke{
 
 // post state of return on callback
 case class CallbackMethodReturn(tgtClazz: String, fmwName:String, loc:MethodLoc, line:Option[LineLoc]) extends Loc {
+  if( line.isDefined && !line.get.isInstanceOf[TestIRLineLoc])
+    assert(line.get.containingMethod == loc)
   override def toString:String = "[CB Ret] " + fmwName
   override def msgSig: Option[String] = Some(s"")
 
   override def isEntry: Option[Boolean] = Some(false)
-  override def containingMethod:Option[MethodLoc] =
-    line.map(_.containingMethod)
+  override def containingMethod:Option[MethodLoc] = Some(loc)
+//    line.map(_.containingMethod)
   private lazy val iser= write(this)
   override def iSerialized: String = iser
 }

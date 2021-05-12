@@ -10,10 +10,12 @@ object SpecSignatures {
   //SetSignatureMatcher(activityTypeSet.map((_, "void onCreate(android.os.Bundle)")))
 
   // Activity lifecycle
+  val Activity = Set("android.app.Activity", "androidx.fragment.app.FragmentActivity")
+
   val Activity_onResume: SignatureMatcher =
-    SubClassMatcher("android.app.Activity", "void onResume\\(\\)", "Activity_onResume")
+    SubClassMatcher(Activity, "void onResume\\(\\)", "Activity_onResume")
   val Activity_onCreate: SignatureMatcher =
-    SubClassMatcher("android.app.Activity", "void onCreate\\(android.os.Bundle\\)",
+    SubClassMatcher(Activity, "void onCreate\\(android.os.Bundle\\)",
     "Activity_onCreate")
   val Activity_onResume_entry: I =
     I(CBEnter, Activity_onResume, List("_", "a"))
@@ -26,27 +28,27 @@ object SpecSignatures {
     I(CBEnter, Activity_onCreate, List("_", "a"))
 
   val Activity_onPause: SignatureMatcher =
-    SubClassMatcher("android.app.Activity","void onPause\\(\\)", "Activity_onPause")
+    SubClassMatcher(Activity,"void onPause\\(\\)", "Activity_onPause")
   val Activity_onPause_entry: I = I(CBEnter, Activity_onPause, List("_", "a"))
   val Activity_onPause_exit: I =
     I(CBExit, Activity_onPause, List("_", "a"))
   val Activity_init: SignatureMatcher =
-    SubClassMatcher("android.app.Activity", "void \\<init\\>.*", "Activity_init")
+    SubClassMatcher(Activity, "void \\<init\\>.*", "Activity_init")
   val Activity_init_exit: I =
     I(CBExit,Activity_init, List("_", "a"))
   val Activity_onDestroy: SignatureMatcher =
-    SubClassMatcher("android.app.Activity", "void onDestroy\\(\\)", "Activity_onDestroy")
+    SubClassMatcher(Activity, "void onDestroy\\(\\)", "Activity_onDestroy")
   val Activity_onDestroy_exit: I = I(CBExit, Activity_onDestroy, List("_","a"))
 
   val Activity_init_entry: I = Activity_init_exit.copy(mt = CBEnter)
 
   val Activity_findView: SignatureMatcher=
-    SubClassMatcher("android.app.Activity",".*findViewById.*","Activity_findView")
+    SubClassMatcher(Activity,".*findViewById.*","Activity_findView")
   val Activity_findView_exit: I = I(CIExit,
     Activity_findView, List("v","a"))
 
   // Fragment getActivity
-  private val Fragment = Set("android.app.Fragment","androidx.fragment.app.Fragment")
+  private val Fragment = Set("android.app.Fragment","androidx.fragment.app.Fragment","android.support.v4.app.Fragment")
   val Fragment_getActivity: SignatureMatcher= SubClassMatcher(Fragment,
   ".*Activity getActivity\\(\\)", "Fragment_getActivity")
   val Fragment_get_activity_exit_null: I = I(CIExit, Fragment_getActivity, "@null"::"f"::Nil)
@@ -98,11 +100,12 @@ object RxJavaSpec{
     SpecSignatures.RxJava_subscribe_exit) //,Set(LSConstraint("s",NotEquals,"@null")  )
 }
 
-object ActivityLifecycleSpec {
+object LifecycleSpec {
   //TODO:===== destroyed
   //TODO: view attached
   val viewAttached = SpecSignatures.Activity_findView_exit //TODO: ... or findView on other view
-  val destroyedOrInit = NI(SpecSignatures.Activity_onDestroy_exit, SpecSignatures.Activity_onCreate_entry)
+  val destroyed = NI(SpecSignatures.Activity_onDestroy_exit, SpecSignatures.Activity_onCreate_entry)
+  val created: LSPred = NI(SpecSignatures.Activity_onCreate_entry, SpecSignatures.Activity_onDestroy_exit)
   val resumed = NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit)
   val initPause = NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_init_exit)
   val onPause_onlyafter_onResume_init = LSSpec(And(resumed,initPause),
@@ -114,19 +117,36 @@ object ActivityLifecycleSpec {
         Not(SpecSignatures.Activity_onPause_exit))
     ),
       SpecSignatures.Activity_init_entry)
-
+  val Activity_created = NI(SpecSignatures.Activity_onCreate_entry, SpecSignatures.Activity_onDestroy_exit)
   val Fragment_activityCreatedOnlyFirst = LSSpec(
     And(
       Not(SpecSignatures.Fragment_onDestroy_exit),
       Not(SpecSignatures.Fragment_onActivityCreated_entry)
     ),
     SpecSignatures.Fragment_onActivityCreated_entry)
-  val spec = new SpecSpace(Set(onPause_onlyafter_onResume_init, onPause_onlyafter_onResume_init, init_first_callback))
+  val spec:Set[LSSpec] = Set(onPause_onlyafter_onResume_init, init_first_callback)
 }
 
 object ViewSpec {
-  val anyViewCallin = SubClassMatcher("android.view.View",".*","anyViewCallin")
-  // TODO:================= connect with act
-  val disallowCallinAfterActivityPause = LSSpec(LSFalse, I(CIEnter, anyViewCallin, List("_", "v")))
+  val anyViewCallin = I(CIEnter, SubClassMatcher("android.view.View",".*","View_AnyExceptOther"),List("_", "v") )
+  val onClick:SignatureMatcher = SubClassMatcher("android.view.View$OnClickListener", ".*onClick.*", "ViewOnClickListener_onClick")
+  val setOnClickListener:I = I(CIExit,
+    SubClassMatcher("android.view.View",".*setOnClickListener.*","View_setOnClickListener"),
+    List("_","v","l")
+  )
 
+  val disallowCallinAfterActivityPause:LSSpec = LSSpec(And(LifecycleSpec.viewAttached,
+    LifecycleSpec.destroyed),
+    anyViewCallin)
+
+  val clickWhileActive:LSSpec = LSSpec(And(setOnClickListener,And(LifecycleSpec.viewAttached,
+    LifecycleSpec.created)),
+    I(CBEnter, onClick, List("_", "l")))
 }
+
+//TODO: multiple signature matchers matching the same method is not supported
+//object ObjectSpec {
+//  val anyCb:I = I(CBEnter, SubClassMatcher("java.lang.Object", ".*", "anyMethod"), List("_"))
+//  val clinitExit:I = I(CBEnter, SubClassMatcher("java.lang.Object", ".*\\<clinit\\>.*", "clinit"), List())
+//  val clinitFirst:LSSpec = LSSpec(Not(anyCb),clinitExit)
+//}

@@ -934,7 +934,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
       //("double-set-new", "hybrid"),
 //      ("set-impl", "double"),
       ("apponly","false"),
-      //("dump-html","true"), //TODO: disable for performance ====
+//      ("dump-html","true"), //TODO: disable for performance
       ("ignore-types", "false"),
       //("merge-stringbuffer", "true")
       //      ("lazy-pts", "true")
@@ -1080,8 +1080,6 @@ class JimpleFlowdroidWrapper(apkPath : String,
   protected val getUnitGraph: Body => UnitGraph = Memo.mutableHashMapMemo {b =>
     // Method bodies are not thread safe
     b.synchronized {
-
-//      new EnhancedUnitGraph(b) //TODO:
       new EnhancedUnitGraphFixed(b)
     }
   }
@@ -1091,12 +1089,6 @@ class JimpleFlowdroidWrapper(apkPath : String,
       classes.forEach(c =>
         if (resolver.isAppClass(c.getName))
            c.methodIterator().forEachRemaining(m => {
-             // Code to filter out flowdroid simulated methods, not needed now
-//             var simulated:Boolean = false
-             // simulated code tags added to flowdroid additions
-//             m.getTags.forEach(t =>
-//               simulated = simulated || t.isInstanceOf[SimulatedCodeElementTag])
-//             if(!simulated)
               appMethodCache.add(m)
            })
       )

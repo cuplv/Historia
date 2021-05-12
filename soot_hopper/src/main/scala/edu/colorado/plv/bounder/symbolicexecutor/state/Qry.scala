@@ -142,7 +142,7 @@ object Qry {
     cbexits.map { cbexit =>
       val queryStack = List(CallStackFrame(cbexit, None, Map()))
       val state0 = State.topState.copy(sf = State.topState.sf.copy(callStack = queryStack))
-      val (pureVar, state1) = state0.getOrDefine(varname, None)
+      val (pureVar, state1) = state0.getOrDefine(varname, cbexit.containingMethod)
       LiveQry(state1.addPureConstraint(PureConstraint(pureVar, Equals, NullVal)).copy(
         nextCmd = List(derefLoc)), derefLoc)
     }.toSet
