@@ -771,8 +771,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
               val fieldEq = fieldName == heapFieldName
               //TODO: === check that contianing method works here
               lazy val canAlias = state1.canAlias(pv,l.containingMethod.get, base,w)
-//              lazy val tgtCanAlias = state1.canAliasEE(lhsV, materializedTgt)
-              fieldEq && canAlias //&& tgtCanAlias
+              lazy val tgtCanAlias = state1.canAliasEE(lhsV, materializedTgt)
+              fieldEq && canAlias && tgtCanAlias //TODO: is target ok here?
             case _ =>
               false
           }
@@ -783,12 +783,19 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
             case _ => throw new IllegalStateException()
           }.toSet
           val heapCell = FieldPtEdge(basev, fieldName)
+
+          val pfFromExisting = if(state1.sf.heapConstraints.contains(heapCell)) {
+            val oldV = state1.sf.heapConstraints(heapCell)
+            Some(PureConstraint(oldV, Equals, lhsV))
+          }else {
+            None
+          }
           val stateWhereNoHeapCellIsAliased = state1.copy(sf = state1.sf.copy(
-            heapConstraints = state1.heapConstraints + (heapCell -> lhsV),
-            pureFormula = state1.pureFormula ++ possibleHeapCells.map {
-              case (FieldPtEdge(p, _), _) => PureConstraint(p, NotEquals, basev)
-              case _ => throw new IllegalStateException()
-            }
+              heapConstraints = state1.heapConstraints + (heapCell -> lhsV),
+              pureFormula = state1.pureFormula ++ pfFromExisting ++ possibleHeapCells.map {
+                case (FieldPtEdge(p, _), _) => PureConstraint(p, NotEquals, basev)
+                case _ => throw new IllegalStateException()
+              }
           ))
           val res = statesWhereBaseAliasesExisting + stateWhereNoHeapCellIsAliased
           res.map(s => s.clearLVal(lhs))
@@ -804,19 +811,19 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         case (FieldPtEdge(pv, heapFieldName), materializedTgt) =>
           val fieldEq = fieldName == heapFieldName
           val canAlias = state2.canAlias(pv,l.containingMethod.get, base,w)
-//          val tgtCanAlias = rhs match{
-//            case rhsL:LocalWrapper if state2.containsLocal(rhsL) => {
-//              state2.canAliasEE(materializedTgt, state2.get(rhsL).get)
-//            }
-//            case rhsV => {
-//              state2.get(rhsV).forall { rhsAV =>
-//                val canEq = state2.canAliasEE(materializedTgt, rhsAV)
-//                canEq
-//              }
-//            }
-//            case _ => true
-//          }
-          fieldEq && canAlias //&& tgtCanAlias
+          val tgtCanAlias = rhs match{
+            case rhsL:LocalWrapper if state2.containsLocal(rhsL) => {
+              state2.canAliasEE(materializedTgt, state2.get(rhsL).get)
+            }
+            case rhsV => {
+              state2.get(rhsV).forall { rhsAV =>
+                val canEq = state2.canAliasEE(materializedTgt, rhsAV)
+                canEq
+              }
+            }
+            case _ => true
+          }
+          fieldEq && canAlias && tgtCanAlias //TODO: is target alias OK here?
         case _ =>
           false
       }

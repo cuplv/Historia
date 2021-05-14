@@ -139,8 +139,12 @@ object ViewSpec {
     LifecycleSpec.destroyed),
     anyViewCallin)
 
-  val clickWhileActive:LSSpec = LSSpec(And(setOnClickListener,And(LifecycleSpec.viewAttached,
-    LifecycleSpec.created)),
+  //TODO: uncomment=================
+//  val clickWhileActive:LSSpec = LSSpec(And(setOnClickListener,And(LifecycleSpec.viewAttached,
+//    LifecycleSpec.created)),
+//    I(CBEnter, onClick, List("_", "l")))
+  val clickWhileActive:LSSpec = LSSpec(
+    setOnClickListener,
     I(CBEnter, onClick, List("_", "l")))
 }
 

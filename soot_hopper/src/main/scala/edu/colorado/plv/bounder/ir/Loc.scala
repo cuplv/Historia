@@ -156,7 +156,7 @@ object GroupedCallinMethodReturn{
 }
 
 case class CallbackMethodInvoke(tgtClazz: String, fmwName: String, loc:MethodLoc) extends Loc {
-  override def toString:String = "[CB Inv] " + fmwName
+  override def toString:String = s"[CB Inv] $tgtClazz $fmwName"
   override def msgSig: Option[String] = Some(s"[CB Inv] ${tgtClazz} ${fmwName}")
 
   override def isEntry: Option[Boolean] = Some(true)
@@ -171,7 +171,7 @@ object CallbackMethodInvoke{
 case class CallbackMethodReturn(tgtClazz: String, fmwName:String, loc:MethodLoc, line:Option[LineLoc]) extends Loc {
   if( line.isDefined && !line.get.isInstanceOf[TestIRLineLoc])
     assert(line.get.containingMethod == loc)
-  override def toString:String = "[CB Ret] " + fmwName
+  override def toString:String = s"[CB Ret] ${tgtClazz} $fmwName"
   override def msgSig: Option[String] = Some(s"")
 
   override def isEntry: Option[Boolean] = Some(false)

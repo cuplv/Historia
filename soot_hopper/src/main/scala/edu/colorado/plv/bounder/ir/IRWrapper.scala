@@ -55,7 +55,7 @@ final case class CmdNotImplemented(message:String) extends RuntimeException(mess
 sealed case class UnresolvedMethodTarget(clazz: String, methodName:String, loc:Set[MethodLoc])
 
 
-sealed trait TypeSet{
+sealed abstract class TypeSet{
   def serialize():String
   def intersect(other:TypeSet):TypeSet
   def intersectNonEmpty(other:TypeSet):Boolean
@@ -75,6 +75,28 @@ sealed trait TypeSet{
    * @return new constrained subtype
    */
   def filterSubTypeOf(types:Set[String])(implicit ch:ClassHierarchyConstraints):TypeSet
+}
+
+object TypeSet{
+//  implicit var rw:RW[TypeSet] = RW.merge(macroRW[TopTypeSet.type], BitTypeSet.rw,
+//    macroRW[EmptyTypeSet.type], PrimTypeSet.rw) //===================
+  val Prim = "PrimTypeSet:(.*)".r
+  val Bit = "BitTypeSet:(.*)".r
+  implicit var rw:RW[TypeSet] = upickle.default.readwriter[String].bimap[TypeSet](
+    ts => ts match {
+      case TopTypeSet => "TopTypeSet"
+      case EmptyTypeSet => "EmptyTypeSet"
+      case PrimTypeSet(name) => s"PrimTypeSet:${name}"
+      case BitTypeSet(s) => s"BitTypeSet:${s.mkString(",")}"
+    }
+    ,
+    s => s match {
+      case "TopTypeSet" => TopTypeSet
+      case "EmptyTypeSet" => EmptyTypeSet
+      case Prim(prim) => PrimTypeSet(prim)
+      case Bit(bv) => BitTypeSet(BitSet.fromSpecific(bv.split(",").map(_.toInt)))
+    }
+    )
 }
 case object TopTypeSet extends TypeSet {
   override def serialize(): String = "top:"
@@ -110,6 +132,9 @@ case object EmptyTypeSet extends TypeSet{
   override def intersectNonEmpty(other: TypeSet): Boolean = false
 }
 
+case object PrimTypeSet{
+  implicit var rw:RW[PrimTypeSet] = macroRW
+}
 case class PrimTypeSet(name:String) extends TypeSet {
   override def serialize(): String = s"prim:$name"
 
@@ -137,6 +162,17 @@ case class PrimTypeSet(name:String) extends TypeSet {
 
 
   override def intersectNonEmpty(other: TypeSet): Boolean = !intersect(other).isEmpty
+}
+object BitTypeSet{
+  implicit var rw:RW[BitTypeSet] = upickle.default.readwriter[String].bimap[BitTypeSet](
+    {
+      case BitTypeSet(s) => ??? //s.mkString(",")
+    }
+    ,
+    {
+      str => BitTypeSet(BitSet.fromSpecific(str.split(",").map(_.toInt)))
+    }
+  )
 }
 case class BitTypeSet(s:BitSet) extends TypeSet {
   def stringRep(ch:ClassHierarchyConstraints):String =
@@ -177,13 +213,6 @@ case class BitTypeSet(s:BitSet) extends TypeSet {
   }
   // TODO: may be faster way with bitsets
   override def intersectNonEmpty(other: TypeSet): Boolean = !intersect(other).isEmpty
-}
-object TypeSet{
-  implicit var rw:RW[TypeSet] = upickle.default.readwriter[String].bimap[TypeSet](
-    ts => ts.serialize()
-    ,
-    _ => TopTypeSet //TODO: currently not bothering to serialize type sets
-  )
 }
 
 

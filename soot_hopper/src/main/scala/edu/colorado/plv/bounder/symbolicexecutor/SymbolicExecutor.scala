@@ -41,7 +41,8 @@ case class SymbolicExecutorConfig[M,C](stepLimit: Int,
 //                                       stateTypeSolving: StateTypeSolving = SetInclusionTypeSolving,
 //                                       stateTypeSolving: StateTypeSolving = SolverTypeSolving,
                                        outputMode : OutputMode = MemoryOutputMode,
-                                       timeLimit : Int = 6000
+                                       timeLimit : Int = 6000,
+                                       subsumptionEnabled:Boolean = true // Won't prove anything without subsumption but can find witnesses
                                       ){
   def getSymbolicExecutor =
     new SymbolicExecutor[M, C](this)}
@@ -197,7 +198,15 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
                  nVisited: Map[SubsumableLocation,Map[Int,StateSet]]):Option[IPathNode] = pathNode match{
     case SwapLoc(loc) if pathNode.qry.isInstanceOf[LiveQry] && nVisited.contains(loc) =>
       val root = nVisited(loc).getOrElse(pathNode.qry.getState.get.callStack.size, StateSet.init)
-      val res = StateSet.findSubsuming(pathNode, root,(s1,s2) => stateSolver.canSubsume(s1,s2))
+      val res = StateSet.findSubsuming(pathNode, root,(s1,s2) =>{
+        if(config.subsumptionEnabled) {
+          stateSolver.canSubsume(s1,s2)
+        } else if(s1.sf.traceAbstraction.size == s2.sf.traceAbstraction.size &&
+          s1.heapConstraints.size == s2.heapConstraints.size) {
+          stateSolver.canSubsume(s1,s2) && stateSolver.canSubsume(s2,s1)
+        } else
+          false
+      })
 
       //=== test code ===
       // Note this was to test if state set is working correctly, it appears to be
@@ -314,32 +323,12 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     if(deadline > -1 && Instant.now.getEpochSecond > deadline){
       throw QueryInterruptedException(qrySet.toSet ++ refutedSubsumedOrWitnessed, "timeout")
     }
-    //TODO: This is way too sensitive to queue ordering, figure out something better
-//    val qrySetIG = groupAndTransferPostIfCmd(qrySet)
     if(qrySet.isEmpty){
       return refutedSubsumedOrWitnessed
     }
 
     val current = qrySet.nextWithGrouping()
 
-//    println()
-    val curTop = current.qry.loc match{
-      case a:AppLoc => Some(w.commandTopologicalOrder(w.cmdAtLocation(a)))
-      case _ => None
-    }
-    //TODO: uncomment dbg code
-//    val tmpPrint = current.ordDepth == 2 && List("39","40","39","44", "onPause").exists(v => current.qry.loc.toString.contains(v)) &&
-//      current.qry.state.callStack.exists(_.methodLoc.toString.contains("onPause"))
-//    if (true || tmpPrint) {
-//      val loc = current.qry.loc
-//      println(s"current loc: $loc ordDepth: ${current.ordDepth} topo: ${curTop}")
-////      println(s"    ${current.qry.state}")
-////      println(s"    subsLoc: ${SwapLoc(loc)}")
-//    }
-//    println("--------------------")
-
-
-    //TODO: uncomment:
     current match{
       case SwapLoc(FrameworkLocation) =>
         println("Framework location query")

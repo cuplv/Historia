@@ -521,7 +521,8 @@ trait StateSolver[T, C <: SolverCtx] {
         case (Some(tc),None) => Some(tc)
         case (None,Some(tc)) => Some(tc)
         case (None,None) => None
-        case (Some(tc1),Some(tc2)) => Some(tc1.intersect(tc2))
+        case (Some(tc1),Some(tc2)) =>
+          Some(tc1.intersect(tc2))
       }
       joinedTc match{
         case Some(tc) if tc.isEmpty => None
@@ -784,19 +785,22 @@ trait StateSolver[T, C <: SolverCtx] {
 
       typeCanSubs && constCanSub
     }
+
+    //all possible renamings of variables
     val perm = BounderUtil.allMap(pv1 -- removeFromPermS1,pvToTemp -- removeFromPermS2,canMap)
+    val noRenamingIfEmpty = if(perm.isEmpty) Map()::Nil else perm
 //    val perm = allPvNoLocals.permutations.grouped(40)
     //TODO: add par back in?
-    val out: Boolean = perm.exists{perm =>
+    val out: Boolean = noRenamingIfEmpty.exists{perm =>
       val s2Swapped = perm.foldLeft(s2LocalSwapped) {
         case (s, (newPv, oldPv)) => s.swapPv(oldPv, newPv)
       }
 
-      //TODO: dbg code =============
-      if(simplify(s2Swapped).isEmpty){
-        println("===========")
-      }
-      //end dbg code
+//      //TODO: dbg code =============
+//      if(simplify(s2Swapped).isEmpty){
+//        println("===========")
+//      }
+//      //end dbg code
 
       val out1 = canSubsumeNoCombinations(s1, s2Swapped, maxLen)
       out1
@@ -857,7 +861,7 @@ trait StateSolver[T, C <: SolverCtx] {
 
     val pureFormulaEnc = {
 
-      val (negTC1, tC2, uniqueType) = if (encodeTypeConsteraints == SolverTypeSolving) {
+      val (negTC1, tC2, uniqueType) = if (true || encodeTypeConsteraints == SolverTypeSolving) {
         val typeFun = createTypeFun()
         val allTypes = List(s1, s2).flatMap(_.typeConstraints.flatMap { case (_, v) => v.getValues.getOrElse(Set()) }).toSet
         val (uniqueType, typeMap) = mkTypeConstraints(allTypes)
@@ -909,6 +913,7 @@ trait StateSolver[T, C <: SolverCtx] {
     val len = mkIntVar(s"len_")
     val traceFun = mkTraceFn("0")
 
+    //TODO: Does this encode distinct constraint on dom of memory abstraction?
     val phi = s2.traceAbstraction.foldLeft(pureFormulaEnc._2) {
       case (acc, v) => mkAnd(acc, encodeTraceAbs(v, messageTranslator,
         traceFn = traceFun, len, absUID = Some("0")))
@@ -926,12 +931,18 @@ trait StateSolver[T, C <: SolverCtx] {
       case Some(v) =>
         // Print formula when debug mode enabled
         println(s"formula:\n $fp")
+        mkAssert(mkLt(len, mkIntVal(v)))
         mkAnd(mkLt(len, mkIntVal(v)), fp)
       case None => fp
     }
     // pureFormulaEnc._3 is assertion that all types are unique
     // pureFormulaEnc._4 is unique const assertion
-    mkAssert(mkAnd(pureFormulaEnc._4 ,mkAnd(pureFormulaEnc._3, f)))
+//    mkAssert(mkAnd(pureFormulaEnc._4 ,mkAnd(pureFormulaEnc._3, f)))
+    mkAssert(pureFormulaEnc._4)
+    mkAssert(pureFormulaEnc._3)
+    mkAssert(negPhi)
+    mkAssert(phi)
+
     val ti = checkSAT()
     if (ti && maxLen.isDefined) {
       println(s"===formula: $f")

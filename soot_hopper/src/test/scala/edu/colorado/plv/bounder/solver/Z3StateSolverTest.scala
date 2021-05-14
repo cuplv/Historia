@@ -638,6 +638,54 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     assert(stateSolver.canSubsume(fewerPure, morePure))
 
   }
+  test("I(x.foo(y)) && y:T1 cannot subsume I(x1.foo(y1))&& y:T1 && y1:T2"){ f =>
+    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val fooM = SubClassMatcher("","foo","foo")
+    val iFoo_x_y = I(CBEnter, fooM, "x" :: "y" :: Nil)
+    val iFoo_x1_y1 = I(CBEnter, fooM, "x1"::"y1" :: Nil)
+//    val iFoo_x_y = LSTrue //should be true here?
+//    val iFoo_x1_y1 = LSTrue
+
+    val pvy = PureVar(1)
+    val pvy2 = PureVar(2)
+
+    def s(t:AbstractTrace):State = {
+      State.topState.copy(sf = State.topState.sf.copy(traceAbstraction = Set(t)))
+    }
+    val t1 = AbstractTrace(iFoo_x_y,Nil, Map("y"-> pvy))
+    val t2 = AbstractTrace(iFoo_x1_y1, Nil, Map("y1" -> pvy2))
+    val s1 = s(t1).addTypeConstraint(pvy, BitTypeSet(BitSet(1)))
+    val s2 = s(t2).addTypeConstraint(pvy2,BitTypeSet(BitSet(2))).addTypeConstraint(pvy, BitTypeSet(BitSet(1)))
+    val res = stateSolver.canSubsume(s1,s2)
+    assert(!res)
+  }
+  test("I(x.foo(y)) && y:T1 cannot subsume I(x.foo(y))|>I(x1.foo(y1)) && I(x2.foo(y2)) && y:T1 && y2:T2"){f =>
+    //TODO: failing unit test ================
+    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val fooM = SubClassMatcher("","foo","foo")
+    val iFoo_x_y = I(CBEnter, fooM, "x" :: "y" :: Nil)
+    val iFoo_x1_y1 = I(CBEnter, fooM, "x1"::"y1" :: Nil)
+    val iFoo_x2_y2 = I(CBEnter, fooM, "x2"::"y2" :: Nil)
+    def s(t:Set[AbstractTrace]):State = {
+      State.topState.copy(sf = State.topState.sf.copy(traceAbstraction = t))
+    }
+    val pvy = PureVar(1)
+    val pvy2 = PureVar(2)
+    //I(x.foo(y)) && y:T1
+    val s1 = s(Set(AbstractTrace(iFoo_x_y, Nil, Map("y"->pvy)))).addTypeConstraint(pvy, BitTypeSet(BitSet(1)))
+
+    //I(x.foo(y))|>I(x1.foo(y1)) && I(x2.foo(y2)) && y:T1 && y2:T2
+    //"y"->pvy, "y2"->pvy2
+    val t2 = AbstractTrace(iFoo_x_y, iFoo_x1_y1::Nil,Map("y"->pvy))
+    val t3 = AbstractTrace(iFoo_x2_y2,Nil,Map("y2"->pvy2))
+    // add y:T1 && y2:T2
+//    val s2 = s(Set(t3))
+    val s2 = s(Set(t2,t3))
+      .addTypeConstraint(pvy2, BitTypeSet(BitSet(2)))
+//      .addTypeConstraint(pvy, BitTypeSet(BitSet(1)))
+    val res = stateSolver.canSubsume(s1,s2)
+    assert(!res)
+  }
   test("I(x.foo()) && I(x.bar()) |> y.foo() cannot subsume I(x.foo()) && I(x.bar()) |> y.bar()") { f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
     // I(x.foo()) && I(x.bar())
