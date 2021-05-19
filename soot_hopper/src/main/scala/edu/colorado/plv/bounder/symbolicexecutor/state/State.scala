@@ -186,6 +186,24 @@ case class State(sf:StateFormula,
                  nextCmd: List[Loc] = Nil,
                  alternateCmd: List[Loc] = Nil
                 ) {
+  /**
+   * Create a fresh pure var for each model var - used during solver encoding
+   * @return
+   */
+  def defineAllLS(): State = {
+    var nextAddrV = nextAddr
+    val newTr = sf.traceAbstraction.map{t =>
+      val unbound = t.a.lsVar.filter(lsvar => !t.modelVars.contains(lsvar))
+      var addMap: Map[String,PureVar] = Map()
+      unbound.foreach{u =>
+        addMap = addMap + (u -> PureVar(nextAddrV))
+        nextAddrV = nextAddrV + 1
+      }
+      t.copy(modelVars = t.modelVars ++ addMap)
+    }
+    this.copy(sf = sf.copy(traceAbstraction = newTr), nextAddr = nextAddrV)
+  }
+
   def isSimplified:Boolean = sf.isSimplified
   def setSimplified():State = {
     sf.setSimplified()

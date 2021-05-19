@@ -50,7 +50,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     // Run all tests with both set inclusion type solving and solver type solving
     // Some subsumption tests override type solving parameter
     // All other tests should work with either
-    withFixture(test.toNoArgTest(FixtureParam(SetInclusionTypeSolving)))
+//    withFixture(test.toNoArgTest(FixtureParam(SetInclusionTypeSolving)))
     withFixture(test.toNoArgTest(FixtureParam(SolverTypeSolving)))
   }
   test("value not value") { f =>
@@ -152,9 +152,8 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
   }
   //TODO: group equal pure vars for type check
   test("aliased object implies fields must be aliased refuted by type constraints") { f =>
-//    val stateSolver = getStateSolver(SolverTypeSolving)
-    //TODO: SolverTypeSolving is not currently working, decide if it is worth fixing
-    val (stateSolver,_) = getStateSolver(SetInclusionTypeSolving)
+    val (stateSolver,_) = getStateSolver(SolverTypeSolving)
+//    val (stateSolver,_) = getStateSolver(SetInclusionTypeSolving)
 
     // aliased and contradictory types of field
     val v2 = PureVar(State.getId_TESTONLY())
@@ -553,7 +552,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
       StackVar("y") -> p2
     ))::Nil))
     assert(stateSolver.canSubsume(state,state_))
-    assert(!stateSolver.canSubsume(state_,state))
+    assert(!stateSolver.canSubsume(state_,state)) //TODO:===== corner case? where local defined vs not defined?
 
   }
   test("Subsumption of abstract traces") { f =>
@@ -583,9 +582,9 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
 
     // State I(a.foo())|>empty should subsume itself
 
-    assert(stateSolver.canSubsume(state_,state_))
+    assert(stateSolver.canSubsume(state_,state_, Some(3)))
     // I(a.foo()) can subsume I(a.foo()) |> a.bar()
-    assert(stateSolver.canSubsume(state_,state__, Some(5)))
+    assert(stateSolver.canSubsume(state_,state__))
 
     val baseTrace = AbstractTrace(NI(ifoo,ibar), Nil, Map("a"->p1))
     val state3_ = state.copy(sf = state.sf.copy(traceAbstraction = Set(baseTrace)))
@@ -654,12 +653,12 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     }
     val t1 = AbstractTrace(iFoo_x_y,Nil, Map("y"-> pvy))
     val t2 = AbstractTrace(iFoo_x1_y1, Nil, Map("y1" -> pvy2))
-    val s1 = s(t1).addTypeConstraint(pvy, BitTypeSet(BitSet(1)))
+    val s1 = s(t1).addTypeConstraint(pvy, BitTypeSet(BitSet(1))) //TODO: should adding this type constraint make it subs?
     val s2 = s(t2).addTypeConstraint(pvy2,BitTypeSet(BitSet(2))).addTypeConstraint(pvy, BitTypeSet(BitSet(1)))
-    val res = stateSolver.canSubsume(s1,s2)
+    val res = stateSolver.canSubsume(s1,s2,Some(3))
     assert(!res)
   }
-  test("I(x.foo(y)) && y:T1 cannot subsume I(x.foo(y))|>I(x1.foo(y1)) && I(x2.foo(y2)) && y:T1 && y2:T2"){f =>
+  test("I(x.foo(y)) && y:T1 cannot subsume I(x.foo(y))|>I(x1.foo(y1)) && I(x2.foo(y2)) && y2:T2"){f =>
     //TODO: failing unit test ================
     val (stateSolver,_) = getStateSolver(f.typeSolving)
     val fooM = SubClassMatcher("","foo","foo")
@@ -799,22 +798,29 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val (stateSolver,_) = getStateSolver(SolverTypeSolving)
     // (x->p1 && p1 <: Object) can not be subsumed by (x->p1 && p1 <:Foo)
     val p1 = PureVar(State.getId_TESTONLY())
-    val state_ = state.copy(sf = state.sf.copy(typeConstraints = Map(p1 -> BoundedTypeSet(Some("Foo"),None,Set()))))
-    val state__ = state.copy(sf = state.sf.copy(typeConstraints =
-      Map(p1 -> BoundedTypeSet(Some("java.lang.Object"),None,Set()))))
+    val state_ = state.copy(sf = state.sf.copy(
+      typeConstraints = Map(p1 -> BoundedTypeSet(Some("Foo"),None,Set())),
+      heapConstraints = Map(StaticPtEdge("foo","bar") -> p1)
+    ))
+    val state__ = state.copy(sf = state.sf.copy(
+      typeConstraints = Map(p1 -> BoundedTypeSet(Some("java.lang.Object"),None,Set())),
+      heapConstraints = Map(StaticPtEdge("foo","bar") -> p1)
+    ))
 //    val state__ = state.copy(pureFormula = Set(PureConstraint(p1,TypeComp,SubclassOf("java.lang.Object"))))
     assert(!stateSolver.canSubsume(state_, state__))
 
     val p2 = PureVar(State.getId_TESTONLY())
     // (x->p1 &&  p1 <: Foo && p1 == p2) can be subsumed by (x->p1 &&  p2 <: Object && p1 == p2)
-    val state1_ = state.copy(sf = state.sf.copy(pureFormula = Set(
-//      PureConstraint(p1, TypeComp, SubclassOf("Foo")),
-      PureConstraint(p1, Equals, p2)
-    ), typeConstraints = Map(p1 -> BoundedTypeSet(Some("Foo"),None,Set()))))
-    val state1__ = state.copy(sf = state.sf.copy(pureFormula = Set(
-//      PureConstraint(p2, TypeComp, SubclassOf("java.lang.Object")),
-      PureConstraint(p1, Equals, p2)
-    ), typeConstraints = Map(p2 -> BoundedTypeSet(Some("java.lang.Object"),None,Set()))))
+    val state1_ = state.copy(sf = state.sf.copy(
+      pureFormula = Set(PureConstraint(p1, Equals, p2)),
+      typeConstraints = Map(p1 -> BoundedTypeSet(Some("Foo"),None,Set())),
+      heapConstraints = Map(StaticPtEdge("foo","bar") -> p1)
+    ))
+    val state1__ = state.copy(sf = state.sf.copy(
+      pureFormula = Set(PureConstraint(p1, Equals, p2)),
+      typeConstraints = Map(p2 -> BoundedTypeSet(Some("java.lang.Object"),None,Set())),
+      heapConstraints = Map(StaticPtEdge("foo","bar") -> p1)
+    ))
     assert(stateSolver.canSubsume(state1__, state1_))
     assert(!stateSolver.canSubsume(state1_, state1__))
 
@@ -826,8 +832,14 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val ifoo = I(CBEnter, Set(("", "foo")), "a" :: Nil)
     val ibar = I(CBEnter, Set(("", "bar")), "a" :: Nil)
     val formula = AbstractTrace(NI(ifoo,ibar),Nil, Map("a"->p1))
-    val state2_ = state_.copy(sf = state_.sf.copy(traceAbstraction = Set(formula)))
-    val state2__ = state__.copy(sf = state__.sf.copy(traceAbstraction = Set(formula)))
+    val state2_ = state_.copy(sf = state_.sf.copy(
+      traceAbstraction = Set(formula),
+      heapConstraints = Map(StaticPtEdge("foo","bar") -> p1)
+    ))
+    val state2__ = state__.copy(sf = state__.sf.copy(
+      traceAbstraction = Set(formula),
+      heapConstraints = Map(StaticPtEdge("foo","bar") -> p1)
+    ))
     assert(stateSolver.canSubsume(state2__, state2_, Some(20)))
     assert(!stateSolver.canSubsume(state2_, state2__, Some(20)))
   }
@@ -984,9 +996,8 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     //TODO: test "and", "scoped abstract traces"
   }
 
-  private def getStateSolver(stateTypeSolving: StateTypeSolving = SetInclusionTypeSolving):(Z3StateSolver, ClassHierarchyConstraints) = {
-
-
+  private def getStateSolver(stateTypeSolving: StateTypeSolving = SetInclusionTypeSolving):
+    (Z3StateSolver, ClassHierarchyConstraints) = {
     val pc = new ClassHierarchyConstraints(hierarchy,Set("java.lang.Runnable"),intToClass, stateTypeSolving)
     (new Z3StateSolver(pc),pc)
   }

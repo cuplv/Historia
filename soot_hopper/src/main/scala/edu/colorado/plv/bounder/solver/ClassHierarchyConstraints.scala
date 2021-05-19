@@ -70,6 +70,7 @@ import upickle.default.{ReadWriter => RW, macroRW}
 class ClassHierarchyConstraints(types : Map[String,Set[String]],
                                 interfaces:Set[String], intToClass: Map[Int,String],
                                 useZ3TypeSolver: StateTypeSolving = SolverTypeSolving ) {
+  assert(useZ3TypeSolver == SolverTypeSolving, "currently other type solving is not supported")
   def intToString(v: Int) = intToClass(v)
 
   private lazy val iclassToIntCache: Map[String, BitSet] = intToClass.groupBy{case (_,v) => v}
