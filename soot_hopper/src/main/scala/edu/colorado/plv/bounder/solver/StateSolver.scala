@@ -507,7 +507,8 @@ trait StateSolver[T, C <: SolverCtx] {
       val len = mkIntVar(s"len_$stateUniqueID") // there exists a finite size of the trace for this state
       val trace = state.traceAbstraction.foldLeft(mkBoolVal(!negate)) {
         case (acc, v) => {
-          val encodedTrace = encodeTraceAbs(v, messageTranslator, traceFn = tracefun,pvMap = pvMap, traceLen = len)
+          val encodedTrace = encodeTraceAbs(v, messageTranslator, traceFn = tracefun,pvMap = pvMap,
+            traceLen = len,negate = negate)
           op(List(acc, encodedTrace))
         }
       }
