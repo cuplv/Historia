@@ -1018,7 +1018,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
                 |        }).subscribeOn(Schedulers.newThread())
                 |                .observeOn(AndroidSchedulers.mainThread())
                 |                .subscribe(a -> {
-                |                    Log.i("b", o.toString());
+                |                    Log.i("b", o.toString()); //query1
                 |                });
                 |    }
                 |
@@ -1047,10 +1047,11 @@ class SymbolicExecutorTest extends AnyFunSuite {
         stepLimit = 200, w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       val symbolicExecutor = config.getSymbolicExecutor
+      val line = BounderUtil.lineForRegex(".*query1.*".r, src)
       val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
-        "void lambda$onCreate$1$MyActivity(java.lang.Object)",31)
+        "void lambda$onCreate$1$MyActivity(java.lang.Object)",line)
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
-//      prettyPrinting.dumpDebugInfo(result,"WitnessFieldDerefWithSubscribe")
+      prettyPrinting.dumpDebugInfo(result,"WitnessFieldDerefWithSubscribe")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result,QueryFinished) == Witnessed)
 

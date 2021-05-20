@@ -263,7 +263,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
   }
 
   override protected def mkDynFieldFn(uid:String, fieldName:String)(implicit zctx:Z3SolverCtx):FuncDecl = {
-    zctx.ctx.mkFuncDecl(s"dynField_${fieldName}_${uid}", dynFieldSort, addrSort)
+    zctx.ctx.mkFuncDecl(s"dynField_${fieldName}_${uid}", addrSort, addrSort)
   }
 
   override protected def mkINameFn(enum:AST)(implicit zctx:Z3SolverCtx): AST = {
@@ -350,6 +350,12 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
     val fn = mkDynFieldFn(uid, fieldName)
     val appFun = fn.apply(base.asInstanceOf[Expr])
     mkEq(appFun, equalTo)
+  }
+
+  override protected def mkStaticFieldConstraint(clazz:String, fieldName:String, equalTo:AST, uid:String)
+                                             (implicit zctx:Z3SolverCtx):AST = {
+    val staticField = zctx.ctx.mkConst(s"staticField___${clazz}___${fieldName}", addrSort) //.mkFuncDecl(s"dynField_${fieldName}_${uid}", addrSort)
+    mkEq(staticField, equalTo)
   }
 
   def localToName(local:(String,Int)):String = s"local_${local._1}____${local._2}"

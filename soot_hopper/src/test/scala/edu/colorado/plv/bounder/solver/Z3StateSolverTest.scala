@@ -552,7 +552,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
       StackVar("y") -> p2
     ))::Nil))
     assert(stateSolver.canSubsume(state,state_))
-    assert(!stateSolver.canSubsume(state_,state)) //TODO:===== corner case? where local defined vs not defined?
+    assert(!stateSolver.canSubsume(state_,state))
 
   }
   test("Subsumption of abstract traces") { f =>
@@ -637,16 +637,80 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     assert(stateSolver.canSubsume(fewerPure, morePure))
 
   }
-  test("I(x.foo(y)) && y:T1 cannot subsume I(x1.foo(y1))&& y:T1 && y1:T2"){ f =>
+  test("X -> p1 && p1:T1 cannot subsume X -> p1 && p1:T2 && p2:T1"){ f =>
+    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val pvy = PureVar(1)
+    val pvy2 = PureVar(2)
+    val fr = CallStackFrame(dummyLoc, None, Map(StackVar("x") -> pvy))
+    val s1 = State.topState.copy(sf = State.topState.sf.copy(callStack = fr::Nil))
+      .addTypeConstraint(pvy, BitTypeSet(BitSet(1)))
+    val s2 = State.topState.copy(sf = State.topState.sf.copy(callStack = fr::Nil))
+      .addTypeConstraint(pvy, BitTypeSet(BitSet(2)))
+      .addTypeConstraint(pvy2, BitTypeSet(BitSet(1)))
+    val res = stateSolver.canSubsume(s1,s2)
+    assert(!res)
+
+  }
+  test("x -> p1 * p1.f -> p2 && p2:T1 can subsume x -> p2 * p2.f -> p1 && p1:T1"){ f =>
+    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val pvy = PureVar(1)
+    val pvy2 = PureVar(2)
+
+    val fr1 = CallStackFrame(dummyLoc, None, Map(StackVar("x") -> pvy))
+    val s1 = State.topState.copy(
+      sf = State.topState.sf.copy(
+        callStack = fr1::Nil,
+        heapConstraints = Map(FieldPtEdge(pvy, "f") -> pvy2)
+      ))
+      .addTypeConstraint(pvy2, BitTypeSet(BitSet(1)))
+
+    val fr2 = CallStackFrame(dummyLoc, None, Map(StackVar("x") -> pvy2))
+    val s2 = State.topState.copy(
+      sf = State.topState.sf.copy(
+        callStack = fr2::Nil,
+        heapConstraints = Map(FieldPtEdge(pvy2, "f") -> pvy)
+      ))
+      .addTypeConstraint(pvy, BitTypeSet(BitSet(1)))
+//      .addTypeConstraint(pvy, BitTypeSet(BitSet(1)))
+    val res = stateSolver.canSubsume(s1,s2)
+    assert(res)
+  }
+  test("x -> p1 * p1.f -> p2 && p2:T1 cannot subsume x -> p2 * p2.f -> p1 && p1:T2"){ f =>
+    //TODO:============= this test shouldn't work yet?
+    //TODO: subset test in subs is bad, does not handle renaming
+    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val pvy = PureVar(1)
+    val pvy2 = PureVar(2)
+    val fr = CallStackFrame(dummyLoc, None, Map(StackVar("x") -> pvy))
+    val s1 = State.topState.copy(
+      sf = State.topState.sf.copy(
+        callStack = fr::Nil,
+        heapConstraints = Map(FieldPtEdge(pvy, "f") -> pvy2)
+      ))
+      .addTypeConstraint(pvy2, BitTypeSet(BitSet(1)))
+    val s2 = State.topState.copy(
+      sf = State.topState.sf.copy(
+        callStack = fr::Nil,
+        heapConstraints = Map(FieldPtEdge(pvy2, "f") -> pvy)
+      ))
+      .addTypeConstraint(pvy, BitTypeSet(BitSet(2)))
+    //      .addTypeConstraint(pvy, BitTypeSet(BitSet(1)))
+    val res = stateSolver.canSubsume(s1,s2)
+    assert(!res)
+  }
+  test("I(x.foo(y)) && y:T1 cannot subsume I(x1.foo(y1))"){ f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
     val fooM = SubClassMatcher("","foo","foo")
-    val iFoo_x_y = I(CBEnter, fooM, "x" :: "y" :: Nil)
-    val iFoo_x1_y1 = I(CBEnter, fooM, "x1"::"y1" :: Nil)
-//    val iFoo_x_y = LSTrue //should be true here?
-//    val iFoo_x1_y1 = LSTrue
+//    val iFoo_x_y = I(CBEnter, fooM, "x" :: "y" :: Nil)
+//    val iFoo_x1_y1 = I(CBEnter, fooM, "x1"::"y1" :: Nil)
+
+    val iFoo_x_y = I(CBEnter, fooM, "y" :: Nil)
+    val iFoo_x1_y1 = I(CBEnter, fooM, "y1" :: Nil)
+
 
     val pvy = PureVar(1)
     val pvy2 = PureVar(2)
+    val pvy3 = PureVar(3)
 
     def s(t:AbstractTrace):State = {
       State.topState.copy(sf = State.topState.sf.copy(traceAbstraction = Set(t)))
@@ -654,12 +718,12 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val t1 = AbstractTrace(iFoo_x_y,Nil, Map("y"-> pvy))
     val t2 = AbstractTrace(iFoo_x1_y1, Nil, Map("y1" -> pvy2))
     val s1 = s(t1).addTypeConstraint(pvy, BitTypeSet(BitSet(1))) //TODO: should adding this type constraint make it subs?
-    val s2 = s(t2).addTypeConstraint(pvy2,BitTypeSet(BitSet(2))).addTypeConstraint(pvy, BitTypeSet(BitSet(1)))
+    val s2 = s(t2).addTypeConstraint(pvy3, BitTypeSet(BitSet(1)))
+      .addTypeConstraint(pvy2,BitTypeSet(BitSet(2)))
     val res = stateSolver.canSubsume(s1,s2,Some(3))
     assert(!res)
   }
   test("I(x.foo(y)) && y:T1 cannot subsume I(x.foo(y))|>I(x1.foo(y1)) && I(x2.foo(y2)) && y2:T2"){f =>
-    //TODO: failing unit test ================
     val (stateSolver,_) = getStateSolver(f.typeSolving)
     val fooM = SubClassMatcher("","foo","foo")
     val iFoo_x_y = I(CBEnter, fooM, "x" :: "y" :: Nil)
@@ -910,7 +974,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
 //      state = state.copy(sf = state.sf.copy(traceAbstraction = Set(AbstractTrace(Or(Not(i_foo_x), i_bar_x), Nil,
 //        Map())))),
 //      trace = TMessage(CIEnter, foo, TAddr(1)::Nil)::Nil
-//    )) //TODO:===============
+//    )) //TODO:=============== decide if negation can just be for things that are already grounded by other terms
 
     // empty ! models NI(x.foo(), x.bar())
     assert(!stateSolver.traceInAbstraction(
@@ -967,19 +1031,19 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     )
 
 
-    // not I(foo(x,y)) !models foo(@1,@2)
-    assert( //TODO:===============
-      !stateSolver.traceInAbstraction(
-        state.copy(sf = state.sf.copy(traceAbstraction = Set(AbstractTrace(Not(i_foo_x_y),Nil,Map())))),
-        trace = TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil)::Nil
-      )
-    )
+//    // not I(foo(x,y)) !models foo(@1,@2)
+//    assert( //TODO:===============
+//      !stateSolver.traceInAbstraction(
+//        state.copy(sf = state.sf.copy(traceAbstraction = Set(AbstractTrace(Not(i_foo_x_y),Nil,Map())))),
+//        trace = TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil)::Nil
+//      )
+//    )
 
     // I(foo(y,y) !models foo(@1,@2)
     val i_foo_y_y = I(CIEnter, Set(("foo",""),("foo2","")), "Y"::"Y"::Nil)
     assert(
       !stateSolver.traceInAbstraction(
-        state.copy(sf = state.sf.copy(traceAbstraction = Set(AbstractTrace(i_foo_y_y,Nil,Map())))),
+        state.copy(sf = state.sf.copy(traceAbstraction = Set(AbstractTrace(i_foo_y_y,Nil,Map("Y" -> PureVar(1)))))),
         trace = TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil)::Nil,
         debug = true
       )
