@@ -295,6 +295,11 @@ trait StateSolver[T, C <: SolverCtx] {
     case m:I if !negate =>
       mkExistsInt(mkIntVal(-1), len,
         i => assertIAt(i, m, messageTranslator, traceFn, negated = false, typeMap,typeToSolverConst, modelVarMap))
+    //case NotI(m) if negate =>
+    //  encodePred(m, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap, !negate)
+    //case NotI(m) =>
+    //  mkForallInt(mkIntVal(-1), len,
+    //    i => assertIAt(i,m,messageTranslator, traceFn, negated = true, typeMap, typeToSolverConst, modelVarMap))
     case m: I if negate =>
       mkForallInt(mkIntVal(-1), len, i => assertIAt(i, m, messageTranslator, traceFn, negated = true,typeMap,
         typeToSolverConst, modelVarMap))
@@ -321,6 +326,7 @@ trait StateSolver[T, C <: SolverCtx] {
 
   private def allI(pred: LSPred): Set[I] = pred match {
     case i@I(_, _, _) => Set(i)
+//    case NotI(i) => Set(i)
     case NI(i1, i2) => Set(i1, i2)
     case And(l1, l2) => allI(l1).union(allI(l2))
     case Or(l1, l2) => allI(l1).union(allI(l2))
@@ -511,8 +517,8 @@ trait StateSolver[T, C <: SolverCtx] {
     }
 
     //TODO: remove defineAllLS when it is determined that it isn't needed
-    //    val state:State = inState.defineAllLS()
-    val state = inState
+    val state:State = inState.defineAllLS()
+    //val state = inState
 
     val withPVMap = (pvMap:Map[PureVar, T]) => {
       // typeFun is a function from addresses to concrete types in the program
@@ -571,7 +577,7 @@ trait StateSolver[T, C <: SolverCtx] {
 
 
     val pureVars = state.pureVars()
-    if(negate) {
+    val out = if(negate) {
       pureVars.foldLeft(withPVMap){
         case (acc, pureVar) => {
           (pvMap:Map[PureVar,T]) => {
@@ -588,6 +594,7 @@ trait StateSolver[T, C <: SolverCtx] {
         }
       }(Map())
     }
+    out
 
 
   }
@@ -848,8 +855,9 @@ trait StateSolver[T, C <: SolverCtx] {
 //      return false
 //    }
 
-    canSubsumeZ3(s1,s2, maxLen)
     //canSubsumeSlow(s1, s2, maxLen)
+    val out = canSubsumeZ3(s1,s2, maxLen)
+    out
   }
 
   def allTypes(state:State)(implicit zctx:C):Set[Int] = {
@@ -873,7 +881,6 @@ trait StateSolver[T, C <: SolverCtx] {
     mkAssert(uniqueConst)
 
 
-    //TODO:========= heap fun needed in toAST for state
     val s1Enc = toAST(s1, typeToSolverConst, messageTranslator, maxLen, constMap,negate=true)
     mkAssert(s1Enc)
     val s2Enc = toAST(s2, typeToSolverConst, messageTranslator, maxLen, constMap,negate=false)

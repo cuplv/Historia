@@ -30,8 +30,11 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
       "com.example.createdestroy.MyFragment" -> Set("com.example.createdestroy.MyFragment"),
       "com.example.createdestroy.-$$Lambda$MyFragment$hAOPQ7FFP1lMCJX7gGOvwmZq1uk" ->
         Set("com.example.createdestroy.-$$Lambda$MyFragment$hAOPQ7FFP1lMCJX7gGOvwmZq1uk"),
-      "rx.Single" -> Set("rx.Single")
-    )
+      "rx.Single" -> Set("rx.Single"),
+      "foo" -> Set("foo"),
+      "bar" -> Set("bar"),
+      "foo2" -> Set("foo2")
+  )
   private val classToInt: Map[String, Int] = hierarchy.keySet.zipWithIndex.toMap
   val intToClass: Map[Int, String] = classToInt.map(k => (k._2, k._1))
 
@@ -44,7 +47,8 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     }
   }
 
-  implicit def set2SigMat(s:Set[(String,String)]):SignatureMatcher = SetSignatureMatcher(s)
+  implicit def set2SigMat(s:Set[(String,String)]):SignatureMatcher =
+    SubClassMatcher(s.map(_._1),s.map(_._2).mkString("|"),s.head._1 + s.head._2)
 
   override def withFixture(test: OneArgTest) = {
     // Run all tests with both set inclusion type solving and solver type solving
@@ -676,8 +680,6 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     assert(res)
   }
   test("x -> p1 * p1.f -> p2 && p2:T1 cannot subsume x -> p2 * p2.f -> p1 && p1:T2"){ f =>
-    //TODO:============= this test shouldn't work yet?
-    //TODO: subset test in subs is bad, does not handle renaming
     val (stateSolver,_) = getStateSolver(f.typeSolving)
     val pvy = PureVar(1)
     val pvy2 = PureVar(2)
@@ -697,6 +699,84 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     //      .addTypeConstraint(pvy, BitTypeSet(BitSet(1)))
     val res = stateSolver.canSubsume(s1,s2)
     assert(!res)
+  }
+  test("I(x.foo()) && I(z.bar(y)) cannot subsume I(x.foo())"){ f =>
+    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val fooM = SubClassMatcher("","foo","foo")
+    val barM = SubClassMatcher("","bar","bar")
+    val iFoo_x = I(CBEnter, fooM, "x" :: Nil)
+    val iBar_z = I(CBEnter, barM, "z"::"y" ::Nil)
+    def s(t:Set[AbstractTrace]):State = {
+      State.topState.copy(sf = State.topState.sf.copy(traceAbstraction = t))
+    }
+    val pv1 = PureVar(1)
+    val pv2 = PureVar(2)
+    val s1 = s(Set(
+      AbstractTrace(iFoo_x, Nil, Map("x" -> pv1)),
+      AbstractTrace(iBar_z, Nil, Map("z" -> pv2))
+    ))
+    val s2 = s(Set(
+      AbstractTrace(iFoo_x, Nil, Map("x" -> pv1))
+    ))
+    val res = stateSolver.canSubsume(s1,s2)
+    assert(!res)
+
+    val res2 = stateSolver.canSubsume(s2,s1)
+    assert(res2)
+
+
+  }
+  test("I(x.foo()) && (Not(y.bar())) && x:T1 && y:T2 cannot subsume I(x.foo()) && x:T1 && y:T2"){ f =>
+    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val fooM = SubClassMatcher("","foo","foo")
+    val barM = SubClassMatcher("","bar","bar")
+    val iFoo_x = I(CBEnter, fooM, "x"::Nil)
+    val iBar_z = I(CBEnter, barM, "z"::Nil)
+    def s(t:Set[AbstractTrace]):State = {
+      State.topState.copy(sf = State.topState.sf.copy(traceAbstraction = t))
+    }
+    val pv1 = PureVar(1)
+    val pv2 = PureVar(2)
+    val s1 = s(Set(
+      AbstractTrace(iFoo_x, Nil, Map("x" -> pv1)),
+      AbstractTrace(Not(iBar_z), Nil, Map("z" -> pv2))
+    )).addTypeConstraint(pv2,BitTypeSet(BitSet(2)))//.addTypeConstraint(pv1,BitTypeSet(BitSet(1)))
+    val s2 = s(Set(
+      AbstractTrace(iFoo_x, Nil, Map("x" -> pv1))
+    )).addTypeConstraint(pv2,BitTypeSet(BitSet(2))).addTypeConstraint(pv1,BitTypeSet(BitSet(1)))
+    val res = stateSolver.canSubsume(s1,s2)
+    assert(!res)
+
+    val res2 = stateSolver.canSubsume(s2,s1)
+    assert(res2)
+  }
+  test("NI(x.foo(),x.baz()) && (not I(z.bar())) && x:T2 && z:T1 cannot subsume NI(x.foo(),x.baz()) && x:T2"){ f =>
+    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val fooM = SubClassMatcher("","foo","foo")
+    val barM = SubClassMatcher("","bar","bar")
+    val bazM = SubClassMatcher("","baz","baz")
+    val iFoo_x = I(CBEnter, fooM, "x"::Nil)
+    val iBaz_x = I(CBEnter, bazM, "x"::Nil)
+    val iBar_z = I(CBEnter, barM, "z"::Nil)
+
+    def s(t:Set[AbstractTrace]):State = {
+      State.topState.copy(sf = State.topState.sf.copy(traceAbstraction = t))
+    }
+    val pv1 = PureVar(1)
+    val pv2 = PureVar(2)
+    val niFooBaz_x = AbstractTrace(NI(iFoo_x, iBaz_x), Nil, Map("x" -> pv1))
+    val s1 = s(Set(
+      niFooBaz_x,
+      AbstractTrace(Not(iBar_z), Nil, Map("z" -> pv2))
+    )).addTypeConstraint(pv1,BitTypeSet(BitSet(1))).addTypeConstraint(pv2,BitTypeSet(BitSet(2)))
+    val s2 = s(Set(
+      niFooBaz_x
+    )).addTypeConstraint(pv1,BitTypeSet(BitSet(1))).addTypeConstraint(pv2,BitTypeSet(BitSet(2)))
+    val res = stateSolver.canSubsume(s1,s2)
+    assert(!res)
+
+    val res2 = stateSolver.canSubsume(s2,s1)
+    assert(res2)
   }
   test("I(x.foo(y)) && y:T1 cannot subsume I(x1.foo(y1))"){ f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)

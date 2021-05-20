@@ -111,11 +111,11 @@ object LifecycleSpec {
   val onPause_onlyafter_onResume_init = LSSpec(And(resumed,initPause),
     SpecSignatures.Activity_onPause_entry)
   val init_first_callback =
-    LSSpec(And(
+    LSSpec(
       Not(SpecSignatures.Activity_onCreate_exit),
-      And(Not(SpecSignatures.Activity_onResume_exit),
-        Not(SpecSignatures.Activity_onPause_exit))
-    ),
+//      And(Not(SpecSignatures.Activity_onResume_exit),
+//        Not(SpecSignatures.Activity_onPause_exit))
+//    ),
       SpecSignatures.Activity_init_entry)
   val Activity_created = NI(SpecSignatures.Activity_onCreate_entry, SpecSignatures.Activity_onDestroy_exit)
   val Fragment_activityCreatedOnlyFirst = LSSpec(
