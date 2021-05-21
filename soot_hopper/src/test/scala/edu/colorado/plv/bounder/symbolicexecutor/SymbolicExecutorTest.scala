@@ -1785,7 +1785,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
                 |public class MyActivity extends AppCompatActivity implements OnClickListener {
                 |    String s = "";
                 |    @Override
-                |    protected void onCreate(Bundle savedInstanceState){
+                |    protected void onResume(){
                 |        View v = findViewById(3);
                 |        v.setOnClickListener(this);
                 |    }
@@ -1806,9 +1806,9 @@ class SymbolicExecutorTest extends AnyFunSuite {
         assert(apk != null)
         implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
         dbMode.startMeta()
-        //      val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
+        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
         //TODO: set back to full spec ==============
-        val specs = new SpecSpace(Set(/*LifecycleSpec.init_first_callback, */ViewSpec.clickWhileActive))
+//        val specs = new SpecSpace(Set(LifecycleSpec.init_first_callback, ViewSpec.clickWhileActive))
         val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
 
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
@@ -1831,7 +1831,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
     makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
   }
   test("Should attach click to Activity") {
-    //TODO: click attached to different activity ==================
+    //Click attached to different activity
+    //TODO:
     val src = """package com.example.createdestroy;
                 |import androidx.appcompat.app.AppCompatActivity;
                 |import android.os.Bundle;
@@ -1845,12 +1846,14 @@ class SymbolicExecutorTest extends AnyFunSuite {
                 |    String s = null;
                 |    static OnClickListener listener2 = null;
                 |    @Override
-                |    protected void onCreate(Bundle savedInstanceState){
+                |    protected void onResume(){
                 |        View v = findViewById(3);
                 |        s = "";
                 |        v.setOnClickListener(new OnClickListener(){
                 |           @Override
                 |           public void onClick(View v){
+                |             View view2 = MyActivity.this.findViewById(4);
+                |             view2.setOnClickListener(listener2);
                 |             s.toString(); // query1
                 |             listener2 = new OnClickListener(){
                 |                @Override
@@ -1859,8 +1862,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
                 |                }
                 |             };
                 |
-                |             View view2 = MyActivity.this.findViewById(4);
-                |             view2.setOnClickListener(listener2);
+                |
                 |           }
                 |        });
                 |        //View view2 = findViewById(4);
@@ -1868,7 +1870,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
                 |    }
                 |
                 |    @Override
-                |    protected void onDestroy() {
+                |    protected void onPause() {
                 |        s = null;
                 |
                 |    }
@@ -1878,9 +1880,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
         assert(apk != null)
         implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
         dbMode.startMeta()
-        //      val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
-        //TODO: set back to full spec ==============
-        val specs = new SpecSpace(Set(/*LifecycleSpec.init_first_callback, */ViewSpec.clickWhileActive))
+//        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
+        val specs = new SpecSpace(Set(LifecycleSpec.init_first_callback, ViewSpec.clickWhileActive))
         val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
 
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
@@ -1894,24 +1895,23 @@ class SymbolicExecutorTest extends AnyFunSuite {
         val runMethodReachable = Reachable("com.example.createdestroy.MyActivity$1",
           "void onClick(android.view.View)", line)
 
-//        //TODO: uncomment =====
-//        val resultClickReachable = symbolicExecutor.run(runMethodReachable, dbMode)
-//          .flatMap(a => a.terminals)
-//        //      prettyPrinting.dumpDebugInfo(resultClickReachable, "clickReachable")
-//        assert(resultClickReachable.nonEmpty)
-//        assert(BounderUtil.interpretResult(resultClickReachable, QueryFinished) == Witnessed)
+        val resultClickReachable = symbolicExecutor.run(runMethodReachable, dbMode)
+          .flatMap(a => a.terminals)
+        //      prettyPrinting.dumpDebugInfo(resultClickReachable, "clickReachable")
+        assert(resultClickReachable.nonEmpty)
+        assert(BounderUtil.interpretResult(resultClickReachable, QueryFinished) == Witnessed)
 
         //TODO: uncomment ======
-        //      val nullUnreach = ReceiverNonNull("com.example.createdestroy.MyActivity$1",
-        //        "void onClick(android.view.View)",line, Some(".*toString.*"))
-        //      val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
-        ////      prettyPrinting.dumpDebugInfo(nullUnreachRes, "nullUnreachRes")
-        //      assert(nullUnreachRes.nonEmpty)
-        //      assert(BounderUtil.interpretResult(nullUnreachRes, QueryFinished) == Proven)
+        val nullUnreach = ReceiverNonNull("com.example.createdestroy.MyActivity$1",
+          "void onClick(android.view.View)",line, Some(".*toString.*"))
+        val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
+  //      prettyPrinting.dumpDebugInfo(nullUnreachRes, "nullUnreachRes")
+        assert(nullUnreachRes.nonEmpty)
+        assert(BounderUtil.interpretResult(nullUnreachRes, QueryFinished) == Proven)
 
         val line2 = BounderUtil.lineForRegex(".*query2.*".r, src)
-        val nullReach = Reachable("com.example.createdestroy.MyActivity$1$1",
-          "void onClick(android.view.View)", line2) //, Some(".*toString.*")) //TODO===========
+        val nullReach = ReceiverNonNull("com.example.createdestroy.MyActivity$1$1",
+          "void onClick(android.view.View)", line2, Some(".*toString.*")) //TODO===========
         val nullReachRes = symbolicExecutor.run(nullReach,dbMode).flatMap(a => a.terminals)
         prettyPrinting.dumpDebugInfo(nullReachRes, "clickNullReach")
         assert(BounderUtil.interpretResult(nullReachRes, QueryFinished) == Witnessed)
@@ -1920,6 +1920,86 @@ class SymbolicExecutorTest extends AnyFunSuite {
     }
     makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
   }
+
+  test("Finish allows click after pause") {
+    //Click attached to different activity
+    //TODO:
+    val src = """package com.example.createdestroy;
+                |import androidx.appcompat.app.AppCompatActivity;
+                |import android.os.Bundle;
+                |import android.util.Log;
+                |import android.view.View;
+                |import android.os.Handler;
+                |import android.view.View.OnClickListener;
+                |
+                |
+                |public class MyActivity extends AppCompatActivity {
+                |    String s = null;
+                |    static OnClickListener listener2 = null;
+                |    @Override
+                |    protected void onResume(){
+                |        View v = findViewById(3);
+                |        s = "";
+                |        v.setOnClickListener(new OnClickListener(){
+                |           @Override
+                |           public void onClick(View v){
+                |             s.toString(); // query1
+                |           }
+                |        });
+                |        (new Handler()).postDelayed(new Runnable(){
+                |           @Override
+                |           public void run(){
+                |              //MyActivity.this.finish();
+                |           }
+                |        }, 3000);
+                |    }
+                |
+                |    @Override
+                |    protected void onPause() {
+                |        s = null;
+                |
+                |    }
+                |}""".stripMargin
+    val test: String => Unit = apk => {
+      File.usingTemporaryDirectory() { tmpDir =>
+        assert(apk != null)
+        implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
+        dbMode.startMeta()
+        //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
+        val specs = new SpecSpace(Set(LifecycleSpec.init_first_callback, LifecycleSpec.onResume_onlyafter_onPause,
+          ViewSpec.clickWhileActive))
+        val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
+
+        val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
+          specs, cha)
+        val config = SymbolicExecutorConfig(
+          stepLimit = 200, w, transfer,
+          component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode,
+          subsumptionEnabled = true)
+        val symbolicExecutor = config.getSymbolicExecutor
+        val line = BounderUtil.lineForRegex(".*query1.*".r, src)
+        val clickReachable = Reachable("com.example.createdestroy.MyActivity$1",
+          "void onClick(android.view.View)", line)
+
+        val resultClickReachable = symbolicExecutor.run(clickReachable, dbMode)
+          .flatMap(a => a.terminals)
+//        prettyPrinting.dumpDebugInfo(resultClickReachable, "clickFinish")
+        assert(resultClickReachable.nonEmpty)
+        assert(BounderUtil.interpretResult(resultClickReachable, QueryFinished) == Witnessed)
+
+
+        val nullUnreach = ReceiverNonNull("com.example.createdestroy.MyActivity$1",
+          "void onClick(android.view.View)",line, Some(".*toString.*"))
+        val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
+        prettyPrinting.dumpDebugInfo(nullUnreachRes, "finishNullUnreachRes")
+        assert(nullUnreachRes.nonEmpty)
+        assert(BounderUtil.interpretResult(nullUnreachRes, QueryFinished) == Witnessed)
+      }
+
+    }
+    makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
+  }
+
   test("Should not invoke methods on view after activity destroyed spec"){
     //TODO: failing unit test
 
@@ -1951,7 +2031,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
                 |}""".stripMargin
     val test: String => Unit = apk => {
       assert(apk != null)
-      val specs = new SpecSpace(LifecycleSpec.spec, Set(ViewSpec.disallowCallinAfterActivityPause))
+      val specs = new SpecSpace(Set() /*LifecycleSpec.spec*/, Set(ViewSpec.disallowCallinAfterActivityPause))
       val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
 
       val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,

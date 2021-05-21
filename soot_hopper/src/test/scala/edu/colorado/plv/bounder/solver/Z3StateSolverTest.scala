@@ -740,7 +740,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val s1 = s(Set(
       AbstractTrace(iFoo_x, Nil, Map("x" -> pv1)),
       AbstractTrace(Not(iBar_z), Nil, Map("z" -> pv2))
-    )).addTypeConstraint(pv2,BitTypeSet(BitSet(2)))//.addTypeConstraint(pv1,BitTypeSet(BitSet(1)))
+    )).addTypeConstraint(pv2,BitTypeSet(BitSet(2))).addTypeConstraint(pv1,BitTypeSet(BitSet(1)))
     val s2 = s(Set(
       AbstractTrace(iFoo_x, Nil, Map("x" -> pv1))
     )).addTypeConstraint(pv2,BitTypeSet(BitSet(2))).addTypeConstraint(pv1,BitTypeSet(BitSet(1)))

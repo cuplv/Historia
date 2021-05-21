@@ -343,6 +343,38 @@ trait StateSolver[T, C <: SolverCtx] {
         allI(pred)
   }
 
+  private def joinVarNeg(m1:Map[String,Boolean], m2:Map[String,Boolean]):Map[String,Boolean] = {
+    m1.foldLeft(m2){
+      case (acc,(lsVar, occuredUnderNeg)) =>
+        val oldv:Boolean = acc.getOrElse(lsVar,true)
+        acc + (lsVar -> (oldv && occuredUnderNeg))
+    }
+  }
+  /**
+   * Get all variables and whether they exclusively occur under negation
+   * @param p
+   * @return
+   */
+  private def varsAndNegation(p:LSPred):Map[String,Boolean] = p match {
+    case And(l1, l2) => joinVarNeg(varsAndNegation(l1), varsAndNegation(l2))
+    case Not(l) => varsAndNegation(l).map{
+      case (lsVar, occuredUnderNeg) => lsVar -> !occuredUnderNeg
+    }
+    case Or(l1, l2) =>  joinVarNeg(varsAndNegation(l1), varsAndNegation(l2))
+    case LifeState.LSTrue => Map()
+    case LifeState.LSFalse => Map()
+    case I(_,_,lsVars) => lsVars.map(_ -> false).toMap
+    case NI(i1,i2) => joinVarNeg(varsAndNegation(i1), varsAndNegation(Not(i2)))
+  }
+  private def notNot(p:LSPred):Boolean = p match {
+    case And(l1, l2) => notNot(l1) && notNot(l2)
+    case Not(l) => false
+    case Or(l1, l2) =>notNot(l1) && notNot(l2)
+    case LifeState.LSTrue => true
+    case LifeState.LSFalse => true
+    case _: LSAtom => true
+  }
+
   /**
    *
    * @param abs               abstraction of trace to encode for the solver
@@ -360,6 +392,7 @@ trait StateSolver[T, C <: SolverCtx] {
                      typeMap: Map[PureVar, TypeSet],
                      typeToSolverConst: Map[Int, T],
                      negate: Boolean = false)(implicit zctx: C): T = {
+
     val uniqueAbsId = absUID.getOrElse(System.identityHashCode(abs).toString)
 
     val lsTypeMap:Map[String,TypeSet] = abs.modelVars.keySet.map(lsVar => abs.modelVars.get(lsVar) match {
@@ -398,40 +431,24 @@ trait StateSolver[T, C <: SolverCtx] {
       mkAnd(absEnc, suffixConstraint)
     }
 
-    val allLSVarsInPred = abs.a.lsVar ++ abs.rightOfArrow.flatMap(_.lsVar)
-    if(negate) {
-      allLSVarsInPred.foldLeft(modelVarsToEncoding){
-        case(acc,lsVar) => {
-          (lsMap:Map[String,T]) => mkForallAddr(lsVar,{tMV =>
-            acc(lsMap + (lsVar -> tMV))
-//            mkAnd(
-//              acc(lsMap + (lsVar -> tMV)),
-//              mkEq(mkModelVar(lsVar, uniqueAbsId), tMV)
-//            )
-          })
-        }
-      }(Map())
-    } else{
-      //      allLSVarsInPred.foldLeft(modelVarsToEncoding){
-      //        case (acc,lsVar) => {
-      //          (lsMap:Map[String,T]) => mkExistsAddr(lsVar,{tMV =>
-      //            mkAnd(
-      //              acc(lsMap + (lsVar -> tMV)),
-      //              mkEq(mkModelVar(lsVar, uniqueAbsId), tMV)
-      //            )
-      //          })
-      //        }
-      //      }(Map())
-      val modelVarMap = allLSVarsInPred.map{varname =>
-        val t = if(abs.modelVars.contains(varname)) {
-          pvMap(abs.modelVars(varname).asInstanceOf[PureVar])
+    // if a variable occurs under negation only, quantify with a "forall" otherwise use top level trace variable
+    //TODO: This seems like a bit of a hack
+    val allLSVarsInPred = joinVarNeg(varsAndNegation(abs.a), abs.rightOfArrow.flatMap(_.lsVar.map(_ -> false)).toMap)
+    allLSVarsInPred.foldLeft(modelVarsToEncoding){
+      case(acc,(lsVar,underNeg)) if underNeg != negate => {
+        (lsMap:Map[String,T]) => mkForallAddr(lsVar,{tMV =>
+          acc(lsMap + (lsVar -> tMV))
+        })
+      }
+      case(acc,(lsVar,underNeg)) if underNeg == negate => {
+        val t = if(abs.modelVars.contains(lsVar)){
+          pvMap(abs.modelVars(lsVar).asInstanceOf[PureVar])
         } else {
-          mkModelVar(varname,uniqueAbsId)
+          mkModelVar(lsVar,uniqueAbsId)
         }
-        (varname,t)
-      }.toMap
-      modelVarsToEncoding(modelVarMap)
-    }
+        (lsMap:Map[String,T]) => acc(lsMap + (lsVar -> t))
+      }
+    }(Map())
   }
 
   protected def mkDistinct(pvList: Iterable[PureVar],pvMap:Map[PureVar,T])(implicit zctx: C): T
