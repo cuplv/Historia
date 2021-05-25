@@ -193,7 +193,8 @@ case class State(sf:StateFormula,
   def defineAllLS(): State = {
     var nextAddrV = nextAddr
     val newTr = sf.traceAbstraction.map{t =>
-      val unbound = t.a.lsVar.filter(lsvar => !t.modelVars.contains(lsvar))
+      val unboundArrow = t.rightOfArrow.flatMap(i => i.lsVars)
+      val unbound = (t.a.lsVar ++ unboundArrow).filter(lsvar => !t.modelVars.contains(lsvar))
       var addMap: Map[String,PureVar] = Map()
       unbound.foreach{u =>
         addMap = addMap + (u -> PureVar(nextAddrV))

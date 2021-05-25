@@ -825,7 +825,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
 //    val s2 = s(Set(t3))
     val s2 = s(Set(t2,t3))
       .addTypeConstraint(pvy2, BitTypeSet(BitSet(2)))
-//      .addTypeConstraint(pvy, BitTypeSet(BitSet(1)))
+      .addTypeConstraint(pvy, BitTypeSet(BitSet(1)))
     val res = stateSolver.canSubsume(s1,s2)
     assert(!res)
   }
@@ -863,7 +863,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val res2 = stateSolver.canSubsume(s(subsumer),s(subsumee))
     assert(!res2)
     val res3 = stateSolver.canSubsume(s(subsumee), s(subsumer))
-    println(res3)
+    assert(res3)
   }
   test("Subsumption of unrelated trace constraint") { f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
@@ -1150,10 +1150,10 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
   test("quantifier example") { f =>
     val ctx = new Context
     val solver: Solver = ctx.mkSolver()
-    val foo1:ArithExpr = ctx.mkConst("foo", ctx.mkIntSort()).asInstanceOf[ArithExpr]
+    val foo1 = ctx.mkConst("foo", ctx.mkIntSort()).asInstanceOf[ArithExpr[_]]
     println(s"foo1: ${foo1}")
     val f = ctx.mkFuncDecl("f",ctx.mkIntSort(), ctx.mkBoolSort())
-    val expr:Expr = ctx.mkIff(
+    val expr: BoolExpr = ctx.mkIff(
       f.apply(foo1).asInstanceOf[BoolExpr],
       ctx.mkGt(foo1, ctx.mkInt(0)))
     val a1 = ctx.mkForall(Array(foo1),expr, 1,
@@ -1202,8 +1202,8 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
   test("sandbox2") { f =>
     val ctx = new Context
     val solver: Solver = ctx.mkSolver()
-    val es: EnumSort = ctx.mkEnumSort("Foo", "Foo1", "Foo2")
-    val foo2: Expr = es.getConst(1)
+    val es = ctx.mkEnumSort("Foo", "Foo1", "Foo2")
+    val foo2 = es.getConst(1)
     println(foo2)
 //    solver.add(ctx.mkEq(foo2, ctx.mkSymbol("Foo2")))
 

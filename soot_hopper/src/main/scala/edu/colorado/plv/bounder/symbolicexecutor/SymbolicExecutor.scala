@@ -8,7 +8,7 @@ import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SetInclusionT
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, DBPathNode, FrameworkLocation, IPathNode, InitialQuery, LiveQry, LiveTruncatedQry, MemoryOutputMode, OrdCount, OutputMode, PathNode, Qry, State, StateSet, SubsumableLocation, SwapLoc, WitnessedQry}
 
 import scala.annotation.tailrec
-import scala.collection.parallel.CollectionConverters.{ImmutableSetIsParallelizable, IterableIsParallelizable}
+//import scala.collection.parallel.CollectionConverters.{ImmutableSetIsParallelizable, IterableIsParallelizable}
 import upickle.default._
 
 import collection.mutable.PriorityQueue

@@ -9,7 +9,7 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.{HeapPtEdge, _}
 import org.slf4j.LoggerFactory
 import scalaz.Memo
 
-import scala.collection.parallel.CollectionConverters._
+//import scala.collection.parallel.CollectionConverters._
 import upickle.default._
 
 import scala.collection.immutable
@@ -32,6 +32,14 @@ trait StateSolver[T, C <: SolverCtx] {
 
   def pop()(implicit zctx: C): Unit
 
+  /**
+   * Write debugging info, delete if cont finishes without failure
+   * Used to debug native crashes in solver
+   * @param cont call solver code in continuation, return result
+   * @param zctx solver context and state
+   */
+  protected def dumpDbg[T](cont: () => T)(implicit zctx: C):T
+
 
   // quantifiers
   /**
@@ -52,13 +60,7 @@ trait StateSolver[T, C <: SolverCtx] {
 
   protected def mkNe(lhs: T, rhs: T)(implicit zctx: C): T
 
-  protected def mkGt(lhs: T, rhs: T)(implicit zctx: C): T
-
   protected def mkLt(lhs: T, rhs: T)(implicit zctx: C): T
-
-  protected def mkGe(lhs: T, rhs: T)(implicit zctx: C): T
-
-  protected def mkLe(lhs: T, rhs: T)(implicit zctx: C): T
 
   // logical and arithmetic operations
   protected def mkImplies(t: T, t1: T)(implicit zctx: C): T
@@ -68,12 +70,6 @@ trait StateSolver[T, C <: SolverCtx] {
   protected def mkAdd(lhs: T, rhs: T)(implicit zctx: C): T
 
   protected def mkSub(lhs: T, rhs: T)(implicit zctx: C): T
-
-  protected def mkMul(lhs: T, rhs: T)(implicit zctx: C): T
-
-  protected def mkDiv(lhs: T, rhs: T)(implicit zctx: C): T
-
-  protected def mkRem(lhs: T, rhs: T)(implicit zctx: C): T
 
   protected def mkAnd(lhs: T, rhs: T)(implicit zctx: C): T
 
@@ -172,19 +168,6 @@ trait StateSolver[T, C <: SolverCtx] {
       case (v:PureVal, Equals) => mkEq(constMap(v), mkConstValueConstraint(rhs))
       case (v:PureVal, NotEquals) => mkNot(mkEq(constMap(v), mkConstValueConstraint(rhs)))
       case (_:PureVal, _) => mkBoolVal(b = true)
-//      case (NullVal, Equals) => mkIsNull(rhs)
-//      case (NullVal, NotEquals) => mkNot(mkIsNull(rhs))
-////      case (v, Equals) if v == pureVal =>
-////        mkBoolVal(true)
-////        ??? // TODO:  make sure this case didn't do anything bad
-//      case (IntVal(v), Equals) =>
-//        // Covers boolean case as well
-//        mkAnd(mkEq(mkIntVal(v), mkIntValueConstraint(rhs)),
-//          mkNot(mkIsNull(rhs)))
-//      case (IntVal(v), NotEquals) =>
-//        mkNot(mkEq(mkIntVal(v), mkIntValueConstraint(rhs))) // Covers boolean case as well
-//      case (_:PureVal, Equals) =>
-//        mkNot(mkIsNull(rhs)) // any constant other than null is non-null
       case v =>
         println(v)
         ???
@@ -201,7 +184,6 @@ trait StateSolver[T, C <: SolverCtx] {
   }
 
   def toAST(p: PureExpr,pvMap:Map[PureVar,T])(implicit zctx: C): T = p match {
-//    case p: PureVar => mkObjVar(p)
     case p:PureVar => pvMap(p)
     case _ => throw new IllegalStateException("Values should be handled at a higher level")
   }
@@ -288,8 +270,6 @@ trait StateSolver[T, C <: SolverCtx] {
     case Or(l1, l2) if negate => mkAnd(encodePred(l1, traceFn, len, messageTranslator, modelVarMap,typeToSolverConst, typeMap,
       negate = true),
       encodePred(l2, traceFn, len, messageTranslator, modelVarMap,typeToSolverConst,typeMap, negate = true))
-    //    case Not(m:I) if !negate =>
-    //      mkForallInt(mkIntVal(-1),len, i => assertIAt(i,m,messageTranslator,traceFn,absUID,true))
     case Not(l) =>
       encodePred(l, traceFn, len, messageTranslator, modelVarMap,typeToSolverConst,typeMap, !negate)
     case m:I if !negate =>
@@ -534,8 +514,8 @@ trait StateSolver[T, C <: SolverCtx] {
     }
 
     //TODO: remove defineAllLS when it is determined that it isn't needed
-    val state:State = inState.defineAllLS()
-    //val state = inState
+//    val state:State = inState.defineAllLS()
+    val state = inState
 
     val withPVMap = (pvMap:Map[PureVar, T]) => {
       // typeFun is a function from addresses to concrete types in the program
@@ -612,8 +592,6 @@ trait StateSolver[T, C <: SolverCtx] {
       }(Map())
     }
     out
-
-
   }
 
   case class MessageTranslator(states: List[State])(implicit zctx: C) {
@@ -791,16 +769,8 @@ trait StateSolver[T, C <: SolverCtx] {
 
       // Only encode types in Z3 for subsumption check due to slow-ness
       val encode = SetInclusionTypeSolving
-//      val encode = SolverTypeSolving
-      val (typesAreUniqe, typeMap) =if(true || encode == SolverTypeSolving) {
-//        val usedTypes = pvMap2.flatMap { case (_, tc) => tc.getValues.getOrElse(Set()) }.toSet
-        val usedTypes = allTypes(state)
-        mkTypeConstraints(usedTypes)
-      }else {
-        val typesAreUniqe = mkBoolVal(true)
-        val typeMap = Map[Int, T]()
-        (typesAreUniqe,typeMap)
-      }
+      val usedTypes = allTypes(state)
+      val (typesAreUniqe, typeMap) = mkTypeConstraints(usedTypes)
 
       val (uniqueConst, constMap) = mkConstConstraintsMap(getPureValSet(state2.pureFormula))
       val ast = mkAnd(uniqueConst,

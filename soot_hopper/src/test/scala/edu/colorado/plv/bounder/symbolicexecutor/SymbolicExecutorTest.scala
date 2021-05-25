@@ -6,15 +6,12 @@ import edu.colorado.plv.bounder.BounderUtil.{MultiCallback, Proven, SingleCallba
 import edu.colorado.plv.bounder.ir.{JimpleFlowdroidWrapper, JimpleMethodLoc}
 import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSpace, ViewSpec}
-import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SetInclusionTypeSolving}
+import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BottomQry, CallinReturnNonNull, DBOutputMode, DisallowedCallin, FieldPtEdge, IPathNode, OutputMode, PrettyPrinting, Qry, Reachable, ReceiverNonNull}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.AnyFunSuite
-import soot.{Scene, SootMethod}
-
-import scala.jdk.CollectionConverters.CollectionHasAsScala
-import scala.util.matching.Regex
+import soot.SootMethod
 
 class SymbolicExecutorTest extends AnyFunSuite {
 
@@ -980,7 +977,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
         "void lambda$onCreate$1$MyActivity(java.lang.Object)",31)
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
-//      prettyPrinting.dumpDebugInfo(result,"ProveFieldDerefWithSubscribe")
+      prettyPrinting.dumpDebugInfo(result,"ProveFieldDerefWithSubscribe")
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result,QueryFinished) == Proven)
     }
@@ -1772,6 +1769,10 @@ class SymbolicExecutorTest extends AnyFunSuite {
     makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
   }
   test("Should handle chained onClick"){
+    //TODO: this test sometimes failes assertion on
+    // src/ast/datatype_decl_plugin.cpp line 1241
+    // z3 commit: 36ca98cbbe89e9404c210f5a2805e41010a24288
+
     // I( ci v.setOnClickListener(l) ) <= cb l.onClick()
     val src = """package com.example.createdestroy;
                 |import androidx.appcompat.app.AppCompatActivity;
@@ -1832,7 +1833,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
   }
   test("Should attach click to Activity") {
     //Click attached to different activity
-    //TODO:
+    //TODO: ======================
     val src = """package com.example.createdestroy;
                 |import androidx.appcompat.app.AppCompatActivity;
                 |import android.os.Bundle;
@@ -1974,8 +1975,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           specs, cha)
         val config = SymbolicExecutorConfig(
           stepLimit = 200, w, transfer,
-          component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode,
-          subsumptionEnabled = true)
+          component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode)
         val symbolicExecutor = config.getSymbolicExecutor
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
         val clickReachable = Reachable("com.example.createdestroy.MyActivity$1",
