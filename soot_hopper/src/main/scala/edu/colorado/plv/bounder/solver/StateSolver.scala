@@ -414,13 +414,19 @@ trait StateSolver[T, C <: SolverCtx] {
     // if a variable occurs under negation only, quantify with a "forall" otherwise use top level trace variable
     //TODO: This seems like a bit of a hack
     val allLSVarsInPred = joinVarNeg(varsAndNegation(abs.a), abs.rightOfArrow.flatMap(_.lsVar.map(_ -> false)).toMap)
+    //TODO: remove "(negate" || and "(!negate" below
     allLSVarsInPred.foldLeft(modelVarsToEncoding){
-      case(acc,(lsVar,underNeg)) if underNeg != negate => {
-        (lsMap:Map[String,T]) => mkForallAddr(lsVar,{tMV =>
-          acc(lsMap + (lsVar -> tMV))
-        })
+      case(acc,(lsVar,underNeg)) if (negate || underNeg != negate) => { //TODO:===== testing to see what breaks  and find better solution
+        (lsMap:Map[String,T]) =>
+          if(abs.modelVars.contains(lsVar))
+            acc(lsMap + (lsVar -> pvMap(abs.modelVars(lsVar).asInstanceOf[PureVar])))
+          else {
+            mkForallAddr(lsVar, { tMV =>
+              acc(lsMap + (lsVar -> tMV))
+            })
+          }
       }
-      case(acc,(lsVar,underNeg)) if underNeg == negate => {
+      case(acc,(lsVar,underNeg)) if (!negate || underNeg == negate) => { //TODO: ===== testing to see what breaks and find better solution
         val t = if(abs.modelVars.contains(lsVar)){
           pvMap(abs.modelVars(lsVar).asInstanceOf[PureVar])
         } else {
@@ -501,6 +507,17 @@ trait StateSolver[T, C <: SolverCtx] {
     }
   }
 
+  /**
+   * "[[_R_]]" from semantics
+   * @param inState R ::= <ɸ,M,P>
+   * @param typeToSolverConst mapping from integer allocation sites to solver uninterpreted sort
+   * @param messageTranslator mapping from I name to solver uninterpreted sort
+   * @param maxWitness optional maximum trace length, if defined, debugging info is printed
+   * @param constMap Mapping from constants to solver uninterpreted sort
+   * @param negate TODO: Is this needed? or can we use mkNot?
+   * @param zctx solver context
+   * @return encoded formula for solver
+   */
   def toAST(inState: State, typeToSolverConst: Map[Int, T],
             messageTranslator: MessageTranslator,
             maxWitness: Option[Int] = None,

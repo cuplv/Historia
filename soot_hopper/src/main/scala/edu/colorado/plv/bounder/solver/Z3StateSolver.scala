@@ -66,16 +66,23 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
   override protected def mkAnd(lhs:AST, rhs:AST)(implicit zctx:Z3SolverCtx):AST =
     mkAnd(List(lhs,rhs))
   override protected def mkAnd(t:List[AST])(implicit zctx:Z3SolverCtx): AST = {
-    val tb:Array[BoolExpr] = t.map(_.asInstanceOf[BoolExpr]).toArray
-    zctx.ctx.mkAnd(tb:_*)
+    if(t.nonEmpty) {
+      val tb: Array[BoolExpr] = t.map(_.asInstanceOf[BoolExpr]).toArray
+      zctx.ctx.mkAnd(tb: _*)
+    }else
+      mkBoolVal(true)
   }
 
   override protected def mkOr(lhs: AST, rhs: AST)(implicit zctx:Z3SolverCtx): AST =
     zctx.ctx.mkOr(lhs.asInstanceOf[BoolExpr], rhs.asInstanceOf[BoolExpr])
 
   override protected def mkOr(t: List[AST])(implicit zctx:Z3SolverCtx): AST = {
-    val tb: Array[BoolExpr] = t.map(_.asInstanceOf[BoolExpr]).toArray
-    zctx.ctx.mkOr(tb:_*)
+    if(t.nonEmpty) {
+      val tb: Array[BoolExpr] = t.map(_.asInstanceOf[BoolExpr]).toArray
+      zctx.ctx.mkOr(tb: _*)
+    }else{
+      mkBoolVal(false)
+    }
   }
 
   /**
