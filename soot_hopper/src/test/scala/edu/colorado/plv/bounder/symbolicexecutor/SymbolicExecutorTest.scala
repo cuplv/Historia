@@ -985,7 +985,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
   }
 
   test("Test witness dereference with subscribe and possibly null field") {
-    //TODO: ====== unsound subsumption
+    //Note: this test has caught an unsound subsumption in past versions
     val src = """package com.example.createdestroy;
                 |import androidx.appcompat.app.AppCompatActivity;
                 |import android.os.Bundle;
