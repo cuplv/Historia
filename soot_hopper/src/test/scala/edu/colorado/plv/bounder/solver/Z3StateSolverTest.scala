@@ -377,6 +377,81 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val res = stateSolver.simplify(s)
     assert(res.isDefined)
   }
+
+  test("( (Not I(a.bar())) && (Not I(a.baz())) ) |> I(b.bar()) && a=pv1 && b = pv1,  (<=>false) ") { f =>
+    val (stateSolver,_) = getStateSolver(f.typeSolving)
+
+    // Lifestate atoms for next few tests
+    val ibar_a = I(CBEnter, Set(("", "bar")), "a" :: Nil)
+    val ibar_b = I(CBEnter, Set(("", "bar")), "a" :: Nil)
+    val ibaz_a = I(CBEnter, Set(("", "baz")), "a" :: Nil)
+    val ifoo = I(CBEnter, Set(("", "foo")), "a" :: Nil)
+
+    // (Not I(a.bar()))  |> I(b.bar()) && a = pv1 && b = pv1
+    val pv1 = PureVar(1)
+    val t1 = AbstractTrace(Not(ibar_a), ibar_b::Nil, Map()).addModelVar("a",pv1).addModelVar("b",pv1)
+    val s1 = state.copy(sf = state.sf.copy(traceAbstraction = Set(t1)))
+    val res = stateSolver.simplify(s1)
+    assert(res.isEmpty)
+
+    //( (Not I(a.bar())) && (Not I(a.baz())) ) |> I(b.bar()) && a = pv1 && b = pv1
+    val t2 = AbstractTrace(And(Not(ibar_a), Not(ibaz_a)), ibar_b::Nil, Map())
+      .addModelVar("a",pv1).addModelVar("b",pv1)
+    val s2 = state.copy(sf = state.sf.copy(traceAbstraction = Set(t2)))
+    val res2 = stateSolver.simplify(s2)
+    assert(res2.isEmpty)
+  }
+  test("Not witnessed: I(a.foo()) |> b.foo() && Not(I(b.bar())) |> a.bar() && a = pv1 && b = pv2") { f =>
+    val (stateSolver,_) = getStateSolver(f.typeSolving)
+
+    // Lifestate atoms for next few tests
+    val ibar_a = I(CBEnter, Set(("", "bar")), "a" :: Nil)
+    val ibar_b = I(CBEnter, Set(("", "bar")), "b" :: Nil)
+    val ifoo_a = I(CBEnter, Set(("", "foo")), "a" :: Nil)
+    val ifoo_b = I(CBEnter, Set(("", "foo")), "b" :: Nil)
+
+    val pv1 = PureVar(1)
+    val pv2 = PureVar(2)
+
+    // t1: I(a.foo()) |> b.foo()
+    val t1 = AbstractTrace(ifoo_a, ifoo_b::Nil, Map("a" -> pv1, "b" -> pv2))
+
+    // t2: Not(I(b.bar())) |> a.bar()
+    val t2 = AbstractTrace(Not(ibar_b), ibar_a::Nil, Map("a" -> pv1, "b" -> pv2))
+
+    val s1 = state.copy(sf = state.sf.copy(traceAbstraction = Set(t1,t2)))
+    val res = stateSolver.witnessed(s1)
+    assert(!res)
+
+    // t1 is witnessed
+    val s2 = state.copy(sf = state.sf.copy(traceAbstraction = Set(t1)))
+    val res2 = stateSolver.witnessed(s2)
+    assert(res2)
+  }
+  test("Not feasible: Not(I(a.foo(_)))) |> b.foo(c) && a=p1 && b = p3 && c = p2 && p1 = p3") {f=>
+    val (stateSolver,_) = getStateSolver(f.typeSolving)
+
+    // Lifestate atoms for next few tests
+    val ifoo_a_ = I(CBEnter, Set(("", "foo")), "a"::"_" :: Nil)
+    val ifoo_bc = I(CBEnter, Set(("", "foo")), "b"::"c" :: Nil)
+
+    val pv1 = PureVar(1)
+    val pv2 = PureVar(2)
+    val pv3 = PureVar(3)
+
+    // t1: I(a.foo(_)) |> b.foo(c)
+    val t1 = AbstractTrace(Not(ifoo_a_), ifoo_bc::Nil, Map("a" -> pv1, "b" -> pv3, "c" -> pv2))
+
+    val s1 = state.copy(sf = state.sf.copy(pureFormula = Set(PureConstraint(pv1, Equals, pv3)),
+      traceAbstraction = Set(t1)))
+
+    val isFeas = stateSolver.simplify(s1)
+    assert(isFeas.isEmpty)
+
+    val isWit = stateSolver.witnessed(s1)
+    assert(!isWit)
+  }
+
   ignore ("Pickled states from integration tests should not crash solver") { f =>
     //TODO: pickle format changed, fix this test
     // (Map(l -> p-2, s -> p-5) -
@@ -1156,22 +1231,22 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val foo1 = ctx.mkConst("foo", ctx.mkIntSort()).asInstanceOf[ArithExpr[_]]
     println(s"foo1: ${foo1}")
     val f = ctx.mkFuncDecl("f",ctx.mkIntSort(), ctx.mkBoolSort())
-    val expr: BoolExpr = ctx.mkIff(
-      f.apply(foo1).asInstanceOf[BoolExpr],
-      ctx.mkGt(foo1, ctx.mkInt(0)))
-    val a1 = ctx.mkForall(Array(foo1),expr, 1,
-      null,null,
-      null,null)
-    val a = ctx.mkExists(Array(foo1),expr, 1,
-      null,null,
-      null,null)
-    println(s"input:\n${a}")
+//    val expr: BoolExpr = ctx.mkIff(
+//      f.apply(foo1).asInstanceOf[BoolExpr],
+//      ctx.mkGt(foo1, ctx.mkInt(0)))
+//    val a1 = ctx.mkForall(Array(foo1),expr, 1,
+//      null,null,
+//      null,null)
+//    val a = ctx.mkExists(Array(foo1),expr, 1,
+//      null,null,
+//      null,null)
+//    println(s"input:\n${a}")
+//
+//    solver.add(a)
+//    solver.check()
+//    val m = solver.getModel
 
-    solver.add(a)
-    solver.check()
-    val m = solver.getModel
-
-    println(s"model: \n${m}")
+//    println(s"model: \n${m}")
   }
   test("sandbox") { f =>
     val ctx = new Context
