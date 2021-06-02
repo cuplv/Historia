@@ -319,7 +319,7 @@ trait StateSolver[T, C <: SolverCtx] {
   }
 
   /**
-   * Get all variables and whether they exclusively occur under negation
+   * Get all variables
    * @param p
    * @return
    */
@@ -329,7 +329,7 @@ trait StateSolver[T, C <: SolverCtx] {
     case Or(l1, l2) =>  allLSVars(l1).union( allLSVars(l2))
     case LifeState.LSTrue => Set()
     case LifeState.LSFalse => Set()
-    case I(_,_,lsVars) => lsVars.toSet
+    case I(_,_,lsVars) => lsVars.toSet.filter(_ != "_")
     case NI(i1,i2) => allLSVars(i1).union(allLSVars(Not(i2)))
   }
 
@@ -345,13 +345,15 @@ trait StateSolver[T, C <: SolverCtx] {
    *                          note that "mkNot(encodeTraceAbs(..." does not work due to skolomization
    * @return encoded trace abstraction
    */
-  def encodeTraceAbs(abs: AbstractTrace, messageTranslator: MessageTranslator, traceFn: T, traceLen: T,
-                     absUID: Option[String] = None,pvMap:Map[PureVar,T],
+  def encodeTraceAbs(abs: AbstractTrace,
+                     messageTranslator: MessageTranslator,
+                     traceFn: T,
+                     traceLen: T,
+                     absUID: Option[String] = None,
+                     pvMap:Map[PureVar,T],
                      typeMap: Map[PureVar, TypeSet],
                      typeToSolverConst: Map[Int, T],
                      negate: Boolean = false)(implicit zctx: C): T = {
-
-    val uniqueAbsId = absUID.getOrElse(System.identityHashCode(abs).toString)
 
     val lsTypeMap:Map[String,TypeSet] = abs.modelVars.keySet.map(lsVar => abs.modelVars.get(lsVar) match {
       case Some(pv:PureVar) => lsVar -> typeMap.getOrElse(pv, TopTypeSet)
@@ -537,6 +539,7 @@ trait StateSolver[T, C <: SolverCtx] {
 
       val tracefun = mkTraceFn(stateUniqueID)
       val len = mkIntVar(s"len_$stateUniqueID") // there exists a finite size of the trace for this state
+      mkAssert(mkLt(mkIntVal(-1), len))
       val trace = state.traceAbstraction.foldLeft(mkBoolVal(!negate)) {
         case (acc, v) => {
           val encodedTrace = encodeTraceAbs(v, messageTranslator, traceFn = tracefun,pvMap = pvMap,
@@ -807,9 +810,7 @@ trait StateSolver[T, C <: SolverCtx] {
 //      return false
 //    }
 
-    //canSubsumeSlow(s1, s2, maxLen)
-    val out = canSubsumeZ3(s1,s2, maxLen)
-    out
+    canSubsumeZ3(s1,s2, maxLen)
   }
 
   def allTypes(state:State)(implicit zctx:C):Set[Int] = {
@@ -1094,8 +1095,8 @@ trait StateSolver[T, C <: SolverCtx] {
 
     //TODO: Does this encode distinct constraint on dom of memory abstraction?
     val phi = s2.traceAbstraction.foldLeft(pureFormulaEnc._2) {
-      case (acc, v) => mkAnd(acc, encodeTraceAbs(v, messageTranslator,
-        traceFn = traceFun, len, absUID = Some("0"),???, ???, ???)) //TODO: add in if used again
+      case (acc, v) => mkAnd(acc, encodeTraceAbs(abs = v, messageTranslator = messageTranslator,
+        traceFn = traceFun, traceLen = len, absUID = Some("0"),pvMap = ???, typeMap = ???, typeToSolverConst = ???)) //TODO: add in if used again
     }
     val negPhi = s1.traceAbstraction.foldLeft(pureFormulaEnc._1) {
       case (acc, v) => mkOr(acc, encodeTraceAbs(v, messageTranslator,

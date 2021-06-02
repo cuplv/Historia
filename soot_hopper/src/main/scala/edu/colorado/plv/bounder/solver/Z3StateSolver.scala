@@ -18,7 +18,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
   private def makeSolver():Solver = {
     val solver = ctx.get().mkSolver
     val params = ctx.get().mkParams()
-    //    params.add("timeout", 120000)
+        params.add("timeout", 120000)
     //    params.add("timeout", 30000)
     solver.setParameters(params)
     solver

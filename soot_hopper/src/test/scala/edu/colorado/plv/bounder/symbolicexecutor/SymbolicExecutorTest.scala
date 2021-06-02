@@ -1322,9 +1322,9 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
           val result = symbolicExecutor.run(query, dbMode)
           val fname = s"IrrelevantUnsub_$fileSuffix"
-//          prettyPrinting.dumpDebugInfo(result.flatMap(a => a.terminals), fname)
-          //        prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
-         assert(result.nonEmpty)
+          prettyPrinting.dumpDebugInfo(result.flatMap(a => a.terminals), fname)
+          // prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
+          assert(result.nonEmpty)
           val interpretedResult = BounderUtil.interpretResult(result.flatMap(a => a.terminals), QueryFinished)
           assert(interpretedResult == expectedResult)
           assert(BounderUtil.characterizeMaxPath(result.flatMap(a => a.terminals)) == MultiCallback)
@@ -1412,10 +1412,13 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
       val test: String => Unit = apk => {
         assert(apk != null)
+        //Note: subscribeIsUnique rule ommitted from this test to check state relevant to callback
+        // TODO: relevance could probably be refined so this isn't necessary
         val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
           FragmentGetActivityNullSpec.getActivityNonNull,
           LifecycleSpec.Fragment_activityCreatedOnlyFirst,
-        ) ++ RxJavaSpec.spec
+          RxJavaSpec.call
+        ) //++ RxJavaSpec.spec
         val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
           new SpecSpace(specs), cha)
@@ -1431,7 +1434,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           ".*getActivity.*")
 
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
-        val fname = s"Motiv_$fileSuffix"
+//        val fname = s"Motiv_$fileSuffix"
 //        prettyPrinting.dumpDebugInfo(result, fname)
 //        prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
         assert(result.nonEmpty)
