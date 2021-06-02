@@ -98,44 +98,54 @@ object RxJavaSpec{
     SpecSignatures.RxJava_unsubscribe_exit)
   val call:LSSpec = LSSpec(subUnsub, SpecSignatures.RxJava_call_entry)
 //  val subscribeDoesNotReturnNull = LSSpec(LSFalse, SpecSignatures.RxJava_subscribe_exit_null)
-  val subscribeIsUnique:LSSpec = LSSpec(Not(SpecSignatures.RxJava_subscribe_exit.copy(lsVars = "s"::Nil)),
-    SpecSignatures.RxJava_subscribe_exit) //,Set(LSConstraint("s",NotEquals,"@null")  )
+  private val subscribe_s_only = SpecSignatures.RxJava_subscribe_exit.copy(lsVars = "s"::Nil)
+  val subscribeIsUnique:LSSpec = LSSpec(Not(subscribe_s_only),
+    subscribe_s_only) //,Set(LSConstraint("s",NotEquals,"@null")  )
+  val spec = Set(call,subscribeIsUnique)
 }
 
 object LifecycleSpec {
   //TODO:===== destroyed
-  //TODO: view attached
-  val viewAttached = SpecSignatures.Activity_findView_exit //TODO: ... or findView on other view
-  val destroyed = NI(SpecSignatures.Activity_onDestroy_exit, SpecSignatures.Activity_onCreate_entry)
+  val viewAttached: LSPred = SpecSignatures.Activity_findView_exit //TODO: ... or findView on other view
+  val destroyed: LSPred = NI(SpecSignatures.Activity_onDestroy_exit, SpecSignatures.Activity_onCreate_entry)
   val created: LSPred = NI(SpecSignatures.Activity_onCreate_entry, SpecSignatures.Activity_onDestroy_exit)
-  val resumed =
+  val resumed: LSPred =
     NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit)
 //  val initPause = NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_init_exit)
-  val onResume_onlyafter_onPause = LSSpec(NI(SpecSignatures.Activity_onPause_exit,
+  val Activity_onResume_onlyafter_onPause: LSSpec = LSSpec(NI(SpecSignatures.Activity_onPause_exit,
     SpecSignatures.Activity_onResume_entry), SpecSignatures.Activity_onResume_entry)
-  val onPause_onlyafter_onResume_init = LSSpec(And(resumed,SpecSignatures.Activity_init_exit),
+  val Activity_onPause_onlyafter_onResume_init: LSSpec = LSSpec(And(resumed,SpecSignatures.Activity_init_exit),
     SpecSignatures.Activity_onPause_entry)
-  val init_first_callback =
+  val init_first_callback: LSSpec =
     LSSpec(
       And(Not(SpecSignatures.Activity_onCreate_exit),
       And(Not(SpecSignatures.Activity_onResume_exit),
         Not(SpecSignatures.Activity_onPause_exit))
     ),
       SpecSignatures.Activity_init_entry)
-  val Activity_created = NI(SpecSignatures.Activity_onCreate_entry, SpecSignatures.Activity_onDestroy_exit)
-  val Fragment_activityCreatedOnlyFirst = LSSpec(
+  val Activity_created:LSPred = NI(SpecSignatures.Activity_onCreate_entry, SpecSignatures.Activity_onDestroy_exit)
+  val Fragment_activityCreatedOnlyFirst:LSSpec = LSSpec(
     And(
       Not(SpecSignatures.Fragment_onDestroy_exit),
-      Not(SpecSignatures.Fragment_onActivityCreated_entry)
+      And(Not(SpecSignatures.Fragment_onActivityCreated_entry),
+      Not(SpecSignatures.Fragment_onActivityCreated_entry))
     ),
     SpecSignatures.Fragment_onActivityCreated_entry)
-  val spec:Set[LSSpec] = Set(onPause_onlyafter_onResume_init, init_first_callback)
+
+  val Activity_createdOnlyFirst:LSSpec = LSSpec(
+    Not(SpecSignatures.Activity_onCreate_entry), SpecSignatures.Activity_onCreate_entry
+  )
+
+  val spec:Set[LSSpec] = Set(Fragment_activityCreatedOnlyFirst,
+    Activity_createdOnlyFirst,
+    Activity_onPause_onlyafter_onResume_init,
+    init_first_callback)
 }
 
 object ViewSpec {
-  val anyViewCallin = I(CIEnter, SubClassMatcher("android.view.View",".*","View_AnyExceptOther"),List("_", "v") )
+  val anyViewCallin: I = I(CIEnter, SubClassMatcher("android.view.View",".*","View_AnyExceptOther"),List("_", "v") )
   val onClick:SignatureMatcher = SubClassMatcher("android.view.View$OnClickListener", ".*onClick.*", "ViewOnClickListener_onClick")
-  val setOnClickListener:I = I(CIExit,
+  val setOnClickListener:LSPred = I(CIExit,
     SubClassMatcher("android.view.View",".*setOnClickListener.*","View_setOnClickListener"),
     List("_","v","l")
   )
