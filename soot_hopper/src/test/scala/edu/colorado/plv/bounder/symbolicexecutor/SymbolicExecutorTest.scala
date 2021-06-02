@@ -937,16 +937,20 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
       val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
         new SpecSpace(specs),cha)
-      val config = SymbolicExecutorConfig(
-        stepLimit = 200, w, transfer,
-        component = Some(List("com.example.createdestroy.MyActivity.*")))
-      val symbolicExecutor = config.getSymbolicExecutor
-      val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
-        "void lambda$onCreate$1$MyActivity(java.lang.Object)",31)
-      val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
-      prettyPrinting.dumpDebugInfo(result,"ProveFieldDerefWithSubscribe")
-      assert(result.nonEmpty)
-      assert(BounderUtil.interpretResult(result,QueryFinished) == Proven)
+
+      File.usingTemporaryDirectory() { tmpDir =>
+        implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
+        val config = SymbolicExecutorConfig(
+          stepLimit = 200, w, transfer,
+          component = Some(List("com.example.createdestroy.MyActivity.*")))
+        val symbolicExecutor = config.getSymbolicExecutor
+        val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
+          "void lambda$onCreate$1$MyActivity(java.lang.Object)", 31)
+        val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
+        prettyPrinting.dumpDebugInfo(result, "ProveFieldDerefWithSubscribe")
+        assert(result.nonEmpty)
+        assert(BounderUtil.interpretResult(result, QueryFinished) == Proven)
+      }
     }
     makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
   }
@@ -1311,7 +1315,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           val config = SymbolicExecutorConfig(
             stepLimit = 80, w, transfer,
             component = None, outputMode = dbMode)
-          implicit val om = config.outputMode
+//          implicit val om = config.outputMode
           val symbolicExecutor = config.getSymbolicExecutor
           val line = BounderUtil.lineForRegex(".*query1.*".r, src)
           val query = CallinReturnNonNull(

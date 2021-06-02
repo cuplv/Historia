@@ -175,6 +175,7 @@ object BitTypeSet{
   )
 }
 case class BitTypeSet(s:BitSet) extends TypeSet {
+  override def toString: String = s"{${s.take(5).mkString(",")}${if(s.size > 5) " ..." else ""}}"
   def stringRep(ch:ClassHierarchyConstraints):String =
     "{" + s.take(3).map(ch.intToString).mkString(",") + "}"
   override def serialize(): String = "DeserializedTypeSet:"
