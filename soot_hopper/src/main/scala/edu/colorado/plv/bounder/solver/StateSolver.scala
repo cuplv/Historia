@@ -122,9 +122,9 @@ trait StateSolver[T, C <: SolverCtx] {
   protected def createTypeFun()(implicit zctx: C): T
 
   // TODO: swap enum with uninterpreted type
-  protected def mkUT(name: String, types: List[String])(implicit zctx: C): T
+  protected def mkUT(name: String, types: List[String])(implicit zctx: C): Map[String,T]
 
-  protected def getEnumElement(enum: T, i: Int)(implicit zctx: C): T
+//  protected def getEnumElement(enum: (T, Map[String,T]), i: String)(implicit zctx: C): T
 
   // function traceIndex -> msg
   protected def mkTraceFn(uid: String)(implicit zctx: C): T
@@ -138,7 +138,7 @@ trait StateSolver[T, C <: SolverCtx] {
   protected def mkStaticFieldConstraint(clazz:String, fieldName:String, equalTo:T, uid:String)(implicit zctx:C):T
 
   // function msg -> iname
-  protected def mkINameFn(enum: T)(implicit zctx: C): T
+  protected def mkINameFn()(implicit zctx: C): T
 
   // function for argument i -> msg -> addr
   protected def mkArgFun()(implicit zctx: C): T
@@ -609,8 +609,10 @@ trait StateSolver[T, C <: SolverCtx] {
     private val alli = allITraceAbs(states.flatMap(_.traceAbstraction).toSet)
     private val inameToI: Map[String, Set[I]] = alli.groupBy(_.identitySignature)
     private val inamelist = "OTHEROTHEROTHER" :: inameToI.keySet.toList
-    private val iNameIntMap: Map[String, Int] = inamelist.zipWithIndex.toMap
-    private val enum = mkUT("inames", inamelist)
+    private val identitySignaturesToSolver = mkUT("inames", inamelist)
+    val solverToIdentitySignature:List[(T,String)] = identitySignaturesToSolver.map{
+      case (k,v) => (v,k)
+    }.toList
 
     // Locals
     private val allLocal: Set[(String, Int)] = states.flatMap{ state =>
@@ -621,11 +623,11 @@ trait StateSolver[T, C <: SolverCtx] {
     val (localDistinct, localDomain) = mkLocalDomain(allLocal)
     mkAssert(localDistinct)
 
-    def enumFromI(m: I): T = mkIName(enum, iNameIntMap(m.identitySignature))
+    def enumFromI(m: I): T = identitySignaturesToSolver(m.identitySignature) //mkIName(enum, iNameIntMap(m.identitySignature))
 
-    def getEnum: T = enum
+//    def getEnum: T = identitySignaturesToSolver
 
-    def nameFun: T = mkINameFn(enum)
+    def nameFun: T = mkINameFn()
 
     def iForMsg(m: TMessage): Option[I] = {
       val possibleI = alli.filter(ci => ci.contains(ci.mt,m.fwkSig.get))
