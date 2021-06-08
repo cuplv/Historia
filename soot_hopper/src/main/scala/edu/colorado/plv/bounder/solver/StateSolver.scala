@@ -38,7 +38,7 @@ trait StateSolver[T, C <: SolverCtx] {
    * @param cont call solver code in continuation, return result
    * @param zctx solver context and state
    */
-  protected def dumpDbg[T](cont: () => T)(implicit zctx: C):T
+  protected def dumpDbg[V](cont: () => V)(implicit zctx: C):V
 
 
   // quantifiers
@@ -47,7 +47,9 @@ trait StateSolver[T, C <: SolverCtx] {
    *
    * @param cond condition inside the forall statement
    */
+  @deprecated //TODO: remove int for performance/decidability
   protected def mkForallInt(min: T, max: T, cond: T => T)(implicit zctx: C): T
+  protected def mkForallIndex(min: T, max:T, cond:T => T)(implicit zctx:C):T
 
   protected def mkForallAddr(name: String, cond: T => T)(implicit zctx: C): T
 
@@ -57,7 +59,13 @@ trait StateSolver[T, C <: SolverCtx] {
 
   protected def mkExistsAddr(name:Set[String], cond: Map[String,T] => T)(implicit zctx:C):T
 
+  @deprecated
   protected def mkExistsInt(min: T, max: T, cond: T => T)(implicit zctx: C): T
+
+  protected def mkExistsIndex(min: T, max:T, cond:T => T)(implicit zctx:C):T
+  protected def mkLessThanIndex(ind1:T, ind2:T)(implicit zctx:C):T
+  protected def mkAddOneIndex(ind:T)(implicit zctx:C):T
+  protected def mkZeroIndex()(implicit zctx:C):T
 
   // comparison operations
   protected def mkEq(lhs: T, rhs: T)(implicit zctx: C): T
@@ -81,9 +89,7 @@ trait StateSolver[T, C <: SolverCtx] {
 
   protected def mkOr(lhs: T, rhs: T)(implicit zctx: C): T
 
-  protected def mkOr(t: List[T])(implicit zctx: C): T
-
-//  protected def mkExactlyOneOf(l: List[T])(implicit zctx: C): T
+  protected def mkOr(t: Iterable[T])(implicit zctx: C): T
 
   // creation of variables, constants, assertions
   protected def mkIntVal(i: Int)(implicit zctx: C): T
@@ -94,11 +100,8 @@ trait StateSolver[T, C <: SolverCtx] {
 
   protected def mkFreshIntVar(s: String)(implicit zctx: C): T
 
-//  protected def mkObjVar(s: PureVar)(implicit zctx: C): T //Symbolic variable
   protected def mkModelVar(s: String, predUniqueID: String)(implicit zctx: C): T // model vars are scoped to trace abstraction
   protected def mkAssert(t: T)(implicit zctx: C): Unit
-
-  protected def mkFieldFun(n: String)(implicit zctx: C): T
 
   protected def fieldEquals(fieldFun: T, t1: T, t2: T)(implicit zctx: C): T
 
@@ -111,13 +114,15 @@ trait StateSolver[T, C <: SolverCtx] {
 //  protected def mkDynFieldDomain(fields:Set[String])(implicit zctx:C):(T,Map[String,T])
   protected def mkConstConstraintsMap(pvs: Set[PureVal])(implicit zctx: C): (T, Map[PureVal, T])
 
+  protected def mkAllAddrHavePV(pvToZT: Map[PureVar,T])(implicit zctx:C): T
+
   protected def mkTypeConstraintForAddrExpr(typeFun: T, typeToSolverConst: Map[Int, T],
                                             addr: T, tc: Set[Int])(implicit zctx: C): T
 
   protected def createTypeFun()(implicit zctx: C): T
 
   // TODO: swap enum with uninterpreted type
-  protected def mkEnum(name: String, types: List[String])(implicit zctx: C): T
+  protected def mkUT(name: String, types: List[String])(implicit zctx: C): T
 
   protected def getEnumElement(enum: T, i: Int)(implicit zctx: C): T
 
@@ -156,7 +161,10 @@ trait StateSolver[T, C <: SolverCtx] {
   protected def mkNameConstraint(nameFun: T, msg: T)(implicit zctx: C): T
 
   // function argumentindex -> msg -> argvalue
-  protected def mkArgConstraint(argFun: T, argIndex: T, msg: T)(implicit zctx: C): T
+  protected def mkArgConstraint(argFun: T, argIndex: Int, msg: T)(implicit zctx: C): T
+
+  protected def mkAllArgs(argFun:T, msg:T, pred: T=>T)(implicit zctx:C):T
+  protected def mkExistsArg(argFun:T, msg:T, pred: T=>T)(implicit zctx:C):T
 
   protected def mkAddrConst(i: Int)(implicit zctx: C): T
 
@@ -222,7 +230,7 @@ trait StateSolver[T, C <: SolverCtx] {
       case (msgVar, ind) =>
         //        val modelVar = modelVarMap(msgVar)
         val modelExpr = encodeModelVarOrConst(msgVar, modelVarMap)
-        val argAt = mkArgConstraint(mkArgFun(), mkIntVal(ind), msgExpr)
+        val argAt = mkArgConstraint(mkArgFun(), ind, msgExpr)
         val typeConstraint = lsTypeMap.get(msgVar) match{
           case Some(BitTypeSet(s)) =>
             mkTypeConstraintForAddrExpr(createTypeFun(), typeToSolverConst, argAt, s.toSet)
@@ -251,6 +259,22 @@ trait StateSolver[T, C <: SolverCtx] {
       toAST(const, ???)
     case LifeState.LSAnyVal() =>
       throw new IllegalStateException("AnyVal shouldn't reach here")
+  }
+
+  /**
+   * Value is at least one argument of message
+   * @param msg target message
+   * @param v value at one position
+   * @param negated
+   * @param zctx
+   * @return
+   */
+  def mkValContainedInMsg(msg:T, v: T, negated: Boolean)(implicit zctx:C): T = {
+    val argF = mkArgFun()
+    if (negated)
+      mkAllArgs(argF, msg, arg => mkNe(arg,v))
+    else
+      mkExistsArg(argF, msg, arg => mkEq(arg,v))
   }
 
   private def encodePred(combinedPred: LifeState.LSPred, traceFn: T, len: T,
@@ -297,6 +321,12 @@ trait StateSolver[T, C <: SolverCtx] {
         // not NI(m1,m2) def= (not I(m1)) or NI(m2,m1)
         // encode with no negation
         encodePred(Or(Not(m1), NI(m2, m1)), traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap)
+      case Ref(v) if !negate =>
+        val msgAt: T => T = index => mkTraceConstraint(traceFn, index)
+        mkExistsInt(mkIntVal(-1), len, ind => mkValContainedInMsg(msgAt(ind),modelVarMap(v), negated=false))
+      case Ref(v) if negate =>
+        val msgAt: T => T = index => mkTraceConstraint(traceFn, index)
+        mkForallInt(mkIntVal(-1), len, ind => mkValContainedInMsg(msgAt(ind),modelVarMap(v), negated=true))
       case LSFalse =>
         mkBoolVal(negate)
       case LSTrue =>
@@ -313,7 +343,10 @@ trait StateSolver[T, C <: SolverCtx] {
   private def allI(abs: AbstractTrace, includeArrow: Boolean): Set[I] = abs match {
     case AbstractTrace(pred, i2, mapping) =>
       if (includeArrow)
-        SpecSpace.allI(pred) ++ i2
+        (SpecSpace.allI(pred) ++ i2).flatMap{
+          case i:I => Some(i)
+          case _ => None
+        }
       else
         SpecSpace.allI(pred)
   }
@@ -331,6 +364,7 @@ trait StateSolver[T, C <: SolverCtx] {
     case LifeState.LSFalse => Set()
     case I(_,_,lsVars) => lsVars.toSet.filter(_ != "_")
     case NI(i1,i2) => allLSVars(i1).union(allLSVars(Not(i2)))
+    case Ref(v) => if(v != "_") Set(v) else Set()
   }
 
   /**
@@ -374,11 +408,12 @@ trait StateSolver[T, C <: SolverCtx] {
         mkForallInt(mkIntVal(-1), traceLen, i =>
           mkEq(mkTraceConstraint(traceFn, i), mkTraceConstraint(freshTraceFun, i)))
       val (suffixConstraint, endlen) = abs.rightOfArrow.foldLeft((beforeIndEq, traceLen)) {
-        case ((acc, ind), i) =>
+        case ((acc, ind), i:I) =>
           val res = (mkAnd(acc, assertIAt(ind, i, messageTranslator, freshTraceFun, negated = false,
             lsTypeMap,typeToSolverConst, modelVars)),
           mkAdd(ind, mkIntVal(1)))
           res
+        case (acc, _) => acc //TODO: decide if Ref is needed right of arrow ======
       }
       val absEnc = ienc(endlen, abs.a, freshTraceFun, modelVars, negate)
       mkAnd(absEnc, suffixConstraint)
@@ -439,7 +474,8 @@ trait StateSolver[T, C <: SolverCtx] {
     //represent heap function
     val heapFunConst = heap.flatMap{
       case (FieldPtEdge(base,name),tgt:PureVar) =>
-        Some(mkDynFieldConstraint(pvMap(base), name, pvMap(tgt), stateUID))
+        val out = Some(mkDynFieldConstraint(pvMap(base), name, pvMap(tgt), stateUID))
+        out
       case (StaticPtEdge(clazz,name),tgt:PureVar)  =>
         Some(mkStaticFieldConstraint(clazz,name, pvMap(tgt),stateUID))
       case (ArrayPtEdge(_,_),_) => None
@@ -459,10 +495,6 @@ trait StateSolver[T, C <: SolverCtx] {
       case PureConstraint(lhs:PureVal, _, _) => Set(lhs)
       case _ => Set()
     }
-  }
-
-  def freePureVars(state:State):Set[PureVar] = {
-    ???
   }
 
   def mkPvName(pv:PureVar): String = s"pv-${pv.id}"
@@ -499,6 +531,7 @@ trait StateSolver[T, C <: SolverCtx] {
       // typeFun is a function from addresses to concrete types in the program
       val typeFun = createTypeFun()
 
+      // *** Pure constraints ***
       val pureAst = state.pureFormula.foldLeft(mkBoolVal(!negate))((acc, v) =>
         if(negate){
           mkOr(acc, mkNot(toAST(v,constMap,pvMap)))
@@ -509,11 +542,9 @@ trait StateSolver[T, C <: SolverCtx] {
 
       val op:List[T]=>T = if(negate) mkOr else mkAnd
 
+      // *** Type constraints
       val typeConstraints = {
-        //      // Encode type constraints in Z3
         val typeConstraints = state.typeConstraints.map { case (k, v) => k -> v.getValues }
-        //      val typeConstraints = persist.pureVarTypeMap(state)
-
         op(typeConstraints.flatMap {
           case (pv, Some(ts)) =>
             val tc = mkTypeConstraintForAddrExpr(typeFun, typeToSolverConst, toAST(pv,pvMap), ts)
@@ -547,13 +578,24 @@ trait StateSolver[T, C <: SolverCtx] {
           op(List(acc, encodedTrace))
         }
       }
-      val out = op(List(pureAst, localAST, heapAst, trace, typeConstraints))
+      // TODO: possible issue with timeout: cannot ground address space due to concrete heap having function from addr to addr
+      // Possible solution: put upper bound on how many addresses may be needed to find a counter example.
+//      val allHave = mkAllAddrHavePV( pvMap)(zctx)
+      val allHave = mkBoolVal(true)
+      val out = mkAnd(op(List(pureAst, localAST, heapAst, trace, typeConstraints)),
+        allHave) // TODO: ============================ Is this sound?
       maxWitness.foldLeft(out) { (acc, v) => mkAnd(mkLt(len, mkIntVal(v)), acc) }
     }
 
 
-    val pureVarsBack: Map[String,PureVar] = state.pureVars().map(pv => (mkPvName(pv) -> pv)).toMap
-    val pureVars: Set[String] = state.pureVars().map(mkPvName)
+    val statePV = state.pureVars()
+    assert(!statePV.contains(PureVar(-1)), "State should not contain reserved purevar -1")
+    //TODO: ====================== un-hard code extra pv, these correspond to unbound model vars
+//    val statePVWithExtra = (1 until 20).foldLeft(statePV) { case (acc,v) => acc + PureVar(-v)}
+    val statePVWithExtra = statePV
+    val pureVarsBack: Map[String,PureVar] = statePVWithExtra.map(pv => (mkPvName(pv) -> pv)).toMap
+    val pureVars: Set[String] = statePVWithExtra.map(mkPvName)
+
     val back = (v:Map[String,T]) => withPVMap(v.map{ case (k,v) => (pureVarsBack(k) -> v) })
     if(negate) {
       mkForallAddr(pureVars, back)
@@ -568,7 +610,7 @@ trait StateSolver[T, C <: SolverCtx] {
     private val inameToI: Map[String, Set[I]] = alli.groupBy(_.identitySignature)
     private val inamelist = "OTHEROTHEROTHER" :: inameToI.keySet.toList
     private val iNameIntMap: Map[String, Int] = inamelist.zipWithIndex.toMap
-    private val enum = mkEnum("inames", inamelist)
+    private val enum = mkUT("inames", inamelist)
 
     // Locals
     private val allLocal: Set[(String, Int)] = states.flatMap{ state =>
@@ -1149,7 +1191,7 @@ trait StateSolver[T, C <: SolverCtx] {
         val i = messageTranslator.iForMsg(m)
         val argConstraints: List[T] = m.args.zipWithIndex.map {
           case (TAddr(addr), ind) =>
-            val lhs = mkArgConstraint(mkArgFun(), mkIntVal(ind), msgExpr)
+            val lhs = mkArgConstraint(mkArgFun(), ind, msgExpr)
             mkEq(lhs, valToT(addr))
           case (TNullVal, _) => ???
         }

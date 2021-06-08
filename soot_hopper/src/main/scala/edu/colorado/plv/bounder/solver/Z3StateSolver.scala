@@ -6,9 +6,24 @@ import edu.colorado.plv.bounder.lifestate.LifeState.{LSAnyVal, LSVar}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, PureVal, PureVar, State}
 
 import scala.collection.immutable
+import scala.collection.mutable
 
-case class Z3SolverCtx(ctx: Context, solver:Solver) extends SolverCtx
+case class Z3SolverCtx(ctx: Context, solver:Solver) extends SolverCtx {
+  // mapping from arg index to distinct uninterpreted sort used in argument function
+  var args:Array[Expr[UninterpretedSort]] = Array()
+  val initializedFieldFunctions : mutable.HashSet[String] = mutable.HashSet[String]()
+  var indexInitialized:Boolean = false
+  val uninterpretedTypes : mutable.HashSet[String] = mutable.HashSet[String]()
+  def reset(): Unit = {
+    solver.reset()
+    args = Array()
+    initializedFieldFunctions.clear()
+    indexInitialized = false
+    uninterpretedTypes.clear()
+  }
+}
 class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends StateSolver[AST,Z3SolverCtx] {
+  private val MAX_ARGS = 10
 
   val ctx: ThreadLocal[Context] = ThreadLocal.withInitial[Context]{ () =>
     val tCtx = new Context()
@@ -18,8 +33,8 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
   private def makeSolver():Solver = {
     val solver = ctx.get().mkSolver
     val params = ctx.get().mkParams()
-        params.add("timeout", 120000)
-    //    params.add("timeout", 30000)
+//        params.add("timeout", 120000)
+    params.add("timeout", 600000)
     solver.setParameters(params)
     solver
   }
@@ -46,7 +61,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
 
   override def pop()(implicit zctx:Z3SolverCtx): Unit = {
 //    zctx.solver.pop()
-    zctx.solver.reset()
+    zctx.reset()
 //    solver.set(makeSolver())
   }
 
@@ -86,7 +101,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
   override protected def mkOr(lhs: AST, rhs: AST)(implicit zctx:Z3SolverCtx): AST =
     zctx.ctx.mkOr(lhs.asInstanceOf[BoolExpr], rhs.asInstanceOf[BoolExpr])
 
-  override protected def mkOr(t: List[AST])(implicit zctx:Z3SolverCtx): AST = {
+  override protected def mkOr(t: Iterable[AST])(implicit zctx:Z3SolverCtx): AST = {
     if(t.nonEmpty) {
       val tb: Array[BoolExpr] = t.map(_.asInstanceOf[BoolExpr]).toArray
       zctx.ctx.mkOr(tb: _*)
@@ -119,16 +134,12 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
 
   override protected def mkAssert(t: AST)(implicit zctx:Z3SolverCtx): Unit = zctx.solver.add(t.asInstanceOf[BoolExpr])
 
-  override protected def mkFieldFun(n: String)(implicit zctx:Z3SolverCtx): AST = {
-    val fun = zctx.ctx.mkFuncDecl(n, addrSort, addrSort )
-    fun
-  }
   override protected def fieldEquals(f: AST, t1 : AST, t2:AST)(implicit zctx:Z3SolverCtx): AST = {
     assert(f.isInstanceOf[FuncDecl[UninterpretedSort]])
     assert(t1.isInstanceOf[Expr[UninterpretedSort]])
     assert(t2.isInstanceOf[Expr[UninterpretedSort]])
-    zctx.ctx.mkEq(f.asInstanceOf[FuncDecl[UninterpretedSort]]
-      .apply(t1.asInstanceOf[Expr[UninterpretedSort]]), t2.asInstanceOf[Expr[UninterpretedSort]])
+    f.asInstanceOf[FuncDecl[UninterpretedSort]]
+      .apply(t1.asInstanceOf[Expr[UninterpretedSort]],t2.asInstanceOf[Expr[UninterpretedSort]])
   }
 
   override protected def dumpDbg[T](cont: () => T)(implicit zctx: Z3SolverCtx): T = {
@@ -161,9 +172,6 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
       throw new IllegalStateException("Z3 decidability or timeout issue--got Status.UNKNOWN")
   }
 
-//  override protected def mkObjVar(s: PureVar)(implicit zctx:Z3SolverCtx): AST = ???
-//    zctx.ctx.mkConst("object_addr_" + s.id.toString, addrSort)
-
   override def printDbgModel(messageTranslator: MessageTranslator,
                              traceAbstraction: Set[AbstractTrace], lenUID: String)(implicit zctx:Z3SolverCtx): Unit = {
     printAbstSolution(zctx.solver.getModel, messageTranslator, traceAbstraction, lenUID)
@@ -178,7 +186,6 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
       println("=trace solution=")
       val traceLen: Int = model.eval(len, true).toString.toInt
       val traceFun = mkTraceFn(uniqueID).asInstanceOf[FuncDecl[_]]
-      //      val nameFun = mkINameFn(msgName).asInstanceOf[FuncDecl]
       val nameFun = messageTranslator.nameFun.asInstanceOf[FuncDecl[_]]
       val argFun = mkArgFun().asInstanceOf[FuncDecl[_]]
       (0 until traceLen).map ( index => {
@@ -192,7 +199,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
         if(m != "OTHEROTHEROTHER") {
           val iset = messageTranslator.iForZ3Name(m)
           val args = iset.head.lsVars.indices
-            .map(index => model.eval(argFun.apply(zctx.ctx.mkInt(index), msgati), true)).mkString(",")
+            .map(index => model.eval(argFun.apply(zctx.args(index), msgati), true)).mkString(",")
 
           println(s"$m " +
             s"args: $args")
@@ -347,17 +354,44 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
   }
 
   override protected def mkDynFieldFn(uid:String, fieldName:String)(implicit zctx:Z3SolverCtx):FuncDecl[_] = {
-    zctx.ctx.mkFuncDecl(s"dynField_${fieldName}_${uid}", addrSort, addrSort)
+    val addrAddr:Array[Sort] = Array(addrSort,addrSort)
+    val fun = zctx.ctx.mkFuncDecl(s"dynField_${fieldName}_${uid}", addrAddr, zctx.ctx.mkBoolSort)
+    if(!zctx.initializedFieldFunctions.contains(fieldName)){
+      val a1 = zctx.ctx.mkFreshConst("a1", addrSort)
+      val a2 = zctx.ctx.mkFreshConst("a2", addrSort)
+      val a3 = zctx.ctx.mkFreshConst("a3", addrSort)
+
+      val b = zctx.ctx.mkForall(Array(a1,a2,a3),
+        mkImplies(mkAnd(fun.apply(a1,a2), fun.apply(a1,a3)), mkEq(a2,a3)).asInstanceOf[BoolExpr],
+        1, null, null, null, null )
+      mkAssert(b)
+      zctx.initializedFieldFunctions.add(fieldName)
+    }
+    fun
   }
 
   override protected def mkINameFn(enum:AST)(implicit zctx:Z3SolverCtx): AST = {
-    val ctx = zctx.ctx
+    val ctx = zctx.ctx //TODO: ======
     ctx.mkFuncDecl(s"namefn_", ctx.mkUninterpretedSort("Msg"), enum.asInstanceOf[EnumSort[_]])
   }
-
+  private def getArgSort()(implicit zctx:Z3SolverCtx): UninterpretedSort = {
+    zctx.ctx.mkUninterpretedSort("Arguments")
+  }
+  private def mkArgs(n:Int)(implicit zctx:Z3SolverCtx):Array[Expr[UninterpretedSort]] = {
+    val argIds = (0 until n).map(v => zctx.ctx.mkFreshConst(s"arg___${v}", getArgSort())).toArray
+    val argf = zctx.ctx.mkConst("argf__", getArgSort())
+    val constraint: Expr[BoolSort] = mkOr(argIds.map(argId => mkEq(argf, argId) ).toList).asInstanceOf[Expr[BoolSort]]
+    mkAssert(zctx.ctx.mkForall(Array(argf), constraint, 1, null,null,null,null))
+    mkAssert(zctx.ctx.mkDistinct(argIds:_*))
+    argIds
+  }
   override protected def mkArgFun()(implicit zctx:Z3SolverCtx): AST = {
+    if(zctx.args.isEmpty){
+      zctx.args = mkArgs(MAX_ARGS)
+    }
     val ctx = zctx.ctx
-    ctx.mkFuncDecl(s"argfun_", Array(ctx.mkIntSort(), ctx.mkUninterpretedSort("Msg")), addrSort)
+    val argSort:Sort = getArgSort()
+    ctx.mkFuncDecl(s"argfun_", Array(argSort, ctx.mkUninterpretedSort("Msg")), addrSort)
   }
 
 //  override protected def mkIsNull(addr:AST)(implicit zctx:Z3SolverCtx): AST = {
@@ -382,8 +416,9 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
     enum.asInstanceOf[EnumSort[_]].getConst(enumNum)
   }
 
-  override protected def mkEnum(name: String, types: List[String])(implicit zctx:Z3SolverCtx): AST = {
+  override protected def mkUT(name: String, types: List[String])(implicit zctx:Z3SolverCtx): AST = {
     val ctx = zctx.ctx
+//    val sort = ctx.mkUninterpretedSort()
     ctx.mkEnumSort(name, types.toArray:_*)
   }
 
@@ -399,11 +434,35 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
     nameFun.asInstanceOf[FuncDecl[_]].apply(msg.asInstanceOf[Expr[Sort]])
   }
 
-  override protected def mkArgConstraint(argFun: AST, argIndex: AST, msg: AST)(implicit zctx:Z3SolverCtx): AST = {
-    assert(argIndex.isInstanceOf[Expr[ArithSort]])
+  override protected def mkArgConstraint(argFun: AST, argIndex: Int, msg: AST)(implicit zctx:Z3SolverCtx): AST = {
     assert(msg.isInstanceOf[Expr[UninterpretedSort]])
-    argFun.asInstanceOf[FuncDecl[_]].apply(argIndex.asInstanceOf[Expr[ArithSort]],
-      msg.asInstanceOf[Expr[UninterpretedSort]])
+    assert(zctx.args.nonEmpty, "Must call mkArgFun before mkArgConstraint")
+    assert(zctx.args.length > argIndex, s"More than ${MAX_ARGS} arguments not supported. Got arg index ${argIndex}.")
+    val arg = zctx.args(argIndex)
+    mkArgConstraint(argFun, arg, msg.asInstanceOf[Expr[UninterpretedSort]])
+  }
+
+  private def mkArgConstraint(argFun:AST,
+                              arg:Expr[UninterpretedSort],
+                              msg:Expr[UninterpretedSort])(implicit zctx:Z3SolverCtx):AST = {
+    argFun.asInstanceOf[FuncDecl[_]].apply(arg,
+      msg)
+  }
+
+  override protected def mkAllArgs(argFun: AST, msg: AST, pred: AST => AST)(implicit zctx:Z3SolverCtx): AST = {
+    val argFun = mkArgFun()
+    val argConst:Expr[UninterpretedSort] = zctx.ctx.mkFreshConst("argConst", getArgSort())
+    val constraint = pred(mkArgConstraint(argFun, argConst,
+      msg.asInstanceOf[Expr[UninterpretedSort]])).asInstanceOf[BoolExpr]
+    zctx.ctx.mkForall(Array(argConst), constraint, 1,null,null,null,null)
+  }
+
+  override protected def mkExistsArg(argFun: AST, msg: AST, pred: AST => AST)(implicit zctx:Z3SolverCtx): AST = {
+    val argFun = mkArgFun()
+    val argConst = zctx.ctx.mkFreshConst("argConst", getArgSort())
+    val constraint = pred(mkArgConstraint(argFun,
+      argConst, msg.asInstanceOf[Expr[UninterpretedSort]])).asInstanceOf[BoolExpr]
+    zctx.ctx.mkExists(Array(argConst), constraint, 1,null,null,null,null)
   }
 
   override protected def mkAddrConst(i: Int)(implicit zctx:Z3SolverCtx): AST = {
@@ -452,8 +511,9 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
   override protected def mkDynFieldConstraint(base: AST, fieldName: String, equalTo: AST, uid:String)
                                              (implicit zctx: Z3SolverCtx): AST = {
     val fn = mkDynFieldFn(uid, fieldName)
-    val appFun = fn.apply(base.asInstanceOf[Expr[Sort]])
-    mkEq(appFun, equalTo)
+    val appFun = fn.apply(base.asInstanceOf[Expr[Sort]], equalTo.asInstanceOf[Expr[Sort]])
+//    mkEq(appFun, equalTo)
+    appFun
   }
 
   override protected def mkStaticFieldConstraint(clazz:String, fieldName:String, equalTo:AST, uid:String)
@@ -489,5 +549,66 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
     val allConstraints: immutable.Iterable[Expr[UninterpretedSort]] = constMap.map{case (_,c) => c}
     val unique = mkDistinctT(allConstraints)
     (unique, constMap)
+  }
+
+  protected override def mkAllAddrHavePV(pvToZT: Map[PureVar,AST])(implicit zctx:Z3SolverCtx): AST = {
+    val ctx = zctx.ctx
+
+    val pvs: Set[PureVar] = pvToZT.keySet
+
+    val uniqueAddr = ctx.mkConst("uniqueAddr_", addrSort)
+    val equalToOne = pvs.map(pv => ctx.mkEq(pvToZT(pv).asInstanceOf[Expr[UninterpretedSort]], uniqueAddr)).toArray
+
+    // TODO: here we limit the number of addresses to the number of pure variables
+    // Figure out if this is sound ========
+    // Can there ever be a trace, store, and stack that satisfies our separation logic
+    // formula with more addr than pv but not with as many addr as pv?
+    ctx.mkForall(Array(uniqueAddr), ctx.mkOr(equalToOne:_*),
+      1, null,null,null,null)
+  }
+
+  private def mkIndexSort(implicit zctx: Z3SolverCtx):UninterpretedSort = {
+    zctx.ctx.mkUninterpretedSort("Addr")
+  }
+  private def indexLT(implicit zctx: Z3SolverCtx): FuncDecl[BoolSort] = {
+    val indexIndex:Array[Sort] = Array(mkIndexSort, mkIndexSort)
+    val lt = zctx.ctx.mkFuncDecl("indexLT", indexIndex, zctx.ctx.mkBoolSort)
+    if(!zctx.indexInitialized){
+      val i1 = zctx.ctx.mkFreshConst("i1",mkIndexSort)
+      val i2 = zctx.ctx.mkFreshConst("i2",mkIndexSort)
+      val i3 = zctx.ctx.mkFreshConst("i3",mkIndexSort)
+      val trans: BoolExpr = mkImplies(mkAnd(lt.apply(i1,i2), lt.apply(i2,i3)), lt.apply(i1,i3)).asInstanceOf[BoolExpr]
+      val b = zctx.ctx.mkForall(Array(i1,i2,i3), trans, 1, null, null, null, null )
+      mkAssert(b)
+
+      val i4 = zctx.ctx.mkFreshConst("i4",mkIndexSort)
+      val zeroLTE:BoolExpr = mkOr(mkEq(mkZeroIndex(), i4),
+        lt.apply(mkZeroIndex().asInstanceOf[Expr[UninterpretedSort]], i4)).asInstanceOf[BoolExpr]
+      mkAssert(zctx.ctx.mkForall(Array(i4), zeroLTE, 1, null, null, null, null))
+    }
+
+    lt
+  }
+  override protected def mkForallIndex(min: AST, max: AST, cond: AST => AST)(implicit zctx: Z3SolverCtx): AST = ???
+
+  override protected def mkExistsIndex(min: AST, max: AST, cond: AST => AST)(implicit zctx: Z3SolverCtx): AST = ???
+
+  override protected def mkLessThanIndex(ind1: AST, ind2: AST)(implicit zctx: Z3SolverCtx): AST = {
+    val lt = indexLT
+    lt.apply(ind1.asInstanceOf[Expr[UninterpretedSort]],ind2.asInstanceOf[Expr[UninterpretedSort]])
+  }
+
+  override protected def mkAddOneIndex(ind: AST)(implicit zctx: Z3SolverCtx): AST = {
+    val indNext = zctx.ctx.mkFreshConst("indNext", mkIndexSort)
+    mkAssert(mkAnd(
+      ???,
+      ???
+    ))
+    indNext
+  }
+
+
+  override protected def mkZeroIndex()(implicit zctx: Z3SolverCtx): AST = {
+    zctx.ctx.mkConst("ZeroInd", mkIndexSort)
   }
 }

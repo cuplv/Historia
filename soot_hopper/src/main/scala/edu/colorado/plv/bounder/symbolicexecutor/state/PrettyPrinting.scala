@@ -36,12 +36,14 @@ class PrettyPrinting() {
                           (implicit mode : OutputMode = MemoryOutputMode):List[String] = pn match{
     case (p@PathNode(q, _))::t =>
       val branch = if(t.nonEmpty) " -- branch" else ""
-      if (q.getState.isEmpty || p.succ.exists(next => next.qry.getState.get.sf != q.getState.get.sf))
+      lazy val noState = q.getState.isEmpty
+      lazy val isMethodLoc = q.loc.isEntry.isDefined
+      lazy val succSame = p.succ.exists(next => next.qry.getState.get.sf != q.getState.get.sf)
+      // Only print path nodes that are method entry/exit or where the state differs
+      if ( noState || isMethodLoc || succSame)
         witnessToTrace(p.succ, qryString(q) + branch::acc)
-      else //if(acc.headOption.exists(s => s.contains("omitted")))
+      else
         witnessToTrace(p.succ, acc)
-//      else
-//        witnessToTrace(p.succ, "omitted"::acc)
     case Nil => acc.reverse
     case v =>
       println(v)

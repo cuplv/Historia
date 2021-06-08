@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.solver
 import better.files.Resource
 import com.microsoft.z3._
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSFalse, LSTrue, NI, Not, Or, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSFalse, LSTrue, NI, Not, Or, Ref, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import org.scalatest.funsuite.FixtureAnyFunSuite
 
@@ -569,6 +569,37 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     assert(simpl.isDefined)
     val contains2 = stateSolver.traceInAbstraction(state2, Nil)
     assert(contains2)
+  }
+
+  test("refuted: I(a.foo()) && !Ref(a)"){ f =>
+    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    implicit val zctx = stateSolver.getSolverCtx
+
+    // Lifestate atoms for next few tests
+    val foo_a = I(CBEnter, Set(("", "foo")), "a":: "c" :: Nil)
+
+
+    // pure vars for next few tests
+    val p1 = PureVar(State.getId_TESTONLY())
+    val p2 = PureVar(State.getId_TESTONLY())
+
+    val at = AbstractTrace(foo_a, Nil, Map("a"->p1))
+    val notRef = AbstractTrace(Not(Ref("b")), Nil, Map("b" -> p2))
+    val state = State(StateFormula(Nil,Map(),
+      Set(PureConstraint(p1, Equals, p2)),Map(), Set(at, notRef)),0)
+    val res = stateSolver.simplify(state)
+    assert(res.isEmpty)
+
+    val state0 = state.copy(sf =
+      state.sf.copy(pureFormula = Set(PureConstraint(p1, NotEquals, p2))))
+    val res0 = stateSolver.simplify(state0)
+    assert(res0.isDefined)
+
+    val ref = AbstractTrace(Ref("b"), Nil, Map("b" -> p2))
+    val state2 = State(StateFormula(Nil, Map(),
+      Set(PureConstraint(p1, Equals, p2)), Map(), Set(at, ref)), 0)
+    val res2 = stateSolver.simplify(state2)
+    assert(res2.isDefined)
   }
 
   import upickle.default.read

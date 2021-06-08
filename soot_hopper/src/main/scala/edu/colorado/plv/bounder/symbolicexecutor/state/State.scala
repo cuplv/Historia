@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, StateSolver}
 import edu.colorado.plv.bounder.ir.{AppLoc, BitTypeSet, BoolConst, CallbackMethodInvoke, CallbackMethodReturn, ClassConst, ConstVal, EmptyTypeSet, IRWrapper, IntConst, InternalMethodInvoke, InternalMethodReturn, LVal, Loc, LocalWrapper, MessageType, MethodLoc, NullConst, RVal, StringConst, TopTypeSet, TypeSet}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAnyVal, LSPred, NI, Not, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAnyVal, LSPred, LSSingle, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state.State.findIAF
 import upickle.default.{macroRW, ReadWriter => RW}
 
@@ -40,7 +40,7 @@ object State {
 // pureFormula is a conjunction of constraints
 // callStack is the call string from thresher paper
 //sealed trait TraceAbstractionArrow
-case class AbstractTrace(a:LSPred,rightOfArrow:List[I], modelVars: Map[String,PureExpr]){
+case class AbstractTrace(a:LSPred,rightOfArrow:List[LSSingle], modelVars: Map[String,PureExpr]){
   def addModelVar(v: String, pureVar: PureExpr): AbstractTrace = {
     assert(LifeState.LSVar.matches(v))
     assert(!modelVars.contains(v), s"model var $v already in trace abstraction.")
@@ -659,6 +659,8 @@ case object Equals extends CmpOp{
 case object NotEquals extends CmpOp{
   override def toString:String = " != "
 }
+
+@deprecated
 case object Subtype extends CmpOp{
   override def toString:String = "<:"
 }

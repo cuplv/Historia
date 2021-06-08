@@ -2,9 +2,9 @@ package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSFalse, LSPred, LSSpec, LSTrue, LifeStateParser, NI, Not, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSFalse, LSPred, LSSpec, LSTrue, LifeStateParser, NI, Not, Or, Ref}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CmpOp, Equals, NotEquals, NullVal, PureExpr, PureVal, Subtype}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CmpOp, Equals, NotEquals, NullVal, PureExpr, PureVal, PureVar, Subtype}
 
 import scala.util.parsing.combinator._
 import upickle.default.{macroRW, ReadWriter => RW}
@@ -172,6 +172,42 @@ object LifeState {
       macroRW[Or], macroRW[LSTrue.type], macroRW[LSFalse.type])
   }
 
+  /**
+   * Trace references value.
+   * V must be referenced in trace so far for Ref(V) to hold.
+   * Not(Ref(V)) means V cannot appear in past trace
+   * @param v
+   */
+  case class Ref(v: String) extends LSSingle {
+    override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean =
+      false
+
+    override def lsVar: Set[String] = if(v == "_") Set() else Set(v)
+
+    override def identitySignature: String = ???
+
+    override def lsVars: List[String] = lsVar.toList
+  }
+  object Ref{
+    private def oneCont(a1:LSPred, a2:LSPred):Option[Ref] = {
+      val a1_ = containsRefV(a1)
+      lazy val a2_ = containsRefV(a2)
+      if(a1_.isEmpty) a2_ else a1_
+    }
+    def containsRefV(a: LSPred):Option[Ref] = a match{
+      case v@Ref(_) => Some(v)
+      case Not(a) => containsRefV(a)
+      case And(a1,a2) => oneCont(a1,a2)
+      case Or(a1,a2) => oneCont(a1,a2)
+      case LSTrue => None
+      case LSFalse => None
+      case _:NI => None
+      case _:I => None
+    }
+
+    implicit var rw:RW[Ref] = macroRW
+  }
+
   val LSGenerated = "LS_GENERATED_.*".r
 
   case class And(l1 : LSPred, l2 : LSPred) extends LSPred {
@@ -208,7 +244,7 @@ object LifeState {
     def identitySignature:String
   }
   object LSAtom{
-    implicit val rw:RW[LSAtom] = RW.merge(I.rw, NI.rw)
+    implicit val rw:RW[LSAtom] = RW.merge(NI.rw, LSSingle.rw)
   }
 
   sealed trait SignatureMatcher{
@@ -270,7 +306,13 @@ object LifeState {
   // lsVars: element 0 is return value, element 1 is reciever, rest of the elements are arguemnts
   // A string of "_" means "don't care"
   // primitives are parsed as in java "null", "true", "false", numbers etc.
-  case class I(mt: MessageType, signatures: SignatureMatcher, lsVars : List[String]) extends LSAtom {
+  sealed trait LSSingle extends LSAtom {
+    def lsVars: List[String] //==========
+  }
+  object LSSingle{
+    implicit val rw:RW[LSSingle] = RW.merge(I.rw, Ref.rw)
+  }
+  case class I(mt: MessageType, signatures: SignatureMatcher, lsVars : List[String]) extends LSSingle {
     def constVals(constraints: Set[LSConstraint]):List[Option[(CmpOp, PureExpr)]] = lsVars.map{
       case LifeState.LSConst(v) => Some((Equals, v))
       case LifeState.LSVar(v) =>
@@ -321,21 +363,22 @@ object LifeState {
   object NI{
     implicit val rw:RW[NI] = macroRW
   }
-  sealed trait LSMacroAndSpec
-  case class LSSpec(pred:LSPred, target: I, rhsConstraints: Set[LSConstraint] = Set()) extends LSMacroAndSpec
+//  sealed trait LSMacroAndSpec
+  case class LSSpec(pred:LSPred, target: I, rhsConstraints: Set[LSConstraint] = Set()) //extends LSMacroAndSpec
 
-  case class MacroID(name:String) extends LSAtom {
-    // Parser should substitute all of these
-    override def identitySignature: String =
-      throw new IllegalStateException()
-
-    override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean =
-      throw new IllegalStateException()
-
-    override def lsVar: Set[String] =
-      throw new IllegalStateException()
-  }
-  case class LSMacro(name:MacroID, pred:LSPred) extends LSMacroAndSpec
+  //TODO: probably remove this
+//  case class MacroID(name:String) extends LSAtom {
+//    // Parser should substitute all of these
+//    override def identitySignature: String =
+//      throw new IllegalStateException()
+//
+//    override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean =
+//      throw new IllegalStateException()
+//
+//    override def lsVar: Set[String] =
+//      throw new IllegalStateException()
+//  }
+//  case class LSMacro(name:MacroID, pred:LSPred) extends LSMacroAndSpec
 
   // Class that holds a graph of possible predicates and alias relations between the predicates.
   // Generated from a fast pre analysis of the applications.
@@ -379,6 +422,7 @@ object SpecSpace{
     case Not(p) => allI(p)
     case LSTrue => Set()
     case LSFalse => Set()
+    case Ref(_) => Set()
   }
   def allI(spec:LSSpec, includeRhs:Boolean = true):Set[I] = spec match{
     case LSSpec(pred, target,_) if includeRhs => allI(pred).union(allI(target))
@@ -427,10 +471,7 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
       } else
         false
     }
-//    .map{ i =>
-//      i.copy(lsVars = i.lsVars.map(a => if(a != "_") nextFreshLSVar() else "_"))
-//    }
-//    out.headOption //TODO: probably should merge here
+
     // Compute intersection of defined variables
     val parList = out.foldLeft(List():List[String]){
       case (acc,I(_,_,vars)) =>
@@ -439,6 +480,9 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
     val parListFresh = parList.map(a => if(a!="_") nextFreshLSVar() else "_")
 
     out.headOption.map(v => v.copy(lsVars = parListFresh)) //TODO: copy I with intersection of defined vars
+  }
+  def getRefWithFreshVars(): Ref ={
+    Ref(nextFreshLSVar())
   }
 
   /**

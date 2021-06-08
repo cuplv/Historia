@@ -700,31 +700,51 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       // x = new T
       state.get(lhs) match {
         case Some(v: PureVar) =>
-          if (heapCellReferencesVAndIsNonNull(v, state) || localReferencesV(v,state.clearLVal(lhs))) {
-            // If x->v^ and some heap cell references v^, the state is not possible
-            // new command does not call constructor, it just creates an instance with all null vals
-            // <init>(...) is the constructor and is called in the instruction after the new instruction
-            // TODO: if trace abstraction needs to see this value in the past, refute
-            // TODO: test case for above
-            Set()
-          } else {
-            // x is assigned here so remove it from the pre-state
-            val sWithoutLVal = state.clearLVal(lhs)
-            val sWithoutNullHeapCells = sWithoutLVal.copy(sf = sWithoutLVal.sf.copy(heapConstraints =
-              sWithoutLVal.heapConstraints.filter{
-                case (FieldPtEdge(base, _),_) if base == v =>
-                  // Previously, we checked for non-null heap cells that contain the value v
-                  // and would have refuted before now
-                  false
-                case _ => true
-              }
-            ))
-            // If x = new T and x->v^ then v^<:T
-            // v^ != null since new instruction never returns null
-            val nnAndType = sWithoutNullHeapCells.addPureConstraint(PureConstraint(v, NotEquals, NullVal)
+          //TODO: This is still a hack since heap cell not equal to future alloc but trace encoded ====
+          // This hack may result in a precision issue since cells may be equal later that wouldn't otherwise be equal
+          val o1:Set[State] =
+            if (heapCellReferencesVAndIsNonNull(v, state) || localReferencesV(v,state.clearLVal(lhs))) {
+              // If x->v^ and some heap cell references v^, the state is not possible
+              // new command does not call constructor, it just creates an instance with all null vals
+              // <init>(...) is the constructor and is called in the instruction after the new instruction
+              // TODO: if trace abstraction needs to see this value in the past, refute
+              // TODO: test case for above
+              Set()
+            } else {
+              // x is assigned here so remove it from the pre-state
+              val sWithoutLVal = state.clearLVal(lhs)
+              val sWithoutNullHeapCells = sWithoutLVal.copy(sf = sWithoutLVal.sf.copy(heapConstraints =
+                sWithoutLVal.heapConstraints.filter{
+                  case (FieldPtEdge(base, _),_) if base == v =>
+                    // Previously, we checked for non-null heap cells that contain the value v
+                    // and would have refuted before now
+                    false
+                  case _ => true
+                }
+              ))
+              // If x = new T and x->v^ then v^<:T
+              // v^ != null since new instruction never returns null
+              val nnAndType = sWithoutNullHeapCells.addPureConstraint(PureConstraint(v, NotEquals, NullVal)
               ).constrainIsType(v, className, ch)
-            Set(encodeExistingNotEqualTo(v,nnAndType))
+              Set(encodeExistingNotEqualTo(v,nnAndType))
+            }
+          o1.map { s2 =>
+            val notRefV = AbstractTrace(Not(Ref("x")), Nil, Map("x" -> v))
+            val traceAbs = s2.sf.traceAbstraction.map {
+              case at@AbstractTrace(a, rightOfArrow, bind) =>
+                val containedRef = Ref.containsRefV(a)
+                if (containedRef.isEmpty) {
+                  at
+                } else {
+                  val freshRef = specSpace.getRefWithFreshVars()
+                  //TODO: do we actually need |> on Ref from new?
+                  AbstractTrace(a, freshRef :: rightOfArrow, bind + (freshRef.v -> v))
+                }
+            }
+
+            s2.copy(sf = s2.sf.copy(traceAbstraction = traceAbs + notRefV))
           }
+
         case Some(_: PureVal) => Set() // new cannot return anything but a pointer
         case None => Set(state) // Do nothing if variable x is not in state
       }
