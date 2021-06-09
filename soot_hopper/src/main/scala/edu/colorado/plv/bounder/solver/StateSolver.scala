@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder.solver
 
-import com.microsoft.z3.AST
+import com.microsoft.z3.{AST, BoolExpr}
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{BitTypeSet, TAddr, TMessage, TNullVal, TopTypeSet, TypeSet}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
@@ -79,6 +79,7 @@ trait StateSolver[T, C <: SolverCtx] {
 
   protected def mkNot(o: T)(implicit zctx: C): T
 
+  @deprecated
   protected def mkAdd(lhs: T, rhs: T)(implicit zctx: C): T
 
   protected def mkSub(lhs: T, rhs: T)(implicit zctx: C): T
@@ -96,7 +97,10 @@ trait StateSolver[T, C <: SolverCtx] {
 
   protected def mkBoolVal(b: Boolean)(implicit zctx: C): T
 
+  @deprecated
   protected def mkIntVar(s: String)(implicit zctx: C): T
+
+  protected def mkLenVar(s:String)(implicit zctx:C):T
 
   protected def mkFreshIntVar(s: String)(implicit zctx: C): T
 
@@ -300,7 +304,7 @@ trait StateSolver[T, C <: SolverCtx] {
       case Not(l) =>
         encodePred(l, traceFn, len, messageTranslator, modelVarMap,typeToSolverConst,typeMap, !negate)
       case m:I if !negate =>
-        mkExistsInt(mkIntVal(-1), len,
+        mkExistsIndex(mkZeroIndex, len,
           i => assertIAt(i, m, messageTranslator, traceFn, negated = false, typeMap,typeToSolverConst, modelVarMap))
       //case NotI(m) if negate =>
       //  encodePred(m, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap, !negate)
@@ -308,25 +312,36 @@ trait StateSolver[T, C <: SolverCtx] {
       //  mkForallInt(mkIntVal(-1), len,
       //    i => assertIAt(i,m,messageTranslator, traceFn, negated = true, typeMap, typeToSolverConst, modelVarMap))
       case m: I if negate =>
-        mkForallInt(mkIntVal(-1), len, i => assertIAt(i, m, messageTranslator, traceFn, negated = true,typeMap,
+        mkForallIndex(mkZeroIndex(), len, i => assertIAt(i, m, messageTranslator, traceFn, negated = true,typeMap,
           typeToSolverConst, modelVarMap))
       case NI(m1, m2) if !negate =>
         // exists i such that omega[i] = m1 and forall j > i omega[j] != m2
-        mkExistsInt(mkIntVal(-1), len, i => mkAnd(List(
-          assertIAt(i, m1, messageTranslator, traceFn, negated = false, typeMap, typeToSolverConst, modelVarMap),
-          mkForallInt(i, len, j => assertIAt(j, m2, messageTranslator, traceFn, negated = true, typeMap,
-            typeToSolverConst, modelVarMap))
-        )))
+        implicit val zzctx = zctx.asInstanceOf[Z3SolverCtx]
+        val ctx = zzctx.ctx
+        mkExistsIndex(mkZeroIndex, len, i => {
+          val j = ctx.mkFreshConst("j", this.asInstanceOf[Z3StateSolver].indexSort) //TODO: either merge z3statesolver and statesolver or move z3 junk into z3statesolver
+          mkAnd(List(
+            assertIAt(i, m1, messageTranslator, traceFn, negated = false, typeMap, typeToSolverConst, modelVarMap),
+            ctx.mkForall(Array(j), mkImplies(
+              mkAnd(mkLessThanIndex(i,j.asInstanceOf[T]), mkLessThanIndex(j.asInstanceOf[T], len))
+              , //TODO:=========== does this actually work?
+              assertIAt(j.asInstanceOf[T], m2, messageTranslator, traceFn, negated = true, typeMap,typeToSolverConst, modelVarMap)
+              )
+              .asInstanceOf[BoolExpr],
+            1,null,null,null,null).asInstanceOf[T]
+            //          mkForallIndex(mkAddOneIndex(i), len, j => assertIAt(j, m2, messageTranslator, traceFn, negated = true, typeMap,typeToSolverConst, modelVarMap))
+          ))
+        })
       case NI(m1, m2) if negate =>
         // not NI(m1,m2) def= (not I(m1)) or NI(m2,m1)
         // encode with no negation
         encodePred(Or(Not(m1), NI(m2, m1)), traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap)
       case Ref(v) if !negate =>
         val msgAt: T => T = index => mkTraceConstraint(traceFn, index)
-        mkExistsInt(mkIntVal(-1), len, ind => mkValContainedInMsg(msgAt(ind),modelVarMap(v), negated=false))
+        mkExistsIndex(mkZeroIndex, len, ind => mkValContainedInMsg(msgAt(ind),modelVarMap(v), negated=false))
       case Ref(v) if negate =>
         val msgAt: T => T = index => mkTraceConstraint(traceFn, index)
-        mkForallInt(mkIntVal(-1), len, ind => mkValContainedInMsg(msgAt(ind),modelVarMap(v), negated=true))
+        mkForallIndex(mkZeroIndex, len, ind => mkValContainedInMsg(msgAt(ind),modelVarMap(v), negated=true))
       case LSFalse =>
         mkBoolVal(negate)
       case LSTrue =>
@@ -405,13 +420,14 @@ trait StateSolver[T, C <: SolverCtx] {
       val modelVars = abs.modelVars.map{case (k,v) => (k -> pvMap(v.asInstanceOf[PureVar]))} ++ unboundModelVars
       val freshTraceFun = mkFreshTraceFn("arrowtf")
       val beforeIndEq =
-        mkForallInt(mkIntVal(-1), traceLen, i =>
+        mkForallIndex(mkZeroIndex, traceLen, i =>
           mkEq(mkTraceConstraint(traceFn, i), mkTraceConstraint(freshTraceFun, i)))
       val (suffixConstraint, endlen) = abs.rightOfArrow.foldLeft((beforeIndEq, traceLen)) {
         case ((acc, ind), i:I) =>
           val res = (mkAnd(acc, assertIAt(ind, i, messageTranslator, freshTraceFun, negated = false,
             lsTypeMap,typeToSolverConst, modelVars)),
-          mkAdd(ind, mkIntVal(1)))
+            mkAddOneIndex(ind))
+//          mkAdd(ind, mkIntVal(1)))
           res
         case (acc, _) => acc //TODO: decide if Ref is needed right of arrow ======
       }
@@ -569,8 +585,8 @@ trait StateSolver[T, C <: SolverCtx] {
       // Identity hash code of trace abstraction used when encoding a state so that quantifiers are independent
 
       val tracefun = mkTraceFn(stateUniqueID)
-      val len = mkIntVar(s"len_$stateUniqueID") // there exists a finite size of the trace for this state
-      mkAssert(mkLt(mkIntVal(-1), len))
+      val len = mkLenVar(s"len_$stateUniqueID") // there exists a finite size of the trace for this state
+//      mkAssert(mkLt(mkIntVal(-1), len))
       val trace = state.traceAbstraction.foldLeft(mkBoolVal(!negate)) {
         case (acc, v) => {
           val encodedTrace = encodeTraceAbs(v, messageTranslator, traceFn = tracefun,pvMap = pvMap,
@@ -581,17 +597,12 @@ trait StateSolver[T, C <: SolverCtx] {
       // TODO: possible issue with timeout: cannot ground address space due to concrete heap having function from addr to addr
       // Possible solution: put upper bound on how many addresses may be needed to find a counter example.
 //      val allHave = mkAllAddrHavePV( pvMap)(zctx)
-      val allHave = mkBoolVal(true)
-      val out = mkAnd(op(List(pureAst, localAST, heapAst, trace, typeConstraints)),
-        allHave) // TODO: ============================ Is this sound?
-      maxWitness.foldLeft(out) { (acc, v) => mkAnd(mkLt(len, mkIntVal(v)), acc) }
+      val out = op(List(pureAst, localAST, heapAst, trace, typeConstraints))
+      maxWitness.foldLeft(out) { (acc, v) => mkAnd(mkLessThanIndex(len, mkIndex(v)), acc) }
     }
 
 
     val statePV = state.pureVars()
-    assert(!statePV.contains(PureVar(-1)), "State should not contain reserved purevar -1")
-    //TODO: ====================== un-hard code extra pv, these correspond to unbound model vars
-//    val statePVWithExtra = (1 until 20).foldLeft(statePV) { case (acc,v) => acc + PureVar(-v)}
     val statePVWithExtra = statePV
     val pureVarsBack: Map[String,PureVar] = statePVWithExtra.map(pv => (mkPvName(pv) -> pv)).toMap
     val pureVars: Set[String] = statePVWithExtra.map(mkPvName)
@@ -1134,7 +1145,7 @@ trait StateSolver[T, C <: SolverCtx] {
     }
 
     val messageTranslator = MessageTranslator(List(s1, s2))
-    val len = mkIntVar(s"len_")
+    val len = mkLenVar(s"len_")
     val traceFun = mkTraceFn("0")
 
     //TODO: Does this encode distinct constraint on dom of memory abstraction?
@@ -1231,6 +1242,9 @@ trait StateSolver[T, C <: SolverCtx] {
     sat
   }
 
+  private def mkIndex(num:Int)(implicit zctx: C):T = {
+    (0 until num).foldLeft(mkZeroIndex){case (acc,_) => mkAddOneIndex(acc)}
+  }
   private def encodeTraceContained(state: State, trace: List[TMessage],
                                    messageTranslator: MessageTranslator)(implicit zctx: C):Unit = {
     val traceFn = mkTraceFn("")
@@ -1242,8 +1256,10 @@ trait StateSolver[T, C <: SolverCtx] {
     val (uniqueConst, constMap) = mkConstConstraintsMap(getPureValSet(state.pureFormula))
     mkAssert(uniqueConst)
 
-    val len = mkIntVar(s"len_") //TODO: toAST state ?
-    mkAssert(mkEq(len, mkIntVal(trace.length)))
+    val len = mkLenVar(s"len_") //TODO: toAST state ?
+//    val traceLimit = trace.indices.foldLeft(mkZeroIndex){case (acc,_) => mkAddOneIndex(acc)}
+    val traceLimit = mkIndex(trace.size)
+    mkAssert(mkEq(len, traceLimit))
     val distinctAddr: Map[Int, T] = (0 until 10).map(v => (v, mkAddrConst(v))).toMap
     val assertDistinct = mkDistinctT(distinctAddr.keySet.map(distinctAddr(_)))
     mkAssert(assertDistinct)
