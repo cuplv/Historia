@@ -34,7 +34,8 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
     val solver = ctx.get().mkSolver
     val params = ctx.get().mkParams()
 //        params.add("timeout", 120000)
-    params.add("timeout", 600000)
+//    params.add("timeout", 600000)
+    params.add("timeout", 1600000)
     solver.setParameters(params)
     solver
   }
@@ -182,17 +183,31 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
   def printAbstSolution(model: Model, messageTranslator: MessageTranslator, traceAbstraction: Set[AbstractTrace],
                         lenUID: String)(implicit zctx:Z3SolverCtx) {
     println(s"===model: $model")
-    traceAbstraction map { abs => {
+    val ctx = zctx.ctx
+    traceAbstraction foreach { abs => {
       val uniqueID = System.identityHashCode(abs) + ""
       val len = mkLenVar(s"len_$lenUID").asInstanceOf[Expr[UninterpretedSort]]
+      val indices = model.getSortUniverse(zctx.ctx.mkUninterpretedSort("Uint"))
+      val lte = indexLTE
+      val sortedInd = indices.sortWith((e1,e2) =>
+        model.eval(ctx.mkAnd(lte.apply(e1,e2), ctx.mkNot(ctx.mkEq(e1,e2))),true).isTrue)
+      println("=indices=")
+      sortedInd.zipWithIndex.foreach(i => println(s"${i._2} = ${i._1}"))
+
+      println("=function decls=")
+      model.getFuncDecls.map(println)
+
       println("=trace solution=")
-      val traceLen: Int = model.eval(len, true).toString.toInt //TODO:=============
-      val traceFun = mkTraceFn(uniqueID).asInstanceOf[FuncDecl[_]]
+      var traceLen = 0
+      while(model.eval(mkEq(sortedInd(traceLen),len).asInstanceOf[BoolExpr], true).isFalse){
+        traceLen = traceLen+1
+      }
+      val traceFun = mkTraceFn(uniqueID).asInstanceOf[FuncDecl[UninterpretedSort]]
       val nameFun = messageTranslator.nameFun.asInstanceOf[FuncDecl[_]]
       val argFun = mkArgFun().asInstanceOf[FuncDecl[_]]
-      (0 until traceLen).map ( index => {
+      def printTraceElement(index:Int, traceFn: FuncDecl[UninterpretedSort]):Unit = {
         println(s"$index: ")
-        val msgati = model.eval(traceFun.apply(zctx.ctx.mkInt(index)), true)
+        val msgati = model.eval(traceFn.apply(sortedInd(index).asInstanceOf[Expr[UninterpretedSort]]), true)
         val mIter = messageTranslator.solverToIdentitySignature.filter{
           case (ast, _) => model.eval(mkEq(nameFun.apply(msgati), ast).asInstanceOf[BoolExpr],true).isTrue
         }
@@ -208,7 +223,17 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
         }else{
           println("Other Msg")
         }
-      })
+      }
+      println("=traceFun=")
+      (0 until traceLen).map ( index => printTraceElement(index, traceFun))
+
+      val arrowtfs = model.getFuncDecls.filter{decl =>
+        decl.getName.toString.contains("tracefn_arrowtf")}
+      arrowtfs.foreach{f =>
+        println(s"=traceFunArrow: ${f.getName}=")
+        sortedInd.indices.foreach{ i => printTraceElement(i,f.asInstanceOf[FuncDecl[UninterpretedSort]])}
+      }
+
     }
     }
   }
@@ -226,7 +251,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
           println(s"Model: ${solver.getModel}")
           printAbstSolution(solver.getModel,messageTranslator,
             state.traceAbstraction,
-            System.identityHashCode(state).toString)
+            "")
         }
         Some(t)
       case Status.UNKNOWN => Some(t)
@@ -581,103 +606,52 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
     zctx.ctx.mkUninterpretedSort("Uint")
   }
 
-  private def indexFuns(implicit zctx: Z3SolverCtx): (FuncDecl[BoolSort], FuncDecl[BoolSort]) = {
+  private def indexLTE(implicit zctx: Z3SolverCtx): FuncDecl[BoolSort] = {
     val ctx = zctx.ctx
     val indexIndex:Array[Sort] = Array(indexSort, indexSort)
-    val lt = ctx.mkFuncDecl("indexLT", indexIndex, zctx.ctx.mkBoolSort)
-//    val succ = ctx.mkFuncDecl("indexSucc", indexIndex, zctx.ctx.mkBoolSort)
+    val lte = ctx.mkFuncDecl("indexLTE", indexIndex, zctx.ctx.mkBoolSort)
     val zero = mkZeroIndex.asInstanceOf[Expr[UninterpretedSort]]
-    val maxV = ctx.mkFreshConst("maxInd", indexSort)
     if(!zctx.indexInitialized){
+      // Total ordering encoding used from: https://dl.acm.org/doi/pdf/10.1145/3140568
+      // Paxos Made EPR: Decidable Reasoning about DistributedProtocols
+      // figure 1
       // ** less than is transitive
-      // forall a,b,c. a<b /\ b<c => a<c
-      val i1 = ctx.mkFreshConst("i1",indexSort)
-      val i2 = ctx.mkFreshConst("i2",indexSort)
-      val i3 = ctx.mkFreshConst("i3",indexSort)
-      val trans: BoolExpr = mkImplies(mkAnd(lt.apply(i1,i2), lt.apply(i2,i3)), lt.apply(i1,i3)).asInstanceOf[BoolExpr]
+      val x = ctx.mkFreshConst("x",indexSort)
+      val y = ctx.mkFreshConst("y",indexSort)
+      val z = ctx.mkFreshConst("z",indexSort)
+      //forall x . x≤x
+      mkAssert(ctx.mkForall(Array(x), lte.apply(x,x), 1,null,null,null,null))
 
-      val b = ctx.mkForall(Array(i1,i2,i3), trans, 1, null, null, null, null )
+      // forall x,y,z. x≤y /\ y≤z => x≤z
+      val trans: BoolExpr = mkImplies(mkAnd(lte.apply(x,y), lte.apply(y,z)), lte.apply(x,z)).asInstanceOf[BoolExpr]
+      val b = ctx.mkForall(Array(x,y,z), trans, 1, null, null, null, null )
       mkAssert(b)
 
-      // forall a,b . a<b => a != b
-      val a1 = zctx.ctx.mkFreshConst("a1",indexSort)
-      val b1 = zctx.ctx.mkFreshConst("b1",indexSort)
-      mkAssert(ctx.mkForall(Array(a1,b1), mkImplies(lt.apply(a1,b1), mkNot(mkEq(a1,b1))).asInstanceOf[BoolExpr],
+      //forall x,y. x≤y /\ y≤x => y = x
+      mkAssert(ctx.mkForall(Array(x,y), ctx.mkImplies(ctx.mkAnd(lte.apply(x,y), lte.apply(y,x)), ctx.mkEq(x,y)),
+        1,null,null,null,null))
+
+      //forall x,y. x≤y \/ y≤x
+      mkAssert(ctx.mkForall(Array(x,y), ctx.mkOr(lte.apply(x,y), lte.apply(y,x)),
         1,null,null,null,null))
 
 
       // ** All indices are greater than or equal to zero
-      val i4 = ctx.mkFreshConst("i4",indexSort)
-      val zeroLTE:BoolExpr = mkOr(mkEq(zero, i4),
-        lt.apply(zero, i4)).asInstanceOf[BoolExpr]
-      mkAssert(ctx.mkForall(Array(i4), zeroLTE, 1, null, null, null, null))
-
-//      // **successor is greater than value
-//      // forall x,y. succ(x,y) => x<y
-//      val x = zctx.ctx.mkFreshConst("x",indexSort)
-//      val y = zctx.ctx.mkFreshConst("y",indexSort)
-//      mkAssert(ctx.mkForall(Array(x,y), mkImplies(
-//        succ.apply(x,y) // x < y
-//        ,
-//        lt.apply(x,y)
-//      ).asInstanceOf[BoolExpr], 1, null, null, null, null))
-//      zctx.indexInitialized = true
-//
-//      // **successor is unique
-//      //forall x,y,z . succ(x,y) => (not succ(x,z)) \/ z = y
-//      val x1 = zctx.ctx.mkFreshConst("x1",indexSort)
-//      val y1 = zctx.ctx.mkFreshConst("y1",indexSort)
-//      val z1 = zctx.ctx.mkFreshConst("z1",indexSort)
-//      mkAssert(ctx.mkForall(Array(x1,y1,z1), mkImplies(
-//        succ.apply(x1,y1) // x < y
-//        ,
-//        mkOr(mkNot(succ.apply(x1,z1)), mkEq(z1,y1)).asInstanceOf[BoolExpr]
-//      ).asInstanceOf[BoolExpr], 1, null, null, null, null))
-//      zctx.indexInitialized = true
-//
-//      // **predecessor is unique
-//      //forall x,y,z . succ(x,y) => (not succ(z,y)) \/ z = x
-//      mkAssert(ctx.mkForall(Array(x1,y1,z1), mkImplies(
-//        succ.apply(x1,y1) // x < y
-//        ,
-//        mkOr(mkNot(succ.apply(z1,y1)), mkEq(z1,x1)).asInstanceOf[BoolExpr]
-//      ).asInstanceOf[BoolExpr], 1, null, null, null, null))
-//      zctx.indexInitialized = true
-//
-//
-//      // ** all values have a successor except max
-//      //forall x . exists y . succ(x,y) \/ (x=max /\ not succ(x,y))
-//      val x3 = zctx.ctx.mkFreshConst("x3", indexSort)
-//      val y3 = zctx.ctx.mkFreshConst("y3", indexSort)
-//      mkAssert(ctx.mkForall(Array(x3),ctx.mkExists(Array(y3), ctx.mkOr(succ.apply(x3,y3),
-//        ctx.mkAnd(ctx.mkEq(x3,maxV), ctx.mkNot(succ.apply(x3,y3)))),
-//        1, null,null,null,null) ,
-//        1, null,null,null,null))
-//
-//      // ** all values have a predecessor except zero
-//      //forall x . exists y . succ(y,x) \/ (x=zero /\ not succ(y,x))
-//      mkAssert(ctx.mkForall(Array(x3),
-//        ctx.mkExists(Array(y3),
-//          ctx.mkOr(
-//            succ.apply(y3,x3),
-//            ctx.mkAnd(
-//              ctx.mkEq(x3, zero),
-//              ctx.mkNot(succ.apply(y3,x3))
-//            )
-//          ),
-//          1, null,null,null,null) ,
-//        1, null,null,null,null))
+      // forall x. zero ≤ x
+      val zeroLTE:BoolExpr = lte.apply(zero, x).asInstanceOf[BoolExpr]
+      mkAssert(ctx.mkForall(Array(x), zeroLTE, 1, null, null, null, null))
+      zctx.indexInitialized = true
     }
 
-    (lt,???)
+    lte
   }
   override protected def mkForallIndex(min: AST, max: AST, cond: AST => AST)(implicit zctx: Z3SolverCtx): AST = {
     val min_ = min.asInstanceOf[Expr[UninterpretedSort]]
     val max_ = max.asInstanceOf[Expr[UninterpretedSort]]
     val ctx = zctx.ctx
-    val (lt,_) = indexFuns
+    val lte = indexLTE
     val j = ctx.mkFreshConst("j", indexSort)
-    val range = mkAnd(mkOr(lt.apply(min_,j), mkEq(min_, j)), lt.apply(j, max_))
+    val range = mkAnd(lte.apply(min_,j), mkAnd(lte.apply(j, max_), mkNot(mkEq(j,max_))))
     ctx.mkForall(Array(j), mkImplies(range, cond(j)).asInstanceOf[BoolExpr],
       1,null,null,null,null)
   }
@@ -686,26 +660,57 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
     val min_ = min.asInstanceOf[Expr[UninterpretedSort]]
     val max_ = max.asInstanceOf[Expr[UninterpretedSort]]
     val ctx = zctx.ctx
-    val (lt,_) = indexFuns
+    val lte = indexLTE
     val j = ctx.mkFreshConst("j", indexSort)
-    val range = mkAnd(mkOr(lt.apply(min_,j), mkEq(min_, j)), lt.apply(j, max_))
-    ctx.mkExists(Array(j), mkImplies(range, cond(j)).asInstanceOf[BoolExpr],
+    val range = mkAnd(lte.apply(min_,j), mkAnd(lte.apply(j, max_), mkNot(mkEq(j,max_))))
+    ctx.mkExists(Array(j), mkAnd(range, cond(j)).asInstanceOf[BoolExpr],
       1,null,null,null,null)
   }
 
-  override protected def mkLessThanIndex(ind1: AST, ind2: AST)(implicit zctx: Z3SolverCtx): AST = {
-    val lt = indexFuns._1
-    lt.apply(ind1.asInstanceOf[Expr[UninterpretedSort]],ind2.asInstanceOf[Expr[UninterpretedSort]])
+  override protected def mkForallIndex(cond: AST => AST)(implicit zctx:Z3SolverCtx):AST = {
+    val ctx = zctx.ctx
+    val j = ctx.mkFreshConst("j", indexSort)
+    ctx.mkForall(Array(j), cond(j).asInstanceOf[BoolExpr],
+      1,null,null,null,null)
   }
 
-  override protected def mkAddOneIndex(ind: AST)(implicit zctx: Z3SolverCtx): AST = {
+  override protected def mkLTEIndex(ind1: AST, ind2: AST)(implicit zctx: Z3SolverCtx): AST = {
+    val lt = indexLTE
+    lt.apply(ind1.asInstanceOf[Expr[UninterpretedSort]],ind2.asInstanceOf[Expr[UninterpretedSort]])
+  }
+  override protected def mkLTIndex(ind1: AST, ind2: AST)(implicit zctx: Z3SolverCtx): AST = {
+    mkAnd(mkLTEIndex(ind1,ind2), mkNot(mkEq(ind1,ind2)))
+  }
+
+  /**
+   * create a fresh variable that is ind+1
+   * @param ind target index
+   * @param zctx solver context
+   * @return (assertion that fresh var is ind+1, fresh var)
+   */
+  override protected def mkAddOneIndex(ind: AST)(implicit zctx: Z3SolverCtx): (AST,AST) = {
+    val ctx = zctx.ctx
+    val lte = indexLTE
     val indNext = zctx.ctx.mkFreshConst("indNext", indexSort)
-    val succ = indexFuns._2
-    mkAssert(succ.apply(ind.asInstanceOf[Expr[UninterpretedSort]],indNext.asInstanceOf[Expr[UninterpretedSort]]))
-    indNext
+    val other = zctx.ctx.mkFreshConst("other", indexSort)
+    val indt = ind.asInstanceOf[Expr[UninterpretedSort]]
+    val assert = mkAnd(List(
+      lte.apply(indt,indNext),
+      ctx.mkNot(ctx.mkEq(ind.asInstanceOf[Expr[UninterpretedSort]],indNext)),
+      ctx.mkForall(Array(other), ctx.mkOr(lte.apply(other,indt), lte.apply(indNext, other)),
+        1,null,null,null,null)
+    ))
+    (assert,indNext)
   }
 
   override protected def mkZeroIndex()(implicit zctx: Z3SolverCtx): AST = {
     zctx.ctx.mkConst("ZeroInd", indexSort)
+  }
+  override protected def mkMaxInd(ind:AST)(implicit zctx: Z3SolverCtx):Unit = {
+    val lte = indexLTE
+    val indt = ind.asInstanceOf[Expr[UninterpretedSort]]
+    val other = zctx.ctx.mkFreshConst("other", indexSort)
+    val ctx = zctx.ctx
+    mkAssert(ctx.mkForall(Array(other), lte.apply(other, indt), 1,null,null,null,null))
   }
 }

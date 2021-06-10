@@ -233,23 +233,21 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val (stateSolver,_) = getStateSolver(f.typeSolving)
 
     // Lifestate atoms for next few tests
-    val i = I(CBEnter, Set(("foo", "bar")), "a" :: Nil)
-    val i2 = I(CBEnter, Set(("foo", "baz")), "a" :: Nil)
-    val i3 = I(CBEnter, Set(("foo", "baz")), "b" :: Nil)
-    val i4 = I(CBEnter, Set(("foo", "bar")), "c" :: Nil)
+    val i = I(CBEnter, Set(("_", "bar")), "a" :: Nil)
+    val i2 = I(CBEnter, Set(("_", "baz")), "a" :: Nil)
+    val i3 = I(CBEnter, Set(("_", "baz")), "b" :: Nil)
     // NI(a.bar(), a.baz())
     val niBarBaz = NI(i,i2)
 
     // pure vars for next few tests
     val p1 = PureVar(State.getId_TESTONLY())
-    val p2 = PureVar(State.getId_TESTONLY())
 
     // NI(a.bar(),a.baz()) |> I(c.baz()) && a == p1 && c == p1 (<=> false)
     val abs1 = AbstractTrace(niBarBaz,i3::Nil, Map("a"->p1, "b"->p1))
 //    AbsAnd(AbsAnd(AbsFormula(niBarBaz), AbsEq("a",p1)), AbsEq("b",p1)),
     val state1 = State(StateFormula(Nil, Map(),Set(),Map(), Set(abs1)),0)
     println(s"state: ${state1}")
-    val res1 = stateSolver.simplify(state1)
+    val res1 = stateSolver.simplify(state1, Some(3))
     assert(!res1.isDefined)
     val res2 = stateSolver.witnessed(state1)
     assert(!res2)
@@ -906,10 +904,10 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     }
     val t1 = AbstractTrace(iFoo_x_y,Nil, Map("y"-> pvy))
     val t2 = AbstractTrace(iFoo_x1_y1, Nil, Map("y1" -> pvy2))
-    val s1 = s(t1).addTypeConstraint(pvy, BitTypeSet(BitSet(1))) //TODO: should adding this type constraint make it subs?
+    val s1 = s(t1).addTypeConstraint(pvy, BitTypeSet(BitSet(1)))
     val s2 = s(t2).addTypeConstraint(pvy3, BitTypeSet(BitSet(1)))
       .addTypeConstraint(pvy2,BitTypeSet(BitSet(2)))
-    val res = stateSolver.canSubsume(s1,s2,Some(3))
+    val res = stateSolver.canSubsume(s1,s2)
     assert(!res)
   }
   test("I(x.foo(y)) && y:T1 cannot subsume I(x.foo(y))|>I(x1.foo(y1)) && I(x2.foo(y2)) && y2:T2"){f =>
@@ -1093,8 +1091,8 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
       traceAbstraction = Set(formula),
       heapConstraints = Map(StaticPtEdge("foo","bar") -> p1)
     ))
-    assert(stateSolver.canSubsume(state2__, state2_, Some(20)))
-    assert(!stateSolver.canSubsume(state2_, state2__, Some(20)))
+    assert(stateSolver.canSubsume(state2__, state2_))
+    assert(!stateSolver.canSubsume(state2_, state2__))
   }
   test("Subsumption of pure formula in states"){ f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
