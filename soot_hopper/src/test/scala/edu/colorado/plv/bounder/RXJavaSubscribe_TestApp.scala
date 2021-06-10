@@ -15,7 +15,6 @@ class RXJavaSubscribe_TestApp extends AnyFunSuite{
     assert(apk != null)
     val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
       FragmentGetActivityNullSpec.getActivityNonNull,
-      LifecycleSpec.init_first_callback,
       RxJavaSpec.call,
       //        RxJavaSpec.subscribeDoesNotReturnNull,
       RxJavaSpec.subscribeIsUnique

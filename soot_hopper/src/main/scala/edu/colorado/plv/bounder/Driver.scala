@@ -109,11 +109,11 @@ object Driver {
     implicit val db = DBOutputMode(dbPath.toString(), truncate = false)
     val liveNodes: Set[IPathNode] = db.getTerminal().map(v=>v)
     val pp = new PrettyPrinting()
-    pp.dumpDebugInfo(liveNodes, "out", Some(outFolder.toString))
+    pp.dumpDebugInfo(liveNodes, "out", outDir = Some(outFolder.toString))
 
     if(findNoPred){
       val noPredNodes: Set[IPathNode] = db.getNoPred().map(v=>v)
-      pp.dumpDebugInfo(noPredNodes, "noPred", Some(outFolder.toString))
+      pp.dumpDebugInfo(noPredNodes, "noPred", outDir = Some(outFolder.toString))
     }
   }
 
