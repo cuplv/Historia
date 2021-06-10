@@ -2,12 +2,11 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import better.files.Resource
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.ir.{NullConst, _}
+import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.lifestate.LifeState._
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.FrameworkExtensions.urlPos
-import edu.colorado.plv.bounder.symbolicexecutor.TransferFunctions.{inVarsForCall, nonNullCallins, relevantAliases, relevantAliases2}
+import edu.colorado.plv.bounder.symbolicexecutor.TransferFunctions.{inVarsForCall, nonNullCallins, relevantAliases2}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import upickle.default._
 import edu.colorado.plv.bounder.symbolicexecutor.state.PrettyPrinting
@@ -107,32 +106,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
    */
   def transfer(postState: State, target: Loc, source: Loc): Set[State] = (source, target) match {
     case (source@AppLoc(m, _, false), cmret@CallinMethodReturn(_, _)) =>
-      // traverse back over the retun of a callin
-//      val (pkg, name) = msgCmdToMsg(cmret)
-//      val inVars: List[Option[RVal]] = inVarsForCall(source,w)
-//      val relAliases = relevantAliases2(postState, CIExit, (pkg,name),inVars)
-//      val frame = CallStackFrame(target, Some(source.copy(isPre = true)), Map())
-//      val (rvals, state0) = getOrDefineRVals(m,relAliases, postState)
-//      val state1 = traceAllPredTransfer(CIExit, (pkg,name),rvals, state0)
-//      val outState = newSpecInstanceTransfer(source.method, CIExit, (pkg, name), inVars, cmret, state1)
-//      val outState1: Set[State] = inVars match{
-//        case Some(revar:LocalWrapper)::_ => outState.map(s3 => s3.clearLVal(revar))
-//        case _ => outState
-//      }
-//      val outState2 = outState1.map(s2 => s2.copy(callStack = frame::s2.callStack, nextCmd = List(target),
-//        alternateCmd = Nil))
-//
-//      val out = outState2.map{ oState =>
-//        //clear assigned var from stack if exists
-//        val statesWithClearedReturn = inVars.head match{
-//          case Some(v:LocalWrapper) => oState.clearLVal(v)
-//          case None => oState
-//          case v => throw new IllegalStateException(s"Malformed IR. Callin result assigned to non-local: $v")
-//        }
-//        statesWithClearedReturn
-//      }
-//      out
-      // TODO: remove CallinMethodReturn and replace with grouped
       val g = GroupedCallinMethodReturn(Set(cmret.fmwClazz), cmret.fmwName)
       transfer(postState,g,source)
     case (source@AppLoc(m, _, false), cmret@GroupedCallinMethodReturn(_, _)) =>
@@ -152,7 +125,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       }
       val postState2 = if(receiverOption.exists{postState.containsLocal}) {
         val localV = postState.get(receiverOption.get).get
-//        postState.copy(pureFormula = postState.pureFormula + PureConstraint(localV, NotEquals, NullVal))
         postState.addPureConstraint(PureConstraint(localV, NotEquals, NullVal))
       } else postState
 
@@ -170,7 +142,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
             // if non-null return callins defines this method, assume that the materialized return value is non null
             outState.map{s =>
               if(s.containsLocal(retVar))
-//                s.copy(pureFormula = s.pureFormula + PureConstraint(s.get(retVar).get, NotEquals, NullVal))
                 s.addPureConstraint(PureConstraint(s.get(retVar).get, NotEquals, NullVal))
               else s
             }
@@ -272,9 +243,50 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val (inVals, state0) = getOrDefineRVals(containingMethod, relAliases,postState)
       val state1 = traceAllPredTransfer(CBEnter, (pkg,name), inVals, state0)
       val b = newSpecInstanceTransfer(containingMethod, CBEnter, (pkg, name), invars, state1)
-      b.map(s => s.copy(sf = s.sf.copy(callStack = if(s.callStack.isEmpty) Nil else s.callStack.tail),
-        nextCmd = List(target),
-        alternateCmd = Nil))
+
+      // pair state with this local before stack pop
+      val thisStatePair: Set[(Option[PureExpr], State)] = b.map{ s =>
+        val localThis: Option[PureExpr] = irWrapper.getThisVar(containingMethod)
+          .flatMap(tv => s.get(tv)(irWrapper))
+        val atThis = s.get(LocalWrapper("@this","_"))
+        (localThis, atThis) match{
+          case (Some(v1), Some(v2)) =>
+            assert(v1 == v2)
+            (Some(v1),s)
+          case (Some(v), None) => (Some(v),s)
+          case (None,Some(v)) => (Some(v),s)
+          case (None,None) => (None,s)
+        }
+      }
+
+      // Pop the call string
+      val statePopped = thisStatePair.map{
+        case (thisV,s) =>
+          val newS = s.copy(sf = s.sf.copy(
+            callStack = if(s.callStack.isEmpty) Nil else s.callStack.tail),
+            nextCmd = List(target),
+            alternateCmd = Nil)
+          (thisV,newS)
+      }
+
+      // If processing the entry of <init> as a callback,
+      //   add constraint that nothing in the trace before now can reference current value
+      //   Filter state if a heap cell references v and does not point to null or if a var points to new value
+      if(fn1.contains("void <init>(")) {
+        statePopped.flatMap {
+          case (Some(thisV:PureVar),s) =>{
+            val ref = specSpace.getRefWithFreshVars()
+            val t = AbstractTrace(Not(ref), Nil, Map(ref.v -> thisV))
+            val heapMemRef = heapCellReferencesVAndIsNonNull(thisV,s) || localReferencesV(thisV,s)
+            if(heapMemRef) None else
+              Some(s.copy(sf = s.sf.copy(traceAbstraction = s.sf.traceAbstraction + t)))
+          }
+          case (None,s) => Some(s)
+          case _ => throw new IllegalStateException("""Non-pure var as "this" local.""")
+        }
+      }else statePopped.map(_._2)
+
+
     case (CallbackMethodInvoke(_, _, _), targetLoc@CallbackMethodReturn(_,_,mloc, _)) =>
       // Case where execution goes to the exit of another callback
       // TODO: nested callbacks not supported yet, assuming we can't go back to callin entry

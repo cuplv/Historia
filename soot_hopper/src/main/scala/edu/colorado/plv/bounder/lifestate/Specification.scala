@@ -116,13 +116,13 @@ object LifecycleSpec {
     SpecSignatures.Activity_onResume_entry), SpecSignatures.Activity_onResume_entry)
   val Activity_onPause_onlyafter_onResume_init: LSSpec = LSSpec(And(resumed,SpecSignatures.Activity_init_exit),
     SpecSignatures.Activity_onPause_entry)
-  val init_first_callback: LSSpec =
-    LSSpec(
-      And(Not(SpecSignatures.Activity_onCreate_exit),
-      And(Not(SpecSignatures.Activity_onResume_exit),
-        Not(SpecSignatures.Activity_onPause_exit))
-    ),
-      SpecSignatures.Activity_init_entry)
+//  val init_first_callback: LSSpec = //Note: removed init first callback since this is now hardcoded
+//    LSSpec(
+//      And(Not(SpecSignatures.Activity_onCreate_exit),
+//      And(Not(SpecSignatures.Activity_onResume_exit),
+//        Not(SpecSignatures.Activity_onPause_exit))
+//    ),
+//      SpecSignatures.Activity_init_entry)
   val Activity_created:LSPred = NI(SpecSignatures.Activity_onCreate_entry, SpecSignatures.Activity_onDestroy_exit)
   val Fragment_activityCreatedOnlyFirst:LSSpec = LSSpec(
     And(
@@ -138,8 +138,8 @@ object LifecycleSpec {
 
   val spec:Set[LSSpec] = Set(Fragment_activityCreatedOnlyFirst,
     Activity_createdOnlyFirst,
-    Activity_onPause_onlyafter_onResume_init,
-    init_first_callback)
+    Activity_onPause_onlyafter_onResume_init)
+//    init_first_callback)
 }
 
 object ViewSpec {

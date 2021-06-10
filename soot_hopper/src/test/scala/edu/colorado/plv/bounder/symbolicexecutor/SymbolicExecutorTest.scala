@@ -55,9 +55,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       "com.example.test_interproc_2.MainActivity",
       "void onPause()",27)
     val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
-//    PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/foo.dot")
-//    PrettyPrinting.printWitnessTraces(result, outFile="/Users/shawnmeier/Desktop/foo.witnesses")
-//    prettyPrinting.dumpDebugInfo(result, "test_interproc_2_derefSafe")
+//    prettyPrinting.dumpDebugInfo(result, "inter-callback")
     assert(BounderUtil.interpretResult(result,QueryFinished) == Proven)
     assert(result.nonEmpty)
   }
@@ -128,7 +126,6 @@ class SymbolicExecutorTest extends AnyFunSuite {
       assert(apk != null)
       val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
         FragmentGetActivityNullSpec.getActivityNonNull,
-        LifecycleSpec.init_first_callback,
       ) ++ RxJavaSpec.spec
       val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
       val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
@@ -230,7 +227,6 @@ class SymbolicExecutorTest extends AnyFunSuite {
     makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
   }
   test("Test irrelevant condition") {
-    //TODO: Still intermittently getting o2 why?
     //TODO: add assertion that "useless" should not materialize and uncomment "doNothing" call
     val src =
       """package com.example.createdestroy;
@@ -285,7 +281,6 @@ class SymbolicExecutorTest extends AnyFunSuite {
       assert(apk != null)
       val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
         FragmentGetActivityNullSpec.getActivityNonNull,
-        LifecycleSpec.init_first_callback,
         LifecycleSpec.Activity_onPause_onlyafter_onResume_init
       )
       val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
@@ -302,7 +297,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 //      prettyPrinting.dotMethod( query.head.loc, symbolicExecutor.controlFlowResolver, "onPauseCond.dot")
 
       val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
-//      prettyPrinting.dumpDebugInfo(result, "irrelevantConditional")
+//      prettyPrinting.dumpDebugInfo(result, "irrelevantConditional", truncate = false)
 //      prettyPrinting.dotWitTree(result, "irrelevantConditional.dot",true)
       assert(result.nonEmpty)
       assert(BounderUtil.interpretResult(result,QueryFinished) == Proven)
@@ -371,7 +366,6 @@ class SymbolicExecutorTest extends AnyFunSuite {
         assert(apk != null)
         val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
           FragmentGetActivityNullSpec.getActivityNonNull,
-          LifecycleSpec.init_first_callback,
         ) ++ RxJavaSpec.spec
         val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
@@ -429,7 +423,6 @@ class SymbolicExecutorTest extends AnyFunSuite {
       assert(apk != null)
       val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
         FragmentGetActivityNullSpec.getActivityNonNull,
-        LifecycleSpec.init_first_callback,
       ) ++ RxJavaSpec.spec
       val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
       val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
@@ -493,7 +486,6 @@ class SymbolicExecutorTest extends AnyFunSuite {
       assert(apk != null)
       val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
         FragmentGetActivityNullSpec.getActivityNonNull,
-        LifecycleSpec.init_first_callback,
       ) ++ RxJavaSpec.spec
       val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
       val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
@@ -629,7 +621,6 @@ class SymbolicExecutorTest extends AnyFunSuite {
         assert(apk != null)
         val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
           FragmentGetActivityNullSpec.getActivityNonNull,
-          LifecycleSpec.init_first_callback,
         ) ++ RxJavaSpec.spec
         val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
@@ -711,7 +702,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
       val test: String => Unit = apk => {
         assert(apk != null)
-        val specs = Set(LifecycleSpec.init_first_callback)
+        val specs:Set[LSSpec] = Set()
         val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
           new SpecSpace(specs), cha)
@@ -725,7 +716,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
 
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
-//        prettyPrinting.dumpDebugInfo(result, "dynamicDispatchTest")
+        prettyPrinting.dumpDebugInfo(result, s"dynamicDispatchTest${expectedResult}")
 //        prettyPrinting.dotWitTree(result, "dynamicDispatchTest", true)
         assert(result.nonEmpty)
         assert(BounderUtil.interpretResult(result,QueryFinished) == expectedResult)
@@ -782,7 +773,6 @@ class SymbolicExecutorTest extends AnyFunSuite {
       assert(apk != null)
       val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
         FragmentGetActivityNullSpec.getActivityNonNull,
-        LifecycleSpec.init_first_callback,
       ) ++ RxJavaSpec.spec
       val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
       val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
@@ -1001,7 +991,6 @@ class SymbolicExecutorTest extends AnyFunSuite {
       assert(apk != null)
       val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
         FragmentGetActivityNullSpec.getActivityNonNull,
-        LifecycleSpec.init_first_callback,
         LifecycleSpec.Fragment_activityCreatedOnlyFirst
       ) ++ RxJavaSpec.spec
       val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
@@ -1599,7 +1588,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
       val test: String => Unit = apk => {
         assert(apk != null)
-        val specs = Set(LifecycleSpec.init_first_callback)
+        val specs:Set[LSSpec] = Set()
         val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
           new SpecSpace(specs), cha)
@@ -1840,7 +1829,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
         dbMode.startMeta()
 //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
-        val specs = new SpecSpace(Set(LifecycleSpec.init_first_callback, ViewSpec.clickWhileActive))
+        val specs = new SpecSpace(Set(ViewSpec.clickWhileActive))
         val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
 
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
@@ -1860,17 +1849,16 @@ class SymbolicExecutorTest extends AnyFunSuite {
         assert(resultClickReachable.nonEmpty)
         assert(BounderUtil.interpretResult(resultClickReachable, QueryFinished) == Witnessed)
 
-        //TODO: uncomment ======
         val nullUnreach = ReceiverNonNull("com.example.createdestroy.MyActivity$1",
           "void onClick(android.view.View)",line, Some(".*toString.*"))
         val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
-        prettyPrinting.dumpDebugInfo(nullUnreachRes, "nullUnreachRes")
+//        prettyPrinting.dumpDebugInfo(nullUnreachRes, "nullUnreachRes")
         assert(nullUnreachRes.nonEmpty)
         assert(BounderUtil.interpretResult(nullUnreachRes, QueryFinished) == Proven)
 
         val line2 = BounderUtil.lineForRegex(".*query2.*".r, src)
         val nullReach = ReceiverNonNull("com.example.createdestroy.MyActivity$1$1",
-          "void onClick(android.view.View)", line2, Some(".*toString.*")) //TODO===========
+          "void onClick(android.view.View)", line2, Some(".*toString.*"))
         val nullReachRes = symbolicExecutor.run(nullReach,dbMode).flatMap(a => a.terminals)
         prettyPrinting.dumpDebugInfo(nullReachRes, "clickNullReach")
         assert(BounderUtil.interpretResult(nullReachRes, QueryFinished) == Witnessed)
@@ -1908,7 +1896,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
                 |        (new Handler()).postDelayed(new Runnable(){
                 |           @Override
                 |           public void run(){
-                |              //MyActivity.this.finish();
+                |              //MyActivity.this.finish(); //TODO: add a toggle to test with/without finish
                 |           }
                 |        }, 3000);
                 |    }
@@ -1925,8 +1913,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
         implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
         dbMode.startMeta()
         //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
-        val specs = new SpecSpace(Set(LifecycleSpec.init_first_callback, LifecycleSpec.Activity_onResume_onlyafter_onPause,
-          ViewSpec.clickWhileActive))
+        val specs = new SpecSpace(Set(
+          ViewSpec.clickWhileActive) ++ LifecycleSpec.spec)
         val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
 
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
@@ -1941,7 +1929,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
         val resultClickReachable = symbolicExecutor.run(clickReachable, dbMode)
           .flatMap(a => a.terminals)
-//        prettyPrinting.dumpDebugInfo(resultClickReachable, "clickFinish")
+        prettyPrinting.dumpDebugInfo(resultClickReachable, "clickFinish")
         assert(resultClickReachable.nonEmpty)
         assert(BounderUtil.interpretResult(resultClickReachable, QueryFinished) == Witnessed)
 
@@ -1949,7 +1937,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         val nullUnreach = ReceiverNonNull("com.example.createdestroy.MyActivity$1",
           "void onClick(android.view.View)",line, Some(".*toString.*"))
         val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
-//        prettyPrinting.dumpDebugInfo(nullUnreachRes, "finishNullUnreachRes")
+        prettyPrinting.dumpDebugInfo(nullUnreachRes, "finishNullUnreachRes")
         assert(nullUnreachRes.nonEmpty)
         assert(BounderUtil.interpretResult(nullUnreachRes, QueryFinished) == Witnessed)
       }
