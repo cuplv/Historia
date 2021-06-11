@@ -80,7 +80,7 @@ object StateSet {
     val heap = heapEdgesFromState(pathNode.qry.getState.get)
     var fastCount:Int = 0
     def iFind(edges: List[String], pathNode:IPathNode, current:StateSet):Option[IPathNode] = {
-      //TODO: add par back in?
+      //TODO: does par cause issues here?
       val currentCanSubs = current.states.find{ subsuming =>
         fastCount = fastCount + 1
         canSubsume(subsuming.qry.getState.get, pathNode.qry.getState.get)
@@ -121,8 +121,21 @@ object SwapLoc {
   def unapply[M,C](pathNode:IPathNode)(implicit w:IRWrapper[M,C]): Option[SubsumableLocation] = pathNode.qry.loc match {
     case _: CallbackMethodInvoke => Some(FrameworkLocation)
     case _: CallbackMethodReturn => None
-    case AppLoc(_,_,false) => None
     case a@AppLoc(_,_,true) if w.isLoopHead(a) => Some(CodeLocation(a, pathNode.ordDepth))
+    case a@AppLoc(_,_,true) => {
+      w.cmdAtLocation(a) match {
+//        case InvokeCmd(method:VirtualInvoke, loc) => Some(CodeLocation(a, pathNode.ordDepth))
+        case InvokeCmd(_, loc) => None
+        case ReturnCmd(returnVar, loc) => None
+        case AssignCmd(target, source, loc) => None
+//        case If(b, trueLoc, loc) => Some(CodeLocation(a, pathNode.ordDepth))
+        case NopCmd(loc) => None
+        case SwitchCmd(key, targets, loc) => None
+        case ThrowCmd(loc) => None
+        case _ => None //TODO: Does any of this crap make a difference in runtime?
+      }
+    }
+    case AppLoc(_,_,false) => None
     case AppLoc(_,_,_) => None
 //    case a@AppLoc(method, line, true) => {
 //      val cmd = w.cmdAtLocation(a)

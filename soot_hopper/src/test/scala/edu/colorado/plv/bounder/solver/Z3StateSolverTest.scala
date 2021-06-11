@@ -885,6 +885,35 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val res2 = stateSolver.canSubsume(s2,s1)
     assert(res2)
   }
+  test("I(x.foo(y)) can subsume I(x1.foo(y1)) && not ref(z)"){ f =>
+    //TODO: implement this test, figure out what it means
+    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val fooM = SubClassMatcher("","foo","foo")
+    //    val iFoo_x_y = I(CBEnter, fooM, "x" :: "y" :: Nil)
+    //    val iFoo_x1_y1 = I(CBEnter, fooM, "x1"::"y1" :: Nil)
+
+    val iFoo_x_y = I(CBEnter, fooM, "x"::"y" :: Nil)
+    val iFoo_x1_y1 = I(CBEnter, fooM, "x1"::"y1" :: Nil)
+
+
+    val pvy = PureVar(1)
+    val pvy2 = PureVar(2)
+    val pvy3 = PureVar(3)
+
+    def s(t:Set[AbstractTrace]):State = {
+      State.topState.copy(sf = State.topState.sf.copy(traceAbstraction = t))
+    }
+    val t1 = AbstractTrace(iFoo_x_y,Nil, Map("y"-> pvy))
+    val t2 = AbstractTrace(iFoo_x1_y1, Nil, Map("y1" -> pvy2))
+    val t3 = AbstractTrace(Not(Ref("Z")), Nil, Map("Z" -> pvy3))
+    val s1 = s(Set(t1))
+    val s2 = s(Set(t2,t3))
+    val res = stateSolver.canSubsume(s1,s2)
+    assert(res)
+
+    val res2 = stateSolver.canSubsume(s2,s1)
+    assert(!res2)
+  }
   test("I(x.foo(y)) && y:T1 cannot subsume I(x1.foo(y1))"){ f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
     val fooM = SubClassMatcher("","foo","foo")

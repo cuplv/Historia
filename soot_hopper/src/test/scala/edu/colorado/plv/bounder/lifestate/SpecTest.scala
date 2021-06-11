@@ -86,7 +86,6 @@ class SpecTest extends AnyFunSuite {
     implicit val ch = w.getClassHierarchyConstraints
 
     assert(findIInFwk(SpecSignatures.Activity_onPause_entry))
-    assert(findIInFwk(SpecSignatures.Activity_init_exit))
     assert(findIInFwk(SpecSignatures.Activity_onResume_exit))
     assert(findIInFwk(SpecSignatures.Activity_onPause_exit))
     assert(findIInFwk(SpecSignatures.Activity_onResume_entry))

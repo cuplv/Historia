@@ -15,7 +15,7 @@ import scala.jdk.CollectionConverters.CollectionHasAsScala
 class CreateDestroySubscribe_TestApp extends AnyFunSuite{
   val apk = getClass.getResource("/CreateDestroySubscribe-debug.apk").getPath
   assert(apk != null)
-  val specSpace = new SpecSpace(Set(LifecycleSpec.Activity_onPause_onlyafter_onResume_init,
+  val specSpace = new SpecSpace(Set(LifecycleSpec.Activity_onPause_onlyafter_onResume,
     RxJavaSpec.subscribeIsUnique,
     //    RxJavaSpec.subscribeDoesNotReturnNull,
     RxJavaSpec.call))

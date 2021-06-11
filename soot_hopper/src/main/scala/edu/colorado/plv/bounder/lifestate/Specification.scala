@@ -34,15 +34,15 @@ object SpecSignatures {
   val Activity_onPause_entry: I = I(CBEnter, Activity_onPause, List("_", "a"))
   val Activity_onPause_exit: I =
     I(CBExit, Activity_onPause, List("_", "a"))
-  val Activity_init: SignatureMatcher =
-    SubClassMatcher(Activity, "void \\<init\\>.*", "Activity_init")
-  val Activity_init_exit: I =
-    I(CBExit,Activity_init, List("_", "a"))
+//  val Activity_init: SignatureMatcher =
+//    SubClassMatcher(Activity, "void \\<init\\>.*", "Activity_init")
+//  val Activity_init_exit: I =
+//    I(CBExit,Activity_init, List("_", "a"))
   val Activity_onDestroy: SignatureMatcher =
     SubClassMatcher(Activity, "void onDestroy\\(\\)", "Activity_onDestroy")
   val Activity_onDestroy_exit: I = I(CBExit, Activity_onDestroy, List("_","a"))
 
-  val Activity_init_entry: I = Activity_init_exit.copy(mt = CBEnter)
+//  val Activity_init_entry: I = Activity_init_exit.copy(mt = CBEnter)
 
   val Activity_findView: SignatureMatcher=
     SubClassMatcher(Activity,".*findViewById.*","Activity_findView")
@@ -111,18 +111,10 @@ object LifecycleSpec {
   val created: LSPred = NI(SpecSignatures.Activity_onCreate_entry, SpecSignatures.Activity_onDestroy_exit)
   val resumed: LSPred =
     NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit)
-//  val initPause = NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_init_exit)
   val Activity_onResume_onlyafter_onPause: LSSpec = LSSpec(NI(SpecSignatures.Activity_onPause_exit,
     SpecSignatures.Activity_onResume_entry), SpecSignatures.Activity_onResume_entry)
-  val Activity_onPause_onlyafter_onResume_init: LSSpec = LSSpec(And(resumed,SpecSignatures.Activity_init_exit),
+  val Activity_onPause_onlyafter_onResume: LSSpec = LSSpec(resumed,
     SpecSignatures.Activity_onPause_entry)
-//  val init_first_callback: LSSpec = //Note: removed init first callback since this is now hardcoded
-//    LSSpec(
-//      And(Not(SpecSignatures.Activity_onCreate_exit),
-//      And(Not(SpecSignatures.Activity_onResume_exit),
-//        Not(SpecSignatures.Activity_onPause_exit))
-//    ),
-//      SpecSignatures.Activity_init_entry)
   val Activity_created:LSPred = NI(SpecSignatures.Activity_onCreate_entry, SpecSignatures.Activity_onDestroy_exit)
   val Fragment_activityCreatedOnlyFirst:LSSpec = LSSpec(
     And(
@@ -138,7 +130,7 @@ object LifecycleSpec {
 
   val spec:Set[LSSpec] = Set(Fragment_activityCreatedOnlyFirst,
     Activity_createdOnlyFirst,
-    Activity_onPause_onlyafter_onResume_init)
+    Activity_onPause_onlyafter_onResume)
 //    init_first_callback)
 }
 
@@ -154,10 +146,6 @@ object ViewSpec {
     LifecycleSpec.destroyed),
     anyViewCallin)
 
-  //TODO: uncomment=================
-//  val clickWhileActive:LSSpec = LSSpec(And(setOnClickListener,And(LifecycleSpec.viewAttached,
-//    LifecycleSpec.created)),
-//    I(CBEnter, onClick, List("_", "l")))
   val clickWhileActive:LSSpec = LSSpec(
     And(And(setOnClickListener, LifecycleSpec.viewAttached), Or(LifecycleSpec.resumed,
       I(CIExit, SpecSignatures.Activity_finish, "_"::"a"::Nil))),
