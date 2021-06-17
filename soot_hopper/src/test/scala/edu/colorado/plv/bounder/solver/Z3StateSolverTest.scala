@@ -6,6 +6,7 @@ import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSFalse, LSTrue, NI, Not, Or, Ref, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import org.scalatest.funsuite.FixtureAnyFunSuite
+import upickle.default.{read, write}
 
 import scala.collection.BitSet
 import scala.language.implicitConversions
@@ -745,6 +746,22 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     assert(stateSolver.canSubsume(fewerPure, morePure))
 
   }
+  test("NI(foo(x),bar(x)) cannot subsume I(foo(x))"){ f =>
+    //TODO: this test shows an encoding of state subsumption that is not provably in the EPR fragment of logic
+    val (stateSolver, _) = getStateSolver(f.typeSolving)
+    val pv = PureVar(1)
+    def s(t:Set[AbstractTrace]):State = {
+      State.topState.copy(sf = State.topState.sf.copy(traceAbstraction = t))
+    }
+    val fooM = SubClassMatcher("","foo","foo")
+    val barM = SubClassMatcher("","bar","bar")
+    val iFoo_x = I(CBEnter, fooM, "x":: Nil)
+    val iBar_x = I(CBEnter, barM, "x"::Nil)
+    val at1 = AbstractTrace(NI(iFoo_x, iBar_x), Nil, Map("x"-> pv))
+    val at2 = AbstractTrace(iFoo_x, Nil, Map("x"-> pv))
+    val res = stateSolver.canSubsume(s(Set(at1)),s(Set(at2)))
+    assert(!res)
+  }
   test("X -> p1 && p1:T1 cannot subsume X -> p1 && p1:T2 && p2:T1"){ f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
     val pvy = PureVar(1)
@@ -908,10 +925,14 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val t3 = AbstractTrace(Not(Ref("Z")), Nil, Map("Z" -> pvy3))
     val s1 = s(Set(t1))
     val s2 = s(Set(t2,t3))
+    val startTime1 = System.currentTimeMillis()
     val res = stateSolver.canSubsume(s1,s2)
+    println(s"s1 can subsume s2 time: ${(System.currentTimeMillis() - startTime1).toFloat/1000}")
     assert(res)
 
+    val startTime2 = System.currentTimeMillis()
     val res2 = stateSolver.canSubsume(s2,s1)
+    println(s"s1 can subsume s2 time: ${(System.currentTimeMillis() - startTime2).toFloat/1000}")
     assert(!res2)
   }
   test("I(x.foo(y)) && y:T1 cannot subsume I(x1.foo(y1))"){ f =>
@@ -1305,6 +1326,26 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
 //    val m = solver.getModel
 
 //    println(s"model: \n${m}")
+  }
+  ignore("some timeout from 'Test prove dereference of return from getActivity'"){ f =>
+    //TODO: fix or see if this is still reachable
+    val (stateSolver,_) = getStateSolver(SolverTypeSolving)
+    val s1 = read[State](Resource.getAsStream("s1_timeoutsubs.json"))
+    val s2 = read[State](Resource.getAsStream("s2_timeoutsubs.json"))
+    // Note: still takes a long time without allocation sites
+    val s1Simpl = s1.copy(sf = s1.sf.copy(typeConstraints = Map()))
+    val s2Simpl = s2.copy(sf = s2.sf.copy(typeConstraints = Map()))
+
+    val tmp = stateSolver.canSubsume(s1Simpl,s2Simpl)
+
+    // Note: seems to finish reasonably quickly without ref
+    val s1NoRef = s1Simpl.copy(sf = s1Simpl.sf.copy(traceAbstraction =
+      s1Simpl.sf.traceAbstraction.filter(abs => Ref.containsRefV(abs.a).isEmpty)))
+    val s2NoRef = s2Simpl.copy(sf = s2Simpl.sf.copy(traceAbstraction =
+      s2Simpl.sf.traceAbstraction.filter(abs => Ref.containsRefV(abs.a).isEmpty)))
+
+    val res = stateSolver.canSubsume(s1NoRef, s2NoRef)
+    println()
   }
   test("sandbox") { f =>
     val ctx = new Context

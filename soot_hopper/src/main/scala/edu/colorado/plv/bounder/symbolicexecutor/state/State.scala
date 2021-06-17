@@ -50,7 +50,7 @@ case class AbstractTrace(a:LSPred,rightOfArrow:List[LSSingle], modelVars: Map[St
   override def toString:String = {
     val generated = modelVars.filter{case (k,_) => LifeState.LSGenerated.matches(k) }
     val notGenerated = modelVars.removedAll(generated.keySet)
-    val replace: String => String = str => generated.foldLeft(str){case (str, (k,v)) => str.replaceAll(k, v.toString)}
+    val replace: String => String = str => generated.foldLeft(str){case (str, (k,v)) => str.replaceAll(s"[ (),]$k[ (),]", v.toString)}
     val lhs = replace(a.toString)
     val rhs = replace(rightOfArrow.mkString(";"))
     s"(${notGenerated} - $lhs |> $rhs)"

@@ -618,14 +618,14 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
   def predTransferTrace(pred:AbstractTrace, mt:MessageType,
                         sig:(String,String),
                         vals: List[Option[PureExpr]]):AbstractTrace = {
-    if (pred.a.contains(mt,sig)) {
+    if (pred.a.contains(mt,sig) || Ref.containsRefV(pred.a).isDefined) {
       specSpace.getIWithFreshVars(mt, sig) match {
         case Some(i@I(_, _, lsVars)) =>
           val modelVarConstraints: Map[String, PureExpr] = (lsVars zip vals).flatMap {
             case (LSVar(lsVar), Some(stateVal)) => Some((lsVar, stateVal))
             case _ => None //TODO: cases where transfer needs const values (e.g. setEnabled(true))
           }.toMap
-          assert(!modelVarConstraints.isEmpty) //TODO: can this ever happen?
+//          assert(!modelVarConstraints.isEmpty) //TODO: can this ever happen? - can happen with Ref(v)
           assert(pred.modelVars.keySet.intersect(modelVarConstraints.keySet).isEmpty,
             "Previous substitutions must be made so that comflicting model " +
               "var constraints aren't added to trace abstraction")
@@ -742,17 +742,19 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
             }
           o1.map { s2 =>
             val notRefV = AbstractTrace(Not(Ref("x")), Nil, Map("x" -> v))
-            val traceAbs = s2.sf.traceAbstraction.map {
-              case at@AbstractTrace(a, rightOfArrow, bind) =>
-                val containedRef = Ref.containsRefV(a)
-                if (containedRef.isEmpty) {
-                  at
-                } else {
-                  val freshRef = specSpace.getRefWithFreshVars()
-                  //TODO: do we actually need |> on Ref from new?
-                  AbstractTrace(a, freshRef :: rightOfArrow, bind + (freshRef.v -> v))
-                }
-            }
+            val traceAbs = s2.sf.traceAbstraction
+            //TODO: Note: following adds refs to |> I don't think that is needed
+//              .map {
+//              case at@AbstractTrace(a, rightOfArrow, bind) =>
+//                val containedRef = Ref.containsRefV(a)
+//                if (containedRef.isEmpty) {
+//                  at
+//                } else {
+//                  val freshRef = specSpace.getRefWithFreshVars()
+//                  //TODO: do we actually need |> on Ref from new?
+//                  AbstractTrace(a, freshRef :: rightOfArrow, bind + (freshRef.v -> v))
+//                }
+//            }
 
             s2.copy(sf = s2.sf.copy(traceAbstraction = traceAbs + notRefV))
           }

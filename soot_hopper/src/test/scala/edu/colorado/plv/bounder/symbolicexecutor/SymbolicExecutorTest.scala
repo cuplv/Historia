@@ -1835,7 +1835,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
           specs, cha)
         val config = SymbolicExecutorConfig(
-          stepLimit = 80, w, transfer,
+          stepLimit = 180, w, transfer,
           component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode,
           subsumptionEnabled = true)
         val symbolicExecutor = config.getSymbolicExecutor
@@ -1870,7 +1870,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
   test("Finish allows click after pause") {
     //Click attached to different activity
-    //TODO:
+    //TODO: ===== Commenting out finish should break this test?
     val src = """package com.example.createdestroy;
                 |import androidx.appcompat.app.AppCompatActivity;
                 |import android.os.Bundle;
@@ -1934,6 +1934,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         assert(BounderUtil.interpretResult(resultClickReachable, QueryFinished) == Witnessed)
 
 
+        //TODO:=============  Why is this witnessed without finish? (probably because onPause spec missing?)
         val nullUnreach = ReceiverNonNull("com.example.createdestroy.MyActivity$1",
           "void onClick(android.view.View)",line, Some(".*toString.*"))
         val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
