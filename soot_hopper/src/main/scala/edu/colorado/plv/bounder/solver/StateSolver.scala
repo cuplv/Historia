@@ -360,14 +360,18 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
 
   private def allI(abs: AbstractTrace, includeArrow: Boolean): Set[I] = abs match {
-    case AbstractTrace(pred, i2, mapping) =>
+    case AbstractTrace(Some(pred), i2, mapping) =>
       if (includeArrow)
         (SpecSpace.allI(pred) ++ i2).flatMap{
           case i:I => Some(i)
           case _ => None
         }
-      else
+      else {
         SpecSpace.allI(pred)
+      }
+    case _ =>
+      ???
+
   }
 
   /**
@@ -384,6 +388,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     case I(_,_,lsVars) => lsVars.toSet.filter(_ != "_")
     case NI(i1,i2) => allLSVars(i1).union(allLSVars(Not(i2)))
     case Ref(v) => if(v != "_") Set(v) else Set()
+  }
+  private def allLSVars(p:Option[LSPred]):Set[String] = p match {
+    case None => Set()
+    case Some(p) => allLSVars(p)
   }
 
   /**
@@ -412,10 +420,12 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       case Some(pv:PureVar) => lsVar -> typeMap.getOrElse(pv, TopTypeSet)
       case _ => lsVar -> TopTypeSet
     }).toMap
-    //TODO: get rid of ienc
-    def ienc(sublen: T, f: LSPred, traceFn: T,
+    def ienc(sublen: T, f: Option[LSPred], traceFn: T,
              modelVars: Map[String, T], negate: Boolean): T = {
-      encodePred(f, traceFn, sublen, messageTranslator, modelVars, typeToSolverConst, lsTypeMap, negate)
+      if(f.isDefined)
+        encodePred(f.get, traceFn, sublen, messageTranslator, modelVars, typeToSolverConst, lsTypeMap, negate)
+      else
+        ??? //TODO:
     }
 
     // encoding is function of model variables to solver boolean expression T
@@ -427,7 +437,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         mkForallIndex(mkZeroIndex, traceLen, i =>
           mkEq(mkTraceConstraint(traceFn, i), mkTraceConstraint(freshTraceFun, i)))
       val (suffixConstraint:T, endlen:T) = abs.a match {
-        case Not(Ref(refV)) =>
+        case Some(Not(Ref(refV))) =>
           abs.rightOfArrow.foldLeft(beforeIndEq, traceLen){
             case ((acc,_),I(_, _, lsVars)) =>
               // ref does not affect arrowtf, just means it can't be in any of the arrow messages
@@ -444,7 +454,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
             case _ =>
               (???,???)
           }
-        case Ref(refV) =>
+        case Some(Ref(refV)) =>
           abs.rightOfArrow.foldLeft(beforeIndEq, traceLen){
             case ((acc,ind),I(_, _, _)) =>
               val (ivIsInc, iv) = mkAddOneIndex(ind)
@@ -810,22 +820,22 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     Some(out)
   }
 
-  private def maxMsg(pred:LSPred):Int = pred match {
-    case And(l1, l2) => maxMsg(l1) + maxMsg(l2)
-    case Not(l) => maxMsg(l)
-    case Or(l1, l2) => Math.max(maxMsg(l1), maxMsg((l2)))
-    case LifeState.LSTrue => 0
-    case LifeState.LSFalse => 0
-    case _: I => 1
-    case _: NI => 1
-    case _:Ref => 1
-  }
-  private def maxMsg(abstractTrace:AbstractTrace):Int = {
-    abstractTrace.rightOfArrow.length + maxMsg(abstractTrace.a)
-  }
-  private def maxMsg(states:Set[State]):Int =
-    states.flatMap{s => s.traceAbstraction.map(maxMsg)}.sum + 1
-  def simplify(state: State, maxWitness: Option[Int] = None): Option[State] = {
+//  private def maxMsg(pred:LSPred):Int = pred match {
+//    case And(l1, l2) => maxMsg(l1) + maxMsg(l2)
+//    case Not(l) => maxMsg(l)
+//    case Or(l1, l2) => Math.max(maxMsg(l1), maxMsg((l2)))
+//    case LifeState.LSTrue => 0
+//    case LifeState.LSFalse => 0
+//    case _: I => 1
+//    case _: NI => 1
+//    case _:Ref => 1
+//  }
+//  private def maxMsg(abstractTrace:AbstractTrace):Int = {
+//    abstractTrace.rightOfArrow.length + maxMsg(abstractTrace.a)
+//  }
+//  private def maxMsg(states:Set[State]):Int =
+//    states.flatMap{s => s.traceAbstraction.map(maxMsg)}.sum + 1
+  def simplify(state: State,specSpace: SpecSpace, maxWitness: Option[Int] = None): Option[State] = {
     implicit val zCtx = getSolverCtx
     if (state.isSimplified) Some(state) else {
       // Drop useless constraints
@@ -896,7 +906,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    * @param s2 contained state
    * @return
    */
-  def canSubsume(s1: State, s2: State, maxLen: Option[Int] = None): Boolean ={
+  def canSubsume(s1: State, s2: State, specSpace: SpecSpace, maxLen: Option[Int] = None): Boolean ={
     // Check if stack sizes or locations are different
     if (s1.callStack.size != s2.callStack.size)
       return false
@@ -934,7 +944,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     if(!s2HasMoreOfEach){
       return false
     }
-    canSubsumeZ3(s1,s2, maxLen)
+    canSubsumeZ3(s1,s2,specSpace, maxLen)
   }
 
   def allTypes(state:State)(implicit zctx:C):Set[Int] = {
@@ -944,7 +954,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     usedTypes
   }
 
-  def canSubsumeZ3(s1:State, s2:State, maxLen:Option[Int]):Boolean = {
+  def canSubsumeZ3(s1:State, s2:State,specSpace:SpecSpace, maxLen:Option[Int]):Boolean = {
     try {
       implicit val zCtx: C = getSolverCtx
       val allTypesS1S2 = allTypes(s1).union(allTypes(s2))

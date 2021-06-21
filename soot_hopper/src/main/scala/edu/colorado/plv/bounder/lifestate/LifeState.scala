@@ -414,6 +414,10 @@ object LifeState {
   }
 }
 object SpecSpace{
+  def allI(pred:Option[LSPred]):Set[I] = pred match {
+    case Some(v) => allI(v)
+    case None => Set()
+  }
   def allI(pred:LSPred):Set[I] = pred match{
     case i@I(_,_,_) => Set(i)
     case NI(i1,i2) => Set(i1,i2)

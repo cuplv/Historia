@@ -255,7 +255,7 @@ case class DisallowedCallin(className:String, methodName:String, s:LSSpec) exten
       val sf = CallStackFrame(retLoc.head, None, Map())
       val state = State.topState.copy(sf = State.topState.sf.copy(callStack = sf :: Nil))
       val allVar = TransferFunctions.inVarsForCall(location,sym.w)
-      val stateWithDisallow = sym.transfer.newSpecInstanceTransfer(location.method,
+      val stateWithDisallow = sym.transfer.newMsgTransfer(location.method,
         CIEnter, getMatchingCallin(cmd).get, allVar, state,Some(s))
       assert(stateWithDisallow.size == 1)
       LiveQry(stateWithDisallow.head, location.copy(isPre = true))

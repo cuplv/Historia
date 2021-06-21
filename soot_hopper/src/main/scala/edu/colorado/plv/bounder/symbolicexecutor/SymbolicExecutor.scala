@@ -212,7 +212,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       val s1 = h.qry.getState.get
       val s2 = pathNode.qry.getState.get
       val subsLocs = subsMap(l2).get(s2.sf.callStack.size)
-      if(stateSolver.canSubsume(s1,s2)){
+      if(stateSolver.canSubsume(s1,s2, transfer.getSpec)){
         Some(h)
       }else {
         isSubsumed_backtrack(pathNode,l,subsMap, h.succ ++ t)
@@ -226,10 +226,10 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       val root = nVisited(loc).getOrElse(pathNode.qry.getState.get.callStack.size, StateSet.init)
       val res = StateSet.findSubsuming(pathNode, root,(s1,s2) =>{
         if(config.subsumptionEnabled) {
-          stateSolver.canSubsume(s1,s2)
+          stateSolver.canSubsume(s1,s2, transfer.getSpec)
         } else if(s1.sf.traceAbstraction.size == s2.sf.traceAbstraction.size &&
           s1.heapConstraints.size == s2.heapConstraints.size) {
-          stateSolver.canSubsume(s1,s2) && stateSolver.canSubsume(s2,s1)
+          stateSolver.canSubsume(s1,s2, transfer.getSpec) && stateSolver.canSubsume(s2,s1, transfer.getSpec)
         } else
           false
       })
@@ -432,7 +432,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       //predecessorLocations.par.flatMap(l => {
       predecessorLocations.flatMap(l => {
         val newStates = transfer.transfer(state,l,loc)
-        newStates.map(state => stateSolver.simplify(state) match {
+        newStates.map(state => stateSolver.simplify(state, transfer.getSpec) match {
           case Some(state) if stateSolver.witnessed(state) =>
             WitnessedQry(state, l)
           case Some(state) => LiveQry(state, l)

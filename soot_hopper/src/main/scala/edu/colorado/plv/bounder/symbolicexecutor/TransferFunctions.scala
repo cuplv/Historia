@@ -90,6 +90,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
   private val resolver = new DefaultAppCodeResolver(w)
   private implicit val ch = classHierarchyConstraints
   private implicit val irWrapper = w
+  def getSpec:SpecSpace = specSpace //TODO: move spec space out of transfer functions
   def defineVarsAs(state: State, comb: List[(Option[RVal], Option[PureExpr])]):State =
     comb.foldLeft(state){
       case (stateNext, (None,_)) => stateNext
@@ -133,8 +134,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val relAliases = relevantAliases2(postState2, CIExit, (pkg,name),inVars)
       val frame = CallStackFrame(target, Some(source.copy(isPre = true)), Map())
       val (rvals, state0) = getOrDefineRVals(m,relAliases, postState2)
-      val state1 = traceAllPredTransfer(CIExit, (pkg,name),rvals, state0)
-      val outState = newSpecInstanceTransfer(source.method, CIExit, (pkg, name), inVars, state1)
+//      val state1 = traceAllPredTransfer(CIExit, (pkg,name),rvals, state0)
+      val state1 = state0 //TODO: cleanup
+      val outState = newMsgTransfer(source.method, CIExit, (pkg, name), inVars, state1)
       // if retVar is materialized and assigned, clear it from the state
       val outState1: Set[State] = inVars match{
         case Some(retVar:LocalWrapper)::_ =>
@@ -169,8 +171,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val relAliases = relevantAliases2(postState, CIEnter, (pkg,name),invars)
       val ostates:Set[State] = {
         val (rvals, state0) = getOrDefineRVals(m,relAliases, postState)
-        val state1 = traceAllPredTransfer(CIEnter, (pkg, name), rvals, state0)
-        Set(state1)
+//        val state1 = traceAllPredTransfer(CIEnter, (pkg, name), rvals, state0)
+        Set(state0)
       }
       //Only add receiver if this or callin return is in abstract trace
       val traceNeedRec = List(CIEnter, CIExit).exists( dir => postState.findIFromCurrent(dir, (pkg,name)).nonEmpty)
@@ -202,8 +204,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val relAliases = relevantAliases2(postState, CIEnter, (pkg,name),invars)
       val ostates:Set[State] = {
         val (rvals, state0) = getOrDefineRVals(m,relAliases, postState)
-        val state1 = traceAllPredTransfer(CIEnter, (pkg, name), rvals, state0)
-        Set(state1)
+//        val state1 = traceAllPredTransfer(CIEnter, (pkg, name), rvals, state0)
+        Set(state0)
       }
       //Only add receiver if this or callin return is in abstract trace
       val traceNeedRec = List(CIEnter, CIExit).exists( dir => postState.findIFromCurrent(dir, (pkg,name)).nonEmpty)
@@ -241,8 +243,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val (pkg, name) = msgCmdToMsg(cmInv)
       val relAliases = relevantAliases2(postState, CBEnter, (pkg,name),invars)
       val (inVals, state0) = getOrDefineRVals(containingMethod, relAliases,postState)
-      val state1 = traceAllPredTransfer(CBEnter, (pkg,name), inVals, state0)
-      val b = newSpecInstanceTransfer(containingMethod, CBEnter, (pkg, name), invars, state1)
+//      val state1 = traceAllPredTransfer(CBEnter, (pkg,name), inVals, state0)
+      val b = newMsgTransfer(containingMethod, CBEnter, (pkg, name), invars, state0)
 
       // pair state with this local before stack pop
       val thisStatePair: Set[(Option[PureExpr], State)] = b.map{ s =>
@@ -305,8 +307,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val relAliases = relevantAliases2(postState, CBExit, (pkg,name),localVarOrVal)
       // Note: no newSpecInstanceTransfer since this is an in-message
       val (rVals, state0) = getOrDefineRVals(mloc, relAliases, pre_push)
-      val state1 = traceAllPredTransfer(CBExit, (pkg, name), rVals, state0)
-      Set(state1).map(_.copy(nextCmd = List(target), alternateCmd = Nil))
+//      val state1 = traceAllPredTransfer(CBExit, (pkg, name), rVals, state0)
+      Set(state0).map(_.copy(nextCmd = List(target), alternateCmd = Nil))
     case (CallbackMethodReturn(_,_,mloc1,_), AppLoc(mloc2,_,false)) =>
       assert(mloc1 == mloc2)
       Set(postState).map(_.copy(nextCmd = List(source), alternateCmd = Nil))
@@ -529,66 +531,71 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
    * @param postState state at point in app just before back message
    * @return a new trace abstraction for each possible rule
    */
-  def newSpecInstanceTransfer(appMethod:MethodLoc, mt: MessageType,
-                              sig:(String,String), allVar:List[Option[RVal]],
-                              postState: State, disallow:Option[LSSpec] = None): Set[State] = {
-    val specsBySignature = if(disallow.isDefined) disallow.toSet else specSpace.specsBySig(mt, sig._1, sig._2)
-
-
-    val postStatesByConstAssume: Set[(LSSpec,State)] = specsBySignature.flatMap{ (s:LSSpec) =>
-      val cv = s.target.constVals(s.rhsConstraints) zip allVar
-      val definedCv: Seq[(PureExpr,CmpOp ,RVal)] = cv.flatMap{
-        case (None,_) => None
-        case (_,None) => None
-        case (Some((op,cv)), Some(stateVar)) => Some((cv,op,stateVar))
-      }
-      if(definedCv.isEmpty) {
-        // Spec does not assume any constants
-        Set((s,postState))
-      } else {
-        //  Negation of RHS of spec requires False unless defined
-        val posState: State = definedCv.foldLeft(postState) {
-          case (st, (pureExpr, op,stateVar)) =>
-            val (vv, st1) = st.getOrDefine(stateVar, Some(appMethod))
-            st1.addPureConstraint(PureConstraint(vv, op, pureExpr))
-        }
-        val out = Set((s,posState))
-        out
-      }
-    }
-
-    // If no lifestate rules match, no new specs are instantiated
-    if(postStatesByConstAssume.isEmpty)
-      return Set(postState)
-
-    // For each applicable state and spec,
-    //  instantiate ls variables in both the trace abstraction and abstract state
-    postStatesByConstAssume.map {
-      case (LSSpec(pred, target,_), newPostState) =>
-        val parameterPairing: Seq[(String, Option[RVal])] = target.lsVars zip allVar
-
-        // Define variables in rule in the state
-        val state2 = parameterPairing.foldLeft(newPostState) {
-          case (cstate, (LSAnyVal(), _)) => cstate
-          case (cstate, (LSConst(_), _)) => cstate
-          case (cstate, (_, Some(rval))) => cstate.getOrDefine(rval,Some(appMethod))._2
-          case (cstate, _) => cstate
-        }
-        val lsVarConstraints = parameterPairing.flatMap {
-          case (LSAnyVal(), _) => None
-          case (LSVar(k), Some(l: LocalWrapper)) =>
-            Some((k, state2.get(l).get))
-          case (_, None) => None
-          case (LSConst(_), Some(_: LocalWrapper)) => None
-          case (k, v) =>
-            println(k)
-            println(v)
-            ??? //TODO: handle primitives e.g. true "string" 1 2 etc
-        }
-        // Match each lsvar to absvar if both exist
-        val newLsAbstraction = AbstractTrace(pred, Nil, lsVarConstraints.toMap)
-        state2.copy(sf = state2.sf.copy(traceAbstraction = state2.traceAbstraction + newLsAbstraction))
-    }
+  def newMsgTransfer(appMethod:MethodLoc, mt: MessageType,
+                     sig:(String,String), allVar:List[Option[RVal]],
+                     postState: State, disallow:Option[LSSpec] = None): Set[State] = {
+    //TODO: just append to single abst trace if sig in spec =====
+    val state0 = if(postState.traceAbstraction.isEmpty)
+      postState.copy(sf = postState.sf.copy(traceAbstraction = Set(AbstractTrace(None,Nil,Map()))))
+    else postState
+    ???
+//    val specsBySignature = if(disallow.isDefined) disallow.toSet else specSpace.specsBySig(mt, sig._1, sig._2)
+//
+//
+//    val postStatesByConstAssume: Set[(LSSpec,State)] = specsBySignature.flatMap{ (s:LSSpec) =>
+//      val cv = s.target.constVals(s.rhsConstraints) zip allVar
+//      val definedCv: Seq[(PureExpr,CmpOp ,RVal)] = cv.flatMap{
+//        case (None,_) => None
+//        case (_,None) => None
+//        case (Some((op,cv)), Some(stateVar)) => Some((cv,op,stateVar))
+//      }
+//      if(definedCv.isEmpty) {
+//        // Spec does not assume any constants
+//        Set((s,postState))
+//      } else {
+//        //  Negation of RHS of spec requires False unless defined
+//        val posState: State = definedCv.foldLeft(postState) {
+//          case (st, (pureExpr, op,stateVar)) =>
+//            val (vv, st1) = st.getOrDefine(stateVar, Some(appMethod))
+//            st1.addPureConstraint(PureConstraint(vv, op, pureExpr))
+//        }
+//        val out = Set((s,posState))
+//        out
+//      }
+//    }
+//
+//    // If no lifestate rules match, no new specs are instantiated
+//    if(postStatesByConstAssume.isEmpty)
+//      return Set(postState)
+//
+//    // For each applicable state and spec,
+//    //  instantiate ls variables in both the trace abstraction and abstract state
+//    postStatesByConstAssume.map {
+//      case (LSSpec(pred, target,_), newPostState) =>
+//        val parameterPairing: Seq[(String, Option[RVal])] = target.lsVars zip allVar
+//
+//        // Define variables in rule in the state
+//        val state2 = parameterPairing.foldLeft(newPostState) {
+//          case (cstate, (LSAnyVal(), _)) => cstate
+//          case (cstate, (LSConst(_), _)) => cstate
+//          case (cstate, (_, Some(rval))) => cstate.getOrDefine(rval,Some(appMethod))._2
+//          case (cstate, _) => cstate
+//        }
+//        val lsVarConstraints = parameterPairing.flatMap {
+//          case (LSAnyVal(), _) => None
+//          case (LSVar(k), Some(l: LocalWrapper)) =>
+//            Some((k, state2.get(l).get))
+//          case (_, None) => None
+//          case (LSConst(_), Some(_: LocalWrapper)) => None
+//          case (k, v) =>
+//            println(k)
+//            println(v)
+//            ??? //TODO: handle primitives e.g. true "string" 1 2 etc
+//        }
+//        // Match each lsvar to absvar if both exist
+//        val newLsAbstraction = AbstractTrace(pred, Nil, lsVarConstraints.toMap)
+//        state2.copy(sf = state2.sf.copy(traceAbstraction = state2.traceAbstraction + newLsAbstraction))
+//    }
   }
 
   /**
@@ -610,47 +617,47 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         throw new IllegalStateException(s"No command message for $v")
     }
 
-  /**
-   * Assume state is updated with appropriate vars
-   *
-   * @return
-   */
-  def predTransferTrace(pred:AbstractTrace, mt:MessageType,
-                        sig:(String,String),
-                        vals: List[Option[PureExpr]]):AbstractTrace = {
-    if (pred.a.contains(mt,sig) || Ref.containsRefV(pred.a).isDefined) {
-      specSpace.getIWithFreshVars(mt, sig) match {
-        case Some(i@I(_, _, lsVars)) =>
-          val modelVarConstraints: Map[String, PureExpr] = (lsVars zip vals).flatMap {
-            case (LSVar(lsVar), Some(stateVal)) => Some((lsVar, stateVal))
-            case _ => None //TODO: cases where transfer needs const values (e.g. setEnabled(true))
-          }.toMap
-//          assert(!modelVarConstraints.isEmpty) //TODO: can this ever happen? - can happen with Ref(v)
-          assert(pred.modelVars.keySet.intersect(modelVarConstraints.keySet).isEmpty,
-            "Previous substitutions must be made so that comflicting model " +
-              "var constraints aren't added to trace abstraction")
-          AbstractTrace(pred.a,
-            i :: pred.rightOfArrow, pred.modelVars ++ modelVarConstraints)
-        case None => pred
-      }
-    } else
-      pred
-  }
-
-  /**
-   * Update each trace abstraction in an abstract state
-   * @param allVal values to apply transfer with
-   * @return
-   */
-  def traceAllPredTransfer(mt: MessageType,
-                           sig:(String,String), allVal:List[Option[PureExpr]],
-                           postState: State):State = {
-    // values we want to track should already be added to the state
-    val newTraceAbs: Set[AbstractTrace] = postState.traceAbstraction.map {
-      traceAbs => predTransferTrace(traceAbs, mt, sig, allVal)
-    }
-    postState.copy(sf = postState.sf.copy(traceAbstraction = newTraceAbs))
-  }
+//  /*
+//   * Assume state is updated with appropriate vars
+//   *
+//   * @return
+//   */
+//  def predTransferTrace(pred:AbstractTrace, mt:MessageType,
+//                        sig:(String,String),
+//                        vals: List[Option[PureExpr]]):AbstractTrace = {
+//    if (pred.a.contains(mt,sig) || Ref.containsRefV(pred.a).isDefined) {
+//      specSpace.getIWithFreshVars(mt, sig) match {
+//        case Some(i@I(_, _, lsVars)) =>
+//          val modelVarConstraints: Map[String, PureExpr] = (lsVars zip vals).flatMap {
+//            case (LSVar(lsVar), Some(stateVal)) => Some((lsVar, stateVal))
+//            case _ => None //TODO: cases where transfer needs const values (e.g. setEnabled(true))
+//          }.toMap
+////          assert(!modelVarConstraints.isEmpty) //TODO: can this ever happen? - can happen with Ref(v)
+//          assert(pred.modelVars.keySet.intersect(modelVarConstraints.keySet).isEmpty,
+//            "Previous substitutions must be made so that comflicting model " +
+//              "var constraints aren't added to trace abstraction")
+//          AbstractTrace(pred.a,
+//            i :: pred.rightOfArrow, pred.modelVars ++ modelVarConstraints)
+//        case None => pred
+//      }
+//    } else
+//      pred
+//  }
+//
+//  /**
+//   * Update each trace abstraction in an abstract state
+//   * @param allVal values to apply transfer with
+//   * @return
+//   */
+//  def traceAllPredTransfer(mt: MessageType,
+//                           sig:(String,String), allVal:List[Option[PureExpr]],
+//                           postState: State):State = {
+//    // values we want to track should already be added to the state
+//    val newTraceAbs: Set[AbstractTrace] = postState.traceAbstraction.map {
+//      traceAbs => predTransferTrace(traceAbs, mt, sig, allVal)
+//    }
+//    postState.copy(sf = postState.sf.copy(traceAbstraction = newTraceAbs))
+//  }
 
 //  def pureCanAlias(pv:PureVar, otherType:String, state:State):Boolean =
 //    classHierarchyConstraints.typeSetForPureVar(pv,state).contains(otherType)
