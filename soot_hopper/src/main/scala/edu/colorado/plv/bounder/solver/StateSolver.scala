@@ -826,7 +826,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   private def maxMsg(states:Set[State]):Int =
     states.flatMap{s => s.traceAbstraction.map(maxMsg)}.sum + 1
   def simplify(state: State, maxWitness: Option[Int] = None): Option[State] = {
-    implicit val zctx = getSolverCtx
+    implicit val zCtx = getSolverCtx
     if (state.isSimplified) Some(state) else {
       // Drop useless constraints
       val state2 = state.copy(sf = state.sf.copy(pureFormula = state.pureFormula.filter {
@@ -917,25 +917,23 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     // s2 must contian all heap cells that s2 contains
     val dummyPv = PureVar(-10)
     def repHeapCells(cell: (HeapPtEdge, PureExpr)):HeapPtEdge = cell match{
-        case (FieldPtEdge(_,fn),_) => FieldPtEdge(dummyPv, fn)
+        case (FieldPtEdge(pv,fn),_) => FieldPtEdge(dummyPv, fn)
         case (StaticPtEdge(clazz,fn), _) => StaticPtEdge(clazz,fn)
     }
-    val s2heapCells = s2.heapConstraints.map(repHeapCells).toSet
-    val s1heapCells = s1.heapConstraints.map(repHeapCells).toSet
-    if(!s1heapCells.forall(l => s2heapCells.contains(l))){
+    val s2heapCells: Map[HeapPtEdge, Map[HeapPtEdge, PureExpr]] = s2.heapConstraints.groupBy(repHeapCells)
+    val s1heapCells = s1.heapConstraints.groupBy(repHeapCells)
+
+    // For each materialized heap cell in s1, s2 must have a matching heap cell or subsumption not possible
+    val s2HasMoreOfEach = s1heapCells.forall{s1Cell =>
+      s2heapCells.get(s1Cell._1) match {
+        case Some(s2Cells) =>
+          s1Cell._2.size <= s2Cells.size
+        case None => true
+      }
+    }
+    if(!s2HasMoreOfEach){
       return false
     }
-//    val s1g = s1.heapConstraints.groupBy(repHeapCells).map{ case (k,v) => k -> v.size }
-//    val s2g = s2.heapConstraints.groupBy(repHeapCells).map{ case (k,v) => k -> v.size }
-//
-//    val notSubsHeap = s2g.exists{
-//      case (hc, count) => s1g.getOrElse(hc, 0) < count
-//    }
-//    if(notSubsHeap)
-//      return false
-
-
-
     canSubsumeZ3(s1,s2, maxLen)
   }
 
@@ -947,7 +945,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   }
 
   def canSubsumeZ3(s1:State, s2:State, maxLen:Option[Int]):Boolean = {
-
     try {
       implicit val zCtx: C = getSolverCtx
       val allTypesS1S2 = allTypes(s1).union(allTypes(s2))
@@ -979,7 +976,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       case e:IllegalStateException if e.getLocalizedMessage.contains("timeout issue") =>
         //TODO: sound to say state is not subsumed
         e.printStackTrace()
-        false
+        throw e
     }
   }
 

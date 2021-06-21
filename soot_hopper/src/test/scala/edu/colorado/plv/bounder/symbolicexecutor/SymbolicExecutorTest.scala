@@ -56,6 +56,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       "void onPause()",27)
     val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
 //    prettyPrinting.dumpDebugInfo(result, "inter-callback")
+    BounderUtil.throwIfStackTrace(result)
     assert(BounderUtil.interpretResult(result,QueryFinished) == Proven)
     assert(result.nonEmpty)
   }
@@ -74,6 +75,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
 //    PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/witnessOnPause.dot")
 //    prettyPrinting.dumpDebugInfo(result, "test_interproc_2_onPauseReach")
+    BounderUtil.throwIfStackTrace(result)
     assert(BounderUtil.interpretResult(result,QueryFinished) == Witnessed)
   }
   test("Symbolic executor should witness onResume"){
@@ -90,6 +92,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       "void onResume()",20)
     val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
 //    prettyPrinting.dumpDebugInfo(result, "test_interproc_2_onResumeReach")
+    BounderUtil.throwIfStackTrace(result)
     assert(BounderUtil.interpretResult(result,QueryFinished) == Witnessed)
   }
 
@@ -139,6 +142,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
 //      prettyPrinting.dumpDebugInfo(result, "readLiteral")
       assert(result.nonEmpty)
+      BounderUtil.throwIfStackTrace(result)
       assert(BounderUtil.interpretResult(result,QueryFinished) == Proven)
 
     }
@@ -189,7 +193,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
         new SpecSpace(specs), cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = 50, w, transfer,
+        stepLimit = 200, w, transfer,
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       implicit val om = config.outputMode
       val symbolicExecutor = config.getSymbolicExecutor
@@ -199,6 +203,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
         "com.example.createdestroy.MyActivity","void onResume()",
         BounderUtil.lineForRegex(".*query0.*".r,src))
       val resultEntry = symbolicExecutor.run(queryEntry).flatMap(a => a.terminals)
+
+      BounderUtil.throwIfStackTrace(resultEntry)
       assert(BounderUtil.interpretResult(resultEntry,QueryFinished) == Witnessed)
 
       // Dereference in loop should witness since we do not have a spec for the list
@@ -210,6 +216,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
 //      prettyPrinting.dumpDebugInfo(result, "forEach")
       assert(result.nonEmpty)
+      BounderUtil.throwIfStackTrace(result)
       assert(BounderUtil.interpretResult(result,QueryFinished) == Witnessed)
       // Search refutation state for materialized "o2" field
       // Should not be in there since conditional is not relevant
@@ -300,6 +307,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 //      prettyPrinting.dumpDebugInfo(result, "irrelevantConditional", truncate = false)
 //      prettyPrinting.dotWitTree(result, "irrelevantConditional.dot",true)
       assert(result.nonEmpty)
+      BounderUtil.throwIfStackTrace(result)
       assert(BounderUtil.interpretResult(result,QueryFinished) == Proven)
       // Search refutation state for materialized "o2" field
       // Should not be in there since conditional is not relevant
@@ -379,6 +387,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
 //        prettyPrinting.dumpDebugInfo(result, "alias")
         assert(result.nonEmpty)
+        BounderUtil.throwIfStackTrace(result)
         assert(BounderUtil.interpretResult(result,QueryFinished) == expected)
 
       }
@@ -437,6 +446,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
 //      prettyPrinting.dumpDebugInfo(result,"setField")
       assert(result.nonEmpty)
+      BounderUtil.throwIfStackTrace(result)
       assert(BounderUtil.interpretResult(result,QueryFinished) == Proven)
       assert(BounderUtil.characterizeMaxPath(result) == SingleCallbackMultiMethod)
 
@@ -499,6 +509,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
 //      prettyPrinting.dumpDebugInfo(result,"assignFromTest")
       assert(result.nonEmpty)
+      BounderUtil.throwIfStackTrace(result)
       assert(BounderUtil.interpretResult(result,QueryFinished) == Proven)
 
     }
@@ -561,6 +572,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 //        "com.example.createdestroy.MyActivity","void onResume()",
 //        BounderUtil.lineForRegex(".*query0.*".r,src))
 //      val resultEntry = symbolicExecutor.run(queryEntry).flatMap(a => a.terminals)
+      //BounderUtil.throwIfStackTrace(resultEntry)
 //      assert(BounderUtil.interpretResult(resultEntry) == Witnessed)
 //
 //      // Dereference in loop should witness since we do not have a spec for the list
@@ -572,6 +584,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 //      val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
 //      //      prettyPrinting.dumpDebugInfo(result, "forEach")
 //      assert(result.nonEmpty)
+      //BounderUtil.throwIfStackTrace(result)
 //      assert(BounderUtil.interpretResult(result) == Witnessed)
     }
 
@@ -642,6 +655,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
 //        prettyPrinting.dumpDebugInfo(result, "whileTest")
         assert(result.nonEmpty)
+        BounderUtil.throwIfStackTrace(result)
         assert(BounderUtil.interpretResult(result,QueryFinished) == expectedResult)
 
       }
@@ -719,6 +733,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         prettyPrinting.dumpDebugInfo(result, s"dynamicDispatchTest${expectedResult}")
 //        prettyPrinting.dotWitTree(result, "dynamicDispatchTest", true)
         assert(result.nonEmpty)
+        BounderUtil.throwIfStackTrace(result)
         assert(BounderUtil.interpretResult(result,QueryFinished) == expectedResult)
 
       }
@@ -803,6 +818,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 //
 //      //end dbg code
       assert(result.nonEmpty)
+      BounderUtil.throwIfStackTrace(result)
       assert(BounderUtil.interpretResult(result,QueryFinished) == Witnessed)
 
     }
@@ -866,6 +882,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
 //        prettyPrinting.dumpDebugInfo(result, s"BoolTest_initial_$initial")
         assert(result.nonEmpty)
+        BounderUtil.throwIfStackTrace(result)
         assert(BounderUtil.interpretResult(result,QueryFinished) == expectedResult, s"Initial value: $initial")
 
       }
@@ -939,6 +956,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
         prettyPrinting.dumpDebugInfo(result, "ProveFieldDerefWithSubscribe")
         assert(result.nonEmpty)
+        BounderUtil.throwIfStackTrace(result)
         assert(BounderUtil.interpretResult(result, QueryFinished) == Proven)
       }
     }
@@ -1008,6 +1026,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
       prettyPrinting.dumpDebugInfo(result,"WitnessFieldDerefWithSubscribe")
       assert(result.nonEmpty)
+      BounderUtil.throwIfStackTrace(result)
       assert(BounderUtil.interpretResult(result,QueryFinished) == Witnessed)
 
     }
@@ -1093,6 +1112,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
       prettyPrinting.dumpDebugInfo(result,"ProveSafeGetActivityWithSubscribe") //TODO: comment out =====
       assert(result.nonEmpty)
+      BounderUtil.throwIfStackTrace(result)
       assert(BounderUtil.interpretResult(result,QueryFinished) == Proven)
 
     }
@@ -1183,6 +1203,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 //      prettyPrinting.dumpDebugInfo(result,"MkApk")
 //      prettyPrinting.dotWitTree(result, "OldMotiv.dot",includeSubsEdges = true)
       assert(result.nonEmpty)
+      BounderUtil.throwIfStackTrace(result)
       assert(BounderUtil.interpretResult(result,QueryFinished) == Proven)
 
     }
@@ -1318,6 +1339,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 //          prettyPrinting.dumpDebugInfo(result.flatMap(a => a.terminals), fname)
           // prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
           assert(result.nonEmpty)
+          BounderUtil.throwIfStackTrace(result.flatMap(a => a.terminals))
           val interpretedResult = BounderUtil.interpretResult(result.flatMap(a => a.terminals), QueryFinished)
           assert(interpretedResult == expectedResult)
           assert(BounderUtil.characterizeMaxPath(result.flatMap(a => a.terminals)) == MultiCallback)
@@ -1431,6 +1453,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 //        prettyPrinting.dumpDebugInfo(result, fname)
 //        prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
         assert(result.nonEmpty)
+        BounderUtil.throwIfStackTrace(result)
         val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
         assert(interpretedResult == expectedResult)
         val onViewCreatedInTree: Set[List[IPathNode]] = result.flatMap{node =>
@@ -1523,6 +1546,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 //      prettyPrinting.dumpDebugInfo(result, fname)
 //      prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
       assert(result.nonEmpty)
+      BounderUtil.throwIfStackTrace(result)
       val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
       assert(interpretedResult == Proven)
     }
@@ -1607,7 +1631,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
 //        prettyPrinting.dumpDebugInfo(result, "dynamicDispatchTest2")
 //        prettyPrinting.dotWitTree(result, "dynamicDispatchTest2", true)
         assert(result.nonEmpty)
-      assert(BounderUtil.interpretResult(result,QueryFinished) == expectedResult)
+        BounderUtil.throwIfStackTrace(result)
+        assert(BounderUtil.interpretResult(result,QueryFinished) == expectedResult)
 
       }
 
@@ -1655,6 +1680,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
 //      prettyPrinting.dumpDebugInfo(result, "missingCb")
       assert(result.nonEmpty)
+      BounderUtil.throwIfStackTrace(result)
       assert(BounderUtil.interpretResult(result,QueryFinished) == Witnessed)
     }
 
@@ -1702,6 +1728,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         .flatMap(a => a.terminals)
 //      prettyPrinting.dumpDebugInfo(resultReachable, "staticReach")
       assert(resultReachable.nonEmpty)
+      BounderUtil.throwIfStackTrace(resultReachable)
       assert(BounderUtil.interpretResult(resultReachable,QueryFinished) == Witnessed)
 
       val npe = ReceiverNonNull("com.example.createdestroy.MyActivity",
@@ -1710,6 +1737,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val res2 = symbolicExecutor.run(npe).flatMap(a => a.terminals)
 //      prettyPrinting.dumpDebugInfo(res2, "staticNPE")
       assert(res2.nonEmpty)
+      BounderUtil.throwIfStackTrace(res2)
       assert(BounderUtil.interpretResult(res2,QueryFinished) == Witnessed)
 
     }
@@ -1755,8 +1783,6 @@ class SymbolicExecutorTest extends AnyFunSuite {
         implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
         dbMode.startMeta()
         val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
-        //TODO: set back to full spec ==============
-//        val specs = new SpecSpace(Set(LifecycleSpec.init_first_callback, ViewSpec.clickWhileActive))
         val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
 
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
@@ -1772,6 +1798,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           "void onClick(android.view.View)", line)
         val nullReachRes = symbolicExecutor.run(reach,dbMode).flatMap(a => a.terminals)
 //        prettyPrinting.dumpDebugInfo(nullReachRes, "clickClickReach")
+        BounderUtil.throwIfStackTrace(nullReachRes)
         assert(BounderUtil.interpretResult(nullReachRes, QueryFinished) == Witnessed)
       }
 
@@ -1828,6 +1855,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         assert(apk != null)
         implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
         dbMode.startMeta()
+        //TODO:================= add lifecycle spec back in
 //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
         val specs = new SpecSpace(Set(ViewSpec.clickWhileActive))
         val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
@@ -1847,6 +1875,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           .flatMap(a => a.terminals)
         //      prettyPrinting.dumpDebugInfo(resultClickReachable, "clickReachable")
         assert(resultClickReachable.nonEmpty)
+        BounderUtil.throwIfStackTrace(resultClickReachable)
         assert(BounderUtil.interpretResult(resultClickReachable, QueryFinished) == Witnessed)
 
         val nullUnreach = ReceiverNonNull("com.example.createdestroy.MyActivity$1",
@@ -1854,13 +1883,15 @@ class SymbolicExecutorTest extends AnyFunSuite {
         val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
 //        prettyPrinting.dumpDebugInfo(nullUnreachRes, "nullUnreachRes")
         assert(nullUnreachRes.nonEmpty)
-        //assert(BounderUtil.interpretResult(nullUnreachRes, QueryFinished) == Proven) //TODO:================================ uncomment
+        BounderUtil.throwIfStackTrace(nullUnreachRes)
+        assert(BounderUtil.interpretResult(nullUnreachRes, QueryFinished) == Proven)
 
         val line2 = BounderUtil.lineForRegex(".*query2.*".r, src)
         val nullReach = ReceiverNonNull("com.example.createdestroy.MyActivity$1$1",
           "void onClick(android.view.View)", line2, Some(".*toString.*"))
         val nullReachRes = symbolicExecutor.run(nullReach,dbMode).flatMap(a => a.terminals)
         prettyPrinting.dumpDebugInfo(nullReachRes, "clickNullReach")
+        BounderUtil.throwIfStackTrace(nullReachRes)
         assert(BounderUtil.interpretResult(nullReachRes, QueryFinished) == Witnessed)
       }
 
@@ -1931,6 +1962,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           .flatMap(a => a.terminals)
         prettyPrinting.dumpDebugInfo(resultClickReachable, "clickFinish")
         assert(resultClickReachable.nonEmpty)
+        BounderUtil.throwIfStackTrace(resultClickReachable)
         assert(BounderUtil.interpretResult(resultClickReachable, QueryFinished) == Witnessed)
 
 
@@ -1940,6 +1972,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
         prettyPrinting.dumpDebugInfo(nullUnreachRes, "finishNullUnreachRes")
         assert(nullUnreachRes.nonEmpty)
+        BounderUtil.throwIfStackTrace(nullUnreachRes)
         assert(BounderUtil.interpretResult(nullUnreachRes, QueryFinished) == Witnessed)
       }
 
@@ -1995,6 +2028,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         .flatMap(a => a.terminals)
 //      prettyPrinting.dumpDebugInfo(resultRunMethodReachable, "RunnableInHandler")
       assert(resultRunMethodReachable.nonEmpty)
+      BounderUtil.throwIfStackTrace(resultRunMethodReachable)
       assert(BounderUtil.interpretResult(resultRunMethodReachable,QueryFinished) == Witnessed)
 
       val setVisibleCallin_ErrReachable = DisallowedCallin("com.example.createdestroy.MyActivity$1",
@@ -2007,6 +2041,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       //TODO:=============== disallow specs need to be added to specspace allI somehow
 //      prettyPrinting.dumpDebugInfo(resultsErrReachableTerm, "ViewCallinDisallow2")
       //TODO:====== bad subsumption
+      BounderUtil.throwIfStackTrace(resultsErrReachableTerm)
       assert(BounderUtil.interpretResult(resultsErrReachableTerm,QueryFinished) == Witnessed)
     }
 

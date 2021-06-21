@@ -2,10 +2,11 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import java.time.Instant
 
+import com.microsoft.z3.Z3Exception
 import edu.colorado.plv.bounder.{BounderUtil, RunConfig}
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, If, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SwitchCmd, ThrowCmd, VirtualInvoke}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SetInclusionTypeSolving, SolverTypeSolving, StateTypeSolving, Z3StateSolver}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, DBPathNode, FrameworkLocation, IPathNode, InitialQuery, LiveQry, LiveTruncatedQry, MemoryOutputMode, OrdCount, OutputMode, PathNode, Qry, State, StateSet, SubsumableLocation, SwapLoc, WitnessedQry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, DBPathNode, FrameworkLocation, IPathNode, InitialQuery, LiveQry, LiveTruncatedQry, MemoryOutputMode, MemoryPathNode, OrdCount, OutputMode, PathNode, Qry, State, StateSet, SubsumableLocation, SwapLoc, WitnessedQry}
 
 import scala.annotation.tailrec
 //import scala.collection.parallel.CollectionConverters.{ImmutableSetIsParallelizable, IterableIsParallelizable}
@@ -194,9 +195,34 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   }
 
 
-  def isSubsumed(pathNode:IPathNode,
+  def isSubsumed(node: IPathNode, value: Map[SubsumableLocation, Map[Int, StateSet]]):Option[IPathNode] = node match {
+    case SwapLoc(l) =>
+//      isSubsumed_backtrack(node,l,value, node.succ)
+      isSubsumed_stateSet(node, value)
+    case _ => None
+  }
+
+  @tailrec
+  private def isSubsumed_backtrack(pathNode:IPathNode,
+                                   l:SubsumableLocation,
+                                   subsMap: Map[SubsumableLocation, Map[Int, StateSet]],
+                                   succ: List[IPathNode]):Option[IPathNode] = succ match{
+    case Nil => None
+    case (h@SwapLoc(l2))::t if l == l2 && subsMap.contains(l2) && pathNode.qry.getState.isDefined && h.qry.getState.isDefined =>
+      val s1 = h.qry.getState.get
+      val s2 = pathNode.qry.getState.get
+      val subsLocs = subsMap(l2).get(s2.sf.callStack.size)
+      if(stateSolver.canSubsume(s1,s2)){
+        Some(h)
+      }else {
+        isSubsumed_backtrack(pathNode,l,subsMap, h.succ ++ t)
+      }
+    case h::t =>
+      isSubsumed_backtrack(pathNode,l,subsMap, h.succ ++ t)
+  }
+  def isSubsumed_stateSet(pathNode:IPathNode,
                  nVisited: Map[SubsumableLocation,Map[Int,StateSet]]):Option[IPathNode] = pathNode match{
-    case SwapLoc(loc) if pathNode.qry.isInstanceOf[LiveQry] && nVisited.contains(loc) =>
+  case SwapLoc(loc) if pathNode.qry.isInstanceOf[LiveQry] && nVisited.contains(loc) =>
       val root = nVisited(loc).getOrElse(pathNode.qry.getState.get.callStack.size, StateSet.init)
       val res = StateSet.findSubsuming(pathNode, root,(s1,s2) =>{
         if(config.subsumptionEnabled) {
@@ -339,44 +365,60 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
         println(s"    ord depth: ${current.ordDepth}")
       case _ =>
     }
-
-    current match {
-      case p@PathNode(_:LiveQry, true) =>
-        // current node is subsumed
-        // TODO: this branch is probably unreachable
-        executeBackward(qrySet, limit,deadline, refutedSubsumedOrWitnessed + p, visited)
-      case p@PathNode(_:BottomQry,_) =>
-        // current node is refuted
-        executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p, visited)
-      case p@PathNode(_:WitnessedQry,_) =>
-        // current node is witnessed
-        refutedSubsumedOrWitnessed.union(qrySet.toSet) + p
-      case p:IPathNode if limit > 0 && p.depth > limit =>
-        // max steps reached
-        refutedSubsumedOrWitnessed.union(qrySet.toSet)
-      case p@PathNode(qry:LiveQry,false) =>
-        // live path node
-        isSubsumed(p, visited) match{
-          case v@Some(_) =>
-            // Path node discovered to be subsumed
-            executeBackward(qrySet, limit,deadline, refutedSubsumedOrWitnessed + p.setSubsumed(v), visited)
-          case None =>
-            val stackSize = p.qry.getState.get.callStack.size
-            // Add to invariant map if invariant location is tracked
-            val newVisited = current match{
-              case SwapLoc(v) =>
-                val stackSizeToNode: Map[Int, StateSet] = visited.getOrElse(v,Map[Int,StateSet]())
-                val nodeSetAtLoc: StateSet = stackSizeToNode.getOrElse(stackSize, StateSet.init)
-                val nodeSet = StateSet.add(p, nodeSetAtLoc)
-                val newStackSizeToNode = stackSizeToNode + (stackSize -> nodeSet)
-                visited + (v -> newStackSizeToNode)
-              case _ => visited
-            }
-            val nextQry = executeStep(qry).map(q => PathNode(q, List(p), None))
-            qrySet.addAll(nextQry)
-            executeBackward(qrySet, limit,deadline, refutedSubsumedOrWitnessed, newVisited)
-        }
-    }
+      current match {
+        case p@PathNode(_: LiveQry, true) =>
+          // current node is subsumed
+          // TODO: this branch is probably unreachable
+          executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p, visited)
+        case p@PathNode(_: BottomQry, _) =>
+          // current node is refuted
+          executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p, visited)
+        case p@PathNode(_: WitnessedQry, _) =>
+          // current node is witnessed
+          refutedSubsumedOrWitnessed.union(qrySet.toSet) + p
+        case p: IPathNode if limit > 0 && p.depth > limit =>
+          // max steps reached
+          refutedSubsumedOrWitnessed.union(qrySet.toSet)
+        case p@PathNode(qry: LiveQry, false) =>
+          // live path node
+          val subsuming = try{
+              isSubsumed(p, visited)
+            }catch {
+              case ze:Throwable =>
+                // Get sequence trace to error when it occurs
+                current.setError(ze)
+                ze.printStackTrace()
+                throw QueryInterruptedException(refutedSubsumedOrWitnessed + current, ze.getMessage)
+          }
+          subsuming match {
+            case v@Some(_) =>
+              // Path node discovered to be subsumed
+              executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p.setSubsumed(v), visited)
+            case None =>
+              val stackSize = p.qry.getState.get.callStack.size
+              // Add to invariant map if invariant location is tracked
+              val newVisited = current match {
+                case SwapLoc(v) =>
+                  val stackSizeToNode: Map[Int, StateSet] = visited.getOrElse(v, Map[Int, StateSet]())
+                  val nodeSetAtLoc: StateSet = stackSizeToNode.getOrElse(stackSize, StateSet.init)
+                  val nodeSet = StateSet.add(p, nodeSetAtLoc)
+                  val newStackSizeToNode = stackSizeToNode + (stackSize -> nodeSet)
+                  visited + (v -> newStackSizeToNode)
+                case _ => visited
+              }
+              val nextQry = try{
+                executeStep(qry).map(q => PathNode(q, List(p), None))
+              }catch{
+                case ze:Throwable =>
+                  // Get sequence trace to error when it occurs
+                  current.setError(ze)
+                  ze.printStackTrace()
+                  throw QueryInterruptedException(refutedSubsumedOrWitnessed + current, ze.getMessage)
+              }
+              qrySet.addAll(nextQry)
+              executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed, newVisited)
+          }
+      }
   }
 
   /**

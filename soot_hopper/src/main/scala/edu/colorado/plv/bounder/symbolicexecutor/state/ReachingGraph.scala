@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import scala.language.postfixOps
 import better.files.File
+import com.microsoft.z3.Z3Exception
 import edu.colorado.plv.bounder.BounderUtil.{MaxPathCharacterization, ResultSummary}
 import edu.colorado.plv.bounder.RunConfig
 import slick.jdbc
@@ -525,6 +526,9 @@ object PathNode{
 }
 
 sealed trait IPathNode {
+  def setError(ze: Throwable)
+  def getError: Option[Throwable]
+
   def methodsInPath(implicit mode : OutputMode): List[Loc] = {
     def getMethod(qry:Qry):Option[Loc] = qry.loc match {
       case AppLoc(_, _, _) => None
@@ -586,6 +590,12 @@ case class MemoryPathNode(qry: Qry, succV : List[IPathNode], subsumedV: Option[I
   }
 
   override def copyWithNewQry(newQry: Qry): IPathNode = this.copy(qry=newQry)
+
+  private var error :Option[Throwable] = None
+  override def setError(ze: Throwable): Unit = {
+    error = Some(ze)
+  }
+  override def getError: Option[Throwable] = error
 }
 
 case class DBPathNode(qry:Qry, thisID:Int,
@@ -611,6 +621,13 @@ case class DBPathNode(qry:Qry, thisID:Int,
     val newSuccID = succID ++ other.asInstanceOf[DBPathNode].succID
     this.copy(qry = newQry, succID = newSuccID)
   }
+
+  //TODO: add error to db output
+  private var error :Option[Throwable] = None
+  override def setError(ze: Throwable): Unit = {
+    error = Some(ze)
+  }
+  override def getError: Option[Throwable] = error
 }
 object DBPathNode{
   implicit val rw:RW[DBPathNode] = macroRW

@@ -570,6 +570,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     assert(contains2)
   }
 
+
   test("refuted: I(a.foo()) && !Ref(a)"){ f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
     implicit val zctx = stateSolver.getSolverCtx
@@ -594,11 +595,30 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val res0 = stateSolver.simplify(state0)
     assert(res0.isDefined)
 
+    val state1 = state.copy(sf =
+      state.sf.copy(pureFormula = Set()))
+    val res1 = stateSolver.simplify(state1)
+    assert(res1.isDefined)
+
+    // I(foo(a,c)) && Ref(b) && a == b
     val ref = AbstractTrace(Ref("b"), Nil, Map("b" -> p2))
     val state2 = State(StateFormula(Nil, Map(),
       Set(PureConstraint(p1, Equals, p2)), Map(), Set(at, ref)), 0)
     val res2 = stateSolver.simplify(state2)
     assert(res2.isDefined)
+
+    // !Ref(b) |> foo(a) && a==b
+    val ref3 = AbstractTrace(Not(Ref("b")), foo_a::Nil, Map("a"-> p1, "b" -> p2))
+    val state3 = state.copy(sf = state.sf.copy(traceAbstraction = Set(ref3),
+      pureFormula = Set(PureConstraint(p1, Equals, p2))))
+    val res3 = stateSolver.simplify(state3)
+    assert(res3.isEmpty)
+
+    // !Ref(b) |> foo(a)
+    val ref4 = AbstractTrace(Not(Ref("b")), foo_a::Nil, Map("a"-> p1, "b" -> p2))
+    val state4 = state.copy(sf = state.sf.copy(traceAbstraction = Set(ref4), pureFormula = Set()))
+    val res4 = stateSolver.simplify(state4)
+    assert(res4.isDefined)
   }
 
   import upickle.default.read
@@ -1327,12 +1347,16 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
 
 //    println(s"model: \n${m}")
   }
-  ignore("some timeout from 'Test prove dereference of return from getActivity'"){ f =>
+  test("some timeout from 'Test prove dereference of return from getActivity'"){ f =>
     //TODO: fix or see if this is still reachable
     val (stateSolver,_) = getStateSolver(SolverTypeSolving)
     val s1 = read[State](Resource.getAsStream("s1_timeoutsubs.json"))
     val s2 = read[State](Resource.getAsStream("s2_timeoutsubs.json"))
-    // Note: still takes a long time without allocation sites
+    val s1pv = s1.pureVars()
+    val s2pv = s2.pureVars()
+    val s1tc = s1.typeConstraints
+    val s2tc = s2.typeConstraints
+    // Note: seems to finish if type ref removed
     val s1Simpl = s1.copy(sf = s1.sf.copy(typeConstraints = Map()))
     val s2Simpl = s2.copy(sf = s2.sf.copy(typeConstraints = Map()))
 
@@ -1344,8 +1368,8 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val s2NoRef = s2Simpl.copy(sf = s2Simpl.sf.copy(traceAbstraction =
       s2Simpl.sf.traceAbstraction.filter(abs => Ref.containsRefV(abs.a).isEmpty)))
 
-    val res = stateSolver.canSubsume(s1NoRef, s2NoRef)
-    println()
+    val res = stateSolver.canSubsume(s1Simpl, s2Simpl)
+    println(res)
   }
   test("sandbox") { f =>
     val ctx = new Context

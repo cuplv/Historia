@@ -92,10 +92,20 @@ object BounderUtil {
   case object Timeout extends ResultSummary
   case object Unreachable extends ResultSummary
   case class Interrupted(reason:String) extends ResultSummary
+  def throwIfStackTrace(result:Set[IPathNode]) = {
+    result.foreach{pn =>
+      if(pn.getError.isDefined)
+        throw pn.getError.get
+    }
+  }
   def interpretResult(result: Set[IPathNode], queryResult : symbolicexecutor.QueryResult):ResultSummary = {
     queryResult match {
       case QueryInterrupted(reason) => Interrupted(reason)
       case QueryFinished => {
+        val err = result.find(pn => pn.getError.isDefined)
+        if(err.isDefined) {
+          return Interrupted(err.get.getError.get.toString)
+        }
         if(result.forall {
           case PathNode(_: BottomQry, _) => true
           case PathNode(_: WitnessedQry, _) => false
