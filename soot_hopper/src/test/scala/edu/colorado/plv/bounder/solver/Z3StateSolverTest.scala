@@ -1430,25 +1430,34 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val res4 = stateSolver.witnessed(s(at4,Set(PureConstraint(pv, Equals, NullVal))),spec4,debug = true)
     assert(!res4)
   }
-  test("Empty trace should not be contained in incomplete abstract trace with conditional spec") { f =>
+  test("Prepending required enable message to trace should prevent subsumption") { f =>
     val (stateSolver,_) = getStateSolver(SolverTypeSolving)
 
     val iFoo_ac = I(CBEnter, Set(("", "foo")), "c"::"a" :: Nil)
     val iFoo_null_c =  I(CBEnter, Set(("", "foo")), "@null"::"a" :: Nil)
     val iFoo_bd = I(CBEnter, Set(("", "foo")), "d"::"b" :: Nil)
     val iBar_a = I(CBEnter, Set(("", "bar")), "a"::Nil)
+    val iBar_e = I(CBEnter, Set(("", "bar")), "e"::Nil)
+    val iBaz_f = I(CBEnter, Set(("", "baz")), "f"::Nil)
+    val iBaz_g = I(CBEnter, Set(("", "baz")), "g"::Nil)
+    val iWap_g = I(CBEnter, Set(("", "wap")), "g"::Nil)
     val s1 = LSSpec(iBar_a,iFoo_ac,Set(LSConstraint("c", Equals, "@null")))
     val s2 = LSSpec(LSTrue, iFoo_ac,Set(LSConstraint("c", NotEquals, "@null")))
-    val spec = new SpecSpace(Set(s1,s2))
+    val s3 = LSSpec(iWap_g, iBaz_g, Set())
+    val spec = new SpecSpace(Set(s1,s2, s3))
     def s(at:AbstractTrace, pc:Set[PureConstraint]):State = {
       val ts = State.topState
       ts.copy(sf = ts.sf.copy(traceAbstraction = Set(at), pureFormula = pc))
     }
     val pv = PureVar(1)
     val pv2 = PureVar(2)
-    val at = AbstractTrace(None, iFoo_bd::Nil, Map("d" -> pv, "b" -> pv2))
-
-    ??? //TODO: =====
+    val pv3 = PureVar(3)
+    val pv4 = PureVar(4)
+    val at1 = AbstractTrace(None, iBaz_f::iFoo_bd::Nil, Map("d" -> pv, "b" -> pv2))
+    val at2 = AbstractTrace(None, iBar_e::iBaz_f::iFoo_bd::Nil, Map("d" -> pv, "b" -> pv2, "e" -> pv3, "f" -> pv4))
+    val pc = Set(PureConstraint(pv, Equals, NullVal))
+    val res = stateSolver.canSubsume(s(at1, pc), s(at2,pc), spec)
+    assert(!res)
   }
 
 }

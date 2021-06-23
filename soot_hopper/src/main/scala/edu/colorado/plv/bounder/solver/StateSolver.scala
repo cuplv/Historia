@@ -698,7 +698,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       val tracefun = mkTraceFn(stateUniqueID)
       val len = mkLenVar(s"len_$stateUniqueID") // there exists a finite size of the trace for this state
 //      mkAssert(mkLt(mkIntVal(-1), len))
-      val trace = state.traceAbstraction.foldLeft(mkBoolVal(!negate)) {
+      val trace = state.traceAbstraction.foldLeft(mkBoolVal(!negate)) { //TODO: ======== trace suffix constraints get dumped in here somehow?
         case (acc, v) => {
           val encodedTrace = encodeTraceAbs(v, messageTranslator, traceFn = tracefun,pvMap = pvMap,
             traceLen = len,negate = negate, typeMap = state.typeConstraints, typeToSolverConst = typeToSolverConst,
