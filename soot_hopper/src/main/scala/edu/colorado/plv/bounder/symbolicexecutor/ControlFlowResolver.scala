@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{Invoke, _}
-import edu.colorado.plv.bounder.lifestate.LifeState
+import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSAnyVal}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, FieldPtEdge, LSAny, LSConstConstraint, LSModelVar, LSParamConstraint, LSPure, OutputMode, PrettyPrinting, PureVar, State, StaticPtEdge}
@@ -62,6 +62,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
                                component: Option[List[String]], config:SymbolicExecutorConfig[M,C]) { //TODO: remove pathMode here
   private implicit val ch = cha
   private val componentR: Option[List[Regex]] = component.map(_.map(_.r))
+  private val specSpace:SpecSpace = config.transfer(cha).getSpec
 
   def callbackInComponent(loc: Loc): Boolean = loc match {
     case CallbackMethodReturn(_, _, methodLoc, _) =>
@@ -243,9 +244,9 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
         ???
     }
     // Find any call that matches a spec in the abstract trace
-    val relI: Set[(I, List[LSParamConstraint])] = calls.flatMap { call =>
+    val relI: Set[I] = calls.flatMap { call =>
       Set(CIEnter, CIExit).flatMap{ cdir =>
-        state.findIFromCurrent(cdir, (call.fmwClazz, call.fmwName))
+        state.findIFromCurrent(cdir, (call.fmwClazz, call.fmwName), specSpace)
       }
     }
     //Check if method call can alias all params
@@ -269,15 +270,16 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 
     }
     def relIExistsForCmd(tgt: List[Option[RVal]],inv:Invoke)(implicit ch:ClassHierarchyConstraints):Boolean = {
-      val relIHere: Set[(I, List[LSParamConstraint])] = relI.filter{ i =>
-        i._1.signatures.matches((inv.targetClass, inv.targetMethod))
+      val relIHere: Set[I] = relI.filter{ i =>
+        i.signatures.matches((inv.targetClass, inv.targetMethod))
       }
-      relIHere.exists(v => v match{
-        case (_,lsPar) =>
-          val zipped: List[(LSParamConstraint, Option[RVal])] = lsPar zip tgt
-          val res = zipped.forall(matchesType)
-          res
-      })
+//      relIHere.exists(v => v match{
+//        case (_,lsPar) =>
+//          val zipped: List[(LSParamConstraint, Option[RVal])] = lsPar zip tgt
+//          val res = zipped.forall(matchesType)
+//          res
+//      })
+      ???
     }
 
     //TODO remove commented code for test exclusions
@@ -433,21 +435,33 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 
   def existsIAlias(locals: List[Option[RVal]], m:MethodLoc,
                    dir: MessageType, sig: (String, String), state: State): Boolean = {
-    val aliasPos = TransferFunctions.relevantAliases(state, dir, sig)
-    aliasPos.exists { aliasPo =>
-      (aliasPo zip locals).forall {
-        case (LSPure(v: PureVar), Some(local: LocalWrapper)) =>
-//          state.typeConstraints.get(v).forall(_.subtypeOfCanAlias(local.localType,cha))
-          state.canAlias(v,m, local,wrapper)
-        case (LSPure(v: PureVar), Some(NullConst)) => ???
-        case (LSPure(v: PureVar), Some(i: IntConst)) => ???
-        case (LSPure(v: PureVar), Some(i: StringConst)) => ???
-        case _ => true
-      }
-    }
+//    val aliasPos = TransferFunctions.relevantAliases(state, dir, sig)
+//    aliasPos.exists { aliasPo =>
+//      (aliasPo zip locals).forall {
+//        case (LSPure(v: PureVar), Some(local: LocalWrapper)) =>
+////          state.typeConstraints.get(v).forall(_.subtypeOfCanAlias(local.localType,cha))
+//          state.canAlias(v,m, local,wrapper)
+//        case (LSPure(v: PureVar), Some(NullConst)) => ???
+//        case (LSPure(v: PureVar), Some(i: IntConst)) => ???
+//        case (LSPure(v: PureVar), Some(i: StringConst)) => ???
+//        case _ => true
+//      }
+//    }
+    ???
   }
 
-  def relevantMethod(loc: Loc, state: State): RelevanceRelation = loc match {
+  /**
+   * Determine if a method is relevant to a state (skip if not relevant)
+   * TODO: Currently, this method does nothing, we may have scalability issues
+   * @param loc location that may be relevant or not
+   * @param state state that would come after relevant location
+   * @return whether location is relevant, if relevant, should drop a heap cell?
+   */
+  def relevantMethod(loc: Loc, state: State): RelevanceRelation = RelevantMethod
+  /**
+  TODO: remove this relevance relation when new version works
+   */
+  def relevantMethod_old(loc: Loc, state: State): RelevanceRelation = loc match {
     case InternalMethodReturn(_, _, m) =>
       relevantMethodBody(m,state)
     case CallinMethodReturn(_, _) => RelevantMethod
@@ -460,9 +474,9 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
               case _ => None
             }
           } else List(None)
-      val iExists = retVars.exists { retVar => //TODO: ==== check types to rule out aliasing of CBEnter/Exit
+      val iExists = retVars.exists { retVar =>
         val locals: List[Option[RVal]] = retVar :: rloc.getArgs
-        val res = existsIAlias(locals,cr.containingMethod.get, CBExit, (clazz, name), state) ||
+        val res = existsIAlias(locals,cr.containingMethod.get, CBExit, (clazz, name), state) || //TODO: is this used in relevantMethodBody?======
           existsIAlias(None :: locals.tail,cr.containingMethod.get, CBEnter, (clazz, name), state)
         res
       }
@@ -482,8 +496,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   def mergeEquivalentCallins(callins: Set[Loc], state: State): Set[Loc] ={
     val groups: Map[Object, Set[Loc]] = callins.groupBy{
       case CallinMethodReturn(fc,fn) =>
-        val i: Set[(LifeState.I, List[LSParamConstraint])] = state.findIFromCurrent(CIExit,(fc,fn))
-        i.map(a => a._1)
+        state.findIFromCurrent(CIExit,(fc,fn), specSpace)
       case i => i
     }
     val out:Set[Loc] = groups.keySet.map{k =>
@@ -594,6 +607,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
         case DropHeapCellsMethod(_) => true
         case NotRelevantMethod => false
       }}
+      //TODO:Currently, all callbacks are relevant, may cause performance issues
       res2
     case (CallbackMethodReturn(_,_, loc, Some(line)),_) =>
       AppLoc(loc, line, isPre = false)::Nil

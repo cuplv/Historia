@@ -433,7 +433,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       predecessorLocations.flatMap(l => {
         val newStates = transfer.transfer(state,l,loc)
         newStates.map(state => stateSolver.simplify(state, transfer.getSpec) match {
-          case Some(state) if stateSolver.witnessed(state) =>
+          case Some(state) if stateSolver.witnessed(state, transfer.getSpec) =>
             WitnessedQry(state, l)
           case Some(state) => LiveQry(state, l)
           case None =>

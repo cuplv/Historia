@@ -50,7 +50,8 @@ case class AbstractTrace(a:Option[LSPred],rightOfArrow:List[LSSingle], modelVars
   override def toString:String = {
     val generated = modelVars.filter{case (k,_) => LifeState.LSGenerated.matches(k) }
     val notGenerated = modelVars.removedAll(generated.keySet)
-    val replace: String => String = str => generated.foldLeft(str){case (str, (k,v)) => str.replaceAll(s"[ (),]$k[ (),]", v.toString)}
+    val replace: String => String = str => generated.foldLeft(str){case (str, (k,v)) =>
+      str.replaceAll(s"([ (),])$k([ (),])", "$1" + v.toString + "$2")}
     val lhs = replace(a.toString)
     val rhs = replace(rightOfArrow.mkString(";"))
     s"(${notGenerated} - $lhs |> $rhs)"
@@ -366,18 +367,34 @@ case class State(sf:StateFormula,
   }
 
   def findIFromCurrent(dir: MessageType,
-                       signature: (String, String))(implicit
-                                                    ch:ClassHierarchyConstraints): Set[(I, List[LSParamConstraint])] = {
+                       signature: (String, String), specSpace: SpecSpace)(implicit
+                                                    ch:ClassHierarchyConstraints): Set[I] = {
     //TODO: constant constraints
-    sf.traceAbstraction.flatMap(ar =>{
-      val iset = findIAF(dir,signature,ar.a.getOrElse(LSTrue))
-      iset.map(i => (i, i.lsVars.map{
-        case LifeState.LSVar(mv) =>
-          ar.modelVars.get(mv).map(LSPure).getOrElse(LSModelVar(mv,ar))
-        case LifeState.LSConst(constV) => LSConstConstraint(constV, ar)
-        case LifeState.LSAnyVal() => LSAny
-      }))
-    })
+//    sf.traceAbstraction.flatMap(ar =>{
+//      val iset = findIAF(dir,signature,ar.a.getOrElse(LSTrue))
+//      iset.map(i => (i, i.lsVars.map{
+//        case LifeState.LSVar(mv) =>
+//          ar.modelVars.get(mv).map(LSPure).getOrElse(LSModelVar(mv,ar))
+//        case LifeState.LSConst(constV) => LSConstConstraint(constV, ar)
+//        case LifeState.LSAnyVal() => LSAny
+//      }))
+//    })
+    val ta = traceAbstraction.filter(p => p.a.isEmpty)
+    if(ta.size == 1) {
+      ta.head.rightOfArrow.toSet.flatMap { (j: LSPred) =>
+        j match {
+          case i: I =>
+            val specs = specSpace.specsByI(i)
+            specs.flatMap { s =>
+              findIAF(dir, signature, s.pred)
+            }
+          case _ => Set()
+        }
+      }
+    }else{
+      assert(ta.isEmpty)
+      Set()
+    }
   }
 
 

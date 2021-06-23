@@ -166,11 +166,14 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
   }
 
   override protected def mkAnd(t:List[AST])(implicit zCtx:Z3SolverCtx): AST = {
-    if(t.nonEmpty) {
+    if(t.isEmpty) {
+      mkBoolVal(boolVal = true)
+    }else if(t.size == 1){
+      t.head
+    } else {
       val tb: Array[BoolExpr] = t.map(_.asInstanceOf[BoolExpr]).toArray
       zCtx.ctx.mkAnd(tb: _*)
-    }else
-      mkBoolVal(boolVal = true)
+    }
   }
 
   override protected def mkOr(lhs: AST, rhs: AST)(implicit zCtx:Z3SolverCtx): AST =
@@ -281,7 +284,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
       val nameFun = messageTranslator.nameFun.asInstanceOf[FuncDecl[_]]
       val argFun = mkArgFun().asInstanceOf[FuncDecl[_]]
       def printTraceElement(index:Int, traceFn: FuncDecl[UninterpretedSort]):Unit = {
-        println(s"$index: ")
+        println(s"$index : ${sortedInd(index)} :")
         val msgati = model.eval(traceFn.apply(sortedInd(index).asInstanceOf[Expr[UninterpretedSort]]), true)
         val mIter = messageTranslator.solverToIdentitySignature.filter{
           case (ast, _) => model.eval(mkEq(nameFun.apply(msgati), ast).asInstanceOf[BoolExpr],true).isTrue

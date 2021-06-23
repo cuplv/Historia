@@ -6,7 +6,7 @@ import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.lifestate.LifeState._
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.TransferFunctions.{inVarsForCall, nonNullCallins, relevantAliases2}
+import edu.colorado.plv.bounder.symbolicexecutor.TransferFunctions.{inVarsForCall, nonNullCallins, relevantAliases}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import upickle.default._
 import edu.colorado.plv.bounder.symbolicexecutor.state.PrettyPrinting
@@ -30,34 +30,17 @@ object TransferFunctions{
       }
     }.head
 
-  /**
-   * Get set of things that if aliased, change the trace abstraction state
-   * TODO: this is over approx
-   * @param pre state before cmd that emits an observed message
-   * @param dir callback/callin entry/exit
-   * @param signature class and name of method
-   * @return
-   */
-  def relevantAliases(pre: State,
-                      dir: MessageType,
-                      signature: (String, String))(implicit
-                                                   ch:ClassHierarchyConstraints) :Set[List[LSParamConstraint]]  = {
-    val relevantI: Set[(I, List[LSParamConstraint])] = pre.findIFromCurrent(dir, signature)
-    relevantI.map{
-      case (I(_, _, vars),p)=> p
-    }
-  }
-  //TODO: replace relevantAliases with this
   // transfer should simply define any variables that aren't seen in the state but read
   // alias considerations are done later by the trace abstraction or by separation logic
-  def relevantAliases2(pre:State,
-                       dir:MessageType,
-                       signature: (String,String),
-                       lst : List[Option[RVal]])(implicit ch:ClassHierarchyConstraints):List[Option[RVal]] = {
-    val relevantI = pre.findIFromCurrent(dir,signature)
+  def relevantAliases(pre:State,
+                      dir:MessageType,
+                      signature: (String,String),
+                      specSpace: SpecSpace,
+                      lst : List[Option[RVal]])(implicit ch:ClassHierarchyConstraints):List[Option[RVal]] = {
+    val relevantI = pre.findIFromCurrent(dir,signature, specSpace)
     lst.zipWithIndex.map{ case (rval,ind) =>
       val existsNAtInd = relevantI.exists{i =>
-        val vars: Seq[String] = i._1.lsVars
+        val vars: Seq[String] = i.lsVars
         val out = (ind < vars.length) && !LSAnyVal.matches(vars(ind))
         out
       }
@@ -131,7 +114,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
 
       val (pkg, name) = msgCmdToMsg(cmret)
       val inVars: List[Option[RVal]] = inVarsForCall(source,w)
-      val relAliases = relevantAliases2(postState2, CIExit, (pkg,name),inVars)
+      val relAliases = relevantAliases(postState2, CIExit, (pkg,name),specSpace,inVars)
       val frame = CallStackFrame(target, Some(source.copy(isPre = true)), Map())
       val (rvals, state0) = getOrDefineRVals(m,relAliases, postState2)
 //      val state1 = traceAllPredTransfer(CIExit, (pkg,name),rvals, state0)
@@ -168,14 +151,15 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       assert(postState.callStack.nonEmpty, "Bad control flow, abstract stack must be non-empty.")
       val invars = inVarsForCall(tgt,w)
       val (pkg,name) = msgCmdToMsg(cminv)
-      val relAliases = relevantAliases2(postState, CIEnter, (pkg,name),invars)
+      val relAliases = relevantAliases(postState, CIEnter, (pkg,name),specSpace,invars)
       val ostates:Set[State] = {
         val (rvals, state0) = getOrDefineRVals(m,relAliases, postState)
 //        val state1 = traceAllPredTransfer(CIEnter, (pkg, name), rvals, state0)
         Set(state0)
       }
       //Only add receiver if this or callin return is in abstract trace
-      val traceNeedRec = List(CIEnter, CIExit).exists( dir => postState.findIFromCurrent(dir, (pkg,name)).nonEmpty)
+      val traceNeedRec = List(CIEnter, CIExit).exists( dir => postState.findIFromCurrent(dir, (pkg,name),specSpace)
+        .nonEmpty)
       val cfNeedRec = postState.alternateCmd.exists(other => !postState.nextCmd.contains(other))
       //TODO: why does onDestroy exit have a bunch of alternate locations of pre-line: -1 r0:= @this:MyActivity$1/2...
       ostates.map{s =>
@@ -201,14 +185,15 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       assert(postState.callStack.nonEmpty, "Bad control flow, abstract stack must be non-empty.")
       val invars = inVarsForCall(tgt,w)
       val (pkg,name) = msgCmdToMsg(cminv)
-      val relAliases = relevantAliases2(postState, CIEnter, (pkg,name),invars)
+      val relAliases = relevantAliases(postState, CIEnter, (pkg,name),specSpace,invars)
       val ostates:Set[State] = {
         val (rvals, state0) = getOrDefineRVals(m,relAliases, postState)
 //        val state1 = traceAllPredTransfer(CIEnter, (pkg, name), rvals, state0)
         Set(state0)
       }
       //Only add receiver if this or callin return is in abstract trace
-      val traceNeedRec = List(CIEnter, CIExit).exists( dir => postState.findIFromCurrent(dir, (pkg,name)).nonEmpty)
+      val traceNeedRec = List(CIEnter, CIExit).exists( dir => postState.findIFromCurrent(dir, (pkg,name), specSpace)
+        .nonEmpty)
       val cfNeedRec = postState.alternateCmd.exists(other => !postState.nextCmd.contains(other))
 
       ostates.map{s =>
@@ -241,7 +226,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
 
       val invars: List[Option[LocalWrapper]] = None :: containingMethod.getArgs
       val (pkg, name) = msgCmdToMsg(cmInv)
-      val relAliases = relevantAliases2(postState, CBEnter, (pkg,name),invars)
+      val relAliases = relevantAliases(postState, CBEnter, (pkg,name),specSpace,invars)
       val (inVals, state0) = getOrDefineRVals(containingMethod, relAliases,postState)
 //      val state1 = traceAllPredTransfer(CBEnter, (pkg,name), inVals, state0)
       val b = newMsgTransfer(containingMethod, CBEnter, (pkg, name), invars, state0)
@@ -304,11 +289,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       // Push frame regardless of relevance
       val pre_push = postState.copy(sf = postState.sf.copy(callStack = newFrame::postState.callStack))
       val localVarOrVal: List[Option[RVal]] = rvar::mloc.getArgs
-      val relAliases = relevantAliases2(postState, CBExit, (pkg,name),localVarOrVal)
-      // Note: no newSpecInstanceTransfer since this is an in-message
-      val (rVals, state0) = getOrDefineRVals(mloc, relAliases, pre_push)
-//      val state1 = traceAllPredTransfer(CBExit, (pkg, name), rVals, state0)
-      Set(state0).map(_.copy(nextCmd = List(target), alternateCmd = Nil))
+      val relAliases = relevantAliases(postState, CBExit, (pkg,name),specSpace,localVarOrVal)
+      val state1 = newMsgTransfer(mloc, CBExit, (pkg,name), relAliases, pre_push)
+      state1.map(_.copy(nextCmd = List(target), alternateCmd = Nil))
     case (CallbackMethodReturn(_,_,mloc1,_), AppLoc(mloc2,_,false)) =>
       assert(mloc1 == mloc2)
       Set(postState).map(_.copy(nextCmd = List(source), alternateCmd = Nil))
@@ -533,12 +516,38 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
    */
   def newMsgTransfer(appMethod:MethodLoc, mt: MessageType,
                      sig:(String,String), allVar:List[Option[RVal]],
-                     postState: State, disallow:Option[LSSpec] = None): Set[State] = {
+                     postState: State): Set[State] = {
     //TODO: just append to single abst trace if sig in spec =====
+    //TODO: get rid of set of trace abstractions in abstract state
     val state0 = if(postState.traceAbstraction.isEmpty)
       postState.copy(sf = postState.sf.copy(traceAbstraction = Set(AbstractTrace(None,Nil,Map()))))
     else postState
-    ???
+    val freshI: Option[I] = specSpace.getIWithFreshVars(mt,sig)
+    freshI match {
+      case None => Set(postState)
+      case Some(i) =>
+
+        val newModelVars:State = (allVar zip i.lsVars).foldLeft(state0){
+          case (acc, (None, _)) =>
+            acc
+          case (acc, (_, "_")) =>
+            acc
+          case (acc,(Some(rVal),lsVar)) =>
+            val (pv, acc2) = acc.getOrDefine(rVal, Some(appMethod))
+            val c = acc2.traceAbstraction.filter(t => t.a.isEmpty)
+            val oldAbs = c.head
+            assert(c.tail.isEmpty, "Only one non-disallow trace abstraction should exist.")
+            assert(!oldAbs.modelVars.contains(lsVar))
+            val newModelVars = oldAbs.modelVars + (lsVar -> pv)
+            val newAbs = oldAbs.copy(modelVars = newModelVars)
+            acc2.copy(sf = acc2.sf.copy(traceAbstraction = Set(newAbs)))
+        }
+//        newModelVars.copy(sf = newModelVars.sf.copyrightOfArrow = i::oldAbs.rightOfArrow, modelVars = newModelVars)
+        val c = newModelVars.traceAbstraction.filter(t => t.a.isEmpty)
+        val oldAbs = c.head
+        val newAbs = oldAbs.copy(rightOfArrow = i::oldAbs.rightOfArrow)
+        Set(newModelVars.copy(sf = newModelVars.sf.copy(traceAbstraction = Set(newAbs))))
+    }
 //    val specsBySignature = if(disallow.isDefined) disallow.toSet else specSpace.specsBySig(mt, sig._1, sig._2)
 //
 //
@@ -596,6 +605,13 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
 //        val newLsAbstraction = AbstractTrace(pred, Nil, lsVarConstraints.toMap)
 //        state2.copy(sf = state2.sf.copy(traceAbstraction = state2.traceAbstraction + newLsAbstraction))
 //    }
+  }
+
+  def newDisallowTransfer(appMethod:MethodLoc, mt: MessageType,
+                     sig:(String,String), allVar:List[Option[RVal]],
+                     postState: State, disallow:Option[LSSpec] = None): Set[State] = {
+    //TODO:================== This method probably shouldn't exist, handle it in the statesolver instead
+    ???
   }
 
   /**

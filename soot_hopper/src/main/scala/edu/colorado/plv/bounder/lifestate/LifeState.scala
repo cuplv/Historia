@@ -436,6 +436,21 @@ object SpecSpace{
 /**
  * Representation of a set of possible lifestate specs */
 class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
+  def specsByI(i: I) = {
+    val ids = i.identitySignature
+    val specs = enableSpecs.filter(spec => spec.target.identitySignature == ids)
+    specs
+  }
+
+  private var allIMemo:Option[Set[I]] = None
+  def allI:Set[I] ={
+    if(allIMemo.isEmpty)
+      allIMemo = Some((enableSpecs ++ disallowSpecs).flatMap{spec =>
+        SpecSpace.allI(spec.pred) + spec.target
+      })
+    allIMemo.get
+  }
+
   def getSpecs:Set[LSSpec] = enableSpecs
   private val allISpecs: Map[MessageType, Set[I]] =
     (enableSpecs ++ disallowSpecs).flatMap(SpecSpace.allI(_)).groupBy(i => i.mt)
@@ -463,7 +478,7 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
       case (v,_) => v
     }
     var solverSig:Option[String] = None
-    val out = allISpecs.getOrElse(mt,Set()).filter{i =>
+    val out: Set[I] = allISpecs.getOrElse(mt,Set()).filter{ i =>
       if(i.signatures.matches(sig)) {
         if (solverSig.isDefined) {
           assert(i.identitySignature == solverSig.get,
@@ -475,6 +490,8 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
       } else
         false
     }
+    if(out.isEmpty)
+      return None
 
     // Compute intersection of defined variables
     val parList = out.foldLeft(List():List[String]){
@@ -483,7 +500,12 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
     }
     val parListFresh = parList.map(a => if(a!="_") nextFreshLSVar() else "_")
 
-    out.headOption.map(v => v.copy(lsVars = parListFresh)) //TODO: copy I with intersection of defined vars
+    val headSig = out.headOption.map(i => i.identitySignature)
+    assert(out.tail.forall(i => headSig.forall(v => v == i.identitySignature)),
+      "All matched i must have same identity signature")
+//    assert(out.size == 1 || out.isEmpty, "I must be unique for each message")
+    //copy I with intersection of defined vars
+    out.headOption.map(v => v.copy(lsVars = parListFresh))
   }
   def getRefWithFreshVars(): Ref ={
     Ref(nextFreshLSVar())
