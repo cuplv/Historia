@@ -58,9 +58,12 @@ case class AbstractTrace(a:Option[LSPred],rightOfArrow:List[LSSingle], modelVars
   }
 }
 object AbstractTrace{
+  //TODO: get rid of lspred in abstract trace
   implicit var rw:RW[AbstractTrace] = macroRW[AbstractTrace]
   def apply(a:LSPred, rightOfArrow:List[LSSingle], modelVars: Map[String,PureExpr]):AbstractTrace =
     AbstractTrace(Some(a), rightOfArrow, modelVars)
+  def apply(rightOfArrow:List[LSSingle], modelVars:Map[String,PureExpr]):AbstractTrace =
+    AbstractTrace(None, rightOfArrow , modelVars)
 }
 
 sealed trait LSParamConstraint{

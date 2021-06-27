@@ -359,19 +359,16 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     traceAbstractionSet.flatMap(a => allI(a, includeArrow = true))
 
 
-  private def allI(abs: AbstractTrace, includeArrow: Boolean): Set[I] = abs match {
-    case AbstractTrace(Some(pred), i2, mapping) =>
-      if (includeArrow)
-        (SpecSpace.allI(pred) ++ i2).flatMap{
-          case i:I => Some(i)
-          case _ => None
-        }
-      else {
-        SpecSpace.allI(pred)
+  private def allI(abs: AbstractTrace, includeArrow: Boolean): Set[I] = {
+    val pred = abs.a.getOrElse(LSTrue)
+    if (includeArrow)
+      (SpecSpace.allI(pred) ++ abs.rightOfArrow).flatMap{
+        case i:I => Some(i)
+        case _ => None
       }
-    case _ =>
-      Set()
-
+    else {
+      SpecSpace.allI(pred)
+    }
   }
 
   /**
@@ -394,6 +391,112 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     case Some(p) => allLSVars(p)
   }
 
+  private case class TraceAndSuffixEnc(len:T, suffix:Option[T] = None, trace:Option[T]=None){
+    def mkSuffix(suffixConstraint:T)(implicit zctx: C):TraceAndSuffixEnc = {
+      // Note: suffix is never negated
+      if(suffix.isDefined)
+        this.copy(suffix = Some(mkAnd(List(suffix.get, suffixConstraint))))
+      else
+        this.copy(suffix = Some(suffixConstraint))
+    }
+    def mkTrace(traceConstraint:List[T], negate:Boolean)(implicit zctx: C):TraceAndSuffixEnc = {
+      assert(traceConstraint.nonEmpty)
+      // If we have two overlapping specs e.g.
+      //  I(bar(x)) <= x = Foo() /\ x != null
+      //  ¬I(bar(x)) <= x = Foo() /\ x == null
+      // one or the other applies when not under negation
+      // under negation both must not apply
+      val op:List[T]=>T = if(negate) mkAnd else mkOr
+      if(trace.isDefined)
+        this.copy(trace = Some(mkAnd(trace.get,op(traceConstraint))))
+      else
+        this.copy(trace = Some(op(traceConstraint)))
+    }
+  }
+  private def encodeTraceAbs(abs: AbstractTrace,
+                        messageTranslator: MessageTranslator,
+                        traceFn: T,
+                        traceLen: T,
+                        pvMap:Map[PureVar,T],
+                        typeMap: Map[PureVar, TypeSet],
+                        typeToSolverConst: Map[Int, T],
+                        constMap:Map[PureVal,T],
+                        specSpace: SpecSpace,
+                        negate: Boolean = false, debug:Boolean = false)(implicit zctx: C): TraceAndSuffixEnc = {
+    val freshTraceFun = mkFreshTraceFn("arrowtf")
+    // For all trace elements before len_, arrowtf and tracefn are the same
+    val beforeIndEq =
+      mkForallIndex(mkZeroIndex, traceLen, i =>
+        mkEq(mkTraceConstraint(traceFn, i), mkTraceConstraint(freshTraceFun, i)))
+
+    val modelVarsSuffix = abs.modelVars.map { case (k, v) => (k -> pvMap(v.asInstanceOf[PureVar])) }
+    val lsTypeMap:Map[String,TypeSet] = abs.modelVars.keySet.map(lsVar => abs.modelVars.get(lsVar) match {
+      case Some(pv:PureVar) => lsVar -> typeMap.getOrElse(pv, TopTypeSet)
+      case _ => lsVar -> TopTypeSet
+    }).toMap
+
+    val op:List[T]=>T = if(negate) mkOr else mkAnd
+    //TODO: define pure vars based on first occurance in trace suffix and leave out the existential
+    abs.rightOfArrow.foldLeft(TraceAndSuffixEnc(traceLen)){
+      case (acc, i: I) =>
+        // i invoked here in future
+        // incriment index for next loop
+        val (ivIsInc, iv) = mkAddOneIndex(acc.len)
+        val arrowTfIsAndInc = mkAnd(ivIsInc,
+          assertIAt(acc.len, i, messageTranslator, freshTraceFun, negated = false,
+            lsTypeMap, typeToSolverConst, modelVarsSuffix))
+        val incAndSuffix = acc.mkSuffix(arrowTfIsAndInc)
+
+        // get applicable specs to current element of suffix
+        val applicableSpecs = specSpace.specsByI(i)
+        if(debug){
+          applicableSpecs.foreach{s =>
+            println(s"applied spec: ${s}")
+          }
+        }
+        val specReq = applicableSpecs.map { spec =>
+          val newMvMap: Map[String, T] = (spec.target.lsVars zip i.lsVars).foldLeft(modelVarsSuffix) {
+            case (mv, (LifeState.LSVar(targetVar), LifeState.LSVar(existingVar))) =>
+              assert(!mv.contains(targetVar),
+                s"Model var collision: target: ${targetVar} existing: ${existingVar}")
+              mv + (targetVar -> modelVarsSuffix(existingVar))
+            case (acc, _) => acc
+          }
+          val newLsTypeMap: Map[String, TypeSet] = (spec.target.lsVars zip i.lsVars).foldLeft(lsTypeMap) {
+            case (acc, (LifeState.LSConst(_), _)) => acc
+            case (acc, (LifeState.LSAnyVal(_), _)) => acc
+            case (acc, (targetVar, existingVar)) =>
+              assert(!acc.contains(targetVar),
+                s"Model var collision: target: ${targetVar} existing: ${existingVar}")
+              acc + (targetVar -> lsTypeMap.getOrElse(existingVar, TopTypeSet))
+          }
+          val unboundModelVars = spec.pred.lsVar -- newMvMap.keySet
+          val rhsReq_ = getRHSReqFromSpec(spec, i, constMap, newMvMap)
+          val rhsReq = if(negate) mkNot(rhsReq_) else rhsReq_
+          val predEnc = (m: Map[String, T]) => encodePred(spec.pred, freshTraceFun, acc.len, messageTranslator,
+            newMvMap ++ m, typeToSolverConst,
+            newLsTypeMap, negate = negate)
+          val quantifiedPredEnc =
+            if (unboundModelVars.isEmpty) {
+              predEnc(Map())
+            } else if(negate){
+              mkForallAddr(unboundModelVars, predEnc)
+            }else {
+              mkExistsAddr(unboundModelVars, predEnc)
+            }
+
+          op(List(rhsReq, quantifiedPredEnc))
+        }
+        //TODO: and between indices, or for same index
+        val withTrace = if(specReq.nonEmpty) incAndSuffix.mkTrace(specReq.toList, negate) else incAndSuffix
+        withTrace.mkSuffix(beforeIndEq)
+          .copy(len = iv) // increment length for next arrowTF
+      case (acc, Ref(v)) =>
+        // V created here in future
+        ???
+    }
+  }
+
   /**
    *
    * @param abs               abstraction of trace to encode for the solver
@@ -406,17 +509,18 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    *                          note that "mkNot(encodeTraceAbs(..." does not work due to skolomization
    * @return encoded trace abstraction
    */
-  def encodeTraceAbs(abs: AbstractTrace,
-                     messageTranslator: MessageTranslator,
-                     traceFn: T,
-                     traceLen: T,
-                     absUID: Option[String] = None,
-                     pvMap:Map[PureVar,T],
-                     typeMap: Map[PureVar, TypeSet],
-                     typeToSolverConst: Map[Int, T],
-                     constMap:Map[PureVal,T],
-                     specSpace: SpecSpace,
-                     negate: Boolean = false)(implicit zctx: C): T = {
+    @deprecated
+  def encodeTraceAbsOld(abs: AbstractTrace,
+                        messageTranslator: MessageTranslator,
+                        traceFn: T,
+                        traceLen: T,
+                        absUID: Option[String] = None,
+                        pvMap:Map[PureVar,T],
+                        typeMap: Map[PureVar, TypeSet],
+                        typeToSolverConst: Map[Int, T],
+                        constMap:Map[PureVal,T],
+                        specSpace: SpecSpace,
+                        negate: Boolean = false)(implicit zctx: C): T = {
 
     val lsTypeMap:Map[String,TypeSet] = abs.modelVars.keySet.map(lsVar => abs.modelVars.get(lsVar) match {
       case Some(pv:PureVar) => lsVar -> typeMap.getOrElse(pv, TopTypeSet)
@@ -530,7 +634,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     res
   }
   private def getRHSReqFromSpec(spec:LSSpec, arrowI:I, constMap:Map[PureVal,T],
-                                mvMap:Map[String,T])(implicit zCtx:C):T = {
+                                mvMap:Map[String,T])(implicit zCtx:C) = {
     val fromConst: Seq[T] = (spec.target.lsVars zip arrowI.lsVars).flatMap{
       case (LifeState.LSConst(v), LifeState.LSVar(inVar)) =>
         Some(mkEq(mkConstValueConstraint(mvMap(inVar)), constMap(v)))
@@ -643,7 +747,11 @@ trait StateSolver[T, C <: SolverCtx[T]] {
                 maxWitness: Option[Int] = None,
                 constMap:Map[PureVal, T],
                 specSpace: SpecSpace,
-                negate:Boolean)(implicit zctx: C): T = {
+                negate:Boolean, debug:Boolean = false)(implicit zctx: C): T = {
+
+    if(debug){
+      println(s"encoding state: ${inState}")
+    }
 
     // pure formula are for asserting that two abstract addresses alias each other or not
     //  as well as asserting upper and lower bounds on concrete types associated with addresses
@@ -695,24 +803,38 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
       // Identity hash code of trace abstraction used when encoding a state so that quantifiers are independent
 
-      val tracefun = mkTraceFn(stateUniqueID)
+      val traceFun = mkTraceFn(stateUniqueID)
       val len = mkLenVar(s"len_$stateUniqueID") // there exists a finite size of the trace for this state
 //      mkAssert(mkLt(mkIntVal(-1), len))
-      val trace = state.traceAbstraction.foldLeft(mkBoolVal(!negate)) { //TODO: ======== trace suffix constraints get dumped in here somehow?
-        case (acc, v) => {
-          val encodedTrace = encodeTraceAbs(v, messageTranslator, traceFn = tracefun,pvMap = pvMap,
-            traceLen = len,negate = negate, typeMap = state.typeConstraints, typeToSolverConst = typeToSolverConst,
-            specSpace = specSpace, constMap = constMap)
-          op(List(acc, encodedTrace))
+      val out = if(state.traceAbstraction.exists{t => t.a.isDefined}) {
+        ???
+        // TODO: remove this code at some point its for old multi element trace abstraction =======
+        val trace = state.traceAbstraction.foldLeft(mkBoolVal(!negate)) { //TODO: ======== trace suffix constraints get dumped in here should not be in "or"
+          case (acc, v) => {
+            val encodedTrace = encodeTraceAbsOld(v, messageTranslator, traceFn = traceFun, pvMap = pvMap,
+              traceLen = len, negate = negate, typeMap = state.typeConstraints, typeToSolverConst = typeToSolverConst,
+              specSpace = specSpace, constMap = constMap)
+            op(List(acc, encodedTrace))
+          }
         }
+        // TODO: possible issue with timeout: cannot ground address space due to concrete heap having function from addr to addr
+        // Possible solution: put upper bound on how many addresses may be needed to find a counter example.
+        //      val allHave = mkAllAddrHavePV( pvMap)(zctx)
+        op(List(pureAst, localAST, heapAst, trace, typeConstraints))
+      }else{
+        // TODO: will eventually get rid of set in abstract trace but for now, check that it only has one element
+        assert(state.traceAbstraction.size < 2, "Todo: make state contain single trace abstraction rather than set")
+        val traceAbs = state.traceAbstraction.headOption.getOrElse(AbstractTrace(None,Nil, Map()))
+        val traceEnc = encodeTraceAbs(traceAbs, messageTranslator, traceFn = traceFun, pvMap = pvMap, traceLen = len,
+          negate = negate, typeMap = state.typeConstraints, typeToSolverConst = typeToSolverConst,
+          specSpace = specSpace, constMap = constMap, debug = debug)
+        val encodedSuffix = traceEnc.suffix.getOrElse(mkBoolVal(b = true))
+        mkAnd(encodedSuffix, op(List(pureAst, localAST, heapAst, typeConstraints) ++ traceEnc.trace))
       }
-      // TODO: possible issue with timeout: cannot ground address space due to concrete heap having function from addr to addr
-      // Possible solution: put upper bound on how many addresses may be needed to find a counter example.
-//      val allHave = mkAllAddrHavePV( pvMap)(zctx)
-      val out = op(List(pureAst, localAST, heapAst, trace, typeConstraints))
       maxWitness.foldLeft(out) { (acc, v) =>
         val (iv, isInc) = mkIndex(v)
-        mkAnd(isInc,mkAnd(mkLTIndex(len, iv), acc)) }
+        mkAnd(isInc, mkAnd(mkLTIndex(len, iv), acc))
+      }
     }
 
 
@@ -748,7 +870,14 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val (localDistinct, localDomain) = mkLocalDomain(allLocal)
     zctx.mkAssert(localDistinct)
 
-    def enumFromI(m: I): T = identitySignaturesToSolver(m.identitySignature) //mkIName(enum, iNameIntMap(m.identitySignature))
+    def enumFromI(m: I): T = {
+      try {
+        identitySignaturesToSolver(m.identitySignature)
+      }catch {
+        case k:NoSuchElementException =>
+          throw k
+      }
+    } //mkIName(enum, iNameIntMap(m.identitySignature))
 
 //    def getEnum: T = identitySignaturesToSolver
 
@@ -916,7 +1045,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       val (uniqueConst, constMap) = mkConstConstraintsMap(getPureValSet(state2.pureFormula))
       val ast = mkAnd(uniqueConst,
         mkAnd(typesAreUniqe,
-          toASTState(state2, typeMap, messageTranslator, maxWitness,constMap, negate = false, specSpace = specSpace)))
+          toASTState(state2, typeMap, messageTranslator, maxWitness,constMap, negate = false,
+            specSpace = specSpace, debug = maxWitness.isDefined)))
 
       if (maxWitness.isDefined) {
         println(s"State ${System.identityHashCode(state2)} encoding: ")
@@ -1020,10 +1150,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
 
       val s1Enc = toASTState(s1, typeToSolverConst, messageTranslator, maxLen, constMap, negate = true,
-        specSpace = specSpace)
+        specSpace = specSpace, debug = maxLen.isDefined)
       zCtx.mkAssert(s1Enc)
       val s2Enc = toASTState(s2, typeToSolverConst, messageTranslator, maxLen, constMap, negate = false,
-        specSpace = specSpace)
+        specSpace = specSpace, debug = maxLen.isDefined)
       zCtx.mkAssert(s2Enc)
       val foundCounter = checkSAT()
       if (foundCounter && maxLen.isDefined) {
@@ -1224,9 +1354,11 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   }
 
   def traceInAbstraction(state: State,specSpace: SpecSpace,
-                         trace: List[TMessage], debug: Boolean = false)(implicit zCtx: C): Boolean = {
+                         trace: List[TMessage],negate:Boolean = false,
+                         debug: Boolean = false)(implicit zCtx: C): Boolean = {
     val messageTranslator = MessageTranslator(List(state), specSpace)
-    encodeTraceContained(state, trace, messageTranslator = messageTranslator, specSpace = specSpace)
+    encodeTraceContained(state, trace, messageTranslator = messageTranslator, specSpace = specSpace,
+      negate = negate)
     val sat = checkSAT()
     if (sat && debug) {
       println(s"model:\n ${zCtx.asInstanceOf[Z3SolverCtx].solver.toString}")
@@ -1243,7 +1375,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     }
   }
   private def encodeTraceContained(state: State, trace: List[TMessage], specSpace: SpecSpace,
-                                   messageTranslator: MessageTranslator)(implicit zCtx: C):Unit = {
+                                   messageTranslator: MessageTranslator,
+                                   negate:Boolean = false)(implicit zCtx: C):Unit = {
     val traceFn = mkTraceFn("")
 
     val usedTypes = allTypes(state)
@@ -1265,27 +1398,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val assertDistinct = mkDistinctT(distinctAddr.keySet.map(distinctAddr(_)))
     zCtx.mkAssert(assertDistinct)
     val encodedState = toASTState(state, typeMap, messageTranslator, None, constMap,
-      negate=false, specSpace = specSpace)
+      negate=negate, specSpace = specSpace)
     val encodedTrace = encodeTrace(traceFn, trace, messageTranslator, distinctAddr)
     zCtx.mkAssert(encodedState)
     zCtx.mkAssert(encodedTrace)
-
-//    val len = mkIntVar(s"len_")
-//    val encodedAbs: Set[T] =
-//      state.traceAbstraction.map(encodeTraceAbs(_, messageTranslator, traceFn, len, Some(""),???)) //TODO
-//    val pf = filterTypeConstraintsFromPf(state.pureFormula)
-//
-//    val (uniqueConst, constMap) = mkConstConstraintsMap(getPureValSet(pf))
-//    val s2pure = pf.foldLeft(mkBoolVal(true)) {
-//      case (acc, constraint) => mkAnd(toAST(constraint,constMap,???), acc)
-//    }
-//
-//    val distinctAddr: Map[Int, T] = (0 until 10).map(v => (v, mkAddrConst(v))).toMap
-//    val assertDistinct = mkDistinctT(distinctAddr.keySet.map(distinctAddr(_)))
-//    val encodedTrace = encodeTrace(traceFn, trace, messageTranslator, distinctAddr)
-////    mkAnd(uniqueConst, mkAnd(mkEq(len, mkIntVal(trace.length)),
-//      mkAnd(encodedAbs.foldLeft(mkAnd(assertDistinct, s2pure))((a, b) => mkAnd(a, b)), encodedTrace))
-//    )
   }
 
 }

@@ -150,7 +150,15 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
   override protected def mkLt(lhs: AST, rhs: AST)(implicit zCtx:Z3SolverCtx): AST =
     zCtx.ctx.mkLt(lhs.asInstanceOf[ArithExpr[ArithSort]],rhs.asInstanceOf[ArithExpr[ArithSort]])
 
-  override protected def mkNot(o: AST)(implicit zCtx:Z3SolverCtx): AST = zCtx.ctx.mkNot(o.asInstanceOf[BoolExpr])
+  override protected def mkNot(o: AST)(implicit zCtx:Z3SolverCtx): AST = {
+    if(o.toString == "true"){
+      mkBoolVal(boolVal = false)
+    }else if(o.toString == "false"){
+      mkBoolVal(boolVal = true)
+    }else {
+      zCtx.ctx.mkNot(o.asInstanceOf[BoolExpr])
+    }
+  }
 
   override protected def mkAdd(lhs: AST, rhs: AST)(implicit zCtx:Z3SolverCtx): AST = {
     zCtx.ctx.mkAdd(lhs.asInstanceOf[ArithExpr[ArithSort]], rhs.asInstanceOf[ArithExpr[ArithSort]])
@@ -166,22 +174,27 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
   }
 
   override protected def mkAnd(t:List[AST])(implicit zCtx:Z3SolverCtx): AST = {
-    if(t.isEmpty) {
+    val t2 = t.filter(v => v.toString != "true")
+
+    if(t2.isEmpty) {
       mkBoolVal(boolVal = true)
-    }else if(t.size == 1){
-      t.head
+    }else if(t2.size == 1){
+      t2.head
     } else {
-      val tb: Array[BoolExpr] = t.map(_.asInstanceOf[BoolExpr]).toArray
+      val tb: Array[BoolExpr] = t2.map(_.asInstanceOf[BoolExpr]).toArray
       zCtx.ctx.mkAnd(tb: _*)
     }
   }
 
   override protected def mkOr(lhs: AST, rhs: AST)(implicit zCtx:Z3SolverCtx): AST =
-    zCtx.ctx.mkOr(lhs.asInstanceOf[BoolExpr], rhs.asInstanceOf[BoolExpr])
+    mkOr(List(lhs,rhs))
 
   override protected def mkOr(t: Iterable[AST])(implicit zCtx:Z3SolverCtx): AST = {
-    if(t.nonEmpty) {
-      val tb: Array[BoolExpr] = t.map(_.asInstanceOf[BoolExpr]).toArray
+    val t2 = t.filter(v => v.toString != "false")
+    if(t2.size == 1) {
+      t2.head
+    }else if(t2.nonEmpty) {
+      val tb: Array[BoolExpr] = t2.map(_.asInstanceOf[BoolExpr]).toArray
       zCtx.ctx.mkOr(tb: _*)
     }else{
       mkBoolVal(boolVal = false)
