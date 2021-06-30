@@ -225,6 +225,9 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
 
   override protected def mkLenVar(s: String)(implicit zCtx: Z3SolverCtx): AST = zCtx.ctx.mkConst(s, indexSort)
 
+  override protected def mkAddrVar(pv:PureVar)(implicit zCtx:Z3SolverCtx):AST =
+    zCtx.ctx.mkFreshConst(mkPvName(pv), addrSort)
+
 
 
   override protected def fieldEquals(f: AST, t1 : AST, t2:AST)(implicit zCtx:Z3SolverCtx): AST = {

@@ -103,15 +103,17 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   protected def mkBoolVal(b: Boolean)(implicit zctx: C): T
 
   @deprecated
-  protected def mkIntVar(s: String)(implicit zctx: C): T
+  protected def mkIntVar(s: String)(implicit zCtx: C): T
 
-  protected def mkLenVar(s:String)(implicit zctx:C):T
+  protected def mkLenVar(s:String)(implicit zCtx:C):T
 
-  protected def mkFreshIntVar(s: String)(implicit zctx: C): T
+  protected def mkAddrVar(pv:PureVar)(implicit zCtx:C):T
 
-  protected def mkModelVar(s: String, predUniqueID: String)(implicit zctx: C): T // model vars are scoped to trace abstraction
+  protected def mkFreshIntVar(s: String)(implicit zCtx: C): T
 
-  protected def fieldEquals(fieldFun: T, t1: T, t2: T)(implicit zctx: C): T
+  protected def mkModelVar(s: String, predUniqueID: String)(implicit zCtx: C): T // model vars are scoped to trace abstraction
+
+  protected def fieldEquals(fieldFun: T, t1: T, t2: T)(implicit zCtx: C): T
 
   protected def solverSimplify(t: T,
                                state: State,
@@ -222,6 +224,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       ???
   }
 
+  def getArgAt(index: T, argNum: Int, traceFn:T)(implicit zCtx:C): T = {
+    val msgExpr = mkTraceConstraint(traceFn,index)
+    mkArgConstraint(mkArgFun(), argNum, msgExpr)
+  }
   /**
    * Formula representing truth of "m is at position index in traceFn"
    *
@@ -391,7 +397,22 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     case Some(p) => allLSVars(p)
   }
 
-  private case class TraceAndSuffixEnc(len:T, suffix:Option[T] = None, trace:Option[T]=None){
+  private case class TraceAndSuffixEnc(len:T,
+                                       definedPvMap:Map[PureVar,T],
+                                       noQuantifyPv:Set[PureVar] = Set(),
+                                       suffix:Option[T] = None, trace:Option[T]=None){
+    // When a pure var is used in the trace suffix, it does not need to be quantified
+    def definePvAs(pv:PureVar, t:T):TraceAndSuffixEnc = {
+      this.copy(definedPvMap= definedPvMap + (pv->t), noQuantifyPv = noQuantifyPv + pv)
+    }
+    def getOrQuantifyPv(pv:PureVar)(implicit zCtx:C):(T,TraceAndSuffixEnc) = {
+      if(definedPvMap.contains(pv)) {
+        (definedPvMap(pv),this)
+      }else{
+        val pvVar: T = mkAddrVar(pv)
+        (pvVar,this.copy(definedPvMap = definedPvMap + (pv -> pvVar)))
+      }
+    }
     def mkSuffix(suffixConstraint:T)(implicit zctx: C):TraceAndSuffixEnc = {
       // Note: suffix is never negated
       if(suffix.isDefined)
@@ -413,23 +434,22 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         this.copy(trace = Some(op(traceConstraint)))
     }
   }
+
   private def encodeTraceAbs(abs: AbstractTrace,
-                        messageTranslator: MessageTranslator,
-                        traceFn: T,
-                        traceLen: T,
-                        pvMap:Map[PureVar,T],
-                        typeMap: Map[PureVar, TypeSet],
-                        typeToSolverConst: Map[Int, T],
-                        constMap:Map[PureVal,T],
-                        specSpace: SpecSpace,
-                        negate: Boolean = false, debug:Boolean = false)(implicit zctx: C): TraceAndSuffixEnc = {
+                             messageTranslator: MessageTranslator,
+                             traceFn: T,
+                             traceLen: T,
+                             typeMap: Map[PureVar, TypeSet],
+                             typeToSolverConst: Map[Int, T],
+                             constMap:Map[PureVal,T],
+                             specSpace: SpecSpace,
+                             negate: Boolean = false, debug:Boolean = false)(implicit zctx: C): TraceAndSuffixEnc = {
     val freshTraceFun = mkFreshTraceFn("arrowtf")
     // For all trace elements before len_, arrowtf and tracefn are the same
     val beforeIndEq =
       mkForallIndex(mkZeroIndex, traceLen, i =>
         mkEq(mkTraceConstraint(traceFn, i), mkTraceConstraint(freshTraceFun, i)))
 
-    val modelVarsSuffix = abs.modelVars.map { case (k, v) => (k -> pvMap(v.asInstanceOf[PureVar])) }
     val lsTypeMap:Map[String,TypeSet] = abs.modelVars.keySet.map(lsVar => abs.modelVars.get(lsVar) match {
       case Some(pv:PureVar) => lsVar -> typeMap.getOrElse(pv, TopTypeSet)
       case _ => lsVar -> TopTypeSet
@@ -437,15 +457,40 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
     val op:List[T]=>T = if(negate) mkOr else mkAnd
     //TODO: define pure vars based on first occurance in trace suffix and leave out the existential
-    abs.rightOfArrow.foldLeft(TraceAndSuffixEnc(traceLen)){
+    abs.rightOfArrow.foldLeft(TraceAndSuffixEnc(traceLen, Map())){
       case (acc, i: I) =>
         // i invoked here in future
         // incriment index for next loop
         val (ivIsInc, iv) = mkAddOneIndex(acc.len)
+
+        // Get pure vars associated with i paired with args
+        val argInd = i.lsVars.zipWithIndex.flatMap{
+          case (LifeState.LSVar(v),ind) if abs.modelVars.contains(v) =>
+            abs.modelVars(v) match {
+              case pv:PureVar =>
+                // use ind to get value at index/arg in trace
+                val arg:T = getArgAt(acc.len,ind,freshTraceFun)
+                Some(pv,arg)
+              case _ => None
+            }
+          case _ => None
+        }.toMap
+        // add to overridden set if not there already
+        val acc2 = argInd.foldLeft(acc){(acc3, v) => acc3.definePvAs(v._1,v._2)}
+
+        // if in overridden set, assert equality
+
+        val modelVarsSuffix: Map[String, T] =
+          abs.modelVars.map { case (k, v) => (k -> acc2.definedPvMap(v.asInstanceOf[PureVar])) }
+
+        //======
+        //TODO: error here, pv may not be defined yet foldLeft and accumulate new acc with undefined PVs
         val arrowTfIsAndInc = mkAnd(ivIsInc,
-          assertIAt(acc.len, i, messageTranslator, freshTraceFun, negated = false,
+          assertIAt(acc2.len, i, messageTranslator, freshTraceFun, negated = false,
             lsTypeMap, typeToSolverConst, modelVarsSuffix))
-        val incAndSuffix = acc.mkSuffix(arrowTfIsAndInc)
+
+
+        val incAndSuffix = acc2.mkSuffix(arrowTfIsAndInc)
 
         // get applicable specs to current element of suffix
         val applicableSpecs = specSpace.specsByI(i)
@@ -460,20 +505,20 @@ trait StateSolver[T, C <: SolverCtx[T]] {
               assert(!mv.contains(targetVar),
                 s"Model var collision: target: ${targetVar} existing: ${existingVar}")
               mv + (targetVar -> modelVarsSuffix(existingVar))
-            case (acc, _) => acc
+            case (mv, _) => mv
           }
           val newLsTypeMap: Map[String, TypeSet] = (spec.target.lsVars zip i.lsVars).foldLeft(lsTypeMap) {
-            case (acc, (LifeState.LSConst(_), _)) => acc
-            case (acc, (LifeState.LSAnyVal(_), _)) => acc
-            case (acc, (targetVar, existingVar)) =>
-              assert(!acc.contains(targetVar),
+            case (tm, (LifeState.LSConst(_), _)) => tm
+            case (tm, (LifeState.LSAnyVal(_), _)) => tm
+            case (tm, (targetVar, existingVar)) =>
+              assert(!tm.contains(targetVar),
                 s"Model var collision: target: ${targetVar} existing: ${existingVar}")
-              acc + (targetVar -> lsTypeMap.getOrElse(existingVar, TopTypeSet))
+              tm + (targetVar -> lsTypeMap.getOrElse(existingVar, TopTypeSet))
           }
           val unboundModelVars = spec.pred.lsVar -- newMvMap.keySet
           val rhsReq_ = getRHSReqFromSpec(spec, i, constMap, newMvMap)
           val rhsReq = if(negate) mkNot(rhsReq_) else rhsReq_
-          val predEnc = (m: Map[String, T]) => encodePred(spec.pred, freshTraceFun, acc.len, messageTranslator,
+          val predEnc = (m: Map[String, T]) => encodePred(spec.pred, freshTraceFun, acc2.len, messageTranslator,
             newMvMap ++ m, typeToSolverConst,
             newLsTypeMap, negate = negate)
           val quantifiedPredEnc =
@@ -761,6 +806,15 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     }
 
     val state = inState
+    val stateUniqueID = "" //TODO: should remove?
+    val len = mkLenVar(s"len_$stateUniqueID") // there exists a finite size of the trace for this state
+    val traceFun = mkTraceFn(stateUniqueID)
+    assert(state.traceAbstraction.size < 2, "Todo: make state contain single trace abstraction rather than set") //TODO:
+    val traceAbs = state.traceAbstraction.headOption.getOrElse(AbstractTrace(None,Nil, Map()))
+    val traceEnc = encodeTraceAbs(traceAbs, messageTranslator, traceFn = traceFun, traceLen = len,
+      negate = negate, typeMap = state.typeConstraints, typeToSolverConst = typeToSolverConst,
+      specSpace = specSpace, constMap = constMap, debug = debug)
+    val encodedSuffix = traceEnc.suffix.getOrElse(mkBoolVal(b = true))
 
     def withPVMap(pvMap:Map[PureVar, T]):T =  {
       // typeFun is a function from addresses to concrete types in the program
@@ -792,7 +846,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         }.toList)
       }
 //      val stateUniqueID = System.identityHashCode(state).toString
-      val stateUniqueID = "" //TODO: should remove?
 
       // Encode locals
       val ll: Map[(String, Int), PureVar] = levelLocalPv(state)
@@ -803,32 +856,11 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
       // Identity hash code of trace abstraction used when encoding a state so that quantifiers are independent
 
-      val traceFun = mkTraceFn(stateUniqueID)
-      val len = mkLenVar(s"len_$stateUniqueID") // there exists a finite size of the trace for this state
 //      mkAssert(mkLt(mkIntVal(-1), len))
-      val out = if(state.traceAbstraction.exists{t => t.a.isDefined}) {
+      val out = if(state.traceAbstraction.exists{t => t.a.isDefined})
         ???
-        // TODO: remove this code at some point its for old multi element trace abstraction =======
-        val trace = state.traceAbstraction.foldLeft(mkBoolVal(!negate)) { //TODO: ======== trace suffix constraints get dumped in here should not be in "or"
-          case (acc, v) => {
-            val encodedTrace = encodeTraceAbsOld(v, messageTranslator, traceFn = traceFun, pvMap = pvMap,
-              traceLen = len, negate = negate, typeMap = state.typeConstraints, typeToSolverConst = typeToSolverConst,
-              specSpace = specSpace, constMap = constMap)
-            op(List(acc, encodedTrace))
-          }
-        }
-        // TODO: possible issue with timeout: cannot ground address space due to concrete heap having function from addr to addr
-        // Possible solution: put upper bound on how many addresses may be needed to find a counter example.
-        //      val allHave = mkAllAddrHavePV( pvMap)(zctx)
-        op(List(pureAst, localAST, heapAst, trace, typeConstraints))
-      }else{
+      else{
         // TODO: will eventually get rid of set in abstract trace but for now, check that it only has one element
-        assert(state.traceAbstraction.size < 2, "Todo: make state contain single trace abstraction rather than set")
-        val traceAbs = state.traceAbstraction.headOption.getOrElse(AbstractTrace(None,Nil, Map()))
-        val traceEnc = encodeTraceAbs(traceAbs, messageTranslator, traceFn = traceFun, pvMap = pvMap, traceLen = len,
-          negate = negate, typeMap = state.typeConstraints, typeToSolverConst = typeToSolverConst,
-          specSpace = specSpace, constMap = constMap, debug = debug)
-        val encodedSuffix = traceEnc.suffix.getOrElse(mkBoolVal(b = true))
         mkAnd(encodedSuffix, op(List(pureAst, localAST, heapAst, typeConstraints) ++ traceEnc.trace))
       }
       maxWitness.foldLeft(out) { (acc, v) =>
@@ -838,7 +870,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     }
 
 
-    val statePV = state.pureVars()
+    val statePV = state.pureVars() -- traceEnc.noQuantifyPv
     val statePVWithExtra = statePV
     val pureVarsBack: Map[String,PureVar] = statePVWithExtra.map(pv => (mkPvName(pv) -> pv)).toMap
     val pureVars: Set[String] = statePVWithExtra.map(mkPvName)
