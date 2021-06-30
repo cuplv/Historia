@@ -413,14 +413,14 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
     val nameToAST = (name zip j).toMap
     (j,nameToAST)
   }
-  override protected def mkForallAddr(name: Set[String], cond: Map[String,AST] => AST)
+  override protected def mkForallAddr(name: Set[String], cond: Map[String,AST] => AST, solverNames:Set[AST])
                                      (implicit zCtx:Z3SolverCtx): AST = {
     assert(!name.contains("_"), "Wild card variables should not be quantified")
     if(name.isEmpty){
       cond(Map())
     }else {
       val (j, nameToAST) = nameConstMap(name)
-      zCtx.ctx.mkForall(j,
+      zCtx.ctx.mkForall((j.toSet ++ solverNames.map(_.asInstanceOf[Expr[UninterpretedSort]])).toArray,
         cond(nameToAST).asInstanceOf[Expr[BoolSort]], 1,
         null, null, null, null)
     }
@@ -433,14 +433,14 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
     zCtx.ctx.mkExists(Array(j), cond(j).asInstanceOf[BoolExpr],1,null,null,null,null)
   }
 
-  override protected def mkExistsAddr(name: Set[String], cond: Map[String,AST] => AST)
+  override protected def mkExistsAddr(name: Set[String], cond: Map[String,AST] => AST, solverNames:Set[AST])
                                      (implicit zCtx:Z3SolverCtx): AST = {
     assert(!name.contains("_"), "Wild card variables should not be quantified")
     if(name.isEmpty){
       cond(Map())
     }else {
       val (j, nameToAST) = nameConstMap(name)
-      zCtx.ctx.mkExists(j,
+      zCtx.ctx.mkExists((j.toSet ++ solverNames.map(_.asInstanceOf[Expr[UninterpretedSort]])).toArray,
         cond(nameToAST).asInstanceOf[Expr[BoolSort]], 1,
         null, null, null, null)
     }

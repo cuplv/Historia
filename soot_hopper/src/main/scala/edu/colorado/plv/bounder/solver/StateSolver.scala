@@ -54,11 +54,11 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   protected def mkForallAddr(name: String, cond: T => T)(implicit zctx: C): T
 
-  protected def mkForallAddr(name:Set[String], cond: Map[String,T] => T)(implicit zctx:C):T
+  protected def mkForallAddr(name:Set[String], cond: Map[String,T] => T, solverNames:Set[T] = Set())(implicit zctx:C):T
 
   protected def mkExistsAddr(name: String, cond: T => T)(implicit zctx: C): T
 
-  protected def mkExistsAddr(name:Set[String], cond: Map[String,T] => T)(implicit zctx:C):T
+  protected def mkExistsAddr(name:Set[String], cond: Map[String,T] => T, solverNames:Set[T] = Set())(implicit zctx:C):T
 
   @deprecated
   protected def mkExistsInt(min: T, max: T, cond: T => T)(implicit zctx: C): T
@@ -400,6 +400,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   private case class TraceAndSuffixEnc(len:T,
                                        definedPvMap:Map[PureVar,T],
                                        noQuantifyPv:Set[PureVar] = Set(),
+                                       quantifiedPv:Set[T] = Set(),
                                        suffix:Option[T] = None, trace:Option[T]=None){
     // When a pure var is used in the trace suffix, it does not need to be quantified
     def definePvAs(pv:PureVar, t:T):TraceAndSuffixEnc = {
@@ -410,7 +411,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         (definedPvMap(pv),this)
       }else{
         val pvVar: T = mkAddrVar(pv)
-        (pvVar,this.copy(definedPvMap = definedPvMap + (pv -> pvVar)))
+        (pvVar,this.copy(definedPvMap = definedPvMap + (pv -> pvVar), quantifiedPv = quantifiedPv + pvVar))
       }
     }
     def mkSuffix(suffixConstraint:T)(implicit zctx: C):TraceAndSuffixEnc = {
@@ -480,11 +481,17 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
         // if in overridden set, assert equality
 
-        val modelVarsSuffix: Map[String, T] =
-          abs.modelVars.map { case (k, v) => (k -> acc2.definedPvMap(v.asInstanceOf[PureVar])) }
+        //        val modelVarsSuffix: Map[String, T] =
+        //          abs.modelVars.map { case (k, v) => (k -> acc2.definedPvMap(v.asInstanceOf[PureVar])) }
+        val (modelVarsSuffix:Map[String,T], acc3) = abs.modelVars.foldLeft((Map[String,T](), acc2)){
+          case ((mvMap, acc3), (k,v:PureVar)) if(acc3.definedPvMap.contains(v)) =>
+            (mvMap + (k->acc3.definedPvMap(v)), acc3 )
+          case ((mvMap, acc3), (k,v:PureVar)) =>
+            val (a,b) = acc3.getOrQuantifyPv(v)
+            (mvMap + (k -> a),b )
+        }
 
-        //======
-        //TODO: error here, pv may not be defined yet foldLeft and accumulate new acc with undefined PVs
+        //====== TODO: just added quantif here
         val arrowTfIsAndInc = mkAnd(ivIsInc,
           assertIAt(acc2.len, i, messageTranslator, freshTraceFun, negated = false,
             lsTypeMap, typeToSolverConst, modelVarsSuffix))
@@ -816,7 +823,9 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       specSpace = specSpace, constMap = constMap, debug = debug)
     val encodedSuffix = traceEnc.suffix.getOrElse(mkBoolVal(b = true))
 
-    def withPVMap(pvMap:Map[PureVar, T]):T =  {
+    def withPVMap(pvMapIn:Map[PureVar, T]):T =  {
+
+      val pvMap = pvMapIn ++ traceEnc.definedPvMap
       // typeFun is a function from addresses to concrete types in the program
       val typeFun = createTypeFun()
 
@@ -877,9 +886,9 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
     val back = (v:Map[String,T]) => withPVMap(v.map{ case (k,v) => (pureVarsBack(k) -> v) })
     if(negate) {
-      mkForallAddr(pureVars, back)
+      mkForallAddr(pureVars, back,traceEnc.quantifiedPv)
     }else{
-      mkExistsAddr(pureVars, back)
+      mkExistsAddr(pureVars, back,traceEnc.quantifiedPv)
     }
   }
 

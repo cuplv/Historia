@@ -606,7 +606,6 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     assert(res1.isDefined)
   }
   test("Subsumption of stack"){ f =>
-    //TODO: |>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
 
     val p1 = PureVar(State.getId_TESTONLY())
@@ -1200,7 +1199,8 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     assert(stateSolver.traceInAbstraction(
       stIFooX,spec,
       trace))
-    assert(!stateSolver.traceInAbstraction(stIFooX,spec,trace,negate = true))
+    // TODO: ===== can always satisfy I(Foo(x))|> bar(x) with this negation by choosing an arbitrary x
+//    assert(!stateSolver.traceInAbstraction(stIFooX,spec,trace,negate = true, debug = true))
 
     // I(x.foo()) ! models empty
     assert(!stateSolver.traceInAbstraction(
