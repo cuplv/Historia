@@ -464,8 +464,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       //  ¬I(bar(x)) <= x = Foo() /\ x == null
       // one or the other applies when not under negation
       // under negation both must not apply
-      val op:List[T]=>T = if(negate) mkAnd else mkOr
-      val combTraceConst:List[T]=>T = if(negate) mkOr else mkAnd
+      val op:List[T]=>T = if(negate) mkOr else mkAnd
+      val combTraceConst:List[T]=>T = if(negate) mkAnd else mkOr
 
       if(trace.isDefined)
         this.copy(trace = Some(op(List(trace.get, combTraceConst(traceConstraint) ))))
@@ -549,8 +549,14 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val (modelVarMap:Map[String,T], traceAndSuffixEnc:TraceAndSuffixEnc) =
       freeVars.foldLeft(Map[String,T](),TraceAndSuffixEnc(traceLen,Map())){
         case ((accM, accTS),fv) =>
-          val (newTS,v) = accTS.getOrQuantifyPv(abs.modelVars(fv).asInstanceOf[PureVar])
-          (accM + (fv -> newTS), v)
+          if(abs.modelVars.contains(fv)) {
+            val (newTS, v) = accTS.getOrQuantifyPv(abs.modelVars(fv).asInstanceOf[PureVar])
+            (accM + (fv -> newTS), v)
+          }else {
+            assert(fv.contains("LS_GENERATED__"), "All non-generated fv must be bound to pv")
+            val v = mkModelVar(fv,"")
+            (accM + (fv -> v), accTS.copy(quantifiedPv = accTS.quantifiedPv + v))
+          }
       }
     val modelTypeMap = modelVarMap.keySet.map{
       case k if abs.modelVars.contains(k) =>
