@@ -683,7 +683,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
       LSSpec(iFoo_a, iZzz_a)
     ))
 
-    // NI(a.foo(), a.bar()) /\ I(a.foo()) should be subsumed by NI(a.foo(), a.bar())
+    // NI(a.foo(), a.bar()) /\ I(a.foo()) should be subsumed by NI(a.foo(),a.bar())
     val s_foo_bar_foo = state.copy(sf = state.sf.copy(traceAbstraction =
       Set(AbstractTrace(iBaz_b::iZzz_d::Nil, Map("b"->p1, "d"->p1)))))
     val s_foo_bar = state.copy(sf = state.sf.copy(traceAbstraction =
@@ -1200,7 +1200,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
       stIFooX,spec,
       trace))
     // TODO: ===== can always satisfy I(Foo(x))|> bar(x) with this negation by choosing an arbitrary x
-//    assert(!stateSolver.traceInAbstraction(stIFooX,spec,trace,negate = true, debug = true))
+    assert(!stateSolver.traceInAbstraction(stIFooX,spec,trace,negate = true, debug = true))
 
     // I(x.foo()) ! models empty
     assert(!stateSolver.traceInAbstraction(

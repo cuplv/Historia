@@ -163,6 +163,8 @@ object LifeState {
   case class LSConstraint(v1:String,op:CmpOp,v2:String )
 
   sealed trait LSPred {
+    def swap(swapMap: Map[String, String]):LSPred
+
     def contains(mt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints):Boolean
 
     def lsVar: Set[String]
@@ -170,6 +172,14 @@ object LifeState {
   object LSPred{
     implicit var rw:RW[LSPred] = RW.merge(LSAtom.rw, macroRW[Not], macroRW[And],
       macroRW[Or], macroRW[LSTrue.type], macroRW[LSFalse.type])
+  }
+  case class LSEq(v1:String,v2:String) extends LSPred {
+    override def swap(swapMap: Map[String, String]): LSPred = LSEq(swapMap(v1), swapMap(v2))
+
+    override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean =
+      false
+
+    override def lsVar: Set[String] = Set(v1,v2).filter(v => LSVar.matches(v))
   }
 
   /**
@@ -187,6 +197,11 @@ object LifeState {
     override def identitySignature: String = ???
 
     override def lsVars: List[String] = lsVar.toList
+
+    override def swap(swapMap: Map[String, String]): LifeState.Ref = {
+      assert(swapMap.contains(v), "Swap must contain all variables")
+      Ref(swapMap(v))
+    }
   }
   object Ref{
     private def oneCont(a1:LSPred, a2:LSPred):Option[Ref] = {
@@ -216,6 +231,9 @@ object LifeState {
 
     override def contains(mt:MessageType, sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean =
       l1.contains(mt,sig) || l2.contains(mt,sig)
+
+    override def swap(swapWithFresh: Map[String, String]): LSPred =
+      And(l1.swap(swapWithFresh), l2.swap(swapWithFresh))
   }
   case class Not(l: LSPred) extends LSPred {
     override def lsVar: Set[String] = l.lsVar
@@ -223,20 +241,28 @@ object LifeState {
 
     override def contains(mt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean =
       l.contains(mt,sig)
+
+    override def swap(swapMap: Map[String, String]): LSPred = Not(l.swap(swapMap))
   }
   case class Or(l1:LSPred, l2:LSPred) extends LSPred {
     override def lsVar: Set[String] = l1.lsVar.union(l2.lsVar)
     override def toString:String = s"(${l1.toString} OR ${l2.toString})"
     override def contains(mt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean =
       l1.contains(mt, sig) || l2.contains(mt,sig)
+
+    override def swap(swapMap: Map[String, String]): LSPred = Or(l1.swap(swapMap), l2.swap(swapMap))
   }
   case object LSTrue extends LSPred {
     override def lsVar: Set[String] = Set.empty
     override def contains(mt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean = false
+
+    override def swap(swapMap: Map[String, String]): LSPred = this
   }
   case object LSFalse extends LSPred {
     override def lsVar: Set[String] = Set.empty
     override def contains(mt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean = false
+
+    override def swap(swapMap: Map[String, String]): LSPred = this
   }
 
   sealed trait LSAtom extends LSPred {
@@ -344,6 +370,14 @@ object LifeState {
 
     override def contains(omt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean =
       omt == mt && signatures.matches(sig)
+
+    override def swap(swapMap: Map[String, String]): I = {
+      val newLSVars = lsVars.map{v =>
+        assert(swapMap.contains(v), s"SwapMap must contain v: ${v}")
+        swapMap(v)
+      }
+      this.copy(lsVars = newLSVars)
+    }
   }
   object I{
     implicit val rw:RW[I] = macroRW
@@ -359,26 +393,27 @@ object LifeState {
 
     override def contains(mt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean =
       i1.contains(mt, sig) || i2.contains(mt, sig)
+
+    override def swap(swapMap: Map[String, String]): LSPred = NI(i1.swap(swapMap), i2.swap(swapMap))
   }
   object NI{
     implicit val rw:RW[NI] = macroRW
   }
-//  sealed trait LSMacroAndSpec
-  case class LSSpec(pred:LSPred, target: I, rhsConstraints: Set[LSConstraint] = Set()) //extends LSMacroAndSpec
-
-  //TODO: probably remove this
-//  case class MacroID(name:String) extends LSAtom {
-//    // Parser should substitute all of these
-//    override def identitySignature: String =
-//      throw new IllegalStateException()
-//
-//    override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean =
-//      throw new IllegalStateException()
-//
-//    override def lsVar: Set[String] =
-//      throw new IllegalStateException()
-//  }
-//  case class LSMacro(name:MacroID, pred:LSPred) extends LSMacroAndSpec
+  case class LSSpec(pred:LSPred, target: I, rhsConstraints: Set[LSConstraint] = Set()){
+    def instantiate(i:I, specSpace: SpecSpace):LSPred = {
+      val swap = (target.lsVars zip i.lsVars).filter{
+        case (LSAnyVal(),_) => false
+        case (_,LSAnyVal()) => false
+        case _ => true
+      }
+      val unbound = pred.lsVar -- swap.map(_._1)
+      val swapWithFresh = swap ++ unbound.map(v => (v,specSpace.nextFreshLSVar()))
+      if(rhsConstraints.isEmpty)
+        pred.swap(swapWithFresh.toMap)
+      else
+        ??? //TODO:=============
+    }
+  }
 
   // Class that holds a graph of possible predicates and alias relations between the predicates.
   // Generated from a fast pre analysis of the applications.
