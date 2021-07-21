@@ -1492,25 +1492,6 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val res4 = stateSolver.witnessed(s(at4,Set(PureConstraint(pv, Equals, NullVal))),spec4,debug = true)
     assert(!res4)
   }
-  test("subsumption with trace suffix encoding"){f =>
-    val (stateSolver,_) = getStateSolver(SolverTypeSolving)
-    val iFoo_ac = I(CBEnter, Set(("", "foo")), "c"::"a" :: Nil)
-    val iFoo_bd = I(CBEnter, Set(("", "foo")), "d"::"b" :: Nil)
-    val iBar_a = I(CBEnter, Set(("", "bar")), "a"::Nil)
-    val s1 = LSSpec(iBar_a, iFoo_ac,Set(LSConstraint("c", NotEquals, "@null"))) //TODO: does LSTrue cause issues?
-    def s(at:AbstractTrace, pc:Set[PureConstraint]):State = {
-      val ts = State.topState
-      ts.copy(sf = ts.sf.copy(traceAbstraction = Set(at), pureFormula = pc))
-    }
-    val spec = new SpecSpace(Set(s1))
-    val pv1 = PureVar(1)
-    val pv2 = PureVar(2)
-    val pv3 = PureVar(3)
-    val st1 = s(AbstractTrace(None,Nil,Map()), Set())
-    val st2 = s(AbstractTrace(None,iFoo_bd::Nil,Map("b" -> pv1, "d" -> pv2)), Set())
-    ???
-
-  }
   test("Prepending required enable message to trace should prevent subsumption") { f =>
     val (stateSolver,_) = getStateSolver(SolverTypeSolving)
 
@@ -1546,7 +1527,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     assert(isFeasible2.isDefined)
 
 
-    val res = stateSolver.canSubsume(s_1, s_2, spec) //TODO: failing=============
+    val res = stateSolver.canSubsume(s_1, s_2, spec)
     assert(!res)
   }
 

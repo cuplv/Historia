@@ -426,13 +426,14 @@ object LifeState {
         case _ => true
       }
       val unbound = pred.lsVar -- swap.map(_._1)
-      val swapWithFresh = swap ++ unbound.map(v => (v,specSpace.nextFreshLSVar()))
-      val swappedPred = pred.swap(swapWithFresh.toMap)
+      val swapWithFresh = (swap ++ unbound.map(v => (v,specSpace.nextFreshLSVar()))).toMap
+      val swappedPred = pred.swap(swapWithFresh)
+      val swappedRhs = rhsConstraints.map(_.swap(swapWithFresh))
       if(rhsConstraints.isEmpty)
         swappedPred
       else {
-        And(swappedPred, rhsConstraints.reduce(And))
-      } //TODO:=============
+        And(swappedPred, swappedRhs.reduce(And))
+      }
     }
   }
 
