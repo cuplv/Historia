@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.solver
 import better.files.Resource
 import com.microsoft.z3._
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSConstraint, LSFalse, LSSpec, LSTrue, NI, Not, Or, Ref, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSConstraint, LSFalse, LSSpec, LSTrue, LSVar, NI, Not, Or, Ref, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import org.scalatest.funsuite.FixtureAnyFunSuite
@@ -1177,7 +1177,6 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
 
     val foo = FwkMethod("foo", "")
     val bar = FwkMethod("bar", "")
-    val baz = FwkMethod("baz", "")
 
     val i_foo_x = I(CIEnter, Set(("foo",""),("foo2","")), "x"::Nil)
     val i_bar_x = I(CIEnter, Set(("bar",""),("bar2","")), "x"::Nil)
@@ -1200,7 +1199,6 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     assert(stateSolver.traceInAbstraction(
       stIFooX,spec,
       trace))
-    // TODO: ===== can always satisfy I(Foo(x))|> bar(x) with this negation by choosing an arbitrary x
     assert(!stateSolver.traceInAbstraction(stIFooX,spec,trace,negate = true, debug = true))
 
     // I(x.foo()) ! models empty
@@ -1230,16 +1228,6 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
       spec_NotFoo_OrBar ,
       trace = Nil
     ))
-
-
-//    // not I(x.foo()) or I(x.bar()) ! models @1.foo()
-//    assert(!stateSolver.traceInAbstraction(
-//      state = state.copy(sf = state.sf.copy(traceAbstraction = Set(AbstractTrace(Or(Not(i_foo_x), i_bar_x), Nil,
-//        Map())))),
-//      trace = TMessage(CIEnter, foo, TAddr(1)::Nil)::Nil
-//    )) //TODO:=============== decide if negation can just be for things that are already grounded by other terms
-
-    // empty ! models NI(x.foo(), x.bar())
 
     val spec_NiFooBar = new SpecSpace(Set(
       LSSpec(ni_foo_x_bar_x, targetFoo_x)
@@ -1376,6 +1364,44 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
         trace = TMessage(CIEnter, foo, TAddr(2)::TAddr(2)::Nil)::Nil
       )
     )
+  }
+  test("app mem restricted trace contained"){f =>
+    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    implicit val zCTX: Z3SolverCtx = stateSolver.getSolverCtx
+
+    val pv1 = PureVar(1)
+    val pv2 = PureVar(2)
+    val foo = FwkMethod("foo", "")
+    val bar = FwkMethod("bar", "")
+
+    val i_foo_x = I(CIEnter, Set(("foo",""),("foo2","")), "x"::Nil)
+    val i_bar_x = I(CIEnter, Set(("bar",""),("bar2","")), "x"::Nil)
+    val targetFoo_x_y = I(CIExit, Set(("","targetFoo")), "x"::"y"::Nil)
+    val trace = List(
+      TMessage(CIEnter, foo, TAddr(1)::Nil),
+      TMessage(CIEnter, bar, TAddr(1)::Nil)
+    )
+    val spec = new SpecSpace(Set(
+      LSSpec(NI(i_foo_x, i_bar_x), targetFoo_x_y, Set(LSConstraint("y", Equals, "@null"))),
+      LSSpec(LSTrue, targetFoo_x_y, Set(LSConstraint("y", NotEquals, "@null")))
+    ))
+    val stateNull = state.copy(sf = state.sf.copy(
+      traceAbstraction = Set(AbstractTrace(targetFoo_x_y::Nil, Map("y"->pv1, "x"->pv2))),
+      pureFormula = Set(PureConstraint(pv1, Equals, NullVal))))
+    val resIsNull = stateSolver.traceInAbstraction(
+      stateNull,
+      spec,
+      trace
+    )
+    assert(
+      !resIsNull
+    )
+    val resNonNull = stateSolver.traceInAbstraction(
+      stateNull.copy(sf = stateNull.sf.copy(pureFormula = Set(PureConstraint(pv1, NotEquals, NullVal)))),
+      spec,
+      trace
+    )
+    assert(resNonNull)
   }
 
   private def getStateSolver(stateTypeSolving: StateTypeSolving = SetInclusionTypeSolving):

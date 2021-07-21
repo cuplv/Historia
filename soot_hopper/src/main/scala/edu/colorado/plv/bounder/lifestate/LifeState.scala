@@ -160,7 +160,19 @@ object LifeState {
 
   val LSAnyVal = "_".r
 
-  case class LSConstraint(v1:String,op:CmpOp,v2:String )
+  case class LSConstraint(v1:String,op:CmpOp,v2:String ) extends LSPred {
+    override def swap(swapMap: Map[String, String]): LSPred = {
+      def swapIfVar(v: String):String = v match{
+        case LSVar(v2) => swapMap(v2)
+        case v2 => v2
+      }
+      LSConstraint(swapIfVar(v1),op, swapIfVar(v2))
+    }
+    override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean =
+      false
+
+    override def lsVar: Set[String] = Set(v1,v2).filter(v => LSVar.matches(v))
+  }
 
   sealed trait LSPred {
     def swap(swapMap: Map[String, String]):LSPred
@@ -173,14 +185,21 @@ object LifeState {
     implicit var rw:RW[LSPred] = RW.merge(LSAtom.rw, macroRW[Not], macroRW[And],
       macroRW[Or], macroRW[LSTrue.type], macroRW[LSFalse.type])
   }
-  case class LSEq(v1:String,v2:String) extends LSPred {
-    override def swap(swapMap: Map[String, String]): LSPred = LSEq(swapMap(v1), swapMap(v2))
-
-    override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean =
-      false
-
-    override def lsVar: Set[String] = Set(v1,v2).filter(v => LSVar.matches(v))
-  }
+//  case class LSEq(v1:String,v2:String) extends LSPred {
+//    override def swap(swapMap: Map[String, String]): LSPred =
+//    {
+//      def swapIfVar(v: String):String = v match{
+//        case LSVar(v2) => swapMap(v2)
+//        case v2 => v2
+//      }
+//      LSEq(swapIfVar(v1), swapIfVar(v2))
+//    }
+//
+//    override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean =
+//      false
+//
+//    override def lsVar: Set[String] = Set(v1,v2).filter(v => LSVar.matches(v))
+//  }
 
   /**
    * Trace references value.
@@ -408,10 +427,12 @@ object LifeState {
       }
       val unbound = pred.lsVar -- swap.map(_._1)
       val swapWithFresh = swap ++ unbound.map(v => (v,specSpace.nextFreshLSVar()))
+      val swappedPred = pred.swap(swapWithFresh.toMap)
       if(rhsConstraints.isEmpty)
-        pred.swap(swapWithFresh.toMap)
-      else
-        ??? //TODO:=============
+        swappedPred
+      else {
+        And(swappedPred, rhsConstraints.reduce(And))
+      } //TODO:=============
     }
   }
 
