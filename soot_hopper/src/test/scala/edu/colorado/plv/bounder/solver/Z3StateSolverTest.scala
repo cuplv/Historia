@@ -1259,54 +1259,70 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     ))
 
     // empty(trace) models NI(x.foo(),x.bar()) |> x.foo()
-    //TODO: ===== failing
     val res = stateSolver.traceInAbstraction(
-      state.copy(sf = state.sf.copy(traceAbstraction = Set(AbstractTrace(i_bar_x::targetFoo_x::Nil,Map("x"->pv1))))),
+      state.copy(sf = state.sf.copy(traceAbstraction = Set(AbstractTrace(i_foo_x::targetFoo_x::Nil,Map("x"->pv1))))),
       spec_NiFooBar,
       Nil
     )
     assert(res)
 
-    //TODO: |>
-
-    // NI(x.foo(),x.bar()) |> x.foo() models @1.bar()
+    //@1.bar() models NI(x.foo(),x.bar()) |> x.foo()
     assert(
       stateSolver.traceInAbstraction(
-        state.copy(sf = state.sf.copy(traceAbstraction = Set(AbstractTrace(ni_foo_x_bar_x, i_foo_x::Nil,Map())))),esp,
+        state.copy(sf = state.sf.copy(traceAbstraction = Set(AbstractTrace(i_foo_x::targetFoo_x::Nil,Map("x"->pv1))))),
+        spec_NiFooBar,
         TMessage(CIEnter, bar, TAddr(1)::Nil)::Nil
       ))
+
     // NI(x.foo(),x.bar()) |> x.foo() models @1.foo();@1.bar()
     assert(
       stateSolver.traceInAbstraction(
-        state.copy(sf = state.sf.copy(traceAbstraction = Set(AbstractTrace(ni_foo_x_bar_x, i_foo_x::Nil,Map())))),esp,
+        state.copy(sf = state.sf.copy(traceAbstraction = Set(AbstractTrace(i_foo_x::targetFoo_x::Nil,Map("x"->pv1))))),
+        spec_NiFooBar,
         trace
       ))
 
     // NI(x.foo(),x.bar()) |> x.bar() ! models empty
     assert(
       !stateSolver.traceInAbstraction(
-        state.copy(sf = state.sf.copy(traceAbstraction = Set(AbstractTrace(ni_foo_x_bar_x, i_bar_x::Nil,Map())))),esp,
-        Nil
-      ))
-
-    // Not NI(x.foo(), x.bar())  models @1.foo();@1.bar()
-    assert(
-      stateSolver.traceInAbstraction(
-        state.copy(sf = state.sf.copy(traceAbstraction = Set(AbstractTrace(Not(ni_foo_x_bar_x), Nil,Map())))),esp,
+        state.copy(sf = state.sf.copy(traceAbstraction = Set(AbstractTrace(i_bar_x::targetFoo_x::Nil,Map("x"->pv1))))),
+        spec_NiFooBar,
         trace
       ))
 
-    // I(foo(x,y)) models foo(@1,@2)
-    val i_foo_x_y = I(CIEnter, Set(("foo",""),("foo2","")), "x"::"y"::Nil)
+    // Not NI(x.foo(), x.bar())  models @1.foo();@1.bar()
+    val spec_not_NiFooBar = new SpecSpace(Set(
+      LSSpec(Not(ni_foo_x_bar_x), targetFoo_x)
+    ))
     assert(
       stateSolver.traceInAbstraction(
-        state.copy(sf = state.sf.copy(traceAbstraction = Set(AbstractTrace(i_foo_x_y,Nil,Map())))),esp,
+        state.copy(sf = state.sf.copy(traceAbstraction = Set(AbstractTrace(targetFoo_x::Nil,Map("x"->pv1))))),
+        spec_not_NiFooBar,
+        trace
+      ))
+//    assert(
+//      stateSolver.traceInAbstraction(
+//        state.copy(sf = state.sf.copy(traceAbstraction = Set(AbstractTrace(Not(ni_foo_x_bar_x), Nil,Map())))),esp,
+//        trace
+//      ))
+
+    // I(foo(x,y)) models foo(@1,@2)
+    val i_foo_x_y = I(CIEnter, Set(("foo",""),("foo2","")), "x"::"y"::Nil)
+    val targetFoo_x_y = I(CIExit, Set(("","targetFoo")), "x"::"y"::Nil)
+    val spec_Foo_x_y = new SpecSpace(Set(
+      LSSpec(i_foo_x_y, targetFoo_x_y)
+    ))
+    assert(
+      stateSolver.traceInAbstraction(
+        state.copy(sf = state.sf.copy(traceAbstraction =
+          Set(AbstractTrace(targetFoo_x_y::Nil,Map("x"->pv1, "y"->pv2))))),
+        spec_Foo_x_y,
         trace = TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil)::Nil
       )
     )
 
-
-//    // not I(foo(x,y)) !models foo(@1,@2)
+    //TODO: |>
+//    // [¬I(foo(x,y))] /\ I(bar(x,y) !models foo(@1,@2);bar(@1,@2)
 //    assert( //TODO:===============
 //      !stateSolver.traceInAbstraction(
 //        state.copy(sf = state.sf.copy(traceAbstraction = Set(AbstractTrace(Not(i_foo_x_y),Nil,Map())))),
@@ -1315,10 +1331,16 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
 //    )
 
     // I(foo(y,y) !models foo(@1,@2)
-    val i_foo_y_y = I(CIEnter, Set(("foo",""),("foo2","")), "Y"::"Y"::Nil)
+    val i_foo_y_y = I(CIEnter, Set(("foo",""),("foo2","")), "y"::"y"::Nil)
+    val targetFoo_y_y = I(CIExit, Set(("","targetFoo")), "y"::"y"::Nil)
+    val spec_Foo_y_y = new SpecSpace(Set(
+      LSSpec(i_foo_y_y, targetFoo_x_y)
+    ))
     assert(
       !stateSolver.traceInAbstraction(
-        state.copy(sf = state.sf.copy(traceAbstraction = Set(AbstractTrace(i_foo_y_y,Nil,Map("Y" -> PureVar(1)))))),esp,
+        state.copy(sf = state.sf.copy(traceAbstraction =
+          Set(AbstractTrace(targetFoo_y_y::Nil,Map("y" -> PureVar(1)))))),
+        spec_Foo_y_y,
         trace = TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil)::Nil,
         debug = true
       )
@@ -1327,12 +1349,12 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     // I(foo(y,y) models foo(@2,@2)
     assert(
       stateSolver.traceInAbstraction(
-        state.copy(sf = state.sf.copy(traceAbstraction = Set(AbstractTrace(i_foo_y_y,Nil,Map())))),esp,
+        state.copy(sf = state.sf.copy(traceAbstraction =
+          Set(AbstractTrace(targetFoo_x_y::Nil,Map("x"->pv1, "y"->pv2))))),
+        spec_Foo_y_y,
         trace = TMessage(CIEnter, foo, TAddr(2)::TAddr(2)::Nil)::Nil
       )
     )
-
-    //TODO: test "and", "scoped abstract traces"
   }
 
   private def getStateSolver(stateTypeSolving: StateTypeSolving = SetInclusionTypeSolving):
@@ -1341,30 +1363,6 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     (new Z3StateSolver(pc),pc)
   }
 
-
-  test("quantifier example") { f =>
-    val ctx = new Context
-    val solver: Solver = ctx.mkSolver()
-    val foo1 = ctx.mkConst("foo", ctx.mkIntSort()).asInstanceOf[ArithExpr[_]]
-    println(s"foo1: ${foo1}")
-    val f = ctx.mkFuncDecl("f",ctx.mkIntSort(), ctx.mkBoolSort())
-//    val expr: BoolExpr = ctx.mkIff(
-//      f.apply(foo1).asInstanceOf[BoolExpr],
-//      ctx.mkGt(foo1, ctx.mkInt(0)))
-//    val a1 = ctx.mkForall(Array(foo1),expr, 1,
-//      null,null,
-//      null,null)
-//    val a = ctx.mkExists(Array(foo1),expr, 1,
-//      null,null,
-//      null,null)
-//    println(s"input:\n${a}")
-//
-//    solver.add(a)
-//    solver.check()
-//    val m = solver.getModel
-
-//    println(s"model: \n${m}")
-  }
   ignore("some timeout from 'Test prove dereference of return from getActivity'"){ f =>
     //TODO: fix or see if this is still reachable
     val (stateSolver,_) = getStateSolver(SolverTypeSolving)

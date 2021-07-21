@@ -544,7 +544,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       val instantiated = instArrowPhi(v, specSpace)
       updated + instantiated
     }.filter(p => p != LSTrue)
-//    val traceAndSuffixEnc:TraceAndSuffixEnc = TraceAndSuffixEnc(traceLen,Map())
     val freeVars = preds.flatMap(p => p.lsVar)
     val (modelVarMap:Map[String,T], traceAndSuffixEnc:TraceAndSuffixEnc) =
       freeVars.foldLeft(Map[String,T](),TraceAndSuffixEnc(traceLen,Map())){
@@ -569,8 +568,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         modelTypeMap, negate)
       acc.mkTrace(List(encodedPred), negate)
     }
-//    val out = traceAndSuffixEnc.mkTrace(encoded.toList, negate)
-//    out
     encoded
   }
 
@@ -620,8 +617,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
         // if in overridden set, assert equality
 
-        //        val modelVarsSuffix: Map[String, T] =
-        //          abs.modelVars.map { case (k, v) => (k -> acc2.definedPvMap(v.asInstanceOf[PureVar])) }
         val (modelVarsSuffix:Map[String,T], acc3) = abs.modelVars.foldLeft((Map[String,T](), acc2)){
           case ((mvMap, acc3), (k,v:PureVar)) if(acc3.definedPvMap.contains(v)) =>
             (mvMap + (k->acc3.definedPvMap(v)), acc3 )
@@ -630,7 +625,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
             (mvMap + (k -> a),b )
         }
 
-        //====== TODO: just added quantif here
         val arrowTfIsAndInc = mkAnd(ivIsInc,
           assertIAt(acc2.len, i, messageTranslator, freshTraceFun, negated = false,
             lsTypeMap, typeToSolverConst, modelVarsSuffix))
@@ -966,7 +960,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val traceEnc: TraceAndSuffixEnc = encodeTraceAbs(traceAbs, messageTranslator, traceFn = traceFun, traceLen = len,
       negate = negate, typeMap = state.typeConstraints, typeToSolverConst = typeToSolverConst,
       specSpace = specSpace, constMap = constMap, debug = debug)
-    val encodedSuffix = traceEnc.suffix.getOrElse(mkBoolVal(b = true))
+//    val encodedSuffix = traceEnc.suffix.getOrElse(mkBoolVal(b = true))
 
     def withPVMap(pvMapIn:Map[PureVar, T]):T =  {
 
@@ -1015,7 +1009,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         ???
       else{
         // TODO: will eventually get rid of set in abstract trace but for now, check that it only has one element
-        mkAnd(encodedSuffix, op(List(pureAst, localAST, heapAst, typeConstraints) ++ traceEnc.trace))
+        op(List(pureAst, localAST, heapAst, typeConstraints) ++ traceEnc.trace)
       }
       maxWitness.foldLeft(out) { (acc, v) =>
         val (iv, isInc) = mkIndex(v)
