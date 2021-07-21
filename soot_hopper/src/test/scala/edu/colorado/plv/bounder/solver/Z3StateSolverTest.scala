@@ -1321,14 +1321,35 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
       )
     )
 
-    //TODO: |>
-//    // [¬I(foo(x,y))] /\ I(bar(x,y) !models foo(@1,@2);bar(@1,@2)
-//    assert( //TODO:===============
-//      !stateSolver.traceInAbstraction(
-//        state.copy(sf = state.sf.copy(traceAbstraction = Set(AbstractTrace(Not(i_foo_x_y),Nil,Map())))),
-//        trace = TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil)::Nil
-//      )
-//    )
+    // foo(@1,@2);bar(@1,@2) !models [¬I(foo(x,y))] /\ I(bar(x,y))
+    val i_bar_x_y = I(CIEnter, Set(("bar",""),("bar2","")), "x"::"y"::Nil)
+    val spec_NotFoo_Bar_x_y = new SpecSpace(Set(
+      LSSpec(And(Not(i_foo_x_y), i_bar_x_y), targetFoo_x_y)
+    ))
+    assert(
+      !stateSolver.traceInAbstraction(
+        state.copy(sf = state.sf.copy(traceAbstraction =
+          Set(AbstractTrace(targetFoo_x_y::Nil,Map("x"->pv1,"y"->pv2))))),
+        spec_NotFoo_Bar_x_y,
+        List(
+          TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil),
+          TMessage(CIEnter, bar, TAddr(1)::TAddr(2)::Nil)
+        )
+      )
+    )
+
+    // foo(@1,@2);bar(@1,@1) models [¬I(foo(x,y))] /\ I(bar(x,y))
+    assert(
+      !stateSolver.traceInAbstraction(
+        state.copy(sf = state.sf.copy(traceAbstraction =
+          Set(AbstractTrace(targetFoo_x_y::Nil,Map("x"->pv1,"y"->pv2))))),
+        spec_NotFoo_Bar_x_y,
+        List(
+          TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil),
+          TMessage(CIEnter, bar, TAddr(1)::TAddr(1)::Nil)
+        )
+      )
+    )
 
     // I(foo(y,y) !models foo(@1,@2)
     val i_foo_y_y = I(CIEnter, Set(("foo",""),("foo2","")), "y"::"y"::Nil)
