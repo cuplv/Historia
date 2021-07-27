@@ -497,16 +497,21 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       val swappedPreds = applicableSpecs.map{s =>
         s.instantiate(i, specSpace)
       }
-      if(swappedPreds.isEmpty) LSTrue //TODO:=========  rhs pred for specs
+      if(swappedPreds.isEmpty) LSTrue
       else if(swappedPreds.size == 1) swappedPreds.head
       else swappedPreds.reduce(Or)
-    case _ => ???
+    case Ref(_) => LSTrue
+  }
+  private def filterAny(s:Seq[(String,String)]):Seq[(String,String)] = s.filter{
+    case (LSAnyVal(),_) => false
+    case (_,LSAnyVal()) => false
+    case _ => true
   }
   private def eq(i1:I,i2:I):LSPred =
     if(i1.signatures != i2.signatures || i1.mt != i2.mt)
       LSFalse
     else {
-      val pairs = (i1.lsVars zip i2.lsVars)
+      val pairs = filterAny(i1.lsVars zip i2.lsVars)
       pairs.map(v => LSConstraint(v._1, Equals,v._2)).reduce(And)
     }
 
@@ -514,7 +519,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     if(i1.signatures != i2.signatures || i1.mt != i2.mt)
       LSTrue
     else {
-      val pairs = (i1.lsVars zip i2.lsVars)
+      val pairs = filterAny(i1.lsVars zip i2.lsVars)
       pairs.map(v => LSConstraint(v._1,NotEquals,v._2)).reduce(Or)
     }
   }
@@ -524,7 +529,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     case Or(l1, l2) => Or(updArrowPhi(i,l1), updArrowPhi(i,l2))
     case LifeState.LSTrue => LifeState.LSTrue
     case LifeState.LSFalse => LifeState.LSFalse
-    case Ref(v) => Ref(v) //TODO: what to do with refv? ====
+    case Ref(v) =>
+      throw new IllegalStateException("RefV cannot be updated (encoding handled elsewhere)")
     case Not(i1:I) =>
       if(i1.mt == i.mt && i1.signatures == i.signatures)
         And(neq(i1,i), i1)
@@ -535,15 +541,20 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       if(i1.mt == i.mt && i1.signatures == i.signatures)
         Or(eq(i1,i), i1)
       else lsPred
-    case Not(_) => throw new IllegalArgumentException("Negation only supported on I")
+    case Not(_) =>
+      throw new IllegalArgumentException("Negation only supported on I")
   }
   private def updArrowPhi(rhs:LSSingle, lSPred: LSPred):LSPred = rhs match {
-    case Ref(v) => ??? //TODO:======
+    case Ref(_) =>
+      // Creation of reference (occurs earlier than instantiation)
+      lSPred
     case i:I => updArrowPhi(i,lSPred)
   }
 
+
   /**
    * Encode .|>m1|>m2...
+   *
    * @return
    */
   private def encodeTraceAbs(abs: AbstractTrace,
@@ -556,11 +567,31 @@ trait StateSolver[T, C <: SolverCtx[T]] {
                                  specSpace: SpecSpace,
                                  negate: Boolean = false, debug: Boolean = false)(implicit zctx: C): TraceAndSuffixEnc = {
     val rhs: Seq[LSSingle] = abs.rightOfArrow
-    val preds = rhs.foldRight(Set[LSPred]()){(v,acc) =>
+    val rulePreds: Set[LSPred] = rhs.foldRight(Set[LSPred]()){ (v, acc) =>
       val updated = acc.map(lsPred => updArrowPhi(v,lsPred))
       val instantiated = instArrowPhi(v, specSpace)
       updated + instantiated
     }.filter(p => p != LSTrue)
+
+    val op = if(negate) Or else And
+
+    //Encode that each preceeding |> constraint cannot be equal to an allocation
+    def encodeRefV(rhs: Seq[LSSingle], previous:Set[String] = Set()):Option[LSPred] = rhs match {
+      case Ref(v)::t =>
+        val currentConstr: Set[LSConstraint] = previous.map{ other =>
+          if(negate)
+            LSConstraint(other, Equals, v)
+          else
+            LSConstraint(other, NotEquals, v)
+        }
+        currentConstr.reduceOption(op)
+      case Nil => None
+      case h::t => encodeRefV(t, previous ++ h.lsVar )
+    }
+    val refVPred = encodeRefV(rhs)
+    // TODO: Do we need to constrain that all values before current position not equal to allocation? ======
+    val preds = refVPred ++ rulePreds
+
     val freeVars = preds.flatMap(p => p.lsVar)
     val (modelVarMap:Map[String,T], traceAndSuffixEnc:TraceAndSuffixEnc) =
       freeVars.foldLeft(Map[String,T](),TraceAndSuffixEnc(traceLen,Map())){

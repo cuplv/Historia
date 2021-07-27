@@ -262,11 +262,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       if(fn1.contains("void <init>(")) {
         statePopped.flatMap {
           case (Some(thisV:PureVar),s) =>{
-            val ref = specSpace.getRefWithFreshVars()
-            val t = AbstractTrace(Not(ref), Nil, Map(ref.v -> thisV))
-            val heapMemRef = heapCellReferencesVAndIsNonNull(thisV,s) || localReferencesV(thisV,s)
-            if(heapMemRef) None else
-              Some(s.copy(sf = s.sf.copy(traceAbstraction = s.sf.traceAbstraction + t)))
+            addRefCreateToState(s,thisV)
+//              Some(s.copy(sf = s.sf.copy(traceAbstraction = s.sf.traceAbstraction)))
           }
           case (None,s) => Some(s)
           case _ => throw new IllegalStateException("""Non-pure var as "this" local.""")
@@ -542,69 +539,11 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
             val newAbs = oldAbs.copy(modelVars = newModelVars)
             acc2.copy(sf = acc2.sf.copy(traceAbstraction = Set(newAbs)))
         }
-//        newModelVars.copy(sf = newModelVars.sf.copyrightOfArrow = i::oldAbs.rightOfArrow, modelVars = newModelVars)
         val c = newModelVars.traceAbstraction.filter(t => t.a.isEmpty)
         val oldAbs = c.head
         val newAbs = oldAbs.copy(rightOfArrow = i::oldAbs.rightOfArrow)
         Set(newModelVars.copy(sf = newModelVars.sf.copy(traceAbstraction = Set(newAbs))))
     }
-//    val specsBySignature = if(disallow.isDefined) disallow.toSet else specSpace.specsBySig(mt, sig._1, sig._2)
-//
-//
-//    val postStatesByConstAssume: Set[(LSSpec,State)] = specsBySignature.flatMap{ (s:LSSpec) =>
-//      val cv = s.target.constVals(s.rhsConstraints) zip allVar
-//      val definedCv: Seq[(PureExpr,CmpOp ,RVal)] = cv.flatMap{
-//        case (None,_) => None
-//        case (_,None) => None
-//        case (Some((op,cv)), Some(stateVar)) => Some((cv,op,stateVar))
-//      }
-//      if(definedCv.isEmpty) {
-//        // Spec does not assume any constants
-//        Set((s,postState))
-//      } else {
-//        //  Negation of RHS of spec requires False unless defined
-//        val posState: State = definedCv.foldLeft(postState) {
-//          case (st, (pureExpr, op,stateVar)) =>
-//            val (vv, st1) = st.getOrDefine(stateVar, Some(appMethod))
-//            st1.addPureConstraint(PureConstraint(vv, op, pureExpr))
-//        }
-//        val out = Set((s,posState))
-//        out
-//      }
-//    }
-//
-//    // If no lifestate rules match, no new specs are instantiated
-//    if(postStatesByConstAssume.isEmpty)
-//      return Set(postState)
-//
-//    // For each applicable state and spec,
-//    //  instantiate ls variables in both the trace abstraction and abstract state
-//    postStatesByConstAssume.map {
-//      case (LSSpec(pred, target,_), newPostState) =>
-//        val parameterPairing: Seq[(String, Option[RVal])] = target.lsVars zip allVar
-//
-//        // Define variables in rule in the state
-//        val state2 = parameterPairing.foldLeft(newPostState) {
-//          case (cstate, (LSAnyVal(), _)) => cstate
-//          case (cstate, (LSConst(_), _)) => cstate
-//          case (cstate, (_, Some(rval))) => cstate.getOrDefine(rval,Some(appMethod))._2
-//          case (cstate, _) => cstate
-//        }
-//        val lsVarConstraints = parameterPairing.flatMap {
-//          case (LSAnyVal(), _) => None
-//          case (LSVar(k), Some(l: LocalWrapper)) =>
-//            Some((k, state2.get(l).get))
-//          case (_, None) => None
-//          case (LSConst(_), Some(_: LocalWrapper)) => None
-//          case (k, v) =>
-//            println(k)
-//            println(v)
-//            ??? //TODO: handle primitives e.g. true "string" 1 2 etc
-//        }
-//        // Match each lsvar to absvar if both exist
-//        val newLsAbstraction = AbstractTrace(pred, Nil, lsVarConstraints.toMap)
-//        state2.copy(sf = state2.sf.copy(traceAbstraction = state2.traceAbstraction + newLsAbstraction))
-//    }
   }
 
   def newDisallowTransfer(appMethod:MethodLoc, mt: MessageType,
@@ -632,51 +571,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       case v =>
         throw new IllegalStateException(s"No command message for $v")
     }
-
-//  /*
-//   * Assume state is updated with appropriate vars
-//   *
-//   * @return
-//   */
-//  def predTransferTrace(pred:AbstractTrace, mt:MessageType,
-//                        sig:(String,String),
-//                        vals: List[Option[PureExpr]]):AbstractTrace = {
-//    if (pred.a.contains(mt,sig) || Ref.containsRefV(pred.a).isDefined) {
-//      specSpace.getIWithFreshVars(mt, sig) match {
-//        case Some(i@I(_, _, lsVars)) =>
-//          val modelVarConstraints: Map[String, PureExpr] = (lsVars zip vals).flatMap {
-//            case (LSVar(lsVar), Some(stateVal)) => Some((lsVar, stateVal))
-//            case _ => None //TODO: cases where transfer needs const values (e.g. setEnabled(true))
-//          }.toMap
-////          assert(!modelVarConstraints.isEmpty) //TODO: can this ever happen? - can happen with Ref(v)
-//          assert(pred.modelVars.keySet.intersect(modelVarConstraints.keySet).isEmpty,
-//            "Previous substitutions must be made so that comflicting model " +
-//              "var constraints aren't added to trace abstraction")
-//          AbstractTrace(pred.a,
-//            i :: pred.rightOfArrow, pred.modelVars ++ modelVarConstraints)
-//        case None => pred
-//      }
-//    } else
-//      pred
-//  }
-//
-//  /**
-//   * Update each trace abstraction in an abstract state
-//   * @param allVal values to apply transfer with
-//   * @return
-//   */
-//  def traceAllPredTransfer(mt: MessageType,
-//                           sig:(String,String), allVal:List[Option[PureExpr]],
-//                           postState: State):State = {
-//    // values we want to track should already be added to the state
-//    val newTraceAbs: Set[AbstractTrace] = postState.traceAbstraction.map {
-//      traceAbs => predTransferTrace(traceAbs, mt, sig, allVal)
-//    }
-//    postState.copy(sf = postState.sf.copy(traceAbstraction = newTraceAbs))
-//  }
-
-//  def pureCanAlias(pv:PureVar, otherType:String, state:State):Boolean =
-//    classHierarchyConstraints.typeSetForPureVar(pv,state).contains(otherType)
 
   private def exprContainsV(value: PureVar, expr:PureExpr):Boolean = expr match{
     case p:PureVar => value == p
@@ -735,52 +629,59 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       // x = new T
       state.get(lhs) match {
         case Some(v: PureVar) =>
-          //TODO: This is still a hack since heap cell not equal to future alloc but trace encoded ====
-          // This hack may result in a precision issue since cells may be equal later that wouldn't otherwise be equal
-          val o1:Set[State] =
-            if (heapCellReferencesVAndIsNonNull(v, state) || localReferencesV(v,state.clearLVal(lhs))) {
-              // If x->v^ and some heap cell references v^, the state is not possible
-              // new command does not call constructor, it just creates an instance with all null vals
-              // <init>(...) is the constructor and is called in the instruction after the new instruction
-              // TODO: if trace abstraction needs to see this value in the past, refute
-              // TODO: test case for above
-              Set()
-            } else {
-              // x is assigned here so remove it from the pre-state
-              val sWithoutLVal = state.clearLVal(lhs)
-              val sWithoutNullHeapCells = sWithoutLVal.copy(sf = sWithoutLVal.sf.copy(heapConstraints =
-                sWithoutLVal.heapConstraints.filter{
-                  case (FieldPtEdge(base, _),_) if base == v =>
-                    // Previously, we checked for non-null heap cells that contain the value v
-                    // and would have refuted before now
-                    false
-                  case _ => true
-                }
-              ))
-              // If x = new T and x->v^ then v^<:T
-              // v^ != null since new instruction never returns null
-              val nnAndType = sWithoutNullHeapCells.addPureConstraint(PureConstraint(v, NotEquals, NullVal)
-              ).constrainIsType(v, className, ch)
-              Set(encodeExistingNotEqualTo(v,nnAndType))
-            }
-          o1.map { s2 =>
-            val notRefV = AbstractTrace(Not(Ref("x")), Nil, Map("x" -> v))
-            val traceAbs = s2.sf.traceAbstraction
-            //TODO: Note: following adds refs to |> I don't think that is needed
-//              .map {
-//              case at@AbstractTrace(a, rightOfArrow, bind) =>
-//                val containedRef = Ref.containsRefV(a)
-//                if (containedRef.isEmpty) {
-//                  at
-//                } else {
-//                  val freshRef = specSpace.getRefWithFreshVars()
-//                  //TODO: do we actually need |> on Ref from new?
-//                  AbstractTrace(a, freshRef :: rightOfArrow, bind + (freshRef.v -> v))
+          // clear x from state
+          val stateWOX = state.clearLVal(lhs)
+          // Constrain state for initialization
+          val notRef = addRefCreateToState(stateWOX,v).toSet
+          // Remove x local
+          notRef.map(_.clearLVal(lhs))
+//          val o1:Set[State] = {
+//            if (heapCellReferencesVAndIsNonNull(v, state) || localReferencesV(v,state.clearLVal(lhs))) {
+//              // If x->v^ and some heap cell references v^, the state is not possible
+//              // new command does not call constructor, it just creates an instance with all null vals
+//              // <init>(...) is the constructor and is called in the instruction after the new instruction
+//              // TODO: if trace abstraction needs to see this value in the past, refute
+//              // TODO: test case for above
+//              Set()
+//            } else {
+//              // x is assigned here so remove it from the pre-state
+//              val sWithoutLVal = state.clearLVal(lhs)
+//              val sWithoutNullHeapCells = sWithoutLVal.copy(sf = sWithoutLVal.sf.copy(heapConstraints =
+//                sWithoutLVal.heapConstraints.filter{
+//                  case (FieldPtEdge(base, _),_) if base == v =>
+//                    false
+//                  case _ => true
 //                }
+//              ))
+//              // If x = new T and x->v^ then v^<:T
+//              // v^ != null since new instruction never returns null
+//              val nnAndType = sWithoutNullHeapCells.addPureConstraint(PureConstraint(v, NotEquals, NullVal)
+//              ).constrainIsType(v, className, ch)
+//              Set(encodeExistingNotEqualTo(v,nnAndType))
 //            }
+//          }
+//          // constrain the trace so that all preceeding messages may not reference v
+//          o1.flatMap(s => addRefCreateToState(s,v))
 
-            s2.copy(sf = s2.sf.copy(traceAbstraction = traceAbs + notRefV))
-          }
+        //          o1.map { s2 =>
+//            val notRefV = AbstractTrace(Not(Ref("x")), Nil, Map("x" -> v))
+//            val traceAbs = s2.sf.traceAbstraction
+//            //TODO: Note: following adds refs to |> I don't think that is needed
+////              .map {
+////              case at@AbstractTrace(a, rightOfArrow, bind) =>
+////                val containedRef = Ref.containsRefV(a)
+////                if (containedRef.isEmpty) {
+////                  at
+////                } else {
+////                  val freshRef = specSpace.getRefWithFreshVars()
+////                  //TODO: do we actually need |> on Ref from new?
+////                  AbstractTrace(a, freshRef :: rightOfArrow, bind + (freshRef.v -> v))
+////                }
+////            }
+//
+//            s2.copy(sf = s2.sf.copy(traceAbstraction = traceAbs + notRefV))
+//          }
+//          o1 //
 
         case Some(_: PureVal) => Set() // new cannot return anything but a pointer
         case None => Set(state) // Do nothing if variable x is not in state
@@ -1024,18 +925,22 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       case (None,(vlist,cstate)) => (None::vlist, cstate)
     }
   }
+  def addRefCreateToState(state:State, pv:PureVar):Option[State] = {
+    //            val t = AbstractTrace(Not(ref), Nil, Map(ref.v -> thisV))
+    val pvNNState = state.addPureConstraint(PureConstraint(pv, NotEquals, NullVal))
+    //TODO: possibly constrain heap cel targets of pv to null here
+    val heapMemRef = heapCellReferencesVAndIsNonNull(pv,pvNNState) || localReferencesV(pv,pvNNState)
+    if(heapMemRef)
+      None
+    else {
+      val ref = specSpace.getRefWithFreshVars()
+      assert(pvNNState.sf.traceAbstraction.size == 1)
+      val ot = pvNNState.sf.traceAbstraction.head
+      val nt = ot.copy(rightOfArrow = ref::ot.rightOfArrow, modelVars = ot.modelVars + (ref.v->pv))
+      Some(pvNNState.copy(sf = pvNNState.sf.copy(traceAbstraction = Set(nt))))
+    }
+  }
 
-
-//  def localCanAliasPV(v:RVal, state:State) = v match{
-//    case lw@LocalWrapper(_,localType) =>
-//      state.pureVars.exists{ p =>
-//        state.typeConstraints.get(p) match{
-//          case Some(tc) => tc.subtypeOfCanAlias(localType,ch)
-//          case _ => true
-//        }
-//      }
-//    case _ => false
-//  }
   def assumeInState(method:MethodLoc, bExp:RVal, state:State, negate: Boolean): Option[State] = bExp match{
     case BoolConst(b) if b != negate => Some(state)
     case BoolConst(b) if b == negate => None

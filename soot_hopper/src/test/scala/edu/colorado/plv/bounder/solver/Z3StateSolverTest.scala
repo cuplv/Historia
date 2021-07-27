@@ -213,7 +213,6 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val resTrue = stateSolver.simplify(stateTrue,specSpace2)
     assert(resTrue.isDefined)
   }
-  //TODO: convert old arrow notation
   test("Trace abstraction NI(a.bar(), a.baz()) && a == p1 (<==>true)") { f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
     val iFoo_ac = I(CBEnter, Set(("", "foo")), "c"::"a" :: Nil)
@@ -1146,7 +1145,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
       heapConstraints = Map(StaticPtEdge("foo","bar") -> p1)
     ))
     assert(stateSolver.canSubsume(state2__, state2_,spec))
-    assert(!stateSolver.canSubsume(state2_, state2__,spec)) //TODO: ====== failing
+    assert(!stateSolver.canSubsume(state2_, state2__,spec))
   }
   test("Subsumption of pure formula in states"){ f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)

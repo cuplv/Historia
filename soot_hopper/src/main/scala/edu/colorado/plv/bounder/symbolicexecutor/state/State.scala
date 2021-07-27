@@ -23,7 +23,7 @@ object State {
     id
   }
   def topState:State =
-    State(StateFormula(Nil,Map(),Set(),Map(),Set()),0)
+    State(StateFormula(Nil,Map(),Set(),Map(),Set(AbstractTrace(Nil,Map()))),0)
 
   def findIAF(messageType: MessageType, signature: (String, String),
               pred: LSPred)(implicit ch:ClassHierarchyConstraints):Set[I] = pred match{

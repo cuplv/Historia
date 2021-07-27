@@ -305,7 +305,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 //      prettyPrinting.dotMethod( query.head.loc, symbolicExecutor.controlFlowResolver, "onPauseCond.dot")
 
       val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
-//      prettyPrinting.dumpDebugInfo(result, "irrelevantConditional", truncate = false)
+      prettyPrinting.dumpDebugInfo(result, "irrelevantConditional", truncate = false)
 //      prettyPrinting.dotWitTree(result, "irrelevantConditional.dot",true)
       assert(result.nonEmpty)
       BounderUtil.throwIfStackTrace(result)
@@ -386,7 +386,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
           "void onCreate(android.os.Bundle)", BounderUtil.lineForRegex(".*query1.*".r, src))
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
-//        prettyPrinting.dumpDebugInfo(result, "alias")
+        prettyPrinting.dumpDebugInfo(result, s"alias_${expected}", truncate = false)
         assert(result.nonEmpty)
         BounderUtil.throwIfStackTrace(result)
         assert(BounderUtil.interpretResult(result,QueryFinished) == expected)

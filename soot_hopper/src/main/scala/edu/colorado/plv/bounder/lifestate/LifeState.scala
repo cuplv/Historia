@@ -391,9 +391,11 @@ object LifeState {
       omt == mt && signatures.matches(sig)
 
     override def swap(swapMap: Map[String, String]): I = {
-      val newLSVars = lsVars.map{v =>
-        assert(swapMap.contains(v), s"SwapMap must contain v: ${v}")
-        swapMap(v)
+      val newLSVars = lsVars.map{
+        case LSVar(v) =>
+          assert(swapMap.contains(v), s"SwapMap must contain v: ${v}")
+          swapMap(v)
+        case c => c
       }
       this.copy(lsVars = newLSVars)
     }
