@@ -87,8 +87,11 @@ object SpecSignatures {
 object FragmentGetActivityNullSpec{
 //  val cond = Or(Not(SpecSignatures.Fragment_onActivityCreated_entry), SpecSignatures.Fragment_onDestroy_exit)
   val cond: LSPred = NI(SpecSignatures.Fragment_onDestroy_exit, SpecSignatures.Fragment_onActivityCreated_entry)
+  val notCond: LSPred = Or(
+    NI(SpecSignatures.Fragment_onActivityCreated_entry,SpecSignatures.Fragment_onDestroy_exit),
+    Not(SpecSignatures.Fragment_onDestroy_exit))
   val getActivityNull: LSSpec = LSSpec(cond, SpecSignatures.Fragment_get_activity_exit_null)
-  val getActivityNonNull: LSSpec = LSSpec(Not(cond), SpecSignatures.Fragment_get_activity_exit,
+  val getActivityNonNull: LSSpec = LSSpec(notCond, SpecSignatures.Fragment_get_activity_exit,
     Set(LSConstraint("a", NotEquals, "@null")))
 }
 
@@ -125,7 +128,8 @@ object LifecycleSpec {
     SpecSignatures.Fragment_onActivityCreated_entry)
 
   val Activity_createdOnlyFirst:LSSpec = LSSpec(
-    Not(SpecSignatures.Activity_onCreate_entry), SpecSignatures.Activity_onCreate_entry
+    And(Not(SpecSignatures.Activity_onCreate_entry),Not(SpecSignatures.Activity_onDestroy_exit)),
+    SpecSignatures.Activity_onCreate_entry
   )
 
   val spec:Set[LSSpec] = Set(Fragment_activityCreatedOnlyFirst,

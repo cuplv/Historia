@@ -496,7 +496,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   def mergeEquivalentCallins(callins: Set[Loc], state: State): Set[Loc] ={
     val groups: Map[Object, Set[Loc]] = callins.groupBy{
       case CallinMethodReturn(fc,fn) =>
-        state.findIFromCurrent(CIExit,(fc,fn), specSpace)
+        specSpace.findIFromCurrent(CIExit,(fc,fn))
       case i => i
     }
     val out:Set[Loc] = groups.keySet.map{k =>

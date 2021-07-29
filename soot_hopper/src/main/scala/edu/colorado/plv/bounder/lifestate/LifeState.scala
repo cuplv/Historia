@@ -185,21 +185,6 @@ object LifeState {
     implicit var rw:RW[LSPred] = RW.merge(LSAtom.rw, macroRW[Not], macroRW[And],
       macroRW[Or], macroRW[LSTrue.type], macroRW[LSFalse.type])
   }
-//  case class LSEq(v1:String,v2:String) extends LSPred {
-//    override def swap(swapMap: Map[String, String]): LSPred =
-//    {
-//      def swapIfVar(v: String):String = v match{
-//        case LSVar(v2) => swapMap(v2)
-//        case v2 => v2
-//      }
-//      LSEq(swapIfVar(v1), swapIfVar(v2))
-//    }
-//
-//    override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean =
-//      false
-//
-//    override def lsVar: Set[String] = Set(v1,v2).filter(v => LSVar.matches(v))
-//  }
 
   /**
    * Trace references value.
@@ -495,6 +480,10 @@ object SpecSpace{
 /**
  * Representation of a set of possible lifestate specs */
 class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
+  def findIFromCurrent(dir: MessageType, signature: (String, String))(implicit cha:ClassHierarchyConstraints):Set[I] = {
+    allI.filter(i => i.mt == dir && i.signatures.matches(signature))
+  }
+
   def specsByI(i: I) = {
     val ids = i.identitySignature
     val specs = enableSpecs.filter(spec => spec.target.identitySignature == ids)
@@ -537,8 +526,8 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
       case (v,_) => v
     }
     var solverSig:Option[String] = None
-    val out: Set[I] = allISpecs.getOrElse(mt,Set()).filter{ i =>
-      if(i.signatures.matches(sig)) {
+    val out: Set[I] = allI.filter{ i =>
+      if(i.signatures.matches(sig) && i.mt == mt) {
         if (solverSig.isDefined) {
           assert(i.identitySignature == solverSig.get,
             s"Multiple I identity signatures match method: ${sig} I1: ${i.identitySignature} I2: ${solverSig.get}")

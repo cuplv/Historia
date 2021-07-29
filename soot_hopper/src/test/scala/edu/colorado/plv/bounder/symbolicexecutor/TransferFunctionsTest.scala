@@ -13,6 +13,10 @@ import upickle.default.read
 import scala.collection.BitSet
 
 class TransferFunctionsTest extends AnyFunSuite {
+  val basePv = PureVar(1)
+  val otherPv = PureVar(2)
+  val nullPv = PureVar(3)
+  val recPv = PureVar(4)
   val esp = new SpecSpace(Set(), Set())
   val ctx = new Context
   val solver = ctx.mkSolver()
@@ -79,8 +83,6 @@ class TransferFunctionsTest extends AnyFunSuite {
       val thisLocal = LocalWrapper("@this", "java.lang.Object")
       AssignCmd(FieldReference(thisLocal, "Object", "Object", "o"), NullConst, loc)
     }
-    val basePv = PureVar(State.getId_TESTONLY())
-    val otherPv = PureVar(State.getId_TESTONLY())
     val post = State(StateFormula(CallStackFrame(fooMethodReturn, None, Map(StackVar("@this") -> basePv))::Nil,
       heapConstraints = Map(FieldPtEdge(otherPv, "o") -> NullVal),
       pureFormula = Set(),
@@ -104,8 +106,6 @@ class TransferFunctionsTest extends AnyFunSuite {
       val thisLocal = LocalWrapper("@this", "java.lang.Object")
       AssignCmd(FieldReference(thisLocal, "Object", "Object", "o"), NullConst, loc)
     }
-    val basePv = PureVar(State.getId_TESTONLY())
-    val otherPv = PureVar(State.getId_TESTONLY())
     val post = State(StateFormula(CallStackFrame(fooMethodReturn, None, Map(StackVar("@this") -> basePv))::Nil,
       heapConstraints = Map(FieldPtEdge(basePv, "o") -> otherPv),
       pureFormula = Set(),
@@ -125,7 +125,6 @@ class TransferFunctionsTest extends AnyFunSuite {
   }
   test("Transfer assign new local") {
     val cmd= (loc:AppLoc) => AssignCmd(LocalWrapper("bar","java.lang.Object"),NewCommand("String"),loc)
-    val nullPv = PureVar(State.getId_TESTONLY())
     val post = State(StateFormula(
       CallStackFrame(fooMethodReturn, None, Map(StackVar("bar") -> nullPv))::Nil,
       heapConstraints = Map(),
@@ -140,7 +139,6 @@ class TransferFunctionsTest extends AnyFunSuite {
   }
   test("Transfer assign local local") {
     val cmd= (loc:AppLoc) => AssignCmd(LocalWrapper("bar","Object"),LocalWrapper("baz","String"),loc)
-    val nullPv = PureVar(State.getId_TESTONLY())
     val post = State(StateFormula(
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("bar") -> nullPv))::Nil,
       heapConstraints = Map(),
@@ -160,7 +158,6 @@ class TransferFunctionsTest extends AnyFunSuite {
     // bar := x.f
     // post{x -> v-4 bar -> p-5 * v-1.f -> v-2}
     val cmd= (loc:AppLoc) => AssignCmd(LocalWrapper("bar","Object"),FieldReference(x,"Object","Object","f"),loc)
-    val nullPv = PureVar(State.getId_TESTONLY())
     val post = State(StateFormula(
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None,
         Map(StackVar("x") -> PureVar(4), StackVar("bar") -> PureVar(5)))::Nil,
@@ -194,7 +191,6 @@ class TransferFunctionsTest extends AnyFunSuite {
       lhs,
       iFooA)
     val tr = new TransferFunctions(ir, new SpecSpace(Set(spec)),miniCha)
-    val recPv = PureVar(State.getId_TESTONLY())
     val otheri = AbstractTrace(I(CBExit, Set(("a","a")), "b"::Nil), Nil, Map())
     val post = State(StateFormula(
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("@this") -> recPv))::Nil,
@@ -224,7 +220,6 @@ class TransferFunctionsTest extends AnyFunSuite {
     val postloc = AppLoc(fooMethod,TestIRLineLoc(1), isPre=true)
     val ir = new TestIR(Set(MethodTransition(preloc, postloc)))
     val trf = tr(ir,miniCha)
-    val recPv = PureVar(State.getId_TESTONLY())
     val post = State(StateFormula(
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("@this") -> recPv))::Nil,
       heapConstraints = Map(),

@@ -11,17 +11,7 @@ import scala.annotation.tailrec
 import scala.collection.{BitSet, View}
 
 object State {
-  private var id:Int = -1
 
-  /**
-   * Only use in tests
-   * //TODO: move to test file
-   * @return
-   */
-  def getId_TESTONLY():Int = {
-    id = id + 1
-    id
-  }
   def topState:State =
     State(StateFormula(Nil,Map(),Set(),Map(),Set(AbstractTrace(Nil,Map()))),0)
 
@@ -382,22 +372,23 @@ case class State(sf:StateFormula,
 //        case LifeState.LSAnyVal() => LSAny
 //      }))
 //    })
-    val ta = traceAbstraction.filter(p => p.a.isEmpty)
-    if(ta.size == 1) {
-      ta.head.rightOfArrow.toSet.flatMap { (j: LSPred) =>
-        j match {
-          case i: I =>
-            val specs = specSpace.specsByI(i)
-            specs.flatMap { s =>
-              findIAF(dir, signature, s.pred)
-            }
-          case _ => Set()
-        }
-      }
-    }else{
-      assert(ta.isEmpty)
-      Set()
-    }
+//    val ta = traceAbstraction.filter(p => p.a.isEmpty)
+//    if(ta.size == 1) {
+//      ta.head.rightOfArrow.toSet.flatMap { (j: LSPred) =>
+//        j match {
+//          case i: I =>
+//            val specs = specSpace.specsByI(i)
+//            specs.flatMap { s =>
+//              findIAF(dir, signature, s.pred)
+//            }
+//          case _ => Set()
+//        }
+//      }
+//    }else{
+//      assert(ta.isEmpty)
+//      Set()
+//    }
+    ??? //TODO: get set of messages that may change current state
   }
 
 

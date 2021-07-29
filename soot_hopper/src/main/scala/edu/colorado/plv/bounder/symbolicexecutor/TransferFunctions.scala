@@ -37,7 +37,7 @@ object TransferFunctions{
                       signature: (String,String),
                       specSpace: SpecSpace,
                       lst : List[Option[RVal]])(implicit ch:ClassHierarchyConstraints):List[Option[RVal]] = {
-    val relevantI = pre.findIFromCurrent(dir,signature, specSpace)
+    val relevantI = specSpace.findIFromCurrent(dir,signature)
     lst.zipWithIndex.map{ case (rval,ind) =>
       val existsNAtInd = relevantI.exists{i =>
         val vars: Seq[String] = i.lsVars
@@ -158,7 +158,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         Set(state0)
       }
       //Only add receiver if this or callin return is in abstract trace
-      val traceNeedRec = List(CIEnter, CIExit).exists( dir => postState.findIFromCurrent(dir, (pkg,name),specSpace)
+      val traceNeedRec = List(CIEnter, CIExit).exists( dir => specSpace.findIFromCurrent(dir, (pkg,name))
         .nonEmpty)
       val cfNeedRec = postState.alternateCmd.exists(other => !postState.nextCmd.contains(other))
       //TODO: why does onDestroy exit have a bunch of alternate locations of pre-line: -1 r0:= @this:MyActivity$1/2...
@@ -192,7 +192,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         Set(state0)
       }
       //Only add receiver if this or callin return is in abstract trace
-      val traceNeedRec = List(CIEnter, CIExit).exists( dir => postState.findIFromCurrent(dir, (pkg,name), specSpace)
+      val traceNeedRec = List(CIEnter, CIExit).exists( dir => specSpace.findIFromCurrent(dir, (pkg,name))
         .nonEmpty)
       val cfNeedRec = postState.alternateCmd.exists(other => !postState.nextCmd.contains(other))
 
@@ -227,8 +227,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val invars: List[Option[LocalWrapper]] = None :: containingMethod.getArgs
       val (pkg, name) = msgCmdToMsg(cmInv)
       val relAliases = relevantAliases(postState, CBEnter, (pkg,name),specSpace,invars)
-      val (inVals, state0) = getOrDefineRVals(containingMethod, relAliases,postState)
-//      val state1 = traceAllPredTransfer(CBEnter, (pkg,name), inVals, state0)
+      val (_, state0) = getOrDefineRVals(containingMethod, relAliases,postState)
       val b = newMsgTransfer(containingMethod, CBEnter, (pkg, name), invars, state0)
 
       // pair state with this local before stack pop

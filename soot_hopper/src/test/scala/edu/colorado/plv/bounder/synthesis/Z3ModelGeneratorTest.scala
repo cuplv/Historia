@@ -14,7 +14,7 @@ class Z3ModelGeneratorTest extends AnyFunSuite {
     val gen = new Z3ModelGenerator()
     val dummyLoc = CallbackMethodInvoke(tgtClazz = "",
       fmwName="void foo()", fooMethod)
-    val pureVar = PureVar(State.getId_TESTONLY())
+    val pureVar = PureVar(1)
     val frame = CallStackFrame(dummyLoc, None, Map(StackVar("this") -> pureVar))
     val state = State(StateFormula(List(frame), Map(), Set(),Map(), Set()),0)
     val qryR1 = LiveQry(state, dummyLoc)
