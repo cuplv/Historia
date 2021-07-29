@@ -742,16 +742,17 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val res2 = stateSolver.canSubsume(s2,s1,spec)
     assert(res2)
   }
-  test("/*I(x.foo()) && */ (Not I(y.bar())) && /*x:T1 &&*/ y:T2 cannot subsume I(x.foo()) && x:T1 && y:T2"){ f =>
+  test("I(y.foo()) && (Not I(y.bar())) && y:T2 cannot subsume I(x.foo()) && x:T2"){ f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
     val fooM = SubClassMatcher("","foo","foo")
     val barM = SubClassMatcher("","bar","bar")
     val iFoo_x = I(CBEnter, fooM, "x"::Nil)
+    val iFoo_z = I(CBEnter, fooM, "z"::Nil)
     val iBar_z = I(CBEnter, barM, "z"::Nil)
     val notbar_tgt_z = I(CBEnter, SubClassMatcher("","notbar_tgt","notbar_tgt"), "z"::Nil)
     val foo_tgt_x = I(CBEnter, SubClassMatcher("","foo_tgt","foo_tgt"), "x"::Nil)
     val spec = new SpecSpace(Set(
-      LSSpec(Not(iBar_z), notbar_tgt_z),
+      LSSpec(And(iFoo_z,Not(iBar_z)), notbar_tgt_z),
       LSSpec(iFoo_x, foo_tgt_x)
     ))
 
@@ -760,19 +761,19 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     }
     val s1 = s(
       AbstractTrace(notbar_tgt_z::Nil, Map("z" -> p2))
-    ).addTypeConstraint(p2,BitTypeSet(BitSet(2)))//.addTypeConstraint(pv1,BitTypeSet(BitSet(1)))
+    ).addTypeConstraint(p2,BitTypeSet(BitSet(2)))//.addTypeConstraint(p1,BitTypeSet(BitSet(1)))
     val s2 = s(
       AbstractTrace(foo_tgt_x::Nil, Map("x" -> p1))
-    ).addTypeConstraint(p1,BitTypeSet(BitSet(1)))
-      .addTypeConstraint(p2,BitTypeSet(BitSet(2)))
+    ).addTypeConstraint(p1,BitTypeSet(BitSet(2)))
+//      .addTypeConstraint(p2,BitTypeSet(BitSet(2)))
     //TODO: |>
     val res = stateSolver.canSubsume(s1,s2,spec)
     assert(!res)
 
-    //TODO: add back in
+    // I(x.foo()) && x:T2 can subsume I(y.foo()) && (Not I(y.bar())) && y:T2
 
-//    val res2 = stateSolver.canSubsume(s2,s1)
-//    assert(res2)
+    val res2 = stateSolver.canSubsume(s2,s1, spec)
+    assert(res2)
   }
   ignore("NI(x.foo(),x.baz()) && (not I(z.bar())) && x:T2 && z:T1 cannot subsume NI(x.foo(),x.baz()) && x:T2"){ f =>
     //TODO: |>
@@ -836,31 +837,40 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     println(s"s1 can subsume s2 time: ${(System.currentTimeMillis() - startTime2).toFloat/1000}")
     assert(!res2)
   }
-  ignore("I(x.foo(y)) && y:T1 cannot subsume I(x1.foo(y1))"){ f =>
-    //TODO: |>
+  test("I(x.foo(y)) && y:T1 cannot subsume I(x1.foo(y1)) && y:T2"){ f =>
+    // cannot subsume if types must be different
     val (stateSolver,_) = getStateSolver(f.typeSolving)
     val fooM = SubClassMatcher("","foo","foo")
-//    val iFoo_x_y = I(CBEnter, fooM, "x" :: "y" :: Nil)
-//    val iFoo_x1_y1 = I(CBEnter, fooM, "x1"::"y1" :: Nil)
-
-    val iFoo_x_y = I(CBEnter, fooM, "y" :: Nil)
-    val iFoo_x1_y1 = I(CBEnter, fooM, "y1" :: Nil)
-
-
-    val pvy = PureVar(1)
-    val pvy2 = PureVar(2)
-    val pvy3 = PureVar(3)
+    val iFoo_x_y = I(CBEnter, fooM, "x" :: "y" :: Nil)
+    val iFoo_x1_y1 = I(CBEnter, fooM, "x1"::"y1" :: Nil)
+    val tgt_foo1_x_y = I(CBEnter, SubClassMatcher("","tgt_foo_1","tgt_foo_1"),"x"::"y"::Nil)
+    val tgt_foo2_x1_y1 = I(CBEnter, SubClassMatcher("","tgt_foo_2","tgt_foo_2"),"x1"::"y1"::Nil)
+    val spec = new SpecSpace(Set(
+      LSSpec(iFoo_x_y, tgt_foo1_x_y),
+      LSSpec(iFoo_x1_y1, tgt_foo2_x1_y1)
+    ))
 
     def s(t:AbstractTrace):State = {
       State.topState.copy(sf = State.topState.sf.copy(traceAbstraction = Set(t)))
     }
-    val t1 = AbstractTrace(iFoo_x_y,Nil, Map("y"-> pvy))
-    val t2 = AbstractTrace(iFoo_x1_y1, Nil, Map("y1" -> pvy2))
-    val s1 = s(t1).addTypeConstraint(pvy, BitTypeSet(BitSet(1)))
-    val s2 = s(t2).addTypeConstraint(pvy3, BitTypeSet(BitSet(1)))
-      .addTypeConstraint(pvy2,BitTypeSet(BitSet(2)))
-    val res = stateSolver.canSubsume(s1,s2,esp)
+    val t1 = AbstractTrace(tgt_foo1_x_y::Nil, Map("y"-> p1, "x"->p3))
+    val t2 = AbstractTrace(tgt_foo2_x1_y1::Nil, Map("y1" -> p2, "x1"->p3))
+    val s1 = s(t1).addTypeConstraint(p3,BitTypeSet(BitSet(1)))
+      .addTypeConstraint(p1, BitTypeSet(BitSet(1)))
+    val s2 = s(t2).addTypeConstraint(p3, BitTypeSet(BitSet(1)))
+      .addTypeConstraint(p2,BitTypeSet(BitSet(2)))
+    val res = stateSolver.canSubsume(s1,s2,spec)
     assert(!res)
+    assert(!stateSolver.canSubsume(s2,s1,spec))
+
+    //s3: I(x.foo(y)) && y:T1 can subsume s4: I(x1.foo(y1)) && y:T1
+    // can subsume when types are compatible
+    val s3 = s(t1).addTypeConstraint(p3,BitTypeSet(BitSet(1)))
+      .addTypeConstraint(p1, BitTypeSet(BitSet(2)))
+    val s4 = s(t2).addTypeConstraint(p3, BitTypeSet(BitSet(1)))
+      .addTypeConstraint(p2,BitTypeSet(BitSet(2)))
+    assert(stateSolver.canSubsume(s3,s4,spec))
+    assert(stateSolver.canSubsume(s4,s3,spec))
   }
   ignore("I(x.foo(y)) && y:T1 cannot subsume I(x.foo(y))|>I(x1.foo(y1)) && I(x2.foo(y2)) && y2:T2"){f =>
     //TODO: |>
