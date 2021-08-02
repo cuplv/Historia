@@ -378,7 +378,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
           refutedSubsumedOrWitnessed.union(qrySet.toSet) + p
         case p: IPathNode if limit > 0 && p.depth > limit =>
           // max steps reached
-          refutedSubsumedOrWitnessed.union(qrySet.toSet)
+          refutedSubsumedOrWitnessed.union(qrySet.toSet) + p
         case p@PathNode(qry: LiveQry, false) =>
           // live path node
           val subsuming = try{

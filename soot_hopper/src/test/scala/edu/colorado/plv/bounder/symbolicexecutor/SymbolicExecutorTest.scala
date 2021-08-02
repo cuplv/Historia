@@ -11,7 +11,7 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, Bot
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.AnyFunSuite
-import soot.SootMethod
+import soot.{Scene, SootMethod}
 
 class SymbolicExecutorTest extends AnyFunSuite {
   //TODO: ====== Set component filters for each test to improve perf time
@@ -50,14 +50,16 @@ class SymbolicExecutorTest extends AnyFunSuite {
     val transfer = (cha:ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(LifecycleSpec.spec),cha)
     val config = SymbolicExecutorConfig(
-      stepLimit = 160, w,transfer,  z3Timeout = Some(30), component = Some(List("com\\.example\\.test_interproc_2.*")))
+      stepLimit = 200, w,transfer,  z3Timeout = Some(30),
+      component = Some(List("com\\.example\\.test_interproc_2\\.MainActivity.*")))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = ReceiverNonNull(
       "com.example.test_interproc_2.MainActivity",
       "void onPause()",27)
     val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
-//    prettyPrinting.dumpDebugInfo(result, "inter-callback")
+    prettyPrinting.dumpDebugInfo(result, "inter-callback", truncate = false)
     BounderUtil.throwIfStackTrace(result)
+
     assert(BounderUtil.interpretResult(result,QueryFinished) == Proven)
     assert(result.nonEmpty)
   }
@@ -68,7 +70,9 @@ class SymbolicExecutorTest extends AnyFunSuite {
     val transfer = (cha:ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(LifecycleSpec.spec),cha)
     val config = SymbolicExecutorConfig(
-      stepLimit = 50, w,transfer,  z3Timeout = Some(30))
+      stepLimit = 50, w,transfer,  z3Timeout = Some(30),
+      component = Some(List("com\\.example\\.test_interproc_2\\.MainActivity.*")))
+    //      component = Some(List("com\\.example\\.test_interproc_2\\.*"))
     val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
     val query = Reachable(
       "com.example.test_interproc_2.MainActivity",
@@ -949,8 +953,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
       File.usingTemporaryDirectory() { tmpDir =>
         implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
         val config = SymbolicExecutorConfig(
-          stepLimit = 200, w, transfer,
-          component = Some(List("com.example.createdestroy.MyActivity.*")))
+          stepLimit = 200, w, transfer,z3Timeout = Some(30),
+          component = Some(List("com\\.example\\.createdestroy\\.*MyActivity.*")))
         val symbolicExecutor = config.getSymbolicExecutor
         val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
           "void lambda$onCreate$1$MyActivity(java.lang.Object)", 31)

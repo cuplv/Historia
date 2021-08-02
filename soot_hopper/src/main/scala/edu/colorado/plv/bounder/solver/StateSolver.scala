@@ -619,259 +619,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     encoded
   }
 
-  // use the ∃⍵' method (note that this has unresolved issues with subsumption)
-  private def encodeTraceAbsSuffixInEnc(abs: AbstractTrace,
-                             messageTranslator: MessageTranslator,
-                             traceFn: T,
-                             traceLen: T,
-                             typeMap: Map[PureVar, TypeSet],
-                             typeToSolverConst: Map[Int, T],
-                             constMap:Map[PureVal,T],
-                             specSpace: SpecSpace,
-                             negate: Boolean = false, debug:Boolean = false)(implicit zctx: C): TraceAndSuffixEnc = {
-    val freshTraceFun = mkFreshTraceFn("arrowtf")
-    // For all trace elements before len_, arrowtf and tracefn are the same
-    val beforeIndEq =
-      mkForallIndex(mkZeroIndex, traceLen, i =>
-        mkEq(mkTraceConstraint(traceFn, i), mkTraceConstraint(freshTraceFun, i)))
-
-    val lsTypeMap:Map[String,TypeSet] = abs.modelVars.keySet.map(lsVar => abs.modelVars.get(lsVar) match {
-      case Some(pv:PureVar) => lsVar -> typeMap.getOrElse(pv, TopTypeSet)
-      case _ => lsVar -> TopTypeSet
-    }).toMap
-
-    val op:List[T]=>T = if(negate) mkOr else mkAnd
-    //TODO: define pure vars based on first occurance in trace suffix and leave out the existential
-    abs.rightOfArrow.foldLeft(TraceAndSuffixEnc(traceLen, Map())){
-      case (acc, i: I) =>
-        // i invoked here in future
-        // incriment index for next loop
-        val (ivIsInc, iv) = mkAddOneIndex(acc.len)
-
-        // Get pure vars associated with i paired with args
-        val argInd = i.lsVars.zipWithIndex.flatMap{
-          case (LifeState.LSVar(v),ind) if abs.modelVars.contains(v) =>
-            abs.modelVars(v) match {
-              case pv:PureVar =>
-                // use ind to get value at index/arg in trace
-                val arg:T = getArgAt(acc.len,ind,freshTraceFun)
-                Some(pv,arg)
-              case _ => None
-            }
-          case _ => None
-        }.toMap
-        // add to overridden set if not there already
-        val acc2 = argInd.foldLeft(acc){(acc3, v) => acc3.definePvAs(v._1,v._2)}
-
-        // if in overridden set, assert equality
-
-        val (modelVarsSuffix:Map[String,T], acc3) = abs.modelVars.foldLeft((Map[String,T](), acc2)){
-          case ((mvMap, acc3), (k,v:PureVar)) if(acc3.definedPvMap.contains(v)) =>
-            (mvMap + (k->acc3.definedPvMap(v)), acc3 )
-          case ((mvMap, acc3), (k,v:PureVar)) =>
-            val (a,b) = acc3.getOrQuantifyPv(v)
-            (mvMap + (k -> a),b )
-        }
-
-        val arrowTfIsAndInc = mkAnd(ivIsInc,
-          assertIAt(acc2.len, i, messageTranslator, freshTraceFun, negated = false,
-            lsTypeMap, typeToSolverConst, modelVarsSuffix))
-
-
-        val incAndSuffix = acc2.mkSuffix(arrowTfIsAndInc)
-
-        // get applicable specs to current element of suffix
-        val applicableSpecs = specSpace.specsByI(i)
-        if(debug){
-          applicableSpecs.foreach{s =>
-            println(s"applied spec: ${s}")
-          }
-        }
-        val specReq = applicableSpecs.map { spec =>
-          val newMvMap: Map[String, T] = (spec.target.lsVars zip i.lsVars).foldLeft(modelVarsSuffix) {
-            case (mv, (LifeState.LSVar(targetVar), LifeState.LSVar(existingVar))) =>
-              assert(!mv.contains(targetVar),
-                s"Model var collision: target: ${targetVar} existing: ${existingVar}")
-              mv + (targetVar -> modelVarsSuffix(existingVar))
-            case (mv, _) => mv
-          }
-          val newLsTypeMap: Map[String, TypeSet] = (spec.target.lsVars zip i.lsVars).foldLeft(lsTypeMap) {
-            case (tm, (LifeState.LSConst(_), _)) => tm
-            case (tm, (LifeState.LSAnyVal(_), _)) => tm
-            case (tm, (targetVar, existingVar)) =>
-              assert(!tm.contains(targetVar),
-                s"Model var collision: target: ${targetVar} existing: ${existingVar}")
-              tm + (targetVar -> lsTypeMap.getOrElse(existingVar, TopTypeSet))
-          }
-          val unboundModelVars = spec.pred.lsVar -- newMvMap.keySet
-          val rhsReq_ = getRHSReqFromSpec(spec, i, constMap, newMvMap)
-          val rhsReq = if(negate) mkNot(rhsReq_) else rhsReq_
-          val predEnc = (m: Map[String, T]) => encodePred(spec.pred, freshTraceFun, acc2.len, messageTranslator,
-            newMvMap ++ m, typeToSolverConst,
-            newLsTypeMap, constMap, negate = negate)
-          val quantifiedPredEnc =
-            if (unboundModelVars.isEmpty) {
-              predEnc(Map())
-            } else if(negate){
-//              mkForallAddr(unboundModelVars, predEnc)
-              ???
-            }else {
-//              mkExistsAddr(unboundModelVars, predEnc)
-              ???
-            }
-
-          op(List(rhsReq, quantifiedPredEnc))
-        }
-        //TODO: and between indices, or for same index
-        val withTrace = if(specReq.nonEmpty) incAndSuffix.mkTrace(specReq.toList, negate) else incAndSuffix
-        withTrace.mkSuffix(beforeIndEq)
-          .copy(len = iv) // increment length for next arrowTF
-      case (acc, Ref(v)) =>
-        // V created here in future
-        ???
-    }
-  }
-
-  /**
-   *
-   * @param abs               abstraction of trace to encode for the solver
-   * @param messageTranslator mapping from I preds to enum elements
-   * @param traceFn           solver function from indices to trace messages
-   * @param traceLen          total length of trace including arrow constraints
-   * @param absUID            optional unique id for model variables to scope properly,
-   *                          if none is provided, identity hash code of abs is used
-   * @param negate            encode the assertion that traceFn is not in abs,
-   *                          note that "mkNot(encodeTraceAbs(..." does not work due to skolomization
-   * @return encoded trace abstraction
-   */
-    @deprecated
-  def encodeTraceAbsOld(abs: AbstractTrace,
-                        messageTranslator: MessageTranslator,
-                        traceFn: T,
-                        traceLen: T,
-                        absUID: Option[String] = None,
-                        pvMap:Map[PureVar,T],
-                        typeMap: Map[PureVar, TypeSet],
-                        typeToSolverConst: Map[Int, T],
-                        constMap:Map[PureVal,T],
-                        specSpace: SpecSpace,
-                        negate: Boolean = false)(implicit zctx: C): T = {
-
-    val lsTypeMap:Map[String,TypeSet] = abs.modelVars.keySet.map(lsVar => abs.modelVars.get(lsVar) match {
-      case Some(pv:PureVar) => lsVar -> typeMap.getOrElse(pv, TopTypeSet)
-      case _ => lsVar -> TopTypeSet
-    }).toMap
-    def ienc(sublen: T, f: LSPred, traceFn: T,
-             modelVars: Map[String, T], negate: Boolean): T = {
-        encodePred(f, traceFn, sublen, messageTranslator, modelVars, typeToSolverConst, lsTypeMap, constMap, negate)
-    }
-
-    // encoding is function of model variables to solver boolean expression T
-    def modelVarsToEncoding(unboundModelVars:Map[String, T]): T = {
-
-      val modelVars = abs.modelVars.map { case (k, v) => (k -> pvMap(v.asInstanceOf[PureVar])) } ++ unboundModelVars
-      val freshTraceFun = mkFreshTraceFn("arrowtf")
-      val beforeIndEq =
-        mkForallIndex(mkZeroIndex, traceLen, i =>
-          mkEq(mkTraceConstraint(traceFn, i), mkTraceConstraint(freshTraceFun, i)))
-      val (suffixConstraint:T, endlen:T) = abs.a match {
-        case Some(Not(Ref(refV))) =>
-          abs.rightOfArrow.foldLeft(beforeIndEq, traceLen){
-            case ((acc,_),I(_, _, lsVars)) =>
-              // ref does not affect arrowtf, just means it can't be in any of the arrow messages
-              val res = mkAnd(acc,mkAnd(lsVars.flatMap{lsvar =>
-                if(modelVars.contains(lsvar)){
-                  Some(mkNot(mkEq(modelVars(lsvar), modelVars(refV))))
-                }else None
-              }))
-              (res,traceLen)
-//              val (ivIsInc, iv) = mkAddOneIndex(ind)
-//              val msgAt: T => T = index => mkTraceConstraint(freshTraceFun, index)
-//              val res = mkAnd(acc,mkAnd(mkValContainedInMsg(msgAt(ind), modelVars(refV), negated = true),ivIsInc))
-//              (res,iv)
-            case _ =>
-              (???,???)
-          }
-        case Some(Ref(refV)) =>
-          abs.rightOfArrow.foldLeft(beforeIndEq, traceLen){
-            case ((acc,ind),I(_, _, _)) =>
-              val (ivIsInc, iv) = mkAddOneIndex(ind)
-//              val msgAt: T => T = index => mkTraceConstraint(freshTraceFun, index)
-//              val res = mkOr(acc,mkAnd(mkValContainedInMsg(msgAt(ind), modelVars(refV), negated = false),ivIsInc))
-              val res = mkBoolVal(true) //TODO: how to combine this with "or prefix trace value"
-              (res,iv)
-            case _ =>
-              (???,???)
-          }
-        case _ =>
-          abs.rightOfArrow.foldLeft((beforeIndEq, traceLen)) {
-            case ((acc, ind), i: I) =>
-              val (ivIsInc, iv) = mkAddOneIndex(ind)
-              val arrowTfIsAndInc = mkAnd(ivIsInc,
-                mkAnd(acc, assertIAt(ind, i, messageTranslator, freshTraceFun, negated = false,
-                  lsTypeMap, typeToSolverConst, modelVars)))
-              val applicableSpecs = specSpace.specsByI(i)
-              val specReq = applicableSpecs.map { spec =>
-                val newMvMap: Map[String, T] = (spec.target.lsVars zip i.lsVars).foldLeft(modelVars) {
-                  case (acc, (LifeState.LSVar(targetVar), LifeState.LSVar(existingVar))) =>
-                    assert(!acc.contains(targetVar),
-                      s"Model var collision: target: ${targetVar} existing: ${existingVar}")
-                    acc + (targetVar -> modelVars(existingVar))
-                  case (acc, _) => acc
-                }
-                val newLsTypeMap: Map[String, TypeSet] = (spec.target.lsVars zip i.lsVars).foldLeft(lsTypeMap) {
-                  case (acc, (LifeState.LSConst(_), _)) => acc
-                  case (acc, (LifeState.LSAnyVal(_), _)) => acc
-                  case (acc, (targetVar, existingVar)) =>
-                    assert(!acc.contains(targetVar),
-                      s"Model var collision: target: ${targetVar} existing: ${existingVar}")
-                    acc + (targetVar -> lsTypeMap.getOrElse(existingVar, TopTypeSet))
-                }
-                val unboundModelVars = spec.pred.lsVar -- newMvMap.keySet
-                val rhsReq = getRHSReqFromSpec(spec, i, constMap, newMvMap)
-                val predEnc = (m: Map[String, T]) => encodePred(spec.pred, freshTraceFun, ind, messageTranslator,
-                  newMvMap ++ m, typeToSolverConst,
-                  newLsTypeMap, constMap, negate = negate)
-                val quantifiedPredEnc =
-                  if (unboundModelVars.isEmpty) {
-                    predEnc(Map())
-                  } else if(negate){
-//                    mkForallAddr(unboundModelVars, predEnc)
-                    ???
-                  }else {
-//                    mkExistsAddr(unboundModelVars, predEnc)
-                    ???
-                  }
-
-                mkAnd(rhsReq, quantifiedPredEnc)
-              }
-              if(specReq.nonEmpty)
-                (mkAnd(arrowTfIsAndInc, mkOr(specReq)),iv)
-              else
-                (arrowTfIsAndInc,iv)
-            case (acc, _) => (???,???) //TODO: decide if Ref is needed right of arrow
-          }
-      }
-      if(abs.a.isDefined) {
-        val absEnc = ienc(endlen, abs.a.get, freshTraceFun, modelVars, negate)
-        mkAnd(absEnc, suffixConstraint)
-      } else {
-        suffixConstraint
-      }
-    }
-
-    val allUnboundLS:Set[String] = (allLSVars(abs.a) ++ abs.rightOfArrow.flatMap(_.lsVars))
-      .filter(lsVar => (!abs.modelVars.contains(lsVar) && lsVar != "_"))
-
-    val res = if(negate){
-//      mkForallAddr(allUnboundLS, modelVarsToEncoding _)
-      ???
-    }else{
-//      mkExistsAddr(allUnboundLS, modelVarsToEncoding _)
-      ???
-    }
-    res
-  }
   private def getRHSReqFromSpec(spec:LSSpec, arrowI:I, constMap:Map[PureVal,T],
                                 mvMap:Map[String,T])(implicit zCtx:C) = {
     val fromConst: Seq[T] = (spec.target.lsVars zip arrowI.lsVars).flatMap{
@@ -1041,7 +788,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
           case _ => None
         }.toList)
       }
-//      val stateUniqueID = System.identityHashCode(state).toString
 
       // Encode locals
       val ll: Map[(String, Int), PureVar] = levelLocalPv(state)
@@ -1052,7 +798,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
       // Identity hash code of trace abstraction used when encoding a state so that quantifiers are independent
 
-//      mkAssert(mkLt(mkIntVal(-1), len))
       val out = if(state.traceAbstraction.exists{t => t.a.isDefined})
         ???
       else{
@@ -1074,7 +819,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
     val back = (v:Map[String,T]) => withPVMap(v.map{ case (k,v) => (pureVarsBack(k) -> v) })
     if(negate) {
-//      mkForallAddr(pureVars, back,traceEnc.quantifiedPv)
       mkForallAddr(pureVars, back,traceEnc.quantifiedPv)
     }else{
       mkExistsAddr(pureVars, back,traceEnc.quantifiedPv)
@@ -1109,13 +853,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       }
     } //mkIName(enum, iNameIntMap(m.identitySignature))
 
-//    def getEnum: T = identitySignaturesToSolver
-
     def nameFun: T = mkINameFn()
 
     def iForMsg(m: TMessage): Option[I] = {
       val possibleI = alli.filter(ci => ci.contains(ci.mt,m.fwkSig.get))
-//        ci.signatures.matches(m.fwkSig.get) && ci.mt == m.mType)
       assert(possibleI.size < 2)
       possibleI.headOption
     }

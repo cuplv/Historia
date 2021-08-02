@@ -101,8 +101,10 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
   }
 
   def isFrameworkClass(fullClassName:String):Boolean = fullClassName match{
-    case FrameworkExtensions.extensionRegex() => true
-    case _ => false
+    case FrameworkExtensions.extensionRegex() =>
+      true
+    case _ =>
+      false
   }
 
   def isAppClass(fullClassName:String):Boolean = {

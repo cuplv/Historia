@@ -26,6 +26,9 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
   case class FixtureParam(typeSolving: StateTypeSolving)
 
   val esp = new SpecSpace(Set(), Set())
+  def st(t:AbstractTrace):State = {
+    State.topState.copy(sf = State.topState.sf.copy(traceAbstraction = Set(t)))
+  }
 
   val hierarchy: Map[String, Set[String]] =
     Map("java.lang.Object" -> Set("String", "Foo", "Bar",
@@ -755,18 +758,13 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
       LSSpec(And(iFoo_z,Not(iBar_z)), notbar_tgt_z),
       LSSpec(iFoo_x, foo_tgt_x)
     ))
-
-    def s(t:AbstractTrace):State = {
-      State.topState.copy(sf = State.topState.sf.copy(traceAbstraction = Set(t)))
-    }
-    val s1 = s(
+    val s1 = st(
       AbstractTrace(notbar_tgt_z::Nil, Map("z" -> p2))
     ).addTypeConstraint(p2,BitTypeSet(BitSet(2)))//.addTypeConstraint(p1,BitTypeSet(BitSet(1)))
-    val s2 = s(
+    val s2 = st(
       AbstractTrace(foo_tgt_x::Nil, Map("x" -> p1))
     ).addTypeConstraint(p1,BitTypeSet(BitSet(2)))
 //      .addTypeConstraint(p2,BitTypeSet(BitSet(2)))
-    //TODO: |>
     val res = stateSolver.canSubsume(s1,s2,spec)
     assert(!res)
 
@@ -775,6 +773,30 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val res2 = stateSolver.canSubsume(s2,s1, spec)
     assert(res2)
   }
+  test("|>tgt(x) can be subsumed by |>"){ f =>
+    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val fooM = SubClassMatcher("","foo","foo")
+    val barM = SubClassMatcher("","bar","bar")
+    val tgtM = SubClassMatcher("","tgt","tgt")
+    val iFoo_x = I(CBEnter, fooM, "x"::Nil)
+    val iBar_x = I(CBEnter, barM, "x"::Nil)
+    val iTgt_x = I(CBEnter, tgtM, "x"::Nil)
+    val spec = new SpecSpace(Set(
+      LSSpec(NI(iFoo_x, iBar_x), iTgt_x)
+    ))
+    val s1 = st(AbstractTrace(iTgt_x::Nil, Map("x"->p1)))
+      .addTypeConstraint(p1,BitTypeSet(BitSet(1)))
+    val s2 = st(AbstractTrace(Nil, Map()))
+      .addTypeConstraint(p1,BitTypeSet(BitSet(1)))
+    assert(stateSolver.canSubsume(s2,s1,spec))
+    assert(!stateSolver.canSubsume(s1,s2,spec))
+
+    val s1h = s1.copy(sf = s1.sf.copy(heapConstraints = Map(FieldPtEdge(p1,"f")->p2)))
+    val s2h = s2.copy(sf = s2.sf.copy(heapConstraints = Map(FieldPtEdge(p1,"f")->p2)))
+    assert(stateSolver.canSubsume(s2h,s1h,spec))
+    assert(!stateSolver.canSubsume(s1h,s2h,spec))
+  }
+
   ignore("NI(x.foo(),x.baz()) && (not I(z.bar())) && x:T2 && z:T1 cannot subsume NI(x.foo(),x.baz()) && x:T2"){ f =>
     //TODO: |>
     val (stateSolver,_) = getStateSolver(f.typeSolving)

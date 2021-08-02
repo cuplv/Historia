@@ -54,7 +54,7 @@ class PrettyPrinting() {
                   outFile: String,
                   truncate:Boolean)(implicit mode : OutputMode = MemoryOutputMode): Unit = {
     val pw = File(outFile)
-    val targetTraces = result.flatMap{
+    val targetTraces: List[(String, IPathNode)] = result.flatMap{
       case pn@PathNode(_: LiveQry, false) => Some((s"live " +
         s"${if(pn.getError.isDefined) pn.getError.get.toString else ""}",pn))
       case pn@PathNode(_ :WitnessedQry, _) => Some(("witnessed", pn))
@@ -65,8 +65,9 @@ class PrettyPrinting() {
 
     if(pw.exists()) pw.delete()
     pw.createFile()
-    targetTraces.zipWithIndex.foreach{case (a,ind) =>
-      println(s"Writing trace $ind / ${targetTraces.size}")
+    val sortedTraces = targetTraces.sortBy(tr => tr._2.depth)
+    sortedTraces.zipWithIndex.foreach{case (a,ind) =>
+      println(s"Writing trace $ind / ${targetTraces.size}, length: ${a._2.depth}")
       pw.append(a._1 + "\n    " + witnessToTrace(List(a._2),truncate).mkString("\n    "))
       pw.append("\n")
     }
