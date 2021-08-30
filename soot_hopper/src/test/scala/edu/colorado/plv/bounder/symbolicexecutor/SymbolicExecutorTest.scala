@@ -953,7 +953,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       File.usingTemporaryDirectory() { tmpDir =>
         implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
         val config = SymbolicExecutorConfig(
-          stepLimit = 200, w, transfer,z3Timeout = Some(30),
+          stepLimit = 250, w, transfer,z3Timeout = Some(30),
           component = Some(List("com\\.example\\.createdestroy\\.*MyActivity.*")))
         val symbolicExecutor = config.getSymbolicExecutor
         val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
@@ -1481,6 +1481,164 @@ class SymbolicExecutorTest extends AnyFunSuite {
       makeApkWithSources(Map("MyFragment.java" -> src), MkApk.RXBase, test)
     }
   }
+
+  test("Reachable location call and subscribe"){
+    val src =
+      s"""
+         |package com.example.createdestroy;
+         |import android.app.Activity;
+         |import android.content.Context;
+         |import android.net.Uri;
+         |import android.os.Bundle;
+         |
+         |import androidx.fragment.app.Fragment;
+         |
+         |import android.util.Log;
+         |import android.view.LayoutInflater;
+         |import android.view.View;
+         |import android.view.ViewGroup;
+         |
+         |import rx.Single;
+         |import rx.Subscription;
+         |import rx.android.schedulers.AndroidSchedulers;
+         |import rx.schedulers.Schedulers;
+         |import rx.functions.Action1;
+         |
+         |
+         |public class MyFragment extends Fragment implements Action1<Object>{
+         |    Subscription sub;
+         |    String s = null;
+         |    @Override
+         |    public void onActivityCreated(Bundle savedInstanceState){
+         |        sub = Single.create(subscriber -> {
+         |            subscriber.onSuccess(3);
+         |        }).subscribe(this);
+         |        s = "";
+         |    }
+         |
+         |    @Override
+         |    public void call(Object o){
+         |         s.toString(); //query1 : reachable
+         |    }
+         |
+         |}
+         |""".stripMargin
+
+    val test: String => Unit = apk => {
+      assert(apk != null)
+      val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+        FragmentGetActivityNullSpec.getActivityNonNull,
+        LifecycleSpec.Fragment_activityCreatedOnlyFirst
+      ) ++ RxJavaSpec.spec
+      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+      val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
+        new SpecSpace(specs), cha)
+      val config = SymbolicExecutorConfig(
+        stepLimit = 80, w, transfer,
+        component = Some(List("com.example.createdestroy.*MyFragment.*")))
+      implicit val om = config.outputMode
+
+      // line in call is reachable
+      val symbolicExecutor = config.getSymbolicExecutor
+      val line = BounderUtil.lineForRegex(".*query1.*".r, src)
+      val query = Reachable("com.example.createdestroy.MyFragment",
+        "void call(java.lang.Object)",line)
+      val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
+      val fname = s"UnreachableLocation"
+      prettyPrinting.dumpDebugInfo(result, fname)
+      //      prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
+      assert(result.nonEmpty)
+      BounderUtil.throwIfStackTrace(result)
+      val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
+      assert(interpretedResult == Witnessed)
+
+      //line in call cannot throw npe since s is initialized
+      val query2 = ReceiverNonNull("com.example.createdestroy.MyFragment",
+        "void call(java.lang.Object)",line)
+      val result2 = symbolicExecutor.run(query2).flatMap(a => a.terminals)
+      val interpretedResult2 = BounderUtil.interpretResult(result2,QueryFinished)
+      assert(interpretedResult2 == Proven)
+    }
+
+    makeApkWithSources(Map("MyFragment.java" -> src), MkApk.RXBase, test)
+  }
+  test("Test unreachable location simplified") {
+    val src =
+      s"""
+         |package com.example.createdestroy;
+         |import android.app.Activity;
+         |import android.content.Context;
+         |import android.net.Uri;
+         |import android.os.Bundle;
+         |
+         |import androidx.fragment.app.Fragment;
+         |
+         |import android.util.Log;
+         |import android.view.LayoutInflater;
+         |import android.view.View;
+         |import android.view.ViewGroup;
+         |
+         |import rx.Single;
+         |import rx.Subscription;
+         |import rx.android.schedulers.AndroidSchedulers;
+         |import rx.schedulers.Schedulers;
+         |import rx.functions.Action1;
+         |
+         |
+         |public class MyFragment extends Fragment implements Action1<Object>{
+         |    Subscription sub;
+         |    String s = null;
+         |    @Override
+         |    public void onActivityCreated(Bundle savedInstanceState){
+         |        if(s != null){
+         |            sub = Single.create(subscriber -> {
+         |                subscriber.onSuccess(3);
+         |            }).subscribe(this);
+         |        }
+         |    }
+         |
+         |    @Override
+         |    public void call(Object o){
+         |         this.toString(); //query1 : reachable
+         |    }
+         |
+         |}
+         |""".stripMargin
+
+    val test: String => Unit = apk => {
+      assert(apk != null)
+      val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+        FragmentGetActivityNullSpec.getActivityNonNull,
+        LifecycleSpec.Fragment_activityCreatedOnlyFirst
+      ) ++ RxJavaSpec.spec
+      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+      val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
+        new SpecSpace(specs), cha)
+      val config = SymbolicExecutorConfig(
+        stepLimit = 80, w, transfer,
+        component = Some(List("com.example.createdestroy.*MyFragment.*")))
+      implicit val om = config.outputMode
+      val symbolicExecutor = config.getSymbolicExecutor
+      val line = BounderUtil.lineForRegex(".*query1.*".r, src)
+      val query = Reachable("com.example.createdestroy.MyFragment",
+        "void call(java.lang.Object)",line)
+      //      val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
+      //        "com.example.createdestroy.myfragment",
+      //        "void call(java.lang.Object)", line,
+      //        ".*getActivity.*".r)
+
+      val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
+      val fname = s"UnreachableLocation"
+      prettyPrinting.dumpDebugInfo(result, fname)
+      //      prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
+      assert(result.nonEmpty)
+      BounderUtil.throwIfStackTrace(result)
+      val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
+      assert(interpretedResult == Proven)
+    }
+
+    makeApkWithSources(Map("MyFragment.java" -> src), MkApk.RXBase, test)
+  }
   test("Test unreachable location") {
     val src =
       s"""
@@ -1549,7 +1707,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
       val fname = s"UnreachableLocation"
-//      prettyPrinting.dumpDebugInfo(result, fname)
+      prettyPrinting.dumpDebugInfo(result, fname)
 //      prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
       assert(result.nonEmpty)
       BounderUtil.throwIfStackTrace(result)

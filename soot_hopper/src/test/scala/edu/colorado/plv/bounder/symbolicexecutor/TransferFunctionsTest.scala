@@ -187,7 +187,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     val ir = new TestIR(Set(MethodTransition(preloc, postloc)))
     val lhs = I(CBEnter, Set(("", "bar")), "_" :: "a" :: Nil)
     //  I(cb a.bar()) <= I(cb a.foo())
-    val spec = LSSpec(
+    val spec = LSSpec("a"::Nil, Nil,
       lhs,
       iFooA)
     val tr = new TransferFunctions(ir, new SpecSpace(Set(spec)),miniCha)

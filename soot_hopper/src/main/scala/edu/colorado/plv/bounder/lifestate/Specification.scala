@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSConstraint, LSFalse, LSPred, LSSpec, NI, Not, Or, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, Forall, I, LSConstraint, LSFalse, LSPred, LSSpec, NI, Not, Or, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{Equals, NotEquals}
 
 object SpecSignatures {
@@ -86,12 +86,14 @@ object SpecSignatures {
 
 object FragmentGetActivityNullSpec{
 //  val cond = Or(Not(SpecSignatures.Fragment_onActivityCreated_entry), SpecSignatures.Fragment_onDestroy_exit)
-  val cond: LSPred = NI(SpecSignatures.Fragment_onDestroy_exit, SpecSignatures.Fragment_onActivityCreated_entry)
+  val fragmentActivityNotAttached: LSPred =
+    NI(SpecSignatures.Fragment_onDestroy_exit, SpecSignatures.Fragment_onActivityCreated_entry)
   val notCond: LSPred = Or(
     NI(SpecSignatures.Fragment_onActivityCreated_entry,SpecSignatures.Fragment_onDestroy_exit),
     Not(SpecSignatures.Fragment_onDestroy_exit))
-  val getActivityNull: LSSpec = LSSpec(cond, SpecSignatures.Fragment_get_activity_exit_null)
-  val getActivityNonNull: LSSpec = LSSpec(notCond, SpecSignatures.Fragment_get_activity_exit,
+  val getActivityNull: LSSpec = LSSpec("a"::"f"::Nil, Nil, fragmentActivityNotAttached, SpecSignatures.Fragment_get_activity_exit,
+    Set(LSConstraint("a", Equals, "@null")))
+  val getActivityNonNull: LSSpec = LSSpec("a"::"f"::Nil, Nil, notCond, SpecSignatures.Fragment_get_activity_exit,
     Set(LSConstraint("a", NotEquals, "@null")))
 }
 
@@ -99,10 +101,10 @@ object RxJavaSpec{
   val subUnsub:LSPred = NI(
     SpecSignatures.RxJava_subscribe_exit,
     SpecSignatures.RxJava_unsubscribe_exit)
-  val call:LSSpec = LSSpec(subUnsub, SpecSignatures.RxJava_call_entry)
+  val call:LSSpec = LSSpec("l"::Nil, "s"::Nil, subUnsub, SpecSignatures.RxJava_call_entry)
 //  val subscribeDoesNotReturnNull = LSSpec(LSFalse, SpecSignatures.RxJava_subscribe_exit_null)
   private val subscribe_s_only = SpecSignatures.RxJava_subscribe_exit.copy(lsVars = "s"::Nil)
-  val subscribeIsUnique:LSSpec = LSSpec(Not(subscribe_s_only),
+  val subscribeIsUnique:LSSpec = LSSpec("s"::Nil, Nil, Not(subscribe_s_only),
     subscribe_s_only) //,Set(LSConstraint("s",NotEquals,"@null")  )
   val spec = Set(call,subscribeIsUnique)
 }
@@ -114,12 +116,12 @@ object LifecycleSpec {
   val created: LSPred = NI(SpecSignatures.Activity_onCreate_entry, SpecSignatures.Activity_onDestroy_exit)
   val resumed: LSPred =
     NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit)
-  val Activity_onResume_onlyafter_onPause: LSSpec = LSSpec(NI(SpecSignatures.Activity_onPause_exit,
+  val Activity_onResume_onlyafter_onPause: LSSpec = LSSpec("a"::Nil, Nil, NI(SpecSignatures.Activity_onPause_exit,
     SpecSignatures.Activity_onResume_entry), SpecSignatures.Activity_onResume_entry)
-  val Activity_onPause_onlyafter_onResume: LSSpec = LSSpec(resumed,
+  val Activity_onPause_onlyafter_onResume: LSSpec = LSSpec("a"::Nil, Nil, resumed,
     SpecSignatures.Activity_onPause_entry)
   val Activity_created:LSPred = NI(SpecSignatures.Activity_onCreate_entry, SpecSignatures.Activity_onDestroy_exit)
-  val Fragment_activityCreatedOnlyFirst:LSSpec = LSSpec(
+  val Fragment_activityCreatedOnlyFirst:LSSpec = LSSpec("f"::Nil, Nil,
     And(
       Not(SpecSignatures.Fragment_onDestroy_exit),
       And(Not(SpecSignatures.Fragment_onActivityCreated_entry),
@@ -127,7 +129,7 @@ object LifecycleSpec {
     ),
     SpecSignatures.Fragment_onActivityCreated_entry)
 
-  val Activity_createdOnlyFirst:LSSpec = LSSpec(
+  val Activity_createdOnlyFirst:LSSpec = LSSpec("a"::Nil, Nil,
     And(Not(SpecSignatures.Activity_onCreate_entry),Not(SpecSignatures.Activity_onDestroy_exit)),
     SpecSignatures.Activity_onCreate_entry
   )
@@ -146,11 +148,13 @@ object ViewSpec {
     List("_","v","l")
   )
 
-  val disallowCallinAfterActivityPause:LSSpec = LSSpec(And(LifecycleSpec.viewAttached,
+  // v a - viewAttached
+  // a - destroyed
+  val disallowCallinAfterActivityPause:LSSpec = LSSpec("v"::Nil, "a"::Nil, And(LifecycleSpec.viewAttached,
     LifecycleSpec.destroyed),
     anyViewCallin)
 
-  val clickWhileActive:LSSpec = LSSpec(
+  val clickWhileActive:LSSpec = LSSpec("l"::Nil,"a"::"v"::Nil,
     And(And(setOnClickListener, LifecycleSpec.viewAttached), Or(LifecycleSpec.resumed,
       I(CIExit, SpecSignatures.Activity_finish, "_"::"a"::Nil))),
     I(CBEnter, onClick, List("_", "l")))

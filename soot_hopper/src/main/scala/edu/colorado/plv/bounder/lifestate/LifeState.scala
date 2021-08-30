@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSFalse, LSPred, LSSpec, LSTrue, LifeStateParser, NI, Not, Or, Ref}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, Exists, Forall, I, LSFalse, LSPred, LSSpec, LSTrue, LifeStateParser, NI, Not, Or, Ref}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CmpOp, Equals, NotEquals, NullVal, PureExpr, PureVal, PureVar, Subtype}
 
@@ -182,8 +182,26 @@ object LifeState {
     def lsVar: Set[String]
   }
   object LSPred{
-    implicit var rw:RW[LSPred] = RW.merge(LSAtom.rw, macroRW[Not], macroRW[And],
+    implicit var rw:RW[LSPred] = RW.merge(LSAtom.rw, macroRW[Forall], macroRW[Exists], macroRW[Not], macroRW[And],
       macroRW[Or], macroRW[LSTrue.type], macroRW[LSFalse.type])
+  }
+
+  case class Forall(vars:List[String], p:LSPred) extends LSPred{
+    override def swap(swapMap: Map[String, String]): LSPred =
+      Forall(vars, p.swap(swapMap.removedAll(vars)))
+
+    override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean = ???
+
+    override def lsVar: Set[String] = p.lsVar
+  }
+
+  case class Exists(vars:List[String], p:LSPred) extends LSPred {
+    override def swap(swapMap: Map[String, String]): LSPred =
+      Exists(vars, p.swap(swapMap.removedAll(vars)))
+
+    override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean = ???
+
+    override def lsVar: Set[String] = p.lsVar
   }
 
   /**
@@ -229,6 +247,14 @@ object LifeState {
 
   val LSGenerated = "LS_GENERATED_.*".r
 
+  case class LSImplies(l1:LSPred, l2:LSPred) extends LSPred{
+    override def swap(swapMap: Map[String, String]): LSPred = LSImplies(l1.swap(swapMap), l2.swap(swapMap))
+
+    override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean =
+      l1.contains(mt,sig) || l2.contains(mt,sig)
+
+    override def lsVar: Set[String] = l1.lsVar.union(l2.lsVar)
+  }
   case class And(l1 : LSPred, l2 : LSPred) extends LSPred {
     override def lsVar: Set[String] = l1.lsVar.union(l2.lsVar)
     override def toString:String = s"(${l1.toString} AND ${l2.toString})"
@@ -378,8 +404,7 @@ object LifeState {
     override def swap(swapMap: Map[String, String]): I = {
       val newLSVars = lsVars.map{
         case LSVar(v) =>
-          assert(swapMap.contains(v), s"SwapMap must contain v: ${v}")
-          swapMap(v)
+          swapMap.getOrElse(v,v)
         case c => c
       }
       this.copy(lsVars = newLSVars)
@@ -405,7 +430,26 @@ object LifeState {
   object NI{
     implicit val rw:RW[NI] = macroRW
   }
-  case class LSSpec(pred:LSPred, target: I, rhsConstraints: Set[LSConstraint] = Set()){
+  case class LSSpec(univQuant:List[String], existQuant:List[String],
+                    pred:LSPred, target: I, rhsConstraints: Set[LSConstraint] = Set()){
+    private def checkWF(quant:Set[String], p:LSPred):Boolean = p match {
+      case LSConstraint(v1, _, v2) => quant.contains(v1) && quant.contains(v2)
+      case Forall(vars, p) => checkWF(quant ++ vars,p)
+      case Exists(vars, p) => checkWF(quant ++ vars,p)
+      case LSImplies(l1, l2) => checkWF(quant,l1) && checkWF(quant,l2)
+      case And(l1, l2) => checkWF(quant,l1) && checkWF(quant,l2)
+      case Not(l) => checkWF(quant,l)
+      case Or(l1, l2) => checkWF(quant,l1) && checkWF(quant,l2)
+      case LSTrue => true
+      case LSFalse => true
+      case i:LSAtom => i.lsVar.forall(v => quant.contains(v))
+    }
+    private def checkWellFormed():Unit = {
+      val quantified = univQuant.toSet ++ existQuant
+      if(!(checkWF(quantified, pred) && checkWF(quantified,target)))
+        throw new IllegalArgumentException("mismatch between quantified variables and free variables")
+    }
+    checkWellFormed()
     def instantiate(i:I, specSpace: SpecSpace):LSPred = {
       val swap = (target.lsVars zip i.lsVars).filter{
         case (LSAnyVal(),_) => false
@@ -416,11 +460,18 @@ object LifeState {
       val swapWithFresh = (swap ++ unbound.map(v => (v,specSpace.nextFreshLSVar()))).toMap
       val swappedPred = pred.swap(swapWithFresh)
       val swappedRhs = rhsConstraints.map(_.swap(swapWithFresh))
-      if(rhsConstraints.isEmpty)
+
+      // Quantify variables not in the target
+      val newUnivQuant = univQuant.toSet -- swap.map(_._1)
+
+
+      val lsFormula = if(rhsConstraints.isEmpty)
         swappedPred
       else {
-        And(swappedPred, swappedRhs.reduce(And))
+        LSImplies(swappedRhs.reduce(And),swappedPred)
       }
+      Forall(newUnivQuant.toList, Exists(existQuant, lsFormula))
+
     }
   }
 
@@ -471,10 +522,12 @@ object SpecSpace{
     case LSTrue => Set()
     case LSFalse => Set()
     case Ref(_) => Set()
+    case Forall(_,p) => allI(p)
+    case Exists(_,p) => allI(p)
   }
   def allI(spec:LSSpec, includeRhs:Boolean = true):Set[I] = spec match{
-    case LSSpec(pred, target,_) if includeRhs => allI(pred).union(allI(target))
-    case LSSpec(pred, target,_) => allI(pred)
+    case LSSpec(_,_,pred, target,_) if includeRhs => allI(pred).union(allI(target))
+    case LSSpec(_,_,pred, target,_) => allI(pred)
   }
 }
 /**

@@ -77,7 +77,7 @@ class SootUtilsTest extends AnyFunSuite {
     assert(test_interproc_1 != null)
     val w = new JimpleFlowdroidWrapper(test_interproc_1, SparkCallGraph, Set())
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
-    val testSpec = LSSpec(NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
+    val testSpec = LSSpec("a"::Nil, Nil, NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
       SpecSignatures.Activity_onPause_entry)
     val transfer = (cha: ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set(testSpec)), cha)
@@ -115,7 +115,7 @@ class SootUtilsTest extends AnyFunSuite {
     val w = new JimpleFlowdroidWrapper(test_interproc_1, SparkCallGraph, Set())
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
     //    val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
-    val testSpec = LSSpec(NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
+    val testSpec = LSSpec("a"::Nil, Nil, NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
       SpecSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
     val transfer = (cha: ClassHierarchyConstraints) =>
       new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set(testSpec)), cha)

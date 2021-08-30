@@ -325,6 +325,33 @@ trait StateSolver[T, C <: SolverCtx[T]] {
                          constMap:Map[PureVal, T],
                          negate: Boolean = false)(implicit zctx: C): T = {
     val res = combinedPred match {
+      case Forall(h::t, p) =>
+        mkForallAddr(h, (v:T) => {
+          val newModelVarMap:String => T = s => if(s == h) v else modelVarMap(s)
+          encodePred(Forall(t, p), traceFn, len, messageTranslator, newModelVarMap, typeToSolverConst, typeMap,
+            constMap, negate)
+        })
+      case Exists(h::t, p) =>
+        mkExistsAddr(h, (v:T) => {
+          val newModelVarMap:String => T = s => if(s == h) v else modelVarMap(s)
+          encodePred(Exists(t, p), traceFn, len, messageTranslator, newModelVarMap, typeToSolverConst, typeMap,
+            constMap, negate)
+        })
+      case Forall(Nil, p) =>
+        encodePred(p, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap, constMap, negate)
+      case Exists(Nil, p) =>
+        encodePred(p, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap, constMap, negate)
+      case LSImplies(l1,l2) if !negate => mkImplies(
+        encodePred(l1, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap, constMap),
+        encodePred(l2, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap, constMap)
+      )
+      case LSImplies(l1,l2) if negate =>
+        // ¬(a=>b) =equiv ¬(¬a\/b) =equiv a/\¬b
+        val encL1 = encodePred(l1, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap, constMap,
+          negate = false)
+        val encL2 = encodePred(l2, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap, constMap,
+          negate = true)
+        mkAnd(encL1,encL2)
       case LSConstraint(LSVar(v1), Equals,LSVar(v2)) if !negate =>
         mkEq(modelVarMap(v1), modelVarMap(v2))
       case LSConstraint(LSVar(v1), op, LSConst(c)) =>
@@ -433,20 +460,11 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     case Ref(v) => if (v != "_") Set(v) else Set()
   }
 
-  private def allLSVars(p: Option[LSPred]): Set[String] = p match {
-    case None => Set()
-    case Some(p) => allLSVars(p)
-  }
-
   private case class TraceAndSuffixEnc(len: T,
                                        definedPvMap: Map[PureVar, T],
                                        noQuantifyPv: Set[PureVar] = Set(),
                                        quantifiedPv: Set[T] = Set(),
                                        suffix: Option[T] = None, trace: Option[T] = None) {
-    // When a pure var is used in the trace suffix, it does not need to be quantified
-    def definePvAs(pv: PureVar, t: T): TraceAndSuffixEnc = {
-      this.copy(definedPvMap = definedPvMap + (pv -> t), noQuantifyPv = noQuantifyPv + pv)
-    }
 
     def getOrQuantifyPv(pv: PureVar)(implicit zCtx: C): (T, TraceAndSuffixEnc) = {
       if (definedPvMap.contains(pv)) {
@@ -455,16 +473,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         val pvVar: T = mkAddrVar(pv)
         (pvVar, this.copy(definedPvMap = definedPvMap + (pv -> pvVar), quantifiedPv = quantifiedPv + pvVar))
       }
-    }
-
-    @deprecated
-    def mkSuffix(suffixConstraint: T)(implicit zctx: C): TraceAndSuffixEnc = {
-      ???
-      // Note: suffix is never negated
-      if (suffix.isDefined)
-        this.copy(suffix = Some(mkAnd(List(suffix.get, suffixConstraint))))
-      else
-        this.copy(suffix = Some(suffixConstraint))
     }
 
     /**
@@ -499,7 +507,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       }
       if(swappedPreds.isEmpty) LSTrue
       else if(swappedPreds.size == 1) swappedPreds.head
-      else swappedPreds.reduce(Or)
+      else swappedPreds.reduce(And)
     case Ref(_) => LSTrue
   }
   private def filterAny(s:Seq[(String,String)]):Seq[(String,String)] = s.filter{
@@ -524,11 +532,14 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     }
   }
   private def updArrowPhi(i:I, lsPred:LSPred):LSPred = lsPred match {
+    case Forall(v,p) => Forall(v,updArrowPhi(i:I, p:LSPred))
+    case Exists(v,p) => Exists(v,updArrowPhi(i:I, p:LSPred))
     case l:LSConstraint => l
     case And(l1, l2) => And(updArrowPhi(i,l1), updArrowPhi(i,l2))
     case Or(l1, l2) => Or(updArrowPhi(i,l1), updArrowPhi(i,l2))
     case LifeState.LSTrue => LifeState.LSTrue
     case LifeState.LSFalse => LifeState.LSFalse
+    case LSImplies(l1,l2) => LSImplies(updArrowPhi(i,l1), updArrowPhi(i,l2))
     case Ref(v) =>
       throw new IllegalStateException("RefV cannot be updated (encoding handled elsewhere)")
     case Not(i1:I) =>
@@ -551,6 +562,24 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     case i:I => updArrowPhi(i,lSPred)
   }
 
+  private def encodeSpec(spec:LSSpec, traceFn:T, traceLen:T,
+                         messageTranslator: MessageTranslator)(implicit zCtx: C):T = {
+    //TODO:====
+    mkForallIndex{i =>
+      val modelVarMap:Map[String,T] = ???
+      val lsTypeMap:Map[String,TypeSet] = ???
+      val typeToSolverConst:Map[Int,T] = ???
+
+      val indexMatches = assertIAt(i, spec.target, messageTranslator, traceFn, false, lsTypeMap,
+        typeToSolverConst, modelVarMap)
+      ???
+    }
+  }
+  private def encodeSpec(specSpace:SpecSpace, traceFn:T, traceLen:T,
+                         messageTranslator: MessageTranslator)(implicit zCtx:C):T = {
+
+    ???
+  }
 
   /**
    * Encode .|>m1|>m2...
@@ -600,7 +629,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
             val (newTS, v) = accTS.getOrQuantifyPv(abs.modelVars(fv).asInstanceOf[PureVar])
             (accM + (fv -> newTS), v)
           }else {
-            assert(fv.contains("LS_GENERATED__"), "All non-generated fv must be bound to pv")
+            //TODO: find some other well formed check, variables quantified in the spec reach here as well as generated.
+//            assert(fv.contains("LS_GENERATED__"), "All non-generated fv must be bound to pv")
             val v = mkModelVar(fv,"")
             (accM + (fv -> v), accTS.copy(quantifiedPv = accTS.quantifiedPv + v))
           }
@@ -1009,7 +1039,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       val messageTranslator = MessageTranslator(List(state2),specSpace)
 
       // Only encode types in Z3 for subsumption check due to slow-ness
-      val encode = SetInclusionTypeSolving
       val usedTypes = allTypes(state)
       val (typesAreUniqe, typeMap) = mkTypeConstraints(usedTypes)
 
@@ -1029,9 +1058,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       if(simpleAst.isEmpty)
         None
       else {
-        val reducedState = if(encode == SetInclusionTypeSolving)
-          reduceStatePureVars(state2.setSimplified()).map(gcPureVars)
-        else Some(state2)
+        val reducedState = reduceStatePureVars(state2.setSimplified()).map(gcPureVars)
         reducedState.map(_.setSimplified())
       }
     }
@@ -1120,8 +1147,9 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       zCtx.mkAssert(uniqueConst)
 
 
-      val s1Enc = toASTState(s1, typeToSolverConst, messageTranslator, maxLen, constMap, negate = true,
-        specSpace = specSpace, debug = maxLen.isDefined)
+      //TODO: does this work instead of complicated negate thing?
+      val s1Enc = mkNot(toASTState(s1, typeToSolverConst, messageTranslator, maxLen, constMap, negate = false,
+        specSpace = specSpace, debug = maxLen.isDefined))
       zCtx.mkAssert(s1Enc)
       val s2Enc = toASTState(s2, typeToSolverConst, messageTranslator, maxLen, constMap, negate = false,
         specSpace = specSpace, debug = maxLen.isDefined)
@@ -1130,7 +1158,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       if (foundCounter && maxLen.isDefined) {
         printDbgModel(messageTranslator, s1.traceAbstraction.union(s2.traceAbstraction), "")
       }
-
       reset()
       !foundCounter
     }catch{

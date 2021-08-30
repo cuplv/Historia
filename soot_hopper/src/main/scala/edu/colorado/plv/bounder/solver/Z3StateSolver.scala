@@ -151,13 +151,14 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
     zCtx.ctx.mkLt(lhs.asInstanceOf[ArithExpr[ArithSort]],rhs.asInstanceOf[ArithExpr[ArithSort]])
 
   override protected def mkNot(o: AST)(implicit zCtx:Z3SolverCtx): AST = {
-////    if(o.toString == "true"){
-////      mkBoolVal(boolVal = false)
-////    }else if(o.toString == "false"){
-////      mkBoolVal(boolVal = true)
-////    }else {
+    //TODO:
+    if(o.toString == "true"){
+      mkBoolVal(boolVal = false)
+    }else if(o.toString == "false"){
+      mkBoolVal(boolVal = true)
+    }else {
       zCtx.ctx.mkNot(o.asInstanceOf[BoolExpr])
-//    }
+    }
   }
 
   override protected def mkAdd(lhs: AST, rhs: AST)(implicit zCtx:Z3SolverCtx): AST = {
@@ -174,9 +175,10 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
   }
 
   override protected def mkAnd(t:List[AST])(implicit zCtx:Z3SolverCtx): AST = {
-//    val t2 = t.filter(v => v.toString != "true")
+    //TODO:
+    val t2 = t.filter(v => v.toString != "true")
 
-    val t2 = t
+//    val t2 = t
     if(t2.isEmpty) {
       mkBoolVal(boolVal = true)
     }else if(t2.size == 1){
@@ -191,8 +193,9 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
     mkOr(List(lhs,rhs))
 
   override protected def mkOr(t: Iterable[AST])(implicit zCtx:Z3SolverCtx): AST = {
-//    val t2 = t.filter(v => v.toString != "false")
-    val t2 = t
+    //TODO:
+    val t2 = t.filter(v => v.toString != "false")
+//    val t2 = t
     if(t2.size == 1) {
       t2.head
     }else if(t2.nonEmpty) {
