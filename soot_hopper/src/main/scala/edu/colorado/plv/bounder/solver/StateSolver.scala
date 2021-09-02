@@ -635,12 +635,14 @@ trait StateSolver[T, C <: SolverCtx[T]] {
             (accM + (fv -> v), accTS.copy(quantifiedPv = accTS.quantifiedPv + v))
           }
       }
-    val modelTypeMap = modelVarMap.keySet.map{
-      case k if abs.modelVars.contains(k) =>
-        val pv = abs.modelVars(k)
-        k->typeMap.getOrElse(pv.asInstanceOf[PureVar], TopTypeSet)
-      case k => k -> TopTypeSet
-    }.toMap
+    //TODO: should this be factored out? I think the idea was to constraint the types in the trace.
+//    val modelTypeMap = modelVarMap.keySet.map{
+//      case k if abs.modelVars.contains(k) =>
+//        val pv = abs.modelVars(k)
+//        k->typeMap.getOrElse(pv.asInstanceOf[PureVar], TopTypeSet)
+//      case k => k -> TopTypeSet
+//    }.toMap
+    val modelTypeMap = Map[String,TypeSet]()
     val encoded = preds.foldLeft(traceAndSuffixEnc){(acc,p) =>
       val encodedPred = encodePred(p, traceFn, traceLen, messageTranslator, modelVarMap, typeToSolverConst,
         modelTypeMap, constMap, negate)
@@ -1087,6 +1089,9 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    * @return
    */
   def canSubsume(s1: State, s2: State, specSpace: SpecSpace, maxLen: Option[Int] = None): Boolean ={
+    //TODO: debug mode with maxLen seems to break the test:
+    //  "|>x.call() can subsume |> y.unsubscribe() |> x.call()"
+
     // Check if stack sizes or locations are different
     if (s1.callStack.size != s2.callStack.size)
       return false

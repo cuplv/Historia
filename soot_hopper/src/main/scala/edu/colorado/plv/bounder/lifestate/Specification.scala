@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, Forall, I, LSConstraint, LSFalse, LSPred, LSSpec, NI, Not, Or, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, Forall, I, LSConstraint, LSFalse, LSPred, LSSpec, LSTrue, NI, Not, Or, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{Equals, NotEquals}
 
 object SpecSignatures {
@@ -87,14 +87,17 @@ object SpecSignatures {
 object FragmentGetActivityNullSpec{
 //  val cond = Or(Not(SpecSignatures.Fragment_onActivityCreated_entry), SpecSignatures.Fragment_onDestroy_exit)
   val fragmentActivityNotAttached: LSPred =
-    NI(SpecSignatures.Fragment_onDestroy_exit, SpecSignatures.Fragment_onActivityCreated_entry)
-  val notCond: LSPred = Or(
-    NI(SpecSignatures.Fragment_onActivityCreated_entry,SpecSignatures.Fragment_onDestroy_exit),
-    Not(SpecSignatures.Fragment_onDestroy_exit))
-  val getActivityNull: LSSpec = LSSpec("a"::"f"::Nil, Nil, fragmentActivityNotAttached, SpecSignatures.Fragment_get_activity_exit,
+    Or(NI(SpecSignatures.Fragment_onDestroy_exit, SpecSignatures.Fragment_onActivityCreated_entry),
+      Not(SpecSignatures.Fragment_onActivityCreated_entry))
+  val fragmentActivityAttached: LSPred =
+    NI(SpecSignatures.Fragment_onActivityCreated_entry,SpecSignatures.Fragment_onDestroy_exit)
+  val getActivityNull: LSSpec = LSSpec("a"::"f"::Nil, Nil,
+    fragmentActivityNotAttached, SpecSignatures.Fragment_get_activity_exit,
     Set(LSConstraint("a", Equals, "@null")))
-  val getActivityNonNull: LSSpec = LSSpec("a"::"f"::Nil, Nil, notCond, SpecSignatures.Fragment_get_activity_exit,
-    Set(LSConstraint("a", NotEquals, "@null")))
+//  val getActivityNonNull: LSSpec = LSSpec("a"::"f"::Nil, Nil,
+//    fragmentActivityAttached, SpecSignatures.Fragment_get_activity_exit,
+//    Set(LSConstraint("a", NotEquals, "@null")))
+  val getActivityNonNull:LSSpec = LSSpec("a"::"f"::Nil, Nil, LSTrue, SpecSignatures.Fragment_get_activity_exit)
 }
 
 object RxJavaSpec{

@@ -151,13 +151,11 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
     zCtx.ctx.mkLt(lhs.asInstanceOf[ArithExpr[ArithSort]],rhs.asInstanceOf[ArithExpr[ArithSort]])
 
   override protected def mkNot(o: AST)(implicit zCtx:Z3SolverCtx): AST = {
-    //TODO:
-    if(o.toString == "true"){
-      mkBoolVal(boolVal = false)
-    }else if(o.toString == "false"){
-      mkBoolVal(boolVal = true)
-    }else {
-      zCtx.ctx.mkNot(o.asInstanceOf[BoolExpr])
+    o match {
+      case v:BoolExpr if v.isTrue => mkBoolVal(boolVal = false)
+      case v:BoolExpr if v.isFalse => mkBoolVal(boolVal = true)
+      case v:BoolExpr => zCtx.ctx.mkNot(v)
+      case _ => throw new IllegalStateException()
     }
   }
 
@@ -175,10 +173,13 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
   }
 
   override protected def mkAnd(t:List[AST])(implicit zCtx:Z3SolverCtx): AST = {
-    //TODO:
-    val t2 = t.filter(v => v.toString != "true")
+    // Simplify for debug
+    // Note: in z3, and with no arguments returns true, this retains that behavior
+    val t2 = t.filter{
+      case v:BoolExpr => !v.isTrue
+      case _ => true
+    }
 
-//    val t2 = t
     if(t2.isEmpty) {
       mkBoolVal(boolVal = true)
     }else if(t2.size == 1){
@@ -193,16 +194,21 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
     mkOr(List(lhs,rhs))
 
   override protected def mkOr(t: Iterable[AST])(implicit zCtx:Z3SolverCtx): AST = {
-    //TODO:
-    val t2 = t.filter(v => v.toString != "false")
-//    val t2 = t
+    // Simplify for debug - make z3 ast easier to inspect
+    // Note: in z3, or with no arguments returns false, this retains that behavior
+    val t2 = t.filter{
+      case v:BoolExpr => !v.isFalse
+      case _ => true
+    }
+
+    // Simplify for debug -
     if(t2.size == 1) {
       t2.head
     }else if(t2.nonEmpty) {
       val tb: Array[BoolExpr] = t2.map(_.asInstanceOf[BoolExpr]).toArray
       zCtx.ctx.mkOr(tb: _*)
     }else{
-      mkBoolVal(boolVal = false)
+      mkBoolVal(false)
     }
   }
 
@@ -296,6 +302,15 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
       println("=function decls=")
       model.getFuncDecls.map(println)
 
+      println("=type fun=")
+      val addr = model.getSortUniverse(zCtx.ctx.mkUninterpretedSort("Addr"))
+//      val classTypes = model.getSortUniverse(zCtx.ctx.mkUninterpretedSort("ClassTypes"))
+      val typeFun = model.getFuncDecls.find { f =>
+        val name = f.getName.toString
+        name.contains("addressToType")
+      }
+//      addr.foreach
+
       println("=trace solution=")
       var traceLen = 0
       while(model.eval(mkEq(sortedInd(traceLen),len).asInstanceOf[BoolExpr], true).isFalse){
@@ -332,6 +347,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
         println(s"=traceFunArrow: ${f.getName}=")
         sortedInd.indices.foreach{ i => printTraceElement(i,f.asInstanceOf[FuncDecl[UninterpretedSort]])}
       }
+      println()
 
     }
     }
