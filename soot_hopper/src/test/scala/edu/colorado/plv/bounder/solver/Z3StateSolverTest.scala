@@ -850,16 +850,16 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     //TODO: add destroy before call?
     //TODO: ===== adding type constraints breaks things
     val s1 = st(AbstractTrace(callTgt_x::Nil,Map("x"->p2)))
-//        .addTypeConstraint(p2,BitTypeSet(BitSet(2)))
-//      .addTypeConstraint(p1,BitTypeSet(BitSet(1)))
+        .addTypeConstraint(p2,BitTypeSet(BitSet(2)))
+      .addTypeConstraint(p1,BitTypeSet(BitSet(1)))
 
     val s1h = s1.copy(sf = s1.sf.copy(heapConstraints = Map(
 //      FieldPtEdge(p3, "subscription")-> p2,
     )))
 
     val s2 = st(AbstractTrace(unsubTgt_y::callTgt_x::Nil, Map("x"->p1, "y"->p2)))
-//      .addTypeConstraint(p1,BitTypeSet(BitSet(1)))
-//      .addTypeConstraint(p2,BitTypeSet(BitSet(2)))
+      .addTypeConstraint(p1,BitTypeSet(BitSet(1)))
+      .addTypeConstraint(p2,BitTypeSet(BitSet(2)))
 
 
     val s2h = s2.copy(sf = s2.sf.copy(heapConstraints = Map(
@@ -875,7 +875,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
 
     assert(stateSolver.canSubsume(s1h,s1h,specReal))
     assert(!stateSolver.canSubsume(s2h,s1h,specReal))
-    assert(stateSolver.canSubsume(s1h,s2h, specReal))
+    assert(stateSolver.canSubsume(s1h,s2h, specReal)) //TODO: still failing w/ types? ====
 
     val spec2 = new SpecSpace(LifecycleSpec.spec + callSpec)
 
@@ -883,7 +883,6 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     assert(!stateSolver.canSubsume(s2h,s1h,spec2))
   }
   test("|>y = _.subscribe(x)|> y.unsubscribe() |> x.call() should be subsumed by |> x.call()"){ f =>
-    //TODO: Failing to refute this in symbex test =====
     val (stateSolver,_) = getStateSolver(f.typeSolving)
     // Test with no wildcards
     val callSig = SpecSignatures.RxJava_call
