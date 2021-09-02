@@ -196,7 +196,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   // function argumentindex -> msg -> argvalue
   protected def mkArgConstraint(argFun: T, argIndex: Int, msg: T)(implicit zctx: C): T
 
-  protected def mkAllArgs(argFun: T, msg: T, pred: T => T)(implicit zctx: C): T
+  protected def mkAllArgs(msg: T, pred: T => T)(implicit zctx: C): T
 
   protected def mkExistsArg(argFun: T, msg: T, pred: T => T)(implicit zctx: C): T
 
@@ -309,12 +309,16 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    * @param zCtx    - solver context
    * @return
    */
+  @Deprecated
   def mkValContainedInMsg(msg: T, v: T, negated: Boolean)(implicit zCtx: C): T = {
     val argF = mkArgFun()
-    if (negated)
-      mkAllArgs(argF, msg, arg => mkNe(arg, v))
-    else
+    if (negated) {
+      mkAllArgs(msg, arg => mkNe(arg, v))
+      ???
+    } else {
       mkExistsArg(argF, msg, arg => mkEq(arg, v))
+      ???
+    }
   }
 
   private def encodePred(combinedPred: LifeState.LSPred, traceFn: T, len: T,
@@ -443,23 +447,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     }
   }
 
-  /**
-   * Get all variables
-   *
-   * @param p
-   * @return
-   */
-  private def allLSVars(p: LSPred): Set[String] = p match {
-    case And(l1, l2) => allLSVars(l1).union(allLSVars(l2))
-    case Not(l) => allLSVars(l)
-    case Or(l1, l2) => allLSVars(l1).union(allLSVars(l2))
-    case LifeState.LSTrue => Set()
-    case LifeState.LSFalse => Set()
-    case I(_, _, lsVars) => lsVars.toSet.filter(_ != "_")
-    case NI(i1, i2) => allLSVars(i1).union(allLSVars(Not(i2)))
-    case Ref(v) => if (v != "_") Set(v) else Set()
-  }
-
+  //TODO: remove "suffix" part of this class
   private case class TraceAndSuffixEnc(len: T,
                                        definedPvMap: Map[PureVar, T],
                                        noQuantifyPv: Set[PureVar] = Set(),
@@ -483,7 +471,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
      * @return trace and suffix encoding object
      */
     def mkTrace(traceConstraint:List[T], negate:Boolean)(implicit zctx: C):TraceAndSuffixEnc = {
-      assert(traceConstraint.nonEmpty)
+      if(traceConstraint.isEmpty)
+        return this
       // If we have two overlapping specs e.g.
       //  I(bar(x)) <= x = Foo() /\ x != null
       //  ¬I(bar(x)) <= x = Foo() /\ x == null
@@ -581,6 +570,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     ???
   }
 
+  protected def encodeRef(v:T, traceFn:T, traceLen:T)(implicit zCtx:C):T
   /**
    * Encode .|>m1|>m2...
    *
@@ -594,7 +584,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
                                  typeToSolverConst: Map[Int, T],
                                  constMap: Map[PureVal, T],
                                  specSpace: SpecSpace,
-                                 negate: Boolean = false, debug: Boolean = false)(implicit zctx: C): TraceAndSuffixEnc = {
+                                 negate: Boolean = false, debug: Boolean = false)(implicit zCtx: C): TraceAndSuffixEnc = {
+    assert(!negate) //TODO: remove negate or make this function handle it
     val rhs: Seq[LSSingle] = abs.rightOfArrow
     val rulePreds: Set[LSPred] = rhs.foldRight(Set[LSPred]()){ (v, acc) =>
       val updated = acc.map(lsPred => updArrowPhi(v,lsPred))
@@ -605,25 +596,31 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val op = if(negate) Or else And
 
     //Encode that each preceeding |> constraint cannot be equal to an allocation
-    def encodeRefV(rhs: Seq[LSSingle], previous:Set[String] = Set()):Option[LSPred] = rhs match {
-      case Ref(v)::t =>
+    def encodeRefV(rhs: Seq[LSSingle], previous:Set[String] = Set()):Option[(LSPred, Set[Ref])] = rhs match {
+      case (ref@Ref(v))::t =>
         val currentConstr: Set[LSConstraint] = previous.map{ other =>
           if(negate)
             LSConstraint(other, Equals, v)
           else
             LSConstraint(other, NotEquals, v)
         }
-        currentConstr.reduceOption(op)
+        // TODO: constrain all args prior to not be equal to ref ======
+
+        val c = currentConstr.reduceOption(op)
+        val n = encodeRefV(t,previous)
+        n.getOrElse((LSTrue, Set[Ref]())) match {
+          case (lsPred, refs) =>
+            Some((And(c.getOrElse(LSTrue),lsPred), refs + ref))
+        }
       case Nil => None
       case h::t => encodeRefV(t, previous ++ h.lsVar )
     }
-    val refVPred = encodeRefV(rhs)
-    // TODO: Do we need to constrain that all values before current position not equal to allocation? ======
-    val preds = refVPred ++ rulePreds
+    val refVPred: Option[(LSPred, Set[Ref])] = encodeRefV(rhs)
+    val preds = refVPred.map(_._1) ++ rulePreds
 
-    val freeVars = preds.flatMap(p => p.lsVar)
+    val lsVars = preds.flatMap(p => p.lsVar) ++ abs.rightOfArrow.flatMap(_.lsVar)
     val (modelVarMap:Map[String,T], traceAndSuffixEnc:TraceAndSuffixEnc) =
-      freeVars.foldLeft(Map[String,T](),TraceAndSuffixEnc(traceLen,Map())){
+      lsVars.foldLeft(Map[String,T](),TraceAndSuffixEnc(traceLen,Map())){
         case ((accM, accTS),fv) =>
           if(abs.modelVars.contains(fv)) {
             val (newTS, v) = accTS.getOrQuantifyPv(abs.modelVars(fv).asInstanceOf[PureVar])
@@ -648,32 +645,11 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         modelTypeMap, constMap, negate)
       acc.mkTrace(List(encodedPred), negate)
     }
-    encoded
-  }
-
-  private def getRHSReqFromSpec(spec:LSSpec, arrowI:I, constMap:Map[PureVal,T],
-                                mvMap:Map[String,T])(implicit zCtx:C) = {
-    val fromConst: Seq[T] = (spec.target.lsVars zip arrowI.lsVars).flatMap{
-      case (LifeState.LSConst(v), LifeState.LSVar(inVar)) =>
-        Some(mkEq(mkConstValueConstraint(mvMap(inVar)), constMap(v)))
-      case (_, LifeState.LSConst(_)) =>
-        throw new IllegalStateException("Const should be specified in pure formula")
-      case _ => None
+    val refs = refVPred.map(_._2).getOrElse(Set()).toList.map{
+      case Ref(v) =>
+        encodeRef(modelVarMap(v),traceFn, traceLen)
     }
-    val fromRhs:Set[T] = spec.rhsConstraints.map{
-      case LSConstraint(LifeState.LSVar(v1), Equals, LifeState.LSConst(v2)) =>
-        mkEq(mkConstValueConstraint(mvMap(v1)), constMap(v2))
-      case LSConstraint(LifeState.LSConst(v1), Equals, LifeState.LSVar(v2)) =>
-        mkEq(constMap(v1), mkConstValueConstraint(mvMap(v2)))
-      case LSConstraint(LifeState.LSVar(v1), NotEquals, LifeState.LSConst(v2)) =>
-        mkNot(mkEq(mkConstValueConstraint(mvMap(v1)), constMap(v2)))
-      case LSConstraint(LifeState.LSConst(v1), NotEquals, LifeState.LSVar(v2)) =>
-        mkNot(mkEq(constMap(v1), mkConstValueConstraint(mvMap(v2))))
-      case _ =>
-        ???
-    }
-    val allConstr = fromConst ++ fromRhs
-    mkAnd(allConstr.toList)
+    encoded.mkTrace(refs,false)
   }
 
   protected def mkDistinct(pvList: Iterable[PureVar],pvMap:Map[PureVar,T])(implicit zctx: C): T
@@ -1075,12 +1051,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     case _ => false
   }
 
-  private def filterTypeConstraintsFromPf(pure: Set[PureConstraint]): Set[PureConstraint] = pure.filter {
-    case PureConstraint(_, Subtype, _) => throw new IllegalStateException("TODO: remove TypeComp")
-    case _ => true
-  }
-
-
   /**
    *
    *
@@ -1401,10 +1371,15 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val assertDistinct = mkDistinctT(distinctAddr.keySet.map(distinctAddr(_)))
     zCtx.mkAssert(assertDistinct)
     val encodedState = toASTState(state, typeMap, messageTranslator, None, constMap,
-      negate=negate, specSpace = specSpace)
+      negate=false, specSpace = specSpace)
     val encodedTrace = encodeTrace(traceFn, trace, messageTranslator, distinctAddr)
-    zCtx.mkAssert(encodedState)
-    zCtx.mkAssert(encodedTrace)
+    if(negate){
+      zCtx.mkAssert(mkNot(encodedState))
+      zCtx.mkAssert(mkNot(encodedTrace))
+    }else {
+      zCtx.mkAssert(encodedState)
+      zCtx.mkAssert(encodedTrace)
+    }
   }
 
 }
