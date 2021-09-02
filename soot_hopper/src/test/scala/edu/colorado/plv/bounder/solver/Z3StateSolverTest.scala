@@ -850,8 +850,9 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     //TODO: add destroy before call?
     //TODO: ===== adding type constraints breaks things
     val s1 = st(AbstractTrace(callTgt_x::Nil,Map("x"->p2)))
-        .addTypeConstraint(p2,BitTypeSet(BitSet(2)))
-      .addTypeConstraint(p1,BitTypeSet(BitSet(1)))
+      .addTypeConstraint(p2,BitTypeSet(BitSet(1)))
+//      .addTypeConstraint(p2,BitTypeSet(BitSet(2)))
+//      .addTypeConstraint(p1,BitTypeSet(BitSet(1)))
 
     val s1h = s1.copy(sf = s1.sf.copy(heapConstraints = Map(
 //      FieldPtEdge(p3, "subscription")-> p2,
