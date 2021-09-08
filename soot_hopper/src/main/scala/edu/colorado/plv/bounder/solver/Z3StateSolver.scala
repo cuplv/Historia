@@ -628,20 +628,6 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
       msg)
   }
 
-  override protected def mkAllArgs(msg: AST, pred: AST => AST)(implicit zCtx:Z3SolverCtx): AST = {
-    //    val argFun = mkArgFun()
-    //    val argConst:Expr[UninterpretedSort] = zCtx.ctx.mkFreshConst("argConst", getArgSort())
-    //    val constraint = pred(mkArgConstraint(argFun, argConst,
-    //      msg.asInstanceOf[Expr[UninterpretedSort]])).asInstanceOf[BoolExpr]
-    //    zCtx.ctx.mkForall(Array(argConst), constraint, 1,null,null,null,null)
-    val argFun = mkArgFun()
-    val ctx = zCtx.ctx
-    val argIs = zCtx.args.map(arg =>
-      pred(argFun.asInstanceOf[FuncDecl[UninterpretedSort]].apply(
-        arg,msg.asInstanceOf[Expr[UninterpretedSort]])).asInstanceOf[BoolExpr] )
-    ctx.mkAnd(argIs:_*)
-  }
-
   override protected def mkExistsArg(argFun: AST, msg: AST, pred: AST => AST)(implicit zCtx:Z3SolverCtx): AST = {
     //    val argFun = mkArgFun()
     //    val argConst = zCtx.ctx.mkFreshConst("argConst", getArgSort())
@@ -868,15 +854,36 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
     val ctx = zCtx.ctx
     zCtx.mkAssert(ctx.mkForall(Array(other), lte.apply(other, indt), 1,null,null,null,null))
   }
-
+  override protected def mkAllArgs(msg: AST, pred: AST => AST)(implicit zCtx:Z3SolverCtx): AST = {
+    //    val argFun = mkArgFun()
+    //    val argConst:Expr[UninterpretedSort] = zCtx.ctx.mkFreshConst("argConst", getArgSort())
+    //    val constraint = pred(mkArgConstraint(argFun, argConst,
+    //      msg.asInstanceOf[Expr[UninterpretedSort]])).asInstanceOf[BoolExpr]
+    //    zCtx.ctx.mkForall(Array(argConst), constraint, 1,null,null,null,null)
+    val argFun = mkArgFun()
+    val ctx = zCtx.ctx
+    val argIs = zCtx.args.map(arg =>
+      pred(argFun.asInstanceOf[FuncDecl[UninterpretedSort]].apply(
+        arg,msg.asInstanceOf[Expr[UninterpretedSort]])).asInstanceOf[BoolExpr] )
+    ctx.mkAnd(argIs:_*)
+  }
   override protected def encodeRef(v: AST, traceFn: AST, traceLen: AST)(implicit zCtx: Z3SolverCtx): AST = {
     val ctx = zCtx.ctx
-    val tf = traceFn.asInstanceOf[FuncDecl[UninterpretedSort]]
-    mkForallIndex{ind =>
-      val msg = tf.apply(ind.asInstanceOf[Expr[UninterpretedSort]])
-//      mkImplies( mkAnd(mkLTEIndex(mkZeroIndex(), ind),mkLTIndex(ind,traceLen)),
-        mkAllArgs(msg, {arg => mkNot(mkEq(v,arg))})
-//      )
-    }
+    val argFun = mkArgFun().asInstanceOf[FuncDecl[UninterpretedSort]]
+    // forall index method, seems to cause timeouts
+    //    val tf = traceFn.asInstanceOf[FuncDecl[UninterpretedSort]]
+    //    mkForallIndex{ind =>
+    //      val msg = tf.apply(ind.asInstanceOf[Expr[UninterpretedSort]])
+    ////      mkImplies( mkAnd(mkLTEIndex(mkZeroIndex(), ind),mkLTIndex(ind,traceLen)),
+    //        mkAllArgs(msg, {arg => mkNot(mkEq(v,arg))})
+    ////      )
+    //    }
+    val m = ctx.mkConst("allMsg", ctx.mkUninterpretedSort("Msg"))
+    val v_ = v.asInstanceOf[Expr[UninterpretedSort]]
+    val pred:BoolExpr = ctx.mkAnd(
+      zCtx.args.map(arg =>
+        ctx.mkNot(ctx.mkEq(
+            argFun.apply(arg,m),v_))):_*)
+    ctx.mkForall(Array(m), pred, 1, null,null,null,null)
   }
 }

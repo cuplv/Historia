@@ -62,8 +62,8 @@ object SpecSignatures {
 
   val Fragment_onActivityCreated_entry: I = I(CBEnter, Fragment_onActivityCreated, "_"::"f"::Nil)
 
-  val Fragment_onDestroy_Signatures: SignatureMatcher = SubClassMatcher(Fragment, "void onDestroy\\(\\)", "Fragment_onDestroy")
-  val Fragment_onDestroy_exit: I = I(CBExit, Fragment_onDestroy_Signatures, "_"::"f"::Nil)
+  val Fragment_onDestroy: SignatureMatcher = SubClassMatcher(Fragment, "void onDestroy\\(\\)", "Fragment_onDestroy")
+  val Fragment_onDestroy_exit: I = I(CBExit, Fragment_onDestroy, "_"::"f"::Nil)
 
   // rxjava
   val RxJava_call: SignatureMatcher = SubClassMatcher("rx.functions.Action1", "void call\\(java.lang.Object\\)", "rxJava_call")
@@ -136,10 +136,16 @@ object LifecycleSpec {
     And(Not(SpecSignatures.Activity_onCreate_entry),Not(SpecSignatures.Activity_onDestroy_exit)),
     SpecSignatures.Activity_onCreate_entry
   )
+//  val Activity_destroyAfterCreate:LSSpec = LSSpec("a"::Nil, Nil,
+//    NI(SpecSignatures.Activity_onCreate_entry, SpecSignatures.Activity_onDestroy_exit),
+//    SpecSignatures.Activity_onDestroy_exit)
 
-  val spec:Set[LSSpec] = Set(Fragment_activityCreatedOnlyFirst,
+  val spec:Set[LSSpec] = Set(
+    Fragment_activityCreatedOnlyFirst,
     Activity_createdOnlyFirst,
-    Activity_onPause_onlyafter_onResume)
+//    Activity_destroyAfterCreate, // Note: tried adding this because of a failing test, did not help
+    Activity_onPause_onlyafter_onResume
+  )
 //    init_first_callback)
 }
 

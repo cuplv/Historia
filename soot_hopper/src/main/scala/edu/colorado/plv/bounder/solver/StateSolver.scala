@@ -471,20 +471,22 @@ trait StateSolver[T, C <: SolverCtx[T]] {
      * @return trace and suffix encoding object
      */
     def mkTrace(traceConstraint:List[T], negate:Boolean)(implicit zctx: C):TraceAndSuffixEnc = {
+      assert(!negate) //TODO: remove negate
       if(traceConstraint.isEmpty)
         return this
       // If we have two overlapping specs e.g.
       //  I(bar(x)) <= x = Foo() /\ x != null
       //  ¬I(bar(x)) <= x = Foo() /\ x == null
-      // one or the other applies when not under negation
-      // under negation both must not apply
+      // And a message x=Foo() then we have:
+      // [x!=null => I(bar(x))] && [x=null => ¬I(bar(x))]
+
       val op:List[T]=>T = if(negate) mkOr else mkAnd
-      val combTraceConst:List[T]=>T = if(negate) mkAnd else mkOr
+//      val combTraceConst:List[T]=>T = if(negate) mkAnd else mkOr
 
       if(trace.isDefined)
-        this.copy(trace = Some(op(List(trace.get, combTraceConst(traceConstraint) ))))
+        this.copy(trace = Some(op(List(trace.get, op(traceConstraint) ))))
       else
-        this.copy(trace = Some(combTraceConst(traceConstraint)))
+        this.copy(trace = Some(op(traceConstraint)))
     }
   }
 
@@ -533,13 +535,13 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       throw new IllegalStateException("RefV cannot be updated (encoding handled elsewhere)")
     case Not(i1:I) =>
       if(i1.mt == i.mt && i1.signatures == i.signatures)
-        And(neq(i1,i), i1)
+        And(neq(i1,i), lsPred)
       else lsPred
     case ni@NI(i1,i2) =>
       And(Or(eq(i1,i), And(ni, neq(i1,i))), neq(i,i2))
     case i1:I =>
       if(i1.mt == i.mt && i1.signatures == i.signatures)
-        Or(eq(i1,i), i1)
+        Or(eq(i1,i), lsPred)
       else lsPred
     case Not(_) =>
       throw new IllegalArgumentException("Negation only supported on I")
@@ -1129,7 +1131,15 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       val s2Enc = toASTState(s2, typeToSolverConst, messageTranslator, maxLen, constMap, negate = false,
         specSpace = specSpace, debug = maxLen.isDefined)
       zCtx.mkAssert(s2Enc)
-      val foundCounter = checkSAT()
+      val foundCounter = try {
+        checkSAT()
+      }catch {
+        case e:IllegalStateException =>
+          println("subsumption timeout:")
+          println(s"  s1: ${s1}")
+          println(s"  s2: ${s2}")
+          throw e
+      }
       if (foundCounter && maxLen.isDefined) {
         printDbgModel(messageTranslator, s1.traceAbstraction.union(s2.traceAbstraction), "")
       }

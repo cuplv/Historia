@@ -953,13 +953,13 @@ class SymbolicExecutorTest extends AnyFunSuite {
       File.usingTemporaryDirectory() { tmpDir =>
         implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
         val config = SymbolicExecutorConfig(
-          stepLimit = 250, w, transfer,z3Timeout = Some(30),
+          stepLimit = 300, w, transfer,z3Timeout = Some(30),
           component = Some(List("com\\.example\\.createdestroy\\.*MyActivity.*")))
         val symbolicExecutor = config.getSymbolicExecutor
         val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
           "void lambda$onCreate$1$MyActivity(java.lang.Object)", 31)
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
-        prettyPrinting.dumpDebugInfo(result, "ProveFieldDerefWithSubscribe")
+        //prettyPrinting.dumpDebugInfo(result, "ProveFieldDerefWithSubscribe")
         assert(result.nonEmpty)
         BounderUtil.throwIfStackTrace(result)
         assert(BounderUtil.interpretResult(result, QueryFinished) == Proven)
@@ -1232,7 +1232,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
   test("Minimal motivating example with irrelevant unsubscribe") {
     List(
       ("sub.unsubscribe();", Proven, "withUnsub"),
-      ("", Witnessed, "noUnsub")
+      ("", Witnessed, "noUnsub") //TODO:================  does not witness
     ).map { case (destroyLine, expectedResult,fileSuffix) =>
       val src =
         s"""
@@ -1316,6 +1316,12 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
       val test: String => Unit = apk => {
         assert(apk != null)
+//        val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+//          FragmentGetActivityNullSpec.getActivityNonNull,
+//          LifecycleSpec.Fragment_activityCreatedOnlyFirst,
+//          RxJavaSpec.call
+//        ) // ++ RxJavaSpec.spec //TODO: ==== add back in, this doesn't seem to be causing issue?
+
         val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
           FragmentGetActivityNullSpec.getActivityNonNull,
           LifecycleSpec.Fragment_activityCreatedOnlyFirst,
@@ -1342,8 +1348,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
           val result = symbolicExecutor.run(query, dbMode)
           val fname = s"IrrelevantUnsub_$fileSuffix"
-//          prettyPrinting.dumpDebugInfo(result.flatMap(a => a.terminals), fname)
-          // prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
+          prettyPrinting.dumpDebugInfo(result.flatMap(a => a.terminals), fname)
+//          prettyPrinting.dotWitTree(result.flatMap(_.terminals),s"$fname.dot",includeSubsEdges = true, skipCmd = true)
           assert(result.nonEmpty)
           BounderUtil.throwIfStackTrace(result.flatMap(a => a.terminals))
           val interpretedResult = BounderUtil.interpretResult(result.flatMap(a => a.terminals), QueryFinished)
@@ -1362,7 +1368,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
             }
             println("--- end witness ---")
           }
-//          assert(onViewCreatedInTree.isEmpty) //TODO: Irellevant unsubscribe is relevant for some reason=====
+//          assert(onViewCreatedInTree.isEmpty) //TODO: Relevance currently disabled due to restructuring
         }
       }
 
@@ -1438,8 +1444,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
         val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
           FragmentGetActivityNullSpec.getActivityNonNull,
           LifecycleSpec.Fragment_activityCreatedOnlyFirst,
-          RxJavaSpec.call
-        ) //++ RxJavaSpec.spec
+//          RxJavaSpec.call
+        ) ++ RxJavaSpec.spec
         val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
           new SpecSpace(specs), cha)

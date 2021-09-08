@@ -104,11 +104,14 @@ object StateSet {
     }
 
     val out = iFind((local ++ heap).toList, pathNode, stateSet)
-//    val (dbgOut,dbgCount) = dbgAllSubs(pathNode, stateSet, canSubsume)
-    println(s"subsCount: $fastCount")
-//    if(dbgOut != out){
-//      println("ERROR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-//    }
+    // uncomment code below to sanity check StateSet
+    // StateSet uses a trie set to reduce the number of subsumption queries
+    // Following code attempts subsumption with every state and compares the result with StateSet
+    //    val (dbgOut,dbgCount) = dbgAllSubs(pathNode, stateSet, canSubsume)
+    //    if(dbgOut != out){
+    //      println("ERROR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    //      throw new IllegalStateException("State set failure")
+    //    }
 
     out
   }
@@ -119,7 +122,8 @@ case class CodeLocation(loc:Loc, cbCount:Int)extends SubsumableLocation
 case object FrameworkLocation extends SubsumableLocation
 object SwapLoc {
   def unapply[M,C](pathNode:IPathNode)(implicit w:IRWrapper[M,C]): Option[SubsumableLocation] = pathNode.qry.loc match {
-    case _: CallbackMethodInvoke => Some(FrameworkLocation)
+    case _: CallbackMethodInvoke =>
+      Some(FrameworkLocation)
     case _: CallbackMethodReturn => None
     case a@AppLoc(_,_,true) if w.isLoopHead(a) => Some(CodeLocation(a, pathNode.ordDepth))
     case a@AppLoc(_,_,true) => {

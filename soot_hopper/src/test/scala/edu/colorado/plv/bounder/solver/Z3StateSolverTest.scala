@@ -21,6 +21,9 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
   private val p1 = PureVar(1)
   private val p2 = PureVar(2)
   private val p3 = PureVar(3)
+  private val p4 = PureVar(4)
+  private val p5 = PureVar(5)
+  private val p6 = PureVar(6)
   private val frame = CallStackFrame(dummyLoc, None, Map(StackVar("x") -> v))
   private val state = State.topState
   case class FixtureParam(typeSolving: StateTypeSolving)
@@ -822,7 +825,6 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
 
   }
   test("|>x.call() can subsume |> y.unsubscribe() |> x.call()"){ f =>
-    //TODO:===== still some failure related to symbolic executor test
     val (stateSolver,_) = getStateSolver(f.typeSolving)
     // Test with no wildcards
     val callSig = SpecSignatures.RxJava_call
@@ -876,6 +878,46 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     assert(stateSolver.canSubsume(s1h,s2h, spec2))
     assert(!stateSolver.canSubsume(s2h,s1h,spec2))
   }
+  test("|>x.onDestroy() should subsume |>x.onDestroy()|>y.onDestroy()"){f =>
+    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val specs = new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
+      FragmentGetActivityNullSpec.getActivityNonNull,
+    ) ++ LifecycleSpec.spec ++ RxJavaSpec.spec)
+    val destTgtX = I(CBExit, SpecSignatures.Activity_onDestroy, "_"::"x"::Nil)
+    val createTgtX = I(CBEnter, SpecSignatures.Activity_onCreate, "_"::"x"::Nil)
+    val destTgtY = I(CBExit, SpecSignatures.Activity_onDestroy, "_"::"y"::Nil)
+    val callTgtZ = I(CBEnter, SpecSignatures.RxJava_call, "_"::"z"::Nil)
+    val unsubTgtW = I(CIExit, SpecSignatures.RxJava_unsubscribe, "_"::"w"::Nil)
+    val subTgtWP = I(CIExit, SpecSignatures.RxJava_subscribe, "w"::"_"::"p"::Nil)
+    val s1 = st(AbstractTrace(Ref("z")::destTgtX::callTgtZ::Nil, Map("x"->p1, "z"->p3, "w"->p4)))
+    val s2 = st(AbstractTrace(Ref("z")::destTgtY::destTgtX::callTgtZ::Nil, Map("x"->p1, "y"->p2, "z"->p3, "w"->p4)))
+      .addPureConstraint(PureConstraint(p1,NotEquals,p2))
+    assert(stateSolver.canSubsume(s1,s2, specs))
+
+    val specs2 = new SpecSpace(
+      Set(FragmentGetActivityNullSpec.getActivityNull, FragmentGetActivityNullSpec.getActivityNonNull) ++
+        RxJavaSpec.spec ++
+        LifecycleSpec.spec)
+    val s_1 = st(AbstractTrace(
+      createTgtX::subTgtWP::unsubTgtW::destTgtX::callTgtZ::Nil,
+      Map("x"->p1,"z"->p2,"w"->p4,"p"->p5)))
+    val s_2 = st(AbstractTrace(
+      destTgtY::createTgtX::subTgtWP::unsubTgtW::destTgtX::callTgtZ::Nil,
+      Map("x"->p1,"z"->p2,"w"->p4,"p"->p5, "y"->p6)))
+    assert(stateSolver.canSubsume(s_1,s_2,specs2))
+
+    val s_1_ = st(AbstractTrace(
+      createTgtX::Nil,
+      Map("x"->p1)))
+    val s_2_ = st(AbstractTrace(
+      destTgtY::createTgtX::Nil,
+      Map("x"->p1, "y"->p6)))
+    assert(stateSolver.simplify(s_1_,specs2).isDefined)
+    assert(stateSolver.simplify(s_2_,specs2).isDefined)
+    assert(stateSolver.canSubsume(s_1_,s_1_,specs2))
+    assert(stateSolver.canSubsume(s_2_,s_2_,specs2))
+    assert(stateSolver.canSubsume(s_1_,s_2_,specs2))
+  }
   test("|>y = _.subscribe(x)|> y.unsubscribe() |> x.call() should be subsumed by |> x.call()"){ f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
     // Test with no wildcards
@@ -919,6 +961,16 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val s_ref = st(AbstractTrace(Ref("x1")::callITgt::Nil,
       Map("l2"->p2, "x1"->p2)))
     assert(stateSolver.simplify(s_ref,spec).isEmpty)
+  }
+  test("an arbitrary state s1 should subsume s1 with a ref added"){f =>
+    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val s1 = st(AbstractTrace(Ref("x")::Nil, Map("x"->p1)))
+    val s2 = st(AbstractTrace(Ref("x")::Ref("y")::Nil, Map("x"->p1,"y"->p2)))
+    assert(stateSolver.canSubsume(s1,s2,esp))
+    //Note that an erroneous "OR" between Refs causes timeout, may cause timeouts in future due to negation
+    assert(stateSolver.canSubsume(s2,s1,esp))
+    val s2NE = s2.addPureConstraint(PureConstraint(p1, NotEquals, p2))
+    assert(!stateSolver.canSubsume(s2NE,s1,esp))
   }
   test("|> y.onDestroy() |>null = x.getActivity() not refuted"){f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
