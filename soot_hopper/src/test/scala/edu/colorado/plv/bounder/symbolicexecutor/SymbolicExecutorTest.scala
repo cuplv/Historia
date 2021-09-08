@@ -1232,7 +1232,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
   test("Minimal motivating example with irrelevant unsubscribe") {
     List(
       ("sub.unsubscribe();", Proven, "withUnsub"),
-      ("", Witnessed, "noUnsub") //TODO:================  does not witness
+      ("", Witnessed, "noUnsub")
     ).map { case (destroyLine, expectedResult,fileSuffix) =>
       val src =
         s"""
@@ -1316,12 +1316,6 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
       val test: String => Unit = apk => {
         assert(apk != null)
-//        val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
-//          FragmentGetActivityNullSpec.getActivityNonNull,
-//          LifecycleSpec.Fragment_activityCreatedOnlyFirst,
-//          RxJavaSpec.call
-//        ) // ++ RxJavaSpec.spec //TODO: ==== add back in, this doesn't seem to be causing issue?
-
         val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
           FragmentGetActivityNullSpec.getActivityNonNull,
           LifecycleSpec.Fragment_activityCreatedOnlyFirst,
@@ -1335,7 +1329,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
           dbMode.startMeta()
           val config = SymbolicExecutorConfig(
             stepLimit = 200, w, transfer,
-            component = Some(Seq("com.example.createdestroy.ItemDescriptionFragment")),
+            component = Some(Seq("com.example.createdestroy.ItemDescriptionFragment",
+              "com.example.createdestroy.ExternalPlayerFragment")),
             outputMode = dbMode)
 //          implicit val om = config.outputMode
           val symbolicExecutor = config.getSymbolicExecutor
@@ -1348,7 +1343,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
           val result = symbolicExecutor.run(query, dbMode)
           val fname = s"IrrelevantUnsub_$fileSuffix"
-          prettyPrinting.dumpDebugInfo(result.flatMap(a => a.terminals), fname)
+//          prettyPrinting.dumpDebugInfo(result.flatMap(a => a.terminals), fname)
 //          prettyPrinting.dotWitTree(result.flatMap(_.terminals),s"$fname.dot",includeSubsEdges = true, skipCmd = true)
           assert(result.nonEmpty)
           BounderUtil.throwIfStackTrace(result.flatMap(a => a.terminals))
