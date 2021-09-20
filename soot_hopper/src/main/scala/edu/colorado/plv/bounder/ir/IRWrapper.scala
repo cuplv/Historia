@@ -87,7 +87,9 @@ object TypeSet{
       case TopTypeSet => "TopTypeSet"
       case EmptyTypeSet => "EmptyTypeSet"
       case PrimTypeSet(name) => s"PrimTypeSet:${name}"
-      case BitTypeSet(s) => s"BitTypeSet:${s.mkString(",")}"
+      case BitTypeSet(s) if s.isEmpty => "EmptyTypeSet"
+      case BitTypeSet(s) =>
+        s"BitTypeSet:${s.mkString(",")}"
     }
     ,
     s => s match {

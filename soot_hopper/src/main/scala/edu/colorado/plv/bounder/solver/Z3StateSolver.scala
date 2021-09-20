@@ -393,7 +393,11 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
   }
   override protected def mkTypeConstraintForAddrExpr(typeFun: AST, typeToSolverConst:Map[Int,AST],
                                                      addr:AST, tc:Set[Int])(implicit zCtx:Z3SolverCtx): AST = {
-    equalToOneOfTypes(typeFun.asInstanceOf[FuncDecl[Sort]].apply(addr.asInstanceOf[Expr[Sort]]),typeToSolverConst,tc)
+    if(tc.isEmpty)
+      mkBoolVal(true)
+    else {
+      equalToOneOfTypes(typeFun.asInstanceOf[FuncDecl[Sort]].apply(addr.asInstanceOf[Expr[Sort]]), typeToSolverConst, tc)
+    }
   }
   override protected def createTypeFun()(implicit zCtx:Z3SolverCtx):AST = {
     val args: Array[Sort] = Array(addrSort)
@@ -535,7 +539,6 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
     argIds
   }
   override protected def mkMaxMsgUint(n:Int)(implicit zCtx: Z3SolverCtx):AST = {
-    //TODO:
     val ctx = zCtx.ctx
     val msgSort = ctx.mkUninterpretedSort("Msg")
     val varMsg = ctx.mkFreshConst("someMsg", msgSort)
@@ -553,6 +556,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
       ctx.mkDistinct(uintIDs:_*)
     )
     mkAnd(msgU, uintU)
+    ??? //TODO: This seems unneeded, remove?
   }
   override protected def mkArgFun()(implicit zCtx:Z3SolverCtx): AST = {
     if(zCtx.args.isEmpty){
@@ -711,13 +715,6 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
   def fieldToName(fld:String):String = {
     s"field_${fld}"
   }
-//  override protected def mkDynFieldDomain(fields: Set[String])(implicit zCtx: Z3SolverCtx): (AST, Map[String, AST]) = {
-//    val ctx = zCtx.ctx
-//    val fieldMap = fields.map(t => (t-> ctx.mkConst(fieldToName(t), ???))).toMap
-//    val allConstraints: immutable.Iterable[Expr] = fieldMap.map{case (_,c) => c}
-//    val unique = mkDistinctT(allConstraints)
-//    (unique, fieldMap)
-//  }
 
   protected def mkConstConstraintsMap(pvs: Set[PureVal])(implicit zCtx: Z3SolverCtx): (AST, Map[PureVal, AST]) = {
     val ctx = zCtx.ctx
@@ -725,22 +722,6 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
     val allConstraints: immutable.Iterable[Expr[UninterpretedSort]] = constMap.map{case (_,c) => c}
     val unique = mkDistinctT(allConstraints)
     (unique, constMap)
-  }
-
-  protected override def mkAllAddrHavePV(pvToZT: Map[PureVar,AST])(implicit zCtx:Z3SolverCtx): AST = {
-    val ctx = zCtx.ctx
-
-    val pvs: Set[PureVar] = pvToZT.keySet
-
-    val uniqueAddr = ctx.mkConst("uniqueAddr_", addrSort)
-    val equalToOne = pvs.map(pv => ctx.mkEq(pvToZT(pv).asInstanceOf[Expr[UninterpretedSort]], uniqueAddr)).toArray
-
-    // TODO: here we limit the number of addresses to the number of pure variables, Figure out if this is sound
-    // Can there ever be a trace, store, and stack that satisfies our separation logic
-    // formula with more addr than pv but not with as many addr as pv?
-    ctx.mkForall(Array(uniqueAddr), ctx.mkOr(equalToOne:_*),
-      1, null,null,null,null)
-    ??? //TODO: not currently used due to unknown soundness.
   }
 
   def indexSort(implicit zCtx: Z3SolverCtx):UninterpretedSort = {

@@ -131,22 +131,15 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   protected def mkLocalDomain(locals: Set[(String, Int)])(implicit zctx: C): (T, Map[(String, Int), T])
 
-  //  protected def mkDynFieldDomain(fields:Set[String])(implicit zctx:C):(T,Map[String,T])
   protected def mkConstConstraintsMap(pvs: Set[PureVal])(implicit zctx: C): (T, Map[PureVal, T])
-
-  protected def mkAllAddrHavePV(pvToZT: Map[PureVar, T])(implicit zctx: C): T
 
   protected def mkTypeConstraintForAddrExpr(typeFun: T, typeToSolverConst: Map[Int, T],
                                             addr: T, tc: Set[Int])(implicit zctx: C): T
 
   protected def createTypeFun()(implicit zctx: C): T
 
-  // TODO: swap enum with uninterpreted type
   protected def mkUT(name: String, types: List[String])(implicit zctx: C): Map[String, T]
 
-  //  protected def getEnumElement(enum: (T, Map[String,T]), i: String)(implicit zctx: C): T
-
-  // function traceIndex -> msg
   protected def mkTraceFn(uid: String)(implicit zctx: C): T
 
   protected def mkFreshTraceFn(uid: String)(implicit zctx: C): T
@@ -209,7 +202,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     (pureVal, op) match {
       case (TopVal, _) => mkBoolVal(b = true)
       case (ClassVal(_), _) => mkBoolVal(b = true) //TODO: add class vals if necessary for precision
-      case (v: PureVal, Equals) => mkEq(constMap(v), mkConstValueConstraint(rhs))
+      case (v: PureVal, Equals) =>
+        if(!constMap.contains(v)) //TODO: Remove
+          ???
+        mkEq(constMap(v), mkConstValueConstraint(rhs))
       case (v: PureVal, NotEquals) => mkNot(mkEq(constMap(v), mkConstValueConstraint(rhs)))
       case (_: PureVal, _) => mkBoolVal(b = true)
       case v =>
@@ -738,7 +734,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    * @param zctx solver context
    * @return encoded formula for solver
    */
-  def toASTState(inState: State, typeToSolverConst: Map[Int, T],
+  def toASTState(state: State, typeToSolverConst: Map[Int, T],
                 messageTranslator: MessageTranslator,
                 maxWitness: Option[Int] = None,
                 constMap:Map[PureVal, T],
@@ -746,17 +742,16 @@ trait StateSolver[T, C <: SolverCtx[T]] {
                 negate:Boolean, debug:Boolean = false)(implicit zctx: C): T = {
 
     if(debug){
-      println(s"encoding state: ${inState}")
+      println(s"encoding state: ${state}")
     }
 
     // pure formula are for asserting that two abstract addresses alias each other or not
     //  as well as asserting upper and lower bounds on concrete types associated with addresses
-    inState.pureFormula.foreach {
+    state.pureFormula.foreach {
       case PureConstraint(_, Subtype, _) => throw new IllegalArgumentException()
       case _ => true
     }
 
-    val state = inState
     val stateUniqueID = "" //TODO: should remove?
     val len = mkLenVar(s"len_$stateUniqueID") // there exists a finite size of the trace for this state
     val traceFun = mkTraceFn(stateUniqueID)
@@ -785,7 +780,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       val op:List[T]=>T = if(negate) mkOr else mkAnd
 
       // *** Type constraints
-      val typeConstraints = {
+      val encodedTypeConstraints = {
         val typeConstraints = state.typeConstraints.map { case (k, v) => k -> v.getValues }
         op(typeConstraints.flatMap {
           case (pv, Some(ts)) =>
@@ -812,7 +807,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         ???
       else{
         // TODO: will eventually get rid of set in abstract trace but for now, check that it only has one element
-        op(List(pureAst, localAST, heapAst, typeConstraints) ++ traceEnc.trace)
+        op(List(pureAst, localAST, heapAst, encodedTypeConstraints) ++ traceEnc.trace)
       }
       maxWitness.foldLeft(out) { (acc, v) =>
         val (iv, isInc) = mkIndex(v)
@@ -1006,39 +1001,40 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         case _ => true
       }))
 
-      // Compute the maximum possible messages needed to find a witness
-      // note: test code, does not seem to fix timeout issue
-      // val maxMsgs = maxMsg(Set(state))
-      // zctx.mkAssert(mkMaxMsgUint(maxMsgs))
+      // note: I think the following is wrong, empty points to set occurs when value must be null
+      //      // If no type possible for a pure var, state is not feasible
+      //      val pvMap2: Map[PureVar, TypeSet] = state.typeConstraints
+      //      if (pvMap2.exists{ a => a._2.isEmpty }) {
+      //        return None
+      //      }
 
-      // If no type possible for a pure var, state is not feasible
-      val pvMap2: Map[PureVar, TypeSet] = state.typeConstraints
-      if (pvMap2.exists{ a => a._2.isEmpty }) {
-        return None
+      val nullsFromPt = state2.typeConstraints.filter(a => a._2.isEmpty)
+      val stateWithNulls = nullsFromPt.foldLeft(state2){
+        case (state,(v,_)) => state.addPureConstraint(PureConstraint(v, Equals, NullVal))
       }
-      val messageTranslator = MessageTranslator(List(state2),specSpace)
+      val messageTranslator = MessageTranslator(List(stateWithNulls),specSpace)
 
       // Only encode types in Z3 for subsumption check due to slow-ness
-      val usedTypes = allTypes(state)
+      val usedTypes = allTypes(stateWithNulls)
       val (typesAreUniqe, typeMap) = mkTypeConstraints(usedTypes)
 
-      val (uniqueConst, constMap) = mkConstConstraintsMap(getPureValSet(state2.pureFormula))
+      val (uniqueConst, constMap) = mkConstConstraintsMap(getPureValSet(stateWithNulls.pureFormula))
       val ast = mkAnd(uniqueConst,
         mkAnd(typesAreUniqe,
-          toASTState(state2, typeMap, messageTranslator, maxWitness,constMap, negate = false,
+          toASTState(stateWithNulls, typeMap, messageTranslator, maxWitness,constMap, negate = false,
             specSpace = specSpace, debug = maxWitness.isDefined)))
 
       if (maxWitness.isDefined) {
         println(s"State ${System.identityHashCode(state2)} encoding: ")
         println(ast.toString)
       }
-      val simpleAst = solverSimplify(ast, state2, messageTranslator, maxWitness.isDefined)
+      val simpleAst = solverSimplify(ast, stateWithNulls, messageTranslator, maxWitness.isDefined)
 
       reset()
       if(simpleAst.isEmpty)
         None
       else {
-        val reducedState = reduceStatePureVars(state2.setSimplified()).map(gcPureVars)
+        val reducedState = reduceStatePureVars(stateWithNulls.setSimplified()).map(gcPureVars)
         reducedState.map(_.setSimplified())
       }
     }

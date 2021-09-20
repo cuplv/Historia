@@ -22,11 +22,12 @@ object Qry {
     assert(locs.nonEmpty, "found no locations")
     val targetLoc = locs.head
     val containingMethodPos: List[Loc] = BounderUtil.resolveMethodReturnForAppLoc(ex.getAppCodeResolver, targetLoc)
-    containingMethodPos.map{method =>
+    val res:Set[Qry] = containingMethodPos.map{method =>
       val queryStack = List(CallStackFrame(method, None,Map()))
       val state0 = State.topState.copy(sf = State.topState.sf.copy(callStack = queryStack), nextCmd = List(targetLoc))
       LiveQry(state0, targetLoc)
     }.toSet
+    res
   }
 
   def makeCallinReturnNull[M,C](ex: SymbolicExecutor[M,C],

@@ -3,11 +3,11 @@ package edu.colorado.plv.bounder.solver
 import better.files.Resource
 import com.microsoft.z3._
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, Forall, I, LSConstraint, LSFalse, LSSpec, LSTrue, LSVar, NI, Not, Or, Ref, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSConstraint, LSFalse, LSSpec, LSTrue, NI, Not, Or, Ref, SignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifecycleSpec, RxJavaSpec, SpecSignatures, SpecSpace}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import org.scalatest.funsuite.FixtureAnyFunSuite
-import upickle.default.{read, write}
+import upickle.default.read
 
 import scala.collection.BitSet
 import scala.language.implicitConversions
@@ -102,7 +102,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val refutableState = State(StateFormula(List(frame),
       Map(FieldPtEdge(v,"f") -> v2),constraints + PureConstraint(v2, Equals, v3),Map(),Set()),0)
     val simplifyResult = stateSolver.simplify(refutableState,esp)
-    assert(!simplifyResult.isDefined)
+    assert(simplifyResult.isEmpty)
   }
   test("Separate fields imply base must not be aliased a^.f->b^ * c^.f->b^ AND a^=c^ (<=> false)") { f=>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
@@ -113,7 +113,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val refutableState = State(StateFormula(List(frame),
       Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),Set(PureConstraint(v, Equals, v2)),Map(), Set()),0)
     val simplifyResult = stateSolver.simplify(refutableState,esp)
-    assert(!simplifyResult.isDefined)
+    assert(simplifyResult.isEmpty)
 
     // v3 and v4 on the right side of the points to can be aliased
     val unrefutableState = State(StateFormula(List(frame),
@@ -142,7 +142,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
         v4->BoundedTypeSet(Some("Foo"),None,Set())),
       Set()),0)
     val simplifyResult = stateSolver.simplify(refutableState,esp)
-    assert(!simplifyResult.isDefined)
+    assert(simplifyResult.isEmpty)
 
     val refutableState2 = State(StateFormula(List(frame),
       Map(),
@@ -150,7 +150,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
       Map(),
       Set()),0)
     val simplifyResult2 = stateSolver.simplify(refutableState2,esp)
-    assert(!simplifyResult2.isDefined)
+    assert(simplifyResult2.isEmpty)
   }
   test("test feasibility of constraints before GC") { f=>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
