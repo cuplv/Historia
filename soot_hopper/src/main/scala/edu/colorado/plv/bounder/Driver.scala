@@ -216,6 +216,8 @@ object Driver {
       expLoop(act)
     case act@Action(MakeAllDeref,_,_,cfg,_,tag) =>
       makeAllDeref(act.getApkPath, act.filter, File(act.getOutFolder),cfg, tag)
+    case Action(Info, Some(out), Some(apk), cfg, _, _) =>
+      info(cfg, out, apk)
     case v => throw new IllegalArgumentException(s"Invalid action: $v")
   }
   def detectProguard(apkPath:String):Boolean = {
@@ -233,6 +235,21 @@ object Driver {
     stdout.exists(v => v.contains("a.a.a."))
   }
 
+  def info(cfg:RunConfig, outBase:String, apkBase:String):Unit = {
+    val apk = cfg.apkPath.replace("${baseDir}",apkBase)
+    val outFile = File(cfg.outFolder.get.replace("${baseDirOut}", outBase)) / "out.db" //File(baseDirOut) / "out.db"
+    val w = new JimpleFlowdroidWrapper(apk, SparkCallGraph, Set())
+    val transfer = (cha: ClassHierarchyConstraints) =>
+      new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set()), cha)
+
+
+    val pathMode = DBOutputMode(outFile.canonicalPath, cfg.truncateOut)
+    val config = SymbolicExecutorConfig(
+      stepLimit = 2, w, transfer, component = None, outputMode = pathMode,
+      timeLimit = cfg.timeLimit)
+    val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
+    symbolicExecutor.writeIR()
+  }
   def makeAllDeref(apkPath:String, filter:Option[String],
                    outFolder:File, cfg:RunConfig, tag:Option[String]) = {
     val callGraph = CHACallGraph
