@@ -1800,10 +1800,10 @@ class SymbolicExecutorTest extends AnyFunSuite {
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       val symbolicExecutor = config.getSymbolicExecutor
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
-      val destroyReachable = Reachable("com.example.createdestroy.MyActivity",
+      val pauseReachable = Reachable("com.example.createdestroy.MyActivity",
         "void onPause()",line)
 
-      val resultReachable = symbolicExecutor.run(destroyReachable)
+      val resultReachable = symbolicExecutor.run(pauseReachable)
         .flatMap(a => a.terminals)
 //      prettyPrinting.dumpDebugInfo(resultReachable, "staticReach")
       assert(resultReachable.nonEmpty)
@@ -1814,7 +1814,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         "void onPause()",line, Some(".*toString.*"))
 
       val res2 = symbolicExecutor.run(npe).flatMap(a => a.terminals)
-//      prettyPrinting.dumpDebugInfo(res2, "staticNPE")
+      prettyPrinting.dumpDebugInfo(res2, "staticNPE")
       assert(res2.nonEmpty)
       BounderUtil.throwIfStackTrace(res2)
       assert(BounderUtil.interpretResult(res2,QueryFinished) == Witnessed)

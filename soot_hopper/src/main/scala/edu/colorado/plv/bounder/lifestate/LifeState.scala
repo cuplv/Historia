@@ -380,10 +380,10 @@ object LifeState {
   // A string of "_" means "don't care"
   // primitives are parsed as in java "null", "true", "false", numbers etc.
   sealed trait LSSingle extends LSAtom {
-    def lsVars: List[String] //==========
+    def lsVars: List[String]
   }
   object LSSingle{
-    implicit val rw:RW[LSSingle] = RW.merge(I.rw, FreshRef.rw)
+    implicit val rw:RW[LSSingle] = RW.merge(I.rw, FreshRef.rw, CLInit.rw)
   }
   case class I(mt: MessageType, signatures: SignatureMatcher, lsVars : List[String]) extends LSSingle {
     def constVals(constraints: Set[LSConstraint]):List[Option[(CmpOp, PureExpr)]] = lsVars.map{

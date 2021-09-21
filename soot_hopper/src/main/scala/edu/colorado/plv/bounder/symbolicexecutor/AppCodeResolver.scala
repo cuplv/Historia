@@ -131,9 +131,9 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
 
   private val CLINIT = "void <clinit>()"
   override def resolveCallbackExit(method: MethodLoc, retCmdLoc: Option[LineLoc]): Option[Loc] = {
-    if(method.simpleName == CLINIT){
-      return Some(CallbackMethodReturn("java.lang.Object", CLINIT,method, retCmdLoc))
-    }
+//    if(method.simpleName == CLINIT){
+//      return Some(CallbackMethodReturn(method.classType, CLINIT,method, retCmdLoc))
+//    }
     val overrides = ir.getOverrideChain(method)
     if(overrides.size == 1 && overrides.last.classType == "java.lang.Object" && overrides.last.simpleName == "<init>"){
       // Object init is not considered a callback
@@ -141,17 +141,15 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     }
     if (overrides.size > 0) {
       val leastPrecise: MethodLoc = overrides.last
-//      Some(CallbackMethodReturn(leastPrecise.classType, leastPrecise.simpleName, method, retCmdLoc))
-      //TODO: swapped out callback to contain target type instead of overridden type check that this works
       Some(CallbackMethodReturn(method.classType, leastPrecise.simpleName, method, retCmdLoc))
     } else None
 
   }
   override def resolveCallbackEntry(method:MethodLoc):Option[Loc] = {
-    if(method.simpleName == "void <clinit>()"){
-      // <clinit> considered a callback
-      return Some(CallbackMethodInvoke("java.lang.Object", "void <clinit>()", method))
-    }
+//    if(method.simpleName == "void <clinit>()"){
+//      // <clinit> considered a callback
+//      return Some(CallbackMethodInvoke("java.lang.Object", "void <clinit>()", method))
+//    }
     if(method.isInterface)
       return None // Interface methods cannot be callbacks
     val overrides = ir.getOverrideChain(method).filter(c =>

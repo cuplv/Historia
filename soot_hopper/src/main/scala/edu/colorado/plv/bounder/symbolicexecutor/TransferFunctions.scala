@@ -258,19 +258,24 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       // If processing the entry of <init> as a callback,
       //   add constraint that nothing in the trace before now can reference current value
       //   Filter state if a heap cell references v and does not point to null or if a var points to new value
-      if(fn1.contains("void <init>(")) {
-        statePopped.flatMap {
-          case (Some(thisV:PureVar),s) =>{
-            addRefCreateToState(s,thisV)
-//              Some(s.copy(sf = s.sf.copy(traceAbstraction = s.sf.traceAbstraction)))
-          }
-          case (None,s) => Some(s)
-          case _ => throw new IllegalStateException("""Non-pure var as "this" local.""")
-        }
-      }else statePopped.map(_._2)
+      // If processing the entry of <clinit> as a callback,
+      //
+      statePopped.flatMap {
+        case (Some(thisV:PureVar),s) if fn1.contains("void <init>(") =>
+          addRefCreateToState(s,thisV)
+        case (None, s) if fn1.contains("void <clinit>()") =>
+          val newTrAbs = s.traceAbstraction.copy(rightOfArrow = CLInit(fc1)::s.traceAbstraction.rightOfArrow)
+          Some(s.copy(sf = s.sf.copy(traceAbstraction = newTrAbs)))
+        case (Some(_),s) => Some(s)
+        case (None,s) => Some(s)
+        case _ => throw new IllegalStateException("""Non-pure var as "this" local.""")
+      }
 
 
-    case (CallbackMethodInvoke(_, _, _), targetLoc@CallbackMethodReturn(_,_,mloc, _)) =>
+    case (CallbackMethodInvoke(tgtClazz, _, _), targetLoc@CallbackMethodReturn(_,_,mloc, _)) =>
+      // Cannot jump back to callback on a class that will have it's static initializer called in the future
+      if(futureCLInit(postState,tgtClazz))
+        return Set() //TODO:============
       // Case where execution goes to the exit of another callback
       // TODO: nested callbacks not supported yet, assuming we can't go back to callin entry
       // TODO: note that the callback method invoke is to be ignored here.
@@ -502,6 +507,13 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       println(t)
       ???
   }
+  private def futureCLInit(state:State, clazz:String):Boolean = { //TODO:====================   call this on ci/cb
+    state.traceAbstraction.rightOfArrow.exists{
+        case CLInit(sig) => sig == clazz
+        case _:FreshRef => false
+        case _:I => false
+      }
+  }
 
   /**
    * For a back message with a given package and name, instantiate each rule as a new trace abstraction
@@ -622,64 +634,19 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
 
   def cmdTransfer(cmd:CmdWrapper, state:State):Set[State] = cmd match {
     case AssignCmd(lhs: LocalWrapper, TopExpr(_), _) => Set(state.clearLVal(lhs))
-    case AssignCmd(lhs@LocalWrapper(_, _), NewCommand(className), _) =>
+    case AssignCmd(lhs@LocalWrapper(_, _), NewCommand(_), _) =>
       // x = new T
+      // Note that T is not important here since the points to analysis should enforce such constraints
       state.get(lhs) match {
         case Some(v: PureVar) =>
+          if(state.sf.typeConstraints.get(v).forall(_.isEmpty))
+            return Set() // Type constraint must not be empty if new value assigned
           // clear x from state
           val stateWOX = state.clearLVal(lhs)
           // Constrain state for initialization
           val notRef = addRefCreateToState(stateWOX,v).toSet
           // Remove x local
           notRef.map(_.clearLVal(lhs))
-//          val o1:Set[State] = {
-//            if (heapCellReferencesVAndIsNonNull(v, state) || localReferencesV(v,state.clearLVal(lhs))) {
-//              // If x->v^ and some heap cell references v^, the state is not possible
-//              // new command does not call constructor, it just creates an instance with all null vals
-//              // <init>(...) is the constructor and is called in the instruction after the new instruction
-//              // TODO: if trace abstraction needs to see this value in the past, refute
-//              // TODO: test case for above
-//              Set()
-//            } else {
-//              // x is assigned here so remove it from the pre-state
-//              val sWithoutLVal = state.clearLVal(lhs)
-//              val sWithoutNullHeapCells = sWithoutLVal.copy(sf = sWithoutLVal.sf.copy(heapConstraints =
-//                sWithoutLVal.heapConstraints.filter{
-//                  case (FieldPtEdge(base, _),_) if base == v =>
-//                    false
-//                  case _ => true
-//                }
-//              ))
-//              // If x = new T and x->v^ then v^<:T
-//              // v^ != null since new instruction never returns null
-//              val nnAndType = sWithoutNullHeapCells.addPureConstraint(PureConstraint(v, NotEquals, NullVal)
-//              ).constrainIsType(v, className, ch)
-//              Set(encodeExistingNotEqualTo(v,nnAndType))
-//            }
-//          }
-//          // constrain the trace so that all preceeding messages may not reference v
-//          o1.flatMap(s => addRefCreateToState(s,v))
-
-        //          o1.map { s2 =>
-//            val notRefV = AbstractTrace(Not(Ref("x")), Nil, Map("x" -> v))
-//            val traceAbs = s2.sf.traceAbstraction
-//            //TODO: Note: following adds refs to |> I don't think that is needed
-////              .map {
-////              case at@AbstractTrace(a, rightOfArrow, bind) =>
-////                val containedRef = Ref.containsRefV(a)
-////                if (containedRef.isEmpty) {
-////                  at
-////                } else {
-////                  val freshRef = specSpace.getRefWithFreshVars()
-////                  //TODO: do we actually need |> on Ref from new?
-////                  AbstractTrace(a, freshRef :: rightOfArrow, bind + (freshRef.v -> v))
-////                }
-////            }
-//
-//            s2.copy(sf = s2.sf.copy(traceAbstraction = traceAbs + notRefV))
-//          }
-//          o1 //
-
         case Some(_: PureVal) => Set() // new cannot return anything but a pointer
         case None => Set(state) // Do nothing if variable x is not in state
       }

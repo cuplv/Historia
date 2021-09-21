@@ -496,6 +496,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       else if(swappedPreds.size == 1) swappedPreds.head
       else swappedPreds.reduce(And)
     case FreshRef(_) => LSTrue
+    case CLInit(_) => LSTrue
   }
   private def filterAny(s:Seq[(String,String)]):Seq[(String,String)] = s.filter{
     case (LSAnyVal(),_) => false
@@ -547,6 +548,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       // Creation of reference (occurs earlier than instantiation)
       lSPred
     case i:I => updArrowPhi(i,lSPred)
+    case CLInit(sig) => lSPred
   }
 
   private def encodeSpec(spec:LSSpec, traceFn:T, traceLen:T,
@@ -1048,9 +1050,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    * @return
    */
   def canSubsume(s1: State, s2: State, specSpace: SpecSpace, maxLen: Option[Int] = None): Boolean ={
-    //TODO: debug mode with maxLen seems to break the test:
-    //  "|>x.call() can subsume |> y.unsubscribe() |> x.call()"
-
     // Check if stack sizes or locations are different
     if (s1.callStack.size != s2.callStack.size)
       return false
@@ -1059,6 +1058,18 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       case (fr1, fr2) => fr1.exitLoc == fr2.exitLoc
     }
     if (!stackLocsMatch)
+      return false
+
+    // s2 must have equal or more CLInit invocations as s1
+    def clInitSet(s:State):Set[CLInit] = {
+      s.traceAbstraction.rightOfArrow.flatMap{
+        case v:CLInit => Some(v)
+        case _ => None
+      }.toSet
+    }
+    val s1CLinit = clInitSet(s1)
+    val s2CLinit = clInitSet(s2)
+    if(s1CLinit.exists(s1i => !s2CLinit.contains(s1i)))
       return false
 
     // s2 must contain all locals that s1 contains
@@ -1088,6 +1099,9 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     if(!s2HasMoreOfEach){
       return false
     }
+
+
+
     canSubsumeZ3(s1,s2,specSpace, maxLen)
   }
 
