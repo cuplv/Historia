@@ -222,13 +222,12 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   }
   def isSubsumed_stateSet(pathNode:IPathNode,
                  nVisited: Map[SubsumableLocation,Map[Int,StateSet]]):Option[IPathNode] = pathNode match{
-  case SwapLoc(loc) if pathNode.qry.isInstanceOf[LiveQry] && nVisited.contains(loc) =>
+    case SwapLoc(loc) if pathNode.qry.isInstanceOf[LiveQry] && nVisited.contains(loc) =>
       val root = nVisited(loc).getOrElse(pathNode.qry.getState.get.callStack.size, StateSet.init)
       val res = StateSet.findSubsuming(pathNode, root,(s1,s2) =>{
         if(config.subsumptionEnabled) {
           stateSolver.canSubsume(s1,s2, transfer.getSpec)
-        } else if(s1.sf.traceAbstraction.size == s2.sf.traceAbstraction.size &&
-          s1.heapConstraints.size == s2.heapConstraints.size) {
+        } else if(s1.heapConstraints.size == s2.heapConstraints.size) {
           stateSolver.canSubsume(s1,s2, transfer.getSpec) && stateSolver.canSubsume(s2,s1, transfer.getSpec)
         } else
           false

@@ -1886,7 +1886,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
   }
   test("Should attach click to Activity") {
     //Click attached to different activity
-    //TODO: ======================
+    //TODO: ====================== <clinit> should prevent any further methods on that class
     val src = """package com.example.createdestroy;
                 |import androidx.appcompat.app.AppCompatActivity;
                 |import android.os.Bundle;

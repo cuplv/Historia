@@ -365,7 +365,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
         if (logDbg) {
           println(s"Model: ${solver.getModel}")
           printAbstSolution(solver.getModel,messageTranslator,
-            state.traceAbstraction,
+            Set(state.traceAbstraction),
             "")
         }
         Some(t)

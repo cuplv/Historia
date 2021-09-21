@@ -22,7 +22,7 @@ object BounderSetupApplication {
     G.reset()
   }
 
-  val androidHome = sys.env("ANDROID_HOME")
+  lazy val androidHome = sys.env("ANDROID_HOME")
 
   /**
    * TODO: implement this

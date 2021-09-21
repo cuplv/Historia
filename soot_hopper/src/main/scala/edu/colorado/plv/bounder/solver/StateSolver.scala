@@ -412,10 +412,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         // encode with no negation
         encodePred(Or(Not(m1), NI(m2, m1)), traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap,
           constMap)
-      case Ref(v) if !negate =>
+      case FreshRef(v) if !negate =>
         val msgAt: T => T = index => mkTraceConstraint(traceFn, index)
         mkExistsIndex(mkZeroIndex, len, ind => mkValContainedInMsg(msgAt(ind), modelVarMap(v), negated = false))
-      case Ref(v) if negate =>
+      case FreshRef(v) if negate =>
         val msgAt: T => T = index => mkTraceConstraint(traceFn, index)
         mkForallIndex(mkZeroIndex, len, ind => mkValContainedInMsg(msgAt(ind), modelVarMap(v), negated = true))
       case LSFalse =>
@@ -495,7 +495,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       if(swappedPreds.isEmpty) LSTrue
       else if(swappedPreds.size == 1) swappedPreds.head
       else swappedPreds.reduce(And)
-    case Ref(_) => LSTrue
+    case FreshRef(_) => LSTrue
   }
   private def filterAny(s:Seq[(String,String)]):Seq[(String,String)] = s.filter{
     case (LSAnyVal(),_) => false
@@ -527,7 +527,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     case LifeState.LSTrue => LifeState.LSTrue
     case LifeState.LSFalse => LifeState.LSFalse
     case LSImplies(l1,l2) => LSImplies(updArrowPhi(i,l1), updArrowPhi(i,l2))
-    case Ref(v) =>
+    case FreshRef(v) =>
       throw new IllegalStateException("RefV cannot be updated (encoding handled elsewhere)")
     case Not(i1:I) =>
       if(i1.mt == i.mt && i1.signatures == i.signatures)
@@ -543,7 +543,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       throw new IllegalArgumentException("Negation only supported on I")
   }
   private def updArrowPhi(rhs:LSSingle, lSPred: LSPred):LSPred = rhs match {
-    case Ref(_) =>
+    case FreshRef(_) =>
       // Creation of reference (occurs earlier than instantiation)
       lSPred
     case i:I => updArrowPhi(i,lSPred)
@@ -594,8 +594,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val op = if(negate) Or else And
 
     //Encode that each preceeding |> constraint cannot be equal to an allocation
-    def encodeRefV(rhs: Seq[LSSingle], previous:Set[String] = Set()):Option[(LSPred, Set[Ref])] = rhs match {
-      case (ref@Ref(v))::t =>
+    def encodeRefV(rhs: Seq[LSSingle], previous:Set[String] = Set()):Option[(LSPred, Set[FreshRef])] = rhs match {
+      case (ref@FreshRef(v))::t =>
         val currentConstr: Set[LSConstraint] = previous.map{ other =>
           if(negate)
             LSConstraint(other, Equals, v)
@@ -606,14 +606,14 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
         val c = currentConstr.reduceOption(op)
         val n = encodeRefV(t,previous)
-        n.getOrElse((LSTrue, Set[Ref]())) match {
+        n.getOrElse((LSTrue, Set[FreshRef]())) match {
           case (lsPred, refs) =>
             Some((And(c.getOrElse(LSTrue),lsPred), refs + ref))
         }
       case Nil => None
       case h::t => encodeRefV(t, previous ++ h.lsVar )
     }
-    val refVPred: Option[(LSPred, Set[Ref])] = encodeRefV(rhs)
+    val refVPred: Option[(LSPred, Set[FreshRef])] = encodeRefV(rhs)
     val preds = refVPred.map(_._1) ++ rulePreds
 
     val lsVars = preds.flatMap(p => p.lsVar) ++ abs.rightOfArrow.flatMap(_.lsVar)
@@ -644,7 +644,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       acc.mkTrace(List(encodedPred), negate)
     }
     val refs = refVPred.map(_._2).getOrElse(Set()).toList.map{
-      case Ref(v) =>
+      case FreshRef(v) =>
         encodeRef(modelVarMap(v),traceFn, traceLen)
     }
     encoded.mkTrace(refs,false)
@@ -722,7 +722,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   /**
    * "[[_R_]]" from semantics
    *
-   * @param inState R ::= <O,M,P> where O is suffix of trace that may reach assertion
+   * @param state R ::= <O,M,P> where O is suffix of trace that may reach assertion
    *                M is separation logic memory
    *                P is pure vars
    *                call stack explicitly represented too (but may be elided from paper?)
@@ -755,8 +755,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val stateUniqueID = "" //TODO: should remove?
     val len = mkLenVar(s"len_$stateUniqueID") // there exists a finite size of the trace for this state
     val traceFun = mkTraceFn(stateUniqueID)
-    assert(state.traceAbstraction.size < 2, "Todo: make state contain single trace abstraction rather than set") //TODO:
-    val traceAbs = state.traceAbstraction.headOption.getOrElse(AbstractTrace(None,Nil, Map()))
+    val traceAbs = state.traceAbstraction
     val traceEnc: TraceAndSuffixEnc = encodeTraceAbs(traceAbs, messageTranslator, traceFn = traceFun, traceLen = len,
       negate = negate, typeMap = state.typeConstraints, typeToSolverConst = typeToSolverConst,
       specSpace = specSpace, constMap = constMap, debug = debug)
@@ -801,14 +800,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       // Encode heap
       val heapAst = toAST(state.heapConstraints,stateUniqueID, pvMap, negate)
 
-      // Identity hash code of trace abstraction used when encoding a state so that quantifiers are independent
-
-      val out = if(state.traceAbstraction.exists{t => t.a.isDefined})
-        ???
-      else{
-        // TODO: will eventually get rid of set in abstract trace but for now, check that it only has one element
-        op(List(pureAst, localAST, heapAst, encodedTypeConstraints) ++ traceEnc.trace)
-      }
+      assert(state.traceAbstraction.a.isEmpty, "TODO: remove a from trace abs")
+      val out = op(List(pureAst, localAST, heapAst, encodedTypeConstraints) ++ traceEnc.trace)
       maxWitness.foldLeft(out) { (acc, v) =>
         val (iv, isInc) = mkIndex(v)
         mkAnd(isInc, mkAnd(mkLTIndex(len, iv), acc))
@@ -832,7 +825,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   case class MessageTranslator(states: List[State], specSpace: SpecSpace)(implicit zctx: C) {
     // Trace messages
-    private val alli = allITraceAbs(states.flatMap(_.traceAbstraction).toSet) ++ specSpace.allI
+    private val alli = allITraceAbs(states.map(_.traceAbstraction).toSet) ++ specSpace.allI
     private val inameToI: Map[String, Set[I]] = alli.groupBy(_.identitySignature)
     private val inamelist = "OTHEROTHEROTHER" :: inameToI.keySet.toList
     private val identitySignaturesToSolver = mkUT("inames", inamelist)
@@ -889,9 +882,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       case (StaticPtEdge(_,_), pv) => Set(pv)
       case (ArrayPtEdge(pv1,pv2),pv3) => Set(pv1,pv2,pv3)
     }.toSet
-    val tracePVs = state.traceAbstraction.flatMap{
-      case AbstractTrace(_, _, modelVars) => modelVars.collect{case (_, pv: PureVar) => pv}
-    }
+    val tracePVs = state.traceAbstraction.modelVars.collect{case (_, pv: PureVar) => pv}
     val markedSet = localPVs ++ heapPVs ++ tracePVs
     // TODO: Currently, pv contains no relations that requires the "mark" phase of
     //  mark and sweep so we just move to sweep.
@@ -1137,7 +1128,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
           throw e
       }
       if (foundCounter && maxLen.isDefined) {
-        printDbgModel(messageTranslator, s1.traceAbstraction.union(s2.traceAbstraction), "")
+        printDbgModel(messageTranslator, Set(s1.traceAbstraction,s2.traceAbstraction), "")
       }
       reset()
       !foundCounter
@@ -1341,7 +1332,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val sat = checkSAT()
     if (sat && debug) {
       println(s"model:\n ${zCtx.asInstanceOf[Z3SolverCtx].solver.toString}")
-      printDbgModel(messageTranslator, state.traceAbstraction, "")
+      printDbgModel(messageTranslator, Set(state.traceAbstraction), "")
     }
     reset()
     sat

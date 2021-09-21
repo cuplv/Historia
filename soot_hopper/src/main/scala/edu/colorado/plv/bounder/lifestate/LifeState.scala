@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, Exists, Forall, I, LSFalse, LSPred, LSSpec, LSTrue, LifeStateParser, NI, Not, Or, Ref}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, Exists, Forall, I, LSFalse, LSPred, LSSpec, LSTrue, LifeStateParser, NI, Not, Or, FreshRef}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CmpOp, Equals, NotEquals, NullVal, PureExpr, PureVal, PureVar, Subtype}
 
@@ -204,35 +204,52 @@ object LifeState {
     override def lsVar: Set[String] = p.lsVar
   }
 
+  case class CLInit(sig:String) extends LSSingle {
+    override def lsVars: List[String] = Nil
+
+    override def identitySignature: String =
+      throw new IllegalStateException("No valid identity signature for CLInit")
+
+    override def swap(swapMap: Map[String, String]): LSPred = this
+
+    override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean =
+      false
+
+    override def lsVar: Set[String] = Set()
+  }
+  object CLInit{
+    implicit var rw:RW[CLInit] = macroRW
+  }
+
   /**
-   * Trace references value.
-   * V must be referenced in trace so far for Ref(V) to hold.
-   * Not(Ref(V)) means V cannot appear in past trace
+   * V cannot appear in the trace before ref
+   * ref occurs when the value must have been created or first seen at that point (e.g. new or cb v.<init>())
    * @param v
    */
-  case class Ref(v: String) extends LSSingle {
+  case class FreshRef(v: String) extends LSSingle {
     override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean =
       false
 
     override def lsVar: Set[String] = if(v == "_") Set() else Set(v)
 
-    override def identitySignature: String = ???
+    override def identitySignature: String =
+      throw new IllegalStateException("No valid identity signature for ref")
 
     override def lsVars: List[String] = lsVar.toList
 
-    override def swap(swapMap: Map[String, String]): LifeState.Ref = {
+    override def swap(swapMap: Map[String, String]): LifeState.FreshRef = {
       assert(swapMap.contains(v), "Swap must contain all variables")
-      Ref(swapMap(v))
+      FreshRef(swapMap(v))
     }
   }
-  object Ref{
-    private def oneCont(a1:LSPred, a2:LSPred):Option[Ref] = {
+  object FreshRef{
+    private def oneCont(a1:LSPred, a2:LSPred):Option[FreshRef] = {
       val a1_ = containsRefV(a1)
       lazy val a2_ = containsRefV(a2)
       if(a1_.isEmpty) a2_ else a1_
     }
-    def containsRefV(a: LSPred):Option[Ref] = a match{
-      case v@Ref(_) => Some(v)
+    def containsRefV(a: LSPred):Option[FreshRef] = a match{
+      case v@FreshRef(_) => Some(v)
       case Not(a) => containsRefV(a)
       case And(a1,a2) => oneCont(a1,a2)
       case Or(a1,a2) => oneCont(a1,a2)
@@ -242,7 +259,7 @@ object LifeState {
       case _:I => None
     }
 
-    implicit var rw:RW[Ref] = macroRW
+    implicit var rw:RW[FreshRef] = macroRW
   }
 
   val LSGenerated = "LS_GENERATED_.*".r
@@ -366,7 +383,7 @@ object LifeState {
     def lsVars: List[String] //==========
   }
   object LSSingle{
-    implicit val rw:RW[LSSingle] = RW.merge(I.rw, Ref.rw)
+    implicit val rw:RW[LSSingle] = RW.merge(I.rw, FreshRef.rw)
   }
   case class I(mt: MessageType, signatures: SignatureMatcher, lsVars : List[String]) extends LSSingle {
     def constVals(constraints: Set[LSConstraint]):List[Option[(CmpOp, PureExpr)]] = lsVars.map{
@@ -521,7 +538,7 @@ object SpecSpace{
     case Not(p) => allI(p)
     case LSTrue => Set()
     case LSFalse => Set()
-    case Ref(_) => Set()
+    case FreshRef(_) => Set()
     case Forall(_,p) => allI(p)
     case Exists(_,p) => allI(p)
   }
@@ -608,8 +625,8 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
     //copy I with intersection of defined vars
     out.headOption.map(v => v.copy(lsVars = parListFresh))
   }
-  def getRefWithFreshVars(): Ref ={
-    Ref(nextFreshLSVar())
+  def getRefWithFreshVars(): FreshRef ={
+    FreshRef(nextFreshLSVar())
   }
 
   /**

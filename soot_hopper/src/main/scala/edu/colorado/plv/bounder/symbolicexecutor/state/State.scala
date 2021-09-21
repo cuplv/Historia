@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, StateSolver}
 import edu.colorado.plv.bounder.ir.{AppLoc, BitTypeSet, BoolConst, CallbackMethodInvoke, CallbackMethodReturn, ClassConst, ConstVal, EmptyTypeSet, IRWrapper, IntConst, InternalMethodInvoke, InternalMethodReturn, LVal, Loc, LocalWrapper, MessageType, MethodLoc, NullConst, RVal, StringConst, TopTypeSet, TypeSet}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAnyVal, LSPred, LSSingle, LSTrue, NI, Not, Or, Ref}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAnyVal, LSPred, LSSingle, LSTrue, NI, Not, Or, FreshRef}
 import edu.colorado.plv.bounder.symbolicexecutor.state.State.findIAF
 import upickle.default.{macroRW, ReadWriter => RW}
 
@@ -13,7 +13,7 @@ import scala.collection.{BitSet, View}
 object State {
 
   def topState:State =
-    State(StateFormula(Nil,Map(),Set(),Map(),Set(AbstractTrace(Nil,Map()))),0)
+    State(StateFormula(Nil,Map(),Set(),Map(),AbstractTrace(Nil,Map())),0)
 
   def findIAF(messageType: MessageType, signature: (String, String),
               pred: LSPred)(implicit ch:ClassHierarchyConstraints):Set[I] = pred match{
@@ -86,14 +86,14 @@ case class StateFormula(callStack: List[CallStackFrame],
                         heapConstraints: Map[HeapPtEdge, PureExpr],
                         pureFormula: Set[PureConstraint],
                         typeConstraints: Map[PureVar, TypeSet],
-                        traceAbstraction: Set[AbstractTrace]){
+                        traceAbstraction: AbstractTrace){
   // Remember if this state has been checked for satisfiability
   var isSimplified = false
   def setSimplified(): StateFormula = {
     isSimplified = true
     this
   }
-  lazy val allICache: Set[I] = traceAbstraction.flatMap{at =>SpecSpace.allI(at.a)}
+  lazy val allICache: Set[I] = SpecSpace.allI(traceAbstraction.a)
   def swapPv(oldPv : PureVar, newPv: PureVar):StateFormula = {
     if(oldPv == newPv)
       this
@@ -102,7 +102,7 @@ case class StateFormula(callStack: List[CallStackFrame],
         callStack = callStack.map(f => stackSwapPv(oldPv, newPv, f)),
         heapConstraints = heapConstraints.map(hc => heapSwapPv(oldPv, newPv, hc)),
         pureFormula = pureFormula.map(pf => pureSwapPv(oldPv, newPv, pf)),
-        traceAbstraction = traceAbstraction.map(ta => traceSwapPv(oldPv, newPv, ta)),
+        traceAbstraction = traceSwapPv(oldPv, newPv, traceAbstraction),
         typeConstraints = typeConstraints.map {
           case (k, v) if k == oldPv => (newPv, v)
           case (k, v) => (k, v)
@@ -162,9 +162,7 @@ case class StateFormula(callStack: List[CallStackFrame],
     val pureVarFromConst = pureFormula.flatMap{
       case PureConstraint(p1,_,p2) => Set() ++ pureVarOpt(p1) ++ pureVarOpt(p2)
     }
-    val pureVarFromTrace = traceAbstraction.flatMap{
-      case AbstractTrace(_, _, modelVars) => modelVars.collect{case (_,pv: PureVar) => pv}
-    }
+    val pureVarFromTrace = traceAbstraction.modelVars.collect{case (_,pv: PureVar) => pv}
     pureVarFromHeap ++ pureVarFromLocals ++ pureVarFromConst ++ typeConstraints.keySet ++ pureVarFromTrace
   }
 }
@@ -188,7 +186,8 @@ case class State(sf:StateFormula,
    */
   def defineAllLS(): State = {
     var nextAddrV = nextAddr
-    val newTr = sf.traceAbstraction.map{t =>
+    val newTr = {
+      val t = sf.traceAbstraction
       val unboundArrow = t.rightOfArrow.flatMap(i => i.lsVars)
       val unbound = (t.a.getOrElse(LSTrue).lsVar ++ unboundArrow).filter(lsvar => !t.modelVars.contains(lsvar))
       var addMap: Map[String,PureVar] = Map()
@@ -211,7 +210,7 @@ case class State(sf:StateFormula,
   def heapConstraints: Map[HeapPtEdge, PureExpr] = sf.heapConstraints
   def pureFormula: Set[PureConstraint] = sf.pureFormula
   def typeConstraints: Map[PureVar, TypeSet] = sf.typeConstraints
-  def traceAbstraction: Set[AbstractTrace] = sf.traceAbstraction
+  def traceAbstraction: AbstractTrace = sf.traceAbstraction
 
   // sf copy methods
   def addTypeConstraint(pv:PureVar, typeSet:TypeSet):State =
@@ -409,7 +408,7 @@ case class State(sf:StateFormula,
       }.toSet)
     }else Set()
   }
-  def allTraceVar():Set[PureVar] = sf.traceAbstraction.flatMap(formulaVars)
+  def allTraceVar():Set[PureVar] = formulaVars(sf.traceAbstraction)
 
   override def toString:String = {
     def sfString(sfl:List[CallStackFrame], frames: Int):String = (sfl,frames) match{
@@ -425,7 +424,7 @@ case class State(sf:StateFormula,
 
     val heapString = s"   heap: ${sf.heapConstraints.map(a => a._1.toString + "->" +  a._2.toString).mkString(" * ")}    "
     val pureFormulaString = "   pure: " + sf.pureFormula.map(a => a.toString).mkString(" && ") +"    "
-    val traceString = s"   trace: ${sf.traceAbstraction.mkString(" ; ")}"
+    val traceString = s"   trace: ${sf.traceAbstraction}"
     val typeString = s"    types: ${sf.typeConstraints.map{case (k,v) => k.toString + ":" + v.toString}}"
     s"($stackString $heapString   $pureFormulaString $typeString $traceString)"
   }
@@ -457,10 +456,10 @@ case class State(sf:StateFormula,
     sf.pureFormula.exists(c => expressionContains(c.lhs,p) || expressionContains(c.rhs,p))
 
   def traceAbstractionContains(p: PureVar): Boolean = {
-    sf.traceAbstraction.exists(_.modelVars.exists{
+    sf.traceAbstraction.modelVars.exists{
       case (k,v) if v == p => true
       case _ => false
-    })
+    }
   }
 
   def contains(p:PureVar):Boolean = {
