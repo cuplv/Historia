@@ -432,15 +432,17 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       predecessorLocations.flatMap(l => {
         val newStates = transfer.transfer(state,l,loc)
         newStates.map(state => stateSolver.simplify(state, transfer.getSpec) match {
-          case Some(state) if stateSolver.witnessed(state, transfer.getSpec) =>
-            WitnessedQry(state, l)
+          case Some(state) if stateSolver.witnessed(state, transfer.getSpec).isDefined =>
+            WitnessedQry(state, l, stateSolver.witnessed(state, transfer.getSpec).get)
           case Some(state) => LiveQry(state, l)
           case None =>
             BottomQry(state,l)
         })
       }).seq.toSet
     case BottomQry(_,_) => Set()
-    case WitnessedQry(_,_) => Set()
+    case WitnessedQry(_,_,_) =>
+      //TODO: this was "Set()". Is there a reason we may want to step here?
+      throw new IllegalStateException("Useless to take abstract step on witnessed query")
     case LiveTruncatedQry(loc) => throw new IllegalStateException("Cannot execute step on truncated query")
   }
 }

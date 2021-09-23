@@ -268,7 +268,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val res1 = stateSolver.simplify(state1, spec)
     assert(res1.isEmpty)
     val res2 = stateSolver.witnessed(state1,spec)
-    assert(!res2)
+    assert(res2.isEmpty)
   }
   ignore("Trace abstraction NI(a.bar(),a.baz()) |> I(c.bar()) && a == p1 && c == p1 (<=> true)") { f =>
     //TODO: |>
@@ -427,7 +427,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     // t1 is witnessed
     val s2 = state.copy(sf = state.sf.copy(traceAbstraction = t1))
     val res2 = stateSolver.witnessed(s2,esp)
-    assert(res2)
+    assert(res2.isDefined)
   }
   ignore("Not feasible: Not(I(a.foo(_)))) |> b.foo(c) && a=p1 && b = p3 && c = p2 && p1 = p3") {f=>
     //TODO: |>
@@ -451,7 +451,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     assert(isFeas.isEmpty)
 
     val isWit = stateSolver.witnessed(s1,esp)
-    assert(!isWit)
+    assert(isWit.isDefined)
   }
   ignore("Not I(a.foo) |> a.foo does not contain empty trace"){ f =>
     //TODO: |>
@@ -466,14 +466,14 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val niaa = AbstractTrace(Not(foo_a), foo_b::Nil, Map("a"->p1, "b"->p2))
     val state = State(StateFormula(Nil,Map(),Set(PureConstraint(p1, Equals, p2)),Map(), niaa),0)
     val contains = stateSolver.traceInAbstraction(state,esp, Nil )
-    assert(!contains)
+    assert(contains.isEmpty)
 
     val niaa2 = AbstractTrace(Or(Not(foo_a),bar_a), foo_b::Nil, Map("a"->p1))
     val state2 = State(StateFormula(Nil,Map(),Set(),Map(), niaa2),0)
     val simpl = stateSolver.simplify(state2,esp)
     assert(simpl.isDefined)
     val contains2 = stateSolver.traceInAbstraction(state2,esp, Nil)
-    assert(contains2)
+    assert(contains2.isDefined)
   }
 
 
@@ -984,7 +984,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
 
     // empty trace in abstraction if x = y
     val s2 = s.addPureConstraint(PureConstraint(p2, Equals, p3))
-    assert(stateSolver.witnessed(s2,spec))
+    assert(stateSolver.witnessed(s2,spec).isDefined)
 
     // |> y.onCreate() |> null = x.getActivity() not refuted unless x = y
     val s3 = st(AbstractTrace(onCreateTgt_g::getActivityTgt_e_f::Nil, Map("g"->p3, "e"->p1, "f"->p2)))
@@ -1301,14 +1301,14 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
       sf = state.sf.copy(traceAbstraction = AbstractTrace(targetFoo_y :: Nil, Map("y" -> pv1))))
     assert(stateSolver.traceInAbstraction(
       stIFooX,spec,
-      trace))
+      trace).isDefined)
     //TODO: failing for some reason, possibly due to trace contained negation problem
     //assert(!stateSolver.traceInAbstraction(stIFooX,spec,trace,negate = true, debug = true))
 
     // I(x.foo()) ! models empty
-    assert(!stateSolver.traceInAbstraction(
+    assert(stateSolver.traceInAbstraction(
       stIFooX,spec,
-      Nil))
+      Nil).isEmpty)
     //TODO: negation issue
     //assert(stateSolver.traceInAbstraction(stIFooX,spec,Nil, negate = true))
 
@@ -1320,7 +1320,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
       state = stIFooX,
       specNotFoo,
       trace = Nil
-    ))
+    ).isDefined)
 
 
     // not I(x.foo()) or I(x.bar()) models empty
@@ -1332,24 +1332,24 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
       state = stIFooX,
       spec_NotFoo_OrBar ,
       trace = Nil
-    ))
+    ).isDefined)
 
     val spec_NiFooBar = new SpecSpace(Set(
       LSSpec("x"::Nil, Nil, ni_foo_x_bar_x, targetFoo_x)
     ))
-    assert(!stateSolver.traceInAbstraction(
+    assert(stateSolver.traceInAbstraction(
       state = stIFooX,
       spec_NiFooBar,
       trace = Nil
-    ))
+    ).isEmpty)
 
 
     // NI(x.foo(), x.bar()) ! models @1.foo();@1.bar()
-    assert(!stateSolver.traceInAbstraction(
+    assert(stateSolver.traceInAbstraction(
       state = stIFooX,
       spec_NiFooBar,
       trace = trace
-    ))
+    ).isEmpty)
 
     // empty(trace) models NI(x.foo(),x.bar()) |> x.foo()
     val res = stateSolver.traceInAbstraction(
@@ -1357,7 +1357,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
       spec_NiFooBar,
       Nil
     )
-    assert(res)
+    assert(res.isDefined)
 
     //@1.bar() models NI(x.foo(),x.bar()) |> x.foo()
     assert(
@@ -1365,7 +1365,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
         state.copy(sf = state.sf.copy(traceAbstraction = AbstractTrace(i_foo_x::targetFoo_x::Nil,Map("x"->pv1)))),
         spec_NiFooBar,
         TMessage(CIEnter, bar, TAddr(1)::Nil)::Nil
-      ))
+      ).isDefined)
 
     // NI(x.foo(),x.bar()) |> x.foo() models @1.foo();@1.bar()
     assert(
@@ -1373,15 +1373,15 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
         state.copy(sf = state.sf.copy(traceAbstraction = AbstractTrace(i_foo_x::targetFoo_x::Nil,Map("x"->pv1)))),
         spec_NiFooBar,
         trace
-      ))
+      ).isDefined)
 
     // NI(x.foo(),x.bar()) |> x.bar() ! models empty
     assert(
-      !stateSolver.traceInAbstraction(
+      stateSolver.traceInAbstraction(
         state.copy(sf = state.sf.copy(traceAbstraction = AbstractTrace(i_bar_x::targetFoo_x::Nil,Map("x"->pv1)))),
         spec_NiFooBar,
         trace
-      ))
+      ).isEmpty)
 
     // Not NI(x.foo(), x.bar())  models @1.foo();@1.bar()
     val spec_not_NiFooBar = new SpecSpace(Set(
@@ -1392,7 +1392,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
         state.copy(sf = state.sf.copy(traceAbstraction = AbstractTrace(targetFoo_x::Nil,Map("x"->pv1)))),
         spec_not_NiFooBar,
         trace
-      ))
+      ).isDefined)
 //    assert(
 //      stateSolver.traceInAbstraction(
 //        state.copy(sf = state.sf.copy(traceAbstraction = Set(AbstractTrace(Not(ni_foo_x_bar_x), Nil,Map())))),esp,
@@ -1411,7 +1411,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
           AbstractTrace(targetFoo_x_y::Nil,Map("x"->pv1, "y"->pv2)))),
         spec_Foo_x_y,
         trace = TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil)::Nil
-      )
+      ).isDefined
     )
 
     // foo(@1,@2);bar(@1,@2) !models [¬I(foo(x,y))] /\ I(bar(x,y))
@@ -1420,7 +1420,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
       LSSpec("x"::"y"::Nil, Nil,And(Not(i_foo_x_y), i_bar_x_y), targetFoo_x_y)
     ))
     assert(
-      !stateSolver.traceInAbstraction(
+      stateSolver.traceInAbstraction(
         state.copy(sf = state.sf.copy(traceAbstraction =
           AbstractTrace(targetFoo_x_y::Nil,Map("x"->pv1,"y"->pv2)))),
         spec_NotFoo_Bar_x_y,
@@ -1428,12 +1428,12 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
           TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil),
           TMessage(CIEnter, bar, TAddr(1)::TAddr(2)::Nil)
         )
-      )
+      ).isEmpty
     )
 
     // foo(@1,@2);bar(@1,@1) models [¬I(foo(x,y))] /\ I(bar(x,y))
     assert(
-      !stateSolver.traceInAbstraction(
+      stateSolver.traceInAbstraction(
         state.copy(sf = state.sf.copy(traceAbstraction =
           AbstractTrace(targetFoo_x_y::Nil,Map("x"->pv1,"y"->pv2)))),
         spec_NotFoo_Bar_x_y,
@@ -1441,7 +1441,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
           TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil),
           TMessage(CIEnter, bar, TAddr(1)::TAddr(1)::Nil)
         )
-      )
+      ).isEmpty
     )
 
     // I(foo(y,y) !models foo(@1,@2)
@@ -1451,13 +1451,13 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
       LSSpec("x"::"y"::Nil, Nil, i_foo_y_y, targetFoo_x_y)
     ))
     assert(
-      !stateSolver.traceInAbstraction(
+      stateSolver.traceInAbstraction(
         state.copy(sf = state.sf.copy(traceAbstraction =
           AbstractTrace(targetFoo_y_y::Nil,Map("y" -> PureVar(1))))),
         spec_Foo_y_y,
         trace = TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil)::Nil,
         debug = true
-      )
+      ).isEmpty
     )
 
     // I(foo(y,y) models foo(@2,@2)
@@ -1467,7 +1467,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
           AbstractTrace(targetFoo_x_y::Nil,Map("x"->pv1, "y"->pv2)))),
         spec_Foo_y_y,
         trace = TMessage(CIEnter, foo, TAddr(2)::TAddr(2)::Nil)::Nil
-      )
+      ).isDefined
     )
   }
   test("app mem restricted trace contained"){f =>
@@ -1500,20 +1500,20 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
       trace
     )
     assert(
-      !resIsNull
+      resIsNull.isEmpty
     )
     val resNonNull = stateSolver.traceInAbstraction(
       stateNull.copy(sf = stateNull.sf.copy(pureFormula = Set(PureConstraint(pv1, NotEquals, NullVal)))),
       spec,
       trace
     )
-    assert(resNonNull)
+    assert(resNonNull.isDefined)
   }
 
   private def getStateSolver(stateTypeSolving: StateTypeSolving = SetInclusionTypeSolving):
     (Z3StateSolver, ClassHierarchyConstraints) = {
     val pc = new ClassHierarchyConstraints(hierarchy,Set("java.lang.Runnable"),intToClass, stateTypeSolving)
-    (new Z3StateSolver(pc),pc)
+    (new Z3StateSolver(pc,4000),pc)
   }
 
   ignore("some timeout from 'Test prove dereference of return from getActivity'"){ f =>
@@ -1549,7 +1549,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val at = AbstractTrace(None, iFoo_b::Nil, Map("b" -> pv))
 
     val res = stateSolver.witnessed(s(at),spec)
-    assert(!res)
+    assert(res.isEmpty)
   }
   ignore("Empty trace should not be contained in incomplete abstract trace with conditional spec") { f =>
     //TODO: Why is this test ignored???====
@@ -1572,14 +1572,14 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val at = AbstractTrace(None, iFoo_bd::Nil, Map("d" -> pv, "b" -> pv2))
 
     val res = stateSolver.witnessed(s(at,Set(PureConstraint(pv, Equals, NullVal))),spec)
-    assert(!res)
+    assert(res.isEmpty)
     val res2 = stateSolver.witnessed(s(at,Set(PureConstraint(pv, NotEquals, NullVal))),spec)
-    assert(res2)
+    assert(res2.isDefined)
 
     val s3 = LSSpec("c"::Nil, "a"::Nil, iBar_a, iFoo_null_c, Set())
     val spec2 = new SpecSpace(Set(s2,s3))
     val res3 = stateSolver.witnessed(s(at, Set(PureConstraint(pv, Equals, NullVal))), spec2)
-    assert(!res3)
+    assert(res3.isEmpty)
 
     val pv3 = PureVar(3)
     val iBaz_e = I(CBEnter, Set(("", "baz")), "e"::Nil)
@@ -1591,7 +1591,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val at4 = AbstractTrace(None, iBaz_f::iFoo_bd::Nil, Map("f" -> pv3, "d" -> pv, "b" -> pv2))
 
     val res4 = stateSolver.witnessed(s(at4,Set(PureConstraint(pv, Equals, NullVal))),spec4,debug = true)
-    assert(!res4)
+    assert(res4.isEmpty)
   }
   test("Prepending required enable message to trace should prevent subsumption") { f =>
     val (stateSolver,_) = getStateSolver(SolverTypeSolving)

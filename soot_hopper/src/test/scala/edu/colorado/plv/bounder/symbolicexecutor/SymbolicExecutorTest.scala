@@ -1906,8 +1906,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
                 |        OnClickListener listener1 = new OnClickListener(){
                 |             @Override
                 |             public void onClick(View v){
-                |               View view2 = MyActivity.this.findViewById(4);
-                |               view2.setOnClickListener(listener2);
+                |               //View view2 = MyActivity.this.findViewById(4);
+                |               //view2.setOnClickListener(listener2);
                 |               s.toString(); // query1
                 |               // listener2 = new OnClickListener(){ //TODO: uncomment?
                 |               //   @Override

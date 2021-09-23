@@ -304,7 +304,7 @@ case class BottomQry(state:State, loc:Loc) extends Qry {
   override def getState: Option[State] = Some(state)
 }
 
-case class WitnessedQry(state:State, loc:Loc) extends Qry {
+case class WitnessedQry(state:State, loc:Loc, explain:WitnessExplanation) extends Qry {
   override def toString:String = "!!!witnessed!!! loc: " + loc.toString + " state: " + getState.toString
   override def copyWithNewState(state: State): Qry = this.copy(state = state)
 

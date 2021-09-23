@@ -23,7 +23,7 @@ class PrettyPrinting() {
     case BottomQry(state,loc) =>
       "REFUTED: " + loc.toString +
         "\n       state: " + state.toString.replaceAll("\n"," ")
-    case WitnessedQry(state,loc) =>
+    case WitnessedQry(state,loc,witness) => //TODO: print witness  ======
       "WITNESSED: " + loc.toString +
         "\n       state: " + state.toString.replaceAll("\n"," ")
     case LiveTruncatedQry(loc) => loc.toString

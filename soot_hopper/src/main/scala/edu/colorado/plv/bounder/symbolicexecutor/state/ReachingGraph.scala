@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 import java.util.{Objects, Properties}
 import java.util.concurrent.{ArrayBlockingQueue, ConcurrentLinkedQueue, Executors}
 
-import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, InternalMethodInvoke, InternalMethodReturn, Loc, MethodLoc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn}
+import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, InternalMethodInvoke, InternalMethodReturn, Loc, MethodLoc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, WitnessExplanation}
 import slick.jdbc.SQLiteProfile.api._
 
 import scala.concurrent.Await
@@ -288,10 +288,10 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
   }
   def writeNode(node: DBPathNode): Unit = {
     val qryState = node.qry match {
-      case LiveQry(_, _) => "live"
-      case BottomQry(_, _) => "refuted"
-      case WitnessedQry(_, _) => "witnessed"
-      case LiveTruncatedQry(_) => throw new IllegalArgumentException("Cannot write truncated node")
+      case _:LiveQry => "live"
+      case _:BottomQry => "refuted"
+      case _:WitnessedQry => "witnessed"
+      case _:LiveTruncatedQry => throw new IllegalArgumentException("Cannot write truncated node")
     }
     val loc = node.qry.loc.serialized
     val stateStr = if(false && truncate)
@@ -342,7 +342,7 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
     val qry = (queryState,stateOpt) match {
       case ("live", Some(state)) => LiveQry(state, loc)
       case ("refuted", Some(state)) => BottomQry(state, loc)
-      case ("witnessed", Some(state)) => WitnessedQry(state, loc)
+      case ("witnessed", Some(state)) => WitnessedQry(state, loc, WitnessExplanation(Nil)) //TODO: serialize expl
       case ("live", None) => LiveTruncatedQry(loc)
       case ("refuted",None) => BottomTruncatedQry(loc)
       case ("witnessed",None) => WitnessedTruncatedQry(loc)

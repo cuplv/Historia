@@ -2,13 +2,16 @@ package edu.colorado.plv.bounder.solver
 
 import better.files.File
 import com.microsoft.z3._
+import edu.colorado.plv.bounder.BounderUtil
+import edu.colorado.plv.bounder.ir.{TNew, WitnessExplanation}
+import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSAnyVal, LSVar}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, PureVal, PureVar, State}
 
 import scala.collection.immutable
 import scala.collection.mutable
 
-case class Z3SolverCtx() extends SolverCtx[AST] {
+case class Z3SolverCtx(timeout:Int) extends SolverCtx[AST] {
   var ctx = new Context()
   val checkStratifiedSets = false // set to true to check EPR stratified sets (see Paxos Made EPR, Padon OOPSLA 2017)
   var solver:Solver = ctx.mkSolver()
@@ -37,9 +40,9 @@ case class Z3SolverCtx() extends SolverCtx[AST] {
     }
     allNodes.exists(n => iCycle(n,Set()))
   }
-  def mkAssert(t: AST): Unit = {
+  def mkAssert(t: AST): Unit = this.synchronized{
     if(checkStratifiedSets) {
-      sortEdges.addAll(getQuantAltEdges(t))
+      //sortEdges.addAll(getQuantAltEdges(t))
     }
     solver.add(t.asInstanceOf[BoolExpr])
   }
@@ -77,10 +80,11 @@ case class Z3SolverCtx() extends SolverCtx[AST] {
       case _ => true
     }
   }
-  private def makeSolver():Solver = {
+  private def makeSolver(timeout:Int):Solver = this.synchronized{
     val solver = ctx.mkSolver
+//    val solver = ctx.mkSimpleSolver()
     val params = ctx.mkParams()
-    params.add("timeout", 120000)
+    params.add("timeout", timeout)
 //    params.add("timeout", 30000)
     // params.add("threads", 4) Note: threads cause weird decidability issue
 
@@ -89,23 +93,25 @@ case class Z3SolverCtx() extends SolverCtx[AST] {
     solver.setParameters(params)
     solver
   }
-  def reset(): Unit = {
-    assert(!detectCycle(sortEdges.toSet), "Quantifier Alternation Exception") //TODO: ==== remove after dbg
-    sortEdges.clear()
+  def reset(): Unit = this.synchronized{
+    //    assert(!detectCycle(sortEdges.toSet), "Quantifier Alternation Exception") //TODO: ==== remove after dbg
+    // sortEdges.clear()
 
+//    println(s"reset ctx: ${System.identityHashCode(this)}")
     args = Array()
     initializedFieldFunctions.clear()
     indexInitialized = false
     uninterpretedTypes.clear()
-//    ctx.close()
-//    ctx = new Context()
-    solver = makeSolver()
+    ctx.close()
+    ctx = new Context()
+    solver = makeSolver(timeout)
+//    Thread.sleep(100)
   }
 }
-class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends StateSolver[AST,Z3SolverCtx] {
+class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:Int = 120000) extends StateSolver[AST,Z3SolverCtx] {
   private val MAX_ARGS = 10
 
-  val threadLocalCtx: ThreadLocal[Z3SolverCtx] = ThreadLocal.withInitial( () => Z3SolverCtx())
+  val threadLocalCtx: ThreadLocal[Z3SolverCtx] = ThreadLocal.withInitial( () => Z3SolverCtx(timeout))
 //  val ctx: ThreadLocal[Context] = ThreadLocal.withInitial[Context]{ () =>
 //    val tCtx = new Context()
 //    tCtx
@@ -117,7 +123,9 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
 //  })
 
   override def getSolverCtx: Z3SolverCtx = {
-    threadLocalCtx.get()
+    val ctx = threadLocalCtx.get()
+//    println(s"ctx: ${System.identityHashCode(ctx)}")
+    ctx
   }
 
   private def addrSort(implicit zCtx:Z3SolverCtx) = zCtx.ctx.mkUninterpretedSort("Addr")
@@ -137,7 +145,6 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
   }
   override def reset()(implicit zCtx:Z3SolverCtx):Unit = {
     zCtx.reset()
-
   }
 
   override protected def mkEq(lhs: AST, rhs: AST)(implicit zCtx:Z3SolverCtx): AST = {
@@ -277,7 +284,57 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints) extends St
     case Status.SATISFIABLE => true
     case Status.UNKNOWN =>
       val reason = zCtx.solver.getReasonUnknown
-      throw new IllegalStateException(s"Z3 decidability or timeout issue--got Status.UNKNOWN: ${reason}")
+      val f = File(s"timeout_${System.currentTimeMillis() / 1000L}.z3")
+      f.createFile()
+      f.writeText(zCtx.solver.toString)
+      f.append("\n(check-sat)")
+      var failed = false
+      // Sometimes the java solver fails, we fall back to calling the command line tool
+      try {
+        println("fallback command line solver")
+        val stdout = BounderUtil.runCmdStdout(s"timeout 120 z3 ${f}")
+        if (stdout.contains("unsat"))
+          false
+        else
+          true
+      }catch {
+        case e:RuntimeException =>
+          println(e.getMessage)
+          failed = true
+          throw new IllegalStateException(s"Z3 decidability or timeout issue--got Status.UNKNOWN: ${reason}, " +
+            s"smt file: ${f.canonicalPath}")
+      }finally {
+        if(!failed) f.delete(swallowIOExceptions = true)
+      }
+  }
+
+  override def explainWitness(messageTranslator: MessageTranslator,
+                              pvMap: Map[PureVar, Option[AST]])(implicit zCtx: Z3SolverCtx): WitnessExplanation = {
+
+    val ctx = zCtx.ctx
+    val model = zCtx.solver.getModel
+    assert(messageTranslator.states.size == 1, "Explain witness only applicable with single state")
+    val state = messageTranslator.states.head
+    val ta = state.traceAbstraction
+    val mv = ta.modelVars
+    val rightOfArrow = ta.rightOfArrow
+
+    val pvModelValues: Map[PureVar, Expr[UninterpretedSort]] = pvMap.map{
+      case (pureVar, Some(ast)) =>
+        (pureVar, model.eval(ast.asInstanceOf[Expr[UninterpretedSort]],true))
+      case _ =>
+        ???
+    }
+    val pvValues: Map[Expr[UninterpretedSort], Int] = pvModelValues.values.toSet.zipWithIndex.toMap
+    val pvv: PureVar => Int = pv => pvValues(pvModelValues(pv))
+
+
+//    rightOfArrow.map{
+//      case LifeState.CLInit(sig) => ???
+//      case LifeState.FreshRef(v) => TNew(TAddr(pvv(mv(v).asInstanceOf[PureVar]))
+//    }
+
+    WitnessExplanation(Nil) //TODO:==== finish witness implementation
   }
 
   override def printDbgModel(messageTranslator: MessageTranslator,
