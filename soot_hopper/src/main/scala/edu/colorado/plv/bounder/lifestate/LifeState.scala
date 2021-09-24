@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, Exists, Forall, I, LSFalse, LSPred, LSSpec, LSTrue, LifeStateParser, NI, Not, Or, FreshRef}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, Exists, Forall, FreshRef, I, LSConstraint, LSFalse, LSPred, LSSpec, LSTrue, LifeStateParser, NI, Not, Or}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CmpOp, Equals, NotEquals, NullVal, PureExpr, PureVal, PureVar, Subtype}
 
@@ -541,6 +541,7 @@ object SpecSpace{
     case FreshRef(_) => Set()
     case Forall(_,p) => allI(p)
     case Exists(_,p) => allI(p)
+    case LSConstraint(_,_, _) => Set()
   }
   def allI(spec:LSSpec, includeRhs:Boolean = true):Set[I] = spec match{
     case LSSpec(_,_,pred, target,_) if includeRhs => allI(pred).union(allI(target))
@@ -558,6 +559,11 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
     val ids = i.identitySignature
     val specs = enableSpecs.filter(spec => spec.target.identitySignature == ids)
     specs
+  }
+  def disSpecsByI(i:I) = {
+    val ids = i.identitySignature
+    val disSpecs = disallowSpecs.filter(spec => spec.target.identitySignature == ids)
+    disSpecs
   }
 
   private var allIMemo:Option[Set[I]] = None

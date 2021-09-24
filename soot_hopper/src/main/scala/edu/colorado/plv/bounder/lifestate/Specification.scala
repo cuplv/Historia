@@ -119,6 +119,9 @@ object LifecycleSpec {
   val created: LSPred = NI(SpecSignatures.Activity_onCreate_entry, SpecSignatures.Activity_onDestroy_exit)
   val resumed: LSPred =
     NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit)
+  val paused:LSPred =
+    Or(Not(SpecSignatures.Activity_onResume_entry),
+      NI(SpecSignatures.Activity_onPause_exit, SpecSignatures.Activity_onResume_entry))
   val Activity_onResume_onlyafter_onPause: LSSpec = LSSpec("a"::Nil, Nil, NI(SpecSignatures.Activity_onPause_exit,
     SpecSignatures.Activity_onResume_entry), SpecSignatures.Activity_onResume_entry)
   val Activity_onPause_onlyafter_onResume: LSSpec = LSSpec("a"::Nil, Nil, resumed,
@@ -157,6 +160,8 @@ object ViewSpec {
     List("_","v","l")
   )
 
+  //TODO: fix disallowCallinAfterActivityPause , .* doesn't work as a matcher due to overlap
+
   // v a - viewAttached
   // a - destroyed
   val disallowCallinAfterActivityPause:LSSpec = LSSpec("v"::Nil, "a"::Nil, And(LifecycleSpec.viewAttached,
@@ -167,6 +172,24 @@ object ViewSpec {
     And(And(setOnClickListener, LifecycleSpec.viewAttached), Or(LifecycleSpec.resumed,
       I(CIExit, SpecSignatures.Activity_finish, "_"::"a"::Nil))),
     I(CBEnter, onClick, List("_", "l")))
+  //TODO:================= noDupeFindView is **Very** experimental, does this actually work?
+  private val fv1 = I(CIExit, SpecSignatures.Activity_findView, "v"::"a"::Nil)
+  private val fv2 = I(CIExit, SpecSignatures.Activity_findView, "v"::"a2"::Nil)
+  val noDupeFindView:LSSpec = LSSpec("a"::"a2"::"v"::Nil, Nil, Or(Not(fv2), LSConstraint("a", Equals, "a2")), fv1)
+}
+object SDialog{
+  val DialogC = Set("android.app.ProgressDialog","android.app.Dialog")
+  //android.app.ProgressDialog: void dismiss()>()
+  val dismissSignature:SignatureMatcher = SubClassMatcher(DialogC, "void dismiss\\(\\)", "Dialog_dismiss")
+  // <android.app.ProgressDialog: android.app.ProgressDialog
+  //     show(android.content.Context,java.lang.CharSequence,java.lang.CharSequence)>($r2, "", "");
+  val showSignature:SignatureMatcher = SubClassMatcher(DialogC, ".*show.*", "Dialog_show")
+  val showI = I(CIExit, showSignature, "d"::"_"::"a"::Nil)
+  val disallowDismiss:LSSpec = LSSpec("d"::Nil, "a"::Nil,
+    And(showI, LifecycleSpec.paused),
+    I(CIEnter, dismissSignature, "_"::"d"::Nil))
+  val showI2 = I(CIExit, showSignature, "d"::"_"::Nil)
+  val noDupeShow:LSSpec = LSSpec("d"::Nil, Nil, Not(showI2), showI2)
 }
 
 //TODO: multiple signature matchers matching the same method is not supported

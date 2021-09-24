@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{MultiCallback, Proven, SingleCallbackMultiMethod, SingleMethod, Witnessed}
 import edu.colorado.plv.bounder.ir.{JimpleFlowdroidWrapper, JimpleMethodLoc}
 import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
-import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSpace, ViewSpec}
+import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SDialog, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BottomQry, CallinReturnNonNull, DBOutputMode, DisallowedCallin, FieldPtEdge, IPathNode, MemoryOutputMode, OutputMode, PrettyPrinting, Qry, Reachable, ReceiverNonNull}
 import edu.colorado.plv.bounder.testutils.MkApk
@@ -1482,6 +1482,119 @@ class SymbolicExecutorTest extends AnyFunSuite {
       makeApkWithSources(Map("MyFragment.java" -> src), MkApk.RXBase, test)
     }
   }
+  test("Yamba dismiss (simplified remove fragment)") {
+    // Simplified version of Experiments row 2
+    // Yamba https://github.com/learning-android/Yamba/pull/1/commits/90c1fe3e5e58fb87c3c59b1a271c6e43c9422eb6
+    //TODO:
+    List(
+      ("if(resumed) {","}", Proven, "withCheck"),
+      ("","", Witnessed, "noCheck")
+    ).map { case (line1, line2, expectedResult,fileSuffix) =>
+      val src =
+        s"""
+           |package com.example.createdestroy;
+           |import android.app.Activity;
+           |import android.content.Context;
+           |import android.net.Uri;
+           |import android.os.Bundle;
+           |import android.os.AsyncTask;
+           |import android.app.ProgressDialog;
+           |
+           |import androidx.fragment.app.Fragment;
+           |
+           |import android.util.Log;
+           |import android.view.LayoutInflater;
+           |import android.view.View;
+           |import android.view.ViewGroup;
+           |
+           |import rx.Single;
+           |import rx.Subscription;
+           |import rx.android.schedulers.AndroidSchedulers;
+           |import rx.schedulers.Schedulers;
+           |import rx.functions.Action1;
+           |
+           |
+           |public class StatusActivity extends Activity{
+           |    boolean resumed = false;
+           |    @Override
+           |    public void onResume(){
+           |      PostTask p = new PostTask();
+           |      p.execute();
+           |      resumed = true;
+           |    }
+           |
+           |
+           |    @Override
+           |    public void onPause(){
+           |      resumed = false;
+           |    }
+           |    class PostTask extends AsyncTask<String, Void, String> {
+           |		  private ProgressDialog progress;
+           |
+           |		  @Override
+           |		  protected void onPreExecute() {
+           |			  progress = ProgressDialog.show(StatusActivity.this, "Posting",
+           |					"Please wait...");
+           |			  progress.setCancelable(true);
+           |		  }
+           |
+           |		  // Executes on a non-UI thread
+           |		  @Override
+           |		  protected String doInBackground(String... params) {
+           |			  return "Successfully posted";
+           |		  }
+           |
+           |		  @Override
+           |		  protected void onPostExecute(String result) {
+           |			  $line1
+           |				  progress.dismiss(); //query1
+           |			  $line2
+           |		  }
+           |	  }
+           |}
+           |""".stripMargin
+
+      val test: String => Unit = apk => {
+        assert(apk != null)
+        //Note: subscribeIsUnique rule ommitted from this test to check state relevant to callback
+        // TODO: relevance could probably be refined so this isn't necessary
+        val specs = Set[LSSpec](SDialog.noDupeShow
+//          FragmentGetActivityNullSpec.getActivityNull,
+//          FragmentGetActivityNullSpec.getActivityNonNull,
+//          LifecycleSpec.Fragment_activityCreatedOnlyFirst,
+          //          RxJavaSpec.call
+
+        )
+        val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
+        val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
+          new SpecSpace(specs, Set(SDialog.disallowDismiss)), cha)
+        val config = SymbolicExecutorConfig(
+          stepLimit = 200, w, transfer,
+          component = Some(List("com.example.createdestroy.*StatusActivity.*")))
+        implicit val om = config.outputMode
+        val symbolicExecutor = config.getSymbolicExecutor
+        val line = BounderUtil.lineForRegex(".*query1.*".r, src)
+        val cb = symbolicExecutor.appCodeResolver.getCallbacks
+        val am = symbolicExecutor.appCodeResolver.appMethods
+
+        val query = DisallowedCallin(
+          "com.example.createdestroy.StatusActivity$PostTask",
+          "void onPostExecute(java.lang.String)",
+          SDialog.disallowDismiss)
+
+        val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
+        val fname = s"Yamba_$fileSuffix"
+        prettyPrinting.dumpDebugInfo(result, fname)
+        //        prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
+        assert(result.nonEmpty)
+        BounderUtil.throwIfStackTrace(result)
+        val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
+        assert(interpretedResult == expectedResult)
+      }
+
+      makeApkWithSources(Map("StatusActivity.java" -> src), MkApk.RXBase, test)
+    }
+  }
 
   test("Reachable location call and subscribe"){
     val src =
@@ -1936,7 +2049,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
         dbMode.startMeta()
 //        implicit val dbMode = MemoryOutputMode
-        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
+        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive + ViewSpec.noDupeFindView)
 //        val specs = new SpecSpace(Set(ViewSpec.clickWhileActive))
         val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
 
@@ -1981,7 +2094,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
   test("Finish allows click after pause") {
     //Click attached to different activity
-    //TODO: ===== Commenting out finish should break this test?
+    //TODO: ===== Commenting out finish should allow proof
     val src = """package com.example.createdestroy;
                 |import androidx.appcompat.app.AppCompatActivity;
                 |import android.os.Bundle;
@@ -2025,7 +2138,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         dbMode.startMeta()
         //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
         val specs = new SpecSpace(Set(
-          ViewSpec.clickWhileActive) ++ LifecycleSpec.spec)
+          ViewSpec.clickWhileActive, ViewSpec.noDupeFindView) ++ LifecycleSpec.spec)
         val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
 
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
@@ -2046,7 +2159,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         assert(BounderUtil.interpretResult(resultClickReachable, QueryFinished) == Witnessed)
 
 
-        //TODO:=============  Why is this witnessed without finish? (probably because onPause spec missing?)
+        //TODO:=============  Why is this witnessed without finish?
         val nullUnreach = ReceiverNonNull("com.example.createdestroy.MyActivity$1",
           "void onClick(android.view.View)",line, Some(".*toString.*"))
         val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
