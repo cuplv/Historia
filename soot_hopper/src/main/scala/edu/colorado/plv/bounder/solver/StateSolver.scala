@@ -487,9 +487,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     }
   }
 
-  private def instArrowPhi(target:LSSingle,specSpace: SpecSpace):LSPred= target match {
+  private def instArrowPhi(target:LSSingle,specSpace: SpecSpace, includeDis:Boolean):LSPred= target match {
     case i:I =>
-      val applicableSpecs = specSpace.specsByI(i)
+      val applicableSpecs: Set[LSSpec] =
+        if(includeDis) specSpace.specsByI(i).union(specSpace.disSpecsByI(i)) else specSpace.specsByI(i)
       val swappedPreds = applicableSpecs.map{s =>
         s.instantiate(i, specSpace)
       }
@@ -588,11 +589,15 @@ trait StateSolver[T, C <: SolverCtx[T]] {
                                  negate: Boolean = false, debug: Boolean = false)(implicit zCtx: C): TraceAndSuffixEnc = {
     assert(!negate) //TODO: remove negate or make this function handle it
     val rhs: Seq[LSSingle] = abs.rightOfArrow
-    val rulePreds: Set[LSPred] = rhs.foldRight(Set[LSPred]()){ (v, acc) =>
+
+    // Instantiate and update specifications for each ▷m̂
+    // only include the disallow if it is the last one in the chain
+    val rulePreds: Set[LSPred] = rhs.foldRight((Set[LSPred](),true)){
+      case (v, (acc,includeDis)) =>
       val updated = acc.map(lsPred => updArrowPhi(v,lsPred))
-      val instantiated = instArrowPhi(v, specSpace)
-      updated + instantiated
-    }.filter(p => p != LSTrue)
+      val instantiated = instArrowPhi(v, specSpace, includeDis)
+        (updated + instantiated,false)
+    }._1.filter(p => p != LSTrue)
 
     val op = if(negate) Or else And
 

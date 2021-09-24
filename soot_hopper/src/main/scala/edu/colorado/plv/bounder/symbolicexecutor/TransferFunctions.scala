@@ -154,7 +154,12 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val relAliases = relevantAliases(postState, CIEnter, (pkg,name),specSpace,invars)
       val ostates:Set[State] = {
         val (rvals, state0) = getOrDefineRVals(m,relAliases, postState)
+        //TODO: handle callin entry, below code doesn't seem to work correctly
 //        val state1 = traceAllPredTransfer(CIEnter, (pkg, name), rvals, state0)
+
+//        val inVars: List[Option[RVal]] = inVarsForCall(tgt,w)
+//        val state1: Set[State] = newMsgTransfer(tgt.method, CIExit, (pkg, name), inVars, state0)
+//        state1
         Set(state0)
       }
       //Only add receiver if this or callin return is in abstract trace
@@ -554,12 +559,11 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         Set(newModelVars.copy(sf = newModelVars.sf.copy(traceAbstraction = newAbs)))
     }
   }
-
   def newDisallowTransfer(appMethod:MethodLoc, mt: MessageType,
                      sig:(String,String), allVar:List[Option[RVal]],
                      postState: State, disallow:Option[LSSpec] = None): Set[State] = {
-    //TODO:================== This method probably shouldn't exist, handle it in the statesolver instead
-    ???
+    // TODO: get rid of this method, this is now handled by the StateSolver
+    newMsgTransfer(appMethod, mt, sig, allVar, postState)
   }
 
   /**
