@@ -116,10 +116,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val inVars: List[Option[RVal]] = inVarsForCall(source,w)
       val relAliases = relevantAliases(postState2, CIExit, (pkg,name),specSpace,inVars)
       val frame = CallStackFrame(target, Some(source.copy(isPre = true)), Map())
-      val (rvals, state0) = getOrDefineRVals(m,relAliases, postState2)
-//      val state1 = traceAllPredTransfer(CIExit, (pkg,name),rvals, state0)
-      val state1 = state0 //TODO: cleanup
-      val outState = newMsgTransfer(source.method, CIExit, (pkg, name), inVars, state1)
+      val (_, state0) = getOrDefineRVals(m,relAliases, postState2)
+      val outState = newMsgTransfer(source.method, CIExit, (pkg, name), inVars, state0)
       // if retVar is materialized and assigned, clear it from the state
       val outState1: Set[State] = inVars match{
         case Some(retVar:LocalWrapper)::_ =>
@@ -544,9 +542,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
             acc
           case (acc,(Some(rVal),lsVar)) =>
             val (pv, acc2) = acc.getOrDefine(rVal, Some(appMethod))
-//            val c = acc2.traceAbstraction.filter(t => t.a.isEmpty)
-//            val oldAbs = c.head
-//            assert(c.tail.isEmpty, "Only one non-disallow trace abstraction should exist.")
             val traceAbs = acc2.traceAbstraction
             assert(!traceAbs.modelVars.contains(lsVar))
             val newModelVars = traceAbs.modelVars + (lsVar -> pv)

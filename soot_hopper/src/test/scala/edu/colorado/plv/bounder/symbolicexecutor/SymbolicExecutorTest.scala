@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{MultiCallback, Proven, SingleCallbackMultiMethod, SingleMethod, Witnessed}
 import edu.colorado.plv.bounder.ir.{JimpleFlowdroidWrapper, JimpleMethodLoc}
 import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
-import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SDialog, SpecSpace, ViewSpec}
+import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BottomQry, CallinReturnNonNull, DBOutputMode, DisallowedCallin, FieldPtEdge, IPathNode, MemoryOutputMode, OutputMode, PrettyPrinting, Qry, Reachable, ReceiverNonNull}
 import edu.colorado.plv.bounder.testutils.MkApk
@@ -1595,6 +1595,100 @@ class SymbolicExecutorTest extends AnyFunSuite {
       makeApkWithSources(Map("StatusActivity.java" -> src), MkApk.RXBase, test)
     }
   }
+  test("Row3: Antennapod execute") {
+    // Simplified version of Experiments row 3 (ecoop 19 meier motivating example)
+    //TODO: ===================
+    List(
+      ("button.setEnabled(false);", Proven, "withCheck"),
+      ("", Witnessed, "noCheck")
+    ).map { case (cancelLine, expectedResult,fileSuffix) =>
+      val src =
+        s"""
+           |package com.example.createdestroy;
+           |import android.app.Activity;
+           |import android.content.Context;
+           |import android.net.Uri;
+           |import android.os.Bundle;
+           |import android.os.AsyncTask;
+           |import android.app.ProgressDialog;
+           |
+           |import androidx.fragment.app.Fragment;
+           |
+           |import android.util.Log;
+           |import android.view.LayoutInflater;
+           |import android.view.View;
+           |import android.view.ViewGroup;
+           |import android.view.View.OnClickListener;
+           |
+           |
+           |
+           |public class RemoverActivity extends Activity implements OnClickListener{
+           |    FeedRemover remover = null;
+           |    View button = null;
+           |    @Override
+           |    public void onResume(){
+           |        remover = new FeedRemover();
+           |        button = findViewById(3);
+           |        button.setOnClickListener(this);
+           |    }
+           |    @Override
+           |    public void onClick(View v){
+           |        remover.execute();
+           |        $cancelLine
+           |    }
+           |
+           |
+           |    class FeedRemover extends AsyncTask<String, Void, String> {
+           |		  @Override
+           |		  protected void onPreExecute() {
+           |		  }
+           |
+           |		  @Override
+           |		  protected String doInBackground(String... params) {
+           |			  return "";
+           |		  }
+           |
+           |		  @Override
+           |		  protected void onPostExecute(String result) {
+           |		  }
+           |	  }
+           |}
+           |""".stripMargin
+
+      val test: String => Unit = apk => {
+        assert(apk != null)
+        val specs = Set[LSSpec](
+          ViewSpec.clickWhileNotDisabled,
+          LifecycleSpec.Activity_onResume_dummy
+        )
+        val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
+        val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
+          new SpecSpace(specs, Set(SAsyncTask.disallowDoubleExecute)), cha)
+        val config = SymbolicExecutorConfig(
+          stepLimit = 200, w, transfer,
+          component = Some(List("com.example.createdestroy.*RemoverActivity.*")))
+        implicit val om = config.outputMode
+        val symbolicExecutor = config.getSymbolicExecutor
+
+        val query = DisallowedCallin(
+          "com.example.createdestroy.RemoverActivity",
+          "void onClick(android.view.View)",
+          SAsyncTask.disallowDoubleExecute)
+
+        val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
+        val fname = s"Antennapod_AsyncTask_$fileSuffix"
+        prettyPrinting.dumpDebugInfo(result, fname)
+        prettyPrinting.printWitness(result)
+        assert(result.nonEmpty)
+        BounderUtil.throwIfStackTrace(result)
+        val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
+        assert(interpretedResult == expectedResult)
+      }
+
+      makeApkWithSources(Map("RemoverActivity.java" -> src), MkApk.RXBase, test)
+    }
+    ??? //TODO: clickWhileActive spec needs to distinguish false
+  }
 
   test("Reachable location call and subscribe"){
     val src =
@@ -2074,6 +2168,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
           "void onClick(android.view.View)",line, Some(".*toString.*"))
         val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals) // TODO: Slow
         prettyPrinting.dumpDebugInfo(nullUnreachRes, "clickNullUnreachable")
+        println("Witness Null")
+        prettyPrinting.printWitness(nullUnreachRes)
         assert(nullUnreachRes.nonEmpty)
         BounderUtil.throwIfStackTrace(nullUnreachRes)
         assert(BounderUtil.interpretResult(nullUnreachRes, QueryFinished) == Proven)
@@ -2174,7 +2270,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
   }
 
   test("Should not invoke methods on view after activity destroyed spec"){
-    //TODO: failing unit test
+    //TODO: not fully implemented
 
     val src = """package com.example.createdestroy;
                 |import androidx.appcompat.app.AppCompatActivity;

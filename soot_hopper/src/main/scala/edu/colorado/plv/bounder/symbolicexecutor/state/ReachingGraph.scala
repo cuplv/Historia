@@ -345,7 +345,7 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
       case ("witnessed", Some(state)) => WitnessedQry(state, loc, WitnessExplanation(Nil)) //TODO: serialize expl
       case ("live", None) => LiveTruncatedQry(loc)
       case ("refuted",None) => BottomTruncatedQry(loc)
-      case ("witnessed",None) => WitnessedTruncatedQry(loc)
+      case ("witnessed",None) => WitnessedTruncatedQry(loc, WitnessExplanation(Nil))
       case (queryState,_) => throw new IllegalStateException(s"Wrong query for missing serialized state: $queryState")
     }
     val depth = res.depth

@@ -20,27 +20,26 @@ trait SolverCtx[T]{
 
 /** SMT solver parameterized by its AST or expression type */
 trait StateSolver[T, C <: SolverCtx[T]] {
-  private val logger = LoggerFactory.getLogger(classOf[StateSolver[T, C]])
 
+  def setSeed(v:Int)(implicit zCtx: C):Unit
   // checking
   def getSolverCtx: C
 
-  def checkSAT()(implicit zctx: C): Boolean
+  def checkSAT()(implicit zCtx: C): Boolean
 
-  def push()(implicit zctx: C): Unit
+  def push()(implicit zCtx: C): Unit
 
-  def pop()(implicit zctx: C): Unit
+  def pop()(implicit zCtx: C): Unit
 
-  def reset()(implicit zctx: C): Unit
+  def reset()(implicit zCtx: C): Unit
 
   /**
    * Write debugging info, delete if cont finishes without failure
    * Used to debug native crashes in solver
    *
    * @param cont call solver code in continuation, return result
-   * @param zctx solver context and state
    */
-  protected def dumpDbg[V](cont: () => V)(implicit zctx: C): V
+  protected def dumpDbg[V](cont: () => V)(implicit zCtx: C): V
 
 
   // quantifiers
@@ -1169,17 +1168,9 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   def canSubsumeZ3(s1:State, s2:State,specSpace:SpecSpace, maxLen:Option[Int]):Boolean = {
     try {
       implicit val zCtx: C = getSolverCtx
-      val allTypesS1S2 = allTypes(s1).union(allTypes(s2))
-
-//      val (typesUnique, typeToSolverConst: Map[Int, T]) = mkTypeConstraints(allTypesS1S2)
-//      zCtx.mkAssert(typesUnique)
       val messageTranslator: MessageTranslator = MessageTranslator(List(s1, s2), specSpace)
 
-//      val pureValSet = getPureValSet(s1.pureFormula).union(getPureValSet(s2.pureFormula))
-//      val (uniqueConst, constMap) = mkConstConstraintsMap(pureValSet)
-//      zCtx.mkAssert(uniqueConst)
-
-      //TODO: does this work instead of complicated negate thing?
+      //TODO: remove "negate" bool
       val s1Enc = mkNot(toASTState(s1, messageTranslator, maxLen,
         negate = false,
         specSpace = specSpace, debug = maxLen.isDefined))

@@ -6,12 +6,30 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, LineLoc, Loc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn}
 import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, SymbolicExecutorConfig}
 import org.apache.log4j.{EnhancedPatternLayout, PatternLayout}
+import soot.JastAddJ.JastAddJavaParser.Terminals
 
 import scala.annotation.tailrec
 import scala.io.Source
 
 class PrettyPrinting() {
-//  implicit val thisMode = mode
+  def printWitness(terminals: Set[IPathNode]):Unit = {
+    var witFound = false
+    terminals.foreach(n => n.qry match {
+      case WitnessedTruncatedQry(_, trace) =>
+        witFound = true
+        println(trace)
+      case WitnessedQry(_, _, trace) =>
+        witFound = true
+        println(trace)
+      case _ => false
+    })
+    if(!witFound){
+      println("No witnesses found")
+    }
+  }
+
+
+  //  implicit val thisMode = mode
   val envOutDir = sys.env.get("OUT_DIR")
 
 //  val templateFile = getClass.getResource("/pageTemplate.html").getPath
@@ -28,7 +46,7 @@ class PrettyPrinting() {
         "\n       state: " + state.toString.replaceAll("\n"," ")
     case LiveTruncatedQry(loc) => loc.toString
     case BottomTruncatedQry(loc) => "REFUTED: " + loc.toString
-    case WitnessedTruncatedQry(loc) => "WITNESSED: " + loc.toString
+    case WitnessedTruncatedQry(loc,_) => "WITNESSED: " + loc.toString
   }
   @tailrec
   final def witnessToTrace(pn:List[IPathNode],

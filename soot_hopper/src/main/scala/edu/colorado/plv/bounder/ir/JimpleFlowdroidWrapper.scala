@@ -1302,12 +1302,18 @@ class JimpleFlowdroidWrapper(apkPath : String,
   }
 
   def findInMethod(className:String, methodName:String, toFind: CmdWrapper => Boolean):Iterable[AppLoc] = {
-    val locs = for{
+    val locations = for{
       clazz <- getClassByName(className)
       method <- clazz.getMethods().asScala
       loc <- method.getActiveBody.getUnits.asScala.map(cmd => cmdToLoc(cmd, method))
     } yield loc
-    locs.filter(al => toFind(cmdAtLocation(al)))
+    assert(locations.nonEmpty, s"Empty target locations for query.\n" +
+      s"Searching for class: ${className}, method: ${methodName}")
+    val out = locations.filter(al => toFind(cmdAtLocation(al)))
+    if(out.isEmpty)
+      println(s"Class: ${className} and method: ${methodName} found, but no commands match search criteria.\n " +
+        s"Commands found: ${locations.map(l => s"   $l").mkString("\n")}")
+    out
   }
 
   def makeMethodTargets(source: MethodLoc): Set[MethodLoc] = {

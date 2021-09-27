@@ -122,8 +122,11 @@ object LifecycleSpec {
   val paused:LSPred =
     Or(Not(SpecSignatures.Activity_onResume_entry),
       NI(SpecSignatures.Activity_onPause_exit, SpecSignatures.Activity_onResume_entry))
-  val Activity_onResume_onlyafter_onPause: LSSpec = LSSpec("a"::Nil, Nil, NI(SpecSignatures.Activity_onPause_exit,
-    SpecSignatures.Activity_onResume_entry), SpecSignatures.Activity_onResume_entry)
+//  val Activity_onResume_onlyafter_onPause: LSSpec = LSSpec("a"::Nil, Nil, Or(
+//    NI(SpecSignatures.Activity_onPause_exit, SpecSignatures.Activity_onResume_entry),
+//      ???) //TODO: resume/pause toggle should allow onResume first
+//    , SpecSignatures.Activity_onResume_entry)
+  val Activity_onResume_dummy:LSSpec = LSSpec("a"::Nil, Nil, LSTrue, SpecSignatures.Activity_onResume_entry)
   val Activity_onPause_onlyafter_onResume: LSSpec = LSSpec("a"::Nil, Nil, resumed,
     SpecSignatures.Activity_onPause_entry)
   val Activity_created:LSPred = NI(SpecSignatures.Activity_onCreate_entry, SpecSignatures.Activity_onDestroy_exit)
@@ -155,10 +158,17 @@ object LifecycleSpec {
 object ViewSpec {
   val anyViewCallin: I = I(CIEnter, SubClassMatcher("android.view.View",".*","View_AnyExceptOther"),List("_", "v") )
   val onClick:SignatureMatcher = SubClassMatcher("android.view.View$OnClickListener", ".*onClick.*", "ViewOnClickListener_onClick")
-  val setOnClickListener:LSPred = I(CIExit,
+  private val setOnClickListenerI = I(CIExit,
     SubClassMatcher("android.view.View",".*setOnClickListener.*","View_setOnClickListener"),
     List("_","v","l")
   )
+  private val setOnClickListenerI2 = I(CIExit,
+    SubClassMatcher("android.view.View",".*setOnClickListener.*","View_setOnClickListener"),
+    List("_","v","_")
+  )
+  // TODO:===== Something is causing "Should attach click to activity" test to fail, this is probably it
+  //  val setOnClickListener:LSPred = NI(setOnClickListenerI, setOnClickListenerI2)
+  val setOnClickListener:LSPred = setOnClickListenerI
 
   //TODO: fix disallowCallinAfterActivityPause , .* doesn't work as a matcher due to overlap
 
@@ -172,10 +182,24 @@ object ViewSpec {
     And(And(setOnClickListener, LifecycleSpec.viewAttached), Or(LifecycleSpec.resumed,
       I(CIExit, SpecSignatures.Activity_finish, "_"::"a"::Nil))),
     I(CBEnter, onClick, List("_", "l")))
+
+  // TODO: disable click after setEnable(false) CURRENTLY UNSOUND, needs false ============
+  private val setEnabled = SubClassMatcher(Set("android.view.View"), ".*setEnabled.*", "View_setEnabled")
+  val clickWhileNotDisabled:LSSpec = LSSpec("l"::Nil, "v"::Nil,
+    And(setOnClickListenerI, Not(I(CIExit, setEnabled, "_"::"v"::Nil))),
+    I(CBEnter, onClick, List("_", "l")))
   //TODO:================= noDupeFindView is **Very** experimental, does this actually work?
   private val fv1 = I(CIExit, SpecSignatures.Activity_findView, "v"::"a"::Nil)
   private val fv2 = I(CIExit, SpecSignatures.Activity_findView, "v"::"a2"::Nil)
   val noDupeFindView:LSSpec = LSSpec("a"::"a2"::"v"::Nil, Nil, Or(Not(fv2), LSConstraint("a", Equals, "a2")), fv1)
+}
+object SAsyncTask{
+  private val AsyncTaskC = Set("android.os.AsyncTask")
+  private val executeSig = SubClassMatcher(AsyncTaskC, ".*AsyncTask execute\\(.*\\)", "AsyncTask_execute")
+  private val executeI = I(CIExit, executeSig, "_"::"t"::Nil)
+  private val executeIEntry =
+    I(CIEnter, executeSig, "_"::"t"::Nil)
+  val disallowDoubleExecute:LSSpec = LSSpec("t"::Nil, Nil, executeI, executeIEntry )
 }
 object SDialog{
   val DialogC = Set("android.app.ProgressDialog","android.app.Dialog")

@@ -2,16 +2,17 @@ package edu.colorado.plv.bounder.solver
 
 import better.files.File
 import com.microsoft.z3._
+import com.microsoft.z3.enumerations.Z3_ast_print_mode
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.ir.{TNew, WitnessExplanation}
+import edu.colorado.plv.bounder.ir.{AppMethod, CBEnter, CBExit, CIEnter, CIExit, FwkMethod, TAddr, TCLInit, TMessage, TNew, TNullVal, TVal, T_, WitnessExplanation}
 import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSAnyVal, LSVar}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, PureVal, PureVar, State}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, NullVal, PureVal, PureVar, State}
 
 import scala.collection.immutable
 import scala.collection.mutable
 
-case class Z3SolverCtx(timeout:Int) extends SolverCtx[AST] {
+case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
   var ctx = new Context()
   val checkStratifiedSets = false // set to true to check EPR stratified sets (see Paxos Made EPR, Padon OOPSLA 2017)
   var solver:Solver = ctx.mkSolver()
@@ -85,11 +86,15 @@ case class Z3SolverCtx(timeout:Int) extends SolverCtx[AST] {
 //    val solver = ctx.mkSimpleSolver()
     val params = ctx.mkParams()
     params.add("timeout", timeout)
+    params.add("random-seed", randomSeed)
 //    params.add("timeout", 30000)
     // params.add("threads", 4) Note: threads cause weird decidability issue
 
     // set_option(max_args=10000000, max_lines=1000000, max_depth=10000000, max_visited=1000000)
     //    params.add("timeout", 1600000)
+
+    //TODO: does this get rid of the "let" statements when printing?
+    ctx.setPrintMode(Z3_ast_print_mode.Z3_PRINT_SMTLIB_FULL)
     solver.setParameters(params)
     solver
   }
@@ -108,19 +113,23 @@ case class Z3SolverCtx(timeout:Int) extends SolverCtx[AST] {
 //    Thread.sleep(100)
   }
 }
-class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:Int = 120000) extends StateSolver[AST,Z3SolverCtx] {
+class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:Int = 120000,
+                    randomSeed:Int=30) extends StateSolver[AST,Z3SolverCtx] {
   private val MAX_ARGS = 10
 
-  val threadLocalCtx: ThreadLocal[Z3SolverCtx] = ThreadLocal.withInitial( () => Z3SolverCtx(timeout))
+  val threadLocalCtx: ThreadLocal[Z3SolverCtx] = ThreadLocal.withInitial( () => Z3SolverCtx(timeout,randomSeed))
 //  val ctx: ThreadLocal[Context] = ThreadLocal.withInitial[Context]{ () =>
 //    val tCtx = new Context()
 //    tCtx
 //  }
 
 
-//  val solver: ThreadLocal[Solver] = ThreadLocal.withInitial(() => {
-//    makeSolver()
-//  })
+  //  val solver: ThreadLocal[Solver] = ThreadLocal.withInitial(() => {
+  //    makeSolver()
+  //  })
+  override def setSeed(v: Int)(implicit zctx: Z3SolverCtx): Unit = {
+    zctx.ctx.updateParamValue("random-seed",v.toString)
+  }
 
   override def getSolverCtx: Z3SolverCtx = {
     val ctx = threadLocalCtx.get()
@@ -312,9 +321,34 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
                               pvMap: Map[PureVar, Option[AST]])(implicit zCtx: Z3SolverCtx): WitnessExplanation = {
 
     val ctx = zCtx.ctx
-    val model = zCtx.solver.getModel
+    //val model = zCtx.solver.getModel
     assert(messageTranslator.states.size == 1, "Explain witness only applicable with single state")
     val state = messageTranslator.states.head
+    val pvSet = state.pureVars()
+    val varPairs = BounderUtil.repeatingPerm[PureVar](_ => pvSet, 2).filter(a => a(0) != a(1))
+
+    // val opt = ctx.mkOptimize()
+    // val params = ctx.mkParams()
+    // params.add("timeout", 15)
+    // opt.setParameters(params)
+    // zCtx.solver.getAssertions.foreach(a => opt.Add(a))
+    // varPairs.foreach{
+    //   case a::b::Nil =>
+    //     opt.AssertSoft(mkNe(pvMap(a).get,pvMap(b).get).asInstanceOf[BoolExpr], 1, s"${a}_${b}")
+    //   case _ => throw new IllegalStateException()
+    // }
+
+    // // Note: optimizer fails if quantifiers can't be simplified out
+    // // Fall back to model created by non-optimizing solver
+    // val res = opt.Check()
+    // val model = if(res == Status.SATISFIABLE)
+    //   opt.getModel
+    // else if(res == Status.UNKNOWN)
+    //   zCtx.solver.getModel
+    // else
+    //   throw new IllegalStateException("Mismatch between optimizing solver and normal solver")
+    val model = zCtx.solver.getModel
+
     val ta = state.traceAbstraction
     val mv = ta.modelVars
     val rightOfArrow = ta.rightOfArrow
@@ -326,15 +360,36 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
         ???
     }
     val pvValues: Map[Expr[UninterpretedSort], Int] = pvModelValues.values.toSet.zipWithIndex.toMap
-    val pvv: PureVar => Int = pv => pvValues(pvModelValues(pv))
+    val constFn = ctx.mkFuncDecl("constFn", addrSort, constSort)
+    val constMap = messageTranslator.getConstMap()
+    val pvv: PureVar => TVal = pvi => {
+      val pv = pvModelValues(pvi)
+      val isNull = constMap.contains(NullVal) && model.eval(mkEq(constFn.apply(pv),
+        constMap(NullVal)).asInstanceOf[Expr[UninterpretedSort]], true).isTrue
+      if(isNull)
+        TNullVal
+      else
+        TAddr(pvValues(pv))
+    }
+    val pmv: String => TVal = v =>
+      if(v == "_") T_ else
+        pvv(ta.modelVars(v).asInstanceOf[PureVar])
 
 
-//    rightOfArrow.map{
-//      case LifeState.CLInit(sig) => ???
-//      case LifeState.FreshRef(v) => TNew(TAddr(pvv(mv(v).asInstanceOf[PureVar]))
-//    }
+    val trace = rightOfArrow.map{
+      case LifeState.CLInit(sig) => TCLInit(sig)
+      case LifeState.FreshRef(v) => TNew(pvv(mv(v).asInstanceOf[PureVar]))
+      case LifeState.I(CBEnter, sig, vars) =>
+        TMessage(CBEnter,AppMethod(sig.identifier, "", None), vars.map(v => pmv(v)))
+      case LifeState.I(CBExit, sig, vars) =>
+        TMessage(CBExit,AppMethod(sig.identifier, "", None), vars.map(v => pmv(v)))
+      case LifeState.I(CIEnter, sig, vars) =>
+        TMessage(CIEnter,FwkMethod(sig.identifier, ""), vars.map(v => pmv(v)))
+      case LifeState.I(CIExit, sig, vars) =>
+        TMessage(CIExit,FwkMethod(sig.identifier, ""), vars.map(v => pmv(v)))
+    }
 
-    WitnessExplanation(Nil) //TODO:==== finish witness implementation
+    WitnessExplanation(trace)
   }
 
   override def printDbgModel(messageTranslator: MessageTranslator,

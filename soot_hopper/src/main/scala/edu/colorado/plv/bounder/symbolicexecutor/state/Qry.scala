@@ -248,6 +248,7 @@ case class DisallowedCallin(className:String, methodName:String, s:LSSpec) exten
     //TODO: Bug where this is empty
     implicit val ch = sym.w.getClassHierarchyConstraints
     val locations: Set[AppLoc] = sym.w.findInMethod(className, methodName, cmd => getMatchingCallin(cmd).isDefined).toSet
+    assert(locations.nonEmpty, s"Empty target locations matching disallow: $s")
 //    val containingMethodPos =
 //      locations.flatMap(location => BounderUtil.resolveMethodReturnForAppLoc(sym.getAppCodeResolver, location))
     locations.map { location =>
@@ -286,7 +287,7 @@ case class LiveTruncatedQry(loc:Loc) extends Qry{
 
   override def copyWithNewState(state: State): Qry = this
 }
-case class WitnessedTruncatedQry(loc:Loc) extends Qry{
+case class WitnessedTruncatedQry(loc:Loc, explanation: WitnessExplanation) extends Qry{
   override def getState: Option[State] = None
 
   override def copyWithNewState(state: State): Qry = this
