@@ -188,7 +188,7 @@ object LifeState {
 
   case class Forall(vars:List[String], p:LSPred) extends LSPred{
     override def swap(swapMap: Map[String, String]): LSPred =
-      Forall(vars, p.swap(swapMap.removedAll(vars)))
+      Forall(vars.map(swapMap), p.swap(swapMap))
 
     override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean = ???
 
@@ -197,7 +197,7 @@ object LifeState {
 
   case class Exists(vars:List[String], p:LSPred) extends LSPred {
     override def swap(swapMap: Map[String, String]): LSPred =
-      Exists(vars, p.swap(swapMap.removedAll(vars)))
+      Exists(vars.map(swapMap), p.swap(swapMap))
 
     override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean = ???
 
@@ -487,7 +487,9 @@ object LifeState {
       else {
         LSImplies(swappedRhs.reduce(And),swappedPred)
       }
-      Forall(newUnivQuant.toList, Exists(existQuant, lsFormula))
+//      assert(newUnivQuant.isEmpty, "TODO: is it ever the case that this is not empty on examples before " +
+//        "the click specification?") //TODO: remaining forall here seems to cause timeout issues
+      Forall(newUnivQuant.toList.map(swapWithFresh), Exists(existQuant.map(swapWithFresh), lsFormula))
 
     }
   }

@@ -113,7 +113,6 @@ object RxJavaSpec{
 }
 
 object LifecycleSpec {
-  //TODO:===== destroyed
   val viewAttached: LSPred = SpecSignatures.Activity_findView_exit //TODO: ... or findView on other view
   val destroyed: LSPred = NI(SpecSignatures.Activity_onDestroy_exit, SpecSignatures.Activity_onCreate_entry)
   val created: LSPred = NI(SpecSignatures.Activity_onCreate_entry, SpecSignatures.Activity_onDestroy_exit)
@@ -158,7 +157,7 @@ object LifecycleSpec {
 object ViewSpec {
   val anyViewCallin: I = I(CIEnter, SubClassMatcher("android.view.View",".*","View_AnyExceptOther"),List("_", "v") )
   val onClick:SignatureMatcher = SubClassMatcher("android.view.View$OnClickListener", ".*onClick.*", "ViewOnClickListener_onClick")
-  private val setOnClickListenerI = I(CIExit,
+  val setOnClickListenerI:I = I(CIExit,
     SubClassMatcher("android.view.View",".*setOnClickListener.*","View_setOnClickListener"),
     List("_","v","l")
   )
@@ -166,12 +165,10 @@ object ViewSpec {
     SubClassMatcher("android.view.View",".*setOnClickListener.*","View_setOnClickListener"),
     List("_","v","_")
   )
-  // TODO:===== Something is causing "Should attach click to activity" test to fail, this is probably it
-  //  val setOnClickListener:LSPred = NI(setOnClickListenerI, setOnClickListenerI2)
+
   val setOnClickListener:LSPred = setOnClickListenerI
 
   //TODO: fix disallowCallinAfterActivityPause , .* doesn't work as a matcher due to overlap
-
   // v a - viewAttached
   // a - destroyed
   val disallowCallinAfterActivityPause:LSSpec = LSSpec("v"::Nil, "a"::Nil, And(LifecycleSpec.viewAttached,
@@ -188,10 +185,13 @@ object ViewSpec {
   val clickWhileNotDisabled:LSSpec = LSSpec("l"::Nil, "v"::Nil,
     And(setOnClickListenerI, Not(I(CIExit, setEnabled, "_"::"v"::Nil))),
     I(CBEnter, onClick, List("_", "l")))
-  //TODO:================= noDupeFindView is **Very** experimental, does this actually work?
   private val fv1 = I(CIExit, SpecSignatures.Activity_findView, "v"::"a"::Nil)
   private val fv2 = I(CIExit, SpecSignatures.Activity_findView, "v"::"a2"::Nil)
+  private val fv_exit = I(CIExit, SpecSignatures.Activity_findView, "v"::"_"::Nil)
+  // Ɐv,a,a2. ¬ I(ci v:= a2.findViewByID()) \/ a = a2 <= ci v:= a.findViewByID()
   val noDupeFindView:LSSpec = LSSpec("a"::"a2"::"v"::Nil, Nil, Or(Not(fv2), LSConstraint("a", Equals, "a2")), fv1)
+
+  //val noDupeFindView:LSSpec = LSSpec("v"::Nil,Nil, Not(fv_exit), fv_exit)  // UNSOUND test version of noDupe
 }
 object SAsyncTask{
   private val AsyncTaskC = Set("android.os.AsyncTask")
@@ -209,6 +209,7 @@ object SDialog{
   //     show(android.content.Context,java.lang.CharSequence,java.lang.CharSequence)>($r2, "", "");
   val showSignature:SignatureMatcher = SubClassMatcher(DialogC, ".*show.*", "Dialog_show")
   val showI = I(CIExit, showSignature, "d"::"_"::"a"::Nil)
+
   val disallowDismiss:LSSpec = LSSpec("d"::Nil, "a"::Nil,
     And(showI, LifecycleSpec.paused),
     I(CIEnter, dismissSignature, "_"::"d"::Nil))

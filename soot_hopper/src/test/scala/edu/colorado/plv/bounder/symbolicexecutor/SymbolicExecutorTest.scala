@@ -1485,7 +1485,6 @@ class SymbolicExecutorTest extends AnyFunSuite {
   test("Yamba dismiss (simplified remove fragment)") {
     // Simplified version of Experiments row 2
     // Yamba https://github.com/learning-android/Yamba/pull/1/commits/90c1fe3e5e58fb87c3c59b1a271c6e43c9422eb6
-    //TODO:
     List(
       ("if(resumed) {","}", Proven, "withCheck"),
       ("","", Witnessed, "noCheck")
@@ -1558,12 +1557,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
         assert(apk != null)
         //Note: subscribeIsUnique rule ommitted from this test to check state relevant to callback
         // TODO: relevance could probably be refined so this isn't necessary
-        val specs = Set[LSSpec](SDialog.noDupeShow
-//          FragmentGetActivityNullSpec.getActivityNull,
-//          FragmentGetActivityNullSpec.getActivityNonNull,
-//          LifecycleSpec.Fragment_activityCreatedOnlyFirst,
-          //          RxJavaSpec.call
-
+        val specs = Set[LSSpec](
+          SDialog.noDupeShow //TODO: ===== uncomment spec
         )
         val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
@@ -1585,6 +1580,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
         val fname = s"Yamba_$fileSuffix"
         prettyPrinting.dumpDebugInfo(result, fname)
+        prettyPrinting.printWitness(result)
         //        prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
         assert(result.nonEmpty)
         BounderUtil.throwIfStackTrace(result)
@@ -2068,7 +2064,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         assert(apk != null)
         implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
         dbMode.startMeta()
-        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
+        val specs = new SpecSpace(Set(ViewSpec.clickWhileActive, ViewSpec.noDupeFindView))
         val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
 
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
@@ -2094,6 +2090,79 @@ class SymbolicExecutorTest extends AnyFunSuite {
   test("Should attach click to Activity") {
     //Click attached to different activity
     //TODO: ====================== <clinit> should prevent any further methods on that class
+    val src = """package com.example.createdestroy;
+                |import androidx.appcompat.app.AppCompatActivity;
+                |import android.os.Bundle;
+                |import android.util.Log;
+                |import android.view.View;
+                |import android.os.Handler;
+                |import android.view.View.OnClickListener;
+                |
+                |
+                |public class MyActivity extends AppCompatActivity {
+                |    String s = null;
+                |    @Override
+                |    protected void onResume(){
+                |        View v = findViewById(3);
+                |        s = "";
+                |        v.setOnClickListener(new OnClickListener(){
+                |             @Override
+                |             public void onClick(View v){
+                |               s.toString(); // query1
+                |             }
+                |          });
+                |    }
+                |
+                |    @Override
+                |    protected void onPause() {
+                |        s = null;
+                |    }
+                |}""".stripMargin
+    val test: String => Unit = apk => {
+      File.usingTemporaryDirectory() { tmpDir =>
+        assert(apk != null)
+        implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
+        dbMode.startMeta()
+//        implicit val dbMode = MemoryOutputMode //LifecycleSpec.spec +
+        val specs = new SpecSpace( Set(ViewSpec.clickWhileActive,
+           ViewSpec.noDupeFindView)) //TODO: =====================  add noDupe?
+//        val specs = new SpecSpace(Set(ViewSpec.clickWhileActive))
+        val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
+
+        val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
+          specs, cha)
+        val config = SymbolicExecutorConfig(
+          stepLimit = 180, w, transfer,
+          component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode)
+        val symbolicExecutor = config.getSymbolicExecutor
+        val line = BounderUtil.lineForRegex(".*query1.*".r, src)
+        val clickMethodReachable = Reachable("com.example.createdestroy.MyActivity$1",
+          "void onClick(android.view.View)", line)
+
+        val resultClickReachable = symbolicExecutor.run(clickMethodReachable, dbMode)
+          .flatMap(a => a.terminals)
+        prettyPrinting.dumpDebugInfo(resultClickReachable, "clickReachable")
+        assert(resultClickReachable.nonEmpty)
+        BounderUtil.throwIfStackTrace(resultClickReachable)
+        assert(BounderUtil.interpretResult(resultClickReachable, QueryFinished) == Witnessed)
+
+        val nullUnreach = ReceiverNonNull("com.example.createdestroy.MyActivity$1",
+          "void onClick(android.view.View)",line, Some(".*toString.*"))
+        val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals) // TODO: Slow
+        prettyPrinting.dumpDebugInfo(nullUnreachRes, "clickNullUnreachable")
+        println("Witness Null")
+        prettyPrinting.printWitness(nullUnreachRes)
+        assert(nullUnreachRes.nonEmpty)
+        BounderUtil.throwIfStackTrace(nullUnreachRes)
+        assert(BounderUtil.interpretResult(nullUnreachRes, QueryFinished) == Proven)
+      }
+
+    }
+    makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
+  }
+  ignore("Should attach click to Activity2") {
+    //Click attached to different activity
+    //TODO: ====================== uncomment extra pieces and un-ignore this test
     val src = """package com.example.createdestroy;
                 |import androidx.appcompat.app.AppCompatActivity;
                 |import android.os.Bundle;
@@ -2142,9 +2211,11 @@ class SymbolicExecutorTest extends AnyFunSuite {
         assert(apk != null)
         implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
         dbMode.startMeta()
-//        implicit val dbMode = MemoryOutputMode
-        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive + ViewSpec.noDupeFindView)
-//        val specs = new SpecSpace(Set(ViewSpec.clickWhileActive))
+        //        implicit val dbMode = MemoryOutputMode
+        // LifecycleSpec.spec +
+        val specs = new SpecSpace( Set(ViewSpec.clickWhileActive, ViewSpec.noDupeFindView))
+        // + ViewSpec.noDupeFindView) //TODO: =====================  add noDupe back in if other tests use it
+        //        val specs = new SpecSpace(Set(ViewSpec.clickWhileActive))
         val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
 
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
@@ -2175,13 +2246,13 @@ class SymbolicExecutorTest extends AnyFunSuite {
         assert(BounderUtil.interpretResult(nullUnreachRes, QueryFinished) == Proven)
 
         //TODO: uncomment
-//        val line2 = BounderUtil.lineForRegex(".*query2.*".r, src)
-//        val nullReach = ReceiverNonNull("com.example.createdestroy.MyActivity$1$1",
-//          "void onClick(android.view.View)", line2, Some(".*toString.*"))
-//        val nullReachRes = symbolicExecutor.run(nullReach,dbMode).flatMap(a => a.terminals)
-//        prettyPrinting.dumpDebugInfo(nullReachRes, "clickNullReach")
-//        BounderUtil.throwIfStackTrace(nullReachRes)
-//        assert(BounderUtil.interpretResult(nullReachRes, QueryFinished) == Witnessed)
+        //        val line2 = BounderUtil.lineForRegex(".*query2.*".r, src)
+        //        val nullReach = ReceiverNonNull("com.example.createdestroy.MyActivity$1$1",
+        //          "void onClick(android.view.View)", line2, Some(".*toString.*"))
+        //        val nullReachRes = symbolicExecutor.run(nullReach,dbMode).flatMap(a => a.terminals)
+        //        prettyPrinting.dumpDebugInfo(nullReachRes, "clickNullReach")
+        //        BounderUtil.throwIfStackTrace(nullReachRes)
+        //        assert(BounderUtil.interpretResult(nullReachRes, QueryFinished) == Witnessed)
       }
 
     }
@@ -2191,6 +2262,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
   test("Finish allows click after pause") {
     //Click attached to different activity
     //TODO: ===== Commenting out finish should allow proof
+    ???
     val src = """package com.example.createdestroy;
                 |import androidx.appcompat.app.AppCompatActivity;
                 |import android.os.Bundle;
@@ -2216,7 +2288,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
                 |        (new Handler()).postDelayed(new Runnable(){
                 |           @Override
                 |           public void run(){
-                |              //MyActivity.this.finish(); //TODO: add a toggle to test with/without finish
+                |              MyActivity.this.finish(); //TODO: add a toggle to test with/without finish
                 |           }
                 |        }, 3000);
                 |    }
@@ -2234,7 +2306,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
         dbMode.startMeta()
         //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
         val specs = new SpecSpace(Set(
-          ViewSpec.clickWhileActive, ViewSpec.noDupeFindView) ++ LifecycleSpec.spec)
+          ViewSpec.clickWhileActive, //ViewSpec.noDupeFindView
+        ) ++ LifecycleSpec.spec)
         val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
 
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,

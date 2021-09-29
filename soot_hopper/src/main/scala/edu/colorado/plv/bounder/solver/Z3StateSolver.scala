@@ -481,7 +481,8 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
             "")
         }
         Some(t)
-      case Status.UNKNOWN => Some(t)
+      case Status.UNKNOWN =>
+        Some(t)
       case Status.UNSATISFIABLE =>
         if (logDbg) {
           println(s"Unsat core: ${solver.getUnsatCore.map(s=> s.toString).mkString(" AND \n")}")

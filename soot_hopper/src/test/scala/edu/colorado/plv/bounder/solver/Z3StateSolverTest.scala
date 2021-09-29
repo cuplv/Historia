@@ -3,8 +3,8 @@ package edu.colorado.plv.bounder.solver
 import better.files.Resource
 import com.microsoft.z3._
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSConstraint, LSFalse, LSSpec, LSTrue, NI, Not, Or, FreshRef, SignatureMatcher, SubClassMatcher}
-import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifecycleSpec, RxJavaSpec, SpecSignatures, SpecSpace}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, FreshRef, I, LSConstraint, LSFalse, LSSpec, LSTrue, NI, Not, Or, SignatureMatcher, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifecycleSpec, RxJavaSpec, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import org.scalatest.funsuite.FixtureAnyFunSuite
 import upickle.default.read
@@ -915,6 +915,26 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     assert(stateSolver.canSubsume(s_1_,s_1_,specs2))
     assert(stateSolver.canSubsume(s_2_,s_2_,specs2))
     assert(stateSolver.canSubsume(s_1_,s_2_,specs2))
+  }
+  test("duplicate resume/onClickListener should subsume"){ f =>
+    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val specs = new SpecSpace(Set(ViewSpec.clickWhileNotDisabled, ViewSpec.noDupeFindView))
+
+    // I(CBEnter I_CBEnter_Activity_onResume ( _,p-5 );
+    // I(CIExit I_CIExit_Activity_findView ( p-4,p-5 );
+    // FreshRef(p-3);
+    // I(CIExit I_CIExit_View_setOnClickListener ( _,p-4,p-3 );
+
+    // I(CBEnter I_CBEnter_Activity_onPause ( _,p-1 );
+    // I(CBExit I_CBExit_Activity_onPause ( _,p-1 );
+    // I(CBEnter I_CBEnter_ViewOnClickListener_onClick ( _,p-2 )))
+    val s1 = st(AbstractTrace(None, //TODO: finish filling out abstract state to test - I suspect that this should subsume one "loop" but isn't in the real version
+      FreshRef("p3")::
+        ViewSpec.setOnClickListenerI.copy(lsVars = "_"::"p4"::"p3"::Nil)::
+        Nil,
+      Map()))
+    val s2 = st(AbstractTrace(None, Nil, Map()))
+    ???
   }
   test("|>y = _.subscribe(x)|> y.unsubscribe() |> x.call() should be subsumed by |> x.call()"){ f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
