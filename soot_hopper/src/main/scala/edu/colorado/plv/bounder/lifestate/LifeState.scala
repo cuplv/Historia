@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, Exists, Forall, FreshRef, I, LSConstraint, LSFalse, LSPred, LSSpec, LSTrue, LifeStateParser, NI, Not, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, CLInit, Exists, Forall, FreshRef, I, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, LifeStateParser, NI, Not, Or}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CmpOp, Equals, NotEquals, NullVal, PureExpr, PureVal, PureVar, Subtype}
 
@@ -533,6 +533,8 @@ object SpecSpace{
     case None => Set()
   }
   def allI(pred:LSPred):Set[I] = pred match{
+    case LSImplies(l1, l2) => allI(l1).union(allI(l2))
+    case CLInit(_) => Set()
     case i@I(_,_,_) => Set(i)
     case NI(i1,i2) => Set(i1,i2)
     case And(p1,p2) => allI(p1).union(allI(p2))

@@ -2258,155 +2258,311 @@ class SymbolicExecutorTest extends AnyFunSuite {
     }
     makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
   }
-
   test("Finish allows click after pause") {
-    //Click attached to different activity
-    //TODO: ===== Commenting out finish should allow proof
-    ???
-    val src = """package com.example.createdestroy;
-                |import androidx.appcompat.app.AppCompatActivity;
-                |import android.os.Bundle;
-                |import android.util.Log;
-                |import android.view.View;
-                |import android.os.Handler;
-                |import android.view.View.OnClickListener;
-                |
-                |
-                |public class MyActivity extends AppCompatActivity {
-                |    String s = null;
-                |    static OnClickListener listener2 = null;
-                |    @Override
-                |    protected void onResume(){
-                |        View v = findViewById(3);
-                |        s = "";
-                |        v.setOnClickListener(new OnClickListener(){
-                |           @Override
-                |           public void onClick(View v){
-                |             s.toString(); // query1
-                |           }
-                |        });
-                |        (new Handler()).postDelayed(new Runnable(){
-                |           @Override
-                |           public void run(){
-                |              MyActivity.this.finish(); //TODO: add a toggle to test with/without finish
-                |           }
-                |        }, 3000);
-                |    }
-                |
-                |    @Override
-                |    protected void onPause() {
-                |        s = null;
-                |
-                |    }
-                |}""".stripMargin
-    val test: String => Unit = apk => {
-      File.usingTemporaryDirectory() { tmpDir =>
+    List(
+      ("", Proven),
+      ("MyActivity.this.finish();", Witnessed),
+    ).foreach {
+      case (finishLine, expected) =>
+        val src =
+          s"""package com.example.createdestroy;
+             |import androidx.appcompat.app.AppCompatActivity;
+             |import android.os.Bundle;
+             |import android.util.Log;
+             |import android.view.View;
+             |import android.os.Handler;
+             |import android.view.View.OnClickListener;
+             |
+             |
+             |public class MyActivity extends AppCompatActivity {
+             |    String s = null;
+             |    static OnClickListener listener2 = null;
+             |    @Override
+             |    protected void onResume(){
+             |        View v = findViewById(3);
+             |        s = "";
+             |        v.setOnClickListener(new OnClickListener(){
+             |           @Override
+             |           public void onClick(View v){
+             |             s.toString(); // query1
+             |           }
+             |        });
+             |        (new Handler()).postDelayed(new Runnable(){
+             |           @Override
+             |           public void run(){
+             |             ${finishLine}
+             |           }
+             |        }, 3000);
+             |    }
+             |
+             |    @Override
+             |    protected void onPause() {
+             |        s = null;
+             |
+             |    }
+             |}""".stripMargin
+        val test: String => Unit = apk => {
+          File.usingTemporaryDirectory() { tmpDir =>
+            assert(apk != null)
+            implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
+            dbMode.startMeta()
+            //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
+            val specs = new SpecSpace(Set(
+              ViewSpec.clickWhileActive, ViewSpec.noDupeFindView
+            ) ++ LifecycleSpec.spec)
+            val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
+
+            val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
+              specs, cha)
+            val config = SymbolicExecutorConfig(
+              stepLimit = 200, w, transfer,
+              component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode)
+            val symbolicExecutor = config.getSymbolicExecutor
+            val line = BounderUtil.lineForRegex(".*query1.*".r, src)
+            //            val clickReachable = Reachable("com.example.createdestroy.MyActivity$1",
+            //              "void onClick(android.view.View)", line)
+
+            //            val resultClickReachable = symbolicExecutor.run(clickReachable, dbMode)
+            //              .flatMap(a => a.terminals)
+            //            prettyPrinting.dumpDebugInfo(resultClickReachable, "clickFinish")
+            //            assert(resultClickReachable.nonEmpty)
+            //            BounderUtil.throwIfStackTrace(resultClickReachable)
+            //            assert(BounderUtil.interpretResult(resultClickReachable, QueryFinished) == Witnessed)
+
+
+            //TODO:=============  Why is this witnessed without finish?
+            val nullUnreach = ReceiverNonNull("com.example.createdestroy.MyActivity$1",
+              "void onClick(android.view.View)", line, Some(".*toString.*"))
+            val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
+            prettyPrinting.dumpDebugInfo(nullUnreachRes, "finishNullUnreachRes")
+            assert(nullUnreachRes.nonEmpty)
+            BounderUtil.throwIfStackTrace(nullUnreachRes)
+            val interpretation = BounderUtil.interpretResult(nullUnreachRes, QueryFinished) == expected
+            if(!interpretation){
+              prettyPrinting.printWitness(nullUnreachRes)
+            }
+            assert(interpretation)
+          }
+
+        }
+        makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
+    }
+
+    test("Should not invoke methods on view after activity destroyed spec") {
+      //TODO: not fully implemented
+
+      val src =
+        """package com.example.createdestroy;
+          |import androidx.appcompat.app.AppCompatActivity;
+          |import android.os.Bundle;
+          |import android.util.Log;
+          |import android.view.View;
+          |import android.os.Handler;
+          |
+          |
+          |public class MyActivity extends AppCompatActivity {
+          |    protected Handler keyRepeatHandler = new Handler();
+          |    @Override
+          |    protected void onCreate(Bundle savedInstanceState){
+          |        View v = findViewById(3);
+          |        Runnable r = new Runnable(){
+          |            @Override
+          |            public void run(){
+          |                v.setVisibility(View.GONE); //query1
+          |            }
+          |        };
+          |        keyRepeatHandler.postDelayed(r,3000);
+          |    }
+          |
+          |    @Override
+          |    protected void onDestroy() {
+          |    }
+          |}""".stripMargin
+      val test: String => Unit = apk => {
         assert(apk != null)
-        implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
-        dbMode.startMeta()
-        //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
-        val specs = new SpecSpace(Set(
-          ViewSpec.clickWhileActive, //ViewSpec.noDupeFindView
-        ) ++ LifecycleSpec.spec)
+        val specs = new SpecSpace(Set() /*LifecycleSpec.spec*/ , Set(ViewSpec.disallowCallinAfterActivityPause))
         val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
 
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
           specs, cha)
         val config = SymbolicExecutorConfig(
-          stepLimit = 200, w, transfer,
-          component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode)
+          stepLimit = 120, w, transfer,
+          component = Some(List("com.example.createdestroy.MyActivity.*")))
         val symbolicExecutor = config.getSymbolicExecutor
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
-        val clickReachable = Reachable("com.example.createdestroy.MyActivity$1",
-          "void onClick(android.view.View)", line)
+        val runMethodReachable = Reachable("com.example.createdestroy.MyActivity$1",
+          "void run()", line)
 
-        val resultClickReachable = symbolicExecutor.run(clickReachable, dbMode)
+        val resultRunMethodReachable = symbolicExecutor.run(runMethodReachable)
           .flatMap(a => a.terminals)
-        prettyPrinting.dumpDebugInfo(resultClickReachable, "clickFinish")
-        assert(resultClickReachable.nonEmpty)
-        BounderUtil.throwIfStackTrace(resultClickReachable)
-        assert(BounderUtil.interpretResult(resultClickReachable, QueryFinished) == Witnessed)
+        //      prettyPrinting.dumpDebugInfo(resultRunMethodReachable, "RunnableInHandler")
+        assert(resultRunMethodReachable.nonEmpty)
+        BounderUtil.throwIfStackTrace(resultRunMethodReachable)
+        assert(BounderUtil.interpretResult(resultRunMethodReachable, QueryFinished) == Witnessed)
+
+        val setVisibleCallin_ErrReachable = DisallowedCallin("com.example.createdestroy.MyActivity$1",
+          "void run()", ViewSpec.disallowCallinAfterActivityPause)
 
 
-        //TODO:=============  Why is this witnessed without finish?
-        val nullUnreach = ReceiverNonNull("com.example.createdestroy.MyActivity$1",
-          "void onClick(android.view.View)",line, Some(".*toString.*"))
-        val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
-        prettyPrinting.dumpDebugInfo(nullUnreachRes, "finishNullUnreachRes")
-        assert(nullUnreachRes.nonEmpty)
-        BounderUtil.throwIfStackTrace(nullUnreachRes)
-        assert(BounderUtil.interpretResult(nullUnreachRes, QueryFinished) == Witnessed)
+        val resultsErrReachable = symbolicExecutor.run(setVisibleCallin_ErrReachable)
+        val resultsErrReachableTerm = resultsErrReachable.flatMap(a => a.terminals)
+        //TODO:=============== disallow specs need to be added to specspace allI somehow
+        //      prettyPrinting.dumpDebugInfo(resultsErrReachableTerm, "ViewCallinDisallow2")
+        //TODO:====== bad subsumption
+        BounderUtil.throwIfStackTrace(resultsErrReachableTerm)
+        assert(BounderUtil.interpretResult(resultsErrReachableTerm, QueryFinished) == Witnessed)
       }
 
+      makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
     }
-    makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
   }
-
-  test("Should not invoke methods on view after activity destroyed spec"){
-    //TODO: not fully implemented
-
-    val src = """package com.example.createdestroy;
-                |import androidx.appcompat.app.AppCompatActivity;
-                |import android.os.Bundle;
-                |import android.util.Log;
-                |import android.view.View;
-                |import android.os.Handler;
-                |
-                |
-                |public class MyActivity extends AppCompatActivity {
-                |    protected Handler keyRepeatHandler = new Handler();
-                |    @Override
-                |    protected void onCreate(Bundle savedInstanceState){
-                |        View v = findViewById(3);
-                |        Runnable r = new Runnable(){
-                |            @Override
-                |            public void run(){
-                |                v.setVisibility(View.GONE); //query1
-                |            }
-                |        };
-                |        keyRepeatHandler.postDelayed(r,3000);
-                |    }
-                |
-                |    @Override
-                |    protected void onDestroy() {
-                |    }
-                |}""".stripMargin
-    val test: String => Unit = apk => {
-      assert(apk != null)
-      val specs = new SpecSpace(Set() /*LifecycleSpec.spec*/, Set(ViewSpec.disallowCallinAfterActivityPause))
-      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
-
-      val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-        specs,cha)
-      val config = SymbolicExecutorConfig(
-        stepLimit = 120, w, transfer,
-        component = Some(List("com.example.createdestroy.MyActivity.*")))
-      val symbolicExecutor = config.getSymbolicExecutor
-      val line = BounderUtil.lineForRegex(".*query1.*".r, src)
-      val runMethodReachable = Reachable("com.example.createdestroy.MyActivity$1",
-        "void run()",line)
-
-      val resultRunMethodReachable = symbolicExecutor.run(runMethodReachable)
-        .flatMap(a => a.terminals)
-//      prettyPrinting.dumpDebugInfo(resultRunMethodReachable, "RunnableInHandler")
-      assert(resultRunMethodReachable.nonEmpty)
-      BounderUtil.throwIfStackTrace(resultRunMethodReachable)
-      assert(BounderUtil.interpretResult(resultRunMethodReachable,QueryFinished) == Witnessed)
-
-      val setVisibleCallin_ErrReachable = DisallowedCallin("com.example.createdestroy.MyActivity$1",
-        "void run()",ViewSpec.disallowCallinAfterActivityPause)
-
-
-
-      val resultsErrReachable = symbolicExecutor.run(setVisibleCallin_ErrReachable)
-      val resultsErrReachableTerm = resultsErrReachable.flatMap(a => a.terminals)
-      //TODO:=============== disallow specs need to be added to specspace allI somehow
-//      prettyPrinting.dumpDebugInfo(resultsErrReachableTerm, "ViewCallinDisallow2")
-      //TODO:====== bad subsumption
-      BounderUtil.throwIfStackTrace(resultsErrReachableTerm)
-      assert(BounderUtil.interpretResult(resultsErrReachableTerm,QueryFinished) == Witnessed)
+  test("Row 4: Connect bot click/finish") {
+    List(
+      ("v.setOnClickListener(null);", Proven),
+      ("", Witnessed)
+    ).foreach {
+      case (disableClick, expected) =>
+        //Click attached to different activity
+        //TODO: probably need to write specification for null preventing click
+        val src =
+          s"""package com.example.createdestroy;
+            |import androidx.appcompat.app.AppCompatActivity;
+            |import android.os.Bundle;
+            |import android.util.Log;
+            |import android.view.View;
+            |import android.os.Handler;
+            |import android.view.View.OnClickListener;
+            |
+            |
+public class MyActivity extends AppCompatActivity {
+    String s = null;
+    static OnClickListener listener2 = null;
+    @Override
+    protected void onResume(){
+        View v = findViewById(3);
+        s = "";
+        v.setOnClickListener(new OnClickListener(){
+           @Override
+           public void onClick(View v){
+             s.toString(); // query1
+           }
+        });
+        (new Handler()).postDelayed(new Runnable(){
+           @Override
+           public void run(){
+             MyActivity.this.finish();
+             ${disableClick}
+           }
+        }, 3000);
     }
 
-    makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
+    @Override
+    protected void onPause() {
+        s = null;
+    }
+}""".stripMargin
+        val test: String => Unit = apk => {
+          File.usingTemporaryDirectory() { tmpDir =>
+            assert(apk != null)
+            implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
+            dbMode.startMeta()
+            //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
+            val specs = new SpecSpace(Set(
+              ViewSpec.clickWhileActive, ViewSpec.noDupeFindView
+            ) ++ LifecycleSpec.spec)
+            val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
+
+            val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
+              specs, cha)
+            val config = SymbolicExecutorConfig(
+              stepLimit = 200, w, transfer,
+              component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode)
+            val symbolicExecutor = config.getSymbolicExecutor
+            val line = BounderUtil.lineForRegex(".*query1.*".r, src)
+
+            val nullUnreach = ReceiverNonNull("com.example.createdestroy.MyActivity$1",
+              "void onClick(android.view.View)", line, Some(".*toString.*"))
+            val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
+            prettyPrinting.dumpDebugInfo(nullUnreachRes, "ConnectBotRow4")
+            assert(nullUnreachRes.nonEmpty)
+            BounderUtil.throwIfStackTrace(nullUnreachRes)
+            val interpretation = BounderUtil.interpretResult(nullUnreachRes, QueryFinished) == expected
+            if(!interpretation){
+              prettyPrinting.printWitness(nullUnreachRes)
+            }
+            assert(interpretation)
+          }
+
+        }
+        makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
+    }
+
+    ignore("Should not invoke methods on view after activity destroyed spec") {
+      //TODO: not fully implemented
+
+      val src =
+        """package com.example.createdestroy;
+          |import androidx.appcompat.app.AppCompatActivity;
+          |import android.os.Bundle;
+          |import android.util.Log;
+          |import android.view.View;
+          |import android.os.Handler;
+          |
+          |
+          |public class MyActivity extends AppCompatActivity {
+          |    protected Handler keyRepeatHandler = new Handler();
+          |    @Override
+          |    protected void onCreate(Bundle savedInstanceState){
+          |        View v = findViewById(3);
+          |        Runnable r = new Runnable(){
+          |            @Override
+          |            public void run(){
+          |                v.setVisibility(View.GONE); //query1
+          |            }
+          |        };
+          |        keyRepeatHandler.postDelayed(r,3000);
+          |    }
+          |
+          |    @Override
+          |    protected void onDestroy() {
+          |    }
+          |}""".stripMargin
+      val test: String => Unit = apk => {
+        assert(apk != null)
+        val specs = new SpecSpace(Set() /*LifecycleSpec.spec*/ , Set(ViewSpec.disallowCallinAfterActivityPause))
+        val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
+
+        val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
+          specs, cha)
+        val config = SymbolicExecutorConfig(
+          stepLimit = 120, w, transfer,
+          component = Some(List("com.example.createdestroy.MyActivity.*")))
+        val symbolicExecutor = config.getSymbolicExecutor
+        val line = BounderUtil.lineForRegex(".*query1.*".r, src)
+        val runMethodReachable = Reachable("com.example.createdestroy.MyActivity$1",
+          "void run()", line)
+
+        val resultRunMethodReachable = symbolicExecutor.run(runMethodReachable)
+          .flatMap(a => a.terminals)
+        //      prettyPrinting.dumpDebugInfo(resultRunMethodReachable, "RunnableInHandler")
+        assert(resultRunMethodReachable.nonEmpty)
+        BounderUtil.throwIfStackTrace(resultRunMethodReachable)
+        assert(BounderUtil.interpretResult(resultRunMethodReachable, QueryFinished) == Witnessed)
+
+        val setVisibleCallin_ErrReachable = DisallowedCallin("com.example.createdestroy.MyActivity$1",
+          "void run()", ViewSpec.disallowCallinAfterActivityPause)
+
+
+        val resultsErrReachable = symbolicExecutor.run(setVisibleCallin_ErrReachable)
+        val resultsErrReachableTerm = resultsErrReachable.flatMap(a => a.terminals)
+        //TODO:=============== disallow specs need to be added to specspace allI somehow
+        //      prettyPrinting.dumpDebugInfo(resultsErrReachableTerm, "ViewCallinDisallow2")
+        //TODO:====== bad subsumption
+        BounderUtil.throwIfStackTrace(resultsErrReachableTerm)
+        assert(BounderUtil.interpretResult(resultsErrReachableTerm, QueryFinished) == Witnessed)
+      }
+
+      makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
+    }
   }
 }

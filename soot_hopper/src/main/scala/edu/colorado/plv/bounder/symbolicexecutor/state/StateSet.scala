@@ -81,7 +81,11 @@ object StateSet {
     var fastCount:Int = 0
     def iFind(edges: List[String], pathNode:IPathNode, current:StateSet):Option[IPathNode] = {
       //TODO: does par cause issues here?
-      val currentCanSubs = current.states.find{ subsuming =>
+      //TODO:======== does sorting improve runtime?
+      val search = current.states.toList.sortBy{ n =>
+        n.qry.getState.map(s => s.sf.traceAbstraction.rightOfArrow.size).getOrElse(0)
+      }
+      val currentCanSubs = search.find{ subsuming =>
         fastCount = fastCount + 1
         canSubsume(subsuming.qry.getState.get, pathNode.qry.getState.get)
       }

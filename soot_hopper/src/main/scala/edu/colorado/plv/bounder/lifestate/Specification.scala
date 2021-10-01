@@ -161,11 +161,12 @@ object ViewSpec {
     SubClassMatcher("android.view.View",".*setOnClickListener.*","View_setOnClickListener"),
     List("_","v","l")
   )
-  private val setOnClickListenerI2 = I(CIExit,
+  private val setOnClickListenerINull = I(CIExit,
     SubClassMatcher("android.view.View",".*setOnClickListener.*","View_setOnClickListener"),
-    List("_","v","_")
+    List("_","v","@null") //TODO: ==============
   )
 
+  // val setOnClickListener:LSPred = NI(setOnClickListenerI, setOnClickListenerINull)
   val setOnClickListener:LSPred = setOnClickListenerI
 
   //TODO: fix disallowCallinAfterActivityPause , .* doesn't work as a matcher due to overlap
@@ -189,9 +190,9 @@ object ViewSpec {
   private val fv2 = I(CIExit, SpecSignatures.Activity_findView, "v"::"a2"::Nil)
   private val fv_exit = I(CIExit, SpecSignatures.Activity_findView, "v"::"_"::Nil)
   // Ɐv,a,a2. ¬ I(ci v:= a2.findViewByID()) \/ a = a2 <= ci v:= a.findViewByID()
-  val noDupeFindView:LSSpec = LSSpec("a"::"a2"::"v"::Nil, Nil, Or(Not(fv2), LSConstraint("a", Equals, "a2")), fv1)
+//  val noDupeFindView:LSSpec = LSSpec("a"::"a2"::"v"::Nil, Nil, Or(Not(fv2), LSConstraint("a", Equals, "a2")), fv1)
 
-  //val noDupeFindView:LSSpec = LSSpec("v"::Nil,Nil, Not(fv_exit), fv_exit)  // UNSOUND test version of noDupe
+  val noDupeFindView:LSSpec = LSSpec("v"::Nil,Nil, Not(fv_exit), fv_exit)  // UNSOUND test version of noDupe
 }
 object SAsyncTask{
   private val AsyncTaskC = Set("android.os.AsyncTask")

@@ -1,12 +1,11 @@
 package edu.colorado.plv.bounder.solver
 
-import com.microsoft.z3.Solver
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.ir.{BitTypeSet, TAddr, TMessage, TNullVal, TopTypeSet, TypeSet, WitnessExplanation}
+import edu.colorado.plv.bounder.ir.{BitTypeSet, TAddr, TMessage, TNullVal, TypeSet, WitnessExplanation}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.LifeState._
+import edu.colorado.plv.bounder.solver.StateSolver.rhsToPred
 import edu.colorado.plv.bounder.symbolicexecutor.state.{HeapPtEdge, _}
-import org.slf4j.LoggerFactory
 import upickle.default.{read, write}
 
 import scala.collection.immutable
@@ -18,6 +17,81 @@ trait SolverCtx[T]{
   def mkAssert(t:T):Unit
 }
 
+object StateSolver{
+  private def filterAny(s:Seq[(String,String)]):Seq[(String,String)] = s.filter{
+    case (LSAnyVal(),_) => false
+    case (_,LSAnyVal()) => false
+    case _ => true
+  }
+  private def eq(i1:I,i2:I):LSPred =
+    if(i1.signatures != i2.signatures || i1.mt != i2.mt)
+      LSFalse
+    else {
+      val pairs = filterAny(i1.lsVars zip i2.lsVars)
+      pairs.map(v => LSConstraint(v._1, Equals,v._2)).reduce(And)
+    }
+
+  private def neq(i1:I, i2:I):LSPred = {
+    if(i1.signatures != i2.signatures || i1.mt != i2.mt)
+      LSTrue
+    else {
+      val pairs = filterAny(i1.lsVars zip i2.lsVars)
+      pairs.map(v => LSConstraint(v._1,NotEquals,v._2)).reduce(Or)
+    }
+  }
+  private def updArrowPhi(i:I, lsPred:LSPred):LSPred = lsPred match {
+    case Forall(v,p) => Forall(v,updArrowPhi(i:I, p:LSPred))
+    case Exists(v,p) => Exists(v,updArrowPhi(i:I, p:LSPred))
+    case l:LSConstraint => l
+    case And(l1, l2) => And(updArrowPhi(i,l1), updArrowPhi(i,l2))
+    case Or(l1, l2) => Or(updArrowPhi(i,l1), updArrowPhi(i,l2))
+    case LifeState.LSTrue => LifeState.LSTrue
+    case LifeState.LSFalse => LifeState.LSFalse
+    case LSImplies(l1,l2) => LSImplies(updArrowPhi(i,l1), updArrowPhi(i,l2))
+    case FreshRef(v) =>
+      throw new IllegalStateException("RefV cannot be updated (encoding handled elsewhere)")
+    case Not(i1:I) =>
+      if(i1.mt == i.mt && i1.signatures == i.signatures)
+        And(neq(i1,i), lsPred)
+      else lsPred
+    case ni@NI(i1,i2) =>
+      And(Or(eq(i1,i), And(ni, neq(i1,i))), neq(i,i2))
+    case i1:I =>
+      if(i1.mt == i.mt && i1.signatures == i.signatures)
+        Or(eq(i1,i), lsPred)
+      else lsPred
+    case Not(_) =>
+      throw new IllegalArgumentException("Negation only supported on I")
+  }
+  private def updArrowPhi(rhs:LSSingle, lSPred: LSPred):LSPred = rhs match {
+    case FreshRef(_) =>
+      // Creation of reference (occurs earlier than instantiation)
+      lSPred
+    case i:I => updArrowPhi(i,lSPred)
+    case CLInit(sig) => lSPred
+  }
+  private def instArrowPhi(target:LSSingle,specSpace: SpecSpace, includeDis:Boolean):LSPred= target match {
+    case i:I =>
+      val applicableSpecs: Set[LSSpec] =
+        if(includeDis) specSpace.specsByI(i).union(specSpace.disSpecsByI(i)) else specSpace.specsByI(i)
+      val swappedPreds = applicableSpecs.map{s =>
+        s.instantiate(i, specSpace)
+      }
+      if(swappedPreds.isEmpty) LSTrue
+      else if(swappedPreds.size == 1) swappedPreds.head
+      else swappedPreds.reduce(And)
+    case FreshRef(_) => LSTrue
+    case CLInit(_) => LSTrue
+  }
+  def rhsToPred(rhs: Seq[LSSingle], specSpace: SpecSpace): Set[LSPred] = {
+    rhs.foldRight((Set[LSPred](), true)) {
+      case (v, (acc, includeDis)) =>
+        val updated = acc.map(lsPred => updArrowPhi(v, lsPred))
+        val instantiated = instArrowPhi(v, specSpace, includeDis)
+        (updated + instantiated, false)
+    }._1.filter(p => p != LSTrue)
+  }
+}
 /** SMT solver parameterized by its AST or expression type */
 trait StateSolver[T, C <: SolverCtx[T]] {
 
@@ -25,7 +99,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   // checking
   def getSolverCtx: C
 
-  def checkSAT()(implicit zCtx: C): Boolean
+  def checkSAT(useCmd:Boolean)(implicit zCtx: C): Boolean
 
   def push()(implicit zCtx: C): Unit
 
@@ -162,18 +236,12 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   /**
    * Attempt to limit Uint and msg to fix z3 timeout
    *
-   * @param n
-   * @param zCtx
-   * @return
+   * @param n maximum number of uninterpreted integers
+   * @param zCtx solver context
+   * @return boolean asserting fixed Uint count
    */
   protected def mkMaxMsgUint(n: Int)(implicit zCtx: C): T
 
-  //  // function to test if addr is null
-  //  // Uses uninterpreted function isNullFn : addr -> bool
-  //  protected def mkIsNull(addr: T)(implicit zctx: C): T
-  //
-  //  protected def mkIntValueConstraint(addr:T)(implicit zctx: C): T
-  //
   protected def mkConstValueConstraint(addr: T)(implicit zctx: C): T
 
   // Get enum value for I based on index
@@ -198,13 +266,13 @@ trait StateSolver[T, C <: SolverCtx[T]] {
                     lenUID: String)(implicit zctx: C): Unit
   def explainWitness(messageTranslator:MessageTranslator,
                      pvMap: Map[PureVar, Option[T]])(implicit zCtx:C): WitnessExplanation
-  def compareConstValueOf(rhs: T, op: CmpOp, pureVal: PureVal, constMap: Map[PureVal, T])(implicit zctx: C): T = {
+  def compareConstValueOf(rhs: T, op: CmpOp, pureVal: PureVal, constMap: Map[PureVal, T])(implicit zctx: C): T =
     (pureVal, op) match {
       case (TopVal, _) => mkBoolVal(b = true)
       case (ClassVal(_), _) => mkBoolVal(b = true) //TODO: add class vals if necessary for precision
       case (v: PureVal, Equals) =>
-        if(!constMap.contains(v)) //TODO: Remove
-          ???
+        if(!constMap.contains(v))
+          throw new IllegalStateException(s"Missing constant $v")
         mkEq(constMap(v), mkConstValueConstraint(rhs))
       case (v: PureVal, NotEquals) => mkNot(mkEq(constMap(v), mkConstValueConstraint(rhs)))
       case (_: PureVal, _) => mkBoolVal(b = true)
@@ -212,7 +280,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         println(v)
         ???
     }
-  }
 
   def toAST(p: PureConstraint, constMap: Map[PureVal, T], pvMap: Map[PureVar, T])(implicit zctx: C): T = p match {
     // TODO: field constraints based on containing object constraints
@@ -262,9 +329,9 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val nameConstraint = mkEq(mkNameConstraint(nameFun, msgExpr), messageTranslator.enumFromI(m))
     val argConstraints = m.lsVars.zipWithIndex.flatMap {
       case (LSAnyVal(), _) => None //TODO: primitive value cases
-      case (msgVar, ind) =>
+      case (LifeState.LSVar(msgVar), ind) =>
         //        val modelVar = modelVarMap(msgVar)
-        val modelExpr = encodeModelVarOrConst(msgVar, modelVarMap)
+        val modelExpr = modelVarMap(msgVar)
         val argAt = mkArgConstraint(mkArgFun(), ind, msgExpr)
         val typeConstraint = lsTypeMap.get(msgVar) match {
           case Some(BitTypeSet(s)) =>
@@ -275,6 +342,9 @@ trait StateSolver[T, C <: SolverCtx[T]] {
           mkEq(argAt, modelExpr),
           typeConstraint
         ))
+      case (LifeState.LSConst(const), ind) =>
+        val argAt = mkArgConstraint(mkArgFun(), ind, msgExpr)
+        Some(compareConstValueOf(argAt, Equals, const, messageTranslator.getConstMap()))
     }
 
     // w[i] = cb foo(x,y)
@@ -291,7 +361,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   private def encodeModelVarOrConst(lsExpr: String, modelVarMap: String => T)(implicit zctx: C): T = lsExpr match {
     case LifeState.LSVar(v) => modelVarMap(v)
     case LifeState.LSConst(const) =>
-      toAST(const, ???)
+      ???
     case LifeState.LSAnyVal() =>
       throw new IllegalStateException("AnyVal shouldn't reach here")
   }
@@ -428,19 +498,14 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
 
   private def allITraceAbs(traceAbstractionSet: Set[AbstractTrace]): Set[I] =
-    traceAbstractionSet.flatMap(a => allI(a, includeArrow = true))
+    traceAbstractionSet.flatMap(a => allI(a))
 
 
-  private def allI(abs: AbstractTrace, includeArrow: Boolean): Set[I] = {
-    val pred = abs.a.getOrElse(LSTrue)
-    if (includeArrow)
-      (SpecSpace.allI(pred) ++ abs.rightOfArrow).flatMap {
-        case i: I => Some(i)
-        case _ => None
-      }
-    else {
-      SpecSpace.allI(pred)
-    }
+  private def allI(abs: AbstractTrace): Set[I] = {
+    abs.rightOfArrow.flatMap {
+      case i: I => Some(i)
+      case _ => None
+    }.toSet
   }
 
   //TODO: remove "suffix" part of this class
@@ -486,72 +551,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     }
   }
 
-  private def instArrowPhi(target:LSSingle,specSpace: SpecSpace, includeDis:Boolean):LSPred= target match {
-    case i:I =>
-      val applicableSpecs: Set[LSSpec] =
-        if(includeDis) specSpace.specsByI(i).union(specSpace.disSpecsByI(i)) else specSpace.specsByI(i)
-      val swappedPreds = applicableSpecs.map{s =>
-        s.instantiate(i, specSpace)
-      }
-      if(swappedPreds.isEmpty) LSTrue
-      else if(swappedPreds.size == 1) swappedPreds.head
-      else swappedPreds.reduce(And)
-    case FreshRef(_) => LSTrue
-    case CLInit(_) => LSTrue
-  }
-  private def filterAny(s:Seq[(String,String)]):Seq[(String,String)] = s.filter{
-    case (LSAnyVal(),_) => false
-    case (_,LSAnyVal()) => false
-    case _ => true
-  }
-  private def eq(i1:I,i2:I):LSPred =
-    if(i1.signatures != i2.signatures || i1.mt != i2.mt)
-      LSFalse
-    else {
-      val pairs = filterAny(i1.lsVars zip i2.lsVars)
-      pairs.map(v => LSConstraint(v._1, Equals,v._2)).reduce(And)
-    }
-
-  private def neq(i1:I, i2:I):LSPred = {
-    if(i1.signatures != i2.signatures || i1.mt != i2.mt)
-      LSTrue
-    else {
-      val pairs = filterAny(i1.lsVars zip i2.lsVars)
-      pairs.map(v => LSConstraint(v._1,NotEquals,v._2)).reduce(Or)
-    }
-  }
-  private def updArrowPhi(i:I, lsPred:LSPred):LSPred = lsPred match {
-    case Forall(v,p) => Forall(v,updArrowPhi(i:I, p:LSPred))
-    case Exists(v,p) => Exists(v,updArrowPhi(i:I, p:LSPred))
-    case l:LSConstraint => l
-    case And(l1, l2) => And(updArrowPhi(i,l1), updArrowPhi(i,l2))
-    case Or(l1, l2) => Or(updArrowPhi(i,l1), updArrowPhi(i,l2))
-    case LifeState.LSTrue => LifeState.LSTrue
-    case LifeState.LSFalse => LifeState.LSFalse
-    case LSImplies(l1,l2) => LSImplies(updArrowPhi(i,l1), updArrowPhi(i,l2))
-    case FreshRef(v) =>
-      throw new IllegalStateException("RefV cannot be updated (encoding handled elsewhere)")
-    case Not(i1:I) =>
-      if(i1.mt == i.mt && i1.signatures == i.signatures)
-        And(neq(i1,i), lsPred)
-      else lsPred
-    case ni@NI(i1,i2) =>
-      And(Or(eq(i1,i), And(ni, neq(i1,i))), neq(i,i2))
-    case i1:I =>
-      if(i1.mt == i.mt && i1.signatures == i.signatures)
-        Or(eq(i1,i), lsPred)
-      else lsPred
-    case Not(_) =>
-      throw new IllegalArgumentException("Negation only supported on I")
-  }
-  private def updArrowPhi(rhs:LSSingle, lSPred: LSPred):LSPred = rhs match {
-    case FreshRef(_) =>
-      // Creation of reference (occurs earlier than instantiation)
-      lSPred
-    case i:I => updArrowPhi(i,lSPred)
-    case CLInit(sig) => lSPred
-  }
-
   private def encodeSpec(spec:LSSpec, traceFn:T, traceLen:T,
                          messageTranslator: MessageTranslator)(implicit zCtx: C):T = {
     //TODO:====
@@ -591,12 +590,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
     // Instantiate and update specifications for each ▷m̂
     // only include the disallow if it is the last one in the chain
-    val rulePreds: Set[LSPred] = rhs.foldRight((Set[LSPred](),true)){
-      case (v, (acc,includeDis)) =>
-      val updated = acc.map(lsPred => updArrowPhi(v,lsPred))
-      val instantiated = instArrowPhi(v, specSpace, includeDis)
-        (updated + instantiated,false)
-    }._1.filter(p => p != LSTrue)
+    val rulePreds: Set[LSPred] = rhsToPred(rhs, specSpace)
 
     val op = if(negate) Or else And
 
@@ -654,10 +648,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       case FreshRef(v) =>
         encodeRef(modelVarMap(v),traceFn, traceLen)
     }
-    encoded.mkTrace(refs,false)
+    encoded.mkTrace(refs,negate = false)
   }
 
-  protected def mkDistinct(pvList: Iterable[PureVar],pvMap:Map[PureVar,T])(implicit zctx: C): T
+  protected def mkDistinct(pvList: Iterable[PureVar], pvMap:Map[PureVar,T])(implicit zctx: C): T
 
   protected def mkDistinctT(tList: Iterable[T])(implicit zctx: C): T
 
@@ -833,9 +827,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
           Some(mkAnd(memPV.toList.map(l => mkNe(pvMap(r),pvMap(l)))))
         case _ => None
       })
-      // val refNeq = mkBoolVal(true)
 
-      assert(state.traceAbstraction.a.isEmpty, "TODO: remove a from trace abs")
       val out = op(List(refNeq, pureAst, localAST, heapAst, encodedTypeConstraints) ++ traceEnc.trace)
       maxWitness.foldLeft(out) { (acc, v) =>
         val (iv, isInc) = mkIndex(v)
@@ -879,7 +871,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     // Constants
     private val pureValSet = states.foldLeft(Set[PureVal]()){
       case (acc,v) => acc.union(getPureValSet(v.pureFormula))
-    }
+    } + NullVal
     private val (uniqueConst, constMap) = mkConstConstraintsMap(pureValSet)
     def getConstMap():Map[PureVal,T] = constMap
     zCtx.mkAssert(uniqueConst)
@@ -1104,7 +1096,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    * @param s2 contained state
    * @return
    */
-  def canSubsume(s1: State, s2: State, specSpace: SpecSpace, maxLen: Option[Int] = None): Boolean ={
+  def canSubsume(s1: State, s2: State, specSpace: SpecSpace, maxLen: Option[Int] = None): Boolean = {
     // Check if stack sizes or locations are different
     if (s1.callStack.size != s2.callStack.size)
       return false
@@ -1154,6 +1146,9 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     if(!s2HasMoreOfEach){
       return false
     }
+    //val s1Pred = StateSolver.rhsToPred(s1.sf.traceAbstraction.rightOfArrow, specSpace)
+    //val s2Pred = StateSolver.rhsToPred(s2.sf.traceAbstraction.rightOfArrow, specSpace)
+    //TODO: is there something we could do to quickly eliminate tracepred subsumption without calling z3?
 
     canSubsumeZ3(s1,s2,specSpace, maxLen)
   }
@@ -1180,7 +1175,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         specSpace = specSpace, debug = maxLen.isDefined)
       zCtx.mkAssert(s2Enc)
       val foundCounter = try {
-        checkSAT()
+        checkSAT(useCmd = false) //TODO: ===== is this an improvement to use cmd instead?
       }catch {
         case e:IllegalStateException =>
           println("subsumption timeout:")
@@ -1391,7 +1386,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       val messageTranslator = MessageTranslator(List(state), specSpace)
       val pvMap: Map[PureVar, Option[T]] = encodeTraceContained(state, trace, messageTranslator = messageTranslator, specSpace = specSpace,
         negate = negate)
-      val sat = checkSAT()
+      val sat = checkSAT(useCmd = false)
       if (sat && debug) {
         println(s"model:\n ${zCtx.asInstanceOf[Z3SolverCtx].solver.toString}")
         printDbgModel(messageTranslator, Set(state.traceAbstraction), "")

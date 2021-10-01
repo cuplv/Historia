@@ -37,6 +37,7 @@ object TransferFunctions{
                       signature: (String,String),
                       specSpace: SpecSpace,
                       lst : List[Option[RVal]])(implicit ch:ClassHierarchyConstraints):List[Option[RVal]] = {
+    //TODO: should use pre to determine which vars should be materialized
     val relevantI = specSpace.findIFromCurrent(dir,signature)
     lst.zipWithIndex.map{ case (rval,ind) =>
       val existsNAtInd = relevantI.exists{i =>
@@ -380,19 +381,22 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val argOptions: List[Option[RVal]] = cmd.params.map(Some(_))
       val state0 = postState2.setNextCmd(List(source))
 
-      // Always define receiver to reduce dynamic dispatch imprecision
-      // Value is discarded if static call
-      val (receiverValue,stateWithRec) = state0.getOrDefine(LocalWrapper("@this",invokeType),source.containingMethod)
-      val stateWithRecTypeCst = stateWithRec.addPureConstraint(PureConstraint(receiverValue, NotEquals, NullVal))
-        .constrainUpperType(receiverValue, invokeType,ch)
+      // Always define receiver if non-static method to reduce dynamic dispatch imprecision
+      val (receiverValue,stateWithRecTypeCst) = if(receiverOption.isDefined){
+        val (receiverValue, stateWithRec) = state0.getOrDefine(LocalWrapper("@this", invokeType),
+          source.containingMethod)
+        (Some(receiverValue),stateWithRec.addPureConstraint(PureConstraint(receiverValue, NotEquals, NullVal))
+          .constrainUpperType(receiverValue, invokeType, ch))
+      }else
+        (None,state0)
 
       // Get values associated with arguments in state
       val frameArgVals: List[Option[PureExpr]] =
-        (0 until cmd.params.length).map(i => stateWithRecTypeCst.get(LocalWrapper(s"@parameter$i", "_"))).toList
+        cmd.params.indices.map(i => stateWithRecTypeCst.get(LocalWrapper(s"@parameter$i", "_"))).toList
 
       // Combine args and params into list of tuples
       val allArgs = receiverOption :: argOptions
-      val allParams: Seq[Option[PureExpr]] = (Some(receiverValue)::frameArgVals)
+      val allParams: Seq[Option[PureExpr]] = (receiverValue::frameArgVals)
       val argsAndVals: List[(Option[RVal], Option[PureExpr])] = allArgs zip allParams
 
       // Possible stack frames for source of call being a callback or internal method call

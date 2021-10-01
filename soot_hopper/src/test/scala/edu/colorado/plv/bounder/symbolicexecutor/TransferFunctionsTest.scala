@@ -86,7 +86,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     val post = State(StateFormula(CallStackFrame(fooMethodReturn, None, Map(StackVar("@this") -> basePv))::Nil,
       heapConstraints = Map(FieldPtEdge(otherPv, "o") -> NullVal),
       pureFormula = Set(),
-      traceAbstraction = AbstractTrace(None, Nil, Map()),
+      traceAbstraction = AbstractTrace(Nil, Map()),
       typeConstraints = Map()),
       nextAddr = 0
     )
@@ -109,7 +109,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     val post = State(StateFormula(CallStackFrame(fooMethodReturn, None, Map(StackVar("@this") -> basePv))::Nil,
       heapConstraints = Map(FieldPtEdge(basePv, "o") -> otherPv),
       pureFormula = Set(),
-      traceAbstraction = AbstractTrace(None, Nil, Map()),
+      traceAbstraction = AbstractTrace(Nil, Map()),
       typeConstraints = Map()),
       nextAddr = 0
     )
@@ -128,7 +128,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     val post = State(StateFormula(
       CallStackFrame(fooMethodReturn, None, Map(StackVar("bar") -> nullPv))::Nil,
       heapConstraints = Map(),
-      pureFormula = Set(PureConstraint(nullPv,Equals, NullVal)),Map(), AbstractTrace(None, Nil, Map())),0)
+      pureFormula = Set(PureConstraint(nullPv,Equals, NullVal)),Map(), AbstractTrace(Nil, Map())),0)
     val prestate: Set[State] = testCmdTransfer(cmd, post,fooMethod)
     println(s"poststate: $post")
     println(s"prestate: $prestate")
@@ -142,7 +142,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     val post = State(StateFormula(
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("bar") -> nullPv))::Nil,
       heapConstraints = Map(),
-      pureFormula = Set(PureConstraint(nullPv,Equals, NullVal)),Map(), AbstractTrace(None, Nil, Map())),0)
+      pureFormula = Set(PureConstraint(nullPv,Equals, NullVal)),Map(), AbstractTrace(Nil, Map())),0)
     val prestate: Set[State] = testCmdTransfer(cmd, post,fooMethod)
     println(s"poststate: $post")
     println(s"prestate: ${prestate}")
@@ -164,7 +164,7 @@ class TransferFunctionsTest extends AnyFunSuite {
       heapConstraints = Map(FieldPtEdge(PureVar(1),"f") -> PureVar(2)),
       pureFormula = Set(PureConstraint(nullPv,Equals, NullVal)),
       Map(PureVar(2) -> BoundedTypeSet(Some("Foo"), None,Set()),
-        PureVar(5) -> BoundedTypeSet(Some("String"), None, Set())), AbstractTrace(None, Nil, Map())),0)
+        PureVar(5) -> BoundedTypeSet(Some("String"), None, Set())), AbstractTrace(Nil, Map())),0)
     val prestates: Set[State] = testCmdTransfer(cmd, post,fooMethod)
     prestates.foreach { prestate =>
       println(s"prestate: ${prestate}")
@@ -210,7 +210,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     assert(formula.modelVars.exists{
       case (k,v) => k == "a" && v == recPv
     }) //TODO: Stale test? I don't think we go from a cb inv to an app loc anymore
-    assert(formula.a == lhs)
+//    assert(formula.a == lhs)
     assert(formula == otheri)
     val stack = prestate.head.callStack
     assert(stack.isEmpty)

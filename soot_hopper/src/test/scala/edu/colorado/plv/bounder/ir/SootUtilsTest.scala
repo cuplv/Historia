@@ -100,7 +100,7 @@ class SootUtilsTest extends AnyFunSuite {
     assert(entryloc.isDefined)
 
     println("---")
-    val tr = AbstractTrace(SpecSignatures.Activity_onPause_entry, Nil, Map())
+    val tr = AbstractTrace(SpecSignatures.Activity_onPause_entry::Nil, Map()) //TODO: fix this test==== probably need spec
     val retPause = iterPredUntil(Set(l), symbolicExecutor.controlFlowResolver, {
       case CallbackMethodReturn(_, name, _, _) if name.contains("onPause") => true
       case _ => false

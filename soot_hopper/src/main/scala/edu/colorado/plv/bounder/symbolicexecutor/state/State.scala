@@ -3,8 +3,9 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, StateSolver}
 import edu.colorado.plv.bounder.ir.{AppLoc, BitTypeSet, BoolConst, CallbackMethodInvoke, CallbackMethodReturn, ClassConst, ConstVal, EmptyTypeSet, IRWrapper, IntConst, InternalMethodInvoke, InternalMethodReturn, LVal, Loc, LocalWrapper, MessageType, MethodLoc, NullConst, RVal, StringConst, TopTypeSet, TypeSet}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSAnyVal, LSPred, LSSingle, LSTrue, NI, Not, Or, FreshRef}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, FreshRef, I, LSAnyVal, LSPred, LSSingle, LSTrue, NI, Not, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state.State.findIAF
+import scalaz.Memo
 import upickle.default.{macroRW, ReadWriter => RW}
 
 import scala.annotation.tailrec
@@ -30,7 +31,7 @@ object State {
 // pureFormula is a conjunction of constraints
 // callStack is the call string from thresher paper
 //sealed trait TraceAbstractionArrow
-case class AbstractTrace(a:Option[LSPred],rightOfArrow:List[LSSingle], modelVars: Map[String,PureExpr]){
+case class AbstractTrace(rightOfArrow:List[LSSingle], modelVars: Map[String,PureExpr]){
   def addModelVar(v: String, pureVar: PureExpr): AbstractTrace = {
     assert(LifeState.LSVar.matches(v))
     assert(!modelVars.contains(v), s"model var $v already in trace abstraction.")
@@ -42,18 +43,15 @@ case class AbstractTrace(a:Option[LSPred],rightOfArrow:List[LSSingle], modelVars
     val notGenerated = modelVars.removedAll(generated.keySet)
     val replace: String => String = str => generated.foldLeft(str){case (str, (k,v)) =>
       str.replaceAll(s"([ (),])$k([ (),])", "$1" + v.toString + "$2")}
-    val lhs = replace(a.toString)
     val rhs = replace(rightOfArrow.mkString(";"))
-    s"(${notGenerated} - $lhs |> $rhs)"
+    s"(${notGenerated} - |> $rhs)"
   }
 }
 object AbstractTrace{
-  //TODO: get rid of lspred in abstract trace
   implicit var rw:RW[AbstractTrace] = macroRW[AbstractTrace]
-  def apply(a:LSPred, rightOfArrow:List[LSSingle], modelVars: Map[String,PureExpr]):AbstractTrace =
-    AbstractTrace(Some(a), rightOfArrow, modelVars)
-  def apply(rightOfArrow:List[LSSingle], modelVars:Map[String,PureExpr]):AbstractTrace =
-    AbstractTrace(None, rightOfArrow , modelVars)
+  //got rid of lspred in abstract trace TODO: remove below
+  def apply(a:LSPred, rightOfArrow:List[LSSingle], modelVars: Map[String,PureExpr]):AbstractTrace = ???
+  // def apply(rightOfArrow:List[LSSingle], modelVars:Map[String,PureExpr]):AbstractTrace = ???
 }
 
 sealed trait LSParamConstraint{
@@ -93,7 +91,13 @@ case class StateFormula(callStack: List[CallStackFrame],
     isSimplified = true
     this
   }
-  lazy val allICache: Set[I] = SpecSpace.allI(traceAbstraction.a)
+  def allIRefByState(spec:SpecSpace): Set[I] = allIRef(spec)
+
+  private val allIRef = Memo.mutableHashMapMemo {
+    (spec: SpecSpace) =>
+      StateSolver.rhsToPred(traceAbstraction.rightOfArrow, spec)
+        .flatMap(p => SpecSpace.allI(p))
+  }
   def swapPv(oldPv : PureVar, newPv: PureVar):StateFormula = {
     if(oldPv == newPv)
       this
@@ -189,7 +193,7 @@ case class State(sf:StateFormula,
     val newTr = {
       val t = sf.traceAbstraction
       val unboundArrow = t.rightOfArrow.flatMap(i => i.lsVars)
-      val unbound = (t.a.getOrElse(LSTrue).lsVar ++ unboundArrow).filter(lsvar => !t.modelVars.contains(lsvar))
+      val unbound = (unboundArrow).filter(lsvar => !t.modelVars.contains(lsvar))
       var addMap: Map[String,PureVar] = Map()
       unbound.foreach{u =>
         addMap = addMap + (u -> PureVar(nextAddrV))
@@ -312,8 +316,9 @@ case class State(sf:StateFormula,
     case ArrayPtEdge(_,_) => None
   }
 
-  def allICache:Set[I] = sf.allICache
-  def fastIMatches(subsignature: String):Boolean = allICache.exists(i => i.signatures.matchesSubSig(subsignature))
+  def allIRefByState(spec:SpecSpace):Set[I] = sf.allIRefByState(spec)
+  def fastIMatches(subsignature: String, spec:SpecSpace):Boolean =
+    allIRefByState(spec:SpecSpace).exists(i => i.signatures.matchesSubSig(subsignature))
 
   def entryPossible(loc: Loc): Boolean = loc match{
     case CallbackMethodInvoke(clazz, name, _) =>
@@ -355,39 +360,13 @@ case class State(sf:StateFormula,
   def nextPv() = (PureVar(nextAddr), this.copy(nextAddr = nextAddr+1))
 
   def lsVarConstraint(f: AbstractTrace, lsvar: String): Option[LSParamConstraint] = f match{
-    case AbstractTrace(_,_,mv) => mv.get(lsvar).map(LSPure)
+    case AbstractTrace(_,mv) => mv.get(lsvar).map(LSPure)
   }
 
   def findIFromCurrent(dir: MessageType,
                        signature: (String, String), specSpace: SpecSpace)(implicit
                                                     ch:ClassHierarchyConstraints): Set[I] = {
-    //TODO: constant constraints
-//    sf.traceAbstraction.flatMap(ar =>{
-//      val iset = findIAF(dir,signature,ar.a.getOrElse(LSTrue))
-//      iset.map(i => (i, i.lsVars.map{
-//        case LifeState.LSVar(mv) =>
-//          ar.modelVars.get(mv).map(LSPure).getOrElse(LSModelVar(mv,ar))
-//        case LifeState.LSConst(constV) => LSConstConstraint(constV, ar)
-//        case LifeState.LSAnyVal() => LSAny
-//      }))
-//    })
-//    val ta = traceAbstraction.filter(p => p.a.isEmpty)
-//    if(ta.size == 1) {
-//      ta.head.rightOfArrow.toSet.flatMap { (j: LSPred) =>
-//        j match {
-//          case i: I =>
-//            val specs = specSpace.specsByI(i)
-//            specs.flatMap { s =>
-//              findIAF(dir, signature, s.pred)
-//            }
-//          case _ => Set()
-//        }
-//      }
-//    }else{
-//      assert(ta.isEmpty)
-//      Set()
-//    }
-    ??? //TODO: get set of messages that may change current state
+    allIRefByState(specSpace).filter(i => i.mt == dir&& i.signatures.matches(signature))
   }
 
 
@@ -401,14 +380,6 @@ case class State(sf:StateFormula,
     case Not(v) => tformulaVars(v)
     case _ => Set()
   }
-  private def formulaVars(trace: AbstractTrace):Set[PureVar] = {
-    if(trace.a.isDefined) {
-      tformulaVars(trace.a.get).union(trace.modelVars.flatMap {
-        case (_, v) => pformulaVars(v)
-      }.toSet)
-    }else Set()
-  }
-  def allTraceVar():Set[PureVar] = formulaVars(sf.traceAbstraction)
 
   override def toString:String = {
     def sfString(sfl:List[CallStackFrame], frames: Int):String = (sfl,frames) match{
@@ -612,6 +583,10 @@ case class State(sf:StateFormula,
           val st2 = state.constrainUpperType(newident, localType, ch)
           (newident, st2)
       }
+    case NullConst =>
+      val (pv, newState) = nextPv()
+      val stateWithPC = newState.addPureConstraint(PureConstraint(pv, Equals, NullVal))
+      (pv,stateWithPC)
     case v =>
       ??? //TODO: should probably restrict this function to only take locals
   }

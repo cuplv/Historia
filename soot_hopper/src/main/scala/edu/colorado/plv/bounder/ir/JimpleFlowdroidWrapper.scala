@@ -1558,7 +1558,12 @@ class JimpleFlowdroidWrapper(apkPath : String,
       case Some(sootLocal) =>
         pt.reachingObjects(sootLocal)
       case None if local.name == "@this" =>
-        pt.reachingObjects(sootMethod.getActiveBody.getThisLocal)
+        try {
+          pt.reachingObjects(sootMethod.getActiveBody.getThisLocal)
+        }catch {
+          case e:RuntimeException =>
+            throw e
+        }
       case None => throw new IllegalStateException(s"No points to set for method: ${loc} and local: ${local}")
     }
     reaching match{

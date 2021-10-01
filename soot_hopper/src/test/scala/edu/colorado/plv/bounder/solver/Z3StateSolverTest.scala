@@ -77,7 +77,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val v2 = PureVar(2)
     val constraints = Set(PureConstraint(v2, NotEquals, NullVal), PureConstraint(v2, Equals, NullVal))
     val refutableState = State(StateFormula(List(frame),
-      Map(FieldPtEdge(v,"f") -> v2),constraints,Map(),AbstractTrace(None, Nil, Map())),0)
+      Map(FieldPtEdge(v,"f") -> v2),constraints,Map(),AbstractTrace(Nil, Map())),0)
     val simplifyResult = stateSolver.simplify(refutableState, esp)
     assert(simplifyResult.isEmpty)
 
@@ -100,7 +100,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val constraints = Set(PureConstraint(v2, NotEquals, NullVal),
       PureConstraint(v3, Equals, NullVal))
     val refutableState = State(StateFormula(List(frame),
-      Map(FieldPtEdge(v,"f") -> v2),constraints + PureConstraint(v2, Equals, v3),Map(),AbstractTrace(None, Nil, Map()))
+      Map(FieldPtEdge(v,"f") -> v2),constraints + PureConstraint(v2, Equals, v3),Map(),AbstractTrace(Nil, Map()))
       ,0)
     val simplifyResult = stateSolver.simplify(refutableState,esp)
     assert(simplifyResult.isEmpty)
@@ -113,21 +113,21 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val v4 = PureVar(4)
     val refutableState = State(StateFormula(List(frame),
       Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),Set(PureConstraint(v, Equals, v2)),Map(),
-      AbstractTrace(None, Nil, Map()) ),0)
+      AbstractTrace(Nil, Map()) ),0)
     val simplifyResult = stateSolver.simplify(refutableState,esp)
     assert(simplifyResult.isEmpty)
 
     // v3 and v4 on the right side of the points to can be aliased
     val unrefutableState = State(StateFormula(List(frame),
       Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),Set(PureConstraint(v3, Equals, v4),
-        PureConstraint(v, NotEquals, v2)),Map(),AbstractTrace(None, Nil, Map())),0)
+        PureConstraint(v, NotEquals, v2)),Map(),AbstractTrace(Nil, Map())),0)
     val simplifyResult2 = stateSolver.simplify(unrefutableState,esp)
     assert(simplifyResult2.isDefined)
 
     // object field can point to self
     val unrefutableState2 = State(StateFormula(List(frame),
       Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),Set(PureConstraint(v3, Equals, v4),
-        PureConstraint(v, Equals, v4)),Map(),AbstractTrace(None, Nil, Map())),0)
+        PureConstraint(v, Equals, v4)),Map(),AbstractTrace(Nil, Map())),0)
     val simplifyResult3 = stateSolver.simplify(unrefutableState2,esp)
     assert(simplifyResult3.isDefined)
   }
@@ -141,14 +141,14 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
       Set(PureConstraint(v2, Equals, v3),PureConstraint(v3, Equals, v4)),
       Map(v2->BoundedTypeSet(Some("String"),None,Set()),
         //        v3->BoundedTypeSet(Some("String"),None,Set()),
-        v4->BoundedTypeSet(Some("Foo"),None,Set())),AbstractTrace(None, Nil, Map())),0)
+        v4->BoundedTypeSet(Some("Foo"),None,Set())),AbstractTrace( Nil, Map())),0)
     val simplifyResult = stateSolver.simplify(refutableState,esp)
     assert(simplifyResult.isEmpty)
 
     val refutableState2 = State(StateFormula(List(frame),
       Map(),
       Set(PureConstraint(v2, Equals, v3),PureConstraint(v3, Equals, v4), PureConstraint(v2, NotEquals, v4)),
-      Map(),AbstractTrace(None, Nil, Map())),0)
+      Map(),AbstractTrace( Nil, Map())),0)
     val simplifyResult2 = stateSolver.simplify(refutableState2,esp)
     assert(simplifyResult2.isEmpty)
   }
@@ -162,7 +162,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
       Set(PureConstraint(v2, Equals, v3),PureConstraint(v3, Equals, v4)),
       Map(v2->BoundedTypeSet(Some("String"),None,Set()),
         v3->BoundedTypeSet(Some("String"),None,Set()),v4->BoundedTypeSet(Some("Foo"),None,Set())),
-      AbstractTrace(None, Nil, Map())),0)
+      AbstractTrace( Nil, Map())),0)
     val simplifyResult = stateSolver.simplify(refutableState,esp)
     assert(!simplifyResult.isDefined)
 
@@ -182,7 +182,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
       v4 -> BoundedTypeSet(Some("Foo"), None, Set())
     )
     val refutableState = State(StateFormula(List(frame),
-      Map(FieldPtEdge(v,"f") -> v3),constraints,typeC,AbstractTrace(None, Nil, Map())),0)
+      Map(FieldPtEdge(v,"f") -> v3),constraints,typeC,AbstractTrace( Nil, Map())),0)
     val simplifyResult = stateSolver.simplify(refutableState,esp)
     assert(!simplifyResult.isDefined)
 
@@ -195,7 +195,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
       v4 -> BoundedTypeSet(Some("java.lang.Object"),None,Set())
     )
     val state = State(StateFormula(List(frame),
-      Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),constraints2,typeC2,AbstractTrace(None, Nil, Map())),0)
+      Map(FieldPtEdge(v,"f") -> v3, FieldPtEdge(v2,"f") -> v4),constraints2,typeC2,AbstractTrace( Nil, Map())),0)
     val simplifyResult2 = stateSolver.simplify(state,esp)
     assert(simplifyResult2.isDefined)
   }
@@ -204,13 +204,13 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val iFoo_ac = I(CBEnter, Set(("", "foo")), "c"::"a" :: Nil)
     val iFoo_bd = I(CBEnter, Set(("", "foo")), "d"::"b" :: Nil)
     val specSpace = new SpecSpace(Set(LSSpec("a"::"c"::Nil, Nil, LSFalse, iFoo_ac)))
-    val absFalse = AbstractTrace(None, iFoo_bd::Nil, Map())
+    val absFalse = AbstractTrace( iFoo_bd::Nil, Map())
     val state = State.topState.copy(sf = State.topState.sf.copy(traceAbstraction = absFalse))
       .defineAllLS()
     val res = stateSolver.simplify(state,specSpace)
     assert(res.isEmpty)
     val specSpace2 = new SpecSpace(Set(LSSpec("a"::"c"::Nil, Nil, LSTrue, iFoo_ac)))
-    val absTrue = AbstractTrace(None, iFoo_bd::Nil, Map())
+    val absTrue = AbstractTrace( iFoo_bd::Nil, Map())
     val stateTrue = State.topState.copy(sf = State.topState.sf.copy(traceAbstraction = absTrue))
       .defineAllLS()
     val resTrue = stateSolver.simplify(stateTrue,specSpace2)
@@ -532,7 +532,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val loc = AppLoc(fooMethod, TestIRLineLoc(1), isPre = false)
 
     val state = State(StateFormula(CallStackFrame(dummyLoc,None,Map(StackVar("x") -> p1))::Nil,
-      Map(),Set(),Map(),AbstractTrace(None, Nil, Map())),0)
+      Map(),Set(),Map(),AbstractTrace( Nil, Map())),0)
     val state_ = state.copy(sf = state.sf.copy(callStack = CallStackFrame(dummyLoc, None, Map(
       StackVar("x") -> p1,
       StackVar("y") -> p2
@@ -545,7 +545,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val (stateSolver,_) = getStateSolver(f.typeSolving)
 
     val state = State(StateFormula(CallStackFrame(dummyLoc,None,Map(StackVar("x") -> p1))::Nil,
-      Map(),Set(),Map(),AbstractTrace(None, Nil, Map())),0)
+      Map(),Set(),Map(),AbstractTrace( Nil, Map())),0)
     val state2 = state.copy(sf = state.sf.copy(callStack =
       state.callStack.head.copy(locals=Map(StackVar("x") -> p1, StackVar("y")->p2))::Nil))
     assert(stateSolver.canSubsume(state,state,esp))
@@ -797,6 +797,33 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     assert(stateSolver.canSubsume(s2h,s1h,spec))
     assert(!stateSolver.canSubsume(s1h,s2h,spec))
   }
+  test("|>bar(x,y)|>foo(x) && y =/≠ null  under spec bar(x,null) <= foo(x)") {f =>
+    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val fooM = SubClassMatcher("","foo","foo")
+    val barM = SubClassMatcher("","bar","bar")
+    val iFoo_x = I(CBEnter, fooM, "x"::Nil)
+    val iBar_xy = I(CBEnter, barM, "x"::"y"::Nil)
+    val iBar_xN = I(CBEnter, barM, "x"::"@null"::Nil)
+
+    val spec = new SpecSpace(Set(LSSpec("x"::Nil, Nil, iBar_xN, iFoo_x)))
+
+    val s = st(AbstractTrace(iBar_xy::iFoo_x::Nil, Map("x" -> p1, "y"->p2)))
+
+    val sNN = s.addPureConstraint(PureConstraint(p2, NotEquals, NullVal))
+    assert(stateSolver.witnessed(sNN, spec).isEmpty)
+
+    val sNull = s.addPureConstraint(PureConstraint(p2, Equals, NullVal))
+    assert(stateSolver.witnessed(sNull, spec).isDefined)
+
+    // Test const under negation
+    val bazM = SubClassMatcher("","baz","baz")
+    val iBaz_x = I(CBEnter, bazM, "x"::Nil)
+    val spec2 = new SpecSpace(Set(LSSpec("x"::"y"::Nil, Nil, NI(iBar_xy, iBar_xN), iFoo_x)))
+
+    assert(stateSolver.simplify(sNull, spec2).isEmpty)
+
+    assert(stateSolver.simplify(sNN, spec2).isDefined)
+  }
 
   test("NI(x.foo(),x.baz()) && (not I(z.bar())) && x:T2 && z:T1 cannot subsume NI(x.foo(),x.baz()) && x:T2"){ f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
@@ -916,7 +943,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     assert(stateSolver.canSubsume(s_2_,s_2_,specs2))
     assert(stateSolver.canSubsume(s_1_,s_2_,specs2))
   }
-  test("duplicate resume/onClickListener should subsume"){ f =>
+  ignore("duplicate resume/onClickListener should subsume"){ f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
     val specs = new SpecSpace(Set(ViewSpec.clickWhileNotDisabled, ViewSpec.noDupeFindView))
 
@@ -928,12 +955,12 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     // I(CBEnter I_CBEnter_Activity_onPause ( _,p-1 );
     // I(CBExit I_CBExit_Activity_onPause ( _,p-1 );
     // I(CBEnter I_CBEnter_ViewOnClickListener_onClick ( _,p-2 )))
-    val s1 = st(AbstractTrace(None, //TODO: finish filling out abstract state to test - I suspect that this should subsume one "loop" but isn't in the real version
+    val s1 = st(AbstractTrace( //TODO: finish filling out abstract state to test - I suspect that this should subsume one "loop" but isn't in the real version
       FreshRef("p3")::
         ViewSpec.setOnClickListenerI.copy(lsVars = "_"::"p4"::"p3"::Nil)::
         Nil,
       Map()))
-    val s2 = st(AbstractTrace(None, Nil, Map()))
+    val s2 = st(AbstractTrace( Nil, Map()))
     ???
   }
   test("|>y = _.subscribe(x)|> y.unsubscribe() |> x.call() should be subsumed by |> x.call()"){ f =>
@@ -1279,7 +1306,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
 
     val state = State(
       StateFormula(CallStackFrame(dummyLoc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Map(),
-        AbstractTrace(None, Nil, Map())),0)
+        AbstractTrace( Nil, Map())),0)
 
     // x->p1 * y->p2 can be subsumed by x->p1
     val state_x_y = state.copy(sf = state.sf.copy(
@@ -1566,7 +1593,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
       ts.copy(sf = ts.sf.copy(traceAbstraction = at))
     }
     val pv = PureVar(1)
-    val at = AbstractTrace(None, iFoo_b::Nil, Map("b" -> pv))
+    val at = AbstractTrace( iFoo_b::Nil, Map("b" -> pv))
 
     val res = stateSolver.witnessed(s(at),spec)
     assert(res.isEmpty)
@@ -1589,7 +1616,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     }
     val pv = PureVar(1)
     val pv2 = PureVar(2)
-    val at = AbstractTrace(None, iFoo_bd::Nil, Map("d" -> pv, "b" -> pv2))
+    val at = AbstractTrace( iFoo_bd::Nil, Map("d" -> pv, "b" -> pv2))
 
     val res = stateSolver.witnessed(s(at,Set(PureConstraint(pv, Equals, NullVal))),spec)
     assert(res.isEmpty)
@@ -1608,7 +1635,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val s4 = LSSpec("e"::Nil, Nil, LSTrue,iBaz_e, Set())
 //    val spec4 = new SpecSpace(Set(s2,s3,s4))
     val spec4 = new SpecSpace(Set(s3,s4))
-    val at4 = AbstractTrace(None, iBaz_f::iFoo_bd::Nil, Map("f" -> pv3, "d" -> pv, "b" -> pv2))
+    val at4 = AbstractTrace( iBaz_f::iFoo_bd::Nil, Map("f" -> pv3, "d" -> pv, "b" -> pv2))
 
     val res4 = stateSolver.witnessed(s(at4,Set(PureConstraint(pv, Equals, NullVal))),spec4,debug = true)
     assert(res4.isEmpty)
@@ -1636,8 +1663,8 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val pv2 = PureVar(2)
     val pv3 = PureVar(3)
     val pv4 = PureVar(4)
-    val at1 = AbstractTrace(None, iBaz_f::iFoo_bd::Nil, Map("d" -> pv, "b" -> pv2, "f" ->pv4))
-    val at2 = AbstractTrace(None, iBar_e::iBaz_f::iFoo_bd::Nil, Map("d" -> pv, "b" -> pv2, "e" -> pv3, "f" -> pv4))
+    val at1 = AbstractTrace( iBaz_f::iFoo_bd::Nil, Map("d" -> pv, "b" -> pv2, "f" ->pv4))
+    val at2 = AbstractTrace( iBar_e::iBaz_f::iFoo_bd::Nil, Map("d" -> pv, "b" -> pv2, "e" -> pv3, "f" -> pv4))
     val pc = Set(PureConstraint(pv, Equals, NullVal))
 
     val s_1 = s(at1, pc)

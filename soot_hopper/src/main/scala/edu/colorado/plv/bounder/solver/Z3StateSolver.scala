@@ -87,14 +87,12 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
     val params = ctx.mkParams()
     params.add("timeout", timeout)
     params.add("random-seed", randomSeed)
-//    params.add("timeout", 30000)
     // params.add("threads", 4) Note: threads cause weird decidability issue
 
     // set_option(max_args=10000000, max_lines=1000000, max_depth=10000000, max_visited=1000000)
-    //    params.add("timeout", 1600000)
 
     //TODO: does this get rid of the "let" statements when printing?
-    ctx.setPrintMode(Z3_ast_print_mode.Z3_PRINT_SMTLIB_FULL)
+    //    ctx.setPrintMode(Z3_ast_print_mode.Z3_PRINT_LOW_LEVEL)
     solver.setParameters(params)
     solver
   }
@@ -139,9 +137,30 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
 
   private def addrSort(implicit zCtx:Z3SolverCtx) = zCtx.ctx.mkUninterpretedSort("Addr")
 
-  override def checkSAT()(implicit zCtx:Z3SolverCtx): Boolean = {
-    val res = zCtx.solver.check()
-    interpretSolverOutput(res)
+  override def checkSAT(useCmd:Boolean)(implicit zCtx:Z3SolverCtx): Boolean = {
+    if(useCmd) {
+      File.temporaryFile().apply{ f =>
+        f.writeText(zCtx.solver.toString)
+        f.append("\n(check-sat)")
+        // Sometimes the java solver fails, we fall back to calling the command line tool
+        try {
+          val stdout = BounderUtil.runCmdStdout(s"timeout 360 z3 ${f}")
+          val isSat = !stdout.contains("unsat")
+          assert(stdout.contains("sat"), s"Malformed z3 output: ${stdout}")
+          isSat
+        } catch {
+          case e: RuntimeException =>
+            println(e.getMessage)
+            val f2 = File(s"timeout_${System.currentTimeMillis() / 1000L}.z3")
+            f.copyTo(f2)
+            throw new IllegalStateException(s"Command line timeout." +
+              s"smt file: ${f2.canonicalPath}")
+        }
+      }
+    } else {
+      val res = zCtx.solver.check()
+      interpretSolverOutput(res)
+    }
   }
 
   //TODO: push/pop may be causing "unreachable" issue
@@ -301,7 +320,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
       // Sometimes the java solver fails, we fall back to calling the command line tool
       try {
         println("fallback command line solver")
-        val stdout = BounderUtil.runCmdStdout(s"timeout 120 z3 ${f}")
+        val stdout = BounderUtil.runCmdStdout(s"timeout 360 z3 ${f}")
         if (stdout.contains("unsat"))
           false
         else

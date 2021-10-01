@@ -279,7 +279,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 //          val res = zipped.forall(matchesType)
 //          res
 //      })
-      ???
+      relIHere.nonEmpty //TODO: check points to set to see if alias exists ====
     }
 
     //TODO remove commented code for test exclusions
@@ -391,8 +391,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 //        val cin: Set[String] = callinNames(m)
 //        cin.contains(ci)
 //      }
-      val ciN = callinNames(m)
-      ciN.exists(state.fastIMatches)
+      val ciN: Set[String] = callinNames(m)
+      ciN.exists(v => state.fastIMatches(v,specSpace))
     }
     if (traceRelevantCallees.nonEmpty){
       val traceExists = traceRelevantCallees.exists{callee =>
@@ -447,7 +447,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 //        case _ => true
 //      }
 //    }
-    ???
+    true //TODO: check points to analysis and filter out things that can't point to each other
+
   }
 
   /**
@@ -457,11 +458,11 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
    * @param state state that would come after relevant location
    * @return whether location is relevant, if relevant, should drop a heap cell?
    */
-  def relevantMethod(loc: Loc, state: State): RelevanceRelation = RelevantMethod
+  def relevantMethod_disabled(loc: Loc, state: State): RelevanceRelation = RelevantMethod
   /**
   TODO: remove this relevance relation when new version works
    */
-  def relevantMethod_old(loc: Loc, state: State): RelevanceRelation = loc match {
+  def relevantMethod(loc: Loc, state: State): RelevanceRelation = loc match {
     case InternalMethodReturn(_, _, m) =>
       relevantMethodBody(m,state)
     case CallinMethodReturn(_, _) => RelevantMethod
@@ -602,6 +603,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
         locCb.flatMap{case AppLoc(method,line,_) => resolver.resolveCallbackExit(method, Some(line))}
       }).toList
       val componentFiltered = res.filter(callbackInComponent)
+      // filter for callbacks that may affect current state
       val res2 = componentFiltered.filter{m => relevantMethod(m,state) match{
         case RelevantMethod => true
         case DropHeapCellsMethod(_) => true
