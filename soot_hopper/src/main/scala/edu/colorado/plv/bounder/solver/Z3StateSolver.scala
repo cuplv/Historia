@@ -320,7 +320,8 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
       // Sometimes the java solver fails, we fall back to calling the command line tool
       try {
         println("fallback command line solver")
-        val stdout = BounderUtil.runCmdStdout(s"timeout 360 z3 ${f}")
+        //val stdout = BounderUtil.runCmdStdout(s"timeout 360 z3 ${f}")
+        val stdout = BounderUtil.runCmdStdout(s"timeout 3600 z3 ${f}")
         if (stdout.contains("unsat"))
           false
         else

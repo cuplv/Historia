@@ -2088,8 +2088,6 @@ class SymbolicExecutorTest extends AnyFunSuite {
     makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
   }
   test("Should attach click to Activity") {
-    //Click attached to different activity
-    //TODO: ====================== <clinit> should prevent any further methods on that class
     val src = """package com.example.createdestroy;
                 |import androidx.appcompat.app.AppCompatActivity;
                 |import android.os.Bundle;
@@ -2125,7 +2123,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         dbMode.startMeta()
 //        implicit val dbMode = MemoryOutputMode //LifecycleSpec.spec +
         val specs = new SpecSpace( Set(ViewSpec.clickWhileActive,
-           ViewSpec.noDupeFindView)) //TODO: =====================  add noDupe?
+           ViewSpec.noDupeFindView))
 //        val specs = new SpecSpace(Set(ViewSpec.clickWhileActive))
         val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
 
@@ -2304,9 +2302,11 @@ class SymbolicExecutorTest extends AnyFunSuite {
         val test: String => Unit = apk => {
           File.usingTemporaryDirectory() { tmpDir =>
             assert(apk != null)
-            implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
+            val dbFile = tmpDir / "paths.db"
+            implicit val dbMode = DBOutputMode(dbFile.toString, truncate = false)
+            println(dbFile)
             dbMode.startMeta()
-            //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
+//            implicit val dbMode = MemoryOutputMode
             val specs = new SpecSpace(Set(
               ViewSpec.clickWhileActive, ViewSpec.noDupeFindView
             ) ++ LifecycleSpec.spec)
@@ -2315,7 +2315,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
             val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
               specs, cha)
             val config = SymbolicExecutorConfig(
-              stepLimit = 200, w, transfer,
+              stepLimit = 280, w, transfer,
               component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode)
             val symbolicExecutor = config.getSymbolicExecutor
             val line = BounderUtil.lineForRegex(".*query1.*".r, src)
@@ -2337,11 +2337,9 @@ class SymbolicExecutorTest extends AnyFunSuite {
             prettyPrinting.dumpDebugInfo(nullUnreachRes, "finishNullUnreachRes")
             assert(nullUnreachRes.nonEmpty)
             BounderUtil.throwIfStackTrace(nullUnreachRes)
-            val interpretation = BounderUtil.interpretResult(nullUnreachRes, QueryFinished) == expected
-            if(!interpretation){
-              prettyPrinting.printWitness(nullUnreachRes)
-            }
-            assert(interpretation)
+            prettyPrinting.printWitness(nullUnreachRes)
+            assert(BounderUtil.interpretResult(nullUnreachRes, QueryFinished) == expected)
+            println()
           }
 
         }
@@ -2434,38 +2432,39 @@ class SymbolicExecutorTest extends AnyFunSuite {
             |import android.view.View.OnClickListener;
             |
             |
-public class MyActivity extends AppCompatActivity {
-    String s = null;
-    static OnClickListener listener2 = null;
-    @Override
-    protected void onResume(){
-        View v = findViewById(3);
-        s = "";
-        v.setOnClickListener(new OnClickListener(){
-           @Override
-           public void onClick(View v){
-             s.toString(); // query1
-           }
-        });
-        (new Handler()).postDelayed(new Runnable(){
-           @Override
-           public void run(){
-             MyActivity.this.finish();
-             ${disableClick}
-           }
-        }, 3000);
-    }
-
-    @Override
-    protected void onPause() {
-        s = null;
-    }
-}""".stripMargin
+            |public class MyActivity extends AppCompatActivity {
+            |    String s = null;
+            |    static OnClickListener listener2 = null;
+            |    @Override
+            |    protected void onResume(){
+            |        View v = findViewById(3);
+            |        s = "";
+            |        v.setOnClickListener(new OnClickListener(){
+            |           @Override
+            |           public void onClick(View v){
+            |             s.toString(); // query1
+            |           }
+            |        });
+            |        (new Handler()).postDelayed(new Runnable(){
+            |           @Override
+            |           public void run(){
+            |             MyActivity.this.finish();
+            |             ${disableClick}
+            |           }
+            |        }, 3000);
+            |    }
+            |
+            |    @Override
+            |    protected void onPause() {
+            |        s = null;
+            |    }
+            |}""".stripMargin
         val test: String => Unit = apk => {
           File.usingTemporaryDirectory() { tmpDir =>
             assert(apk != null)
-            implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
-            dbMode.startMeta()
+//            implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
+//            dbMode.startMeta()
+            implicit val dbMode = MemoryOutputMode
             //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
             val specs = new SpecSpace(Set(
               ViewSpec.clickWhileActive, ViewSpec.noDupeFindView
@@ -2475,7 +2474,7 @@ public class MyActivity extends AppCompatActivity {
             val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
               specs, cha)
             val config = SymbolicExecutorConfig(
-              stepLimit = 200, w, transfer,
+              stepLimit = 300, w, transfer,
               component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode)
             val symbolicExecutor = config.getSymbolicExecutor
             val line = BounderUtil.lineForRegex(".*query1.*".r, src)
@@ -2483,14 +2482,11 @@ public class MyActivity extends AppCompatActivity {
             val nullUnreach = ReceiverNonNull("com.example.createdestroy.MyActivity$1",
               "void onClick(android.view.View)", line, Some(".*toString.*"))
             val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
-            prettyPrinting.dumpDebugInfo(nullUnreachRes, "ConnectBotRow4")
+            prettyPrinting.dumpDebugInfo(nullUnreachRes, s"ConnectBotRow4_${expected}")
             assert(nullUnreachRes.nonEmpty)
             BounderUtil.throwIfStackTrace(nullUnreachRes)
-            val interpretation = BounderUtil.interpretResult(nullUnreachRes, QueryFinished) == expected
-            if(!interpretation){
-              prettyPrinting.printWitness(nullUnreachRes)
-            }
-            assert(interpretation)
+            prettyPrinting.printWitness(nullUnreachRes)
+            assert(BounderUtil.interpretResult(nullUnreachRes, QueryFinished) == expected)
           }
 
         }

@@ -166,8 +166,8 @@ object ViewSpec {
     List("_","v","@null") //TODO: ==============
   )
 
-  // val setOnClickListener:LSPred = NI(setOnClickListenerI, setOnClickListenerINull)
-  val setOnClickListener:LSPred = setOnClickListenerI
+   val setOnClickListener:LSPred = NI(setOnClickListenerI, setOnClickListenerINull)
+//  val setOnClickListener:LSPred = setOnClickListenerI
 
   //TODO: fix disallowCallinAfterActivityPause , .* doesn't work as a matcher due to overlap
   // v a - viewAttached

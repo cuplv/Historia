@@ -82,12 +82,20 @@ object StateSet {
     def iFind(edges: List[String], pathNode:IPathNode, current:StateSet):Option[IPathNode] = {
       //TODO: does par cause issues here?
       //TODO:======== does sorting improve runtime?
+      println(s"Searching ${current.states.size} states for subsumption of state: ${pathNode.qry.getState}")
       val search = current.states.toList.sortBy{ n =>
         n.qry.getState.map(s => s.sf.traceAbstraction.rightOfArrow.size).getOrElse(0)
       }
+      var startTime = System.currentTimeMillis()
       val currentCanSubs = search.find{ subsuming =>
+        val basis = startTime
+        startTime = System.currentTimeMillis()
+        println(s"   subsuming state: ${subsuming.qry.getState}")
         fastCount = fastCount + 1
-        canSubsume(subsuming.qry.getState.get, pathNode.qry.getState.get)
+        val res = canSubsume(subsuming.qry.getState.get, pathNode.qry.getState.get)
+        println(s"        time: ${startTime-basis}")
+        println(s"        result: ${res}")
+        res
       }
       if(currentCanSubs.isDefined)
         return currentCanSubs
@@ -140,23 +148,10 @@ object SwapLoc {
         case NopCmd(loc) => None
         case SwitchCmd(key, targets, loc) => None
         case ThrowCmd(loc) => None
-        case _ => None //TODO: Does any of this crap make a difference in runtime?
+        case _ => None //TODO: Does any of this make a difference in runtime?
       }
     }
     case AppLoc(_,_,false) => None
-    case AppLoc(_,_,_) => None
-//    case a@AppLoc(method, line, true) => {
-//      val cmd = w.cmdAtLocation(a)
-//      cmd match {
-////        case InvokeCmd(_, _) => Some(CodeLocation(a)) //TODO: commented out due to breaking path condition skipping
-////        case AssignCmd(_, VirtualInvoke(_,_,_,_),_) => Some(CodeLocation(a))
-////        case AssignCmd(_, SpecialInvoke(_,_,_,_),_) => Some(CodeLocation(a))
-////        case AssignCmd(_, StaticInvoke(_,_,_),_) => Some(CodeLocation(a))
-////        case ReturnCmd(returnVar, loc) =>
-////          Some(CodeLocation(a)) //TODO: check if this improves things
-//        case _ => None
-//      }
-//    }
     case _: CallinMethodInvoke => None // message locations don't remember program counter so subsumption is unsound
     case _: CallinMethodReturn => None
     case _: GroupedCallinMethodInvoke => None
