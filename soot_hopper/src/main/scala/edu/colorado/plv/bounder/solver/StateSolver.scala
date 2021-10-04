@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.solver
 
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.ir.{BitTypeSet, TAddr, TMessage, TNullVal, TypeSet, WitnessExplanation}
+import edu.colorado.plv.bounder.ir.{BitTypeSet, MessageType, TAddr, TMessage, TNullVal, TypeSet, WitnessExplanation}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.LifeState._
 import edu.colorado.plv.bounder.solver.StateSolver.rhsToPred
@@ -1146,11 +1146,58 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     if(!s2HasMoreOfEach){
       return false
     }
+
+    //// Compute the set of required positive "I"s.  Cannot subsume if not subset
     //val s1Pred = StateSolver.rhsToPred(s1.sf.traceAbstraction.rightOfArrow, specSpace)
+    //val s1MustI = s1Pred.flatMap(mustISet)
     //val s2Pred = StateSolver.rhsToPred(s2.sf.traceAbstraction.rightOfArrow, specSpace)
-    //TODO: is there something we could do to quickly eliminate tracepred subsumption without calling z3?
+    //val s2MustI = s2Pred.flatMap(mustISet)
+    ////TODO: is there something we could do to quickly eliminate tracepred subsumption without calling z3?
+
+
+    // TODO: test if requiring subsuming state is suffix of subsumee improves speed
+    // TODO: this should be done by StateSet rather than here for better performance
+    // Note: sound but possibly not precise
+    // if(!suffixSame(s1.sf.traceAbstraction.rightOfArrow, s2.sf.traceAbstraction.rightOfArrow))
+    //   return false
 
     canSubsumeZ3(s1,s2,specSpace, maxLen)
+  }
+  // s1 subsuming state
+  // s2 state being subsumed
+  // TODO: May want to handle alpha renaming, but see if this works first
+  private def suffixSame(s1Suffix: List[LSSingle], s2Suffix:List[LSSingle]):Boolean = (s1Suffix, s2Suffix) match{
+    case (I(mt1,sig1,v)::t1, I(mt2,sig2,_)::t2) if mt1 != mt2 || sig1 != sig2 => suffixSame(I(mt1,sig1,v)::t1, t2)
+    case (I(mt1,sig1,_)::t1, I(mt2,sig2,_)::t2) if mt1 == mt2 && sig1 == sig2 => suffixSame(t1,t2)
+    case (FreshRef(_)::t1, s2Suffix) => suffixSame(t1,s2Suffix)
+    case (CLInit(_)::t1, s2Suffix) => suffixSame(t1,s2Suffix)
+    case (s1Suffix, FreshRef(_)::t2) => suffixSame(s1Suffix,t2)
+    case (s1Suffix, CLInit(_)::t2) => suffixSame(s1Suffix,t2)
+    case (Nil,_) => true
+    case (_::_, Nil) => false
+  }
+  private def suffix(state:State):List[String] = {
+    state.sf.traceAbstraction.rightOfArrow.map {
+      case c@CLInit(_) => c.toString
+      case FreshRef(_) => "FreshRef"
+      case I(mt, signatures, _) => s"I(${mt}, ${signatures.identifier})"
+    }
+  }
+
+  private def mustISet(s1Pred: LSPred):Set[(MessageType, SignatureMatcher)] = s1Pred match {
+    case LSConstraint(v1, op, v2) => Set()
+    case Forall(vars, p) => mustISet(p)
+    case Exists(vars, p) => mustISet(p)
+    case LSImplies(l1, l2) => Set()
+    case And(l1, l2) => mustISet(l1).union(mustISet(l2))
+    case Not(l) => Set()
+    case Or(l1, l2) => mustISet(l1).intersect(mustISet(l2))
+    case LifeState.LSTrue => Set()
+    case LifeState.LSFalse => Set()
+    case CLInit(sig) => Set()
+    case FreshRef(v) => Set()
+    case I(mt, signatures, lsVars) => Set((mt,signatures))
+    case NI(i1, i2) => mustISet(i1)
   }
 
   def allTypes(state:State)(implicit zctx:C):Set[Int] = {

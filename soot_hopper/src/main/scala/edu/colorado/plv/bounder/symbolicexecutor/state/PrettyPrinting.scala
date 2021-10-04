@@ -17,9 +17,11 @@ class PrettyPrinting() {
     terminals.foreach(n => n.qry match {
       case WitnessedTruncatedQry(_, trace) =>
         witFound = true
+        println("Witness")
         println(trace)
       case WitnessedQry(_, _, trace) =>
         witFound = true
+        println("Witness")
         println(trace)
       case _ => false
     })

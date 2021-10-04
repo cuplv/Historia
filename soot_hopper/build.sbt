@@ -75,3 +75,5 @@ mainClass in assembly := Some("edu.colorado.plv.bounder.Driver")
 //unmanagedResources in Compile := Seq() //we don't want to add resources from "src/main/resources" to inner jar
 
 //mappings in assembly += (file("src/main/resources/filename.json"),"path/to/resource/in/onejar")
+
+//notes: use "sbt assembly" to create fat jar

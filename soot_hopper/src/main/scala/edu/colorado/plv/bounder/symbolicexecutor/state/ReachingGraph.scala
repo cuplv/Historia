@@ -317,6 +317,44 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
     val future = db.run(q2)
     Await.result(future, 30 seconds)
   }
+  def getAllStates():Set[State] = {
+    val q = witnessQry
+    var res: Seq[WitTableRow] = Await.result(db.run(q.result), 600 seconds)
+    res.flatMap{row =>
+      val node = rowToNode(row)
+      node.qry.getState
+    }.toSet
+  }
+  def getAllLiveStates():Set[State] = {
+    val q = witnessQry
+    val res: Seq[WitTableRow] = Await.result(db.run(q.result), 600 seconds)
+    res.flatMap{row =>
+      val node: DBPathNode = rowToNode(row)
+      if(node.subsumedID.isEmpty)
+        node.qry match {
+          case LiveQry(state, _) => Some(state)
+          case LiveTruncatedQry(_) => None
+          case WitnessedTruncatedQry(loc, explanation) =>
+            throw new IllegalArgumentException("WitnessedTruncatedQry not supported")
+          case BottomTruncatedQry(loc) =>
+            throw new IllegalArgumentException("BottomTruncatedQry not supported")
+          case BottomQry(_, _) => None
+          case WitnessedQry(state, _, _) => Some(state)
+        }
+      else None
+    }.toSet
+  }
+  def getAllSubsumedStates():Set[(State, State)] = {
+    val q = witnessQry
+    val res: Seq[WitTableRow] = Await.result(db.run(q.result), 600 seconds)
+    res.flatMap{row =>
+      val node: DBPathNode = rowToNode(row)
+      if(node.subsumedID.isDefined) {
+        node.qry.getState.map(s => (s,readNode(node.subsumedID.get).qry.getState.get ))
+      }
+      else None
+    }.toSet
+  }
   def readNode(id: Int):DBPathNode = {
     val q = witnessQry.filter(_.id === id)
     var res: Seq[WitTableRow] = Await.result(db.run(q.result), 30 seconds)
