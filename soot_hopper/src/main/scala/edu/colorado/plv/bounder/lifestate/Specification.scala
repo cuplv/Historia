@@ -113,6 +113,12 @@ object RxJavaSpec{
 }
 
 object LifecycleSpec {
+  //TODO: ======= check if this fixes connectBot
+  val noResumeWhileFinish: LSSpec = LSSpec("a"::Nil, Nil,
+    Not(I(CIExit, SpecSignatures.Activity_finish, "_"::"a"::Nil)),
+    SpecSignatures.Activity_onCreate_entry
+  )
+
   val viewAttached: LSPred = SpecSignatures.Activity_findView_exit //TODO: ... or findView on other view
   val destroyed: LSPred = NI(SpecSignatures.Activity_onDestroy_exit, SpecSignatures.Activity_onCreate_entry)
   val created: LSPred = NI(SpecSignatures.Activity_onCreate_entry, SpecSignatures.Activity_onDestroy_exit)
@@ -145,6 +151,7 @@ object LifecycleSpec {
 //    NI(SpecSignatures.Activity_onCreate_entry, SpecSignatures.Activity_onDestroy_exit),
 //    SpecSignatures.Activity_onDestroy_exit)
 
+  // TODO: This seems to cause timeouts when combined with the onClick spec
   val spec:Set[LSSpec] = Set(
     Fragment_activityCreatedOnlyFirst,
     Activity_createdOnlyFirst,
@@ -161,12 +168,16 @@ object ViewSpec {
     SubClassMatcher("android.view.View",".*setOnClickListener.*","View_setOnClickListener"),
     List("_","v","l")
   )
+  val setOnClickListenerIl2:I = I(CIExit,
+    SubClassMatcher("android.view.View",".*setOnClickListener.*","View_setOnClickListener"),
+    List("_","v","_")
+  )
   private val setOnClickListenerINull = I(CIExit,
     SubClassMatcher("android.view.View",".*setOnClickListener.*","View_setOnClickListener"),
     List("_","v","@null") //TODO: ==============
   )
 
-   val setOnClickListener:LSPred = NI(setOnClickListenerI, setOnClickListenerINull)
+   val setOnClickListener:LSPred = NI(setOnClickListenerI, setOnClickListenerINull) // TODO: setOnClickListenerIl2 causes bad proof in "finish allows click after pause, why?
 //  val setOnClickListener:LSPred = setOnClickListenerI
 
   //TODO: fix disallowCallinAfterActivityPause , .* doesn't work as a matcher due to overlap
@@ -190,9 +201,9 @@ object ViewSpec {
   private val fv2 = I(CIExit, SpecSignatures.Activity_findView, "v"::"a2"::Nil)
   private val fv_exit = I(CIExit, SpecSignatures.Activity_findView, "v"::"_"::Nil)
   // Ɐv,a,a2. ¬ I(ci v:= a2.findViewByID()) \/ a = a2 <= ci v:= a.findViewByID()
-//  val noDupeFindView:LSSpec = LSSpec("a"::"a2"::"v"::Nil, Nil, Or(Not(fv2), LSConstraint("a", Equals, "a2")), fv1)
+  val noDupeFindView:LSSpec = LSSpec("a"::"a2"::"v"::Nil, Nil, Or(Not(fv2), LSConstraint("a", Equals, "a2")), fv1)
 
-  val noDupeFindView:LSSpec = LSSpec("v"::Nil,Nil, Not(fv_exit), fv_exit)  // UNSOUND test version of noDupe
+//  val noDupeFindView:LSSpec = LSSpec("v"::Nil,Nil, Not(fv_exit), fv_exit)  //TODO: UNSOUND test version of noDupe
 }
 object SAsyncTask{
   private val AsyncTaskC = Set("android.os.AsyncTask")

@@ -20,6 +20,7 @@ case class OnePVMap(tgt:PureVar) extends PVMap
 case class TwoPVMap(src:PureVar,tgt:PureVar) extends PVMap
 
 object StateSet {
+  private val DEBUG = false
   def init: StateSet = StateSet(Map(),Set())
   private def localEdgeFromFrame(sf:CallStackFrame,
                                            state:State,
@@ -82,7 +83,6 @@ object StateSet {
     def iFind(edges: List[String], pathNode:IPathNode, current:StateSet):Option[IPathNode] = {
       //TODO: does par cause issues here?
       //TODO:======== does sorting improve runtime?
-      println(s"Searching ${current.states.size} states for subsumption of state: ${pathNode.qry.getState}")
       val search = current.states.toList.sortBy{ n =>
         n.qry.getState.map(s => s.sf.traceAbstraction.rightOfArrow.size).getOrElse(0)
       }
@@ -90,11 +90,14 @@ object StateSet {
       val currentCanSubs = search.find{ subsuming =>
         val basis = startTime
         startTime = System.currentTimeMillis()
-        println(s"   subsuming state: ${subsuming.qry.getState}")
+        if(DEBUG)
+          println(s"   subsuming state: ${subsuming.qry.getState}")
         fastCount = fastCount + 1
         val res = canSubsume(subsuming.qry.getState.get, pathNode.qry.getState.get)
-        println(s"        time: ${startTime-basis}")
-        println(s"        result: ${res}")
+        if(DEBUG) {
+          println(s"        time: ${startTime - basis}")
+          println(s"        result: ${res}")
+        }
         res
       }
       if(currentCanSubs.isDefined)
@@ -115,6 +118,7 @@ object StateSet {
       }
     }
 
+    println(s"Searching ${stateSet.states.size} states for subsumption of state: ${pathNode.qry.getState}")
     val out = iFind((local ++ heap).toList, pathNode, stateSet)
     // uncomment code below to sanity check StateSet
     // StateSet uses a trie set to reduce the number of subsumption queries
