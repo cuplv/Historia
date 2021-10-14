@@ -20,7 +20,7 @@ case class OnePVMap(tgt:PureVar) extends PVMap
 case class TwoPVMap(src:PureVar,tgt:PureVar) extends PVMap
 
 object StateSet {
-  private val DEBUG = false
+  private val DEBUG = true
   def init: StateSet = StateSet(Map(),Set())
   private def localEdgeFromFrame(sf:CallStackFrame,
                                            state:State,
@@ -85,7 +85,7 @@ object StateSet {
       //TODO:======== does sorting improve runtime?
       val search = current.states.toList.sortBy{ n =>
         n.qry.getState.map(s => s.sf.traceAbstraction.rightOfArrow.size).getOrElse(0)
-      }
+      }.par
       var startTime = System.currentTimeMillis()
       val currentCanSubs = search.find{ subsuming =>
         val basis = startTime
@@ -117,8 +117,8 @@ object StateSet {
         case Nil => None // Any further edges would mean that the subsuming state has edges the subsumee doesn't
       }
     }
-
-    println(s"Searching ${stateSet.states.size} states for subsumption of state: ${pathNode.qry.getState}")
+    if(DEBUG)
+      println(s"Searching states for subsumption of state: ${pathNode.qry.getState}")
     val out = iFind((local ++ heap).toList, pathNode, stateSet)
     // uncomment code below to sanity check StateSet
     // StateSet uses a trie set to reduce the number of subsumption queries
