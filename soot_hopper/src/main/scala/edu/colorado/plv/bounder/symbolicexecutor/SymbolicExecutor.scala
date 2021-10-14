@@ -212,7 +212,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       val s1 = h.qry.getState.get
       val s2 = pathNode.qry.getState.get
       val subsLocs = subsMap(l2).get(s2.sf.callStack.size)
-      if(stateSolver.canSubsume(s1,s2, transfer.getSpec)){
+      if(stateSolver.canSubsume(s1,s2, transfer.getSpec, timeout = None)){
         Some(h)
       }else {
         isSubsumed_backtrack(pathNode,l,subsMap, h.succ ++ t)
