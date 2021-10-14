@@ -903,6 +903,32 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     assert(stateSolver.canSubsume(s1h,s2h, spec2))
     assert(!stateSolver.canSubsume(s2h,s1h,spec2))
   }
+  test("|>v.onClick() subsume |> v2 = a.findViewByID() |>v.onClick()"){ f =>
+    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val clickTgt = I(CBEnter, ViewSpec.onClick, "_"::"v"::Nil)
+    val findVTgt = I(CBEnter, SpecSignatures.Activity_findView, "v2"::"a"::Nil)
+    val findV = I(CBEnter, SpecSignatures.Activity_findView, "v"::"a"::Nil)
+
+
+    // Test for timeout with simplified click spec
+    val spec = new SpecSpace(Set(
+      LSSpec("v"::Nil, "a"::Nil, findV, clickTgt),
+      ViewSpec.viewOnlyReturnedFromOneActivity
+    ))
+    val st1 = st(AbstractTrace(clickTgt::Nil, Map("v" -> p1, "z"->p4)))
+    val st2 = st(AbstractTrace(FreshRef("z")::findVTgt::clickTgt::Nil,
+      Map("v" -> p1, "v2" -> p2, "a" -> p3, "z"->p4)))
+    val res = stateSolver.canSubsume(st1,st2, spec)
+    val res2 = stateSolver.canSubsume(st2, st1, spec)
+
+    val specfull = new SpecSpace(Set(
+      ViewSpec.clickWhileActive,
+      ViewSpec.viewOnlyReturnedFromOneActivity
+    ))
+    val res3 = stateSolver.canSubsume(st1, st2, spec)
+    val res4 = stateSolver.canSubsume(st2,st1, spec)
+    println()
+  }
   test("|>x.onDestroy() should subsume |>x.onDestroy()|>y.onDestroy()"){f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
     val specs = new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
@@ -945,7 +971,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
   }
   ignore("duplicate resume/onClickListener should subsume"){ f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
-    val specs = new SpecSpace(Set(ViewSpec.clickWhileNotDisabled, ViewSpec.noDupeFindView))
+    val specs = new SpecSpace(Set(ViewSpec.clickWhileNotDisabled, ViewSpec.viewOnlyReturnedFromOneActivity))
 
     // I(CBEnter I_CBEnter_Activity_onResume ( _,p-5 );
     // I(CIExit I_CIExit_Activity_findView ( p-4,p-5 );
