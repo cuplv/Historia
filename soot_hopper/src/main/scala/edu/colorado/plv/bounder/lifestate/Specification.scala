@@ -101,6 +101,7 @@ object FragmentGetActivityNullSpec{
 }
 
 object RxJavaSpec{
+  //TODO: \/ I(create(l)) =======
   val subUnsub:LSPred = NI(
     SpecSignatures.RxJava_subscribe_exit,
     SpecSignatures.RxJava_unsubscribe_exit)
@@ -116,7 +117,8 @@ object LifecycleSpec {
   //TODO: ======= check if this fixes connectBot
   val noResumeWhileFinish: LSSpec = LSSpec("a"::Nil, Nil,
     Not(I(CIExit, SpecSignatures.Activity_finish, "_"::"a"::Nil)),
-    SpecSignatures.Activity_onCreate_entry
+    SpecSignatures.Activity_onResume_entry
+//    SpecSignatures.Activity_onCreate_entry
   )
 
   val viewAttached: LSPred = SpecSignatures.Activity_findView_exit //TODO: ... or findView on other view
@@ -127,10 +129,10 @@ object LifecycleSpec {
   val paused:LSPred =
     Or(Not(SpecSignatures.Activity_onResume_entry),
       NI(SpecSignatures.Activity_onPause_exit, SpecSignatures.Activity_onResume_entry))
-//  val Activity_onResume_onlyafter_onPause: LSSpec = LSSpec("a"::Nil, Nil, Or(
-//    NI(SpecSignatures.Activity_onPause_exit, SpecSignatures.Activity_onResume_entry),
-//      ???) //TODO: resume/pause toggle should allow onResume first
-//    , SpecSignatures.Activity_onResume_entry)
+  val Activity_onResume_first_orAfter_onPause: LSSpec = LSSpec("a"::Nil, Nil, Or(
+    NI(SpecSignatures.Activity_onPause_exit, SpecSignatures.Activity_onResume_entry),
+    And(Not(SpecSignatures.Activity_onPause_exit), Not(SpecSignatures.Activity_onResume_entry))) //TODO: resume/pause toggle should allow onResume first
+    , SpecSignatures.Activity_onResume_entry)
   val Activity_onResume_dummy:LSSpec = LSSpec("a"::Nil, Nil, LSTrue, SpecSignatures.Activity_onResume_entry)
   val Activity_onPause_onlyafter_onResume: LSSpec = LSSpec("a"::Nil, Nil, resumed,
     SpecSignatures.Activity_onPause_entry)
@@ -194,14 +196,21 @@ object ViewSpec {
 
   // TODO: disable click after setEnable(false) CURRENTLY UNSOUND, needs false ============
   private val setEnabled = SubClassMatcher(Set("android.view.View"), ".*setEnabled.*", "View_setEnabled")
+  private val buttonEnabled = Or(Not(I(CIExit, setEnabled, "_"::"v"::"@false"::Nil)),
+    NI(I(CIExit, setEnabled, "_"::"v"::"@true"::Nil), I(CIExit, setEnabled, "_"::"v"::"@false"::Nil))
+  )
+  private val unsoundNotDisabled = Not(I(CIExit, setEnabled, "_"::"v"::Nil))
   val clickWhileNotDisabled:LSSpec = LSSpec("l"::Nil, "v"::Nil,
-    And(setOnClickListenerI, Not(I(CIExit, setEnabled, "_"::"v"::Nil))),
+    And(setOnClickListenerI, buttonEnabled),
     I(CBEnter, onClick, List("_", "l")))
   private val fv1 = I(CIExit, SpecSignatures.Activity_findView, "v"::"a"::Nil)
   private val fv2 = I(CIExit, SpecSignatures.Activity_findView, "v"::"a2"::Nil)
   private val fv_exit = I(CIExit, SpecSignatures.Activity_findView, "v"::"_"::Nil)
   // Ɐv,a,a2. ¬ I(ci v:= a2.findViewByID()) \/ a = a2 <= ci v:= a.findViewByID()
-  val noDupeFindView:LSSpec = LSSpec("a"::"a2"::"v"::Nil, Nil, Or(Not(fv2), LSConstraint("a", Equals, "a2")), fv1)
+  val viewOnlyReturnedFromOneActivity:LSSpec =
+    LSSpec("a"::"a2"::"v"::Nil, Nil, Or(Not(fv2), LSConstraint("a", Equals, "a2")), fv1)
+//  val sameIDSameView:LSSpec =
+//    LSSpec()
 
 //  val noDupeFindView:LSSpec = LSSpec("v"::Nil,Nil, Not(fv_exit), fv_exit)  //TODO: UNSOUND test version of noDupe
 }

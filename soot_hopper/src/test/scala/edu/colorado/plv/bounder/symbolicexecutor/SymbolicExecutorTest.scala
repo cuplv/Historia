@@ -1403,7 +1403,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           |
           |public class MyFragment extends Fragment implements Action1<Object>{
           |    Subscription sub;
-          |    //TODO: add callback with irrelevant subscribe
+          |    //Callback with irrelevant subscribe
           |    @Override
           |    public void onViewCreated(View view, Bundle savedInstanceState) {
           |        Single.create(subscriber -> {
@@ -1622,7 +1622,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
            |    FeedRemover remover = null;
            |    View button = null;
            |    @Override
-           |    public void onResume(){
+           |    public void onCreate(Bundle b){
            |        remover = new FeedRemover();
            |        button = findViewById(3);
            |        button.setOnClickListener(this);
@@ -1646,6 +1646,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
            |
            |		  @Override
            |		  protected void onPostExecute(String result) {
+           |        RemoverActivity.this.finish();
            |		  }
            |	  }
            |}
@@ -1655,7 +1656,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         assert(apk != null)
         val specs = Set[LSSpec](
           ViewSpec.clickWhileNotDisabled,
-          LifecycleSpec.Activity_onResume_dummy
+          LifecycleSpec.Activity_createdOnlyFirst
         )
         val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
@@ -1683,7 +1684,6 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
       makeApkWithSources(Map("RemoverActivity.java" -> src), MkApk.RXBase, test)
     }
-    ??? //TODO: clickWhileActive spec needs to distinguish false
   }
 
   test("Reachable location call and subscribe"){
@@ -2064,7 +2064,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         assert(apk != null)
         implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
         dbMode.startMeta()
-        val specs = new SpecSpace(Set(ViewSpec.clickWhileActive, ViewSpec.noDupeFindView))
+        val specs = new SpecSpace(Set(ViewSpec.clickWhileActive, ViewSpec.viewOnlyReturnedFromOneActivity))
         val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
 
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
@@ -2123,7 +2123,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         dbMode.startMeta()
 //        implicit val dbMode = MemoryOutputMode //LifecycleSpec.spec +
         val specs = new SpecSpace( Set(ViewSpec.clickWhileActive,
-           ViewSpec.noDupeFindView))
+           ViewSpec.viewOnlyReturnedFromOneActivity))
 //        val specs = new SpecSpace(Set(ViewSpec.clickWhileActive))
         val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
 
@@ -2211,7 +2211,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         dbMode.startMeta()
         //        implicit val dbMode = MemoryOutputMode
         // LifecycleSpec.spec +
-        val specs = new SpecSpace( Set(ViewSpec.clickWhileActive, ViewSpec.noDupeFindView))
+        val specs = new SpecSpace( Set(ViewSpec.clickWhileActive, ViewSpec.viewOnlyReturnedFromOneActivity))
         // + ViewSpec.noDupeFindView) //TODO: =====================  add noDupe back in if other tests use it
         //        val specs = new SpecSpace(Set(ViewSpec.clickWhileActive))
         val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
@@ -2308,7 +2308,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
             dbMode.startMeta()
             //            implicit val dbMode = MemoryOutputMode
             val specs = new SpecSpace(Set(
-              ViewSpec.clickWhileActive, ViewSpec.noDupeFindView, LifecycleSpec.noResumeWhileFinish
+              ViewSpec.clickWhileActive, ViewSpec.viewOnlyReturnedFromOneActivity, LifecycleSpec.noResumeWhileFinish
             )) // ++ LifecycleSpec.spec)
             val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
 
@@ -2415,6 +2415,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
   }
   test("Row 4: Connect bot click/finish") {
+    val startTime = System.currentTimeMillis()
     List(
       ("v.setOnClickListener(null);", Proven),
       ("", Witnessed)
@@ -2469,7 +2470,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
 //            implicit val dbMode = MemoryOutputMode
             //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
             val specs = new SpecSpace(Set(
-              ViewSpec.clickWhileActive, ViewSpec.noDupeFindView, LifecycleSpec.noResumeWhileFinish
+              ViewSpec.clickWhileActive, ViewSpec.viewOnlyReturnedFromOneActivity, LifecycleSpec.noResumeWhileFinish,
+              LifecycleSpec.Activity_onResume_first_orAfter_onPause, LifecycleSpec.Activity_onPause_onlyafter_onResume
             )) // ++ LifecycleSpec.spec)
             val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
 
@@ -2489,6 +2491,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
             BounderUtil.throwIfStackTrace(nullUnreachRes)
             prettyPrinting.printWitness(nullUnreachRes)
             assert(BounderUtil.interpretResult(nullUnreachRes, QueryFinished) == expected)
+            dbFile.copyToDirectory(File("/Users/shawnmeier/Desktop/Row3"))
           }
 
         }
@@ -2562,5 +2565,6 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
       makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
     }
+    println(s"Test took ${startTime - System.currentTimeMillis()} milliseconds")
   }
 }
