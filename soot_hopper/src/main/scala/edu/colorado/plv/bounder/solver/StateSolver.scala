@@ -1,5 +1,6 @@
 package edu.colorado.plv.bounder.solver
 
+import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{BitTypeSet, MessageType, TAddr, TMessage, TNullVal, TypeSet, WitnessExplanation}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
@@ -68,7 +69,25 @@ object StateSolver{
       // Creation of reference (occurs earlier than instantiation)
       lSPred
     case i:I => updArrowPhi(i,lSPred)
-    case CLInit(sig) => lSPred
+//    case CLInit(sig) => lSPred //TODO: make all I/NI referencing sig positively "false" =====
+    case CLInit(sig) => clInitRefToFalse(lSPred, sig)
+  }
+  private def clInitRefToFalse(lsPred: LSPred, sig:String):LSPred = lsPred match {
+    case lc:LSConstraint => lc
+    case Forall(vars, p) => Forall(vars, clInitRefToFalse(p, sig))
+    case Exists(vars, p) => Exists(vars, clInitRefToFalse(p, sig))
+    case LSImplies(l1, l2) => LSImplies(clInitRefToFalse(l1,sig), clInitRefToFalse(l2,sig))
+    case And(l1, l2) => And(clInitRefToFalse(l1,sig), clInitRefToFalse(l2, sig))
+    case Not(l) => Not(clInitRefToFalse(l, sig))
+    case Or(l1, l2) => Or(clInitRefToFalse(l1,sig), clInitRefToFalse(l2, sig))
+    case LifeState.LSTrue => LifeState.LSTrue
+    case LifeState.LSFalse => LifeState.LSFalse
+    case I(_,mSig, _) if mSig.matchesClass(sig) => LSFalse
+    case i:I => i
+    case NI(I(_,mSig, _),_) if mSig.matchesClass(sig) => LSFalse
+    case ni:NI => ni
+    case CLInit(sig2) if sig == sig2 => LSFalse
+    case f:FreshRef => f
   }
   private def instArrowPhi(target:LSSingle,specSpace: SpecSpace, includeDis:Boolean):LSPred= target match {
     case i:I =>
@@ -99,7 +118,15 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   // checking
   def getSolverCtx: C
 
-  def checkSAT(useCmd:Boolean)(implicit zCtx: C): Boolean
+  /**
+   * Check satisfiability of fomrula in solver
+   * @throws IllegalStateException if formula is undecidable or times out
+   * @param useCmd if true, call z3 using bash
+   * @param timeout if usecmd is true, set timeout
+   * @param zCtx solver context
+   * @return satisfiability of formula
+   */
+  def checkSAT(useCmd:Boolean, timeout:Option[Int] = None)(implicit zCtx: C): Boolean
 
   def push()(implicit zCtx: C): Unit
 
@@ -1096,7 +1123,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    * @param s2 contained state
    * @return
    */
-  def canSubsume(s1: State, s2: State, specSpace: SpecSpace, maxLen: Option[Int] = None): Boolean = {
+  def canSubsume(s1: State, s2: State, specSpace: SpecSpace, maxLen: Option[Int] = None, timeout:Option[Int] = None): Boolean = {
     // Check if stack sizes or locations are different
     if (s1.callStack.size != s2.callStack.size)
       return false
@@ -1161,7 +1188,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     // if(!suffixSame(s1.sf.traceAbstraction.rightOfArrow, s2.sf.traceAbstraction.rightOfArrow))
     //   return false
 
-    canSubsumeZ3(s1,s2,specSpace, maxLen)
+    canSubsumeZ3(s1,s2,specSpace, maxLen, timeout)
   }
   // s1 subsuming state
   // s2 state being subsumed
@@ -1207,7 +1234,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     usedTypes
   }
 
-  def canSubsumeZ3(s1:State, s2:State,specSpace:SpecSpace, maxLen:Option[Int]):Boolean = {
+  def canSubsumeZ3(s1:State, s2:State,specSpace:SpecSpace, maxLen:Option[Int], timeout:Option[Int]):Boolean = {
     try {
       implicit val zCtx: C = getSolverCtx
       val messageTranslator: MessageTranslator = MessageTranslator(List(s1, s2), specSpace)
@@ -1222,13 +1249,31 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         specSpace = specSpace, debug = maxLen.isDefined)
       zCtx.mkAssert(s2Enc)
       val foundCounter = try {
-        checkSAT(useCmd = false) //TODO: ===== is this an improvement to use cmd instead?
+        checkSAT(useCmd = true, timeout) //TODO: ===== is this an improvement to use cmd instead?
       }catch {
         case e:IllegalStateException =>
-          println("subsumption timeout:")
-          println(s"  s1: ${s1}")
-          println(s"  s2: ${s2}")
-          throw e
+           println("subsumption timeout:")
+           println(s"timeout: ${timeout}")
+           println(s"  s1: ${s1}")
+           println(s"  s1 ɸ_lhs: " +
+             s"${StateSolver.rhsToPred(s1.traceAbstraction.rightOfArrow,specSpace)
+               .map(pred => pred.stringRep(v => s1.sf.traceAbstraction.modelVars.getOrElse(v,v)))
+               .mkString("  &&  ")}")
+           println(s"  s2: ${s2}")
+           println(s"  s2 ɸ_lhs: " +
+             s"${StateSolver.rhsToPred(s2.traceAbstraction.rightOfArrow,specSpace)
+               .map(pred => pred.stringRep(v => s2.sf.traceAbstraction.modelVars.getOrElse(v,v)))
+               .mkString("  &&  ")}")
+          // uncomment to dump serialized timeout states
+          // val s1f = File("s1_timeout.json")
+          // val s2f = File("s2_timeout.json")
+          // s1f.write(write(s1))
+          // s2f.write(write(s2))
+          // throw e
+
+          // TODO: need mechanism so that if a timeout occurs and no other state subsumes we throw an error
+          // TODO: =================== double check that this behaves as expected
+          false
       }
       if (foundCounter && maxLen.isDefined) {
         printDbgModel(messageTranslator, Set(s1.traceAbstraction,s2.traceAbstraction), "")
