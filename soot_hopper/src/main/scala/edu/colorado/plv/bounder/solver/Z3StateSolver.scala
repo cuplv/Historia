@@ -140,7 +140,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   override def checkSAT(useCmd:Boolean, timeout:Option[Int])(implicit zCtx:Z3SolverCtx): Boolean = {
     val timeoutS = timeout match {
       case Some(time) => time.toString
-      case None => "60" //TODO:======================
+      case None => "360" //TODO:======================
     }
     if(useCmd) {
       File.temporaryFile().apply{ f =>
@@ -149,6 +149,9 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
         // Sometimes the java solver fails, we fall back to calling the command line tool
         try {
           val stdout = BounderUtil.runCmdStdout(s"timeout $timeoutS z3 ${f}")
+          if(stdout.contains("unknown")){
+            throw new RuntimeException()
+          }
           val isSat = !stdout.contains("unsat")
           assert(stdout.contains("sat"), s"Malformed z3 output: ${stdout}")
           isSat
@@ -156,6 +159,8 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
           case e: RuntimeException =>
             println(e.getMessage)
             val f2 = File(s"timeout_${System.currentTimeMillis()}.z3")
+            if(f2.exists())
+              f2.delete()
             f.copyTo(f2)
             throw new IllegalStateException(s"Command line timeout." +
               s"smt file: ${f2.canonicalPath}")

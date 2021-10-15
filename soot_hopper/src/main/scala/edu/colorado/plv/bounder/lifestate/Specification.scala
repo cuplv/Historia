@@ -131,9 +131,9 @@ object LifecycleSpec {
       NI(SpecSignatures.Activity_onPause_exit, SpecSignatures.Activity_onResume_entry))
   val Activity_onResume_first_orAfter_onPause: LSSpec = LSSpec("a"::Nil, Nil, Or(
     NI(SpecSignatures.Activity_onPause_exit, SpecSignatures.Activity_onResume_entry),
-    And(Not(SpecSignatures.Activity_onPause_exit), Not(SpecSignatures.Activity_onResume_entry))) //TODO: resume/pause toggle should allow onResume first
+    And(Not(SpecSignatures.Activity_onPause_exit), Not(SpecSignatures.Activity_onResume_entry)))
     , SpecSignatures.Activity_onResume_entry)
-  val Activity_onResume_dummy:LSSpec = LSSpec("a"::Nil, Nil, LSTrue, SpecSignatures.Activity_onResume_entry)
+  //val Activity_onResume_dummy:LSSpec = LSSpec("a"::Nil, Nil, LSTrue, SpecSignatures.Activity_onResume_entry)
   val Activity_onPause_onlyafter_onResume: LSSpec = LSSpec("a"::Nil, Nil, resumed,
     SpecSignatures.Activity_onPause_entry)
   val Activity_created:LSPred = NI(SpecSignatures.Activity_onCreate_entry, SpecSignatures.Activity_onDestroy_exit)

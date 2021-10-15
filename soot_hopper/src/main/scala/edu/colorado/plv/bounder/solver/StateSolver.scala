@@ -1248,45 +1248,42 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         negate = false,
         specSpace = specSpace, debug = maxLen.isDefined)
       zCtx.mkAssert(s2Enc)
-      val foundCounter = try {
+      val foundCounter =
         checkSAT(useCmd = true, timeout) //TODO: ===== is this an improvement to use cmd instead?
-      }catch {
-        case e:IllegalStateException =>
-           println("subsumption timeout:")
-           println(s"timeout: ${timeout}")
-           println(s"  s1: ${s1}")
-           println(s"  s1 ɸ_lhs: " +
-             s"${StateSolver.rhsToPred(s1.traceAbstraction.rightOfArrow,specSpace)
-               .map(pred => pred.stringRep(v => s1.sf.traceAbstraction.modelVars.getOrElse(v,v)))
-               .mkString("  &&  ")}")
-           println(s"  s2: ${s2}")
-           println(s"  s2 ɸ_lhs: " +
-             s"${StateSolver.rhsToPred(s2.traceAbstraction.rightOfArrow,specSpace)
-               .map(pred => pred.stringRep(v => s2.sf.traceAbstraction.modelVars.getOrElse(v,v)))
-               .mkString("  &&  ")}")
-          // uncomment to dump serialized timeout states
-          // val s1f = File("s1_timeout.json")
-          // val s2f = File("s2_timeout.json")
-          // s1f.write(write(s1))
-          // s2f.write(write(s2))
-          // throw e
 
-          // TODO: need mechanism so that if a timeout occurs and no other state subsumes we throw an error
-          // TODO: =================== double check that this behaves as expected
-          false
-      }
       if (foundCounter && maxLen.isDefined) {
         printDbgModel(messageTranslator, Set(s1.traceAbstraction,s2.traceAbstraction), "")
       }
       reset()
       !foundCounter
     }catch{
-      case e:IllegalStateException if e.getLocalizedMessage.contains("timeout issue") =>
+      case e:IllegalStateException if e.getLocalizedMessage.contains("timeout") =>
         // Note: this didn't seem to help things so currently disabled
         // sound to say state is not subsumed if we don't know
         // false
-        e.printStackTrace()
-        throw e
+
+        println("subsumption timeout:")
+        println(s"timeout: ${timeout}")
+        println(s"  s1: ${s1}")
+        println(s"  s1 ɸ_lhs: " +
+          s"${StateSolver.rhsToPred(s1.traceAbstraction.rightOfArrow,specSpace)
+            .map(pred => pred.stringRep(v => s1.sf.traceAbstraction.modelVars.getOrElse(v,v)))
+            .mkString("  &&  ")}")
+        println(s"  s2: ${s2}")
+        println(s"  s2 ɸ_lhs: " +
+          s"${StateSolver.rhsToPred(s2.traceAbstraction.rightOfArrow,specSpace)
+            .map(pred => pred.stringRep(v => s2.sf.traceAbstraction.modelVars.getOrElse(v,v)))
+            .mkString("  &&  ")}")
+        // uncomment to dump serialized timeout states
+        // val s1f = File("s1_timeout.json")
+        // val s2f = File("s2_timeout.json")
+        // s1f.write(write(s1))
+        // s2f.write(write(s2))
+        // throw e
+
+        // TODO: need mechanism so that if a timeout occurs and no other state subsumes we throw an error
+        // TODO: =================== double check that this behaves as expected
+        false
     }
   }
 

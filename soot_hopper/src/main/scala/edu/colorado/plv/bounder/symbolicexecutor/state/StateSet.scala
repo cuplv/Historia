@@ -85,7 +85,7 @@ object StateSet {
       //TODO:======== does sorting improve runtime?
       val search = current.states.toList.sortBy{ n =>
         n.qry.getState.map(s => s.sf.traceAbstraction.rightOfArrow.size).getOrElse(0)
-      }.par
+      } //.par
       var startTime = System.currentTimeMillis()
       val currentCanSubs = search.find{ subsuming =>
         val basis = startTime
