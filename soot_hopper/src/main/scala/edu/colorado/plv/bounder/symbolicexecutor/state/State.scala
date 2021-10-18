@@ -116,9 +116,12 @@ case class StateFormula(callStack: List[CallStackFrame],
   }
 
   private def pureExprSwap[T<:PureExpr](oldPv : PureVar, newPv : PureVar, expr:T): T = expr match{
-    case PureVar(id) if id==oldPv.id => newPv.asInstanceOf[T]
-    case pv@PureVar(_) => pv.asInstanceOf[T]
-    case pv: PureVal => pv.asInstanceOf[T]
+    case PureVar(id) if id==oldPv.id =>
+      newPv.asInstanceOf[T]
+    case pv@PureVar(_) =>
+      pv.asInstanceOf[T]
+    case pv: PureVal =>
+      pv.asInstanceOf[T]
   }
   private def stackSwapPv(oldPv : PureVar, newPv : PureVar, frame: CallStackFrame): CallStackFrame =
     frame.copy(locals = frame.locals.map{

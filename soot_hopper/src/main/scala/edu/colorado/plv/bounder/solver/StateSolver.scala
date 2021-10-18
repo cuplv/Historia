@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.solver
 
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.ir.{BitTypeSet, MessageType, TAddr, TMessage, TNullVal, TypeSet, WitnessExplanation}
+import edu.colorado.plv.bounder.ir.{BitTypeSet, MessageType, TAddr, TMessage, TNullVal, TopTypeSet, TypeSet, WitnessExplanation}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.LifeState._
 import edu.colorado.plv.bounder.solver.StateSolver.rhsToPred
@@ -1116,14 +1116,118 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     case _ => false
   }
 
+  private def canSwap(pv1:PureVar, pv2:PureVar, t1:Map[PureVar, TypeSet], t2:Map[PureVar, TypeSet]):Boolean = {
+    val ts1 = t1.getOrElse(pv1, TopTypeSet)
+    val ts2 = t2.getOrElse(pv2, TopTypeSet)
+    ts1.contains(ts2)
+  }
+  /**
+   * h2 => h1
+   */
+  private def canSubsumeUnifyHeap(h1:Map[HeapPtEdge, PureExpr], h2:Map[HeapPtEdge, PureExpr],
+                          ts1:Map[PureVar, TypeSet], ts2:Map[PureVar,TypeSet],
+                          h1Swap:Map[PureVar,PureVar]):List[Map[PureVar,PureVar]] = {
+    if(h1.isEmpty)
+      List(h1Swap)
+    else {
+      val subs = h1.head match {
+        case (FieldPtEdge(p1, fieldName1), t1: PureVar) =>
+          h2.toList.flatMap {
+            case (e2@FieldPtEdge(p2, fieldName2), t2: PureVar) if fieldName1 == fieldName2 =>
+              if ((!h1Swap.contains(p1) || h1Swap(p1) == p2)  // check if values either not swapped or swapped with same
+                && (!h1Swap.contains(t1) || t1 == t2)
+                && canSwap(p1, p2, ts1, ts2) && canSwap(t1, t2, ts1, ts2))
+                Some(h1Swap ++ Map(p1 -> p2, t1 -> t2), e2)
+              else None
+            case _ => None
+          }
+        case (StaticPtEdge(clazz1, fieldName1), t1: PureVar) =>
+          h2.toList.flatMap {
+            case (e2@StaticPtEdge(clazz2, fieldName2), t2: PureVar) if clazz1 == clazz2 && fieldName1 == fieldName2 =>
+              if ((!h1Swap.contains(t1) || h1Swap(t1) == t2)&&canSwap(t1, t2, ts1, ts2))
+                Some(h1Swap ++ Map(t1 -> t2), e2)
+              else
+                None
+            case _ => None
+          }
+      }
+      if(subs.isEmpty) {
+        Nil
+      } else{
+        val out: List[Map[PureVar, PureVar]] = subs.flatMap{
+          case (varMap, edge) =>
+            val nextH1 = h1.tail
+            val nextH2 = h2 - edge
+            canSubsumeUnifyHeap(nextH1,nextH2, ts1, ts2, varMap)
+        }
+        out
+      }
+
+    }
+  }
+  private def canSubsumeUnifyLocals(l1:Map[(String,Int), PureVar], l2:Map[(String,Int),PureVar],
+                                    ts1:Map[PureVar, TypeSet], ts2:Map[PureVar,TypeSet]): Option[Map[PureVar,PureVar]] = {
+    Some(l1.map{
+      case (k,v) if l2.contains(k) && canSwap(v, l2(k), ts1, ts2) => v -> l2(k)
+      case _ => return None
+    })
+  }
+
+  /**
+   * check if s2 => s1
+   * @return true if unification successful
+   */
+  def canSubsumeUnify(s1:State, s2:State, specSpace:SpecSpace): Boolean = {
+    val t1: Map[PureVar, TypeSet] = s1.sf.typeConstraints
+    val t2 = s2.sf.typeConstraints
+    val l1 = levelLocalPv(s1)
+    val l2 = levelLocalPv(s2)
+    val mapL = canSubsumeUnifyLocals(l1, l2, t1,t2)
+    if(mapL.isEmpty)
+      return false
+    val h1: Map[HeapPtEdge, PureExpr] = s1.sf.heapConstraints
+    val h2: Map[HeapPtEdge, PureExpr] = s2.sf.heapConstraints
+    val mapsH = canSubsumeUnifyHeap(h1,h2,t1,t2, mapL.get)
+
+    val pv1: Set[PureVar] = s1.pureVars()
+    val pv2: Set[PureVar] = s2.pureVars()
+    val allPv = pv1.union(pv2).toList
+    // map s2 to something where all pvs are strictly larger
+    val maxID = if (allPv.nonEmpty) allPv.maxBy(_.id) else PureVar(5)
+
+
+    mapsH.exists { mapH =>
+      // Swap all pureVars to pureVars above the max found in either state
+      // This way swapping doesn't interfere with itself
+      val (s1Above, aboveMap) = pv1.foldLeft((s1.copy(nextAddr = maxID.id + 1)), Map[PureVar, PureVar]()) {
+        case ((st, swapped), pv) =>
+          val (freshPv, st2) = st.nextPv()
+          (st2.swapPv(pv, freshPv), swapped + (pv -> freshPv))
+      }
+      // Make s1 with values swapped via mapH using aboveMap
+      val s1Swapped = pv1.foldLeft(s1Above){
+        case (state, pv) if mapH.contains(pv) =>
+          val newPv = aboveMap(pv)
+          state.swapPv(newPv, mapH(pv))
+        case (state,_) => state
+      }
+      //TODO: enumerate how trace pv may match
+      //TODO: encode states with existential pure vals lifted above implication
+      println(s2)
+      ???
+    }
+  }
   /**
    *
    *
    * @param s1 subsuming state
    * @param s2 contained state
+   *           checks s2 => s1
    * @return
    */
-  def canSubsume(s1: State, s2: State, specSpace: SpecSpace, maxLen: Option[Int] = None, timeout:Option[Int] = None): Boolean = {
+  def canSubsume(s1: State, s2: State, specSpace: SpecSpace, maxLen: Option[Int] = None,
+                 timeout:Option[Int] = None): Boolean = {
+    val method = "Unify"
     // Check if stack sizes or locations are different
     if (s1.callStack.size != s2.callStack.size)
       return false
@@ -1188,7 +1292,12 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     // if(!suffixSame(s1.sf.traceAbstraction.rightOfArrow, s2.sf.traceAbstraction.rightOfArrow))
     //   return false
 
-    canSubsumeZ3(s1,s2,specSpace, maxLen, timeout)
+    if(method == "Z3")
+      canSubsumeZ3(s1,s2,specSpace, maxLen, timeout)
+    else if(method == "Unify")
+      canSubsumeUnify(s1,s2,specSpace)
+    else
+      throw new IllegalArgumentException("""Expected method: "Unify" or "Z3" """)
   }
   // s1 subsuming state
   // s2 state being subsumed
@@ -1249,7 +1358,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         specSpace = specSpace, debug = maxLen.isDefined)
       zCtx.mkAssert(s2Enc)
       val foundCounter =
-        checkSAT(useCmd = true, timeout) //TODO: ===== is this an improvement to use cmd instead?
+        checkSAT(useCmd = false) //TODO: ===== is this an improvement to use cmd instead?
 
       if (foundCounter && maxLen.isDefined) {
         printDbgModel(messageTranslator, Set(s1.traceAbstraction,s2.traceAbstraction), "")

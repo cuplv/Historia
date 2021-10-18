@@ -2472,10 +2472,10 @@ class SymbolicExecutorTest extends AnyFunSuite {
             //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
             val specs = new SpecSpace(Set(
               ViewSpec.clickWhileActive,
-              //ViewSpec.viewOnlyReturnedFromOneActivity, //TODO: ===== currently testing which combination of specs causes timeout
-//              LifecycleSpec.noResumeWhileFinish,
+              ViewSpec.viewOnlyReturnedFromOneActivity, //TODO: ===== currently testing which combination of specs causes timeout
+              LifecycleSpec.noResumeWhileFinish,
               LifecycleSpec.Activity_onResume_first_orAfter_onPause,
-              //LifecycleSpec.Activity_onPause_onlyafter_onResume
+              LifecycleSpec.Activity_onPause_onlyafter_onResume
             ))
             val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
 

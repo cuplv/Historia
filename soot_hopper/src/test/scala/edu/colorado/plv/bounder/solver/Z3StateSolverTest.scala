@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder.solver
 
-import better.files.Resource
+import better.files.{File, Resource}
 import com.microsoft.z3._
 import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, FreshRef, I, LSConstraint, LSFalse, LSSpec, LSTrue, NI, Not, Or, SignatureMatcher, SubClassMatcher}
@@ -26,7 +26,14 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
   private val p6 = PureVar(6)
   private val frame = CallStackFrame(dummyLoc, None, Map(StackVar("x") -> v))
   private val state = State.topState
-  case class FixtureParam(typeSolving: StateTypeSolving)
+  case class FixtureParam(typeSolving: StateTypeSolving) {
+
+  }
+
+  def loadState(resource:String):State = {
+    //val f = File(Resource.getUrl(s"resources/${resource}").getPath)
+    read[State](Resource.getAsStream(resource))
+  }
 
   val esp = new SpecSpace(Set(), Set())
   def st(t:AbstractTrace):State = {
@@ -658,6 +665,8 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
   }
   test("X -> p1 && p1:T1 cannot subsume X -> p1 && p1:T2 && p2:T1"){ f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
+    implicit val method = f.typeSolving
+    //TODO:====== testing unification subsumption
     val pvy = PureVar(1)
     val pvy2 = PureVar(2)
     val fr = CallStackFrame(dummyLoc, None, Map(StackVar("x") -> pvy))
@@ -668,6 +677,7 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
       .addTypeConstraint(pvy2, BitTypeSet(BitSet(1)))
     val res = stateSolver.canSubsume(s1,s2,esp)
     assert(!res)
+    assert(stateSolver.canSubsume(s1,s1, esp))
 
   }
   test("x -> p1 * p1.f -> p2 && p2:T1 can subsume x -> p2 * p2.f -> p1 && p1:T1"){ f =>
@@ -928,6 +938,30 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
     val res3 = stateSolver.canSubsume(st1, st2, spec)
     val res4 = stateSolver.canSubsume(st2,st1, spec)
     println()
+  }
+  test("Serialized states subsumption timeout"){f =>
+    val (stateSolver, _) = getStateSolver(f.typeSolving)
+    List(
+      ("s1_timeout_1.json", "s2_timeout_1.json", false)
+    ).foreach {
+      case (f1, f2, expected) =>
+        // TODO:======================================== Why does loading these here not cause timeout?
+        // z3 /Users/shawnmeier/Documents/source/bounder/soot_hopper/__timeout_1634332706.z3
+        val s1 = loadState(f1)
+        val s2 = loadState(f2)
+        //    val emptySpec = new SpecSpace(Set())
+        //    val emptyRes = stateSolver.canSubsume(s1,s2, emptySpec)
+        //    assert(emptyRes)
+        val spec = new SpecSpace(
+          Set(LifecycleSpec.Activity_onPause_onlyafter_onResume,
+            LifecycleSpec.Activity_onResume_first_orAfter_onPause,
+            ViewSpec.viewOnlyReturnedFromOneActivity, //TODO: ===== currently testing which combination of specs causes timeout
+            LifecycleSpec.noResumeWhileFinish,
+            ViewSpec.clickWhileActive,
+          )
+        )
+        assert(stateSolver.canSubsume(s1, s2, spec) == expected)
+    }
   }
   test("|>x.onDestroy() should subsume |>x.onDestroy()|>y.onDestroy()"){f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
