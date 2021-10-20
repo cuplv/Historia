@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{BitTypeSet, MessageType, TAddr, TMessage, TNullVal, TopTypeSet, TypeSet, WitnessExplanation}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.LifeState._
-import edu.colorado.plv.bounder.solver.StateSolver.rhsToPred
+import edu.colorado.plv.bounder.solver.StateSolver.{rhsToPred, simplifyPred}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{HeapPtEdge, _}
 import upickle.default.{read, write}
 
@@ -109,6 +109,31 @@ object StateSolver{
         val instantiated = instArrowPhi(v, specSpace, includeDis)
         (updated + instantiated, false)
     }._1.filter(p => p != LSTrue)
+  }
+  def simplifyPred(pred:LSPred):LSPred = pred match {
+    case LifeState.Exists(Nil, p) => simplifyPred(p)
+    case LifeState.Forall(Nil, p) => simplifyPred(p)
+    case c@LSConstraint(v1, op, v2) => c
+    case LifeState.Forall(vars, p) =>
+      LifeState.Forall(vars, simplifyPred(p))
+    case LifeState.Exists(vars, p) =>
+      LifeState.Exists(vars, simplifyPred(p))
+    case LSImplies(LSTrue, l2) => simplifyPred(l2)
+    case LSImplies(l1, LSFalse) => simplifyPred(l1)
+    case LSImplies(l1, l2) => LSImplies(simplifyPred(l1), simplifyPred(l2))
+    case And(LSTrue, l2) => simplifyPred(l2)
+    case And(l1, LSTrue) => simplifyPred(l1)
+    case And(_, LSFalse) => LSFalse
+    case And(LSFalse,_) => LSFalse
+    case And(l1, l2) => And(simplifyPred(l1), simplifyPred(l2))
+    case Not(l) => Not(simplifyPred(l))
+    case Or(LSFalse, l2) => simplifyPred(l2)
+    case Or(l1, LSFalse) => simplifyPred(l1)
+    case Or(l1, l2) => Or(simplifyPred(l1), simplifyPred(l2))
+    case LifeState.LSTrue => LSTrue
+    case LifeState.LSFalse => LSFalse
+    case atom: LSAtom =>
+      atom
   }
 }
 /** SMT solver parameterized by its AST or expression type */
@@ -1135,10 +1160,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
           h2.toList.flatMap {
             case (e2@FieldPtEdge(p2, fieldName2), t2: PureVar) if fieldName1 == fieldName2 =>
               if ((!h1Swap.contains(p1) || h1Swap(p1) == p2)  // check if values either not swapped or swapped with same
-                && (!h1Swap.contains(t1) || t1 == t2)
+                && (!h1Swap.contains(t1) || h1Swap(t1) == t2)
                 && canSwap(p1, p2, ts1, ts2) && canSwap(t1, t2, ts1, ts2))
                 Some(h1Swap ++ Map(p1 -> p2, t1 -> t2), e2)
-              else None
+              else None //TODO: a.f -> b * c.f->b ├ a.f->b * c.f->c
             case _ => None
           }
         case (StaticPtEdge(clazz1, fieldName1), t1: PureVar) =>
@@ -1172,6 +1197,87 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       case _ => return None
     })
   }
+  private def canSubsumeUnifyFreshRef(r1:Set[PureVar], r2:Set[PureVar],
+                                      ts1:Map[PureVar, TypeSet], ts2:Map[PureVar,TypeSet],
+                                      r1Swap:Map[PureVar, PureVar]):List[Map[PureVar,PureVar]] = {
+    if(r1.isEmpty){
+      // s2 => true
+      return List(r1Swap)
+    }
+    val c1 = r1.head
+    val possibleSwaps = if (r1Swap.contains(c1)) {
+        if (!r2.contains(r1Swap(c1)))
+          return Nil
+        else
+          Set(r1Swap(c1))
+    } else {
+        r2.filter{c2 => canSwap(c1,c2,ts1,ts2)}
+    }
+    if(possibleSwaps.isEmpty)
+      return Nil
+
+    possibleSwaps.toList.flatMap{c2 =>
+      canSubsumeUnifyFreshRef(r1.tail, r2 - c2, ts1, ts2, r1Swap + (c1 -> c2))}
+  }
+
+  // p2 => p1
+  private def canSubsumeUnifyPred(p1:LSPred, p2:LSPred):Option[(Map[String,String], Set[LSConstraint])] = (p1, p2) match {
+    case (I(mt1,sig1,lsVars1), I(mt2, sig2, lsVars2))
+      if(mt1 == mt2 && sig1.identifier == sig2.identifier && lsVars1.size == lsVars2.size) =>
+      Some(((lsVars1 zip lsVars2).toMap, Set[LSConstraint]()))
+    case (NI(_,_), _:I) =>
+      None
+    case (I(mt1,sig1,lsVars1), NI(I(mt2, sig2, lsVars2),_))
+      if(mt1 == mt2 && sig1.identifier == sig2.identifier && lsVars1.size == lsVars2.size) =>
+      ???
+    case _ =>
+      ???
+  }
+  private def validateLSSwap(swapMap:Map[String,String], lm1:Map[String,PureExpr], lm2:Map[String,PureExpr],
+    ts1:Map[PureVar, TypeSet], ts2:Map[PureVar,TypeSet],
+    r1Swap:Map[PureVar,PureVar]):Boolean = {
+    swapMap.forall{
+      case (k,v) =>
+        ???
+    }
+  }
+  //p2 => p1
+  private def canSubsumeUnifyPreds(p1:Set[LSPred], p2:Set[LSPred],lm1:Map[String,PureExpr], lm2:Map[String,PureExpr],
+                                  ts1:Map[PureVar, TypeSet], ts2:Map[PureVar,TypeSet],
+                                  r1Swap:Map[PureVar,PureVar]):List[(Map[PureVar,PureVar], Set[PureConstraint])] = {
+    if(p1.isEmpty)
+      return List((r1Swap, Set[PureConstraint]()))
+    val c1 = p1.head
+    p2.toList.flatMap{c2 =>
+      canSubsumeUnifyPred(c1, c2) match {
+        case Some((newSwap, newPC)) if validateLSSwap(newSwap, lm1, lm2, ts1, ts2, r1Swap) =>
+          println(newSwap)
+          println(newPC)
+          ???
+        case Some((_, _)) =>
+          None // Types or previous swap don't allow this assignment
+        case None =>
+          None
+      }
+    }
+  }
+  private def canSubsumeUnifyPure(ps1:Set[PureConstraint], ps2:Set[PureConstraint],
+                                  r1Swap:Map[PureVar,PureVar]):Boolean = {
+    def swapExpr(p:PureExpr):Option[PureExpr] = p match {
+      case pureVal: PureVal => Some(pureVal)
+      case v:PureVar if r1Swap.contains(v) => Some(r1Swap(v))
+      case _ => None
+    }
+    val ps1Swapped = ps1.flatMap{
+      case PureConstraint(lhs, op, rhs) =>
+        val lhs2 = swapExpr(lhs)
+        val rhs2 = swapExpr(rhs)
+        if(lhs2.isDefined && rhs2.isDefined){
+          Some(PureConstraint(lhs2.get,op,rhs2.get))
+        }else None
+    }
+    ps1Swapped.forall(p => ps2.contains(p))
+  }
 
   /**
    * check if s2 => s1
@@ -1187,35 +1293,72 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       return false
     val h1: Map[HeapPtEdge, PureExpr] = s1.sf.heapConstraints
     val h2: Map[HeapPtEdge, PureExpr] = s2.sf.heapConstraints
-    val mapsH = canSubsumeUnifyHeap(h1,h2,t1,t2, mapL.get)
+    val mapsH: List[Map[PureVar, PureVar]] = canSubsumeUnifyHeap(h1,h2,t1,t2, mapL.get)
 
-    val pv1: Set[PureVar] = s1.pureVars()
-    val pv2: Set[PureVar] = s2.pureVars()
-    val allPv = pv1.union(pv2).toList
-    // map s2 to something where all pvs are strictly larger
-    val maxID = if (allPv.nonEmpty) allPv.maxBy(_.id) else PureVar(5)
-
-
-    mapsH.exists { mapH =>
-      // Swap all pureVars to pureVars above the max found in either state
-      // This way swapping doesn't interfere with itself
-      val (s1Above, aboveMap) = pv1.foldLeft((s1.copy(nextAddr = maxID.id + 1)), Map[PureVar, PureVar]()) {
-        case ((st, swapped), pv) =>
-          val (freshPv, st2) = st.nextPv()
-          (st2.swapPv(pv, freshPv), swapped + (pv -> freshPv))
+    val mapsR: List[Map[PureVar, PureVar]] = mapsH.flatMap { mapH =>
+      // Sets of pure vars that must be created in the future
+      def freshRefSet(state: State): Set[PureVar] = {
+        val tr = state.traceAbstraction
+        tr.rightOfArrow.flatMap {
+          case FreshRef(v) => Some(tr.modelVars(v).asInstanceOf[PureVar])
+          case _ => None
+        }.toSet
       }
-      // Make s1 with values swapped via mapH using aboveMap
-      val s1Swapped = pv1.foldLeft(s1Above){
-        case (state, pv) if mapH.contains(pv) =>
-          val newPv = aboveMap(pv)
-          state.swapPv(newPv, mapH(pv))
-        case (state,_) => state
-      }
-      //TODO: enumerate how trace pv may match
-      //TODO: encode states with existential pure vals lifted above implication
-      println(s2)
-      ???
+
+      // Match up freshRefs.  s2 should have all freshRefs that s1 has
+      val s1FreshRef = freshRefSet(s1)
+      val s2FreshRef = freshRefSet(s2)
+      // s2 should have been refuted before now if a heap cell contains a value that must be created in the future
+      canSubsumeUnifyFreshRef(s1FreshRef, s2FreshRef, t1,t2, mapH)
     }
+
+    val pred1 = rhsToPred(s1.sf.traceAbstraction.rightOfArrow, specSpace).map(simplifyPred)
+    val pred2: Set[LSPred] = rhsToPred(s2.sf.traceAbstraction.rightOfArrow, specSpace).map(simplifyPred)
+    val lm1 = s1.sf.traceAbstraction.modelVars
+    val lm2 = s2.sf.traceAbstraction.modelVars
+    val mapsT: List[(Map[PureVar,PureVar], Set[PureConstraint])] = mapsR.flatMap{mapT =>
+      canSubsumeUnifyPreds(pred1,pred2,lm1,lm2,t1,t2,mapT)
+    }
+    mapsT.exists{
+      case (mapT, extraPure) =>
+        canSubsumeUnifyPure(s1.sf.pureFormula ++ extraPure, s2.sf.pureFormula,mapT)
+    }
+    //TODO: ===== Finally unify based on pure constraints
+
+//    val pv1: Set[PureVar] = s1.pureVars()
+//    val pv2: Set[PureVar] = s2.pureVars()
+//    val allPv = pv1.union(pv2).toList
+//    // map s2 to something where all pvs are strictly larger
+//    val maxID = if (allPv.nonEmpty) allPv.maxBy(_.id) else PureVar(5)
+//
+//
+//    mapsR.exists { mapH =>
+//      // Swap all pureVars to pureVars above the max found in either state
+//      // This way swapping doesn't interfere with itself
+//      val (s1Above, aboveMap) = pv1.foldLeft((s1.copy(nextAddr = maxID.id + 1)), Map[PureVar, PureVar]()) {
+//        case ((st, swapped), pv) =>
+//          val (freshPv, st2) = st.nextPv()
+//          (st2.swapPv(pv, freshPv), swapped + (pv -> freshPv))
+//      }
+//      // Make s1 with values swapped via mapH using aboveMap
+//      val s1Swapped = pv1.foldLeft(s1Above){
+//        case (state, pv) if mapH.contains(pv) =>
+//          val newPv = aboveMap(pv)
+//          state.swapPv(newPv, mapH(pv))
+//        case (state,_) => state
+//      }
+//
+//      //TODO: enumerate how trace pv may match
+//      //TODO: encode states with existential pure vals lifted above implication
+//      val pred1 = rhsToPred(s1Swapped.sf.traceAbstraction.rightOfArrow, specSpace).map(simplifyPred)
+//      val pred2: Set[LSPred] = rhsToPred(s2.sf.traceAbstraction.rightOfArrow, specSpace).map(simplifyPred)
+//      if(pred2 == Set(LSTrue) || pred2.isEmpty) {
+//        return canSubsumeUnifyPure(s1.sf.pureFormula, s2.sf.pureFormula,mapH)
+//      } //TODO: check pure
+//      ???
+//    }
+
+    // TODO: check pure formula
   }
   /**
    *
@@ -1291,11 +1434,15 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     // Note: sound but possibly not precise
     // if(!suffixSame(s1.sf.traceAbstraction.rightOfArrow, s2.sf.traceAbstraction.rightOfArrow))
     //   return false
+    val s1Simp = simplify(s1, specSpace)
+    val s2Simp = simplify(s2, specSpace)
+    if(s2Simp.isEmpty)
+      return true
 
     if(method == "Z3")
-      canSubsumeZ3(s1,s2,specSpace, maxLen, timeout)
+      canSubsumeZ3(s1Simp.get,s2Simp.get,specSpace, maxLen, timeout)
     else if(method == "Unify")
-      canSubsumeUnify(s1,s2,specSpace)
+      canSubsumeUnify(s1Simp.get,s2Simp.get,specSpace)
     else
       throw new IllegalArgumentException("""Expected method: "Unify" or "Z3" """)
   }

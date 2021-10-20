@@ -12,7 +12,7 @@ import upickle.default.read
 import scala.collection.BitSet
 import scala.language.implicitConversions
 
-class Z3StateSolverTest extends FixtureAnyFunSuite {
+class StateSolverTest extends FixtureAnyFunSuite {
 
   private val fooMethod = TestIRMethodLoc("","foo", List(Some(LocalWrapper("@this","Object"))))
   private val dummyLoc = CallbackMethodReturn(tgtClazz = "",
@@ -703,6 +703,31 @@ class Z3StateSolverTest extends FixtureAnyFunSuite {
 //      .addTypeConstraint(pvy, BitTypeSet(BitSet(1)))
     val res = stateSolver.canSubsume(s1,s2,esp)
     assert(res)
+  }
+  test("p1.f->p2 * p3.f->p2 can be subsumed by p1.f -> p2 * p3.f -> p4"){ f =>
+    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val sP2P2 = State.topState.copy(
+      sf = State.topState.sf.copy(
+        heapConstraints = Map(
+          FieldPtEdge(p1,"f")->p2,
+          FieldPtEdge(p3,"f")->p2
+        )
+      )
+    )
+    val sP2P4 = State.topState.copy(
+      sf = State.topState.sf.copy(
+        heapConstraints = Map(
+          FieldPtEdge(p1,"f")->p2,
+          FieldPtEdge(p3,"f")->p4
+        )
+      )
+    )
+    assert(stateSolver.canSubsume(sP2P4,sP2P2, esp))
+    assert(!stateSolver.canSubsume(sP2P2,sP2P4, esp))
+    assert(!stateSolver.canSubsume(sP2P4.addPureConstraint(PureConstraint(p2, Equals, p5))
+      .addPureConstraint(PureConstraint(p5,Equals,p4)), sP2P4, esp))
+    assert(!stateSolver.canSubsume(sP2P4.addPureConstraint(PureConstraint(p2, NotEquals, p4)), sP2P4, esp))
+
   }
   test("x -> p1 * p1.f -> p2 && p2:T1 cannot subsume x -> p2 * p2.f -> p1 && p1:T2"){ f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
