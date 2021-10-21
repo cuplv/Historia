@@ -131,7 +131,7 @@ object LifecycleSpec {
       NI(SpecSignatures.Activity_onPause_exit, SpecSignatures.Activity_onResume_entry))
   val Activity_onResume_first_orAfter_onPause: LSSpec = LSSpec("a"::Nil, Nil, Or(
     NI(SpecSignatures.Activity_onPause_exit, SpecSignatures.Activity_onResume_entry),
-    SpecSignatures.Activity_onPause_exit)
+    And(Not(SpecSignatures.Activity_onPause_exit),Not(SpecSignatures.Activity_onResume_entry)))
     , SpecSignatures.Activity_onResume_entry)
   //val Activity_onResume_dummy:LSSpec = LSSpec("a"::Nil, Nil, LSTrue, SpecSignatures.Activity_onResume_entry)
   val Activity_onPause_onlyafter_onResume: LSSpec = LSSpec("a"::Nil, Nil, resumed,

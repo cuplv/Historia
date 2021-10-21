@@ -1370,7 +1370,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    */
   def canSubsume(s1: State, s2: State, specSpace: SpecSpace, maxLen: Option[Int] = None,
                  timeout:Option[Int] = None): Boolean = {
-    val method = "Unify"
+//    val method = "Unify"
+    val method = "Z3"
     // Check if stack sizes or locations are different
     if (s1.callStack.size != s2.callStack.size)
       return false
