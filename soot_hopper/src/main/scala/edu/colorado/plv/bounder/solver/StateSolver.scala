@@ -923,7 +923,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     // Constants
     private val pureValSet = states.foldLeft(Set[PureVal]()){
       case (acc,v) => acc.union(getPureValSet(v.pureFormula))
-    } + NullVal
+    } + NullVal + BoolVal(true) + BoolVal(false)
     private val (uniqueConst, constMap) = mkConstConstraintsMap(pureValSet)
     def getConstMap():Map[PureVal,T] = constMap
     zCtx.mkAssert(uniqueConst)

@@ -3,8 +3,8 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{MultiCallback, Proven, SingleCallbackMultiMethod, SingleMethod, Witnessed}
-import edu.colorado.plv.bounder.ir.{JimpleFlowdroidWrapper, JimpleMethodLoc}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, LSSpec, NI, Not, Or}
+import edu.colorado.plv.bounder.ir.{CBEnter, JimpleFlowdroidWrapper, JimpleMethodLoc}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSSpec, LSTrue, NI, Not, Or}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BottomQry, CallinReturnNonNull, DBOutputMode, DisallowedCallin, FieldPtEdge, IPathNode, MemoryOutputMode, OutputMode, PrettyPrinting, Qry, Reachable, ReceiverNonNull}
@@ -1386,7 +1386,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
            |    Subscription sub;
            |    String act = null;
            |    @Override
-           |    public void onResume(){
+           |    public void onCreate(Bundle b){
            |        act = new String();
            |        sub = Single.create(subscriber -> {
            |            subscriber.onSuccess(3);
@@ -1399,7 +1399,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
            |    }
            |
            |    @Override
-           |    public void onPause(){
+           |    public void onDestroy(){
            |        act = null;
            |        $destroyLine
            |    }
@@ -1409,16 +1409,13 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val test: String => Unit = apk => {
         assert(apk != null)
         //Note: subscribeIsUnique rule ommitted from this test to check state relevant to callback
-        //TODO: ==== can use smaller spec set?
         val specs = Set(
-//          LifecycleSpec.Activity_onResume_first_orAfter_onPause,
-          LSSpec("a"::Nil, Nil, Or(
-            NI(SpecSignatures.Activity_onPause_exit, SpecSignatures.Activity_onResume_entry),
-            Not(SpecSignatures.Activity_onResume_entry))
-            , SpecSignatures.Activity_onResume_entry),
-//          LifecycleSpec.Activity_onPause_onlyafter_onResume
+          LSSpec("a"::Nil, Nil, Not(SpecSignatures.Activity_onCreate_entry),SpecSignatures.Activity_onCreate_entry),
+          LSSpec("a"::Nil, Nil, LSTrue, SpecSignatures.Activity_onCreate_entry), // Dummy onCreate to include in trace
+          LSSpec("a"::Nil, Nil, LSTrue, SpecSignatures.Activity_onDestroy_exit), // Dummy onDestroy
+          LSSpec("l"::Nil, Nil, LSTrue, I(CBEnter, SpecSignatures.RxJava_call, "_"::"l"::Nil)), //Dummy call
           RxJavaSpec.call
-        ) //++ RxJavaSpec.spec
+        )
         val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
           new SpecSpace(specs), cha)
@@ -1673,7 +1670,6 @@ class SymbolicExecutorTest extends AnyFunSuite {
   }
   test("Row3: Antennapod execute") {
     // Simplified version of Experiments row 3 (ecoop 19 meier motivating example)
-    //TODO: ===================
     List(
       ("button.setEnabled(false);", Proven, "withCheck"),
       ("", Witnessed, "noCheck")

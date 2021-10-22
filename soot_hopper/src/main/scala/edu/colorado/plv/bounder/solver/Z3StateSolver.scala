@@ -401,8 +401,11 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
         TAddr(pvValues(pv))
     }
     val pmv: String => TVal = v =>
-      if(v == "_") T_ else
-        pvv(ta.modelVars(v).asInstanceOf[PureVar])
+      if(v == "_") T_ else {
+        if(ta.modelVars.contains(v))
+          pvv(ta.modelVars(v).asInstanceOf[PureVar])
+        else throw new IllegalArgumentException(s"Undefined model variable ${v}, did you quantify a void value?")
+      }
 
 
     val trace = rightOfArrow.map{
