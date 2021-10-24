@@ -884,6 +884,41 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(stateSolver.canSubsume(s2,s1,spec))
 
   }
+  test("|>bar(p1,p2)|>foo(p1) && p2=... S: I(bar(p1,true))<= foo(p1)"){ f=>
+    val (stateSolver,_) = getStateSolver(f.typeSolving)
+
+    // test v.setEnabled(false)
+    val specClickDis = new SpecSpace(Set(ViewSpec.clickWhileNotDisabled))
+    val isetEnabled_x_y = I(CIExit, ViewSpec.setEnabled, "_"::"x"::"yy"::Nil)
+    val iOnClick_z = I(CBEnter, ViewSpec.onClick, "_"::"z"::Nil)
+    val iSetOnClickListener_x_z = ViewSpec.setOnClickListenerI.copy(lsVars = "_"::"x"::"z"::Nil)
+    val sDis = st(AbstractTrace(rightOfArrow = iSetOnClickListener_x_z::isetEnabled_x_y::iOnClick_z::Nil,
+      modelVars = Map("x"->p1, "yy"->p2, "z"->p3)))
+    val sDis_False = sDis.addPureConstraint(PureConstraint(p2, Equals, BoolVal(false)))
+    assert(stateSolver.witnessed(sDis_False,specClickDis).isEmpty)
+
+
+    val fooM = SubClassMatcher("","foo","foo")
+    val barM = SubClassMatcher("","bar","bar")
+
+    val iFoo_x = I(CBEnter, fooM, "x" :: Nil)
+    val iBar_x_y = I(CBEnter, barM, "x"::"y"::Nil)
+    val iBar_x_true = I(CBEnter, barM, "x"::"@true"::Nil)
+
+    val spec = new SpecSpace(Set(LSSpec("x"::Nil, Nil, iBar_x_true, iFoo_x)))
+    val s = st(AbstractTrace(rightOfArrow = iBar_x_y::iFoo_x::Nil, modelVars = Map("x"->p1, "y"->p2)))
+    val sFalse = s.addPureConstraint(PureConstraint(p2, Equals, IntVal(0)))
+    assert(stateSolver.witnessed(sFalse, spec).isEmpty)
+
+    val sTrue = s.addPureConstraint(PureConstraint(p2, Equals, IntVal(1)))
+    assert(stateSolver.witnessed(sTrue,spec).isDefined)
+
+    val specNot = new SpecSpace(Set(LSSpec("x"::Nil, Nil, Not(iBar_x_true), iFoo_x)))
+    assert(stateSolver.simplify(sFalse, specNot).isDefined)
+    assert(stateSolver.simplify(sTrue, specNot).isEmpty)
+
+
+  }
   test("|>x.call() can subsume |> y.unsubscribe() |> x.call()"){ f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
     // Test with no wildcards

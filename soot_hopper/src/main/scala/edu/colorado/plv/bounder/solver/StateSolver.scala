@@ -326,8 +326,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         if(!constMap.contains(v))
           throw new IllegalStateException(s"Missing constant $v")
         mkEq(constMap(v), mkConstValueConstraint(rhs))
-      case (v: PureVal, NotEquals) => mkNot(mkEq(constMap(v), mkConstValueConstraint(rhs)))
-      case (_: PureVal, _) => mkBoolVal(b = true)
+      case (v: PureVal, NotEquals) =>
+        mkNot(mkEq(constMap(v), mkConstValueConstraint(rhs)))
+      case (_: PureVal, _) =>
+        mkBoolVal(b = true)
       case v =>
         println(v)
         ???
@@ -444,71 +446,49 @@ trait StateSolver[T, C <: SolverCtx[T]] {
                          modelVarMap: String => T,
                          typeToSolverConst: Map[Int, T],
                          typeMap: Map[String, TypeSet],
-                         constMap:Map[PureVal, T],
-                         negate: Boolean = false)(implicit zctx: C): T = {
+                         constMap:Map[PureVal, T])(implicit zctx: C): T = {
     val res = combinedPred match {
       case Forall(h::t, p) =>
         mkForallAddr(h, (v:T) => {
           val newModelVarMap:String => T = s => if(s == h) v else modelVarMap(s)
           encodePred(Forall(t, p), traceFn, len, messageTranslator, newModelVarMap, typeToSolverConst, typeMap,
-            constMap, negate)
+            constMap)
         })
       case Exists(h::t, p) =>
         mkExistsAddr(h, (v:T) => {
           val newModelVarMap:String => T = s => if(s == h) v else modelVarMap(s)
           encodePred(Exists(t, p), traceFn, len, messageTranslator, newModelVarMap, typeToSolverConst, typeMap,
-            constMap, negate)
+            constMap)
         })
       case Forall(Nil, p) =>
-        encodePred(p, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap, constMap, negate)
+        encodePred(p, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap, constMap)
       case Exists(Nil, p) =>
-        encodePred(p, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap, constMap, negate)
-      case LSImplies(l1,l2) if !negate => mkImplies(
+        encodePred(p, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap, constMap)
+      case LSImplies(l1,l2) => mkImplies(
         encodePred(l1, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap, constMap),
         encodePred(l2, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap, constMap)
       )
-      case LSImplies(l1,l2) if negate =>
-        // ¬(a=>b) =equiv ¬(¬a\/b) =equiv a/\¬b
-        val encL1 = encodePred(l1, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap, constMap,
-          negate = false)
-        val encL2 = encodePred(l2, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap, constMap,
-          negate = true)
-        mkAnd(encL1,encL2)
-      case LSConstraint(LSVar(v1), Equals,LSVar(v2)) if !negate =>
+      case LSConstraint(LSVar(v1), Equals,LSVar(v2)) =>
         mkEq(modelVarMap(v1), modelVarMap(v2))
+      case LSConstraint(LSVar(v1), NotEquals, LSVar(v2)) =>
+        mkNot(mkEq(modelVarMap(v1), modelVarMap(v2)))
       case LSConstraint(LSVar(v1), op, LSConst(c)) =>
         compareConstValueOf(modelVarMap(v1), op, c, constMap)
       case LSConstraint(c@LSConst(_), Equals, LSVar(v1)) =>
         encodePred(LSConstraint(v1,Equals,c), traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap,
           constMap)
-      case LSConstraint(v1,Equals,v2) if negate =>
-        mkNot(encodePred(LSConstraint(v1,Equals,v2), traceFn, len, messageTranslator, modelVarMap,
-          typeToSolverConst, typeMap, constMap))
-      case LSConstraint(v1,NotEquals,v2) if negate =>
-        encodePred(LSConstraint(v1,Equals,v2), traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap,
+      case LSConstraint(c@LSConst(_), NotEquals, LSVar(v1)) =>
+        encodePred(LSConstraint(v1,NotEquals,c), traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap,
           constMap)
-      case LSConstraint(v1, NotEquals, v2) if !negate =>
-        encodePred(LSConstraint(v1,Equals,v2), traceFn, len, messageTranslator, modelVarMap, typeToSolverConst,
-          typeMap,constMap, true)
-      case And(l1, l2) if !negate => mkAnd(encodePred(l1, traceFn, len, messageTranslator,
+      case And(l1, l2) => mkAnd(encodePred(l1, traceFn, len, messageTranslator,
         modelVarMap, typeToSolverConst, typeMap, constMap),
         encodePred(l2, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap, constMap))
-      case And(l1, l2) if negate => mkOr(
-        encodePred(l1, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst,
-          typeMap,constMap, negate = true),
-        encodePred(l2, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap, constMap,
-          negate = true)
-      )
-      case Or(l1, l2) if !negate => mkOr(encodePred(l1, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst,
+      case Or(l1, l2) => mkOr(encodePred(l1, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst,
         typeMap, constMap),
         encodePred(l2, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap, constMap))
-      case Or(l1, l2) if negate => mkAnd(encodePred(l1, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst,
-        typeMap, constMap, negate = true),
-        encodePred(l2, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap,constMap,
-          negate = true))
       case Not(l) =>
-        encodePred(l, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap, constMap, !negate)
-      case m: I if !negate =>
+        mkNot(encodePred(l, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap, constMap))
+      case m: I =>
         mkExistsIndex(mkZeroIndex, len,
           i => assertIAt(i, m, messageTranslator, traceFn, negated = false, typeMap, typeToSolverConst, modelVarMap))
       //case NotI(m) if negate =>
@@ -516,10 +496,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       //case NotI(m) =>
       //  mkForallInt(mkIntVal(-1), len,
       //    i => assertIAt(i,m,messageTranslator, traceFn, negated = true, typeMap, typeToSolverConst, modelVarMap))
-      case m: I if negate =>
-        mkForallIndex(mkZeroIndex(), len, i => assertIAt(i, m, messageTranslator, traceFn, negated = true, typeMap,
-          typeToSolverConst, modelVarMap))
-      case NI(m1, m2) if !negate =>
+      case NI(m1, m2) =>
         // exists i such that omega[i] = m1 and forall j > i omega[j] != m2
         mkExistsIndex(mkZeroIndex, len, i => {
           mkAnd(List(
@@ -529,21 +506,21 @@ trait StateSolver[T, C <: SolverCtx[T]] {
                 typeToSolverConst, modelVarMap)))
           ))
         })
-      case NI(m1, m2) if negate =>
-        // not NI(m1,m2) def= (not I(m1)) or NI(m2,m1)
-        // encode with no negation
-        encodePred(Or(Not(m1), NI(m2, m1)), traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap,
-          constMap)
-      case FreshRef(v) if !negate =>
+//      case NI(m1, m2) if negate =>
+//        // not NI(m1,m2) def= (not I(m1)) or NI(m2,m1)
+//        // encode with no negation
+//        encodePred(Or(Not(m1), NI(m2, m1)), traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap,
+//          constMap)
+      case FreshRef(v) =>
         val msgAt: T => T = index => mkTraceConstraint(traceFn, index)
         mkExistsIndex(mkZeroIndex, len, ind => mkValContainedInMsg(msgAt(ind), modelVarMap(v), negated = false))
-      case FreshRef(v) if negate =>
-        val msgAt: T => T = index => mkTraceConstraint(traceFn, index)
-        mkForallIndex(mkZeroIndex, len, ind => mkValContainedInMsg(msgAt(ind), modelVarMap(v), negated = true))
+//      case FreshRef(v) if negate =>
+//        val msgAt: T => T = index => mkTraceConstraint(traceFn, index)
+//        mkForallIndex(mkZeroIndex, len, ind => mkValContainedInMsg(msgAt(ind), modelVarMap(v), negated = true))
       case LSFalse =>
-        mkBoolVal(negate)
+        mkBoolVal(false)
       case LSTrue =>
-        mkBoolVal(!negate)
+        mkBoolVal(true)
     }
     res
   }
@@ -642,7 +619,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
     // Instantiate and update specifications for each ▷m̂
     // only include the disallow if it is the last one in the chain
-    val rulePreds: Set[LSPred] = rhsToPred(rhs, specSpace)
+    val rulePreds: Set[LSPred] = rhsToPred(rhs, specSpace).map(simplifyPred)
 
     val op = if(negate) Or else And
 
@@ -691,9 +668,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 //      case k => k -> TopTypeSet
 //    }.toMap
     val modelTypeMap = Map[String,TypeSet]()
+    assert(!negate)
     val encoded = preds.foldLeft(traceAndSuffixEnc){(acc,p) =>
       val encodedPred = encodePred(p, traceFn, traceLen, messageTranslator, modelVarMap, typeToSolverConst,
-        modelTypeMap, constMap, negate)
+        modelTypeMap, constMap)
       acc.mkTrace(List(encodedPred), negate)
     }
     val refs = refVPred.map(_._2).getOrElse(Set()).toList.map{
@@ -923,8 +901,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     // Constants
     private val pureValSet = states.foldLeft(Set[PureVal]()){
       case (acc,v) => acc.union(getPureValSet(v.pureFormula))
-    } + NullVal + BoolVal(true) + BoolVal(false)
-    private val (uniqueConst, constMap) = mkConstConstraintsMap(pureValSet)
+    } + NullVal + BoolVal(true) + BoolVal(false) + IntVal(0) + IntVal(1)
+    private val (uniqueConst, constMap1) = mkConstConstraintsMap(pureValSet)
+    val constMap = constMap1 +
+      (BoolVal(true)-> constMap1(IntVal(1))) + (BoolVal(false) -> constMap1(IntVal(0)))
     def getConstMap():Map[PureVal,T] = constMap
     zCtx.mkAssert(uniqueConst)
 

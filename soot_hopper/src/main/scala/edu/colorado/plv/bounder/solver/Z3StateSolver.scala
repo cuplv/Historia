@@ -863,7 +863,9 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
 
   protected def mkConstConstraintsMap(pvs: Set[PureVal])(implicit zCtx: Z3SolverCtx): (AST, Map[PureVal, AST]) = {
     val ctx = zCtx.ctx
-    val constMap = pvs.flatMap(t => t.z3Tag.map(tag => (t-> ctx.mkConst(s"const_${tag}", constSort)))).toMap
+    val constMap = pvs.flatMap{t =>
+      t.z3Tag.map(tag => (t-> ctx.mkConst(s"const_${tag}", constSort)))
+    }.toMap
     val allConstraints: immutable.Iterable[Expr[UninterpretedSort]] = constMap.map{case (_,c) => c}
     val unique = mkDistinctT(allConstraints)
     (unique, constMap)

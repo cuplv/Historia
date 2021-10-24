@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{MultiCallback, Proven, SingleCallbackMultiMethod, SingleMethod, Witnessed}
 import edu.colorado.plv.bounder.ir.{CBEnter, JimpleFlowdroidWrapper, JimpleMethodLoc}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, I, LSSpec, LSTrue, NI, Not, Or}
-import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSignatures, SpecSpace, ViewSpec}
+import edu.colorado.plv.bounder.lifestate.{Dummy, FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BottomQry, CallinReturnNonNull, DBOutputMode, DisallowedCallin, FieldPtEdge, IPathNode, MemoryOutputMode, OutputMode, PrettyPrinting, Qry, Reachable, ReceiverNonNull}
 import edu.colorado.plv.bounder.testutils.MkApk
@@ -1411,11 +1411,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
         //Note: subscribeIsUnique rule ommitted from this test to check state relevant to callback
         val specs = Set(
           LSSpec("a"::Nil, Nil, Not(SpecSignatures.Activity_onCreate_entry),SpecSignatures.Activity_onCreate_entry),
-          LSSpec("a"::Nil, Nil, LSTrue, SpecSignatures.Activity_onCreate_entry), // Dummy onCreate to include in trace
-          LSSpec("a"::Nil, Nil, LSTrue, SpecSignatures.Activity_onDestroy_exit), // Dummy onDestroy
-          LSSpec("l"::Nil, Nil, LSTrue, I(CBEnter, SpecSignatures.RxJava_call, "_"::"l"::Nil)), //Dummy call
           RxJavaSpec.call
-        )
+        ) // ++ Dummy.specs
         val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
           new SpecSpace(specs), cha)
@@ -1668,11 +1665,91 @@ class SymbolicExecutorTest extends AnyFunSuite {
       makeApkWithSources(Map("StatusActivity.java" -> src), MkApk.RXBase, test)
     }
   }
+  test("Button enable/disable") {
+    List(
+      ("button.setEnabled(true);", Witnessed, "badDisable"),
+      ("button.setEnabled(false);", Proven, "disable"),
+      ("button.setOnClickListener(null);", Proven, "clickSetNull"),
+      ("", Witnessed, "noDisable")
+    ).foreach{
+      { case (cancelLine, expectedResult,fileSuffix) =>
+        val src =
+          s"""
+             |package com.example.createdestroy;
+             |import android.app.Activity;
+             |import android.content.Context;
+             |import android.net.Uri;
+             |import android.os.Bundle;
+             |import android.os.AsyncTask;
+             |import android.app.ProgressDialog;
+             |
+             |import androidx.fragment.app.Fragment;
+             |
+             |import android.util.Log;
+             |import android.view.LayoutInflater;
+             |import android.view.View;
+             |import android.view.ViewGroup;
+             |import android.view.View.OnClickListener;
+             |
+             |
+             |
+             |public class RemoverActivity extends Activity implements OnClickListener{
+             |    String remover = null;
+             |    View button = null;
+             |    @Override
+             |    public void onCreate(Bundle b){
+             |        button = findViewById(3);
+             |        button.setOnClickListener(this);
+             |        $cancelLine
+             |    }
+             |    @Override
+             |    public void onClick(View v){
+             |        remover.toString(); //query1
+             |    }
+             |}
+             |""".stripMargin
+
+        val test: String => Unit = apk => {
+          assert(apk != null)
+          val specs = Set[LSSpec](
+            ViewSpec.clickWhileNotDisabled,
+            ViewSpec.clickWhileActive
+//            LifecycleSpec.Activity_createdOnlyFirst
+          )
+          val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
+          val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
+            new SpecSpace(specs, Set()), cha)
+          val config = SymbolicExecutorConfig(
+            stepLimit = 200, w, transfer,
+            component = Some(List("com.example.createdestroy.*RemoverActivity.*")))
+          implicit val om = config.outputMode
+          val symbolicExecutor = config.getSymbolicExecutor
+          val line = BounderUtil.lineForRegex(".*query1.*".r, src)
+          val query = ReceiverNonNull(
+            "com.example.createdestroy.RemoverActivity",
+            "void onClick(android.view.View)",
+            line)
+
+          val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
+          val fname = s"Button_disable_$fileSuffix"
+          prettyPrinting.dumpDebugInfo(result, fname)
+          prettyPrinting.printWitness(result)
+          assert(result.nonEmpty)
+          BounderUtil.throwIfStackTrace(result)
+          val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
+          assert(interpretedResult == expectedResult, fileSuffix)
+        }
+
+        makeApkWithSources(Map("RemoverActivity.java" -> src), MkApk.RXBase, test)
+      }
+    }
+  }
   test("Row3: Antennapod execute") {
     // Simplified version of Experiments row 3 (ecoop 19 meier motivating example)
     List(
-      ("button.setEnabled(false);", Proven, "withCheck"),
-      ("", Witnessed, "noCheck")
+      ("button.setEnabled(true);", Witnessed, "badDisable"),
+      ("button.setEnabled(false);", Proven, "disable"),
+      ("", Witnessed, "noDisable")
     ).map { case (cancelLine, expectedResult,fileSuffix) =>
       val src =
         s"""
@@ -2384,9 +2461,11 @@ class SymbolicExecutorTest extends AnyFunSuite {
             dbMode.startMeta()
             //            implicit val dbMode = MemoryOutputMode
             val specs = new SpecSpace(Set(
-              ViewSpec.clickWhileActive, ViewSpec.viewOnlyReturnedFromOneActivity, LifecycleSpec.noResumeWhileFinish,
-              LifecycleSpec.Activity_onResume_first_orAfter_onPause //TODO: === testing if this prevents timeout
-            )) // ++ LifecycleSpec.spec)
+              ViewSpec.clickWhileActive,
+              ViewSpec.viewOnlyReturnedFromOneActivity,
+//              LifecycleSpec.noResumeWhileFinish,
+//              LifecycleSpec.Activity_onResume_first_orAfter_onPause //TODO: ==== testing if this prevents timeout
+            ) ++ Dummy.specs) // ++ LifecycleSpec.spec)
             val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
 
             val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
@@ -2550,9 +2629,9 @@ class SymbolicExecutorTest extends AnyFunSuite {
             val specs = new SpecSpace(Set(
               ViewSpec.clickWhileActive,
               ViewSpec.viewOnlyReturnedFromOneActivity, //TODO: ===== currently testing which combination of specs causes timeout
-              LifecycleSpec.noResumeWhileFinish,
-              LifecycleSpec.Activity_onResume_first_orAfter_onPause,
-              LifecycleSpec.Activity_onPause_onlyafter_onResume
+//              LifecycleSpec.noResumeWhileFinish,
+//              LifecycleSpec.Activity_onResume_first_orAfter_onPause,
+//              LifecycleSpec.Activity_onPause_onlyafter_onResume
             ))
             val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
 

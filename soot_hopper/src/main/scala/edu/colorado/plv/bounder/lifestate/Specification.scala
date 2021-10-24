@@ -7,6 +7,7 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.{Equals, NotEquals}
 
 object SpecSignatures {
 
+
   //SetSignatureMatcher(activityTypeSet.map((_, "void onCreate(android.os.Bundle)")))
 
   // Activity lifecycle
@@ -194,12 +195,11 @@ object ViewSpec {
       I(CIExit, SpecSignatures.Activity_finish, "_"::"a"::Nil))),
     I(CBEnter, onClick, List("_", "l")))
 
-  // TODO: disable click after setEnable(false) CURRENTLY UNSOUND, needs false ============
-  private val setEnabled = SubClassMatcher(Set("android.view.View"), ".*setEnabled.*", "View_setEnabled")
+  val setEnabled:SubClassMatcher = SubClassMatcher(Set("android.view.View"), ".*setEnabled.*", "View_setEnabled")
   private val buttonEnabled = Or(Not(I(CIExit, setEnabled, "_"::"v"::"@false"::Nil)),
     NI(I(CIExit, setEnabled, "_"::"v"::"@true"::Nil), I(CIExit, setEnabled, "_"::"v"::"@false"::Nil))
   )
-  private val unsoundNotDisabled = Not(I(CIExit, setEnabled, "_"::"v"::Nil))
+//  private val buttonEnabled = Not(I(CIExit, setEnabled, "_"::"v"::"@false"::Nil)) //testing version, delete later
   val clickWhileNotDisabled:LSSpec = LSSpec("l"::Nil, "v"::Nil,
     And(setOnClickListenerI, buttonEnabled),
     I(CBEnter, onClick, List("_", "l")))
@@ -244,3 +244,16 @@ object SDialog{
 //  val clinitExit:I = I(CBEnter, SubClassMatcher("java.lang.Object", ".*\\<clinit\\>.*", "clinit"), List())
 //  val clinitFirst:LSSpec = LSSpec(Not(anyCb),clinitExit)
 //}
+
+object Dummy{
+  val specs = Set(
+    LSSpec("a"::Nil, Nil, LSTrue, SpecSignatures.Activity_onCreate_entry), // Dummy onCreate to include in trace
+    LSSpec("a"::Nil, Nil, LSTrue, SpecSignatures.Activity_onResume_entry), // Dummy onCreate to include in trace
+    LSSpec("a"::Nil, Nil, LSTrue, SpecSignatures.Activity_onPause_entry), // Dummy onCreate to include in trace
+    LSSpec("a"::Nil, Nil, LSTrue, SpecSignatures.Activity_onDestroy_exit), // Dummy onDestroy
+    LSSpec("l"::Nil, Nil, LSTrue, I(CBEnter, SpecSignatures.RxJava_call, "_"::"l"::Nil)), //Dummy call
+    LSSpec("v"::"a"::Nil, Nil, LSTrue, SpecSignatures.Activity_findView_exit),
+    LSSpec("v"::"l"::Nil,Nil, LSTrue, ViewSpec.setOnClickListenerI),
+    LSSpec("l"::Nil, Nil, LSTrue, I(CBEnter, ViewSpec.onClick, "_"::"l"::Nil))
+  )
+}

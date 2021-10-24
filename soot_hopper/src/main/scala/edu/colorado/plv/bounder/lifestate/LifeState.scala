@@ -281,7 +281,7 @@ object LifeState {
     implicit var rw:RW[FreshRef] = macroRW
   }
 
-  val LSGenerated = "LS_GENERATED_.*".r
+  val LSGenerated = "LS_.*".r
 
   case class LSImplies(l1:LSPred, l2:LSPred) extends LSPred{
     override def swap(swapMap: Map[String, String]): LSPred = LSImplies(l1.swap(swapMap), l2.swap(swapMap))
@@ -512,6 +512,8 @@ object LifeState {
       case LSTrue => true
       case LSFalse => true
       case i:LSAtom => i.lsVar.forall(v => quant.contains(v))
+      case v =>
+        throw new IllegalArgumentException(s"${v} is not a valid lspred")
     }
     private def checkWellFormed():Unit = {
       val quantified = univQuant.toSet ++ existQuant
@@ -640,7 +642,7 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
   def nextFreshLSVar():String = {
     val ind = freshLSVarIndex
     freshLSVarIndex = freshLSVarIndex+1
-    s"LS_GENERATED__${ind}"
+    s"LS__${ind}"
   }
   /**
    * For step back over a place where the code may emit a message find the applicable I and assign fresh ls vars.
