@@ -119,7 +119,6 @@ object LifecycleSpec {
   val noResumeWhileFinish: LSSpec = LSSpec("a"::Nil, Nil,
     Not(I(CIExit, SpecSignatures.Activity_finish, "_"::"a"::Nil)),
     SpecSignatures.Activity_onResume_entry
-//    SpecSignatures.Activity_onCreate_entry
   )
 
   val viewAttached: LSPred = SpecSignatures.Activity_findView_exit //TODO: ... or findView on other view

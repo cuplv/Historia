@@ -999,7 +999,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val res4 = stateSolver.canSubsume(st2,st1, spec)
     println()
   }
-  test("Serialized states subsumption timeout"){f =>
+  ignore("Serialized states subsumption timeout"){f =>
     val (stateSolver, _) = getStateSolver(f.typeSolving)
     List(
       ("s1_timeout_1.json", "s2_timeout_1.json", false)

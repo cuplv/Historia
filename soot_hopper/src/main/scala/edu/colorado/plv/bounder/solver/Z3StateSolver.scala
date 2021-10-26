@@ -22,6 +22,7 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
   var indexInitialized:Boolean = false
   val uninterpretedTypes : mutable.HashSet[String] = mutable.HashSet[String]()
   val sortEdges = mutable.HashSet[(String,String)]()
+
   // Method for detecting cycles in function sorts or Ɐ∃ quantifications
   private def detectCycle(edges:Set[(String,String)]):Boolean = {
     def iCycle(n:String, visited:Set[String]):Boolean = {
@@ -110,6 +111,10 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
     solver = makeSolver(timeout)
 //    Thread.sleep(100)
   }
+
+  override def assertIsReset(): Unit = {
+    assert(solver.getAssertions.isEmpty, s"Solver has assertions:\n    ${solver.getAssertions.mkString("\n    ")}")
+  }
 }
 class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:Int = 120000,
                     randomSeed:Int=30) extends StateSolver[AST,Z3SolverCtx] {
@@ -140,7 +145,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   override def checkSAT(useCmd:Boolean, timeout:Option[Int])(implicit zCtx:Z3SolverCtx): Boolean = {
     val timeoutS = timeout match {
       case Some(time) => time.toString
-      case None => "360" //TODO:======================
+      case None => "720"
     }
     if(useCmd) {
       File.temporaryFile().apply{ f =>
@@ -159,16 +164,27 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
           case e: RuntimeException =>
             println(e.getMessage)
             val f2 = File(s"timeout_${System.currentTimeMillis()}.z3")
-            if(f2.exists())
+            if(f2.exists()) {
+              println(s"deleting existing file ${f2}")
               f2.delete()
+            }
             f.copyTo(f2)
             throw new IllegalStateException(s"Command line timeout." +
               s"smt file: ${f2.canonicalPath}")
         }
       }
     } else {
-      val res = zCtx.solver.check()
-      interpretSolverOutput(res)
+      try {
+        val res = zCtx.solver.check()
+        interpretSolverOutput(res)
+      } catch {
+        case e:Throwable =>
+          println(s"Fallback from z3 exception: ${e}")
+          if(!useCmd)
+            checkSAT(true)
+          else
+            throw e
+      }
     }
   }
 
@@ -320,30 +336,31 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     case Status.UNSATISFIABLE => false
     case Status.SATISFIABLE => true
     case Status.UNKNOWN =>
-      val reason = zCtx.solver.getReasonUnknown
-      val f = File(s"timeout_${System.currentTimeMillis() / 1000L}.z3")
-      f.createFile()
-      f.writeText(zCtx.solver.toString)
-      f.append("\n(check-sat)")
-      var failed = false
-      // Sometimes the java solver fails, we fall back to calling the command line tool
-      try {
-        println("fallback command line solver")
-        //val stdout = BounderUtil.runCmdStdout(s"timeout 360 z3 ${f}")
-        val stdout = BounderUtil.runCmdStdout(s"timeout 60 z3 ${f}")
-        if (stdout.contains("unsat"))
-          false
-        else
-          true
-      }catch {
-        case e:RuntimeException =>
-          println(e.getMessage)
-          failed = true
-          throw new IllegalStateException(s"Z3 decidability or timeout issue--got Status.UNKNOWN: ${reason}, " +
-            s"smt file: ${f.canonicalPath}")
-      }finally {
-        if(!failed) f.delete(swallowIOExceptions = true)
-      }
+      throw new IllegalArgumentException("status unknown")
+//      val reason = zCtx.solver.getReasonUnknown
+//      val f = File(s"timeout_${System.currentTimeMillis() / 1000L}.z3")
+//      f.createFile()
+//      f.writeText(zCtx.solver.toString)
+//      f.append("\n(check-sat)")
+//      var failed = false
+//      // Sometimes the java solver fails, we fall back to calling the command line tool
+//      try {
+//        println("fallback command line solver")
+//        //val stdout = BounderUtil.runCmdStdout(s"timeout 360 z3 ${f}")
+//        val stdout = BounderUtil.runCmdStdout(s"timeout ${retryTimeout} z3 ${f}")
+//        if (stdout.contains("unsat"))
+//          false
+//        else
+//          true
+//      }catch {
+//        case e:RuntimeException =>
+//          println(e.getMessage)
+//          failed = true
+//          throw new IllegalStateException(s"Z3 decidability or timeout issue--got Status.UNKNOWN: ${reason}, " +
+//            s"smt file: ${f.canonicalPath}")
+//      }finally {
+//        if(!failed) f.delete(swallowIOExceptions = true)
+//      }
   }
 
   override def explainWitness(messageTranslator: MessageTranslator,

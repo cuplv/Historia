@@ -1446,7 +1446,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
     }
   }
-  test("Minimal motivating example") {
+  test("Row1:Minimal motivating example") {
     // Experiments row 1
     // Antennapod https://github.com/AntennaPod/AntennaPod/pull/2856
     List(
@@ -1556,9 +1556,9 @@ class SymbolicExecutorTest extends AnyFunSuite {
       makeApkWithSources(Map("MyFragment.java" -> src), MkApk.RXBase, test)
     }
   }
-  test("Yamba dismiss (simplified remove fragment)") {
-    // Simplified version of Experiments row 2
+  test("row 5: Yamba dismiss") {
     // Yamba https://github.com/learning-android/Yamba/pull/1/commits/90c1fe3e5e58fb87c3c59b1a271c6e43c9422eb6
+    //TODO: why does this take 30 min?
     List(
       ("if(resumed) {","}", Proven, "withCheck"),
       ("","", Witnessed, "noCheck")
@@ -1744,7 +1744,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       }
     }
   }
-  test("Row3: Antennapod execute") {
+  test("Row2: Antennapod execute") {
     // Simplified version of Experiments row 3 (ecoop 19 meier motivating example)
     List(
       ("button.setEnabled(true);", Witnessed, "badDisable"),
@@ -1839,6 +1839,90 @@ class SymbolicExecutorTest extends AnyFunSuite {
     }
   }
 
+  test("Row3: fragment start/stop can cycle"){
+    // https://github.com/AntennaPod/AntennaPod/issues/3112
+    //TODO:===== not implemented yet
+    ???
+    val src =
+      s"""
+         |package com.example.createdestroy;
+         |import android.app.Activity;
+         |import android.content.Context;
+         |import android.net.Uri;
+         |import android.os.Bundle;
+         |
+         |import androidx.fragment.app.Fragment;
+         |
+         |import android.util.Log;
+         |import android.view.LayoutInflater;
+         |import android.view.View;
+         |import android.view.ViewGroup;
+         |
+         |import rx.Single;
+         |import rx.Subscription;
+         |import rx.android.schedulers.AndroidSchedulers;
+         |import rx.schedulers.Schedulers;
+         |import rx.functions.Action1;
+         |
+         |
+         |public class MyFragment extends Fragment implements Action1<Object>{
+         |    Subscription sub;
+         |    String s = null;
+         |    @Override
+         |    public void onActivityCreated(Bundle savedInstanceState){
+         |        sub = Single.create(subscriber -> {
+         |            subscriber.onSuccess(3);
+         |        }).subscribe(this);
+         |        s = "";
+         |    }
+         |
+         |    @Override
+         |    public void call(Object o){
+         |         s.toString(); //query1 : reachable
+         |    }
+         |
+         |}
+         |""".stripMargin
+    ??? // TODO: ==== implement
+
+    val test: String => Unit = apk => {
+      assert(apk != null)
+      val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+        FragmentGetActivityNullSpec.getActivityNonNull,
+        LifecycleSpec.Fragment_activityCreatedOnlyFirst
+      ) ++ RxJavaSpec.spec
+      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+      val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
+        new SpecSpace(specs), cha)
+      val config = SymbolicExecutorConfig(
+        stepLimit = 80, w, transfer,
+        component = Some(List("com.example.createdestroy.*MyFragment.*")))
+      implicit val om = config.outputMode
+
+      // line in call is reachable
+      val symbolicExecutor = config.getSymbolicExecutor
+      val line = BounderUtil.lineForRegex(".*query1.*".r, src)
+      val query = Reachable("com.example.createdestroy.MyFragment",
+        "void call(java.lang.Object)",line)
+      val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
+      val fname = s"UnreachableLocation"
+      prettyPrinting.dumpDebugInfo(result, fname)
+      //      prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
+      assert(result.nonEmpty)
+      BounderUtil.throwIfStackTrace(result)
+      val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
+      assert(interpretedResult == Witnessed)
+
+      //line in call cannot throw npe since s is initialized
+      val query2 = ReceiverNonNull("com.example.createdestroy.MyFragment",
+        "void call(java.lang.Object)",line)
+      val result2 = symbolicExecutor.run(query2).flatMap(a => a.terminals)
+      val interpretedResult2 = BounderUtil.interpretResult(result2,QueryFinished)
+      assert(interpretedResult2 == Proven)
+    }
+
+    makeApkWithSources(Map("MyFragment.java" -> src), MkApk.RXBase, test)
+  }
   test("Reachable location call and subscribe"){
     val src =
       s"""
@@ -2570,6 +2654,94 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
   }
+  test("Resumed paused test") {
+    val startTime = System.currentTimeMillis()
+    //Click attached to different activity
+    val src =
+      s"""package com.example.createdestroy;
+         |import androidx.appcompat.app.AppCompatActivity;
+         |import android.os.Bundle;
+         |import android.util.Log;
+         |import android.view.View;
+         |import android.os.Handler;
+         |import android.view.View.OnClickListener;
+         |
+         |
+         |public class MyActivity extends AppCompatActivity {
+         |    String s = null;
+         |    String s2 = "";
+         |    @Override
+         |    protected void onResume(){
+         |        s = "";
+         |        s2.toString(); //query2
+         |        s2 = null;
+         |    }
+         |
+         |    @Override
+         |    protected void onPause() {
+         |        s.toString(); // query1
+         |        s = null;
+         |        s2 = "";
+         |    }
+         |}""".stripMargin
+    val test: String => Unit = apk => {
+      File.usingTemporaryDirectory() { tmpDir =>
+        assert(apk != null)
+        val dbFile = tmpDir / "paths.db"
+        println(dbFile)
+        implicit val dbMode = DBOutputMode(dbFile.toString, truncate = false)
+        dbMode
+          .startMeta()
+        //            implicit val dbMode = MemoryOutputMode
+        //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
+        val specs = new SpecSpace(Set(
+          LifecycleSpec.Activity_onResume_first_orAfter_onPause,
+          LifecycleSpec.Activity_onPause_onlyafter_onResume
+        ))
+        val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
+
+        val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
+          specs, cha)
+        val config = SymbolicExecutorConfig(
+          stepLimit = 300, w, transfer,
+          component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode)
+        val symbolicExecutor = config.getSymbolicExecutor
+
+        // Null deref onPause unreachable
+        val line = BounderUtil.lineForRegex(".*query1.*".r, src)
+        val nullUnreach = ReceiverNonNull("com.example.createdestroy.MyActivity",
+          "void onPause()", line, Some(".*toString.*"))
+        val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
+        prettyPrinting.dumpDebugInfo(nullUnreachRes, s"ResumedPaused_NPE_Unreach")
+        assert(nullUnreachRes.nonEmpty)
+        BounderUtil.throwIfStackTrace(nullUnreachRes)
+        prettyPrinting.printWitness(nullUnreachRes)
+        assert(BounderUtil.interpretResult(nullUnreachRes, QueryFinished) == Proven)
+
+        // Pause reachable
+        val pauseReachQ = Reachable("com.example.createdestroy.MyActivity", "void onPause()", line)
+        val pauseReachRes = symbolicExecutor.run(pauseReachQ, dbMode).flatMap(a => a.terminals)
+        assert(pauseReachRes.nonEmpty)
+        BounderUtil.throwIfStackTrace(pauseReachRes)
+        assert(BounderUtil.interpretResult(pauseReachRes, QueryFinished) == Witnessed)
+
+        // Null deref onResume unreachable
+        val line2 = BounderUtil.lineForRegex(".*query2.*".r, src)
+        val nullUnreach2 = ReceiverNonNull("com.example.createdestroy.MyActivity",
+          "void onResume()", line2, Some(".*toString.*"))
+        val nullUnreachRes2 = symbolicExecutor.run(nullUnreach2, dbMode).flatMap(a => a.terminals)
+        prettyPrinting.dumpDebugInfo(nullUnreachRes2, s"ResumedPaused_NPE_Unreach2")
+        assert(nullUnreachRes2.nonEmpty)
+        BounderUtil.throwIfStackTrace(nullUnreachRes2)
+        prettyPrinting.printWitness(nullUnreachRes2)
+        assert(BounderUtil.interpretResult(nullUnreachRes2, QueryFinished) == Proven)
+      }
+
+    }
+    makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase,
+      test)
+    println(s"Test took ${startTime - System.currentTimeMillis()} milliseconds")
+  }
   test("Row 4: Connect bot click/finish") {
     val startTime = System.currentTimeMillis()
     List(
@@ -2593,9 +2765,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
             |    String s = null;
             |    static OnClickListener listener2 = null;
             |    @Override
-            |    protected void onResume(){
+            |    protected void onCreate(Bundle b){
             |        View v = findViewById(3);
-            |        s = "";
             |        v.setOnClickListener(new OnClickListener(){
             |           @Override
             |           public void onClick(View v){
@@ -2609,6 +2780,10 @@ class SymbolicExecutorTest extends AnyFunSuite {
             |             ${disableClick}
             |           }
             |        }, 3000);
+            |    }
+            |    @Override
+            |    protected void onResume() {
+            |        s = "";
             |    }
             |
             |    @Override
@@ -2630,8 +2805,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
               ViewSpec.clickWhileActive,
               ViewSpec.viewOnlyReturnedFromOneActivity, //TODO: ===== currently testing which combination of specs causes timeout
 //              LifecycleSpec.noResumeWhileFinish,
-//              LifecycleSpec.Activity_onResume_first_orAfter_onPause,
-//              LifecycleSpec.Activity_onPause_onlyafter_onResume
+              LifecycleSpec.Activity_createdOnlyFirst
             ))
             val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
 

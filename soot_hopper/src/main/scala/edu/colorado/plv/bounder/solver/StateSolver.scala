@@ -16,6 +16,7 @@ trait Assumptions
 class UnknownSMTResult(msg : String) extends Exception(msg)
 trait SolverCtx[T]{
   def mkAssert(t:T):Unit
+  def assertIsReset():Unit
 }
 
 object StateSolver{
@@ -1070,45 +1071,53 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   def simplify(state: State,specSpace: SpecSpace, maxWitness: Option[Int] = None): Option[State] = {
     implicit val zCtx = getSolverCtx
-    if (state.isSimplified) Some(state) else {
-      // Drop useless constraints
-      val state2 = state.copy(sf = state.sf.copy(pureFormula = state.pureFormula.filter {
-        case PureConstraint(v1, Equals, v2) if v1 == v2 => false
-        case _ => true
-      }))
+    try {
+      zCtx.assertIsReset()
 
-      // note: I think the following is wrong, empty points to set occurs when value must be null
-      //      // If no type possible for a pure var, state is not feasible
-      //      val pvMap2: Map[PureVar, TypeSet] = state.typeConstraints
-      //      if (pvMap2.exists{ a => a._2.isEmpty }) {
-      //        return None
-      //      }
+      if (state.isSimplified) Some(state) else {
+        // Drop useless constraints
+        val state2 = state.copy(sf = state.sf.copy(pureFormula = state.pureFormula.filter {
+          case PureConstraint(v1, Equals, v2) if v1 == v2 => false
+          case _ => true
+        }))
 
-      val nullsFromPt = state2.typeConstraints.filter(a => a._2.isEmpty)
-      val stateWithNulls = nullsFromPt.foldLeft(state2){
-        case (state,(v,_)) => state.addPureConstraint(PureConstraint(v, Equals, NullVal))
-      }
-      val messageTranslator = MessageTranslator(List(stateWithNulls),specSpace)
+        // note: I think the following is wrong, empty points to set occurs when value must be null
+        //      // If no type possible for a pure var, state is not feasible
+        //      val pvMap2: Map[PureVar, TypeSet] = state.typeConstraints
+        //      if (pvMap2.exists{ a => a._2.isEmpty }) {
+        //        return None
+        //      }
 
-      // Only encode types in Z3 for subsumption check due to slow-ness
+        val nullsFromPt = state2.typeConstraints.filter(a => a._2.isEmpty)
+        val stateWithNulls = nullsFromPt.foldLeft(state2) {
+          case (state, (v, _)) => state.addPureConstraint(PureConstraint(v, Equals, NullVal))
+        }
+        val messageTranslator = MessageTranslator(List(stateWithNulls), specSpace)
 
-      val ast =
+        // Only encode types in Z3 for subsumption check due to slow-ness
+
+        val ast =
           toASTState(stateWithNulls, messageTranslator, maxWitness,
             negate = false, specSpace = specSpace, debug = maxWitness.isDefined)
 
-      if (maxWitness.isDefined) {
-        println(s"State ${System.identityHashCode(state2)} encoding: ")
-        println(ast.toString)
-      }
-      val simpleAst = solverSimplify(ast, stateWithNulls, messageTranslator, maxWitness.isDefined)
+        if (maxWitness.isDefined) {
+          println(s"State ${System.identityHashCode(state2)} encoding: ")
+          println(ast.toString)
+        }
+        zCtx.mkAssert(ast)
+        val sat = checkSAT(false)
+        //      val simpleAst = solverSimplify(ast, stateWithNulls, messageTranslator, maxWitness.isDefined)
 
-      reset()
-      if(simpleAst.isEmpty)
-        None
-      else {
-        val reducedState = reduceStatePureVars(stateWithNulls.setSimplified()).map(gcPureVars)
-        reducedState.map(_.setSimplified())
+        //      if(simpleAst.isEmpty)
+        if (!sat)
+          None
+        else {
+          val reducedState = reduceStatePureVars(stateWithNulls.setSimplified()).map(gcPureVars)
+          reducedState.map(_.setSimplified())
+        }
       }
+    }finally{
+      reset()
     }
   }
 
@@ -1472,8 +1481,9 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   }
 
   def canSubsumeZ3(s1:State, s2:State,specSpace:SpecSpace, maxLen:Option[Int], timeout:Option[Int]):Boolean = {
+    implicit val zCtx: C = getSolverCtx
     try {
-      implicit val zCtx: C = getSolverCtx
+      zCtx.assertIsReset()
       val messageTranslator: MessageTranslator = MessageTranslator(List(s1, s2), specSpace)
 
       //TODO: remove "negate" bool
@@ -1486,12 +1496,11 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         specSpace = specSpace, debug = maxLen.isDefined)
       zCtx.mkAssert(s2Enc)
       val foundCounter =
-        checkSAT(useCmd = false) //TODO: ===== is this an improvement to use cmd instead?
+        checkSAT(useCmd = false)
 
       if (foundCounter && maxLen.isDefined) {
         printDbgModel(messageTranslator, Set(s1.traceAbstraction,s2.traceAbstraction), "")
       }
-      reset()
       !foundCounter
     }catch{
       case e:IllegalStateException if e.getLocalizedMessage.contains("timeout") =>
@@ -1521,6 +1530,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         // TODO: need mechanism so that if a timeout occurs and no other state subsumes we throw an error
         // TODO: =================== double check that this behaves as expected
         false
+    } finally {
+      reset()
     }
   }
 
