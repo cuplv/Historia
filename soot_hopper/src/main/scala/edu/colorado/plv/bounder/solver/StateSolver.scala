@@ -7,6 +7,7 @@ import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.LifeState._
 import edu.colorado.plv.bounder.solver.StateSolver.{rhsToPred, simplifyPred}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{HeapPtEdge, _}
+import org.slf4j.{Logger, LoggerFactory}
 import upickle.default.{read, write}
 
 import scala.collection.immutable
@@ -143,6 +144,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   def setSeed(v:Int)(implicit zCtx: C):Unit
   // checking
   def getSolverCtx: C
+  def getLogger:Logger
 
   /**
    * Check satisfiability of fomrula in solver
@@ -610,12 +612,11 @@ trait StateSolver[T, C <: SolverCtx[T]] {
                                  messageTranslator: MessageTranslator,
                                  traceFn: T,
                                  traceLen: T,
-                                 typeMap: Map[PureVar, TypeSet],
-                                 typeToSolverConst: Map[Int, T],
-                                 constMap: Map[PureVal, T],
                                  specSpace: SpecSpace,
                                  negate: Boolean = false, debug: Boolean = false)(implicit zCtx: C): TraceAndSuffixEnc = {
     assert(!negate) //TODO: remove negate or make this function handle it
+    val typeToSolverConst = messageTranslator.getTypeToSolverConst
+    val constMap = messageTranslator.getConstMap()
     val rhs: Seq[LSSingle] = abs.rightOfArrow
 
     // Instantiate and update specifications for each ▷m̂
@@ -661,13 +662,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
             (accM + (fv -> v), accTS.copy(quantifiedPv = accTS.quantifiedPv + v))
           }
       }
-    //TODO: should this be factored out? I think the idea was to constraint the types in the trace.
-//    val modelTypeMap = modelVarMap.keySet.map{
-//      case k if abs.modelVars.contains(k) =>
-//        val pv = abs.modelVars(k)
-//        k->typeMap.getOrElse(pv.asInstanceOf[PureVar], TopTypeSet)
-//      case k => k -> TopTypeSet
-//    }.toMap
     val modelTypeMap = Map[String,TypeSet]()
     assert(!negate)
     val encoded = preds.foldLeft(traceAndSuffixEnc){(acc,p) =>
@@ -795,8 +789,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val traceFun = mkTraceFn(stateUniqueID)
     val traceAbs = state.traceAbstraction
     val traceEnc: TraceAndSuffixEnc = encodeTraceAbs(traceAbs, messageTranslator, traceFn = traceFun, traceLen = len,
-      negate = negate, typeMap = state.typeConstraints, typeToSolverConst = messageTranslator.getTypeToSolverConst,
-      specSpace = specSpace, constMap = messageTranslator.getConstMap(), debug = debug)
+      negate = negate, specSpace = specSpace, debug = debug)
 //    val encodedSuffix = traceEnc.suffix.getOrElse(mkBoolVal(b = true))
 
     def withPVMap(pvMapIn:Map[PureVar, T]):T =  {
@@ -1071,6 +1064,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   def simplify(state: State,specSpace: SpecSpace, maxWitness: Option[Int] = None): Option[State] = {
     implicit val zCtx = getSolverCtx
+    val startTime = System.currentTimeMillis()
     try {
       zCtx.assertIsReset()
 
@@ -1118,6 +1112,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       }
     }finally{
       reset()
+      getLogger.debug(s"feasibility time: ${System.currentTimeMillis() - startTime}")
     }
   }
 
@@ -1301,53 +1296,70 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       canSubsumeUnifyFreshRef(s1FreshRef, s2FreshRef, t1,t2, mapH)
     }
 
-    val pred1 = rhsToPred(s1.sf.traceAbstraction.rightOfArrow, specSpace).map(simplifyPred)
-    val pred2: Set[LSPred] = rhsToPred(s2.sf.traceAbstraction.rightOfArrow, specSpace).map(simplifyPred)
-    val lm1 = s1.sf.traceAbstraction.modelVars
-    val lm2 = s2.sf.traceAbstraction.modelVars
-    val mapsT: List[(Map[PureVar,PureVar], Set[PureConstraint])] = mapsR.flatMap{mapT =>
-      canSubsumeUnifyPreds(pred1,pred2,lm1,lm2,t1,t2,mapT)
-    }
-    mapsT.exists{
-      case (mapT, extraPure) =>
-        canSubsumeUnifyPure(s1.sf.pureFormula ++ extraPure, s2.sf.pureFormula,mapT)
-    }
-    //TODO: ===== Finally unify based on pure constraints
+    // TODO: commented out code is faster non-z3 method, trying z3 for final subs before putting in time
+    //    val pred1 = rhsToPred(s1.sf.traceAbstraction.rightOfArrow, specSpace).map(simplifyPred)
+    //    val pred2: Set[LSPred] = rhsToPred(s2.sf.traceAbstraction.rightOfArrow, specSpace).map(simplifyPred)
+    //    val lm1 = s1.sf.traceAbstraction.modelVars
+    //    val lm2 = s2.sf.traceAbstraction.modelVars
+    //    val mapsT: List[(Map[PureVar,PureVar], Set[PureConstraint])] = mapsR.flatMap{mapT =>
+    //      canSubsumeUnifyPreds(pred1,pred2,lm1,lm2,t1,t2,mapT)
+    //    }
+    //    mapsT.exists{
+    //      case (mapT, extraPure) =>
+    //        canSubsumeUnifyPure(s1.sf.pureFormula ++ extraPure, s2.sf.pureFormula,mapT)
+    //    }
 
-//    val pv1: Set[PureVar] = s1.pureVars()
-//    val pv2: Set[PureVar] = s2.pureVars()
-//    val allPv = pv1.union(pv2).toList
-//    // map s2 to something where all pvs are strictly larger
-//    val maxID = if (allPv.nonEmpty) allPv.maxBy(_.id) else PureVar(5)
-//
-//
-//    mapsR.exists { mapH =>
-//      // Swap all pureVars to pureVars above the max found in either state
-//      // This way swapping doesn't interfere with itself
-//      val (s1Above, aboveMap) = pv1.foldLeft((s1.copy(nextAddr = maxID.id + 1)), Map[PureVar, PureVar]()) {
-//        case ((st, swapped), pv) =>
-//          val (freshPv, st2) = st.nextPv()
-//          (st2.swapPv(pv, freshPv), swapped + (pv -> freshPv))
-//      }
-//      // Make s1 with values swapped via mapH using aboveMap
-//      val s1Swapped = pv1.foldLeft(s1Above){
-//        case (state, pv) if mapH.contains(pv) =>
-//          val newPv = aboveMap(pv)
-//          state.swapPv(newPv, mapH(pv))
-//        case (state,_) => state
-//      }
-//
-//      //TODO: enumerate how trace pv may match
-//      //TODO: encode states with existential pure vals lifted above implication
-//      val pred1 = rhsToPred(s1Swapped.sf.traceAbstraction.rightOfArrow, specSpace).map(simplifyPred)
-//      val pred2: Set[LSPred] = rhsToPred(s2.sf.traceAbstraction.rightOfArrow, specSpace).map(simplifyPred)
-//      if(pred2 == Set(LSTrue) || pred2.isEmpty) {
-//        return canSubsumeUnifyPure(s1.sf.pureFormula, s2.sf.pureFormula,mapH)
-//      } //TODO: check pure
-//      ???
-//    }
+    // Create version of s2 with all fresh pv so swapping doesn't conflict
 
-    // TODO: check pure formula
+    val pv1: Set[PureVar] = s1.pureVars()
+    val pv2: Set[PureVar] = s2.pureVars()
+    val allPv = pv1.union(pv2).toList
+    // map s2 to something where all pvs are strictly larger
+    val maxID = if (allPv.nonEmpty) allPv.maxBy(_.id) else PureVar(5)
+
+
+    implicit val zCtx: C = getSolverCtx
+    // Swap all pureVars to pureVars above the max found in either state
+    // This way swapping doesn't interfere with itself
+    val (s1Above, pvToTemp) = pv1.foldLeft((s1.copy(nextAddr = maxID.id + 1), Map[PureVar,PureVar]())) {
+      case ((st, nl), pv) =>
+        val (freshPv, st2) = st.nextPv()
+        (st2.swapPv(pv, freshPv), nl + (pv -> freshPv))
+    }
+
+    // Check if one of the mappings allows subsumption
+    mapsR.exists { mapR =>
+      // TODO: determine if one of the mappings in mapsR allows subsumption over trace abstraction
+
+      val s1Swapped = mapR.foldLeft(s1Above){
+        case (st, (oldPv, newPv)) => st.swapPv(oldPv, newPv)
+      }
+
+      zCtx.assertIsReset()
+      try {
+        val messageTranslator = MessageTranslator(List(s1Swapped, s2), specSpace)
+        val traceFun = mkTraceFn("")
+        val len = mkLenVar(s"len_") // there exists a finite size of the trace for this state
+
+        val abs1 = s1Swapped.sf.traceAbstraction.rightOfArrow.filter {
+          case FreshRef(_) => false
+          case _ => true
+        }
+        val tr1 = encodeTraceAbs(s1Swapped.traceAbstraction.copy(rightOfArrow = abs1),
+          messageTranslator, traceFn = traceFun, traceLen = len, specSpace = specSpace)
+
+
+        val abs2 = s2.sf.traceAbstraction.rightOfArrow.filter {
+          case FreshRef(_) => false
+          case _ => true
+        }
+        val tr2 = encodeTraceAbs(s1Above.traceAbstraction.copy(rightOfArrow = abs2),
+          messageTranslator, traceFn = traceFun, traceLen = len, specSpace = specSpace)
+
+        println(pvToTemp)
+        ??? //TODO:==================
+      }finally{ reset() }
+    }
   }
   /**
    *
@@ -1359,7 +1371,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    */
   def canSubsume(s1: State, s2: State, specSpace: SpecSpace, maxLen: Option[Int] = None,
                  timeout:Option[Int] = None): Boolean = {
-//    val method = "Unify"
+    val startTime = System.currentTimeMillis()
+    //val method = "Unify"
     val method = "Z3"
     // Check if stack sizes or locations are different
     if (s1.callStack.size != s2.callStack.size)
@@ -1429,12 +1442,15 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     if(s2Simp.isEmpty)
       return true
 
-    if(method == "Z3")
+    val res = if(method == "Z3")
       canSubsumeZ3(s1Simp.get,s2Simp.get,specSpace, maxLen, timeout)
     else if(method == "Unify")
       canSubsumeUnify(s1Simp.get,s2Simp.get,specSpace)
     else
       throw new IllegalArgumentException("""Expected method: "Unify" or "Z3" """)
+
+    getLogger.debug(s"subsumption time: ${System.currentTimeMillis() - startTime}")
+    res
   }
   // s1 subsuming state
   // s2 state being subsumed

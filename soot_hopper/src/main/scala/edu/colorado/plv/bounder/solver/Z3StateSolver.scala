@@ -8,6 +8,7 @@ import edu.colorado.plv.bounder.ir.{AppMethod, CBEnter, CBExit, CIEnter, CIExit,
 import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSAnyVal, LSVar}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, NullVal, PureVal, PureVar, State}
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.immutable
 import scala.collection.mutable
@@ -116,7 +117,7 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
     assert(solver.getAssertions.isEmpty, s"Solver has assertions:\n    ${solver.getAssertions.mkString("\n    ")}")
   }
 }
-class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:Int = 120000,
+class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:Int = 30000,
                     randomSeed:Int=30) extends StateSolver[AST,Z3SolverCtx] {
   private val MAX_ARGS = 10
 
@@ -145,7 +146,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   override def checkSAT(useCmd:Boolean, timeout:Option[Int])(implicit zCtx:Z3SolverCtx): Boolean = {
     val timeoutS = timeout match {
       case Some(time) => time.toString
-      case None => "720"
+      case None => "600"
     }
     if(useCmd) {
       File.temporaryFile().apply{ f =>
@@ -1031,4 +1032,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
             argFun.apply(arg,m),v_))):_*)
     ctx.mkForall(Array(m), pred, 1, null,null,null,null)
   }
+
+  override def getLogger: Logger =
+    LoggerFactory.getLogger("Z3StateSolver.scala")
 }
