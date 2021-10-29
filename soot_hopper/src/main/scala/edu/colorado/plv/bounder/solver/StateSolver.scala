@@ -1112,7 +1112,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       }
     }finally{
       reset()
-      getLogger.debug(s"feasibility time: ${System.currentTimeMillis() - startTime}")
+      getLogger.warn(s"feasibility time: ${System.currentTimeMillis() - startTime}")
     }
   }
 
@@ -1449,7 +1449,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     else
       throw new IllegalArgumentException("""Expected method: "Unify" or "Z3" """)
 
-    getLogger.debug(s"subsumption time: ${System.currentTimeMillis() - startTime}")
+    getLogger.warn(s"subsumption time: ${System.currentTimeMillis() - startTime}")
     res
   }
   // s1 subsuming state

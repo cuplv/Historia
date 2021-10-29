@@ -11,9 +11,11 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.{CallinReturnNonNull, DBO
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.AnyFunSuite
+import org.slf4j.LoggerFactory
 import soot.SootMethod
 
 class Experiments extends AnyFunSuite {
+  val logger = LoggerFactory.getLogger("Experiments.scala")
   private val prettyPrinting = new PrettyPrinting()
   val cgMode = SparkCallGraph
   test("Row1:Minimal motivating example") {
@@ -45,7 +47,7 @@ class Experiments extends AnyFunSuite {
            |import rx.functions.Action1;
            |
            |
-           |public class MyFragment extends Fragment implements Action1<Object>{
+           |public class PlayerFragment extends Fragment implements Action1<Object>{
            |    Subscription sub;
            |    //Callback with irrelevant subscribe
            |    @Override
@@ -77,6 +79,7 @@ class Experiments extends AnyFunSuite {
            |""".stripMargin
 
       val test: String => Unit = apk => {
+        val startTime = System.currentTimeMillis()
         assert(apk != null)
         //Note: subscribeIsUnique rule ommitted from this test to check state relevant to callback
         // TODO: relevance could probably be refined so this isn't necessary
@@ -90,12 +93,12 @@ class Experiments extends AnyFunSuite {
           new SpecSpace(specs), cha)
         val config = SymbolicExecutorConfig(
           stepLimit = 80, w, transfer,
-          component = Some(List("com.example.createdestroy.*MyFragment.*")))
+          component = Some(List("com.example.createdestroy.*PlayerFragment.*")))
         implicit val om = config.outputMode
         val symbolicExecutor = config.getSymbolicExecutor
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
         val query = CallinReturnNonNull(
-          "com.example.createdestroy.MyFragment",
+          "com.example.createdestroy.PlayerFragment",
           "void call(java.lang.Object)", line,
           ".*getActivity.*")
 
@@ -121,9 +124,10 @@ class Experiments extends AnyFunSuite {
         //          println("--- end witness ---")
         //        }
         //        assert(onViewCreatedInTree.isEmpty)
+        logger.warn(s"Row 1 ${fileSuffix} time: ${System.currentTimeMillis() - startTime}")
       }
 
-      makeApkWithSources(Map("MyFragment.java" -> src), MkApk.RXBase, test)
+      makeApkWithSources(Map("PlayerFragment.java" -> src), MkApk.RXBase, test)
     }
   }
 
@@ -191,6 +195,7 @@ class Experiments extends AnyFunSuite {
            |""".stripMargin
 
       val test: String => Unit = apk => {
+        val startTime = System.currentTimeMillis()
         assert(apk != null)
         val specs = Set[LSSpec](
           ViewSpec.clickWhileNotDisabled,
@@ -218,6 +223,7 @@ class Experiments extends AnyFunSuite {
         BounderUtil.throwIfStackTrace(result)
         val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
         assert(interpretedResult == expectedResult)
+        logger.warn(s"Row 2 ${fileSuffix} time: ${System.currentTimeMillis() - startTime}")
       }
 
       makeApkWithSources(Map("RemoverActivity.java" -> src), MkApk.RXBase, test)
@@ -380,6 +386,7 @@ class Experiments extends AnyFunSuite {
            |""".stripMargin
 
       val test: String => Unit = apk => {
+        val startTime = System.currentTimeMillis()
         assert(apk != null)
         //Note: subscribeIsUnique rule ommitted from this test to check state relevant to callback
         // TODO: relevance could probably be refined so this isn't necessary
@@ -412,6 +419,7 @@ class Experiments extends AnyFunSuite {
         BounderUtil.throwIfStackTrace(result)
         val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
         assert(interpretedResult == expectedResult)
+        logger.warn(s"Row 5 ${fileSuffix} time: ${System.currentTimeMillis() - startTime}")
       }
 
       makeApkWithSources(Map("StatusActivity.java" -> src), MkApk.RXBase, test)
@@ -420,7 +428,7 @@ class Experiments extends AnyFunSuite {
   test("Row 4: Connect bot click/finish") {
     val startTime = System.currentTimeMillis()
     List(
-      //("", Witnessed), //TODO:======================== commented out to speed up test, make sure to uncomment later
+      ("", Witnessed),
       ("v.setOnClickListener(null);", Proven),
     ).foreach {
       case (disableClick, expected) =>
@@ -467,6 +475,7 @@ class Experiments extends AnyFunSuite {
              |    }
              |}""".stripMargin
         val test: String => Unit = apk => {
+          val startTime = System.currentTimeMillis()
           File.usingTemporaryDirectory() { tmpDir =>
             assert(apk != null)
             val dbFile = tmpDir / "paths.db"
@@ -478,7 +487,7 @@ class Experiments extends AnyFunSuite {
             //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
             val specs = new SpecSpace(Set(
               ViewSpec.clickWhileActive,
-              ViewSpec.viewOnlyReturnedFromOneActivity, //TODO: ===== currently testing which combination of specs causes timeout
+              ViewSpec.viewOnlyReturnedFromOneActivity,
               //              LifecycleSpec.noResumeWhileFinish,
               LifecycleSpec.Activity_createdOnlyFirst
             ))
@@ -503,6 +512,7 @@ class Experiments extends AnyFunSuite {
             //  dbFile.copyToDirectory(File("/Users/shawnmeier/Desktop/Row3"))
           }
 
+          logger.warn(s"Row 4 ${expected} time: ${System.currentTimeMillis() - startTime}")
         }
         makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase,
           test)
