@@ -15,7 +15,8 @@ import org.slf4j.LoggerFactory
 import soot.SootMethod
 
 class Experiments extends AnyFunSuite {
-  val logger = LoggerFactory.getLogger("Experiments.scala")
+  val logger = LoggerFactory.getLogger("Experiments")
+  logger.warn("Starting experiments run")
   private val prettyPrinting = new PrettyPrinting()
   val cgMode = SparkCallGraph
   test("Row1:Minimal motivating example") {
@@ -224,7 +225,7 @@ class Experiments extends AnyFunSuite {
         val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
         assert(interpretedResult == expectedResult)
         logger.warn(s"Row 2 ${fileSuffix} time: ${System.currentTimeMillis() - startTime}")
-      }
+      77}
 
       makeApkWithSources(Map("RemoverActivity.java" -> src), MkApk.RXBase, test)
     }

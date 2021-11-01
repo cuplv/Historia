@@ -14,15 +14,29 @@ import scala.collection.immutable
 import scala.collection.mutable
 
 case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
-  var ctx = new Context()
+  private var ictx = new Context()
   val checkStratifiedSets = false // set to true to check EPR stratified sets (see Paxos Made EPR, Padon OOPSLA 2017)
-  var solver:Solver = ctx.mkSolver()
+  private var isolver:Solver = ictx.mkSolver()
   // mapping from arg index to distinct uninterpreted sort used in argument function
   var args:Array[Expr[UninterpretedSort]] = Array()
   val initializedFieldFunctions : mutable.HashSet[String] = mutable.HashSet[String]()
   var indexInitialized:Boolean = false
   val uninterpretedTypes : mutable.HashSet[String] = mutable.HashSet[String]()
   val sortEdges = mutable.HashSet[(String,String)]()
+  var acquired:Option[Long] = None
+  def ctx:Context ={
+    val currentThread:Long = Thread.currentThread().getId
+    assert(acquired.isDefined)
+    assert(acquired.get == currentThread)
+    ictx
+  }
+  def solver:Solver = {
+    val currentThread:Long = Thread.currentThread().getId
+    assert(acquired.isDefined)
+    assert(acquired.get == currentThread)
+    isolver
+  }
+
 
   // Method for detecting cycles in function sorts or Ɐ∃ quantifications
   private def detectCycle(edges:Set[(String,String)]):Boolean = {
@@ -44,6 +58,9 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
     allNodes.exists(n => iCycle(n,Set()))
   }
   def mkAssert(t: AST): Unit = this.synchronized{
+    val currentThread:Long = Thread.currentThread().getId
+    assert(acquired.isDefined)
+    assert(acquired.get == currentThread)
     if(checkStratifiedSets) {
       //sortEdges.addAll(getQuantAltEdges(t))
     }
@@ -98,23 +115,34 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
     solver.setParameters(params)
     solver
   }
-  def reset(): Unit = this.synchronized{
+  def release(): Unit = this.synchronized{
     //    assert(!detectCycle(sortEdges.toSet), "Quantifier Alternation Exception") //TODO: ==== remove after dbg
     // sortEdges.clear()
 
 //    println(s"reset ctx: ${System.identityHashCode(this)}")
+    assert(acquired.isDefined)
+    val currentThread:Long = Thread.currentThread().getId
+    assert(acquired.get == currentThread)
+    acquired = None
+    ictx.close()
+    isolver = null
+//    Thread.sleep(100)
+  }
+
+  override def acquire(): Unit = {
+    val currentThread:Long = Thread.currentThread().getId
+
+    assert(acquired.isEmpty)
+    acquired = Some(currentThread)
     args = Array()
     initializedFieldFunctions.clear()
     indexInitialized = false
     uninterpretedTypes.clear()
-    ctx.close()
-    ctx = new Context()
-    solver = makeSolver(timeout)
-//    Thread.sleep(100)
-  }
+//    ictx.close()
+    ictx = new Context()
+    isolver = makeSolver(timeout)
 
-  override def assertIsReset(): Unit = {
-    assert(solver.getAssertions.isEmpty, s"Solver has assertions:\n    ${solver.getAssertions.mkString("\n    ")}")
+    //assert(solver.getAssertions.isEmpty, s"Solver has assertions:\n    ${solver.getAssertions.mkString("\n    ")}")
   }
 }
 class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:Int = 30000,
@@ -179,7 +207,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
         val res = zCtx.solver.check()
         interpretSolverOutput(res)
       } catch {
-        case e:Throwable =>
+        case e: IllegalArgumentException =>
           println(s"Fallback from z3 exception: ${e}")
           if(!useCmd)
             checkSAT(true)
@@ -197,9 +225,10 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   override def pop()(implicit zCtx:Z3SolverCtx): Unit = {
     zCtx.solver.pop()
   }
-  override def reset()(implicit zCtx:Z3SolverCtx):Unit = {
-    zCtx.reset()
-  }
+
+//  override def reset()(implicit zCtx:Z3SolverCtx):Unit = {
+//    zCtx.reset()
+//  }
 
   override protected def mkEq(lhs: AST, rhs: AST)(implicit zCtx:Z3SolverCtx): AST = {
     zCtx.ctx.mkEq(lhs.asInstanceOf[Expr[Sort]], rhs.asInstanceOf[Expr[Sort]])
@@ -337,12 +366,12 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     case Status.UNSATISFIABLE => false
     case Status.SATISFIABLE => true
     case Status.UNKNOWN =>
-      throw new IllegalArgumentException("status unknown")
-//      val reason = zCtx.solver.getReasonUnknown
-//      val f = File(s"timeout_${System.currentTimeMillis() / 1000L}.z3")
-//      f.createFile()
-//      f.writeText(zCtx.solver.toString)
-//      f.append("\n(check-sat)")
+      val reason = zCtx.solver.getReasonUnknown
+      val f = File(s"timeout_${System.currentTimeMillis() / 1000L}.z3")
+      f.createFile()
+      f.writeText(zCtx.solver.toString)
+      f.append("\n(check-sat)")
+      throw new IllegalArgumentException(s"status unknown, reason: ${reason}")
 //      var failed = false
 //      // Sometimes the java solver fails, we fall back to calling the command line tool
 //      try {
@@ -444,7 +473,12 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
 
   override def printDbgModel(messageTranslator: MessageTranslator,
                              traceAbstraction: Set[AbstractTrace], lenUID: String)(implicit zCtx:Z3SolverCtx): Unit = {
-    printAbstSolution(zCtx.solver.getModel, messageTranslator, traceAbstraction, lenUID)
+    try {
+      printAbstSolution(zCtx.solver.getModel, messageTranslator, traceAbstraction, lenUID)
+    }catch{
+      case e:Z3Exception =>
+        throw e
+    }
   }
 
   def printAbstSolution(model: Model, messageTranslator: MessageTranslator, traceAbstraction: Set[AbstractTrace],
@@ -617,9 +651,15 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   }
 
 
+  override protected def mkExistsT(t:List[AST], cond:AST)(implicit zCtx:Z3SolverCtx):AST = {
+    if(t.nonEmpty) {
+      val tc: Array[Expr[_]] = t.map(v => v.asInstanceOf[Expr[UninterpretedSort]]).toArray
+      zCtx.ctx.mkExists(tc, cond.asInstanceOf[BoolExpr], 1, null, null, null, null)
+    }else cond
+  }
   override protected def mkExistsAddr(name:String, cond: AST=>AST)(implicit zCtx:Z3SolverCtx):AST = {
     assert(name != "_", "Wild card variables should not be quantified")
-    val j = zCtx.ctx.mkFreshConst(name, addrSort)
+    val j: Expr[UninterpretedSort] = zCtx.ctx.mkFreshConst(name, addrSort)
     zCtx.ctx.mkExists(Array(j), cond(j).asInstanceOf[BoolExpr],1,null,null,null,null)
   }
 
@@ -636,6 +676,11 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
         cond(nameToAST).asInstanceOf[Expr[BoolSort]], 1,
         null, null, null, null)
     }
+  }
+
+  override protected def mkPv(pv: PureVar)(implicit zCtx:Z3SolverCtx): AST = {
+    val pvName = mkPvName(pv)
+    zCtx.ctx.mkFreshConst(pvName, addrSort).asInstanceOf[Expr[_]]
   }
 
   /**
@@ -831,7 +876,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     }
   }
 
-  override protected def encodeTypeConsteraints: StateTypeSolving = persistentConstraints.getUseZ3TypeSolver
+//  override protected def encodeTypeConsteraints: StateTypeSolving = persistentConstraints.getUseZ3TypeSolver
 
   override protected def persist: ClassHierarchyConstraints = persistentConstraints
 
@@ -1034,5 +1079,5 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   }
 
   override def getLogger: Logger =
-    LoggerFactory.getLogger("Z3StateSolver.scala")
+    LoggerFactory.getLogger("Z3StateSolver")
 }
