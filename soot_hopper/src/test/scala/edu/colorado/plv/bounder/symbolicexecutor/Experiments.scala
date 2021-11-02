@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
-import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSpace, ViewSpec}
+import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{CallinReturnNonNull, DBOutputMode, DisallowedCallin, PrettyPrinting, Reachable, ReceiverNonNull}
 import edu.colorado.plv.bounder.testutils.MkApk
@@ -15,10 +15,60 @@ import org.slf4j.LoggerFactory
 import soot.SootMethod
 
 class Experiments extends AnyFunSuite {
-  val logger = LoggerFactory.getLogger("Experiments")
+  private val logger = LoggerFactory.getLogger("Experiments")
   logger.warn("Starting experiments run")
   private val prettyPrinting = new PrettyPrinting()
-  val cgMode = SparkCallGraph
+  private val cgMode = SparkCallGraph
+
+  val row1Specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+    //          FragmentGetActivityNullSpec.getActivityNonNull, //note: not needed because non-null implies not of prev
+    LifecycleSpec.Fragment_activityCreatedOnlyFirst,
+    RxJavaSpec.call
+  ) //++ RxJavaSpec.spec // Full RxJava spec includes no duplicate subscribe, not needed here, but still sound
+
+  val row2Specs = Set[LSSpec](
+    ViewSpec.clickWhileNotDisabled,
+    LifecycleSpec.Activity_createdOnlyFirst
+  )
+  val row4Specs = Set(
+    ViewSpec.clickWhileActive,
+    ViewSpec.viewOnlyReturnedFromOneActivity,
+    //              LifecycleSpec.noResumeWhileFinish,
+    LifecycleSpec.Activity_createdOnlyFirst
+  )
+  val row5Specs = Set[LSSpec](
+    SDialog.noDupeShow
+  )
+  def getSpecName(s:LSSpec):String = s.target.identitySignature match {
+    case id if id.contains("onClick") => ???
+    case id if id.contains("call") => "spec:call"
+  }
+  val row5Disallow = Set(SDialog.disallowDismiss)
+  test("Baseline message count for framework"){
+    def getCb():List[String] = ???
+    val specSet = row1Specs ++ row2Specs ++ row5Specs ++ row5Disallow ++ row4Specs
+    val specsByName = specSet.groupBy{s => s.target.identitySignature}.map{s =>
+      if(s._2.size != 1) {
+        println()
+      }
+      s
+    }
+    val specs = new SpecSpace(specSet)
+    val allI = specSet.flatMap{case LSSpec(_ , _, pred, target, _) => SpecSpace.allI(pred) + target}
+      .map(a => a.signatures)
+    val test = (apk:String) => {
+
+      val w = new JimpleFlowdroidWrapper(apk, cgMode,specSet)
+      val resolver = new DefaultAppCodeResolver[SootMethod,soot.Unit](w)
+
+
+
+
+      ???
+    }
+    makeApkWithSources(Map(), MkApk.RXBase, test)
+  }
+
   test("Row1:Minimal motivating example") {
     // Experiments row 1
     // Antennapod https://github.com/AntennaPod/AntennaPod/pull/2856
@@ -84,14 +134,9 @@ class Experiments extends AnyFunSuite {
         assert(apk != null)
         //Note: subscribeIsUnique rule ommitted from this test to check state relevant to callback
         // TODO: relevance could probably be refined so this isn't necessary
-        val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
-//          FragmentGetActivityNullSpec.getActivityNonNull, //TODO: testing if this is needed ===
-          LifecycleSpec.Fragment_activityCreatedOnlyFirst,
-          //          RxJavaSpec.call
-        ) ++ RxJavaSpec.spec
-        val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
+        val w = new JimpleFlowdroidWrapper(apk, cgMode,row1Specs)
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-          new SpecSpace(specs), cha)
+          new SpecSpace(row1Specs), cha)
         val config = SymbolicExecutorConfig(
           stepLimit = 80, w, transfer,
           component = Some(List("com.example.createdestroy.*PlayerFragment.*")))
@@ -198,13 +243,10 @@ class Experiments extends AnyFunSuite {
       val test: String => Unit = apk => {
         val startTime = System.currentTimeMillis()
         assert(apk != null)
-        val specs = Set[LSSpec](
-          ViewSpec.clickWhileNotDisabled,
-          LifecycleSpec.Activity_createdOnlyFirst
-        )
-        val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
+
+        val w = new JimpleFlowdroidWrapper(apk, cgMode,row2Specs)
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-          new SpecSpace(specs, Set(SAsyncTask.disallowDoubleExecute)), cha)
+          new SpecSpace(row2Specs, Set(SAsyncTask.disallowDoubleExecute)), cha)
         val config = SymbolicExecutorConfig(
           stepLimit = 200, w, transfer,
           component = Some(List("com.example.createdestroy.*RemoverActivity.*")))
@@ -391,12 +433,9 @@ class Experiments extends AnyFunSuite {
         assert(apk != null)
         //Note: subscribeIsUnique rule ommitted from this test to check state relevant to callback
         // TODO: relevance could probably be refined so this isn't necessary
-        val specs = Set[LSSpec](
-          SDialog.noDupeShow //TODO: ===== uncomment spec
-        )
-        val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
+        val w = new JimpleFlowdroidWrapper(apk, cgMode,row5Specs)
         val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-          new SpecSpace(specs, Set(SDialog.disallowDismiss)), cha)
+          new SpecSpace(row5Specs, row5Disallow), cha)
         val config = SymbolicExecutorConfig(
           stepLimit = 200, w, transfer,
           component = Some(List("com.example.createdestroy.*StatusActivity.*")))
@@ -426,7 +465,7 @@ class Experiments extends AnyFunSuite {
       makeApkWithSources(Map("StatusActivity.java" -> src), MkApk.RXBase, test)
     }
   }
-  test("Row 4: Connect bot click/finish") {
+  test("Row4: Connect bot click/finish") {
     val startTime = System.currentTimeMillis()
     List(
       ("", Witnessed),
@@ -486,16 +525,10 @@ class Experiments extends AnyFunSuite {
               .startMeta()
             //            implicit val dbMode = MemoryOutputMode
             //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
-            val specs = new SpecSpace(Set(
-              ViewSpec.clickWhileActive,
-              ViewSpec.viewOnlyReturnedFromOneActivity,
-              //              LifecycleSpec.noResumeWhileFinish,
-              LifecycleSpec.Activity_createdOnlyFirst
-            ))
-            val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
+            val w = new JimpleFlowdroidWrapper(apk, cgMode, row4Specs)
 
             val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-              specs, cha)
+              new SpecSpace(row4Specs), cha)
             val config = SymbolicExecutorConfig(
               stepLimit = 600, w, transfer,
               component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode)
