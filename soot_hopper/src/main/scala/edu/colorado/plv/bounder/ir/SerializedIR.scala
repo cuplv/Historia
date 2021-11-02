@@ -65,6 +65,8 @@ class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] 
   override def getClassHierarchyConstraints: ClassHierarchyConstraints = ???
 
   override def findInMethod(className: String, methodName: String, toFind: CmdWrapper => Boolean): Iterable[AppLoc] = ???
+
+  override def appCallbackMsgCount: Int = ???
 }
 
 /**

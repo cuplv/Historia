@@ -1587,6 +1587,10 @@ class JimpleFlowdroidWrapper(apkPath : String,
     }
   }
 
+  override def appCallbackMsgCount: Int = {
+    //TODO:======
+    ???
+  }
 }
 
 case class JimpleMethodLoc(method: SootMethod) extends MethodLoc {

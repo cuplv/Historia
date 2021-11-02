@@ -1425,7 +1425,23 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         val s2Enc = mkExistsT(quantifyS2, formula2)
         zCtx.mkAssert(s2Enc)
 
-        val foundCounter = checkSAT(useCmd = false)
+        val foundCounter =
+          checkSAT(useCmd = false)
+        //try {
+//        }catch {
+//          case e:IllegalStateException => {
+//            val s1Ser = write(s1)
+//            val s2Ser = write(s2)
+//            val ctime = System.currentTimeMillis()
+//            val f1 = File(s"s1_unify_timeout_${ctime}.json")
+//            val f2 = File(s"s2_unify_timeotu_${ctime}.json")
+//            f1.write(s1Ser)
+//            f2.write(s2Ser)
+//            println("decision timeout, assuming no subsumption")
+//            e.printStackTrace()
+//            true // negated later so true says don't subsume here
+//          }
+//        }
         // TODO:==== weird difference between z3 and unify
         //printDbgModel(messageTranslator, Set(s1Swapped.traceAbstraction,s2.traceAbstraction), "")
         !foundCounter
@@ -1443,10 +1459,11 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    */
   def canSubsume(s1: State, s2: State, specSpace: SpecSpace, maxLen: Option[Int] = None,
                  timeout:Option[Int] = None): Boolean = {
+    // val method = "Unify"
+    // val method = "Debug" //TODO: benchmark and see if this is actually faster: Idea run both and log times then hist
+    val method = "Z3"
+    // val method = "FailOver"
     val startTime = System.currentTimeMillis()
-    val method = "Unify"
-    //val method = "Debug" //TODO: benchmark and see if this is actually faster: Idea run both and log times then hist
-    //val method = "Z3"
     // Check if stack sizes or locations are different
     if (s1.callStack.size != s2.callStack.size)
       return false
@@ -1519,12 +1536,21 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       canSubsumeZ3(s1Simp.get,s2Simp.get,specSpace, maxLen, timeout)
     else if(method == "Unify")
       canSubsumeUnify(s1Simp.get,s2Simp.get,specSpace)
-    else if(method == "Debug") {
+    else if(method == "FailOver"){
+      try{canSubsumeUnify(s1Simp.get, s2Simp.get, specSpace)} catch{
+        case _:IllegalStateException =>
+          canSubsumeZ3(s1Simp.get, s2Simp.get, specSpace, maxLen, timeout)
+      }
+    } else if(method == "Debug") {
       val z3res = canSubsumeZ3(s1Simp.get, s2Simp.get, specSpace, maxLen, timeout)
       val unifyRes = canSubsumeUnify(s1Simp.get,s2Simp.get,specSpace)
       if(z3res != unifyRes) {
         val s1Ser = write(s1)
         val s2Ser = write(s2)
+        val ctime = System.currentTimeMillis()
+        val f1 = File(s"s1_diff_${ctime}.json")
+        f1.write(s1Ser)
+        val f2 = File(s"s2_diff_${ctime}.json")
         val s1Deser = read[State](s1Ser)
         val s2Deser = read[State](s2Ser)
         println(s1Deser)

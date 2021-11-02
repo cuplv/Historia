@@ -4,7 +4,7 @@ import better.files.{File, Resource}
 import com.microsoft.z3._
 import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, FreshRef, I, LSConstraint, LSFalse, LSSpec, LSTrue, NI, Not, Or, SignatureMatcher, SubClassMatcher}
-import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifecycleSpec, RxJavaSpec, SpecSignatures, SpecSpace, ViewSpec}
+import edu.colorado.plv.bounder.lifestate.{Dummy, FragmentGetActivityNullSpec, LifecycleSpec, RxJavaSpec, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import org.scalatest.funsuite.FixtureAnyFunSuite
 import upickle.default.read
@@ -81,6 +81,55 @@ class StateSolverTest extends FixtureAnyFunSuite {
     // All other tests should work with either
 //    withFixture(test.toNoArgTest(FixtureParam(SetInclusionTypeSolving)))
     withFixture(test.toNoArgTest(FixtureParam(SolverTypeSolving)))
+  }
+  test("test to debug subsumption issues by loading serialized states"){f =>
+    // Note: leave ignored unless debugging
+    val (stateSolver, _) = getStateSolver(f.typeSolving)
+    val spec1 = new SpecSpace(
+      Set(LifecycleSpec.Activity_onPause_onlyafter_onResume,
+        LifecycleSpec.Activity_onResume_first_orAfter_onPause,
+        ViewSpec.viewOnlyReturnedFromOneActivity,
+        LifecycleSpec.noResumeWhileFinish,
+        ViewSpec.clickWhileActive,
+      )
+    )
+    val spec2 = new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
+      FragmentGetActivityNullSpec.getActivityNonNull,
+      LifecycleSpec.Fragment_activityCreatedOnlyFirst
+    ) ++ RxJavaSpec.spec)
+    val finishclickpause = new SpecSpace(Set( // specs for "Finish allows click after pause
+      ViewSpec.clickWhileActive,
+      ViewSpec.viewOnlyReturnedFromOneActivity,
+      //              LifecycleSpec.noResumeWhileFinish,
+      //              LifecycleSpec.Activity_onResume_first_orAfter_onPause //TODO: ==== testing if this prevents timeout
+    ) ++ Dummy.specs)
+    List(
+      (finishclickpause, "/Users/shawnmeier/Desktop/unifyTimeout/s1.json",
+        "/Users/shawnmeier/Desktop/unifyTimeout/s2.json",(v:Boolean) =>{
+        ???
+      }),
+      //      (spec2, "s1_diffz3unify.state", "s2_diffz3unify.state",true), // different in solver but same here???
+      //(spec2, "/Users/shawnmeier/Desktop/outofInterpProblem/s1.json",
+      //"/Users/shawnmeier/Desktop/outofInterpProblem/s2.json", true)
+      //(spec1, "s1_timeout_1.json", "s2_timeout_1.json", (v:Boolean) => v == false)
+    ).foreach {
+      case (spec, f1, f2, expected) =>
+
+        val s1 = loadState(f1)
+        val s2 = loadState(f2)
+        val s1P = StateSolver.rhsToPred(s1.sf.traceAbstraction.rightOfArrow,spec).map(StateSolver.simplifyPred)
+        val s2P = StateSolver.rhsToPred(s2.sf.traceAbstraction.rightOfArrow,spec).map(StateSolver.simplifyPred)
+//        val s1S = s1.copy(sf = s1.sf.copy(typeConstraints = s1.sf.typeConstraints + (p4 -> BitTypeSet(BitSet(3)))))
+//        val s2S = s2.copy(sf = s2.sf.copy(typeConstraints = s2.sf.typeConstraints +
+//          (p4 -> BitTypeSet(BitSet(3))) + (p6 -> BitTypeSet(BitSet(3)))
+//        ))
+
+        //    val emptySpec = new SpecSpace(Set())
+        //    val emptyRes = stateSolver.canSubsume(s1,s2, emptySpec)
+        //    assert(emptyRes)
+
+        assert(stateSolver.canSubsume(s1, s2, spec) == expected)
+    }
   }
   test("value not value") { f =>
     println(s"fixture param: $f")
@@ -1006,46 +1055,6 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val res4 = stateSolver.canSubsume(st2,st1, spec)
     println()
   }
-  ignore("test to debug subsumption issues by loading serialized states"){f =>
-    // Note: leave ignored unless debugging
-    val (stateSolver, _) = getStateSolver(f.typeSolving)
-    val spec1 = new SpecSpace(
-      Set(LifecycleSpec.Activity_onPause_onlyafter_onResume,
-        LifecycleSpec.Activity_onResume_first_orAfter_onPause,
-        ViewSpec.viewOnlyReturnedFromOneActivity,
-        LifecycleSpec.noResumeWhileFinish,
-        ViewSpec.clickWhileActive,
-      )
-    )
-    val spec2 = new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
-      FragmentGetActivityNullSpec.getActivityNonNull,
-      LifecycleSpec.Fragment_activityCreatedOnlyFirst
-    ) ++ RxJavaSpec.spec)
-    List(
-//      (spec2, "s1_diffz3unify.state", "s2_diffz3unify.state",true), // different in solver but same here???
-      //(spec2, "/Users/shawnmeier/Desktop/outofInterpProblem/s1.json",
-        //"/Users/shawnmeier/Desktop/outofInterpProblem/s2.json", true)
-      (spec1, "s1_timeout_1.json", "s2_timeout_1.json", false)
-    ).foreach {
-      case (spec, f1, f2, expected) =>
-
-        val s1 = loadState(f1)
-        val s2 = loadState(f2)
-        val s1P = StateSolver.rhsToPred(s1.sf.traceAbstraction.rightOfArrow,spec).map(StateSolver.simplifyPred)
-        val s2P = StateSolver.rhsToPred(s2.sf.traceAbstraction.rightOfArrow,spec).map(StateSolver.simplifyPred)
-        //Note p4 in s1 p4 in s2 and p6 in s2 have same type set - does not contain other types
-        val s1S = s1.copy(sf = s1.sf.copy(typeConstraints = s1.sf.typeConstraints + (p4 -> BitTypeSet(BitSet(3)))))
-        val s2S = s2.copy(sf = s2.sf.copy(typeConstraints = s2.sf.typeConstraints +
-          (p4 -> BitTypeSet(BitSet(3))) + (p6 -> BitTypeSet(BitSet(3)))
-        ))
-
-        //    val emptySpec = new SpecSpace(Set())
-        //    val emptyRes = stateSolver.canSubsume(s1,s2, emptySpec)
-        //    assert(emptyRes)
-
-        assert(stateSolver.canSubsume(s1S, s2S, spec) == expected)
-    }
-  }
   test("|>x.onDestroy() should subsume |>x.onDestroy()|>y.onDestroy()"){f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
     val specs = new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
@@ -1156,7 +1165,11 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val s2 = st(AbstractTrace(FreshRef("x")::FreshRef("y")::Nil, Map("x"->p1,"y"->p2)))
     assert(stateSolver.canSubsume(s1,s2,esp))
     //Note that an erroneous "OR" between Refs causes timeout, may cause timeouts in future due to negation
-    // assert(stateSolver.canSubsume(s2,s1,esp)) //TODO: Does this test even make sense? ======
+
+    // Note: both s1 and s2 should be infeasible since variable x can't point to addr p1 and p1 is created in the future
+    // Sound to drop this constraint
+    // Precision is not lost since transfer functions handle this constraint
+    // assert(stateSolver.canSubsume(s2,s1,esp))
     val s2NE = s2.addPureConstraint(PureConstraint(p1, NotEquals, p2))
     assert(!stateSolver.canSubsume(s2NE,s1,esp))
   }

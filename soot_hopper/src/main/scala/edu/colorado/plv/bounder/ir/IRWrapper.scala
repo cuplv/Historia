@@ -49,6 +49,11 @@ trait IRWrapper[M,C]{
   @deprecated
   def canAlias(type1:String, type2:String):Boolean
   def isSuperClass(type1:String, type2:String):Boolean
+//  def fwkPossibleCallbackMsgCount:Int
+//  def fwkPossibleCallinMsgCount:Int
+  def appCallbackMsgCount:Int
+//  def appCallinMsgCount:Int
+//  def specFwk
 }
 // Ignore parts of the IR we haven't implemented while scanning for relevant method calls and heap access
 final case class CmdNotImplemented(message:String) extends RuntimeException(message)
