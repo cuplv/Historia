@@ -601,7 +601,7 @@ object LifeState {
         }).toTex
       } else
         ???
-      s"${faQuant}${exQuant} [\\specOnly{${pred.toTex}}{$tgtStr}]"
+      s"\\ensuremath{${faQuant}${exQuant}} [\\specOnly{\\ensuremath{${pred.toTex}}}{\\ensuremath{$tgtStr}}]"
     }
 
     private def checkWF(quant:Set[String], p:LSPred):Boolean = p match {

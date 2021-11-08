@@ -71,7 +71,7 @@ class Experiments extends AnyFunSuite {
 
       val specMacros = specsByName.map{
         case (name, spec) =>
-          s"\\newcommand{\\${name}Spec}{\\ensuremath{${spec.toTex()}}}"
+          s"\\newcommand{\\${name}Spec}{${spec.toTex()}}"
       }
       val specMacroFile = File("../paper2/generated/specMacros.tex")
       if(specMacroFile.exists){
