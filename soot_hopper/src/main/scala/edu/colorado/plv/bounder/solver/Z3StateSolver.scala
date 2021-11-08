@@ -175,6 +175,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     val timeoutS = timeout match {
       case Some(time) => time.toString
       case None => "600"
+//      case None => "7200"//tested to see if higher timeout value handles connectbot - ran for 24 hours no result
     }
     if(useCmd) {
       File.temporaryFile().apply{ f =>
@@ -212,7 +213,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
           if(!useCmd)
             checkSAT(true)
           else
-            throw e
+            throw new IllegalStateException(e.getMessage)
       }
     }
   }

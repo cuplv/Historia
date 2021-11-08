@@ -86,16 +86,14 @@ object StateSet {
       val search = current.states.toList.sortBy{ n =>
         n.qry.getState.map(s => s.sf.traceAbstraction.rightOfArrow.size).getOrElse(0)
       } //.par
-      var startTime = System.currentTimeMillis()
       val currentCanSubs = search.find{ subsuming =>
-        val basis = startTime
-        startTime = System.currentTimeMillis()
+        val startTime = System.nanoTime()
         if(DEBUG)
           println(s"   subsuming state: ${subsuming.qry.getState}")
         fastCount = fastCount + 1
         val res = canSubsume(subsuming.qry.getState.get, pathNode.qry.getState.get)
         if(DEBUG) {
-          println(s"        time: ${startTime - basis}")
+          println(s"        time(ms): ${(System.nanoTime() - startTime) / 1000.0}")
           println(s"        result: ${res}")
         }
         res

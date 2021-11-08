@@ -312,7 +312,7 @@ object Driver {
   def runAnalysis(cfg:RunConfig, apkPath: String, componentFilter:Option[Seq[String]], mode:OutputMode,
                   specSet: Set[LSSpec], stepLimit:Int,
                   initialQueries: List[InitialQuery]): List[(InitialQuery,Int,Loc,(ResultSummary,MaxPathCharacterization),Long)] = {
-    val startTime = System.currentTimeMillis()
+    val startTime = System.nanoTime()
     try {
       //TODO: read location from json config
 //      val callGraph = CHACallGraph
@@ -373,7 +373,7 @@ object Driver {
         grouped
       }
     } finally {
-      println(s"analysis time: ${(System.currentTimeMillis() - startTime) / 1000} seconds")
+      println(s"analysis time(ms): ${(System.nanoTime() - startTime) / 1000.0}")
     }
 
   }

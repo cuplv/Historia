@@ -239,7 +239,7 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
 
     println(s"write node size ${writeNodeQueue.size()}")
     println(s"graph queue size ${graphQueue.size()}")
-    val startTime = System.currentTimeMillis()
+    val startTime = System.nanoTime()
     this.synchronized {
       if(!writeNodeQueue.isEmpty) {
         val writeNodes = mutable.ListBuffer[WitTableRow]()
@@ -259,8 +259,8 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
         Await.result(graphFuture, 600 seconds)
       }
     }
-    val runtime = (System.currentTimeMillis() - startTime)/1000
-    println(s"runtime: $runtime")
+    val runtime = (System.nanoTime() - startTime)/1000.0
+    println(s"runtime(ms): $runtime")
   }
   def queueNodeWrite(v:WitTableRow, v2:Seq[(Int,Int)]) = {
     // batch together sqlite queries to reduce fsync

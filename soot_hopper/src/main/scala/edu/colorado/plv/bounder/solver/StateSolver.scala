@@ -1079,7 +1079,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   def simplify(state: State,specSpace: SpecSpace, maxWitness: Option[Int] = None): Option[State] = {
     implicit val zCtx = getSolverCtx
-    val startTime = System.currentTimeMillis()
+    val startTime = System.nanoTime()
+    var result = "unfinished"
     try {
       zCtx.acquire()
 
@@ -1118,16 +1119,18 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         //      val simpleAst = solverSimplify(ast, stateWithNulls, messageTranslator, maxWitness.isDefined)
 
         //      if(simpleAst.isEmpty)
-        if (!sat)
+        if (!sat) {
+          result = "unsat"
           None
-        else {
+        } else {
+          result = "sat"
           val reducedState = reduceStatePureVars(stateWithNulls.setSimplified()).map(gcPureVars)
           reducedState.map(_.setSimplified())
         }
       }
     }finally{
       zCtx.release()
-      getLogger.warn(s"feasibility time: ${System.currentTimeMillis() - startTime}")
+      getLogger.warn(s"feasibility result: ${result} time(ms): ${System.nanoTime() - startTime}")
     }
   }
 
@@ -1459,11 +1462,11 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    */
   def canSubsume(s1: State, s2: State, specSpace: SpecSpace, maxLen: Option[Int] = None,
                  timeout:Option[Int] = None): Boolean = {
-    // val method = "Unify"
-    // val method = "Debug" //TODO: benchmark and see if this is actually faster: Idea run both and log times then hist
+    // val method = "Unify"//TODO: benchmark and see if this is actually faster: Idea run both and log times then hist
+    // val method = "Debug"
     val method = "Z3"
     // val method = "FailOver"
-    val startTime = System.currentTimeMillis()
+    val startTime = System.nanoTime()
     // Check if stack sizes or locations are different
     if (s1.callStack.size != s2.callStack.size)
       return false
@@ -1563,12 +1566,13 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     } else {
       throw new IllegalArgumentException("""Expected method: "Unify" or "Z3" """)
     }} catch {
-      case e:IllegalArgumentException =>
+      case e:IllegalStateException =>
         println("Subsumption returning false due to timeout")
+        getLogger.warn(s"subsumption result:timeout time(ms): ${(System.nanoTime() - startTime)/1000.0}")
         false
     }
 
-    getLogger.warn(s"subsumption time: ${System.currentTimeMillis() - startTime}")
+    getLogger.warn(s"subsumption result:${res} time(ms): ${(System.nanoTime() - startTime)/1000.0}")
     res
   }
   // s1 subsuming state
@@ -1621,7 +1625,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       zCtx.acquire()
       val messageTranslator: MessageTranslator = MessageTranslator(List(s1, s2), specSpace)
 
-      //TODO: remove "negate" bool
       val s1Enc = mkNot(toASTState(s1, messageTranslator, maxLen,
         specSpace = specSpace, debug = maxLen.isDefined))
       zCtx.mkAssert(s1Enc)
@@ -1814,7 +1817,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
     out
   }
-
 
   def encodeTrace(traceFN: T, trace: List[TMessage],
                   messageTranslator: MessageTranslator, valToT: Map[Int, T])(implicit zCtx: C): T = {

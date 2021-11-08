@@ -144,11 +144,16 @@ object LifecycleSpec {
       Not(SpecSignatures.Fragment_onActivityCreated_entry))
     ),
     SpecSignatures.Fragment_onActivityCreated_entry)
+  val Fragment_activityCreatedOnlyOnce:LSSpec = LSSpec("f"::Nil, Nil,
+      Not(SpecSignatures.Fragment_onActivityCreated_entry),
+    SpecSignatures.Fragment_onActivityCreated_entry)
 
-  val Activity_createdOnlyFirst:LSSpec = LSSpec("a"::Nil, Nil,
-    And(Not(SpecSignatures.Activity_onCreate_entry),Not(SpecSignatures.Activity_onDestroy_exit)),
-    SpecSignatures.Activity_onCreate_entry
-  )
+//  val Activity_createdOnlyFirst:LSSpec = LSSpec("a"::Nil, Nil,
+//    And(Not(SpecSignatures.Activity_onCreate_entry),Not(SpecSignatures.Activity_onDestroy_exit)),
+//    SpecSignatures.Activity_onCreate_entry
+//  )
+  val Activity_createdOnlyFirst:LSSpec = LSSpec("a"::Nil, Nil, Not(SpecSignatures.Activity_onCreate_entry),
+    SpecSignatures.Activity_onCreate_entry)
 //  val Activity_destroyAfterCreate:LSSpec = LSSpec("a"::Nil, Nil,
 //    NI(SpecSignatures.Activity_onCreate_entry, SpecSignatures.Activity_onDestroy_exit),
 //    SpecSignatures.Activity_onDestroy_exit)

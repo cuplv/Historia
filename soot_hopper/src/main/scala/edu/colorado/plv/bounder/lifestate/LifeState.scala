@@ -174,9 +174,18 @@ object LifeState {
     override def lsVar: Set[String] = Set(v1,v2).filter(v => LSVar.matches(v))
 
     override def stringRep(varMap: String => Any): String = s"[ ${varMap(v1)} == ${varMap(v2)} ]"
+
+    override def toTex: String = op match {
+      case Equals => s"${arg2tex(v1)} = ${arg2tex(v2)}"
+      case NotEquals =>s"${arg2tex(v1)} \\neq ${arg2tex(v2)}"
+      case Subtype => ???
+    }
+
   }
 
   sealed trait LSPred {
+    def toTex:String
+
     def swap(swapMap: Map[String, String]):LSPred
 
     def contains(mt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints):Boolean
@@ -191,6 +200,7 @@ object LifeState {
   }
 
   case class Forall(vars:List[String], p:LSPred) extends LSPred{
+    override def toTex: String = ???
     override def swap(swapMap: Map[String, String]): LSPred =
       Forall(vars.map(swapMap), p.swap(swapMap))
 
@@ -217,6 +227,8 @@ object LifeState {
         s"∃ ${vars.map(varMap).mkString(",")} . ${p.stringRep(varMap)}"
       else
         p.stringRep(varMap)
+
+    override def toTex: String = ???
   }
 
   case class CLInit(sig:String) extends LSSingle {
@@ -233,6 +245,8 @@ object LifeState {
     override def lsVar: Set[String] = Set()
 
     override def stringRep(varmap: String => Any): String = this.toString
+
+    override def toTex: String = ???
   }
   object CLInit{
     implicit var rw:RW[CLInit] = macroRW
@@ -260,6 +274,8 @@ object LifeState {
     }
 
     override def stringRep(varmap: String => Any): String = this.toString
+
+    override def toTex: String = ???
   }
   object FreshRef{
     private def oneCont(a1:LSPred, a2:LSPred):Option[FreshRef] = {
@@ -292,6 +308,8 @@ object LifeState {
     override def lsVar: Set[String] = l1.lsVar.union(l2.lsVar)
 
     override def stringRep(varmap: String => Any): String = s"[ ${l1.stringRep(varmap)} ➡ ${l1.stringRep(varmap)} ]"
+
+    override def toTex: String = ???
   }
   case class And(l1 : LSPred, l2 : LSPred) extends LSPred {
     override def lsVar: Set[String] = l1.lsVar.union(l2.lsVar)
@@ -310,6 +328,8 @@ object LifeState {
       case (l, LSTrue) => l.stringRep(varMap)
       case (l1,l2) => s"[ ${l1.stringRep(varMap)} && ${l2.stringRep(varMap)} ]"
     }
+
+    override def toTex: String = s"${l1.toTex} \\wedge ${l2.toTex}"
   }
   case class Not(l: LSPred) extends LSPred {
     override def lsVar: Set[String] = l.lsVar
@@ -321,6 +341,8 @@ object LifeState {
     override def swap(swapMap: Map[String, String]): LSPred = Not(l.swap(swapMap))
 
     override def stringRep(varMap: String => Any): String = s"¬${l.stringRep(varMap)}"
+
+    override def toTex: String = s"\\neg ${l.toTex}"
   }
   case class Or(l1:LSPred, l2:LSPred) extends LSPred {
     override def lsVar: Set[String] = l1.lsVar.union(l2.lsVar)
@@ -337,6 +359,8 @@ object LifeState {
       case (_, LSTrue) => LSTrue.stringRep(varMap)
       case (l1,l2) => s"[${l1.stringRep(varMap)} || ${l2.stringRep(varMap)}]"
     }
+
+    override def toTex: String = s"${l1.toTex} \\vee ${l2.toTex}"
   }
   case object LSTrue extends LSPred {
     override def lsVar: Set[String] = Set.empty
@@ -345,6 +369,8 @@ object LifeState {
     override def swap(swapMap: Map[String, String]): LSPred = this
 
     override def stringRep(varMap: String => Any): String = "True"
+
+    override def toTex: String = "\\enkwTrue"
   }
   case object LSFalse extends LSPred {
     override def lsVar: Set[String] = Set.empty
@@ -353,6 +379,8 @@ object LifeState {
     override def swap(swapMap: Map[String, String]): LSPred = this
 
     override def stringRep(varMap: String => Any): String = "False"
+
+    override def toTex: String = "\\enkwFalse"
   }
 
   sealed trait LSAtom extends LSPred {
@@ -364,6 +392,8 @@ object LifeState {
   }
 
   sealed trait SignatureMatcher{
+    def toTex(args:List[String]):String
+
     def matchesClass(sig: String):Boolean
 
     def matchesSubSig(subsig:String):Boolean
@@ -383,6 +413,8 @@ object LifeState {
     override def identifier: String =s"${sortedSig.head._1}_${sortedSig.head._2}"
 
     override def matchesClass(sig: String): Boolean = ???
+
+    override def toTex(args:List[String]): String = ???
   }
   object SetSignatureMatcher{
     implicit val rw:RW[SetSignatureMatcher] = macroRW
@@ -416,6 +448,53 @@ object LifeState {
     override def identifier: String = ident
 
     override def matchesClass(sig: String): Boolean = baseSubtypeOf.contains(sig)
+
+
+    override def toTex(argsin:List[String]): String = {
+      val args = argsin.map(v => arg2tex(v))
+      ident match {
+        case i if i.contains("onCreate") =>
+          assert(args.head == "_")
+          s"\\codej{${args(1)}.onCreate()}"
+        case i if i.contains("onDestroy") =>
+          s"\\codej{${args(1)}.onDestroy()}"
+        case i if i.contains("onActivityCreated") =>
+          s"\\codej{${args(1)}.onActivityCreated()"
+        case i if i.contains("onPause") =>
+          assert(args.head == "_")
+          s"\\codej{${args(1)}onPause()}"
+        case i if i.contains("onResume") =>
+          assert(args.head == "_")
+          s"\\codej{${args(1)}.onResume()}"
+        case i if i.contains("call") =>
+          assert(args.head == "_")
+          s"\\codej{${args(1)}.call()}"
+        case i if i.contains("subscribe") =>
+          s"\\codej{${args(0)} := ${args(1)}.subscribe()"
+        case i if i.contains("unsubscribe") =>
+          assert(args.head == "_")
+          s"\\codej{${args(1)}.unsubscribe()}"
+        case i if i.contains("setOnClickListener") =>
+          s"\\codej{${args(1)}.setOnClickListener(${args(2)})}"
+        case i if i.contains("show") =>
+          s"\\codej{${args(1)}.show()}"
+        case i if i.contains("onClick") =>
+          s"\\codej{${args(1)}.onClick()"
+        case i if i.contains("findView") =>
+          s"\\codej{${args(0)}:=${args(1)}.findViewById(_)"
+        case i if i.contains("finish") =>
+          s"\\codej{${args(1)}.finish()"
+        case i if i.contains("getActivity") =>
+          s"\\codej{${args(0)} := ${args(1)}.getActivity()"
+        case i if i.contains("dismiss") =>
+          s"\\codej{${args(1)}.dismiss()"
+        case i if i.contains("setEnabled") =>
+          s"\\codej{${args(1)}.setEnabled(${args(2)})}"
+        case other =>
+          println(other)
+          ???
+    }
+    }
   }
   object SubClassMatcher{
     def apply(baseSubtypeOf:String, signatureMatcher: String, ident:String):SubClassMatcher =
@@ -476,6 +555,10 @@ object LifeState {
 
     override def stringRep(varMap: String => Any): String =
       s"I($mt $identitySignature ( ${lsVars.map(varMap).mkString(",")} )"
+
+    def mToTex:String = s"${mt.toTex}~${signatures.toTex(lsVars)}"
+
+    override def toTex: String = s"\\iDir{${mToTex}}" //TODO:====
   }
   object I{
     implicit val rw:RW[I] = macroRW
@@ -495,12 +578,32 @@ object LifeState {
     override def swap(swapMap: Map[String, String]): LSPred = NI(i1.swap(swapMap), i2.swap(swapMap))
 
     override def stringRep(varMap: String => Any): String = s"NI( ${i1.stringRep(varMap)} , ${i2.stringRep(varMap)} )"
+
+    override def toTex: String = s"\\niDir{${i1.mToTex}}{${i2.mToTex}}"
   }
   object NI{
     implicit val rw:RW[NI] = macroRW
   }
   case class LSSpec(univQuant:List[String], existQuant:List[String],
                     pred:LSPred, target: I, rhsConstraints: Set[LSConstraint] = Set()){
+    def toTex():String = {
+      val faQuant = if(univQuant.nonEmpty) s"\\forall ${univQuant.mkString(",")}." else ""
+      val exQuant = if(existQuant.nonEmpty) s"\\exists ${existQuant.mkString(",")}." else ""
+      val tgtStr = if(rhsConstraints.isEmpty)
+        target.toTex
+      else if(rhsConstraints.exists{
+        case LSConstraint(v, Equals, LSNullConst()) => true
+        case _ => false
+      }) {
+        target.copy(lsVars = target.lsVars.map{
+          case v2 if v2 == rhsConstraints.head.v1 => "@null"
+          case v => v
+        }).toTex
+      } else
+        ???
+      s"${faQuant}${exQuant} [\\specOnly{${pred.toTex}}{$tgtStr}]"
+    }
+
     private def checkWF(quant:Set[String], p:LSPred):Boolean = p match {
       case LSConstraint(v1, _, v2) => quant.contains(v1) && quant.contains(v2)
       case Forall(vars, p) => checkWF(quant ++ vars,p)
@@ -546,6 +649,16 @@ object LifeState {
       Forall(newUnivQuant.toList.map(swapWithFresh), Exists(existQuant.map(swapWithFresh), lsFormula))
 
     }
+  }
+
+  def arg2tex(v: String): String = v match {
+    case LSVar(v) => v
+    case LSNullConst() => "\\enkwNull"
+    case LSBoolConst(v) if v.contains("rue") => "\\enkwTrue"
+    case LSBoolConst(v) if v.contains("alse") => "\\enkwFalse"
+    case LSAnyVal() => "_"
+    case _ =>
+      ???
   }
 
   // Class that holds a graph of possible predicates and alias relations between the predicates.

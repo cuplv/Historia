@@ -2260,7 +2260,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
   }
   test("Resumed paused test") {
-    val startTime = System.currentTimeMillis()
+    val startTime = System.nanoTime()
     //Click attached to different activity
     val src =
       s"""package com.example.createdestroy;
@@ -2345,7 +2345,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     }
     makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase,
       test)
-    println(s"Test took ${startTime - System.currentTimeMillis()} milliseconds")
+    println(s"Test time(ms) ${(System.nanoTime() - startTime)/1000.0}")
   }
 
   ignore("Should not invoke methods on view after activity destroyed spec ____") {

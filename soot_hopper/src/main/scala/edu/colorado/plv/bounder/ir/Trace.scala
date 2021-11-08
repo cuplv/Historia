@@ -5,15 +5,27 @@ import upickle.default.{ReadWriter => RW, macroRW}
 object Trace {
 
 }
-sealed trait MessageType
+sealed trait MessageType {
+  def toTex:String
+
+}
+
 object MessageType{
   implicit var rw:RW[MessageType] = RW.merge(macroRW[CIEnter.type],  macroRW[CIExit.type],
     macroRW[CBEnter.type], macroRW[CBExit.type])
 }
-case object CIEnter extends MessageType
-case object CIExit extends MessageType
-case object CBEnter extends MessageType
-case object CBExit extends MessageType
+case object CIEnter extends MessageType {
+  override def toTex: String = "\\enkwCi"
+}
+case object CIExit extends MessageType {
+  override def toTex: String = "\\enkwCi" // Not distinguishing between entry/exit in paper
+}
+case object CBEnter extends MessageType {
+  override def toTex: String = "\\enkwCb"
+}
+case object CBExit extends MessageType {
+  override def toTex: String = "\\enkwCb\\enkwRet"
+}
 
 sealed trait Method {
   def name : String
