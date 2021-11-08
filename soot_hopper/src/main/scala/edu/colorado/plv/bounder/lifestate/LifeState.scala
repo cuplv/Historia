@@ -469,19 +469,19 @@ object LifeState {
         case i if i.contains("call") =>
           assert(args.head == "_")
           s"\\codej{${args(1)}.call()}"
-        case i if i.contains("subscribe") =>
-          s"\\codej{${args(0)} := ${args(1)}.subscribe()"
         case i if i.contains("unsubscribe") =>
           assert(args.head == "_")
           s"\\codej{${args(1)}.unsubscribe()}"
+        case i if i.contains("subscribe") =>
+          s"\\codej{${args(0)}:= \\_.subscribe(${if(args.size > 2) args(2) else ""})"
         case i if i.contains("setOnClickListener") =>
           s"\\codej{${args(1)}.setOnClickListener(${args(2)})}"
         case i if i.contains("show") =>
-          s"\\codej{${args(1)}.show()}"
+          s"\\codej{${args(0)} := \\_.show(${if(args.size > 2) args(2) else ""})}"
         case i if i.contains("onClick") =>
           s"\\codej{${args(1)}.onClick()"
         case i if i.contains("findView") =>
-          s"\\codej{${args(0)}:=${args(1)}.findViewById(_)"
+          s"\\codej{${args(0)}:=${args(1)}.findViewById(\\_)"
         case i if i.contains("finish") =>
           s"\\codej{${args(1)}.finish()"
         case i if i.contains("getActivity") =>
