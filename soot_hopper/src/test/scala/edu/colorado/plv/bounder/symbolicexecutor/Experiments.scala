@@ -26,8 +26,12 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
   private val prettyPrinting = new PrettyPrinting()
   private val cgMode = SparkCallGraph
 
-  before{
-    println("Starting Experiments run")
+  {
+    val logF = File("log/logging.log")
+    if(logF.exists() && logF.contentAsString.split("\\n").size > 5) {
+      //throw new IllegalStateException("Please delete log file before run")
+    }
+
   }
   after{
     println("Ending Experiments run")

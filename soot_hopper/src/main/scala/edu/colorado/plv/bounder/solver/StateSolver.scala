@@ -1080,11 +1080,14 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   def simplify(state: State,specSpace: SpecSpace, maxWitness: Option[Int] = None): Option[State] = {
     implicit val zCtx = getSolverCtx
     val startTime = System.nanoTime()
-    var result = "unfinished"
+    var result = "unfinished" //TODO:======== why so many unfinished feasibility???
     try {
       zCtx.acquire()
 
-      if (state.isSimplified) Some(state) else {
+      if (state.isSimplified){
+        result = "sat"
+        Some(state)
+      }else {
         // Drop useless constraints
         val state2 = state.copy(sf = state.sf.copy(pureFormula = state.pureFormula.filter {
           case PureConstraint(v1, Equals, v2) if v1 == v2 => false
@@ -1130,7 +1133,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       }
     }finally{
       zCtx.release()
-      getLogger.warn(s"feasibility result: ${result} time(ms): ${System.nanoTime() - startTime}")
+      getLogger.warn(s"feasibility result: ${result} time(ms): ${(System.nanoTime() - startTime) / 1000.0}")
     }
   }
 

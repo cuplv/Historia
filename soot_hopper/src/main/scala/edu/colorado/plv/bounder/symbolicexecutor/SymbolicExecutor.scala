@@ -42,7 +42,7 @@ case class SymbolicExecutorConfig[M,C](stepLimit: Int,
 //                                       stateTypeSolving: StateTypeSolving = SetInclusionTypeSolving,
 //                                       stateTypeSolving: StateTypeSolving = SolverTypeSolving,
                                        outputMode : OutputMode = MemoryOutputMode,
-                                       timeLimit : Int = 60000000,
+                                       timeLimit : Int = 600, //TODO: somehow make time limit hard cutoff ===== currently just exits on symbex main loop ==== thread.interrupt?
                                        subsumptionEnabled:Boolean = true // Won't prove anything without subsumption but can find witnesses
                                       ){
   def getSymbolicExecutor =

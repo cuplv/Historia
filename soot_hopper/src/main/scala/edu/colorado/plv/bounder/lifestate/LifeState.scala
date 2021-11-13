@@ -342,7 +342,10 @@ object LifeState {
 
     override def stringRep(varMap: String => Any): String = s"¬${l.stringRep(varMap)}"
 
-    override def toTex: String = s"\\neg ${l.toTex}"
+    override def toTex: String = l match {
+      case i: I=> s"\\notiDir{${i.mToTex}}"
+      case _ => ??? //s"\\neg ${l.toTex}"
+    }
   }
   case class Or(l1:LSPred, l2:LSPred) extends LSPred {
     override def lsVar: Set[String] = l1.lsVar.union(l2.lsVar)
@@ -587,10 +590,14 @@ object LifeState {
   case class LSSpec(univQuant:List[String], existQuant:List[String],
                     pred:LSPred, target: I, rhsConstraints: Set[LSConstraint] = Set()){
     def toTex():String = {
-      val faQuant = if(univQuant.nonEmpty) s"\\forall ${univQuant.mkString(",")}." else ""
-      val exQuant = if(existQuant.nonEmpty) s"\\exists ${existQuant.mkString(",")}." else ""
+      // in paper language, universal quantification of target vars is implicit
+      val dispUnivQuant = univQuant.toSet -- target.lsVar
+
+      val faQuant = if(dispUnivQuant.nonEmpty) s"\\forall ${dispUnivQuant.mkString(",")}." else ""
+      // existential quantification of matcher variables is implicit
+      // val exQuant = if(existQuant.nonEmpty) s"\\exists ${existQuant.mkString(",")}." else ""
       val tgtStr = if(rhsConstraints.isEmpty)
-        target.toTex
+        target.mToTex
       else if(rhsConstraints.exists{
         case LSConstraint(v, Equals, LSNullConst()) => true
         case _ => false
@@ -598,10 +605,11 @@ object LifeState {
         target.copy(lsVars = target.lsVars.map{
           case v2 if v2 == rhsConstraints.head.v1 => "@null"
           case v => v
-        }).toTex
+        }).mToTex
       } else
         ???
-      s"\\ensuremath{${faQuant}${exQuant}} \\ensuremath{[}\\specOnly{\\ensuremath{${pred.toTex}}}{\\ensuremath{$tgtStr}}\\ensuremath{]}"
+      val out = s"\\specOnly{\\ensuremath{$tgtStr}}{\\ensuremath{${faQuant}${pred.toTex}}}"
+      out
     }
 
     private def checkWF(quant:Set[String], p:LSPred):Boolean = p match {
