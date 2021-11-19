@@ -82,8 +82,8 @@ class StateSolverTest extends FixtureAnyFunSuite {
 //    withFixture(test.toNoArgTest(FixtureParam(SetInclusionTypeSolving)))
     withFixture(test.toNoArgTest(FixtureParam(SolverTypeSolving)))
   }
-  test("test to debug subsumption issues by loading serialized states"){f =>
-    // Note: leave ignored unless debugging
+  ignore("test to debug subsumption issues by loading serialized states"){f =>
+    // Note: leave ignored unless debugging, this test is just deserializing states to inspect
     val (stateSolver, _) = getStateSolver(f.typeSolving)
     val spec1 = new SpecSpace(
       Set(LifecycleSpec.Activity_onPause_onlyafter_onResume,

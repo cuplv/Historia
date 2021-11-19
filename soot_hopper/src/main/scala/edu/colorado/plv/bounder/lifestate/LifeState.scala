@@ -582,7 +582,7 @@ object LifeState {
 
     override def stringRep(varMap: String => Any): String = s"NI( ${i1.stringRep(varMap)} , ${i2.stringRep(varMap)} )"
 
-    override def toTex: String = s"\\niDir{${i1.mToTex}}{${i2.mToTex}}"
+    override def toTex: String = s"\\niDir{${i2.mToTex}}{${i1.mToTex}}"
   }
   object NI{
     implicit val rw:RW[NI] = macroRW
