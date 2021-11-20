@@ -38,10 +38,9 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
   }
 
   val row1Specs = Set(FragmentGetActivityNullSpec.getActivityNull,
-    //          FragmentGetActivityNullSpec.getActivityNonNull, //note: not needed because non-null implies not of prev
     LifecycleSpec.Fragment_activityCreatedOnlyFirst,
     RxJavaSpec.call
-  ) //++ RxJavaSpec.spec // Full RxJava spec includes no duplicate subscribe, not needed here, but still sound
+  )
 
   val row2Specs = Set[LSSpec](
     ViewSpec.clickWhileNotDisabled,
@@ -50,7 +49,6 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
   val row4Specs = Set(
     ViewSpec.clickWhileActive,
     ViewSpec.viewOnlyReturnedFromOneActivity,
-    //              LifecycleSpec.noResumeWhileFinish,
     LifecycleSpec.Activity_createdOnlyFirst
   )
   val row5Specs = Set[LSSpec](
@@ -66,12 +64,13 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
     case id if id.contains("findView") => "findView"
     case id if id.contains("onActivityCreated") => "onActivityCreated"
     case id if id.contains("Dialog_show") => "show"
+    case id if id.contains("AsyncTask_execute") => "execute"
     case id =>
       println(id);???
   }
   val row5Disallow = Set(SDialog.disallowDismiss)
   test("Baseline message count for framework"){
-    val specSet = row1Specs ++ row2Specs ++ row5Specs ++ row5Disallow ++ row4Specs
+    val specSet = row1Specs ++ row2Specs ++ row5Specs ++ row5Disallow ++ row4Specs ++ Set(SAsyncTask.disallowDoubleExecute)
     val specsByName = specSet.groupBy{getSpecName}.map{s =>
       assert(s._2.size == 1)
       (s._1,s._2.head)
@@ -81,7 +80,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
     // the actual class defining unsubscribe.
     val objectsOfInterest =
       ("(android.app.Activity)|(android.app.Fragment)|(rx.Subscriber)|(rx.Single)|(rx.functions.Action1)|" +
-        "(rx.Single)|(android.view.View)|(android.view.View.OnClickListener)|(android.app.Dialog)").r
+        "(rx.Single)|(android.view.View)|(android.view.View.OnClickListener)|(android.app.Dialog)|(android.os.AsyncTask)").r
 
     val test = (apk:String) => {
 
@@ -281,6 +280,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
            |    Subscription sub;
            |    //Callback with irrelevant subscribe
            |    @Override
+           |    // TODO: change this to onCreated for clarity in paper
            |    public void onViewCreated(View view, Bundle savedInstanceState) {
            |        Single.create(subscriber -> {
            |            subscriber.onSuccess(4);

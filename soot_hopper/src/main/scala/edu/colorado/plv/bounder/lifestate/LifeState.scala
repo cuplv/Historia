@@ -493,6 +493,8 @@ object LifeState {
           s"\\codej{${args(1)}.dismiss()}"
         case i if i.contains("setEnabled") =>
           s"\\codej{${args(1)}.setEnabled(${args(2)})}"
+        case i if i.contains("execute") =>
+          s"\\codej{${args(1)}.execute()}"
         case other =>
           println(other)
           ???
