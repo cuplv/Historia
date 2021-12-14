@@ -85,6 +85,14 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
     val test = (apk:String) => {
 
       val w = new JimpleFlowdroidWrapper(apk, cgMode,specSet)
+      val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
+        new SpecSpace(Set()), cha)
+      val config = SymbolicExecutorConfig(
+        stepLimit = 80, w, transfer,
+        component = Some(List(".*")))
+      implicit val om = config.outputMode
+      val symbolicExecutor = config.getSymbolicExecutor
+      val resolver = symbolicExecutor.appCodeResolver
 
       val specMacros = specsByName.map{
         case (name, spec) =>
@@ -101,13 +109,18 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
       specMacroFile.write(hdr + specMacros.mkString("\n"))
 
       val classes = mutable.HashMap[String, SootClass]()
+      var fwkClassCount = 0
       Scene.v().getClasses.forEach{c =>
+        if(resolver.isFrameworkClass(c.getName) && !c.getName.startsWith("rx.")){
+          fwkClassCount += 1
+        }
         val cSignature = c.getName
         if(objectsOfInterest.matches(cSignature)) {
           assert(!classes.contains(cSignature), "Unexpected duplicate")
           classes.addOne(cSignature, c)
         }
       }
+      println(fwkClassCount)
 
       // Helper class to accumulate callins and callbacks
       case class MessageList(callin:Set[String] = Set(), callback:Set[String] = Set()){
