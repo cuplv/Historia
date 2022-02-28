@@ -20,10 +20,10 @@ class RXJavaSubscribe_TestApp extends AnyFunSuite{
       RxJavaSpec.subscribeIsUnique
     )
     val w = new JimpleFlowdroidWrapper(apk,CHACallGraph, specs)
-    val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod,soot.Unit](w,
-      new SpecSpace(specs),cha)
+//    val transfer = (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod,soot.Unit](w,
+//      new SpecSpace(specs),cha)
     val config = SymbolicExecutorConfig(
-      stepLimit = 200, w,transfer,
+      stepLimit = 200, w, new SpecSpace(specs),
       component = Some(List("example.com.rxjavasubscribebug.PlayerFragment.*")))
     val symbolicExecutor = config.getSymbolicExecutor
 

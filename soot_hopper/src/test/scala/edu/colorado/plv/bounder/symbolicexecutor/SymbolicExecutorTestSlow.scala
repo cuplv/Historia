@@ -80,10 +80,8 @@ class SymbolicExecutorTestSlow extends AnyFunSuite{
         assert(apk != null)
         val specs:Set[LSSpec] = Set()
         val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
-        val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-          new SpecSpace(specs), cha)
         val config = SymbolicExecutorConfig(
-          stepLimit = 200, w, transfer,
+          stepLimit = 200, w, new SpecSpace(specs),
           component = Some(List("com.example.createdestroy.MyActivity.*")),
           //          outputMode = DBOutputMode("/Users/shawnmeier/Desktop/bounder_debug_data/deref2.db")
         )

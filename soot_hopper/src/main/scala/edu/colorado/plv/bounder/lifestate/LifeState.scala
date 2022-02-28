@@ -640,8 +640,16 @@ object LifeState {
         case (_,LSAnyVal()) => false
         case _ => true
       }
+      val existingLSVars = swap.map(v => v._2).toSet
       val unbound = pred.lsVar -- swap.map(_._1)
-      val swapWithFresh = (swap ++ unbound.map(v => (v,specSpace.nextFreshLSVar()))).toMap
+
+      val swapWithFresh = (swap ++ unbound.map{v =>
+        val nextFresh = specSpace.nextFreshLSVar()
+        if(existingLSVars.contains(nextFresh)) //TODO: remove dbg code
+          assert(!existingLSVars.contains(nextFresh),
+            "Duplicate lsvar, if in unit test, call nextFreshLSVar a few times")
+        (v,specSpace.nextFreshLSVar())
+      }).toMap
       val swappedPred = pred.swap(swapWithFresh)
       val swappedRhs = rhsConstraints.map(_.swap(swapWithFresh))
 

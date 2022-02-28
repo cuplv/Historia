@@ -78,10 +78,8 @@ class SpecTest extends AnyFunSuite {
     val apk = getClass.getResource("/Antennapod-fix-2856-app-free-debug.apk").getPath
     assert(apk != null)
     val w = new JimpleFlowdroidWrapper(apk,SparkCallGraph, Set())
-    val transfer =  (cha:ClassHierarchyConstraints) =>
-      new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set()),cha)
     val config = SymbolicExecutorConfig(
-      stepLimit = 8, w,transfer, printProgress = true)
+      stepLimit = 8, w,new SpecSpace(Set()), printProgress = true)
     val symbolicExecutor = config.getSymbolicExecutor
     implicit val ch = w.getClassHierarchyConstraints
 
@@ -101,10 +99,8 @@ class SpecTest extends AnyFunSuite {
     val apk = getClass.getResource("/RXJavaSubscribe-fix-debug.apk").getPath
     assert(apk != null)
     val w = new JimpleFlowdroidWrapper(apk,SparkCallGraph, Set())
-    val transfer =  (cha:ClassHierarchyConstraints) =>
-      new TransferFunctions[SootMethod,soot.Unit](w, new SpecSpace(Set()),cha)
     val config = SymbolicExecutorConfig(
-      stepLimit = 8, w,transfer, printProgress = true)
+      stepLimit = 8, w,new SpecSpace(Set()), printProgress = true)
     val symbolicExecutor = config.getSymbolicExecutor
     implicit val ch = w.getClassHierarchyConstraints
 //    BounderSetupApplication.loadApk(apk, CHACallGraph)

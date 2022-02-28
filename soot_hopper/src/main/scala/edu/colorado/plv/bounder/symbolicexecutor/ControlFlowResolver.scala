@@ -62,7 +62,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
                                component: Option[List[String]], config:SymbolicExecutorConfig[M,C]) { //TODO: remove pathMode here
   private implicit val ch = cha
   private val componentR: Option[List[Regex]] = component.map(_.map(_.r))
-  private val specSpace:SpecSpace = config.transfer(cha).getSpec
+  private val specSpace:SpecSpace = config.specSpace
 
   def callbackInComponent(loc: Loc): Boolean = loc match {
     case CallbackMethodReturn(_, _, methodLoc, _) =>

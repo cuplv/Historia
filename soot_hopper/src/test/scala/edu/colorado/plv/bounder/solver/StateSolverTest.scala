@@ -101,11 +101,11 @@ class StateSolverTest extends FixtureAnyFunSuite {
       ViewSpec.clickWhileActive,
       ViewSpec.viewOnlyReturnedFromOneActivity,
       //              LifecycleSpec.noResumeWhileFinish,
-      //              LifecycleSpec.Activity_onResume_first_orAfter_onPause //TODO: ==== testing if this prevents timeout
+      LifecycleSpec.Activity_onResume_first_orAfter_onPause //TODO: ==== testing if this prevents timeout
     ) ++ Dummy.specs)
     List(
-      (finishclickpause, "/Users/shawnmeier/Desktop/unifyTimeout/s1.json",
-        "/Users/shawnmeier/Desktop/unifyTimeout/s2.json",(v:Boolean) =>{
+      (finishclickpause, "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/dbgConnectBotTimeout/s1.json",
+        "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/dbgConnectBotTimeout/s2.json",(v:Boolean) =>{
         ???
       }),
       //      (spec2, "s1_diffz3unify.state", "s2_diffz3unify.state",true), // different in solver but same here???
@@ -114,9 +114,14 @@ class StateSolverTest extends FixtureAnyFunSuite {
       //(spec1, "s1_timeout_1.json", "s2_timeout_1.json", (v:Boolean) => v == false)
     ).foreach {
       case (spec, f1, f2, expected) =>
-
-        val s1 = loadState(f1)
-        val s2 = loadState(f2)
+        (1 to 20).foreach { _ =>
+          spec.nextFreshLSVar()
+        }
+        val s1p = loadState(f1)
+        val s2p = loadState(f2)
+        val bt = BitTypeSet(BitSet(639))
+        val s1 = s1p.addTypeConstraint(PureVar(3), bt).addTypeConstraint(PureVar(7), bt)
+        val s2 = s2p.addTypeConstraint(PureVar(3), bt).addTypeConstraint(PureVar(8), bt)
         val s1P = StateSolver.rhsToPred(s1.sf.traceAbstraction.rightOfArrow,spec).map(StateSolver.simplifyPred)
         val s2P = StateSolver.rhsToPred(s2.sf.traceAbstraction.rightOfArrow,spec).map(StateSolver.simplifyPred)
 //        val s1S = s1.copy(sf = s1.sf.copy(typeConstraints = s1.sf.typeConstraints + (p4 -> BitTypeSet(BitSet(3)))))
@@ -128,7 +133,8 @@ class StateSolverTest extends FixtureAnyFunSuite {
         //    val emptyRes = stateSolver.canSubsume(s1,s2, emptySpec)
         //    assert(emptyRes)
 
-        assert(stateSolver.canSubsume(s1, s2, spec) == expected)
+        val res = stateSolver.canSubsume(s1, s2, spec)
+        expected(res)
     }
   }
   test("value not value") { f =>

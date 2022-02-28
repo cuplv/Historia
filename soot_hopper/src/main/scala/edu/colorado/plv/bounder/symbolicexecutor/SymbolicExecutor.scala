@@ -5,6 +5,7 @@ import java.time.Instant
 import com.microsoft.z3.Z3Exception
 import edu.colorado.plv.bounder.{BounderUtil, RunConfig}
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, If, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SwitchCmd, ThrowCmd, VirtualInvoke}
+import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SetInclusionTypeSolving, SolverTypeSolving, StateTypeSolving, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, DBPathNode, FrameworkLocation, IPathNode, InitialQuery, LiveQry, LiveTruncatedQry, MemoryOutputMode, MemoryPathNode, OrdCount, OutputMode, PathNode, Qry, State, StateSet, SubsumableLocation, SwapLoc, WitnessedQry}
 
@@ -35,7 +36,8 @@ case object AppOnlyCallGraph extends CallGraphSource
  */
 case class SymbolicExecutorConfig[M,C](stepLimit: Int,
                                        w :  IRWrapper[M,C],
-                                       transfer : ClassHierarchyConstraints => TransferFunctions[M,C],
+//                                       transfer : ClassHierarchyConstraints => TransferFunctions[M,C],
+                                       specSpace:SpecSpace,
                                        printProgress : Boolean = sys.env.getOrElse("DEBUG","false").toBoolean,
                                        z3Timeout : Option[Int] = None,
                                        component : Option[Seq[String]] = None,
@@ -46,7 +48,8 @@ case class SymbolicExecutorConfig[M,C](stepLimit: Int,
                                        subsumptionEnabled:Boolean = true // Won't prove anything without subsumption but can find witnesses
                                       ){
   def getSymbolicExecutor =
-    new SymbolicExecutor[M, C](this)}
+    new SymbolicExecutor[M, C](this)
+}
 sealed trait QueryResult
 case object QueryFinished extends QueryResult
 case class QueryInterrupted(reason:String) extends QueryResult
@@ -61,7 +64,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
 
 
   def getClassHierarchy = cha
-  val transfer = config.transfer(cha)
+  val transfer = new TransferFunctions[M, C](w, config.specSpace, cha)
 
   val appCodeResolver = new DefaultAppCodeResolver[M,C](config.w)
   def getAppCodeResolver = appCodeResolver

@@ -63,10 +63,10 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
         //          RxJavaSpec.subscribeDoesNotReturnNull
       )
       val w = new JimpleFlowdroidWrapper(apk, f.cgSource, specs)
-      val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-        new SpecSpace(specs), cha)
+//      val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
+//        new SpecSpace(specs), cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = 50, w, transfer,
+        stepLimit = 50, w, new SpecSpace(specs),
         component = None)
       val query = Qry.makeReach(config.getSymbolicExecutor, "com.example.createdestroy.MyActivity",
         "void onCreate(android.os.Bundle)",
@@ -158,10 +158,10 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
       )
       val w = new JimpleFlowdroidWrapper(apk, f.cgSource, specs)
 
-      val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-        new SpecSpace(specs), cha)
+//      val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
+//        new SpecSpace(specs), cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = 50, w, transfer,
+        stepLimit = 50, w, new SpecSpace(specs),
         component = None)
 
       // TODO: Compute total methods that can be used as callin or callback in fwk ==== use this in the intro

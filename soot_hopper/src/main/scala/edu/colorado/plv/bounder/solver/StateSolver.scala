@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.solver
 
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.ir.{BitTypeSet, MessageType, TAddr, TMessage, TNullVal, TopTypeSet, TypeSet, WitnessExplanation}
+import edu.colorado.plv.bounder.ir.{BitTypeSet, EmptyTypeSet, MessageType, PrimTypeSet, TAddr, TMessage, TNullVal, TopTypeSet, TypeSet, WitnessExplanation}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.LifeState._
 import edu.colorado.plv.bounder.solver.StateSolver.{rhsToPred, simplifyPred}
@@ -10,7 +10,7 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.{HeapPtEdge, _}
 import org.slf4j.{Logger, LoggerFactory}
 import upickle.default.{read, write}
 
-import scala.collection.immutable
+import scala.collection.{immutable, mutable}
 
 trait Assumptions
 
@@ -1570,7 +1570,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       throw new IllegalArgumentException("""Expected method: "Unify" or "Z3" """)
     }} catch {
       case e:IllegalStateException =>
-        println("Subsumption returning false due to timeout")
+        println(s"Subsumption returning false due to timeout: ${e.getMessage}")
         getLogger.warn(s"subsumption result:timeout time(ms): ${(System.nanoTime() - startTime)/1000.0}")
         false
     }
@@ -1622,7 +1622,81 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     usedTypes
   }
 
-  def canSubsumeZ3(s1:State, s2:State,specSpace:SpecSpace, maxLen:Option[Int], timeout:Option[Int]):Boolean = {
+  //TODO: this method could probably be more efficient
+  /**
+   * Remove points to regions that are redundant with respect to z3 subsumption check
+   * This is a hack to deal with the thousands of points to regions that are produced by spark.
+   * e.g. a state with pt regions such as:
+   *   p-1 : 100,101,102
+   *   p-2 : 50, 51, 52
+   *   p-3 : 102
+   *  would become:
+   *   p-1 : 100,102
+   *   p-2 : 50
+   *   p-3 : 102
+   * @param s1 subsuming state
+   * @param s2 state to be subsumed
+   * @return (s1,s2) where points to sets contain 1 representative element but no more
+   */
+  def reducePtRegions(s1:State, s2:State): (State,State) = {
+    def tc(id:Int,s:State) = {
+      s.typeConstraints.map{
+        case (k,v) => (id,k,v)
+      }
+    }
+    val spt = tc(1,s1) ++ tc(2,s2)
+
+    //Get set of all regions
+    var allSet = mutable.BitSet()
+    spt.foreach{
+      case (_,_, PrimTypeSet(n)) =>
+      case (_,_, EmptyTypeSet) =>
+      case (_,_, TopTypeSet) =>
+      case (_, _, set) => allSet.addAll(set.getValues.getOrElse(mutable.BitSet())) // addAll uses a |= b under the hood
+    }
+    allSet.toImmutable
+
+    // Iterate over each pt region and collect sets of regions including a pt value
+    val setSet = allSet.foldLeft(Set[List[(Int,PureVar, TypeSet)]]()){ case (set,pt) =>
+      val typeSetsContainingValue: List[(Int, PureVar, TypeSet)] = spt.filter {
+        case (_, _, set) => set.contains(pt)
+      }.toList
+      set + typeSetsContainingValue
+    }.toList.zipWithIndex // create artificial value for each set of sets and add to each associated set
+    //TODO: may be better to have a representative pt element here instead of index
+
+    // construct modified s1 and s2
+
+    val outS1 = s1.typeConstraints.flatMap{
+      case (k,_:BitTypeSet) => Some((k,mutable.BitSet()))
+      case (k,ts) => None
+    }
+    val outS2 = s2.typeConstraints.flatMap{
+      case (k,_:BitTypeSet) => Some((k,mutable.BitSet()))
+      case (k,ts) => None
+    }
+    setSet.foreach{
+      case (updList, i) =>
+        updList.foreach{
+          case (oldSt, pv, _) =>
+            val updSt = if(oldSt == 1) outS1 else if(oldSt == 2) outS2 else throw new IllegalStateException("nostate")
+            if(updSt.contains(pv)) {
+              updSt(pv) += i
+            }
+        }
+    }
+    def constructSt(s:State, map: Map[PureVar, mutable.BitSet]):State = {
+      map.foldLeft(s){
+        case (st, (pv,bts)) => st.addTypeConstraint(pv,BitTypeSet(bts))
+      }
+    }
+    val res = (constructSt(s1, outS1), constructSt(s2,outS2))
+    res
+  }
+
+  def canSubsumeZ3(s1i:State, s2i:State,specSpace:SpecSpace, maxLen:Option[Int], timeout:Option[Int]):Boolean = {
+    val (s1,s2) = reducePtRegions(s1i,s2i)
+//    val (s1,s2) = (s1i,s2i)
     implicit val zCtx: C = getSolverCtx
     try {
       zCtx.acquire()
@@ -1662,6 +1736,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         // uncomment to dump serialized timeout states
         // val s1f = File("s1_timeout.json")
         // val s2f = File("s2_timeout.json")
+        val s1str = write(s1)
+        val s2str = write(s2)
+        println(s1str)
+        println(s2str)
         // s1f.write(write(s1))
         // s2f.write(write(s2))
         // throw e

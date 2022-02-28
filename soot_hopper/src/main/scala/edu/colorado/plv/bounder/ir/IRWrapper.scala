@@ -71,6 +71,7 @@ sealed abstract class TypeSet{
    * @return None if top type set Some otherwise
    */
   def getValues:Option[Set[Int]]
+  def contains(i:Int):Boolean
   def contains(other:TypeSet):Boolean
   /**
    * Create new type set where type must be a subtype of one of the values in 'types'
@@ -119,6 +120,8 @@ case object TopTypeSet extends TypeSet {
   override def filterSubTypeOf(types: Set[String])(implicit ch:ClassHierarchyConstraints): TypeSet =
     this //TODO: this probably loses precision
   override def intersectNonEmpty(other: TypeSet): Boolean = true
+
+  override def contains(i: Int): Boolean = true
 }
 case object EmptyTypeSet extends TypeSet{
   override def serialize(): String = "empty:"
@@ -137,6 +140,8 @@ case object EmptyTypeSet extends TypeSet{
   override def filterSubTypeOf(types: Set[String])(implicit ch:ClassHierarchyConstraints): TypeSet = EmptyTypeSet
 
   override def intersectNonEmpty(other: TypeSet): Boolean = false
+
+  override def contains(i: Int): Boolean = false
 }
 
 case object PrimTypeSet{
@@ -169,6 +174,8 @@ case class PrimTypeSet(name:String) extends TypeSet {
 
 
   override def intersectNonEmpty(other: TypeSet): Boolean = !intersect(other).isEmpty
+
+  override def contains(i: Int): Boolean = false
 }
 object BitTypeSet{
   implicit var rw:RW[BitTypeSet] = upickle.default.readwriter[String].bimap[BitTypeSet](
@@ -219,8 +226,9 @@ case class BitTypeSet(s:BitSet) extends TypeSet {
     }
     BitTypeSet(newSet)
   }
-  // TODO: may be faster way with bitsets
   override def intersectNonEmpty(other: TypeSet): Boolean = !intersect(other).isEmpty
+
+  override def contains(i: Int): Boolean = s.contains(i)
 }
 
 

@@ -91,7 +91,11 @@ case class StateFormula(callStack: List[CallStackFrame],
     isSimplified = true
     this
   }
+
   def allIRefByState(spec:SpecSpace): Set[I] = allIRef(spec)
+  def clearTC:StateFormula = {
+    this.copy(typeConstraints = Map())
+  }
 
   private val allIRef = Memo.mutableHashMapMemo {
     (spec: SpecSpace) =>
@@ -220,6 +224,9 @@ case class State(sf:StateFormula,
   def traceAbstraction: AbstractTrace = sf.traceAbstraction
 
   // sf copy methods
+  def clearTC:State = {
+    this.copy(sf = this.sf.clearTC)
+  }
   def addTypeConstraint(pv:PureVar, typeSet:TypeSet):State =
     this.copy(sf = sf.copy(typeConstraints = sf.typeConstraints + (pv -> typeSet)))
   def addPureConstraint(p:PureConstraint):State = {

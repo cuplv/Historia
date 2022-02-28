@@ -79,10 +79,8 @@ class SootUtilsTest extends AnyFunSuite {
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
     val testSpec = LSSpec("a"::Nil, Nil, NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
       SpecSignatures.Activity_onPause_entry)
-    val transfer = (cha: ClassHierarchyConstraints) =>
-      new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set(testSpec)), cha)
     val config: SymbolicExecutorConfig[SootMethod, soot.Unit] = SymbolicExecutorConfig(
-      stepLimit = 50, w, transfer, printProgress = true, z3Timeout = Some(30))
+      stepLimit = 50, w, new SpecSpace(Set(testSpec)), printProgress = true, z3Timeout = Some(30))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = Qry.makeReceiverNonNull(symbolicExecutor,
       "com.example.test_interproc_2.MainActivity",
@@ -113,14 +111,10 @@ class SootUtilsTest extends AnyFunSuite {
     val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath()
     assert(test_interproc_1 != null)
     val w = new JimpleFlowdroidWrapper(test_interproc_1, SparkCallGraph, Set())
-    val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
-    //    val resolver = new ControlFlowResolver[SootMethod, soot.Unit](w, a)
     val testSpec = LSSpec("a"::Nil, Nil, NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
       SpecSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
-    val transfer = (cha: ClassHierarchyConstraints) =>
-      new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set(testSpec)), cha)
     val config: SymbolicExecutorConfig[SootMethod, soot.Unit] = SymbolicExecutorConfig(
-      stepLimit = 50, w, transfer, printProgress = true, z3Timeout = Some(30))
+      stepLimit = 50, w, new SpecSpace(Set(testSpec)), printProgress = true, z3Timeout = Some(30))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = Qry.makeReach(symbolicExecutor,
       "com.example.test_interproc_2.MainActivity",

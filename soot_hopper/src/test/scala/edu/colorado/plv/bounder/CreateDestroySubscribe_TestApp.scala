@@ -21,11 +21,11 @@ class CreateDestroySubscribe_TestApp extends AnyFunSuite{
     RxJavaSpec.call))
   val w = new JimpleFlowdroidWrapper(apk,CHACallGraph, specSpace.getSpecs)
 
-  val transfer = (cha:ClassHierarchyConstraints) =>  {
-    new TransferFunctions[SootMethod, soot.Unit](w, specSpace,cha)
-  }
+//  val transfer = (cha:ClassHierarchyConstraints) =>  {
+//    new TransferFunctions[SootMethod, soot.Unit](w, specSpace,cha)
+//  }
   val config = SymbolicExecutorConfig(
-    stepLimit = 200, w,transfer,
+    stepLimit = 200, w,specSpace,
     component = Some(List("com.example.createdestroy.MainActivity.*")))
   val symbolicExecutor = config.getSymbolicExecutor
   private val prettyPrinting = new PrettyPrinting()

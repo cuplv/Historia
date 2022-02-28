@@ -85,10 +85,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
     val test = (apk:String) => {
 
       val w = new JimpleFlowdroidWrapper(apk, cgMode,specSet)
-      val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-        new SpecSpace(Set()), cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = 80, w, transfer,
+        stepLimit = 80, w, new SpecSpace(Set()),
         component = Some(List(".*")))
       implicit val om = config.outputMode
       val symbolicExecutor = config.getSymbolicExecutor
@@ -327,10 +325,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
         //Note: subscribeIsUnique rule ommitted from this test to check state relevant to callback
         // TODO: relevance could probably be refined so this isn't necessary
         val w = new JimpleFlowdroidWrapper(apk, cgMode,row1Specs)
-        val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-          new SpecSpace(row1Specs), cha)
         val config = SymbolicExecutorConfig(
-          stepLimit = 80, w, transfer,
+          stepLimit = 80, w, new SpecSpace(row1Specs),
           component = Some(List("com.example.createdestroy.*PlayerFragment.*")))
         implicit val om = config.outputMode
         val symbolicExecutor = config.getSymbolicExecutor
@@ -437,10 +433,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
         assert(apk != null)
 
         val w = new JimpleFlowdroidWrapper(apk, cgMode,row2Specs)
-        val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-          new SpecSpace(row2Specs, Set(SAsyncTask.disallowDoubleExecute)), cha)
         val config = SymbolicExecutorConfig(
-          stepLimit = 200, w, transfer,
+          stepLimit = 200, w,new SpecSpace(row2Specs, Set(SAsyncTask.disallowDoubleExecute)),
           component = Some(List("com.example.createdestroy.*RemoverActivity.*")))
         implicit val om = config.outputMode
         val symbolicExecutor = config.getSymbolicExecutor
@@ -459,7 +453,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
         val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
         assert(interpretedResult == expectedResult)
         logger.warn(s"Row 2 ${fileSuffix} time(ms): ${(System.nanoTime() - startTime)/1000.0}")
-      77}
+      }
 
       makeApkWithSources(Map("RemoverActivity.java" -> src), MkApk.RXBase, test)
     }
@@ -517,10 +511,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
         LifecycleSpec.Fragment_activityCreatedOnlyFirst
       ) ++ RxJavaSpec.spec
       val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
-      val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-        new SpecSpace(specs), cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = 80, w, transfer,
+        stepLimit = 80, w,new SpecSpace(specs),
         component = Some(List("com.example.createdestroy.*MyFragment.*")))
       implicit val om = config.outputMode
 
@@ -623,10 +615,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
         //Note: subscribeIsUnique rule ommitted from this test to check state relevant to callback
         // TODO: relevance could probably be refined so this isn't necessary
         val w = new JimpleFlowdroidWrapper(apk, cgMode,row5Specs)
-        val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-          new SpecSpace(row5Specs, row5Disallow), cha)
         val config = SymbolicExecutorConfig(
-          stepLimit = 200, w, transfer,
+          stepLimit = 200, w, new SpecSpace(row5Specs, row5Disallow),
           component = Some(List("com.example.createdestroy.*StatusActivity.*")))
         implicit val om = config.outputMode
         val symbolicExecutor = config.getSymbolicExecutor
@@ -715,10 +705,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
             //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
             val w = new JimpleFlowdroidWrapper(apk, cgMode, row4Specs)
 
-            val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
-              new SpecSpace(row4Specs), cha)
             val config = SymbolicExecutorConfig(
-              stepLimit = 600, w, transfer,
+              stepLimit = 600, w, new SpecSpace(row4Specs),
               component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode)
             val symbolicExecutor = config.getSymbolicExecutor
             val line = BounderUtil.lineForRegex(".*query1.*".r, src)

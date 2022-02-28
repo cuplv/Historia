@@ -20,16 +20,17 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
     //      RxJavaSpec.subscribeDoesNotReturnNull,
     RxJavaSpec.subscribeIsUnique
   )
-  private val transfer = (w:JimpleFlowdroidWrapper) =>
-    (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod,soot.Unit](w,
-    new SpecSpace(spec),cha)
+//  private val transfer = (w:JimpleFlowdroidWrapper) =>
+//    (cha:ClassHierarchyConstraints) => new TransferFunctions[SootMethod,soot.Unit](w,
+//    new SpecSpace(spec),cha)
+  private val specSpace = new SpecSpace(spec)
   private val prettyPrinting = new PrettyPrinting()
 
   ignore("Fix: Prove updateUI is not reachable where getActivity returns null under a simple spec.") {
     //TODO: currently timing out
     val w = new JimpleFlowdroidWrapper(apkFix,CHACallGraph,spec)
     val config = SymbolicExecutorConfig(
-      stepLimit = 400, w,transfer(w),
+      stepLimit = 400, w,specSpace,
       component = Some(List("de\\.danoeh\\.antennapod\\.fragment\\.ExternalPlayerFragment.*")))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = CallinReturnNonNull(
@@ -45,7 +46,7 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
     // TODO: currently timing out
     val w = new JimpleFlowdroidWrapper(apkBug,CHACallGraph,spec)
     val config = SymbolicExecutorConfig(
-      stepLimit = 400, w,transfer(w),
+      stepLimit = 400, w,specSpace,
       component = Some(List("de\\.danoeh\\.antennapod\\.fragment\\.ExternalPlayerFragment.*")))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = CallinReturnNonNull(
@@ -60,7 +61,7 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
     // TODO: currently timing out, should witness
     val w = new JimpleFlowdroidWrapper(apkFix,CHACallGraph,spec)
     val config = SymbolicExecutorConfig(
-      stepLimit = 400, w,transfer(w),
+      stepLimit = 400, w,specSpace,
       component = Some(List("de\\.danoeh\\.antennapod\\.fragment\\.ExternalPlayerFragment.*")))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = Reachable(
@@ -74,7 +75,7 @@ class AntennaPod2856FixExperiment  extends AnyFunSuite{
     // TODO: currently timing out, should witness
     val w = new JimpleFlowdroidWrapper(apkFix,CHACallGraph,spec)
     val config = SymbolicExecutorConfig(
-      stepLimit = 50, w,transfer(w),
+      stepLimit = 50, w,specSpace,
       component = Some(List("de\\.danoeh\\.antennapod\\.fragment\\.CompletedDownloadsFragment.*")))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = CallinReturnNonNull(

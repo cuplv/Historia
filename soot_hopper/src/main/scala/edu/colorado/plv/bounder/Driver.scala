@@ -239,13 +239,10 @@ object Driver {
     val apk = cfg.apkPath.replace("${baseDir}",apkBase)
     val outFile = File(cfg.outFolder.get.replace("${baseDirOut}", outBase)) / "out.db" //File(baseDirOut) / "out.db"
     val w = new JimpleFlowdroidWrapper(apk, SparkCallGraph, Set())
-    val transfer = (cha: ClassHierarchyConstraints) =>
-      new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set()), cha)
-
 
     val pathMode = DBOutputMode(outFile.canonicalPath, cfg.truncateOut)
     val config = SymbolicExecutorConfig(
-      stepLimit = 2, w, transfer, component = None, outputMode = pathMode,
+      stepLimit = 2, w, new SpecSpace(Set()), component = None, outputMode = pathMode,
       timeLimit = cfg.timeLimit)
     val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
     symbolicExecutor.writeIR()
@@ -254,10 +251,8 @@ object Driver {
                    outFolder:File, cfg:RunConfig, tag:Option[String]) = {
     val callGraph = CHACallGraph
     val w = new JimpleFlowdroidWrapper(apkPath, callGraph, Set())
-    val transfer = (cha: ClassHierarchyConstraints) =>
-      new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set()), cha)
     val config = SymbolicExecutorConfig(
-      stepLimit = 0, w, transfer, component = None)
+      stepLimit = 0, w, new SpecSpace(Set()), component = None)
     val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
     val appClasses = symbolicExecutor.appCodeResolver.appMethods.map(m => m.classType)
     val filtered = appClasses.filter(c => filter.forall(c.startsWith))
@@ -276,10 +271,8 @@ object Driver {
     val n = cfg.samples
     val callGraph = CHACallGraph
     val w = new JimpleFlowdroidWrapper(apkPath, callGraph, Set())
-    val transfer = (cha: ClassHierarchyConstraints) =>
-      new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set()), cha)
     val config = SymbolicExecutorConfig(
-      stepLimit = n, w, transfer, component = None)
+      stepLimit = n, w, new SpecSpace(Set()), component = None)
     val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
 
     val queries = (0 until n).map{_ =>
@@ -302,10 +295,8 @@ object Driver {
     val callGraph = CHACallGraph
     //      val callGraph = FlowdroidCallGraph // flowdroid call graph immediately fails with "unreachable"
     val w = new JimpleFlowdroidWrapper(apkPath, callGraph, Set())
-    val transfer = (cha: ClassHierarchyConstraints) =>
-      new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(Set()), cha)
     val config = SymbolicExecutorConfig(
-      stepLimit = 0, w, transfer, component = None)
+      stepLimit = 0, w, new SpecSpace(Set()), component = None)
     val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
     //TODO:
   }
@@ -319,10 +310,8 @@ object Driver {
       val callGraph = SparkCallGraph
 //      val callGraph = FlowdroidCallGraph // flowdroid call graph immediately fails with "unreachable"
       val w = new JimpleFlowdroidWrapper(apkPath, callGraph, specSet)
-      val transfer = (cha: ClassHierarchyConstraints) =>
-        new TransferFunctions[SootMethod, soot.Unit](w, new SpecSpace(specSet), cha)
       val config = SymbolicExecutorConfig(
-        stepLimit = stepLimit, w, transfer, component = componentFilter, outputMode = mode,
+        stepLimit = stepLimit, w, new SpecSpace(specSet), component = componentFilter, outputMode = mode,
         timeLimit = cfg.timeLimit)
       val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
 //      val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
