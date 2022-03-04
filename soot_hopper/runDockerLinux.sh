@@ -2,7 +2,7 @@
 if [ $# -eq 0 ]
 	then
 		#CMD=$(cat ~/dcmd)
-		docker run --rm --net=host -it cuplv/bounder bash
+		docker run --rm --net=host -it --shm-size=1024m cuplv/bounder bash
 		#-c "java -jar $BOUNDER_JAR --mode expLoop"
 	else
 		DATADIR=$(realpath $1)
