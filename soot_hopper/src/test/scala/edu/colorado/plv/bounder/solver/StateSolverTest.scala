@@ -4,7 +4,7 @@ import better.files.{File, Resource}
 import com.microsoft.z3._
 import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, FreshRef, I, LSConstraint, LSFalse, LSSpec, LSTrue, NI, Not, Or, SignatureMatcher, SubClassMatcher}
-import edu.colorado.plv.bounder.lifestate.{Dummy, FragmentGetActivityNullSpec, LifecycleSpec, RxJavaSpec, SpecSignatures, SpecSpace, ViewSpec}
+import edu.colorado.plv.bounder.lifestate.{Dummy, FragmentGetActivityNullSpec, LSVarGen, LifecycleSpec, RxJavaSpec, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import org.scalatest.funsuite.FixtureAnyFunSuite
 import upickle.default.read
@@ -82,7 +82,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
 //    withFixture(test.toNoArgTest(FixtureParam(SetInclusionTypeSolving)))
     withFixture(test.toNoArgTest(FixtureParam(SolverTypeSolving)))
   }
-  ignore("test to debug subsumption issues by loading serialized states"){f =>
+  test("test to debug subsumption issues by loading serialized states"){f =>
     // Note: leave ignored unless debugging, this test is just deserializing states to inspect
     val (stateSolver, _) = getStateSolver(f.typeSolving)
     val spec1 = new SpecSpace(
@@ -114,11 +114,10 @@ class StateSolverTest extends FixtureAnyFunSuite {
       //(spec1, "s1_timeout_1.json", "s2_timeout_1.json", (v:Boolean) => v == false)
     ).foreach {
       case (spec, f1, f2, expected) =>
-        (1 to 20).foreach { _ =>
-          spec.nextFreshLSVar()
-        }
+
         val s1p = loadState(f1)
         val s2p = loadState(f2)
+        LSVarGen.setNext(List(s1p,s2p))
         val bt = BitTypeSet(BitSet(639))
         val s1 = s1p.addTypeConstraint(PureVar(3), bt).addTypeConstraint(PureVar(7), bt)
         val s2 = s2p.addTypeConstraint(PureVar(3), bt).addTypeConstraint(PureVar(8), bt)

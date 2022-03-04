@@ -4,13 +4,36 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, CLInit, Exists, Forall, FreshRef, I, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, LifeStateParser, NI, Not, Or}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CmpOp, Equals, NotEquals, NullVal, PureExpr, PureVal, PureVar, Subtype}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CmpOp, Equals, NotEquals, NullVal, PureExpr, PureVal, PureVar, State, Subtype}
 
 import scala.util.parsing.combinator._
 import upickle.default.{macroRW, ReadWriter => RW}
 
 import scala.util.matching.Regex
 
+object LSVarGen{
+  private var next = 0
+
+  def setNext(states:List[State]):Unit = {
+
+    states.foreach{s =>
+      val mv = s.sf.traceAbstraction.modelVars.keySet ++ s.sf.traceAbstraction.rightOfArrow.flatMap {
+        case CLInit(sig) => Set()
+        case FreshRef(v) => Set(v)
+        case I(mt, signatures, lsVars) => lsVars
+      }
+      mv.map{
+        case n if n.startsWith("LS__") && n.drop(4).toInt >= next =>
+          next = n.drop(4).toInt
+        case _ =>
+      }
+    }
+  }
+  def getNext:String = {
+    next = next + 1
+    s"LS__${next}"
+  }
+}
 
 object LifeState {
 
@@ -156,6 +179,7 @@ object LifeState {
     }
   }
   val LSVar = "((?:[a-zA-Z])(?:[a-zA-Z0-9]|_)*)".r
+  val SynthLSVar = "LS_(\\d*)".r
 
 
   val LSAnyVal = "_".r
@@ -644,11 +668,12 @@ object LifeState {
       val unbound = pred.lsVar -- swap.map(_._1)
 
       val swapWithFresh = (swap ++ unbound.map{v =>
-        val nextFresh = specSpace.nextFreshLSVar()
+//        val nextFresh = specSpace.nextFreshLSVar()
+        val nextFresh = LSVarGen.getNext
         if(existingLSVars.contains(nextFresh)) //TODO: remove dbg code
           assert(!existingLSVars.contains(nextFresh),
             "Duplicate lsvar, if in unit test, call nextFreshLSVar a few times")
-        (v,specSpace.nextFreshLSVar())
+        (v,nextFresh)
       }).toMap
       val swappedPred = pred.swap(swapWithFresh)
       val swappedRhs = rhsConstraints.map(_.swap(swapWithFresh))
@@ -769,12 +794,12 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
     (enableSpecs ++ disallowSpecs).flatMap(SpecSpace.allI(_)).groupBy(i => i.mt)
 
 
-  private var freshLSVarIndex = 0
-  def nextFreshLSVar():String = {
-    val ind = freshLSVarIndex
-    freshLSVarIndex = freshLSVarIndex+1
-    s"LS__${ind}"
-  }
+//  private var freshLSVarIndex = 0
+//  def nextFreshLSVar():String = {
+//    val ind = freshLSVarIndex
+//    freshLSVarIndex = freshLSVarIndex+1
+//    s"LS__${ind}"
+//  }
   /**
    * For step back over a place where the code may emit a message find the applicable I and assign fresh ls vars.
    * Fresh LS vars are generated for vars and constants
@@ -811,7 +836,7 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
       case (acc,I(_,_,vars)) =>
         acc.zipAll(vars,"_","_").map(merge)
     }
-    val parListFresh = parList.map(a => if(a!="_") nextFreshLSVar() else "_")
+    val parListFresh = parList.map(a => if(a!="_") LSVarGen.getNext else "_")
 
     val headSig = out.headOption.map(i => i.identitySignature)
     assert(out.tail.forall(i => headSig.forall(v => v == i.identitySignature)),
@@ -821,7 +846,7 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
     out.headOption.map(v => v.copy(lsVars = parListFresh))
   }
   def getRefWithFreshVars(): FreshRef ={
-    FreshRef(nextFreshLSVar())
+    FreshRef(LSVarGen.getNext)
   }
 
   /**

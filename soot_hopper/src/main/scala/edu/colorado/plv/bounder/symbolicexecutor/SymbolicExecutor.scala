@@ -6,14 +6,12 @@ import com.microsoft.z3.Z3Exception
 import edu.colorado.plv.bounder.{BounderUtil, RunConfig}
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, If, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SwitchCmd, ThrowCmd, VirtualInvoke}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
-import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SetInclusionTypeSolving, SolverTypeSolving, StateTypeSolving, Z3StateSolver}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, DBPathNode, FrameworkLocation, IPathNode, InitialQuery, LiveQry, LiveTruncatedQry, MemoryOutputMode, MemoryPathNode, OrdCount, OutputMode, PathNode, Qry, State, StateSet, SubsumableLocation, SwapLoc, WitnessedQry}
+import edu.colorado.plv.bounder.solver.Z3StateSolver
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, FrameworkLocation, IPathNode, InitialQuery, LiveQry, LiveTruncatedQry, MemoryOutputMode, MemoryPathNode, OrdCount, OutputMode, PathNode, Qry, State, StateSet, SubsumableLocation, SwapLoc, WitnessedQry}
 
 import scala.annotation.tailrec
-//import scala.collection.parallel.CollectionConverters.{ImmutableSetIsParallelizable, IterableIsParallelizable}
 import upickle.default._
 
-import collection.mutable.PriorityQueue
 import scala.collection.mutable
 
 sealed trait CallGraphSource
@@ -27,24 +25,21 @@ case object AppOnlyCallGraph extends CallGraphSource
  * //TODO: ugly lambda due to wanting to configure transfer functions externally but still need cha
  * @param stepLimit Number of back steps to take from assertion before timeout (-1 for no limit)
  * @param w  IR representation defined by IRWrapper interface
- * @param transfer transfer functions over app transitions including callin/callback boundaries
+ * @param specSpace CFTL specifications
  * @param printProgress print steps taken
  * @param z3Timeout seconds that z3 can take on a query before timeout
  * @param component restrict analysis to callbacks that match the listed regular expressions
- * @tparam M
- * @tparam C
+ * @tparam M Method type (IR wrapper)
+ * @tparam C Command type (IR wrapper)
  */
 case class SymbolicExecutorConfig[M,C](stepLimit: Int,
                                        w :  IRWrapper[M,C],
-//                                       transfer : ClassHierarchyConstraints => TransferFunctions[M,C],
                                        specSpace:SpecSpace,
                                        printProgress : Boolean = sys.env.getOrElse("DEBUG","false").toBoolean,
                                        z3Timeout : Option[Int] = None,
                                        component : Option[Seq[String]] = None,
-//                                       stateTypeSolving: StateTypeSolving = SetInclusionTypeSolving,
-//                                       stateTypeSolving: StateTypeSolving = SolverTypeSolving,
                                        outputMode : OutputMode = MemoryOutputMode,
-                                       timeLimit : Int = 600, //TODO: somehow make time limit hard cutoff ===== currently just exits on symbex main loop ==== thread.interrupt?
+                                       timeLimit : Int = 6000, //TODO: somehow make time limit hard cutoff ===== currently just exits on symbex main loop ==== thread.interrupt?
                                        subsumptionEnabled:Boolean = true // Won't prove anything without subsumption but can find witnesses
                                       ){
   def getSymbolicExecutor =

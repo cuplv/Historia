@@ -57,8 +57,9 @@ object StateSet {
     val heap = heapEdgesFromState(pathNode.qry.getState.get)
     iEdges(local ++ heap,pathNode, stateSet)
   }
-  private def dbgAllSubs(pathNode:IPathNode, stateSet:StateSet, canSubsume: (State,State)=> Boolean):(Option[IPathNode], Int) = {
-    var subsCount:Int = 0
+  private def dbgAllSubs(pathNode:IPathNode,
+                         stateSet:StateSet, canSubsume: (State,State)=> Boolean):(Option[IPathNode], Int) = {
+    var subsCount:Int = 0 //l
     def iDbg(pathNode:IPathNode, stateSet:StateSet, canSubsume: (State,State)=> Boolean):Option[IPathNode] = {
       val res = stateSet.states.find { subsuming =>
         subsCount = subsCount + 1
@@ -79,7 +80,6 @@ object StateSet {
   def findSubsuming(pathNode:IPathNode, stateSet:StateSet, canSubsume: (State,State)=> Boolean):Option[IPathNode] = {
     val local = localEdgeFromState(pathNode.qry.getState.get)
     val heap = heapEdgesFromState(pathNode.qry.getState.get)
-    var fastCount:Int = 0
     def iFind(edges: List[String], pathNode:IPathNode, current:StateSet):Option[IPathNode] = {
       //TODO: does par cause issues here?
       //TODO:======== does sorting improve runtime?
@@ -90,7 +90,6 @@ object StateSet {
         val startTime = System.nanoTime()
         if(DEBUG)
           println(s"   subsuming state: ${subsuming.qry.getState}")
-        fastCount = fastCount + 1
         val res = canSubsume(subsuming.qry.getState.get, pathNode.qry.getState.get)
         if(DEBUG) {
           println(s"        time(ms): ${(System.nanoTime() - startTime) / 1000.0}")

@@ -1695,7 +1695,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   }
 
   def canSubsumeZ3(s1i:State, s2i:State,specSpace:SpecSpace, maxLen:Option[Int], timeout:Option[Int]):Boolean = {
-    val (s1,s2) = reducePtRegions(s1i,s2i)
+    val (s1,s2) = reducePtRegions(s1i,s2i) //TODO: does reducing pts regions help?
 //    val (s1,s2) = (s1i,s2i)
     implicit val zCtx: C = getSolverCtx
     try {

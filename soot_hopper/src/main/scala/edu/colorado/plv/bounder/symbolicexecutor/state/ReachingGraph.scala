@@ -16,6 +16,7 @@ import better.files.File
 import com.microsoft.z3.Z3Exception
 import edu.colorado.plv.bounder.BounderUtil.{MaxPathCharacterization, ResultSummary}
 import edu.colorado.plv.bounder.RunConfig
+import edu.colorado.plv.bounder.symbolicexecutor.state.DBOutputMode.nextId
 import slick.jdbc
 import slick.jdbc.SQLiteProfile
 import ujson.Obj
@@ -73,10 +74,6 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
 //  private val db = DBOutputMode.getDBForF(dbfile, setupTables)
   private val db = DBOutputMode.getDBForF(dbfile,setupTables)
 
-  private val id = new AtomicInteger(0)
-  def nextId:Int = {
-    id.getAndAdd(1)
-  }
 
   private val longTimeout = 600 seconds
 
@@ -405,6 +402,11 @@ object DBOutputMode{
 
   import slick.jdbc.GetResult
   import slick.jdbc.SQLActionBuilder
+
+  private val id = new AtomicInteger(0)
+  def nextId:Int = {
+    id.getAndAdd(1)
+  }
   case class StrRes(s: String)
   implicit val getStrResult = GetResult(r => StrRes(r.<<))
 
@@ -534,7 +536,7 @@ object PathNode{
       case MemoryOutputMode =>
         MemoryPathNode(qry, succ, subsumed, depth,ordDepth)
       case m@DBOutputMode(_,_) =>
-        val id = m.nextId
+        val id = nextId
 
         val succID = if(m.truncate) {
           val jumpSucc = succ.flatMap(n =>
