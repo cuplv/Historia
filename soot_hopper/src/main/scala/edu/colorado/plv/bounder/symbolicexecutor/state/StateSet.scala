@@ -78,6 +78,8 @@ object StateSet {
     (iDbg(pathNode, stateSet, canSubsume), subsCount)
   }
   def findSubsuming(pathNode:IPathNode, stateSet:StateSet, canSubsume: (State,State)=> Boolean):Option[IPathNode] = {
+    //TODO: flip this around to where it traverses down and searches the things that mach the locals and heap cells first
+
     val local = localEdgeFromState(pathNode.qry.getState.get)
     val heap = heapEdgesFromState(pathNode.qry.getState.get)
     def iFind(edges: List[String], pathNode:IPathNode, current:StateSet):Option[IPathNode] = {

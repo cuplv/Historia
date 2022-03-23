@@ -179,6 +179,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     }
     if(useCmd) {
       File.temporaryFile().apply{ f =>
+        println(s"file: $f")
         f.writeText(zCtx.solver.toString)
         f.append("\n(check-sat)")
         // Sometimes the java solver fails, we fall back to calling the command line tool
@@ -211,7 +212,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
         case e: IllegalArgumentException =>
           println(s"Fallback from z3 exception: ${e}")
           if(!useCmd)
-            checkSAT(true)
+            checkSAT(useCmd = true)
           else
             throw new IllegalStateException(e.getMessage)
       }
@@ -250,9 +251,10 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     }
   }
 
-  override protected def mkAdd(lhs: AST, rhs: AST)(implicit zCtx:Z3SolverCtx): AST = {
-    zCtx.ctx.mkAdd(lhs.asInstanceOf[ArithExpr[ArithSort]], rhs.asInstanceOf[ArithExpr[ArithSort]])
-  }
+//  @Deprecated
+//  override protected def mkAdd(lhs: AST, rhs: AST)(implicit zCtx:Z3SolverCtx): AST = {
+//    zCtx.ctx.mkAdd(lhs.asInstanceOf[ArithExpr[ArithSort]], rhs.asInstanceOf[ArithExpr[ArithSort]])
+//  }
 
   override protected def mkSub(lhs: AST, rhs: AST)(implicit zCtx:Z3SolverCtx): AST = {
     zCtx.ctx.mkSub(lhs.asInstanceOf[ArithExpr[ArithSort]], rhs.asInstanceOf[ArithExpr[ArithSort]])
@@ -329,16 +331,6 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
 
   override protected def mkAddrVar(pv:PureVar)(implicit zCtx:Z3SolverCtx):AST =
     zCtx.ctx.mkFreshConst(mkPvName(pv), addrSort)
-
-
-
-  override protected def fieldEquals(f: AST, t1 : AST, t2:AST)(implicit zCtx:Z3SolverCtx): AST = {
-    assert(f.isInstanceOf[FuncDecl[UninterpretedSort]])
-    assert(t1.isInstanceOf[Expr[UninterpretedSort]])
-    assert(t2.isInstanceOf[Expr[UninterpretedSort]])
-    f.asInstanceOf[FuncDecl[UninterpretedSort]]
-      .apply(t1.asInstanceOf[Expr[UninterpretedSort]],t2.asInstanceOf[Expr[UninterpretedSort]])
-  }
 
   override protected def dumpDbg[T](cont: () => T)(implicit zCtx: Z3SolverCtx): T = {
     println(s"current thread = ${Thread.currentThread().getId}")

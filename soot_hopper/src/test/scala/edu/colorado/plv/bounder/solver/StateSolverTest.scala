@@ -82,7 +82,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
 //    withFixture(test.toNoArgTest(FixtureParam(SetInclusionTypeSolving)))
     withFixture(test.toNoArgTest(FixtureParam(SolverTypeSolving)))
   }
-  test("test to debug subsumption issues by loading serialized states"){f =>
+  ignore("test to debug subsumption issues by loading serialized states"){f =>
     // Note: leave ignored unless debugging, this test is just deserializing states to inspect
     val (stateSolver, _) = getStateSolver(f.typeSolving)
     val spec1 = new SpecSpace(
@@ -102,10 +102,10 @@ class StateSolverTest extends FixtureAnyFunSuite {
       ViewSpec.viewOnlyReturnedFromOneActivity,
       //              LifecycleSpec.noResumeWhileFinish,
       LifecycleSpec.Activity_onResume_first_orAfter_onPause //TODO: ==== testing if this prevents timeout
-    ) ++ Dummy.specs)
+    )) //  ++ Dummy.specs)
     List(
-      (finishclickpause, "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/dbgConnectBotTimeout/s1.json",
-        "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/dbgConnectBotTimeout/s2.json",(v:Boolean) =>{
+      (finishclickpause, "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/dbgConnectBotTimeout/s1_.json",
+        "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/dbgConnectBotTimeout/s2_.json",(v:Boolean) =>{
         ???
       }),
       //      (spec2, "s1_diffz3unify.state", "s2_diffz3unify.state",true), // different in solver but same here???
@@ -115,12 +115,12 @@ class StateSolverTest extends FixtureAnyFunSuite {
     ).foreach {
       case (spec, f1, f2, expected) =>
 
-        val s1p = loadState(f1)
-        val s2p = loadState(f2)
-        LSVarGen.setNext(List(s1p,s2p))
-        val bt = BitTypeSet(BitSet(639))
-        val s1 = s1p.addTypeConstraint(PureVar(3), bt).addTypeConstraint(PureVar(7), bt)
-        val s2 = s2p.addTypeConstraint(PureVar(3), bt).addTypeConstraint(PureVar(8), bt)
+        val s1 = loadState(f1)
+        val s2 = loadState(f2)
+        LSVarGen.setNext(List(s1,s2))
+//        val bt = BitTypeSet(BitSet(639))
+//        val s1 = s1p.addTypeConstraint(PureVar(3), bt).addTypeConstraint(PureVar(7), bt)
+//        val s2 = s2p.addTypeConstraint(PureVar(3), bt).addTypeConstraint(PureVar(8), bt)
         val s1P = StateSolver.rhsToPred(s1.sf.traceAbstraction.rightOfArrow,spec).map(StateSolver.simplifyPred)
         val s2P = StateSolver.rhsToPred(s2.sf.traceAbstraction.rightOfArrow,spec).map(StateSolver.simplifyPred)
 //        val s1S = s1.copy(sf = s1.sf.copy(typeConstraints = s1.sf.typeConstraints + (p4 -> BitTypeSet(BitSet(3)))))
@@ -1086,6 +1086,12 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val s_2 = st(AbstractTrace(
       destTgtY::createTgtX::subTgtWP::unsubTgtW::destTgtX::callTgtZ::Nil,
       Map("x"->p1,"z"->p2,"w"->p4,"p"->p5, "y"->p6)))
+
+//    //TODO: remove dbg code =====
+//    val s_1_pre = StateSolver.rhsToPred(s_1.traceAbstraction.rightOfArrow, specs2).map(StateSolver.simplifyPred)
+//    val s_2_pre = StateSolver.rhsToPred(s_2.traceAbstraction.rightOfArrow, specs2).map(StateSolver.simplifyPred)
+//    println("test test test")
+
     assert(stateSolver.canSubsume(s_1,s_2,specs2))
 
     val s_1_ = st(AbstractTrace(

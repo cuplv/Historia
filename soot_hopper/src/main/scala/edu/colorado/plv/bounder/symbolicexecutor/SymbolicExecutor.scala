@@ -194,9 +194,35 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
 
 
   def isSubsumed(node: IPathNode, value: Map[SubsumableLocation, Map[Int, StateSet]]):Option[IPathNode] = node match {
-    case SwapLoc(l) =>
+    case SwapLoc(l) =>  isSubsumed_stateSet(node, value)
 //      isSubsumed_backtrack(node,l,value, node.succ)
-      isSubsumed_stateSet(node, value)
+//      var found:Option[IPathNode] = None
+//      val ex = value.exists{
+//        case (location, value1) => value1.exists{
+//          case (i, set) => set.allStates.exists{p =>
+//            if(p.qry.getState.get == node.qry.getState.get){
+//              println()
+//              found = Some(p)
+//              true
+//            }
+//            false
+//          }
+//        }
+//      }
+//      val res = isSubsumed_stateSet(node, value)
+//
+////      //TODO:Remove debug code
+////      if(res.isEmpty) {
+////
+////        if(ex){
+////          println("found")
+////        }
+////      }
+//      if(ex){
+//        println()
+//      }
+//
+//      res
     case _ => None
   }
 

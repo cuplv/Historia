@@ -3,7 +3,6 @@ package edu.colorado.plv.bounder.solver
 import com.microsoft.z3.{BoolExpr, Context, EnumSort, Expr, FuncDecl, Solver, Sort, UninterpretedSort}
 import edu.colorado.plv.bounder.ir.{AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, InternalMethodInvoke, InternalMethodReturn, Loc}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints.primitiveTypes
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, Equals, OneOfClass, PureConstraint, PureVar, State, SubclassOf, Subtype, SuperclassOf, TypeConstraint}
 import org.scalactic.anyvals.NonEmptySet
 import scalaz.Memo
 import soot.ShortType

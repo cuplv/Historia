@@ -8,7 +8,7 @@ import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, JimpleFlow
 import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.state.{CallinReturnNonNull, DBOutputMode, DisallowedCallin, PrettyPrinting, Reachable, ReceiverNonNull}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{CallinReturnNonNull, DBOutputMode, DisallowedCallin, MemoryOutputMode, PrettyPrinting, Reachable, ReceiverNonNull}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.BeforeAndAfter
@@ -622,11 +622,12 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
         // TODO: relevance could probably be refined so this isn't necessary
         val w = new JimpleFlowdroidWrapper(apk, cgMode,row5Specs)
 
-        val dbFile = File("yamba_paths.db")
-
-        println(dbFile)
-        implicit val dbMode = DBOutputMode(dbFile.toString, truncate = false)
-        dbMode.startMeta()
+//        val dbFile = File("yamba_paths.db")
+//
+//        println(dbFile)
+//        implicit val dbMode = DBOutputMode(dbFile.toString, truncate = false)
+//        dbMode.startMeta()
+        implicit val dbMode = MemoryOutputMode
         val config = SymbolicExecutorConfig(
           stepLimit = 2000, w, new SpecSpace(row5Specs, row5Disallow),
           component = Some(List("com.example.createdestroy.*StatusActivity.*")), outputMode = dbMode)
@@ -659,8 +660,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
   test("Row4: Connect bot click/finish") {
     val startTime = System.nanoTime()
     List(
-      ("", Witnessed),
       ("v.setOnClickListener(null);", Proven),
+      ("", Witnessed),
     ).foreach {
       case (disableClick, expected) =>
         //Click attached to different activity

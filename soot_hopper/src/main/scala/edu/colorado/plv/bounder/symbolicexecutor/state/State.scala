@@ -191,8 +191,17 @@ case class State(sf:StateFormula,
                  nextCmd: List[Loc] = Nil,
                  alternateCmd: List[Loc] = Nil
                 ) {
+  def traceKey: List[String] =
+    this.traceAbstraction.rightOfArrow.map(m => m.identitySignature)
+  def heapKey: List[String] = sf.heapConstraints.map{
+    case (FieldPtEdge(_, fieldName), _) => s"df:${fieldName}"
+    case (StaticPtEdge(obj,fieldName), _) => s"sf:${obj}:${fieldName}"
+    case _ => ???
+  }.toList
+
   /**
    * Create a fresh pure var for each model var - used during solver encoding
+   *
    * @return
    */
   def defineAllLS(): State = {
@@ -654,18 +663,13 @@ object StackVar{
 sealed trait CmpOp
 object CmpOp{
   implicit val rw:RW[CmpOp] = RW.merge(
-    macroRW[Equals.type], macroRW[NotEquals.type], macroRW[Subtype.type])
+    macroRW[Equals.type], macroRW[NotEquals.type])
 }
 case object Equals extends CmpOp{
   override def toString:String = " == "
 }
 case object NotEquals extends CmpOp{
   override def toString:String = " != "
-}
-
-@deprecated
-case object Subtype extends CmpOp{
-  override def toString:String = "<:"
 }
 
 case class PureConstraint(lhs:PureExpr, op: CmpOp, rhs:PureExpr) {

@@ -4,7 +4,7 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, CLInit, Exists, Forall, FreshRef, I, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, LifeStateParser, NI, Not, Or}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CmpOp, Equals, NotEquals, NullVal, PureExpr, PureVal, PureVar, State, Subtype}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CmpOp, Equals, NotEquals, NullVal, PureExpr, PureVal, PureVar, State}
 
 import scala.util.parsing.combinator._
 import upickle.default.{macroRW, ReadWriter => RW}
@@ -79,7 +79,6 @@ object LifeState {
     }
     def sep = "&&"
     def op: Parser[CmpOp] = ("<:"|"="|"!=")^^ {
-      case "<:" => Subtype
       case "=" => Equals
       case "!=" => NotEquals
     }
@@ -97,13 +96,13 @@ object LifeState {
     def rf(v:String):String = v.replace("_","[^,()]*")
 
     def i: Parser[I] = "I(" ~ mDir ~ "[" ~ lsVarList ~"]" ~ identifier ~ identifier ~"(" ~ params ~ ")" ~ constr ~ ")" ^^ {
-      case _ ~ pmDir ~ _ ~ vars ~ _ ~ ret ~ sName ~ _ ~ para ~ _ ~ LSConstraint(v1, Subtype, v2) ~ _ =>
-        assert(vars.size < 2 || vars(1) == "_" || vars(1) == v1, "Can only specify receiver type in I")
-        val p = para.map(rf)
-        val sigRegex = rf(ret) +" " + sName + "\\(" +  p.mkString(",") + "\\)"
-        val ident = ret + "__" + sName + "__" + p.mkString("___")
-        val scm = SubClassMatcher(v2, sigRegex, ident)
-        I(pmDir, scm, vars)
+//      case _ ~ pmDir ~ _ ~ vars ~ _ ~ ret ~ sName ~ _ ~ para ~ _ ~ LSConstraint(v1, Subtype, v2) ~ _ =>
+//        assert(vars.size < 2 || vars(1) == "_" || vars(1) == v1, "Can only specify receiver type in I")
+//        val p = para.map(rf)
+//        val sigRegex = rf(ret) +" " + sName + "\\(" +  p.mkString(",") + "\\)"
+//        val ident = ret + "__" + sName + "__" + p.mkString("___")
+//        val scm = SubClassMatcher(v2, sigRegex, ident)
+//        I(pmDir, scm, vars)
       case _ => throw new IllegalArgumentException("Can only specify receiver type in I")
     }
     val lsTrueConst = "@(TRUE|true|True)".r ^^ {case _ => LSTrue}
@@ -202,9 +201,7 @@ object LifeState {
     override def toTex: String = op match {
       case Equals => s"${arg2tex(v1)} = ${arg2tex(v2)}"
       case NotEquals =>s"${arg2tex(v1)} \\neq ${arg2tex(v2)}"
-      case Subtype => ???
     }
-
   }
 
   sealed trait LSPred {
@@ -224,6 +221,8 @@ object LifeState {
   }
 
   case class Forall(vars:List[String], p:LSPred) extends LSPred{
+//    override def toString:String =
+//      if(vars.isEmpty) p.toString else s"Forall([${vars.mkString(",")}], ${p.toString})"
     override def toTex: String = ???
     override def swap(swapMap: Map[String, String]): LSPred =
       Forall(vars.map(swapMap), p.swap(swapMap))
@@ -240,6 +239,8 @@ object LifeState {
   }
 
   case class Exists(vars:List[String], p:LSPred) extends LSPred {
+//    override def toString:String =
+//      if(vars.isEmpty) p.toString else s"Exists([${vars.mkString(",")}],${p.toString})"
     override def swap(swapMap: Map[String, String]): LSPred =
       Exists(vars.map(swapMap), p.swap(swapMap))
 
@@ -287,8 +288,7 @@ object LifeState {
 
     override def lsVar: Set[String] = if(v == "_") Set() else Set(v)
 
-    override def identitySignature: String =
-      throw new IllegalStateException("No valid identity signature for ref")
+    override def identitySignature: String = s"FreshRef($v)"
 
     override def lsVars: List[String] = lsVar.toList
 

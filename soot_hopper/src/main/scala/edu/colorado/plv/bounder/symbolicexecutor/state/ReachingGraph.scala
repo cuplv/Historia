@@ -314,29 +314,28 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
     val future = db.run(q2)
     Await.result(future, 30 seconds)
   }
-  def getAllStates():Set[State] = {
+  def getAllNodes():Set[DBPathNode] = {
     val q = witnessQry
-    var res: Seq[WitTableRow] = Await.result(db.run(q.result), 600 seconds)
-    res.flatMap{row =>
-      val node = rowToNode(row)
-      node.qry.getState
+    val res: Seq[WitTableRow] = Await.result(db.run(q.result), 600 seconds)
+    res.map{row =>
+      rowToNode(row)
     }.toSet
   }
-  def getAllLiveStates():Set[State] = {
+  def getAllLiveNodes():Set[DBPathNode] = {
     val q = witnessQry
     val res: Seq[WitTableRow] = Await.result(db.run(q.result), 600 seconds)
     res.flatMap{row =>
       val node: DBPathNode = rowToNode(row)
       if(node.subsumedID.isEmpty)
         node.qry match {
-          case LiveQry(state, _) => Some(state)
+          case LiveQry(state, _) => Some(node)
           case LiveTruncatedQry(_) => None
           case WitnessedTruncatedQry(loc, explanation) =>
             throw new IllegalArgumentException("WitnessedTruncatedQry not supported")
           case BottomTruncatedQry(loc) =>
             throw new IllegalArgumentException("BottomTruncatedQry not supported")
           case BottomQry(_, _) => None
-          case WitnessedQry(state, _, _) => Some(state)
+          case WitnessedQry(state, _, _) => Some(node)
         }
       else None
     }.toSet
@@ -641,6 +640,15 @@ case class MemoryPathNode(qry: Qry, succV : List[IPathNode], subsumedV: Option[I
 case class DBPathNode(qry:Qry, thisID:Int,
                       succID:List[Int],
                       subsumedID: Option[Int], depth:Int, ordDepth:Int) extends IPathNode {
+  /**
+   * @return string representation of messages in abstract trace
+   */
+  def dbgTrace:Option[List[String]] = {
+    qry.getState.map(_.traceKey)
+  }
+  def dbgHeap:Option[List[String]] = {
+    qry.getState.map(_.heapKey)
+  }
   override def succ(implicit db:OutputMode): List[IPathNode] =
     succID.map(db.asInstanceOf[DBOutputMode].readNode)
 
