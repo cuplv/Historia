@@ -1727,7 +1727,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
   private def getStateSolver(stateTypeSolving: StateTypeSolving = SetInclusionTypeSolving):
     (Z3StateSolver, ClassHierarchyConstraints) = {
     val pc = new ClassHierarchyConstraints(hierarchy,Set("java.lang.Runnable"),intToClass, stateTypeSolving)
-    (new Z3StateSolver(pc,4000),pc)
+    (new Z3StateSolver(pc,timeout = 4000),pc)
   }
 
   ignore("some timeout from 'Test prove dereference of return from getActivity'"){ f =>

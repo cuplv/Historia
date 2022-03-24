@@ -663,7 +663,7 @@ object StackVar{
 sealed trait CmpOp
 object CmpOp{
   implicit val rw:RW[CmpOp] = RW.merge(
-    macroRW[Equals.type], macroRW[NotEquals.type])
+    macroRW[Equals.type], macroRW[NotEquals.type], macroRW[TypeComp.type])
 }
 case object Equals extends CmpOp{
   override def toString:String = " == "
@@ -671,6 +671,8 @@ case object Equals extends CmpOp{
 case object NotEquals extends CmpOp{
   override def toString:String = " != "
 }
+
+case object TypeComp extends CmpOp
 
 case class PureConstraint(lhs:PureExpr, op: CmpOp, rhs:PureExpr) {
   override def toString:String = s"$lhs $op $rhs"

@@ -18,17 +18,23 @@ object TransferFunctions{
     "/resources/NonNullReturnCallins.txt",
     "resources/NonNullReturnCallins.txt",
   )
-  lazy val nonNullCallins: Seq[I] =
-    nonNullDefUrl.flatMap{ (path:String) =>
+  lazy val nonNullCallins: Seq[I] = {
+    val mp = nonNullDefUrl.flatMap{ (path:String) =>
       //    val source = Source.fromFile(frameworkExtPath)
       try {
         val source = Resource.getAsString(path)
         Some(LifeState.parseIFile(source))
       }catch{
         case t:IllegalArgumentException => throw t //exception thrown when parsing fails
-        case _:Throwable => None // deal with instability of java jar file resource resolution
+        case e:NoSuchElementException if e.getMessage.contains("Could not find resource") =>
+          None // deal with instability of java jar file resource resolution
       }
-    }.head
+    }
+    if(mp.isEmpty){
+      throw new IllegalStateException("Scala resource resolution is strange, try rebuilding with 'sbt assembly'?")
+    }
+    mp.head
+  }
 
   // transfer should simply define any variables that aren't seen in the state but read
   // alias considerations are done later by the trace abstraction or by separation logic

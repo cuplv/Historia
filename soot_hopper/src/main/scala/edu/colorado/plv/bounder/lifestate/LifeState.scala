@@ -4,7 +4,7 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, CLInit, Exists, Forall, FreshRef, I, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, LifeStateParser, NI, Not, Or}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CmpOp, Equals, NotEquals, NullVal, PureExpr, PureVal, PureVar, State}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CmpOp, Equals, NotEquals, NullVal, PureExpr, PureVal, PureVar, State, TypeComp}
 
 import scala.util.parsing.combinator._
 import upickle.default.{macroRW, ReadWriter => RW}
@@ -81,6 +81,7 @@ object LifeState {
     def op: Parser[CmpOp] = ("<:"|"="|"!=")^^ {
       case "=" => Equals
       case "!=" => NotEquals
+      case "<:" => TypeComp
     }
     def constr:Parser[LSConstraint] = identifier ~ op ~ identifier ^^ {
       case id1 ~ op ~ id2 =>
@@ -96,13 +97,13 @@ object LifeState {
     def rf(v:String):String = v.replace("_","[^,()]*")
 
     def i: Parser[I] = "I(" ~ mDir ~ "[" ~ lsVarList ~"]" ~ identifier ~ identifier ~"(" ~ params ~ ")" ~ constr ~ ")" ^^ {
-//      case _ ~ pmDir ~ _ ~ vars ~ _ ~ ret ~ sName ~ _ ~ para ~ _ ~ LSConstraint(v1, Subtype, v2) ~ _ =>
-//        assert(vars.size < 2 || vars(1) == "_" || vars(1) == v1, "Can only specify receiver type in I")
-//        val p = para.map(rf)
-//        val sigRegex = rf(ret) +" " + sName + "\\(" +  p.mkString(",") + "\\)"
-//        val ident = ret + "__" + sName + "__" + p.mkString("___")
-//        val scm = SubClassMatcher(v2, sigRegex, ident)
-//        I(pmDir, scm, vars)
+      case _ ~ pmDir ~ _ ~ vars ~ _ ~ ret ~ sName ~ _ ~ para ~ _ ~ LSConstraint(v1, TypeComp, v2) ~ _ =>
+        assert(vars.size < 2 || vars(1) == "_" || vars(1) == v1, "Can only specify receiver type in I")
+        val p = para.map(rf)
+        val sigRegex = rf(ret) +" " + sName + "\\(" +  p.mkString(",") + "\\)"
+        val ident = ret + "__" + sName + "__" + p.mkString("___")
+        val scm = SubClassMatcher(v2, sigRegex, ident)
+        I(pmDir, scm, vars)
       case _ => throw new IllegalArgumentException("Can only specify receiver type in I")
     }
     val lsTrueConst = "@(TRUE|true|True)".r ^^ {case _ => LSTrue}

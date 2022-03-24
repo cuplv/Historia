@@ -17,7 +17,7 @@ trait Assumptions
 class UnknownSMTResult(msg : String) extends Exception(msg)
 trait SolverCtx[T]{
   def mkAssert(t:T):Unit
-  def acquire():Unit
+  def acquire(randomSeed:Option[Int] = None):Unit
   def release():Unit
 }
 
@@ -519,7 +519,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       //    i => assertIAt(i,m,messageTranslator, traceFn, negated = true, typeMap, typeToSolverConst, modelVarMap))
       case NI(m1, m2) =>
         // exists i such that omega[i] = m1 and forall j > i omega[j] != m2
-        val res = mkExistsIndex(mkZeroIndex, len, i => {
+        mkExistsIndex(mkZeroIndex, len, i => {
           mkAnd(List(
             assertIAt(i, m1, messageTranslator, traceFn, negated = false, typeMap, typeToSolverConst, modelVarMap),
             mkForallIndex(j => mkImplies(mkAnd(mkLTIndex(i, j), mkLTIndex(j, len)),
@@ -527,12 +527,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
                 typeToSolverConst, modelVarMap)))
           ))
         })
-        res
-//      case NI(m1, m2) if negate =>
-//        // not NI(m1,m2) def= (not I(m1)) or NI(m2,m1)
-//        // encode with no negation
-//        encodePred(Or(Not(m1), NI(m2, m1)), traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap,
-//          constMap)
       case FreshRef(v) =>
         val msgAt: T => T = index => mkTraceConstraint(traceFn, index)
         mkExistsIndex(mkZeroIndex, len, ind => mkValContainedInMsg(msgAt(ind), modelVarMap(v), negated = false))
@@ -648,10 +642,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
             val (newTS, v) = accTS.getOrQuantifyPv(abs.modelVars(fv).asInstanceOf[PureVar])
             (accM + (fv -> newTS), v)
           }else {
-            //TODO: ===============  Is there any case where we need this extra model_var... thing?
-//            val v = mkModelVar(fv,"")
-//            (accM + (fv -> v), accTS.copy(quantifiedPv = accTS.quantifiedPv + v))
-            (accM, accTS)
+            val v = mkModelVar(fv,"")
+            (accM + (fv -> v), accTS.copy(quantifiedPv = accTS.quantifiedPv + v))
           }
       }
     val modelTypeMap = Map[String,TypeSet]()
@@ -1036,7 +1028,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   def simplify(state: State,specSpace: SpecSpace, maxWitness: Option[Int] = None): Option[State] = {
     implicit val zCtx = getSolverCtx
     val startTime = System.nanoTime()
-    var result = "unfinished" //TODO:======== why so many unfinished feasibility???
+    var result = "unfinished"
     try {
       zCtx.acquire()
 
@@ -1411,6 +1403,11 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       }finally{ zCtx.release() }
     }
   }
+  def mustISet(s:State, specSpace: SpecSpace):Set[String] = {
+    val pred = rhsToPred(s.traceAbstraction.rightOfArrow, specSpace)
+
+    ???
+  }
   /**
    *
    *
@@ -1421,6 +1418,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    */
   def canSubsume(s1: State, s2: State, specSpace: SpecSpace, maxLen: Option[Int] = None,
                  timeout:Option[Int] = None): Boolean = {
+    //val mustIs2 = mustISet(s2,specSpace)
+    //if(mustISet(s1,specSpace).exists(v => !mustIs2.contains(v))){
+    //  return false
+    //}
     // val method = "Unify"//TODO: benchmark and see if this is actually faster: Idea run both and log times then hist
     // val method = "Debug"
     val method = "Z3"
@@ -1650,12 +1651,32 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     res
   }
 
-  def canSubsumeZ3(s1i:State, s2i:State,specSpace:SpecSpace, maxLen:Option[Int], timeout:Option[Int]):Boolean = {
+  /**
+   * use the z3 encoding to test subsumption
+   * @param s1i subsuming state
+   * @param s2i state testing if it can be subsumed
+   * @param specSpace specifications under which subsumption may occur
+   * @param maxLen set to Some([num]) for dbg mode, witness will be limited to [num] length
+   * @param timeout z3 timeout in milliseconds
+   * @param rngTry number of attempts with different prng seeds
+   * @return true if s1i can subsume s2i otherwise false
+   */
+  def canSubsumeZ3(s1i:State, s2i:State,specSpace:SpecSpace, maxLen:Option[Int], timeout:Option[Int],
+                   rngTry:Int = 0):Boolean = {
     val (s1,s2) = reducePtRegions(s1i,s2i) //TODO: does reducing pts regions help?
 //    val (s1,s2) = (s1i,s2i)
     implicit val zCtx: C = getSolverCtx
     try {
-      zCtx.acquire()
+      if(rngTry == 0)
+        zCtx.acquire(None)
+      else if(rngTry > 0){
+        // on retry, seed RNG with current time
+        val rngSeed = System.currentTimeMillis().toInt
+        println(s"try again with new random seed: ${rngSeed}")
+        zCtx.acquire(Some(rngSeed))
+      }else{
+        throw new IllegalStateException("Timeout, exceeded rng seed attempts")
+      }
       val messageTranslator: MessageTranslator = MessageTranslator(List(s1, s2), specSpace)
 
       val s1Enc = mkNot(toASTState(s1, messageTranslator, maxLen,
@@ -1672,7 +1693,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       }
       !foundCounter
     }catch{
-      case e:IllegalStateException if e.getLocalizedMessage.contains("timeout") =>
+      case e:IllegalArgumentException if e.getLocalizedMessage.contains("timeout") =>
         // Note: this didn't seem to help things so currently disabled
         // sound to say state is not subsumed if we don't know
         // false
@@ -1700,9 +1721,13 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         // s2f.write(write(s2))
         // throw e
 
-        // TODO: need mechanism so that if a timeout occurs and no other state subsumes we throw an error
-        // TODO: =================== double check that this behaves as expected
-        false
+        if(rngTry < 2){
+          zCtx.release()
+          canSubsumeZ3(s1i,s2i,specSpace,maxLen,timeout, rngTry+1)
+        }else {
+          zCtx.release()
+          false
+        }
     } finally {
       zCtx.release()
     }

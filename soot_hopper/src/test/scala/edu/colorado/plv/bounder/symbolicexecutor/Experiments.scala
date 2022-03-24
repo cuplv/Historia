@@ -344,7 +344,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
 
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
         val fname = s"Motiv_$fileSuffix"
-        prettyPrinting.dumpDebugInfo(result, fname)
+        // prettyPrinting.dumpDebugInfo(result, fname)
         //        prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
         assert(result.nonEmpty)
         BounderUtil.throwIfStackTrace(result)
@@ -452,8 +452,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
 
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
         val fname = s"Antennapod_AsyncTask_$fileSuffix"
-        prettyPrinting.dumpDebugInfo(result, fname)
-        prettyPrinting.printWitness(result)
+        // prettyPrinting.dumpDebugInfo(result, fname)
+        // prettyPrinting.printWitness(result)
         assert(result.nonEmpty)
         BounderUtil.throwIfStackTrace(result)
         val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
@@ -529,7 +529,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
         "void call(java.lang.Object)",line)
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
       val fname = s"UnreachableLocation"
-      prettyPrinting.dumpDebugInfo(result, fname)
+      // prettyPrinting.dumpDebugInfo(result, fname)
       //      prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
       assert(result.nonEmpty)
       BounderUtil.throwIfStackTrace(result)
@@ -644,8 +644,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
 
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
         val fname = s"Yamba_$fileSuffix"
-        prettyPrinting.dumpDebugInfo(result, fname)
-        prettyPrinting.printWitness(result)
+        // prettyPrinting.dumpDebugInfo(result, fname)
+        // prettyPrinting.printWitness(result)
         //        prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
         assert(result.nonEmpty)
         BounderUtil.throwIfStackTrace(result)
@@ -727,10 +727,10 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
             val nullUnreach = ReceiverNonNull("com.example.createdestroy.MyActivity$1",
               "void onClick(android.view.View)", line, Some(".*toString.*"))
             val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
-            prettyPrinting.dumpDebugInfo(nullUnreachRes, s"ConnectBotRow4_${expected}")
+            // prettyPrinting.dumpDebugInfo(nullUnreachRes, s"ConnectBotRow4_${expected}")
             assert(nullUnreachRes.nonEmpty)
             BounderUtil.throwIfStackTrace(nullUnreachRes)
-            prettyPrinting.printWitness(nullUnreachRes)
+            // prettyPrinting.printWitness(nullUnreachRes)
             assert(BounderUtil.interpretResult(nullUnreachRes, QueryFinished) == expected)
             //  dbFile.copyToDirectory(File("/Users/shawnmeier/Desktop/Row3"))
           }
