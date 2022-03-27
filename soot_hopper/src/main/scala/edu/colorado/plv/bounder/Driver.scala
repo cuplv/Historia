@@ -209,7 +209,7 @@ object Driver {
       }
     case act@Action(SampleDeref,_,_,cfg,_,_) =>
       //TODO: set base dir
-      sampleDeref(cfg, act.getApkPath, act.getOutFolder)
+      sampleDeref(cfg, act.getApkPath, act.getOutFolder, act.filter)
     case act@Action(ReadDB,_,_,_,_,_) =>
       readDB(File(act.getOutFolder))
     case act@Action(ExpLoop,_, _,_,_,_) =>
@@ -267,7 +267,7 @@ object Driver {
       fname.append(write(cfg2))
     }
   }
-  def sampleDeref(cfg: RunConfig, apkPath:String, outFolder:String) = {
+  def sampleDeref(cfg: RunConfig, apkPath:String, outFolder:String, filter:Option[String]) = {
     val n = cfg.samples
     val callGraph = CHACallGraph
     val w = new JimpleFlowdroidWrapper(apkPath, callGraph, Set())
@@ -276,7 +276,7 @@ object Driver {
     val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
 
     val queries = (0 until n).map{_ =>
-      val appLoc = symbolicExecutor.appCodeResolver.sampleDeref()
+      val appLoc = symbolicExecutor.appCodeResolver.sampleDeref(filter)//TODO: ======= Add package filter//
       val name = appLoc.method.simpleName
       val clazz = appLoc.method.classType
       val line = appLoc.line.lineNumber

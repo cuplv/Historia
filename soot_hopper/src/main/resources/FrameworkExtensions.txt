@@ -42,3 +42,7 @@ fr.louisbl.cordova.gpslocation.*
 nl.xservices.plugins.*
 org.simpleframework.*
 com.ibm.*
+io.reactivex.*
+com.airbnb.*
+dagger.android.*
+com.mikepenz.*

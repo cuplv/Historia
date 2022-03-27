@@ -59,13 +59,16 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
   }
 
   @tailrec
-  final def sampleDeref():AppLoc = {
+  final def sampleDeref(packageFilter:Option[String]):AppLoc = {
     def keepI(i:Invoke):Boolean = i match {
       case VirtualInvoke(_, _, targetMethod, _) => !targetMethod.contains("<init>")
       case SpecialInvoke(_, _, targetMethod, _) => !targetMethod.contains("<init>")
       case StaticInvoke(_, targetMethod, _) =>  !targetMethod.contains("<init>")
     }
-    val randomMethodList = Random.shuffle(appMethods.toList)
+    val randomMethodList = Random.shuffle(appMethods.filter{
+      case methodLoc: MethodLoc => // apply package filter if it exists
+        packageFilter.forall(methodLoc.classType.startsWith)
+    }.toList)
     val m = randomMethodList.head
 
     // generate set of dereferences for method
@@ -89,14 +92,14 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
       join = (a,b) => a.union(b)
     ).flatMap{ case (_,v) => v}.toSet.toList
     if(derefs.isEmpty){
-      sampleDeref()
+      sampleDeref(packageFilter)
     }else {
       val shuf = Random.shuffle(derefs)
       val s = shuf.head
       if(s.line.lineNumber > 0)
         s
       else
-        sampleDeref()
+        sampleDeref(packageFilter)
     }
   }
 

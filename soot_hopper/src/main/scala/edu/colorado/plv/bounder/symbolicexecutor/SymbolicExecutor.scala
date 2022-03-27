@@ -39,7 +39,7 @@ case class SymbolicExecutorConfig[M,C](stepLimit: Int,
                                        z3Timeout : Option[Int] = None,
                                        component : Option[Seq[String]] = None,
                                        outputMode : OutputMode = MemoryOutputMode,
-                                       timeLimit : Int = 6000, //TODO: somehow make time limit hard cutoff ===== currently just exits on symbex main loop ==== thread.interrupt?
+                                       timeLimit : Int = 600000, //TODO: somehow make time limit hard cutoff ===== currently just exits on symbex main loop ==== thread.interrupt?
                                        subsumptionEnabled:Boolean = true // Won't prove anything without subsumption but can find witnesses
                                       ){
   def getSymbolicExecutor =
