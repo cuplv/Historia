@@ -117,6 +117,15 @@ object Driver {
     }
   }
 
+  def setZ3Path(path:String): Unit = {
+    val newPath = Array(path) ++  System.getProperty("java.library.path").split(":")
+    System.setProperty("java.library.path",newPath.distinct.mkString(":"))
+    //set sys_paths to null so that java.library.path will be reevaluated next time it is needed
+    val sysPathsField = classOf[ClassLoader].getDeclaredField("sys_paths");
+    sysPathsField.setAccessible(true);
+    sysPathsField.set(null, null);
+    println(s"java.library.path set to: ${System.getProperty("java.library.path")}")
+  }
   def main(args: Array[String]): Unit = {
     val builder = OParser.builder[Action]
     val parser = {
@@ -179,47 +188,51 @@ object Driver {
     implicit var rw:RW[LocResult] = macroRW
   }
 
-  def runAction(act:Action):Unit = act match{
-    case act@Action(Verify,_, _, cfg,_,_) =>
-      val componentFilter = cfg.componentFilter
-      val specSet = cfg.specSet
-        //        val cfgw = write(cfg)
-      val apkPath = act.getApkPath
-      val outFolder: String = act.getOutFolder
-        // Create output directory if not exists
-        // TODO: move db creation code to better location
-      File(outFolder).createIfNotExists(asDirectory = true)
-      val initialQuery = cfg.initialQuery
-      if(initialQuery.isEmpty)
-        throw new IllegalArgumentException("Initial query must be defined for verify")
-      val stepLimit = cfg.limit
-      val outFile = (File(outFolder) / "paths.db")
-      if(outFile.exists) {
-        implicit val opt = File.CopyOptions(overwrite = true)
-        outFile.moveTo(File(outFolder) / "paths.db1")
-      }
-      val pathMode = DBOutputMode(outFile.canonicalPath, cfg.truncateOut)
-      val res: Seq[(InitialQuery,Int, Loc, (ResultSummary, MaxPathCharacterization), Long)] =
-        runAnalysis(cfg,apkPath, componentFilter,pathMode, specSet.getSpecSet(),stepLimit, initialQuery)
-      res.zipWithIndex.foreach { case (iq, ind) =>
-        val resFile = File(outFolder) / s"result_${ind}.txt"
-        resFile.overwrite(write(LocResult(iq._1,iq._2, iq._3,
-          iq._4._1, iq._4._2, iq._5))) // [qry,id,loc, res, time] //TODO: less dumb serialized format
-//        resFile.append(iq._2)
-      }
-    case act@Action(SampleDeref,_,_,cfg,_,_) =>
-      //TODO: set base dir
-      sampleDeref(cfg, act.getApkPath, act.getOutFolder, act.filter)
-    case act@Action(ReadDB,_,_,_,_,_) =>
-      readDB(File(act.getOutFolder))
-    case act@Action(ExpLoop,_, _,_,_,_) =>
-      expLoop(act)
-    case act@Action(MakeAllDeref,_,_,cfg,_,tag) =>
-      makeAllDeref(act.getApkPath, act.filter, File(act.getOutFolder),cfg, tag)
-    case Action(Info, Some(out), Some(apk), cfg, _, _) =>
-      info(cfg, out, apk)
-    case v => throw new IllegalArgumentException(s"Invalid action: $v")
+  def runAction(act:Action):Unit = {
+    println(s"java.library.path set to: ${System.getProperty("java.library.path")}")
+    act match{
+      case act@Action(Verify,_, _, cfg,_,_) =>
+        val componentFilter = cfg.componentFilter
+        val specSet = cfg.specSet
+          //        val cfgw = write(cfg)
+        val apkPath = act.getApkPath
+        val outFolder: String = act.getOutFolder
+          // Create output directory if not exists
+          // TODO: move db creation code to better location
+        File(outFolder).createIfNotExists(asDirectory = true)
+        val initialQuery = cfg.initialQuery
+        if(initialQuery.isEmpty)
+          throw new IllegalArgumentException("Initial query must be defined for verify")
+        val stepLimit = cfg.limit
+        val outFile = (File(outFolder) / "paths.db")
+        if(outFile.exists) {
+          implicit val opt = File.CopyOptions(overwrite = true)
+          outFile.moveTo(File(outFolder) / "paths.db1")
+        }
+        val pathMode = DBOutputMode(outFile.canonicalPath, cfg.truncateOut)
+        val res: Seq[(InitialQuery,Int, Loc, (ResultSummary, MaxPathCharacterization), Long)] =
+          runAnalysis(cfg,apkPath, componentFilter,pathMode, specSet.getSpecSet(),stepLimit, initialQuery)
+        res.zipWithIndex.foreach { case (iq, ind) =>
+          val resFile = File(outFolder) / s"result_${ind}.txt"
+          resFile.overwrite(write(LocResult(iq._1,iq._2, iq._3,
+            iq._4._1, iq._4._2, iq._5))) // [qry,id,loc, res, time] //TODO: less dumb serialized format
+//          resFile.append(iq._2)
+        }
+      case act@Action(SampleDeref,_,_,cfg,_,_) =>
+        //TODO: set base dir
+        sampleDeref(cfg, act.getApkPath, act.getOutFolder, act.filter)
+      case act@Action(ReadDB,_,_,_,_,_) =>
+        readDB(File(act.getOutFolder))
+      case act@Action(ExpLoop,_, _,_,_,_) =>
+        expLoop(act)
+      case act@Action(MakeAllDeref,_,_,cfg,_,tag) =>
+        makeAllDeref(act.getApkPath, act.filter, File(act.getOutFolder),cfg, tag)
+      case Action(Info, Some(out), Some(apk), cfg, _, _) =>
+        info(cfg, out, apk)
+      case v => throw new IllegalArgumentException(s"Invalid action: $v")
+    }
   }
+
   def detectProguard(apkPath:String):Boolean = {
     import sys.process._
     val cmd = (File(BounderSetupApplication.androidHome) / "tools" /"bin"/"apkanalyzer").toString

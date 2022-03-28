@@ -85,7 +85,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
 //  writeIR() //TODO: add debug flag to toggle this
 
   def getControlFlowResolver: ControlFlowResolver[M, C] = controlFlowResolver
-  val stateSolver = new Z3StateSolver(cha)
+  lazy val stateSolver = new Z3StateSolver(cha)
 
   implicit object LexicalStackThenTopo extends OrdCount{
     override def delta(current: Qry): Int = current.loc match {

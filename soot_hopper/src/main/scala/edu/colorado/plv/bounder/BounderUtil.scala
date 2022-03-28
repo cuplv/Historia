@@ -1,15 +1,18 @@
 package edu.colorado.plv.bounder
 
+import java.util.Collections
+
 import better.files.File
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CmdNotImplemented, CmdWrapper, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Loc, NopCmd}
 import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, QueryFinished, QueryInterrupted, SymbolicExecutorConfig}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, InitialQuery, OutputMode, PathNode, LiveQry, WitnessedQry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, InitialQuery, LiveQry, OutputMode, PathNode, WitnessedQry}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.sys.process._
 import scala.util.matching.Regex
 import upickle.default.{macroRW, read, write, ReadWriter => RW}
+import scala.jdk.CollectionConverters._
 
 object BounderUtil {
   private var sidCache:Option[String] = None
@@ -319,6 +322,45 @@ object BounderUtil {
     if(res != 0)
       throw new RuntimeException(s"runnint cmd: ${cmd} failed\n error: ${stderr.toString}")
     stdout.toString
+  }
+
+  /**
+   * Portable method for setting env vars on both *nix and Windows.
+   * @see http://stackoverflow.com/a/7201825/293064
+   */
+  def setEnv(newEnv: Map[String, String]): Unit = {
+    import java.util.{Map => JavaMap}
+    try {
+      val processEnvironmentClass = Class.forName("java.lang.ProcessEnvironment")
+      val theEnvironmentField = processEnvironmentClass.getDeclaredField("theEnvironment")
+      theEnvironmentField.setAccessible(true)
+      val env = theEnvironmentField.get(null).asInstanceOf[JavaMap[String, String]]
+      env.putAll(newEnv.asJava)
+      val theCaseInsensitiveEnvironmentField = processEnvironmentClass.getDeclaredField("theCaseInsensitiveEnvironment")
+      theCaseInsensitiveEnvironmentField.setAccessible(true)
+      val cienv = theCaseInsensitiveEnvironmentField.get(null).asInstanceOf[JavaMap[String, String]]
+      cienv.putAll(newEnv.asJava)
+    } catch {
+      case e: NoSuchFieldException =>
+        try {
+          val classes = classOf[Collections].getDeclaredClasses()
+          val env = System.getenv()
+          for (cl <- classes) {
+            if (cl.getName() == "java.util.Collections$UnmodifiableMap") {
+              val field = cl.getDeclaredField("m")
+              field.setAccessible(true)
+              val obj = field.get(env)
+              val map = obj.asInstanceOf[JavaMap[String, String]]
+              map.clear()
+              map.putAll(newEnv.asJava)
+            }
+          }
+        } catch {
+          case e2: Exception => e2.printStackTrace()
+        }
+
+      case e1: Exception => e1.printStackTrace()
+    }
   }
 
 }

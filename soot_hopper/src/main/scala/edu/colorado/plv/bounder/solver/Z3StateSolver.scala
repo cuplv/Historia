@@ -105,6 +105,7 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
 //    val solver = ctx.mkSimpleSolver()
     val params = ctx.mkParams()
     params.add("timeout", timeout)
+    params.add("logic", "AUFLIA")
     randomSeed.foreach { randomSeed =>
       params.add("random-seed", randomSeed)
     }
