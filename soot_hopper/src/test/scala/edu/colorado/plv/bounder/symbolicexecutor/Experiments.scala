@@ -453,7 +453,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
         val fname = s"Antennapod_AsyncTask_$fileSuffix"
         // prettyPrinting.dumpDebugInfo(result, fname)
-        // prettyPrinting.printWitness(result)
+        prettyPrinting.printWitness(result)
         assert(result.nonEmpty)
         BounderUtil.throwIfStackTrace(result)
         val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
@@ -645,7 +645,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
         val fname = s"Yamba_$fileSuffix"
         // prettyPrinting.dumpDebugInfo(result, fname)
-        // prettyPrinting.printWitness(result)
+        prettyPrinting.printWitness(result)
         //        prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
         assert(result.nonEmpty)
         BounderUtil.throwIfStackTrace(result)
@@ -660,8 +660,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
   test("Row4: Connect bot click/finish") {
     val startTime = System.nanoTime()
     List(
-      ("v.setOnClickListener(null);", Proven),
       ("", Witnessed),
+      ("v.setOnClickListener(null);", Proven),
     ).foreach {
       case (disableClick, expected) =>
         //Click attached to different activity
@@ -730,7 +730,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
             // prettyPrinting.dumpDebugInfo(nullUnreachRes, s"ConnectBotRow4_${expected}")
             assert(nullUnreachRes.nonEmpty)
             BounderUtil.throwIfStackTrace(nullUnreachRes)
-            // prettyPrinting.printWitness(nullUnreachRes)
+            prettyPrinting.printWitness(nullUnreachRes)
             assert(BounderUtil.interpretResult(nullUnreachRes, QueryFinished) == expected)
             //  dbFile.copyToDirectory(File("/Users/shawnmeier/Desktop/Row3"))
           }

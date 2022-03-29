@@ -33,12 +33,16 @@ class IRParser extends RegexParsers{
 
   def decl : Parser[String] = ("L" | "I")
   def arrayDecl : Parser[String] = ("[")
-  def primitive :Parser[TRef] = ("C" | "Z" | "B" | "S" | "I") ^^ {
-    case "C" => PrimRef("char")
-    case "Z" => PrimRef("int")
-    case "B" => PrimRef("boolean")
+  def primitive :Parser[TRef] = ("C" | "Z" | "B" | "S" | "I" | "D") ^^ {
+    case "J" => PrimRef("long")
     case "S" => PrimRef("short")
-    case "I" => PrimRef("int") //TODO: Z vs I?
+    case "D" => PrimRef("double")
+    case "I" => PrimRef("int")
+    case "F" => PrimRef("float")
+    case "B" => PrimRef("byte")
+    case "C" => PrimRef("char")
+    case "Z" => PrimRef("boolean")
+    case "V" => PrimRef("void")
   } //TODO: probably more prim types
 //  def intPrimitive :Parser[TRef] = "I" ^^ {case "I" => PrimRef("int")}
 
