@@ -207,7 +207,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 //      prettyPrinting.dotMethod( query.head.loc, symbolicExecutor.controlFlowResolver, "onPauseCond.dot")
 
       val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
-//      prettyPrinting.dumpDebugInfo(result, "forEach")
+      prettyPrinting.dumpDebugInfo(result, "forEach")
       assert(result.nonEmpty)
       BounderUtil.throwIfStackTrace(result)
       assert(BounderUtil.interpretResult(result,QueryFinished) == Witnessed)
@@ -408,6 +408,72 @@ class SymbolicExecutorTest extends AnyFunSuite {
                 |    }
                 |    protected void setO() {
                 |        this.o = new Object();
+                |    }
+                |
+                |    @Override
+                |    protected void onDestroy() {
+                |        super.onDestroy();
+                |        o = null;
+                |    }
+                |}""".stripMargin
+
+    val test: String => Unit = apk => {
+      assert(apk != null)
+      val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+        FragmentGetActivityNullSpec.getActivityNonNull,
+      ) ++ RxJavaSpec.spec
+      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+      val config = SymbolicExecutorConfig(
+        stepLimit = 200, w, new SpecSpace(specs),
+        component = Some(List("com.example.createdestroy.MyActivity.*")))
+      implicit val om = config.outputMode
+      val symbolicExecutor = config.getSymbolicExecutor
+      val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
+        "void onCreate(android.os.Bundle)",20)
+      val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
+      // prettyPrinting.dumpDebugInfo(result,"setField")
+      assert(result.nonEmpty)
+      BounderUtil.throwIfStackTrace(result)
+      assert(BounderUtil.interpretResult(result,QueryFinished) == Proven)
+      assert(BounderUtil.characterizeMaxPath(result) == SingleCallbackMultiMethod)
+
+    }
+
+    makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
+  }
+
+  //TODO: ======== problem with org.andstatus
+  // src/main/java/org/andstatus/app/service/MyServiceManager.java line 47 ish
+  test("Test static method") {
+    val src = """package com.example.createdestroy;
+                |import androidx.appcompat.app.AppCompatActivity;
+                |import android.os.Bundle;
+                |import android.util.Log;
+                |
+                |import rx.Single;
+                |import rx.Subscription;
+                |import rx.android.schedulers.AndroidSchedulers;
+                |import rx.schedulers.Schedulers;
+                |
+                |
+                |public class MyActivity extends AppCompatActivity {
+                |    public Object o = null;
+                |    Subscription subscription;
+                |
+                |    @Override
+                |    protected void onCreate(Bundle savedInstanceState) {
+                |        super.onCreate(savedInstanceState);
+                |        SillyInnerClass.setO(this);
+                |        Log.i("b", o.toString());
+                |    }
+                |    static class SillyInnerClass{
+                |       private volatile boolean foo = true;
+                |       static void setO(MyActivity that) {
+                |           SillyInnerClass s = new SillyInnerClass();
+                |           if(s.foo){
+                |             that.o = new Object();
+                |           }
+                |       }
                 |    }
                 |
                 |    @Override

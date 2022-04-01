@@ -1,7 +1,8 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import com.microsoft.z3.Context
-import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodReturn, BitTypeSet, LocalWrapper, TestIRLineLoc, TestIRMethodLoc, TypeSet}
+import edu.colorado.plv.bounder.ir.{AppLoc, BitTypeSet, CallbackMethodReturn, LocalWrapper, TestIRLineLoc, TestIRMethodLoc, TypeSet}
+import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SolverTypeSolving, Z3StateSolver}
 import org.scalatest.funsuite.AnyFunSuite
 
@@ -52,7 +53,7 @@ class StateSetTest extends AnyFunSuite {
       nextAddr = 3
     )
 
-    val set1 = StateSet.add(pn(s1), set)
+    val set1 = StateSet.add(pn(s1), set, (s1, s2) => stateSolver.canSubsume(s1,s2, new SpecSpace(Set())))
 
     val subsumee1 = s1.swapPvUnique(pv0, pv1)
     val subsState = StateSet.findSubsuming(pn(subsumee1), set1,

@@ -100,14 +100,14 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
       case _ => true
     }
   }
-  private def makeSolver(timeout:Int, randomSeed:Option[Int]):Solver = this.synchronized{
+  private def makeSolver(timeout:Int, newRandomSeed:Option[Int]):Solver = this.synchronized{
     val solver = ctx.mkSolver
 //    val solver = ctx.mkSimpleSolver()
     val params = ctx.mkParams()
     params.add("timeout", timeout)
     params.add("logic", "AUFLIA")
-    randomSeed.foreach { randomSeed =>
-      params.add("random-seed", randomSeed)
+    newRandomSeed.foreach { rs =>
+      params.add("random-seed", rs + randomSeed)
     }
     // params.add("threads", 4) Note: threads cause weird decidability issue
 
@@ -152,8 +152,8 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
     //assert(solver.getAssertions.isEmpty, s"Solver has assertions:\n    ${solver.getAssertions.mkString("\n    ")}")
   }
 }
-class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:Int = 600000,
-                    randomSeed:Int=30) extends StateSolver[AST,Z3SolverCtx] {
+class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:Int = 100000,
+                    randomSeed:Int=3578) extends StateSolver[AST,Z3SolverCtx] {
   private val MAX_ARGS = 10
 
 //  private val threadLocalCtx: ThreadLocal[Z3SolverCtx] = ThreadLocal.withInitial( () => Z3SolverCtx(timeout,randomSeed))

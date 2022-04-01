@@ -172,7 +172,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
         id = outputMode.initializeQuery(loc,cfg,initialQuery)
         val queue = new GrouperQ
         queue.addAll(pathNodes)
-        val deadline = if(config.timeLimit > -1)startTime + config.timeLimit else -1
+        val deadline = if(config.timeLimit > -1) Instant.now.getEpochSecond + config.timeLimit else -1
         val res: Set[IPathNode] = executeBackward(queue, config.stepLimit, deadline)
 
         val interpretedRes = BounderUtil.interpretResult(res, QueryFinished)
@@ -258,13 +258,15 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       })
 
       //=== test code ===
-      // Note this was to test if state set is working correctly, it appears to be
-      //val allState = root.allStates
-      //val resOld = allState.find(old => stateSolver.canSubsume(old.qry.state,pathNode.qry.state))
-
-      //if(resOld.isDefined != res.isDefined){
-      //  println("diff")
-      //}
+//       Note this was to test if state set is working correctly, it appears to be
+//      val allState = root.allStates
+//      val resOld = allState.find(old =>
+//        stateSolver.canSubsume(old.qry.getState.get,pathNode.qry.getState.get,transfer.getSpec))
+//
+//      if(resOld.isDefined != res.isDefined){
+//        println("diff")
+//        ???
+//      }
       // === end test code ==
 
       res
@@ -424,7 +426,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
                 case SwapLoc(v) =>
                   val stackSizeToNode: Map[Int, StateSet] = visited.getOrElse(v, Map[Int, StateSet]())
                   val nodeSetAtLoc: StateSet = stackSizeToNode.getOrElse(stackSize, StateSet.init)
-                  val nodeSet = StateSet.add(p, nodeSetAtLoc)
+                  val nodeSet = StateSet.add(p, nodeSetAtLoc, (s1,s2) => stateSolver.canSubsume(s1,s2,config.specSpace))
                   val newStackSizeToNode = stackSizeToNode + (stackSize -> nodeSet)
                   visited + (v -> newStackSizeToNode)
                 case _ => visited

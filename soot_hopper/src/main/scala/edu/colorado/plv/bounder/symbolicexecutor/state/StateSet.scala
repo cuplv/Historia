@@ -42,7 +42,7 @@ object StateSet {
     }
     unsortedHeap.sorted
   }
-  def add(pathNode:IPathNode, stateSet: StateSet):StateSet = {
+  def add(pathNode:IPathNode, stateSet: StateSet, canSubsume: (State,State)=> Boolean):StateSet = {
     def iEdges(edges: Seq[String], state:IPathNode,current: StateSet):StateSet = edges match{
       case edge::t if current.edges.contains(edge)=>
         val nextS = iEdges(t,state,current.edges(edge))
@@ -51,7 +51,10 @@ object StateSet {
         val nextS = iEdges(t,state,init)
         current.copy(edges = current.edges + (edge -> nextS))
       case Nil =>
-        current.copy(states = current.states + state)//
+        //TODO: does dropping rev subsume help?
+//        val currentDropSubs = current.states.filter(sOld => !canSubsume(state.qry.getState.get,sOld.qry.getState.get) )
+//        current.copy(states = currentDropSubs + state)//
+        current.copy(states = current.states + state)
     }
     val local = localEdgeFromState(pathNode.qry.getState.get)
     val heap = heapEdgesFromState(pathNode.qry.getState.get)
@@ -85,10 +88,10 @@ object StateSet {
     def iFind(edges: List[String], pathNode:IPathNode, current:StateSet):Option[IPathNode] = {
       //TODO: does par cause issues here?
       //TODO:======== does sorting improve runtime?
-      val search = current.states.toList.sortBy{ n =>
-        n.qry.getState.map(s => s.sf.traceAbstraction.rightOfArrow.size).getOrElse(0)
-      } //.par
-      val currentCanSubs = search.find{ subsuming =>
+//      val search = current.states.toList.sortBy{ n =>
+//        n.qry.getState.map(s => s.sf.traceAbstraction.rightOfArrow.size).getOrElse(0)
+//      } //.par
+      val currentCanSubs = current.states.find{ subsuming =>
         val startTime = System.nanoTime()
         if(DEBUG)
           println(s"   subsuming state: ${subsuming.qry.getState}")
@@ -143,8 +146,8 @@ object SwapLoc {
     case a@AppLoc(_,_,true) if w.isLoopHead(a) => Some(CodeLocation(a, pathNode.ordDepth))
     case a@AppLoc(_,_,true) => {
       w.cmdAtLocation(a) match {
-//        case InvokeCmd(method:VirtualInvoke, loc) => Some(CodeLocation(a, pathNode.ordDepth))
-        case InvokeCmd(_, loc) => None
+        case InvokeCmd(method:VirtualInvoke, loc) => Some(CodeLocation(a, pathNode.ordDepth))
+//        case InvokeCmd(_, loc) => None
         case ReturnCmd(returnVar, loc) => None
         case AssignCmd(target, source, loc) => None
 //        case If(b, trueLoc, loc) => Some(CodeLocation(a, pathNode.ordDepth))

@@ -326,10 +326,14 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       //TODO: check if skipped internal method and don't materialize receiver or other args
       //TODO: implemented this, check that it works
       val cfNeedRec = postState.alternateCmd.exists(other => !postState.nextCmd.contains(other))
-      val (receiverValue,stateWithRec) = if(cfNeedRec){
+      val (receiverValue,stateWithRec) = if(receiverOption.isEmpty){
+        (None,state0)
+      }else if(cfNeedRec){
         val (recV,st) = state0.getOrDefine(LocalWrapper("@this","_"), source.containingMethod)
         (Some(recV),st)
-      }else (state0.get(LocalWrapper("@this","_")), state0)
+      }else{
+        (state0.get(LocalWrapper("@this","_")), state0)
+      }
       val stateWithRecPf = stateWithRec.copy(sf = stateWithRec.sf.copy(pureFormula = stateWithRec.pureFormula ++
 //        PureConstraint(receiverValue, TypeComp, SubclassOf(invokeType)) +
         receiverValue.map(PureConstraint(_, NotEquals, NullVal))

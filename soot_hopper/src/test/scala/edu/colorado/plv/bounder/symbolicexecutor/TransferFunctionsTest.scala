@@ -128,7 +128,8 @@ class TransferFunctionsTest extends AnyFunSuite {
     val post = State(StateFormula(
       CallStackFrame(fooMethodReturn, None, Map(StackVar("bar") -> nullPv))::Nil,
       heapConstraints = Map(),
-      pureFormula = Set(PureConstraint(nullPv,Equals, NullVal)),Map(), AbstractTrace(Nil, Map())),0)
+      pureFormula = Set(PureConstraint(nullPv,Equals, NullVal)),
+      Map(nullPv -> BitTypeSet(BitSet(1))), AbstractTrace(Nil, Map())),0)
     val prestate: Set[State] = testCmdTransfer(cmd, post,fooMethod)
     println(s"poststate: $post")
     println(s"prestate: $prestate")
