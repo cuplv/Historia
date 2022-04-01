@@ -35,7 +35,8 @@ case class Action(mode:RunMode = Default,
                   baseDirApk:Option[String] = None,
                   config: RunConfig = RunConfig(),
                   filter:Option[String] = None, // for making allderef queries - only process classes beginning with
-                  tag:Option[String] = None
+                  tag:Option[String] = None,
+                  outputMode: String = "DB" // "DB" or "MEM" for writing nodes to file or keeping in memory.
                  ){
   val baseDirVar = "${baseDir}"
   val outDirVar = "${baseDirOut}"
@@ -167,7 +168,10 @@ object Driver {
           .action((v,c) => c.copy(filter = Some(v))),
         opt[String]('t', "tag").optional()
           .text("Tag for experiment, recorded when running")
-          .action((v,c) => c.copy(tag = Some(v)))
+          .action((v,c) => c.copy(tag = Some(v))),
+        opt[String]('o', "outputMode").optional()
+          .text("keep intermediate path in mem (MEM) or write to db (DB)")
+          .action((v,c) => c.copy(outputMode = v))
       )
     }
     OParser.parse(parser, args, Action()) match{
@@ -191,7 +195,7 @@ object Driver {
   def runAction(act:Action):Unit = {
     println(s"java.library.path set to: ${System.getProperty("java.library.path")}")
     act match{
-      case act@Action(Verify,_, _, cfg,_,_) =>
+      case act@Action(Verify,_, _, cfg,_,_, mode) =>
         val componentFilter = cfg.componentFilter
         val specSet = cfg.specSet
           //        val cfgw = write(cfg)
@@ -209,7 +213,12 @@ object Driver {
           implicit val opt = File.CopyOptions(overwrite = true)
           outFile.moveTo(File(outFolder) / "paths.db1")
         }
-        val pathMode = DBOutputMode(outFile.canonicalPath, cfg.truncateOut)
+        val pathMode = if(mode == "DB"){
+          DBOutputMode(outFile.canonicalPath, cfg.truncateOut)
+        }else if(mode == "MEM"){
+          MemoryOutputMode
+        } else throw new IllegalArgumentException(s"Mode ${mode} is invalid, options: DB - write nodes to sqlite, MEM " +
+          s"- keep nodes in memory.")
         val res: Seq[(InitialQuery,Int, Loc, (ResultSummary, MaxPathCharacterization), Long)] =
           runAnalysis(cfg,apkPath, componentFilter,pathMode, specSet.getSpecSet(),stepLimit, initialQuery)
         res.zipWithIndex.foreach { case (iq, ind) =>
@@ -218,16 +227,16 @@ object Driver {
             iq._4._1, iq._4._2, iq._5))) // [qry,id,loc, res, time] //TODO: less dumb serialized format
 //          resFile.append(iq._2)
         }
-      case act@Action(SampleDeref,_,_,cfg,_,_) =>
+      case act@Action(SampleDeref,_,_,cfg,_,_,_) =>
         //TODO: set base dir
         sampleDeref(cfg, act.getApkPath, act.getOutFolder, act.filter)
-      case act@Action(ReadDB,_,_,_,_,_) =>
+      case act@Action(ReadDB,_,_,_,_,_,_) =>
         readDB(File(act.getOutFolder))
-      case act@Action(ExpLoop,_, _,_,_,_) =>
+      case act@Action(ExpLoop,_, _,_,_,_,_) =>
         expLoop(act)
-      case act@Action(MakeAllDeref,_,_,cfg,_,tag) =>
+      case act@Action(MakeAllDeref,_,_,cfg,_,tag,_) =>
         makeAllDeref(act.getApkPath, act.filter, File(act.getOutFolder),cfg, tag)
-      case Action(Info, Some(out), Some(apk), cfg, _, _) =>
+      case Action(Info, Some(out), Some(apk), cfg, _, _, _) =>
         info(cfg, out, apk)
       case v => throw new IllegalArgumentException(s"Invalid action: $v")
     }
