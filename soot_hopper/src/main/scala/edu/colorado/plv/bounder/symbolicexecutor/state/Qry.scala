@@ -6,7 +6,7 @@ import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.{SymbolicExecutor, TransferFunctions}
 import ujson.Value
-import upickle.default.{macroRW, ReadWriter => RW}
+import upickle.default.{macroRW, read, write, ReadWriter => RW}
 
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 import scala.util.matching.Regex
@@ -196,6 +196,14 @@ object InitialQuery{
           "className" -> className
         ).map(vToJ)
         ujson.Obj.from(m)
+      case DisallowedCallin(className, methodName, s) =>
+        val m = Map(
+          "t" -> "DisallowedCallin",
+          "className" -> className,
+          "methodName" -> methodName,
+          "s" -> write[LSSpec](s)
+        ).map(vToJ)
+        ujson.Obj.from(m)
     },
     json => json.obj("t").str match{
       case "Reachable" => Reachable(json.obj("className").str, json.obj("methodName").str,json.obj("line").num.toInt)
@@ -207,6 +215,8 @@ object InitialQuery{
           json.obj("callinRegex").str)
       case "AllReceiversNonNull" =>
         AllReceiversNonNull(json.obj("className").str)
+      case "DisallowedCallin" =>
+        DisallowedCallin(json.obj("className").str, json.obj("methodName").str, read[LSSpec](json.obj("s").str))
     }
   )
 }

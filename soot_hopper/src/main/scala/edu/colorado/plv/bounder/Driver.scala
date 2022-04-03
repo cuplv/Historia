@@ -11,7 +11,7 @@ import edu.colorado.plv.bounder.Driver.{Default, LocResult, RunMode}
 import edu.colorado.plv.bounder.ir.{JimpleFlowdroidWrapper, Loc}
 import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
 import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
-import edu.colorado.plv.bounder.lifestate.{LifecycleSpec, FragmentGetActivityNullSpec, LifeState, RxJavaSpec, SpecSpace}
+import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, SparkCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
@@ -25,6 +25,7 @@ import ujson.{Value, validate}
 import upickle.core.AbortException
 import upickle.default.{macroRW, read, write, ReadWriter => RW}
 
+import scala.collection.immutable.{AbstractSet, SortedSet}
 import scala.concurrent.duration._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -220,7 +221,7 @@ object Driver {
         } else throw new IllegalArgumentException(s"Mode ${mode} is invalid, options: DB - write nodes to sqlite, MEM " +
           s"- keep nodes in memory.")
         val res: Seq[(InitialQuery,Int, Loc, (ResultSummary, MaxPathCharacterization), Long)] =
-          runAnalysis(cfg,apkPath, componentFilter,pathMode, specSet.getSpecSet(),stepLimit, initialQuery)
+          runAnalysis(cfg,apkPath, componentFilter,pathMode, specSet,stepLimit, initialQuery)
         res.zipWithIndex.foreach { case (iq, ind) =>
           val resFile = File(outFolder) / s"result_${ind}.txt"
           resFile.overwrite(write(LocResult(iq._1,iq._2, iq._3,
@@ -323,7 +324,7 @@ object Driver {
     //TODO:
   }
   def runAnalysis(cfg:RunConfig, apkPath: String, componentFilter:Option[Seq[String]], mode:OutputMode,
-                  specSet: Set[LSSpec], stepLimit:Int,
+                  specSet: SpecSetOption, stepLimit:Int,
                   initialQueries: List[InitialQuery]): List[(InitialQuery,Int,Loc,(ResultSummary,MaxPathCharacterization),Long)] = {
     val startTime = System.nanoTime()
     try {
@@ -331,9 +332,9 @@ object Driver {
 //      val callGraph = CHACallGraph
       val callGraph = SparkCallGraph
 //      val callGraph = FlowdroidCallGraph // flowdroid call graph immediately fails with "unreachable"
-      val w = new JimpleFlowdroidWrapper(apkPath, callGraph, specSet)
+      val w = new JimpleFlowdroidWrapper(apkPath, callGraph, specSet.getSpecSet().union(specSet.getDisallowSpecSet()))
       val config = SymbolicExecutorConfig(
-        stepLimit = stepLimit, w, new SpecSpace(specSet), component = componentFilter, outputMode = mode,
+        stepLimit = stepLimit, w, new SpecSpace(specSet.getSpecSet(), specSet.getDisallowSpecSet()), component = componentFilter, outputMode = mode,
         timeLimit = cfg.timeLimit)
       val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
 //      val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
@@ -404,6 +405,7 @@ object Driver {
 
 trait SpecSetOption{
   def getSpecSet():Set[LSSpec]
+  def getDisallowSpecSet(): Set[LSSpec]
 }
 object SpecSetOption{
   val testSpecSet: Map[String, Set[LSSpec]] = Map(
@@ -419,11 +421,14 @@ object SpecSetOption{
       case SpecFile(fname) => s"file:$fname"
       case TestSpec(name) => s"testSpec:$name"
       case TopSpecSet => s"top"
+      case p@PickleSpec(_,_) => write[PickleSpec](p)
     },
     str => str.split(":").toList match{
       case "file"::fname::Nil => SpecFile(fname)
       case "testSpec"::name::Nil => TestSpec(name)
       case "top"::Nil => TopSpecSet
+      case a::_ if a.startsWith("{") =>
+        read[PickleSpec](str)
       case _ => throw new IllegalArgumentException(s"Failure parsing SpecSetOption: $str")
     }
   )
@@ -431,14 +436,26 @@ object SpecSetOption{
 case class SpecFile(fname:String) extends SpecSetOption {
   //TODO: write parser for spec set
   override def getSpecSet(): Set[LSSpec] = LifeState.parseSpec(File(fname).contentAsString)
+
+  override def getDisallowSpecSet(): Set[LSSpec] = Set()
 }
 
 case class TestSpec(name:String) extends SpecSetOption {
   override def getSpecSet(): Set[LSSpec] = SpecSetOption.testSpecSet(name)
+  override def getDisallowSpecSet(): Set[LSSpec] = Set()
+}
+
+case class PickleSpec(specs:Set[LSSpec], disallow:Set[LSSpec] =Set()) extends SpecSetOption {
+  override def getSpecSet(): Set[LSSpec] = specs
+  override def getDisallowSpecSet(): Set[LSSpec] = disallow
+}
+object PickleSpec{
+  implicit val rw:RW[PickleSpec] = macroRW
 }
 
 case object TopSpecSet extends SpecSetOption {
   override def getSpecSet(): Set[LSSpec] = Set()
+  override def getDisallowSpecSet(): Set[LSSpec] = Set()
 }
 
 class ExperimentsDb(bounderJar:Option[String] = None){

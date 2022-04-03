@@ -204,6 +204,9 @@ object LifeState {
       case NotEquals =>s"${arg2tex(v1)} \\neq ${arg2tex(v2)}"
     }
   }
+  object LSConstraint{
+    implicit val rw:RW[LSConstraint] = macroRW
+  }
 
   sealed trait LSPred {
     def toTex:String
@@ -217,7 +220,7 @@ object LifeState {
     def stringRep(varMap : String => Any):String
   }
   object LSPred{
-    implicit var rw:RW[LSPred] = RW.merge(LSAtom.rw, macroRW[Forall], macroRW[Exists], macroRW[Not], macroRW[And],
+    implicit var rw:RW[LSPred] = RW.merge(LSConstraint.rw, LSAtom.rw, macroRW[Forall], macroRW[Exists], macroRW[Not], macroRW[And],
       macroRW[Or], macroRW[LSTrue.type], macroRW[LSFalse.type])
   }
 
@@ -693,6 +696,9 @@ object LifeState {
       Forall(newUnivQuant.toList.map(swapWithFresh), Exists(existQuant.map(swapWithFresh), lsFormula))
 
     }
+  }
+  object LSSpec{
+    implicit val rw:RW[LSSpec] = macroRW
   }
 
   def arg2tex(v: String): String = v match {
