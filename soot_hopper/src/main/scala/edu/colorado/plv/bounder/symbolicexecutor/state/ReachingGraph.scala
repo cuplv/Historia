@@ -330,7 +330,7 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
     else
       write[State](node.qry.getState.get)
 //    val stateStr = write[State](node.qry.getState.get)
-    val row = WitTableRow(node.thisID, qryState, stateStr, loc, node.subsumedID, node.depth)
+    val row = WitTableRow(node.thisID, qryState, stateStr, loc, node.subsumedID, node.depth,node.ordDepth)
     val edges:Seq[(Int,Int)] = node.succID.map(sid => (node.thisID, sid))
     queueNodeWrite(row,edges)
 //    val writeFuture = db.run(witnessQry +=
@@ -417,7 +417,8 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
       case (queryState,_) => throw new IllegalStateException(s"Wrong query for missing serialized state: $queryState")
     }
     val depth = res.depth
-    DBPathNode(qry, id, pred, subsumingId, depth,-1) //TODO: add row for ordDepth
+    val ordDepth = res.ordDepth
+    DBPathNode(qry, id, pred, subsumingId, depth, ordDepth)
   }
 
   def writeMethod(method: MethodLoc, isCallback:Boolean):Unit ={
@@ -512,7 +513,7 @@ class InitialQueryTable(tag:Tag) extends Table[(Int, String, String, String, Str
 
 case class WitTableRow(id:Int, queryState:String, nodeState:String, nodeLoc:String,
                        subsumingState:Option[Int],
-                       depth:Int
+                       depth:Int, ordDepth:Int
                       )
 class WitnessTable(tag:Tag) extends Table[WitTableRow](tag,"PATH"){
   def id = column[Int]("NODE_ID", O.PrimaryKey)
@@ -521,7 +522,8 @@ class WitnessTable(tag:Tag) extends Table[WitTableRow](tag,"PATH"){
   def nodeLoc = column[String]("NODE_LOC")
   def subsumingState = column[Option[Int]]("SUBSUMING_STATE")
   def depth = column[Int]("DEPTH")
-  def * = (id,queryState,nodeState,nodeLoc,subsumingState,depth) <> (WitTableRow.tupled, WitTableRow.unapply)
+  def ordDepth = column[Int]("ORD_DEPTH")
+  def * = (id,queryState,nodeState,nodeLoc,subsumingState,depth, ordDepth) <> (WitTableRow.tupled, WitTableRow.unapply)
 }
 class MethodTable(tag:Tag) extends Table[(Int,String,String,String,Boolean)](tag, "Methods"){
   def id = column[Int]("METHOD_ID", O.PrimaryKey)

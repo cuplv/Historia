@@ -280,6 +280,7 @@ sealed trait Qry {
   def getState: Option[State]
   def toString:String
   def copyWithNewState(state:State):Qry
+  def isLive:Boolean
 }
 //Query consists of a location and an abstract state defined at the program point just before that location.
 case class LiveQry(state:State, loc: Loc) extends Qry {
@@ -288,6 +289,8 @@ case class LiveQry(state:State, loc: Loc) extends Qry {
   override def copyWithNewState(state: State): Qry = this.copy(state = state)
 
   override def getState: Option[State] = Some(state)
+
+  override def isLive: Boolean = true
 }
 // A live query where we didn't retain the state to save space
 // This query can only come from reading the output of a truncated run
@@ -296,16 +299,22 @@ case class LiveTruncatedQry(loc:Loc) extends Qry{
   override def getState: Option[State] = None
 
   override def copyWithNewState(state: State): Qry = this
+
+  override def isLive: Boolean = true
 }
 case class WitnessedTruncatedQry(loc:Loc, explanation: WitnessExplanation) extends Qry{
   override def getState: Option[State] = None
 
   override def copyWithNewState(state: State): Qry = this
+
+  override def isLive: Boolean = true
 }
 case class BottomTruncatedQry(loc:Loc) extends Qry{
   override def getState: Option[State] = None
 
   override def copyWithNewState(state: State): Qry = this
+
+  override def isLive: Boolean = false
 }
 // Infeasible precondition, path refuted
 case class BottomQry(state:State, loc:Loc) extends Qry {
@@ -313,6 +322,8 @@ case class BottomQry(state:State, loc:Loc) extends Qry {
   override def copyWithNewState(state: State): Qry = this.copy(state = state)
 
   override def getState: Option[State] = Some(state)
+
+  override def isLive: Boolean = false
 }
 
 case class WitnessedQry(state:State, loc:Loc, explain:WitnessExplanation) extends Qry {
@@ -320,4 +331,6 @@ case class WitnessedQry(state:State, loc:Loc, explain:WitnessExplanation) extend
   override def copyWithNewState(state: State): Qry = this.copy(state = state)
 
   override def getState: Option[State] = Some(state)
+
+  override def isLive: Boolean = true
 }

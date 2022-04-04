@@ -273,9 +273,10 @@ object BounderUtil {
       scala.util.Properties.envOrElse("LD_LIBRARY_PATH",
         throw new RuntimeException("Must set DYLD_LIBRARY_PATH for z3.  Mac restrictions may apply." +
           "See https://en.wikipedia.org/wiki/System_Integrity_Protection#Functions"))))
-  def runCmdFileOut(cmd:String, runDir:File):Boolean = {
-    val stdoutF = runDir / "stdout.txt"
-    val stderrF = runDir / "stderr.txt"
+  def runCmdFileOut(cmd:String, runDir:File,
+                    outSt:String = "stdout.tct", outEr:String = "stderr.txt"):Boolean = {
+    val stdoutF = runDir / outSt
+    val stderrF = runDir / outEr
     if(stdoutF.exists()) stdoutF.delete()
     if(stderrF.exists()) stderrF.delete()
     val p = if(mac) {
