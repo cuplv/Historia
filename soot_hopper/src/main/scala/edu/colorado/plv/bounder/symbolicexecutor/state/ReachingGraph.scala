@@ -116,6 +116,7 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
 
   /**
    * Get all states grouped by location
+   * note: relies on liveAtEnd so won't work if timeout or killed
    * @return
    */
   def liveTraces():List[List[DBPathNode]] = {
@@ -163,6 +164,10 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
     out
   }
 
+  /**
+   * This seems to get the starting nodes, todo: double check
+   * @return
+   */
   def getNoPred():Set[DBPathNode] = {
     // TODO: there is probably a more efficient way to do this
     // get edges
@@ -185,6 +190,35 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
       Await.result(db.run(q.result), 30 seconds)
     }).map(rowToNode)
   }
+
+
+  /**
+   * Get nodes that are/were in the queue to be processed by the symbex
+   * Note: this method is the opposite of the one above
+   * @return
+   */
+  def getLive():Set[DBPathNode] = {
+    // get edges
+    val qAllEdge = for {
+      n <- graphQuery
+    } yield (n.src,n.tgt)
+    val allEdge = Await.result(db.run(qAllEdge.result), 900 seconds)
+    val isTgt: Map[Int, Seq[(Int, Int)]] = allEdge.groupBy{
+      case (_,tgt) => tgt
+    }
+    val isSrc: Map[Int, Seq[(Int, Int)]] = allEdge.groupBy{
+      case(src,_) => src
+    }
+    val srcNotTgt: Set[Int] = isSrc.keySet.removedAll(isTgt.keySet)
+
+    srcNotTgt.flatMap((nodeId: Int) => {
+      val q = for {
+        n <- witnessQry if (n.id === nodeId)
+      } yield n
+      Await.result(db.run(q.result), 30 seconds)
+    }).map(rowToNode)
+  }
+
   def getTerminal():Set[DBPathNode] = {
     val qLive = for{
       liveId <- liveAtEnd
@@ -383,7 +417,7 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
       case (queryState,_) => throw new IllegalStateException(s"Wrong query for missing serialized state: $queryState")
     }
     val depth = res.depth
-    DBPathNode(qry, id, pred, subsumingId, depth,-1)
+    DBPathNode(qry, id, pred, subsumingId, depth,-1) //TODO: add row for ordDepth
   }
 
   def writeMethod(method: MethodLoc, isCallback:Boolean):Unit ={

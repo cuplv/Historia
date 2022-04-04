@@ -678,14 +678,13 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
              |
              |public class MyActivity extends Activity implements Runnable {
              |    String s = null;
-             |    static OnClickListener listener2 = null;
              |    View v = null;
              |    @Override
              |    protected void onCreate(Bundle b){
              |        v = findViewById(3);
              |        v.setOnClickListener(new OnClickListener(){
              |           @Override
-             |           public void onClick(View v){
+             |           public void onClick(View v)
              |             s.toString(); // query1
              |           }
              |        });
