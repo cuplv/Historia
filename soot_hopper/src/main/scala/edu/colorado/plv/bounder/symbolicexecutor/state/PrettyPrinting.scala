@@ -70,6 +70,23 @@ class PrettyPrinting() {
       println(v)
       ???
   }
+
+  def nodeToWitness(nodes:List[IPathNode])(implicit mode : OutputMode):List[List[String]] = {
+
+    val targetTraces: List[(String, IPathNode)] = nodes.flatMap{
+      case pn@PathNode(_: LiveQry, false) => Some((s"live " +
+        s"${if(pn.getError.isDefined) pn.getError.get.toString else ""}",pn))
+      case pn@PathNode(_ :WitnessedQry, _) => Some(("witnessed", pn))
+      case pn@PathNode(_:BottomQry, false) => Some(("refuted",pn))
+      case pn@PathNode(_:LiveQry, true) => Some((s"subsumed by:\n -- ${qryString(pn.subsumed.get.qry)}\n", pn))
+      case _ => None
+    }
+
+    targetTraces.map{
+      case (k,v) => k::witnessToTrace(List(v), truncate = true)
+    }
+  }
+
   def printTraces(result: Set[IPathNode],
                   outFile: String,
                   truncate:Boolean)(implicit mode : OutputMode = MemoryOutputMode): Unit = {

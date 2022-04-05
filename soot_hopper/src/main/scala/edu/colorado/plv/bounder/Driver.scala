@@ -31,13 +31,14 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.matching.Regex
 
+//TODO: dboutput mode is failing in truncate mode.  Cannot run non truncate for perf reasons.
 case class Action(mode:RunMode = Default,
                   baseDirOut: Option[String] = None,
                   baseDirApk:Option[String] = None,
                   config: RunConfig = RunConfig(),
                   filter:Option[String] = None, // for making allderef queries - only process classes beginning with
                   tag:Option[String] = None,
-                  outputMode: String = "DB" // "DB" or "MEM" for writing nodes to file or keeping in memory.
+                  outputMode: String = "MEM" // "DB" or "MEM" for writing nodes to file or keeping in memory.
                  ){
   val baseDirVar = "${baseDir}"
   val outDirVar = "${baseDirOut}"
@@ -188,7 +189,8 @@ object Driver {
   }
   // [qry,id,loc, res, time]
   case class LocResult(q:InitialQuery, sqliteId:Int, loc:Loc, resultSummary: ResultSummary,
-                       maxPathCharacterization: MaxPathCharacterization, time:Long)
+                       maxPathCharacterization: MaxPathCharacterization, time:Long,
+                       ordDepth:Option[Int], depth:Option[Int], witnesses:List[List[String]])
   object LocResult{
     implicit var rw:RW[LocResult] = macroRW
   }
@@ -220,13 +222,13 @@ object Driver {
           MemoryOutputMode
         } else throw new IllegalArgumentException(s"Mode ${mode} is invalid, options: DB - write nodes to sqlite, MEM " +
           s"- keep nodes in memory.")
-        val res: Seq[(InitialQuery,Int, Loc, (ResultSummary, MaxPathCharacterization), Long)] =
+        val res: List[LocResult] =
           runAnalysis(cfg,apkPath, componentFilter,pathMode, specSet,stepLimit, initialQuery)
         res.zipWithIndex.foreach { case (iq, ind) =>
           val resFile = File(outFolder) / s"result_${ind}.txt"
-          resFile.overwrite(write(LocResult(iq._1,iq._2, iq._3,
-            iq._4._1, iq._4._2, iq._5))) // [qry,id,loc, res, time] //TODO: less dumb serialized format
-//          resFile.append(iq._2)
+          resFile.overwrite(write(iq))
+//          resFile.overwrite(write(LocResult(iq._1,iq._2, iq._3,
+//            iq._4._1, iq._4._2, iq._5))) // [qry,id,loc, res, time] //TODO: less dumb serialized format
         }
       case act@Action(SampleDeref,_,_,cfg,_,_,_) =>
         //TODO: set base dir
@@ -325,62 +327,37 @@ object Driver {
   }
   def runAnalysis(cfg:RunConfig, apkPath: String, componentFilter:Option[Seq[String]], mode:OutputMode,
                   specSet: SpecSetOption, stepLimit:Int,
-                  initialQueries: List[InitialQuery]): List[(InitialQuery,Int,Loc,(ResultSummary,MaxPathCharacterization),Long)] = {
+                  initialQueries: List[InitialQuery]): List[LocResult] = {
+//  List[(InitialQuery,Int,Loc,(ResultSummary,MaxPathCharacterization),Long)] = {
     val startTime = System.nanoTime()
     try {
       //TODO: read location from json config
-//      val callGraph = CHACallGraph
       val callGraph = SparkCallGraph
-//      val callGraph = FlowdroidCallGraph // flowdroid call graph immediately fails with "unreachable"
       val w = new JimpleFlowdroidWrapper(apkPath, callGraph, specSet.getSpecSet().union(specSet.getDisallowSpecSet()))
       val config = SymbolicExecutorConfig(
         stepLimit = stepLimit, w, new SpecSpace(specSet.getSpecSet(), specSet.getDisallowSpecSet()), component = componentFilter, outputMode = mode,
         timeLimit = cfg.timeLimit)
       val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
-//      val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
-//        "de.danoeh.antennapod.fragment.ExternalPlayerFragment",
-//        "void updateUi(de.danoeh.antennapod.core.util.playback.Playable)", 200,
-//        callinMatches = ".*getActivity.*".r)
-      //TODO: This logic is overly complicated and should be moved into the OutputMode==============
       initialQueries.flatMap{ initialQuery =>
-//        val query: Set[Qry] = initialQuery.make(symbolicExecutor, w)
-        val out = new ListBuffer[String]()
-//        val initialize: Loc => Int = mode match {
-//          case mode@DBOutputMode(_,_) => (startingNode: Set[IPathNode]) =>
-//            val id = mode.initializeQuery(startingNode, cfg, initialQuery)
-//            val tOut = s"initial query: $initialQuery   id: $id"
-//            println(tOut)
-//            out += tOut
-//            id
-//          case _ => (_: Set[IPathNode]) => 0
-//        }
-
-        //        (Int,Loc,Set[IPathNode],Long)
         val results: Set[symbolicExecutor.QueryData] = symbolicExecutor.run(initialQuery, mode,cfg)
 
-        //TODO: get this info out of outputMode instead======================
-        val allRes: Set[(Int, Loc, ResultSummary, MaxPathCharacterization, Long)] = results.map { res =>
-          mode match {
-            case m@DBOutputMode(_,_) =>
-              val interpretedRes = (res.queryId, res.location,
-                BounderUtil.interpretResult(res.terminals, res.result),
-                BounderUtil.characterizeMaxPath(res.terminals)(mode)
-                ,res.runTime)
-              val tOut = s"id: ${res.queryId}   result: ${interpretedRes}"
-              println(tOut)
-              out += tOut
-//              m.writeLiveAtEnd(res.terminals, res.queryId, interpretedRes.toString)
-              interpretedRes
-            case _ => (res.queryId, res.location,BounderUtil.interpretResult(res.terminals, res.result),
-              BounderUtil.characterizeMaxPath(res.terminals)(mode), res.runTime)
-          }
-        }
-        val grouped = allRes.groupBy(v => (v._1,v._2)).map{case ((id,loc),groupedResults) =>
-          val res = groupedResults.map(_._3).reduce(reduceResults)
-          val characterizedMaxPath: MaxPathCharacterization = groupedResults.map(_._4).reduce(BounderUtil.reduceCharacterization)
-          val finalTime = groupedResults.map(_._5).sum
-          val finalRes = (res,characterizedMaxPath)
-          (initialQuery,id,loc,finalRes,finalTime)
+        val grouped = results.groupBy(v => (v.queryId,v.location)).map{case ((id,loc),groupedResults) =>
+          val res = groupedResults.map(res => BounderUtil.interpretResult(res.terminals, res.result))
+            .reduce(reduceResults)
+          val characterizedMaxPath: MaxPathCharacterization =
+            groupedResults.map(res => BounderUtil.characterizeMaxPath(res.terminals)(mode))
+              .reduce(BounderUtil.reduceCharacterization)
+          val finalTime = groupedResults.map(_.runTime).sum
+          // get minimum cb count and instruction count from nodes live at end
+          // also retrieve up to 3 witnesses
+          val finalLiveNodes = groupedResults.flatMap{res => res.terminals.filter{pathNode =>
+            pathNode.qry.isLive && pathNode.subsumed(mode).isEmpty}}
+          val depth = if(finalLiveNodes.nonEmpty) Some(finalLiveNodes.map{n => n.depth}.min) else None
+          val ordDepth = if(finalLiveNodes.nonEmpty) Some(finalLiveNodes.map{_.ordDepth}.min) else None
+          val pp = new PrettyPrinting()
+          val witnesses = pp.nodeToWitness(finalLiveNodes.toList)(mode).sortBy(_.length).take(3)
+          LocResult(initialQuery,id,loc,res,characterizedMaxPath,finalTime,
+            depth = depth, ordDepth = ordDepth, witnesses = witnesses)
         }.toList
         grouped
       }
@@ -686,7 +663,10 @@ class ExperimentsDb(bounderJar:Option[String] = None){
       resultSummaries.map { rs =>
         val resultRow = ujson.Obj(
           "summary" -> ujson.Str(write[ResultSummary](rs.resultSummary)),
-          "maxPathCh" -> ujson.Str(write[MaxPathCharacterization](rs.maxPathCharacterization))
+          "maxPathCh" -> ujson.Str(write[MaxPathCharacterization](rs.maxPathCharacterization)),
+          "ordDepth" -> ujson.Num(rs.ordDepth.getOrElse(-1).toDouble),
+          "depth" -> ujson.Num(rs.depth.getOrElse(-1).toDouble),
+          "wit" -> ujson.Arr(rs.witnesses)
         ).toString
         DBResult(id = 0, jobid = jobId,qry = write(rs.q), loc = write(rs.loc), result = resultRow, queryTime = rs.time
           ,resultData = resDataId, apkHash = apkHash,
