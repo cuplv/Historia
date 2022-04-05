@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import better.files.Dsl.SymbolicOperations
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed}
+import edu.colorado.plv.bounder.BounderUtil.{Proven, Timeout, Witnessed, interpretResult}
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, JimpleFlowdroidWrapper, MessageType}
 import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSpace, ViewSpec}
@@ -684,7 +684,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
              |        v = findViewById(3);
              |        v.setOnClickListener(new OnClickListener(){
              |           @Override
-             |           public void onClick(View v)
+             |           public void onClick(View v){
              |             s.toString(); // query1
              |           }
              |        });
@@ -730,10 +730,18 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
             assert(nullUnreachRes.nonEmpty)
             BounderUtil.throwIfStackTrace(nullUnreachRes)
             prettyPrinting.printWitness(nullUnreachRes)
-            assert(BounderUtil.interpretResult(nullUnreachRes, QueryFinished) == expected)
-            //  dbFile.copyToDirectory(File("/Users/shawnmeier/Desktop/Row3"))
-          }
+            val interpretedResult: BounderUtil.ResultSummary = BounderUtil.interpretResult(nullUnreachRes, QueryFinished)
+            interpretedResult match {
+              case Timeout =>
+                val live = nullUnreachRes.filter( a => a.qry.isLive && a.subsumed.isEmpty)
+                val provedTo = live.map(_.ordDepth).min
+                logger.warn(s"Row 4 ${expected} proved to ${provedTo}")
 
+            }
+            assert(interpretedResult == expected)
+            //  dbFile.copyToDirectory(File("/Users/shawnmeier/Desktop/Row3"))
+            logger.warn(s"Row 4 expected: ${expected} actual: ${interpretedResult}")
+          }
           logger.warn(s"Row 4 ${expected} time(ms): ${(System.nanoTime() - startTime)/1000.0}")
         }
         makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase,

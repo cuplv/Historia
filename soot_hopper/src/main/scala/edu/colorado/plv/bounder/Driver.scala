@@ -355,9 +355,16 @@ object Driver {
           val depth = if(finalLiveNodes.nonEmpty) Some(finalLiveNodes.map{n => n.depth}.min) else None
           val ordDepth = if(finalLiveNodes.nonEmpty) Some(finalLiveNodes.map{_.ordDepth}.min) else None
           val pp = new PrettyPrinting()
-          val witnesses = pp.nodeToWitness(finalLiveNodes.toList)(mode).sortBy(_.length).take(3)
+          val live: List[List[String]] = pp.nodeToWitness(finalLiveNodes.toList)(mode).sortBy(_.length).take(2)
+          val witnessed = pp.nodeToWitness(groupedResults.flatMap{res => res.terminals.filter{pathNode =>
+            pathNode.qry match {
+              case WitnessedTruncatedQry(loc, explanation) => true
+              case WitnessedQry(state, loc, explain) => true
+              case _ => false
+            }}}.toList)(mode).sortBy(_.length).take(2)
+
           LocResult(initialQuery,id,loc,res,characterizedMaxPath,finalTime,
-            depth = depth, ordDepth = ordDepth, witnesses = witnesses)
+            depth = depth, ordDepth = ordDepth, witnesses = live ++ witnessed)
         }.toList
         grouped
       }
@@ -372,8 +379,6 @@ object Driver {
       case (_, Witnessed) => Witnessed
       case (_, Timeout) => Timeout
       case (Timeout, _) => Timeout
-      case (Unreachable, v2) => v2
-      case (v1, Unreachable) => v1
       case (v1,v2) if v1 == v2 => v1
     }
   }
