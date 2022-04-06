@@ -4,14 +4,15 @@ import java.util.Collections
 
 import better.files.File
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CmdNotImplemented, CmdWrapper, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Loc, NopCmd}
-import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, QueryFinished, QueryInterrupted, SymbolicExecutorConfig}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, InitialQuery, LiveQry, OutputMode, PathNode, WitnessedQry}
+import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, QueryFinished, QueryInterrupted, QueryResult, SymbolicExecutorConfig}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, BottomTruncatedQry, IPathNode, InitialQuery, LiveQry, LiveTruncatedQry, OutputMode, PathNode, WitnessedQry, WitnessedTruncatedQry}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.sys.process._
 import scala.util.matching.Regex
 import upickle.default.{macroRW, read, write, ReadWriter => RW}
+
 import scala.jdk.CollectionConverters._
 
 object BounderUtil {
@@ -101,6 +102,28 @@ object BounderUtil {
         throw pn.getError.get
     }
   }
+
+  case class DepthResult(depth:Int, ordDepth:Int, status:ResultSummary)
+  object DepthResult{
+    implicit val rw:RW[DepthResult] = macroRW
+  }
+  def computeDepthOfWitOrLive(terminals: Set[IPathNode], queryResult: QueryResult)(implicit mode: OutputMode):DepthResult = {
+    val resultSummary = BounderUtil.interpretResult(terminals, queryResult)
+    resultSummary match {
+      case Witnessed =>
+        val witNodes = terminals.filter(node => node.qry match {
+          case WitnessedTruncatedQry(loc, explanation) => true
+          case WitnessedQry(state, loc, explain) => true
+          case _ => false
+        })
+        DepthResult(witNodes.map(_.depth).min, witNodes.map(_.ordDepth).min, Witnessed)
+      case Timeout =>
+        val liveNodes = terminals.filter(node => node.qry.isLive && node.subsumed.isEmpty)
+        DepthResult(liveNodes.map(_.depth).min, liveNodes.map(_.ordDepth).min, Timeout)
+      case a => DepthResult(-1,-1, a)
+    }
+  }
+
   def interpretResult(result: Set[IPathNode], queryResult : symbolicexecutor.QueryResult):ResultSummary = {
     queryResult match {
       case QueryInterrupted(reason) => Interrupted(reason)

@@ -3,17 +3,18 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import better.files.Dsl.SymbolicOperations
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.BounderUtil.{Proven, Timeout, Witnessed, interpretResult}
+import edu.colorado.plv.bounder.BounderUtil.{DepthResult, Proven, Timeout, Witnessed, interpretResult}
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, JimpleFlowdroidWrapper, MessageType}
 import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.state.{CallinReturnNonNull, DBOutputMode, DisallowedCallin, MemoryOutputMode, PrettyPrinting, Reachable, ReceiverNonNull}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{CallinReturnNonNull, DBOutputMode, DisallowedCallin, IPathNode, MemoryOutputMode, PrettyPrinting, Reachable, ReceiverNonNull}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.BeforeAndAfter
 import org.scalatest.funsuite.AnyFunSuite
 import org.slf4j.LoggerFactory
+import upickle.default.{macroRW, read, write, ReadWriter => RW}
 
 import scala.collection.mutable
 import soot.{Scene, SootClass, SootMethod}
@@ -342,13 +343,16 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           "void call(java.lang.Object)", line,
           ".*getActivity.*")
 
-        val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
+        val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
         val fname = s"Motiv_$fileSuffix"
         // prettyPrinting.dumpDebugInfo(result, fname)
         //        prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
         assert(result.nonEmpty)
         BounderUtil.throwIfStackTrace(result)
         val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
+
+        val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
+        logger.warn(s"Row 1 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
         assert(interpretedResult == expectedResult)
         //        val onViewCreatedInTree: Set[List[IPathNode]] = result.flatMap{node =>
         //            findInWitnessTree(node, (p: IPathNode) =>
@@ -376,7 +380,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
     // https://github.com/AntennaPod/AntennaPod/pull/1306
     // Simplified version of Experiments row 2 (ecoop 19 meier motivating example)
     List(
-      ("button.setEnabled(true);", Witnessed, "badDisable"),
+//      ("button.setEnabled(true);", Witnessed, "badDisable"), //test for boolean handling, works so commented out for exp run
       ("button.setEnabled(false);", Proven, "disable"),
       ("", Witnessed, "noDisable")
     ).map { case (cancelLine, expectedResult,fileSuffix) =>
@@ -457,6 +461,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
         assert(result.nonEmpty)
         BounderUtil.throwIfStackTrace(result)
         val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
+        val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
+        logger.warn(s"Row 2 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
         assert(interpretedResult == expectedResult)
         logger.warn(s"Row 2 ${fileSuffix} time(ms): ${(System.nanoTime() - startTime)/1000.0}")
       }
@@ -650,6 +656,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
         assert(result.nonEmpty)
         BounderUtil.throwIfStackTrace(result)
         val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
+        val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
+        logger.warn(s"Row 5 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
         assert(interpretedResult == expectedResult)
         logger.warn(s"Row 5 ${fileSuffix} time(ms): ${(System.nanoTime() - startTime)/1000.0}")
       }
@@ -660,10 +668,10 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
   test("Row4: Connect bot click/finish") {
     val startTime = System.nanoTime()
     List(
-      ("", Witnessed),
-      ("v.setOnClickListener(null);", Proven),
+      ("", Witnessed, "bug"),
+      ("v.setOnClickListener(null);", Timeout, "fix"),
     ).foreach {
-      case (disableClick, expected) =>
+      case (disableClick, expected, fileSuffix) =>
         //Click attached to different activity
         //TODO: probably need to write specification for null preventing click
         val src =
@@ -731,13 +739,15 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
             BounderUtil.throwIfStackTrace(nullUnreachRes)
             prettyPrinting.printWitness(nullUnreachRes)
             val interpretedResult: BounderUtil.ResultSummary = BounderUtil.interpretResult(nullUnreachRes, QueryFinished)
-            interpretedResult match {
-              case Timeout =>
-                val live = nullUnreachRes.filter( a => a.qry.isLive && a.subsumed.isEmpty)
-                val provedTo = live.map(_.ordDepth).min
-                logger.warn(s"Row 4 ${expected} proved to ${provedTo}")
-
-            }
+//            interpretedResult match {
+//              case Timeout =>
+//                val live = nullUnreachRes.filter( a => a.qry.isLive && a.subsumed.isEmpty)
+//                val provedTo = live.map(_.ordDepth).min
+//                logger.warn(s"Row 4 ${expected} proved to ${provedTo}")
+//
+//            }
+            val depthInfo = BounderUtil.computeDepthOfWitOrLive(nullUnreachRes, QueryFinished)
+            logger.warn(s"Row 4 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
             assert(interpretedResult == expected)
             //  dbFile.copyToDirectory(File("/Users/shawnmeier/Desktop/Row3"))
             logger.warn(s"Row 4 expected: ${expected} actual: ${interpretedResult}")
