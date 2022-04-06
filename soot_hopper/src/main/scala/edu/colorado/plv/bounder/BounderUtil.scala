@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder
 import java.util.Collections
 
 import better.files.File
-import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CmdNotImplemented, CmdWrapper, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Loc, NopCmd}
+import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdNotImplemented, CmdWrapper, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Loc, NopCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn}
 import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, QueryFinished, QueryInterrupted, QueryResult, SymbolicExecutorConfig}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, BottomTruncatedQry, IPathNode, InitialQuery, LiveQry, LiveTruncatedQry, OutputMode, PathNode, WitnessedQry, WitnessedTruncatedQry}
 
@@ -103,10 +103,23 @@ object BounderUtil {
     }
   }
 
-  case class DepthResult(depth:Int, ordDepth:Int, status:ResultSummary)
+  case class DepthResult(depth:Int, ordDepth:Int, cbDepth:Int, status:ResultSummary)
   object DepthResult{
     implicit val rw:RW[DepthResult] = macroRW
   }
+
+  def countCb(terminal:List[IPathNode])(implicit mode:OutputMode):Int = {
+    if(terminal.isEmpty)
+      return 0
+    val countContrib = terminal.map { n =>
+      n.qry.loc match {
+        case CallbackMethodInvoke(tgtClazz, fmwName, loc) => 1 + countCb(n.succ)
+        case _ => countCb(n.succ)
+      }
+    }
+    countContrib.min
+  }
+
   def computeDepthOfWitOrLive(terminals: Set[IPathNode], queryResult: QueryResult)(implicit mode: OutputMode):DepthResult = {
     val resultSummary = BounderUtil.interpretResult(terminals, queryResult)
     resultSummary match {
@@ -116,11 +129,11 @@ object BounderUtil {
           case WitnessedQry(state, loc, explain) => true
           case _ => false
         })
-        DepthResult(witNodes.map(_.depth).min, witNodes.map(_.ordDepth).min, Witnessed)
+        DepthResult(witNodes.map(_.depth).min, witNodes.map(_.ordDepth).min, countCb(witNodes.toList), Witnessed)
       case Timeout =>
         val liveNodes = terminals.filter(node => node.qry.isLive && node.subsumed.isEmpty)
-        DepthResult(liveNodes.map(_.depth).min, liveNodes.map(_.ordDepth).min, Timeout)
-      case a => DepthResult(-1,-1, a)
+        DepthResult(liveNodes.map(_.depth).min, liveNodes.map(_.ordDepth).min,countCb(liveNodes.toList), Timeout)
+      case a => DepthResult(-1,-1,-1, a)
     }
   }
 

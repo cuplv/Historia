@@ -1485,6 +1485,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       ("", Witnessed, "noDisable")
     ).foreach{
       { case (cancelLine, expectedResult,fileSuffix) =>
+        println(s"test ::: $fileSuffix")
         val src =
           s"""
              |package com.example.createdestroy;
