@@ -191,6 +191,18 @@ case class State(sf:StateFormula,
                  nextCmd: List[Loc] = Nil,
                  alternateCmd: List[Loc] = Nil
                 ) {
+  def equivPv(pv: PureVar):Set[PureVar] = {
+    def innerFP(pvs:Set[PureVar]) : Set[PureVar]= {
+      val nextpvs = sf.pureFormula.foldLeft(pvs){
+        case (acc,PureConstraint(lhs:PureVar, Equals, rhs:PureVar)) if acc.contains(lhs) => acc + rhs
+        case (acc,PureConstraint(lhs:PureVar, Equals, rhs:PureVar)) if acc.contains(rhs) => acc + lhs
+        case (acc,_) => acc
+      }
+      if(nextpvs == pvs) pvs else innerFP(nextpvs)
+    }
+    innerFP(Set(pv))
+  }
+
   def traceKey: List[String] =
     this.traceAbstraction.rightOfArrow.map(m => m.identitySignature)
   def heapKey: List[String] = sf.heapConstraints.map{
@@ -716,14 +728,16 @@ sealed abstract class PureVal(v:Any) extends PureExpr {
 case object PureVal{
   implicit val rw:RW[PureVal] = RW.merge(
     macroRW[NullVal.type], macroRW[TopVal.type],
-    macroRW[IntVal],macroRW[BoolVal],macroRW[StringVal])
+    macroRW[IntVal],macroRW[BoolVal],macroRW[StringVal], ClassVal.rw)
 }
 
 case object NullVal extends PureVal{
   override def toString:String = "NULL"
 
   override def z3Tag: Option[String] = Some("NULL")
+  implicit val rw:RW[NullVal.type] = macroRW
 }
+
 case class IntVal(v : Int) extends PureVal(v){
   override def z3Tag: Option[String] = Some(s"I$v")
 }
@@ -736,6 +750,9 @@ case class StringVal(v : String) extends PureVal(v) {
 }
 case class ClassVal(name:String) extends PureVal(name) {
   override def z3Tag: Option[String] = Some(s"C$name")
+}
+object ClassVal{
+  implicit val rw:RW[ClassVal] = macroRW
 }
 case object TopVal extends PureVal(null) {
   override def z3Tag: Option[String] = None
