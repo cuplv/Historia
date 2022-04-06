@@ -146,8 +146,8 @@ object SwapLoc {
     case a@AppLoc(_,_,true) if w.isLoopHead(a) => Some(CodeLocation(a, pathNode.ordDepth))
     case a@AppLoc(_,_,true) => {
       w.cmdAtLocation(a) match {
-        case InvokeCmd(method:VirtualInvoke, loc) => Some(CodeLocation(a, pathNode.ordDepth))
-//        case InvokeCmd(_, loc) => None
+//        case InvokeCmd(method:VirtualInvoke, loc) => Some(CodeLocation(a, pathNode.ordDepth))
+        case InvokeCmd(_, loc) => None
         case ReturnCmd(returnVar, loc) => None
         case AssignCmd(target, source, loc) => None
 //        case If(b, trueLoc, loc) => Some(CodeLocation(a, pathNode.ordDepth))
