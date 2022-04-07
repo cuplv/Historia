@@ -598,18 +598,23 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     case p:PureVar => value == p
     case _:PureVal => false
   }
-  private def existsNullConstraint(v:PureExpr,state:State):Boolean = {
-    state.pureFormula.exists{
-      case PureConstraint(lhs, Equals, NullVal) if lhs == v => true
-      case PureConstraint(NullVal, Equals, rhs) if rhs == v => true
-      case _ => false
+  private def existsNullConstraint(v:PureVar,state:State):Boolean = {
+    val equiv = state.equivPv(v)
+    equiv.exists { vv =>
+      state.pureFormula.exists {
+        case PureConstraint(lhs, Equals, NullVal) if lhs == vv => true
+        case PureConstraint(NullVal, Equals, rhs) if rhs == vv => true
+        case _ => false
+      }
     }
   }
   private def heapCellReferencesVAndIsNonNull(value:PureVar, state: State): Boolean = state.heapConstraints.exists{
     case (FieldPtEdge(base, _), ptVal) =>
       if(value == base || exprContainsV(value,ptVal)) {
-        ptVal != NullVal &&
-          (!existsNullConstraint(ptVal,state))
+        ptVal != NullVal && (ptVal match {
+          case ptVal: PureVar => (! existsNullConstraint (ptVal, state) )
+          case _ => true
+        })
       } else false
     case (StaticPtEdge(_,_),ptVal) => exprContainsV(value,ptVal)
     case (ArrayPtEdge(base,index),ptVal) =>
@@ -623,27 +628,27 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       }
     }
   }
-  private def encodeExistingNotEqualTo(pureVar:PureVar, state:State):State = {
-    val localConstraints = state.sf.callStack.flatMap{sf =>
-      sf.locals.map{case (_,value) =>
-        PureConstraint(value, NotEquals, pureVar)
-      }
-    }
-    val heapConstraints = state.sf.heapConstraints.flatMap{
-      case (FieldPtEdge(p, _), value) =>
-        if(value == NullVal || existsNullConstraint(value,state)) {
-          Set()
-        }else if(!value.isInstanceOf[PureVar]){
-          Set(PureConstraint(p, NotEquals, pureVar))
-        } else{
-          Set(PureConstraint(p, NotEquals, pureVar), PureConstraint(value, NotEquals, pureVar))
-        }
-      case (StaticPtEdge(_,_),value:PureVar) => Set(PureConstraint(value, NotEquals, pureVar))
-      case (ArrayPtEdge(_,_), value:PureVar) => Set(PureConstraint(value, NotEquals, pureVar))
-      case _ => Set()
-    }
-    state.copy(sf = state.sf.copy(pureFormula = state.sf.pureFormula ++ localConstraints ++ heapConstraints))
-  }
+//  private def encodeExistingNotEqualTo(pureVar:PureVar, state:State):State = {
+//    val localConstraints = state.sf.callStack.flatMap{sf =>
+//      sf.locals.map{case (_,value) =>
+//        PureConstraint(value, NotEquals, pureVar)
+//      }
+//    }
+//    val heapConstraints = state.sf.heapConstraints.flatMap{
+//      case (FieldPtEdge(p, _), value) =>
+//        if(value == NullVal || existsNullConstraint(value,state)) {
+//          Set()
+//        }else if(!value.isInstanceOf[PureVar]){
+//          Set(PureConstraint(p, NotEquals, pureVar))
+//        } else{
+//          Set(PureConstraint(p, NotEquals, pureVar), PureConstraint(value, NotEquals, pureVar))
+//        }
+//      case (StaticPtEdge(_,_),value:PureVar) => Set(PureConstraint(value, NotEquals, pureVar))
+//      case (ArrayPtEdge(_,_), value:PureVar) => Set(PureConstraint(value, NotEquals, pureVar))
+//      case _ => Set()
+//    }
+//    state.copy(sf = state.sf.copy(pureFormula = state.sf.pureFormula ++ localConstraints ++ heapConstraints))
+//  }
 
   def cmdTransfer(cmd:CmdWrapper, state:State):Set[State] = cmd match {
     case AssignCmd(lhs: LocalWrapper, TopExpr(_), _) => Set(state.clearLVal(lhs))
@@ -794,7 +799,10 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         case Some(v) =>
           val src = Set(state.getOrDefine2(source, l.method))
           src.map {
-            case (pexp, s2) => s2.addPureConstraint(PureConstraint(v, Equals, pexp)).clearLVal(target)
+            case (pexp, s2) =>
+              s2.addPureConstraint(PureConstraint(v, Equals, pexp))
+                .addPureConstraint(PureConstraint(v,NotEquals,NullVal))
+                .clearLVal(target)
           }
         case None => Set(state)
       }
@@ -906,7 +914,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     //            val t = AbstractTrace(Not(ref), Nil, Map(ref.v -> thisV))
     val pvNNState = state.addPureConstraint(PureConstraint(pv, NotEquals, NullVal))
     //TODO: possibly constrain heap cel targets of pv to null here
-    val heapMemRef = heapCellReferencesVAndIsNonNull(pv,pvNNState) || localReferencesV(pv,pvNNState)
+    val equivPvList = state.equivPv(pv)
+    val heapMemRef = equivPvList.exists(equivPv => heapCellReferencesVAndIsNonNull(equivPv,pvNNState)) || localReferencesV(pv,pvNNState)
     if(heapMemRef)
       None
     else {
