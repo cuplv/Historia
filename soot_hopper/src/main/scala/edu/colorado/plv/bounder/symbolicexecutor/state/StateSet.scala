@@ -42,6 +42,7 @@ object StateSet {
     }
     unsortedHeap.sorted
   }
+
   def add(pathNode:IPathNode, stateSet: StateSet, canSubsume: (State,State)=> Boolean):StateSet = {
     def iEdges(edges: Seq[String], state:IPathNode,current: StateSet):StateSet = edges match{
       case edge::t if current.edges.contains(edge)=>
@@ -52,9 +53,9 @@ object StateSet {
         current.copy(edges = current.edges + (edge -> nextS))
       case Nil =>
         //TODO: does dropping rev subsume help?
-//        val currentDropSubs = current.states.filter(sOld => !canSubsume(state.qry.getState.get,sOld.qry.getState.get) )
-//        current.copy(states = currentDropSubs + state)//
-        current.copy(states = current.states + state)
+        val currentDropSubs = current.states.filter(sOld => !canSubsume(state.qry.getState.get,sOld.qry.getState.get) )
+        current.copy(states = currentDropSubs + state)//
+//        current.copy(states = current.states + state) //TODO: ====== check if this improves things
     }
     val local = localEdgeFromState(pathNode.qry.getState.get)
     val heap = heapEdgesFromState(pathNode.qry.getState.get)
