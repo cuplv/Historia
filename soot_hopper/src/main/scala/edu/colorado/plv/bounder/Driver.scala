@@ -300,16 +300,29 @@ object Driver {
       stepLimit = n, w, new SpecSpace(Set()), component = None)
     val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
 
-    val queries = (0 until n).map{_ =>
-      val appLoc = symbolicExecutor.appCodeResolver.sampleDeref(filter)//TODO: ======= Add package filter//
+//    val queries = (0 until n).map{_ =>
+//      val appLoc = symbolicExecutor.appCodeResolver.sampleDeref(filter)//
+//      val name = appLoc.method.simpleName
+//      val clazz = appLoc.method.classType
+//      val line = appLoc.line.lineNumber
+//      ReceiverNonNull(clazz, name, line)
+//    }.toList
+    val queries = scala.collection.mutable.Set[ReceiverNonNull]()
+    val sizesPrinted = scala.collection.mutable.Set[Int]()
+    while(queries.size < n){
+      if(queries.size %10 == 0 && !sizesPrinted.contains(queries.size)) {
+        println(s"sampels: ${queries.size}")
+        sizesPrinted.add(queries.size)
+      }
+      val appLoc = symbolicExecutor.appCodeResolver.sampleDeref(filter)
       val name = appLoc.method.simpleName
       val clazz = appLoc.method.classType
       val line = appLoc.line.lineNumber
-      ReceiverNonNull(clazz, name, line)
-    }.toList
+      queries.add(ReceiverNonNull(clazz, name, line))
+    }
     val outName = s"sample"
     val f = File(outFolder) / s"$outName.json"
-    val writeCFG = cfg.copy(initialQuery = queries,
+    val writeCFG = cfg.copy(initialQuery = queries.toList,
       outFolder = cfg.outFolder.map(v => v + "/" + outName))
     if(f.exists()) f.delete()
     f.createFile()

@@ -749,7 +749,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
             val depthInfo = BounderUtil.computeDepthOfWitOrLive(nullUnreachRes, QueryFinished)
             logger.warn(s"Row 4 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
             assert(interpretedResult == expected)
-            //  dbFile.copyToDirectory(File("/Users/shawnmeier/Desktop/Row3"))
+            dbFile.copyTo(File(s"/Users/shawnmeier/Desktop/Row4_${fileSuffix}.db"),true)
             logger.warn(s"Row 4 expected: ${expected} actual: ${interpretedResult}")
           }
           logger.warn(s"Row 4 ${expected} time(ms): ${(System.nanoTime() - startTime)/1000.0}")

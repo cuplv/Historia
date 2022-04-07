@@ -65,11 +65,17 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
       case SpecialInvoke(_, _, targetMethod, _) => !targetMethod.contains("<init>")
       case StaticInvoke(_, targetMethod, _) =>  !targetMethod.contains("<init>")
     }
-    val randomMethodList = Random.shuffle(appMethods.filter{
+    val filteredAppMethods = appMethods.filter{
       case methodLoc: MethodLoc => // apply package filter if it exists
         packageFilter.forall(methodLoc.classType.startsWith)
-    }.toList)
-    val m = randomMethodList.head
+    }.toArray
+    val methodInd = Random.nextInt(filteredAppMethods.size)
+    val m = filteredAppMethods(methodInd)
+//    val randomMethodList = Random.shuffle(appMethods.filter{
+//      case methodLoc: MethodLoc => // apply package filter if it exists
+//        packageFilter.forall(methodLoc.classType.startsWith)
+//    }.toList)
+//    val m = randomMethodList.head
 
     // generate set of dereferences for method
 
