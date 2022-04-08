@@ -26,3 +26,4 @@
 2022-04-05 23:05:30 WARN  AsyncExecutor:25 - Having maxConnection > maxThreads can result in deadlocks if transactions or database locks are used.
 2022-04-06 21:05:35 WARN  AsyncExecutor:25 - Having maxConnection > maxThreads can result in deadlocks if transactions or database locks are used.
 2022-04-07 00:40:05 WARN  AsyncExecutor:25 - Having maxConnection > maxThreads can result in deadlocks if transactions or database locks are used.
+2022-04-07 20:25:23 WARN  AsyncExecutor:25 - Having maxConnection > maxThreads can result in deadlocks if transactions or database locks are used.
