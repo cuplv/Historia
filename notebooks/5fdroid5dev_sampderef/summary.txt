@@ -1,0 +1,9 @@
+summary 	ch 	count 	avg
+"\"Iclass java.lang.StackOverflowError\"" 	"\"SingleMethod\"" 	1 	181.0000000000000000
+"\"Itimeout\"" 	"\"MultiCallback\"" 	25 	181.0800000000000000
+"\"Itimeout\"" 	"\"SingleCallbackMultiMethod\"" 	47 	197.2553191489361702
+"\"Itimeout\"" 	"\"SingleMethod\"" 	6 	181.0000000000000000
+"\"Proven\"" 	"\"SingleCallbackMultiMethod\"" 	32 	6.1875000000000000
+"\"Proven\"" 	"\"SingleMethod\"" 	222 	0.15765765765765765766
+"\"Unreachable\"" 	"\"SingleMethod\"" 	99 	0.18181818181818181818
+"\"Witnessed\"" 	"\"MultiCallback\"" 	18 	1.2222222222222222
