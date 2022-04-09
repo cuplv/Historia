@@ -265,7 +265,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
     makeApkWithSources(Map(), MkApk.RXBase, test)
   }
 
-  test("Row1:Minimal motivating example") {
+  test("Row1:Antennapod getActivity returns null") {
     // Experiments row 1
     // Antennapod https://github.com/AntennaPod/AntennaPod/pull/2856
     List(

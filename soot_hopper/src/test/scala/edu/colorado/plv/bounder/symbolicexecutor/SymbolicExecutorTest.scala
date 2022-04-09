@@ -12,9 +12,9 @@ import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.AnyFunSuite
 import soot.{Scene, SootMethod}
+import scala.jdk.CollectionConverters._
 
 class SymbolicExecutorTest extends AnyFunSuite {
-  //TODO: ====== Set component filters for each test to improve perf time
 
   private val prettyPrinting = new PrettyPrinting()
   val cgMode = SparkCallGraph
@@ -1464,7 +1464,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
         val fname = s"Motiv_$fileSuffix"
-        // prettyPrinting.dumpDebugInfo(result, fname)
+         prettyPrinting.dumpDebugInfo(result, fname)
         // prettyPrinting.printWitness(result)
         //        prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
         assert(result.nonEmpty)
@@ -1557,6 +1557,84 @@ class SymbolicExecutorTest extends AnyFunSuite {
   }
 
 
+  test("Safe with no spec due to must alloc."){
+    // Note: this test also checks for whether interface inheritance is working correctly.
+    val src =
+      s"""
+         |package com.example.createdestroy;
+         |import android.app.Activity;
+         |import android.content.Context;
+         |import android.net.Uri;
+         |import android.os.Bundle;
+         |
+         |import androidx.fragment.app.Fragment;
+         |
+         |import android.util.Log;
+         |import android.view.LayoutInflater;
+         |import android.view.View;
+         |import android.view.ViewGroup;
+         |
+         |import rx.Single;
+         |import rx.Subscription;
+         |import rx.android.schedulers.AndroidSchedulers;
+         |import rx.schedulers.Schedulers;
+         |import rx.functions.Action1;
+         |
+         |
+         |public class MyFragment extends Fragment implements Action1<Object>{
+         |    Subscription sub;
+         |    String s = null;
+         |    String mediaName = null;
+         |    @Override
+         |    public void onActivityCreated(Bundle savedInstanceState){
+         |        mediaName = "my awesome podcast";
+         |        sub = Single.create(subscriber -> {
+         |            mediaName.toString(); //query1
+         |            subscriber.onSuccess(3);
+         |        }).subscribe(this);
+         |        s = "";
+         |    }
+         |
+         |    @Override
+         |    public void call(Object o){
+         |         s.toString();
+         |    }
+         |
+         |}
+         |""".stripMargin
+
+    val test: String => Unit = apk => {
+      assert(apk != null)
+      val specs = Set[LSSpec]()
+      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+      val config = SymbolicExecutorConfig(
+        stepLimit = 80, w, new SpecSpace(specs),
+        component = Some(List("com.example.createdestroy.*MyFragment.*")))
+      implicit val om = config.outputMode
+
+      // line in call is reachable
+      val symbolicExecutor = config.getSymbolicExecutor
+      val line = BounderUtil.lineForRegex(".*query1.*".r, src)
+
+      //line in call cannot throw npe since s is initialized
+      // pre-line: -1 virtualinvoke $r1.<com.example.createdestroy.MyFragment: void lambda$onActivityCreated$0$MyFragment(rx.SingleSubscriber)>($r3)
+      val query2 = ReceiverNonNull("com.example.createdestroy.MyFragment",
+        "void lambda$onActivityCreated$0$MyFragment(rx.SingleSubscriber)",line,Some("toString"))
+
+      val allClasses = Scene.v().getClasses.asScala.filter(c =>
+        (c.getJavaPackageName.contains("rx") && c.getShortName.contains("Single")) || c.getJavaPackageName.contains("com.example") || c.getShortName.contains("CgEntryPoint___________a____b"))
+
+      val ptr = w.getAllPtRegions()
+      println(allClasses.size)
+      val result2 = symbolicExecutor.run(query2).flatMap(a => a.terminals)
+
+      prettyPrinting.dumpDebugInfo(result2, "proveNospec")
+      val interpretedResult2 = BounderUtil.interpretResult(result2,QueryFinished)
+      assert(interpretedResult2 == Proven)
+    }
+
+    makeApkWithSources(Map("MyFragment.java" -> src), MkApk.RXBase, test)
+  }
   test("Reachable location call and subscribe"){
     val src =
       s"""
@@ -1738,7 +1816,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
          |    String s = null;
          |    @Override
          |    public void onActivityCreated(Bundle savedInstanceState){
-         |        if(s != null){
+         |        if(s != null){ //note: unreachable because s is always null
          |            sub = Single.create(subscriber -> {
          |                subscriber.onSuccess(3);
          |            }).subscribe(this);

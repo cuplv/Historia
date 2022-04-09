@@ -1434,8 +1434,10 @@ class JimpleFlowdroidWrapper(apkPath : String,
     val methodDeclClass = m.method.getDeclaringClass
     val methodSignature = m.method.getSubSignature
     val superclasses: util.List[SootClass] = Scene.v().getActiveHierarchy.getSuperclassesOf(methodDeclClass)
-    val interfaces: Chain[SootClass] = methodDeclClass.getInterfaces
-    val methods = (superclasses.iterator.asScala ++ interfaces.iterator.asScala)
+    val interfaces: Iterable[SootClass] = methodDeclClass.getInterfaces.asScala.flatMap{iface =>
+      Scene.v().getActiveHierarchy.getSuperinterfacesOfIncluding(iface).asScala
+    }
+    val methods = (superclasses.iterator.asScala ++ interfaces)
       .filter(sootClass => sootClass.declaresMethod(methodSignature))
       .map( sootClass=> JimpleMethodLoc(sootClass.getMethod(methodSignature)))
     methods.toList
