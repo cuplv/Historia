@@ -25,6 +25,7 @@ import soot.toolkits.graph.pdg.EnhancedUnitGraph
 import soot.toolkits.graph.{PseudoTopologicalOrderer, SlowPseudoTopologicalOrderer, UnitGraph}
 import soot.util.Chain
 import soot.{AnySubType, ArrayType, Body, BooleanType, ByteType, CharType, DoubleType, FloatType, G, Hierarchy, IntType, Local, LongType, Modifier, PackManager, PointsToSet, RefType, Scene, ShortType, SootClass, SootField, SootMethod, SootMethodRef, Type, Value}
+import upickle.default.{macroRW, ReadWriter => RW}
 
 import scala.annotation.tailrec
 import scala.collection.immutable.Queue
@@ -484,6 +485,66 @@ class JimpleFlowdroidWrapper(apkPath : String,
                              callGraphSource: CallGraphSource,
                              toOverride:Set[LSSpec]
                             ) extends IRWrapper[SootMethod, soot.Unit] {
+  case class Messages(cbSize:Int, cbMsg:Int, matchedCb:Int, ciCallGraph:Int, matchedCiCallGraph:Int,
+                      syntCi:Int, matchedSyntCi:Int)
+  object Messages{
+    implicit val rw:RW[Messages] = macroRW
+  }
+  def getMessages(cfResolver:ControlFlowResolver[SootMethod, soot.Unit], spec:SpecSpace,
+                  ch : ClassHierarchyConstraints):Messages ={
+
+    val mFilter = (strm:String) => {
+      !strm.contains("MainActivity") &&
+        !strm.contains("com.example.createdestroy.R$") &&
+        strm !=("com.example.createdestroy.R")
+    }
+    val cb = resolver.getCallbacks.filter{m =>
+      val strm = m.classType
+      mFilter(strm)
+    }
+    val allcalls = cb.flatMap(cfResolver.computeAllCalls(_,true))
+    val callins = allcalls.filter(c => resolver.isFrameworkClass(c.classType))
+    val callinsNoToSTR = callins.filter(c => !c.simpleName.contains("toString()"))
+    val allI = spec.allI
+    val matchedCallins = callins.filter(c => allI.exists(i => i.contains(CIExit, (c.classType, c.simpleName))(ch)))
+    val matchedCallbacks = cb.flatMap(c =>
+      allI.flatMap(i =>
+        List(CBEnter,CBExit).flatMap{d =>
+          if(i.contains(d,(c.classType,c.simpleName))(ch)) Some((d,c)) else None
+        }
+      ))
+    val cbsimp = cb.map(c => c.simpleName)
+    val callinssimp = callins.map(c => c.simpleName)
+    val matchedCallinssimp = matchedCallins.map(c => c.simpleName)
+    val matchedCallbackssimp = matchedCallbacks.map(c => (c._1, c._2.simpleName))
+
+    val syntCallinSites = getAppMethods(resolver).flatMap {
+      case method:SootMethod => getUnitGraph(method.getActiveBody).asScala.flatMap{u =>
+        if(mFilter(method.getDeclaringClass.getName) &&Scene.v().getCallGraph.edgesOutOf(u).hasNext &&
+          u.toString().contains("(") && !u.toString().contains("newarray (")) {
+          val loc = AppLoc(JimpleMethodLoc(method), JimpleLineLoc(u, method), false)
+          val callinSet = resolver.resolveCallLocation(makeInvokeTargets(loc)).flatMap {
+            case CallinMethodReturn(fmwClazz, fmwName) => Some((fmwClazz,fmwName))
+            case CallinMethodInvoke(fmwClazz, fmwName) => Some((fmwClazz,fmwName))
+            case GroupedCallinMethodInvoke(targetClasses, fmwName) => ???
+            case GroupedCallinMethodReturn(targetClasses, fmwName) => ???
+            case _ => None
+          }
+          if (callinSet.nonEmpty) {
+            val matchedBySpec = allI.filter(i => callinSet.exists(m => i.contains(CIExit, m)(ch)))
+            Some((method, u, matchedBySpec))
+          } else
+            None
+        }else None
+      }
+      case _ => ???
+    }
+    val syntCallinSitesInSpec = syntCallinSites.filter(_._3.nonEmpty)
+    Messages(cb.size, cb.size*2, matchedCb = matchedCallbacks.size,
+      ciCallGraph = callins.size, matchedCiCallGraph = matchedCallins.size,
+      syntCi = syntCallinSites.size, matchedSyntCi = syntCallinSitesInSpec.size)
+  }
+
 
   BounderSetupApplication.loadApk(apkPath, callGraphSource)
 
@@ -1556,7 +1617,21 @@ class JimpleFlowdroidWrapper(apkPath : String,
     }
     val sootMethod = loc.asInstanceOf[JimpleMethodLoc].method
     val pt = Scene.v().getPointsToAnalysis
-    val reaching: PointsToSet = sootMethod.getActiveBody.getLocals.asScala.find(l => l.getName == local.name) match{
+    val ptSet: Option[Local] = if(local.name.contains("@parameter")) {
+      val index = local.name.split("@parameter")(1).toInt
+      val paramRef = sootMethod.getActiveBody.getParameterRefs.get(index)
+      val paramAssign = sootMethod.getActiveBody.getUnits.asScala.flatMap{
+        case j: JIdentityStmt if j.rightBox.getValue == paramRef =>
+          Some(j.leftBox.getValue.asInstanceOf[Local])
+        case _ => None
+      }
+      assert(paramAssign.size == 1)
+      Some(paramAssign.head)
+    } else {
+      sootMethod.getActiveBody.getLocals.asScala.find(l => l.getName == local.name)
+    }
+
+    val reaching: PointsToSet = ptSet match{
       case Some(sootLocal) =>
         pt.reachingObjects(sootLocal)
       case None if local.name == "@this" =>
@@ -1566,7 +1641,8 @@ class JimpleFlowdroidWrapper(apkPath : String,
           case e:RuntimeException =>
             throw e
         }
-      case None => throw new IllegalStateException(s"No points to set for method: ${loc} and local: ${local}")
+      case None =>
+        throw new IllegalStateException(s"No points to set for method: ${loc} and local: ${local}")
     }
     reaching match{
       case d:DoublePointsToSet =>

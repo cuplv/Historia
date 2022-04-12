@@ -219,7 +219,7 @@ object ViewSpec {
 //  val noDupeFindView:LSSpec = LSSpec("v"::Nil,Nil, Not(fv_exit), fv_exit)  //TODO: UNSOUND test version of noDupe
 }
 object SAsyncTask{
-  private val AsyncTaskC = Set("android.os.AsyncTask")
+  val AsyncTaskC = Set("android.os.AsyncTask")
   private val executeSig = SubClassMatcher(AsyncTaskC, ".*AsyncTask execute\\(.*\\)", "AsyncTask_execute")
   private val executeI = I(CIExit, executeSig, "_"::"t"::Nil)
   private val executeIEntry =

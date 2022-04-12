@@ -99,7 +99,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     }
   }
 
-  private def callsToRetLoc(loc: MethodLoc): Set[MethodLoc] = {
+  private def callsToRetLoc(loc: MethodLoc, includeCallin:Boolean): Set[MethodLoc] = {
     val directCalls = directCallsGraph(loc)
     val internalCalls = directCalls.flatMap {
       case InternalMethodReturn(_, _, oloc) =>
@@ -107,20 +107,23 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
         if (!resolver.isFrameworkClass(oloc.classType))
           Some(oloc)
         else
-          None
+          if(includeCallin) Some(oloc) else None
+      case CallinMethodReturn(fmwClazz, fmwName) if includeCallin =>
+        val res = wrapper.findMethodLoc(fmwClazz,fmwName)
+        res
       case _ =>
         None
     }
     internalCalls
   }
 
-  def allCalls(loc: MethodLoc): Set[MethodLoc] = {
+  def computeAllCalls(loc: MethodLoc, includeCallin:Boolean = false): Set[MethodLoc] = {
     val empty = Set[MethodLoc]()
     val out = BounderUtil.graphFixpoint[MethodLoc, Set[MethodLoc]](Set(loc),
       empty,
       empty,
-      next = callsToRetLoc,
-      comp = (_, v) => callsToRetLoc(v),
+      next = c => callsToRetLoc(c,includeCallin),
+      comp = (_, v) => callsToRetLoc(v,includeCallin),
       join = (a, b) => a.union(b)
     )
     out.flatMap {
@@ -128,7 +131,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     }.toSet
   }
 
-  val memoizedallCalls: MethodLoc => Set[MethodLoc] = Memo.mutableHashMapMemo(allCalls)
+  def allCalls: MethodLoc => Set[MethodLoc] = Memo.mutableHashMapMemo(c => computeAllCalls(c))
 
   //  val memoizedallCalls: MethodLoc => Set[MethodLoc]= allCalls
   def upperBoundOfInvoke(i: Invoke): Option[String] = i match {
@@ -384,9 +387,9 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       return NotRelevantMethod // body can only be relevant to app heap or trace if method is in the app
     }
 
-    val allCalls = memoizedallCalls(m) + m
+    val currentCalls = allCalls(m) + m
     //TODO: add par back in?
-    val traceRelevantCallees = allCalls.filter{ m =>
+    val traceRelevantCallees = currentCalls.filter{ m =>
 //      mSet.exists{ci =>
 //        val cin: Set[String] = callinNames(m)
 //        cin.contains(ci)
@@ -404,7 +407,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       }
     }
     //TODO: add par back in?
-    val heapRelevantCallees = allCalls.filter { callee =>
+    val heapRelevantCallees = currentCalls.filter { callee =>
       val hn: Set[String] = heapNamesModified(callee)
       fnSet.exists { fn =>
         hn.contains(fn)

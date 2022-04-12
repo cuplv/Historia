@@ -109,15 +109,39 @@ object BounderUtil {
   }
 
   def countCb(terminal:List[IPathNode])(implicit mode:OutputMode):Int = {
-    if(terminal.isEmpty)
-      return 0
-    val countContrib = terminal.map { n =>
-      n.qry.loc match {
-        case CallbackMethodInvoke(tgtClazz, fmwName, loc) => 1 + countCb(n.succ)
-        case _ => countCb(n.succ)
+    val terminalsInd = terminal.map{t => (Some(t), 0)}
+    @tailrec
+    def iCbCount(terminalsInd: List[(Option[IPathNode], Int)]): List[(Option[IPathNode], Int)] = {
+      val upd = terminalsInd.map{
+        case (Some(n), ind) => n.qry.loc match{
+          case CallbackMethodInvoke(_,_,_) => (Some(n), ind+1)
+          case _ => (Some(n),ind)
+        }
+        case (None, ind) => (None, ind)
       }
+      val succ = upd.flatMap{
+        case (Some(n),ind) if n.succ.nonEmpty => n.succ.map(s=> (Some(s),ind))
+        case (Some(n),ind) if n.succ.isEmpty => List((None, ind))
+        case (None,ind) => List((None,ind))
+      }
+      if(succ == terminalsInd)
+        succ
+      else
+        iCbCount(succ)
     }
-    countContrib.min
+    iCbCount(terminalsInd).map{
+      case (None,i) => i
+      case v => println(v); throw new IllegalStateException("bad logic in countcb")
+    }.min
+//    if(terminal.isEmpty)
+//      return 0
+//    val countContrib = terminal.map { n =>
+//      n.qry.loc match {
+//        case CallbackMethodInvoke(tgtClazz, fmwName, loc) => 1 + countCb(n.succ)
+//        case _ => countCb(n.succ)
+//      }
+//    }
+//    countContrib.min
   }
 
   def computeDepthOfWitOrLive(terminals: Set[IPathNode], queryResult: QueryResult)(implicit mode: OutputMode):DepthResult = {

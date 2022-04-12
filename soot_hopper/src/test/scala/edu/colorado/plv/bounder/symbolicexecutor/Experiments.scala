@@ -22,6 +22,7 @@ import soot.{Scene, SootClass, SootMethod}
 import scala.jdk.CollectionConverters.{CollectionHasAsScala, ListHasAsScala}
 
 class Experiments extends AnyFunSuite with BeforeAndAfter {
+  private val runVerif = false //TODO:============= turn this back on, using it to get cb/ci counts
   private val generateTex = false //TODO: flip to generate tex files
   private val logger = LoggerFactory.getLogger("Experiments")
   logger.warn("Starting experiments run")
@@ -343,32 +344,41 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           "void call(java.lang.Object)", line,
           ".*getActivity.*")
 
-        val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
-        val fname = s"Motiv_$fileSuffix"
-        // prettyPrinting.dumpDebugInfo(result, fname)
-        //        prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
-        assert(result.nonEmpty)
-        BounderUtil.throwIfStackTrace(result)
-        val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
+        if(runVerif) {
+          val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
+          val fname = s"Motiv_$fileSuffix"
+          // prettyPrinting.dumpDebugInfo(result, fname)
+          //        prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
+          assert(result.nonEmpty)
+          BounderUtil.throwIfStackTrace(result)
+          val interpretedResult = BounderUtil.interpretResult(result, QueryFinished)
 
-        val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
-        logger.warn(s"Row 1 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
-        assert(interpretedResult == expectedResult)
-        //        val onViewCreatedInTree: Set[List[IPathNode]] = result.flatMap{node =>
-        //            findInWitnessTree(node, (p: IPathNode) =>
-        //              p.qry.loc.msgSig.exists(m => m.contains("onViewCreated(")))
-        //        }
-        //        if(onViewCreatedInTree.nonEmpty) {
-        //          println("--- witness ---")
-        //          onViewCreatedInTree.head.foreach{v =>
-        //            println(v.qry.loc)
-        //            println(v.qry.getState)
-        //            println()
-        //          }
-        //          println("--- end witness ---")
-        //        }
-        //        assert(onViewCreatedInTree.isEmpty)
-        logger.warn(s"Row 1 ${fileSuffix} time(ms): ${(System.nanoTime() - startTime) / 1000.0}")
+          val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
+          logger.warn(s"Row 1 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
+          assert(interpretedResult == expectedResult)
+          //        val onViewCreatedInTree: Set[List[IPathNode]] = result.flatMap{node =>
+          //            findInWitnessTree(node, (p: IPathNode) =>
+          //              p.qry.loc.msgSig.exists(m => m.contains("onViewCreated(")))
+          //        }
+          //        if(onViewCreatedInTree.nonEmpty) {
+          //          println("--- witness ---")
+          //          onViewCreatedInTree.head.foreach{v =>
+          //            println(v.qry.loc)
+          //            println(v.qry.getState)
+          //            println()
+          //          }
+          //          println("--- end witness ---")
+          //        }
+          //        assert(onViewCreatedInTree.isEmpty)
+          logger.warn(s"Row 1 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
+        }else{
+          val em = s"Row 1 skipped due to runVerif param!!!!!!!"
+          println(em)
+          logger.warn(em)
+        }
+        val messages = w.getMessages(symbolicExecutor.controlFlowResolver, new SpecSpace(row1Specs),
+          symbolicExecutor.getClassHierarchy)
+        logger.warn(s"Row 1 ${fileSuffix} : ${write(messages)}")
       }
 
       makeApkWithSources(Map("PlayerFragment.java" -> src), MkApk.RXBase, test)
@@ -443,8 +453,9 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
         assert(apk != null)
 
         val w = new JimpleFlowdroidWrapper(apk, cgMode,row2Specs)
+        val specSpace = new SpecSpace(row2Specs, Set(SAsyncTask.disallowDoubleExecute))
         val config = SymbolicExecutorConfig(
-          stepLimit = 200, w,new SpecSpace(row2Specs, Set(SAsyncTask.disallowDoubleExecute)),
+          stepLimit = 200, w,specSpace,
           component = Some(List("com.example.createdestroy.*RemoverActivity.*")))
         implicit val om = config.outputMode
         val symbolicExecutor = config.getSymbolicExecutor
@@ -454,17 +465,26 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           "void onClick(android.view.View)",
           SAsyncTask.disallowDoubleExecute)
 
-        val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
-        val fname = s"Antennapod_AsyncTask_$fileSuffix"
-        // prettyPrinting.dumpDebugInfo(result, fname)
-        prettyPrinting.printWitness(result)
-        assert(result.nonEmpty)
-        BounderUtil.throwIfStackTrace(result)
-        val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
-        val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
-        logger.warn(s"Row 2 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
-        assert(interpretedResult == expectedResult)
-        logger.warn(s"Row 2 ${fileSuffix} time(ms): ${(System.nanoTime() - startTime)/1000.0}")
+        if(runVerif) {
+          val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
+          val fname = s"Antennapod_AsyncTask_$fileSuffix"
+          // prettyPrinting.dumpDebugInfo(result, fname)
+          prettyPrinting.printWitness(result)
+          assert(result.nonEmpty)
+          BounderUtil.throwIfStackTrace(result)
+          val interpretedResult = BounderUtil.interpretResult(result, QueryFinished)
+          val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
+          logger.warn(s"Row 2 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
+          assert(interpretedResult == expectedResult)
+          logger.warn(s"Row 2 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
+        }else{
+          val em = s"Row 2 skipped due to runVerif param!!!!!!!"
+          println(em)
+          logger.warn(em)
+        }
+        val messages = w.getMessages(symbolicExecutor.controlFlowResolver, specSpace,
+          symbolicExecutor.getClassHierarchy)
+        logger.warn(s"Row 2 ${fileSuffix} : ${write(messages)}")
       }
 
       makeApkWithSources(Map("RemoverActivity.java" -> src), MkApk.RXBase, test)
@@ -634,8 +654,9 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
 //        implicit val dbMode = DBOutputMode(dbFile.toString, truncate = false)
 //        dbMode.startMeta()
         implicit val dbMode = MemoryOutputMode
+        val specSpace = new SpecSpace(row5Specs, row5Disallow)
         val config = SymbolicExecutorConfig(
-          stepLimit = 2000, w, new SpecSpace(row5Specs, row5Disallow),
+          stepLimit = 2000, w, specSpace,
           component = Some(List("com.example.createdestroy.*StatusActivity.*")), outputMode = dbMode)
         implicit val om = config.outputMode
         val symbolicExecutor = config.getSymbolicExecutor
@@ -648,18 +669,28 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           "void onPostExecute(java.lang.String)",
           SDialog.disallowDismiss)
 
-        val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
-        val fname = s"Yamba_$fileSuffix"
-        // prettyPrinting.dumpDebugInfo(result, fname)
-        prettyPrinting.printWitness(result)
-        //        prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
-        assert(result.nonEmpty)
-        BounderUtil.throwIfStackTrace(result)
-        val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
-        val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
-        logger.warn(s"Row 5 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
-        assert(interpretedResult == expectedResult)
-        logger.warn(s"Row 5 ${fileSuffix} time(ms): ${(System.nanoTime() - startTime)/1000.0}")
+
+        if(runVerif) {
+          val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
+          val fname = s"Yamba_$fileSuffix"
+          // prettyPrinting.dumpDebugInfo(result, fname)
+          prettyPrinting.printWitness(result)
+          //        prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
+          assert(result.nonEmpty)
+          BounderUtil.throwIfStackTrace(result)
+          val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
+          val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
+          logger.warn(s"Row 5 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
+          assert(interpretedResult == expectedResult)
+          logger.warn(s"Row 5 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime)/1000.0}")
+        }else{
+          val em = s"Row 5 skipped due to runVerif param!!!!!!!"
+          println(em)
+          logger.warn(em)
+        }
+        val messages = w.getMessages(symbolicExecutor.controlFlowResolver, specSpace,
+          symbolicExecutor.getClassHierarchy)
+        logger.warn(s"Row 5 ${fileSuffix} : ${write(messages)}")
       }
 
       makeApkWithSources(Map("StatusActivity.java" -> src), MkApk.RXBase, test)
@@ -714,8 +745,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
              |    }
              |}""".stripMargin
         val test: String => Unit = apk => {
-          val startTime = System.nanoTime()
           File.usingTemporaryDirectory() { tmpDir =>
+            val startTime = System.nanoTime()
             assert(apk != null)
             val dbFile = tmpDir / "paths.db"
             println(dbFile)
@@ -725,34 +756,46 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
             //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
             val w = new JimpleFlowdroidWrapper(apk, cgMode, row4Specs)
 
+            val specSpace = new SpecSpace(row4Specs)
             val config = SymbolicExecutorConfig(
-              stepLimit = 2000, w, new SpecSpace(row4Specs),
+              stepLimit = 2000, w, specSpace,
               component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode)
             val symbolicExecutor = config.getSymbolicExecutor
             val line = BounderUtil.lineForRegex(".*query1.*".r, src)
 
             val nullUnreach = ReceiverNonNull("com.example.createdestroy.MyActivity$1",
               "void onClick(android.view.View)", line, Some(".*toString.*"))
-            val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
-            // prettyPrinting.dumpDebugInfo(nullUnreachRes, s"ConnectBotRow4_${expected}")
-            assert(nullUnreachRes.nonEmpty)
-            BounderUtil.throwIfStackTrace(nullUnreachRes)
-            prettyPrinting.printWitness(nullUnreachRes)
-            val interpretedResult: BounderUtil.ResultSummary = BounderUtil.interpretResult(nullUnreachRes, QueryFinished)
-//            interpretedResult match {
-//              case Timeout =>
-//                val live = nullUnreachRes.filter( a => a.qry.isLive && a.subsumed.isEmpty)
-//                val provedTo = live.map(_.ordDepth).min
-//                logger.warn(s"Row 4 ${expected} proved to ${provedTo}")
+
+            if(runVerif){
+              val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
+              // prettyPrinting.dumpDebugInfo(nullUnreachRes, s"ConnectBotRow4_${expected}")
+              assert(nullUnreachRes.nonEmpty)
+              BounderUtil.throwIfStackTrace(nullUnreachRes)
+              prettyPrinting.printWitness(nullUnreachRes)
+              val interpretedResult: BounderUtil.ResultSummary = BounderUtil.interpretResult(nullUnreachRes, QueryFinished)
+//              interpretedResult match {
+//                case Timeout =>
+//                  val live = nullUnreachRes.filter( a => a.qry.isLive && a.subsumed.isEmpty)
+//                  val provedTo = live.map(_.ordDepth).min
+//                  logger.warn(s"Row 4 ${expected} proved to ${provedTo}")
 //
-//            }
-            val depthInfo = BounderUtil.computeDepthOfWitOrLive(nullUnreachRes, QueryFinished)
-            logger.warn(s"Row 4 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
-            assert(interpretedResult == expected)
-            dbFile.copyTo(File(s"/Users/shawnmeier/Desktop/Row4_${fileSuffix}.db"),true)
-            logger.warn(s"Row 4 expected: ${expected} actual: ${interpretedResult}")
+//              }
+              val depthInfo = BounderUtil.computeDepthOfWitOrLive(nullUnreachRes, QueryFinished)
+              logger.warn(s"Row 4 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
+              assert(interpretedResult == expected)
+              dbFile.copyTo(File(s"/Users/shawnmeier/Desktop/Row4_${fileSuffix}.db"),true)
+              logger.warn(s"Row 4 expected: ${expected} actual: ${interpretedResult}")
+              logger.warn(s"Row 4 ${expected} time(µs): ${(System.nanoTime() - startTime)/1000.0}")
+            }else{
+              val em = s"Row 4 skipped due to runVerif param!!!!!!!"
+              println(em)
+              logger.warn(em)
+            }
+            val messages = w.getMessages(symbolicExecutor.controlFlowResolver, specSpace,
+              symbolicExecutor.getClassHierarchy)
+            logger.warn(s"Row 4 ${fileSuffix} : ${write(messages)}")
           }
-          logger.warn(s"Row 4 ${expected} time(ms): ${(System.nanoTime() - startTime)/1000.0}")
+
         }
         makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase,
           test)

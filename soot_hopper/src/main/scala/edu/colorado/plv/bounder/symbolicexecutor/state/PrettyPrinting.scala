@@ -71,7 +71,7 @@ class PrettyPrinting() {
       ???
   }
 
-  def nodeToWitness(nodes:List[IPathNode])(implicit mode : OutputMode):List[List[String]] = {
+  def nodeToWitness(nodes:List[IPathNode], truncate:Boolean)(implicit mode : OutputMode):List[List[String]] = {
 
     val targetTraces: List[(String, IPathNode)] = nodes.flatMap{
       case pn@PathNode(_: LiveQry, false) => Some((s"live " +
@@ -83,7 +83,7 @@ class PrettyPrinting() {
     }
 
     targetTraces.map{
-      case (k,v) => k::witnessToTrace(List(v), truncate = true)
+      case (k,v) => k::witnessToTrace(List(v), truncate = truncate)
     }
   }
 

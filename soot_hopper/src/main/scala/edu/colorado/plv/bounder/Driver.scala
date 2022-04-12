@@ -14,7 +14,7 @@ import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state._
-import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, SparkCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, QueryFinished, SparkCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
 import scopt.OParser
 
 import scala.concurrent.Await
@@ -190,7 +190,7 @@ object Driver {
   // [qry,id,loc, res, time]
   case class LocResult(q:InitialQuery, sqliteId:Int, loc:Loc, resultSummary: ResultSummary,
                        maxPathCharacterization: MaxPathCharacterization, time:Long,
-                       ordDepth:Option[Int], depth:Option[Int], witnesses:List[List[String]])
+                       depthChar:BounderUtil.DepthResult, witnesses:List[List[String]])
   object LocResult{
     implicit var rw:RW[LocResult] = macroRW
   }
@@ -365,19 +365,20 @@ object Driver {
           // also retrieve up to 3 witnesses
           val finalLiveNodes = groupedResults.flatMap{res => res.terminals.filter{pathNode =>
             pathNode.qry.isLive && pathNode.subsumed(mode).isEmpty}}
+          val depthChar: BounderUtil.DepthResult = BounderUtil.computeDepthOfWitOrLive(finalLiveNodes,QueryFinished)(mode)
           val depth = if(finalLiveNodes.nonEmpty) Some(finalLiveNodes.map{n => n.depth}.min) else None
           val ordDepth = if(finalLiveNodes.nonEmpty) Some(finalLiveNodes.map{_.ordDepth}.min) else None
           val pp = new PrettyPrinting()
-          val live: List[List[String]] = pp.nodeToWitness(finalLiveNodes.toList)(mode).sortBy(_.length).take(2)
+          val live: List[List[String]] = pp.nodeToWitness(finalLiveNodes.toList, cfg.truncateOut)(mode).sortBy(_.length).take(2)
           val witnessed = pp.nodeToWitness(groupedResults.flatMap{res => res.terminals.filter{pathNode =>
             pathNode.qry match {
               case WitnessedTruncatedQry(loc, explanation) => true
               case WitnessedQry(state, loc, explain) => true
               case _ => false
-            }}}.toList)(mode).sortBy(_.length).take(2)
+            }}}.toList, cfg.truncateOut)(mode).sortBy(_.length).take(2)
 
           LocResult(initialQuery,id,loc,res,characterizedMaxPath,finalTime,
-            depth = depth, ordDepth = ordDepth, witnesses = live ++ witnessed)
+            depthChar, witnesses = live ++ witnessed)
         }.toList
         grouped
       }
@@ -682,8 +683,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
         val resultRow = ujson.Obj(
           "summary" -> ujson.Str(write[ResultSummary](rs.resultSummary)),
           "maxPathCh" -> ujson.Str(write[MaxPathCharacterization](rs.maxPathCharacterization)),
-          "ordDepth" -> ujson.Num(rs.ordDepth.getOrElse(-1).toDouble),
-          "depth" -> ujson.Num(rs.depth.getOrElse(-1).toDouble),
+          "depth" -> write(rs.depthChar),
           "wit" -> ujson.Arr(rs.witnesses)
         ).toString
         DBResult(id = 0, jobid = jobId,qry = write(rs.q), loc = write(rs.loc), result = resultRow, queryTime = rs.time
