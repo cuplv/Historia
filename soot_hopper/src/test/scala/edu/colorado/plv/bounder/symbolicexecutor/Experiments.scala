@@ -22,7 +22,7 @@ import soot.{Scene, SootClass, SootMethod}
 import scala.jdk.CollectionConverters.{CollectionHasAsScala, ListHasAsScala}
 
 class Experiments extends AnyFunSuite with BeforeAndAfter {
-  private val runVerif = false//use this to get cb/ci counts without running verifier
+  private val runVerif = true//use this to get cb/ci counts without running verifier
   private val generateTex = false //TODO: flip to generate tex files
   private val logger = LoggerFactory.getLogger("Experiments")
   logger.warn("Starting experiments run")
@@ -353,8 +353,6 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           BounderUtil.throwIfStackTrace(result)
           val interpretedResult = BounderUtil.interpretResult(result, QueryFinished)
 
-          val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
-          logger.warn(s"Row 1 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
           assert(interpretedResult == expectedResult)
           //        val onViewCreatedInTree: Set[List[IPathNode]] = result.flatMap{node =>
           //            findInWitnessTree(node, (p: IPathNode) =>
@@ -371,6 +369,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           //        }
           //        assert(onViewCreatedInTree.isEmpty)
           logger.warn(s"Row 1 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
+          val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
+          logger.warn(s"Row 1 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
         }else{
           val em = s"Row 1 skipped due to runVerif param!!!!!!!"
           println(em)
@@ -473,10 +473,10 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           assert(result.nonEmpty)
           BounderUtil.throwIfStackTrace(result)
           val interpretedResult = BounderUtil.interpretResult(result, QueryFinished)
+          logger.warn(s"Row 2 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
           val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
           logger.warn(s"Row 2 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
           assert(interpretedResult == expectedResult)
-          logger.warn(s"Row 2 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
         }else{
           val em = s"Row 2 skipped due to runVerif param!!!!!!!"
           println(em)
@@ -679,10 +679,10 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           assert(result.nonEmpty)
           BounderUtil.throwIfStackTrace(result)
           val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
+          logger.warn(s"Row 5 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime)/1000.0}")
           val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
           logger.warn(s"Row 5 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
           assert(interpretedResult == expectedResult)
-          logger.warn(s"Row 5 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime)/1000.0}")
         }else{
           val em = s"Row 5 skipped due to runVerif param!!!!!!!"
           println(em)

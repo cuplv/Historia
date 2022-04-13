@@ -157,7 +157,8 @@ object BounderUtil {
       case Timeout =>
         val liveNodes = terminals.filter(node => node.qry.isLive && node.subsumed.isEmpty)
         DepthResult(liveNodes.map(_.depth).min, liveNodes.map(_.ordDepth).min,countCb(liveNodes.toList), Timeout)
-      case a => DepthResult(-1,-1,-1, a)
+      case a =>
+        DepthResult(terminals.map(_.depth).max,terminals.map(_.ordDepth).max,terminals.map(v => countCb(List(v))).max, a)
     }
   }
 
