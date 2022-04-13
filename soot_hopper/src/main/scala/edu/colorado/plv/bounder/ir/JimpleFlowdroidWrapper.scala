@@ -485,7 +485,8 @@ class JimpleFlowdroidWrapper(apkPath : String,
                              callGraphSource: CallGraphSource,
                              toOverride:Set[LSSpec]
                             ) extends IRWrapper[SootMethod, soot.Unit] {
-  case class Messages(cbSize:Int, cbMsg:Int, matchedCb:Int, ciCallGraph:Int, matchedCiCallGraph:Int,
+  case class Messages(cbSize:Int, cbMsg:Int, matchedCb:Int, matchedCbRet:Int,
+                      ciCallGraph:Int, matchedCiCallGraph:Int,
                       syntCi:Int, matchedSyntCi:Int)
   object Messages{
     implicit val rw:RW[Messages] = macroRW
@@ -531,8 +532,9 @@ class JimpleFlowdroidWrapper(apkPath : String,
             case _ => None
           }
           if (callinSet.nonEmpty) {
-            val matchedBySpec = allI.filter(i => callinSet.exists(m => i.contains(CIExit, m)(ch)))
-            Some((method, u, matchedBySpec))
+//            val matchedBySpec = allI.filter(i => callinSet.exists(m => i.contains(CIExit, (m._1,m._2))(ch)))
+            val matchedBySpec = callinSet.filter(c => allI.exists(i => i.contains(CIExit, (c._1,c._2) )(ch)))
+            Some((method, u, matchedBySpec,callinSet))
           } else
             None
         }else None
@@ -540,8 +542,14 @@ class JimpleFlowdroidWrapper(apkPath : String,
       case _ => ???
     }
     val syntCallinSitesInSpec = syntCallinSites.filter(_._3.nonEmpty)
-    Messages(cb.size, cb.size*2, matchedCb = matchedCallbacks.size,
-      ciCallGraph = callins.size, matchedCiCallGraph = matchedCallins.size,
+
+    val missedCi = callins.filter(ci => !syntCallinSites.exists(s => s._4.contains(ci.classType,ci.simpleName)))
+    val callinCallGraphSize = syntCallinSites.toList.map(v => v._4.size).sum
+    val matchedCallinCallGraphSize = syntCallinSites.toList.map(v => v._3.size).sum
+//    val callinCallGraphSize =callins.size  // old count was based on total call graph callins
+    Messages(cb.size, cb.size*2, matchedCb = matchedCallbacks.count(_._1 == CBEnter),
+        matchedCbRet = matchedCallbacks.count(_._1 == CBExit),
+      ciCallGraph = callinCallGraphSize, matchedCiCallGraph = matchedCallinCallGraphSize,
       syntCi = syntCallinSites.size, matchedSyntCi = syntCallinSitesInSpec.size)
   }
 

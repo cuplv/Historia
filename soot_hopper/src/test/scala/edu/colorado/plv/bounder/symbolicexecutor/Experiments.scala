@@ -22,7 +22,7 @@ import soot.{Scene, SootClass, SootMethod}
 import scala.jdk.CollectionConverters.{CollectionHasAsScala, ListHasAsScala}
 
 class Experiments extends AnyFunSuite with BeforeAndAfter {
-  private val runVerif = false //TODO:============= turn this back on, using it to get cb/ci counts
+  private val runVerif = false//use this to get cb/ci counts without running verifier
   private val generateTex = false //TODO: flip to generate tex files
   private val logger = LoggerFactory.getLogger("Experiments")
   logger.warn("Starting experiments run")
