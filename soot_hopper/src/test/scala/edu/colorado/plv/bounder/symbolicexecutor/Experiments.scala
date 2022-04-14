@@ -126,17 +126,18 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
       println(fwkClassCount)
 
       // Helper class to accumulate callins and callbacks
-      case class MessageList(callin:Set[String] = Set(), callback:Set[String] = Set()){
-        private def str(sootMethod: SootMethod):String = {
+      case class MessageList(callin:Set[(String,String)] = Set(), callback:Set[(String,String)] = Set()){
+        private def str(sootMethod: SootMethod):(String,String) = {
           val sig = sootMethod.getSubSignature
-          sig
+          val clazz = sootMethod.getDeclaringClass.getName
+          (clazz,sig)
         }
-        def addCb(sig:Set[String]):MessageList = {
+        def addCb(sig:Set[(String,String)]):MessageList = {
           this.copy(callback = this.callback ++ sig)
         }
 
-        def addCi(sig:Set[String]):MessageList = {
-          assert(!sig.contains("void call(java.lang.Object)"), s"bad sig for addCi: ${sig}")
+        def addCi(sig:Set[(String,String)]):MessageList = {
+//          assert(!sig._2.contains("void call(java.lang.Object)"), s"bad sig for addCi: ${sig}")
           this.copy(callin = this.callin ++ sig)
         }
 
@@ -146,7 +147,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           val newCb = if(!sootMethod.isFinal && !sootMethod.isPrivate) callback + str(sootMethod) else callback
           // Note: methods on interfaces are considered to be abstract
           val newCallin = if(!sootMethod.isPrivate && !sootMethod.isAbstract) callin + str(sootMethod) else callin
-          assert(!newCallin.contains("void call(java.lang.Object)"))
+//          assert(!newCallin.contains("void call(java.lang.Object)"))
           MessageList(newCallin, newCb)
         }
         def count:String = {
@@ -192,12 +193,12 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
       val columnNames = class2MsgL.keys.toList.sortBy{c => classSmallName(c)}
       val rowNames = specsByName.keySet.toList.sorted
 
-      def matchesSomeI(msgType:Set[MessageType], lSSpec: LSSpec,className:String,  signature:String):Boolean = {
+      def matchesSomeI(msgType:Set[MessageType], lSSpec: LSSpec,className:String,  signature:(String,String)):Boolean = {
         val classAndSuper = w.getClassHierarchyConstraints.getSupertypesOf(className) + className
         classAndSuper.exists { cc =>
           val allI = SpecSpace.allI(lSSpec.pred) + lSSpec.target
           allI.exists{i =>
-            msgType.contains(i.mt) && i.signatures.matches(cc, signature)(w.getClassHierarchyConstraints)
+            msgType.contains(i.mt) && i.signatures.matches(cc, signature._2)(w.getClassHierarchyConstraints)
           }
         }
       }
@@ -208,18 +209,26 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
       val totalUsedForClass = mutable.HashMap[String, MessageList]()
       // Generate table body data
       val rows: List[String] = rowNames.map{ specName =>
-        val currentSpec = specsByName(specName)
-        s"\\ref{spec:$specName}"::columnNames.map{clazz =>
-          val currentMessageList = class2MsgL(clazz)
-          val callbacks: Set[String] = currentMessageList.callback.filter(ccb =>
-            matchesSomeI(Set(CBEnter, CBExit),currentSpec, clazz, ccb))
-          val callins: Set[String] = currentMessageList.callin.filter(cci =>
-            matchesSomeI(Set(CIEnter, CIExit),currentSpec, clazz, cci))
-          val oldMessageList = totalUsedForClass.getOrElse(clazz, MessageList())
-          val count = callins.size + callbacks.size
-          totalUsedForClass.addOne(clazz, oldMessageList.addCb(callbacks).addCi(callins))
-          if(count == 0) "" else count.toString // elide 0 to make table cleaner looking
+        columnNames.map{clazz =>
+          val cAndSuper = symbolicExecutor.getClassHierarchy.getSubtypesOf(clazz) + clazz
+          val ccb =
+          println(cAndSuper)
+          println(specName)
+
         }
+        List("")  //TODO: in the middle of rebuilding this table
+//        val currentSpec = specsByName(specName)
+//        s"\\ref{spec:$specName}"::columnNames.map{clazz =>
+//          val currentMessageList = class2MsgL(clazz)
+//          val callbacks: Set[(String,String)] = currentMessageList.callback.filter(ccb =>
+//            matchesSomeI(Set(CBEnter, CBExit),currentSpec, clazz, ccb))
+//          val callins: Set[(String,String)] = currentMessageList.callin.filter(cci =>
+//            matchesSomeI(Set(CIEnter, CIExit),currentSpec, clazz, cci))
+//          val oldMessageList = totalUsedForClass.getOrElse(clazz, MessageList())
+//          totalUsedForClass.addOne(clazz, oldMessageList.addCb(callbacks).addCi(callins))
+////          if(count == 0) "" else count.toString // elide 0 to make table cleaner looking
+//          (callins.size , callbacks.size)
+//        }
       }.map{r => r.mkString("&") + rowEnd}
 
       // Generate summary line

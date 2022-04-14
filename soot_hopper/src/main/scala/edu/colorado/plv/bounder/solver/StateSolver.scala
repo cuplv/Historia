@@ -1081,7 +1081,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       }
     }finally{
       zCtx.release()
-      getLogger.warn(s"feasibility result: ${result} time(ms): ${(System.nanoTime() - startTime) / 1000.0}")
+      getLogger.warn(s"feasibility result: ${result} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
     }
   }
 
@@ -1592,7 +1592,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 ////        false
 //    }
 
-    getLogger.warn(s"subsumption result:${res} time(ms): ${(System.nanoTime() - startTime)/1000.0}")
+    getLogger.warn(s"subsumption result:${res} time(µs): ${(System.nanoTime() - startTime)/1000.0}")
     res
   }
   // s1 subsuming state
@@ -1967,12 +1967,20 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   }
 
   def witnessed(state: State, specSpace: SpecSpace, debug:Boolean = false): Option[WitnessExplanation] = {
-    implicit val zCtx = getSolverCtx
-    if (state.heapConstraints.nonEmpty)
-      return None
-    if (state.callStack.nonEmpty)
-      return None
-    traceInAbstraction(state,specSpace, Nil, debug)
+
+    val startTime = System.nanoTime()
+    val res:Option[WitnessExplanation] = None
+    try {
+      implicit val zCtx = getSolverCtx
+      if (state.heapConstraints.nonEmpty)
+        return None
+      if (state.callStack.nonEmpty)
+        return None
+      val res = traceInAbstraction(state, specSpace, Nil, debug)
+      res
+    }finally{
+      getLogger.warn(s"witnessed result: ${res.isDefined} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
+    }
   }
 
   def traceInAbstraction(state: State,specSpace: SpecSpace,
