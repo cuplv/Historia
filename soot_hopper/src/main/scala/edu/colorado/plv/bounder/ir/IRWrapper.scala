@@ -24,7 +24,6 @@ trait IRWrapper[M,C]{
   def findLineInMethod(className:String, methodName:String, line:Int):Iterable[AppLoc]
   def findInMethod(className:String, methodName:String, toFind: CmdWrapper => Boolean):Iterable[AppLoc]
   def makeMethodTargets(source: MethodLoc): Set[MethodLoc]
-  def makeCmd(cmd:C, method:M, loc:Option[AppLoc] = None): CmdWrapper
   def degreeOut(cmd: AppLoc):Int
   def degreeIn(cmd: AppLoc):Int
   def isLoopHead(cmd:AppLoc):Boolean

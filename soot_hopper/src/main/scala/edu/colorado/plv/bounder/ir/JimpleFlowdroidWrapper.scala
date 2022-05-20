@@ -213,8 +213,7 @@ object JimpleFlowdroidWrapper{
     case a => makeRVal(a)
   }
   def makeCmd(cmd: soot.Unit, method: SootMethod,
-                       locOpt:Option[AppLoc] = None): CmdWrapper = {
-    val loc:AppLoc = locOpt.getOrElse(???)
+                       loc:AppLoc): CmdWrapper = {
     cmd match{
       case cmd: AbstractDefinitionStmt if cmd.rightBox.isInstanceOf[JCaughtExceptionRef] =>
         val leftBox = makeVal(cmd.leftBox.getValue).asInstanceOf[LVal]
@@ -223,18 +222,22 @@ object JimpleFlowdroidWrapper{
           if(trap.getHandlerUnit == cmd) exceptionName = JimpleFlowdroidWrapper.stringNameOfClass(trap.getException)
         }
         val rightBox = CaughtException(exceptionName)
+        assert(loc.line == cmd)
         AssignCmd(leftBox, rightBox, loc)
       case cmd: AbstractDefinitionStmt => {
         val leftBox = makeVal(cmd.leftBox.getValue).asInstanceOf[LVal]
         val rightBox = makeVal(cmd.rightBox.getValue)
+        assert(loc.line.asInstanceOf[JimpleLineLoc].cmd == cmd)
         AssignCmd(leftBox, rightBox,loc)
       }
       case cmd: JReturnStmt => {
         val box = makeVal(cmd.getOpBox.getValue)
+        assert(loc.line.asInstanceOf[JimpleLineLoc].cmd == cmd)
         ReturnCmd(Some(box), loc)
       }
       case cmd:JInvokeStmt => {
         val invokeval = makeVal(cmd.getInvokeExpr).asInstanceOf[Invoke]
+        assert(loc.line.asInstanceOf[JimpleLineLoc].cmd == cmd)
         InvokeCmd(invokeval, loc)
       }
       case _ : JReturnVoidStmt => {
@@ -253,7 +256,7 @@ object JimpleFlowdroidWrapper{
       case _:JEnterMonitorStmt => NopCmd(loc) // ignore concurrency
       case sw:JLookupSwitchStmt =>
         val key = makeRVal(sw.getKey).asInstanceOf[LocalWrapper]
-        val targets = sw.getTargets.asScala.map(u => makeCmd(u,method, locOpt))
+        val targets = sw.getTargets.asScala.map(u => makeCmd(u,method, loc))
         SwitchCmd(key,targets.toList,loc)
       case v =>
         throw CmdNotImplemented(s"Unimplemented command: ${v}")
@@ -1232,11 +1235,6 @@ class JimpleFlowdroidWrapper(apkPath : String,
     })
   }
 
-
-  override def makeCmd(cmd: soot.Unit, method: SootMethod,
-                       locOpt:Option[AppLoc] = None): CmdWrapper =
-    JimpleFlowdroidWrapper.makeCmd(cmd,method,locOpt)
-
   override def degreeOut(cmd : AppLoc): Int = {
     val ll = cmd.line.asInstanceOf[JimpleLineLoc]
     val unitGraph = getUnitGraph(ll.method.retrieveActiveBody())
@@ -1340,7 +1338,8 @@ class JimpleFlowdroidWrapper(apkPath : String,
     }
 
   private val iCmdAtLocation: AppLoc => CmdWrapper = Memo.mutableHashMapMemo {
-    case loc@AppLoc(_, JimpleLineLoc(cmd, method), _) => makeCmd(cmd, method, Some(loc))
+    case loc@AppLoc(_, JimpleLineLoc(cmd, method), _) =>
+      JimpleFlowdroidWrapper.makeCmd(cmd, method, loc)
     case loc => throw new IllegalStateException(s"No command associated with location: ${loc}")
   }
   override def cmdAtLocation(loc: AppLoc):CmdWrapper = iCmdAtLocation(loc)

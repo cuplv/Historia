@@ -661,6 +661,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
             return Set() // Type constraint must not be empty if new value assigned
           // clear x from state
           val stateWOX = state.clearLVal(lhs)
+          ////return stateWOX to disable refCreate in abs trace
+          //Set(stateWOX) //Note: refCreate disable prevents many of the tests from working
           // Constrain state for initialization
           val notRef = addRefCreateToState(stateWOX,v).toSet
           // Remove x local

@@ -13,8 +13,6 @@ class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] 
 
   override def findLineInMethod(className: String, methodName: String, line: Int): Iterable[AppLoc] = ???
 
-  override def makeCmd(cmd: String, method: String, loc: Option[AppLoc]): CmdWrapper = ???
-
   override def commandPredecessors(cmdWrapper: CmdWrapper): List[AppLoc] = ???
 
   override def commandNext(cmdWrapper: CmdWrapper): List[AppLoc] = ???

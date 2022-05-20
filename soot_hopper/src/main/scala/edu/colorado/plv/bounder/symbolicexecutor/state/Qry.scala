@@ -74,7 +74,7 @@ object Qry {
       cl <-c
       m <- cl.getMethods.asScala
       cmd <- m.getActiveBody.getUnits.asScala
-        .map(v => jw.makeCmd(v,m, Some(AppLoc(JimpleMethodLoc(m),JimpleLineLoc(v,m),isPre = true))))
+        .map(v => JimpleFlowdroidWrapper.makeCmd(v,m, AppLoc(JimpleMethodLoc(m),JimpleLineLoc(v,m),isPre = true)))
     } yield cmd).toSet
 
     val qrys = cmds.map{cmd =>

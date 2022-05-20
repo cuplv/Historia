@@ -1054,6 +1054,94 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
     makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
   }
+  test("Test prove dereference of act field with unsubscribe and lambda") {
+    val src =
+      """
+        |package com.example.createdestroy;
+        |import android.app.Activity;
+        |import android.content.Context;
+        |import android.net.Uri;
+        |import android.os.Bundle;
+        |
+        |import androidx.fragment.app.Fragment;
+        |
+        |import android.util.Log;
+        |import android.view.LayoutInflater;
+        |import android.view.View;
+        |import android.view.ViewGroup;
+        |
+        |import rx.Single;
+        |import rx.Subscription;
+        |import rx.android.schedulers.AndroidSchedulers;
+        |import rx.schedulers.Schedulers;
+        |
+        |
+        |public class MyFragment extends Fragment {
+        |    Subscription subscription;
+        |    Object b = null;
+        |
+        |    public MyFragment() {
+        |        // Required empty public constructor
+        |    }
+        |
+        |
+        |    @Override
+        |    public void onActivityCreated(Bundle savedInstanceState){
+        |        super.onActivityCreated(savedInstanceState);
+        |        b = new Object();
+        |        subscription = Single.create(subscriber -> {
+        |            try {
+        |                Thread.sleep(2000);
+        |            } catch (InterruptedException e) {
+        |                e.printStackTrace();
+        |            }
+        |            subscriber.onSuccess(3);
+        |        })
+        |                .subscribeOn(Schedulers.newThread())
+        |                .observeOn(AndroidSchedulers.mainThread())
+        |                .subscribe(a -> {
+        |                    Log.i("b", b.toString());// query1
+        |                });
+        |    }
+        |
+        |
+        |    @Override
+        |    public void onDestroy(){
+        |        super.onDestroy();
+        |        b = null;
+        |        subscription.unsubscribe();
+        |    }
+        |}
+        |""".stripMargin
+
+    val test: String => Unit = apk => {
+      assert(apk != null)
+      val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+        FragmentGetActivityNullSpec.getActivityNonNull,
+        LifecycleSpec.Fragment_activityCreatedOnlyFirst
+      ) ++ RxJavaSpec.spec
+      val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
+      val specSpace = new SpecSpace(specs)
+      val config = SymbolicExecutorConfig(
+        stepLimit = 300, w, specSpace,
+        component = Some(List("com.example.createdestroy.MyFragment.*")))
+      val symbolicExecutor = config.getSymbolicExecutor
+      val query = ReceiverNonNull(
+        "com.example.createdestroy.MyFragment",
+        "void lambda$onActivityCreated$1$MyFragment(java.lang.Object)",BounderUtil.lineForRegex(".*query1.*".r, src))
+
+
+      val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
+      prettyPrinting.dumpDebugInfo(result,"ProveFieldWithSubscribeUnsubLambda")
+      assert(result.nonEmpty)
+      BounderUtil.throwIfStackTrace(result)
+      assert(BounderUtil.interpretResult(result,QueryFinished) == Proven)
+
+    }
+
+    makeApkWithSources(Map("MyFragment.java"->src), MkApk.RXBase, test)
+  }
+
   test("Test prove dereference of return from getActivity") {
     val src =
       """
