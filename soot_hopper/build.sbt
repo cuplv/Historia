@@ -61,7 +61,9 @@ javaOptions += "-Xmx15G"
 //lazy val configTest = settingKey[String]("example")
 
 //configTest := baseDirectory.value.toString()
-
+import sbt.Package.ManifestAttributes
+import com.typesafe.sbt.SbtGit.git
+packageOptions := Seq(ManifestAttributes(("Repository-Commit", git.gitHeadCommit.value.get)))
 // ignore unit tests when assembling fat jar
 test in assembly := {}
 
