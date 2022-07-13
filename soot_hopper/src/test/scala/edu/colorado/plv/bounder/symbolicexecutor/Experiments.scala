@@ -216,19 +216,18 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           println(specName)
 
         }
-        List("")  //TODO: in the middle of rebuilding this table
-//        val currentSpec = specsByName(specName)
-//        s"\\ref{spec:$specName}"::columnNames.map{clazz =>
-//          val currentMessageList = class2MsgL(clazz)
-//          val callbacks: Set[(String,String)] = currentMessageList.callback.filter(ccb =>
-//            matchesSomeI(Set(CBEnter, CBExit),currentSpec, clazz, ccb))
-//          val callins: Set[(String,String)] = currentMessageList.callin.filter(cci =>
-//            matchesSomeI(Set(CIEnter, CIExit),currentSpec, clazz, cci))
-//          val oldMessageList = totalUsedForClass.getOrElse(clazz, MessageList())
-//          totalUsedForClass.addOne(clazz, oldMessageList.addCb(callbacks).addCi(callins))
-////          if(count == 0) "" else count.toString // elide 0 to make table cleaner looking
-//          (callins.size , callbacks.size)
-//        }
+        val currentSpec = specsByName(specName)
+        s"\\ref{spec:$specName}"::columnNames.map{clazz =>
+          val currentMessageList = class2MsgL(clazz)
+          val callbacks: Set[(String,String)] = currentMessageList.callback.filter(ccb =>
+            matchesSomeI(Set(CBEnter, CBExit),currentSpec, clazz, ccb))
+          val callins: Set[(String,String)] = currentMessageList.callin.filter(cci =>
+            matchesSomeI(Set(CIEnter, CIExit),currentSpec, clazz, cci))
+          val oldMessageList = totalUsedForClass.getOrElse(clazz, MessageList())
+          totalUsedForClass.addOne(clazz, oldMessageList.addCb(callbacks).addCi(callins))
+//          if(count == 0) "" else count.toString // elide 0 to make table cleaner looking
+          (callins.size , callbacks.size)
+        }
       }.map{r => r.mkString("&") + rowEnd}
 
       // Generate summary line

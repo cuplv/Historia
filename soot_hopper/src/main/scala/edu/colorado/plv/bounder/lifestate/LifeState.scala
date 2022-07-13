@@ -591,13 +591,14 @@ object LifeState {
 
     def mToTex:String = s"${mt.toTex}~${signatures.toTex(lsVars)}"
 
-    override def toTex: String = s"\\iDir{${mToTex}}" //TODO:====
+    override def toTex: String = s"\\iDir{${mToTex}}"
   }
   object I{
     implicit val rw:RW[I] = macroRW
   }
   // Since i1 has been invoked, i2 has not been invoked.
   case class NI(i1:I, i2:I) extends LSAtom{
+    assert(i2.lsVar.forall(x => i1.lsVar.contains(x))) //TODO:====== rm this later?
     def lsVar: Set[String] = i1.lsVar.union(i2.lsVar)
 
 //    override def getAtomSig: String = s"NI(${i1.getAtomSig}, ${i2.getAtomSig})"

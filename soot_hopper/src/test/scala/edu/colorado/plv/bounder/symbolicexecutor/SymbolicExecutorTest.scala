@@ -204,23 +204,13 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
         "void onResume()", BounderUtil.lineForRegex(".*query1.*".r,src))
 
-//      prettyPrinting.dotMethod( query.head.loc, symbolicExecutor.controlFlowResolver, "onPauseCond.dot")
+      // prettyPrinting.dotMethod( query.head.loc, symbolicExecutor.controlFlowResolver, "onPauseCond.dot")
 
       val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
-      prettyPrinting.dumpDebugInfo(result, "forEach")
+      //prettyPrinting.dumpDebugInfo(result, "forEach")
       assert(result.nonEmpty)
       BounderUtil.throwIfStackTrace(result)
       assert(BounderUtil.interpretResult(result,QueryFinished) == Witnessed)
-      // Search refutation state for materialized "o2" field
-      // Should not be in there since conditional is not relevant
-//      val o2ExistsInRef = result.exists((p:IPathNode) => findInWitnessTree(p,
-//        {pn => pn.qry.state.heapConstraints.exists{
-//          case (FieldPtEdge(_,fieldName),_) if fieldName == "o2" =>
-//            println(pn.qry.state)
-//            true
-//          case _ => false
-//        }}).isDefined)
-//      assert(!o2ExistsInRef)
 
     }
 
@@ -1132,7 +1122,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
 
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
-      prettyPrinting.dumpDebugInfo(result,"ProveFieldWithSubscribeUnsubLambda")
+      //prettyPrinting.dumpDebugInfo(result,"ProveFieldWithSubscribeUnsubLambda")
       assert(result.nonEmpty)
       BounderUtil.throwIfStackTrace(result)
       assert(BounderUtil.interpretResult(result,QueryFinished) == Proven)
@@ -1552,7 +1542,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
         val fname = s"Motiv_$fileSuffix"
-         prettyPrinting.dumpDebugInfo(result, fname)
+         //prettyPrinting.dumpDebugInfo(result, fname)
         // prettyPrinting.printWitness(result)
         //        prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
         assert(result.nonEmpty)
@@ -1716,7 +1706,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       println(allClasses.size)
       val result2 = symbolicExecutor.run(query2).flatMap(a => a.terminals)
 
-      prettyPrinting.dumpDebugInfo(result2, "proveNospec")
+      //prettyPrinting.dumpDebugInfo(result2, "proveNospec")
       val interpretedResult2 = BounderUtil.interpretResult(result2,QueryFinished)
       assert(interpretedResult2 == Proven)
     }
