@@ -1,8 +1,8 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
 import better.files.Resource
-import edu.colorado.plv.bounder.ir.{TestIR, _}
-import edu.colorado.plv.bounder.lifestate.LifeState.{I, LSSpec, SetSignatureMatcher, SignatureMatcher}
+import edu.colorado.plv.bounder.ir._
+import edu.colorado.plv.bounder.lifestate.LifeState.{Once, LSSpec, SetSignatureMatcher, SignatureMatcher}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SetInclusionTypeSolving, SolverTypeSolving, StateTypeSolving, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
@@ -181,18 +181,18 @@ class TransferFunctionsTest extends AnyFunSuite {
 //    assert(res.exists(v => v.isEmpty)) //TODO:=================
 //    assert(res.exists{v => v.isDefined && v.get.heapConstraints.size == 2 && v.get.testGet(x) == Some(PureVar(4))}) //TODO:===========
   }
-  private val iFooA: I = I(CBEnter, Set(("", "foo")), "_" :: "a" :: Nil)
+  private val iFooA: Once = Once(CBEnter, Set(("", "foo")), "_" :: "a" :: Nil)
   test("Add matcher and phi abstraction when crossing callback entry") {
     val preloc = CallbackMethodInvoke("","foo", fooMethod) // Transition to just before foo is invoked
     val postloc = AppLoc(fooMethod,TestIRLineLoc(1), isPre=true)
     val ir = new TestIR(Set(MethodTransition(preloc, postloc)))
-    val lhs = I(CBEnter, Set(("", "bar")), "_" :: "a" :: Nil)
+    val lhs = Once(CBEnter, Set(("", "bar")), "_" :: "a" :: Nil)
     //  I(cb a.bar()) <= I(cb a.foo())
     val spec = LSSpec("a"::Nil, Nil,
       lhs,
       iFooA)
     val tr = new TransferFunctions(ir, new SpecSpace(Set(spec)),miniCha)
-    val otheri = AbstractTrace(I(CBExit, Set(("a","a")), "b"::Nil), Nil, Map())
+    val otheri = AbstractTrace(Once(CBExit, Set(("a","a")), "b"::Nil), Nil, Map())
     val post = State(StateFormula(
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("@this") -> recPv))::Nil,
       heapConstraints = Map(),

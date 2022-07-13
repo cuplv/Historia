@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.ir
 
 import edu.colorado.plv.bounder.BounderSetupApplication
-import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NI}
+import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NS}
 import edu.colorado.plv.bounder.lifestate.{SpecSignatures, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state._
@@ -77,7 +77,7 @@ class SootUtilsTest extends AnyFunSuite {
     assert(test_interproc_1 != null)
     val w = new JimpleFlowdroidWrapper(test_interproc_1, SparkCallGraph, Set())
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
-    val testSpec = LSSpec("a"::Nil, Nil, NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
+    val testSpec = LSSpec("a"::Nil, Nil, NS(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
       SpecSignatures.Activity_onPause_entry)
     val config: SymbolicExecutorConfig[SootMethod, soot.Unit] = SymbolicExecutorConfig(
       stepLimit = 50, w, new SpecSpace(Set(testSpec)), printProgress = true, z3Timeout = Some(30))
@@ -111,7 +111,7 @@ class SootUtilsTest extends AnyFunSuite {
     val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath()
     assert(test_interproc_1 != null)
     val w = new JimpleFlowdroidWrapper(test_interproc_1, SparkCallGraph, Set())
-    val testSpec = LSSpec("a"::Nil, Nil, NI(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
+    val testSpec = LSSpec("a"::Nil, Nil, NS(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
       SpecSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
     val config: SymbolicExecutorConfig[SootMethod, soot.Unit] = SymbolicExecutorConfig(
       stepLimit = 50, w, new SpecSpace(Set(testSpec)), printProgress = true, z3Timeout = Some(30))

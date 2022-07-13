@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, CLInit, Exists, Forall, FreshRef, I, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, LifeStateParser, NI, Not, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, CLInit, Exists, Forall, FreshRef, Once, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, LifeStateParser, NS, Not, Or}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CmpOp, Equals, NotEquals, NullVal, PureExpr, PureVal, PureVar, State, TypeComp}
 
@@ -20,7 +20,7 @@ object LSVarGen{
       val mv = s.sf.traceAbstraction.modelVars.keySet ++ s.sf.traceAbstraction.rightOfArrow.flatMap {
         case CLInit(sig) => Set()
         case FreshRef(v) => Set(v)
-        case I(mt, signatures, lsVars) => lsVars
+        case Once(mt, signatures, lsVars) => lsVars
       }
       mv.map{
         case n if n.startsWith("LS__") && n.drop(4).toInt >= next =>
@@ -50,7 +50,7 @@ object LifeState {
     case object AstFalse extends Ast
 
     sealed trait Line
-    case class AstMac(id:AstID, i:I) extends Line
+    case class AstMac(id:AstID, i:Once) extends Line
     case class AstRule(v1:Ast, tgt:AstID) extends Line
     // TODO: identifier should handle arrays, for now use java.util.List_ instead of java.util.List[]
     def identifier: Parser[String] = """[a-zA-Z][a-zA-Z0-9$_.]*""".r ^^ { a => a }
@@ -96,14 +96,14 @@ object LifeState {
 
     def rf(v:String):String = v.replace("_","[^,()]*")
 
-    def i: Parser[I] = "I(" ~ mDir ~ "[" ~ lsVarList ~"]" ~ identifier ~ identifier ~"(" ~ params ~ ")" ~ constr ~ ")" ^^ {
+    def i: Parser[Once] = "I(" ~ mDir ~ "[" ~ lsVarList ~"]" ~ identifier ~ identifier ~"(" ~ params ~ ")" ~ constr ~ ")" ^^ {
       case _ ~ pmDir ~ _ ~ vars ~ _ ~ ret ~ sName ~ _ ~ para ~ _ ~ LSConstraint(v1, TypeComp, v2) ~ _ =>
         assert(vars.size < 2 || vars(1) == "_" || vars(1) == v1, "Can only specify receiver type in I")
         val p = para.map(rf)
         val sigRegex = rf(ret) +" " + sName + "\\(" +  p.mkString(",") + "\\)"
         val ident = ret + "__" + sName + "__" + p.mkString("___")
         val scm = SubClassMatcher(v2, sigRegex, ident)
-        I(pmDir, scm, vars)
+        Once(pmDir, scm, vars)
       case _ => throw new IllegalArgumentException("Can only specify receiver type in I")
     }
     val lsTrueConst = "@(TRUE|true|True)".r ^^ {case _ => LSTrue}
@@ -135,14 +135,14 @@ object LifeState {
 //    def lsRule : Parser[LSSpec] = lsRuleUnc //| lsRuleCon
 //    def lsLine :Parser[LSMacroAndSpec] = lsRuleUnc
   }
-  def parseI(str:String):I = {
-    val res: LifeStateParser.ParseResult[I] = LifeStateParser.parseAll(LifeStateParser.i, str)
+  def parseI(str:String):Once = {
+    val res: LifeStateParser.ParseResult[Once] = LifeStateParser.parseAll(LifeStateParser.i, str)
     if(res.successful)
       res.get
     else
       throw new IllegalArgumentException(res.toString)
   }
-  def parseIFile(str:String):Seq[I] = {
+  def parseIFile(str:String):Seq[Once] = {
     str.split("\n").filter(v => !v.trim.startsWith("#") && !(v.trim == "")).map(parseI)
   }
 
@@ -318,8 +318,8 @@ object LifeState {
       case Or(a1,a2) => oneCont(a1,a2)
       case LSTrue => None
       case LSFalse => None
-      case _:NI => None
-      case _:I => None
+      case _:NS => None
+      case _:Once => None
     }
 
     implicit var rw:RW[FreshRef] = macroRW
@@ -371,7 +371,7 @@ object LifeState {
     override def stringRep(varMap: String => Any): String = s"¬${l.stringRep(varMap)}"
 
     override def toTex: String = l match {
-      case i: I=> s"\\notiDir{${i.mToTex}}"
+      case i: Once=> s"\\notiDir{${i.mToTex}}"
       case _ => ??? //s"\\neg ${l.toTex}"
     }
   }
@@ -419,7 +419,7 @@ object LifeState {
     def identitySignature:String
   }
   object LSAtom{
-    implicit val rw:RW[LSAtom] = RW.merge(NI.rw, LSSingle.rw)
+    implicit val rw:RW[LSAtom] = RW.merge(NS.rw, LSSingle.rw)
   }
 
   sealed trait SignatureMatcher{
@@ -542,9 +542,9 @@ object LifeState {
     def lsVars: List[String]
   }
   object LSSingle{
-    implicit val rw:RW[LSSingle] = RW.merge(I.rw, FreshRef.rw, CLInit.rw)
+    implicit val rw:RW[LSSingle] = RW.merge(Once.rw, FreshRef.rw, CLInit.rw)
   }
-  case class I(mt: MessageType, signatures: SignatureMatcher, lsVars : List[String]) extends LSSingle {
+  case class Once(mt: MessageType, signatures: SignatureMatcher, lsVars : List[String]) extends LSSingle {
     def constVals(constraints: Set[LSConstraint]):List[Option[(CmpOp, PureExpr)]] = lsVars.map{
       case LifeState.LSConst(v) => Some((Equals, v))
       case LifeState.LSVar(v) =>
@@ -577,7 +577,7 @@ object LifeState {
     override def contains(omt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean =
       omt == mt && signatures.matches(sig)
 
-    override def swap(swapMap: Map[String, String]): I = {
+    override def swap(swapMap: Map[String, String]): Once = {
       val newLSVars = lsVars.map{
         case LSVar(v) =>
           swapMap.getOrElse(v,v)
@@ -587,19 +587,19 @@ object LifeState {
     }
 
     override def stringRep(varMap: String => Any): String =
-      s"I($mt $identitySignature ( ${lsVars.map(varMap).mkString(",")} )"
+      s"O($mt $identitySignature ( ${lsVars.map(varMap).mkString(",")} )"
 
     def mToTex:String = s"${mt.toTex}~${signatures.toTex(lsVars)}"
 
     override def toTex: String = s"\\iDir{${mToTex}}"
   }
-  object I{
-    implicit val rw:RW[I] = macroRW
+  object Once{
+    implicit val rw:RW[Once] = macroRW
   }
   // Since i1 has been invoked, i2 has not been invoked.
-  case class NI(i1:I, i2:I) extends LSAtom{
-    assert(i2.lsVar.forall(x => i1.lsVar.contains(x))) //TODO:====== rm this later?
-    def lsVar: Set[String] = i1.lsVar.union(i2.lsVar)
+  case class NS(i1:Once, i2:Once) extends LSAtom{
+    //assert(i2.lsVar.forall(x => i1.lsVar.contains(x)), "Free variables of i2 must be subset of free variables of i1")
+    lazy val lsVar: Set[String] = i1.lsVar.union(i2.lsVar)
 
 //    override def getAtomSig: String = s"NI(${i1.getAtomSig}, ${i2.getAtomSig})"
 
@@ -609,17 +609,17 @@ object LifeState {
     override def contains(mt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean =
       i1.contains(mt, sig) || i2.contains(mt, sig)
 
-    override def swap(swapMap: Map[String, String]): LSPred = NI(i1.swap(swapMap), i2.swap(swapMap))
+    override def swap(swapMap: Map[String, String]): LSPred = NS(i1.swap(swapMap), i2.swap(swapMap))
 
     override def stringRep(varMap: String => Any): String = s"NI( ${i1.stringRep(varMap)} , ${i2.stringRep(varMap)} )"
 
     override def toTex: String = s"\\niDir{${i2.mToTex}}{${i1.mToTex}}"
   }
-  object NI{
-    implicit val rw:RW[NI] = macroRW
+  object NS{
+    implicit val rw:RW[NS] = macroRW
   }
   case class LSSpec(univQuant:List[String], existQuant:List[String],
-                    pred:LSPred, target: I, rhsConstraints: Set[LSConstraint] = Set()){
+                    pred:LSPred, target: Once, rhsConstraints: Set[LSConstraint] = Set()){
     def toTex():String = {
       // in paper language, universal quantification of target vars is implicit
       val dispUnivQuant = univQuant.toSet -- target.lsVar
@@ -663,7 +663,7 @@ object LifeState {
         throw new IllegalArgumentException("mismatch between quantified variables and free variables")
     }
     checkWellFormed()
-    def instantiate(i:I, specSpace: SpecSpace):LSPred = {
+    def instantiate(i:Once, specSpace: SpecSpace):LSPred = {
       val swap = (target.lsVars zip i.lsVars).filter{
         case (LSAnyVal(),_) => false
         case (_,LSAnyVal()) => false
@@ -746,15 +746,15 @@ object LifeState {
   }
 }
 object SpecSpace{
-  def allI(pred:Option[LSPred]):Set[I] = pred match {
+  def allI(pred:Option[LSPred]):Set[Once] = pred match {
     case Some(v) => allI(v)
     case None => Set()
   }
-  def allI(pred:LSPred):Set[I] = pred match{
+  def allI(pred:LSPred):Set[Once] = pred match{
     case LSImplies(l1, l2) => allI(l1).union(allI(l2))
     case CLInit(_) => Set()
-    case i@I(_,_,_) => Set(i)
-    case NI(i1,i2) => Set(i1,i2)
+    case i@Once(_,_,_) => Set(i)
+    case NS(i1,i2) => Set(i1,i2)
     case And(p1,p2) => allI(p1).union(allI(p2))
     case Or(p1,p2) => allI(p1).union(allI(p2))
     case Not(p) => allI(p)
@@ -765,7 +765,7 @@ object SpecSpace{
     case Exists(_,p) => allI(p)
     case LSConstraint(_,_, _) => Set()
   }
-  def allI(spec:LSSpec, includeRhs:Boolean = true):Set[I] = spec match{
+  def allI(spec:LSSpec, includeRhs:Boolean = true):Set[Once] = spec match{
     case LSSpec(_,_,pred, target,_) if includeRhs => allI(pred).union(allI(target))
     case LSSpec(_,_,pred, target,_) => allI(pred)
   }
@@ -773,23 +773,23 @@ object SpecSpace{
 /**
  * Representation of a set of possible lifestate specs */
 class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
-  def findIFromCurrent(dir: MessageType, signature: (String, String))(implicit cha:ClassHierarchyConstraints):Set[I] = {
+  def findIFromCurrent(dir: MessageType, signature: (String, String))(implicit cha:ClassHierarchyConstraints):Set[Once] = {
     allI.filter(i => i.mt == dir && i.signatures.matches(signature))
   }
 
-  def specsByI(i: I) = {
+  def specsByI(i: Once) = {
     val ids = i.identitySignature
     val specs = enableSpecs.filter(spec => spec.target.identitySignature == ids)
     specs
   }
-  def disSpecsByI(i:I) = {
+  def disSpecsByI(i:Once) = {
     val ids = i.identitySignature
     val disSpecs = disallowSpecs.filter(spec => spec.target.identitySignature == ids)
     disSpecs
   }
 
-  private var allIMemo:Option[Set[I]] = None
-  def allI:Set[I] ={
+  private var allIMemo:Option[Set[Once]] = None
+  def allI:Set[Once] ={
     if(allIMemo.isEmpty)
       allIMemo = Some((enableSpecs ++ disallowSpecs).flatMap{spec =>
         SpecSpace.allI(spec.pred) + spec.target
@@ -798,7 +798,7 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
   }
 
   def getSpecs:Set[LSSpec] = enableSpecs
-  private val allISpecs: Map[MessageType, Set[I]] =
+  private val allISpecs: Map[MessageType, Set[Once]] =
     (enableSpecs ++ disallowSpecs).flatMap(SpecSpace.allI(_)).groupBy(i => i.mt)
 
 
@@ -815,7 +815,7 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
    * @param sig class name and method signature (e.g. void foo(java.lang.Object))
    * @return Some(I) if I exists, None otherwise.
    */
-  def getIWithFreshVars(mt: MessageType, sig: (String, String))(implicit ch : ClassHierarchyConstraints):Option[I] = {
+  def getIWithFreshVars(mt: MessageType, sig: (String, String))(implicit ch : ClassHierarchyConstraints):Option[Once] = {
     //    iset.get(mt,sig).map{i =>
     //      i.copy(lsVars = i.lsVars.map(a => if(a != "_") nextFreshLSVar() else "_"))
     //    }
@@ -824,7 +824,7 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
       case (v,_) => v
     }
     var solverSig:Option[String] = None
-    val out: Set[I] = allI.filter{ i =>
+    val out: Set[Once] = allI.filter{ i =>
       if(i.signatures.matches(sig) && i.mt == mt) {
         if (solverSig.isDefined) {
           assert(i.identitySignature == solverSig.get,
@@ -841,7 +841,7 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
 
     // Compute intersection of defined variables
     val parList = out.foldLeft(List():List[String]){
-      case (acc,I(_,_,vars)) =>
+      case (acc,Once(_,_,vars)) =>
         acc.zipAll(vars,"_","_").map(merge)
     }
     val parListFresh = parList.map(a => if(a!="_") LSVarGen.getNext else "_")

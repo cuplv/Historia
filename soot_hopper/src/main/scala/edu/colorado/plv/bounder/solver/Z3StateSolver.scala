@@ -460,13 +460,13 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     val trace = rightOfArrow.map{
       case LifeState.CLInit(sig) => TCLInit(sig)
       case LifeState.FreshRef(v) => TNew(pvv(mv(v).asInstanceOf[PureVar]))
-      case LifeState.I(CBEnter, sig, vars) =>
+      case LifeState.Once(CBEnter, sig, vars) =>
         TMessage(CBEnter,AppMethod(sig.identifier, "", None), vars.map(v => pmv(v)))
-      case LifeState.I(CBExit, sig, vars) =>
+      case LifeState.Once(CBExit, sig, vars) =>
         TMessage(CBExit,AppMethod(sig.identifier, "", None), vars.map(v => pmv(v)))
-      case LifeState.I(CIEnter, sig, vars) =>
+      case LifeState.Once(CIEnter, sig, vars) =>
         TMessage(CIEnter,FwkMethod(sig.identifier, ""), vars.map(v => pmv(v)))
-      case LifeState.I(CIExit, sig, vars) =>
+      case LifeState.Once(CIExit, sig, vars) =>
         TMessage(CIExit,FwkMethod(sig.identifier, ""), vars.map(v => pmv(v)))
     }
 

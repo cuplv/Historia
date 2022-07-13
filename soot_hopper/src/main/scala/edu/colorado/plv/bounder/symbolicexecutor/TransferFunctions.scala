@@ -18,7 +18,7 @@ object TransferFunctions{
     "/resources/NonNullReturnCallins.txt",
     "resources/NonNullReturnCallins.txt",
   )
-  lazy val nonNullCallins: Seq[I] = {
+  lazy val nonNullCallins: Seq[Once] = {
     val mp = nonNullDefUrl.flatMap{ (path:String) =>
       //    val source = Source.fromFile(frameworkExtPath)
       try {
@@ -528,7 +528,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     state.traceAbstraction.rightOfArrow.exists{
         case CLInit(sig) => sig == clazz
         case _:FreshRef => false
-        case _:I => false
+        case _:Once => false
       }
   }
 
@@ -544,7 +544,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
                      postState: State): Set[State] = {
     //TODO: just append to single abst trace if sig in spec =====
     //TODO: get rid of set of trace abstractions in abstract state
-    val freshI: Option[I] = specSpace.getIWithFreshVars(mt,sig)
+    val freshI: Option[Once] = specSpace.getIWithFreshVars(mt,sig)
     freshI match {
       case None => Set(postState)
       case Some(i) =>
