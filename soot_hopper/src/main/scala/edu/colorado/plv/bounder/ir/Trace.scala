@@ -49,8 +49,10 @@ object FwkMethod{
 
 sealed trait TraceElement
 object TraceElement{
-  implicit var rw:RW[TraceElement] = RW.merge(TNew.rw, TMessage.rw)
+  implicit var rw:RW[TraceElement] = RW.merge(TNew.rw, TMessage.rw, macroRW[TInitial.type])
 }
+
+case object TInitial extends TraceElement
 
 case class TCLInit(cl:String)extends TraceElement
 object TCLInit{

@@ -282,6 +282,24 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val resTrue = stateSolver.simplify(stateTrue,specSpace2)
     assert(resTrue.isDefined)
   }
+  test("Trace abstraction O(a.bar()) && HN(b.bar()) && a == p1 (<==>false)") { f =>
+    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val iBar_a = Once(CBEnter, Set(("", "bar")), "a" :: Nil)
+    val iTgtPosBar_a = Once(CBEnter, Set(("", "tgtPos")), "a" :: Nil)
+    val iTgtPosBar_b = Once(CBEnter, Set(("", "tgtPos")), "b" :: Nil)
+    val iTgtNegBar_a = Once(CBEnter, Set(("","tgtNeg")), "a"::Nil)
+    val iTgtNegBar_c = Once(CBEnter, Set(("","tgtNeg")), "c"::Nil)
+    val spec = new SpecSpace(Set(
+      LSSpec("a"::Nil, Nil, iBar_a, iTgtPosBar_a),
+      LSSpec("a"::Nil, Nil, Not(iBar_a), iTgtNegBar_a)
+    ))
+
+    // Lifestate atoms for next few tests
+    val abs1 = AbstractTrace(iTgtNegBar_c::iTgtPosBar_b::Nil, Map("b"->p1, "c" -> p1))
+    val state1 = State(StateFormula(Nil, Map(),Set(),Map(), abs1),0)
+    val res1 = stateSolver.simplify(state1,spec)
+    assert(res1.isEmpty)
+  }
   test("Trace abstraction NI(a.bar(), a.baz()) && a == p1 (<==>true)") { f =>
     val (stateSolver,_) = getStateSolver(f.typeSolving)
     val iFoo_ac = Once(CBEnter, Set(("", "foo")), "c"::"a" :: Nil)
