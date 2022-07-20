@@ -176,7 +176,10 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     iCtx
   }
 
-  override def checkSAT(useCmd:Boolean, timeout:Option[Int])(implicit zCtx:Z3SolverCtx): Boolean = {
+  override def checkSAT(useCmd:Boolean,messageTranslator: MessageTranslator,
+                        timeout:Option[Int])(implicit zCtx:Z3SolverCtx): Boolean = {
+    msgHistAxiomsToAST(messageTranslator)
+    assert(zCtx.indexInitialized, "Initialize axioms with msgHistAxiomsToAST")
     val timeoutS = timeout match {
       case Some(time) => time.toString
       case None => "600"
@@ -809,14 +812,17 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   }
 
   override protected def mkMsgConst(i:Int, msg:TraceElement)(implicit zCtx:Z3SolverCtx): AST = {
+    if(i == 0){
+      assert(msg == TInitial, "Initial trace element should be TInitial")
+      return mkZeroMsg
+    }
     val sig = (i,msg) match {
-      case (0,TInitial) => s"Initial_0"
       case (_,TInitial) => throw new IllegalArgumentException("bad initial message position")
       case (_,TCLInit(cl)) => ???
       case (_,TNew(v)) => ???
       case (i,TMessage(mType, method, args)) => s"${mType}_${method.name}_$i"
     }
-    zCtx.ctx.mkConst(s"msgat_$sig", addrSort)
+    zCtx.ctx.mkConst(s"msgat_$sig", msgSort)
   }
 
 
@@ -904,6 +910,10 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   private def constSort(implicit zCtx:Z3SolverCtx): UninterpretedSort = zCtx.ctx.mkUninterpretedSort("ConstVals")
   private def localSort(implicit zCtx:Z3SolverCtx): UninterpretedSort = zCtx.ctx.mkUninterpretedSort("Locals")
   private def iNameSort(implicit zCtx:Z3SolverCtx): UninterpretedSort = zCtx.ctx.mkUninterpretedSort(iNameString)
+
+  /**
+   * create msgLTE function such that (msgLTE X Y) means X ≤ Y
+   */
   private def msgLTE(implicit zCtx: Z3SolverCtx): FuncDecl[BoolSort] = {
     val msgMsg: Array[Sort] = Array(msgSort, msgSort)
     zCtx.ctx.mkFuncDecl("msgLTE", msgMsg, zCtx.ctx.mkBoolSort)
@@ -921,9 +931,8 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     val ctx = zCtx.ctx
     val lte = msgLTE
     if(!zCtx.indexInitialized){
-      val zero = mkZeroMsg.asInstanceOf[Expr[UninterpretedSort]]
       val nameFN = mkINameFn()
-      zCtx.mkAssert(mkEq(nameFN.apply(zero), messageTranslator.getZeroMsg))
+      zCtx.mkAssert(mkEq(nameFN.apply(mkZeroMsg), messageTranslator.getZeroMsgName))
       // Total ordering encoding used from: https://dl.acm.org/doi/pdf/10.1145/3140568
       // Paxos Made EPR: Decidable Reasoning about DistributedProtocols
       // figure 1
@@ -950,7 +959,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
 
       // ** All messages are greater than or equal to zero
       // forall x. zero ≤ x
-      val zeroLTE:BoolExpr = lte.apply(zero, x).asInstanceOf[BoolExpr]
+      val zeroLTE:BoolExpr = lte.apply(mkZeroMsg, x).asInstanceOf[BoolExpr]
       zCtx.mkAssert(ctx.mkForall(Array(x), zeroLTE, 1, null, null, null, null))
       zCtx.indexInitialized = true
     }
@@ -1053,11 +1062,20 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
       , 1, null, null, null, null)
   }
 
-  override protected def mkLTEMsg(ind1: AST, ind2: AST)(implicit zctx: Z3SolverCtx): AST = ???
+  override protected def mkLTEMsg(ind1: AST, ind2: AST)(implicit zctx: Z3SolverCtx): AST =
+    msgLTE.apply(ind1.asInstanceOf[Expr[UninterpretedSort]], ind2.asInstanceOf[Expr[UninterpretedSort]])
 
-  override protected def mkLTMsg(ind1: AST, ind2: AST)(implicit zctx: Z3SolverCtx): AST = ???
+  override protected def mkLTMsg(ind1: AST, ind2: AST)(implicit zctx: Z3SolverCtx): AST =
+    mkAnd(mkLTEMsg(ind1,ind2), mkNot(mkEq(ind1,ind2)))
 
-  override protected def mkAddOneMsg(ind: AST)(implicit zctx: Z3SolverCtx): (AST, AST) = ???
+  override protected def mkAddOneMsg(ind: AST)(implicit zctx: Z3SolverCtx): (AST, AST) = {
+    val mConst = zctx.ctx.mkFreshConst("msg",msgSort)
+    val lt = mkLTMsg(ind,mConst)
+    mkForallMsg(m => mkOr(List(???)) )
+
+    mkAnd(List(lt,???))
+    ???
+  }
 
   /**
    * create a fresh variable that is ind+1
@@ -1080,5 +1098,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   //    (assert,indNext)
   //  }
 
-  override protected def mkZeroMsg()(implicit zctx: Z3SolverCtx): AST = ???
+  protected def mkZeroMsg(implicit zCtx:Z3SolverCtx):Expr[UninterpretedSort] = {
+    zCtx.ctx.mkConst("zeroMessage___",msgSort)
+  }
 }

@@ -201,7 +201,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    * @param zCtx solver context
    * @return satisfiability of formula
    */
-  def checkSAT(useCmd:Boolean, timeout:Option[Int] = None)(implicit zCtx: C): Boolean
+  def checkSAT(useCmd:Boolean,messageTranslator: MessageTranslator, timeout:Option[Int] = None)(implicit zCtx: C): Boolean
 
   def push()(implicit zCtx: C): Unit
 
@@ -248,6 +248,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
 //  protected def mkExistsIndex(min: T, max: T, cond: T => T)(implicit zctx: C): T
 
+  protected def mkZeroMsg(implicit zCtx:C):T
+
   protected def mkExistsMsg(cond: T => T)(implicit zctx: C): T
 
   protected def mkForallMsg(cond: T => T)(implicit zctx: C): T
@@ -258,19 +260,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   protected def mkAddOneMsg(ind: T)(implicit zctx: C): (T, T)
 
-  protected def mkZeroMsg()(implicit zctx: C): T
-
-//  protected def mkLTEIndex(ind1: T, ind2: T)(implicit zctx: C): T
-//
-//  protected def mkLTIndex(ind1: T, ind2: T)(implicit zctx: C): T
-//
-//  protected def mkAddOneIndex(ind: T)(implicit zctx: C): (T, T)
-//
-//  protected def mkZeroIndex()(implicit zctx: C): T
-
-//  @deprecated
-//  protected def mkMaxInd(ind: T)(implicit zctx: C): Unit
-
   // comparison operations
   protected def mkEq(lhs: T, rhs: T)(implicit zctx: C): T
 
@@ -278,13 +267,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   protected def mkLt(lhs: T, rhs: T)(implicit zctx: C): T
 
-  // logical and arithmetic operations
+  // Logical operations
   protected def mkImplies(t: T, t1: T)(implicit zctx: C): T
 
   protected def mkNot(o: T)(implicit zctx: C): T
-
-//  @deprecated
-//  protected def mkAdd(lhs: T, rhs: T)(implicit zctx: C): T
 
   protected def mkSub(lhs: T, rhs: T)(implicit zctx: C): T
 
@@ -597,8 +583,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       case NS(m1, m2) =>
         mkExistsMsg(msg1 => mkAnd(
           msgModelsOnce(msg1, m1, messageTranslator, typeMap, typeToSolverConst, modelVarMap),
-          mkForallMsg(msg2 => mkImplies(???,mkNot(msgModelsOnce(msg2, m2, messageTranslator,
-            typeMap, typeToSolverConst, modelVarMap)))) //TODO%%%% message greater than
+          mkForallMsg(msg2 => mkImplies(mkLTMsg(msg1,msg2),mkNot(msgModelsOnce(msg2, m2, messageTranslator,
+            typeMap, typeToSolverConst, modelVarMap))))
         ))
       case FreshRef(v) =>
         ???
@@ -955,7 +941,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val (localDistinct, localDomain) = mkLocalDomain(allLocal)
     zCtx.mkAssert(localDistinct)
 
-    def getZeroMsg:T =
+    def getZeroMsgName:T =
       identitySignaturesToSolver("INITINIT")
     def enumFromI(m: Once): T =
       identitySignaturesToSolver(m.identitySignature)
@@ -1133,7 +1119,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
           println(ast.toString)
         }
         zCtx.mkAssert(ast)
-        val sat = checkSAT(false)
+        val sat = checkSAT(useCmd = false, messageTranslator)
         //      val simpleAst = solverSimplify(ast, stateWithNulls, messageTranslator, maxWitness.isDefined)
 
         //      if(simpleAst.isEmpty)
@@ -1641,7 +1627,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         specSpace = specSpace, debug = maxLen.isDefined)
       zCtx.mkAssert(s2Enc)
       val foundCounter =
-        checkSAT(useCmd = false)
+        checkSAT(useCmd = false, messageTranslator)
 
       if (foundCounter && maxLen.isDefined) {
         printDbgModel(messageTranslator, Set(s1.traceAbstraction,s2.traceAbstraction), "")
@@ -1847,7 +1833,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         return None
       if (state.callStack.nonEmpty)
         return None
-      val res = traceInAbstraction(state, specSpace, Nil, debug)
+      val res = traceInAbstraction(state, specSpace, TInitial::Nil, debug)
       res
     }finally{
       getLogger.warn(s"witnessed result: ${res.isDefined} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
@@ -1855,13 +1841,14 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   }
 
   def traceInAbstraction(state: State,specSpace: SpecSpace,
-                         trace: List[TMessage],
+                         trace: List[TraceElement],
                          debug: Boolean = false)(implicit zCtx: C): Option[WitnessExplanation] = {
     try {
       zCtx.acquire()
       val messageTranslator = MessageTranslator(List(state), specSpace)
-      val pvMap: Map[PureVar, Option[T]] = encodeTraceContained(state, trace, messageTranslator = messageTranslator, specSpace = specSpace)
-      val sat = checkSAT(useCmd = false)
+      val pvMap: Map[PureVar, Option[T]] = encodeTraceContained(state, trace,
+        messageTranslator = messageTranslator, specSpace = specSpace)
+      val sat = checkSAT(useCmd = false, messageTranslator)
       if (sat && debug) {
         println(s"model:\n ${zCtx.asInstanceOf[Z3SolverCtx].solver.toString}")
         printDbgModel(messageTranslator, Set(state.traceAbstraction), "")
@@ -1878,7 +1865,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   //TODO%%%%%% what does this do?
   def mkMsgAtIndex(num:Int)(implicit zctx: C):(T,T) = {
-    (0 until num).foldLeft((mkZeroMsg, mkBoolVal(b = true))){case (acc,_) =>
+    (1 until num).foldLeft((mkZeroMsg, mkBoolVal(b = true))){case (acc,_) =>
       val (ivIsInc,iv) = mkAddOneMsg(acc._1)
       (iv,mkAnd(acc._2, ivIsInc))
     }
@@ -1886,7 +1873,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   private def encodeTraceContained(state: State, trace: List[TraceElement], specSpace: SpecSpace,
                                    messageTranslator: MessageTranslator)(implicit zCtx: C): Map[PureVar, Option[T]] = {
 //    val traceFn = mkTraceFn("")
-
     val usedTypes = allTypes(state)
     val (typesAreUnique, typeMap) = mkTypeConstraints(usedTypes)
     zCtx.mkAssert(typesAreUnique)
@@ -1894,7 +1880,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 //    val traceLimit = trace.indices.foldLeft(mkZeroIndex){case (acc,_) => mkAddOneIndex(acc)}
     val (traceLimit, isInc) = mkMsgAtIndex(trace.size)
     zCtx.mkAssert(isInc)
-    //TODO%%%%% for all messages, message less then or equal to last
+    mkForallMsg(m => mkLTEMsg(m,traceLimit))
 
     // Maximum of 10 addresses in trace contained.  This method is typically used for empty traces with no addresses.
     // Only testing has non empty traces passed to this method
@@ -1921,18 +1907,19 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     if(trace.length != 1)
       ??? //TODO%%%% enforce order on messages
     val distinctMsg = mkDistinctT(msgVars)
-    val namedMsg = mkForallMsg(m => mkOr(msgVars.map(msgVar => mkEq(m,???))) )//TODO: how to apply msg fun?
+    val namedMsg = mkForallMsg(m => mkOr(msgVars.map(msgVar =>
+      mkEq(m,msgVar))))
     val argConstraints = distinctMSG.foldLeft(mkBoolVal(true)){
       case (acc,(TInitial,_)) => acc
       case _ =>
         ??? //TODO encode message args
     }
-    val nameConstraints = ???
-
-
-    zCtx.mkAssert(mkAnd(List(distinctMsg, namedMsg, argConstraints, nameConstraints)) )
-
-     ???
+    val nameConstraints = distinctMSG.foldLeft(mkBoolVal(true)){
+      case (acc,(TInitial,_)) => acc
+      case _ =>
+        ??? //TODO encode message names
+    }
+    mkAnd(List(distinctMsg, namedMsg, argConstraints, nameConstraints))
   }
 //  def encodeTrace(trace: List[TMessage],
 //                  messageTranslator: MessageTranslator, valToT: Map[Int, T])(implicit zCtx: C): T = {
