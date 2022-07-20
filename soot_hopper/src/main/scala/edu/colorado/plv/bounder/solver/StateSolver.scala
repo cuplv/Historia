@@ -207,8 +207,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   def pop()(implicit zCtx: C): Unit
 
-//  def reset()(implicit zCtx: C): Unit
-
   /**
    * Write debugging info, delete if cont finishes without failure
    * Used to debug native crashes in solver
@@ -216,20 +214,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    * @param cont call solver code in continuation, return result
    */
   protected def dumpDbg[V](cont: () => V)(implicit zCtx: C): V
-
-
-  // quantifiers
-  /**
-   * forall int condition is true
-   *
-   * @param cond condition inside the forall statement
-   */
-//  @deprecated //TODO: remove int for performance/decidability
-//  protected def mkForallInt(min: T, max: T, cond: T => T)(implicit zctx: C): T
-
-//  protected def mkForallIndex(min: T, max: T, cond: T => T)(implicit zctx: C): T
-
-//  protected def mkForallIndex(cond: T => T)(implicit zctx: C): T
 
   protected def mkForallAddr(name: String, cond: T => T)(implicit zctx: C): T
 
@@ -242,11 +226,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   protected def mkExistsAddr(name: Map[String,Option[T]], cond: Map[String, T] => T,
                              solverNames: Set[T] = Set())(implicit zCtx: C): T
   protected def mkPv(pv:PureVar)(implicit zCtx:C):T
-
-//  @deprecated
-//  protected def mkExistsInt(min: T, max: T, cond: T => T)(implicit zctx: C): T
-
-//  protected def mkExistsIndex(min: T, max: T, cond: T => T)(implicit zctx: C): T
 
   protected def mkZeroMsg(implicit zCtx:C):T
 
@@ -407,12 +386,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       ???
   }
 
-//  def getArgAt(index: T, argNum: Int, traceFn: T)(implicit zCtx: C): T = {
-//    val msgExpr = mkTraceConstraint(traceFn, index)
-//    mkArgConstraint(mkArgFun(), argNum, msgExpr)
-//  }
-
-  //TODO%%%%%%%% check this encoding works
   private def msgModelsOnce( msg:T,
                              once: Once,
                              messageTranslator: MessageTranslator,
@@ -447,63 +420,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
       mkAnd(nameConstraint, mkAnd(argConstraints))
   }
-  /**
-   * Formula representing truth of "m is at position index in traceFn"
-   *
-   * @param index             index of the message (ArithExpr)
-   * @param m                 observed message
-   * @param messageTranslator mapping from observed messages to z3 representation
-   * @param traceFn           : Int->Msg
-   * @return
-   */
-//  private def assertIAt(index: T, m: Once,
-//                        messageTranslator: MessageTranslator,
-//                        traceFn: T, // Int -> Msg
-//                        negated: Boolean = false,
-//                        lsTypeMap: Map[String, TypeSet],
-//                        typeToSolverConst: Map[Int, T],
-//                        modelVarMap: String => T)(implicit zctx: C): T = {
-//    val msgExpr = mkTraceConstraint(traceFn, index)
-//    val nameFun = messageTranslator.nameFun
-//    val nameConstraint = mkEq(mkNameConstraint(nameFun, msgExpr), messageTranslator.enumFromI(m))
-//    val argConstraints = m.lsVars.zipWithIndex.flatMap {
-//      case (LSAnyVal(), _) => None //TODO: primitive value cases
-//      case (LifeState.LSVar(msgVar), ind) =>
-//        //        val modelVar = modelVarMap(msgVar)
-//        val modelExpr = modelVarMap(msgVar)
-//        val argAt = mkArgConstraint(mkArgFun(), ind, msgExpr)
-//        val typeConstraint = lsTypeMap.get(msgVar) match {
-//          case Some(BitTypeSet(s)) =>
-//            mkTypeConstraintForAddrExpr(createTypeFun(), typeToSolverConst, argAt, s.toSet)
-//          case _ => mkBoolVal(b = true)
-//        }
-//        Some(mkAnd(
-//          mkEq(argAt, modelExpr),
-//          typeConstraint
-//        ))
-//      case (LifeState.LSConst(const), ind) =>
-//        val argAt = mkArgConstraint(mkArgFun(), ind, msgExpr)
-//        Some(compareConstValueOf(argAt, Equals, const, messageTranslator.getConstMap()))
-//    }
-//
-//    // w[i] = cb foo(x,y)
-//    // If we are asserting that a message is not at a location, the arg function cannot be negated
-//    // We only negate the name function
-//    if (negated) {
-//      val nameConstraints = mkNot(nameConstraint)
-//      mkOr(nameConstraints, mkOr(argConstraints.map(mkNot)))
-//    } else {
-//      mkAnd(nameConstraint, mkAnd(argConstraints))
-//    }
-//  }
 
-  private def encodeModelVarOrConst(lsExpr: String, modelVarMap: String => T)(implicit zctx: C): T = lsExpr match {
-    case LifeState.LSVar(v) => modelVarMap(v)
-    case LifeState.LSConst(const) =>
-      ???
-    case LifeState.LSAnyVal() =>
-      throw new IllegalStateException("AnyVal shouldn't reach here")
-  }
 
   /**
    * Value is at least one argument of message

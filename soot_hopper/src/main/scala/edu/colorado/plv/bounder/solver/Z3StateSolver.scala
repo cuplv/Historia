@@ -148,8 +148,6 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
 //    ictx.close()
     ictx = new Context()
     isolver = makeSolver(timeout, randomSeed)
-
-    //assert(solver.getAssertions.isEmpty, s"Solver has assertions:\n    ${solver.getAssertions.mkString("\n    ")}")
   }
 }
 class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:Int = 30000, //TODO: this was 100000 testing 30 sec
@@ -238,10 +236,6 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     zCtx.solver.pop()
   }
 
-//  override def reset()(implicit zCtx:Z3SolverCtx):Unit = {
-//    zCtx.reset()
-//  }
-
   override protected def mkEq(lhs: AST, rhs: AST)(implicit zCtx:Z3SolverCtx): AST = {
     zCtx.ctx.mkEq(lhs.asInstanceOf[Expr[Sort]], rhs.asInstanceOf[Expr[Sort]])
   }
@@ -260,11 +254,6 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
       case _ => throw new IllegalStateException()
     }
   }
-
-//  @Deprecated
-//  override protected def mkAdd(lhs: AST, rhs: AST)(implicit zCtx:Z3SolverCtx): AST = {
-//    zCtx.ctx.mkAdd(lhs.asInstanceOf[ArithExpr[ArithSort]], rhs.asInstanceOf[ArithExpr[ArithSort]])
-//  }
 
   override protected def mkSub(lhs: AST, rhs: AST)(implicit zCtx:Z3SolverCtx): AST = {
     zCtx.ctx.mkSub(lhs.asInstanceOf[ArithExpr[ArithSort]], rhs.asInstanceOf[ArithExpr[ArithSort]])
@@ -314,18 +303,6 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
       mkBoolVal(false)
     }
   }
-
-//  /**
-//   * @param l list of boolean expressions
-//   * @return boolean expression that is true iff exactly one expression in l is true
-//   */
-//  override protected def mkExactlyOneOf(l:List[AST])(implicit zCtx:Z3SolverCtx): AST = {
-////    val ctx = zCtx.ctx
-////    val oneorzero: Seq[Expr[Sort]] = l.map(lv =>
-////      ctx.mkITE(lv.asInstanceOf[BoolExpr],ctx.mkInt(1),ctx.mkInt(0)).asInstanceOf[Expr[Sort]])
-////    ctx.mkEq(ctx.mkAdd(oneorzero.toArray:_*), ctx.mkInt(1))
-//    ???
-//  }
 
   override protected def mkIntVal(i: Int)(implicit zCtx:Z3SolverCtx): AST = {
     zCtx.ctx.mkInt(i)
@@ -398,32 +375,11 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
                               pvMap: Map[PureVar, Option[AST]])(implicit zCtx: Z3SolverCtx): WitnessExplanation = {
 
     val ctx = zCtx.ctx
-    //val model = zCtx.solver.getModel
     assert(messageTranslator.states.size == 1, "Explain witness only applicable with single state")
     val state = messageTranslator.states.head
     val pvSet = state.pureVars()
     val varPairs = BounderUtil.repeatingPerm[PureVar](_ => pvSet, 2).filter(a => a(0) != a(1))
 
-    // val opt = ctx.mkOptimize()
-    // val params = ctx.mkParams()
-    // params.add("timeout", 15)
-    // opt.setParameters(params)
-    // zCtx.solver.getAssertions.foreach(a => opt.Add(a))
-    // varPairs.foreach{
-    //   case a::b::Nil =>
-    //     opt.AssertSoft(mkNe(pvMap(a).get,pvMap(b).get).asInstanceOf[BoolExpr], 1, s"${a}_${b}")
-    //   case _ => throw new IllegalStateException()
-    // }
-
-    // // Note: optimizer fails if quantifiers can't be simplified out
-    // // Fall back to model created by non-optimizing solver
-    // val res = opt.Check()
-    // val model = if(res == Status.SATISFIABLE)
-    //   opt.getModel
-    // else if(res == Status.UNKNOWN)
-    //   zCtx.solver.getModel
-    // else
-    //   throw new IllegalStateException("Mismatch between optimizing solver and normal solver")
     val model = zCtx.solver.getModel
 
     val ta = state.traceAbstraction
@@ -596,8 +552,6 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   // "_" means we don't care what the value is so just make arbitrary int
   override protected def mkModelVar(s: String, predUniqueID:String)(implicit zCtx:Z3SolverCtx): AST = s match {
     case LSVar(s) =>
-      //      assert(s.startsWith("LS__"))
-      // zCtx.ctx.mkConst(s,addrSort)
       zCtx.ctx.mkConst ("model_var_" + s + "_" + predUniqueID, addrSort)
     case LSAnyVal() =>
       zCtx.ctx.mkFreshConst ("_", addrSort)
@@ -607,16 +561,6 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   override protected def mkFreshIntVar(s:String)(implicit zCtx:Z3SolverCtx): AST =
     zCtx.ctx.mkFreshConst(s, zCtx.ctx.mkIntSort())
 
-  /**
-   * forall int in (min,max) condition is true
-   * @param cond function from const to boolean expression
-   */
-//  override protected def mkForallInt(min:AST, max:AST,cond: AST => AST)(implicit zCtx:Z3SolverCtx): AST = {
-//    val j = zCtx.ctx.mkFreshConst("j", zCtx.ctx.mkIntSort())
-//    val range = mkAnd(List(mkLt(min,j), mkLt(j,max)))
-//    zCtx.ctx.mkForall(Array(j), mkImplies(range,cond(j)).asInstanceOf[BoolExpr]
-//      ,1,null,null,null,null)
-//  }
   override protected def mkForallAddr(name:String, cond: AST=>AST)(implicit zCtx:Z3SolverCtx):AST = {
     assert(name != "_", "Wild card variables should not be quantified")
     val j: Expr[UninterpretedSort] = zCtx.ctx.mkFreshConst(name, addrSort)
@@ -692,14 +636,6 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     zCtx.ctx.mkImplies(t.asInstanceOf[BoolExpr], t1.asInstanceOf[BoolExpr])
   }
 
-//  override protected def mkTraceFn(uid: String)(implicit zCtx:Z3SolverCtx): AST = {
-//    zCtx.ctx.mkFuncDecl(s"tracefn_$uid", indexSort, zCtx.ctx.mkUninterpretedSort("Msg"))
-//  }
-
-//  override protected def mkFreshTraceFn(uid: String)(implicit zCtx:Z3SolverCtx): AST = {
-//    zCtx.ctx.mkFreshFuncDecl(s"tracefn_$uid", Array(indexSort), zCtx.ctx.mkUninterpretedSort("Msg"))
-//  }
-
   override protected def mkLocalFn()(implicit zCtx: Z3SolverCtx): FuncDecl[_] = {
     zCtx.ctx.mkFuncDecl(s"localfn_", localSort, addrSort)
   }
@@ -754,7 +690,6 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   }
 
   override protected def mkNames(types: List[String])(implicit zCtx:Z3SolverCtx): Map[String,AST] = {
-//    ctx.mkEnumSort(name, types.toArray:_*)
     val tmap:Map[String,AST] = types.map(t => (t -> zCtx.ctx.mkConst(t, iNameSort))).toMap
     if(!zCtx.uninterpretedTypes.contains(iNameString)){
       val u = zCtx.ctx.mkFreshConst("u", iNameSort)
@@ -765,16 +700,6 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     }
     tmap
   }
-
-//  override protected def getEnumElement(enum:(AST, Map[String,AST]), i: String)(implicit zCtx:Z3SolverCtx): AST = {
-////    enum.asInstanceOf[EnumSort[_]].getConst(i)
-//    enum._2(i)
-//  }
-
-  //TODO rm
-//  override protected def mkTraceConstraint(traceFun: AST, index: AST)(implicit zCtx:Z3SolverCtx): AST = {
-//    traceFun.asInstanceOf[FuncDecl[_]].apply(index.asInstanceOf[Expr[UninterpretedSort]])
-//  }
 
   override protected def mkNameConstraint(nameFun: AST, msg: AST)(implicit zCtx:Z3SolverCtx): AST = {
     nameFun.asInstanceOf[FuncDecl[_]].apply(msg.asInstanceOf[Expr[Sort]])
@@ -796,11 +721,6 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   }
 
   override protected def mkExistsArg(argFun: AST, msg: AST, pred: AST => AST)(implicit zCtx:Z3SolverCtx): AST = {
-    //    val argFun = mkArgFun()
-    //    val argConst = zCtx.ctx.mkFreshConst("argConst", getArgSort())
-    //    val constraint = pred(mkArgConstraint(argFun,
-    //      argConst, msg.asInstanceOf[Expr[UninterpretedSort]])).asInstanceOf[BoolExpr]
-    //    zCtx.ctx.mkExists(Array(argConst), constraint, 1,null,null,null,null)
     val argIs = zCtx.args.map(arg =>
       pred(argFun.asInstanceOf[FuncDecl[UninterpretedSort]].apply(
         arg,msg.asInstanceOf[Expr[UninterpretedSort]])).asInstanceOf[BoolExpr] )
@@ -843,8 +763,6 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
       zCtx.ctx.mkDistinct(pvList.map { a => a.asInstanceOf[Expr[UninterpretedSort]] }.toArray: _*)
     }
   }
-
-//  override protected def encodeTypeConsteraints: StateTypeSolving = persistentConstraints.getUseZ3TypeSolver
 
   override protected def persist: ClassHierarchyConstraints = persistentConstraints
 
@@ -966,60 +884,8 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
 
     lte
   }
-//  override protected def mkForallIndex(min: AST, max: AST, cond: AST => AST)(implicit zCtx: Z3SolverCtx): AST = {
-//    val min_ = min.asInstanceOf[Expr[UninterpretedSort]]
-//    val max_ = max.asInstanceOf[Expr[UninterpretedSort]]
-//    val lte = indexLTE
-//    val j = zCtx.ctx.mkFreshConst("j", indexSort)
-//    val range = mkAnd(lte.apply(min_,j), mkAnd(lte.apply(j, max_), mkNot(mkEq(j,max_))))
-//    zCtx.ctx.mkForall(Array(j), mkImplies(range, cond(j)).asInstanceOf[BoolExpr],
-//      1,null,null,null,null)
-//  }
 
-//  override protected def mkExistsIndex(min: AST, max: AST, cond: AST => AST)(implicit zCtx: Z3SolverCtx): AST = {
-//    val min_ = min.asInstanceOf[Expr[UninterpretedSort]]
-//    val max_ = max.asInstanceOf[Expr[UninterpretedSort]]
-//    val ctx = zCtx.ctx
-//    val lte = indexLTE
-//    val j = ctx.mkFreshConst("j", indexSort)
-//    val range = mkAnd(lte.apply(min_,j), mkAnd(lte.apply(j, max_), mkNot(mkEq(j,max_))))
-//    ctx.mkExists(Array(j), mkAnd(range, cond(j)).asInstanceOf[BoolExpr],
-//      1,null,null,null,null)
-//  }
-
-//  override protected def mkForallIndex(cond: AST => AST)(implicit zCtx:Z3SolverCtx):AST = {
-//    val ctx = zCtx.ctx
-//    val j = ctx.mkFreshConst("j", indexSort)
-//    ctx.mkForall(Array(j), cond(j).asInstanceOf[BoolExpr],
-//      1,null,null,null,null)
-//  }
-
-//  override protected def mkLTEIndex(ind1: AST, ind2: AST)(implicit zCtx: Z3SolverCtx): AST = {
-//    val lt = indexLTE
-//    lt.apply(ind1.asInstanceOf[Expr[UninterpretedSort]],ind2.asInstanceOf[Expr[UninterpretedSort]])
-//  }
-//  override protected def mkLTIndex(ind1: AST, ind2: AST)(implicit zCtx: Z3SolverCtx): AST = {
-//    mkAnd(mkLTEIndex(ind1,ind2), mkNot(mkEq(ind1,ind2)))
-//  }
-
-
-
-//  override protected def mkZeroIndex()(implicit zCtx: Z3SolverCtx): AST = {
-//    zCtx.ctx.mkConst("ZeroInd", indexSort)
-//  }
-//  override protected def mkMaxInd(ind:AST)(implicit zCtx: Z3SolverCtx):Unit = {
-//    val lte = indexLTE
-//    val indt = ind.asInstanceOf[Expr[UninterpretedSort]]
-//    val other = zCtx.ctx.mkFreshConst("other", indexSort)
-//    zCtx.mkAssert(zCtx.ctx.mkForall(Array(other), lte.apply(other, indt), 1,
-//      null,null,null,null))
-//  }
   override protected def mkAllArgs(msg: AST, pred: AST => AST)(implicit zCtx:Z3SolverCtx): AST = {
-    //    val argFun = mkArgFun()
-    //    val argConst:Expr[UninterpretedSort] = zCtx.ctx.mkFreshConst("argConst", getArgSort())
-    //    val constraint = pred(mkArgConstraint(argFun, argConst,
-    //      msg.asInstanceOf[Expr[UninterpretedSort]])).asInstanceOf[BoolExpr]
-    //    zCtx.ctx.mkForall(Array(argConst), constraint, 1,null,null,null,null)
     val argFun = mkArgFun()
     val ctx = zCtx.ctx
     val argIs = zCtx.args.map(arg =>
@@ -1030,14 +896,6 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   override protected def encodeValueCreatedInFuture(v: AST)(implicit zCtx: Z3SolverCtx): AST = {
     val ctx = zCtx.ctx
     val argFun = mkArgFun().asInstanceOf[FuncDecl[UninterpretedSort]]
-    // forall index method, seems to cause timeouts
-    //    val tf = traceFn.asInstanceOf[FuncDecl[UninterpretedSort]]
-    //    mkForallIndex{ind =>
-    //      val msg = tf.apply(ind.asInstanceOf[Expr[UninterpretedSort]])
-    ////      mkImplies( mkAnd(mkLTEIndex(mkZeroIndex(), ind),mkLTIndex(ind,traceLen)),
-    //        mkAllArgs(msg, {arg => mkNot(mkEq(v,arg))})
-    ////      )
-    //    }
     val m = ctx.mkConst("allMsg", msgSort)
     val v_ = v.asInstanceOf[Expr[UninterpretedSort]]
     val pred:BoolExpr = ctx.mkAnd(
