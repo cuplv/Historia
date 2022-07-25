@@ -4,7 +4,6 @@ import java.io.{PrintWriter, StringWriter}
 import java.sql.Timestamp
 import java.time.Instant
 import java.util.Date
-
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil.{MaxPathCharacterization, Proven, ResultSummary, Timeout, Unreachable, Witnessed, characterizeMaxPath}
 import edu.colorado.plv.bounder.Driver.{Default, LocResult, RunMode}
@@ -21,10 +20,11 @@ import scala.concurrent.Await
 import slick.jdbc.PostgresProfile.api._
 import slick.jdbc.SQLActionBuilder
 import soot.SootMethod
-import ujson.{Value, validate}
+import ujson.{Arr, Bool, Null, Num, Obj, Str, Value, validate}
 import upickle.core.AbortException
 import upickle.default.{macroRW, read, write, ReadWriter => RW}
 
+import java.io
 import scala.collection.immutable.{AbstractSet, SortedSet}
 import scala.concurrent.duration._
 import scala.collection.mutable.ListBuffer
@@ -49,7 +49,6 @@ case class Action(mode:RunMode = Default,
       config.apkPath.replace(baseDirVar, baseDir)
     }
     case None => {
-      assert(!config.apkPath.contains(baseDirVar))
       config.apkPath
     }
   }
@@ -69,7 +68,8 @@ case class Action(mode:RunMode = Default,
   }
 }
 
-case class RunConfig(apkPath:String = "",
+case class RunConfig( //Mode can also be specified in run config
+                     apkPath:String = "",
                      outFolder:Option[String] = None,
                      componentFilter:Option[Seq[String]] = None,
                      specSet: SpecSetOption = TopSpecSet,
@@ -78,7 +78,8 @@ case class RunConfig(apkPath:String = "",
                      samples:Int = 5,
                      tag:String = "",
                      timeLimit:Int = 600, // max clock time per query
-                     truncateOut:Boolean = true
+                     truncateOut:Boolean = true,
+                      configPath:Option[String] = None //Note: overwritten with json path of config
                     ){
 }
 
@@ -129,20 +130,25 @@ object Driver {
     sysPathsField.set(null, null);
     println(s"java.library.path set to: ${System.getProperty("java.library.path")}")
   }
+  def decodeMode(modeStr:Any):RunMode = modeStr match {
+    case Str(value) => decodeMode(value)
+    case "verify" => Verify
+    case "info" => Info
+    case "sampleDeref" => SampleDeref
+    case "readDB" => ReadDB
+    case "expLoop" => ExpLoop
+    case "makeAllDeref" => MakeAllDeref
+    case m =>
+      throw new IllegalArgumentException(s"Unsupported mode $m")
+  }
   def main(args: Array[String]): Unit = {
     val builder = OParser.builder[Action]
     val parser = {
       import builder._
       OParser.sequence(
         programName("Bounder"),
-        opt[String]('m',"mode").required().text("run mode [verify, info, sampleDeref]").action{
-          case ("verify",c) => c.copy(mode = Verify)
-          case ("info",c) => c.copy(mode = Info)
-          case ("sampleDeref",c) => c.copy(mode = SampleDeref)
-          case ("readDB",c) => c.copy(mode = ReadDB)
-          case ("expLoop",c) => c.copy(mode = ExpLoop)
-          case ("makeAllDeref",c) => c.copy(mode = MakeAllDeref)
-          case (m,_) => throw new IllegalArgumentException(s"Unsupported mode $m")
+        opt[String]('m',"mode").optional().text("run mode [verify, info, sampleDeref]").action{(v,c) =>
+          c.copy(mode = decodeMode(v))
         },
         opt[String]('b', "baseDirApk").optional().text("Substitute for ${baseDir} in config file")
           .action((v,c) => c.copy(baseDirApk = Some(v))),
@@ -151,9 +157,18 @@ object Driver {
         opt[java.io.File]('c', "config").optional()
           .text("Json config file, use full option names as config keys.").action{(v,c) => {
             try {
-              val readConfig = read[RunConfig](v)
-//              readConfig.copy(baseDir = c.baseDir, baseDirOut = c.baseDirOut)
-              c.copy(config = readConfig)
+              val configurationPath = v.getAbsolutePath
+              val readConfig = read[RunConfig](v).copy(configPath = Some(configurationPath))
+
+              // Extract mode option if set
+              val vStr = File(configurationPath).contentAsString
+              val c1 = c.copy(config=readConfig)
+              ujson.read(vStr) match {
+                case Obj(value) if value.contains("mode") => c1.copy(mode=decodeMode(value("mode")))
+                case Obj(_) => c1
+                case v =>
+                  throw new IllegalArgumentException(s"Invalid config json, top level must be object, found: $v")
+              }
             }catch{
               case t:AbortException =>
                 System.err.println(s"parseing json exception: ${t.clue}")
@@ -177,7 +192,14 @@ object Driver {
       )
     }
     OParser.parse(parser, args, Action()) match{
-      case Some(act) => runAction(act)
+      case Some(act) if act.baseDirApk.isDefined && act.baseDirOut.isDefined =>
+        runAction(act)
+      case Some(act) =>
+        // If base directories are not defined, assume same as config
+        assert(act.config.configPath.isDefined, "Internal failure, config file path not defined")
+        val baseDir = act.config.configPath.map(p => File(p).path.getParent.toString)
+        val actWithBase = act.copy(baseDirApk = baseDir, baseDirOut = baseDir)
+        runAction(actWithBase)
       case None => throw new IllegalArgumentException("Argument parsing failed")
     }
   }
@@ -201,7 +223,6 @@ object Driver {
       case act@Action(Verify,_, _, cfg,_,_, mode) =>
         val componentFilter = cfg.componentFilter
         val specSet = cfg.specSet
-          //        val cfgw = write(cfg)
         val apkPath = act.getApkPath
         val outFolder: String = act.getOutFolder
           // Create output directory if not exists
@@ -227,11 +248,8 @@ object Driver {
         res.zipWithIndex.foreach { case (iq, ind) =>
           val resFile = File(outFolder) / s"result_${ind}.txt"
           resFile.overwrite(write(iq))
-//          resFile.overwrite(write(LocResult(iq._1,iq._2, iq._3,
-//            iq._4._1, iq._4._2, iq._5))) // [qry,id,loc, res, time] //TODO: less dumb serialized format
         }
       case act@Action(SampleDeref,_,_,cfg,_,_,_) =>
-        //TODO: set base dir
         sampleDeref(cfg, act.getApkPath, act.getOutFolder, act.filter)
       case act@Action(ReadDB,_,_,_,_,_,_) =>
         readDB(File(act.getOutFolder))

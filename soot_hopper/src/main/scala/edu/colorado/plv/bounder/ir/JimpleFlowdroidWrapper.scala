@@ -1170,13 +1170,20 @@ class JimpleFlowdroidWrapper(apkPath : String,
 
 
   def getClassByName(className:String):Iterable[SootClass] = {
-    if(Scene.v().containsClass(className))
+    val foundClasses = if(Scene.v().containsClass(className))
       List(Scene.v().getSootClass(className))
     else {
       val nameMatcher = className.r
       val classOpt = Scene.v().getClasses.asScala.filter { c => nameMatcher.matches(c.getName) }
       classOpt
     }
+    if(foundClasses.isEmpty){
+      println("+++ Available classes:")
+      Scene.v().getClasses.forEach{clazz =>
+        println(s"  = ${clazz.getName}")
+      }
+      throw new IllegalArgumentException(s"No classes found matching: $className")
+    }else foundClasses
   }
   override def findMethodLoc(className: String, methodName: String):Iterable[JimpleMethodLoc] = {
     val classesFound = getClassByName(className)
@@ -1200,6 +1207,16 @@ class JimpleFlowdroidWrapper(apkPath : String,
         case t: Throwable => throw t
       })
       method.map(a => JimpleMethodLoc(a))
+    }
+    if(res.isEmpty){
+      println("+++ Available methods:")
+      classesFound.foreach{clazz =>
+        println(s"  ==class ${clazz.getName}")
+        clazz.getMethods.forEach{method =>
+          println(s"    -method ${method.getSignature}")
+        }
+      }
+      throw new IllegalArgumentException(s"method $methodName not found.")
     }
     res
   }

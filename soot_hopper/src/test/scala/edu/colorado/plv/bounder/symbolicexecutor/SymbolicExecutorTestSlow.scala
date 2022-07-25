@@ -6,11 +6,12 @@ import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.state.{IPathNode, ReceiverNonNull}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{DBOutputMode, IPathNode, InitialQuery, ReceiverNonNull}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
+import upickle.default.{read, write}
 
 /**
  * Useful but very slow tests on the symbolic executor.
@@ -83,12 +84,12 @@ class SymbolicExecutorTestSlow extends AnyFunSuite{
         val config = SymbolicExecutorConfig(
           stepLimit = 200, w, new SpecSpace(specs),
           component = Some(List("com.example.createdestroy.MyActivity.*")),
-          //          outputMode = DBOutputMode("/Users/shawnmeier/Desktop/bounder_debug_data/deref2.db")
-        )
+        outputMode = DBOutputMode("/Users/shawnmeier/Desktop/bounder_debug_data/deref2.db",false))
         val symbolicExecutor = config.getSymbolicExecutor
         val i = BounderUtil.lineForRegex(queryL, src)
         val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
           ".*onDestroy.*", i)
+        val qs = write[InitialQuery](query)
 
 
         val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)

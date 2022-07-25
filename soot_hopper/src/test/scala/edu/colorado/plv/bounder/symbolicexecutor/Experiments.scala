@@ -758,8 +758,10 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
             assert(apk != null)
             val dbFile = tmpDir / "paths.db"
             println(dbFile)
-            implicit val dbMode = DBOutputMode(dbFile.toString, truncate = false)
-            dbMode.startMeta()
+            // implicit val dbMode = DBOutputMode(dbFile.toString, truncate = false)
+            // dbMode.startMeta()
+            implicit val dbMode = MemoryOutputMode
+
             //            implicit val dbMode = MemoryOutputMode
             //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
             val w = new JimpleFlowdroidWrapper(apk, cgMode, row4Specs)
