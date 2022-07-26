@@ -1250,6 +1250,13 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     pred.flatMap(mayI)
   }
   case class Foo[T,List[T]](a:T, b:List[T])
+
+  def canSubsume(s1:State, s2: Set[State], specSpace:SpecSpace):Boolean = {
+    //TODO: factor out pre-filtering from single state canSubsume
+    //TODO: update state set to give set of states that may be able to subsume rather than doing search itself
+    //TODO: clean up canSubsumez3
+    ???
+  }
   /**
    *
    *
