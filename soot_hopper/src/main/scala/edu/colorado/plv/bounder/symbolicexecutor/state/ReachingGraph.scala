@@ -329,15 +329,10 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
       ""
     else
       write[State](node.qry.getState.get)
-//    val stateStr = write[State](node.qry.getState.get)
-    val row = WitTableRow(node.thisID, qryState, stateStr, loc, node.subsumedID, node.depth,node.ordDepth)
+    //TODO: For batch subsumption, "head" element is recorded, this may be confusing
+    val row = WitTableRow(node.thisID, qryState, stateStr, loc, node.subsumedID.headOption, node.depth,node.ordDepth)
     val edges:Seq[(Int,Int)] = node.succID.map(sid => (node.thisID, sid))
     queueNodeWrite(row,edges)
-//    val writeFuture = db.run(witnessQry +=
-//      row)
-//    val writeGraphFuture = db.run(graphQuery ++= edges)
-//    Await.result(writeFuture, 30 seconds)
-//    Await.result(writeGraphFuture,30 seconds)
   }
 
   def setSubsumed(node: DBPathNode, subsuming:Option[DBPathNode]) = {
@@ -379,8 +374,8 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
     val res: Seq[WitTableRow] = Await.result(db.run(q.result), 600 seconds)
     res.flatMap{row =>
       val node: DBPathNode = rowToNode(row)
-      if(node.subsumedID.isDefined) {
-        node.qry.getState.map(s => (s,readNode(node.subsumedID.get).qry.getState.get ))
+      if(node.subsumedID.nonEmpty) {
+        node.qry.getState.map(s => (s,readNode(node.subsumedID.head).qry.getState.get ))
       }
       else None
     }.toSet
@@ -418,7 +413,7 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
     }
     val depth = res.depth
     val ordDepth = res.ordDepth
-    DBPathNode(qry, id, pred, subsumingId, depth, ordDepth)
+    DBPathNode(qry, id, pred, subsumingId.toSet, depth, ordDepth)
   }
 
   def writeMethod(method: MethodLoc, isCallback:Boolean):Unit ={
@@ -569,7 +564,7 @@ object PathNode{
     val ordDepth =  if (succ.isEmpty) 0 else succ.map(_.ordDepth).max + ord.delta(qry)
     mode match {
       case MemoryOutputMode =>
-        MemoryPathNode(qry, succ, subsumed, depth,ordDepth)
+        MemoryPathNode(qry, succ, subsumed.toSet, depth,ordDepth)
       case m@DBOutputMode(_,_) =>
         val id = nextId
 
@@ -586,7 +581,7 @@ object PathNode{
           succ.map(n => n.asInstanceOf[DBPathNode].thisID)
         }
         val subsumedID = subsumed.map(n => n.asInstanceOf[DBPathNode].thisID)
-        val thisNode = DBPathNode(qry, id, succID, subsumedID,depth,ordDepth)
+        val thisNode = DBPathNode(qry, id, succID, subsumedID.toSet,depth,ordDepth)
         if(!shouldTruncate(qry.loc) || !m.truncate || succ.isEmpty) {
           m.writeNode(thisNode)
         }
@@ -594,13 +589,19 @@ object PathNode{
     }
   }
   def unapply(node : IPathNode): Option[(Qry, Boolean)] = node match{
-    case MemoryPathNode(qry,_,subsumed,_,_) => Some((qry,subsumed.isDefined))
+    case MemoryPathNode(qry,_,subsumed,_,_) => Some((qry,subsumed.nonEmpty))
     case DBPathNode(qry,_, _,subsumedID,_,_) =>
-      Some((qry,subsumedID.isDefined))
+      Some((qry,subsumedID.nonEmpty))
   }
 }
 
 sealed trait IPathNode {
+
+  /**
+   * Get state if you know it is defined
+   * @return contained state or throw exception if it does not exist
+   */
+  def state:State = this.qry.getState.get
   def setError(ze: Throwable)
   def getError: Option[Throwable]
 
@@ -625,8 +626,8 @@ sealed trait IPathNode {
   def ordDepth:Int
   def qry:Qry
   def succ(implicit mode : OutputMode):List[IPathNode]
-  def subsumed(implicit mode : OutputMode): Option[IPathNode]
-  def setSubsumed(v: Option[IPathNode])(implicit mode: OutputMode):IPathNode
+  def subsumed(implicit mode : OutputMode): Set[IPathNode]
+  def setSubsumed(v: Set[IPathNode])(implicit mode: OutputMode):IPathNode
   def mergeEquiv(other:IPathNode):IPathNode
   def copyWithNewQry(newQry:Qry):IPathNode
   final def addAlternate(alternatePath: IPathNode): IPathNode = {
@@ -636,7 +637,7 @@ sealed trait IPathNode {
   }
 }
 
-case class MemoryPathNode(qry: Qry, succV : List[IPathNode], subsumedV: Option[IPathNode], depth:Int,
+case class MemoryPathNode(qry: Qry, succV : List[IPathNode], subsumedV: Set[IPathNode], depth:Int,
                           ordDepth:Int) extends IPathNode {
   override def toString:String = {
     val qrystr = qry.toString
@@ -650,11 +651,14 @@ case class MemoryPathNode(qry: Qry, succV : List[IPathNode], subsumedV: Option[I
     Objects.hash(qry,depth,ordDepth)
   }
 
-  override def setSubsumed(v: Option[IPathNode])(implicit mode: OutputMode): IPathNode = this.copy(subsumedV = v)
+  override def setSubsumed(v: Set[IPathNode])(implicit mode: OutputMode): IPathNode = {
+    assert(v.nonEmpty, "Value must not be empty for subsuming")
+    this.copy(subsumedV = v)
+  }
 
   override def succ(implicit mode: OutputMode): List[IPathNode] = succV
 
-  override def subsumed(implicit mode: OutputMode): Option[IPathNode] = subsumedV
+  override def subsumed(implicit mode: OutputMode): Set[IPathNode] = subsumedV
 
   override def mergeEquiv(other: IPathNode): IPathNode = {
     val newNextCmd = qry.getState.get.nextCmd.toSet ++ other.qry.getState.get.nextCmd.toSet
@@ -675,7 +679,7 @@ case class MemoryPathNode(qry: Qry, succV : List[IPathNode], subsumedV: Option[I
 
 case class DBPathNode(qry:Qry, thisID:Int,
                       succID:List[Int],
-                      subsumedID: Option[Int], depth:Int, ordDepth:Int) extends IPathNode {
+                      subsumedID: Set[Int], depth:Int, ordDepth:Int) extends IPathNode {
   /**
    * @return string representation of messages in abstract trace
    */
@@ -688,11 +692,11 @@ case class DBPathNode(qry:Qry, thisID:Int,
   override def succ(implicit db:OutputMode): List[IPathNode] =
     succID.map(db.asInstanceOf[DBOutputMode].readNode)
 
-  override def subsumed(implicit db:OutputMode): Option[IPathNode] =
+  override def subsumed(implicit db:OutputMode): Set[IPathNode] =
     subsumedID.map(db.asInstanceOf[DBOutputMode].readNode)
 
-  override def setSubsumed(v: Option[IPathNode])(implicit db:OutputMode): IPathNode = {
-    db.asInstanceOf[DBOutputMode].setSubsumed(this,v.asInstanceOf[Option[DBPathNode]])
+  override def setSubsumed(v: Set[IPathNode])(implicit db:OutputMode): IPathNode = {
+    db.asInstanceOf[DBOutputMode].setSubsumed(this,v.headOption.asInstanceOf[Option[DBPathNode]])
     this.copy(subsumedID = v.map(v2 => v2.asInstanceOf[DBPathNode].thisID))
   }
 

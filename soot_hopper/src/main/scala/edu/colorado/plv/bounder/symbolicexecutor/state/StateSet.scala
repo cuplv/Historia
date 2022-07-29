@@ -1,76 +1,91 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, If, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SpecialInvoke, StaticInvoke, SwitchCmd, ThrowCmd, VirtualInvoke}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SwitchCmd, ThrowCmd}
 
-import scala.collection.parallel.CollectionConverters.ImmutableIterableIsParallelizable
-
-sealed trait StateRefinementEdge {
-  def contains(other: StateRefinementEdge): Boolean
-
-}
-
-
-
-case class StateSet(edges: Map[String, StateSet], states: Set[IPathNode]){
-  def allStates: Set[IPathNode] = states.union(edges.flatMap{ case(_,v) => v.allStates}.toSet)
-}
 
 sealed trait PVMap
 case class OnePVMap(tgt:PureVar) extends PVMap
 case class TwoPVMap(src:PureVar,tgt:PureVar) extends PVMap
 
+sealed trait StateSetNode{
+  def allStates:Set[IPathNode]
+}
 object StateSet {
-  private val DEBUG = true
-  def init: StateSet = StateSet(Map(),Set())
-  private def localEdgeFromFrame(sf:CallStackFrame,
-                                           state:State,
-                                           stackDepth:Int):Seq[String] =
-    sf.locals.toList.map{
-      case(StackVar(vName),_) => s"#${vName}_$stackDepth"
-    }
-  private def localEdgeFromState(state:State): Seq[String] = {
-    val unsortedLocals = state.callStack.zipWithIndex.flatMap{
-      case (sf@CallStackFrame(_, _, _), stackDepth) => localEdgeFromFrame(sf,state,stackDepth)
-    }
-    unsortedLocals.sorted
+  def emptyStateSet: StateSetNode = iEmptyStateSet
+  private def iEmptyStateSet: IStateSetNode = IStateSetNode(Map(),Set())
+
+  private sealed trait Edge{
+    def subsetOf(other:Edge):Boolean
   }
-  private def heapEdgesFromState(state:State):Seq[String] = {
-    val unsortedHeap = state.heapConstraints.toSeq.map{
-      case (FieldPtEdge(_,name),_) => s"##$name"
-      case (StaticPtEdge(clazz,name),_) => s"##$name#$clazz"
-      case (ArrayPtEdge(_,_),_) => s"####Array"
+  private case class HeapEdge(v:HeapPtEdge) extends Edge{
+    def subsetOf(other:Edge):Boolean = (v,other) match {
+      case (FieldPtEdge(_,fn1), HeapEdge(FieldPtEdge(_,fn2))) => fn1 == fn2
+      case (StaticPtEdge(clazz1, fn1), HeapEdge(StaticPtEdge(clazz2, fn2))) => clazz1 == clazz2 && fn1 == fn2
+      case (ArrayPtEdge(_,_),HeapEdge(ArrayPtEdge(_,_))) => true
+      case (_,_) => false
     }
-    unsortedHeap.sorted
+  }
+  private case class StackEdge(v:CallStackFrame) extends Edge{
+    def subsetOf(other:Edge):Boolean = other match {
+      case HeapEdge(_) => false
+      case StackEdge(CallStackFrame(exitLoc, retLoc, locals)) => {
+        val exitComp = exitLoc == v.exitLoc
+        val retLocComp = (v.retLoc,retLoc) match{
+          case (Some(_), None) => true // no return location defined is more abstract than some defined location
+          case (None,Some(_)) => false
+          case (vr,or) => vr == or //Some or none must match (including contained value)
+        }
+        val localsComp = locals.forall{ case (stackVar, _) => v.locals.contains(stackVar)}
+        exitComp && retLocComp && localsComp
+      }
+    }
   }
 
-  def add(pathNode:IPathNode, stateSet: StateSet, canSubsume: (State,State)=> Boolean):StateSet = {
-    def iEdges(edges: Seq[String], state:IPathNode,current: StateSet):StateSet = edges match{
+  private case class IStateSetNode(edges: Map[Edge, IStateSetNode], states: Set[IPathNode]) extends StateSetNode{
+    def allStates: Set[IPathNode] = states.union(edges.flatMap{ case(_,v) => v.allStates}.toSet)
+  }
+
+  private def edgeComparable(e1:Edge, e2:Edge):Boolean = e1.getClass == e2.getClass
+
+
+  private def edgesFromState(state:State):Seq[Edge] = {
+    //Heap edges
+    val heapEdge:Seq[Edge] = state.sf.heapConstraints.keySet.toSeq
+      .sortBy(_.ordBy)
+      .map{HeapEdge}
+    //stack edges
+    val stackEdge:Seq[Edge] = state.sf.callStack.map(e => StackEdge(e))
+
+    heapEdge ++ stackEdge
+  }
+
+  def add(pathNode:IPathNode, stateSet: StateSetNode):StateSetNode = {
+    def iEdges(edges: Seq[Edge], state:IPathNode,current: IStateSetNode):IStateSetNode = edges match{
       case edge::t if current.edges.contains(edge)=>
         val nextS = iEdges(t,state,current.edges(edge))
         current.copy(edges = current.edges + (edge -> nextS))
       case edge::t =>
-        val nextS = iEdges(t,state,init)
+        val nextS = iEdges(t, state, iEmptyStateSet)
         current.copy(edges = current.edges + (edge -> nextS))
       case Nil =>
-        //TODO: does dropping rev subsume help?
-        val currentDropSubs = current.states.filter(sOld => !canSubsume(state.qry.getState.get,sOld.qry.getState.get) )
-        current.copy(states = currentDropSubs + state)//
+        //TODO: ===== add separate method for pruning states
+//        val currentDropSubs = current.states.filter(sOld => !canSubsume(state.qry.getState.get,sOld.qry.getState.get) )
+        current.copy(states = current.states + state)//
 //        current.copy(states = current.states + state) //TODO: ====== check if this improves things
     }
-    val local = localEdgeFromState(pathNode.qry.getState.get)
-    val heap = heapEdgesFromState(pathNode.qry.getState.get)
-    iEdges(local ++ heap,pathNode, stateSet)
+    val edges = edgesFromState(pathNode.qry.getState.get)
+    iEdges(edges,pathNode, stateSet.asInstanceOf[IStateSetNode])
   }
-  private def dbgAllSubs(pathNode:IPathNode,
-                         stateSet:StateSet, canSubsume: (State,State)=> Boolean):(Option[IPathNode], Int) = {
+  def dbgAllSubs(pathNode:IPathNode,
+                         stateSet:StateSetNode, canSubsume: (State,State)=> Boolean):(Option[IPathNode], Int) = {
     var subsCount:Int = 0 //l
-    def iDbg(pathNode:IPathNode, stateSet:StateSet, canSubsume: (State,State)=> Boolean):Option[IPathNode] = {
+    def iDbg(pathNode:IPathNode, stateSet:IStateSetNode, canSubsume: (State,State)=> Boolean):Option[IPathNode] = {
       val res = stateSet.states.find { subsuming =>
         subsCount = subsCount + 1
         canSubsume(subsuming.qry.getState.get, pathNode.qry.getState.get)
       }
       object Subs {
-        def unapply(s: StateSet): Option[IPathNode] = {
+        def unapply(s: IStateSetNode): Option[IPathNode] = {
           iDbg(pathNode, s, canSubsume)
         }
       }
@@ -79,61 +94,32 @@ object StateSet {
       else
         stateSet.edges.collectFirst { case (_, Subs(s)) => s }
     }
-    (iDbg(pathNode, stateSet, canSubsume), subsCount)
+    (iDbg(pathNode, stateSet.asInstanceOf[IStateSetNode], canSubsume), subsCount)
   }
-  def findSubsuming(pathNode:IPathNode, stateSet:StateSet, canSubsume: (State,State)=> Boolean):Option[IPathNode] = {
-    //TODO: flip this around to where it traverses down and searches the things that mach the locals and heap cells first
 
-    val local = localEdgeFromState(pathNode.qry.getState.get)
-    val heap = heapEdgesFromState(pathNode.qry.getState.get)
-    def iFind(edges: List[String], pathNode:IPathNode, current:StateSet):Option[IPathNode] = {
-      //TODO: does par cause issues here?
-      //TODO:======== does sorting improve runtime?
-//      val search = current.states.toList.sortBy{ n =>
-//        n.qry.getState.map(s => s.sf.traceAbstraction.rightOfArrow.size).getOrElse(0)
-//      } //.par
-      val currentCanSubs = current.states.find{ subsuming =>
-        val startTime = System.nanoTime()
-        if(DEBUG)
-          println(s"   subsuming state: ${subsuming.qry.getState}")
-        val res = canSubsume(subsuming.qry.getState.get, pathNode.qry.getState.get)
-        if(DEBUG) {
-          println(s"        time(ms): ${(System.nanoTime() - startTime) / 1000.0}")
-          println(s"        result: ${res}")
-        }
-        res
+  //TODO: This seems to be broken {foo} should be subset of {foo, bar} but the sorting thing breaks because it turns into [bar, foo]
+  def getPossibleSubsuming(pathNode: IPathNode, stateSet: StateSetNode):Set[IPathNode] = {
+//    val local = localEdgeFromState(pathNode.qry.getState.get)
+//    val heap = heapEdgesFromState(pathNode.qry.getState.get)
+    def iFind(edges: Seq[Edge], pathNode:IPathNode, current:IStateSetNode):Set[IPathNode] = {
+      val currentOut: Set[IPathNode] = current.states
+      val nextOut: Set[IPathNode] = edges match{
+        case h::t =>
+          val relevantEdges = current.edges.keySet.filter(e => !edgeComparable(e,h) || e.subsetOf(h))
+          relevantEdges.flatMap(e => iFind(t,pathNode, current.edges(e)))
+        case Nil => Set.empty // Any further edges would mean that the subsuming state has edges the subsumee doesn't
       }
-      if(currentCanSubs.isDefined)
-        return currentCanSubs
-      edges match{
-        case h::t if current.edges.contains(h) =>
-          val withEdge = iFind(t,pathNode, current.edges(h))
-          if ( withEdge.isDefined)
-             withEdge
-          else {
-            // Check with current node again but drop all states since subsumption was already checked,
-            // we only care about out edges
-            iFind(t,pathNode,current.copy(states = Set()))
-          }
-        case _::t =>
-          iFind(t,pathNode,current.copy(states = Set()))
-        case Nil => None // Any further edges would mean that the subsuming state has edges the subsumee doesn't
-      }
+      currentOut.union(nextOut)
     }
-    if(DEBUG)
-      println(s"Searching states for subsumption of state: ${pathNode.qry.getState}")
-    val out = iFind((local ++ heap).toList, pathNode, stateSet)
-    // uncomment code below to sanity check StateSet
-    // StateSet uses a trie set to reduce the number of subsumption queries
-    // Following code attempts subsumption with every state and compares the result with StateSet
-    //    val (dbgOut,dbgCount) = dbgAllSubs(pathNode, stateSet, canSubsume)
-    //    if(dbgOut != out){
-    //      println("ERROR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-    //      throw new IllegalStateException("State set failure")
-    //    }
 
-    out
+    val edges = edgesFromState(pathNode.qry.getState.get)
+    iFind(edges, pathNode, stateSet.asInstanceOf[IStateSetNode])
   }
+
+  def filterSubsumedBy(pathNode: IPathNode, stateSet: StateSetNode, canSubsume: (State,State)=>Boolean):StateSetNode = {
+    ??? //TODO: === remove states subsumed by recently added state
+  }
+
 }
 
 sealed trait SubsumableLocation

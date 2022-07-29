@@ -31,20 +31,21 @@ class StateSetTest extends AnyFunSuite {
   val stateSolver = new Z3StateSolver(ch)
 
   private val fooMethod = TestIRMethodLoc("","foo", List(Some(LocalWrapper("@this","Object"))))
+  private val barMethod = TestIRMethodLoc("","bar", List(Some(LocalWrapper("@this","Object"))))
   private val lineLoc = TestIRLineLoc(-1)
-  private val dummyLoc = CallbackMethodReturn(tgtClazz = "",
-    fmwName="void foo()", fooMethod, None)
+  private val dummyLoc1 = CallbackMethodReturn(tgtClazz = "", fmwName="void foo()", fooMethod, None)
+  private val dummyLoc2 = CallbackMethodReturn(tgtClazz = "", fmwName="void bar()", barMethod, None)
+  val pv0 = PureVar(0)
+  val pv1 = PureVar(1)
+  val locals1 = Map(StackVar("foo")->pv0)
+  def pn(state:State):IPathNode = {
+    MemoryPathNode(LiveQry(state,AppLoc(fooMethod,lineLoc, false)),Nil,Set.empty,5,0)
+  }
+  val emptySet = StateSet.emptyStateSet
+
   test("Add state"){
-    //TODO: state set is work in progress and not used yet
-    def pn(state:State):IPathNode = {
-      MemoryPathNode(LiveQry(state,AppLoc(fooMethod,lineLoc, false)),Nil,None,5,0)
-    }
-    val set = StateSet.init
-    val pv0 = PureVar(0)
-    val pv1 = PureVar(1)
-    val locals1 = Map(StackVar("foo")->pv0)
     val s1 = State.topState.copy(sf = State.topState.sf.copy(
-      callStack = CallStackFrame(dummyLoc,None,locals1)::Nil,
+      callStack = CallStackFrame(dummyLoc1,None,locals1)::Nil,
       typeConstraints = Map(
         pv0-> BoundedTypeSet(Some("Foo"),None,Set()),
         pv1-> BoundedTypeSet(Some("String"),None,Set())
@@ -53,13 +54,51 @@ class StateSetTest extends AnyFunSuite {
       nextAddr = 3
     )
 
-    val set1 = StateSet.add(pn(s1), set, (s1, s2) => stateSolver.canSubsume(s1,s2, new SpecSpace(Set())))
+    val set1 = StateSet.add(pn(s1), emptySet)
 
     val subsumee1 = s1.swapPvUnique(pv0, pv1)
-    val subsState = StateSet.findSubsuming(pn(subsumee1), set1,
-    (s1,s2) => stateSolver.canSubsumeSlow(s1,s2))
+    val posSubsState = StateSet.getPossibleSubsuming(pn(subsumee1), set1)
+//    (s1,s2) => stateSolver.canSubsumeSlow(s1,s2))
+    val subsState = posSubsState.find(other =>
+      stateSolver.canSubsume(subsumee1, other.qry.getState.get,new SpecSpace(Set())))
     assert(subsState.isDefined)
     assert(subsState.get == pn(s1))
+  }
+
+  test("Filter out states with mismatched stacks"){
+    val s1 = State.topState.copy(sf = State.topState.sf.copy(callStack = CallStackFrame(dummyLoc1, None,locals1)::Nil))
+    val s2 = State.topState.copy(sf = State.topState.sf.copy(callStack = CallStackFrame(dummyLoc2, None,locals1)::Nil))
+    val set1 = StateSet.add(pn(s1), emptySet)
+    assert(StateSet.getPossibleSubsuming(pn(s2), set1).isEmpty)
+  }
+
+  test("Don't filter out states with substring stacks"){
+    val s1 = State.topState.copy(sf = State.topState.sf.copy(callStack = CallStackFrame(dummyLoc1, None,locals1)::Nil))
+    val s2 = State.topState.copy(sf = State.topState.sf.copy(
+      callStack = CallStackFrame(dummyLoc1, None,locals1)::CallStackFrame(dummyLoc2, None,locals1)::Nil))
+    val set1 = StateSet.add(pn(s1), emptySet)
+    assert(StateSet.getPossibleSubsuming(pn(s2), set1).nonEmpty)
+  }
+
+  test("Filter subsumed by should test subsumption of states that may be subsumed"){
+    //TODO: implement this method and call from symbolic executor
+    val s1 = State.topState.copy(sf = State.topState.sf.copy(callStack = CallStackFrame(dummyLoc1, None,locals1)::Nil))
+    val s2 = State.topState.copy(sf = State.topState.sf.copy(callStack = CallStackFrame(dummyLoc2, None,locals1)::Nil))
+    val s3 = State.topState.copy(sf = State.topState.sf.copy(
+      callStack = CallStackFrame(dummyLoc1, None,locals1)::CallStackFrame(dummyLoc2, None,locals1)::Nil))
+
+    val twoState = StateSet.add(pn(s3),StateSet.add(pn(s2),emptySet))
+    val resSet = StateSet.filterSubsumedBy(pn(s1),twoState, (_,_)=>true)
+    assert(resSet.allStates.contains(pn(s2)))
+    assert(!resSet.allStates.contains(pn(s3)))
+  }
+
+  test("Filter subsumed based on heap edges"){
+    val s1 = State.topState.copy(sf = State.topState.sf.copy(heapConstraints = Map(FieldPtEdge(pv0,"foo") -> pv1)))
+    val s2 = State.topState.copy(sf = State.topState.sf.copy(
+      heapConstraints = Map(FieldPtEdge(pv0,"foo") -> pv1, FieldPtEdge(pv0,"bar") -> pv1)))
+    val s1set = StateSet.add(pn(s1),emptySet)
+    assert(StateSet.getPossibleSubsuming(pn(s2), s1set).nonEmpty)
   }
 
 }

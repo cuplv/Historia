@@ -1251,33 +1251,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   }
   case class Foo[T,List[T]](a:T, b:List[T])
 
-  def canSubsume(s1:State, s2: Set[State], specSpace:SpecSpace):Boolean = {
-    //TODO: factor out pre-filtering from single state canSubsume
-    //TODO: update state set to give set of states that may be able to subsume rather than doing search itself
-    //TODO: clean up canSubsumez3
-    ???
-  }
-  /**
-   *
-   *
-   * @param s1 subsuming state
-   * @param s2 contained state
-   *           checks s2 => s1
-   * @return
-   */
-  def canSubsume(s1: State, s2: State, specSpace: SpecSpace, maxLen: Option[Int] = None,
-                 timeout:Option[Int] = None): Boolean = {
-    val mustIs = mustISet(s1,specSpace)
-    val mayIs = mayISet(s2, specSpace)
-    if (mustIs.exists(v => !mayIs.contains(v))) {
-      return false
-    }
-//     val method = "Unify"//TODO: benchmark and see if this is actually faster: Idea run both and log times then hist
-//     val method = "Debug"
-    val method = "Z3"
-    // val method = "FailOver"
-    val startTime = System.nanoTime()
-    // Check if stack sizes or locations are different
+  protected def fastMaySubsume(s1:State, s2:State, specSpace: SpecSpace):Boolean = {
     if (s1.callStack.size != s2.callStack.size)
       return false
 
@@ -1309,8 +1283,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     // s2 must contian all heap cells that s2 contains
     val dummyPv = PureVar(-10)
     def repHeapCells(cell: (HeapPtEdge, PureExpr)):HeapPtEdge = cell match{
-        case (FieldPtEdge(pv,fn),_) => FieldPtEdge(dummyPv, fn)
-        case (StaticPtEdge(clazz,fn), _) => StaticPtEdge(clazz,fn)
+      case (FieldPtEdge(pv,fn),_) => FieldPtEdge(dummyPv, fn)
+      case (StaticPtEdge(clazz,fn), _) => StaticPtEdge(clazz,fn)
     }
     val s2heapCells: Map[HeapPtEdge, Map[HeapPtEdge, PureExpr]] = s2.heapConstraints.groupBy(repHeapCells)
     val s1heapCells = s1.heapConstraints.groupBy(repHeapCells)
@@ -1324,6 +1298,42 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       }
     }
     if(!s2HasMoreOfEach){
+      return false
+    }
+
+    val mustIs = mustISet(s1,specSpace)
+    val mayIs = mayISet(s2, specSpace)
+    if (mustIs.exists(v => !mayIs.contains(v))) {
+      return false
+    }
+
+    true
+  }
+
+  def canSubsume(s1:Set[State], s2: State, specSpace:SpecSpace):Boolean = {
+    //TODO: factor out pre-filtering from single state canSubsume
+    //TODO: update state set to give set of states that may be able to subsume rather than doing search itself
+    //TODO: clean up canSubsumez3
+    val s1Filtered = s1.filter(other => fastMaySubsume(other,s2, specSpace))
+    ???
+  }
+  /**
+   *
+   *
+   * @param s1 subsuming state
+   * @param s2 contained state
+   *           checks s2 => s1
+   * @return
+   */
+  def canSubsume(s1: State, s2: State, specSpace: SpecSpace, maxLen: Option[Int] = None,
+                 timeout:Option[Int] = None): Boolean = {
+//     val method = "Unify"//TODO: benchmark and see if this is actually faster: Idea run both and log times then hist
+//     val method = "Debug"
+    val method = "Z3"
+    // val method = "FailOver"
+    val startTime = System.nanoTime()
+    // Check if stack sizes or locations are different
+    if(!fastMaySubsume(s1,s2,specSpace)){
       return false
     }
 

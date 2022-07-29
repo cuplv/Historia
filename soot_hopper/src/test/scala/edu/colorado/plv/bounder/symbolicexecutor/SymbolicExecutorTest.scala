@@ -2010,33 +2010,38 @@ class SymbolicExecutorTest extends AnyFunSuite {
                 |    }
                 |}""".stripMargin
     val test: String => Unit = apk => {
-      assert(apk != null)
-      val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
-      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
+      File.usingTemporaryDirectory() { tmpDir =>
+        assert(apk != null)
+        implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
+        dbMode.startMeta()
+        assert(apk != null)
+        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
+        val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
 
-      val config = SymbolicExecutorConfig(
-        stepLimit = 200, w, specs,
-        component = Some(List("com.example.createdestroy.MyActivity.*")))
-      val symbolicExecutor = config.getSymbolicExecutor
-      val line = BounderUtil.lineForRegex(".*query1.*".r, src)
-      val pauseReachable = Reachable("com.example.createdestroy.MyActivity",
-        "void onPause()",line)
+        val config = SymbolicExecutorConfig(
+          stepLimit = 200, w, specs,
+          component = Some(List("com.example.createdestroy.MyActivity.*")))
+        val symbolicExecutor = config.getSymbolicExecutor
+        val line = BounderUtil.lineForRegex(".*query1.*".r, src)
+        val pauseReachable = Reachable("com.example.createdestroy.MyActivity",
+          "void onPause()", line)
 
-      val resultReachable = symbolicExecutor.run(pauseReachable)
-        .flatMap(a => a.terminals)
-      //      prettyPrinting.dumpDebugInfo(resultReachable, "staticReach")
-      assert(resultReachable.nonEmpty)
-      BounderUtil.throwIfStackTrace(resultReachable)
-      assert(BounderUtil.interpretResult(resultReachable,QueryFinished) == Witnessed)
+        val resultReachable = symbolicExecutor.run(pauseReachable)
+          .flatMap(a => a.terminals)
+        //      prettyPrinting.dumpDebugInfo(resultReachable, "staticReach")
+        assert(resultReachable.nonEmpty)
+        BounderUtil.throwIfStackTrace(resultReachable)
+        assert(BounderUtil.interpretResult(resultReachable, QueryFinished) == Witnessed)
 
-      val npe = ReceiverNonNull("com.example.createdestroy.MyActivity",
-        "void onPause()",line, Some(".*toString.*"))
+        val npe = ReceiverNonNull("com.example.createdestroy.MyActivity",
+          "void onPause()", line, Some(".*toString.*"))
 
-      val res2 = symbolicExecutor.run(npe).flatMap(a => a.terminals)
-      // prettyPrinting.dumpDebugInfo(res2, "staticNPE")
-      assert(res2.nonEmpty)
-      BounderUtil.throwIfStackTrace(res2)
-      assert(BounderUtil.interpretResult(res2,QueryFinished) == Witnessed)
+        val res2 = symbolicExecutor.run(npe).flatMap(a => a.terminals)
+        prettyPrinting.dumpDebugInfo(res2, "staticNPE")
+        assert(res2.nonEmpty)
+        BounderUtil.throwIfStackTrace(res2)
+        assert(BounderUtil.interpretResult(res2, QueryFinished) == Witnessed)
+      }
 
     }
     makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)

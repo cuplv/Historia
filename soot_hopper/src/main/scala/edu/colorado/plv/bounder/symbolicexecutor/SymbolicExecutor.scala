@@ -1,13 +1,12 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
 import java.time.Instant
-
 import com.microsoft.z3.Z3Exception
 import edu.colorado.plv.bounder.{BounderUtil, RunConfig}
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, If, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SwitchCmd, ThrowCmd, VirtualInvoke}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.Z3StateSolver
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, FrameworkLocation, IPathNode, InitialQuery, LiveQry, LiveTruncatedQry, MemoryOutputMode, MemoryPathNode, OrdCount, OutputMode, PathNode, Qry, State, StateSet, SubsumableLocation, SwapLoc, WitnessedQry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, FrameworkLocation, IPathNode, InitialQuery, LiveQry, LiveTruncatedQry, MemoryOutputMode, MemoryPathNode, OrdCount, OutputMode, PathNode, Qry, State, StateSet, StateSetNode, SubsumableLocation, SwapLoc, WitnessedQry}
 
 import scala.annotation.tailrec
 import upickle.default._
@@ -55,6 +54,8 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   implicit val pathMode: OutputMode = config.outputMode
   implicit val w = config.w
   private val cha = w.getClassHierarchyConstraints
+
+  private val invarMap = mutable.HashMap[SubsumableLocation, Set[IPathNode]]()
 
 
 
@@ -163,6 +164,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
    */
   def run(initialQuery: InitialQuery, outputMode:OutputMode = MemoryOutputMode,
           cfg:RunConfig = RunConfig()) : Set[QueryData] = {
+    invarMap.clear()
     val qry = initialQuery.make(this)
     qry.groupBy(_.loc).map{ case(loc,qs) =>
       val startTime = Instant.now.getEpochSecond
@@ -192,85 +194,12 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     }.toSet
   }
 
-
-  def isSubsumed(node: IPathNode, value: Map[SubsumableLocation, Map[Int, StateSet]]):Option[IPathNode] = node match {
-    case SwapLoc(l) =>  isSubsumed_stateSet(node, value)
-//      isSubsumed_backtrack(node,l,value, node.succ)
-//      var found:Option[IPathNode] = None
-//      val ex = value.exists{
-//        case (location, value1) => value1.exists{
-//          case (i, set) => set.allStates.exists{p =>
-//            if(p.qry.getState.get == node.qry.getState.get){
-//              println()
-//              found = Some(p)
-//              true
-//            }
-//            false
-//          }
-//        }
-//      }
-//      val res = isSubsumed_stateSet(node, value)
-//
-////      //TODO:Remove debug code
-////      if(res.isEmpty) {
-////
-////        if(ex){
-////          println("found")
-////        }
-////      }
-//      if(ex){
-//        println()
-//      }
-//
-//      res
-    case _ => None
-  }
-
-  @tailrec
-  private def isSubsumed_backtrack(pathNode:IPathNode,
-                                   l:SubsumableLocation,
-                                   subsMap: Map[SubsumableLocation, Map[Int, StateSet]],
-                                   succ: List[IPathNode]):Option[IPathNode] = succ match{
-    case Nil => None
-    case (h@SwapLoc(l2))::t if l == l2 && subsMap.contains(l2) && pathNode.qry.getState.isDefined && h.qry.getState.isDefined =>
-      val s1 = h.qry.getState.get
-      val s2 = pathNode.qry.getState.get
-      val subsLocs = subsMap(l2).get(s2.sf.callStack.size)
-      if(stateSolver.canSubsume(s1,s2, transfer.getSpec, timeout = None)){
-        Some(h)
-      }else {
-        isSubsumed_backtrack(pathNode,l,subsMap, h.succ ++ t)
-      }
-    case h::t =>
-      isSubsumed_backtrack(pathNode,l,subsMap, h.succ ++ t)
-  }
-  def isSubsumed_stateSet(pathNode:IPathNode,
-                 nVisited: Map[SubsumableLocation,Map[Int,StateSet]]):Option[IPathNode] = pathNode match{
-    case SwapLoc(loc) if pathNode.qry.isInstanceOf[LiveQry] && nVisited.contains(loc) =>
-      val root = nVisited(loc).getOrElse(pathNode.qry.getState.get.callStack.size, StateSet.init)
-      val res = StateSet.findSubsuming(pathNode, root,(s1,s2) =>{
-        if(config.subsumptionEnabled) {
-          stateSolver.canSubsume(s1,s2, transfer.getSpec)
-        } else if(s1.heapConstraints.size == s2.heapConstraints.size) {
-          stateSolver.canSubsume(s1,s2, transfer.getSpec) && stateSolver.canSubsume(s2,s1, transfer.getSpec)
-        } else
-          false
-      })
-
-      //=== test code ===
-//       Note this was to test if state set is working correctly, it appears to be
-//      val allState = root.allStates
-//      val resOld = allState.find(old =>
-//        stateSolver.canSubsume(old.qry.getState.get,pathNode.qry.getState.get,transfer.getSpec))
-//
-//      if(resOld.isDefined != res.isDefined){
-//        println("diff")
-//        ???
-//      }
-      // === end test code ==
-
-      res
-    case _ => None
+  def isSubsumed(pathNode:IPathNode):Set[IPathNode] = pathNode match{
+    case SwapLoc(loc) if pathNode.qry.isInstanceOf[LiveQry] && invarMap.contains(loc) => {
+      val res = invarMap(loc).find(p => stateSolver.canSubsume(p.state,pathNode.state, transfer.getSpec))
+      res.toSet //TODO: switch over to set find later
+    }
+    case _ => Set.empty
   }
 
   private def equivStates(s1:State, s2:State):Boolean = {
@@ -368,8 +297,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
    */
   @tailrec
   final def executeBackward(qrySet: GrouperQ, limit:Int, deadline:Long,
-                            refutedSubsumedOrWitnessed: Set[IPathNode] = Set(),
-                            visited:Map[SubsumableLocation, Map[Int,StateSet]] = Map()):Set[IPathNode] = {
+                            refutedSubsumedOrWitnessed: Set[IPathNode] = Set()):Set[IPathNode] = {
 
     if(deadline > -1 && Instant.now.getEpochSecond > deadline){
       throw QueryInterruptedException(qrySet.toSet ++ refutedSubsumedOrWitnessed, "timeout")
@@ -394,10 +322,10 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
         case p@PathNode(_: LiveQry, true) =>
           // current node is subsumed
           // TODO: this branch is probably unreachable
-          executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p, visited)
+          executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p)
         case p@PathNode(_: BottomQry, _) =>
           // current node is refuted
-          executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p, visited)
+          executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p)
         case p@PathNode(_: WitnessedQry, _) =>
           // current node is witnessed
           refutedSubsumedOrWitnessed.union(qrySet.toSet) + p
@@ -407,7 +335,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
         case p@PathNode(qry: LiveQry, false) =>
           // live path node
           val subsuming = try{
-              isSubsumed(p, visited)
+              isSubsumed(p)
             }catch {
               case ze:Throwable =>
                 // Get sequence trace to error when it occurs
@@ -416,20 +344,20 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
                 throw QueryInterruptedException(refutedSubsumedOrWitnessed + current, ze.getMessage)
           }
           subsuming match {
-            case v@Some(_) =>
+            case v if v.nonEmpty =>
               // Path node discovered to be subsumed
-              executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p.setSubsumed(v), visited)
-            case None =>
+              executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p.setSubsumed(v))
+            case v if v.isEmpty =>
               val stackSize = p.qry.getState.get.callStack.size
               // Add to invariant map if invariant location is tracked
-              val newVisited = current match {
-                case SwapLoc(v) =>
-                  val stackSizeToNode: Map[Int, StateSet] = visited.getOrElse(v, Map[Int, StateSet]())
-                  val nodeSetAtLoc: StateSet = stackSizeToNode.getOrElse(stackSize, StateSet.init)
-                  val nodeSet = StateSet.add(p, nodeSetAtLoc, (s1,s2) => stateSolver.canSubsume(s1,s2,config.specSpace))
-                  val newStackSizeToNode = stackSizeToNode + (stackSize -> nodeSet)
-                  visited + (v -> newStackSizeToNode)
-                case _ => visited
+              current match {
+                case SwapLoc(v) => {
+                  val nodeSetAtLoc = invarMap.getOrElse(v, Set.empty)
+                  //TODO: filter invar map
+                  //TODO:%%%%%====filter states subsumed by added state              , (s1,s2) => stateSolver.canSubsume(s1,s2,config.specSpace)
+                  invarMap.addOne(v-> (nodeSetAtLoc + current))
+                }
+                case _ =>
               }
               val nextQry = try{
                 executeStep(qry).map(q => PathNode(q, List(p), None))
@@ -441,7 +369,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
                   throw QueryInterruptedException(refutedSubsumedOrWitnessed + current, ze.getMessage)
               }
               qrySet.addAll(nextQry)
-              executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed, newVisited)
+              executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed)
           }
       }
   }

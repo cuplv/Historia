@@ -78,7 +78,7 @@ class PrettyPrinting() {
         s"${if(pn.getError.isDefined) pn.getError.get.toString else ""}",pn))
       case pn@PathNode(_ :WitnessedQry, _) => Some(("witnessed", pn))
       case pn@PathNode(_:BottomQry, false) => Some(("refuted",pn))
-      case pn@PathNode(_:LiveQry, true) => Some((s"subsumed by:\n -- ${qryString(pn.subsumed.get.qry)}\n", pn))
+      case pn@PathNode(_:LiveQry, true) => Some((s"subsumed by:\n -- ${qryString(pn.subsumed.head.qry)}\n", pn))
       case _ => None
     }
 
@@ -96,7 +96,7 @@ class PrettyPrinting() {
         s"${if(pn.getError.isDefined) pn.getError.get.toString else ""}",pn))
       case pn@PathNode(_ :WitnessedQry, _) => Some(("witnessed", pn))
       case pn@PathNode(_:BottomQry, false) => Some(("refuted",pn))
-      case pn@PathNode(_:LiveQry, true) => Some((s"subsumed by:\n -- ${qryString(pn.subsumed.get.qry)}\n", pn))
+      case pn@PathNode(_:LiveQry, true) => Some((s"subsumed by:\n -- ${qryString(pn.subsumed.head.qry)}\n", pn))
       case _ => None
     }.toList
 
@@ -131,7 +131,7 @@ class PrettyPrinting() {
       val curString = sanitizeStringForDot(cur.str)
 
       val init = if(cur.succ.isDefined) "" else "INITIAL: "
-      val subs = if(cur.pn.subsumed.isDefined)"SUBSUMED: " else ""
+      val subs = if(cur.pn.subsumed.nonEmpty)"SUBSUMED: " else ""
       val nextProcNodes = procNodes + s"""n${System.identityHashCode(cur.pn)} [label="${init}${subs}${curString}"]"""
       // TODO: add subsumption edges
       // TODO: add subsumption labels
@@ -143,7 +143,7 @@ class PrettyPrinting() {
       }
       val subsumedEdges =
         if (includeSubsEdges)cur.pn.subsumed.map(v =>
-          s"\n    n${System.identityHashCode(v)}->n${System.identityHashCode(cur.pn)}").getOrElse("") else ""
+          s"\n    n${System.identityHashCode(v)}->n${System.identityHashCode(cur.pn)}").headOption.getOrElse("") else ""
       iDotNode(rest, seen + cur.pn, nextProcNodes, nextProcEdges + subsumedEdges, includeSubsEdges)
     }
   }
