@@ -26,9 +26,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
   private val p6 = PureVar(6)
   private val frame = CallStackFrame(dummyLoc, None, Map(StackVar("x") -> v))
   private val state = State.topState
-  case class FixtureParam(typeSolving: StateTypeSolving) {
-
-  }
+  case class FixtureParam(stateSolver:Z3StateSolver, canSubsume: (State,State,SpecSpace)=> Boolean)
 
   def loadState(resource:String):State = {
     //val f = File(Resource.getUrl(s"resources/${resource}").getPath)
@@ -75,16 +73,26 @@ class StateSolverTest extends FixtureAnyFunSuite {
   implicit def set2SigMat(s:Set[(String,String)]):SignatureMatcher =
     SubClassMatcher(s.map(_._1),s.map(_._2).mkString("|"),s.head._1 + s.head._2)
 
+  private def getZ3StateSolver():
+  (Z3StateSolver, ClassHierarchyConstraints) = {
+    val pc = new ClassHierarchyConstraints(hierarchy,Set("java.lang.Runnable"),intToClass)
+    (new Z3StateSolver(pc,timeout = 4000),pc)
+  }
   override def withFixture(test: OneArgTest) = {
     // Run all tests with both set inclusion type solving and solver type solving
     // Some subsumption tests override type solving parameter
     // All other tests should work with either
 //    withFixture(test.toNoArgTest(FixtureParam(SetInclusionTypeSolving)))
-    withFixture(test.toNoArgTest(FixtureParam(SolverTypeSolving)))
+    val (stateSolver,_) = getZ3StateSolver
+    withFixture(test.toNoArgTest(FixtureParam(stateSolver, (s1,s2,spec) => stateSolver.canSubsume(s1,s2,spec))))
+    withFixture(test.toNoArgTest(FixtureParam(stateSolver, (s1,s2,spec) => {
+      s1.setSimplified() //For tests, just tell solver its simplified already
+      stateSolver.canSubsumeSet(Set(s1),s2,spec)
+    })))
   }
   ignore("test to debug subsumption issues by loading serialized states"){f =>
     // Note: leave ignored unless debugging, this test is just deserializing states to inspect
-    val (stateSolver, _) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     val spec1 = new SpecSpace(
       Set(LifecycleSpec.Activity_onPause_onlyafter_onResume,
         LifecycleSpec.Activity_onResume_first_orAfter_onPause,
@@ -129,16 +137,16 @@ class StateSolverTest extends FixtureAnyFunSuite {
 //        ))
 
         //    val emptySpec = new SpecSpace(Set())
-        //    val emptyRes = stateSolver.canSubsume(s1,s2, emptySpec)
+        //    val emptyRes = f.canSubsumes1,s2, emptySpec)
         //    assert(emptyRes)
 
-        val res = stateSolver.canSubsume(s1, s2, spec)
+        val res = f.canSubsume(s1, s2, spec)
         expected(res)
     }
   }
   test("value not value") { f =>
     println(s"fixture param: $f")
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
 
     val v2 = PureVar(2)
     val constraints = Set(PureConstraint(v2, NotEquals, NullVal), PureConstraint(v2, Equals, NullVal))
@@ -159,7 +167,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
 
   }
   test("alias") { f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
 
     val v2 = PureVar(2)
     val v3 = PureVar(3)
@@ -172,7 +180,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(simplifyResult.isEmpty)
   }
   test("Separate fields imply base must not be aliased a^.f->b^ * c^.f->b^ AND a^=c^ (<=> false)") { f=>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
 
     val v2 = PureVar(2)
     val v3 = PureVar(3)
@@ -198,7 +206,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(simplifyResult3.isDefined)
   }
   test("Transitive equality should be refuted by type constraints") { f=>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     val v2 = PureVar(2)
     val v3 = PureVar(3)
     val v4 = PureVar(4)
@@ -219,7 +227,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(simplifyResult2.isEmpty)
   }
   test("test feasibility of constraints before GC") { f=>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     val v2 = PureVar(2)
     val v3 = PureVar(3)
     val v4 = PureVar(4)
@@ -234,7 +242,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
 
   }
   test("aliased object implies fields must be aliased refuted by type constraints") { f =>
-    val (stateSolver,_) = getStateSolver(SolverTypeSolving)
+    val stateSolver = f.stateSolver
 
     // aliased and contradictory types of field
     val v2 = PureVar(2)
@@ -266,7 +274,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(simplifyResult2.isDefined)
   }
   test("Trace abstraction lsfalse is empty and lstrue is not"){ f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     val iFoo_ac = Once(CBEnter, Set(("", "foo")), "c"::"a" :: Nil)
     val iFoo_bd = Once(CBEnter, Set(("", "foo")), "d"::"b" :: Nil)
     val specSpace = new SpecSpace(Set(LSSpec("a"::"c"::Nil, Nil, LSFalse, iFoo_ac)))
@@ -283,7 +291,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(resTrue.isDefined)
   }
   test("Trace abstraction O(a.bar()) && HN(b.bar()) && a == p1 (<==>false)") { f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     val iBar_a = Once(CBEnter, Set(("", "bar")), "a" :: Nil)
     val iTgtPosBar_a = Once(CBEnter, Set(("", "tgtPos")), "a" :: Nil)
     val iTgtPosBar_b = Once(CBEnter, Set(("", "tgtPos")), "b" :: Nil)
@@ -301,7 +309,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(res1.isEmpty)
   }
   test("Trace abstraction NI(a.bar(), a.baz()) && a == p1 (<==>true)") { f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     val iFoo_ac = Once(CBEnter, Set(("", "foo")), "c"::"a" :: Nil)
     val iFoo_bd = Once(CBEnter, Set(("", "foo")), "d"::"b" :: Nil)
     val iBar_a = Once(CBEnter, Set(("", "bar")), "a" :: Nil)
@@ -316,7 +324,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(res1.isDefined)
   }
   test("Trace abstraction NI(a.bar(), a.baz()) |> I(a.bar()) (<==>true)") { f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
 
     val iFoo_ac = Once(CBEnter, Set(("", "foo")), "c"::"a" :: Nil)
     val iFoo_bd = Once(CBEnter, Set(("", "foo")), "d"::"b" :: Nil)
@@ -333,7 +341,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(res1.isDefined)
   }
   test("Trace abstraction NI(a.bar(),a.baz()) |> I(c.baz()) && a == p1 && c == p1 (<=> false)") { f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
 
     val iBar_a = Once(CBEnter, Set(("_", "bar")), "a" :: Nil)
     val iBaz_a = Once(CBEnter, Set(("_", "baz")), "a" :: Nil)
@@ -356,7 +364,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
   }
   ignore("Trace abstraction NI(a.bar(),a.baz()) |> I(c.bar()) && a == p1 && c == p1 (<=> true)") { f =>
     //TODO: |>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
 
     // Lifestate atoms for next few tests
     val i = Once(CBEnter, Set(("foo", "bar")), "a" :: Nil)
@@ -374,7 +382,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
   }
   ignore("Trace abstraction NI(a.bar(),a.baz()) |> I(b.baz()) |> I(c.bar()) (<=> true) ") { f =>
     //TODO: |>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
 
     // Lifestate atoms for next few tests
     val i = Once(CBEnter, Set(("foo", "bar")), "a" :: Nil)
@@ -392,7 +400,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
   }
   ignore("Trace abstraction NI(a.bar(),a.baz()) ; I(c.bar()) ; I(b.baz()) && a = b = c (<=> false) ") { f =>
     //TODO: |>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
 
     // Lifestate atoms for next few tests
     val i = Once(CBEnter, Set(("foo", "bar")), "a" :: Nil)
@@ -410,7 +418,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
   }
   ignore("Trace abstraction NI(a.bar(),a.baz()) |> I(c.bar()) |> I(b.baz() && a = c (<=> true) ") { f =>
     //TODO: |>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
 
     // Lifestate atoms for next few tests
     val i = Once(CBEnter, Set(("foo", "bar")), "a" :: Nil)
@@ -428,7 +436,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
   }
   ignore("Trace abstraction NI(a.bar(),a.baz()) |> I(c.bar()) |> I(b.baz() && a = b (<=> false) ") { f =>
     //TODO: |>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
 
     // Lifestate atoms for next few tests
     val i = Once(CBEnter, Set(("foo", "bar")), "a" :: Nil)
@@ -446,7 +454,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
   }
   ignore("Trace abstraction NI(a.bar(),a.baz()) |> I(a.bar()),  NI(a.foo(),a.baz()) |> I(a.foo()) (<=> true) ") { f =>
     //TODO: |>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
 
     // Lifestate atoms for next few tests
     val ibar = Once(CBEnter, Set(("", "bar")), "a" :: Nil)
@@ -462,7 +470,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
 
   ignore("( (Not I(a.bar())) && (Not I(a.baz())) ) |> I(b.bar()) && a=pv1 && b = pv1,  (<=>false) ") { f =>
     //TODO: |>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
 
     // Lifestate atoms for next few tests
     val ibar_a = Once(CBEnter, Set(("", "bar")), "a" :: Nil)
@@ -486,7 +494,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
   }
   ignore("Not witnessed: I(a.foo()) |> b.foo() && Not(I(b.bar())) |> a.bar() && a = pv1 && b = pv2") { f =>
     //TODO: |>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
 
     // Lifestate atoms for next few tests
     val ibar_a = Once(CBEnter, Set(("", "bar")), "a" :: Nil)
@@ -515,7 +523,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
   }
   ignore("Not feasible: Not(I(a.foo(_)))) |> b.foo(c) && a=p1 && b = p3 && c = p2 && p1 = p3") {f=>
     //TODO: |>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
 
     // Lifestate atoms for next few tests
     val ifoo_a_ = Once(CBEnter, Set(("", "foo")), "a"::"_" :: Nil)
@@ -539,7 +547,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
   }
   ignore("Not I(a.foo) |> a.foo does not contain empty trace"){ f =>
     //TODO: |>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     implicit val zctx = stateSolver.getSolverCtx
 
     // Lifestate atoms for next few tests
@@ -563,7 +571,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
 
   test("refuted: I(a.foo()) |> Ref(a)"){ f =>
     // a.foo() must be invoked before a is created
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     implicit val zctx = stateSolver.getSolverCtx
 
     // Lifestate atoms for next few tests
@@ -590,7 +598,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
 
   ignore("Vacuous NI(a,a) spec") { f =>
     //TODO: |>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
 
     // Lifestate atoms for next few tests
     val i = Once(CBEnter, Set(("foo", "bar")), "a" :: Nil)
@@ -611,7 +619,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(res1.isDefined)
   }
   test("Subsumption of stack"){ f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
 
     val loc = AppLoc(fooMethod, TestIRLineLoc(1), isPre = false)
 
@@ -621,20 +629,20 @@ class StateSolverTest extends FixtureAnyFunSuite {
       StackVar("x") -> p1,
       StackVar("y") -> p2
     ))::Nil))
-    assert(stateSolver.canSubsume(state,state_,esp))
-    assert(!stateSolver.canSubsume(state_,state,esp))
+    assert(f.canSubsume(state,state_,esp))
+    assert(!f.canSubsume(state_,state,esp))
 
   }
   test("Subsumption of abstract traces") { f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
 
     val state = State(StateFormula(CallStackFrame(dummyLoc,None,Map(StackVar("x") -> p1))::Nil,
       Map(),Set(),Map(),AbstractTrace( Nil, Map())),0)
     val state2 = state.copy(sf = state.sf.copy(callStack =
       state.callStack.head.copy(locals=Map(StackVar("x") -> p1, StackVar("y")->p2))::Nil))
-    assert(stateSolver.canSubsume(state,state,esp))
-    assert(stateSolver.canSubsume(state,state2,esp))
-    assert(!stateSolver.canSubsume(state2,state,esp))
+    assert(f.canSubsume(state,state,esp))
+    assert(f.canSubsume(state,state2,esp))
+    assert(!f.canSubsume(state2,state,esp))
 
     val iFoo_a = Once(CBEnter, Set(("", "foo")), "a" :: Nil)
     val iBaz_a = Once(CBEnter, Set(("", "baz")), "a" :: Nil)
@@ -652,28 +660,28 @@ class StateSolverTest extends FixtureAnyFunSuite {
 
     // State I(a.foo())|>empty should subsume itself
 
-    assert(stateSolver.canSubsume(state_,state_,spec))
+    assert(f.canSubsume(state_,state_,spec))
     // I(a.foo()) can subsume I(a.foo()) |> a.bar()
-    assert(stateSolver.canSubsume(state_,state__,spec))
+    assert(f.canSubsume(state_,state__,spec))
 
     val spec2 = new SpecSpace(Set(LSSpec("a"::Nil, Nil, NS(iFoo_a,iBar_a), iBaz_a)))
     val baseTrace = AbstractTrace( iBaz_b::Nil, Map("b"->p1))
     val state3_ = state.copy(sf = state.sf.copy(traceAbstraction = baseTrace))
 
     // NI(a.foo(), a.bar()) can subsume itself
-    val res = stateSolver.canSubsume(state3_, state3_,spec2)
+    val res = f.canSubsume(state3_, state3_,spec2)
     assert(res)
 
     val state3__ = state.copy(sf = state.sf.copy(traceAbstraction =
       AbstractTrace( iBar_c::iBaz_b::Nil, Map("b"->p1)))).defineAllLS()
     // NI(a.foo(), a.bar()) can subsume NI(a.foo(), a.bar()) |> c.bar()
-    assert(stateSolver.canSubsume(state3_,state3__,spec2))
+    assert(f.canSubsume(state3_,state3__,spec2))
 
     // NI(a.foo(), a.bar()) cannot subsume NI(a.foo(), a.bar()) |> c.foo() /\ a==c
     // ifooc::Nil
     val fooBarArrowFoo = state.copy(sf = state.sf.copy(
       traceAbstraction = AbstractTrace(iFoo_c::iBaz_b::Nil, Map("b"->p1, "c"->p1))))
-    val resfoobarfoo = stateSolver.canSubsume(state3_, fooBarArrowFoo,spec2)
+    val resfoobarfoo = f.canSubsume(state3_, fooBarArrowFoo,spec2)
     assert(!resfoobarfoo)
 
     val iZzz_a = Once(CBEnter, Set(("", "zzz")), "a" :: Nil)
@@ -688,11 +696,11 @@ class StateSolverTest extends FixtureAnyFunSuite {
       AbstractTrace(iBaz_b::iZzz_d::Nil, Map("b"->p1, "d"->p1))))
     val s_foo_bar = state.copy(sf = state.sf.copy(traceAbstraction =
       AbstractTrace(iBaz_b::Nil, Map("b"->p1, "d"->p1))))
-    assert(stateSolver.canSubsume(s_foo_bar, s_foo_bar_foo,spec3))
+    assert(f.canSubsume(s_foo_bar, s_foo_bar_foo,spec3))
 
     // Extra trace constraint does not prevent subsumption
     // NI(foo(a),bar(a)), I(foo(c))  can subsume  NI(foo(a),bar(a))
-    val res2 = stateSolver.canSubsume(s_foo_bar_foo, s_foo_bar,spec3)
+    val res2 = f.canSubsume(s_foo_bar_foo, s_foo_bar,spec3)
     assert(res2)
 
     // NI(foo(a),bar(a)), I(foo(c)) /\ a!=c cannot subsume  NI(foo(a),bar(a))
@@ -701,7 +709,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
       pureFormula = Set(PureConstraint(p1, NotEquals, p2))
     ))
 
-    val res3 = stateSolver.canSubsume(s_foo_bar_foo_notEq, s_foo_bar,spec3)
+    val res3 = f.canSubsume(s_foo_bar_foo_notEq, s_foo_bar,spec3)
     assert(!res3)
 
     // Extra pure constraints should not prevent subsumption
@@ -711,12 +719,12 @@ class StateSolverTest extends FixtureAnyFunSuite {
 //      PureConstraint(p1, TypeComp, SubclassOf("java.lang.Object")) +
       PureConstraint(p1, NotEquals, p2),
       typeConstraints = Map(p1 -> BoundedTypeSet(Some("java.lang.Object"),None,Set()))))
-    assert(stateSolver.canSubsume(fewerPure, morePure,esp))
+    assert(f.canSubsume(fewerPure, morePure,esp))
 
   }
   test("NI(foo(x),bar(x)) cannot subsume I(foo(x))"){ f =>
     //TODO: this test shows an encoding of state subsumption that is not provably in the EPR fragment of logic
-    val (stateSolver, _) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     val pv = PureVar(1)
     def s(t:AbstractTrace):State = {
       State.topState.copy(sf = State.topState.sf.copy(traceAbstraction = t))
@@ -737,12 +745,11 @@ class StateSolverTest extends FixtureAnyFunSuite {
     ))
     val at1 = AbstractTrace( iZzz_y::Nil, Map("y"-> pv))
     val at2 = AbstractTrace(iYyy_y::Nil, Map("y"-> pv))
-    val res = stateSolver.canSubsume(s(at1),s(at2),spec)
+    val res = f.canSubsume(s(at1),s(at2),spec)
     assert(!res)
   }
   test("X -> p1 && p1:T1 cannot subsume X -> p1 && p1:T2 && p2:T1"){ f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
-    implicit val method = f.typeSolving
+    val stateSolver = f.stateSolver
     val pvy = PureVar(1)
     val pvy2 = PureVar(2)
     val fr = CallStackFrame(dummyLoc, None, Map(StackVar("x") -> pvy))
@@ -751,13 +758,13 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val s2 = State.topState.copy(sf = State.topState.sf.copy(callStack = fr::Nil))
       .addTypeConstraint(pvy, BitTypeSet(BitSet(2)))
       .addTypeConstraint(pvy2, BitTypeSet(BitSet(1)))
-    val res = stateSolver.canSubsume(s1,s2,esp)
+    val res = f.canSubsume(s1,s2,esp)
     assert(!res)
-    assert(stateSolver.canSubsume(s1,s1, esp))
+    assert(f.canSubsume(s1,s1, esp))
 
   }
   test("x -> p1 * p1.f -> p2 && p2:T1 can subsume x -> p2 * p2.f -> p1 && p1:T1"){ f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     val pvy = PureVar(1)
     val pvy2 = PureVar(2)
 
@@ -777,11 +784,11 @@ class StateSolverTest extends FixtureAnyFunSuite {
       ))
       .addTypeConstraint(pvy, BitTypeSet(BitSet(1)))
 //      .addTypeConstraint(pvy, BitTypeSet(BitSet(1)))
-    val res = stateSolver.canSubsume(s1,s2,esp)
+    val res = f.canSubsume(s1,s2,esp)
     assert(res)
   }
   test("p1.f->p2 * p3.f->p2 can be subsumed by p1.f -> p2 * p3.f -> p4"){ f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     val sP2P2 = State.topState.copy(
       sf = State.topState.sf.copy(
         heapConstraints = Map(
@@ -798,18 +805,18 @@ class StateSolverTest extends FixtureAnyFunSuite {
         )
       )
     )
-    assert(stateSolver.canSubsume(sP2P4,sP2P2, esp))
-    assert(!stateSolver.canSubsume(sP2P2,sP2P4, esp))
-    assert(!stateSolver.canSubsume(sP2P4.addPureConstraint(PureConstraint(p2, Equals, p5))
+    assert(f.canSubsume(sP2P4,sP2P2, esp))
+    assert(!f.canSubsume(sP2P2,sP2P4, esp))
+    assert(!f.canSubsume(sP2P4.addPureConstraint(PureConstraint(p2, Equals, p5))
       .addPureConstraint(PureConstraint(p5,Equals,p4)), sP2P4, esp))
 
 
     val another = sP2P4.addPureConstraint(PureConstraint(p2, NotEquals, p4))
-    assert(!stateSolver.canSubsume(another, sP2P4, esp))
+    assert(!f.canSubsume(another, sP2P4, esp))
 
   }
   test("x -> p1 * p1.f -> p2 && p2:T1 cannot subsume x -> p2 * p2.f -> p1 && p1:T2"){ f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     val pvy = PureVar(1)
     val pvy2 = PureVar(2)
     val fr = CallStackFrame(dummyLoc, None, Map(StackVar("x") -> pvy))
@@ -826,11 +833,11 @@ class StateSolverTest extends FixtureAnyFunSuite {
       ))
       .addTypeConstraint(pvy, BitTypeSet(BitSet(2)))
     //      .addTypeConstraint(pvy, BitTypeSet(BitSet(1)))
-    val res = stateSolver.canSubsume(s1,s2,esp)
+    val res = f.canSubsume(s1,s2,esp)
     assert(!res)
   }
   test("I(x.foo()) && I(z.bar(y)) cannot subsume I(x.foo())"){ f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     val fooM = SubClassMatcher("","foo","foo")
     val barM = SubClassMatcher("","bar","bar")
     val yyyM = SubClassMatcher("","bar","yyy")
@@ -854,14 +861,14 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val s1 = s(AbstractTrace(iYyy_k::iZzz_j::Nil, Map("k" -> pv1, "j"->pv2)))
     val s2 = s(AbstractTrace(iYyy_k::Nil, Map("k" -> pv1)))
 
-    val res = stateSolver.canSubsume(s1,s2,spec)
+    val res = f.canSubsume(s1,s2,spec)
     assert(!res)
 
-    val res2 = stateSolver.canSubsume(s2,s1,spec)
+    val res2 = f.canSubsume(s2,s1,spec)
     assert(res2)
   }
   test("I(y.foo()) && (Not I(y.bar())) && y:T2 cannot subsume I(x.foo()) && x:T2"){ f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     val fooM = SubClassMatcher("","foo","foo")
     val barM = SubClassMatcher("","bar","bar")
     val iFoo_x = Once(CBEnter, fooM, "x"::Nil)
@@ -880,16 +887,16 @@ class StateSolverTest extends FixtureAnyFunSuite {
       AbstractTrace(foo_tgt_x::Nil, Map("x" -> p1))
     ).addTypeConstraint(p1,BitTypeSet(BitSet(2)))
 //      .addTypeConstraint(p2,BitTypeSet(BitSet(2)))
-    val res = stateSolver.canSubsume(s1,s2,spec)
+    val res = f.canSubsume(s1,s2,spec)
     assert(!res)
 
     // I(x.foo()) && x:T2 can subsume I(y.foo()) && (Not I(y.bar())) && y:T2
 
-    val res2 = stateSolver.canSubsume(s2,s1, spec)
+    val res2 = f.canSubsume(s2,s1, spec)
     assert(res2)
   }
   test("|>tgt(x) can be subsumed by |>"){ f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     val fooM = SubClassMatcher("","foo","foo")
     val barM = SubClassMatcher("","bar","bar")
     val tgtM = SubClassMatcher("","tgt","tgt")
@@ -903,16 +910,16 @@ class StateSolverTest extends FixtureAnyFunSuite {
       .addTypeConstraint(p1,BitTypeSet(BitSet(1)))
     val s2 = st(AbstractTrace(Nil, Map()))
       .addTypeConstraint(p1,BitTypeSet(BitSet(1)))
-    assert(stateSolver.canSubsume(s2,s1,spec))
-    assert(!stateSolver.canSubsume(s1,s2,spec))
+    assert(f.canSubsume(s2,s1,spec))
+    assert(!f.canSubsume(s1,s2,spec))
 
     val s1h = s1.copy(sf = s1.sf.copy(heapConstraints = Map(FieldPtEdge(p1,"f")->p2)))
     val s2h = s2.copy(sf = s2.sf.copy(heapConstraints = Map(FieldPtEdge(p1,"f")->p2)))
-    assert(stateSolver.canSubsume(s2h,s1h,spec))
-    assert(!stateSolver.canSubsume(s1h,s2h,spec))
+    assert(f.canSubsume(s2h,s1h,spec))
+    assert(!f.canSubsume(s1h,s2h,spec))
   }
   test("|>bar(x,y)|>foo(x) && y =/≠ null  under spec bar(x,null) <= foo(x)") {f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     val fooM = SubClassMatcher("","foo","foo")
     val barM = SubClassMatcher("","bar","bar")
     val iFoo_x = Once(CBEnter, fooM, "x"::Nil)
@@ -940,7 +947,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
   }
 
   test("NI(x.foo(),x.baz()) && (not I(z.bar())) && x:T2 && z:T1 cannot subsume NI(x.foo(),x.baz()) && x:T2"){ f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     val fooM = SubClassMatcher("","foo","foo")
     val barM = SubClassMatcher("","bar","bar")
     val bazM = SubClassMatcher("","baz","baz")
@@ -959,12 +966,12 @@ class StateSolverTest extends FixtureAnyFunSuite {
       .addTypeConstraint(p2,BitTypeSet(BitSet(2)))
     val s2 = st(AbstractTrace(niTgt_x::Nil, Map("x" -> p1)))
       .addTypeConstraint(p1, BitTypeSet(BitSet(2)))
-    assert(!stateSolver.canSubsume(s1,s2,spec))
-    assert(stateSolver.canSubsume(s2,s1,spec))
+    assert(!f.canSubsume(s1,s2,spec))
+    assert(f.canSubsume(s2,s1,spec))
 
   }
   test("|>bar(p1,p2)|>foo(p1) && p2=... S: I(bar(p1,true))<= foo(p1)"){ f=>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
 
     // test v.setEnabled(false)
     val specClickDis = new SpecSpace(Set(ViewSpec.clickWhileNotDisabled))
@@ -999,7 +1006,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
 
   }
   test("|>x.call() can subsume |> y.unsubscribe() |> x.call()"){ f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     // Test with no wildcards
     val callSig = SpecSignatures.RxJava_call
     val unsubSig = SpecSignatures.RxJava_unsubscribe
@@ -1017,8 +1024,8 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val specReal = new SpecSpace(Set(callSpec))
     val s_1 = st(AbstractTrace(callITgt::Nil, Map("l1" -> p1)))
     val s_2 = st(AbstractTrace(unsubITgt::callITgt::Nil, Map("s1"->p2, "l1"->p1)))
-    assert(stateSolver.canSubsume(s_1,s_2, specReal))
-    assert(!stateSolver.canSubsume(s_2,s_1,specReal)) // forall v ... arg(omega(...)) != v ...?
+    assert(f.canSubsume(s_1,s_2, specReal))
+    assert(!f.canSubsume(s_2,s_1,specReal)) // forall v ... arg(omega(...)) != v ...?
 
     // Test with real spec
     val callTgt_x = SpecSignatures.RxJava_call_entry.copy(lsVars = "_"::"x"::Nil)
@@ -1043,17 +1050,17 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(stateSolver.simplify(s1h,specReal).isDefined)
     assert(stateSolver.simplify(s2h,specReal).isDefined)
 
-    assert(stateSolver.canSubsume(s1h,s1h,specReal))
-    assert(!stateSolver.canSubsume(s2h,s1h,specReal))
-    assert(stateSolver.canSubsume(s1h,s2h, specReal))
+    assert(f.canSubsume(s1h,s1h,specReal))
+    assert(!f.canSubsume(s2h,s1h,specReal))
+    assert(f.canSubsume(s1h,s2h, specReal))
 
     val spec2 = new SpecSpace(LifecycleSpec.spec + callSpec)
 
-    assert(stateSolver.canSubsume(s1h,s2h, spec2))
-    assert(!stateSolver.canSubsume(s2h,s1h,spec2))
+    assert(f.canSubsume(s1h,s2h, spec2))
+    assert(!f.canSubsume(s2h,s1h,spec2))
   }
   test("|>v.onClick() subsume |> v2 = a.findViewByID() |>v.onClick()"){ f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     val clickTgt = Once(CBEnter, ViewSpec.onClick, "_"::"v"::Nil)
     val findVTgt = Once(CBEnter, SpecSignatures.Activity_findView, "v2"::"a"::Nil)
     val findV = Once(CBEnter, SpecSignatures.Activity_findView, "v"::"a"::Nil)
@@ -1067,19 +1074,19 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val st1 = st(AbstractTrace(clickTgt::Nil, Map("v" -> p1, "z"->p4)))
     val st2 = st(AbstractTrace(FreshRef("z")::findVTgt::clickTgt::Nil,
       Map("v" -> p1, "v2" -> p2, "a" -> p3, "z"->p4)))
-    val res = stateSolver.canSubsume(st1,st2, spec)
-    val res2 = stateSolver.canSubsume(st2, st1, spec)
+    val res = f.canSubsume(st1,st2, spec)
+    val res2 = f.canSubsume(st2, st1, spec)
 
     val specfull = new SpecSpace(Set(
       ViewSpec.clickWhileActive,
       ViewSpec.viewOnlyReturnedFromOneActivity
     ))
-    val res3 = stateSolver.canSubsume(st1, st2, spec)
-    val res4 = stateSolver.canSubsume(st2,st1, spec)
+    val res3 = f.canSubsume(st1, st2, spec)
+    val res4 = f.canSubsume(st2,st1, spec)
     println()
   }
   test("|>x.onDestroy() should subsume |>x.onDestroy()|>y.onDestroy()"){f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     val specs = new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
       FragmentGetActivityNullSpec.getActivityNonNull,
     ) ++ LifecycleSpec.spec ++ RxJavaSpec.spec)
@@ -1092,7 +1099,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val s1 = st(AbstractTrace(FreshRef("z")::destTgtX::callTgtZ::Nil, Map("x"->p1, "z"->p3, "w"->p4)))
     val s2 = st(AbstractTrace(FreshRef("z")::destTgtY::destTgtX::callTgtZ::Nil, Map("x"->p1, "y"->p2, "z"->p3, "w"->p4)))
       .addPureConstraint(PureConstraint(p1,NotEquals,p2))
-    assert(stateSolver.canSubsume(s1,s2, specs))
+    assert(f.canSubsume(s1,s2, specs))
 
     val specs2 = new SpecSpace(
       Set(FragmentGetActivityNullSpec.getActivityNull, FragmentGetActivityNullSpec.getActivityNonNull) ++
@@ -1110,7 +1117,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
 //    val s_2_pre = StateSolver.rhsToPred(s_2.traceAbstraction.rightOfArrow, specs2).map(StateSolver.simplifyPred)
 //    println("test test test")
 
-    assert(stateSolver.canSubsume(s_1,s_2,specs2))
+    assert(f.canSubsume(s_1,s_2,specs2))
 
     val s_1_ = st(AbstractTrace(
       createTgtX::Nil,
@@ -1120,12 +1127,12 @@ class StateSolverTest extends FixtureAnyFunSuite {
       Map("x"->p1, "y"->p6)))
     assert(stateSolver.simplify(s_1_,specs2).isDefined)
     assert(stateSolver.simplify(s_2_,specs2).isDefined)
-    assert(stateSolver.canSubsume(s_1_,s_1_,specs2))
-    assert(stateSolver.canSubsume(s_2_,s_2_,specs2))
-    assert(stateSolver.canSubsume(s_1_,s_2_,specs2))
+    assert(f.canSubsume(s_1_,s_1_,specs2))
+    assert(f.canSubsume(s_2_,s_2_,specs2))
+    assert(f.canSubsume(s_1_,s_2_,specs2))
   }
   ignore("duplicate resume/onClickListener should subsume"){ f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     val specs = new SpecSpace(Set(ViewSpec.clickWhileNotDisabled, ViewSpec.viewOnlyReturnedFromOneActivity))
 
     // I(CBEnter I_CBEnter_Activity_onResume ( _,p-5 );
@@ -1145,7 +1152,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     ???
   }
   test("|>y = _.subscribe(x)|> y.unsubscribe() |> x.call() should be subsumed by |> x.call()"){ f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     // Test with no wildcards
     val callSig = SpecSignatures.RxJava_call
     val unsubSig = SpecSignatures.RxJava_unsubscribe
@@ -1163,11 +1170,11 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val s = st(AbstractTrace(subI::unsubI::callI::Nil, Map("s"->p2, "l"->p1)))
 //    assert(stateSolver.simplify(s,spec).isEmpty) //Note: case exists where there may be a second sub
     val s2 = st(AbstractTrace(callI::Nil, Map("l"->p1)))
-    assert(stateSolver.canSubsume(s2,s,spec))
+    assert(f.canSubsume(s2,s,spec))
 
     val s_1 = st(AbstractTrace(subITgt::unsubITgt::callITgt::Nil, Map("s2"->p2,"s1"->p2, "l2"->p1, "l1"->p1)))
     val s_2 = st(AbstractTrace(callITgt::Nil, Map("l2"->p1)))
-    assert(stateSolver.canSubsume(s_2,s_1,spec))
+    assert(f.canSubsume(s_2,s_1,spec))
   }
   test("A trace that requires an object be used before it is created should be refuted"){f =>
     val callSig = SpecSignatures.RxJava_call
@@ -1183,27 +1190,27 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val spec = new SpecSpace(Set(
       LSSpec("l"::Nil, "s"::Nil, NS(subI, unsubI),callI)
     ))
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     val s_ref = st(AbstractTrace(FreshRef("x1")::callITgt::Nil,
       Map("l2"->p2, "x1"->p2)))
     assert(stateSolver.simplify(s_ref,spec).isEmpty)
   }
   test("an arbitrary state s1 should subsume s1 with a ref added"){f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     val s1 = st(AbstractTrace(FreshRef("x")::Nil, Map("x"->p1)))
     val s2 = st(AbstractTrace(FreshRef("x")::FreshRef("y")::Nil, Map("x"->p1,"y"->p2)))
-    assert(stateSolver.canSubsume(s1,s2,esp))
+    assert(f.canSubsume(s1,s2,esp))
     //Note that an erroneous "OR" between Refs causes timeout, may cause timeouts in future due to negation
 
     // Note: both s1 and s2 should be infeasible since variable x can't point to addr p1 and p1 is created in the future
     // Sound to drop this constraint
     // Precision is not lost since transfer functions handle this constraint
-    // assert(stateSolver.canSubsume(s2,s1,esp))
+    // assert(f.canSubsume(s2,s1,esp))
     val s2NE = s2.addPureConstraint(PureConstraint(p1, NotEquals, p2))
-    assert(!stateSolver.canSubsume(s2NE,s1,esp))
+    assert(!f.canSubsume(s2NE,s1,esp))
   }
   test("|> y.onDestroy() |>null = x.getActivity() not refuted"){f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     val getActivityTgt_e_f = SpecSignatures.Fragment_get_activity_exit.copy(lsVars = "e"::"f"::Nil)
     val onDestroyTgt_d = SpecSignatures.Fragment_onDestroy_exit.copy(lsVars = "_"::"d"::Nil)
     val onCreateTgt_g= SpecSignatures.Fragment_onActivityCreated_entry.copy(lsVars = "_"::"g"::Nil)
@@ -1227,7 +1234,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(stateSolver.simplify(s4, spec).isEmpty)
   }
   test("|>null = x.getActivity() can not subsume |> x.onDestroy() |>null = x.getActivity()"){ f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     val getActivityTgt_e_f = SpecSignatures.Fragment_get_activity_exit.copy(lsVars = "e"::"f"::Nil)
     val onDestroyTgt_d = SpecSignatures.Fragment_onDestroy_exit.copy(lsVars = "_"::"d"::Nil)
     val unsubscribe_g = SpecSignatures.RxJava_unsubscribe_exit.copy(lsVars = "_"::"g"::Nil)
@@ -1238,12 +1245,12 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val spec = new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNonNull,
       FragmentGetActivityNullSpec.getActivityNull))
 
-    assert(!stateSolver.canSubsume(s1,s2,spec))
-    assert(stateSolver.canSubsume(s2,s1, spec))
+    assert(!f.canSubsume(s1,s2,spec))
+    assert(f.canSubsume(s2,s1, spec))
   }
   ignore("I(x.foo(y)) can subsume I(x1.foo(y1)) && not ref(z)"){ f =>
     //TODO: |>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     val fooM = SubClassMatcher("","foo","foo")
     //    val iFoo_x_y = I(CBEnter, fooM, "x" :: "y" :: Nil)
     //    val iFoo_x1_y1 = I(CBEnter, fooM, "x1"::"y1" :: Nil)
@@ -1266,18 +1273,18 @@ class StateSolverTest extends FixtureAnyFunSuite {
 //    val s2 = s(Set(t2,t3))
     val s2 = ???
     val startTime1 = System.currentTimeMillis()
-    val res = stateSolver.canSubsume(s1,s2,esp)
+    val res = f.canSubsume(s1,s2,esp)
     println(s"s1 can subsume s2 time: ${(System.currentTimeMillis() - startTime1).toFloat/1000}")
     assert(res)
 
     val startTime2 = System.currentTimeMillis()
-    val res2 = stateSolver.canSubsume(s2,s1,esp)
+    val res2 = f.canSubsume(s2,s1,esp)
     println(s"s1 can subsume s2 time: ${(System.currentTimeMillis() - startTime2).toFloat/1000}")
     assert(!res2)
   }
   test("I(x.foo(y)) && y:T1 cannot subsume I(x1.foo(y1)) && y:T2"){ f =>
     // cannot subsume if types must be different
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     val fooM = SubClassMatcher("","foo","foo")
     val iFoo_x_y = Once(CBEnter, fooM, "x" :: "y" :: Nil)
     val iFoo_x1_y1 = Once(CBEnter, fooM, "x1"::"y1" :: Nil)
@@ -1294,9 +1301,9 @@ class StateSolverTest extends FixtureAnyFunSuite {
       .addTypeConstraint(p1, BitTypeSet(BitSet(1)))
     val s2 = st(t2).addTypeConstraint(p3, BitTypeSet(BitSet(1)))
       .addTypeConstraint(p2,BitTypeSet(BitSet(2)))
-    val res = stateSolver.canSubsume(s1,s2,spec)
+    val res = f.canSubsume(s1,s2,spec)
     assert(!res)
-    assert(!stateSolver.canSubsume(s2,s1,spec))
+    assert(!f.canSubsume(s2,s1,spec))
 
     //s3: I(x.foo(y)) && y:T1 can subsume s4: I(x1.foo(y1)) && y:T1
     // can subsume when types are compatible
@@ -1304,12 +1311,12 @@ class StateSolverTest extends FixtureAnyFunSuite {
       .addTypeConstraint(p1, BitTypeSet(BitSet(2)))
     val s4 = st(t2).addTypeConstraint(p3, BitTypeSet(BitSet(1)))
       .addTypeConstraint(p2,BitTypeSet(BitSet(2)))
-    assert(stateSolver.canSubsume(s3,s4,spec))
-    assert(stateSolver.canSubsume(s4,s3,spec))
+    assert(f.canSubsume(s3,s4,spec))
+    assert(f.canSubsume(s4,s3,spec))
   }
   ignore("I(x.foo(y)) && y:T1 cannot subsume I(x.foo(y))|>I(x1.foo(y1)) && I(x2.foo(y2)) && y2:T2"){f =>
     //TODO: |>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     val fooM = SubClassMatcher("","foo","foo")
     val iFoo_x_y = Once(CBEnter, fooM, "x" :: "y" :: Nil)
     val iFoo_x1_y1 = Once(CBEnter, fooM, "x1"::"y1" :: Nil)
@@ -1329,12 +1336,12 @@ class StateSolverTest extends FixtureAnyFunSuite {
 //      .addTypeConstraint(pvy2, BitTypeSet(BitSet(2)))
 //      .addTypeConstraint(pvy, BitTypeSet(BitSet(1)))
     val s2 = ???
-    val res = stateSolver.canSubsume(s1,s2,esp)
+    val res = f.canSubsume(s1,s2,esp)
     assert(!res)
   }
   ignore("I(x.foo()) && I(x.bar()) |> y.foo() cannot subsume I(x.foo()) && I(x.bar()) |> y.bar()") { f =>
     //TODO: |>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     // I(x.foo()) && I(x.bar())
     val fooM = SubClassMatcher("","foo","foo")
     val barM = SubClassMatcher("","bar","bar")
@@ -1345,7 +1352,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val foobar = And(iFoo,iBar)
     val followsFoo = AbstractTrace(foobar, iFoo_b::Nil,Map())
     val followsBar = AbstractTrace(foobar, iBar_b::Nil, Map())
-    val res = stateSolver.canSubsume(st(followsFoo),st(followsBar),esp)
+    val res = f.canSubsume(st(followsFoo),st(followsBar),esp)
     assert(!res)
 
     // a: I(v = findView(a)) && NI( onDestroy(a) , onCreate(a))
@@ -1361,14 +1368,14 @@ class StateSolverTest extends FixtureAnyFunSuite {
       Once(CIExit,fv,"v"::"b"::Nil)::Nil,Map())
 
     val subsumee = AbstractTrace(a, Once(CBExit,de,"_"::"b"::Nil)::Nil,Map())
-    val res2 = stateSolver.canSubsume(st(subsumer),st(subsumee),esp)
+    val res2 = f.canSubsume(st(subsumer),st(subsumee),esp)
     assert(!res2)
-    val res3 = stateSolver.canSubsume(st(subsumee), st(subsumer),esp)
+    val res3 = f.canSubsume(st(subsumee), st(subsumer),esp)
     assert(res3)
   }
   ignore("Subsumption of unrelated trace constraint") { f =>
     //TODO: |>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
 
     val ifooa = Once(CBEnter, Set(("", "foo")), "a" :: Nil)
     val ifoob = Once(CBEnter, Set(("", "foo")), "b" :: Nil)
@@ -1379,11 +1386,11 @@ class StateSolverTest extends FixtureAnyFunSuite {
       pureFormula = Set(PureConstraint(p1, NotEquals, p2)),
       traceAbstraction = AbstractTrace(ifooa, ifoob::Nil, Map("a"->p1, "b"->p2))
     ))
-    assert(stateSolver.canSubsume(state0,state1, esp))
+    assert(f.canSubsume(state0,state1, esp))
   }
   ignore("Subsumption of multi arg abstract traces") { f =>
     //TODO: |>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
 
     val loc = AppLoc(fooMethod, TestIRLineLoc(1), isPre = false)
 
@@ -1393,12 +1400,12 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val niSpec = NS(ibar,ifoo)
     val state = State.topState.copy(sf = State.topState.sf.copy(
       traceAbstraction = AbstractTrace(ibar, Nil, Map())))
-    assert(stateSolver.canSubsume(state,state, esp))
+    assert(f.canSubsume(state,state, esp))
   }
 
   ignore("Subsumption of abstract trace where type info creates disalias") { f =>
     //TODO: |>
-    val (stateSolver,cha) = getStateSolver(SolverTypeSolving)
+    val stateSolver = f.stateSolver
 
     val p1t = BoundedTypeSet(Some("String"), None, Set())
     val p2t = BoundedTypeSet(Some("Foo"), None, Set())
@@ -1415,12 +1422,12 @@ class StateSolverTest extends FixtureAnyFunSuite {
 //      pureFormula = Set(PureConstraint(p1, NotEquals, p2)) // this constraint is enforced by the type constraints below
       typeConstraints = Map(p1 -> p1t, p2->p2t)
     ))
-    assert(stateSolver.canSubsume(state,state2, esp))
+    assert(f.canSubsume(state,state2, esp))
   }
 
   ignore("Refute trace with multi arg and multi var (bad arg fun skolemization caused bug here)") { f =>
     //TODO: |>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
 
     val loc = AppLoc(fooMethod, TestIRLineLoc(1), isPre = false)
 
@@ -1435,7 +1442,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(res.isEmpty)
   }
   test("Subsumption of pure formula including type information"){ f =>
-    val (stateSolver,_) = getStateSolver(SolverTypeSolving)
+    val stateSolver = f.stateSolver
     // (x->p1 && p1 <: Object) can not be subsumed by (x->p1 && p1 <:Foo)
     val state_ = state.copy(sf = state.sf.copy(
       typeConstraints = Map(p1 -> BoundedTypeSet(Some("Foo"),None,Set())),
@@ -1445,7 +1452,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
       typeConstraints = Map(p1 -> BoundedTypeSet(Some("java.lang.Object"),None,Set())),
       heapConstraints = Map(StaticPtEdge("foo","bar") -> p1)
     ))
-    assert(!stateSolver.canSubsume(state_, state__,esp))
+    assert(!f.canSubsume(state_, state__,esp))
 
     // (x->p1 &&  p1 <: Foo && p1 == p2) can be subsumed by (x->p1 &&  p2 <: Object && p1 == p2)
     val state1_ = state.copy(sf = state.sf.copy(
@@ -1458,12 +1465,12 @@ class StateSolverTest extends FixtureAnyFunSuite {
       typeConstraints = Map(p2 -> BoundedTypeSet(Some("java.lang.Object"),None,Set())),
       heapConstraints = Map(StaticPtEdge("foo","bar") -> p1)
     ))
-    assert(stateSolver.canSubsume(state1__, state1_,esp))
-    assert(!stateSolver.canSubsume(state1_, state1__,esp))
+    assert(f.canSubsume(state1__, state1_,esp))
+    assert(!f.canSubsume(state1_, state1__,esp))
 
     // (x->p1 && p1 <: Foo) can be subsumed by (x->p1 && p1 <:Object)
-    assert(stateSolver.canSubsume(state__, state_,esp))
-    assert(stateSolver.canSubsume(state_, state_,esp))
+    assert(f.canSubsume(state__, state_,esp))
+    assert(f.canSubsume(state_, state_,esp))
 
     // Combine type constraints and trace constraints
     val iFoo = Once(CBEnter, Set(("", "foo")), "a" :: Nil)
@@ -1481,11 +1488,11 @@ class StateSolverTest extends FixtureAnyFunSuite {
       traceAbstraction = formula,
       heapConstraints = Map(StaticPtEdge("foo","bar") -> p1)
     ))
-    assert(stateSolver.canSubsume(state2__, state2_,spec))
-    assert(!stateSolver.canSubsume(state2_, state2__,spec))
+    assert(f.canSubsume(state2__, state2_,spec))
+    assert(!f.canSubsume(state2_, state2__,spec))
   }
   test("Subsumption of pure formula in states"){ f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
 
     val loc = AppLoc(fooMethod, TestIRLineLoc(1), isPre = false)
 
@@ -1501,13 +1508,13 @@ class StateSolverTest extends FixtureAnyFunSuite {
       ))::Nil,
       pureFormula = Set(PureConstraint(p1, NotEquals, p2))
     ))
-    assert(stateSolver.canSubsume(state,state_x_y,esp))
-    assert(!stateSolver.canSubsume(state_x_y,state,esp))
+    assert(f.canSubsume(state,state_x_y,esp))
+    assert(!f.canSubsume(state_x_y,state,esp))
 
   }
 
   test("Trace contained in abstraction") { f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     implicit val zCTX: Z3SolverCtx = stateSolver.getSolverCtx
 
     val foo = FwkMethod("foo", "")
@@ -1703,7 +1710,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     )
   }
   test("app mem restricted trace contained"){f =>
-    val (stateSolver,_) = getStateSolver(f.typeSolving)
+    val stateSolver = f.stateSolver
     implicit val zCTX: Z3SolverCtx = stateSolver.getSolverCtx
 
     val pv1 = PureVar(1)
@@ -1742,15 +1749,11 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(resNonNull.isDefined)
   }
 
-  private def getStateSolver(stateTypeSolving: StateTypeSolving = SetInclusionTypeSolving):
-    (Z3StateSolver, ClassHierarchyConstraints) = {
-    val pc = new ClassHierarchyConstraints(hierarchy,Set("java.lang.Runnable"),intToClass, stateTypeSolving)
-    (new Z3StateSolver(pc,timeout = 4000),pc)
-  }
+
 
   ignore("some timeout from 'Test prove dereference of return from getActivity'"){ f =>
     //TODO: fix or see if this is still reachable
-    val (stateSolver,_) = getStateSolver(SolverTypeSolving)
+    val stateSolver = f.stateSolver
     val s1 = read[State](Resource.getAsStream("s1_timeoutsubs.json"))
     val s2 = read[State](Resource.getAsStream("s2_timeoutsubs.json"))
     val s1pv = s1.pureVars()
@@ -1761,13 +1764,13 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val s1Simpl = s1.copy(sf = s1.sf.copy(typeConstraints = Map()))
     val s2Simpl = s2.copy(sf = s2.sf.copy(typeConstraints = Map()))
 
-    val tmp = stateSolver.canSubsume(s1Simpl,s2Simpl,esp)
+    val tmp = f.canSubsume(s1Simpl,s2Simpl,esp)
 
-    val res = stateSolver.canSubsume(s1Simpl, s2Simpl,esp)
+    val res = f.canSubsume(s1Simpl, s2Simpl,esp)
     println(res)
   }
   test("Empty trace should not be contained in incomplete abstract trace") { f =>
-    val (stateSolver,_) = getStateSolver(SolverTypeSolving)
+    val stateSolver = f.stateSolver
 
     val iFoo_a = Once(CBEnter, Set(("", "foo")), "a" :: Nil)
     val iFoo_b = Once(CBEnter, Set(("", "foo")), "b" :: Nil)
@@ -1786,7 +1789,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
   ignore("Empty trace should not be contained in incomplete abstract trace with conditional spec") { f =>
     //TODO: Why is this test ignored???====
     //TODO: |>
-    val (stateSolver,_) = getStateSolver(SolverTypeSolving)
+    val stateSolver = f.stateSolver
 
     val iFoo_ac = Once(CBEnter, Set(("", "foo")), "c"::"a" :: Nil)
     val iFoo_null_c =  Once(CBEnter, Set(("", "foo")), "@null"::"a" :: Nil)
@@ -1826,7 +1829,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(res4.isEmpty)
   }
   test("Prepending required enable message to trace should prevent subsumption") { f =>
-    val (stateSolver,_) = getStateSolver(SolverTypeSolving)
+    val stateSolver = f.stateSolver
 
     val iFoo_ac = Once(CBEnter, Set(("", "foo")), "c"::"a" :: Nil)
     val iFoo_null_c =  Once(CBEnter, Set(("", "foo")), "@null"::"a" :: Nil)
@@ -1860,7 +1863,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(isFeasible2.isDefined)
 
 
-    val res = stateSolver.canSubsume(s_1, s_2, spec)
+    val res = f.canSubsume(s_1, s_2, spec)
     assert(!res)
   }
   test("z3 scratch"){f=>

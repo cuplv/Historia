@@ -818,7 +818,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   }
 
-  case class MessageTranslator(states: List[State], specSpace: SpecSpace)(implicit zCtx: C) {
+  case class MessageTranslator(states: Iterable[State], specSpace: SpecSpace)(implicit zCtx: C) {
     // Trace messages
     private val alli = allITraceAbs(states.map(_.traceAbstraction).toSet) ++ specSpace.allI
     private val inameToI: Map[String, Set[Once]] = alli.groupBy(_.identitySignature)
@@ -1310,12 +1310,70 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     true
   }
 
-  def canSubsume(s1:Set[State], s2: State, specSpace:SpecSpace):Boolean = {
-    //TODO: factor out pre-filtering from single state canSubsume
-    //TODO: update state set to give set of states that may be able to subsume rather than doing search itself
-    //TODO: clean up canSubsumez3
+  def canSubsumeSet(s1:Set[State], s2: State, specSpace:SpecSpace,timeout:Option[Int] = None):Boolean = {
+    val startTime = System.nanoTime()
+
     val s1Filtered = s1.filter(other => fastMaySubsume(other,s2, specSpace))
-    ???
+
+    // Check if stack sizes or locations are different
+    if(s1Filtered.isEmpty){
+      return false
+    }
+
+    val s2Simp = simplify(s2, specSpace)
+    if(s2Simp.isEmpty)
+      return true
+
+    assert(s1.forall(s => s.isSimplified), "Subsuming states should be simplified")
+
+    //TODO: two state subsumption tries to reduce pt regions, may want to do that here as well?
+
+    implicit val zCtx: C = getSolverCtx
+
+    val res = try {
+      zCtx.acquire()
+      val messageTranslator: MessageTranslator = MessageTranslator(s1 + s2, specSpace)
+      s1Filtered.foreach{state =>
+        val stateEncode = mkNot(toASTState(state, messageTranslator, None, specSpace))
+        zCtx.mkAssert(stateEncode)
+      }
+      val s2Encode = toASTState(s2, messageTranslator,None, specSpace)
+      zCtx.mkAssert(s2Encode)
+      val foundCounter =
+        checkSAT(useCmd = false, messageTranslator)
+      !foundCounter
+    }catch{
+      case e:IllegalArgumentException if e.getLocalizedMessage.contains("timeout") =>
+        // Note: this didn't seem to help things so currently disabled
+        // sound to say state is not subsumed if we don't know
+        // false
+
+        println("subsumption timeout:")
+        println(s"timeout: ${timeout}")
+        println(s"${s1.size} states in s1.")
+        println(s"  s2: ${s2}")
+        println(s"  s2 ɸ_lhs: " +
+          s"${StateSolver.rhsToPred(s2.traceAbstraction.rightOfArrow,specSpace)
+            .map(pred => pred.stringRep(v => s2.sf.traceAbstraction.modelVars.getOrElse(v,v)))
+            .mkString("  &&  ")}")
+        // uncomment to dump serialized timeout states
+        // val s1f = File("s1_timeout.json")
+        // val s2f = File("s2_timeout.json")
+        //        val s1str = write(s1)
+        //        val s2str = write(s2)
+        //        println(s1str)
+        //        println(s2str)
+        // s1f.write(write(s1))
+        // s2f.write(write(s2))
+        // throw e
+      false
+    } finally {
+      zCtx.release()
+    }
+
+    getLogger.warn(s"subsumption result:${res} time(µs): ${(System.nanoTime() - startTime)/1000.0}")
+
+    res
   }
   /**
    *
@@ -1332,7 +1390,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val method = "Z3"
     // val method = "FailOver"
     val startTime = System.nanoTime()
-    // Check if stack sizes or locations are different
+    // Some states can be quickly shown not to subsume before z3 call
     if(!fastMaySubsume(s1,s2,specSpace)){
       return false
     }

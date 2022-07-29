@@ -2090,8 +2090,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
         val config = SymbolicExecutorConfig(
           stepLimit = 200, w, specs,
-          component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode,
-          subsumptionEnabled = true)
+          component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode)
         val symbolicExecutor = config.getSymbolicExecutor
 
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)

@@ -10,7 +10,7 @@ class ClassHierarchyConstraintsTest extends AnyFunSuite {
     Map("java.lang.Object" -> Set("String", "Foo", "Bar", "java.lang.Object"),
       "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"), "Runnable" -> Set("Foo","Bar"))
   implicit val ch = new ClassHierarchyConstraints(hierarchy,Set("Runnable"),
-    hierarchy.keySet.zipWithIndex.map{case (k,v) => v->k}.toMap, SolverTypeSolving)
+    hierarchy.keySet.zipWithIndex.map{case (k,v) => v->k}.toMap)
 
 
   test("Subtype"){

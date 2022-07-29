@@ -25,10 +25,10 @@ class TypeSetTest extends AnyFunSuite {
         BitTypeSet(bitSet)
     }
   }
-  private def getCha(stateTypeSolving: StateTypeSolving = SetInclusionTypeSolving) : ClassHierarchyConstraints= {
+  private def getCha() : ClassHierarchyConstraints= {
 
 
-    val pc = new ClassHierarchyConstraints(hierarchy,Set("java.lang.Runnable"),intToClass, stateTypeSolving)
+    val pc = new ClassHierarchyConstraints(hierarchy,Set("java.lang.Runnable"),intToClass)
     pc
   }
   // TODO: write tests for other type set

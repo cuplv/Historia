@@ -20,6 +20,23 @@ case object CHACallGraph extends CallGraphSource
 case object SparkCallGraph extends CallGraphSource
 case object AppOnlyCallGraph extends CallGraphSource
 
+sealed trait SubsumptionMode
+
+/**
+ * Encode each possible subsuming state one at a time
+ */
+case object SubsumptionModeIndividual extends SubsumptionMode
+
+/**
+ * Encode all possibly subsuming states at once
+ */
+case object SubsumptionModeBatch extends SubsumptionMode
+
+/**
+ * Run both batch and individual comparing results
+ */
+case object SubsumptionModeTest extends SubsumptionMode
+
 /**
  * //TODO: ugly lambda due to wanting to configure transfer functions externally but still need cha
  * @param stepLimit Number of back steps to take from assertion before timeout (-1 for no limit)
@@ -39,7 +56,7 @@ case class SymbolicExecutorConfig[M,C](stepLimit: Int,
                                        component : Option[Seq[String]] = None,
                                        outputMode : OutputMode = MemoryOutputMode,
                                        timeLimit : Int = 7200, //TODO: somehow make time limit hard cutoff ===== currently just exits on symbex main loop ==== thread.interrupt?
-                                       subsumptionEnabled:Boolean = true // Won't prove anything without subsumption but can find witnesses
+                                       subsumptionMode:SubsumptionMode = SubsumptionModeBatch
                                       ){
   def getSymbolicExecutor =
     new SymbolicExecutor[M, C](this)
@@ -164,7 +181,6 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
    */
   def run(initialQuery: InitialQuery, outputMode:OutputMode = MemoryOutputMode,
           cfg:RunConfig = RunConfig()) : Set[QueryData] = {
-    invarMap.clear()
     val qry = initialQuery.make(this)
     qry.groupBy(_.loc).map{ case(loc,qs) =>
       val startTime = Instant.now.getEpochSecond
@@ -175,6 +191,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
         val queue = new GrouperQ
         queue.addAll(pathNodes)
         val deadline = if(config.timeLimit > -1) Instant.now.getEpochSecond + config.timeLimit else -1
+        invarMap.clear()
         val res: Set[IPathNode] = executeBackward(queue, config.stepLimit, deadline)
 
         val interpretedRes = BounderUtil.interpretResult(res, QueryFinished)
@@ -196,8 +213,27 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
 
   def isSubsumed(pathNode:IPathNode):Set[IPathNode] = pathNode match{
     case SwapLoc(loc) if pathNode.qry.isInstanceOf[LiveQry] && invarMap.contains(loc) => {
-      val res = invarMap(loc).find(p => stateSolver.canSubsume(p.state,pathNode.state, transfer.getSpec))
-      res.toSet //TODO: switch over to set find later
+      val nodes:Set[IPathNode] = invarMap(loc)
+      val states = nodes.map(_.state)
+      val res = config.subsumptionMode match {
+        case SubsumptionModeIndividual =>
+          nodes.find(p => stateSolver.canSubsume(p.state,pathNode.state, transfer.getSpec)).toSet
+        case SubsumptionModeBatch =>
+          if(stateSolver.canSubsumeSet(states, pathNode.state, transfer.getSpec)) nodes else Set[IPathNode]()
+        case SubsumptionModeTest =>{
+          val singleResult = nodes.find(p => stateSolver.canSubsume(p.state,pathNode.state, transfer.getSpec)).toSet
+          val batchResult = stateSolver.canSubsumeSet(states, pathNode.state, transfer.getSpec)
+          if(singleResult.nonEmpty != batchResult){
+            println(s"current state:\n    ${pathNode.state}")
+            println("subsuming states:")
+            states.foreach(s => println(s"    ${s.toString}"))
+            val batchResult2 = stateSolver.canSubsumeSet(states, pathNode.state, transfer.getSpec)
+            println()
+          }
+          singleResult
+        }
+      }
+      res
     }
     case _ => Set.empty
   }

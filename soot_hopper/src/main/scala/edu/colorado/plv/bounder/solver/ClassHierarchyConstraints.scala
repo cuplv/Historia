@@ -67,9 +67,7 @@ import upickle.default.{ReadWriter => RW, macroRW}
  * @param types mapping from super types to sub types
  */
 class ClassHierarchyConstraints(types : Map[String,Set[String]],
-                                interfaces:Set[String], intToClass: Map[Int,String],
-                                useZ3TypeSolver: StateTypeSolving = SolverTypeSolving ) {
-  assert(useZ3TypeSolver == SolverTypeSolving, "currently other type solving is not supported")
+                                interfaces:Set[String], intToClass: Map[Int,String]) {
   def intToString(v: Int) = intToClass(v)
 
   private lazy val iclassToIntCache: Map[String, BitSet] = intToClass.groupBy{case (_,v) => v}
@@ -99,7 +97,7 @@ class ClassHierarchyConstraints(types : Map[String,Set[String]],
       val boxedName = ClassHierarchyConstraints.boxedName(v)
       (acc + (v -> Set(v))) + (boxedName -> (acc.getOrElse(boxedName,Set(boxedName)) + v))
   } + ("java.lang.Object" -> types.getOrElse("java.lang.Object",Set()).union(ClassHierarchyConstraints.primitiveTypes.toSet))
-  def getUseZ3TypeSolver:StateTypeSolving = useZ3TypeSolver
+//  def getUseZ3TypeSolver:StateTypeSolving = useZ3TypeSolver
   def upperTypeBoundForReciever(methodReturnLoc: Loc):Option[String] = methodReturnLoc match {
     case CallinMethodInvoke(clazz, _) =>
       Some(clazz)
