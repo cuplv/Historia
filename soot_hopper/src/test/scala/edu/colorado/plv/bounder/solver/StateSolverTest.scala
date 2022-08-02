@@ -360,16 +360,17 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val iBaz_b = Once(CBEnter, Set(("_", "baz")), b :: Nil)
     val iBaz_c = Once(CBEnter, Set(("_", "baz")), c :: Nil)
     val tgt = Once(CBEnter, Set(("_", "tgt")), a::Nil)
+    val tgtx = Once(CBEnter, Set(("_", "tgt")), x::Nil)
 
     // NI(a.bar(), a.baz())
     val niBarBaz = NS(iBar_a,iBaz_a)
     val spec = new SpecSpace(Set(LSSpec(a::Nil, Nil, niBarBaz, tgt)))
 
     // NI(a.bar(),a.baz()) |> I(c.baz()) && a == p1 && c == p1 (<=> false)
-    val abs1 = AbstractTrace(iBaz_b::tgt::Nil)// Map(a->p1, b->p1))
+    val abs1 = AbstractTrace(iBaz_b::tgtx::Nil)// Map(a->p1, b->p1))
 //    AbsAnd(AbsAnd(AbsFormula(niBarBaz), AbsEq(a,p1)), AbsEq(b,p1)),
     val state1 = State(StateFormula(Nil, Map(),
-      Set(PureConstraint(a,Equals,p1), PureConstraint(b,Equals,p1)),Map(), abs1),0)
+      Set(PureConstraint(x,Equals,p1), PureConstraint(b,Equals,p1)),Map(), abs1),0)
     val res1 = stateSolver.simplify(state1, spec)
     assert(res1.isEmpty)
     val res2 = stateSolver.witnessed(state1,spec)
@@ -593,10 +594,11 @@ class StateSolverTest extends FixtureAnyFunSuite {
     // Lifestate atoms for next few tests
     val foo_a = Once(CBEnter, Set(("", "foo")), a:: c :: Nil)
     val tgt_a = Once(CBEnter, Set(("", "tgt")), a:: c :: Nil)
+    val tgt_x = Once(CBEnter, Set(("", "tgt")), x:: y :: Nil)
     val spec = new SpecSpace(Set(LSSpec(a::c::Nil, Nil, foo_a, tgt_a)))
 
-    val at = AbstractTrace(tgt_a::FreshRef(b)::Nil) //Map(a->p1, b -> p2, "c"->p3))
-    val pf = Set(PureConstraint(a,Equals,p1),PureConstraint(b,Equals,p2), PureConstraint(c,Equals,p3))
+    val at = AbstractTrace(tgt_x::FreshRef(b)::Nil) //Map(a->p1, b -> p2, "c"->p3))
+    val pf = Set(PureConstraint(x,Equals,p1),PureConstraint(b,Equals,p2), PureConstraint(y,Equals,p3))
     val state = State(StateFormula(Nil,Map(),
       pf ++ Set(PureConstraint(p1, Equals, p2)),Map(), at),0)
     val res = stateSolver.simplify(state,spec)
@@ -878,7 +880,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val iZzz_j = Once(CBEnter, zzzM, j::Nil)
     val spec = new SpecSpace(Set(
       LSSpec(x::Nil, Nil, iFoo_x, iYyy_x),
-      LSSpec(z::Nil, y::Nil, iBar_zy, iZzz_z)
+      LSSpec(z::Nil, y::Nil, iBar_zy, target = iZzz_z)
     ))
 
     val pv1 = PureVar(1)
@@ -901,15 +903,17 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val iFoo_z = Once(CBEnter, fooM, z::Nil)
     val iBar_z = Once(CBEnter, barM, z::Nil)
     val notbar_tgt_z = Once(CBEnter, SubClassMatcher("","notbar_tgt","notbar_tgt"), z::Nil)
+    val notbar_tgt_a = Once(CBEnter, SubClassMatcher("","notbar_tgt","notbar_tgt"), a::Nil)
     val foo_tgt_x = Once(CBEnter, SubClassMatcher("","foo_tgt","foo_tgt"), x::Nil)
+    val foo_tgt_b = Once(CBEnter, SubClassMatcher("","foo_tgt","foo_tgt"), b::Nil)
     val spec = new SpecSpace(Set(
       LSSpec(z::Nil, Nil, And(iFoo_z,Not(iBar_z)), notbar_tgt_z),
       LSSpec(x::Nil, Nil, iFoo_x, foo_tgt_x)
     ))
-    val s1 = st(AbstractTrace(notbar_tgt_z::Nil), Map(z -> p2))
+    val s1 = st(AbstractTrace(notbar_tgt_a::Nil), Map(a -> p2))
       .addTypeConstraint(p2,BitTypeSet(BitSet(2)))//.addTypeConstraint(p1,BitTypeSet(BitSet(1)))
     val s2 = st(
-      AbstractTrace(foo_tgt_x::Nil), Map(x -> p1)).addTypeConstraint(p1,BitTypeSet(BitSet(2)))
+      AbstractTrace(foo_tgt_b::Nil), Map(b -> p1)).addTypeConstraint(p1,BitTypeSet(BitSet(2)))
 //      .addTypeConstraint(p2,BitTypeSet(BitSet(2)))
     val res = f.canSubsume(s1,s2,spec)
     assert(!res)
@@ -927,10 +931,11 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val iFoo_x = Once(CBEnter, fooM, x::Nil)
     val iBar_x = Once(CBEnter, barM, x::Nil)
     val iTgt_x = Once(CBEnter, tgtM, x::Nil)
+    val iTgt_a = Once(CBEnter, tgtM, a::Nil)
     val spec = new SpecSpace(Set(
       LSSpec(x::Nil, Nil, NS(iFoo_x, iBar_x), iTgt_x)
     ))
-    val s1 = st(AbstractTrace(iTgt_x::Nil), Map(x->p1)).addTypeConstraint(p1,BitTypeSet(BitSet(1)))
+    val s1 = st(AbstractTrace(iTgt_a::Nil), Map(a->p1)).addTypeConstraint(p1,BitTypeSet(BitSet(1)))
     val s2 = st(AbstractTrace(Nil),Map())
       .addTypeConstraint(p1,BitTypeSet(BitSet(1)))
     assert(f.canSubsume(s2,s1,spec))
@@ -946,12 +951,14 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val fooM = SubClassMatcher("","foo","foo")
     val barM = SubClassMatcher("","bar","bar")
     val iFoo_x = Once(CBEnter, fooM, x::Nil)
+    val iFoo_a = Once(CBEnter, fooM, a::Nil)
     val iBar_xy = Once(CBEnter, barM, x::y::Nil)
+    val iBar_ab = Once(CBEnter, barM, a::b::Nil)
     val iBar_xN = Once(CBEnter, barM, x::NullVal::Nil)
 
     val spec = new SpecSpace(Set(LSSpec(x::Nil, Nil, iBar_xN, iFoo_x)))
 
-    val s = st(AbstractTrace(iBar_xy::iFoo_x::Nil), Map(x -> p1, y->p2))
+    val s = st(AbstractTrace(iBar_ab::iFoo_a::Nil), Map(a -> p1, b->p2))
 
     val sNN = s.addPureConstraint(PureConstraint(p2, NotEquals, NullVal))
     assert(stateSolver.witnessed(sNN, spec).isEmpty)
@@ -962,7 +969,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     // Test const under negation
     val bazM = SubClassMatcher("","baz","baz")
     val iBaz_x = Once(CBEnter, bazM, x::Nil)
-    val spec2 = new SpecSpace(Set(LSSpec(x::y::Nil, Nil, NS(iBar_xy, iBar_xN), iFoo_x)))
+    val spec2 = new SpecSpace(Set(LSSpec(x::Nil, y::Nil, NS(iBar_xy, iBar_xN), iFoo_x)))
 
     assert(stateSolver.simplify(sNull, spec2).isEmpty)
 
@@ -975,7 +982,9 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val barM = SubClassMatcher("","bar","bar")
     val bazM = SubClassMatcher("","baz","baz")
     val niTgt_x = Once(CBEnter, SubClassMatcher("","niTgtM","niTgtM"), x::Nil)
+    val niTgt_a = Once(CBEnter, SubClassMatcher("","niTgtM","niTgtM"), a::Nil)
     val notTgt_z = Once(CBEnter, SubClassMatcher("", "notTgtM", "notTgtM"), z::Nil)
+    val notTgt_b = Once(CBEnter, SubClassMatcher("", "notTgtM", "notTgtM"), b::Nil)
     val iFoo_x = Once(CBEnter, fooM, x::Nil)
     val iBaz_x = Once(CBEnter, bazM, x::Nil)
     val iBar_z = Once(CBEnter, barM, z::Nil)
@@ -984,10 +993,10 @@ class StateSolverTest extends FixtureAnyFunSuite {
       LSSpec(x::Nil, Nil, NS(iFoo_x, iBaz_x), niTgt_x),
       LSSpec(z::Nil, Nil, Not(iBar_z), notTgt_z)
     ))
-    val s1 = st(AbstractTrace(niTgt_x::notTgt_z::Nil), Map(z->p1,x -> p2))
+    val s1 = st(AbstractTrace(niTgt_a::notTgt_b::Nil), Map(b->p1,a -> p2))
       .addTypeConstraint(p1,BitTypeSet(BitSet(1)))
       .addTypeConstraint(p2,BitTypeSet(BitSet(2)))
-    val s2 = st(AbstractTrace(niTgt_x::Nil), Map(x -> p1))
+    val s2 = st(AbstractTrace(niTgt_a::Nil), Map(a -> p1))
       .addTypeConstraint(p1, BitTypeSet(BitSet(2)))
     assert(!f.canSubsume(s1,s2,spec))
     assert(f.canSubsume(s2,s1,spec))
@@ -1011,11 +1020,13 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val barM = SubClassMatcher("","bar","bar")
 
     val iFoo_x = Once(CBEnter, fooM, x :: Nil)
+    val iFoo_a = Once(CBEnter, fooM, a :: Nil)
     val iBar_x_y = Once(CBEnter, barM, x::y::Nil)
+    val iBar_a_b = Once(CBEnter, barM, a::b::Nil)
     val iBar_x_true = Once(CBEnter, barM, x::BoolVal(true)::Nil)
 
     val spec = new SpecSpace(Set(LSSpec(x::Nil, Nil, iBar_x_true, iFoo_x)))
-    val s = st(AbstractTrace(rightOfArrow = iBar_x_y::iFoo_x::Nil), Map(x->p1, y->p2))
+    val s = st(AbstractTrace(rightOfArrow = iBar_a_b::iFoo_a::Nil), Map(a->p1, b->p2))
     val sFalse = s.addPureConstraint(PureConstraint(p2, Equals, IntVal(0)))
     assert(stateSolver.witnessed(sFalse, spec).isEmpty)
 
@@ -1141,7 +1152,9 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val v = NamedPureVar("v")
     val v2 = NamedPureVar("v2")
     val clickTgt = Once(CBEnter, ViewSpec.onClick, TopVal::v::Nil)
+    val clickTgt_x = Once(CBEnter, ViewSpec.onClick, TopVal::x::Nil)
     val findVTgt = Once(CBEnter, SpecSignatures.Activity_findView, v2::a::Nil)
+    val findVTgt_yz = Once(CBEnter, SpecSignatures.Activity_findView, y::z::Nil)
     val findV = Once(CBEnter, SpecSignatures.Activity_findView, v::a::Nil)
 
 
@@ -1150,9 +1163,9 @@ class StateSolverTest extends FixtureAnyFunSuite {
       LSSpec(v::Nil, a::Nil, findV, clickTgt),
       ViewSpec.viewOnlyReturnedFromOneActivity
     ))
-    val st1 = st(AbstractTrace(clickTgt::Nil), Map(v -> p1, z->p4))
-    val st2 = st(AbstractTrace(FreshRef(z)::findVTgt::clickTgt::Nil),
-      Map(v -> p1, v2 -> p2, a -> p3, z->p4))
+    val st1 = st(AbstractTrace(clickTgt_x::Nil), Map(x -> p1, z->p4))
+    val st2 = st(AbstractTrace(FreshRef(c)::findVTgt_yz::clickTgt_x::Nil),
+      Map(x -> p1, y -> p2, z -> p3, c->p4))
     val res = f.canSubsume(st1,st2, spec)
     val res2 = f.canSubsume(st2, st1, spec)
 
@@ -1163,6 +1176,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val res3 = f.canSubsume(st1, st2, spec)
     val res4 = f.canSubsume(st2,st1, spec)
     println()
+    ??? //TODO: expected results for this test?
   }
   ignore("duplicate resume/onClickListener should subsume"){ f =>
     val stateSolver = f.stateSolver
@@ -1206,9 +1220,9 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val spec = new SpecSpace(Set(
       LSSpec(l::Nil, s::Nil, NS(subI, unsubI),callI)
     ))
-    val st1 = st(AbstractTrace(subI::unsubI::callI::Nil), Map(s->p2, l->p1))
+    val st1 = st(AbstractTrace(subITgt::unsubITgt::callITgt::Nil), Map(s1->p2, l1->p1))
 //    assert(stateSolver.simplify(s,spec).isEmpty) //Note: case exists where there may be a second sub
-    val st2 = st(AbstractTrace(callI::Nil), Map(l->p1))
+    val st2 = st(AbstractTrace(callITgt::Nil), Map(l2->p1)) //TODO: Shouldn't this subsume since s2.unsub may be same as s1?
     assert(f.canSubsume(st2,st1,spec))
 
     val s_1 = st(AbstractTrace(subITgt::unsubITgt::callITgt::Nil), Map(s2->p2,s1->p2, l2->p1, l1->p1))

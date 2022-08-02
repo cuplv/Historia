@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.lifestate
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, CLInit, Exists, Forall, FreshRef, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, NS, Not, Once, Or}
-import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
+import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CmpOp, Equals, NamedPureVar, NotEquals, NullVal, PureExpr, PureVal, PureVar, State, TopVal, TypeComp}
 
 import scala.util.parsing.combinator._
@@ -252,12 +252,15 @@ object LifeState {
 //    override def toString:String =
 //      if(vars.isEmpty) p.toString else s"Forall([${vars.mkString(",")}], ${p.toString})"
     override def toTex: String = ???
-    override def swap(swapMap: Map[PureVar, PureVar]): Forall =
+    override def swap(swapMap: Map[PureVar, PureVar]): Forall = {
+      assert(!vars.exists(v => swapMap.contains(v)),
+        s"Swap failed, quantified forall vars $vars overlaps with swapMap: $swapMap ")
       Forall(vars.map(swapMap), p.swap(swapMap))
+    }
 
     override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean = ???
 
-    override def lsVar: Set[PureVar] = p.lsVar
+    override def lsVar: Set[PureVar] = p.lsVar.removedAll(vars)
 
     override def toString(): String =
       if(vars.nonEmpty)
@@ -270,13 +273,14 @@ object LifeState {
     //    override def toString:String =
     //      if(vars.isEmpty) p.toString else s"Exists([${vars.mkString(",")}],${p.toString})"
     override def swap(swapMap: Map[PureVar, PureVar]): Exists = {
-      val newSwap = swapMap -- vars
+      assert(!vars.exists(v => swapMap.contains(v)),
+        s"Swap failed, quantified exist vars $vars overlaps with swapMap: $swapMap ")
       Exists(vars, p.swap(swapMap))
     }
 
     override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean = ???
 
-    override def lsVar: Set[PureVar] = p.lsVar
+    override def lsVar: Set[PureVar] = p.lsVar.removedAll(vars)
     override def toString: String =
       if(vars.nonEmpty)
         s"∃ ${vars.mkString(",")} . $p"
@@ -321,8 +325,7 @@ object LifeState {
     override def lsVars: List[PureVar] = lsVar.toList
 
     override def swap(swapMap: Map[PureVar, PureVar]): LifeState.FreshRef = {
-      assert(swapMap.contains(v), "Swap must contain all variables")
-      FreshRef(swapMap(v))
+      FreshRef(swapMap.getOrElse(v,v))
     }
 
     override def toString: String = this.toString
@@ -686,15 +689,48 @@ object LifeState {
     }
     checkWellFormed()
     def instantiate(i:Once, specSpace: SpecSpace):LSPred = {
-      assert(i.lsVar.intersect(this.target.lsVar).isEmpty, "Vars must not be duplicated")
-      assert(i.lsVar.intersect(this.pred.lsVar).isEmpty, "Vars must not be duplicated")
-      val swap = (target.lsVars zip i.lsVars)
+      if(i.signatures != target.signatures || i.mt != target.mt)
+        return LSTrue
 
-      //TODO==== add preds for non pure var
-      //TODO==== swap free vars
-      //TODO==== double check all vals are quantified.
-      ???
+      val swappedTo = i.lsVar
+      val swappedFrom = target.lsVar
+      assert(swappedTo.intersect(this.target.lsVar).isEmpty, "Vars must not be duplicated")
+      assert(swappedTo.intersect(this.pred.lsVar).isEmpty, "Vars must not be duplicated")
 
+      // (swap from, swap to)
+      val allPairs = (target.lsVars zip i.lsVars)
+
+      // comparing pure vals results in true or false
+      // (pval1, pval2) yields pval1 == pval2
+      // comparing const val in target to const value from transfer results in comparison
+      // (const1, pv) yields const2 == pv
+      val purePreds:List[LSPred] = allPairs.flatMap{
+        case (p1:PureVal, p2:PureExpr) =>
+          Some(LSConstraint.mk(p1,Equals,p2))
+        case _ => None
+      }
+
+      val toSwap: Map[PureVar,PureVar] = allPairs.flatMap{
+        case (p1:PureVar, p2:PureVar) => Some(p1,p2)
+        case (TopVal, _) => None
+        case (_, TopVal) =>
+          ???
+        case (p1:PureVar, p2:PureExpr) =>
+          ??? //TODO: refactor swap to accept PureExpr? (p1 won't exist after inst)
+        case _ => None
+      }.toMap
+
+      assert(toSwap.keySet == swappedFrom,
+        s"Must instantiate all vars. found: ${toSwap.keySet}, expected: ${swappedFrom}")
+
+      val swapPred = Exists(existQuant, pred.swap(toSwap))
+      assert(swapPred.lsVar.subsetOf(swappedTo),
+        s"Free variables of instantiated spec must be subset of instantiating message. " +
+          s"\nfound fv: ${swapPred.lsVar}" +
+          s"\nrequired fv: ${swappedTo}" +
+          s"\npossible malformed spec: ${this.toString}")
+      val res = (swapPred::purePreds).reduce(And)
+      res
     }
   }
   object LSSpec{

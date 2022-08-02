@@ -11,7 +11,7 @@ object EncodingTools {
     case (_,TopVal) => false
     case _ => true
   }
-  private def eq(i1:Once, i2:Once):LSPred =
+  def eqOnce(i1:Once, i2:Once):LSPred =
     if(i1.signatures != i2.signatures || i1.mt != i2.mt)
       LSFalse
     else {
@@ -19,7 +19,7 @@ object EncodingTools {
       pairs.map(v => LSConstraint.mk(v._1, Equals,v._2)).reduce(And)
     }
 
-  private def neq(i1:Once, i2:Once):LSPred = {
+  private def neqOnce(i1:Once, i2:Once):LSPred = {
     if(i1.signatures != i2.signatures || i1.mt != i2.mt)
       LSTrue
     else {
@@ -40,13 +40,13 @@ object EncodingTools {
       throw new IllegalStateException("RefV cannot be updated (encoding handled elsewhere)")
     case Not(i1:Once) =>
       if(i1.mt == i.mt && i1.signatures == i.signatures)
-        And(neq(i1,i), lsPred)
+        And(neqOnce(i1,i), lsPred)
       else lsPred
     case ni@NS(i1,i2) =>
-      And(Or(eq(i1,i), And(ni, neq(i1,i))), neq(i,i2))
+      And(Or(eqOnce(i1,i), And(ni, neqOnce(i1,i))), neqOnce(i,i2))
     case i1:Once =>
       if(i1.mt == i.mt && i1.signatures == i.signatures)
-        Or(eq(i1,i), lsPred)
+        Or(eqOnce(i1,i), lsPred)
       else lsPred
     case Not(_) =>
       throw new IllegalArgumentException("Negation only supported on I")

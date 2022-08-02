@@ -55,15 +55,13 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   protected def mkForallAddr(name: PureVar, cond: T => T)(implicit zctx: C): T
 
-  protected def mkForallAddr(name: Map[String, Option[T]], cond: Map[String, T] => T,
-                             solverNames: Set[T] = Set())(implicit zCtx: C): T
+  protected def mkForallAddr(name: Map[PureVar, T], cond: Map[PureVar, T] => T)(implicit zCtx: C): T
 
   protected def mkExistsT(t:List[T], cond:T)(implicit zCtx: C):T
   protected def mkExistsAddr(name: PureVar, cond: T => T)(implicit zctx: C): T
 
-  protected def mkExistsAddr(name: Map[String,Option[T]], cond: Map[String, T] => T,
-                             solverNames: Set[T] = Set())(implicit zCtx: C): T
-  //protected def mkPv(pv:PureVar)(implicit zCtx:C):T
+  protected def mkExistsAddr(name: Map[PureVar,T], cond: Map[PureVar, T] => T)(implicit zCtx: C): T
+  protected def mkFreshPv(pv:PureVar)(implicit zCtx:C):T
 
   protected def mkZeroMsg(implicit zCtx:C):T
 
@@ -184,7 +182,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   def printDbgModel(messageTranslator: MessageTranslator, traceabst: Set[AbstractTrace],
                     lenUID: String)(implicit zCtx: C): Unit
   def explainWitness(messageTranslator:MessageTranslator,
-                     pvMap: Map[PureVar, Option[T]])(implicit zCtx:C): WitnessExplanation
+                     pvMap: Map[PureVar, T])(implicit zCtx:C): WitnessExplanation
   def compareConstValueOf(rhs: T, op: CmpOp, pureVal: PureVal, constMap: Map[PureVal, T])(implicit zCtx: C): T =
     (pureVal, op) match {
       case (TopVal, _) => mkBoolVal(b = true)
@@ -360,19 +358,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     }.toSet
   }
 
-  private case class TraceAndSuffixEnc(definedPvMap: Map[PureVar, T],
-                                       noQuantifyPv: Set[PureVar] = Set(),
-                                       quantifiedPv: Set[T] = Set(),
-                                       trace: Option[T] = None) {
-
-    def getOrQuantifyPv(pv: PureVar)(implicit zCtx: C): (T, TraceAndSuffixEnc) = {
-      if (definedPvMap.contains(pv)) {
-        (definedPvMap(pv), this)
-      } else {
-        val pvVar: T = mkAddrVar(pv)
-        (pvVar, this.copy(definedPvMap = definedPvMap + (pv -> pvVar), quantifiedPv = quantifiedPv + pvVar))
-      }
-    }
+  private case class TraceAndSuffixEnc(trace: Option[T] = None) {
 
     /**
      *
@@ -413,7 +399,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
                              messageTranslator: MessageTranslator,
                              specSpace: SpecSpace,
                              shouldEncodeRef:Boolean = true,
-                             definedPvMap:Map[PureVar, T] = Map(),
+                             definedPvMap:Map[PureVar, T],
                              debug: Boolean = false)(implicit zCtx: C): TraceAndSuffixEnc = {
     val typeToSolverConst = messageTranslator.getTypeToSolverConst
     val constMap = messageTranslator.getConstMap()
@@ -443,7 +429,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val refVPred: Option[(LSPred, Set[FreshRef])] = if(shouldEncodeRef) encodeRefV(rhs) else None
     val preds = refVPred.map(_._1) ++ rulePreds
 
-    val traceAndSuffixEnc:TraceAndSuffixEnc = TraceAndSuffixEnc(definedPvMap)
+    val traceAndSuffixEnc:TraceAndSuffixEnc = TraceAndSuffixEnc()
     //TODO: why do I have model type map here if its always empty?
     val modelTypeMap = Map[PureVar,TypeSet]()
     val encoded = preds.foldLeft(traceAndSuffixEnc){(acc,p) =>
@@ -537,28 +523,21 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     toASTStateWithPv(state,messageTranslator, maxWitness, specSpace, debug, false)._1
 
   def toASTStateWithPv(state: State,
-                      messageTranslator: MessageTranslator,
-                      maxWitness: Option[Int] = None,
-                      specSpace: SpecSpace,
-                      debug:Boolean = false,
-                      skolemizedPV:Boolean)(implicit zctx: C): (T, Map[PureVar,Option[T]]) = {
+                       messageTranslator: MessageTranslator,
+                       maxWitness: Option[Int] = None,
+                       specSpace: SpecSpace,
+                       debug:Boolean = false,
+                       exposePv:Boolean)(implicit zCtx: C): (T, Map[PureVar,T]) = {
 
     if(debug){
       println(s"encoding state: ${state}")
     }
 
+    def withPVMap(pvMap:Map[PureVar, T]):T =  {
+      val traceAbs = state.traceAbstraction
+      val traceEnc: TraceAndSuffixEnc = encodeTraceAbs(traceAbs, messageTranslator,
+        specSpace = specSpace, debug = debug, definedPvMap = pvMap)
 
-//    val stateUniqueID = "" //TODO: should remove?
-//    val len = mkLenVar(s"len_$stateUniqueID") // there exists a finite size of the trace for this state
-//    val traceFun = mkTraceFn(stateUniqueID)
-    val traceAbs = state.traceAbstraction
-    val traceEnc: TraceAndSuffixEnc = encodeTraceAbs(traceAbs, messageTranslator,
-       specSpace = specSpace, debug = debug)
-//    val encodedSuffix = traceEnc.suffix.getOrElse(mkBoolVal(b = true))
-
-    def withPVMap(pvMapIn:Map[PureVar, T]):T =  {
-
-      val pvMap = pvMapIn ++ traceEnc.definedPvMap
       // typeFun is a function from addresses to concrete types in the program
       val typeFun = createTypeFun()
 
@@ -607,25 +586,16 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       }
     }
 
+    val statePV = state.pureVars()
 
-    val statePV = state.pureVars() -- traceEnc.noQuantifyPv
-    val statePVWithExtra = statePV
-    val pureVarsBack: Map[String,PureVar] = statePVWithExtra.map(pv => (mkPvName(pv) -> pv)).toMap
-    val pureVars: Map[String,Option[T]] = statePVWithExtra.map{pv =>
-      mkPvName(pv) -> traceEnc.definedPvMap.get(pv)}.toMap
-
-    val back = (v:Map[String,T]) => withPVMap(v.map{ case (k,v) => (pureVarsBack(k) -> v) })
-    val res = if(skolemizedPV){
-      back(pureVars.map{
-        case (k,Some(v)) => (k,v)
-        case _ => throw new IllegalArgumentException()
-      })
+    val pureVars: Map[PureVar,T] = statePV.map{pv =>
+      pv -> mkFreshPv(pv)}.toMap
+    val res = if(exposePv){
+      withPVMap(pureVars)
     }else {
-      mkExistsAddr(pureVars, back,traceEnc.quantifiedPv)
+      mkExistsAddr(pureVars, m => withPVMap(m))
     }
-    (res,pureVars.map{
-      case (k,v) => (pureVarsBack(k),v)
-    })
+    (res,pureVars)
   }
 
   private def encodeTypeConstraints(tc: Map[PureVar, TypeSet], typeFun:T,messageTranslator: MessageTranslator,
@@ -781,27 +751,27 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     while(swappedForSmallerPvOpt.isDefined && containsEq(swappedForSmallerPvOpt.get)) {
       swappedForSmallerPvOpt = {
         swappedForSmallerPvOpt.get.pureFormula.foldLeft(Some(swappedForSmallerPvOpt.get): Option[State]) {
+          case (Some(acc),pc) if existsNegation(pc,acc) => None
           case (Some(acc), pc@PureConstraint(v1@NPureVar(id1), Equals, v2@NPureVar(id2))) if id1 < id2 =>
-            if (existsNegation(pc, acc)) {
-              None
-            } else {
-//              val res = mergePV(acc.copy(pureFormula = acc.pureFormula - pc), v2, v1)
-              val res = mergePV(acc.removePureConstraint(pc),v2,v1)
-              res
-            }
+            val res = mergePV(acc.removePureConstraint(pc),v2,v1)
+            res
           case (Some(acc), pc@PureConstraint(v1@NPureVar(id1), Equals, v2@NPureVar(id2))) if id1 > id2 =>
-            if (existsNegation(pc, acc)) {
-              None
-            } else {
 //              val res = mergePV(acc.copy(pureFormula = acc.pureFormula - pc), v1, v2)
-              val res = mergePV(acc.removePureConstraint(pc), v1,v2)
-              res
-            }
+            val res = mergePV(acc.removePureConstraint(pc), v1,v2)
+            res
+          case (Some(acc), pc@PureConstraint(v1:NamedPureVar,Equals, v2:NPureVar)) =>
+            val res = mergePV(acc.removePureConstraint(pc), v1,v2)
+            res
+          case (Some(acc), pc@PureConstraint(v1:NPureVar,Equals, v2:NamedPureVar)) =>
+            val res = mergePV(acc.removePureConstraint(pc), v2,v1)
+            res
           case (Some(acc), pc@PureConstraint(pv1:PureVar, Equals, pv2:PureVar)) if pv1 == pv2 =>
 //            Some(acc.copy(pureFormula = acc.pureFormula - pc))
             Some(acc.removePureConstraint(pc))
+          case (acc, PureConstraint(lhs, NotEquals, rhs)) => acc
+          case (acc, PureConstraint(_, _, _:PureVal)) => acc
           case (acc, _) =>
-            acc
+            ???
         }
       }
     }
@@ -1485,7 +1455,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     try {
       zCtx.acquire()
       val messageTranslator = MessageTranslator(List(state), specSpace)
-      val pvMap: Map[PureVar, Option[T]] = encodeTraceContained(state, trace,
+      val pvMap: Map[PureVar, T] = encodeTraceContained(state, trace,
         messageTranslator = messageTranslator, specSpace = specSpace)
       val sat = checkSAT(messageTranslator)
       if (sat && debug) {
@@ -1510,7 +1480,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     }
   }
   private def encodeTraceContained(state: State, trace: List[TraceElement], specSpace: SpecSpace,
-                                   messageTranslator: MessageTranslator)(implicit zCtx: C): Map[PureVar, Option[T]] = {
+                                   messageTranslator: MessageTranslator)(implicit zCtx: C): Map[PureVar, T] = {
 //    val traceFn = mkTraceFn("")
     val usedTypes = allTypes(state)
     val (typesAreUnique, _) = mkTypeConstraints(usedTypes)
@@ -1527,7 +1497,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val assertDistinct = mkDistinctT(distinctAddr.keySet.map(distinctAddr(_)))
     zCtx.mkAssert(assertDistinct)
     val (encodedState,pvMap) = toASTStateWithPv(state, messageTranslator, None,
-      specSpace = specSpace,skolemizedPV = true)
+      specSpace = specSpace,exposePv = true)
     val encodedTrace = encodeTrace(trace, messageTranslator, distinctAddr)
 
     zCtx.mkAssert(encodedState)

@@ -366,7 +366,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   }
 
   override def explainWitness(messageTranslator: MessageTranslator,
-                              pvMap: Map[PureVar, Option[AST]])(implicit zCtx: Z3SolverCtx): WitnessExplanation = {
+                              pvMap: Map[PureVar, AST])(implicit zCtx: Z3SolverCtx): WitnessExplanation = {
 
     val ctx = zCtx.ctx
     assert(messageTranslator.states.size == 1, "Explain witness only applicable with single state")
@@ -381,10 +381,8 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     val rightOfArrow = ta.rightOfArrow
 
     val pvModelValues: Map[PureVar, Expr[UninterpretedSort]] = pvMap.map{
-      case (pureVar, Some(ast)) =>
+      case (pureVar, ast) =>
         (pureVar, model.eval(ast.asInstanceOf[Expr[UninterpretedSort]],true))
-      case _ =>
-        ???
     }
     val pvValues: Map[Expr[UninterpretedSort], Int] = pvModelValues.values.toSet.zipWithIndex.toMap
     val constFn = ctx.mkFuncDecl("constFn", addrSort, constSort)
@@ -567,21 +565,19 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     zCtx.ctx.mkForall(Array(j), cond(j).asInstanceOf[BoolExpr],1,null,null,null,null)
   }
 
-  private def nameConstMap(name:Map[String,Option[AST]])(implicit zCtx:Z3SolverCtx):Map[String,AST] = {
-    name.map{
-      case (n,None) => n -> zCtx.ctx.mkFreshConst(n, addrSort).asInstanceOf[Expr[_]]
-      case (n,Some(v)) => (n->v)
-    }
-  }
-  override protected def mkForallAddr(name: Map[String,Option[AST]], cond: Map[String,AST] => AST, solverNames:Set[AST])
+//  private def nameConstMap(name:Map[String,Option[AST]])(implicit zCtx:Z3SolverCtx):Map[String,AST] = {
+//    name.map{
+//      case (n,None) => n -> zCtx.ctx.mkFreshConst(n, addrSort).asInstanceOf[Expr[_]]
+//      case (n,Some(v)) => (n->v)
+//    }
+//  }
+  override protected def mkForallAddr(nameToAST: Map[PureVar,AST], cond: Map[PureVar,AST] => AST)
                                      (implicit zCtx:Z3SolverCtx): AST = {
-    assert(!name.contains("_"), "Wild card variables should not be quantified")
-    if(name.isEmpty){
+    if(nameToAST.isEmpty){
       cond(Map())
     }else {
-      val nameToAST = nameConstMap(name)
       val j = nameToAST.map{case (_,v) => v.asInstanceOf[Expr[UninterpretedSort]]}.toSet
-      zCtx.ctx.mkForall((j ++ solverNames.map(_.asInstanceOf[Expr[UninterpretedSort]])).toArray,
+      zCtx.ctx.mkForall(j.toArray,
         cond(nameToAST).asInstanceOf[Expr[BoolSort]], 1,
         null, null, null, null)
     }
@@ -599,22 +595,20 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     zCtx.ctx.mkExists(Array(j), cond(j).asInstanceOf[BoolExpr],1,null,null,null,null)
   }
 
-  override protected def mkExistsAddr(name: Map[String, Option[AST]],
-                                      cond: Map[String,AST] => AST, solverNames:Set[AST])
+  override protected def mkExistsAddr(nameToAST: Map[PureVar, AST],
+                                      cond: Map[PureVar,AST] => AST)
                                      (implicit zCtx:Z3SolverCtx): AST = {
-    assert(!name.contains("_"), "Wild card variables should not be quantified")
-    if(name.isEmpty){
+    if(nameToAST.isEmpty){
       cond(Map())
     }else {
-      val nameToAST = nameConstMap(name)
       val j = nameToAST.map{case (_,v) => v.asInstanceOf[Expr[UninterpretedSort]]}.toSet
-      zCtx.ctx.mkExists((j ++ solverNames.map(_.asInstanceOf[Expr[UninterpretedSort]])).toArray,
+      zCtx.ctx.mkExists(j.toArray,
         cond(nameToAST).asInstanceOf[Expr[BoolSort]], 1,
         null, null, null, null)
     }
   }
 
-  protected def mkFreshPv(pv: PureVar)(implicit zCtx:Z3SolverCtx):Expr[UninterpretedSort] = {
+  override protected def mkFreshPv(pv: PureVar)(implicit zCtx:Z3SolverCtx):Expr[UninterpretedSort] = {
     val pvName = mkPvName(pv)
     zCtx.ctx.mkFreshConst(pvName, addrSort)
   }
