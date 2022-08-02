@@ -2,42 +2,58 @@ package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, CLInit, Exists, Forall, FreshRef, Once, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, LifeStateParser, NS, Not, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, CLInit, Exists, Forall, FreshRef, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, NS, Not, Once, Or}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CmpOp, Equals, NotEquals, NullVal, PureExpr, PureVal, PureVar, State, TypeComp}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CmpOp, Equals, NamedPureVar, NotEquals, NullVal, PureExpr, PureVal, PureVar, State, TopVal, TypeComp}
 
 import scala.util.parsing.combinator._
 import upickle.default.{macroRW, ReadWriter => RW}
 
 import scala.util.matching.Regex
 
-object LSVarGen{
-  private var next = 0
+//object LSVarGen{
+//  private var next = 0
 
-  def setNext(states:List[State]):Unit = {
+//  def setNext(states:List[State]):Unit = {
+//
+//    states.foreach{s =>
+//      val mv = s.sf.traceAbstraction.modelVars.keySet ++ s.sf.traceAbstraction.rightOfArrow.flatMap {
+//        case CLInit(sig) => Set()
+//        case FreshRef(v) => Set(v)
+//        case Once(mt, signatures, lsVars) => lsVars
+//      }
+//      mv.map{
+//        case n if n.startsWith("LS__") && n.drop(4).toInt >= next =>
+//          next = n.drop(4).toInt
+//        case _ =>
+//      }
+//    }
+//  }
+//  def getNext:String = {
+//    next = next + 1
+//    s"LS__${next}"
+//  }
+//}
 
-    states.foreach{s =>
-      val mv = s.sf.traceAbstraction.modelVars.keySet ++ s.sf.traceAbstraction.rightOfArrow.flatMap {
-        case CLInit(sig) => Set()
-        case FreshRef(v) => Set(v)
-        case Once(mt, signatures, lsVars) => lsVars
-      }
-      mv.map{
-        case n if n.startsWith("LS__") && n.drop(4).toInt >= next =>
-          next = n.drop(4).toInt
-        case _ =>
-      }
-    }
+object LSExpParser {
+  val LSNullConstReg = "@(?:null|Null|NULL)".r
+  val LSBoolConstReg = "@(false|true|False|True)".r
+  val LSVarReg = "((?:[a-zA-Z])(?:[a-zA-Z0-9]|_)*)".r
+  val LSAnyValReg = "_".r
+  //    val SynthLSVar = "LS_(\\d*)".r
+  def convert(arg:String):PureExpr=arg match {
+    case LSVarReg(v) => NamedPureVar(v)
+    case LSAnyValReg(_) => TopVal
+    case LSNullConstReg() => NullVal
+    case LSBoolConstReg(b) => BoolVal(b.toBoolean)
+    case v => throw new IllegalArgumentException(s"Error parsing LSExpr $v")
   }
-  def getNext:String = {
-    next = next + 1
-    s"LS__${next}"
-  }
+  def convertList(l:List[String]):List[PureExpr] = l.map(convert)
 }
 
 object LifeState {
 
-  object LifeStateParser extends RegexParsers {
+    object LifeStateParser extends RegexParsers {
     //Note: this parser is only used for the "NonNullReturnCallins.txt"
     // specification are written in scala in the Specifications.scala source file
     sealed trait Ast
@@ -53,7 +69,7 @@ object LifeState {
     case class AstMac(id:AstID, i:Once) extends Line
     case class AstRule(v1:Ast, tgt:AstID) extends Line
     // TODO: identifier should handle arrays, for now use java.util.List_ instead of java.util.List[]
-    def identifier: Parser[String] = """[a-zA-Z][a-zA-Z0-9$_.]*""".r ^^ { a => a }
+    def identifier: Parser[PureVar] = LSExpParser.LSVarReg ^^ { a => NamedPureVar(a) }
 
     def macroIdentifier:Parser[AstID] = """#[a-zA-Z][a-zA-Z0-9_]*""".r ^^ {
       case ident => AstID(ident.drop(1))
@@ -67,9 +83,9 @@ object LifeState {
     def lsRule :Parser[AstRule] = ???
 
     // parse I
-    def empty: Parser[String] = "_"
+    def empty: Parser[TopVal.type] = "_" ^^ {_ => TopVal}
 
-    def parMatcher:Parser[String] = identifier | empty //TODO: and const
+    def parMatcher:Parser[PureExpr] = identifier | empty //TODO: and const
 
     def mDir: Parser[MessageType] = ( "ciret" | "cbret" | "ci" | "cb") ^^ {
       case "ci" => CIEnter
@@ -90,11 +106,13 @@ object LifeState {
     }
     def constrs:Parser[List[LSConstraint]] = repsep(constr,sep)
 
-    def lsVarList:Parser[List[String]] = repsep(parMatcher,",")
+    def lsVarList:Parser[List[PureExpr]] = repsep(parMatcher,",")
 
     def params = repsep(parMatcher, ",")
 
-    def rf(v:String):String = v.replace("_","[^,()]*")
+    def rf(v:PureExpr):String = v.toString.replace("_","[^,()]*")
+    //    def rf(v:String):String = v.replace("_","[^,()]*")
+
 
     def i: Parser[Once] = "I(" ~ mDir ~ "[" ~ lsVarList ~"]" ~ identifier ~ identifier ~"(" ~ params ~ ")" ~ constr ~ ")" ^^ {
       case _ ~ pmDir ~ _ ~ vars ~ _ ~ ret ~ sName ~ _ ~ para ~ _ ~ LSConstraint(v1, TypeComp, v2) ~ _ =>
@@ -102,7 +120,8 @@ object LifeState {
         val p = para.map(rf)
         val sigRegex = rf(ret) +" " + sName + "\\(" +  p.mkString(",") + "\\)"
         val ident = ret + "__" + sName + "__" + p.mkString("___")
-        val scm = SubClassMatcher(v2, sigRegex, ident)
+        val subtypeOf:String = ??? //TODO: base type?
+        val scm = SubClassMatcher(subtypeOf, sigRegex, ident)
         Once(pmDir, scm, vars)
       case _ => throw new IllegalArgumentException("Can only specify receiver type in I")
     }
@@ -146,48 +165,43 @@ object LifeState {
     str.split("\n").filter(v => !v.trim.startsWith("#") && !(v.trim == "")).map(parseI)
   }
 
-  def parseSpec(str:String):Set[LSSpec] = {
-    val withoutComments = str.split("\n").filter{v => !v.trim.startsWith("#") && !v.trim.isEmpty }.mkString("\n")
-    if(withoutComments == ""){
-      return Set() // This is dumb, I shouldn't need to do this
-    }
-    val lines = withoutComments.split(";").map(_.trim).filter(_ != "")
-    val res = lines.map(line => {
-      val lineRes = LifeStateParser.parseAll(???, line)
-      if (lineRes.successful) {
-        lineRes.get
-      } else throw new IllegalStateException(lineRes.toString)
-    })
-    res.toSet
-  }
+//  def parseSpec(str:String):Set[LSSpec] = {
+//    val withoutComments = str.split("\n").filter{v => !v.trim.startsWith("#") && !v.trim.isEmpty }.mkString("\n")
+//    if(withoutComments == ""){
+//      return Set() // This is dumb, I shouldn't need to do this
+//    }
+//    val lines = withoutComments.split(";").map(_.trim).filter(_ != "")
+//    val res = lines.map(line => {
+//      val lineRes = LifeStateParser.parseAll(???, line)
+//      if (lineRes.successful) {
+//        lineRes.get
+//      } else throw new IllegalStateException(lineRes.toString)
+//    })
+//    res.toSet
+//  }
 
-  var id = 0
-  def nextLsVar():String = {
-    val lsVar = "v" + id
-    id = id+1
-    lsVar
-  }
+//  var id = 0
+//  def nextLsVar():String = {
+//    val lsVar = "v" + id
+//    id = id+1
+//    lsVar
+//  }
 
   // Const value matchers
-  val LSBoolConst = "@(false|true|False|True)".r
-  val LSNullConst = "@(?:null|Null|NULL)".r
-  object LSConst{
-    def unapply(arg: String): Option[PureVal] = arg match{
-      case LSBoolConst(sv) => Some(BoolVal(sv.toBoolean))
-      case LSNullConst() => Some(NullVal)
-      case _ => None
-    }
-  }
-  val LSVar = "((?:[a-zA-Z])(?:[a-zA-Z0-9]|_)*)".r
-  val SynthLSVar = "LS_(\\d*)".r
+//  object LSConstParser{
+//    def unapply(arg: String): Option[PureVal] = arg match{
+//      case LSBoolConst(sv) => Some(BoolVal(sv.toBoolean))
+//      case LSNullConst() => Some(NullVal)
+//      case _ => None
+//    }
+//  }
 
 
-  val LSAnyVal = "_".r
 
-  case class LSConstraint(v1:String,op:CmpOp,v2:String ) extends LSPred {
-    override def swap(swapMap: Map[String, String]): LSPred = {
-      def swapIfVar(v: String):String = v match{
-        case LSVar(v2) => swapMap(v2)
+  case class LSConstraint(v1:PureVar,op:CmpOp,v2:PureExpr ) extends LSPred {
+    override def swap(swapMap: Map[PureVar, PureVar]) = {
+      def swapIfVar[T<:PureExpr](v: T):T= v match{
+        case v2:PureVar if swapMap.contains(v2) => swapMap(v2).asInstanceOf[T]
         case v2 => v2
       }
       LSConstraint(swapIfVar(v1),op, swapIfVar(v2))
@@ -195,9 +209,12 @@ object LifeState {
     override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean =
       false
 
-    override def lsVar: Set[String] = Set(v1,v2).filter(v => LSVar.matches(v))
+    override def lsVar: Set[PureVar] = Set(v1,v2).flatMap {
+      case sVar: PureVar => Some(sVar)
+      case _ => None
+    }
 
-    override def stringRep(varMap: String => Any): String = s"[ ${varMap(v1)} == ${varMap(v2)} ]"
+    override def toString(): String = s"[ $v1 == $v2 ]"
 
     override def toTex: String = op match {
       case Equals => s"${arg2tex(v1)} = ${arg2tex(v2)}"
@@ -205,75 +222,82 @@ object LifeState {
     }
   }
   object LSConstraint{
+    def mk(v1:PureExpr, op:CmpOp, v2:PureExpr):LSPred = (v1,op,v2) match {
+      case (v1:PureVal, Equals, v2:PureVal) if v1 == v2 => LSTrue
+      case (v1:PureVal, Equals, v2:PureVal) if v1 != v2 => LSFalse
+      case (v1:PureVal, NotEquals, v2:PureVal) if v1 != v2 => LSTrue
+      case (v1:PureVal, NotEquals, v2:PureVal) if v1 == v2 => LSFalse
+      case (v1:PureVar, op, v2:PureExpr) => LSConstraint(v1,op,v2)
+      case (v1:PureExpr, Equals, v2:PureVar) => LSConstraint(v2,op,v1)
+      case (v1:PureExpr, NotEquals, v2:PureVar) => LSConstraint(v2,op,v1)
+    }
     implicit val rw:RW[LSConstraint] = macroRW
   }
 
   sealed trait LSPred {
     def toTex:String
 
-    def swap(swapMap: Map[String, String]):LSPred
+    def swap(swapMap: Map[PureVar, PureVar]):LSPred
 
     def contains(mt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints):Boolean
 
-    def lsVar: Set[String]
-
-    def stringRep(varMap : String => Any):String
+    def lsVar: Set[PureVar]
   }
   object LSPred{
     implicit var rw:RW[LSPred] = RW.merge(LSConstraint.rw, LSAtom.rw, macroRW[Forall], macroRW[Exists], macroRW[Not], macroRW[And],
       macroRW[Or], macroRW[LSTrue.type], macroRW[LSFalse.type])
   }
 
-  case class Forall(vars:List[String], p:LSPred) extends LSPred{
+  case class Forall(vars:List[PureVar], p:LSPred) extends LSPred{
 //    override def toString:String =
 //      if(vars.isEmpty) p.toString else s"Forall([${vars.mkString(",")}], ${p.toString})"
     override def toTex: String = ???
-    override def swap(swapMap: Map[String, String]): LSPred =
+    override def swap(swapMap: Map[PureVar, PureVar]): Forall =
       Forall(vars.map(swapMap), p.swap(swapMap))
 
     override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean = ???
 
-    override def lsVar: Set[String] = p.lsVar
+    override def lsVar: Set[PureVar] = p.lsVar
 
-    override def stringRep(varMap: String => Any): String =
+    override def toString(): String =
       if(vars.nonEmpty)
-        s"Ɐ ${vars.map(varMap).mkString(",")} . $p"
+        s"Ɐ ${vars.mkString(",")} . $p"
       else
-        p.stringRep(varMap)
+        p.toString
   }
 
-  case class Exists(vars:List[String], p:LSPred) extends LSPred {
-//    override def toString:String =
-//      if(vars.isEmpty) p.toString else s"Exists([${vars.mkString(",")}],${p.toString})"
-    override def swap(swapMap: Map[String, String]): LSPred =
-      Exists(vars.map(swapMap), p.swap(swapMap))
+  case class Exists(vars:List[PureVar], p:LSPred) extends LSPred {
+    //    override def toString:String =
+    //      if(vars.isEmpty) p.toString else s"Exists([${vars.mkString(",")}],${p.toString})"
+    override def swap(swapMap: Map[PureVar, PureVar]): Exists = {
+      val newSwap = swapMap -- vars
+      Exists(vars, p.swap(swapMap))
+    }
 
     override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean = ???
 
-    override def lsVar: Set[String] = p.lsVar
-    override def stringRep(varMap: String => Any): String =
+    override def lsVar: Set[PureVar] = p.lsVar
+    override def toString: String =
       if(vars.nonEmpty)
-        s"∃ ${vars.map(varMap).mkString(",")} . ${p.stringRep(varMap)}"
+        s"∃ ${vars.mkString(",")} . $p"
       else
-        p.stringRep(varMap)
+        p.toString
 
     override def toTex: String = ???
   }
 
   case class CLInit(sig:String) extends LSSingle {
-    override def lsVars: List[String] = Nil
+    override def lsVars: List[PureVar] = Nil
 
     override def identitySignature: String =
       throw new IllegalStateException("No valid identity signature for CLInit")
 
-    override def swap(swapMap: Map[String, String]): LSPred = this
+    override def swap(swapMap: Map[PureVar, PureVar]): CLInit = this
 
     override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean =
       false
 
-    override def lsVar: Set[String] = Set()
-
-    override def stringRep(varmap: String => Any): String = this.toString
+    override def lsVar: Set[PureVar] = Set()
 
     override def toTex: String = ???
   }
@@ -286,22 +310,22 @@ object LifeState {
    * ref occurs when the value must have been created or first seen at that point (e.g. new or cb v.<init>())
    * @param v
    */
-  case class FreshRef(v: String) extends LSSingle {
+  case class FreshRef(v: PureVar) extends LSSingle {
     override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean =
       false
 
-    override def lsVar: Set[String] = if(v == "_") Set() else Set(v)
+    override def lsVar: Set[PureVar] = Set(v)
 
     override def identitySignature: String = s"FreshRef($v)"
 
-    override def lsVars: List[String] = lsVar.toList
+    override def lsVars: List[PureVar] = lsVar.toList
 
-    override def swap(swapMap: Map[String, String]): LifeState.FreshRef = {
+    override def swap(swapMap: Map[PureVar, PureVar]): LifeState.FreshRef = {
       assert(swapMap.contains(v), "Swap must contain all variables")
       FreshRef(swapMap(v))
     }
 
-    override def stringRep(varmap: String => Any): String = this.toString
+    override def toString: String = this.toString
 
     override def toTex: String = ???
   }
@@ -328,47 +352,45 @@ object LifeState {
   val LSGenerated = "LS_.*".r
 
   case class LSImplies(l1:LSPred, l2:LSPred) extends LSPred{
-    override def swap(swapMap: Map[String, String]): LSPred = LSImplies(l1.swap(swapMap), l2.swap(swapMap))
+    override def swap(swapMap: Map[PureVar, PureVar]) = LSImplies(l1.swap(swapMap), l2.swap(swapMap))
 
     override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean =
       l1.contains(mt,sig) || l2.contains(mt,sig)
 
-    override def lsVar: Set[String] = l1.lsVar.union(l2.lsVar)
+    override def lsVar: Set[PureVar] = l1.lsVar.union(l2.lsVar)
 
-    override def stringRep(varmap: String => Any): String = s"[ ${l1.stringRep(varmap)} ➡ ${l1.stringRep(varmap)} ]"
+    override def toString: String = s"[ ${l1} ➡ ${l1} ]"
 
     override def toTex: String = ???
   }
   case class And(l1 : LSPred, l2 : LSPred) extends LSPred {
-    override def lsVar: Set[String] = l1.lsVar.union(l2.lsVar)
-    override def toString:String = s"(${l1.toString} AND ${l2.toString})"
+    override def lsVar: Set[PureVar] = l1.lsVar.union(l2.lsVar)
 
     override def contains(mt:MessageType, sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean =
       l1.contains(mt,sig) || l2.contains(mt,sig)
 
-    override def swap(swapWithFresh: Map[String, String]): LSPred =
+    override def swap(swapWithFresh: Map[PureVar, PureVar]) =
       And(l1.swap(swapWithFresh), l2.swap(swapWithFresh))
 
-    override def stringRep(varMap: String => Any): String = (l1,l2) match {
-      case (LSFalse, _) => LSFalse.stringRep(varMap)
-      case (_, LSFalse) => LSFalse.stringRep(varMap)
-      case (LSTrue, l) => l.stringRep(varMap)
-      case (l, LSTrue) => l.stringRep(varMap)
-      case (l1,l2) => s"[ ${l1.stringRep(varMap)} && ${l2.stringRep(varMap)} ]"
+    override def toString: String = (l1,l2) match {
+      case (LSFalse, _) => LSFalse.toString
+      case (_, LSFalse) => LSFalse.toString
+      case (LSTrue, l) => l.toString
+      case (l, LSTrue) => l.toString
+      case (l1,l2) => s"[ ${l1} && ${l2} ]"
     }
 
     override def toTex: String = s"${l1.toTex} \\wedge ${l2.toTex}"
   }
   case class Not(l: LSPred) extends LSPred {
-    override def lsVar: Set[String] = l.lsVar
-    override def toString:String = s"(NOT ${l.toString})"
+    override def lsVar: Set[PureVar] = l.lsVar
 
     override def contains(mt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean =
       l.contains(mt,sig)
 
-    override def swap(swapMap: Map[String, String]): LSPred = Not(l.swap(swapMap))
+    override def swap(swapMap: Map[PureVar, PureVar]) = Not(l.swap(swapMap))
 
-    override def stringRep(varMap: String => Any): String = s"¬${l.stringRep(varMap)}"
+    override def toString: String = s"(Not ${l})"
 
     override def toTex: String = l match {
       case i: Once=> s"\\notiDir{${i.mToTex}}"
@@ -376,40 +398,39 @@ object LifeState {
     }
   }
   case class Or(l1:LSPred, l2:LSPred) extends LSPred {
-    override def lsVar: Set[String] = l1.lsVar.union(l2.lsVar)
-    override def toString:String = s"(${l1.toString} OR ${l2.toString})"
+    override def lsVar: Set[PureVar] = l1.lsVar.union(l2.lsVar)
     override def contains(mt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean =
       l1.contains(mt, sig) || l2.contains(mt,sig)
 
-    override def swap(swapMap: Map[String, String]): LSPred = Or(l1.swap(swapMap), l2.swap(swapMap))
+    override def swap(swapMap: Map[PureVar, PureVar]) = Or(l1.swap(swapMap), l2.swap(swapMap))
 
-    override def stringRep(varMap: String => Any): String = (l1, l2) match {
-      case (LSFalse, l) => l.stringRep(varMap)
-      case (l, LSFalse) => l.stringRep(varMap)
-      case (LSTrue, _) => LSTrue.stringRep(varMap)
-      case (_, LSTrue) => LSTrue.stringRep(varMap)
-      case (l1,l2) => s"[${l1.stringRep(varMap)} || ${l2.stringRep(varMap)}]"
+    override def toString: String = (l1, l2) match {
+      case (LSFalse, l) => l.toString
+      case (l, LSFalse) => l.toString
+      case (LSTrue, _) => LSTrue.toString
+      case (_, LSTrue) => LSTrue.toString
+      case (l1,l2) => s"[${l1} || ${l2}]"
     }
 
     override def toTex: String = s"${l1.toTex} \\vee ${l2.toTex}"
   }
   case object LSTrue extends LSPred {
-    override def lsVar: Set[String] = Set.empty
+    override def lsVar: Set[PureVar] = Set.empty
     override def contains(mt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean = false
 
-    override def swap(swapMap: Map[String, String]): LSPred = this
+    override def swap(swapMap: Map[PureVar, PureVar]) = this
 
-    override def stringRep(varMap: String => Any): String = "True"
+    override def toString: String = "True"
 
     override def toTex: String = "\\enkwTrue"
   }
   case object LSFalse extends LSPred {
-    override def lsVar: Set[String] = Set.empty
+    override def lsVar: Set[PureVar] = Set.empty
     override def contains(mt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean = false
 
-    override def swap(swapMap: Map[String, String]): LSPred = this
+    override def swap(swapMap: Map[PureVar, PureVar]) = this
 
-    override def stringRep(varMap: String => Any): String = "False"
+    override def toString: String = "False"
 
     override def toTex: String = "\\enkwFalse"
   }
@@ -423,7 +444,7 @@ object LifeState {
   }
 
   sealed trait SignatureMatcher{
-    def toTex(args:List[String]):String
+    def toTex(args:List[PureExpr]):String
 
     def matchesClass(sig: String):Boolean
 
@@ -445,7 +466,7 @@ object LifeState {
 
     override def matchesClass(sig: String): Boolean = ???
 
-    override def toTex(args:List[String]): String = ???
+    override def toTex(args:List[PureExpr]): String = ???
   }
   object SetSignatureMatcher{
     implicit val rw:RW[SetSignatureMatcher] = macroRW
@@ -481,7 +502,7 @@ object LifeState {
     override def matchesClass(sig: String): Boolean = baseSubtypeOf.contains(sig)
 
 
-    override def toTex(argsin:List[String]): String = {
+    override def toTex(argsin:List[PureExpr]): String = {
       val args = argsin.map(v => arg2tex(v))
       ident match {
         case i if i.contains("onCreate") =>
@@ -539,27 +560,30 @@ object LifeState {
   // A string of "_" means "don't care"
   // primitives are parsed as in java "null", "true", "false", numbers etc.
   sealed trait LSSingle extends LSAtom {
-    def lsVars: List[String]
+    def lsVars: List[PureExpr]
   }
   object LSSingle{
     implicit val rw:RW[LSSingle] = RW.merge(Once.rw, FreshRef.rw, CLInit.rw)
   }
-  case class Once(mt: MessageType, signatures: SignatureMatcher, lsVars : List[String]) extends LSSingle {
-    def constVals(constraints: Set[LSConstraint]):List[Option[(CmpOp, PureExpr)]] = lsVars.map{
-      case LifeState.LSConst(v) => Some((Equals, v))
-      case LifeState.LSVar(v) =>
-        constraints.find(c => c.v1 == v || c.v2 == v) match {
-          case Some(LSConstraint(_, op, LifeState.LSConst(v2))) => Some(op,v2)
-          case Some(LSConstraint(LifeState.LSConst(v1), op, _)) => Some(op,v1)
-          case None => None
-          case c => throw new IllegalStateException(s"Malformed constraint: $c")
-        }
-      case _ => None
-    }
-//    private val sortedSig = signatures.toList.sorted
-    override def lsVar: Set[String] = lsVars.filter(vname => LifeState.LSVar.matches(vname)).toSet
 
-    def getVar(i: Int): String = lsVars(i)
+  case class Once(mt: MessageType, signatures: SignatureMatcher, lsVars : List[PureExpr]) extends LSSingle {
+    //    def constVals(constraints: Set[LSConstraint]):List[Option[(CmpOp, PureExpr)]] = lsVars.map{
+    //      case LifeState.LSConst(v) => Some((Equals, v))
+    //      case LifeState.LSVar(v) =>
+    //        constraints.find(c => c.v1 == v || c.v2 == v) match {
+    //          case Some(LSConstraint(_, op, LifeState.LSConst(v2))) => Some(op,v2)
+    //          case Some(LSConstraint(LifeState.LSConst(v1), op, _)) => Some(op,v1)
+    //          case None => None
+    //          case c => throw new IllegalStateException(s"Malformed constraint: $c")
+    //        }
+    //      case _ => None
+    //    }
+    override def lsVar: Set[PureVar] = lsVars.flatMap {
+      case pureVar: PureVar => Some(pureVar)
+      case _: PureVal => None
+    }.toSet
+
+    def getVar(i: Int): PureExpr = lsVars(i)
 
 
 //    override def getAtomSig: String = {
@@ -572,22 +596,20 @@ object LifeState {
       // any other info that would distinguish this I from another with the same metods
       s"I_${mt.toString}_${signatures.identifier}"
     }
-    override def toString:String = stringRep(a => a)
 
     override def contains(omt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean =
       omt == mt && signatures.matches(sig)
 
-    override def swap(swapMap: Map[String, String]): Once = {
+    override def swap(swapMap: Map[PureVar, PureVar]): Once = {
       val newLSVars = lsVars.map{
-        case LSVar(v) =>
-          swapMap.getOrElse(v,v)
+        case v:PureVar => swapMap.getOrElse(v,v)
         case c => c
       }
       this.copy(lsVars = newLSVars)
     }
 
-    override def stringRep(varMap: String => Any): String =
-      s"O($mt $identitySignature ( ${lsVars.map(varMap).mkString(",")} )"
+    override def toString : String =
+      s"O($mt $identitySignature ( ${lsVars.mkString(",")} )"
 
     def mToTex:String = s"${mt.toTex}~${signatures.toTex(lsVars)}"
 
@@ -599,26 +621,25 @@ object LifeState {
   // Since i1 has been invoked, i2 has not been invoked.
   case class NS(i1:Once, i2:Once) extends LSAtom{
     //assert(i2.lsVar.forall(x => i1.lsVar.contains(x)), "Free variables of i2 must be subset of free variables of i1")
-    lazy val lsVar: Set[String] = i1.lsVar.union(i2.lsVar)
+    lazy val lsVar: Set[PureVar] = i1.lsVar.union(i2.lsVar)
 
 //    override def getAtomSig: String = s"NI(${i1.getAtomSig}, ${i2.getAtomSig})"
 
     override def identitySignature: String = s"${i1.identitySignature}_${i2.identitySignature}"
-    override def toString:String = stringRep(a => a)
 
     override def contains(mt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean =
       i1.contains(mt, sig) || i2.contains(mt, sig)
 
-    override def swap(swapMap: Map[String, String]): LSPred = NS(i1.swap(swapMap), i2.swap(swapMap))
+    override def swap(swapMap: Map[PureVar, PureVar]) = NS(i1.swap(swapMap), i2.swap(swapMap))
 
-    override def stringRep(varMap: String => Any): String = s"NI( ${i1.stringRep(varMap)} , ${i2.stringRep(varMap)} )"
+    override def toString: String = s"NS( $i1 , $i2 )"
 
     override def toTex: String = s"\\niDir{${i2.mToTex}}{${i1.mToTex}}"
   }
   object NS{
     implicit val rw:RW[NS] = macroRW
   }
-  case class LSSpec(univQuant:List[String], existQuant:List[String],
+  case class LSSpec(univQuant:List[PureVar], existQuant:List[PureVar],
                     pred:LSPred, target: Once, rhsConstraints: Set[LSConstraint] = Set()){
     def toTex():String = {
       // in paper language, universal quantification of target vars is implicit
@@ -630,11 +651,11 @@ object LifeState {
       val tgtStr = if(rhsConstraints.isEmpty)
         target.mToTex
       else if(rhsConstraints.exists{
-        case LSConstraint(v, Equals, LSNullConst()) => true
+        case LSConstraint(v, Equals, NullVal) => true
         case _ => false
       }) {
         target.copy(lsVars = target.lsVars.map{
-          case v2 if v2 == rhsConstraints.head.v1 => "@null"
+          case v2 if v2 == rhsConstraints.head.v1 => NullVal
           case v => v
         }).mToTex
       } else
@@ -643,8 +664,9 @@ object LifeState {
       out
     }
 
-    private def checkWF(quant:Set[String], p:LSPred):Boolean = p match {
-      case LSConstraint(v1, _, v2) => quant.contains(v1) && quant.contains(v2)
+    private def checkWF(quant:Set[PureVar], p:LSPred):Boolean = p match {
+      case LSConstraint(v1, _, v2:PureVar) => quant.contains(v1) && quant.contains(v2)
+      case LSConstraint(v1, _, v2) => quant.contains(v1)
       case Forall(vars, p) => checkWF(quant ++ vars,p)
       case Exists(vars, p) => checkWF(quant ++ vars,p)
       case LSImplies(l1, l2) => checkWF(quant,l1) && checkWF(quant,l2)
@@ -664,37 +686,14 @@ object LifeState {
     }
     checkWellFormed()
     def instantiate(i:Once, specSpace: SpecSpace):LSPred = {
-      val swap = (target.lsVars zip i.lsVars).filter{
-        case (LSAnyVal(),_) => false
-        case (_,LSAnyVal()) => false
-        case _ => true
-      }
-      val existingLSVars = swap.map(v => v._2).toSet
-      val unbound = pred.lsVar -- swap.map(_._1)
+      assert(i.lsVar.intersect(this.target.lsVar).isEmpty, "Vars must not be duplicated")
+      assert(i.lsVar.intersect(this.pred.lsVar).isEmpty, "Vars must not be duplicated")
+      val swap = (target.lsVars zip i.lsVars)
 
-      val swapWithFresh = (swap ++ unbound.map{v =>
-//        val nextFresh = specSpace.nextFreshLSVar()
-        val nextFresh = LSVarGen.getNext
-        if(existingLSVars.contains(nextFresh)) //TODO: remove dbg code
-          assert(!existingLSVars.contains(nextFresh),
-            "Duplicate lsvar, if in unit test, call nextFreshLSVar a few times")
-        (v,nextFresh)
-      }).toMap
-      val swappedPred = pred.swap(swapWithFresh)
-      val swappedRhs = rhsConstraints.map(_.swap(swapWithFresh))
-
-      // Quantify variables not in the target
-      val newUnivQuant = univQuant.toSet -- swap.map(_._1)
-
-
-      val lsFormula = if(rhsConstraints.isEmpty)
-        swappedPred
-      else {
-        LSImplies(swappedRhs.reduce(And),swappedPred)
-      }
-//      assert(newUnivQuant.isEmpty, "TODO: is it ever the case that this is not empty on examples before " +
-//        "the click specification?") //TODO: remaining forall here seems to cause timeout issues
-      Forall(newUnivQuant.toList.map(swapWithFresh), Exists(existQuant.map(swapWithFresh), lsFormula))
+      //TODO==== add preds for non pure var
+      //TODO==== swap free vars
+      //TODO==== double check all vals are quantified.
+      ???
 
     }
   }
@@ -702,14 +701,16 @@ object LifeState {
     implicit val rw:RW[LSSpec] = macroRW
   }
 
-  def arg2tex(v: String): String = v match {
-    case LSVar(v) => v
-    case LSNullConst() => "\\enkwNull"
-    case LSBoolConst(v) if v.contains("rue") => "\\enkwTrue"
-    case LSBoolConst(v) if v.contains("alse") => "\\enkwFalse"
-    case LSAnyVal() => "_"
-    case _ =>
-      ???
+  def arg2tex(v: PureExpr): String = v match {
+    case pureVal: PureVal => ???
+    case pureVar: PureVar => ???
+    //    case LSVar(v) => v
+    //    case LSNullConst() => "\\enkwNull"
+    //    case LSBoolConst(v) if v.contains("rue") => "\\enkwTrue"
+    //    case LSBoolConst(v) if v.contains("alse") => "\\enkwFalse"
+    //    case LSAnyVal() => "_"
+    //    case _ =>
+    //      ???
   }
 
   // Class that holds a graph of possible predicates and alias relations between the predicates.
@@ -717,9 +718,9 @@ object LifeState {
   // Set of vars that can alias are represented by having the same name.
   class PredicateSpace(predicates: Set[LSAtom]){
     /** mapping from variable names to predicates containing variable */
-    val findVars: Map[String, Set[LSAtom]] = predicates.foldLeft(Map[String, Set[LSAtom]]()) { (acc, v) =>
-      v.lsVar.foldLeft(acc){ (iacc, varname) => iacc + (varname -> (iacc.getOrElse(varname, Set()) + v) )}
-    }
+//    val findVars: Map[String, Set[LSAtom]] = predicates.foldLeft(Map[String, Set[LSAtom]]()) { (acc, v) =>
+//      v.lsVar.foldLeft(acc){ (iacc, varname) => iacc + (varname -> (iacc.getOrElse(varname, Set()) + v) )}
+//    }
 
     /**
      *
@@ -808,21 +809,66 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
 //    freshLSVarIndex = freshLSVarIndex+1
 //    s"LS__${ind}"
 //  }
+//  /**
+//   * For step back over a place where the code may emit a message find the applicable I and assign fresh ls vars.
+//   * Fresh LS vars are generated for vars and constants
+//   * @param mt Direction of message
+//   * @param sig class name and method signature (e.g. void foo(java.lang.Object))
+//   * @return Some(I) if I exists, None otherwise.
+//   */
+//  def getIWithFreshVars(mt: MessageType, sig: (String, String))(implicit ch : ClassHierarchyConstraints):Option[Once] = {
+//    //    iset.get(mt,sig).map{i =>
+//    //      i.copy(lsVars = i.lsVars.map(a => if(a != "_") nextFreshLSVar() else "_"))
+//    //    }
+//    def merge(v:(String,String)):String = v match{
+//      case ("_",v) => v
+//      case (v,_) => v
+//    }
+//    var solverSig:Option[String] = None
+//    val out: Set[Once] = allI.filter{ i =>
+//      if(i.signatures.matches(sig) && i.mt == mt) {
+//        if (solverSig.isDefined) {
+//          assert(i.identitySignature == solverSig.get,
+//            s"Multiple I identity signatures match method: ${sig} I1: ${i.identitySignature} I2: ${solverSig.get}")
+//        } else {
+//          solverSig = Some(i.identitySignature)
+//        }
+//        true
+//      } else
+//        false
+//    }
+//    if(out.isEmpty)
+//      return None
+//
+//    // Compute intersection of defined variables
+//    val parList = out.foldLeft(List():List[String]){
+//      case (acc,Once(_,_,vars)) =>
+//        acc.zipAll(vars,"_","_").map(merge)
+//    }
+//    val parListFresh = parList.map(a => if(a!="_") LSVarGen.getNext else "_")
+//
+//    val headSig = out.headOption.map(i => i.identitySignature)
+//    assert(out.tail.forall(i => headSig.forall(v => v == i.identitySignature)),
+//      "All matched i must have same identity signature")
+////    assert(out.size == 1 || out.isEmpty, "I must be unique for each message")
+//    //copy I with intersection of defined vars
+//    out.headOption.map(v => v.copy(lsVars = parListFresh))
+//  }
+//  def getRefWithFreshVars(): FreshRef ={
+//    FreshRef(LSVarGen.getNext)
+//  }
+
   /**
-   * For step back over a place where the code may emit a message find the applicable I and assign fresh ls vars.
-   * Fresh LS vars are generated for vars and constants
-   * @param mt Direction of message
-   * @param sig class name and method signature (e.g. void foo(java.lang.Object))
-   * @return Some(I) if I exists, None otherwise.
+   * Find a lifestate spec by
+   *
+   * @param pkg
+   * @param name
+   * @return
    */
-  def getIWithFreshVars(mt: MessageType, sig: (String, String))(implicit ch : ClassHierarchyConstraints):Option[Once] = {
-    //    iset.get(mt,sig).map{i =>
-    //      i.copy(lsVars = i.lsVars.map(a => if(a != "_") nextFreshLSVar() else "_"))
-    //    }
-    def merge(v:(String,String)):String = v match{
-      case ("_",v) => v
-      case (v,_) => v
-    }
+  def specsBySig(mt: MessageType, pkg:String, name:String)(implicit ch: ClassHierarchyConstraints):Set[LSSpec] = {
+    // TODO: cache specs in hash map
+    //    val getI = getIWithFreshVars(mt, (pkg,name)).map(_.identitySignature)
+    val sig = (pkg,name)
     var solverSig:Option[String] = None
     val out: Set[Once] = allI.filter{ i =>
       if(i.signatures.matches(sig) && i.mt == mt) {
@@ -836,37 +882,7 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
       } else
         false
     }
-    if(out.isEmpty)
-      return None
-
-    // Compute intersection of defined variables
-    val parList = out.foldLeft(List():List[String]){
-      case (acc,Once(_,_,vars)) =>
-        acc.zipAll(vars,"_","_").map(merge)
-    }
-    val parListFresh = parList.map(a => if(a!="_") LSVarGen.getNext else "_")
-
-    val headSig = out.headOption.map(i => i.identitySignature)
-    assert(out.tail.forall(i => headSig.forall(v => v == i.identitySignature)),
-      "All matched i must have same identity signature")
-//    assert(out.size == 1 || out.isEmpty, "I must be unique for each message")
-    //copy I with intersection of defined vars
-    out.headOption.map(v => v.copy(lsVars = parListFresh))
-  }
-  def getRefWithFreshVars(): FreshRef ={
-    FreshRef(LSVarGen.getNext)
-  }
-
-  /**
-   * Find a lifestate spec by
-   *
-   * @param pkg
-   * @param name
-   * @return
-   */
-  def specsBySig(mt: MessageType, pkg:String, name:String)(implicit ch: ClassHierarchyConstraints):Set[LSSpec] = {
-    // TODO: cache specs in hash map
-    val getI = getIWithFreshVars(mt, (pkg,name)).map(_.identitySignature)
+    val getI = out.map(_.identitySignature)
     val specsForSig = enableSpecs.filter(a => a.target.mt == mt && a.target.signatures.matches((pkg,name)))
     val identSigs: Set[String] = specsForSig.map(_.target.identitySignature) ++ getI
     identSigs.reduceOption((a:String,b:String) => {

@@ -47,8 +47,8 @@ object TransferFunctions{
     val relevantI = specSpace.findIFromCurrent(dir,signature)
     lst.zipWithIndex.map{ case (rval,ind) =>
       val existsNAtInd = relevantI.exists{i =>
-        val vars: Seq[String] = i.lsVars
-        val out = (ind < vars.length) && !LSAnyVal.matches(vars(ind))
+        val vars: Seq[PureExpr] = i.lsVars
+        val out = (ind < vars.length) && vars(ind) != TopVal
         out
       }
       if(existsNAtInd) rval else None
@@ -544,7 +544,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
                      postState: State): Set[State] = {
     //TODO: just append to single abst trace if sig in spec =====
     //TODO: get rid of set of trace abstractions in abstract state
-    val freshI: Option[Once] = specSpace.getIWithFreshVars(mt,sig)
+    val freshI: Option[Once] =
+      ??? // specSpace.getIWithFreshVars(mt,sig)
     freshI match {
       case None => Set(postState)
       case Some(i) =>
@@ -552,15 +553,19 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         val newModelVars:State = (allVar zip i.lsVars).foldLeft(postState){
           case (acc, (None, _)) =>
             acc
-          case (acc, (_, "_")) =>
+          case (acc, (_, TopVal)) =>
             acc
-          case (acc,(Some(rVal),lsVar)) =>
+          case (acc,(Some(rVal),lsVar: PureVar)) =>
             val (pv, acc2) = acc.getOrDefine(rVal, Some(appMethod))
             val traceAbs = acc2.traceAbstraction
             assert(!traceAbs.modelVars.contains(lsVar))
-            val newModelVars = traceAbs.modelVars + (lsVar -> pv)
-            val newAbs = traceAbs.copy(modelVars = newModelVars)
+            val newModelVars =
+              ???//traceAbs.modelVars + (lsVar -> pv)
+            val newAbs =
+              ??? // traceAbs.copy(modelVars = newModelVars)
             acc2.copy(sf = acc2.sf.copy(traceAbstraction = newAbs))
+          case (acc,_) =>
+            ???
         }
 //        val c = newModelVars.traceAbstraction.filter(t => t.a.isEmpty)
         val oldAbs = newModelVars.traceAbstraction
@@ -917,13 +922,14 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     val pvNNState = state.addPureConstraint(PureConstraint(pv, NotEquals, NullVal))
     //TODO: possibly constrain heap cel targets of pv to null here
     val equivPvList = state.equivPv(pv)
-    val heapMemRef = equivPvList.exists(equivPv => heapCellReferencesVAndIsNonNull(equivPv,pvNNState)) || localReferencesV(pv,pvNNState)
+    val heapMemRef = equivPvList.exists(equivPv =>
+      heapCellReferencesVAndIsNonNull(equivPv,pvNNState)) || localReferencesV(pv,pvNNState)
     if(heapMemRef)
       None
     else {
-      val ref = specSpace.getRefWithFreshVars()
+      val ref = FreshRef(pv) // specSpace.getRefWithFreshVars()
       val ot = pvNNState.sf.traceAbstraction
-      val nt = ot.copy(rightOfArrow = ref::ot.rightOfArrow, modelVars = ot.modelVars + (ref.v->pv))
+      val nt = ot.copy(rightOfArrow = ref::ot.rightOfArrow) //ot.copy(rightOfArrow = ref::ot.rightOfArrow, modelVars = ot.modelVars + (ref.v->pv))
       Some(pvNNState.copy(sf = pvNNState.sf.copy(traceAbstraction = nt)))
     }
   }

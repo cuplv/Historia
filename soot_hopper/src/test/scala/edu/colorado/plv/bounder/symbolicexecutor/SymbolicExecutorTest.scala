@@ -4,14 +4,15 @@ import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{MultiCallback, Proven, SingleCallbackMultiMethod, SingleMethod, Witnessed}
 import edu.colorado.plv.bounder.ir.{CBEnter, JimpleFlowdroidWrapper, JimpleMethodLoc}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, Once, LSSpec, LSTrue, NS, Not, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, LSSpec, LSTrue, NS, Not, Once, Or}
 import edu.colorado.plv.bounder.lifestate.{Dummy, FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BottomQry, CallinReturnNonNull, DBOutputMode, DisallowedCallin, FieldPtEdge, IPathNode, MemoryOutputMode, OutputMode, PrettyPrinting, Qry, Reachable, ReceiverNonNull}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BottomQry, CallinReturnNonNull, DBOutputMode, DisallowedCallin, FieldPtEdge, IPathNode, MemoryOutputMode, NamedPureVar, OutputMode, PrettyPrinting, Qry, Reachable, ReceiverNonNull}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.AnyFunSuite
 import soot.{Scene, SootMethod}
+
 import scala.jdk.CollectionConverters._
 
 class SymbolicExecutorTest extends AnyFunSuite {
@@ -1519,8 +1520,9 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val test: String => Unit = apk => {
         assert(apk != null)
         //Note: subscribeIsUnique rule ommitted from this test to check state relevant to callback
+        val a = NamedPureVar("a")
         val specs = Set(
-          LSSpec("a"::Nil, Nil, Not(SpecSignatures.Activity_onCreate_entry),SpecSignatures.Activity_onCreate_entry),
+          LSSpec(a::Nil, Nil, Not(SpecSignatures.Activity_onCreate_entry),SpecSignatures.Activity_onCreate_entry),
           RxJavaSpec.call
         ) // ++ Dummy.specs
         val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)

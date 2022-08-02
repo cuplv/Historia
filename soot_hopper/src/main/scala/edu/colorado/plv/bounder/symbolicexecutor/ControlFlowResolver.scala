@@ -3,9 +3,9 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
-import edu.colorado.plv.bounder.lifestate.LifeState.{Once, LSAnyVal}
+import edu.colorado.plv.bounder.lifestate.LifeState.Once
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, FieldPtEdge, LSAny, LSConstConstraint, LSModelVar, LSParamConstraint, LSPure, OutputMode, PrettyPrinting, PureVar, State, StaticPtEdge}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, FieldPtEdge, PureVar, State, StaticPtEdge}
 import scalaz.Memo
 import soot.Scene
 import upickle.default.{macroRW, ReadWriter => RW}
@@ -254,24 +254,6 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     }
     //Check if method call can alias all params
 
-    def matchesType(pair: (LSParamConstraint, Option[RVal])):Boolean = pair match{
-      case (_,None) => true
-      case (_:LSConstConstraint,_) => ???
-      case (LSPure(lsV:PureVar), Some(localWr:LocalWrapper)) =>
-
-        state.typeConstraints.get(lsV).forall{ts =>
-//          val res = ts.constrainSubtypeOf(localType, cha)
-//          !res.isEmpty(cha)
-          val localPt = wrapper.pointsToSet(m, localWr)
-          val intersect = ts.intersect(localPt)
-          !intersect.isEmpty
-        }
-      case (LSModelVar(s,t), Some(LocalWrapper(name,localType))) =>
-        true //TODO: could make more precise by matching receivers and arg types
-      case (LSAny, _) =>
-        true
-
-    }
     def relIExistsForCmd(tgt: List[Option[RVal]],inv:Invoke)(implicit ch:ClassHierarchyConstraints):Boolean = {
       val relIHere: Set[Once] = relI.filter{ i =>
         i.signatures.matches((inv.targetClass, inv.targetMethod))

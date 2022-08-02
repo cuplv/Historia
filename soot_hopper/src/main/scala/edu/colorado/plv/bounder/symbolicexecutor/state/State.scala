@@ -1,9 +1,9 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
-import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, StateSolver}
+import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools, StateSolver}
 import edu.colorado.plv.bounder.ir.{AppLoc, BitTypeSet, BoolConst, CallbackMethodInvoke, CallbackMethodReturn, ClassConst, ConstVal, EmptyTypeSet, IRWrapper, IntConst, InternalMethodInvoke, InternalMethodReturn, LVal, Loc, LocalWrapper, MessageType, MethodLoc, NullConst, RVal, StringConst, TopTypeSet, TypeSet}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, FreshRef, Once, LSAnyVal, LSPred, LSSingle, LSTrue, NS, Not, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, FreshRef, LSPred, LSSingle, LSTrue, NS, Not, Once, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state.State.findIAF
 import scalaz.Memo
 import upickle.default.{macroRW, ReadWriter => RW}
@@ -14,7 +14,7 @@ import scala.collection.{BitSet, View}
 object State {
 
   def topState:State =
-    State(StateFormula(Nil,Map(),Set(),Map(),AbstractTrace(Nil,Map())),0)
+    State(StateFormula(Nil,Map(),Set(),Map(),AbstractTrace(Nil)),0)
 
   def findIAF(messageType: MessageType, signature: (String, String),
               pred: LSPred)(implicit ch:ClassHierarchyConstraints):Set[Once] = pred match{
@@ -31,26 +31,25 @@ object State {
 // pureFormula is a conjunction of constraints
 // callStack is the call string from thresher paper
 //sealed trait TraceAbstractionArrow
-case class AbstractTrace(rightOfArrow:List[LSSingle], modelVars: Map[String,PureExpr]){
-  def addModelVar(v: String, pureVar: PureExpr): AbstractTrace = {
-    assert(LifeState.LSVar.matches(v))
-    assert(!modelVars.contains(v), s"model var $v already in trace abstraction.")
-    this.copy(modelVars= modelVars + (v->pureVar))
-  }
+case class AbstractTrace(rightOfArrow:List[LSSingle]){
+
+  def modelVars:Set[PureVar] = rightOfArrow.flatMap{pred => pred.lsVar}.toSet
 
   override def toString:String = {
-    val generated = modelVars.filter{case (k,_) => LifeState.LSGenerated.matches(k) }
-    val notGenerated = modelVars.removedAll(generated.keySet)
-    val replace: String => String = str => generated.foldLeft(str){case (str, (k,v)) =>
-      str.replaceAll(s"([ (),])$k([ (),])", "$1" + v.toString + "$2")}
-    val rhs = replace(rightOfArrow.mkString(";"))
-    s"(${notGenerated} - |> $rhs)"
+//    val generated = modelVars.filter{case (k,_) => LifeState.LSGenerated.matches(k) }
+//    val notGenerated = modelVars.removedAll(generated.keySet)
+//    val replace: String => String = str => generated.foldLeft(str){case (str, (k,v)) =>
+//      str.replaceAll(s"([ (),])$k([ (),])", "$1" + v.toString + "$2")}
+//    val rhs = replace(rightOfArrow.mkString(";"))
+//    s"(${notGenerated} - |> $rhs)"
+    rightOfArrow.mkString(";")
   }
 }
 object AbstractTrace{
   implicit var rw:RW[AbstractTrace] = macroRW[AbstractTrace]
   //got rid of lspred in abstract trace TODO: remove below
-  def apply(a:LSPred, rightOfArrow:List[LSSingle], modelVars: Map[String,PureExpr]):AbstractTrace = ???
+  @deprecated
+  def apply(a:LSPred, rightOfArrow:List[LSSingle], modelVars: Map[Any,PureExpr]):AbstractTrace = ???
   // def apply(rightOfArrow:List[LSSingle], modelVars:Map[String,PureExpr]):AbstractTrace = ???
 }
 
@@ -60,10 +59,7 @@ sealed trait LSParamConstraint{
 case class LSPure(p: PureExpr) extends LSParamConstraint {
   override def optTraceAbs: Option[AbstractTrace] = None
 }
-case class LSModelVar(s:String, trace:AbstractTrace) extends LSParamConstraint {
-  assert(LifeState.LSVar.matches(s), s"Failure parsing $s as model var")
-  override def optTraceAbs: Option[AbstractTrace] = Some(trace)
-}
+
 object LSAny extends LSParamConstraint {
   override def optTraceAbs: Option[AbstractTrace] = None
 }
@@ -99,7 +95,7 @@ case class StateFormula(callStack: List[CallStackFrame],
 
   private val allIRef = Memo.mutableHashMapMemo {
     (spec: SpecSpace) =>
-      StateSolver.rhsToPred(traceAbstraction.rightOfArrow, spec)
+      EncodingTools.rhsToPred(traceAbstraction.rightOfArrow, spec)
         .flatMap(p => SpecSpace.allI(p))
   }
   def swapPv(oldPv : PureVar, newPv: PureVar):StateFormula = {
@@ -120,9 +116,9 @@ case class StateFormula(callStack: List[CallStackFrame],
   }
 
   private def pureExprSwap[T<:PureExpr](oldPv : PureVar, newPv : PureVar, expr:T): T = expr match{
-    case PureVar(id) if id==oldPv.id =>
+    case p:PureVar if p==oldPv =>
       newPv.asInstanceOf[T]
-    case pv@PureVar(_) =>
+    case pv:PureVar =>
       pv.asInstanceOf[T]
     case pv: PureVal =>
       pv.asInstanceOf[T]
@@ -147,10 +143,11 @@ case class StateFormula(callStack: List[CallStackFrame],
   }
 
   private def traceSwapPv(oldPv : PureVar, newPv : PureVar, tr: AbstractTrace):AbstractTrace = {
-    val nmv = tr.modelVars.map{
-      case (k,v) => (k,pureExprSwap(oldPv, newPv, v))
-    }
-    tr.copy(modelVars = nmv)
+//    val nmv = tr.modelVars.map{
+//      case (k,v) => (k,pureExprSwap(oldPv, newPv, v))
+//    }
+//    tr.copy(modelVars = nmv)
+    tr.copy(rightOfArrow = tr.rightOfArrow.map(single => single.swap(Map(oldPv->newPv)).asInstanceOf[LSSingle]))
   }
 
   def iPureVars():Set[PureVar] = {
@@ -173,7 +170,7 @@ case class StateFormula(callStack: List[CallStackFrame],
     val pureVarFromConst = pureFormula.flatMap{
       case PureConstraint(p1,_,p2) => Set() ++ pureVarOpt(p1) ++ pureVarOpt(p2)
     }
-    val pureVarFromTrace = traceAbstraction.modelVars.collect{case (_,pv: PureVar) => pv}
+    val pureVarFromTrace = traceAbstraction.modelVars
     pureVarFromHeap ++ pureVarFromLocals ++ pureVarFromConst ++ typeConstraints.keySet ++ pureVarFromTrace
   }
 }
@@ -210,27 +207,6 @@ case class State(sf:StateFormula,
     case (StaticPtEdge(obj,fieldName), _) => s"sf:${obj}:${fieldName}"
     case _ => ???
   }.toList
-
-  /**
-   * Create a fresh pure var for each model var - used during solver encoding
-   *
-   * @return
-   */
-  def defineAllLS(): State = {
-    var nextAddrV = nextAddr
-    val newTr = {
-      val t = sf.traceAbstraction
-      val unboundArrow = t.rightOfArrow.flatMap(i => i.lsVars)
-      val unbound = (unboundArrow).filter(lsvar => !t.modelVars.contains(lsvar))
-      var addMap: Map[String,PureVar] = Map()
-      unbound.foreach{u =>
-        addMap = addMap + (u -> PureVar(nextAddrV))
-        nextAddrV = nextAddrV + 1
-      }
-      t.copy(modelVars = t.modelVars ++ addMap)
-    }
-    this.copy(sf = sf.copy(traceAbstraction = newTr), nextAddr = nextAddrV)
-  }
 
   def isSimplified:Boolean = sf.isSimplified
   def setSimplified():State = {
@@ -313,14 +289,14 @@ case class State(sf:StateFormula,
   }
   def canAliasPe[M,C](pv:PureVar, lv:PureExpr):Boolean = lv match {
     case pureVal: PureVal => true // equality is handled by StateSolver
-    case pv2@PureVar(_) => canAliasPv(pv, pv2)
+    case pv2:PureVar => canAliasPv(pv, pv2)
   }
   def canAliasEE(pe1:PureExpr, pe2:PureExpr):Boolean = pe1 match {
     case pureVal: PureVal => pe2 match{
       case _:PureVal => true // equality is handled by StateSolver
       case pv2:PureVar => canAliasPe(pv2, pureVal)
     }
-    case pv@PureVar(_) => canAliasPe(pv,pe2)
+    case pv:PureVar => canAliasPe(pv,pe2)
   }
   def canAlias[M,C](pv:PureVar, method:MethodLoc, lw:LocalWrapper, w:IRWrapper[M,C]):Boolean = {
     implicit val wr = w
@@ -380,7 +356,7 @@ case class State(sf:StateFormula,
     if(oldPv == newPv)
       this
     else {
-      val freshPv = PureVar(nextAddr)
+      val freshPv = NPureVar(nextAddr)
       val sFresh = this.copy(nextAddr = nextAddr + 1, sf = sf.swapPv(newPv, freshPv))
       sFresh.copy(sf = sFresh.sf.swapPv(oldPv, newPv))
     }
@@ -388,11 +364,11 @@ case class State(sf:StateFormula,
 
   def setNextCmd(cmd: List[Loc]):State = this.copy(nextCmd = cmd)
 
-  def nextPv() = (PureVar(nextAddr), this.copy(nextAddr = nextAddr+1))
+  def nextPv() = (NPureVar(nextAddr), this.copy(nextAddr = nextAddr+1))
 
-  def lsVarConstraint(f: AbstractTrace, lsvar: String): Option[LSParamConstraint] = f match{
-    case AbstractTrace(_,mv) => mv.get(lsvar).map(LSPure)
-  }
+//  def lsVarConstraint(f: AbstractTrace, lsvar: String): Option[LSParamConstraint] = f match{
+//    case AbstractTrace(_,mv) => mv.get(lsvar).map(LSPure)
+//  }
 
   def findIFromCurrent(dir: MessageType,
                        signature: (String, String), specSpace: SpecSpace)(implicit
@@ -437,7 +413,7 @@ case class State(sf:StateFormula,
 
   // helper functions to find pure variable
   private def expressionContains(expr: PureExpr, pureVar: PureVar):Boolean = expr match {
-    case p2@PureVar(_) => pureVar == p2
+    case p2:PureVar => pureVar == p2
     case _ => false
   }
   private def callStackContains(p :PureVar):Boolean = {
@@ -458,10 +434,11 @@ case class State(sf:StateFormula,
     sf.pureFormula.exists(c => expressionContains(c.lhs,p) || expressionContains(c.rhs,p))
 
   def traceAbstractionContains(p: PureVar): Boolean = {
-    sf.traceAbstraction.modelVars.exists{
-      case (k,v) if v == p => true
-      case _ => false
-    }
+//    sf.traceAbstraction.modelVars.exists{
+//      case (k,v) if v == p => true
+//      case _ => false
+//    }
+    ???
   }
 
   def contains(p:PureVar):Boolean = {
@@ -582,7 +559,7 @@ case class State(sf:StateFormula,
       val cstail = if (sf.callStack.isEmpty) Nil else sf.callStack.tail
 //      cshead.locals.get(StackVar(name)) match {
       get(lw) match {
-        case Some(v@PureVar(_)) => (v, this)
+        case Some(v:PureVar) => (v, this)
         case None if thisVar.contains(l) && cshead.locals.contains(StackVar("@this")) =>
           // case where we are getting/defining the variable representing "this" typically "r0"
           // note that "@this" is defined when processing the caller and may constrain the types
@@ -601,7 +578,7 @@ case class State(sf:StateFormula,
             typeConstraints = sf.typeConstraints ++ combinedTs), nextAddr = nextAddr)
           (thisV, state)
         case None =>
-          val newident = PureVar(nextAddr)
+          val newident = NPureVar(nextAddr)
           val newStack = cshead.copy(locals = cshead.locals + (StackVar(name) -> newident)) :: cstail
           val combinedTs: Option[(PureVar,TypeSet)] = (sf.typeConstraints.get(newident),ts) match{
             case (Some(ts1),Some(ts2)) => Some(newident -> ts1.intersect(ts2))
@@ -779,20 +756,38 @@ case class ImplementsInterface(typ:String) extends TypeConstraint {
   override def toString:String = s"<: I-$typ"
 }
 
+
 // pure var is a symbolic var (e.g. this^ from the paper)
-sealed case class PureVar(id:Int) extends PureExpr {
+
+sealed trait PureVar extends PureExpr
+object PureVar{
+  def apply(id:Int):PureVar = NPureVar(id)
+  implicit val rw:RW[PureVar] = RW.merge(NPureVar.rw, NamedPureVar.rw)
+}
+
+sealed case class NPureVar(id:Int) extends PureVar {
 //  val id : Int = State.getId()
   override def getVars(s : Set[PureVar]) : Set[PureVar] = s + this
 
   override def substitute(toSub : PureExpr, subFor : PureVar) : PureExpr = if (subFor == this) toSub else this
 
   override def hashCode : Int = id*100271
-  override def equals(other : Any) : Boolean = other match {
-    case p : PureVar => this.id == p.id
-    case _ => false
-  }
+
   override def toString : String = "p-" + id
 }
-object PureVar{
-  implicit val rw:RW[PureVar] = macroRW
+object NPureVar{
+  implicit val rw:RW[NPureVar] = macroRW
 }
+
+sealed case class NamedPureVar(n:String) extends PureVar {
+  override def substitute(toSub: PureExpr, subFor: PureVar): PureExpr = if (subFor == this) toSub else this
+
+  override def getVars(s: Set[PureVar]): Set[PureVar] = s + this
+
+  override def toString : String = "p-" + n
+}
+
+object NamedPureVar{
+  implicit val rw:RW[NamedPureVar] = macroRW
+}
+

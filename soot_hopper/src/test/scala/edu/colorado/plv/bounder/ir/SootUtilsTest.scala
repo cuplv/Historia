@@ -76,8 +76,9 @@ class SootUtilsTest extends AnyFunSuite {
     val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath
     assert(test_interproc_1 != null)
     val w = new JimpleFlowdroidWrapper(test_interproc_1, SparkCallGraph, Set())
-    val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
-    val testSpec = LSSpec("a"::Nil, Nil, NS(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
+//    val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
+    val a = NamedPureVar("a")
+    val testSpec = LSSpec(a::Nil, Nil, NS(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
       SpecSignatures.Activity_onPause_entry)
     val config: SymbolicExecutorConfig[SootMethod, soot.Unit] = SymbolicExecutorConfig(
       stepLimit = 50, w, new SpecSpace(Set(testSpec)), printProgress = true, z3Timeout = Some(30))
@@ -98,7 +99,7 @@ class SootUtilsTest extends AnyFunSuite {
     assert(entryloc.isDefined)
 
     println("---")
-    val tr = AbstractTrace(SpecSignatures.Activity_onPause_entry::Nil, Map()) //TODO: fix this test==== probably need spec
+    val tr = AbstractTrace(SpecSignatures.Activity_onPause_entry::Nil) //TODO: fix this test==== probably need spec
     val retPause = iterPredUntil(Set(l), symbolicExecutor.controlFlowResolver, {
       case CallbackMethodReturn(_, name, _, _) if name.contains("onPause") => true
       case _ => false
@@ -107,11 +108,12 @@ class SootUtilsTest extends AnyFunSuite {
     assert(retPause.isDefined)
   }
   test("iterate to parameter assignments onCreate"){
+    val a = NamedPureVar("a")
 
     val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath()
     assert(test_interproc_1 != null)
     val w = new JimpleFlowdroidWrapper(test_interproc_1, SparkCallGraph, Set())
-    val testSpec = LSSpec("a"::Nil, Nil, NS(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
+    val testSpec = LSSpec(a::Nil, Nil, NS(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
       SpecSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
     val config: SymbolicExecutorConfig[SootMethod, soot.Unit] = SymbolicExecutorConfig(
       stepLimit = 50, w, new SpecSpace(Set(testSpec)), printProgress = true, z3Timeout = Some(30))

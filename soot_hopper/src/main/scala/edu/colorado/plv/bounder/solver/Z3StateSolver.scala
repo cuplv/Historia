@@ -6,8 +6,7 @@ import com.microsoft.z3.enumerations.Z3_ast_print_mode
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{AppMethod, CBEnter, CBExit, CIEnter, CIExit, FwkMethod, TAddr, TCLInit, TInitial, TMessage, TNew, TNullVal, TVal, T_, TraceElement, WitnessExplanation}
 import edu.colorado.plv.bounder.lifestate.LifeState
-import edu.colorado.plv.bounder.lifestate.LifeState.{LSAnyVal, LSVar}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, NullVal, PureVal, PureVar, State}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, NullVal, PureExpr, PureVal, PureVar, State, TopVal}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.immutable
@@ -174,16 +173,11 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     iCtx
   }
 
-  override def checkSAT(useCmd:Boolean,messageTranslator: MessageTranslator,
-                        timeout:Option[Int])(implicit zCtx:Z3SolverCtx): Boolean = {
+  override def checkSAT(messageTranslator: MessageTranslator,useCmd:Boolean)(implicit zCtx:Z3SolverCtx): Boolean = {
     msgHistAxiomsToAST(messageTranslator)
     assert(zCtx.indexInitialized, "Initialize axioms with msgHistAxiomsToAST")
-    val timeoutS = timeout match {
-      case Some(time) => time.toString
-      case None => "600"
-//      case None => "7200"//tested to see if higher timeout value handles connectbot - ran for 24 hours no result
-    }
     if(useCmd) {
+      lazy val timeoutS = timeout.toString
       File.temporaryFile().apply{ f =>
         println(s"file: $f")
         f.writeText(zCtx.solver.toString)
@@ -404,12 +398,18 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
       else
         TAddr(pvValues(pv))
     }
-    val pmv: String => TVal = v =>
-      if(v == "_") T_ else {
-        if(ta.modelVars.contains(v))
-          pvv(ta.modelVars(v).asInstanceOf[PureVar])
-        else throw new IllegalArgumentException(s"Undefined model variable ${v}, did you quantify a void value?")
-      }
+
+    val pmv: PureExpr => TVal = {
+      case p:PureVar => pvv(p)
+      case TopVal => T_
+      case v => throw new IllegalArgumentException(s"Undefined model variable ${v}")
+    }
+    //    val pmv: String => TVal = v =>
+    //      if(v == "_") T_ else {
+    //        if(ta.modelVars.contains(v))
+    //          pvv(ta.modelVars(v).asInstanceOf[PureVar])
+    //        else throw new IllegalArgumentException(s"Undefined model variable ${v}, did you quantify a void value?")
+    //      }
 
 
     val trace = rightOfArrow.map{
@@ -550,20 +550,20 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
 
   // Model vars have the pred identity hash code appended since they are unique to each pred
   // "_" means we don't care what the value is so just make arbitrary int
-  override protected def mkModelVar(s: String, predUniqueID:String)(implicit zCtx:Z3SolverCtx): AST = s match {
-    case LSVar(s) =>
-      zCtx.ctx.mkConst ("model_var_" + s + "_" + predUniqueID, addrSort)
-    case LSAnyVal() =>
-      zCtx.ctx.mkFreshConst ("_", addrSort)
-    case _ => throw new IllegalArgumentException("mkModelVar expects variable or any.")
-  }
+//  override protected def mkModelVar(s: String, predUniqueID:String)(implicit zCtx:Z3SolverCtx): AST = s match {
+//    case LSVar(s) =>
+//      zCtx.ctx.mkConst ("model_var_" + s + "_" + predUniqueID, addrSort)
+//    case LSAnyVal() =>
+//      zCtx.ctx.mkFreshConst ("_", addrSort)
+//    case _ => throw new IllegalArgumentException("mkModelVar expects variable or any.")
+//  }
 
   override protected def mkFreshIntVar(s:String)(implicit zCtx:Z3SolverCtx): AST =
     zCtx.ctx.mkFreshConst(s, zCtx.ctx.mkIntSort())
 
-  override protected def mkForallAddr(name:String, cond: AST=>AST)(implicit zCtx:Z3SolverCtx):AST = {
-    assert(name != "_", "Wild card variables should not be quantified")
-    val j: Expr[UninterpretedSort] = zCtx.ctx.mkFreshConst(name, addrSort)
+  override protected def mkForallAddr(name:PureVar, cond: AST=>AST)(implicit zCtx:Z3SolverCtx):AST = {
+
+    val j = mkFreshPv(name)
     zCtx.ctx.mkForall(Array(j), cond(j).asInstanceOf[BoolExpr],1,null,null,null,null)
   }
 
@@ -594,9 +594,8 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
       zCtx.ctx.mkExists(tc, cond.asInstanceOf[BoolExpr], 1, null, null, null, null)
     }else cond
   }
-  override protected def mkExistsAddr(name:String, cond: AST=>AST)(implicit zCtx:Z3SolverCtx):AST = {
-    assert(name != "_", "Wild card variables should not be quantified")
-    val j: Expr[UninterpretedSort] = zCtx.ctx.mkFreshConst(name, addrSort)
+  override protected def mkExistsAddr(name:PureVar, cond: AST=>AST)(implicit zCtx:Z3SolverCtx):AST = {
+    val j = mkFreshPv(name)
     zCtx.ctx.mkExists(Array(j), cond(j).asInstanceOf[BoolExpr],1,null,null,null,null)
   }
 
@@ -615,9 +614,9 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     }
   }
 
-  override protected def mkPv(pv: PureVar)(implicit zCtx:Z3SolverCtx): AST = {
+  protected def mkFreshPv(pv: PureVar)(implicit zCtx:Z3SolverCtx):Expr[UninterpretedSort] = {
     val pvName = mkPvName(pv)
-    zCtx.ctx.mkFreshConst(pvName, addrSort).asInstanceOf[Expr[_]]
+    zCtx.ctx.mkFreshConst(pvName, addrSort)
   }
 
   /**

@@ -2,9 +2,9 @@ package edu.colorado.plv.bounder
 
 import better.files.Resource
 import edu.colorado.plv.bounder.ir.{BitTypeSet, JimpleFlowdroidWrapper, TopTypeSet, TypeSet}
-import edu.colorado.plv.bounder.lifestate.LifeState
+import edu.colorado.plv.bounder.lifestate.{LSExpParser, LifeState}
 import edu.colorado.plv.bounder.symbolicexecutor.{FlowdroidCallGraph, SparkCallGraph}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, DBPathNode, IntVal, PureExpr, PureVar, State, SubclassOf, TypeConstraint}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, ClassType, DBPathNode, IntVal, NamedPureVar, PureExpr, PureVar, State, SubclassOf, TopVal, TypeConstraint}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.Scene
 import upickle.default._
@@ -20,21 +20,22 @@ class BounderSetupApplicationTest extends AnyFunSuite {
     assert( gotSize > 2000 )
   }
   test("LSRegex"){
-    def m(s:String):String= {
-      s match {
-        case LifeState.LSBoolConst(_) => "bool"
-        case LifeState.LSVar(v) => s"var:$v"
-        case LifeState.LSAnyVal() => "any"
-        case _ => "NONE"
-      }
-    }
-    assert(m("@true") == "bool")
-    assert(m("_") == "any")
-    assert(m("A_") == "var:A_")
-    assert(LifeState.LSVar.matches("A9"))
-    assert(!LifeState.LSVar.matches("0"))
-    assert(!LifeState.LSVar.matches("_"))
-    assert(!LifeState.LSVar.matches("@null"))
+    //    def m(s:String):String= {
+    //      s match {
+    //        case LifeState.LSBoolConst(_) => "bool"
+    //        case LifeState.LSVar(v) => s"var:$v"
+    //        case LifeState.LSAnyVal() => "any"
+    //        case _ => "NONE"
+    //      }
+    //    }
+    val m: String => PureExpr = LSExpParser.convert
+    assert(m("@true") == BoolVal(true))
+    assert(m("_") == TopVal)
+    assert(m("A_") == NamedPureVar("A_"))
+    assert(LSExpParser.LSVarReg.matches("A9"))
+    assert(!LSExpParser.LSVarReg.matches("0"))
+    assert(!LSExpParser.LSVarReg.matches("_"))
+    assert(!LSExpParser.LSVarReg.matches("@null"))
   }
 
   test("State serialization"){

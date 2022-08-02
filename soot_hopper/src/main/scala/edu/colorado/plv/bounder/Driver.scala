@@ -447,11 +447,12 @@ object SpecSetOption{
     }
   )
 }
-case class SpecFile(fname:String) extends SpecSetOption {
-  //TODO: write parser for spec set
-  override def getSpecSet(): Set[LSSpec] = LifeState.parseSpec(File(fname).contentAsString)
 
-  override def getDisallowSpecSet(): Set[LSSpec] = Set()
+@deprecated
+case class SpecFile(fname:String) extends SpecSetOption {
+  override def getSpecSet(): Set[LSSpec] = ???
+
+  override def getDisallowSpecSet(): Set[LSSpec] = ???
 }
 
 case class TestSpec(name:String) extends SpecSetOption {
