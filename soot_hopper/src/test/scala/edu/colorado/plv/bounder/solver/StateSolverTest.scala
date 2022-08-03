@@ -87,7 +87,8 @@ class StateSolverTest extends FixtureAnyFunSuite {
   private def getZ3StateSolver():
   (Z3StateSolver, ClassHierarchyConstraints) = {
     val pc = new ClassHierarchyConstraints(hierarchy,Set("java.lang.Runnable"),intToClass)
-    (new Z3StateSolver(pc,timeout = 40000, defaultOnTimeout = () => {
+    (new Z3StateSolver(pc,timeout = 40000, defaultOnSubsumptionTimeout = (z3SolverCtx:Z3SolverCtx) => {
+      println(z3SolverCtx)
       throw new IllegalStateException("Exceeded time limit for test")
     }),pc)
   }
@@ -1293,11 +1294,11 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val stateSolver = fTest.stateSolver
     val f = NamedPureVar("f")
     val g = NamedPureVar("g")
-    val getActivityTgt_e_f = SpecSignatures.Fragment_get_activity_exit.copy(lsVars = e::f::Nil)
-    val onDestroyTgt_d = SpecSignatures.Fragment_onDestroy_exit.copy(lsVars = TopVal::d::Nil)
-    val onCreateTgt_g= SpecSignatures.Fragment_onActivityCreated_entry.copy(lsVars = TopVal::g::Nil)
+    val getActivityTgt_e_f = SpecSignatures.Fragment_get_activity_exit.copy(lsVars = p1::p2::Nil)
+    val onDestroyTgt_d = SpecSignatures.Fragment_onDestroy_exit.copy(lsVars = TopVal::p3::Nil)
+    val onCreateTgt_g= SpecSignatures.Fragment_onActivityCreated_entry.copy(lsVars = TopVal::p3::Nil)
 
-    val s = st(AbstractTrace(onDestroyTgt_d::getActivityTgt_e_f::Nil),Map(e->p1, f->p2, d->p3))
+    val s = st(AbstractTrace(onDestroyTgt_d::getActivityTgt_e_f::Nil),Map())
       .addPureConstraint(PureConstraint(p1, Equals, NullVal))
     val spec = new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNonNull,
       FragmentGetActivityNullSpec.getActivityNull))
@@ -1308,7 +1309,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(stateSolver.witnessed(s2,spec).isDefined)
 
     // |> y.onCreate() |> null = x.getActivity() not refuted unless x = y
-    val s3 = st(AbstractTrace(onCreateTgt_g::getActivityTgt_e_f::Nil), Map(g->p3, e->p1, f->p2))
+    val s3 = st(AbstractTrace(onCreateTgt_g::getActivityTgt_e_f::Nil), Map())
       .addPureConstraint(PureConstraint(p1, Equals, NullVal))
     assert(stateSolver.simplify(s3,spec).isDefined)
 
@@ -1319,12 +1320,12 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val stateSolver = fTest.stateSolver
     val f = NamedPureVar("f")
     val g = NamedPureVar("g")
-    val getActivityTgt_e_f = SpecSignatures.Fragment_get_activity_exit.copy(lsVars = e::f::Nil)
-    val onDestroyTgt_d = SpecSignatures.Fragment_onDestroy_exit.copy(lsVars = TopVal::d::Nil)
+    val getActivityTgt_e_f = SpecSignatures.Fragment_get_activity_exit.copy(lsVars = p1::p2::Nil)
+    val onDestroyTgt_d = SpecSignatures.Fragment_onDestroy_exit.copy(lsVars = TopVal::p2::Nil)
     val unsubscribe_g = SpecSignatures.RxJava_unsubscribe_exit.copy(lsVars = TopVal::g::Nil)
-    val s1 = st(AbstractTrace(getActivityTgt_e_f::Nil), Map(e->p1, f->p2))
+    val s1 = st(AbstractTrace(getActivityTgt_e_f::Nil), Map())
       .addPureConstraint(PureConstraint(p1, Equals, NullVal))
-    val s2 = st(AbstractTrace(onDestroyTgt_d::getActivityTgt_e_f::Nil),Map(e->p1, f->p2, d->p2))
+    val s2 = st(AbstractTrace(onDestroyTgt_d::getActivityTgt_e_f::Nil),Map())
       .addPureConstraint(PureConstraint(p1, Equals, NullVal))
     val spec = new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNonNull,
       FragmentGetActivityNullSpec.getActivityNull))
@@ -1372,14 +1373,16 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val iFoo_x_y = Once(CBEnter, fooM, x :: y :: Nil)
     val iFoo_x1_y1 = Once(CBEnter, fooM, x1::y1 :: Nil)
     val tgt_foo1_x_y = Once(CBEnter, SubClassMatcher("","tgt_foo_1","tgt_foo_1"),x::y::Nil)
+    val tgt_foo1_a_b = Once(CBEnter, SubClassMatcher("","tgt_foo_1","tgt_foo_1"),a::b::Nil)
     val tgt_foo2_x1_y1 = Once(CBEnter, SubClassMatcher("","tgt_foo_2","tgt_foo_2"),x1::y1::Nil)
+    val tgt_foo2_c_d = Once(CBEnter, SubClassMatcher("","tgt_foo_2","tgt_foo_2"),c::d::Nil)
     val spec = new SpecSpace(Set(
       LSSpec(x::y::Nil,Nil,iFoo_x_y, tgt_foo1_x_y),
       LSSpec(x1::y1::Nil,Nil,iFoo_x1_y1, tgt_foo2_x1_y1)
     ))
 
-    val t1 = (AbstractTrace(tgt_foo1_x_y::Nil), Map(y-> p1, x->p3))
-    val t2 = (AbstractTrace(tgt_foo2_x1_y1::Nil), Map(y1 -> p2, x1->p3))
+    val t1 = (AbstractTrace(tgt_foo1_a_b::Nil), Map(b-> p1, a->p3))
+    val t2 = (AbstractTrace(tgt_foo2_c_d::Nil), Map(d -> p2, c->p3))
     val s1 = st(t1).addTypeConstraint(p3,BitTypeSet(BitSet(1)))
       .addTypeConstraint(p1, BitTypeSet(BitSet(1)))
     val s2 = st(t2).addTypeConstraint(p3, BitTypeSet(BitSet(1)))
@@ -1604,16 +1607,20 @@ class StateSolverTest extends FixtureAnyFunSuite {
     implicit val zCTX: Z3SolverCtx = stateSolver.getSolverCtx
 
     val foo = FwkMethod("foo", "")
+    val foo2 = FwkMethod("foo", "foo2")
     val bar = FwkMethod("bar", "")
 
     val i_foo_x = Once(CIEnter, Set(("foo",""),("foo2","")), x::Nil)
+    val i_foo_y = Once(CIEnter, Set(("foo",""),("foo2","")), y::Nil)
     val i_bar_x = Once(CIEnter, Set(("bar",""),("bar2","")), x::Nil)
+    val i_bar_y = Once(CIEnter, Set(("bar",""),("bar2","")), y::Nil)
     val trace = List(
       TMessage(CIEnter, foo, TAddr(1)::Nil),
       TMessage(CIEnter, bar, TAddr(1)::Nil)
     )
 
     val ni_foo_x_bar_x = NS(i_foo_x, i_bar_x)
+    val ni_bar_x_foo_x = NS(i_bar_x, i_foo_x)
     val targetFoo_x = Once(CIExit, Set(("","targetFoo")), x::Nil)
     val targetFoo_y = Once(CIExit, Set(("","targetFoo")), y::Nil)
     val spec = new SpecSpace(Set(
@@ -1679,7 +1686,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
 
     // empty(trace) models NI(x.foo(),x.bar()) |> x.foo()
     val res = stateSolver.traceInAbstraction(
-      st(AbstractTrace(i_foo_x::targetFoo_x::Nil), Map(x->pv1)),
+      st(AbstractTrace(i_foo_y::targetFoo_y::Nil), Map(y->pv1)),
       spec_NiFooBar,
       Nil
     )
@@ -1688,7 +1695,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     //@1.bar() models NI(x.foo(),x.bar()) |> x.foo()
     assert(
       stateSolver.traceInAbstraction(
-        st(AbstractTrace(i_foo_x::targetFoo_x::Nil),Map(x->pv1)),
+        st(AbstractTrace(i_foo_y::targetFoo_y::Nil),Map(y->pv1)),
         spec_NiFooBar,
         TMessage(CIEnter, bar, TAddr(1)::Nil)::Nil
       ).isDefined)
@@ -1696,7 +1703,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     // NI(x.foo(),x.bar()) |> x.foo() models @1.foo();@1.bar()
     assert(
       stateSolver.traceInAbstraction(
-        st(AbstractTrace(i_foo_x::targetFoo_x::Nil),Map(x->pv1)),
+        st(AbstractTrace(i_foo_y::targetFoo_y::Nil),Map(y->pv1)),
         spec_NiFooBar,
         trace
       ).isDefined)
@@ -1704,18 +1711,18 @@ class StateSolverTest extends FixtureAnyFunSuite {
     // NI(x.foo(),x.bar()) |> x.bar() ! models empty
     assert(
       stateSolver.traceInAbstraction(
-        st(AbstractTrace(i_bar_x::targetFoo_x::Nil),Map(x->pv1)),
+        st(AbstractTrace(i_bar_y::targetFoo_y::Nil),Map(y->pv1)),
         spec_NiFooBar,
         trace
       ).isEmpty)
 
     // Not NI(x.foo(), x.bar())  models @1.foo();@1.bar()
     val spec_not_NiFooBar = new SpecSpace(Set(
-      LSSpec(x::Nil, Nil, Not(ni_foo_x_bar_x), targetFoo_x)
+      LSSpec(x::Nil, Nil, Or(ni_bar_x_foo_x, Not(i_bar_x)), targetFoo_x)
     ))
     assert(
       stateSolver.traceInAbstraction(
-        st(AbstractTrace(targetFoo_x::Nil),Map(x->pv1)),
+        st(AbstractTrace(targetFoo_y::Nil),Map(y->pv1)),
         spec_not_NiFooBar,
         trace
       ).isDefined)
@@ -1728,12 +1735,13 @@ class StateSolverTest extends FixtureAnyFunSuite {
     // I(foo(x,y)) models foo(@1,@2)
     val i_foo_x_y = Once(CIEnter, Set(("foo",""),("foo2","")), x::y::Nil)
     val targetFoo_x_y = Once(CIExit, Set(("","targetFoo")), x::y::Nil)
+    val targetFoo_a_b = Once(CIExit, Set(("","targetFoo")), a::b::Nil)
     val spec_Foo_x_y = new SpecSpace(Set(
       LSSpec(x::y::Nil, Nil, i_foo_x_y, targetFoo_x_y)
     ))
     assert(
       stateSolver.traceInAbstraction(
-        st(AbstractTrace(targetFoo_x_y::Nil),Map(x->pv1,y->pv2)),
+        st(AbstractTrace(targetFoo_a_b::Nil),Map(a->pv1,b->pv2)),
         spec_Foo_x_y,
         trace = TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil)::Nil
       ).isDefined
@@ -1746,7 +1754,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     ))
     assert(
       stateSolver.traceInAbstraction(
-        st(AbstractTrace(targetFoo_x_y::Nil),Map(x->pv1,y->pv2)),
+        st(AbstractTrace(targetFoo_a_b::Nil),Map(a->pv1,b->pv2)),
         spec_NotFoo_Bar_x_y,
         List(
           TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil),
@@ -1758,24 +1766,25 @@ class StateSolverTest extends FixtureAnyFunSuite {
     // foo(@1,@2);bar(@1,@1) models [¬I(foo(x,y))] /\ I(bar(x,y))
     assert(
       stateSolver.traceInAbstraction(
-        st(AbstractTrace(targetFoo_x_y::Nil),Map(x->pv1,y->pv2)),
+        st(AbstractTrace(targetFoo_a_b::Nil),Map(a->pv1,b->pv2)),
         spec_NotFoo_Bar_x_y,
         List(
           TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil),
           TMessage(CIEnter, bar, TAddr(1)::TAddr(1)::Nil)
         )
-      ).isEmpty
+      ).isDefined
     )
 
     // I(foo(y,y) !models foo(@1,@2)
     val i_foo_y_y = Once(CIEnter, Set(("foo",""),("foo2","")), y::y::Nil)
     val targetFoo_y_y = Once(CIExit, Set(("","targetFoo")), y::y::Nil)
+    val targetFoo_a_a = Once(CIExit, Set(("","targetFoo")), a::a::Nil)
     val spec_Foo_y_y = new SpecSpace(Set(
       LSSpec(x::y::Nil, Nil, i_foo_y_y, targetFoo_x_y)
     ))
     assert(
       stateSolver.traceInAbstraction(
-        st(AbstractTrace(targetFoo_y_y::Nil),Map(y -> PureVar(1))),
+        st(AbstractTrace(targetFoo_a_a::Nil),Map(a -> PureVar(1))),
         spec_Foo_y_y,
         trace = TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil)::Nil,
         debug = true
@@ -1785,7 +1794,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     // I(foo(y,y) models foo(@2,@2)
     assert(
       stateSolver.traceInAbstraction(
-        st(AbstractTrace(targetFoo_x_y::Nil),Map(x->pv1, y->pv2)),
+        st(AbstractTrace(targetFoo_a_b::Nil),Map(a->pv1, b->pv2)),
         spec_Foo_y_y,
         trace = TMessage(CIEnter, foo, TAddr(2)::TAddr(2)::Nil)::Nil
       ).isDefined
