@@ -150,7 +150,7 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
   }
 }
 class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:Int = 30000, //TODO: this was 100000 testing 30 sec
-                    randomSeed:Int=3578) extends StateSolver[AST,Z3SolverCtx] {
+                    randomSeed:Int=3578, defaultOnTimeout: ()=> Boolean = () => false) extends StateSolver[AST,Z3SolverCtx] {
   private val MAX_ARGS = 10
 
 //  private val threadLocalCtx: ThreadLocal[Z3SolverCtx] = ThreadLocal.withInitial( () => Z3SolverCtx(timeout,randomSeed))
@@ -460,14 +460,14 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
         val name = f.getName.toString
         name.contains("addressToType")
       }
-//      addr.foreach
+      //      addr.foreach
 
       println("=trace solution=")
       var traceLen = 0
       while(model.eval(mkEq(sortedInd(traceLen),len).asInstanceOf[BoolExpr], true).isFalse){
         traceLen = traceLen+1
       }
-//      val traceFun = mkTraceFn(uniqueID).asInstanceOf[FuncDecl[UninterpretedSort]]
+      //      val traceFun = mkTraceFn(uniqueID).asInstanceOf[FuncDecl[UninterpretedSort]]
       val nameFun = messageTranslator.nameFun.asInstanceOf[FuncDecl[_]]
       val argFun = mkArgFun().asInstanceOf[FuncDecl[_]]
       def printTraceElement(index:Int):Unit = {
@@ -490,7 +490,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
         }
       }
       println("=traceModel=")
-      (0 until traceLen).foreach(printTraceElement)
+      sortedInd.indices.foreach(printTraceElement)
 
       println()
 
@@ -713,27 +713,21 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
       msg)
   }
 
-  override protected def mkExistsArg(argFun: AST, msg: AST, pred: AST => AST)(implicit zCtx:Z3SolverCtx): AST = {
-    val argIs = zCtx.args.map(arg =>
-      pred(argFun.asInstanceOf[FuncDecl[UninterpretedSort]].apply(
-        arg,msg.asInstanceOf[Expr[UninterpretedSort]])).asInstanceOf[BoolExpr] )
-    zCtx.ctx.mkOr(argIs:_*)
-  }
-
   override protected def mkAddrConst(i: Int)(implicit zCtx:Z3SolverCtx): AST = {
     zCtx.ctx.mkConst(s"addr_const$i", addrSort)
   }
 
-  override protected def mkMsgConst(i:Int, msg:TraceElement)(implicit zCtx:Z3SolverCtx): AST = {
+  override protected def mkMsgConst(i:Int, msg:Option[TraceElement])(implicit zCtx:Z3SolverCtx): AST = {
     if(i == 0){
-      assert(msg == TInitial, "Initial trace element should be TInitial")
+      assert(msg.contains(TInitial) || msg.isEmpty, "Initial trace element should be TInitial")
       return mkZeroMsg
     }
     val sig = (i,msg) match {
-      case (_,TInitial) => throw new IllegalArgumentException("bad initial message position")
-      case (_,TCLInit(cl)) => ???
-      case (_,TNew(v)) => ???
-      case (i,TMessage(mType, method, args)) => s"${mType}_${method.name}_$i"
+      case (_,Some(TInitial)) => throw new IllegalArgumentException("bad initial message position")
+      case (_,Some(TCLInit(cl))) => ???
+      case (_,Some(TNew(v))) => ???
+      case (i,Some(TMessage(mType, method, args))) => s"${mType}_${method.name}_$i"
+      case (i,None) => s"__unn__$i"
     }
     zCtx.ctx.mkConst(s"msgat_$sig", msgSort)
   }
@@ -878,14 +872,6 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     lte
   }
 
-  override protected def mkAllArgs(msg: AST, pred: AST => AST)(implicit zCtx:Z3SolverCtx): AST = {
-    val argFun = mkArgFun()
-    val ctx = zCtx.ctx
-    val argIs = zCtx.args.map(arg =>
-      pred(argFun.asInstanceOf[FuncDecl[UninterpretedSort]].apply(
-        arg,msg.asInstanceOf[Expr[UninterpretedSort]])).asInstanceOf[BoolExpr] )
-    ctx.mkAnd(argIs:_*)
-  }
   override protected def encodeValueCreatedInFuture(v: AST)(implicit zCtx: Z3SolverCtx): AST = {
     val ctx = zCtx.ctx
     val argFun = mkArgFun().asInstanceOf[FuncDecl[UninterpretedSort]]

@@ -328,7 +328,7 @@ object LifeState {
       FreshRef(swapMap.getOrElse(v,v))
     }
 
-    override def toString: String = this.toString
+    override def toString: String = v.toString
 
     override def toTex: String = ???
   }

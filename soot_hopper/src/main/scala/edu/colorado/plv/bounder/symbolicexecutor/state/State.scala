@@ -733,6 +733,7 @@ object ClassVal{
 }
 case object TopVal extends PureVal(null) {
   override def z3Tag: Option[String] = None
+  override def toString:String = "_T_"
 }
 
 sealed trait TypeConstraint

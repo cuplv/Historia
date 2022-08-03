@@ -87,7 +87,9 @@ class StateSolverTest extends FixtureAnyFunSuite {
   private def getZ3StateSolver():
   (Z3StateSolver, ClassHierarchyConstraints) = {
     val pc = new ClassHierarchyConstraints(hierarchy,Set("java.lang.Runnable"),intToClass)
-    (new Z3StateSolver(pc,timeout = 40000),pc)
+    (new Z3StateSolver(pc,timeout = 40000, defaultOnTimeout = () => {
+      throw new IllegalStateException("Exceeded time limit for test")
+    }),pc)
   }
   override def withFixture(test: OneArgTest) = {
     // Run all tests with both set inclusion type solving and solver type solving
@@ -95,9 +97,18 @@ class StateSolverTest extends FixtureAnyFunSuite {
     // All other tests should work with either
 //    withFixture(test.toNoArgTest(FixtureParam(SetInclusionTypeSolving)))
     val (stateSolver,_) = getZ3StateSolver
-    withFixture(test.toNoArgTest(FixtureParam(stateSolver, (s1,s2,spec) => stateSolver.canSubsume(s1,s2,spec))))
+    println("-normal subs")
+    withFixture(test.toNoArgTest(FixtureParam(stateSolver,
+      (s1,s2,spec) => {
+        //val s1simp = stateSolver.simplify(s1,spec).get
+        //val s2simp = stateSolver.simplify(s2,spec).get
+        stateSolver.canSubsume(s1,s2,spec)
+      })))
+    println("-set subs")
     withFixture(test.toNoArgTest(FixtureParam(stateSolver, (s1,s2,spec) => {
       s1.setSimplified() //For tests, just tell solver its simplified already
+      //val s1simp = stateSolver.simplify(s1,spec).get
+      //val s2simp = stateSolver.simplify(s2,spec).get
       stateSolver.canSubsumeSet(Set(s1),s2,spec)
     })))
   }
@@ -1223,7 +1234,10 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val st1 = st(AbstractTrace(subITgt::unsubITgt::callITgt::Nil), Map(s1->p2, l1->p1))
 //    assert(stateSolver.simplify(s,spec).isEmpty) //Note: case exists where there may be a second sub
     val st2 = st(AbstractTrace(callITgt::Nil), Map(l2->p1)) //TODO: Shouldn't this subsume since s2.unsub may be same as s1?
-    assert(f.canSubsume(st2,st1,spec))
+    // val st2Enc = EncodingTools.rhsToPred(st2.sf.traceAbstraction.rightOfArrow, spec)
+    // val st1Enc = EncodingTools.rhsToPred(st1.sf.traceAbstraction.rightOfArrow, spec)
+    // Note: with no constraint on unsubscribe it may be different value resulting in wit
+    assert(!f.canSubsume(st2,st1,spec))
 
     val s_1 = st(AbstractTrace(subITgt::unsubITgt::callITgt::Nil), Map(s2->p2,s1->p2, l2->p1, l1->p1))
     val s_2 = st(AbstractTrace(callITgt::Nil), Map(l2->p1))
@@ -1257,8 +1271,14 @@ class StateSolverTest extends FixtureAnyFunSuite {
   }
   test("an arbitrary state s1 should subsume s1 with a ref added"){f =>
     val stateSolver = f.stateSolver
-    val s1 = st(AbstractTrace(FreshRef(x)::Nil), Map(x->p1))
-    val s2 = st(AbstractTrace(FreshRef(x)::FreshRef(y)::Nil), Map(x->p1,y->p2))
+    val s1 = st(AbstractTrace(FreshRef(x)::Nil), Map(x->p1)).setSimplified()
+    val s2 = st(AbstractTrace(FreshRef(x)::FreshRef(y)::Nil), Map(x->p1,y->p2)).setSimplified()
+
+    //TODO: DBG code ====
+    assert(stateSolver.canSubsume(s1,s2,esp))
+    assert(stateSolver.canSubsumeSet(Set(s1),s2,esp))
+    //TODO:DBG code ===
+
     assert(f.canSubsume(s1,s2,esp))
     //Note that an erroneous "OR" between Refs causes timeout, may cause timeouts in future due to negation
 

@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.solver
 import edu.colorado.plv.bounder.ir.MessageType
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, CLInit, Exists, Forall, FreshRef, LSAtom, LSConstraint, LSFalse, LSImplies, LSPred, LSSingle, LSSpec, LSTrue, NS, Not, Once, Or, SignatureMatcher}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{Equals, NotEquals, PureExpr, State, TopVal}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, Equals, FieldPtEdge, NPureVar, NamedPureVar, NotEquals, PureConstraint, PureExpr, PureVal, PureVar, State, StaticPtEdge, TopVal}
 
 object EncodingTools {
   private def filterAny(s:Seq[(PureExpr,PureExpr)]):Seq[(PureExpr,PureExpr)] = s.filter{
@@ -188,5 +188,127 @@ object EncodingTools {
       case NS(i1,i2) => Set(s"NI_${i1.identitySignature}__${i2.identitySignature}") ++ mayI(i1)
     }
     pred.flatMap(mayI)
+  }
+
+  def reduceStatePureVars(state: State): Option[State] = {
+    assert(state.isSimplified, "reduceStatePureVars must be called on feasible state.")
+    // TODO: test for trace enforcing that pure vars are equivalent
+    def mergePV(state:State,oldPv:PureVar, newPv:PureVar):Option[State] = {
+      val pv1tc = state.typeConstraints.get(oldPv)
+      val pv2tc = state.typeConstraints.get(newPv)
+      val joinedTc = (pv1tc,pv2tc) match{
+        case (Some(tc),None) => Some(tc)
+        case (None,Some(tc)) => Some(tc)
+        case (None,None) => None
+        case (Some(tc1),Some(tc2)) =>
+          Some(tc1.intersect(tc2))
+      }
+      joinedTc match{
+        case Some(tc) if tc.isEmpty => None
+        case Some(tc) => Some(state.swapPv(oldPv,newPv).addTypeConstraint(newPv,tc)) //.copy(typeConstraints = state.typeConstraints + (newPv -> tc)))
+        case None => Some(state.swapPv(oldPv,newPv))
+      }
+    }
+    def containsEq(state: State):Boolean = {
+      state.pureFormula.exists{
+        case PureConstraint(lhs:PureVar, Equals, rhs:PureVar) => true
+        case _ => false
+      }
+    }
+    def existsNegation(pc:PureConstraint, state:State):Boolean = pc match{
+      case PureConstraint(lhs, Equals, rhs) => state.pureFormula.exists{
+        case PureConstraint(lhs1, NotEquals, rhs1) if lhs == lhs1 && rhs == rhs1 => true
+        case PureConstraint(lhs1, NotEquals, rhs1) if lhs == rhs1 && rhs == lhs1 => true
+        case _ => false
+      }
+      case PureConstraint(lhs, NotEquals, rhs) => state.pureFormula.exists{
+        case PureConstraint(lhs1, Equals, rhs1) if lhs == lhs1 && rhs == rhs1 => true
+        case PureConstraint(lhs1, Equals, rhs1) if lhs == rhs1 && rhs == lhs1 => true
+        case _ => false
+      }
+    }
+    // Iterate until all equal variables are cleared
+    var swappedForSmallerPvOpt:Option[State] = Some(state)
+
+    while(swappedForSmallerPvOpt.isDefined && containsEq(swappedForSmallerPvOpt.get)) {
+      swappedForSmallerPvOpt = {
+        swappedForSmallerPvOpt.get.pureFormula.foldLeft(Some(swappedForSmallerPvOpt.get): Option[State]) {
+          case (Some(acc),pc) if existsNegation(pc,acc) => None
+          case (Some(acc), pc@PureConstraint(v1@NPureVar(id1), Equals, v2@NPureVar(id2))) if id1 < id2 =>
+            val res = mergePV(acc.removePureConstraint(pc),v2,v1)
+            res
+          case (Some(acc), pc@PureConstraint(v1@NPureVar(id1), Equals, v2@NPureVar(id2))) if id1 > id2 =>
+            //              val res = mergePV(acc.copy(pureFormula = acc.pureFormula - pc), v1, v2)
+            val res = mergePV(acc.removePureConstraint(pc), v1,v2)
+            res
+          case (Some(acc), pc@PureConstraint(v1:NamedPureVar,Equals, v2:NPureVar)) =>
+            val res = mergePV(acc.removePureConstraint(pc), v1,v2)
+            res
+          case (Some(acc), pc@PureConstraint(v1:NPureVar,Equals, v2:NamedPureVar)) =>
+            val res = mergePV(acc.removePureConstraint(pc), v2,v1)
+            res
+          case (Some(acc), pc@PureConstraint(pv1:PureVar, Equals, pv2:PureVar)) if pv1 == pv2 =>
+            //            Some(acc.copy(pureFormula = acc.pureFormula - pc))
+            Some(acc.removePureConstraint(pc))
+          case (acc, PureConstraint(lhs, NotEquals, rhs)) => acc
+          case (acc, PureConstraint(_, _, _:PureVal)) => acc
+          case (acc, _) =>
+            ???
+        }
+      }
+    }
+
+    if(swappedForSmallerPvOpt.isEmpty)
+      return None
+    val swappedForSmallerPv = swappedForSmallerPvOpt.get
+    val allPv = swappedForSmallerPv.pureVars()
+    val out = if (allPv.nonEmpty) {
+      val maxPvValue = allPv.map {
+        case NPureVar(id) => id
+        case NamedPureVar(_) => -1
+      }.max
+      swappedForSmallerPv.copy(nextAddr = maxPvValue + 1)
+    } else
+      swappedForSmallerPv
+    Some(out)
+  }
+
+  /**
+   * Remove all pure variables that are not reachable from a local, heap edge, or trace constraint
+   * TODO: note that this could be optimized by dropping pure variables that are not reachable from a framework "registered" set when quiescent
+   * @param state
+   * @return
+   */
+  def gcPureVars(state:State):State = {
+    val allPv = state.pureVars()
+
+    // marked pure vars
+    val localPVs = state.callStack.flatMap{
+      case CallStackFrame(_, _, locals) => locals.collect{case (_,pv:PureVar) => pv}
+    }.toSet
+    val heapPVs = state.heapConstraints.flatMap{
+      case (FieldPtEdge(pv1, _), pv2) => Set(pv1,pv2)
+      case (StaticPtEdge(_,_), pv) => Set(pv)
+      case (ArrayPtEdge(pv1,pv2),pv3) => Set(pv1,pv2,pv3)
+    }.toSet
+    val tracePVs = state.traceAbstraction.modelVars
+    val markedSet = localPVs ++ heapPVs ++ tracePVs
+    // TODO: Currently, pv contains no relations that requires the "mark" phase of
+    //  mark and sweep so we just move to sweep.
+    //  all sources of heap edges are part of the root set since the framework may point to them.
+    if (allPv == markedSet){
+      state
+    }else {
+      state.copy(sf = state.sf.copy(pureFormula = state.pureFormula.filter{
+        case PureConstraint(lhs:PureVar, NotEquals, _) if !markedSet.contains(lhs) =>
+          false
+        case PureConstraint(_, NotEquals, rhs:PureVar) if !markedSet.contains(rhs) =>
+          false
+        case PureConstraint(lhs, _, rhs) => markedSet.contains(lhs) || markedSet.contains(rhs)
+        case _ => true
+      }, typeConstraints = state.typeConstraints.filter{
+        case (pv,_) => markedSet.contains(pv)
+      }))
+    }
   }
 }
