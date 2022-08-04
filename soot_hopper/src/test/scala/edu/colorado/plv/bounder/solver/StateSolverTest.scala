@@ -108,6 +108,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     println("-set subs")
     withFixture(test.toNoArgTest(FixtureParam(stateSolver, (s1,s2,spec) => {
       s1.setSimplified() //For tests, just tell solver its simplified already
+      s2.setSimplified() //For tests, just tell solver its simplified already
       //val s1simp = stateSolver.simplify(s1,spec).get
       //val s2simp = stateSolver.simplify(s2,spec).get
       stateSolver.canSubsumeSet(Set(s1),s2,spec)
@@ -1129,17 +1130,15 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val st1 = st(AbstractTrace(clickTgt_x::Nil), Map(x -> p1, z->p4))
     val st2 = st(AbstractTrace(FreshRef(c)::findVTgt_yz::clickTgt_x::Nil),
       Map(x -> p1, y -> p2, z -> p3, c->p4))
-    val res = f.canSubsume(st1,st2, spec)
-    val res2 = f.canSubsume(st2, st1, spec)
+    assert(!f.canSubsume(st1,st2, spec))
+    assert(!f.canSubsume(st2, st1, spec))
 
-    val specfull = new SpecSpace(Set(
-      ViewSpec.clickWhileActive,
-      ViewSpec.viewOnlyReturnedFromOneActivity
-    ))
-    val res3 = f.canSubsume(st1, st2, spec)
-    val res4 = f.canSubsume(st2,st1, spec)
-    println()
-    ??? //TODO: expected results for this test?
+//    val specfull = new SpecSpace(Set(
+//      ViewSpec.clickWhileActive,
+//      ViewSpec.viewOnlyReturnedFromOneActivity
+//    ))
+//    val res3 = f.canSubsume(st1, st2, spec)
+//    val res4 = f.canSubsume(st2,st1, spec)
   }
   ignore("duplicate resume/onClickListener should subsume"){ f =>
     val stateSolver = f.stateSolver
@@ -1924,12 +1923,19 @@ class StateSolverTest extends FixtureAnyFunSuite {
       destTgtY::createTgtX::subTgtWP::unsubTgtW::destTgtX::callTgtZ::Nil),
       Map(x->p1,z->p2,w->p4,p->p5, y->p6))
 
-    //    //TODO: remove dbg code =====
-    val s_1_pre = EncodingTools.rhsToPred(s_1.traceAbstraction.rightOfArrow, specs2).map(EncodingTools.simplifyPred)
-    val s_2_pre = EncodingTools.rhsToPred(s_2.traceAbstraction.rightOfArrow, specs2).map(EncodingTools.simplifyPred)
-    println("test test test")
+    //    //TODO: remove dbg code
+//    val s_1_pre = EncodingTools.rhsToPred(s_1.traceAbstraction.rightOfArrow, specs2).map(EncodingTools.simplifyPred)
+//    val s_2_pre = EncodingTools.rhsToPred(s_2.traceAbstraction.rightOfArrow, specs2).map(EncodingTools.simplifyPred)
+//    println("test test test")
+//
+//    s_1.setSimplified()
+//    assert(stateSolver.canSubsume(s_1, s_2, specs2))
+//    assert(stateSolver.canSubsumeSet(Set(s_1), s_2_simp, specs2))
+    //TODO: dbg code
+    //TODO: is it a problem that this times out without simp?
+    val s_2_simp = stateSolver.simplify(s_2, specs2).get
 
-    assert(f.canSubsume(s_1,s_2,specs2))
+    assert(f.canSubsume(s_1,s_2_simp,specs2))
 
     val s_1_ = st(AbstractTrace(
       createTgtX::Nil),

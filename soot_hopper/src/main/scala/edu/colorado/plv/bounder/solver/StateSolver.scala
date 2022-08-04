@@ -950,6 +950,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     }
 
     assert(s1.forall(s => s.isSimplified), "Subsuming states should be simplified")
+    assert(s2.isSimplified, "State being subsumed should be simplified")
 
     //TODO: two state subsumption tries to reduce pt regions, may want to do that here as well?
 

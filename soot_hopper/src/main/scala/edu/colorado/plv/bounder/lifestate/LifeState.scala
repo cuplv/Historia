@@ -851,51 +851,51 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
 //    freshLSVarIndex = freshLSVarIndex+1
 //    s"LS__${ind}"
 //  }
-//  /**
-//   * For step back over a place where the code may emit a message find the applicable I and assign fresh ls vars.
-//   * Fresh LS vars are generated for vars and constants
-//   * @param mt Direction of message
-//   * @param sig class name and method signature (e.g. void foo(java.lang.Object))
-//   * @return Some(I) if I exists, None otherwise.
-//   */
-//  def getIWithFreshVars(mt: MessageType, sig: (String, String))(implicit ch : ClassHierarchyConstraints):Option[Once] = {
-//    //    iset.get(mt,sig).map{i =>
-//    //      i.copy(lsVars = i.lsVars.map(a => if(a != "_") nextFreshLSVar() else "_"))
-//    //    }
-//    def merge(v:(String,String)):String = v match{
-//      case ("_",v) => v
-//      case (v,_) => v
-//    }
-//    var solverSig:Option[String] = None
-//    val out: Set[Once] = allI.filter{ i =>
-//      if(i.signatures.matches(sig) && i.mt == mt) {
-//        if (solverSig.isDefined) {
-//          assert(i.identitySignature == solverSig.get,
-//            s"Multiple I identity signatures match method: ${sig} I1: ${i.identitySignature} I2: ${solverSig.get}")
-//        } else {
-//          solverSig = Some(i.identitySignature)
-//        }
-//        true
-//      } else
-//        false
-//    }
-//    if(out.isEmpty)
-//      return None
-//
-//    // Compute intersection of defined variables
-//    val parList = out.foldLeft(List():List[String]){
-//      case (acc,Once(_,_,vars)) =>
-//        acc.zipAll(vars,"_","_").map(merge)
-//    }
-//    val parListFresh = parList.map(a => if(a!="_") LSVarGen.getNext else "_")
-//
-//    val headSig = out.headOption.map(i => i.identitySignature)
-//    assert(out.tail.forall(i => headSig.forall(v => v == i.identitySignature)),
-//      "All matched i must have same identity signature")
-////    assert(out.size == 1 || out.isEmpty, "I must be unique for each message")
-//    //copy I with intersection of defined vars
-//    out.headOption.map(v => v.copy(lsVars = parListFresh))
-//  }
+  /**
+   * For step back over a place where the code may emit a message find the applicable I and assign fresh ls vars.
+   * Fresh LS vars are generated for vars and constants
+   * @param mt Direction of message
+   * @param sig class name and method signature (e.g. void foo(java.lang.Object))
+   * @return Some(I) if I exists, None otherwise.
+   */
+  def getIWithFreshVars(mt: MessageType, sig: (String, String))(implicit ch : ClassHierarchyConstraints):Option[Once] = {
+    //    iset.get(mt,sig).map{i =>
+    //      i.copy(lsVars = i.lsVars.map(a => if(a != "_") nextFreshLSVar() else "_"))
+    //    }
+    def merge(v:(PureExpr,PureExpr)):PureExpr = v match{
+      case (TopVal,v) => v
+      case (v,_) => v
+    }
+    var solverSig:Option[String] = None
+    val out: Set[Once] = allI.filter{ i =>
+      if(i.signatures.matches(sig) && i.mt == mt) {
+        if (solverSig.isDefined) {
+          assert(i.identitySignature == solverSig.get,
+            s"Multiple I identity signatures match method: ${sig} I1: ${i.identitySignature} I2: ${solverSig.get}")
+        } else {
+          solverSig = Some(i.identitySignature)
+        }
+        true
+      } else
+        false
+    }
+    if(out.isEmpty)
+      return None
+
+    // Compute intersection of defined variables
+    val parList = out.foldLeft(List():List[PureExpr]){
+      case (acc,Once(_,_,vars)) =>
+        acc.zipAll(vars,TopVal,TopVal).map(merge)
+    }
+    val parListFresh = ??? //parList.map(a => if(a!="_") LSVarGen.getNext else "_")
+
+    val headSig = out.headOption.map(i => i.identitySignature)
+    assert(out.tail.forall(i => headSig.forall(v => v == i.identitySignature)),
+      "All matched i must have same identity signature")
+//    assert(out.size == 1 || out.isEmpty, "I must be unique for each message")
+    //copy I with intersection of defined vars
+    out.headOption.map(v => v.copy(lsVars = parListFresh))
+  }
 //  def getRefWithFreshVars(): FreshRef ={
 //    FreshRef(LSVarGen.getNext)
 //  }

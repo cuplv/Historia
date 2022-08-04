@@ -544,8 +544,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
                      postState: State): Set[State] = {
     //TODO: just append to single abst trace if sig in spec =====
     //TODO: get rid of set of trace abstractions in abstract state
-    val freshI: Option[Once] =
-      ??? // specSpace.getIWithFreshVars(mt,sig)
+    val freshI: Option[Once] = specSpace.getIWithFreshVars(mt,sig)
     freshI match {
       case None => Set(postState)
       case Some(i) =>
