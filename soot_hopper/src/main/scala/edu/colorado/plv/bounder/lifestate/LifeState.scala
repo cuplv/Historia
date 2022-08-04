@@ -4,7 +4,7 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, CLInit, Exists, Forall, FreshRef, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, NS, Not, Once, Or}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CmpOp, Equals, NamedPureVar, NotEquals, NullVal, PureExpr, PureVal, PureVar, State, TopVal, TypeComp}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, ClassVal, CmpOp, Equals, NamedPureVar, NotEquals, NullVal, PureExpr, PureVal, PureVar, State, TopVal, TypeComp}
 
 import scala.util.parsing.combinator._
 import upickle.default.{macroRW, ReadWriter => RW}
@@ -69,9 +69,19 @@ object LifeState {
     case class AstMac(id:AstID, i:Once) extends Line
     case class AstRule(v1:Ast, tgt:AstID) extends Line
     // TODO: identifier should handle arrays, for now use java.util.List_ instead of java.util.List[]
-    def identifier: Parser[PureVar] = LSExpParser.LSVarReg ^^ { a => NamedPureVar(a) }
 
-    def macroIdentifier:Parser[AstID] = """#[a-zA-Z][a-zA-Z0-9_]*""".r ^^ {
+    def pkIdentifier: Parser[String] = """([_a-zA-Z][.a-zA-Z0-9_]*)""".r ^^ {
+      case v if v == "_" => ".*"
+      case v if v.startsWith("_") => throw new IllegalArgumentException("Cannot start pkg identifier with underscore")
+      case v => v
+    }
+
+    def pureExpr: Parser[PureExpr] = """([_a-zA-Z][.a-zA-Z0-9_]*)""".r ^^ {
+      case v if v=="_" => TopVal
+      case v: String => NamedPureVar(v)
+    }
+
+    def macroIdentifier:Parser[AstID] = """#[a-zA-Z][.a-zA-Z0-9_]*""".r ^^ {
       case ident => AstID(ident.drop(1))
     }
 
@@ -85,7 +95,7 @@ object LifeState {
     // parse I
     def empty: Parser[TopVal.type] = "_" ^^ {_ => TopVal}
 
-    def parMatcher:Parser[PureExpr] = identifier | empty //TODO: and const
+//    def parMatcher:Parser[String] = pkIdentifier  //TODO: and const
 
     def mDir: Parser[MessageType] = ( "ciret" | "cbret" | "ci" | "cb") ^^ {
       case "ci" => CIEnter
@@ -99,31 +109,32 @@ object LifeState {
       case "!=" => NotEquals
       case "<:" => TypeComp
     }
-    def constr:Parser[LSConstraint] = identifier ~ op ~ identifier ^^ {
+    def constr:Parser[LSConstraint] = pureExpr ~ op ~ pureExpr^^ {
       case id1 ~ op ~ id2 =>
-        LSConstraint(id1, op, id2)
+        LSConstraint(id1.asInstanceOf[PureVar], op, id2)
 
     }
     def constrs:Parser[List[LSConstraint]] = repsep(constr,sep)
 
-    def lsVarList:Parser[List[PureExpr]] = repsep(parMatcher,",")
+    def lsVarList:Parser[List[PureExpr]] = repsep(pureExpr,",")
 
-    def params = repsep(parMatcher, ",")
+    def params = repsep(pkIdentifier, ",")
 
-    def rf(v:PureExpr):String = v.toString.replace("_","[^,()]*")
+//    def rf(v:PureExpr):String = v.toString.replace("_","[^,()]*")
     //    def rf(v:String):String = v.replace("_","[^,()]*")
 
 
-    def i: Parser[Once] = "I(" ~ mDir ~ "[" ~ lsVarList ~"]" ~ identifier ~ identifier ~"(" ~ params ~ ")" ~ constr ~ ")" ^^ {
+    def i: Parser[Once] = "I(" ~ mDir ~ "[" ~ lsVarList ~"]" ~ pkIdentifier ~ pkIdentifier ~"(" ~ params ~ ")" ~ constr ~ ")" ^^ {
       case _ ~ pmDir ~ _ ~ vars ~ _ ~ ret ~ sName ~ _ ~ para ~ _ ~ LSConstraint(v1, TypeComp, v2) ~ _ =>
-        assert(vars.size < 2 || vars(1) == "_" || vars(1) == v1, "Can only specify receiver type in I")
-        val p = para.map(rf)
-        val sigRegex = rf(ret) +" " + sName + "\\(" +  p.mkString(",") + "\\)"
-        val ident = ret + "__" + sName + "__" + p.mkString("___")
-        val subtypeOf:String = ??? //TODO: base type?
+        assert(vars.size < 2 || vars(1) == TopVal || vars(1) == v1, "Can only specify receiver type in I")
+//        val p = para.map(rf)
+        val sigRegex = ret + " " + sName + "\\(" +  para.mkString(",") + "\\)"
+        val ident = ret + "__" + sName + "__" + para.mkString("___")
+        val subtypeOf:String = v2.asInstanceOf[NamedPureVar].n //TODO: stupid hack, should be Class val somehow
         val scm = SubClassMatcher(subtypeOf, sigRegex, ident)
         Once(pmDir, scm, vars)
-      case _ => throw new IllegalArgumentException("Can only specify receiver type in I")
+      case _ =>
+        throw new IllegalArgumentException("Can only specify receiver type in I")
     }
     val lsTrueConst = "@(TRUE|true|True)".r ^^ {case _ => LSTrue}
     val lsFalseConst = "@(false|False|FALSE)".r ^^ {case _ => LSFalse}
@@ -853,12 +864,14 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
 //  }
   /**
    * For step back over a place where the code may emit a message find the applicable I and assign fresh ls vars.
-   * Fresh LS vars are generated for vars and constants
+   * Return has arbitrary non-top pure expr for arguments that matter, top for ones that don't.
+   * Caller must replace all non-top pure expr with something from abstract state.
    * @param mt Direction of message
    * @param sig class name and method signature (e.g. void foo(java.lang.Object))
    * @return Some(I) if I exists, None otherwise.
    */
-  def getIWithFreshVars(mt: MessageType, sig: (String, String))(implicit ch : ClassHierarchyConstraints):Option[Once] = {
+  def getIWithMergedVars(mt: MessageType, sig: (String, String))
+                        (implicit ch : ClassHierarchyConstraints):Option[Once] = {
     //    iset.get(mt,sig).map{i =>
     //      i.copy(lsVars = i.lsVars.map(a => if(a != "_") nextFreshLSVar() else "_"))
     //    }
@@ -887,14 +900,14 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
       case (acc,Once(_,_,vars)) =>
         acc.zipAll(vars,TopVal,TopVal).map(merge)
     }
-    val parListFresh = ??? //parList.map(a => if(a!="_") LSVarGen.getNext else "_")
+//    val parListFresh = ??? //parList.map(a => if(a!="_") LSVarGen.getNext else "_")
 
     val headSig = out.headOption.map(i => i.identitySignature)
     assert(out.tail.forall(i => headSig.forall(v => v == i.identitySignature)),
       "All matched i must have same identity signature")
 //    assert(out.size == 1 || out.isEmpty, "I must be unique for each message")
     //copy I with intersection of defined vars
-    out.headOption.map(v => v.copy(lsVars = parListFresh))
+    out.headOption.map(v => v.copy(lsVars = parList))
   }
 //  def getRefWithFreshVars(): FreshRef ={
 //    FreshRef(LSVarGen.getNext)

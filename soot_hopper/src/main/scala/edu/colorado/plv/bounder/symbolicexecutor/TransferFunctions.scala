@@ -544,32 +544,25 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
                      postState: State): Set[State] = {
     //TODO: just append to single abst trace if sig in spec =====
     //TODO: get rid of set of trace abstractions in abstract state
-    val freshI: Option[Once] = specSpace.getIWithFreshVars(mt,sig)
+    val freshI: Option[Once] = specSpace.getIWithMergedVars(mt,sig)
     freshI match {
       case None => Set(postState)
       case Some(i) =>
-
-        val newModelVars:State = (allVar zip i.lsVars).foldLeft(postState){
-          case (acc, (None, _)) =>
-            acc
-          case (acc, (_, TopVal)) =>
-            acc
-          case (acc,(Some(rVal),lsVar: PureVar)) =>
-            val (pv, acc2) = acc.getOrDefine(rVal, Some(appMethod))
-            val traceAbs = acc2.traceAbstraction
-            assert(!traceAbs.modelVars.contains(lsVar))
-            val newModelVars =
-              ???//traceAbs.modelVars + (lsVar -> pv)
-            val newAbs =
-              ??? // traceAbs.copy(modelVars = newModelVars)
-            acc2.copy(sf = acc2.sf.copy(traceAbstraction = newAbs))
+        val (newState,newI) = (allVar zip i.lsVars).foldLeft((postState, i.copy(lsVars = Nil))){
+          case ((acc,i), (None, _)) =>
+            (acc,i.copy(lsVars = i.lsVars.appended(TopVal)))
+          case ((acc,i), (_, TopVal)) =>
+            (acc,i.copy(lsVars = i.lsVars.appended(TopVal)))
+          case ((acc,i),(Some(rVal),lsVar: PureVar)) =>
+            val (pv, stateDef) = acc.getOrDefine(rVal, Some(appMethod))
+            (stateDef, i.copy(lsVars = i.lsVars.appended(pv)))
           case (acc,_) =>
             ???
         }
 //        val c = newModelVars.traceAbstraction.filter(t => t.a.isEmpty)
-        val oldAbs = newModelVars.traceAbstraction
-        val newAbs = oldAbs.copy(rightOfArrow = i::oldAbs.rightOfArrow)
-        Set(newModelVars.copy(sf = newModelVars.sf.copy(traceAbstraction = newAbs)))
+        val oldAbs = newState.traceAbstraction
+        val newAbs = oldAbs.copy(rightOfArrow = newI::oldAbs.rightOfArrow)
+        Set(newState.copy(sf = newState.sf.copy(traceAbstraction = newAbs)))
     }
   }
   def newDisallowTransfer(appMethod:MethodLoc, mt: MessageType,
