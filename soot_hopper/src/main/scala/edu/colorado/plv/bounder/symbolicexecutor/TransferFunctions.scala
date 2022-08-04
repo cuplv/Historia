@@ -553,10 +553,14 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
             (acc,i.copy(lsVars = i.lsVars.appended(TopVal)))
           case ((acc,i), (_, TopVal)) =>
             (acc,i.copy(lsVars = i.lsVars.appended(TopVal)))
-          case ((acc,i),(Some(rVal),lsVar: PureVar)) =>
+          case ((acc,i),(Some(rVal),_)) =>
             val (pv, stateDef) = acc.getOrDefine(rVal, Some(appMethod))
             (stateDef, i.copy(lsVars = i.lsVars.appended(pv)))
-          case (acc,_) =>
+          case ((acc,i),(v1,v2)) =>
+            println(acc)
+            println(i)
+            println(v1)
+            println(v2)
             ???
         }
 //        val c = newModelVars.traceAbstraction.filter(t => t.a.isEmpty)

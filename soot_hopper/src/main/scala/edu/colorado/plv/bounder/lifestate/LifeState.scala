@@ -266,7 +266,7 @@ object LifeState {
     override def swap(swapMap: Map[PureVar, PureVar]): Forall = {
       assert(!vars.exists(v => swapMap.contains(v)),
         s"Swap failed, quantified forall vars $vars overlaps with swapMap: $swapMap ")
-      Forall(vars.map(swapMap), p.swap(swapMap))
+      Forall(vars, p.swap(swapMap))
     }
 
     override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean = ???

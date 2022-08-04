@@ -204,7 +204,7 @@ object ViewSpec {
   )
   private val setOnClickListenerINull = Once(CIExit,
     SubClassMatcher("android.view.View",".*setOnClickListener.*","View_setOnClickListener"),
-    List(TopVal,v,NullVal) //TODO: ==============
+    List(TopVal,v,NullVal)
   )
 
    val setOnClickListener:LSPred = NS(setOnClickListenerI, setOnClickListenerINull) // TODO: setOnClickListenerIl2 causes bad proof in "finish allows click after pause, why?
@@ -235,7 +235,7 @@ object ViewSpec {
   private val fv_exit = Once(CIExit, SpecSignatures.Activity_findView, v::TopVal::Nil)
   // Ɐv,a,a2. ¬ I(ci v:= a2.findViewByID()) \/ a = a2 <= ci v:= a.findViewByID()
   val viewOnlyReturnedFromOneActivity:LSSpec =
-    LSSpec(a::a2::v::Nil, Nil, Or(Not(fv2), LSConstraint(a, Equals, a2)), fv1)
+    LSSpec(a::v::Nil, Nil, Forall(a2::Nil, Or(Not(fv2), LSConstraint(a, Equals, a2))), fv1)
 //  val sameIDSameView:LSSpec =
 //    LSSpec()
 
