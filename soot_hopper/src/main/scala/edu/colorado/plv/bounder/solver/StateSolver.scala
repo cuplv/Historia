@@ -219,7 +219,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val onceOpt = messageTranslator.iForMsg(element)
     val nameConstraint = onceOpt.map(o => mkEq(mkNameConstraint(nameFun, msg), messageTranslator.enumFromI(o)))
     val argConstraints:List[T] = element.args.zipWithIndex.map{
-      case (TAddr(addr), argnum) => mkEq(argVals(addr), mkArgConstraint(argnum,msg))
+      case (TAddr(addr), argnum) =>mkEq(argVals(addr), mkArgConstraint(argnum,msg))
       case _ => ???
     }
     mkAnd(argConstraints.prependedAll(nameConstraint))

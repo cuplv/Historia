@@ -729,8 +729,14 @@ object LifeState {
           s"\nfound fv: ${swapPred.lsVar}" +
           s"\nrequired fv: ${swappedTo}" +
           s"\npossible malformed spec: ${this.toString}")
-      val res = (swapPred::purePreds).reduce(And)
-      res
+
+      val res: LSPred = (swapPred::purePreds).reduce(And)
+      if(rhsConstraints.isEmpty)
+        res
+      else {
+        val allC:Set[LSPred] = rhsConstraints.map(c => c.swap(toSwap).asInstanceOf[LSPred])
+        LSImplies(allC.reduce(And), res)
+      }
     }
   }
   object LSSpec{

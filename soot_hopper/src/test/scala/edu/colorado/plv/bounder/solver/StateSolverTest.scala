@@ -1110,55 +1110,6 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(!f.canSubsume(s2h,s1h,spec2))
   }
 
-  test("|>x.onDestroy() should subsume |>x.onDestroy()|>y.onDestroy()"){f =>
-    val stateSolver = f.stateSolver
-    val w = NamedPureVar("w")
-    val p = NamedPureVar("p")
-    val specs = new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
-      FragmentGetActivityNullSpec.getActivityNonNull,
-    ) ++ LifecycleSpec.spec ++ RxJavaSpec.spec)
-    val destTgtX = Once(CBExit, SpecSignatures.Activity_onDestroy, TopVal::x::Nil)
-    val createTgtX = Once(CBEnter, SpecSignatures.Activity_onCreate, TopVal::x::Nil)
-    val destTgtY = Once(CBExit, SpecSignatures.Activity_onDestroy, TopVal::y::Nil)
-    val callTgtZ = Once(CBEnter, SpecSignatures.RxJava_call, TopVal::z::Nil)
-    val unsubTgtW = Once(CIExit, SpecSignatures.RxJava_unsubscribe, TopVal::w::Nil)
-    val subTgtWP = Once(CIExit, SpecSignatures.RxJava_subscribe, w::TopVal::p::Nil)
-    val s1 = st(AbstractTrace(FreshRef(z)::destTgtX::callTgtZ::Nil), Map(x->p1, z->p3, w->p4))
-    val s2 = st(AbstractTrace(FreshRef(z)::destTgtY::destTgtX::callTgtZ::Nil), Map(x->p1, y->p2, z->p3, w->p4))
-      .addPureConstraint(PureConstraint(p1,NotEquals,p2))
-    assert(f.canSubsume(s1,s2, specs))
-
-    val specs2 = new SpecSpace(
-      Set(FragmentGetActivityNullSpec.getActivityNull, FragmentGetActivityNullSpec.getActivityNonNull) ++
-        RxJavaSpec.spec ++
-        LifecycleSpec.spec)
-    val s_1 = st(AbstractTrace(
-      createTgtX::subTgtWP::unsubTgtW::destTgtX::callTgtZ::Nil),
-      Map(x->p1,z->p2,w->p4,p->p5))
-    val s_2 = st(AbstractTrace(
-      destTgtY::createTgtX::subTgtWP::unsubTgtW::destTgtX::callTgtZ::Nil),
-      Map(x->p1,z->p2,w->p4,p->p5, y->p6))
-
-    //    //TODO: remove dbg code =====
-    val s_1_pre = EncodingTools.rhsToPred(s_1.traceAbstraction.rightOfArrow, specs2).map(EncodingTools.simplifyPred)
-    val s_2_pre = EncodingTools.rhsToPred(s_2.traceAbstraction.rightOfArrow, specs2).map(EncodingTools.simplifyPred)
-    println("test test test")
-
-    assert(f.canSubsume(s_1,s_2,specs2))
-
-    val s_1_ = st(AbstractTrace(
-      createTgtX::Nil),
-      Map(x->p1))
-    val s_2_ = st(AbstractTrace(
-      destTgtY::createTgtX::Nil),
-      Map(x->p1, y->p6))
-    assert(stateSolver.simplify(s_1_,specs2).isDefined)
-    assert(stateSolver.simplify(s_2_,specs2).isDefined)
-    assert(f.canSubsume(s_1_,s_1_,specs2))
-    assert(f.canSubsume(s_2_,s_2_,specs2))
-    assert(f.canSubsume(s_1_,s_2_,specs2))
-  }
-
   test("|>v.onClick() subsume |> v2 = a.findViewByID() |>v.onClick()"){ f =>
     val stateSolver = f.stateSolver
     val v = NamedPureVar("v")
@@ -1812,17 +1763,21 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val i_foo_x = Once(CIEnter, Set(("foo",""),("foo2","")), x::Nil)
     val i_bar_x = Once(CIEnter, Set(("bar",""),("bar2","")), x::Nil)
     val targetFoo_x_y = Once(CIExit, Set(("","targetFoo")), x::y::Nil)
+    val targetFoo_a_b = Once(CIExit, Set(("","targetFoo")), a::b::Nil)
     val trace = List(
       TMessage(CIEnter, foo, TAddr(1)::Nil),
       TMessage(CIEnter, bar, TAddr(1)::Nil)
     )
     val spec = new SpecSpace(Set(
       LSSpec(x::y::Nil, Nil, NS(i_foo_x, i_bar_x), targetFoo_x_y,
-        Set(LSConstraint(y, Equals, NullVal))),
-      LSSpec(x::y::Nil, Nil, LSTrue, targetFoo_x_y, Set(LSConstraint(y, NotEquals, NullVal)))
+        Set(LSConstraint(x, Equals, NullVal))),
+      LSSpec(x::y::Nil, Nil, LSTrue, targetFoo_x_y, Set(LSConstraint(x, NotEquals, NullVal)))
     ))
-    val stateNull = st(AbstractTrace(targetFoo_x_y::Nil), Map(y->pv1, x->pv2))
+    val stateNull = st(AbstractTrace(targetFoo_a_b::Nil), Map(a->pv1, b->pv2))
       .addPureConstraint(PureConstraint(pv1, Equals, NullVal))
+
+    val simplStateNull = stateSolver.simplify(stateNull,spec)
+    println(simplStateNull)
     val resIsNull = stateSolver.traceInAbstraction(
       stateNull,
       spec,
@@ -1841,24 +1796,6 @@ class StateSolverTest extends FixtureAnyFunSuite {
 
 
 
-  ignore("some timeout from 'Test prove dereference of return from getActivity'"){ f =>
-    //TODO: fix or see if this is still reachable
-    val stateSolver = f.stateSolver
-    val s1 = read[State](Resource.getAsStream("s1_timeoutsubs.json"))
-    val s2 = read[State](Resource.getAsStream("s2_timeoutsubs.json"))
-    val s1pv = s1.pureVars()
-    val s2pv = s2.pureVars()
-    val s1tc = s1.typeConstraints
-    val s2tc = s2.typeConstraints
-    // Note: seems to finish if type ref removed
-    val s1Simpl = s1.copy(sf = s1.sf.copy(typeConstraints = Map()))
-    val s2Simpl = s2.copy(sf = s2.sf.copy(typeConstraints = Map()))
-
-    val tmp = f.canSubsume(s1Simpl,s2Simpl,esp)
-
-    val res = f.canSubsume(s1Simpl, s2Simpl,esp)
-    println(res)
-  }
   test("Empty trace should not be contained in incomplete abstract trace") { f =>
     val stateSolver = f.stateSolver
 
@@ -1957,6 +1894,56 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val res = fTest.canSubsume(s_1, s_2, spec)
     assert(!res)
   }
+
+  test("|>x.onDestroy() should subsume |>x.onDestroy()|>y.onDestroy()"){f =>
+    val stateSolver = f.stateSolver
+    val w = NamedPureVar("w")
+    val p = NamedPureVar("p")
+    val specs = new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
+      FragmentGetActivityNullSpec.getActivityNonNull,
+    ) ++ LifecycleSpec.spec ++ RxJavaSpec.spec)
+    val destTgtX = Once(CBExit, SpecSignatures.Activity_onDestroy, TopVal::x::Nil)
+    val createTgtX = Once(CBEnter, SpecSignatures.Activity_onCreate, TopVal::x::Nil)
+    val destTgtY = Once(CBExit, SpecSignatures.Activity_onDestroy, TopVal::y::Nil)
+    val callTgtZ = Once(CBEnter, SpecSignatures.RxJava_call, TopVal::z::Nil)
+    val unsubTgtW = Once(CIExit, SpecSignatures.RxJava_unsubscribe, TopVal::w::Nil)
+    val subTgtWP = Once(CIExit, SpecSignatures.RxJava_subscribe, w::TopVal::p::Nil)
+    val s1 = st(AbstractTrace(FreshRef(z)::destTgtX::callTgtZ::Nil), Map(x->p1, z->p3, w->p4))
+    val s2 = st(AbstractTrace(FreshRef(z)::destTgtY::destTgtX::callTgtZ::Nil), Map(x->p1, y->p2, z->p3, w->p4))
+      .addPureConstraint(PureConstraint(p1,NotEquals,p2))
+    assert(f.canSubsume(s1,s2, specs))
+
+    val specs2 = new SpecSpace(
+      Set(FragmentGetActivityNullSpec.getActivityNull, FragmentGetActivityNullSpec.getActivityNonNull) ++
+        RxJavaSpec.spec ++
+        LifecycleSpec.spec)
+    val s_1 = st(AbstractTrace(
+      createTgtX::subTgtWP::unsubTgtW::destTgtX::callTgtZ::Nil),
+      Map(x->p1,z->p2,w->p4,p->p5))
+    val s_2 = st(AbstractTrace(
+      destTgtY::createTgtX::subTgtWP::unsubTgtW::destTgtX::callTgtZ::Nil),
+      Map(x->p1,z->p2,w->p4,p->p5, y->p6))
+
+    //    //TODO: remove dbg code =====
+    val s_1_pre = EncodingTools.rhsToPred(s_1.traceAbstraction.rightOfArrow, specs2).map(EncodingTools.simplifyPred)
+    val s_2_pre = EncodingTools.rhsToPred(s_2.traceAbstraction.rightOfArrow, specs2).map(EncodingTools.simplifyPred)
+    println("test test test")
+
+    assert(f.canSubsume(s_1,s_2,specs2))
+
+    val s_1_ = st(AbstractTrace(
+      createTgtX::Nil),
+      Map(x->p1))
+    val s_2_ = st(AbstractTrace(
+      destTgtY::createTgtX::Nil),
+      Map(x->p1, y->p6))
+    assert(stateSolver.simplify(s_1_,specs2).isDefined)
+    assert(stateSolver.simplify(s_2_,specs2).isDefined)
+    assert(f.canSubsume(s_1_,s_1_,specs2))
+    assert(f.canSubsume(s_2_,s_2_,specs2))
+    assert(f.canSubsume(s_1_,s_2_,specs2))
+  }
+
   test("z3 scratch"){f=>
     val ctx = new Context()
     val solver = ctx.mkSolver()

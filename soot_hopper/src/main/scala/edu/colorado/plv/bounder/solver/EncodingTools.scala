@@ -48,8 +48,8 @@ object EncodingTools {
       if(i1.mt == i.mt && i1.signatures == i.signatures)
         Or(eqOnce(i1,i), lsPred)
       else lsPred
-    case Not(_) =>
-      throw new IllegalArgumentException("Negation only supported on I")
+    case Not(x) =>
+      throw new IllegalArgumentException(s"Negation only supported on I, found ${x}")
     case CLInit(_) => ???
   }
   private def updArrowPhi(rhs:LSSingle, lSPred: LSPred):LSPred = rhs match {
