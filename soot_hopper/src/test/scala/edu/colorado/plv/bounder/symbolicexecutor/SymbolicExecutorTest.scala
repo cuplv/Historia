@@ -2333,7 +2333,8 @@ class SymbolicExecutorTest extends AnyFunSuite {
 
             val config = SymbolicExecutorConfig(
               stepLimit = 280, w, specs,
-              component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode)
+              component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode,
+              z3Timeout = Some(30))
             val symbolicExecutor = config.getSymbolicExecutor
             val line = BounderUtil.lineForRegex(".*query1.*".r, src)
             //            val clickReachable = Reachable("com.example.createdestroy.MyActivity$1",

@@ -1267,6 +1267,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
         // try 3 times with different random seeds
         if(rngTry < 2){
+          zCtx.release()
           canSubsumeZ3(s1i,s2i,specSpace,maxLen,timeout, rngTry+1)
         }else {
           println("Giving up and not subsuming.")

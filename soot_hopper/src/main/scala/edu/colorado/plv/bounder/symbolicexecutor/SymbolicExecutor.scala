@@ -56,7 +56,7 @@ case class SymbolicExecutorConfig[M,C](stepLimit: Int,
                                        component : Option[Seq[String]] = None,
                                        outputMode : OutputMode = MemoryOutputMode,
                                        timeLimit : Int = 7200, //TODO: somehow make time limit hard cutoff ===== currently just exits on symbex main loop ==== thread.interrupt?
-                                       subsumptionMode:SubsumptionMode = SubsumptionModeBatch
+                                       subsumptionMode:SubsumptionMode = SubsumptionModeIndividual //Note: seems to be faster without batch mode subsumption
                                       ){
   def getSymbolicExecutor =
     new SymbolicExecutor[M, C](this)
