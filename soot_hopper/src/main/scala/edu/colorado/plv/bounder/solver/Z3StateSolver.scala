@@ -172,8 +172,14 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     iCtx
   }
 
+  override def solverString(messageTranslator: MessageTranslator)(implicit zCtx: Z3SolverCtx):String = {
+    if(!zCtx.indexInitialized)
+      msgHistAxiomsToAST(messageTranslator)
+    zCtx.solver.toString
+  }
   override def checkSAT(messageTranslator: MessageTranslator,useCmd:Boolean)(implicit zCtx:Z3SolverCtx): Boolean = {
-    msgHistAxiomsToAST(messageTranslator)
+    if(!zCtx.indexInitialized)
+      msgHistAxiomsToAST(messageTranslator)
     assert(zCtx.indexInitialized, "Initialize axioms with msgHistAxiomsToAST")
     if(useCmd) {
       lazy val timeoutS = timeout.toString
@@ -206,7 +212,8 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     } else {
       try {
         val res = zCtx.solver.check()
-        interpretSolverOutput(res)
+        val interp = interpretSolverOutput(res)
+        interp
       } catch {
         case e: IllegalArgumentException =>
             println(s"timeout: ${e.getMessage}")

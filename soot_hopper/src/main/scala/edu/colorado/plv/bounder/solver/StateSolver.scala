@@ -32,6 +32,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   def getLogger:Logger
   def iDefaultOnSubsumptionTimeout(implicit zCtx:C):Boolean
 
+  def solverString(messageTranslator: MessageTranslator)(implicit zCtx:C):String
   /**
    * Check satisfiability of fomrula in solver
    * @throws IllegalStateException if formula is undecidable or times out

@@ -8,6 +8,7 @@ import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, JimpleFlow
 import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
+import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.{row1Specs, row2Specs, row4Specs, row5Specs}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{CallinReturnNonNull, DBOutputMode, DisallowedCallin, IPathNode, MemoryOutputMode, PrettyPrinting, Reachable, ReceiverNonNull}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
@@ -20,26 +21,7 @@ import scala.collection.mutable
 import soot.{Scene, SootClass, SootMethod}
 
 import scala.jdk.CollectionConverters.{CollectionHasAsScala, ListHasAsScala}
-
-class Experiments extends AnyFunSuite with BeforeAndAfter {
-  private val runVerif = true//use this to get cb/ci counts without running verifier
-  private val generateTex = false //TODO: flip to generate tex files
-  private val logger = LoggerFactory.getLogger("Experiments")
-  logger.warn("Starting experiments run")
-  private val prettyPrinting = new PrettyPrinting()
-  private val cgMode = SparkCallGraph
-
-  {
-    val logF = File("log/logging.log")
-    if(logF.exists() && logF.contentAsString.split("\\n").size > 5) {
-      throw new IllegalStateException("Please delete log file before run")
-    }
-
-  }
-  after{
-    println("Ending Experiments run")
-  }
-
+object ExperimentSpecs{
   val row1Specs = Set(FragmentGetActivityNullSpec.getActivityNull,
     LifecycleSpec.Fragment_activityCreatedOnlyFirst,
     RxJavaSpec.call
@@ -57,6 +39,27 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
   val row5Specs = Set[LSSpec](
     SDialog.noDupeShow
   )
+}
+class Experiments extends AnyFunSuite with BeforeAndAfter {
+  private val runVerif = true//use this to get cb/ci counts without running verifier
+  private val generateTex = false //TODO: flip to generate tex files
+  private val logger = LoggerFactory.getLogger("Experiments")
+  logger.warn("Starting experiments run")
+  private val prettyPrinting = new PrettyPrinting()
+  private val cgMode = SparkCallGraph
+
+  {
+    val logF = File("log/logging.log")
+    if(logF.exists() && logF.contentAsString.split("\\n").size > 5) {
+      //throw new IllegalStateException("Please delete log file before run")
+      logF.delete() //TODO: switch to exception when running exp to avoid deleting results
+    }
+
+  }
+  after{
+    println("Ending Experiments run")
+  }
+
   def getSpecName(s:LSSpec):String = s.target.identitySignature match {
     case id if id.contains("onClick") =>
       if(s.pred.toString.contains("finish")) "clickFinish" else "clickDisable"
@@ -793,7 +796,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
               val depthInfo = BounderUtil.computeDepthOfWitOrLive(nullUnreachRes, QueryFinished)
               logger.warn(s"Row 4 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
               assert(interpretedResult == expected)
-              dbFile.copyTo(File(s"/Users/shawnmeier/Desktop/Row4_${fileSuffix}.db"),true)
+              //dbFile.copyTo(File(s"/Users/shawnmeier/Desktop/Row4_${fileSuffix}.db"),true)
               logger.warn(s"Row 4 expected: ${expected} actual: ${interpretedResult}")
               logger.warn(s"Row 4 ${expected} time(µs): ${(System.nanoTime() - startTime)/1000.0}")
             }else{

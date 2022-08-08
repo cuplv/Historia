@@ -5,6 +5,7 @@ import com.microsoft.z3._
 import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, FreshRef, LSConstraint, LSFalse, LSSpec, LSTrue, NS, Not, Once, Or, SignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LSExpParser, LifecycleSpec, RxJavaSpec, SpecSignatures, SpecSpace, ViewSpec}
+import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import org.scalatest.funsuite.FixtureAnyFunSuite
 import upickle.default.read
@@ -136,8 +137,10 @@ class StateSolverTest extends FixtureAnyFunSuite {
       LifecycleSpec.Activity_onResume_first_orAfter_onPause //TODO: ==== testing if this prevents timeout
     )) //  ++ Dummy.specs)
     List(
-      (finishclickpause, "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/dbgConnectBotTimeout/s1_.json",
-        "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/dbgConnectBotTimeout/s2_.json",(v:Boolean) =>{
+      (new SpecSpace(ExperimentSpecs.row4Specs),
+        "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/s1.json",
+        "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/s2.json",
+        (v:Boolean) =>{
         ???
       }),
       //      (spec2, "s1_diffz3unify.state", "s2_diffz3unify.state",true), // different in solver but same here???

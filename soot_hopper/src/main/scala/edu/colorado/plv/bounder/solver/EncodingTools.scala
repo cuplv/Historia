@@ -270,7 +270,36 @@ object EncodingTools {
       swappedForSmallerPv.copy(nextAddr = maxPvValue + 1)
     } else
       swappedForSmallerPv
-    Some(out)
+
+    // State is infeasible if FreshRef is duplicated
+    def freshIsDup(roa: List[LSSingle]):Boolean = roa match {
+      case FreshRef(pv)::t => {
+        val cDup = t.exists{
+          case FreshRef(pv2) => pv==pv2
+          case _ => false
+        }
+        cDup || freshIsDup(t)
+      }
+      case _::t => freshIsDup(t)
+      case Nil => false
+    }
+    if(freshIsDup(out.sf.traceAbstraction.rightOfArrow))
+      return None
+    // remove FreshRef where value is never referenced
+    val freshRefs = out.sf.traceAbstraction.rightOfArrow.foldLeft(out){
+      case (acc,f@FreshRef(pv))  => {
+        val sf = acc.sf
+        val clrSF = sf.clearFreshRef(f)
+        if(clrSF.posPureVars().contains(pv)){
+          acc
+        }else{
+          val a = clrSF.clearNegPvAndConstraints(pv)
+          acc.copy(sf=a)
+        }
+      }
+      case (acc,_) => acc
+    }
+    Some(freshRefs)
   }
 
   /**

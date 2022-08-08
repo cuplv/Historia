@@ -88,6 +88,16 @@ case class StateFormula(callStack: List[CallStackFrame],
     this
   }
 
+  /**
+   * Remove fresh ref from state
+   * @param freshRef
+   * @return
+   */
+  def clearFreshRef(freshRef: FreshRef):StateFormula = {
+    val newTraceAbstraction = AbstractTrace(traceAbstraction.rightOfArrow.filter(_ != freshRef))
+    this.copy(traceAbstraction = newTraceAbstraction)
+  }
+
   def allIRefByState(spec:SpecSpace): Set[Once] = allIRef(spec)
   def clearTC:StateFormula = {
     this.copy(typeConstraints = Map())
@@ -148,6 +158,55 @@ case class StateFormula(callStack: List[CallStackFrame],
 //    }
 //    tr.copy(modelVars = nmv)
     tr.copy(rightOfArrow = tr.rightOfArrow.map(single => single.swap(Map(oldPv->newPv)).asInstanceOf[LSSingle]))
+  }
+
+  /**
+   * Remove all negative instances of pure var
+   * @param pv
+   * @return
+   */
+  def clearNegPvAndConstraints(pv:PureVar):StateFormula =
+    this.copy(traceAbstraction = AbstractTrace(traceAbstraction.rightOfArrow.filter {
+      case FreshRef(v) if v == pv => false
+      case _ => true
+      }),
+      pureFormula = pureFormula.filter{
+        case PureConstraint(lhs, _, rhs) => lhs != pv && rhs!=pv
+      },
+      typeConstraints = typeConstraints.removed(pv)
+    )
+  /**
+   * Pure variables that are referenced as existing in the past trace abstraction heap or stack.
+   * Pv cannot only occur in:
+   * - FreshRef(pv) - since it says existing values are not equal to pv
+   * - pure constraints
+   * - type constraints
+   * @return set of pure variables
+   */
+  def posPureVars():Set[PureVar] = {
+    val pureVarOpt = (a:PureExpr) => a match {
+      case p: PureVar => Some(p)
+      case _ => None
+    }
+    val pureVarOptH = (a:HeapPtEdge) => a match {
+      case FieldPtEdge(p, _) => Some(p)
+      case ArrayPtEdge(p, _) => Some(p)
+      case _ => None
+    }
+    val pureVarFromLocals: Set[PureVar] = callStack.headOption match {
+      case Some(CallStackFrame(_, _, locals)) =>
+        locals.flatMap(a => pureVarOpt(a._2)).toSet
+      case None => Set()
+    }
+    val pureVarFromHeap = heapConstraints
+      .flatMap(a => Set() ++ pureVarOptH(a._1) ++ pureVarOpt(a._2)).toSet
+
+    val pureVarFromTrace = traceAbstraction.rightOfArrow.flatMap {
+      case LifeState.CLInit(_) => None
+      case FreshRef(_) => None
+      case o:Once => o.lsVar
+    }
+    pureVarFromHeap ++ pureVarFromLocals ++ pureVarFromTrace
   }
 
   def iPureVars():Set[PureVar] = {
@@ -614,10 +673,6 @@ case class State(sf:StateFormula,
       this.copy(sf = sf.copy(callStack = newCsHead::cstail))
     case _ =>
       ???
-  }
-
-  def clearPureVar(p:PureVar):State = {
-    ???
   }
 
   private var pvCache:Option[Set[PureVar]] = None
