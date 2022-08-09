@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.solver
 
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.ir.{AppMethod, BitTypeSet, EmptyTypeSet, MessageType, PrimTypeSet, TAddr, TInitial, TMessage, TNullVal, TopTypeSet, TraceElement, TypeSet, WitnessExplanation}
+import edu.colorado.plv.bounder.ir.{AppMethod, BitTypeSet, EmptyTypeSet, MessageType, PrimTypeSet, TAddr, TMessage, TNullVal, TopTypeSet, TraceElement, TypeSet, WitnessExplanation}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.LifeState._
 import edu.colorado.plv.bounder.symbolicexecutor.state.{HeapPtEdge, _}
@@ -31,6 +31,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   def getSolverCtx: C
   def getLogger:Logger
   def iDefaultOnSubsumptionTimeout(implicit zCtx:C):Boolean
+
+  def initializeZeroAxioms(messageTranslator: MessageTranslator)(implicit zCtx:C):Unit
+
+  def initializeOrderAxioms(messageTranslator: MessageTranslator)(implicit zCtx:C):Unit
 
   def solverString(messageTranslator: MessageTranslator)(implicit zCtx:C):String
   /**
@@ -66,15 +70,19 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   protected def mkZeroMsg(implicit zCtx:C):T
 
-  protected def mkExistsMsg(cond: T => T)(implicit zctx: C): T
+  protected def mkTraceFn()(implicit zCtx:C):T
 
-  protected def mkForallMsg(cond: T => T)(implicit zctx: C): T
+  protected def mkTraceFnContains(traceFn:T, v:T)(implicit zCtx:C):T
+
+  protected def mkExistsMsg(traceFn:T, cond: T => T)(implicit zCtx: C): T
+
+  protected def mkForallMsg(traceFn:T, cond: T => T)(implicit zCtx: C): T
 
   protected def mkLTEMsg(ind1: T, ind2: T)(implicit zctx: C): T
 
   protected def mkLTMsg(ind1: T, ind2: T)(implicit zctx: C): T
 
-  protected def mkAddOneMsg(ind: T)(implicit zctx: C): (T, T)
+  protected def mkAddOneMsg(tracefn:T, ind: T)(implicit zctx: C): (T, T)
 
   // comparison operations
   protected def mkEq(lhs: T, rhs: T)(implicit zctx: C): T
@@ -306,11 +314,11 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         mkNot(encodePred(once,messageTranslator,modelVarMap,typeToSolverConst,typeMap,constMap))
       case p@Not(_) => throw new IllegalArgumentException(s"arbitrary negation of lspred is not supported: $p")
       case o: Once =>
-        mkExistsMsg(msg => msgModelsOnce(msg, o, messageTranslator, typeMap, typeToSolverConst, modelVarMap))
+        mkExistsMsg(mkTraceFn, msg => msgModelsOnce(msg, o, messageTranslator, typeMap, typeToSolverConst, modelVarMap))
       case NS(m1, m2) =>
-        mkExistsMsg(msg1 => mkAnd(
+        mkExistsMsg(mkTraceFn, msg1 => mkAnd(
           msgModelsOnce(msg1, m1, messageTranslator, typeMap, typeToSolverConst, modelVarMap),
-          mkForallMsg(msg2 => mkImplies(mkLTMsg(msg1,msg2),mkNot(msgModelsOnce(msg2, m2, messageTranslator,
+          mkForallMsg(mkTraceFn, msg2 => mkImplies(mkLTMsg(msg1,msg2),mkNot(msgModelsOnce(msg2, m2, messageTranslator,
             typeMap, typeToSolverConst, modelVarMap))))
         ))
       case FreshRef(v) =>
@@ -370,7 +378,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    * @param v value created in the future
    * @return
    */
-  protected def encodeValueCreatedInFuture(v:T)(implicit zCtx:C):T
+  protected def encodeValueCreatedInFuture(v:T, maxArgs:Int)(implicit zCtx:C):T
 
   /**
    * Encode .|>m1|>m2...
@@ -421,7 +429,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     }
     val refs = refVPred.map(_._2).getOrElse(Set()).toList.map{
       case FreshRef(v) =>
-        encodeValueCreatedInFuture(definedPvMap(v))
+        encodeValueCreatedInFuture(definedPvMap(v), messageTranslator.maxArgs)
     }
     encoded.conjunctHistReq(refs)
   }
@@ -564,7 +572,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       maxWitness match{
         case None => out
         case Some(len) => mkAnd(out, //max length means each message needs to be equal to one of len consts
-          mkForallMsg(m => //note: 0 mkMsgConst makes "zero" message equality
+          mkForallMsg(mkTraceFn, m => //note: 0 mkMsgConst makes "zero" message equality
             mkOr((0 until len).map(i => mkEq(m,mkMsgConst(i,None))).toList)))
       }
     }
@@ -604,6 +612,12 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val solverToIdentitySignature:List[(T,String)] = identitySignaturesToSolver.map{
       case (k,v) => (v,k)
     }.toList
+
+    // Maximum arity of arguments in encoding
+    lazy val maxArgs:Int = alli.foldLeft(1){
+      case (acc,Once(_, _, lsVars)) if lsVars.size>acc => lsVars.size
+      case (acc,_) => acc
+    }
 
     // Constants
     private val pureValSet = states.foldLeft(Set[PureVal]()){
@@ -684,6 +698,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
           case (state, (v, _)) => state.addPureConstraint(PureConstraint(v, Equals, NullVal))
         }
         val messageTranslator = MessageTranslator(List(stateWithNulls), specSpace)
+        initializeOrderAxioms(messageTranslator)
 
         // Only encode types in Z3 for subsumption check due to slow-ness
 
@@ -960,6 +975,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val res = try {
       zCtx.acquire()
       val messageTranslator: MessageTranslator = MessageTranslator(s1 + s2, specSpace)
+      initializeOrderAxioms(messageTranslator)
       s1Filtered.foreach{state =>
         val stateEncode = mkNot(toASTState(state, messageTranslator, None, specSpace))
         zCtx.mkAssert(stateEncode)
@@ -1223,6 +1239,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         throw new IllegalStateException("Timeout, exceeded rng seed attempts")
       }
       val messageTranslator: MessageTranslator = MessageTranslator(List(s1, s2), specSpace)
+      initializeOrderAxioms(messageTranslator)
 
       val s1Enc = mkNot(toASTState(s1, messageTranslator, maxLen,
         specSpace = specSpace, debug = maxLen.isDefined))
@@ -1318,11 +1335,12 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   def traceInAbstraction(state: State,specSpace: SpecSpace,
                          trace: List[TraceElement],
                          debug: Boolean = false)(implicit zCtx: C): Option[WitnessExplanation] = {
-    val traceWithInit = TInitial::trace
     try {
       zCtx.acquire()
       val messageTranslator = MessageTranslator(List(state), specSpace)
-      val pvMap: Map[PureVar, T] = encodeTraceContained(state, traceWithInit,
+      initializeOrderAxioms(messageTranslator)
+      initializeZeroAxioms(messageTranslator)
+      val pvMap: Map[PureVar, T] = encodeTraceContained(state, trace,
         messageTranslator = messageTranslator, specSpace = specSpace)
       val sat = checkSAT(messageTranslator)
       if (sat && debug) {
@@ -1342,7 +1360,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   def mkMsgAtIndex(num:Int)(implicit zctx: C):(T,T) = {
     (0 until num).foldLeft((mkZeroMsg, mkBoolVal(b = true))){case (acc,_) =>
-      val (ivIsInc,iv) = mkAddOneMsg(acc._1)
+      val (ivIsInc,iv) = mkAddOneMsg(mkTraceFn, acc._1)
       (iv,mkAnd(acc._2, ivIsInc))
     }
   }
@@ -1356,7 +1374,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 //    val traceLimit = trace.indices.foldLeft(mkZeroIndex){case (acc,_) => mkAddOneIndex(acc)}
     val (traceLimit, isInc) = mkMsgAtIndex(trace.size)
     zCtx.mkAssert(isInc)
-    mkForallMsg(m => mkLTEMsg(m,traceLimit))
+    mkForallMsg(mkTraceFn, m => mkLTEMsg(m,traceLimit))
 
     // Maximum of 10 addresses in trace contained.  This method is typically used for empty traces with no addresses.
     // Only testing has non empty traces passed to this method
@@ -1374,18 +1392,23 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   }
   def encodeTrace(trace: List[TraceElement],
                   messageTranslator: MessageTranslator, argVals: Map[Int, T])(implicit zCtx: C): T = {
-    assert(trace.head == TInitial)
+//    assert(trace.head == TInitial)
     val distinctMSG: List[(TraceElement,T)] = trace.zipWithIndex.map{
       case (message, i) => (message,  mkMsgConst(i,Some(message)))
+    }
+
+    // Each message must be in the trace function
+    distinctMSG.foreach{
+      case (_, msg) => zCtx.mkAssert(mkTraceFnContains(mkTraceFn, msg))
     }
 
     val msgVars = distinctMSG.map{ case (_, t) => t}
     val (msgOrdAndArg,_) = distinctMSG.zipWithIndex.foldLeft((mkBoolVal(true),mkZeroMsg)){
       case ((acc,last),((msg:TMessage,ast),ind)) =>
-        val (c0,msgA) = mkAddOneMsg(last)
+        val (c0,msgA) = mkAddOneMsg(mkTraceFn(),last)
         val c1 = msgModelsTraceElement(msgA, msg, messageTranslator, argVals)
         (mkAnd(List(acc,c0,c1, mkEq(ast,msgA))), msgA)
-      case ((_,last), ((TInitial,v),0)) =>
+      case ((_,last), ((_,v),0)) =>
         (mkEq(last,v),last)
       case v =>
         ???
@@ -1393,10 +1416,11 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 //    if(trace.length != 1)
 //      ??? //TODO%%%% enforce order on messages
     val distinctMsg = mkDistinctT(msgVars)
-    val namedMsg = mkForallMsg(m => mkOr(msgVars.map(msgVar =>
+    val namedMsg = mkForallMsg(mkTraceFn(),m => mkOr(msgVars.map(msgVar =>
       mkEq(m,msgVar))))
 
-    mkAnd(List(distinctMsg, namedMsg, msgOrdAndArg))
+    val out = mkAnd(List(distinctMsg, namedMsg, msgOrdAndArg))
+    out
   }
 //  def encodeTrace(trace: List[TMessage],
 //                  messageTranslator: MessageTranslator, valToT: Map[Int, T])(implicit zCtx: C): T = {

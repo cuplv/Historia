@@ -4,7 +4,7 @@ import better.files.File
 import com.microsoft.z3._
 import com.microsoft.z3.enumerations.Z3_ast_print_mode
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.ir.{AppMethod, CBEnter, CBExit, CIEnter, CIExit, FwkMethod, TAddr, TCLInit, TInitial, TMessage, TNew, TNullVal, TVal, T_, TraceElement, WitnessExplanation}
+import edu.colorado.plv.bounder.ir.{AppMethod, CBEnter, CBExit, CIEnter, CIExit, FwkMethod, TAddr, TCLInit, TMessage, TNew, TNullVal, TVal, T_, TraceElement, WitnessExplanation}
 import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, NullVal, PureExpr, PureVal, PureVar, State, TopVal}
 import org.slf4j.{Logger, LoggerFactory}
@@ -21,6 +21,11 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
   val uninterpretedTypes : mutable.HashSet[String] = mutable.HashSet[String]()
   val sortEdges = mutable.HashSet[(String,String)]()
   var acquired:Option[Long] = None
+  private var zeroInitialized:Boolean = false
+  def initializeZero:Unit ={
+    zeroInitialized = true
+  }
+  def isZeroInitialized:Boolean = zeroInitialized
   def ctx:Context ={
     val currentThread:Long = Thread.currentThread().getId
     assert(acquired.isDefined)
@@ -129,6 +134,8 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
       acquired = None
       ictx.close()
       isolver = null
+      zeroInitialized = false
+      indexInitialized = false
     }
 //    Thread.sleep(100)
   }
@@ -149,7 +156,7 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
 class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:Int = 30000, //TODO: this was 100000 testing 30 sec
                     randomSeed:Int=3578,
                     defaultOnSubsumptionTimeout: Z3SolverCtx=> Boolean = _ => false) extends StateSolver[AST,Z3SolverCtx] {
-  private val MAX_ARGS = 10
+//  private val MAX_ARGS = 10
 
   override def iDefaultOnSubsumptionTimeout(implicit zCtx:Z3SolverCtx): Boolean = this.defaultOnSubsumptionTimeout(zCtx)
 //  private val threadLocalCtx: ThreadLocal[Z3SolverCtx] = ThreadLocal.withInitial( () => Z3SolverCtx(timeout,randomSeed))
@@ -174,12 +181,12 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
 
   override def solverString(messageTranslator: MessageTranslator)(implicit zCtx: Z3SolverCtx):String = {
     if(!zCtx.indexInitialized)
-      msgHistAxiomsToAST(messageTranslator)
+      initializeOrderAxioms(messageTranslator)
     zCtx.solver.toString
   }
   override def checkSAT(messageTranslator: MessageTranslator,useCmd:Boolean)(implicit zCtx:Z3SolverCtx): Boolean = {
     if(!zCtx.indexInitialized)
-      msgHistAxiomsToAST(messageTranslator)
+      initializeOrderAxioms(messageTranslator)
     assert(zCtx.indexInitialized, "Initialize axioms with msgHistAxiomsToAST")
     if(useCmd) {
       lazy val timeoutS = timeout.toString
@@ -355,6 +362,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   override def explainWitness(messageTranslator: MessageTranslator,
                               pvMap: Map[PureVar, AST])(implicit zCtx: Z3SolverCtx): WitnessExplanation = {
     //TODO: this seems to be broken, but we don't really use it for anything?
+    ??? //TODO: update with set tracefn
     val ctx = zCtx.ctx
     assert(messageTranslator.states.size == 1, "Explain witness only applicable with single state")
     val state = messageTranslator.states.head
@@ -372,7 +380,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
         (pureVar, model.eval(ast.asInstanceOf[Expr[UninterpretedSort]],true))
     }
     val pvValues: Map[Expr[UninterpretedSort], Int] = pvModelValues.values.toSet.zipWithIndex.toMap
-    val constFn = ctx.mkFuncDecl("constFn", addrSort, constSort)
+    val constFn: FuncDecl[UninterpretedSort] = ctx.mkFuncDecl("constFn", addrSort, constSort)
     val constMap = messageTranslator.getConstMap()
     val pvv: PureVar => TVal = pvi => {
       val pv = pvModelValues(pvi)
@@ -428,8 +436,12 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     println(s"===model: $model")
     val ctx = zCtx.ctx
     traceAbstraction foreach { abs => {
-      val indices = model.getSortUniverse(msgSort)
-      val lte = msgHistAxiomsToAST(messageTranslator)
+      val indices = model.getSortUniverse(msgSort).filter{msg =>
+        val res = model.eval(mkTraceFn.asInstanceOf[FuncDecl[BoolSort]].apply(msg),true).isTrue
+        res
+      }
+      initializeOrderAxioms(messageTranslator)
+      val lte = msgLTE
       val sortedInd = indices.sortWith((e1,e2) =>
         model.eval(ctx.mkAnd(lte.apply(e1,e2), ctx.mkNot(ctx.mkEq(e1,e2))),true).isTrue)
       println("=indices=")
@@ -453,7 +465,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
 //      }
       //      val traceFun = mkTraceFn(uniqueID).asInstanceOf[FuncDecl[UninterpretedSort]]
       val nameFun = messageTranslator.nameFun.asInstanceOf[FuncDecl[_]]
-      val argFun = (0 until MAX_ARGS).map(i => mkArgFun(i).asInstanceOf[FuncDecl[_]])
+      val argFun = (0 until messageTranslator.maxArgs).map(i => mkArgFun(i).asInstanceOf[FuncDecl[_]])
       def printTraceElement(index:Int):Unit = {
         println(s"$index : ${sortedInd(index)} :")
         val msgati = sortedInd(index).asInstanceOf[Expr[UninterpretedSort]]
@@ -680,12 +692,12 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   }
 
   override protected def mkMsgConst(i:Int, msg:Option[TraceElement])(implicit zCtx:Z3SolverCtx): AST = {
-    if(i == 0){
-      assert(msg.contains(TInitial) || msg.isEmpty, "Initial trace element should be TInitial")
-      return mkZeroMsg
-    }
+//    if(i == 0){
+//      assert(msg.contains(TInitial) || msg.isEmpty, "Initial trace element should be TInitial")
+//      return mkZeroMsg
+//    }
     val sig = (i,msg) match {
-      case (_,Some(TInitial)) => throw new IllegalArgumentException("bad initial message position")
+//      case (_,Some(TInitial)) => throw new IllegalArgumentException("bad initial message position")
       case (_,Some(TCLInit(_))) => ???
       case (_,Some(TNew(_))) => ???
       case (i,Some(TMessage(mType, method, _))) => s"${mType}_${method.name}_$i"
@@ -786,20 +798,34 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     zCtx.ctx.mkFuncDecl("msgLTE", msgMsg, zCtx.ctx.mkBoolSort)
   }
 
+  override def initializeZeroAxioms(messageTranslator: MessageTranslator)(implicit zCtx:Z3SolverCtx): Unit = {
+    val ctx = zCtx.ctx
+    val lte = msgLTE
+    if(!zCtx.isZeroInitialized) {
+      zCtx.initializeZero
+      val x = ctx.mkFreshConst("x", msgSort)
+      // ** All messages are greater than or equal to zero
+      // forall x. zero ≤ x
+      val zeroLTE: BoolExpr = lte.apply(mkZeroMsg, x).asInstanceOf[BoolExpr]
+      zCtx.mkAssert(ctx.mkForall(Array(x), zeroLTE, 1, null, null, null, null))
+      val nameFN = mkINameFn()
+      zCtx.mkAssert(mkEq(nameFN.apply(mkZeroMsg), messageTranslator.getZeroMsgName))
+    }
+  }
+
   /**
    * Apply axioms to enforce total order to messages in history.
    * Note: this used to be an uninterpreted index sort, but was simplified to a total order over messages.
    * @param zCtx z3 context object
    * @return ≤ relation between messages
    */
-  private def msgHistAxiomsToAST(messageTranslator: MessageTranslator)
-                                (implicit zCtx: Z3SolverCtx): FuncDecl[BoolSort] = {
+  override def initializeOrderAxioms(messageTranslator: MessageTranslator)
+                                (implicit zCtx: Z3SolverCtx):Unit = {
 
     val ctx = zCtx.ctx
     val lte = msgLTE
     if(!zCtx.indexInitialized){
-      val nameFN = mkINameFn()
-      zCtx.mkAssert(mkEq(nameFN.apply(mkZeroMsg), messageTranslator.getZeroMsgName))
+
       // Total ordering encoding used from: https://dl.acm.org/doi/pdf/10.1145/3140568
       // Paxos Made EPR: Decidable Reasoning about DistributedProtocols
       // figure 1
@@ -823,20 +849,13 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
       zCtx.mkAssert(ctx.mkForall(Array(x,y), ctx.mkOr(lte.apply(x,y), lte.apply(y,x)),
         1,null,null,null,null))
 
-
-      // ** All messages are greater than or equal to zero
-      // forall x. zero ≤ x
-      val zeroLTE:BoolExpr = lte.apply(mkZeroMsg, x).asInstanceOf[BoolExpr]
-      zCtx.mkAssert(ctx.mkForall(Array(x), zeroLTE, 1, null, null, null, null))
       zCtx.indexInitialized = true
     }
-
-    lte
   }
 
-  override protected def encodeValueCreatedInFuture(v: AST)(implicit zCtx: Z3SolverCtx): AST = {
+  override protected def encodeValueCreatedInFuture(v: AST, maxArgs:Int)(implicit zCtx: Z3SolverCtx): AST = {
     val ctx = zCtx.ctx
-    val argFuns = (0 until MAX_ARGS).map(i => mkArgFun(i).asInstanceOf[FuncDecl[UninterpretedSort]])
+    val argFuns = (0 until maxArgs).map(i => mkArgFun(i).asInstanceOf[FuncDecl[UninterpretedSort]])
     val m = ctx.mkConst("allMsg", msgSort)
     val v_ = v.asInstanceOf[Expr[UninterpretedSort]]
 //    val pred:BoolExpr = ctx.mkAnd(
@@ -850,15 +869,31 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   override def getLogger: Logger =
     LoggerFactory.getLogger("Z3StateSolver")
 
-  override protected def mkExistsMsg(cond: AST => AST)(implicit zCtx: Z3SolverCtx): AST = {
+  override protected def mkTraceFn()(implicit zCtx: Z3SolverCtx):AST={
+    val ctx = zCtx.ctx
+    ctx.mkFuncDecl("traceFn", msgSort, ctx.mkBoolSort())
+  }
+
+  override protected def mkTraceFnContains(traceFn: AST, v: AST)(implicit zCtx: Z3SolverCtx): Expr[BoolSort] = {
+    val iTraceFn = traceFn.asInstanceOf[FuncDecl[BoolSort]]
+    iTraceFn.apply(v.asInstanceOf[Expr[UninterpretedSort]])
+  }
+
+
+  override protected def mkExistsMsg(traceFn:AST, cond: AST => AST)(implicit zCtx: Z3SolverCtx): Expr[BoolSort] = {
+    val ctx = zCtx.ctx
     val j = zCtx.ctx.mkFreshConst("j", msgSort)
-    zCtx.ctx.mkExists(Array(j), cond(j).asInstanceOf[BoolExpr]
+    val cond2: BoolExpr = ctx.mkAnd(
+      mkTraceFnContains(traceFn,j),cond(j).asInstanceOf[BoolExpr])
+    ctx.mkExists(Array(j),cond2
       , 1, null, null, null, null)
   }
 
-  override protected def mkForallMsg(cond: AST => AST)(implicit zCtx: Z3SolverCtx): AST = {
+  override protected def mkForallMsg(traceFn:AST, cond: AST => AST)(implicit zCtx: Z3SolverCtx): AST = {
+    val ctx = zCtx.ctx
     val j = zCtx.ctx.mkFreshConst("j", msgSort)
-    zCtx.ctx.mkForall(Array(j), cond(j).asInstanceOf[BoolExpr]
+    val cond2 = ctx.mkImplies(mkTraceFnContains(traceFn,j),cond(j).asInstanceOf[BoolExpr])
+    ctx.mkForall(Array(j), cond2
       , 1, null, null, null, null)
   }
 
@@ -868,10 +903,10 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   override protected def mkLTMsg(ind1: AST, ind2: AST)(implicit zctx: Z3SolverCtx): AST =
     mkAnd(mkLTEMsg(ind1,ind2), mkNot(mkEq(ind1,ind2)))
 
-  override protected def mkAddOneMsg(ind: AST)(implicit zctx: Z3SolverCtx): (AST, AST) = {
+  override protected def mkAddOneMsg(traceFn:AST, ind: AST)(implicit zctx: Z3SolverCtx): (AST, AST) = {
     val mConst = zctx.ctx.mkFreshConst("msg",msgSort)
 
-    val req = mkForallMsg(m => mkOr(List(mkLTEMsg(m,ind), mkLTEMsg(mConst,m))) )
+    val req = mkForallMsg(traceFn, m => mkOr(List(mkLTEMsg(m,ind), mkLTEMsg(mConst,m))) )
 
     (req,mConst)
   }
@@ -898,6 +933,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   //  }
 
   protected def mkZeroMsg(implicit zCtx:Z3SolverCtx):Expr[UninterpretedSort] = {
+    assert(zCtx.isZeroInitialized, "zero must be initialized to make zero message")
     zCtx.ctx.mkConst("zeroMessage___",msgSort)
   }
 }

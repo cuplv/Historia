@@ -1634,7 +1634,8 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(stateSolver.traceInAbstraction(
       state = stIFooX,
       spec_NiFooBar,
-      trace = trace
+      trace = trace,
+      debug=true
     ).isEmpty)
 
     // empty(trace) models NI(x.foo(),x.bar()) |> x.foo()
