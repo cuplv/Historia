@@ -85,37 +85,41 @@ class StateSolverTest extends FixtureAnyFunSuite {
   implicit def set2SigMat(s:Set[(String,String)]):SignatureMatcher =
     SubClassMatcher(s.map(_._1),s.map(_._2).mkString("|"),s.head._1 + s.head._2)
 
-  private def getZ3StateSolver():
+  private def getZ3StateSolver(checkSatPush:Boolean):
   (Z3StateSolver, ClassHierarchyConstraints) = {
     val pc = new ClassHierarchyConstraints(hierarchy,Set("java.lang.Runnable"),intToClass)
     (new Z3StateSolver(pc,timeout = 40000, defaultOnSubsumptionTimeout = (z3SolverCtx:Z3SolverCtx) => {
       println(z3SolverCtx)
       throw new IllegalStateException("Exceeded time limit for test")
-    }),pc)
+    }, pushSatCheck = checkSatPush),pc)
   }
   override def withFixture(test: OneArgTest) = {
     // Run all tests with both set inclusion type solving and solver type solving
     // Some subsumption tests override type solving parameter
     // All other tests should work with either
 //    withFixture(test.toNoArgTest(FixtureParam(SetInclusionTypeSolving)))
-    val (stateSolver,_) = getZ3StateSolver
-    println("-normal subs")
-    withFixture(test.toNoArgTest(FixtureParam(stateSolver,
-      (s1,s2,spec) => {
+    val out = List(true,false).flatMap{ check =>
+      val (stateSolver, _) = getZ3StateSolver(check)
+      println(s"-normal subs, pushSatCheck:${check}")
+      val t1 = withFixture(test.toNoArgTest(FixtureParam(stateSolver,
+        (s1, s2, spec) => {
+          //val s1simp = stateSolver.simplify(s1,spec).get
+          //val s2simp = stateSolver.simplify(s2,spec).get
+          stateSolver.canSubsume(s1, s2, spec)
+        })))
+      println(s"-set subs, pushSatCheck:${check}")
+      val t2 = withFixture(test.toNoArgTest(FixtureParam(stateSolver, (s1, s2, spec) => {
+        s1.setSimplified() //For tests, just tell solver its simplified already
+        s2.setSimplified() //For tests, just tell solver its simplified already
         //val s1simp = stateSolver.simplify(s1,spec).get
         //val s2simp = stateSolver.simplify(s2,spec).get
-        stateSolver.canSubsume(s1,s2,spec)
+        stateSolver.canSubsumeSet(Set(s1), s2, spec)
       })))
-    println("-set subs")
-    withFixture(test.toNoArgTest(FixtureParam(stateSolver, (s1,s2,spec) => {
-      s1.setSimplified() //For tests, just tell solver its simplified already
-      s2.setSimplified() //For tests, just tell solver its simplified already
-      //val s1simp = stateSolver.simplify(s1,spec).get
-      //val s2simp = stateSolver.simplify(s2,spec).get
-      stateSolver.canSubsumeSet(Set(s1),s2,spec)
-    })))
+      List(t1,t2)
+    }
+    out.head //TODO: probably using fixture wrong here
   }
-  ignore("test to debug subsumption issues by loading serialized states"){f =>
+  ignore("LOAD: test to debug subsumption issues by loading serialized states"){f =>
     // Note: leave ignored unless debugging, this test is just deserializing states to inspect
     val stateSolver = f.stateSolver
     val spec1 = new SpecSpace(
@@ -152,6 +156,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
 
         val s1 = loadState(f1)
         val s2 = loadState(f2)
+        val startTime = System.nanoTime()
         //LSVarGen.setNext(List(s1,s2))
 //        val bt = BitTypeSet(BitSet(639))
 //        val s1 = s1p.addTypeConstraint(PureVar(3), bt).addTypeConstraint(PureVar(7), bt)
@@ -168,6 +173,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
         //    assert(emptyRes)
 
         val res = f.canSubsume(s1, s2, spec)
+        println(s"Subsumption check took ${(System.nanoTime() - startTime)/1000000000.0} seconds")
         expected(res)
     }
   }

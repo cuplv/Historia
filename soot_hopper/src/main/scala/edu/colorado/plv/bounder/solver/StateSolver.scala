@@ -32,11 +32,17 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   def getLogger:Logger
   def iDefaultOnSubsumptionTimeout(implicit zCtx:C):Boolean
 
+  // axiom initializers add interpreted properties to uninterpreted domains e.g. zero, heap cells, message order
   def initializeZeroAxioms(messageTranslator: MessageTranslator)(implicit zCtx:C):Unit
 
   def initializeOrderAxioms(messageTranslator: MessageTranslator)(implicit zCtx:C):Unit
 
+  def initializeFieldAxioms(messageTranslator: MessageTranslator)(implicit zCtx:C):Unit
+
   def solverString(messageTranslator: MessageTranslator)(implicit zCtx:C):String
+
+  def checkSAT(messageTranslator: MessageTranslator,
+                  axioms: List[MessageTranslator => Unit ])(implicit zCtx: C): Boolean
   /**
    * Check satisfiability of fomrula in solver
    * @throws IllegalStateException if formula is undecidable or times out
@@ -44,7 +50,18 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    * @param zCtx solver context
    * @return satisfiability of formula
    */
-  def checkSAT(messageTranslator: MessageTranslator, useCmd:Boolean = false)(implicit zCtx: C): Boolean
+  def checkSATOne(messageTranslator: MessageTranslator,
+               axioms: List[MessageTranslator => Unit ])(implicit zCtx: C): Boolean
+
+  /**
+   * Try satisfiability with fewer axioms then add more if satisfiable.
+   * If unsatisfiable, adding axioms won't chage result.
+   * @param axioms list of functions that generate axioms adding interpretations to uninterpreted domains
+   *               (initializeOrderAxioms, initializeFieldAxioms, initializeZeroAxiom)
+   * @return satisfiability of formula
+   */
+  def checkSatPush(messageTranslator: MessageTranslator,
+                   axioms: List[MessageTranslator => Unit ])(implicit zCtx: C):Boolean
 
   def push()(implicit zCtx: C): Unit
 
@@ -619,6 +636,11 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       case (acc,_) => acc
     }
 
+    lazy val dynFieldSet:Set[String] = states.flatMap{s => s.sf.heapConstraints.flatMap{
+      case (FieldPtEdge(_,fieldName), _) => Some(fieldName)
+      case _ => None
+    }}.toSet
+
     // Constants
     private val pureValSet = states.foldLeft(Set[PureVal]()){
       case (acc,v) => acc.union(getPureValSet(v.pureFormula))
@@ -698,7 +720,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
           case (state, (v, _)) => state.addPureConstraint(PureConstraint(v, Equals, NullVal))
         }
         val messageTranslator = MessageTranslator(List(stateWithNulls), specSpace)
-        initializeOrderAxioms(messageTranslator)
 
         // Only encode types in Z3 for subsumption check due to slow-ness
 
@@ -711,7 +732,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
           println(ast.toString)
         }
         zCtx.mkAssert(ast)
-        val sat = checkSAT(messageTranslator)
+        val sat = checkSAT(messageTranslator, List(initializeFieldAxioms, initializeOrderAxioms))
         //      val simpleAst = solverSimplify(ast, stateWithNulls, messageTranslator, maxWitness.isDefined)
 
         //      if(simpleAst.isEmpty)
@@ -975,7 +996,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val res = try {
       zCtx.acquire()
       val messageTranslator: MessageTranslator = MessageTranslator(s1 + s2, specSpace)
-      initializeOrderAxioms(messageTranslator)
       s1Filtered.foreach{state =>
         val stateEncode = mkNot(toASTState(state, messageTranslator, None, specSpace))
         zCtx.mkAssert(stateEncode)
@@ -983,7 +1003,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       val s2Encode = toASTState(s2, messageTranslator,None, specSpace)
       zCtx.mkAssert(s2Encode)
       val foundCounter =
-        checkSAT(messageTranslator)
+        checkSAT(messageTranslator,List(initializeFieldAxioms, initializeOrderAxioms))
       !foundCounter
     }catch{
       case e:IllegalArgumentException if e.getLocalizedMessage.contains("timeout") =>
@@ -1239,7 +1259,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         throw new IllegalStateException("Timeout, exceeded rng seed attempts")
       }
       val messageTranslator: MessageTranslator = MessageTranslator(List(s1, s2), specSpace)
-      initializeOrderAxioms(messageTranslator)
 
       val s1Enc = mkNot(toASTState(s1, messageTranslator, maxLen,
         specSpace = specSpace, debug = maxLen.isDefined))
@@ -1248,14 +1267,14 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         specSpace = specSpace, debug = maxLen.isDefined)
       zCtx.mkAssert(s2Enc)
       val foundCounter =
-        checkSAT(messageTranslator)
+        checkSAT(messageTranslator, List(initializeOrderAxioms,initializeFieldAxioms))
 
       if (foundCounter && maxLen.isDefined) {
         printDbgModel(messageTranslator, Set(s1.traceAbstraction,s2.traceAbstraction))
       }
       !foundCounter
     }catch{
-      case e:IllegalArgumentException if e.getLocalizedMessage.contains("timeout") =>
+      case e:IllegalArgumentException if e.getLocalizedMessage.contains("timeout") || e.getLocalizedMessage.contains("canceled") =>
         // Note: this didn't seem to help things so currently disabled
         // sound to say state is not subsumed if we don't know
         // false
@@ -1338,11 +1357,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     try {
       zCtx.acquire()
       val messageTranslator = MessageTranslator(List(state), specSpace)
-      initializeOrderAxioms(messageTranslator)
       initializeZeroAxioms(messageTranslator)
       val pvMap: Map[PureVar, T] = encodeTraceContained(state, trace,
         messageTranslator = messageTranslator, specSpace = specSpace)
-      val sat = checkSAT(messageTranslator)
+      val sat = checkSAT(messageTranslator,List(initializeOrderAxioms,initializeFieldAxioms))
       if (sat && debug) {
         println(s"model:\n ${zCtx.asInstanceOf[Z3SolverCtx].solver.toString}")
         printDbgModel(messageTranslator, Set(state.traceAbstraction))

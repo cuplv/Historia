@@ -136,6 +136,7 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
       isolver = null
       zeroInitialized = false
       indexInitialized = false
+      initializedFieldFunctions.clear()
     }
 //    Thread.sleep(100)
   }
@@ -155,7 +156,9 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
 }
 class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:Int = 30000, //TODO: this was 100000 testing 30 sec
                     randomSeed:Int=3578,
-                    defaultOnSubsumptionTimeout: Z3SolverCtx=> Boolean = _ => false) extends StateSolver[AST,Z3SolverCtx] {
+                    defaultOnSubsumptionTimeout: Z3SolverCtx=> Boolean = _ => false,
+                    pushSatCheck:Boolean = true
+                   ) extends StateSolver[AST,Z3SolverCtx] {
 //  private val MAX_ARGS = 10
 
   override def iDefaultOnSubsumptionTimeout(implicit zCtx:Z3SolverCtx): Boolean = this.defaultOnSubsumptionTimeout(zCtx)
@@ -179,15 +182,52 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     iCtx
   }
 
-  override def solverString(messageTranslator: MessageTranslator)(implicit zCtx: Z3SolverCtx):String = {
+  def initializeAllAxioms(messageTranslator: MessageTranslator)(implicit zCtx: Z3SolverCtx):Unit = {
     if(!zCtx.indexInitialized)
       initializeOrderAxioms(messageTranslator)
+    if(!zCtx.isZeroInitialized)
+      initializeZeroAxioms(messageTranslator)
+    if(zCtx.initializedFieldFunctions.isEmpty)
+      initializeFieldAxioms(messageTranslator)
+  }
+  override def solverString(messageTranslator: MessageTranslator)(implicit zCtx: Z3SolverCtx):String = {
+    initializeAllAxioms(messageTranslator)
     zCtx.solver.toString
   }
-  override def checkSAT(messageTranslator: MessageTranslator,useCmd:Boolean)(implicit zCtx:Z3SolverCtx): Boolean = {
-    if(!zCtx.indexInitialized)
-      initializeOrderAxioms(messageTranslator)
-    assert(zCtx.indexInitialized, "Initialize axioms with msgHistAxiomsToAST")
+
+  override def checkSAT(messageTranslator: MessageTranslator,
+                        axioms: List[MessageTranslator => Unit])(implicit zCtx: Z3SolverCtx): Boolean ={
+    if(pushSatCheck)
+      checkSatPush(messageTranslator, axioms)
+    else
+      checkSATOne(messageTranslator, axioms)
+
+  }
+  override def checkSatPush(messageTranslator: MessageTranslator,
+                            axioms: List[MessageTranslator => Unit])(implicit zCtx:  Z3SolverCtx): Boolean = {
+    val res: Status = zCtx.solver.check()
+
+    val interp = (res,axioms) match {
+      case (Status.UNSATISFIABLE, _) =>
+        // Already unsatisfiable, no need to add axioms
+        false
+      case (Status.SATISFIABLE, h::t) =>
+        zCtx.solver.push()
+        h(messageTranslator)
+        checkSatPush(messageTranslator, t)
+      case (Status.SATISFIABLE, Nil) =>
+        // No more axioms to try
+        true
+      case (Status.UNKNOWN, _) =>
+        interpretSolverOutput(res) //TODO: throw here or try pushing next axiom?
+    }
+    interp
+  }
+
+  override def checkSATOne(messageTranslator: MessageTranslator,
+                        axioms: List[MessageTranslator => Unit])(implicit zCtx:Z3SolverCtx): Boolean = {
+    axioms.foreach{ax => ax(messageTranslator)}
+    val useCmd = false
     if(useCmd) {
       lazy val timeoutS = timeout.toString
       File.temporaryFile().apply{ f =>
@@ -609,20 +649,11 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     zCtx.ctx.mkFuncDecl(s"localfn_", localSort, addrSort)
   }
 
+  def mkDynFieldName(fieldName:String):String = s"dynField_${fieldName}_"
+
   override protected def mkDynFieldFn(fieldName:String)(implicit zCtx:Z3SolverCtx):FuncDecl[_] = {
     val addrAddr:Array[Sort] = Array(addrSort,addrSort)
-    val fun = zCtx.ctx.mkFuncDecl(s"dynField_${fieldName}_", addrAddr, zCtx.ctx.mkBoolSort)
-    if(!zCtx.initializedFieldFunctions.contains(fieldName)){
-      val a1 = zCtx.ctx.mkFreshConst("a1", addrSort)
-      val a2 = zCtx.ctx.mkFreshConst("a2", addrSort)
-      val a3 = zCtx.ctx.mkFreshConst("a3", addrSort)
-
-      val b = zCtx.ctx.mkForall(Array(a1,a2,a3),
-        mkImplies(mkAnd(fun.apply(a1,a2), fun.apply(a1,a3)), mkEq(a2,a3)).asInstanceOf[BoolExpr],
-        1, null, null, null, null )
-      zCtx.mkAssert(b)
-      zCtx.initializedFieldFunctions.add(fieldName)
-    }
+    val fun = zCtx.ctx.mkFuncDecl(mkDynFieldName(fieldName), addrAddr, zCtx.ctx.mkBoolSort)
     fun
   }
 
@@ -810,6 +841,24 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
       zCtx.mkAssert(ctx.mkForall(Array(x), zeroLTE, 1, null, null, null, null))
       val nameFN = mkINameFn()
       zCtx.mkAssert(mkEq(nameFN.apply(mkZeroMsg), messageTranslator.getZeroMsgName))
+    }
+  }
+
+  override def initializeFieldAxioms(messageTranslator:MessageTranslator)(implicit zCtx:Z3SolverCtx):Unit = {
+    val fieldNames:Iterable[String] = messageTranslator.dynFieldSet.map(mkDynFieldName)
+    fieldNames.foreach { fieldName =>
+      val fun = mkDynFieldFn(fieldName)
+      if (!zCtx.initializedFieldFunctions.contains(fieldName)) {
+        val a1 = zCtx.ctx.mkFreshConst("a1", addrSort)
+        val a2 = zCtx.ctx.mkFreshConst("a2", addrSort)
+        val a3 = zCtx.ctx.mkFreshConst("a3", addrSort)
+
+        val b = zCtx.ctx.mkForall(Array(a1, a2, a3),
+          mkImplies(mkAnd(fun.apply(a1, a2), fun.apply(a1, a3)), mkEq(a2, a3)).asInstanceOf[BoolExpr],
+          1, null, null, null, null)
+        zCtx.mkAssert(b)
+        zCtx.initializedFieldFunctions.add(fieldName)
+      }
     }
   }
 
