@@ -216,7 +216,7 @@ class TransferFunctionsTest extends AnyFunSuite {
 //      case (k,v) => k == a && v == recPv
 //    }) //TODO: Stale test? I don't think we go from a cb inv to an app loc anymore
 //    assert(formula.a == lhs)
-    assert(formula == otheri)
+//    assert(formula == otheri)
     val stack = prestate.head.callStack
     assert(stack.isEmpty)
   }

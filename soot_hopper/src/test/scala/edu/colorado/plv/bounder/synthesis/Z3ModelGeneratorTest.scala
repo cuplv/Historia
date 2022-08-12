@@ -9,7 +9,7 @@ class Z3ModelGeneratorTest extends AnyFunSuite {
 
   implicit def set2SigMat(s:Set[(String,String)]):SignatureMatcher = SetSignatureMatcher(s)
   val fooMethod = TestIRMethodLoc("","foo", List(Some(LocalWrapper("@this","Object"))))
-  ignore("Encode Node Reachability"){
+  test("Encode Node Reachability"){
     // TODO: implement model generator
     val a = NamedPureVar("a")
     val gen = new Z3ModelGenerator()
@@ -28,7 +28,7 @@ class Z3ModelGeneratorTest extends AnyFunSuite {
       "a" -> pureVar
     )
     val predSpace = new PredicateSpace(Set(fooPred, barPred))
-    gen.encodeNodeReachability(qryR1, pred, theta, predSpace)
+    ???
 
   }
 }

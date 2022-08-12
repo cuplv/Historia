@@ -949,3 +949,7 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
 
 }
 
+class SpecAssignment(){
+
+}
+

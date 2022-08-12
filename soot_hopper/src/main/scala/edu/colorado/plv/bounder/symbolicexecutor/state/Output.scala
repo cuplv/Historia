@@ -25,10 +25,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.SeqHasAsJava
 
-trait ReachingGraph {
-  def getPredecessors(qry:Qry) : Iterable[Qry]
-  def getSuccessors(qry:Qry) : Iterable[Qry]
-}
+
 
 sealed trait OutputMode{
   def initializeQuery(startingNodes:Loc, cfg:RunConfig, initialQuery:InitialQuery):Int

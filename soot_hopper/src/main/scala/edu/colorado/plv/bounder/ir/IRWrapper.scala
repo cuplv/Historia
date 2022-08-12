@@ -60,7 +60,6 @@ sealed case class UnresolvedMethodTarget(clazz: String, methodName:String, loc:S
 
 
 sealed abstract class TypeSet{
-  def serialize():String
   def intersect(other:TypeSet):TypeSet
   def intersectNonEmpty(other:TypeSet):Boolean
   def isEmpty:Boolean
@@ -106,8 +105,6 @@ object TypeSet{
     )
 }
 case object TopTypeSet extends TypeSet {
-  override def serialize(): String = "top:"
-
   override def intersect(other: TypeSet): TypeSet = other
 
   override def isEmpty: Boolean = false
@@ -123,8 +120,6 @@ case object TopTypeSet extends TypeSet {
   override def contains(i: Int): Boolean = true
 }
 case object EmptyTypeSet extends TypeSet{
-  override def serialize(): String = "empty:"
-
   override def intersect(other: TypeSet): TypeSet = EmptyTypeSet
 
   override def isEmpty: Boolean = true
@@ -147,8 +142,6 @@ case object PrimTypeSet{
   implicit var rw:RW[PrimTypeSet] = macroRW
 }
 case class PrimTypeSet(name:String) extends TypeSet {
-  override def serialize(): String = s"prim:$name"
-
   override def intersect(other: TypeSet): TypeSet = if(contains(other)) this else EmptyTypeSet
 
   override def isEmpty: Boolean = false
@@ -191,8 +184,6 @@ case class BitTypeSet(s:BitSet) extends TypeSet {
   override def toString: String = s"{${s.take(5).mkString(",")}${if(s.size > 5) " ..." else ""}}"
   def stringRep(ch:ClassHierarchyConstraints):String =
     "{" + s.take(3).map(ch.intToString).mkString(",") + "}"
-  override def serialize(): String = "DeserializedTypeSet:"
-
   override def intersect(other: TypeSet): TypeSet = other match{
     case BitTypeSet(otherS) => BitTypeSet(s.intersect(otherS))
     case TopTypeSet => this

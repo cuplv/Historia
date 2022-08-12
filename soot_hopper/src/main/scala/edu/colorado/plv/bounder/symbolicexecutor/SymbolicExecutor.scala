@@ -384,13 +384,10 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
               // Path node discovered to be subsumed
               executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p.setSubsumed(v))
             case v if v.isEmpty =>
-              val stackSize = p.qry.getState.get.callStack.size
               // Add to invariant map if invariant location is tracked
               current match {
                 case SwapLoc(v) => {
                   val nodeSetAtLoc = invarMap.getOrElse(v, Set.empty)
-                  //TODO: filter invar map
-                  //TODO:%%%%%====filter states subsumed by added state              , (s1,s2) => stateSolver.canSubsume(s1,s2,config.specSpace)
                   invarMap.addOne(v-> (nodeSetAtLoc + current))
                 }
                 case _ =>
@@ -428,7 +425,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
           case None =>
             BottomQry(state,l)
         })
-      }).seq.toSet
+      }).toSet
     case BottomQry(_,_) => Set()
     case WitnessedQry(_,_,_) =>
       //TODO: this was "Set()". Is there a reason we may want to step here?

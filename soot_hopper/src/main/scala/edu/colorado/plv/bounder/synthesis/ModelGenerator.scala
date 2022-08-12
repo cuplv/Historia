@@ -1,5 +1,7 @@
 package edu.colorado.plv.bounder.synthesis
 
+import edu.colorado.plv.bounder.lifestate.{SpecAssignment, SpecSpace}
+
 
 trait ModelGenerator {
   this: Z3ModelGenerator =>
@@ -11,9 +13,8 @@ trait ModelGenerator {
    * @param rulesFor    learn rules restricting the back messages in this set
    * @return an automata represented by transition tuples (source state, transition symbol, target state)
    */
-  def learnRulesFromExamples(posExamples: Set[List[TraceMessage]],
-                             negExamples: Set[List[TraceMessage]],
-                             rulesFor: List[TraceMessage]): Unit //TODO: Return type
+  def learnRulesFromExamples(target: ReachingGraph,
+                             reachable: ReachingGraph,
+                             space:SpecSpace): SpecAssignment
 
 }
-sealed case class TraceMessage(ident:String, v:Int, isBackMessage:Boolean)

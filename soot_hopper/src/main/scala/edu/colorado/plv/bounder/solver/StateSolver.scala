@@ -13,7 +13,6 @@ import scala.collection.{immutable, mutable}
 
 trait Assumptions
 
-class UnknownSMTResult(msg : String) extends Exception(msg)
 trait SolverCtx[T]{
   def mkAssert(t:T):Unit
   def acquire(randomSeed:Option[Int] = None):Unit

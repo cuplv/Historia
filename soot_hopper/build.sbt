@@ -3,7 +3,7 @@ name := "soot_hopper"
 organization := "edu.colorado.plv.bounder"
 version := "0.1"
 mainClass in (Compile, run) := Some("edu.colorado.plv.bounder.Driver")
-scalaVersion := "2.13.1"
+scalaVersion := "2.13.8"
 
 
 resolvers += "Maven Central Server" at "https://repo1.maven.org/maven2"
