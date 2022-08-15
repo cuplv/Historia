@@ -43,7 +43,6 @@ case object MemoryOutputMode extends OutputMode {
 /**
  *
  * @param dbfile sqlite file to write detailed results
- * @param truncate ommit states for less important nodes, value does not matter if only reading
  */
 case class DBOutputMode(dbfile:String) extends OutputMode{
   assert(dbfile.endsWith(".db"), s"Bad db file name $dbfile must end with '.db'")
@@ -542,6 +541,18 @@ object PathNode{
 
       case _ => true
     }
+
+  @tailrec
+  private def nextNonTrunc(node:IPathNode)(implicit om:OutputMode):IPathNode = {
+    val successors = node.succ
+    if(successors.isEmpty)
+      node // node with no successors should be initial
+    else if(shouldTruncate(node.qry.loc)) {
+      nextNonTrunc(node.succ.head)
+    } else{
+      node
+    }
+  }
   def apply(qry:Qry, succ: List[IPathNode], subsumed: Option[IPathNode])
            (implicit ord: OrdCount, mode: OutputMode = MemoryOutputMode):IPathNode = {
     val depth = if (succ.isEmpty) 0 else succ.map(_.depth).max + 1
@@ -552,7 +563,8 @@ object PathNode{
       case m@DBOutputMode(_) =>
         val id = nextId
 
-        val succID = succ.map(n => n.asInstanceOf[DBPathNode].thisID)
+        val succNotSkipped = succ.map(nextNonTrunc)
+        val succID = succNotSkipped.map(n => n.asInstanceOf[DBPathNode].thisID)
         val subsumedID = subsumed.map(n => n.asInstanceOf[DBPathNode].thisID)
         val thisNode = DBPathNode(qry, id, succID, subsumedID.toSet,depth,ordDepth)
         if(!shouldTruncate(qry.loc) || succ.isEmpty) {
