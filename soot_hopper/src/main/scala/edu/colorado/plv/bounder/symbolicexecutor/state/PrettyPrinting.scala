@@ -15,14 +15,10 @@ class PrettyPrinting() {
   def printWitness(terminals: Set[IPathNode]):Unit = {
     var witFound = false
     terminals.foreach(n => n.qry match {
-      case WitnessedTruncatedQry(_, trace) =>
+      case Qry(_, _, WitnessedQry(explanation)) =>
         witFound = true
         println("Witness")
-        println(trace)
-      case WitnessedQry(_, _, trace) =>
-        witFound = true
-        println("Witness")
-        println(trace)
+        println(explanation)
       case _ => false
     })
     if(!witFound){
@@ -37,19 +33,19 @@ class PrettyPrinting() {
 //  val templateFile = getClass.getResource("/pageTemplate.html").getPath
 //  val template = Source.fromFile(templateFile).getLines().mkString
   def qryString(q : Qry):String = q match{
-    case LiveQry(state,loc) =>
+    case Qry(state,loc, Live) =>
       loc.toString +
         "\n       state: " + state.toString.replaceAll("\n"," ")
-    case BottomQry(state,loc) =>
+    case Qry(state,loc, BottomQry) =>
       "REFUTED: " + loc.toString +
         "\n       state: " + state.toString.replaceAll("\n"," ")
-    case WitnessedQry(state,loc,witness) => //TODO: print witness  ======
+    case Qry(state,loc,WitnessedQry(witness)) =>
       "WITNESSED: " + loc.toString +
         "\n       state: " + state.toString.replaceAll("\n"," ")
-    case LiveTruncatedQry(loc) => loc.toString
-    case BottomTruncatedQry(loc) => "REFUTED: " + loc.toString
-    case WitnessedTruncatedQry(loc,_) => "WITNESSED: " + loc.toString
-  }
+    case Qry(state, loc, Unknown) =>
+      "UNK: " + loc.toString +
+      "\n       state: " + state.toString.replaceAll("\n"," ")
+}
   @tailrec
   final def witnessToTrace(pn:List[IPathNode],
                            truncate:Boolean,
@@ -57,11 +53,10 @@ class PrettyPrinting() {
                           (implicit mode : OutputMode = MemoryOutputMode):List[String] = pn match{
     case (p@PathNode(q, _))::t =>
       val branch = if(t.nonEmpty) " -- branch" else ""
-      lazy val noState = q.getState.isEmpty
       lazy val isMethodLoc = q.loc.isEntry.isDefined
-      lazy val succSame = p.succ.exists(next => next.qry.getState.get.sf != q.getState.get.sf)
+      lazy val succSame = p.succ.exists(next => next.qry.state.sf != q.state.sf)
       // Only print path nodes that are method entry/exit or where the state differs
-      if (!truncate || noState || isMethodLoc || succSame)
+      if (!truncate || isMethodLoc || succSame)
         witnessToTrace(p.succ,truncate, qryString(q) + branch::acc)
       else
         witnessToTrace(p.succ,truncate, acc)
@@ -74,11 +69,11 @@ class PrettyPrinting() {
   def nodeToWitness(nodes:List[IPathNode], truncate:Boolean)(implicit mode : OutputMode):List[List[String]] = {
 
     val targetTraces: List[(String, IPathNode)] = nodes.flatMap{
-      case pn@PathNode(_: LiveQry, false) => Some((s"live " +
+      case pn@PathNode(Qry(_,_,q@Live), false) => Some((q.toString +
         s"${if(pn.getError.isDefined) pn.getError.get.toString else ""}",pn))
-      case pn@PathNode(_ :WitnessedQry, _) => Some(("witnessed", pn))
-      case pn@PathNode(_:BottomQry, false) => Some(("refuted",pn))
-      case pn@PathNode(_:LiveQry, true) => Some((s"subsumed by:\n -- ${qryString(pn.subsumed.head.qry)}\n", pn))
+      case pn@PathNode(Qry(_,_,Live), true) => Some((s"subsumed by:\n -- ${qryString(pn.subsumed.head.qry)}\n", pn))
+      case pn@PathNode(Qry(_,_,q:WitnessedQry), _) => Some((q.toString, pn))
+      case pn@PathNode(Qry(_,_,q@BottomQry), false) => Some((q.toString,pn))
       case _ => None
     }
 
@@ -92,11 +87,11 @@ class PrettyPrinting() {
                   truncate:Boolean)(implicit mode : OutputMode = MemoryOutputMode): Unit = {
     val pw = File(outFile)
     val targetTraces: List[(String, IPathNode)] = result.flatMap{
-      case pn@PathNode(_: LiveQry, false) => Some((s"live " +
+      case pn@PathNode(Qry(_,_,Live), true) => Some((s"subsumed by:\n -- ${qryString(pn.subsumed.head.qry)}\n", pn))
+      case pn@PathNode(Qry(_,_,q@Live), false) => Some((q.toString +
         s"${if(pn.getError.isDefined) pn.getError.get.toString else ""}",pn))
-      case pn@PathNode(_ :WitnessedQry, _) => Some(("witnessed", pn))
-      case pn@PathNode(_:BottomQry, false) => Some(("refuted",pn))
-      case pn@PathNode(_:LiveQry, true) => Some((s"subsumed by:\n -- ${qryString(pn.subsumed.head.qry)}\n", pn))
+      case pn@PathNode(Qry(_,_,q@WitnessedQry(_)), _) => Some((q.toString, pn))
+      case pn@PathNode(Qry(_,_,q@BottomQry), false) => Some((q.toString,pn))
       case _ => None
     }.toList
 
@@ -271,11 +266,11 @@ class PrettyPrinting() {
         // printWitnessOrProof(qrySet, s"$fname.dot")
 
         printTraces(qrySet.filter{
-          case PathNode(_:WitnessedQry, false) => true
+          case PathNode(Qry(_,_,WitnessedQry(_)), false) => true
           case _ => false
         }, s"$fname.witnesses", truncate)
         printTraces(qrySet.filter{
-          case PathNode(_:BottomQry, false) => true
+          case PathNode(Qry(_,_,BottomQry), false) => true
           case _ => false
         }, s"$fname.refuted", truncate)
         printTraces(qrySet.filter{
@@ -283,7 +278,7 @@ class PrettyPrinting() {
           case _ => false
         }, s"$fname.subsumed", truncate)
         printTraces(qrySet.filter{
-          case PathNode(_:LiveQry, false) => true
+          case PathNode(Qry(_,_,Live), false) => true
           case _ => false
         }, s"$fname.live",truncate)
       case None =>

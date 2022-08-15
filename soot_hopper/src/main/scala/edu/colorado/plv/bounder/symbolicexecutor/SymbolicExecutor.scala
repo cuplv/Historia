@@ -6,7 +6,7 @@ import edu.colorado.plv.bounder.{BounderUtil, RunConfig}
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, If, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SwitchCmd, ThrowCmd, VirtualInvoke}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.Z3StateSolver
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, FrameworkLocation, IPathNode, InitialQuery, LiveQry, LiveTruncatedQry, MemoryOutputMode, MemoryPathNode, OrdCount, OutputMode, PathNode, Qry, State, StateSet, StateSetNode, SubsumableLocation, SwapLoc, WitnessedQry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, DBOutputMode, FrameworkLocation, IPathNode, InitialQuery, Live, MemoryOutputMode, OrdCount, OutputMode, PathNode, Qry, State, SubsumableLocation, SwapLoc, WitnessedQry}
 
 import scala.annotation.tailrec
 import upickle.default._
@@ -150,8 +150,8 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       }
 
       // comparing things from the base of the stack up, reversing for convenience
-      val stack1 = ((None,Some(p1.qry.loc)):: p1.qry.getState.get.callStack.map(sf => (Some(sf.exitLoc),sf.retLoc))).reverse
-      val stack2 = ((None,Some(p2.qry.loc)):: p2.qry.getState.get.callStack.map(sf => (Some(sf.exitLoc),sf.retLoc))).reverse
+      val stack1 = ((None,Some(p1.qry.loc)):: p1.state.callStack.map(sf => (Some(sf.exitLoc),sf.retLoc))).reverse
+      val stack2 = ((None,Some(p2.qry.loc)):: p2.state.callStack.map(sf => (Some(sf.exitLoc),sf.retLoc))).reverse
 
       @tailrec
       def iCompare(s1: List[(Option[Loc], Option[Loc])], s2:List[(Option[Loc], Option[Loc])]):Int = (s1,s2) match{
@@ -212,7 +212,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   }
 
   def isSubsumed(pathNode:IPathNode):Set[IPathNode] = pathNode match{
-    case SwapLoc(loc) if pathNode.qry.isInstanceOf[LiveQry] && invarMap.contains(loc) => {
+    case SwapLoc(loc) if pathNode.qry.isInstanceOf[Qry] && invarMap.contains(loc) => {
       val nodes:Set[IPathNode] = invarMap(loc)
       val states = nodes.map(_.state)
       val res = config.subsumptionMode match {
@@ -249,7 +249,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   case class IfGroup(loc:AppLoc) extends GroupType
   case class InvokeGroup(loc:Option[Loc]) extends GroupType
   private def nodeGroup(pn:IPathNode):Option[(GroupType, List[(Loc, Option[Loc])], Int)] = {
-    val stack = pn.qry.getState.get.callStack
+    val stack = pn.state.callStack
     val groupStack = stack.map(sf => (sf.exitLoc, sf.retLoc))
     lazy val retLoc = InvokeGroup(stack.head.retLoc)
     pn.qry.loc match {
@@ -286,7 +286,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
         case (Some(group), v) =>
           val nodeSet = v.toSet
           val groupedNodes: Set[IPathNode] = nodeSet.foldLeft(Set[IPathNode]()) { case (acc, pathNode) =>
-            acc.find(otherPathNode => equivStates(otherPathNode.qry.getState.get, pathNode.qry.getState.get)) match {
+            acc.find(otherPathNode => equivStates(otherPathNode.qry.state, pathNode.qry.state)) match {
               case Some(other) =>
                 (acc - other) + other.mergeEquiv(pathNode)
               case None => acc + pathNode
@@ -347,7 +347,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     current match{
       case SwapLoc(FrameworkLocation) =>
         println("Framework location query")
-        println(s"    State: ${current.qry.getState}")
+        println(s"    State: ${current.qry.state}")
         println(s"    Loc  : ${current.qry.loc}")
         println(s"    depth: ${current.depth}")
         println(s"    size of worklist: ${qrySet.size}")
@@ -355,20 +355,20 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
       case _ =>
     }
       current match {
-        case p@PathNode(_: LiveQry, true) =>
+        case p@PathNode(Qry(_,_,Live), true) =>
           // current node is subsumed
           // TODO: this branch is probably unreachable
           executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p)
-        case p@PathNode(_: BottomQry, _) =>
+        case p@PathNode(Qry(_,_,BottomQry), _) =>
           // current node is refuted
           executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p)
-        case p@PathNode(_: WitnessedQry, _) =>
+        case p@PathNode(Qry(_,_,WitnessedQry(_)), _) =>
           // current node is witnessed
           refutedSubsumedOrWitnessed.union(qrySet.toSet) + p
         case p: IPathNode if limit > 0 && p.depth > limit =>
           // max steps reached
           refutedSubsumedOrWitnessed.union(qrySet.toSet) + p
-        case p@PathNode(qry: LiveQry, false) =>
+        case p@PathNode(qry@Qry(_,_,Live), false) =>
           // live path node
           val subsuming = try{
               isSubsumed(p)
@@ -413,23 +413,22 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
    * @return
    */
   def executeStep(qry:Qry):Set[Qry] = qry match{
-    case LiveQry(state, loc) =>
+    case Qry(state, loc, Live) =>
       val predecessorLocations = controlFlowResolver.resolvePredicessors(loc,state)
       //predecessorLocations.par.flatMap(l => {
       predecessorLocations.flatMap(l => {
         val newStates = transfer.transfer(state,l,loc)
         newStates.map(state => stateSolver.simplify(state, transfer.getSpec) match {
           case Some(state) if stateSolver.witnessed(state, transfer.getSpec).isDefined =>
-            WitnessedQry(state, l, stateSolver.witnessed(state, transfer.getSpec).get)
-          case Some(state) => LiveQry(state, l)
+            Qry(state, l, WitnessedQry(stateSolver.witnessed(state, transfer.getSpec)))
+          case Some(state) => Qry(state, l, Live)
           case None =>
-            BottomQry(state,l)
+            Qry(state,l, BottomQry)
         })
       }).toSet
-    case BottomQry(_,_) => Set()
-    case WitnessedQry(_,_,_) =>
+    case Qry(_,_, BottomQry) => Set()
+    case Qry(_,_,WitnessedQry(_)) =>
       //TODO: this was "Set()". Is there a reason we may want to step here?
       throw new IllegalStateException("Useless to take abstract step on witnessed query")
-    case LiveTruncatedQry(loc) => throw new IllegalStateException("Cannot execute step on truncated query")
   }
 }

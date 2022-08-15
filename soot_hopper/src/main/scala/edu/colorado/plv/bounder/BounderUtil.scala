@@ -1,11 +1,10 @@
 package edu.colorado.plv.bounder
 
 import java.util.Collections
-
 import better.files.File
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdNotImplemented, CmdWrapper, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Loc, NopCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn}
 import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, QueryFinished, QueryInterrupted, QueryResult, SymbolicExecutorConfig}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, BottomTruncatedQry, IPathNode, InitialQuery, LiveQry, LiveTruncatedQry, OutputMode, PathNode, WitnessedQry, WitnessedTruncatedQry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, InitialQuery, Live, OutputMode, PathNode, Qry, WitnessedQry}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -148,9 +147,8 @@ object BounderUtil {
     val resultSummary = BounderUtil.interpretResult(terminals, queryResult)
     resultSummary match {
       case Witnessed =>
-        val witNodes = terminals.filter(node => node.qry match {
-          case WitnessedTruncatedQry(loc, explanation) => true
-          case WitnessedQry(state, loc, explain) => true
+        val witNodes = terminals.filter(node => node.qry.searchState match {
+          case WitnessedQry(_) => true
           case _ => false
         })
         DepthResult(witNodes.map(_.depth).min, witNodes.map(_.ordDepth).min, countCb(witNodes.toList), Witnessed)
@@ -173,15 +171,15 @@ object BounderUtil {
           return Interrupted(err.get.getError.get.toString)
         }
         if(result.forall {
-          case PathNode(_: BottomQry, _) => true
-          case PathNode(_: WitnessedQry, _) => false
-          case PathNode(_: LiveQry, true) => true
-          case PathNode(_: LiveQry, false) => false
+          case PathNode(Qry(_,_,BottomQry), _) => true
+          case PathNode(Qry(_,_,WitnessedQry(_)), _) => false
+          case PathNode(Qry(_,_,Live), true) => true
+          case PathNode(Qry(_,_,Live), false) => false
         }) {
-          return if(result.size > 0) Proven else Unreachable
+          return if(result.nonEmpty) Proven else Unreachable
         }
         if(result.exists{
-          case PathNode(_: WitnessedQry, _) => true
+          case PathNode(Qry(_,_, WitnessedQry(_)), _) => true
           case _ => false
         }) {
           return Witnessed

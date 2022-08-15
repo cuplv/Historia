@@ -1,7 +1,6 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 import java.util.{Objects, Properties}
 import java.util.concurrent.{ArrayBlockingQueue, ConcurrentLinkedQueue, Executors}
-
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, InternalMethodInvoke, InternalMethodReturn, Loc, MethodLoc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, WitnessExplanation}
 import slick.jdbc.SQLiteProfile.api._
 
@@ -9,8 +8,8 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 import upickle.default.{macroRW, ReadWriter => RW}
 import upickle.default.{read, write}
-import java.util.concurrent.atomic.AtomicInteger
 
+import java.util.concurrent.atomic.AtomicInteger
 import scala.language.postfixOps
 import better.files.File
 import com.microsoft.z3.Z3Exception
@@ -46,7 +45,7 @@ case object MemoryOutputMode extends OutputMode {
  * @param dbfile sqlite file to write detailed results
  * @param truncate ommit states for less important nodes, value does not matter if only reading
  */
-case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
+case class DBOutputMode(dbfile:String) extends OutputMode{
   assert(dbfile.endsWith(".db"), s"Bad db file name $dbfile must end with '.db'")
 
   private val witnessQry = TableQuery[WitnessTable]
@@ -315,17 +314,9 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
     Await.result(db.run(q.result), 30 seconds).nonEmpty
   }
   def writeNode(node: DBPathNode): Unit = {
-    val qryState = node.qry match {
-      case _:LiveQry => "live"
-      case _:BottomQry => "refuted"
-      case _:WitnessedQry => "witnessed"
-      case _:LiveTruncatedQry => throw new IllegalArgumentException("Cannot write truncated node")
-    }
+    val qryState = node.qry.searchState.toString
     val loc = node.qry.loc.serialized
-    val stateStr = if(false && truncate)
-      ""
-    else
-      write[State](node.qry.getState.get)
+    val stateStr = write[State](node.qry.state)
     //TODO: For batch subsumption, "head" element is recorded, this may be confusing
     val row = WitTableRow(node.thisID, qryState, stateStr, loc, node.subsumedID.headOption, node.depth,node.ordDepth)
     val edges:Seq[(Int,Int)] = node.succID.map(sid => (node.thisID, sid))
@@ -353,15 +344,11 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
     res.flatMap{row =>
       val node: DBPathNode = rowToNode(row)
       if(node.subsumedID.isEmpty)
-        node.qry match {
-          case LiveQry(state, _) => Some(node)
-          case LiveTruncatedQry(_) => None
-          case WitnessedTruncatedQry(loc, explanation) =>
-            throw new IllegalArgumentException("WitnessedTruncatedQry not supported")
-          case BottomTruncatedQry(loc) =>
-            throw new IllegalArgumentException("BottomTruncatedQry not supported")
-          case BottomQry(_, _) => None
-          case WitnessedQry(state, _, _) => Some(node)
+        node.qry.searchState match {
+          case Live => Some(node)
+          case WitnessedQry(_) => Some(node)
+          case Unknown => Some(node)
+          case BottomQry => None
         }
       else None
     }.toSet
@@ -372,7 +359,7 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
     res.flatMap{row =>
       val node: DBPathNode = rowToNode(row)
       if(node.subsumedID.nonEmpty) {
-        node.qry.getState.map(s => (s,readNode(node.subsumedID.head).qry.getState.get ))
+        Some((node.state,readNode(node.subsumedID.head).qry.state))
       }
       else None
     }.toSet
@@ -400,13 +387,8 @@ case class DBOutputMode(dbfile:String, truncate: Boolean) extends OutputMode{
     val pred: List[Int] = Await.result(db.run(succQry.result), 30 seconds).toList
     val stateOpt: Option[State] = if(res.nodeState == "") None else Some( read[State](res.nodeState) )
     val qry = (queryState,stateOpt) match {
-      case ("live", Some(state)) => LiveQry(state, loc)
-      case ("refuted", Some(state)) => BottomQry(state, loc)
-      case ("witnessed", Some(state)) => WitnessedQry(state, loc, WitnessExplanation(Nil)) //TODO: serialize expl
-      case ("live", None) => LiveTruncatedQry(loc)
-      case ("refuted",None) => BottomTruncatedQry(loc)
-      case ("witnessed",None) => WitnessedTruncatedQry(loc, WitnessExplanation(Nil))
-      case (queryState,_) => throw new IllegalStateException(s"Wrong query for missing serialized state: $queryState")
+      case (searchState, Some(state)) => Qry(state, loc, SearchState(searchState))
+      case (queryState,_) => throw new IllegalStateException(s"Missing serialized state: $id with state $queryState")
     }
     val depth = res.depth
     val ordDepth = res.ordDepth
@@ -506,7 +488,12 @@ class InitialQueryTable(tag:Tag) extends Table[(Int, String, String, String, Str
 case class WitTableRow(id:Int, queryState:String, nodeState:String, nodeLoc:String,
                        subsumingState:Option[Int],
                        depth:Int, ordDepth:Int
-                      )
+                      ){
+  val dummy = try{SearchState(queryState)} catch {
+    case t:Throwable =>
+      throw t
+  }
+}
 class WitnessTable(tag:Tag) extends Table[WitTableRow](tag,"PATH"){
   def id = column[Int]("NODE_ID", O.PrimaryKey)
   def queryState = column[String]("QUERY_STATE")
@@ -562,24 +549,13 @@ object PathNode{
     mode match {
       case MemoryOutputMode =>
         MemoryPathNode(qry, succ, subsumed.toSet, depth,ordDepth)
-      case m@DBOutputMode(_,_) =>
+      case m@DBOutputMode(_) =>
         val id = nextId
 
-        val succID = if(m.truncate) {
-          val jumpSucc = succ.flatMap(n =>
-            if(shouldTruncate(n.qry.loc) && n.succ.nonEmpty)
-              n.asInstanceOf[DBPathNode].succID
-            else
-              List(n.asInstanceOf[DBPathNode].thisID)
-            )
-            // if successors have no successors then they are intial so write them
-            if(jumpSucc.isEmpty) succ.map(n => n.asInstanceOf[DBPathNode].thisID) else jumpSucc
-        } else {
-          succ.map(n => n.asInstanceOf[DBPathNode].thisID)
-        }
+        val succID = succ.map(n => n.asInstanceOf[DBPathNode].thisID)
         val subsumedID = subsumed.map(n => n.asInstanceOf[DBPathNode].thisID)
         val thisNode = DBPathNode(qry, id, succID, subsumedID.toSet,depth,ordDepth)
-        if(!shouldTruncate(qry.loc) || !m.truncate || succ.isEmpty) {
+        if(!shouldTruncate(qry.loc) || succ.isEmpty) {
           m.writeNode(thisNode)
         }
         thisNode
@@ -598,7 +574,7 @@ sealed trait IPathNode {
    * Get state if you know it is defined
    * @return contained state or throw exception if it does not exist
    */
-  def state:State = this.qry.getState.get
+  def state:State = this.qry.state
   def setError(ze: Throwable)
   def getError: Option[Throwable]
 
@@ -628,9 +604,9 @@ sealed trait IPathNode {
   def mergeEquiv(other:IPathNode):IPathNode
   def copyWithNewQry(newQry:Qry):IPathNode
   final def addAlternate(alternatePath: IPathNode): IPathNode = {
-    val alternates = qry.getState.get.alternateCmd
-    val newState = qry.getState.get.copy(alternateCmd = alternatePath.qry.getState.get.nextCmd ++ alternates)
-    this.copyWithNewQry(qry.copyWithNewState(newState))
+    val alternates = qry.state.alternateCmd
+    val newState = qry.state.copy(alternateCmd = alternatePath.qry.state.nextCmd ++ alternates)
+    this.copyWithNewQry(qry.copy(state = newState))
   }
 }
 
@@ -658,9 +634,9 @@ case class MemoryPathNode(qry: Qry, succV : List[IPathNode], subsumedV: Set[IPat
   override def subsumed(implicit mode: OutputMode): Set[IPathNode] = subsumedV
 
   override def mergeEquiv(other: IPathNode): IPathNode = {
-    val newNextCmd = qry.getState.get.nextCmd.toSet ++ other.qry.getState.get.nextCmd.toSet
-    val newState = qry.getState.get.copy(nextCmd = newNextCmd.toList)
-    val newQry = qry.copyWithNewState(newState)
+    val newNextCmd = qry.state.nextCmd.toSet ++ other.qry.state.nextCmd.toSet
+    val newState = qry.state.copy(nextCmd = newNextCmd.toList)
+    val newQry = qry.copy(state = newState)
     val newSuccV = succV ++ other.asInstanceOf[MemoryPathNode].succV
     this.copy(qry = newQry, succV = newSuccV)
   }
@@ -680,12 +656,8 @@ case class DBPathNode(qry:Qry, thisID:Int,
   /**
    * @return string representation of messages in abstract trace
    */
-  def dbgTrace:Option[List[String]] = {
-    qry.getState.map(_.traceKey)
-  }
-  def dbgHeap:Option[List[String]] = {
-    qry.getState.map(_.heapKey)
-  }
+  def dbgTrace:List[String] = qry.state.traceKey
+  def dbgHeap:List[String] = qry.state.heapKey
   override def succ(implicit db:OutputMode): List[IPathNode] =
     succID.map(db.asInstanceOf[DBOutputMode].readNode)
 
@@ -700,9 +672,9 @@ case class DBPathNode(qry:Qry, thisID:Int,
   override def copyWithNewQry(newQry: Qry): IPathNode = this.copy(qry=newQry)
 
   override def mergeEquiv(other: IPathNode): IPathNode = {
-    val newNextCmd = qry.getState.get.nextCmd.toSet ++ other.qry.getState.get.nextCmd.toSet
-    val newState = qry.getState.get.copy(nextCmd = newNextCmd.toList)
-    val newQry = qry.copyWithNewState(newState)
+    val newNextCmd = qry.state.nextCmd.toSet ++ other.qry.state.nextCmd.toSet
+    val newState = qry.state.copy(nextCmd = newNextCmd.toList)
+    val newQry = qry.copy(state = newState)
     val newSuccID = succID ++ other.asInstanceOf[DBPathNode].succID
     this.copy(qry = newQry, succID = newSuccID)
   }

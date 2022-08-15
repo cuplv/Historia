@@ -154,7 +154,7 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
     isolver = makeSolver(timeout, randomSeed)
   }
 }
-class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:Int = 30000, //TODO: this was 100000 testing 30 sec
+class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:Int = 30000,
                     randomSeed:Int=3578,
                     defaultOnSubsumptionTimeout: Z3SolverCtx=> Boolean = _ => false,
                     pushSatCheck:Boolean = true

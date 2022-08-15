@@ -73,7 +73,7 @@ object StateSet {
         current.copy(states = current.states + state)//
 //        current.copy(states = current.states + state) //TODO: ====== check if this improves things
     }
-    val edges = edgesFromState(pathNode.qry.getState.get)
+    val edges = edgesFromState(pathNode.qry.state)
     iEdges(edges,pathNode, stateSet.asInstanceOf[IStateSetNode])
   }
   def dbgAllSubs(pathNode:IPathNode,
@@ -82,7 +82,7 @@ object StateSet {
     def iDbg(pathNode:IPathNode, stateSet:IStateSetNode, canSubsume: (State,State)=> Boolean):Option[IPathNode] = {
       val res = stateSet.states.find { subsuming =>
         subsCount = subsCount + 1
-        canSubsume(subsuming.qry.getState.get, pathNode.qry.getState.get)
+        canSubsume(subsuming.qry.state, pathNode.qry.state)
       }
       object Subs {
         def unapply(s: IStateSetNode): Option[IPathNode] = {
@@ -112,7 +112,7 @@ object StateSet {
       currentOut.union(nextOut)
     }
 
-    val edges = edgesFromState(pathNode.qry.getState.get)
+    val edges = edgesFromState(pathNode.qry.state)
     iFind(edges, pathNode, stateSet.asInstanceOf[IStateSetNode])
   }
 

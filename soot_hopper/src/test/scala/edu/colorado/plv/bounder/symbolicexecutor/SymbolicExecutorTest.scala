@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{MultiCallback, Proven, SingleCallbackMultiMethod, SingleMethod, Witnessed}
-import edu.colorado.plv.bounder.ir.{CBEnter, JimpleFlowdroidWrapper, JimpleMethodLoc}
+import edu.colorado.plv.bounder.ir.{JimpleFlowdroidWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, LSSpec, LSTrue, NS, Not, Once, Or}
 import edu.colorado.plv.bounder.lifestate.{Dummy, FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
@@ -36,7 +36,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
 //    prettyPrinting.dumpDebugInfo(result, "test_interproc_1_derefSafe")
     assert(result.size == 1)
-    assert(result.iterator.next.qry.isInstanceOf[BottomQry])
+    assert(result.iterator.next.qry.searchState == BottomQry)
     assert(BounderUtil.characterizeMaxPath(result)== SingleMethod)
   }
 
@@ -294,9 +294,9 @@ class SymbolicExecutorTest extends AnyFunSuite {
       // Search refutation state for materialized "o2" field
       // Should not be in there since conditional is not relevant
       val o2ExistsInRef = result.exists((p:IPathNode) => findInWitnessTree(p,
-        {pn => pn.qry.getState.get.heapConstraints.exists{
+        {pn => pn.qry.state.heapConstraints.exists{
           case (FieldPtEdge(_,fieldName),_) if fieldName == "o2" =>
-            println(pn.qry.getState)
+            println(pn.qry.state)
             true
           case _ => false
         }}).isDefined)
@@ -960,7 +960,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       val specSpace = new SpecSpace(specs)
 
       File.usingTemporaryDirectory() { tmpDir =>
-        implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
+        implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString)
         val config = SymbolicExecutorConfig(
           stepLimit = 300, w, specSpace,z3Timeout = Some(30),
           component = Some(List("com\\.example\\.createdestroy\\.*MyActivity.*")))
@@ -1419,7 +1419,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           specSpace, cha)
         File.usingTemporaryDirectory() { tmpDir =>
           assert(!(tmpDir / "paths.db").exists)
-          implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
+          implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString)
           dbMode.startMeta()
           val config = SymbolicExecutorConfig(
             stepLimit = 200, w, specSpace,
@@ -1452,7 +1452,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
             println("--- witness ---")
             onViewCreatedInTree.head.foreach { v =>
               println(v.qry.loc)
-              println(v.qry.getState)
+              println(v.qry.state)
               println()
             }
             println("--- end witness ---")
@@ -2014,7 +2014,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     val test: String => Unit = apk => {
       File.usingTemporaryDirectory() { tmpDir =>
         assert(apk != null)
-        implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
+        implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString)
         dbMode.startMeta()
         assert(apk != null)
         val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
@@ -2085,7 +2085,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     val test: String => Unit = apk => {
       File.usingTemporaryDirectory() { tmpDir =>
         assert(apk != null)
-        implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
+        implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString)
         dbMode.startMeta()
         val specs = new SpecSpace(Set(ViewSpec.clickWhileActive, ViewSpec.viewOnlyReturnedFromOneActivity))
         val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
@@ -2139,7 +2139,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     val test: String => Unit = apk => {
       File.usingTemporaryDirectory() { tmpDir =>
         assert(apk != null)
-        implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
+        implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString)
         dbMode.startMeta()
 //        implicit val dbMode = MemoryOutputMode //LifecycleSpec.spec +
         val specs = new SpecSpace( Set(ViewSpec.clickWhileActive,
@@ -2225,7 +2225,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     val test: String => Unit = apk => {
       File.usingTemporaryDirectory() { tmpDir =>
         assert(apk != null)
-        implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString, truncate = false)
+        implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString)
         dbMode.startMeta()
         //        implicit val dbMode = MemoryOutputMode
         // LifecycleSpec.spec +
@@ -2319,7 +2319,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           File.usingTemporaryDirectory() { tmpDir =>
             assert(apk != null)
             val dbFile = tmpDir / "paths.db"
-            implicit val dbMode = DBOutputMode(dbFile.toString, truncate = false)
+            implicit val dbMode = DBOutputMode(dbFile.toString)
             println(dbFile)
             dbMode.startMeta()
             //            implicit val dbMode = MemoryOutputMode
@@ -2465,7 +2465,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
         assert(apk != null)
         val dbFile = tmpDir / "paths.db"
         println(dbFile)
-        implicit val dbMode = DBOutputMode(dbFile.toString, truncate = false)
+        implicit val dbMode = DBOutputMode(dbFile.toString)
         dbMode
           .startMeta()
         //            implicit val dbMode = MemoryOutputMode

@@ -39,7 +39,7 @@ class StateSetTest extends AnyFunSuite {
   val pv1 = PureVar(1)
   val locals1 = Map(StackVar("foo")->pv0)
   def pn(state:State):IPathNode = {
-    MemoryPathNode(LiveQry(state,AppLoc(fooMethod,lineLoc, false)),Nil,Set.empty,5,0)
+    MemoryPathNode(Qry(state,AppLoc(fooMethod,lineLoc, false), Live),Nil,Set.empty,5,0)
   }
   val emptySet = StateSet.emptyStateSet
 
@@ -60,7 +60,7 @@ class StateSetTest extends AnyFunSuite {
     val posSubsState = StateSet.getPossibleSubsuming(pn(subsumee1), set1)
 //    (s1,s2) => stateSolver.canSubsumeSlow(s1,s2))
     val subsState = posSubsState.find(other =>
-      stateSolver.canSubsume(subsumee1, other.qry.getState.get,new SpecSpace(Set())))
+      stateSolver.canSubsume(subsumee1, other.qry.state,new SpecSpace(Set())))
     assert(subsState.isDefined)
     assert(subsState.get == pn(s1))
   }

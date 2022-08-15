@@ -3,11 +3,15 @@ package edu.colorado.plv.bounder.synthesis
 import com.microsoft.z3.{AST, BoolExpr, Context, Expr, IntExpr, IntNum}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecAssignment, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSAtom, PredicateSpace}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{LiveQry, PureVar, Qry, State}
+import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, Z3SolverCtx, Z3StateSolver}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{PureVar, Qry, State}
 
 import scala.annotation.tailrec
 
-class Z3ModelGenerator extends ModelGenerator {
+class Z3ModelGenerator(persistentConstraints: ClassHierarchyConstraints)
+  extends Z3StateSolver(persistentConstraints, timeout = 30000,randomSeed=3578,
+    defaultOnSubsumptionTimeout = _ => false, pushSatCheck = true
+  ) with ModelGenerator {
   val ctx : Context = new Context
 
   /**

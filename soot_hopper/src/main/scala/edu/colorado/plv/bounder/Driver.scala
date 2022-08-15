@@ -110,7 +110,7 @@ object Driver {
 
   def readDB(outFolder:File, findNoPred:Boolean = false): Unit = {
     val dbPath = outFolder / "paths.db"
-    implicit val db = DBOutputMode(dbPath.toString(), truncate = false)
+    implicit val db = DBOutputMode(dbPath.toString())
     val liveNodes: Set[IPathNode] = db.getTerminal().map(v=>v)
     val pp = new PrettyPrinting()
     pp.dumpDebugInfo(liveNodes, "out", outDir = Some(outFolder.toString))
@@ -238,7 +238,7 @@ object Driver {
           outFile.moveTo(File(outFolder) / "paths.db1")
         }
         val pathMode = if(mode == "DB"){
-          DBOutputMode(outFile.canonicalPath, cfg.truncateOut)
+          DBOutputMode(outFile.canonicalPath)
         }else if(mode == "MEM"){
           MemoryOutputMode
         } else throw new IllegalArgumentException(s"Mode ${mode} is invalid, options: DB - write nodes to sqlite, MEM " +
@@ -283,7 +283,7 @@ object Driver {
     val outFile = File(cfg.outFolder.get.replace("${baseDirOut}", outBase)) / "out.db" //File(baseDirOut) / "out.db"
     val w = new JimpleFlowdroidWrapper(apk, SparkCallGraph, Set())
 
-    val pathMode = DBOutputMode(outFile.canonicalPath, cfg.truncateOut)
+    val pathMode = DBOutputMode(outFile.canonicalPath)
     val config = SymbolicExecutorConfig(
       stepLimit = 2, w, new SpecSpace(Set()), component = None, outputMode = pathMode,
       timeLimit = cfg.timeLimit)
@@ -384,14 +384,13 @@ object Driver {
           val finalLiveNodes = groupedResults.flatMap{res => res.terminals.filter{pathNode =>
             pathNode.qry.isLive && pathNode.subsumed(mode).isEmpty}}
           val depthChar: BounderUtil.DepthResult = BounderUtil.computeDepthOfWitOrLive(finalLiveNodes,QueryFinished)(mode)
-          val depth = if(finalLiveNodes.nonEmpty) Some(finalLiveNodes.map{n => n.depth}.min) else None
-          val ordDepth = if(finalLiveNodes.nonEmpty) Some(finalLiveNodes.map{_.ordDepth}.min) else None
+          //val depth = if(finalLiveNodes.nonEmpty) Some(finalLiveNodes.map{n => n.depth}.min) else None
+          //val ordDepth = if(finalLiveNodes.nonEmpty) Some(finalLiveNodes.map{_.ordDepth}.min) else None
           val pp = new PrettyPrinting()
           val live: List[List[String]] = pp.nodeToWitness(finalLiveNodes.toList, cfg.truncateOut)(mode).sortBy(_.length).take(2)
           val witnessed = pp.nodeToWitness(groupedResults.flatMap{res => res.terminals.filter{pathNode =>
             pathNode.qry match {
-              case WitnessedTruncatedQry(loc, explanation) => true
-              case WitnessedQry(state, loc, explain) => true
+              case Qry(_, _, WitnessedQry(_)) => true
               case _ => false
             }}}.toList, cfg.truncateOut)(mode).sortBy(_.length).take(2)
 

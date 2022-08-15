@@ -13,7 +13,7 @@ import scala.util.matching.Regex
 
 object Qry {
 
-  implicit val rw:RW[Qry] = RW.merge(macroRW[LiveQry], macroRW[BottomQry], macroRW[WitnessedQry])
+  implicit val rw:RW[Qry] = macroRW
 
   def makeReach[M,C](ex: SymbolicExecutor[M,C],
                      className:String,
@@ -25,7 +25,7 @@ object Qry {
     val res:Set[Qry] = containingMethodPos.map{method =>
       val queryStack = List(CallStackFrame(method, None,Map()))
       val state0 = State.topState.copy(sf = State.topState.sf.copy(callStack = queryStack), nextCmd = List(targetLoc))
-      LiveQry(state0, targetLoc)
+      Qry(state0, targetLoc, Live)
     }.toSet
     res
   }
@@ -60,7 +60,7 @@ object Qry {
       val state = State.topState.copy(sf = State.topState.sf.copy(callStack = queryStack))
       val (pv,state1) = state.getOrDefine(local, None)
       val state2 = state1.addPureConstraint(PureConstraint(pv, Equals, NullVal)).copy(nextCmd = List(location))
-      LiveQry(state2, location)
+      Qry(state2, location, Live)
     }.toSet
   }
 
@@ -93,8 +93,8 @@ object Qry {
         val queryStack = List(CallStackFrame(cbexits.head, None, Map()))
         val state0 = State.topState.copy(sf = State.topState.sf.copy(callStack = queryStack))
         val (pureVar, state1) = state0.getOrDefine(v, None)
-        LiveQry(state1.addPureConstraint(PureConstraint(pureVar, Equals, NullVal)).copy(
-          nextCmd = List(cmd.getLoc)), cmd.getLoc)
+        Qry(state1.addPureConstraint(PureConstraint(pureVar, Equals, NullVal)).copy(
+          nextCmd = List(cmd.getLoc)), cmd.getLoc, Live)
       }
     }
 
@@ -144,8 +144,8 @@ object Qry {
       val queryStack = List(CallStackFrame(cbexit, None, Map()))
       val state0 = State.topState.copy(sf = State.topState.sf.copy(callStack = queryStack))
       val (pureVar, state1) = state0.getOrDefine(varname, cbexit.containingMethod)
-      LiveQry(state1.addPureConstraint(PureConstraint(pureVar, Equals, NullVal)).copy(
-        nextCmd = List(derefLoc)), derefLoc)
+      Qry(state1.addPureConstraint(PureConstraint(pureVar, Equals, NullVal)).copy(
+        nextCmd = List(derefLoc)), derefLoc, Live)
     }.toSet
   }
 
@@ -270,67 +270,97 @@ case class DisallowedCallin(className:String, methodName:String, s:LSSpec) exten
       val stateWithDisallow = sym.transfer.newDisallowTransfer(location.method,
         CIEnter, getMatchingCallin(cmd).get, allVar, state,Some(s))
       assert(stateWithDisallow.size == 1)
-      LiveQry(stateWithDisallow.head, location.copy(isPre = true))
+      Qry(stateWithDisallow.head, location.copy(isPre = true), Live)
     }
   }
 }
 
-sealed trait Qry {
-  def loc: Loc
-  def getState: Option[State]
-  def toString:String
-  def copyWithNewState(state:State):Qry
-  def isLive:Boolean
+object SearchState{
+  def apply(str:String):SearchState = str match {
+    case "unknown" => Unknown
+    case "live" => Live
+    case "refuted" => BottomQry
+    case "witnessed" => WitnessedQry(None)
+    case other =>
+      throw new IllegalArgumentException(s"""Search state "$other" is unknown""")
+  }
+  implicit val rw:RW[SearchState] = RW.merge(macroRW[Unknown.type],
+    macroRW[Live.type],
+    macroRW[BottomQry.type],
+    WitnessedQry.rw
+  )
 }
-//Query consists of a location and an abstract state defined at the program point just before that location.
-case class LiveQry(state:State, loc: Loc) extends Qry {
-  override def toString:String = loc.toString + "  " + getState.toString
-
-  override def copyWithNewState(state: State): Qry = this.copy(state = state)
-
-  override def getState: Option[State] = Some(state)
-
-  override def isLive: Boolean = true
+sealed trait SearchState
+case object Unknown extends SearchState{
+  override def toString:String = "unknown"
 }
-// A live query where we didn't retain the state to save space
-// This query can only come from reading the output of a truncated run
-//TODO: alter types so that getState doesn't need to return option
-case class LiveTruncatedQry(loc:Loc) extends Qry{
-  override def getState: Option[State] = None
-
-  override def copyWithNewState(state: State): Qry = this
-
-  override def isLive: Boolean = true
+case object Live extends SearchState{
+  override def toString:String = "live"
 }
-case class WitnessedTruncatedQry(loc:Loc, explanation: WitnessExplanation) extends Qry{
-  override def getState: Option[State] = None
-
-  override def copyWithNewState(state: State): Qry = this
-
-  override def isLive: Boolean = true
+case object BottomQry extends SearchState{
+  override def toString:String = "refuted"
 }
-case class BottomTruncatedQry(loc:Loc) extends Qry{
-  override def getState: Option[State] = None
-
-  override def copyWithNewState(state: State): Qry = this
-
-  override def isLive: Boolean = false
+case class WitnessedQry(explanation: Option[WitnessExplanation]) extends SearchState{
+  override def toString:String = "witnessed"
 }
-// Infeasible precondition, path refuted
-case class BottomQry(state:State, loc:Loc) extends Qry {
-  override def toString:String = "!!!refuted!!! loc: " + loc.toString + " state: " + getState.toString
-  override def copyWithNewState(state: State): Qry = this.copy(state = state)
-
-  override def getState: Option[State] = Some(state)
-
-  override def isLive: Boolean = false
+case object WitnessedQry{
+  implicit val rw:RW[WitnessedQry] = macroRW
 }
 
-case class WitnessedQry(state:State, loc:Loc, explain:WitnessExplanation) extends Qry {
-  override def toString:String = "!!!witnessed!!! loc: " + loc.toString + " state: " + getState.toString
-  override def copyWithNewState(state: State): Qry = this.copy(state = state)
-
-  override def getState: Option[State] = Some(state)
-
-  override def isLive: Boolean = true
+sealed case class Qry(state:State, loc:Loc, searchState:SearchState) {
+  override def toString:String = loc.toString + "  " + state.toString
+  def isLive:Boolean = ???
+  def isSubsumed:Boolean = ???
 }
+////Query consists of a location and an abstract state defined at the program point just before that location.
+//case class LiveQry(state:State, loc: Loc) extends Qry {
+//  override def toString:String = loc.toString + "  " + getState.toString
+//
+//  override def copyWithNewState(state: State): Qry = this.copy(state = state)
+//
+//  override def getState: Option[State] = Some(state)
+//
+//  override def isLive: Boolean = true
+//}
+//// A live query where we didn't retain the state to save space
+//// This query can only come from reading the output of a truncated run
+////TODO: alter types so that getState doesn't need to return option
+//case class LiveTruncatedQry(loc:Loc) extends Qry{
+//  override def getState: Option[State] = None
+//
+//  override def copyWithNewState(state: State): Qry = this
+//
+//  override def isLive: Boolean = true
+//}
+//case class WitnessedTruncatedQry(loc:Loc, explanation: WitnessExplanation) extends Qry{
+//  override def getState: Option[State] = None
+//
+//  override def copyWithNewState(state: State): Qry = this
+//
+//  override def isLive: Boolean = true
+//}
+//case class BottomTruncatedQry(loc:Loc) extends Qry{
+//  override def getState: Option[State] = None
+//
+//  override def copyWithNewState(state: State): Qry = this
+//
+//  override def isLive: Boolean = false
+//}
+//// Infeasible precondition, path refuted
+//case class BottomQry(state:State, loc:Loc) extends Qry {
+//  override def toString:String = "!!!refuted!!! loc: " + loc.toString + " state: " + getState.toString
+//  override def copyWithNewState(state: State): Qry = this.copy(state = state)
+//
+//  override def getState: Option[State] = Some(state)
+//
+//  override def isLive: Boolean = false
+//}
+//
+//case class WitnessedQry(state:State, loc:Loc, explain:WitnessExplanation) extends Qry {
+//  override def toString:String = "!!!witnessed!!! loc: " + loc.toString + " state: " + getState.toString
+//  override def copyWithNewState(state: State): Qry = this.copy(state = state)
+//
+//  override def getState: Option[State] = Some(state)
+//
+//  override def isLive: Boolean = true
+//}
