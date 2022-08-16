@@ -6,7 +6,7 @@ import com.microsoft.z3.enumerations.Z3_ast_print_mode
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{AppMethod, CBEnter, CBExit, CIEnter, CIExit, FwkMethod, TAddr, TCLInit, TMessage, TNew, TNullVal, TVal, T_, TraceElement, WitnessExplanation}
 import edu.colorado.plv.bounder.lifestate.LifeState
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, NullVal, PureExpr, PureVal, PureVar, State, TopVal}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, BotVal, NullVal, PureExpr, PureVal, PureVar, State, TopVal}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.immutable
@@ -223,7 +223,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
         // No more axioms to try
         true
       case (Status.UNKNOWN, Nil) =>
-        throw new IllegalStateException("Unknown, no more axioms, failure.")
+        throw new IllegalArgumentException("Unknown, no more axioms, failure.")
     }
     interp
   }
@@ -800,8 +800,8 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
 
   protected def mkConstConstraintsMap(pvs: Set[PureVal])(implicit zCtx: Z3SolverCtx): Map[PureVal, AST] = {
     val ctx = zCtx.ctx
-    val constMap = pvs.flatMap{t =>
-      t.z3Tag.map(tag => (t-> ctx.mkConst(s"const_${tag}", constSort)))
+    val constMap = pvs.map{t =>
+      t->ctx.mkConst(t.solverName, constSort)
     }.toMap
     constMap
   }
@@ -844,8 +844,9 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     zCtx.mkAssert(unique)
     val const = ctx.mkFreshConst("constVal", constSort)
     val oneOf = allConstraints.map(c => mkEq(c,const)).reduce(mkOr).asInstanceOf[BoolExpr]
-    val forall = ctx.mkForall(Array(const), oneOf,1, null, null, null, null)
-    zCtx.mkAssert(forall)
+    //TODO:=====
+//    val forall = ctx.mkForall(Array(const), oneOf,1, null, null, null, null)
+//    zCtx.mkAssert(forall)
   }
   override def initializeZeroAxioms(messageTranslator: MessageTranslator)(implicit zCtx:Z3SolverCtx): Unit = {
     val ctx = zCtx.ctx
@@ -1002,5 +1003,24 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   protected def mkZeroMsg(implicit zCtx:Z3SolverCtx):Expr[UninterpretedSort] = {
     assert(zCtx.isZeroInitialized, "zero must be initialized to make zero message")
     zCtx.ctx.mkConst("zeroMessage___",msgSort)
+  }
+
+  case class Z3LatticeEncoder(values:Map[Nameable,Nameable],
+                              typeName:String,
+                              closed:Boolean) extends LatticeEncoder[AST, Z3SolverCtx]{
+    override def getAxioms()(implicit zCtx: Z3SolverCtx): AST = {
+      val leastMost = values.filter{
+        case (v, BotVal) => true
+        case _ => false
+      }
+      ??? //TODO:=====
+    }
+
+    override def mkUpperBound(v: Nameable)(implicit zCtx: Z3SolverCtx): AST = ???
+  }
+  override def getLatticeEncoder(values:Map[Nameable,Nameable],
+                                 typeName:String,
+                                 closed:Boolean):LatticeEncoder[AST, Z3SolverCtx] = {
+    ???
   }
 }

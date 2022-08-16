@@ -11,7 +11,15 @@ import upickle.default.{read, write}
 
 import scala.collection.{immutable, mutable}
 
-trait Assumptions
+//TODO: replace all "sets of things" with SetOfEncoder
+trait Nameable{
+  def solverName:String
+}
+
+trait LatticeEncoder[T, C <: SolverCtx[T]]{
+  def getAxioms()(implicit zCtx:C):T
+  def mkUpperBound(v:Nameable)(implicit zCtx:C):T
+}
 
 trait SolverCtx[T]{
   def mkAssert(t:T):Unit
@@ -19,12 +27,19 @@ trait SolverCtx[T]{
   def release():Unit
 }
 
-object StateSolver{
-
-}
 /** SMT solver parameterized by its AST or expression type */
 trait StateSolver[T, C <: SolverCtx[T]] {
 
+  /**
+   *
+   * @param values A directed graph representing the lattice, all transitive edges must exist,
+   *               An implicit edge from top to all other edges exists.
+   *               For single distinct elements, create an edge from the element to Bot
+   * @param typeName solver name for types in this lattice
+   * @param closed Are all values represented by the lattice or are "other" values possible
+   * @return
+   */
+  def getLatticeEncoder(values:Map[Nameable,Nameable], typeName:String, closed:Boolean):LatticeEncoder[T,C]
   def setSeed(v:Int)(implicit zCtx: C):Unit
   // checking
   def getSolverCtx: C
@@ -619,14 +634,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         Some(tc)
       case _ => None
     }.toList)
-
-  }
-
-  //TODO: replace all "sets of things" with SetOfEncoder
-  trait Nameable{
-    def solverName:String
-  }
-  trait SetOfEncoder[T<:Nameable]{
 
   }
 
@@ -1286,12 +1293,13 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       }
       !foundCounter
     }catch{
-      case e:IllegalArgumentException if e.getLocalizedMessage.contains("timeout") || e.getLocalizedMessage.contains("canceled") =>
+      case e:IllegalArgumentException =>
         // Note: this didn't seem to help things so currently disabled
         // sound to say state is not subsumed if we don't know
         // false
 
-        println("subsumption timeout:")
+        println("subsumption timeout, canceled or other unknown:")
+        println(s"z3 message: ${e.getLocalizedMessage}")
         println(s"timeout: ${timeout}")
         println(s"  s1: ${s1}")
         println(s"  s1 ɸ_lhs: " +

@@ -1,6 +1,6 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
-import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools, StateSolver}
+import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools, Nameable}
 import edu.colorado.plv.bounder.ir.{AppLoc, BitTypeSet, BoolConst, CallbackMethodInvoke, CallbackMethodReturn, ClassConst, ConstVal, EmptyTypeSet, IRWrapper, IntConst, InternalMethodInvoke, InternalMethodReturn, LVal, Loc, LocalWrapper, MessageType, MethodLoc, NullConst, RVal, StringConst, TopTypeSet, TypeSet}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, FreshRef, LSPred, LSSingle, LSTrue, NS, Not, Once, Or}
@@ -739,7 +739,7 @@ object PureExpr{
 }
 
 // primitive values
-sealed abstract class PureVal(v:Any) extends PureExpr {
+sealed abstract class PureVal(v:Any) extends PureExpr with Nameable {
   override def substitute(toSub : PureExpr, subFor : PureVar) : PureVal = ???
 
   def >(p : PureVal) : Boolean = sys.error("GT for arbitrary PureVal")
@@ -755,7 +755,7 @@ sealed abstract class PureVal(v:Any) extends PureExpr {
 //    case _ => false
 //  }
   override def toString : String = v.toString
-  def z3Tag:Option[String]
+//  def z3Tag:Option[String]
 }
 case object PureVal{
   implicit val rw:RW[PureVal] = RW.merge(
@@ -766,29 +766,35 @@ case object PureVal{
 case object NullVal extends PureVal{
   override def toString:String = "NULL"
 
-  override def z3Tag: Option[String] = Some("NULL")
+  //override def z3Tag: Option[String] = Some("NULL")
   implicit val rw:RW[NullVal.type] = macroRW
+
+  override def solverName: String = "const_NULL"
+
 }
 
 case class IntVal(v : Int) extends PureVal(v){
-  override def z3Tag: Option[String] = Some(s"I$v")
+  override def solverName: String = s"const_I$v"
 }
 //TODO: is BoolVal ever actually used?
 case class BoolVal(v : Boolean) extends PureVal(v) {
-  override def z3Tag: Option[String] = Some(s"B$v")
+  override def solverName: String = s"const_B$v"
 }
 case class StringVal(v : String) extends PureVal(v) {
-  override def z3Tag: Option[String] = Some(s"S${v.hashCode}")
+  override def solverName: String = s"const_S${v.hashCode}"
 }
 case class ClassVal(name:String) extends PureVal(name) {
-  override def z3Tag: Option[String] = Some(s"C$name")
+  override def solverName: String = s"C$name"
 }
 object ClassVal{
   implicit val rw:RW[ClassVal] = macroRW
 }
 case object TopVal extends PureVal(null) {
-  override def z3Tag: Option[String] = None
+  override def solverName:String = "const_T_"
   override def toString:String = "_T_"
+}
+case object BotVal extends PureVal(null) {
+  override def solverName:String = "const_Bot_"
 }
 
 sealed trait TypeConstraint
@@ -821,7 +827,7 @@ object PureVar{
   implicit val rw:RW[PureVar] = RW.merge(NPureVar.rw, NamedPureVar.rw)
 }
 
-sealed case class NPureVar(id:Int) extends PureVar {
+sealed case class NPureVar(id:Int) extends PureVar with Nameable {
 //  val id : Int = State.getId()
   override def getVars(s : Set[PureVar]) : Set[PureVar] = s + this
 
@@ -830,17 +836,21 @@ sealed case class NPureVar(id:Int) extends PureVar {
   override def hashCode : Int = id*100271
 
   override def toString : String = "p-" + id
+
+  override def solverName: String = s"pv-$id"
 }
 object NPureVar{
   implicit val rw:RW[NPureVar] = macroRW
 }
 
-sealed case class NamedPureVar(n:String) extends PureVar {
+sealed case class NamedPureVar(n:String) extends PureVar with Nameable {
   override def substitute(toSub: PureExpr, subFor: PureVar): PureExpr = if (subFor == this) toSub else this
 
   override def getVars(s: Set[PureVar]): Set[PureVar] = s + this
 
   override def toString : String = "p-" + n
+
+  override def solverName: String = s"npv-$n"
 }
 
 object NamedPureVar{

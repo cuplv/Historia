@@ -293,7 +293,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       assert(BounderUtil.interpretResult(result,QueryFinished) == Proven)
       // Search refutation state for materialized "o2" field
       // Should not be in there since conditional is not relevant
-      val o2ExistsInRef = result.exists((p:IPathNode) => findInWitnessTree(p,
+      val o2ExistsInRef = result.exists((p:IPathNode) => BounderUtil.findInWitnessTree(p,
         {pn => pn.qry.state.heapConstraints.exists{
           case (FieldPtEdge(_,fieldName),_) if fieldName == "o2" =>
             println(pn.qry.state)
