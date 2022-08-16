@@ -1309,19 +1309,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
     makeApkWithSources(Map("MyFragment.java"->src), MkApk.RXBase, test)
   }
 
-  def findInWitnessTree(node: IPathNode, nodeToFind: IPathNode => Boolean)
-                       (implicit om: OutputMode): Option[List[IPathNode]] = {
-    if(nodeToFind(node))
-      Some(List(node))
-    else{
-      node.succ match{
-        case Nil => None
-        case v => v.collectFirst{
-          case v2 if findInWitnessTree(v2, nodeToFind).isDefined => findInWitnessTree(v2,nodeToFind).get
-        }
-      }
-    }
-  }
+
   test("Minimal motivating example with irrelevant unsubscribe") {
     List(
       ("sub.unsubscribe();", Proven, "withUnsub"),
@@ -1445,7 +1433,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           assert(interpretedResult == expectedResult)
           assert(BounderUtil.characterizeMaxPath(result.flatMap(a => a.terminals)) == MultiCallback)
           val onViewCreatedInTree: Set[List[IPathNode]] = result.flatMap(a => a.terminals).flatMap { node =>
-            findInWitnessTree(node, (p: IPathNode) =>
+            BounderUtil.findInWitnessTree(node, (p: IPathNode) =>
               p.qry.loc.msgSig.exists(m => m.contains("onViewCreated(")))
           }
           if (onViewCreatedInTree.nonEmpty) {

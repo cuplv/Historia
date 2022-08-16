@@ -425,4 +425,17 @@ object BounderUtil {
     }
   }
 
+  def findInWitnessTree(node: IPathNode, nodeToFind: IPathNode => Boolean)
+                       (implicit om: OutputMode): Option[List[IPathNode]] = {
+    if(nodeToFind(node))
+      Some(List(node))
+    else{
+      node.succ match{
+        case Nil => None
+        case v => v.collectFirst{
+          case v2 if findInWitnessTree(v2, nodeToFind).isDefined => findInWitnessTree(v2,nodeToFind).get
+        }
+      }
+    }
+  }
 }

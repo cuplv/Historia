@@ -191,7 +191,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
       initializeFieldAxioms(messageTranslator)
   }
   override def solverString(messageTranslator: MessageTranslator)(implicit zCtx: Z3SolverCtx):String = {
-    initializeAllAxioms(messageTranslator)
+    //initializeAllAxioms(messageTranslator)
     zCtx.solver.toString
   }
 
@@ -215,11 +215,15 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
         zCtx.solver.push()
         h(messageTranslator)
         checkSatPush(messageTranslator, t)
+      case (Status.UNKNOWN, h::t) =>
+        zCtx.solver.push()
+        h(messageTranslator)
+        checkSatPush(messageTranslator, t)
       case (Status.SATISFIABLE, Nil) =>
         // No more axioms to try
         true
-      case (Status.UNKNOWN, _) =>
-        interpretSolverOutput(res) //TODO: throw here or try pushing next axiom?
+      case (Status.UNKNOWN, Nil) =>
+        throw new IllegalStateException("Unknown, no more axioms, failure.")
     }
     interp
   }
@@ -691,13 +695,6 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
 
   override protected def mkNames(types: List[String])(implicit zCtx:Z3SolverCtx): Map[String,AST] = {
     val tmap:Map[String,AST] = types.map(t => (t -> zCtx.ctx.mkConst(t, iNameSort))).toMap
-    if(!zCtx.uninterpretedTypes.contains(iNameString)){
-      val u = zCtx.ctx.mkFreshConst("u", iNameSort)
-      val eachT = mkOr(tmap.map{case (_,v) => mkEq(u, v)}).asInstanceOf[BoolExpr]
-      zCtx.mkAssert(zCtx.ctx.mkForall(Array(u), eachT, 1, null,null,null,null))
-      val tOnly = tmap.map{case (_,v) => v.asInstanceOf[Expr[UninterpretedSort]]}
-      zCtx.mkAssert(zCtx.ctx.mkDistinct(tOnly.toArray:_*))
-    }
     tmap
   }
 
@@ -801,14 +798,12 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     s"field_${fld}"
   }
 
-  protected def mkConstConstraintsMap(pvs: Set[PureVal])(implicit zCtx: Z3SolverCtx): (AST, Map[PureVal, AST]) = {
+  protected def mkConstConstraintsMap(pvs: Set[PureVal])(implicit zCtx: Z3SolverCtx): Map[PureVal, AST] = {
     val ctx = zCtx.ctx
     val constMap = pvs.flatMap{t =>
       t.z3Tag.map(tag => (t-> ctx.mkConst(s"const_${tag}", constSort)))
     }.toMap
-    val allConstraints: immutable.Iterable[Expr[UninterpretedSort]] = constMap.map{case (_,c) => c}
-    val unique = mkDistinctT(allConstraints)
-    (unique, constMap)
+    constMap
   }
 
   private def iNameString = "inames"
@@ -829,6 +824,29 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     zCtx.ctx.mkFuncDecl("msgLTE", msgMsg, zCtx.ctx.mkBoolSort)
   }
 
+  override def initializeNameAxioms(messageTranslator:MessageTranslator)(implicit zCtx:Z3SolverCtx):Unit = {
+    if(!zCtx.uninterpretedTypes.contains(iNameString)){
+      val u = zCtx.ctx.mkFreshConst("u", iNameSort)
+      val tmap = mkNames(messageTranslator.inamelist)
+      val eachT = mkOr(tmap.map{case (_,v) => mkEq(u, v)}).asInstanceOf[BoolExpr]
+      val tOnly = tmap.map{case (_,v) => v.asInstanceOf[Expr[UninterpretedSort]]}
+      zCtx.mkAssert(zCtx.ctx.mkForall(Array(u), eachT, 1, null,null,null,null))
+      zCtx.mkAssert(zCtx.ctx.mkDistinct(tOnly.toArray:_*))
+    }
+  }
+  override def initalizeConstAxioms(messageTranslator: MessageTranslator)(implicit zCtx:Z3SolverCtx): Unit = {
+    val ctx = zCtx.ctx
+    val constMap = mkConstConstraintsMap(messageTranslator.pureValSet)
+    val allConstraints = constMap.map{
+      case (_,c) => c.asInstanceOf[Expr[UninterpretedSort]]
+    }
+    val unique = mkDistinctT(allConstraints)
+    zCtx.mkAssert(unique)
+    val const = ctx.mkFreshConst("constVal", constSort)
+    val oneOf = allConstraints.map(c => mkEq(c,const)).reduce(mkOr).asInstanceOf[BoolExpr]
+    val forall = ctx.mkForall(Array(const), oneOf,1, null, null, null, null)
+    zCtx.mkAssert(forall)
+  }
   override def initializeZeroAxioms(messageTranslator: MessageTranslator)(implicit zCtx:Z3SolverCtx): Unit = {
     val ctx = zCtx.ctx
     val lte = msgLTE

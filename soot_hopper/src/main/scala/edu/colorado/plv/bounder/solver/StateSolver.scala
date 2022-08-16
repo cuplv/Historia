@@ -38,6 +38,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   def initializeFieldAxioms(messageTranslator: MessageTranslator)(implicit zCtx:C):Unit
 
+  def initializeNameAxioms(messageTranslator: MessageTranslator)(implicit zCtx:C):Unit
+
+  def initalizeConstAxioms(messageTranslator: MessageTranslator)(implicit zCtx:C):Unit
+
   def solverString(messageTranslator: MessageTranslator)(implicit zCtx:C):String
 
   def checkSAT(messageTranslator: MessageTranslator,
@@ -140,7 +144,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   protected def mkLocalDomain(locals: Set[(String, Int)])(implicit zctx: C): (T, Map[(String, Int), T])
 
-  protected def mkConstConstraintsMap(pvs: Set[PureVal])(implicit zctx: C): (T, Map[PureVal, T])
+  protected def mkConstConstraintsMap(pvs: Set[PureVal])(implicit zctx: C): Map[PureVal, T]
 
   protected def mkTypeConstraintForAddrExpr(typeFun: T, typeToSolverConst: Map[Int, T],
                                             addr: T, tc: Set[Int])(implicit zctx: C): T
@@ -618,12 +622,21 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   }
 
+  //TODO: replace all "sets of things" with SetOfEncoder
+  trait Nameable{
+    def solverName:String
+  }
+  trait SetOfEncoder[T<:Nameable]{
+
+  }
+
+
   case class MessageTranslator(states: Iterable[State], specSpace: SpecSpace)(implicit zCtx: C) {
     // Trace messages
     private val alli = allITraceAbs(states.map(_.traceAbstraction).toSet) ++ specSpace.allI
     private val inameToI: Map[String, Set[Once]] = alli.groupBy(_.identitySignature)
     // OTHER is name for unmodeled messages, INIT is name for first message
-    private val inamelist = "OTHEROTHEROTHER"::"INITINIT" :: inameToI.keySet.toList
+    lazy val inamelist = "OTHEROTHEROTHER"::"INITINIT" :: inameToI.keySet.toList
     private val identitySignaturesToSolver = mkNames(inamelist)
     val solverToIdentitySignature:List[(T,String)] = identitySignaturesToSolver.map{
       case (k,v) => (v,k)
@@ -641,14 +654,14 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     }}.toSet
 
     // Constants
-    private val pureValSet = states.foldLeft(Set[PureVal]()){
+    val pureValSet = states.foldLeft(Set[PureVal]()){
       case (acc,v) => acc.union(getPureValSet(v.pureFormula))
-    } + NullVal + BoolVal(true) + BoolVal(false) + IntVal(0) + IntVal(1)
-    private val (uniqueConst, constMap1) = mkConstConstraintsMap(pureValSet)
+    } + NullVal + IntVal(0) + IntVal(1) //+ BoolVal(true) + BoolVal(false) + IntVal(0) + IntVal(1)
+    private val constMap1 = mkConstConstraintsMap(pureValSet)
     val constMap = constMap1 +
       (BoolVal(true)-> constMap1(IntVal(1))) + (BoolVal(false) -> constMap1(IntVal(0)))
     def getConstMap():Map[PureVal,T] = constMap
-    zCtx.mkAssert(uniqueConst)
+    //    zCtx.mkAssert(uniqueConst)
 
     // Types
     private val allTypeValues = states.foldLeft(Set[Int]()){
@@ -731,7 +744,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
           println(ast.toString)
         }
         zCtx.mkAssert(ast)
-        val sat = checkSAT(messageTranslator, List(initializeFieldAxioms, initializeOrderAxioms))
+        val sat = checkSAT(messageTranslator, List(initalizeConstAxioms, initializeNameAxioms, initializeFieldAxioms, initializeOrderAxioms))
         //      val simpleAst = solverSimplify(ast, stateWithNulls, messageTranslator, maxWitness.isDefined)
 
         //      if(simpleAst.isEmpty)
@@ -1002,7 +1015,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       val s2Encode = toASTState(s2, messageTranslator,None, specSpace)
       zCtx.mkAssert(s2Encode)
       val foundCounter =
-        checkSAT(messageTranslator,List(initializeFieldAxioms, initializeOrderAxioms))
+        checkSAT(messageTranslator,List(initalizeConstAxioms, initializeNameAxioms, initializeFieldAxioms, initializeOrderAxioms))
       !foundCounter
     }catch{
       case e:IllegalArgumentException if e.getLocalizedMessage.contains("timeout") =>
@@ -1266,7 +1279,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         specSpace = specSpace, debug = maxLen.isDefined)
       zCtx.mkAssert(s2Enc)
       val foundCounter =
-        checkSAT(messageTranslator, List(initializeOrderAxioms,initializeFieldAxioms))
+        checkSAT(messageTranslator, List(initalizeConstAxioms,initializeNameAxioms, initializeOrderAxioms,initializeFieldAxioms))
 
       if (foundCounter && maxLen.isDefined) {
         printDbgModel(messageTranslator, Set(s1.traceAbstraction,s2.traceAbstraction))
@@ -1359,7 +1372,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       initializeZeroAxioms(messageTranslator)
       val pvMap: Map[PureVar, T] = encodeTraceContained(state, trace,
         messageTranslator = messageTranslator, specSpace = specSpace)
-      val sat = checkSAT(messageTranslator,List(initializeOrderAxioms,initializeFieldAxioms))
+      val sat = checkSAT(messageTranslator,List(initalizeConstAxioms,initializeNameAxioms,initializeOrderAxioms,initializeFieldAxioms))
       if (sat && debug) {
         println(s"model:\n ${zCtx.asInstanceOf[Z3SolverCtx].solver.toString}")
         printDbgModel(messageTranslator, Set(state.traceAbstraction))

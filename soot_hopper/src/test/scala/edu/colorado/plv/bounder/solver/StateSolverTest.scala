@@ -1139,8 +1139,13 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val st1 = st(AbstractTrace(clickTgt_x::Nil), Map(x -> p1, z->p4))
     val st2 = st(AbstractTrace(FreshRef(c)::findVTgt_yz::clickTgt_x::Nil),
       Map(x -> p1, y -> p2, z -> p3, c->p4))
+    //val s1enc = EncodingTools.rhsToPred(st1.sf.traceAbstraction.rightOfArrow, spec)
+    //val s2enc = EncodingTools.rhsToPred(st2.sf.traceAbstraction.rightOfArrow, spec)
+    //For s2 we can choose p-y and p-z such that empty trace is accepted.
+    //s1 cannot accept the empty trace
+    // Therefore s1 can be subsumed by s2 but not vis versa
     assert(!f.canSubsume(st1,st2, spec))
-    assert(!f.canSubsume(st2, st1, spec))
+    assert(f.canSubsume(st2, st1, spec))
 
 //    val specfull = new SpecSpace(Set(
 //      ViewSpec.clickWhileActive,
@@ -1247,7 +1252,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     // Precision is not lost since transfer functions handle this constraint
     // assert(f.canSubsume(s2,s1,esp))
     val s2NE = s2.addPureConstraint(PureConstraint(p1, NotEquals, p2))
-    assert(!f.canSubsume(s2NE,s1,esp))
+    assert(f.canSubsume(s2NE,s1,esp))
   }
   test("|> y.onDestroy() |>null = x.getActivity() not refuted"){fTest =>
     val stateSolver = fTest.stateSolver
