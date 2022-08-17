@@ -16,7 +16,7 @@ trait Nameable{
   def solverName:String
 }
 
-trait LatticeEncoder[T, C <: SolverCtx[T]]{
+trait SetEncoder[T, C <: SolverCtx[T]]{
   def getAxioms()(implicit zCtx:C):T
   def mkUpperBound(v:Nameable)(implicit zCtx:C):T
 }
@@ -39,7 +39,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    * @param closed Are all values represented by the lattice or are "other" values possible
    * @return
    */
-  def getLatticeEncoder(values:Map[Nameable,Nameable], typeName:String, closed:Boolean):LatticeEncoder[T,C]
+  def getSetEncoder(values:Set[Nameable], typeName:String, closed:Boolean):SetEncoder[T,C]
   def setSeed(v:Int)(implicit zCtx: C):Unit
   // checking
   def getSolverCtx: C

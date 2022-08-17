@@ -1005,9 +1005,9 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     zCtx.ctx.mkConst("zeroMessage___",msgSort)
   }
 
-  case class Z3LatticeEncoder(values:Map[Nameable,Nameable],
-                              typeName:String,
-                              closed:Boolean) extends LatticeEncoder[AST, Z3SolverCtx]{
+  case class Z3SetEncoder(values:Map[Nameable,Nameable],
+                          typeName:String,
+                          closed:Boolean) extends SetEncoder[AST, Z3SolverCtx]{
     override def getAxioms()(implicit zCtx: Z3SolverCtx): AST = {
       val leastMost = values.filter{
         case (v, BotVal) => true
@@ -1018,9 +1018,12 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
 
     override def mkUpperBound(v: Nameable)(implicit zCtx: Z3SolverCtx): AST = ???
   }
-  override def getLatticeEncoder(values:Map[Nameable,Nameable],
+
+  //TODO:====== Use predicates to encode sets rather than uninterpreted sort functions
+  //TODO: de-duplicate this logic for names, const values, addresses, and allocation sites
+  override def getSetEncoder(values:Set[Nameable],
                                  typeName:String,
-                                 closed:Boolean):LatticeEncoder[AST, Z3SolverCtx] = {
+                                 closed:Boolean):SetEncoder[AST, Z3SolverCtx] = {
     ???
   }
 }
