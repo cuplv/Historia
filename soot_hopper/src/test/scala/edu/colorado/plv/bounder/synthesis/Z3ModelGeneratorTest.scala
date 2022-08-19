@@ -3,16 +3,17 @@ package edu.colorado.plv.bounder.synthesis
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{MultiCallback, Proven, Witnessed}
-import edu.colorado.plv.bounder.ir.{CBEnter, CallbackMethodInvoke, JimpleFlowdroidWrapper, LocalWrapper, TestIRMethodLoc}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, LSPred, NS, Once, PredicateSpace, SetSignatureMatcher, SignatureMatcher}
-import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifecycleSpec, RxJavaSpec, SpecSpace}
+import edu.colorado.plv.bounder.ir.{AppLoc, CBEnter, CallbackMethodInvoke, CallbackMethodReturn, JimpleFlowdroidWrapper, LocalWrapper, TestIRMethodLoc}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, Exists, LSPred, LSSingle, LSSpec, NS, Once, PredicateSpace, SetSignatureMatcher, SignatureMatcher, UComb}
+import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSignatures, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.{QueryFinished, SparkCallGraph, SymbolicExecutorConfig, TransferFunctions}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, CallStackFrame, CallinReturnNonNull, DBOutputMode, IPathNode, NamedPureVar, PrettyPrinting, PureVar, Qry, StackVar, State, StateFormula}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, CallStackFrame, CallinReturnNonNull, DBOutputMode, IPathNode, MemoryOutputMode, NamedPureVar, OrdCount, OutputMode, PathNode, PrettyPrinting, PureExpr, PureVal, PureVar, Qry, StackVar, State, StateFormula, TopVal, Unknown}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
+//import edu.colorado.plv.bounder.symbolicexecutor.SymbolicExecutor.LexicalStackThenTopo
 
 class Z3ModelGeneratorTest extends AnyFunSuite {
 
@@ -20,7 +21,8 @@ class Z3ModelGeneratorTest extends AnyFunSuite {
   val fooMethod = TestIRMethodLoc("","foo", List(Some(LocalWrapper("@this","Object"))))
   private val prettyPrinting = new PrettyPrinting()
   val cgMode = SparkCallGraph
-  test("generate paths for test"){
+  ignore("Synthesize model based on bug and fix pair"){
+    //TODO
     List(
       ("sub.unsubscribe();", Proven, "withUnsub"),
       ("", Witnessed, "noUnsub")
@@ -149,26 +151,90 @@ class Z3ModelGeneratorTest extends AnyFunSuite {
         "ItemDescriptionFragment.java" -> src2), MkApk.RXBase, test)
     }
   }
-  test("Encode Node Reachability"){
-    // TODO: implement model generator
-    val a = NamedPureVar("a")
-    val gen = new Z3ModelGenerator(???)
-    val dummyLoc = CallbackMethodInvoke(tgtClazz = "",
-      fmwName="void foo()", fooMethod)
-    val pureVar = PureVar(1)
-    val frame = CallStackFrame(dummyLoc, None, Map(StackVar("this") -> pureVar))
-    val state = State(StateFormula(List(frame), Map(), Set(),Map(),AbstractTrace(Nil)),0)
-    val qryR1 = Qry(state, dummyLoc, ???)
 
-    val barPred = Once(CBEnter,Set(("","void bar()")), List(a))
-    val fooPred = Once(CBEnter,Set(("","void foo()")), List(a))
-    val pred = barPred
+  val a = NamedPureVar("a")
+  val f = NamedPureVar("f")
+  val l = NamedPureVar("l")
+  val s = NamedPureVar("s")
+  val t = NamedPureVar("t")
+  val v = NamedPureVar("v")
+  val a_onCreate = SpecSignatures.Activity_onCreate_entry
+  val a_onDestroy = SpecSignatures.Activity_onDestroy_exit
+  val s_a_subscribe = SpecSignatures.RxJava_subscribe_exit.copy(lsVars = s::TopVal::a::Nil)
+  val s_unsubscribe = SpecSignatures.RxJava_unsubscribe_exit
+  val t_create = SpecSignatures.RxJava_create_exit
+  val a_call = SpecSignatures.RxJava_call_entry.copy(lsVars = TopVal::a::Nil)
 
-    val theta = Map(
-      "a" -> pureVar
+  def targetIze(history:List[LSSingle]):List[LSSingle] = {
+    def vTargetIze(pureExpr:PureExpr):PureExpr = pureExpr match {
+      case NamedPureVar(name) => NamedPureVar(s"${name}_tgt")
+      case other => other
+    }
+    history.map {
+      case LifeState.CLInit(sig) => ???
+      case LifeState.FreshRef(v) => ???
+      case Once(mt, signatures, lsVars) => Once(mt, signatures, lsVars.map(vTargetIze))
+    }
+  }
+
+  val dummyMethod = TestIRMethodLoc("","",Nil)
+  val dummyLoc = CallbackMethodInvoke("", "", dummyMethod)
+  val top = State.topState
+
+  def witTreeFromMsgList(history : List[LSSingle])
+                        ( implicit ord: OrdCount, mode: OutputMode = MemoryOutputMode):Set[IPathNode] = history match{
+    case at@_::t =>
+      val qry = Qry(top.copy(sf=top.sf.copy(traceAbstraction = AbstractTrace(at))), dummyLoc, Unknown)
+      //Set(PathNode(qry, witTreeFromMsgList(t).toList, None)) //TODO: test out full enc
+      Set(PathNode(qry, Nil, None))
+    case Nil => Set.empty
+  }
+
+  class DummyOrd extends OrdCount{
+
+    override def delta(current: Qry): Int = current.loc match {
+      case CallbackMethodInvoke(_, _, _) => 1
+      case CallbackMethodReturn(_, _, _, _) => 1
+      case _ => 0
+    }
+
+    override def compare(x: IPathNode, y: IPathNode): Int = ???
+  }
+
+  val hierarchy: Map[String, Set[String]] =
+    Map("java.lang.Object" -> Set("String", "Foo", "Bar",
+      "com.example.createdestroy.MyFragment",
+      "rx.Single",
+      "com.example.createdestroy.-$$Lambda$MyFragment$hAOPQ7FFP1lMCJX7gGOvwmZq1uk",
+      "java.lang.Object"),
+      "String" -> Set("String"), "Foo" -> Set("Bar", "Foo"), "Bar" -> Set("Bar"),
+      "com.example.createdestroy.MyFragment" -> Set("com.example.createdestroy.MyFragment"),
+      "com.example.createdestroy.-$$Lambda$MyFragment$hAOPQ7FFP1lMCJX7gGOvwmZq1uk" ->
+        Set("com.example.createdestroy.-$$Lambda$MyFragment$hAOPQ7FFP1lMCJX7gGOvwmZq1uk"),
+      "rx.Single" -> Set("rx.Single"),
+      "foo" -> Set("foo"),
+      "bar" -> Set("bar"),
+      "foo2" -> Set("foo2")
     )
-    val predSpace = new PredicateSpace(Set(fooPred, barPred))
+  private val classToInt: Map[String, Int] = hierarchy.keySet.zipWithIndex.toMap
+  val intToClass: Map[Int, String] = classToInt.map(k => (k._2, k._1))
+  test("Encode Node Reachability"){
+    implicit val ord = new DummyOrd
+    implicit val outputMode = MemoryOutputMode
+    //TODO: may need to declare vars distinct
+    val unreachSeq = witTreeFromMsgList(
+      targetIze(List(a_onCreate, t_create, s_a_subscribe,a_onDestroy, s_unsubscribe, a_call)))
+    val reachSeq = witTreeFromMsgList(
+      targetIze(List(a_onCreate, t_create, s_a_subscribe,a_onDestroy, a_call)))
+    val cha = new ClassHierarchyConstraints(hierarchy,Set("java.lang.Runnable"),intToClass)
+    val gen = new Z3ModelGenerator(cha)
+    val spec = new SpecSpace(Set(
+      LSSpec(a::Nil,Nil,  UComb("call", a_onDestroy::Exists(s::l::Nil,NS(s_a_subscribe, s_unsubscribe))::Nil) , a_call)
+    ))
+    val res = gen.learnRulesFromExamples(unreachSeq, reachSeq, spec)
     ???
+
+
 
   }
 }

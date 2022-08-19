@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.solver
 
 import edu.colorado.plv.bounder.ir.MessageType
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, CLInit, Exists, Forall, FreshRef, LSAtom, LSConstraint, LSFalse, LSImplies, LSPred, LSSingle, LSSpec, LSTrue, NS, Not, Once, Or, SignatureMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, CLInit, Exists, Forall, FreshRef, LSAtom, LSConstraint, LSFalse, LSImplies, LSPred, LSSingle, LSSpec, LSTrue, NS, Not, Once, Or, SignatureMatcher, UComb}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, Equals, FieldPtEdge, NPureVar, NamedPureVar, NotEquals, PureConstraint, PureExpr, PureVal, PureVar, State, StaticPtEdge, TopVal}
 
@@ -28,6 +28,8 @@ object EncodingTools {
     }
   }
   private def updArrowPhi(i:Once, lsPred:LSPred):LSPred = lsPred match {
+    case UComb(name, dep, false) => UComb(name, dep.map(d => updArrowPhi(i,d)))
+    case UComb(name, dep, true) => throw new IllegalArgumentException("cannot updated negated UComb")
     case Forall(v,p) => Forall(v,updArrowPhi(i:Once, p:LSPred))
     case Exists(v,p) => Exists(v,updArrowPhi(i:Once, p:LSPred))
     case l:LSConstraint => l
@@ -99,6 +101,7 @@ object EncodingTools {
     }._1.filter(p => p != LSTrue)
   }
   def simplifyPred(pred:LSPred):LSPred = pred match {
+    case UComb(name, dep, argNegated) => UComb(name, dep.map(simplifyPred), argNegated)
     case LifeState.Exists(Nil, p) => simplifyPred(p)
     case LifeState.Forall(Nil, p) => simplifyPred(p)
     case c@LSConstraint(v1, op, v2) => c

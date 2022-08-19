@@ -93,6 +93,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    */
   protected def dumpDbg[V](cont: () => V)(implicit zCtx: C): V
 
+  protected def mkUcomb(name:String, args:List[T])(implicit zctx: C):T
   protected def mkForallAddr(name: PureVar, cond: T => T)(implicit zctx: C): T
 
   protected def mkForallAddr(name: Map[PureVar, T], cond: Map[PureVar, T] => T)(implicit zCtx: C): T
@@ -304,13 +305,19 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   }
 
 
-  private def encodePred(combinedPred: LifeState.LSPred,
+  protected def encodePred(combinedPred: LifeState.LSPred,
                          messageTranslator: MessageTranslator,
                          modelVarMap: PureVar => T,
                          typeToSolverConst: Map[Int, T],
                          typeMap: Map[PureVar, TypeSet],
                          constMap:Map[PureVal, T])(implicit zctx: C): T = {
     val res = combinedPred match {
+      case UComb(name, dep, neg) =>
+        val uc = mkUcomb(name, dep.map{d => encodePred(d, messageTranslator, modelVarMap,
+          typeToSolverConst, typeMap, constMap)})
+        if(neg){
+          mkNot(uc)
+        }else uc
       case Forall(h::t, p) =>
         mkForallAddr(h, (v:T) => {
           val newModelVarMap:PureVar => T = s => if(s == h) v else modelVarMap(s)

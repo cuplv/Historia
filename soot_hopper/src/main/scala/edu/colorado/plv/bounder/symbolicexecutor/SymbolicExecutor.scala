@@ -61,6 +61,73 @@ case class SymbolicExecutorConfig[M,C](stepLimit: Int,
   def getSymbolicExecutor =
     new SymbolicExecutor[M, C](this)
 }
+
+class LexicalStackThenTopo[M,C](w:IRWrapper[M,C]) extends OrdCount{
+  override def delta(current: Qry): Int = current.loc match {
+    case CallbackMethodInvoke(_, _, _) => 1
+    case CallbackMethodReturn(_, _, _, _) => 1
+    case _ => 0
+  }
+  private def compareLocAtSameStack(l1:Loc, l2:Loc):Int = (l1,l2) match {
+    case (AppLoc(m1,l1,isPre1), AppLoc(m2,l2,isPre2)) if m1 == m2 && l1 == l2 =>
+      if(isPre1 == isPre2) {
+        //            println(s"no ord:   p1: ${p1.qry.loc} p2: ${p2.qry.loc}")
+        0
+      }
+      else if(isPre1)
+        -1 // p2 is post line and should go first
+      else {
+        1 // p1 is post line and should go first
+      }
+    case (a1@AppLoc(m1,_,_), a2@AppLoc(m2,_,_)) if m1 == m2 =>
+      val c1 = w.commandTopologicalOrder(w.cmdAtLocation(a1))
+      val c2 = w.commandTopologicalOrder(w.cmdAtLocation(a2))
+      c1 - c2 // reversed because topological order increases from beginning of function
+    case (entry, AppLoc(_, _, _)) if entry.isEntry.contains(true) => -1
+    case (AppLoc(_,_,_), entry) if entry.isEntry.contains(true) => 1
+    case (exit, AppLoc(_,_,_)) if exit.isEntry.contains(false) => 1
+    case (AppLoc(_,_,_), exit) if exit.isEntry.contains(false) => -1
+    case (entry, exit) if exit.isEntry.contains(false) && entry.isEntry.contains(true) => -1
+    case (exit, entry) if exit.isEntry.contains(false) && entry.isEntry.contains(true) => 1
+    case (msg1,msg2) if msg1 == msg2 => 0
+    case (msg1, msg2) if msg1.isEntry.isDefined && msg2.isEntry.isDefined =>
+      if(msg1.toString < msg2.toString) 1 else -1
+    case (AppLoc(m1,_,_), AppLoc(m2,_,_)) => if(m1.toString < m2.toString) 1 else -1
+    case (v1,v2) =>
+      println(v1)
+      println(v2)
+      ???
+  }
+  // return positive if p1 should be first
+  // return negative if p2 should be first
+  override def compare(p1: IPathNode, p2: IPathNode): Int = {
+    if(p1.ordDepth != p2.ordDepth){
+      // Prefer smaller number of callbacks
+      return p2.ordDepth - p1.ordDepth
+    }
+
+    // comparing things from the base of the stack up, reversing for convenience
+    val stack1 = ((None,Some(p1.qry.loc)):: p1.state.callStack.map(sf => (Some(sf.exitLoc),sf.retLoc))).reverse
+    val stack2 = ((None,Some(p2.qry.loc)):: p2.state.callStack.map(sf => (Some(sf.exitLoc),sf.retLoc))).reverse
+
+    @tailrec
+    def iCompare(s1: List[(Option[Loc], Option[Loc])], s2:List[(Option[Loc], Option[Loc])]):Int = (s1,s2) match{
+      case (Nil,Nil) =>
+        p2.depth - p1.depth
+      case (h1::t1, h2::t2) if h1 == h2 => iCompare(t1,t2)
+      case (h1::t1, h2::t2) if h1._2.isDefined && h2._2.isDefined=>
+        val res = compareLocAtSameStack(h1._2.get, h2._2.get)
+        if(res == 0)
+          iCompare(t1,t2)
+        else res
+      case (Nil,_) => -1
+      case (_,Nil) => 1
+      case (h1::t1, h2::t2) if h1._1 != h2._1 =>
+        if(h1._1.toString < h2._1.toString) 1 else -1
+    }
+    iCompare(stack1,stack2)
+  }
+}
 sealed trait QueryResult
 case object QueryFinished extends QueryResult
 case class QueryInterrupted(reason:String) extends QueryResult
@@ -70,6 +137,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
 
   implicit val pathMode: OutputMode = config.outputMode
   implicit val w = config.w
+  implicit val ord = new LexicalStackThenTopo[M,C](w)
   private val cha = w.getClassHierarchyConstraints
 
   private val invarMap = mutable.HashMap[SubsumableLocation, Set[IPathNode]]()
@@ -104,73 +172,6 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
 
   def getControlFlowResolver: ControlFlowResolver[M, C] = controlFlowResolver
   lazy val stateSolver = new Z3StateSolver(cha)
-
-  implicit object LexicalStackThenTopo extends OrdCount{
-    override def delta(current: Qry): Int = current.loc match {
-      case CallbackMethodInvoke(_, _, _) => 1
-      case CallbackMethodReturn(_, _, _, _) => 1
-      case _ => 0
-    }
-    private def compareLocAtSameStack(l1:Loc, l2:Loc):Int = (l1,l2) match {
-      case (AppLoc(m1,l1,isPre1), AppLoc(m2,l2,isPre2)) if m1 == m2 && l1 == l2 =>
-        if(isPre1 == isPre2) {
-          //            println(s"no ord:   p1: ${p1.qry.loc} p2: ${p2.qry.loc}")
-          0
-        }
-        else if(isPre1)
-          -1 // p2 is post line and should go first
-        else {
-          1 // p1 is post line and should go first
-        }
-      case (a1@AppLoc(m1,_,_), a2@AppLoc(m2,_,_)) if m1 == m2 =>
-        val c1 = w.commandTopologicalOrder(w.cmdAtLocation(a1))
-        val c2 = w.commandTopologicalOrder(w.cmdAtLocation(a2))
-        c1 - c2 // reversed because topological order increases from beginning of function
-      case (entry, AppLoc(_, _, _)) if entry.isEntry.contains(true) => -1
-      case (AppLoc(_,_,_), entry) if entry.isEntry.contains(true) => 1
-      case (exit, AppLoc(_,_,_)) if exit.isEntry.contains(false) => 1
-      case (AppLoc(_,_,_), exit) if exit.isEntry.contains(false) => -1
-      case (entry, exit) if exit.isEntry.contains(false) && entry.isEntry.contains(true) => -1
-      case (exit, entry) if exit.isEntry.contains(false) && entry.isEntry.contains(true) => 1
-      case (msg1,msg2) if msg1 == msg2 => 0
-      case (msg1, msg2) if msg1.isEntry.isDefined && msg2.isEntry.isDefined =>
-        if(msg1.toString < msg2.toString) 1 else -1
-      case (AppLoc(m1,_,_), AppLoc(m2,_,_)) => if(m1.toString < m2.toString) 1 else -1
-      case (v1,v2) =>
-        println(v1)
-        println(v2)
-        ???
-    }
-    // return positive if p1 should be first
-    // return negative if p2 should be first
-    override def compare(p1: IPathNode, p2: IPathNode): Int = {
-      if(p1.ordDepth != p2.ordDepth){
-        // Prefer smaller number of callbacks
-        return p2.ordDepth - p1.ordDepth
-      }
-
-      // comparing things from the base of the stack up, reversing for convenience
-      val stack1 = ((None,Some(p1.qry.loc)):: p1.state.callStack.map(sf => (Some(sf.exitLoc),sf.retLoc))).reverse
-      val stack2 = ((None,Some(p2.qry.loc)):: p2.state.callStack.map(sf => (Some(sf.exitLoc),sf.retLoc))).reverse
-
-      @tailrec
-      def iCompare(s1: List[(Option[Loc], Option[Loc])], s2:List[(Option[Loc], Option[Loc])]):Int = (s1,s2) match{
-        case (Nil,Nil) =>
-          p2.depth - p1.depth
-        case (h1::t1, h2::t2) if h1 == h2 => iCompare(t1,t2)
-        case (h1::t1, h2::t2) if h1._2.isDefined && h2._2.isDefined=>
-          val res = compareLocAtSameStack(h1._2.get, h2._2.get)
-          if(res == 0)
-            iCompare(t1,t2)
-          else res
-        case (Nil,_) => -1
-        case (_,Nil) => 1
-        case (h1::t1, h2::t2) if h1._1 != h2._1 =>
-          if(h1._1.toString < h2._1.toString) 1 else -1
-      }
-      iCompare(stack1,stack2)
-    }
-  }
 
 
   case class QueryData(queryId:Int, location:Loc, terminals: Set[IPathNode], runTime:Long, result : QueryResult)
@@ -271,8 +272,8 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     }
   }
   class GrouperQ {
-    val qrySet = new mutable.PriorityQueue[IPathNode]()(LexicalStackThenTopo)
-    val groupedQrySet = new mutable.PriorityQueue[IPathNode]()(LexicalStackThenTopo)
+    val qrySet = new mutable.PriorityQueue[IPathNode]()
+    val groupedQrySet = new mutable.PriorityQueue[IPathNode]()
     def isEmpty:Boolean = qrySet.isEmpty && groupedQrySet.isEmpty
     def size():Int = qrySet.size + groupedQrySet.size
     def toSet:Set[IPathNode] = qrySet.toSet ++ groupedQrySet.toSet

@@ -359,7 +359,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     zCtx.ctx.mkInt(i)
   }
 
-  override protected def mkBoolVal(boolVal: Boolean)(implicit zCtx:Z3SolverCtx): AST = {
+  override protected def mkBoolVal(boolVal: Boolean)(implicit zCtx:Z3SolverCtx): BoolExpr = {
     zCtx.ctx.mkBool(boolVal)
   }
 
@@ -585,6 +585,14 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     zCtx.ctx.mkFuncDecl("addressToType", args, typeSort)
   }
 
+  def uCombName(name:String):String = s"ucomb__$name"
+  override protected def mkUcomb(name: String, args: List[AST])(implicit zCtx:Z3SolverCtx): AST = {
+    val ctx = zCtx.ctx
+    val argsort:Array[Sort] = args.indices.map(_=> ctx.getBoolSort).toArray
+    val fun = ctx.mkFuncDecl(uCombName(name),argsort , ctx.getBoolSort)
+    val argsCast:Array[Expr[BoolSort]] = args.map(_.asInstanceOf[Expr[BoolSort]]).toArray
+    fun.apply(argsCast:_*)
+  }
   override protected def mkForallAddr(name:PureVar, cond: AST=>AST)(implicit zCtx:Z3SolverCtx):AST = {
 
     val j = mkFreshPv(name)
@@ -592,9 +600,9 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   }
 
   override protected def mkForallAddr(nameToAST: Map[PureVar,AST], cond: Map[PureVar,AST] => AST)
-                                     (implicit zCtx:Z3SolverCtx): AST = {
+                                     (implicit zCtx:Z3SolverCtx): BoolExpr = {
     if(nameToAST.isEmpty){
-      cond(Map())
+      cond(Map()).asInstanceOf[BoolExpr]
     }else {
       val j = nameToAST.map{case (_,v) => v.asInstanceOf[Expr[UninterpretedSort]]}.toSet
       zCtx.ctx.mkForall(j.toArray,

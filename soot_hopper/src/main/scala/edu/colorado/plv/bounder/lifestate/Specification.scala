@@ -10,6 +10,7 @@ object SpecSignatures {
   val s = NamedPureVar("s")
   val f = NamedPureVar("f")
   val l = NamedPureVar("l")
+  val t = NamedPureVar("t")
   val v = NamedPureVar("v")
   implicit val convertList:List[String]=>List[PureExpr] = LSExpParser.convertList
 //  implicit val convert:String=>PureExpr = LSExpParser.convert
@@ -77,6 +78,10 @@ object SpecSignatures {
   val RxJava_call: SignatureMatcher = SubClassMatcher("rx.functions.Action1", "void call\\(java.lang.Object\\)", "rxJava_call")
 
   val RxJava_call_entry: Once = Once(CBEnter, RxJava_call, TopVal::l::Nil)
+
+  //TODO: check that this actually matches things
+  val RxJava_create: SignatureMatcher = SubClassMatcher("rx.Single", "rx.Single create\\(rx.Single#OnSubscribe\\)", "rxJava_create")
+  val RxJava_create_exit:Once = Once(CIExit, RxJava_create, t::Nil)
 
   val Subscriber = Set("rx.Subscriber","rx.SingleSubscriber","rx.Subscription",
     "rx.subscriptions.RefCountSubscription",

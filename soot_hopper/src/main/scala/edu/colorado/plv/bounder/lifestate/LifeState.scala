@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, CLInit, Exists, Forall, FreshRef, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, NS, Not, Once, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, CLInit, Exists, Forall, FreshRef, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, NS, Not, Once, Or, UComb}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, ClassVal, CmpOp, Equals, NamedPureVar, NotEquals, NullVal, PureExpr, PureVal, PureVar, State, TopVal, TypeComp}
 
@@ -256,7 +256,7 @@ object LifeState {
   }
   object LSPred{
     implicit var rw:RW[LSPred] = RW.merge(LSConstraint.rw, LSAtom.rw, macroRW[Forall], macroRW[Exists], macroRW[Not], macroRW[And],
-      macroRW[Or], macroRW[LSTrue.type], macroRW[LSFalse.type])
+      macroRW[Or], macroRW[LSTrue.type], macroRW[LSFalse.type], macroRW[UComb])
   }
 
   case class Forall(vars:List[PureVar], p:LSPred) extends LSPred{
@@ -376,6 +376,17 @@ object LifeState {
     override def toString: String = s"[ ${l1} ➡ ${l1} ]"
 
     override def toTex: String = ???
+  }
+  case class UComb(name:String, dep:List[LSPred], argNegated:Boolean=false) extends LSPred{
+    override def toTex: String = ???
+
+    override def swap(swapMap: Map[PureVar, PureVar]): LSPred = this.copy(dep = dep.map(p => p.swap(swapMap)))
+
+    override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean = {
+      dep.exists{p => p.contains(mt,sig)}
+    }
+
+    override def lsVar: Set[PureVar] = dep.flatMap{p => p.lsVar}.toSet
   }
   case class And(l1 : LSPred, l2 : LSPred) extends LSPred {
     override def lsVar: Set[PureVar] = l1.lsVar.union(l2.lsVar)
@@ -690,6 +701,7 @@ object LifeState {
       case LSTrue => true
       case LSFalse => true
       case i:LSAtom => i.lsVar.forall(v => quant.contains(v))
+      case UComb(_,preds,_) => preds.forall(p => checkWF(quant,p))
       case v =>
         throw new IllegalArgumentException(s"${v} is not a valid lspred")
     }
@@ -818,6 +830,7 @@ object SpecSpace{
     case Forall(_,p) => allI(p)
     case Exists(_,p) => allI(p)
     case LSConstraint(_,_, _) => Set()
+    case UComb(_, dep,_)=> dep.flatMap(d => allI(d)).toSet
   }
   def allI(spec:LSSpec, includeRhs:Boolean = true):Set[Once] = spec match{
     case LSSpec(_,_,pred, target,_) if includeRhs => allI(pred).union(allI(target))

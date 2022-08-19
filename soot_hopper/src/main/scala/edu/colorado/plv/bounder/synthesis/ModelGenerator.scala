@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.synthesis
 
 import edu.colorado.plv.bounder.lifestate.{SpecAssignment, SpecSpace}
-import edu.colorado.plv.bounder.symbolicexecutor.state.IPathNode
+import edu.colorado.plv.bounder.symbolicexecutor.state.{IPathNode, OutputMode}
 
 
 trait ModelGenerator {
@@ -16,6 +16,6 @@ trait ModelGenerator {
    */
   def learnRulesFromExamples(target: Set[IPathNode],
                              reachable: Set[IPathNode],
-                             space:SpecSpace): SpecAssignment
+                             space:SpecSpace)(implicit outputMode: OutputMode): Option[SpecAssignment]
 
 }
