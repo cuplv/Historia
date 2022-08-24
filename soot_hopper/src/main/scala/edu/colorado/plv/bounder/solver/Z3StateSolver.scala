@@ -4,9 +4,9 @@ import better.files.File
 import com.microsoft.z3._
 import com.microsoft.z3.enumerations.Z3_ast_print_mode
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.ir.{AppMethod, CBEnter, CBExit, CIEnter, CIExit, FwkMethod, TAddr, TCLInit, TMessage, TNew, TNullVal, TVal, T_, TraceElement, WitnessExplanation}
+import edu.colorado.plv.bounder.ir.{AppMethod, CBEnter, CBExit, CIEnter, CIExit, FwkMethod, TCLInit, TMessage, TNew, TraceElement, WitnessExplanation}
 import edu.colorado.plv.bounder.lifestate.LifeState
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, BotVal, NullVal, PureExpr, PureVal, PureVar, State, TopVal}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, BotVal, NullVal, PureExpr, PureVal, PureVar, State, TAddr, TVal, TopVal}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.immutable
@@ -431,14 +431,14 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
       val isNull = constMap.contains(NullVal) && model.eval(mkEq(constFn.apply(pv),
         constMap(NullVal)).asInstanceOf[Expr[UninterpretedSort]], true).isTrue
       if(isNull)
-        TNullVal
+        NullVal
       else
         TAddr(pvValues(pv))
     }
 
     val pmv: PureExpr => TVal = {
       case p:PureVar => pvv(p)
-      case TopVal => T_
+      //case TopVal => T_
       case v => throw new IllegalArgumentException(s"Undefined model variable ${v}")
     }
     //    val pmv: String => TVal = v =>

@@ -763,7 +763,21 @@ case object PureVal{
     macroRW[IntVal],macroRW[BoolVal],macroRW[StringVal], ClassVal.rw)
 }
 
-case object NullVal extends PureVal{
+trait TVal extends PureVal{
+  def pe:PureExpr
+}
+object TVal{
+  implicit var rw:RW[TVal] = RW.merge(macroRW[TAddr], macroRW[NullVal.type])
+}
+//case object T_ extends TVal
+case class TAddr(i:Int) extends TVal{
+  override def toString: String = s"@$i"
+
+  override def pe: PureExpr = ???
+
+  override def solverName: String = ???
+}
+case object NullVal extends TVal {
   override def toString:String = "NULL"
 
   //override def z3Tag: Option[String] = Some("NULL")
@@ -771,6 +785,7 @@ case object NullVal extends PureVal{
 
   override def solverName: String = "const_NULL"
 
+  override def pe: PureExpr = ???
 }
 
 case class IntVal(v : Int) extends PureVal(v){
@@ -851,6 +866,16 @@ sealed case class NamedPureVar(n:String) extends PureVar with Nameable {
   override def toString : String = "p-" + n
 
   override def solverName: String = s"npv-$n"
+}
+
+/**
+ * For use in register machine only
+ * @param n nth argument of current message
+ */
+sealed case class ArgAt(n:Int) extends PureVar {
+  override def substitute(toSub: PureExpr, subFor: PureVar): PureExpr = ???
+
+  override def getVars(s: Set[PureVar]): Set[PureVar] = ???
 }
 
 object NamedPureVar{

@@ -115,7 +115,7 @@ class Z3ModelGenerator(persistentConstraints: ClassHierarchyConstraints)
                   peerConn:List[BoolExpr] => BoolExpr,
                 )(implicit z3SolverCtx: Z3SolverCtx, outputMode: OutputMode, space:SpecSpace):BoolExpr = {
     if(tree.isEmpty){
-      return mkBoolVal(true).asInstanceOf[BoolExpr]
+      return mkBoolVal(true)
     }
     val current = peerConn(tree.map(n => encodeLeg(n, termOp, ancestorOp, ancestorConn)).toList)
     val next = encodeTree(tree.flatMap(n => n.succ), termOp, ancestorOp, ancestorConn, peerConn)

@@ -1,9 +1,9 @@
 package edu.colorado.plv.bounder.solver
 
-import edu.colorado.plv.bounder.ir.MessageType
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, CLInit, Exists, Forall, FreshRef, LSAtom, LSConstraint, LSFalse, LSImplies, LSPred, LSSingle, LSSpec, LSTrue, NS, Not, Once, Or, SignatureMatcher, UComb}
+import edu.colorado.plv.bounder.ir.{MessageType, TMessage, TraceElement}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, CLInit, Exists, Forall, FreshRef, LSAtom, LSBexp, LSConstraint, LSFalse, LSImplies, LSPred, LSSingle, LSSpec, LSTrue, NS, Not, Once, Or, SignatureMatcher, UComb}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, Equals, FieldPtEdge, NPureVar, NamedPureVar, NotEquals, PureConstraint, PureExpr, PureVal, PureVar, State, StaticPtEdge, TopVal}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, Equals, FieldPtEdge, NPureVar, NamedPureVar, NotEquals, PureConstraint, PureExpr, PureVal, PureVar, State, StaticPtEdge, TVal, TopVal}
 
 object EncodingTools {
   private def filterAny(s:Seq[(PureExpr,PureExpr)]):Seq[(PureExpr,PureExpr)] = s.filter{
@@ -100,6 +100,116 @@ object EncodingTools {
         (updated + instantiated, false)
     }._1.filter(p => p != LSTrue)
   }
+
+  /**
+   * State in register machine
+   * @param id unique integer identifier
+   */
+  case class Q(id:Int) extends AnyVal
+
+  /**
+   * Transition in register machine
+   */
+  sealed trait Delta{
+    def dst:Q
+    def b:LSBexp
+  }
+
+  type Assign = Map[PureVar, TVal]
+  case class MDelta(dst:Q, b:LSBexp, m:LSAtom) extends Delta
+  case class AnyDelta(dst:Q, b:LSBexp) extends Delta
+  case class EpsDelta(dst:Q, b:LSBexp) extends Delta
+
+  case class RegMachine(initQ:Set[Q], delta:Map[Q,Set[Delta]], finalQ:Set[Q]){
+    def union(other:RegMachine):RegMachine = {
+      ???
+    }
+    def intersect(other:RegMachine):RegMachine = {
+      ???
+    }
+    def negate():RegMachine = {
+      ???
+    }
+    lazy val allQ = initQ.union(finalQ) ++ delta.flatMap{
+      case (q, value) => value.map(delt => delt.dst) + q
+    }
+    def containsTrace(trace:List[TraceElement])(implicit cha:ClassHierarchyConstraints):Option[Assign] = {
+      def iContainsTrace(q:Q, assign:Assign, trace:List[TraceElement]):Option[Assign] = trace match {
+        case TMessage(mType, method, args)::next =>
+          delta(q).view.flatMap {
+            case AnyDelta(dst, b) => ???
+            case EpsDelta(dst, b) => ???
+            case MDelta(dst, b, m:Once) if m.contains(mType, method.fwkSig.get) =>
+              ???
+            case _:MDelta => None
+          }.headOption
+        case Nil => if(finalQ.contains(q)) Some(assign) else None
+      }
+      //initQ.exists(q => iContainsTrace(q, Map.empty, trace).nonEmpty)
+      initQ.view.flatMap{q => iContainsTrace(q,Map.empty, trace)}.headOption
+    }
+  }
+  private val q0 = Q(0)
+  private val q1 = Q(1)
+  private val q2 = Q(2)
+  private def selfAny(q: Q): (Q,Set[Delta]) = q->Set(AnyDelta(q, LSTrue))
+  private val topRM = RegMachine(
+    Set(q0),
+    Map(selfAny(q0)),
+    Set(q0))
+  private val botRM = RegMachine(Set.empty, Map.empty, Set.empty)
+  /**
+   * Convert pred to register machine
+   */
+  def predToRM(pred:LSPred,maxPv:NPureVar): (RegMachine,NPureVar) = pred match {
+    case Forall(vars, p) => {
+      def allNE(pred:LSPred):Set[LSConstraint] = {
+        ???
+      }
+      def findHN(pred:LSPred):Not = {
+        ???
+      }
+      ???
+    }
+    case Exists(vars, p) => ???
+    case LSImplies(l1, l2) => ???
+    case UComb(name, dep, argNegated) => ???
+    case Not(o:Once) =>
+      val init = Set(q0)
+      val fin = Set(q0)
+      val delt = Map[Q,Set[Delta]](
+        q0-> Set(
+          MDelta(q1, LSTrue, o),
+          MDelta(q0, LSTrue, Not(o))
+        )
+      )
+      (RegMachine(init, delt, fin), maxPv)
+    case Not(pred) => throw new IllegalArgumentException("arbitrary negation of pred not supported")
+    case Or(l1, l2) =>
+      val (rm1,maxPv_) = predToRM(l1, maxPv)
+      val (rm2,maxPv__) = predToRM(l2, maxPv_)
+      (rm1.union(rm2), maxPv__)
+    case And(l1,l2) =>
+      val (rm1,maxPv_) = predToRM(l1, maxPv)
+      val (rm2,maxPv__) = predToRM(l2, maxPv_)
+      (rm1.intersect(rm2), maxPv__)
+    case LSTrue => (topRM, maxPv)
+    case LSFalse => (botRM, maxPv)
+    case o:Once =>
+      val init = Set(q0)
+      val fin = Set(q1)
+      val delt = Map[Q,Set[Delta]](
+        q0 -> Set(
+          MDelta(q1, LSTrue, o),
+          MDelta(q0, LSTrue, Not(o))
+        ),
+        selfAny(q1)
+      )
+      (RegMachine(init, delt, fin), maxPv)
+    case NS(i1,i2) => ???
+    case FreshRef(v) => ???
+  }
+
   def simplifyPred(pred:LSPred):LSPred = pred match {
     case UComb(name, dep, argNegated) => UComb(name, dep.map(simplifyPred), argNegated)
     case LifeState.Exists(Nil, p) => simplifyPred(p)

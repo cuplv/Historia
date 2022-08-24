@@ -3,8 +3,9 @@ package edu.colorado.plv.bounder.lifestate
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, CLInit, Exists, Forall, FreshRef, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, NS, Not, Once, Or, UComb}
+import edu.colorado.plv.bounder.solver.EncodingTools.Assign
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, ClassVal, CmpOp, Equals, NamedPureVar, NotEquals, NullVal, PureExpr, PureVal, PureVar, State, TopVal, TypeComp}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, ClassVal, CmpOp, Equals, NamedPureVar, NotEquals, NullVal, PureExpr, PureVal, PureVar, State, TVal, TopVal, TypeComp}
 
 import scala.util.parsing.combinator._
 import upickle.default.{macroRW, ReadWriter => RW}
@@ -209,7 +210,10 @@ object LifeState {
 
 
 
-  case class LSConstraint(v1:PureVar,op:CmpOp,v2:PureExpr ) extends LSPred {
+  case class LSConstraint(v1:PureVar,op:CmpOp,v2:PureExpr ) extends LSBexp {
+    override def apply(assign: Assign, currentArgs:List[TVal]): Option[Assign] = {
+      ???
+    }
     override def swap(swapMap: Map[PureVar, PureVar]) = {
       def swapIfVar[T<:PureExpr](v: T):T= v match{
         case v2:PureVar if swapMap.contains(v2) => swapMap(v2).asInstanceOf[T]
@@ -225,7 +229,11 @@ object LifeState {
       case _ => None
     }
 
-    override def toString(): String = s"[ $v1 == $v2 ]"
+    override def toString(): String = op match {
+      case Equals => s"[ $v1 == $v2 ]"
+      case NotEquals => s"[ $v1 != $v2 ]"
+      case TypeComp => s"[ $v1 : $v2 ]"
+    }
 
     override def toTex: String = op match {
       case Equals => s"${arg2tex(v1)} = ${arg2tex(v2)}"
@@ -257,6 +265,16 @@ object LifeState {
   object LSPred{
     implicit var rw:RW[LSPred] = RW.merge(LSConstraint.rw, LSAtom.rw, macroRW[Forall], macroRW[Exists], macroRW[Not], macroRW[And],
       macroRW[Or], macroRW[LSTrue.type], macroRW[LSFalse.type], macroRW[UComb])
+  }
+
+  sealed trait LSBexp extends LSPred{
+    /**
+     * process transfer in register machine
+     * @param assign from variables to concrete values
+     * @param currentArgs arguments from the current message
+     * @return
+     */
+    def apply(assign:Assign, currentArgs:List[TVal]):Option[Assign]
   }
 
   case class Forall(vars:List[PureVar], p:LSPred) extends LSPred{
@@ -388,7 +406,11 @@ object LifeState {
 
     override def lsVar: Set[PureVar] = dep.flatMap{p => p.lsVar}.toSet
   }
-  case class And(l1 : LSPred, l2 : LSPred) extends LSPred {
+  case class And(l1 : LSPred, l2 : LSPred) extends LSBexp {
+
+    override def apply(assign: Assign, currentArgs:List[TVal]): Option[Assign] = {
+      ???
+    }
     override def lsVar: Set[PureVar] = l1.lsVar.union(l2.lsVar)
 
     override def contains(mt:MessageType, sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean =
@@ -407,7 +429,7 @@ object LifeState {
 
     override def toTex: String = s"${l1.toTex} \\wedge ${l2.toTex}"
   }
-  case class Not(l: LSPred) extends LSPred {
+  case class Not(l: LSPred) extends LSAtom {
     override def lsVar: Set[PureVar] = l.lsVar
 
     override def contains(mt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean =
@@ -421,8 +443,22 @@ object LifeState {
       case i: Once=> s"\\notiDir{${i.mToTex}}"
       case _ => ??? //s"\\neg ${l.toTex}"
     }
+
+    override def identitySignature: String = l match {
+      case once: Once => once.identitySignature
+      case bexp: LSBexp => ???
+      case Forall(vars, p) => ???
+      case Exists(vars, p) => ???
+      case LSImplies(l1, l2) => ???
+      case UComb(name, dep, argNegated) => ???
+      case atom: LSAtom => ???
+    }
   }
-  case class Or(l1:LSPred, l2:LSPred) extends LSPred {
+  case class Or(l1:LSPred, l2:LSPred) extends LSBexp {
+
+    override def apply(assign: Assign, currentArgs:List[TVal]): Option[Assign] = {
+      ???
+    }
     override def lsVar: Set[PureVar] = l1.lsVar.union(l2.lsVar)
     override def contains(mt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean =
       l1.contains(mt, sig) || l2.contains(mt,sig)
@@ -439,7 +475,8 @@ object LifeState {
 
     override def toTex: String = s"${l1.toTex} \\vee ${l2.toTex}"
   }
-  case object LSTrue extends LSPred {
+  case object LSTrue extends LSBexp {
+    override def apply(assign: Assign, currentArgs:List[TVal]): Option[Assign] = Some(assign)
     override def lsVar: Set[PureVar] = Set.empty
     override def contains(mt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean = false
 
@@ -449,7 +486,8 @@ object LifeState {
 
     override def toTex: String = "\\enkwTrue"
   }
-  case object LSFalse extends LSPred {
+  case object LSFalse extends LSBexp {
+    override def apply(assign: Assign, currentArgs:List[TVal]): Option[Assign] = None
     override def lsVar: Set[PureVar] = Set.empty
     override def contains(mt:MessageType,sig: (String, String))(implicit ch:ClassHierarchyConstraints): Boolean = false
 

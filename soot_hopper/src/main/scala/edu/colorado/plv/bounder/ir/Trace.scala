@@ -1,5 +1,6 @@
 package edu.colorado.plv.bounder.ir
-import upickle.default.{ReadWriter => RW, macroRW}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{NullVal, PureExpr, TVal}
+import upickle.default.{macroRW, ReadWriter => RW}
 
 
 object Trace {
@@ -70,17 +71,8 @@ case class TMessage(mType : MessageType, method: Method, args: List[TVal]) exten
 object TMessage{
   implicit var rw:RW[TMessage] = macroRW
 }
-sealed trait TVal
-object TVal{
-  implicit var rw:RW[TVal] = RW.merge(macroRW[TAddr], macroRW[TNullVal.type], macroRW[T_.type])
-}
-case object T_ extends TVal
-case class TAddr(i:Int) extends TVal{
-  override def toString: String = s"@$i"
-}
-case object TNullVal extends TVal{
-  override def toString: String = "null"
-}
+
+
 
 
 case class WitnessExplanation(futureTrace:List[TraceElement]){
