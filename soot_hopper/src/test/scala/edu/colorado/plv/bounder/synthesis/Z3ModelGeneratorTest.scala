@@ -17,6 +17,7 @@ import soot.SootMethod
 
 class Z3ModelGeneratorTest extends AnyFunSuite {
 
+  implicit def listToAbsTr(l:List[LSSingle]):AbstractTrace = AbstractTrace(l)
   implicit def set2SigMat(s:Set[(String,String)]):SignatureMatcher = SetSignatureMatcher(s)
   val fooMethod = TestIRMethodLoc("","foo", List(Some(LocalWrapper("@this","Object"))))
   private val prettyPrinting = new PrettyPrinting()
@@ -181,6 +182,13 @@ class Z3ModelGeneratorTest extends AnyFunSuite {
   val dummyLoc = CallbackMethodInvoke("", "", dummyMethod)
   val top = State.topState
 
+  /**
+   * Create a witness tree with top states from a list of abstract messages
+   * @param history list of abstract messages
+   * @param ord
+   * @param mode
+   * @return
+   */
   def witTreeFromMsgList(history : List[LSSingle])
                         ( implicit ord: OrdCount, mode: OutputMode = MemoryOutputMode):Set[IPathNode] = history match{
     case at@_::t =>
@@ -218,7 +226,53 @@ class Z3ModelGeneratorTest extends AnyFunSuite {
     )
   private val classToInt: Map[String, Int] = hierarchy.keySet.zipWithIndex.toMap
   val intToClass: Map[Int, String] = classToInt.map(k => (k._2, k._1))
-  test("Encode Node Reachability"){
+  implicit val ord = new DummyOrd
+  implicit val outputMode = MemoryOutputMode
+  test("positive bexp excludes init"){
+    //TODO: may want toemove this if we go with aut encode
+    def testWithState(state:State, exclInitExpected:Boolean, containsInitExpected:Boolean) = {
+
+      val cha = new ClassHierarchyConstraints(hierarchy, Set("java.lang.Runnable"), intToClass)
+      val gen = new Z3ModelGenerator(cha)
+      val state = top.copy(sf = top.sf.copy(traceAbstraction = targetIze(List(a_call))))
+      implicit val ctx = gen.getSolverCtx
+      try {
+        ctx.acquire()
+        implicit val space = new SpecSpace(Set(LSSpec(a :: Nil, Nil, a_onCreate, a_call)))
+        implicit val mt = gen.MessageTranslator(Set(state), space)
+
+        val enc = gen.encodeExcludesInit(state)
+        ctx.mkAssert(enc)
+        val res = gen.checkSAT(mt)
+        assert(res == exclInitExpected)
+        ctx.release()
+        ctx.acquire()
+        val enc2 = gen.encodeMayContainInit(state)
+        ctx.mkAssert(enc2)
+        val res2 = gen.checkSAT(mt)
+        assert(res == containsInitExpected)
+      } finally {
+        ctx.release()
+      }
+    }
+
+  }
+  test("Simple encode node reachability"){
+
+    //TODO: may need to declare vars distinct
+    val unreachSeq = witTreeFromMsgList(
+      targetIze(List(a_onCreate, a_call)))
+    val reachSeq = witTreeFromMsgList(
+      targetIze(List(a_call)))
+    val cha = new ClassHierarchyConstraints(hierarchy,Set("java.lang.Runnable"),intToClass)
+    val gen = new Z3ModelGenerator(cha)
+    val spec = new SpecSpace(Set(
+      LSSpec(a::Nil,Nil,  UComb("call", a_onCreate::Exists(s::l::Nil,NS(s_a_subscribe, s_unsubscribe))::Nil) , a_call)
+    ))
+    val res = gen.learnRulesFromExamples(unreachSeq, reachSeq, spec)
+    ???
+  }
+  test("Encode Node Reachability motivating example"){
     implicit val ord = new DummyOrd
     implicit val outputMode = MemoryOutputMode
     //TODO: may need to declare vars distinct

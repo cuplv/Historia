@@ -31,6 +31,7 @@ libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % 
 libraryDependencies += "com.typesafe.slick" % "slick_2.13" % "3.3.3"
 libraryDependencies += "org.xerial" % "sqlite-jdbc" % "3.34.0"
 libraryDependencies += "com.h2database" % "h2" % "1.4.187"
+libraryDependencies += "de.learnlib.distribution" % "learnlib-distribution" % "0.16.0"
 
 libraryDependencies ++= {
   Seq("org.slf4j" % "slf4j-log4j12" % "1.7.30")

@@ -31,7 +31,7 @@ object State {
 // pureFormula is a conjunction of constraints
 // callStack is the call string from thresher paper
 //sealed trait TraceAbstractionArrow
-case class AbstractTrace(rightOfArrow:List[LSSingle]){
+case class AbstractTrace(rightOfArrow:List[LSSingle]) extends AnyVal{
 
   def modelVars:Set[PureVar] = rightOfArrow.flatMap{pred => pred.lsVar}.toSet
 

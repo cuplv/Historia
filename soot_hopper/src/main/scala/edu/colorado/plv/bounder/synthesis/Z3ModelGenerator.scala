@@ -1,19 +1,26 @@
 package edu.colorado.plv.bounder.synthesis
 
-import com.microsoft.z3.{AST, BoolExpr, Context, Expr, IntExpr, IntNum}
+import com.microsoft.z3.{AST, BoolExpr, BoolSort, Context, Expr, FuncDecl, IntExpr, IntNum, UninterpretedSort}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecAssignment, SpecSpace}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, Exists, Forall, LSAtom, LSConstraint, LSFalse, LSImplies, LSPred, LSTrue, NS, Not, Once, Or, PredicateSpace, UComb}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, Exists, Forall, LSAtom, LSConstraint, LSFalse, LSImplies, LSPred, LSTrue, NS, Not, Once, Or, UComb}
+import edu.colorado.plv.bounder.solver.EncodingTools.Q
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools, Z3SolverCtx, Z3StateSolver}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{Equals, IPathNode, NotEquals, OutputMode, PureVar, Qry, State}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{Equals, IPathNode, NamedPureVar, NotEquals, OutputMode, PureVar, Qry, State}
 
 import scala.annotation.tailrec
+import scala.collection.mutable
 
-class Z3ModelGenerator(persistentConstraints: ClassHierarchyConstraints)
+class Z3ModelGenerator(persistentConstraints: ClassHierarchyConstraints)(implicit outputMode: OutputMode)
   extends Z3StateSolver(persistentConstraints, timeout = 30000,randomSeed=3578,
     defaultOnSubsumptionTimeout = _ => false, pushSatCheck = true
   ) with ModelGenerator {
+  private def baseAxioms(implicit zCtx:Z3SolverCtx) = {
+    List(a => initalizeConstAxioms(a), a => initializeNameAxioms(a), a => initializeFieldAxioms(a),
+      a => initializeOrderAxioms(a))
+  }
   //val ctx : Context = new Context
 
+  //  *****  Syntax directed encoding *****
   def encodeMayContainInit(state:State)(implicit z3SolverCtx: Z3SolverCtx, specs:SpecSpace,
                                         messageTranslator: MessageTranslator):BoolExpr = {
 
@@ -47,7 +54,7 @@ class Z3ModelGenerator(persistentConstraints: ClassHierarchyConstraints)
       .map(EncodingTools.simplifyPred)
     val combinedPred:LSPred = initify(pred.reduce(Or))
     val encoded = encodePred(combinedPred, messageTranslator, definedPvMap, Map(), Map(),Map())
-    val out = mkForallAddr(definedPvMap, (whatever:Map[PureVar, AST]) => encoded)
+    val out = mkExistsAddr(definedPvMap, (whatever:Map[PureVar, AST]) => encoded)
     out
   }
 
@@ -95,6 +102,111 @@ class Z3ModelGenerator(persistentConstraints: ClassHierarchyConstraints)
   def encodeNotFeasible(state:State)(implicit z3SolverCtx: Z3SolverCtx, specs:SpecSpace):BoolExpr = {
     ???
   }
+  def learnRulesFromExamples_formula(target: Set[IPathNode], reachable: Set[IPathNode],
+                                     space: SpecSpace)(implicit outputMode: OutputMode): Option[SpecAssignment] = {
+    implicit val s = space
+    implicit val zCtx: Z3SolverCtx = getSolverCtx
+    try {
+      zCtx.acquire()
+      implicit val messageTranslator = MessageTranslator(collectStates(target), s)
+      val orF = (v: List[BoolExpr]) => mkOr(v).asInstanceOf[BoolExpr]
+      val andF = (v: List[BoolExpr]) => mkAnd(v).asInstanceOf[BoolExpr]
+      val targetEnc = encodeTree(target, encodeExcludesInit, encodeNotFeasible, orF, andF)
+      val reachEnc = encodeTree(target, encodeMayContainInit, encodeFeasible, andF, orF)
+      zCtx.mkAssert(mkAnd(targetEnc, reachEnc))
+      val res = checkSATOne(messageTranslator, baseAxioms)
+      if(res){
+        ???
+      }else
+        None
+    }finally{
+      zCtx.release()
+    }
+  }
+  //end  *****  Syntax directed encoding *****
+
+  type PathNode = (LSAtom,State)
+  case class NormalizedPath(leaves:Set[PathNode], target:PathNode, dag:Map[PathNode,PathNode])
+  def makePaths(leaves:Set[IPathNode]): Set[NormalizedPath] = {
+
+    //TODO: make path merged in use equiv pvs where they match in the trace, use non-conflicting pv otherwise
+    def merge(n1:NormalizedPath, n2:NormalizedPath):NormalizedPath = ???
+
+    def mk(atoms:List[LSAtom],state:State):NormalizedPath= atoms match {
+      case head::next => {
+        val headLeaf = (head,state)
+        var cLeaf = headLeaf
+        var cNext = next
+        val dag = new mutable.HashMap[PathNode,PathNode]()
+        while(cNext.nonEmpty) {
+          val nextNode = (cNext.head, State.topState)
+          dag.addOne(cLeaf -> nextNode)
+          cNext = cNext.tail
+          cLeaf = nextNode
+        }
+        NormalizedPath(Set(headLeaf), cLeaf, dag.toMap)
+      }
+      case Nil => throw new IllegalArgumentException("empty message history")
+    }
+    def traverse(node:IPathNode):NormalizedPath = {
+      val state = node.state
+      val hist = state.sf.traceAbstraction.rightOfArrow
+      val c = mk(hist,state)
+      val next = node.succ.map(traverse)
+      (c::next).reduce(merge)
+    }
+    val terminals = leaves.map(traverse)
+    terminals.groupBy(a => a.target).map{
+      case (_, value) => value.reduce(merge)
+    }.toSet
+  }
+
+  //  *****  Automata based encoding *****
+
+  def learnRulesFromExamples_automata(target: Set[IPathNode], reachable: Set[IPathNode],
+                                     space: SpecSpace): Option[SpecAssignment] = {
+    implicit val s = space
+    implicit val zCtx: Z3SolverCtx = getSolverCtx
+    try {
+      zCtx.acquire()
+      implicit val automataTranslator = AutomataTranslator(collectStates(target) ++ collectStates(reachable), s, 3,3)
+      ???
+      zCtx.mkAssert(???)
+      val res = checkSATOne(automataTranslator.mt, baseAxioms ++ automataTranslator.axiomList)
+      ???
+    }finally{
+      zCtx.release()
+    }
+  }
+  case class AutomataTranslator(states:Iterable[State], specSpace:SpecSpace, nStates:Int,
+                                nRegisters:Int)
+                               (implicit zCtx:Z3SolverCtx){
+    val mt = MessageTranslator(states, specSpace)
+    def mkTransitionFunction(msgName:String):FuncDecl[BoolSort] = {
+      mt.inamelist
+      ???
+    }
+    val autStates = Z3SetEncoder((0 until nStates).map(n => Q(n)).toSet, "AutQ")
+    val registers = Z3SetEncoder((0 until nRegisters).map(n => NamedPureVar(s"$n")).toSet, "Register")
+
+    def axiomList:List[MessageTranslator => Unit] =
+      List(autStates,registers).map(zSet=> _ => zCtx.mkAssert(zSet.getAxioms()))
+
+
+  }
+
+  def mkTransitionFunction(msgName:String):BoolExpr = {
+    ???
+  }
+  def mkAxioms(at:AutomataTranslator)(implicit zCtx:Z3SolverCtx):Unit = {
+    //TODO: restrict number of states
+    ???
+  }
+
+  // edges labeled with once or not once
+  // variables on edge
+
+  //end   *****  Automata based encoding *****
 
   def encodeLeg(node:IPathNode,termOp:State=>BoolExpr, ancestorOp:State=>BoolExpr,
                 ancestorConn: List[BoolExpr]=> BoolExpr)
@@ -138,25 +250,7 @@ class Z3ModelGenerator(persistentConstraints: ClassHierarchyConstraints)
    * @return an automata represented by transition tuples (source state, transition symbol, target state)
    */
   override def learnRulesFromExamples(target: Set[IPathNode], reachable: Set[IPathNode],
-                                      space: SpecSpace)(implicit outputMode: OutputMode): Option[SpecAssignment] = {
-    implicit val s = space
-    implicit val zCtx: Z3SolverCtx = getSolverCtx
-    try {
-      zCtx.acquire()
-      implicit val messageTranslator = MessageTranslator(collectStates(target), s)
-      val orF = (v: List[BoolExpr]) => mkOr(v).asInstanceOf[BoolExpr]
-      val andF = (v: List[BoolExpr]) => mkAnd(v).asInstanceOf[BoolExpr]
-      val targetEnc = encodeTree(target, encodeExcludesInit, encodeNotFeasible, orF, andF)
-      val reachEnc = encodeTree(target, encodeMayContainInit, encodeFeasible, andF, orF)
-      zCtx.mkAssert(mkAnd(targetEnc, reachEnc))
-      val res = checkSATOne(messageTranslator, List(initalizeConstAxioms, initializeNameAxioms, initializeFieldAxioms, initializeOrderAxioms))
-      if(res){
-        ???
-      }else
-        None
-    }finally{
-      zCtx.release()
-    }
-  }
+                                      space: SpecSpace)(implicit outputMode: OutputMode): Option[SpecAssignment] =
+    learnRulesFromExamples_automata(target, reachable, space)
 }
 

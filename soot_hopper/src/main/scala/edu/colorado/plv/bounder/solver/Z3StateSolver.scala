@@ -196,11 +196,13 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   }
 
   override def checkSAT(messageTranslator: MessageTranslator,
-                        axioms: List[MessageTranslator => Unit])(implicit zCtx: Z3SolverCtx): Boolean ={
+                        axioms: Option[List[MessageTranslator => Unit]] = None)(implicit zCtx: Z3SolverCtx): Boolean ={
+    val getAxioms = axioms.getOrElse(
+      List(m => initalizeConstAxioms(m), m=>initializeNameAxioms(m), m=>initializeFieldAxioms(m), m=>initializeOrderAxioms(m)))
     if(pushSatCheck)
-      checkSatPush(messageTranslator, axioms)
+      checkSatPush(messageTranslator, getAxioms)
     else
-      checkSATOne(messageTranslator, axioms)
+      checkSATOne(messageTranslator, getAxioms)
 
   }
   override def checkSatPush(messageTranslator: MessageTranslator,
@@ -311,11 +313,11 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   }
 
 
-  override protected def mkAnd(lhs:AST, rhs:AST)(implicit zCtx:Z3SolverCtx):AST = {
+  override protected def mkAnd(lhs:AST, rhs:AST)(implicit zCtx:Z3SolverCtx):Expr[BoolSort] = {
     mkAnd(List(lhs,rhs))
   }
 
-  override protected def mkAnd(t:List[AST])(implicit zCtx:Z3SolverCtx): AST = {
+  override protected def mkAnd(t:List[AST])(implicit zCtx:Z3SolverCtx): Expr[BoolSort] = {
     // Simplify for debug
     // Note: in z3, and with no arguments returns true, this retains that behavior
     val t2 = t.filter{
@@ -326,7 +328,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     if(t2.isEmpty) {
       mkBoolVal(boolVal = true)
     }else if(t2.size == 1){
-      t2.head
+      t2.head.asInstanceOf[Expr[BoolSort]]
     } else {
       val tb: Array[BoolExpr] = t2.map(_.asInstanceOf[BoolExpr]).toArray
       zCtx.ctx.mkAnd(tb: _*)
@@ -625,9 +627,9 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
 
   override protected def mkExistsAddr(nameToAST: Map[PureVar, AST],
                                       cond: Map[PureVar,AST] => AST)
-                                     (implicit zCtx:Z3SolverCtx): AST = {
+                                     (implicit zCtx:Z3SolverCtx): BoolExpr = {
     if(nameToAST.isEmpty){
-      cond(Map())
+      cond(Map()).asInstanceOf[BoolExpr]
     }else {
       val j = nameToAST.map{case (_,v) => v.asInstanceOf[Expr[UninterpretedSort]]}.toSet
       zCtx.ctx.mkExists(j.toArray,
@@ -1013,25 +1015,54 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     zCtx.ctx.mkConst("zeroMessage___",msgSort)
   }
 
-  case class Z3SetEncoder(values:Map[Nameable,Nameable],
+  /**
+   * Encode set of something in z3
+   * @param values names of things in set
+   * @param typeName name of set (must be unique from other sets)
+   * @param allEqualToSomeValue true if every element of this set must be equal to a member of values
+   * @param eachValueDistinct no two elements of this set may be equal
+   */
+  case class Z3SetEncoder(values:Set[Nameable],
                           typeName:String,
-                          closed:Boolean) extends SetEncoder[AST, Z3SolverCtx]{
-    override def getAxioms()(implicit zCtx: Z3SolverCtx): AST = {
-      val leastMost = values.filter{
-        case (v, BotVal) => true
-        case _ => false
+                          allEqualToSomeValue:Boolean = true,
+                          eachValueDistinct:Boolean = true,
+                         ) extends SetEncoder[AST, Z3SolverCtx]{
+    private var nameableToSolver: Option[Map[Nameable,Expr[UninterpretedSort]]] = None
+    private def init()(implicit zCtx: Z3SolverCtx):Unit = {
+      if(nameableToSolver.isEmpty){
+        val ctx = zCtx.ctx
+        nameableToSolver = Some(values.map{v => v -> ctx.mkConst(v.solverName, getSort)}.toMap)
       }
-      ??? //TODO:=====
     }
 
-    override def mkUpperBound(v: Nameable)(implicit zCtx: Z3SolverCtx): AST = ???
+    def getSort(implicit zCtx: Z3SolverCtx):UninterpretedSort = zCtx.ctx.mkUninterpretedSort(typeName)
+    def solverExprFor(n:Nameable)(implicit zCtx: Z3SolverCtx):Expr[UninterpretedSort] = {
+      init()
+      nameableToSolver.get(n)
+    }
+
+    override def getAxioms()(implicit zCtx: Z3SolverCtx): Expr[BoolSort] = {
+      init()
+      val ctx = zCtx.ctx
+      val upperBound = if(allEqualToSomeValue) {
+        val v = ctx.mkFreshConst("v", getSort)
+        val condList: Array[BoolExpr] = nameableToSolver.get.values.map{ nv => ctx.mkEq(v,nv)}.toArray
+        val cond = mkOr(condList).asInstanceOf[BoolExpr]
+        Some(ctx.mkForall(Array(v),cond, 1,null,null,null,null))
+      } else None
+
+      val lowerBound = if(eachValueDistinct)
+        Some(ctx.mkDistinct(nameableToSolver.get.values.toArray:_*))
+      else None
+      mkAnd(List(upperBound, lowerBound).flatten)
+    }
   }
 
-  //TODO:====== Use predicates to encode sets rather than uninterpreted sort functions
   //TODO: de-duplicate this logic for names, const values, addresses, and allocation sites
   override def getSetEncoder(values:Set[Nameable],
-                                 typeName:String,
-                                 closed:Boolean):SetEncoder[AST, Z3SolverCtx] = {
-    ???
-  }
+                             typeName:String,
+                             allEqualToSomeValue:Boolean = true,
+                             eachValueDistinct:Boolean = true,
+                            ):SetEncoder[AST, Z3SolverCtx] =
+    Z3SetEncoder(values, typeName, allEqualToSomeValue, eachValueDistinct)
 }

@@ -18,7 +18,6 @@ trait Nameable{
 
 trait SetEncoder[T, C <: SolverCtx[T]]{
   def getAxioms()(implicit zCtx:C):T
-  def mkUpperBound(v:Nameable)(implicit zCtx:C):T
 }
 
 trait SolverCtx[T]{
@@ -26,6 +25,7 @@ trait SolverCtx[T]{
   def acquire(randomSeed:Option[Int] = None):Unit
   def release():Unit
 }
+
 
 /** SMT solver parameterized by its AST or expression type */
 trait StateSolver[T, C <: SolverCtx[T]] {
@@ -39,7 +39,11 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    * @param closed Are all values represented by the lattice or are "other" values possible
    * @return
    */
-  def getSetEncoder(values:Set[Nameable], typeName:String, closed:Boolean):SetEncoder[T,C]
+  def getSetEncoder(values:Set[Nameable],
+                    typeName:String,
+                    allEqualToSomeValue:Boolean = true,
+                    eachValueDistinct:Boolean = true,
+                   ):SetEncoder[T,C]
   def setSeed(v:Int)(implicit zCtx: C):Unit
   // checking
   def getSolverCtx: C
@@ -60,7 +64,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   def solverString(messageTranslator: MessageTranslator)(implicit zCtx:C):String
 
   def checkSAT(messageTranslator: MessageTranslator,
-                  axioms: List[MessageTranslator => Unit ])(implicit zCtx: C): Boolean
+                  axioms: Option[List[MessageTranslator => Unit] ])(implicit zCtx: C): Boolean
   /**
    * Check satisfiability of fomrula in solver
    * @throws IllegalStateException if formula is undecidable or times out
@@ -714,6 +718,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     def iForZ3Name(z3Name: String): Set[Once] = {
       inameToI.getOrElse(z3Name, Set())
     }
+
   }
 
 
@@ -758,7 +763,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
           println(ast.toString)
         }
         zCtx.mkAssert(ast)
-        val sat = checkSAT(messageTranslator, List(initalizeConstAxioms, initializeNameAxioms, initializeFieldAxioms, initializeOrderAxioms))
+        val sat = checkSAT(messageTranslator, Some(List(initalizeConstAxioms, initializeNameAxioms, initializeFieldAxioms, initializeOrderAxioms)))
         //      val simpleAst = solverSimplify(ast, stateWithNulls, messageTranslator, maxWitness.isDefined)
 
         //      if(simpleAst.isEmpty)
@@ -1029,7 +1034,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       val s2Encode = toASTState(s2, messageTranslator,None, specSpace)
       zCtx.mkAssert(s2Encode)
       val foundCounter =
-        checkSAT(messageTranslator,List(initalizeConstAxioms, initializeNameAxioms, initializeFieldAxioms, initializeOrderAxioms))
+        checkSAT(messageTranslator,Some(List(initalizeConstAxioms, initializeNameAxioms, initializeFieldAxioms, initializeOrderAxioms)))
       !foundCounter
     }catch{
       case e:IllegalArgumentException if e.getLocalizedMessage.contains("timeout") =>
@@ -1293,7 +1298,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         specSpace = specSpace, debug = maxLen.isDefined)
       zCtx.mkAssert(s2Enc)
       val foundCounter =
-        checkSAT(messageTranslator, List(initalizeConstAxioms,initializeNameAxioms, initializeOrderAxioms,initializeFieldAxioms))
+        checkSAT(messageTranslator, Some(List(initalizeConstAxioms,initializeNameAxioms, initializeOrderAxioms,initializeFieldAxioms)))
 
       if (foundCounter && maxLen.isDefined) {
         printDbgModel(messageTranslator, Set(s1.traceAbstraction,s2.traceAbstraction))
@@ -1387,7 +1392,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       initializeZeroAxioms(messageTranslator)
       val pvMap: Map[PureVar, T] = encodeTraceContained(state, trace,
         messageTranslator = messageTranslator, specSpace = specSpace)
-      val sat = checkSAT(messageTranslator,List(initalizeConstAxioms,initializeNameAxioms,initializeOrderAxioms,initializeFieldAxioms))
+      val sat = checkSAT(messageTranslator,Some(List(initalizeConstAxioms,initializeNameAxioms,initializeOrderAxioms,initializeFieldAxioms)))
       if (sat && debug) {
         println(s"model:\n ${zCtx.asInstanceOf[Z3SolverCtx].solver.toString}")
         printDbgModel(messageTranslator, Set(state.traceAbstraction))

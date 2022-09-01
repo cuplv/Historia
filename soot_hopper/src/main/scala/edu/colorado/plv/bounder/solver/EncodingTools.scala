@@ -105,7 +105,9 @@ object EncodingTools {
    * State in register machine
    * @param id unique integer identifier
    */
-  case class Q(id:Int) extends AnyVal
+  case class Q(id:Int) extends Nameable{
+    override def solverName: String = s"Q_${id}"
+  }
 
   /**
    * Transition in register machine
