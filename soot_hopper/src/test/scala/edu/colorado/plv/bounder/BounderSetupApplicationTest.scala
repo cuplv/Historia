@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder
 import better.files.Resource
 import edu.colorado.plv.bounder.ir.{BitTypeSet, JimpleFlowdroidWrapper, TopTypeSet, TypeSet}
 import edu.colorado.plv.bounder.lifestate.{LSExpParser, LifeState}
-import edu.colorado.plv.bounder.symbolicexecutor.{FlowdroidCallGraph, SparkCallGraph}
+import edu.colorado.plv.bounder.symbolicexecutor.{SparkCallGraph}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, ClassType, DBPathNode, IntVal, NamedPureVar, PureExpr, PureVar, State, SubclassOf, TopVal, TypeConstraint}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.Scene
@@ -15,7 +15,7 @@ class BounderSetupApplicationTest extends AnyFunSuite {
   val trikita_apk = getClass.getResource("/trikita.slide_4.apk").getPath
   assert(trikita_apk != null)
   test("Load apk loads an apk.") {
-    BounderSetupApplication.loadApk(trikita_apk, SparkCallGraph)
+    BounderSetupApplication.loadApk(trikita_apk)
     val gotSize = Scene.v().getClasses().size
     assert( gotSize > 2000 )
   }
@@ -30,7 +30,6 @@ class BounderSetupApplicationTest extends AnyFunSuite {
     //    }
     val m: String => PureExpr = LSExpParser.convert
     assert(m("@true") == BoolVal(true))
-    assert(m("_") == TopVal)
     assert(m("A_") == NamedPureVar("A_"))
     assert(LSExpParser.LSVarReg.matches("A9"))
     assert(!LSExpParser.LSVarReg.matches("0"))

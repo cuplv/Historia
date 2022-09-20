@@ -163,6 +163,9 @@ class Z3ModelGenerator(persistentConstraints: ClassHierarchyConstraints)(implici
 
   //  *****  Automata based encoding *****
 
+  def encode(target:Once, path:NormalizedPath,reachable:Boolean):BoolExpr = {
+    ???
+  }
   def learnRulesFromExamples_automata(target: Set[IPathNode], reachable: Set[IPathNode],
                                      space: SpecSpace): Option[SpecAssignment] = {
     implicit val s = space
@@ -186,7 +189,8 @@ class Z3ModelGenerator(persistentConstraints: ClassHierarchyConstraints)(implici
     val mt = MessageTranslator(states, specSpace)
 
     val autStates = Z3SetEncoder((0 until nStates).map(n => Q(n)).toSet, "AutQ")
-    //val registers = Z3SetEncoder((0 until nRegisters).map(n => NamedPureVar(s"$n")).toSet, "Register")
+    //register 0 is special don't care register
+    val registers = Z3SetEncoder((0 until nRegisters).map(n => NamedPureVar(s"$n")).toSet, "Register")
 
     def mkTransitionFunction(msgName:String):FuncDecl[BoolSort] = {
       mt.inamelist

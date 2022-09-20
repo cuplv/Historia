@@ -2,7 +2,6 @@ package edu.colorado.plv.bounder
 
 import java.io.{File, FileOutputStream}
 
-import edu.colorado.plv.bounder.symbolicexecutor.{CallGraphSource, FlowdroidCallGraph, FrameworkExtensions, PatchedFlowdroidCallGraph}
 import javax.tools.{JavaCompiler, ToolProvider}
 //import soot.jimple.infoflow.InfoflowConfiguration.{AliasingAlgorithm, CallgraphAlgorithm, CodeEliminationMode}
 //import soot.jimple.infoflow.android.{InfoflowAndroidConfiguration, SetupApplication}
@@ -68,32 +67,12 @@ object BounderSetupApplication {
     ???
   }
 
-  def loadApk(path:String, callGraph:CallGraphSource) : Unit = callGraph match{
-    case PatchedFlowdroidCallGraph => loadApkFlowdroid(path)
-    case FlowdroidCallGraph => loadApkFlowdroid(path)
-    case _ => loadApk(path)
-  }
-  def loadApkFlowdroid(path:String) : Unit = {
-//    // Create call graph and pointer analysis with flowdroid main method
-//    val config = new InfoflowAndroidConfiguration
-//    val platformsDir = androidHome + "/platforms"
-//    config.getAnalysisFileConfig.setAndroidPlatformDir(platformsDir)
-//    config.getAnalysisFileConfig.setTargetAPKFile(path)
-//    // TODO: figure out how to load apk without generating flowdroid callgraph
-//    config.setCallgraphAlgorithm(CallgraphAlgorithm.VTA)
-//    config.setMergeDexFiles(true)
-////    config.setAliasingAlgorithm(AliasingAlgorithm.PtsBased)
-//    config.setEnableLineNumbers(true)
-//    config.setExcludeSootLibraryClasses(false)
-//    config.setCodeEliminationMode(CodeEliminationMode.NoCodeElimination)
-//    config.setOneComponentAtATime(false)
-//    config.getSourceSinkConfig.setEnableLifecycleSources(true)
-//    val setup = new SetupApplication(config)
-//    G.reset()
-//    setup.constructCallgraph()
-    ???
-  }
-  def loadApk(path : String):Unit ={
+  sealed trait SourceType
+  case object ApkSource extends SourceType
+  case object JimpleSource extends SourceType
+
+
+  def loadApk(path : String, sourceType: SourceType = ApkSource):Unit ={
     G.reset()
     val platformsDir = androidHome + "/platforms"
     Options.v.set_allow_phantom_refs(true)
@@ -116,7 +95,12 @@ object BounderSetupApplication {
     Options.v.set_whole_program(true)
     Options.v.set_process_dir(List(path).asJava)
     Options.v.set_android_jars(platformsDir)
-    Options.v.set_src_prec(Options.src_prec_apk_class_jimple)
+    sourceType match {
+      case ApkSource =>
+        Options.v.set_src_prec(Options.src_prec_apk_class_jimple)
+      case JimpleSource =>
+        Options.v.set_src_prec(Options.src_prec_jimple)
+    }
     Options.v.set_keep_offset(false) //don't create tag that holds bytecode offset
     Options.v.set_keep_line_number(true)
 //    Options.v.set_throw_analysis(Options.throw_analysis_dalvik) //TODO: disabled, is this needed?

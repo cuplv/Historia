@@ -1,10 +1,11 @@
 package edu.colorado.plv.bounder.ir
 
+import edu.colorado.plv.bounder.BounderSetupApplication.{ApkSource, SourceType}
+
 import java.util
 import java.util.{Collections, Objects}
-
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper.cgEntryPointName
-import edu.colorado.plv.bounder.lifestate.LifeState.{Once, LSSpec, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, Once, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
 import edu.colorado.plv.bounder.{BounderSetupApplication, BounderUtil}
@@ -486,7 +487,8 @@ class CallGraphWrapper(cg: CallGraph) extends CallGraphProvider{
  */
 class JimpleFlowdroidWrapper(apkPath : String,
                              callGraphSource: CallGraphSource,
-                             toOverride:Set[LSSpec]
+                             toOverride:Set[LSSpec],
+                             sourceType:SourceType = ApkSource
                             ) extends IRWrapper[SootMethod, soot.Unit] {
   case class Messages(cbSize:Int, cbMsg:Int, matchedCb:Int, matchedCbRet:Int,
                       ciCallGraph:Int, matchedCiCallGraph:Int,
@@ -557,7 +559,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
   }
 
 
-  BounderSetupApplication.loadApk(apkPath, callGraphSource)
+  BounderSetupApplication.loadApk(apkPath, sourceType)
 
 
 //  private val preInstrumentationCha =
@@ -1028,9 +1030,6 @@ class JimpleFlowdroidWrapper(apkPath : String,
     case AppOnlyCallGraph =>
       val chacg: CallGraph = Scene.v().getCallGraph
       new AppOnlyCallGraph(chacg, preCallbacks, this, resolver)
-    case FlowdroidCallGraph => new CallGraphWrapper(Scene.v().getCallGraph)
-    case PatchedFlowdroidCallGraph =>
-      new PatchingCallGraphWrapper(Scene.v().getCallGraph, getAppMethods(resolver))
   }
 
 

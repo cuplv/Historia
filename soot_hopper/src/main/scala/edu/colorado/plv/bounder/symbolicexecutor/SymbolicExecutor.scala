@@ -14,8 +14,6 @@ import upickle.default._
 import scala.collection.mutable
 
 sealed trait CallGraphSource
-case object FlowdroidCallGraph extends CallGraphSource
-case object PatchedFlowdroidCallGraph extends CallGraphSource
 case object CHACallGraph extends CallGraphSource
 case object SparkCallGraph extends CallGraphSource
 case object AppOnlyCallGraph extends CallGraphSource

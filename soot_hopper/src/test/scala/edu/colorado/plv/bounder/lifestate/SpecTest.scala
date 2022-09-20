@@ -4,7 +4,7 @@ import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.ir.{CIEnter, CIExit, JimpleFlowdroidWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{Once, SubClassMatcher}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, DefaultAppCodeResolver, PatchedFlowdroidCallGraph, SparkCallGraph, SymbolicExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, DefaultAppCodeResolver, SparkCallGraph, SymbolicExecutorConfig, TransferFunctions}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.{Scene, SootMethod}
 
@@ -117,7 +117,7 @@ class SpecTest extends AnyFunSuite {
   test("Dummy test to print framework types"){
     val apk = getClass.getResource("/RXJavaSubscribe-fix-debug.apk").getPath
     assert(apk != null)
-    BounderSetupApplication.loadApk(apk, SparkCallGraph)
+    BounderSetupApplication.loadApk(apk)
     val w = new JimpleFlowdroidWrapper(apk,SparkCallGraph, Set())
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
     val frameworkMethods = Scene.v().getClasses.asScala.flatMap{clazz =>

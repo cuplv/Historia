@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NS}
 import edu.colorado.plv.bounder.lifestate.{SpecSignatures, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state._
-import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, ControlFlowResolver, DefaultAppCodeResolver, FlowdroidCallGraph, SparkCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, ControlFlowResolver, DefaultAppCodeResolver, SparkCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
 
@@ -17,7 +17,7 @@ class SootUtilsTest extends AnyFunSuite {
   test("findMethodLoc should find a location based on a classname and line number."){
     val test_interproc_1 = getClass.getResource("/test_interproc_1.apk").getPath()
     assert(test_interproc_1 != null)
-    BounderSetupApplication.loadApk(test_interproc_1, SparkCallGraph)
+    BounderSetupApplication.loadApk(test_interproc_1)
     val res = SootUtils.findMethodLoc(
       "com.example.test_interproc_1.MainActivity", "java.lang.String objectString()")
     assert(res.isDefined)
@@ -26,7 +26,7 @@ class SootUtilsTest extends AnyFunSuite {
   test("findMethodLoc should return none if the class or method does not exist"){
     val test_interproc_1 = getClass.getResource("/test_interproc_1.apk").getPath()
     assert(test_interproc_1 != null)
-    BounderSetupApplication.loadApk(test_interproc_1, SparkCallGraph)
+    BounderSetupApplication.loadApk(test_interproc_1)
     val res: Option[JimpleMethodLoc] = SootUtils.findMethodLoc("non.existant.class", "33")
     assert(!res.isDefined)
     val res2 = SootUtils.findMethodLoc(
@@ -37,7 +37,7 @@ class SootUtilsTest extends AnyFunSuite {
   test("findLineInMethod should find a UnitLoc"){
     val test_interproc_1 = getClass.getResource("/test_interproc_1.apk").getPath()
     assert(test_interproc_1 != null)
-    BounderSetupApplication.loadApk(test_interproc_1, SparkCallGraph)
+    BounderSetupApplication.loadApk(test_interproc_1)
     val res = SootUtils.findMethodLoc(
       "com.example.test_interproc_1.MainActivity", "java.lang.String objectString()")
 
