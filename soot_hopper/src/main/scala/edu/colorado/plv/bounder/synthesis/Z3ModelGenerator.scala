@@ -170,6 +170,8 @@ class Z3ModelGenerator(persistentConstraints: ClassHierarchyConstraints)(implici
     try {
       zCtx.acquire()
       implicit val automataTranslator = AutomataTranslator(collectStates(target) ++ collectStates(reachable), s, 3,3)
+      val targetNorm = makePaths(target)
+      val reachableNorm = makePaths(reachable)
       ???
       zCtx.mkAssert(???)
       val res = checkSATOne(automataTranslator.mt, baseAxioms ++ automataTranslator.axiomList)
@@ -182,15 +184,19 @@ class Z3ModelGenerator(persistentConstraints: ClassHierarchyConstraints)(implici
                                 nRegisters:Int)
                                (implicit zCtx:Z3SolverCtx){
     val mt = MessageTranslator(states, specSpace)
+
+    val autStates = Z3SetEncoder((0 until nStates).map(n => Q(n)).toSet, "AutQ")
+    //val registers = Z3SetEncoder((0 until nRegisters).map(n => NamedPureVar(s"$n")).toSet, "Register")
+
     def mkTransitionFunction(msgName:String):FuncDecl[BoolSort] = {
       mt.inamelist
       ???
     }
-    val autStates = Z3SetEncoder((0 until nStates).map(n => Q(n)).toSet, "AutQ")
-    val registers = Z3SetEncoder((0 until nRegisters).map(n => NamedPureVar(s"$n")).toSet, "Register")
 
     def axiomList:List[MessageTranslator => Unit] =
-      List(autStates,registers).map(zSet=> _ => zCtx.mkAssert(zSet.getAxioms()))
+      List(autStates
+//        ,registers
+      ).map(zSet=> _ => zCtx.mkAssert(zSet.getAxioms()))
 
 
   }

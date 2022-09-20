@@ -2027,7 +2027,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
           "void onPause()", line, Some(".*toString.*"))
 
         val res2 = symbolicExecutor.run(npe).flatMap(a => a.terminals)
-        prettyPrinting.dumpDebugInfo(res2, "staticNPE")
+        //prettyPrinting.dumpDebugInfo(res2, "staticNPE")
         assert(res2.nonEmpty)
         BounderUtil.throwIfStackTrace(res2)
         assert(BounderUtil.interpretResult(res2, QueryFinished) == Witnessed)

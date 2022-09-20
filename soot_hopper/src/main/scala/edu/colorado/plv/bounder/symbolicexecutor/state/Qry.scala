@@ -309,8 +309,12 @@ case object WitnessedQry{
 
 sealed case class Qry(state:State, loc:Loc, searchState:SearchState) {
   override def toString:String = loc.toString + "  " + state.toString
-  def isLive:Boolean = ???
-  def isSubsumed:Boolean = ???
+  def isLive:Boolean = searchState match {
+    case Unknown => ???
+    case Live => true
+    case BottomQry => false
+    case WitnessedQry(_) => true
+  }
 }
 ////Query consists of a location and an abstract state defined at the program point just before that location.
 //case class LiveQry(state:State, loc: Loc) extends Qry {

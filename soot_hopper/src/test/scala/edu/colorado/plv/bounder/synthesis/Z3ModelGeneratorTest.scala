@@ -228,6 +228,8 @@ class Z3ModelGeneratorTest extends AnyFunSuite {
   val intToClass: Map[Int, String] = classToInt.map(k => (k._2, k._1))
   implicit val ord = new DummyOrd
   implicit val outputMode = MemoryOutputMode
+
+  //Depricated (uses old encoding)
   test("positive bexp excludes init"){
     //TODO: may want toemove this if we go with aut encode
     def testWithState(state:State, exclInitExpected:Boolean, containsInitExpected:Boolean) = {
