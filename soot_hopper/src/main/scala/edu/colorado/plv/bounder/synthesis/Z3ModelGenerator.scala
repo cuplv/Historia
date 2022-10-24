@@ -320,8 +320,10 @@ class Z3ModelGenerator(persistentConstraints: ClassHierarchyConstraints)(implici
 
     // encode each transition - base case leaves are initial state
     def encodeTransitions(worklist:Set[(UninExpr, PathNode)]):BoolExpr = {
-      if(worklist.size != 1)
+      if(worklist.size != 1) {
         ??? //TODO implement this
+      }
+      ???
 
 
     }
