@@ -140,7 +140,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   protected def mkAnd(lhs: T, rhs: T)(implicit zctx: C): T
 
-  protected def mkAnd(t: List[T])(implicit zctx: C): T
+  protected def mkAnd(t: Iterable[T])(implicit zctx: C): T
 
   protected def mkOr(lhs: T, rhs: T)(implicit zctx: C): T
 

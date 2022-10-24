@@ -21,6 +21,11 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
 //    withFixture(test.toNoArgTest(FixtureParam(CHACallGraph)))
 //    withFixture(test.toNoArgTest(FixtureParam(FlowdroidCallGraph)))
   }
+  test("Load jimple app"){ f =>
+
+    ???
+  }
+
   test("Call graph picks up basic edge") { f =>
 
     val src = """package com.example.createdestroy;

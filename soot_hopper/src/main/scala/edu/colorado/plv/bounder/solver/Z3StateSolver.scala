@@ -317,7 +317,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     mkAnd(List(lhs,rhs))
   }
 
-  override protected def mkAnd(t:List[AST])(implicit zCtx:Z3SolverCtx): Expr[BoolSort] = {
+  override protected def mkAnd(t:Iterable[AST])(implicit zCtx:Z3SolverCtx): Expr[BoolSort] = {
     // Simplify for debug
     // Note: in z3, and with no arguments returns true, this retains that behavior
     val t2 = t.filter{
@@ -819,12 +819,12 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   private def iNameString = "inames"
   // index sort used before msg was the order
   //  private def indexSort(implicit zCtx: Z3SolverCtx):UninterpretedSort = zCtx.ctx.mkUninterpretedSort("Uint")
-  private def addrSort(implicit zCtx:Z3SolverCtx) = zCtx.ctx.mkUninterpretedSort("Addr")
-  private def msgSort(implicit zCtx: Z3SolverCtx):UninterpretedSort = zCtx.ctx.mkUninterpretedSort("Msg")
-  private def typeSort(implicit zCtx:Z3SolverCtx): UninterpretedSort = zCtx.ctx.mkUninterpretedSort("ClassTypes")
-  private def constSort(implicit zCtx:Z3SolverCtx): UninterpretedSort = zCtx.ctx.mkUninterpretedSort("ConstVals")
-  private def localSort(implicit zCtx:Z3SolverCtx): UninterpretedSort = zCtx.ctx.mkUninterpretedSort("Locals")
-  private def iNameSort(implicit zCtx:Z3SolverCtx): UninterpretedSort = zCtx.ctx.mkUninterpretedSort(iNameString)
+  protected def addrSort(implicit zCtx:Z3SolverCtx) = zCtx.ctx.mkUninterpretedSort("Addr")
+  protected def msgSort(implicit zCtx: Z3SolverCtx):UninterpretedSort = zCtx.ctx.mkUninterpretedSort("Msg")
+  protected def typeSort(implicit zCtx:Z3SolverCtx): UninterpretedSort = zCtx.ctx.mkUninterpretedSort("ClassTypes")
+  protected def constSort(implicit zCtx:Z3SolverCtx): UninterpretedSort = zCtx.ctx.mkUninterpretedSort("ConstVals")
+  protected def localSort(implicit zCtx:Z3SolverCtx): UninterpretedSort = zCtx.ctx.mkUninterpretedSort("Locals")
+  protected def iNameSort(implicit zCtx:Z3SolverCtx): UninterpretedSort = zCtx.ctx.mkUninterpretedSort(iNameString)
 
   /**
    * create msgLTE function such that (msgLTE X Y) means X ≤ Y

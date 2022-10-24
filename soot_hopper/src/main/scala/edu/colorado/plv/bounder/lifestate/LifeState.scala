@@ -878,6 +878,18 @@ object SpecSpace{
 /**
  * Representation of a set of possible lifestate specs */
 class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
+
+  private lazy val specUID:Map[LSSpec, Int] = (enableSpecs ++ disallowSpecs).zipWithIndex.map{
+    case (spec, i) => spec->i
+  }.toMap
+  private lazy val uidToSpec:Map[Int,LSSpec] = specUID.map{
+    case (spec, i) => i->spec
+  }
+
+  def getSpecUID(spec: LSSpec): Int = specUID(spec)
+
+  def getSpecByUID(uid:Int):LSSpec = uidToSpec(uid)
+
   def findIFromCurrent(dir: MessageType, signature: (String, String))(implicit cha:ClassHierarchyConstraints):Set[Once] = {
     allI.filter(i => i.mt == dir && i.signatures.matches(signature))
   }

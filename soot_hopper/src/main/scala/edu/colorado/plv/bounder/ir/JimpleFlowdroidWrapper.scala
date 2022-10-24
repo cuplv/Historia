@@ -725,34 +725,6 @@ class JimpleFlowdroidWrapper(apkPath : String,
     }
 
 
-//    CHATransformer.v().transform()
-//    // Use CHA call graph to find used callins
-//    val cg = Scene.v().getCallGraph
-//
-//    @tailrec
-//    def instrumentLoop(workList: Set[SootMethod], visited:Set[SootMethod] = Set()):Unit = {
-//      if(workList.nonEmpty){
-//        val currentMethod = workList.head
-//        val currentMethodDeclaringClass = JimpleFlowdroidWrapper.stringNameOfClass(currentMethod.getDeclaringClass)
-//        if(resolver.isFrameworkClass(currentMethodDeclaringClass)){
-//          instrumentSootMethod(currentMethod) //LayoutInflater has null bodies, make sure this adjusts phantom methods
-//        }
-//        val called: Iterator[SootMethod] =
-//          cg.edgesOutOf(currentMethod).asScala.map(e => e.tgt()).filter(tgt => !visited.contains(tgt))
-//        instrumentLoop(workList.tail ++ called, visited + currentMethod)
-//      }else{
-//        Scene.v().getClasses.asScala.foreach{c =>
-//          if(!c.isInterface && resolver.isFrameworkClass(JimpleFlowdroidWrapper.stringNameOfClass(c))){
-//            c.getMethods.asScala.foreach { m =>
-//              if(!visited.contains(m) && m.getDeclaringClass.getName != cgEntryPointName) {
-//                instrumentSootMethod(m) //LayoutInflater has null bodies, make sure this adjusts phantom methods
-//              }
-//            }
-//          }
-//        } //TODO:
-//      }
-//    }
-//    instrumentLoop(callbacks)
   }
   private val fwkInstantiatedClasses = mutable.Set[SootClass]()
 
