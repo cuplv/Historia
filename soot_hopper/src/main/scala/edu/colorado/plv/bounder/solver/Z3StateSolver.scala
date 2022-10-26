@@ -209,25 +209,31 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
                             axioms: List[MessageTranslator => Unit])(implicit zCtx:  Z3SolverCtx): Boolean = {
     val res: Status = zCtx.solver.check()
 
-    val interp = (res,axioms) match {
-      case (Status.UNSATISFIABLE, _) =>
-        // Already unsatisfiable, no need to add axioms
-        false
-      case (Status.SATISFIABLE, h::t) =>
-        zCtx.solver.push()
-        h(messageTranslator)
-        checkSatPush(messageTranslator, t)
-      case (Status.UNKNOWN, h::t) =>
-        zCtx.solver.push()
-        h(messageTranslator)
-        checkSatPush(messageTranslator, t)
-      case (Status.SATISFIABLE, Nil) =>
-        // No more axioms to try
-        true
-      case (Status.UNKNOWN, Nil) =>
+    try {
+      val interp = (res, axioms) match {
+        case (Status.UNSATISFIABLE, _) =>
+          // Already unsatisfiable, no need to add axioms
+          false
+        case (Status.SATISFIABLE, h :: t) =>
+          zCtx.solver.push()
+          h(messageTranslator)
+          checkSatPush(messageTranslator, t)
+        case (Status.UNKNOWN, h :: t) =>
+          zCtx.solver.push()
+          h(messageTranslator)
+          checkSatPush(messageTranslator, t)
+        case (Status.SATISFIABLE, Nil) =>
+          // No more axioms to try
+          true
+        case (Status.UNKNOWN, Nil) =>
+          throw new IllegalArgumentException("Unknown, no more axioms, failure.")
+      }
+      interp
+    } catch {
+      case z :Z3Exception =>
         throw new IllegalArgumentException("Unknown, no more axioms, failure.")
+
     }
-    interp
   }
 
   override def checkSATOne(messageTranslator: MessageTranslator,

@@ -53,7 +53,8 @@ case class SymbolicExecutorConfig[M,C](stepLimit: Int,
                                        z3Timeout : Option[Int] = None,
                                        component : Option[Seq[String]] = None,
                                        outputMode : OutputMode = MemoryOutputMode,
-                                       timeLimit : Int = 7200, //TODO: somehow make time limit hard cutoff ===== currently just exits on symbex main loop ==== thread.interrupt?
+                                       timeLimit : Int = 7200, //TODO:======7200===== somehow make time limit hard cutoff ===== currently just exits on symbex main loop ==== thread.interrupt?
+//                                      timeLimit:Int = 1800,
                                        subsumptionMode:SubsumptionMode = SubsumptionModeIndividual //Note: seems to be faster without batch mode subsumption
                                       ){
   def getSymbolicExecutor =
@@ -210,13 +211,16 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
     }.toSet
   }
 
-  def isSubsumed(pathNode:IPathNode):Set[IPathNode] = pathNode match{
+  def isSubsumed(pathNode:IPathNode, checkTimeout: ()=>Unit):Set[IPathNode] = pathNode match{
     case SwapLoc(loc) if pathNode.qry.isInstanceOf[Qry] && invarMap.contains(loc) => {
       val nodes:Set[IPathNode] = invarMap(loc)
       val states = nodes.map(_.state)
       val res = config.subsumptionMode match {
         case SubsumptionModeIndividual =>
-          nodes.find(p => stateSolver.canSubsume(p.state,pathNode.state, transfer.getSpec)).toSet
+          nodes.find(p => {
+            checkTimeout()
+            stateSolver.canSubsume(p.state,pathNode.state, transfer.getSpec)
+          }).toSet
         case SubsumptionModeBatch =>
           if(stateSolver.canSubsumeSet(states, pathNode.state, transfer.getSpec)) nodes else Set[IPathNode]()
         case SubsumptionModeTest =>{
@@ -321,6 +325,11 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   }
 
 
+  def checkDeadline(deadline:Long, qrySet:GrouperQ, refutedSubsumedOrWitnessed: Set[IPathNode]):Unit = {
+    if(deadline > -1 && Instant.now.getEpochSecond > deadline){
+      throw QueryInterruptedException(qrySet.toSet ++ refutedSubsumedOrWitnessed, "timeout")
+    }
+  }
   /**
    *
    * @param qrySet Work list of locations and states to process
@@ -333,10 +342,7 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
   @tailrec
   final def executeBackward(qrySet: GrouperQ, limit:Int, deadline:Long,
                             refutedSubsumedOrWitnessed: Set[IPathNode] = Set()):Set[IPathNode] = {
-
-    if(deadline > -1 && Instant.now.getEpochSecond > deadline){
-      throw QueryInterruptedException(qrySet.toSet ++ refutedSubsumedOrWitnessed, "timeout")
-    }
+    checkDeadline(deadline,qrySet, refutedSubsumedOrWitnessed)
     if(qrySet.isEmpty){
       return refutedSubsumedOrWitnessed
     }
@@ -369,15 +375,15 @@ class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
           refutedSubsumedOrWitnessed.union(qrySet.toSet) + p
         case p@PathNode(qry@Qry(_,_,Live), false) =>
           // live path node
-          val subsuming = try{
-              isSubsumed(p)
-            }catch {
-              case ze:Throwable =>
-                // Get sequence trace to error when it occurs
-                current.setError(ze)
-                ze.printStackTrace()
-                throw QueryInterruptedException(refutedSubsumedOrWitnessed + current, ze.getMessage)
-          }
+          val subsuming = //try{
+              isSubsumed(p, ()=> checkDeadline(deadline, qrySet,refutedSubsumedOrWitnessed))
+//            }catch {
+//              case ze:Throwable =>
+//                // Get sequence trace to error when it occurs
+//                current.setError(ze)
+//                ze.printStackTrace()
+//                throw QueryInterruptedException(refutedSubsumedOrWitnessed + current, ze.getMessage)
+//          }
           subsuming match {
             case v if v.nonEmpty =>
               // Path node discovered to be subsumed

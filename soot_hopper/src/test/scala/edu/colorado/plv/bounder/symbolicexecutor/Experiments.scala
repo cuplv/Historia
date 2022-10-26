@@ -51,8 +51,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
   {
     val logF = File("log/logging.log")
     if(logF.exists() && logF.contentAsString.split("\\n").size > 5) {
-      //throw new IllegalStateException("Please delete log file before run")
-      logF.delete() //TODO: switch to exception when running exp to avoid deleting results
+      throw new IllegalStateException("Please delete log file before run")
+//      logF.delete() //TODO: switch to exception when running exp to avoid deleting results
     }
 
   }
