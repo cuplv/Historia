@@ -329,7 +329,7 @@ object BounderUtil {
   }
   // "DYLD_LIBRARY_PATH"->"/Users/shawnmeier/software/z3/build") TODO: set dyld?
   lazy val mac = isMac()
-  val dy = scala.util.Properties.envOrElse("DYLD_LIBRARY_PATH",
+  lazy val dy = scala.util.Properties.envOrElse("DYLD_LIBRARY_PATH",
     scala.util.Properties.envOrElse("Z3_LIB",
       scala.util.Properties.envOrElse("LD_LIBRARY_PATH",
         throw new RuntimeException("Must set DYLD_LIBRARY_PATH for z3.  Mac restrictions may apply." +

@@ -53,8 +53,8 @@ case class SymbolicExecutorConfig[M,C](stepLimit: Int,
                                        z3Timeout : Option[Int] = None,
                                        component : Option[Seq[String]] = None,
                                        outputMode : OutputMode = MemoryOutputMode,
-                                       timeLimit : Int = 7200, //TODO:======7200===== somehow make time limit hard cutoff ===== currently just exits on symbex main loop ==== thread.interrupt?
-//                                      timeLimit:Int = 1800,
+//                                       timeLimit : Int = 7200,
+                                      timeLimit:Int = 1800, // Note: connectbot click finish does not seem to go any further with 2h vs 0.5hr
                                        subsumptionMode:SubsumptionMode = SubsumptionModeIndividual //Note: seems to be faster without batch mode subsumption
                                       ){
   def getSymbolicExecutor =
