@@ -100,14 +100,14 @@ class StateSolverTest extends FixtureAnyFunSuite {
 //    withFixture(test.toNoArgTest(FixtureParam(SetInclusionTypeSolving)))
     val out = List(true,false).flatMap{ check =>
       val (stateSolver, _) = getZ3StateSolver(check)
-      println(s"-normal subs, pushSatCheck:${check}")
+      //println(s"-normal subs, pushSatCheck:${check}")
       val t1 = withFixture(test.toNoArgTest(FixtureParam(stateSolver,
         (s1, s2, spec) => {
           //val s1simp = stateSolver.simplify(s1,spec).get
           //val s2simp = stateSolver.simplify(s2,spec).get
           stateSolver.canSubsume(s1, s2, spec)
         })))
-      println(s"-set subs, pushSatCheck:${check}")
+      //println(s"-set subs, pushSatCheck:${check}")
       val t2 = withFixture(test.toNoArgTest(FixtureParam(stateSolver, (s1, s2, spec) => {
         s1.setSimplified() //For tests, just tell solver its simplified already
         s2.setSimplified() //For tests, just tell solver its simplified already
@@ -117,7 +117,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
       })))
       List(t1,t2)
     }
-    out.head //TODO: probably using fixture wrong here
+    out.head
   }
   ignore("LOAD: test to debug subsumption issues by loading serialized states"){f =>
     // Note: leave ignored unless debugging, this test is just deserializing states to inspect

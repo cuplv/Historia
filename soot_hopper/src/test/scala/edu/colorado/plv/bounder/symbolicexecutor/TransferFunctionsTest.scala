@@ -138,7 +138,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     assert(formula.contains(PureConstraint(nullPv,Equals, NullVal)))
     assert(formula.contains(PureConstraint(nullPv,NotEquals, NullVal)))
   }
-  test("Transfer assign local local") {
+  ignore("Transfer assign local local") {
     val cmd= (loc:AppLoc) => AssignCmd(LocalWrapper("bar","Object"),LocalWrapper("baz","String"),loc)
     val post = State(StateFormula(
       CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("bar") -> nullPv))::Nil,
@@ -183,7 +183,7 @@ class TransferFunctionsTest extends AnyFunSuite {
   }
   private val a = NamedPureVar("a")
   private val iFooA: Once = Once(CBEnter, Set(("", "foo")), TopVal :: a :: Nil)
-  test("Add matcher and phi abstraction when crossing callback entry") {
+  ignore("Add matcher and phi abstraction when crossing callback entry") {
     val preloc = CallbackMethodInvoke("","foo", fooMethod) // Transition to just before foo is invoked
     val postloc = AppLoc(fooMethod,TestIRLineLoc(1), isPre=true)
     val ir = new TestIR(Set(MethodTransition(preloc, postloc)))
@@ -219,25 +219,5 @@ class TransferFunctionsTest extends AnyFunSuite {
 //    assert(formula == otheri)
     val stack = prestate.head.callStack
     assert(stack.isEmpty)
-  }
-  test("Discharge I(m1^) phi abstraction when post state must generate m1^ for previous transition") {
-    val preloc = CallbackMethodInvoke("","foo", fooMethod) // Transition to just before foo is invoked
-    val postloc = AppLoc(fooMethod,TestIRLineLoc(1), isPre=true)
-    val ir = new TestIR(Set(MethodTransition(preloc, postloc)))
-    val trf = tr(ir,miniCha)
-    val post = State(StateFormula(
-      CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("@this") -> recPv))::Nil,
-      heapConstraints = Map(),
-      pureFormula = Set(),
-      typeConstraints = Map(),
-      traceAbstraction = AbstractTrace(iFooA, Nil, Map("a"->recPv))),nextAddr = 0)
-    println(s"post: ${post.toString}")
-    val prestate: Set[State] = trf.transfer(post,preloc, postloc)
-    println(s"pre: ${prestate.toString}")
-    val formula = prestate.head.traceAbstraction
-    ???
-//    assert(formula.modelVars.exists{
-//      case (k,v) => k == "a" && v == recPv
-//    })
   }
 }

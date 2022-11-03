@@ -200,7 +200,7 @@ class Z3ModelGeneratorTest extends AnyFunSuite {
     }
 
   }
-  test("Simple encode node reachability"){
+  ignore("Simple encode node reachability"){
 
     //TODO: may need to declare vars distinct
     val unreachSeq = witTreeFromMsgList(
@@ -215,7 +215,7 @@ class Z3ModelGeneratorTest extends AnyFunSuite {
     val res = gen.learnRulesFromExamples(unreachSeq, reachSeq, spec)
     ???
   }
-  test("Encode Node Reachability motivating example"){
+  ignore("Encode Node Reachability motivating example"){
     implicit val ord = new DummyOrd
     implicit val outputMode = MemoryOutputMode
     //TODO: may need to declare vars distinct
