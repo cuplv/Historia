@@ -8,7 +8,7 @@ import upickle.default.{macroRW, ReadWriter => RW}
 import scala.collection.BitSet
 
 //TODO: serialize IR and points to, This should be able to continue where other left off
-class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] {
+class SerializedIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] {
   override def findMethodLoc(className: String, methodName: String): Iterable[MethodLoc] = ???
 
   override def findLineInMethod(className: String, methodName: String, line: Int): Iterable[AppLoc] = ???
@@ -73,7 +73,7 @@ class TestIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] 
  * @param name
  * @param args use "_" for receiver on static method
  */
-case class TestIRMethodLoc(clazz:String, name:String, args:List[Option[LocalWrapper]]) extends MethodLoc {
+case class SerializedIRMethodLoc(clazz:String, name:String, args:List[Option[LocalWrapper]]) extends MethodLoc {
   override def simpleName: String = name
 
   override def classType: String = clazz
@@ -99,17 +99,17 @@ case class TestIRMethodLoc(clazz:String, name:String, args:List[Option[LocalWrap
   override def bodyToString: String = ???
 }
 
-object TestIRMethodLoc{
+object SerializedIRMethodLoc{
   implicit val rw = upickle.default.readwriter[ujson.Value].bimap[MethodLoc](
     x =>
       ujson.Arr(x.simpleName, x.classType, x.argTypes),
     json =>
-      TestIRMethodLoc(json(0).str, json(1).str, ???)
+      SerializedIRMethodLoc(json(0).str, json(1).str, ???)
   )
 }
 
 
-case class TestIRLineLoc(line:Int, desc:String = "") extends LineLoc {
+case class SerializedIRLineLoc(line:Int, desc:String = "") extends LineLoc {
   override def toString: String = if(desc == "") line.toString else desc
 
   override def lineNumber: Int = line
@@ -118,12 +118,12 @@ case class TestIRLineLoc(line:Int, desc:String = "") extends LineLoc {
 
   override def isFirstLocInMethod: Boolean = ???
 }
-object TestIRLineLoc{
-  implicit val rw:RW[TestIRMethodLoc] = macroRW
+object SerializedIRLineLoc{
+  implicit val rw:RW[SerializedIRMethodLoc] = macroRW
 }
 
 sealed trait TestTransition
 case class CmdTransition(loc1: Loc, cmd:CmdWrapper , loc2:Loc) extends TestTransition
 case class MethodTransition(loc1:Loc, loc2:Loc) extends TestTransition
 
-case class TestMethod(methodLoc: TestIRMethodLoc, cmds: List[CmdWrapper])
+case class TestMethod(methodLoc: SerializedIRMethodLoc, cmds: List[CmdWrapper])

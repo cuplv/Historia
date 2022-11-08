@@ -1,10 +1,10 @@
 package edu.colorado.plv.bounder.synthesis
 
-import edu.colorado.plv.bounder.lifestate.LifeState.{Exists, LSSpec, NS, UComb}
+import edu.colorado.plv.bounder.lifestate.LifeState.{Exists, LSAnyPred, LSSpec, NS, UComb}
 import edu.colorado.plv.bounder.lifestate.{SpecSignatures, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{MemoryOutputMode, NamedPureVar, TopVal}
-import edu.colorado.plv.bounder.synthesis.SynthTestUtil.{hierarchy, intToClass, targetIze, witTreeFromMsgList}
+import edu.colorado.plv.bounder.synthesis.SynthTestUtil.{cha, hierarchy, intToClass, targetIze, witTreeFromMsgList}
 import org.scalatest.funsuite.AnyFunSuite
 
 class EnumModelGeneratorTest extends AnyFunSuite {
@@ -30,11 +30,10 @@ class EnumModelGeneratorTest extends AnyFunSuite {
       targetIze(List(a_onCreate, t_create, s_a_subscribe,a_onDestroy, s_unsubscribe, a_call)))
     val reachSeq = witTreeFromMsgList(
       targetIze(List(a_onCreate, t_create, s_a_subscribe,a_onDestroy, a_call)))
-    val cha = new ClassHierarchyConstraints(hierarchy,Set("java.lang.Runnable"),intToClass)
-    val gen = new Z3ModelGenerator(cha)
+    val gen = new EnumModelGenerator(cha)
     val spec = new SpecSpace(Set(
-      LSSpec(a::Nil,Nil,  UComb("call", a_onDestroy::Exists(s::l::Nil,NS(s_a_subscribe, s_unsubscribe))::Nil) , a_call)
-    ))
+      LSSpec(a::Nil,Nil,  LSAnyPred , a_call)
+    ), matcherSpace = Set())
     val res = gen.learnRulesFromExamples(unreachSeq, reachSeq, spec)
     ???
 

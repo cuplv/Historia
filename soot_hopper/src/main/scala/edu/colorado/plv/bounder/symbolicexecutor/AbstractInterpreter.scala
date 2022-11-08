@@ -58,7 +58,7 @@ case class SymbolicExecutorConfig[M,C](stepLimit: Int,
                                        subsumptionMode:SubsumptionMode = SubsumptionModeIndividual //Note: seems to be faster without batch mode subsumption
                                       ){
   def getSymbolicExecutor =
-    new SymbolicExecutor[M, C](this)
+    new AbstractInterpreter[M, C](this)
 }
 
 class LexicalStackThenTopo[M,C](w:IRWrapper[M,C]) extends OrdCount{
@@ -132,7 +132,7 @@ case object QueryFinished extends QueryResult
 case class QueryInterrupted(reason:String) extends QueryResult
 
 case class QueryInterruptedException(terminals:Set[IPathNode], reason:String) extends Exception
-class SymbolicExecutor[M,C](config: SymbolicExecutorConfig[M,C]) {
+class AbstractInterpreter[M,C](config: SymbolicExecutorConfig[M,C]) {
 
   implicit val pathMode: OutputMode = config.outputMode
   implicit val w = config.w

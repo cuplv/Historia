@@ -64,7 +64,7 @@ object MethodLoc {
           Some(LocalWrapper(name, t))
         }
       }.toList
-      TestIRMethodLoc(clazz, name, args)
+      SerializedIRMethodLoc(clazz, name, args)
     }
   )
 }
@@ -79,8 +79,8 @@ object LineLoc{
     x =>
       ujson.Obj("id" -> System.identityHashCode(x), "str" -> x.toString),
     json => json match {
-      case ujson.Str(v) => TestIRLineLoc (v.toInt,"")
-      case ujson.Obj(v) => TestIRLineLoc (v("id").num.toInt, v("str").str)
+      case ujson.Str(v) => SerializedIRLineLoc (v.toInt,"")
+      case ujson.Obj(v) => SerializedIRLineLoc (v("id").num.toInt, v("str").str)
       case v => throw new IllegalArgumentException(s"Cannot parse $v as LineLoc")
     }
   )
@@ -169,7 +169,7 @@ object CallbackMethodInvoke{
 
 // post state of return on callback
 case class CallbackMethodReturn(tgtClazz: String, fmwName:String, loc:MethodLoc, line:Option[LineLoc]) extends Loc {
-  if( line.isDefined && !line.get.isInstanceOf[TestIRLineLoc])
+  if( line.isDefined && !line.get.isInstanceOf[SerializedIRLineLoc])
     assert(line.get.containingMethod == loc)
   override def toString:String = s"[CB Ret] ${tgtClazz} $fmwName"
   override def msgSig: Option[String] = Some(s"")

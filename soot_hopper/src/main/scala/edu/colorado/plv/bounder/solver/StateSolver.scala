@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.solver
 
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.ir.{AppMethod, BitTypeSet, EmptyTypeSet, MessageType, PrimTypeSet, TMessage, TopTypeSet, TraceElement, TypeSet, WitnessExplanation}
+import edu.colorado.plv.bounder.ir.{AppMethod, BitTypeSet, EmptyTypeSet, MessageType, PrimTypeSet, TMessage, TopTypeSet, Trace, TraceElement, TypeSet, WitnessExplanation}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.LifeState._
 import edu.colorado.plv.bounder.symbolicexecutor.state.{HeapPtEdge, _}
@@ -1376,7 +1376,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         return None
       if (state.callStack.nonEmpty)
         return None
-      val res = traceInAbstraction(state, specSpace, Nil, debug)
+      val res = traceInAbstraction(state, specSpace, Trace.empty, debug)
       res
     }finally{
       getLogger.warn(s"witnessed result: ${res.isDefined} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
@@ -1384,7 +1384,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   }
 
   def traceInAbstraction(state: State,specSpace: SpecSpace,
-                         trace: List[TraceElement],
+                         trace: Trace,
                          debug: Boolean = false)(implicit zCtx: C): Option[WitnessExplanation] = {
     try {
       zCtx.acquire()
@@ -1414,7 +1414,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       (iv,mkAnd(acc._2, ivIsInc))
     }
   }
-  private def encodeTraceContained(state: State, trace: List[TraceElement], specSpace: SpecSpace,
+  private def encodeTraceContained(state: State, trace: Trace, specSpace: SpecSpace,
                                    messageTranslator: MessageTranslator)(implicit zCtx: C): Map[PureVar, T] = {
 //    val traceFn = mkTraceFn("")
     val usedTypes = allTypes(state)
@@ -1440,10 +1440,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
     pvMap
   }
-  def encodeTrace(trace: List[TraceElement],
+  def encodeTrace(trace: Trace,
                   messageTranslator: MessageTranslator, argVals: Map[Int, T])(implicit zCtx: C): T = {
 //    assert(trace.head == TInitial)
-    val distinctMSG: List[(TraceElement,T)] = trace.zipWithIndex.map{
+    val distinctMSG: List[(TraceElement,T)] = trace.t.zipWithIndex.map{
       case (message, i) => (message,  mkMsgConst(i,Some(message)))
     }
 

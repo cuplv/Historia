@@ -43,11 +43,11 @@ class TransferFunctionsTest extends AnyFunSuite {
 
   implicit def set2SigMat(s:Set[(String,String)]):SignatureMatcher = SetSignatureMatcher(s)
 
-  val tr = (ir:TestIR, cha:ClassHierarchyConstraints) => new TransferFunctions(ir, new SpecSpace(Set()),cha)
-  def testCmdTransfer(cmd:AppLoc => CmdWrapper, post:State, testIRMethod: TestIRMethodLoc):Set[State] = {
-    val preloc = AppLoc(testIRMethod,TestIRLineLoc(1), isPre=true)
-    val postloc = AppLoc(testIRMethod,TestIRLineLoc(1), isPre=false)
-    val ir = new TestIR(Set(CmdTransition(preloc, cmd(postloc), postloc)))
+  val tr = (ir:SerializedIR, cha:ClassHierarchyConstraints) => new TransferFunctions(ir, new SpecSpace(Set()),cha)
+  def testCmdTransfer(cmd:AppLoc => CmdWrapper, post:State, testIRMethod: SerializedIRMethodLoc):Set[State] = {
+    val preloc = AppLoc(testIRMethod,SerializedIRLineLoc(1), isPre=true)
+    val postloc = AppLoc(testIRMethod,SerializedIRLineLoc(1), isPre=false)
+    val ir = new SerializedIR(Set(CmdTransition(preloc, cmd(postloc), postloc)))
     tr(ir,miniCha).transfer(post,preloc, postloc)
   }
 
@@ -60,7 +60,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     val cmd = read[CmdWrapper](js("cmd"))
     val cha = read[ClassHierarchyConstraints](Resource.getAsString("TestStates/hierarchy2.json"))
 
-    val ir = new TestIR(Set(CmdTransition(source,cmd,target)))
+    val ir = new SerializedIR(Set(CmdTransition(source,cmd,target)))
     val transfer = new TransferFunctions(ir, spec,cha)
     val out = transfer.transfer(state, target, source)
     out
@@ -76,7 +76,7 @@ class TransferFunctionsTest extends AnyFunSuite {
   //Test transfer function where field is assigned and base may or may not be aliased
   // pre: this -> a^ * b^.out -> b1^ /\ b1^ == null
   // post: (this -> a^ * a^.out -> c^* d^.out -> e^) OR (this -> a^ * a^.out -> c^ AND a^=d^ AND c^=d^)
-  val fooMethod = TestIRMethodLoc("","foo", List(Some(LocalWrapper("@this","java.lang.Object"))))
+  val fooMethod = SerializedIRMethodLoc("","foo", List(Some(LocalWrapper("@this","java.lang.Object"))))
   val fooMethodReturn = CallbackMethodReturn("", "foo", fooMethod, None)
   test("Transfer may or may not alias") {
     val cmd = (loc:AppLoc) => {
@@ -185,8 +185,8 @@ class TransferFunctionsTest extends AnyFunSuite {
   private val iFooA: Once = Once(CBEnter, Set(("", "foo")), TopVal :: a :: Nil)
   ignore("Add matcher and phi abstraction when crossing callback entry") {
     val preloc = CallbackMethodInvoke("","foo", fooMethod) // Transition to just before foo is invoked
-    val postloc = AppLoc(fooMethod,TestIRLineLoc(1), isPre=true)
-    val ir = new TestIR(Set(MethodTransition(preloc, postloc)))
+    val postloc = AppLoc(fooMethod,SerializedIRLineLoc(1), isPre=true)
+    val ir = new SerializedIR(Set(MethodTransition(preloc, postloc)))
 
     val lhs = Once(CBEnter, Set(("", "bar")), TopVal :: a :: Nil)
     //  I(cb a.bar()) <= I(cb a.foo())
