@@ -21,7 +21,7 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
 //    withFixture(test.toNoArgTest(FixtureParam(CHACallGraph)))
 //    withFixture(test.toNoArgTest(FixtureParam(FlowdroidCallGraph)))
   }
-  test("Load jimple app"){ f =>
+  ignore("Load jimple app"){ f =>
 
     ???
   }
@@ -172,14 +172,14 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
       // TODO: Compute total methods that can be used as callin or callback in fwk ==== use this in the intro
       val symbEx = config.getSymbolicExecutor
       val resolver = symbEx.appCodeResolver
-      val callinCount = Scene.v().getClasses.asScala.flatMap{c =>
-        val className = c.getName
-        if(resolver.isFrameworkClass(className)){
-          ???
-        }else{
-          ???
-        }
-      }
+//      val callinCount = Scene.v().getClasses.asScala.flatMap{c =>
+//        val className = c.getName
+//        if(resolver.isFrameworkClass(className)){
+//          ???
+//        }else{
+//          ???
+//        }
+//      }
 
       // Test query building
       val query = Qry.makeReceiverNonNull(config.getSymbolicExecutor, "com.example.createdestroy.MyActivity",

@@ -20,7 +20,7 @@ class EnumModelGenerator(cha: ClassHierarchyConstraints) extends ModelGenerator(
                                       reachable: Set[IPathNode],
                                       space: SpecSpace)(implicit outputMode: OutputMode): Option[SpecAssignment] = {
     val targetTraces = target.flatMap(makeTraces(_,space) )
-    val reachTraces = makePaths(reachable)
+    val reachTraces = target.flatMap(makeTraces(_,space) )
     ???
   }
 }
