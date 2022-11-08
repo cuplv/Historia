@@ -17,7 +17,7 @@ import upickle.default.{read, write}
  * Useful but very slow tests on the symbolic executor.
  * Note that hopefully these will eventually be faster. Then they should be moved to SymbolicExecutorTest.scala
  */
-class SymbolicExecutorTestSlow extends AnyFunSuite{
+class AbstractInterpreterTestSlow extends AnyFunSuite{
   val cgMode = SparkCallGraph
 
   test("Test dynamic dispatch2") {

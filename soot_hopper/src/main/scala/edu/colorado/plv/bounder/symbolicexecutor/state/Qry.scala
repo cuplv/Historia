@@ -4,7 +4,7 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.{SymbolicExecutor, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, TransferFunctions}
 import ujson.Value
 import upickle.default.{macroRW, read, write, ReadWriter => RW}
 
@@ -15,7 +15,7 @@ object Qry {
 
   implicit val rw:RW[Qry] = macroRW
 
-  def makeReach[M,C](ex: SymbolicExecutor[M,C],
+  def makeReach[M,C](ex: AbstractInterpreter[M,C],
                      className:String,
                      methodName:String, line:Int):Set[Qry] = {
     val locs = ex.w.findLineInMethod(className, methodName,line)
@@ -30,7 +30,7 @@ object Qry {
     res
   }
 
-  def makeCallinReturnNull[M,C](ex: SymbolicExecutor[M,C],
+  def makeCallinReturnNull[M,C](ex: AbstractInterpreter[M,C],
                                 className:String,
                                 methodName:String,
                                 line:Int,
@@ -64,7 +64,7 @@ object Qry {
     }.toSet
   }
 
-  def makeAllReceiverNonNull[M,C](ex:SymbolicExecutor[M,C],className: String): Set[Qry] = {
+  def makeAllReceiverNonNull[M,C](ex:AbstractInterpreter[M,C], className: String): Set[Qry] = {
     //TODO: clean up this method
     implicit val wra: IRWrapper[M, C] = ex.w
     implicit val ch: ClassHierarchyConstraints = wra.getClassHierarchyConstraints
@@ -102,7 +102,7 @@ object Qry {
     out.map(a => a)
   }
 
-  def makeReceiverNonNull[M,C](ex: SymbolicExecutor[M,C],
+  def makeReceiverNonNull[M,C](ex: AbstractInterpreter[M,C],
                                className:String,
                                methodName:String,
                                line:Int,
@@ -152,7 +152,7 @@ object Qry {
 
 }
 sealed trait InitialQuery{
-  def make[M,C](sym:SymbolicExecutor[M,C]):Set[Qry]
+  def make[M,C](sym:AbstractInterpreter[M,C]):Set[Qry]
 }
 object InitialQuery{
   private def vToJ(v:(String,Any)):(String,Value) = v match{
@@ -221,21 +221,21 @@ object InitialQuery{
   )
 }
 case class Reachable(className:String, methodName:String, line:Integer) extends InitialQuery {
-  override def make[M, C](sym: SymbolicExecutor[M, C]): Set[Qry] =
+  override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] =
     Qry.makeReach(sym,className, methodName, line)
 }
 case class ReceiverNonNull(className:String, methodName:String, line:Integer,
                            receiverMatcher:Option[String] = None) extends InitialQuery {
-  override def make[M, C](sym: SymbolicExecutor[M, C]): Set[Qry] =
+  override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] =
     Qry.makeReceiverNonNull(sym, className, methodName, line,fieldOrMethod = receiverMatcher.map(_.r))
 }
 case class AllReceiversNonNull(className:String) extends InitialQuery {
-  override def make[M, C](sym: SymbolicExecutor[M, C]): Set[Qry] =
+  override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] =
     Qry.makeAllReceiverNonNull(sym,className)
 }
 case class CallinReturnNonNull(className:String, methodName:String,
                                line:Integer, callinRegex:String) extends InitialQuery{
-  override def make[M, C](sym: SymbolicExecutor[M, C]): Set[Qry] =
+  override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] =
     Qry.makeCallinReturnNull(sym, className, methodName, line, callinRegex.r)
 }
 
@@ -254,7 +254,7 @@ case class DisallowedCallin(className:String, methodName:String, s:LSSpec) exten
     case InvokeCmd(method, _) => invokeMatches(method)
     case _ => None
   }
-  override def make[M, C](sym: SymbolicExecutor[M, C]): Set[Qry] = {
+  override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] = {
     //TODO: Bug where this is empty
     implicit val ch = sym.w.getClassHierarchyConstraints
     val locations: Set[AppLoc] = sym.w.findInMethod(className, methodName, cmd => getMatchingCallin(cmd).isDefined).toSet

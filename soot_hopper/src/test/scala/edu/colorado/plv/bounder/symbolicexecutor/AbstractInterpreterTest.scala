@@ -15,7 +15,7 @@ import soot.{Scene, SootMethod}
 
 import scala.jdk.CollectionConverters._
 
-class SymbolicExecutorTest extends AnyFunSuite {
+class AbstractInterpreterTest extends AnyFunSuite {
 
   private val prettyPrinting = new PrettyPrinting()
   val cgMode = SparkCallGraph
@@ -68,7 +68,7 @@ class SymbolicExecutorTest extends AnyFunSuite {
       stepLimit = 50, w,new SpecSpace(LifecycleSpec.spec),  z3Timeout = Some(30),
       component = Some(List("com\\.example\\.test_interproc_2\\.MainActivity.*")))
     //      component = Some(List("com\\.example\\.test_interproc_2\\.*"))
-    val symbolicExecutor = new SymbolicExecutor[SootMethod, soot.Unit](config)
+    val symbolicExecutor = new AbstractInterpreter[SootMethod, soot.Unit](config)
     val query = Reachable(
       "com.example.test_interproc_2.MainActivity",
       "void onPause()",25)
@@ -433,70 +433,87 @@ class SymbolicExecutorTest extends AnyFunSuite {
     makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
   }
 
-  //TODO: ======== problem with org.andstatus
+  //TODO: problem with org.andstatus
   // src/main/java/org/andstatus/app/service/MyServiceManager.java line 47 ish
   test("Test static method") {
-    val src = """package com.example.createdestroy;
-                |import androidx.appcompat.app.AppCompatActivity;
-                |import android.os.Bundle;
-                |import android.util.Log;
-                |
-                |import rx.Single;
-                |import rx.Subscription;
-                |import rx.android.schedulers.AndroidSchedulers;
-                |import rx.schedulers.Schedulers;
-                |
-                |
-                |public class MyActivity extends AppCompatActivity {
-                |    public Object o = null;
-                |    Subscription subscription;
-                |
-                |    @Override
-                |    protected void onCreate(Bundle savedInstanceState) {
-                |        super.onCreate(savedInstanceState);
-                |        SillyInnerClass.setO(this);
-                |        Log.i("b", o.toString());
-                |    }
-                |    static class SillyInnerClass{
-                |       private volatile boolean foo = true;
-                |       static void setO(MyActivity that) {
-                |           SillyInnerClass s = new SillyInnerClass();
-                |           if(s.foo){
-                |             that.o = new Object();
-                |           }
-                |       }
-                |    }
-                |
-                |    @Override
-                |    protected void onDestroy() {
-                |        super.onDestroy();
-                |        o = null;
-                |    }
-                |}""".stripMargin
+    val tests = List(
+      ("true", Proven),
+      ("false", Witnessed)
+    )
+    tests.foreach { case (bval, expected) =>
+      val src =
+        s"""package com.example.createdestroy;
+          |import androidx.appcompat.app.AppCompatActivity;
+          |import android.os.Bundle;
+          |import android.util.Log;
+          |
+          |import rx.Single;
+          |import rx.Subscription;
+          |import rx.android.schedulers.AndroidSchedulers;
+          |import rx.schedulers.Schedulers;
+          |
+          |
+          |public class MyActivity extends AppCompatActivity {
+          |    public Object o = null;
+          |    Subscription subscription;
+          |
+          |    @Override
+          |    protected void onCreate(Bundle savedInstanceState) {
+          |        super.onCreate(savedInstanceState);
+          |        SillyInnerClass.setO(this);
+          |        Log.i("b", o.toString()); //query1
+          |    }
+          |    static class SillyInnerClass{
+          |       private volatile boolean foo = ${bval};
+          |       static void setO(MyActivity that) {
+          |           SillyInnerClass s = new SillyInnerClass();
+          |           if(s.foo){
+          |             that.o = new Object();
+          |           }
+          |       }
+          |    }
+          |
+          |    @Override
+          |    protected void onDestroy() {
+          |        super.onDestroy();
+          |        o = null;
+          |    }
+          |}""".stripMargin
 
-    val test: String => Unit = apk => {
-      assert(apk != null)
-      val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
-        FragmentGetActivityNullSpec.getActivityNonNull,
-      ) ++ RxJavaSpec.spec
-      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
-      val config = SymbolicExecutorConfig(
-        stepLimit = 200, w, new SpecSpace(specs),
-        component = Some(List("com.example.createdestroy.MyActivity.*")))
-      implicit val om = config.outputMode
-      val symbolicExecutor = config.getSymbolicExecutor
-      val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
-        "void onCreate(android.os.Bundle)",20)
-      val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
-      // prettyPrinting.dumpDebugInfo(result,"setField")
-      assert(result.nonEmpty)
-      BounderUtil.throwIfStackTrace(result)
-      assert(BounderUtil.interpretResult(result,QueryFinished) == Proven)
-      assert(BounderUtil.characterizeMaxPath(result) == SingleCallbackMultiMethod)
+      val test: String => Unit = apk => {
+        assert(apk != null)
+        val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+          FragmentGetActivityNullSpec.getActivityNonNull,
+        ) ++ RxJavaSpec.spec
+        val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+        val config = SymbolicExecutorConfig(
+          stepLimit = 200, w, new SpecSpace(specs),
+          component = Some(List("com.example.createdestroy.MyActivity.*")))
+        implicit val om = config.outputMode
+        val symbolicExecutor = config.getSymbolicExecutor
+        val line = BounderUtil.lineForRegex(".*query1.*".r, src)
+        val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
+          "void onCreate(android.os.Bundle)", line)
+        val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
+        prettyPrinting.dumpDebugInfo(result, s"setField_${bval}_${expected}") //==========
+        assert(result.nonEmpty)
+        BounderUtil.throwIfStackTrace(result)
+        assert(BounderUtil.interpretResult(result, QueryFinished) == expected)
+        if(expected == Proven)
+          assert(BounderUtil.characterizeMaxPath(result) == SingleCallbackMultiMethod)
+        //TODO==== test code
+        val methods = Scene.v().getClasses().asScala.flatMap{cls =>
+          val clsName = cls.getName
+          if( clsName.contains("MyActivity")){
+            cls.getMethods.asScala.map{m => (clsName,m.getName,m,cls)}
+          }else Nil
+        }
+        println()
 
+      }
+
+      makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
     }
-
-    makeApkWithSources(Map("MyActivity.java"->src), MkApk.RXBase, test)
   }
 
   test("Test assign from") {

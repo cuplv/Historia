@@ -80,7 +80,9 @@ case class StateFormula(callStack: List[CallStackFrame],
                         heapConstraints: Map[HeapPtEdge, PureExpr],
                         pureFormula: Set[PureConstraint],
                         typeConstraints: Map[PureVar, TypeSet],
-                        traceAbstraction: AbstractTrace){
+                        traceAbstraction: AbstractTrace,
+                        isAbstract:Boolean = true //concrete or abstract
+                       ){
   // Remember if this state has been checked for satisfiability
   var isSimplified = false
   def setSimplified(): StateFormula = {
@@ -235,6 +237,7 @@ case class StateFormula(callStack: List[CallStackFrame],
 }
 object StateFormula{
   implicit var rw:RW[StateFormula] = macroRW
+  def initialState:StateFormula = StateFormula(Nil, Map.empty, Set(), Map.empty, AbstractTrace(Nil))
 }
 
 /**

@@ -13,7 +13,7 @@ import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state._
-import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, QueryFinished, SparkCallGraph, SymbolicExecutor, SymbolicExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, QueryFinished, SparkCallGraph, AbstractInterpreter, SymbolicExecutorConfig, TransferFunctions}
 import scopt.OParser
 
 import scala.concurrent.Await
@@ -287,7 +287,7 @@ object Driver {
     val config = SymbolicExecutorConfig(
       stepLimit = 2, w, new SpecSpace(Set()), component = None, outputMode = pathMode,
       timeLimit = cfg.timeLimit)
-    val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
+    val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getSymbolicExecutor
     symbolicExecutor.writeIR()
   }
   def makeAllDeref(apkPath:String, filter:Option[String],
@@ -296,7 +296,7 @@ object Driver {
     val w = new JimpleFlowdroidWrapper(apkPath, callGraph, Set())
     val config = SymbolicExecutorConfig(
       stepLimit = 0, w, new SpecSpace(Set()), component = None)
-    val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
+    val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getSymbolicExecutor
     val appClasses = symbolicExecutor.appCodeResolver.appMethods.map(m => m.classType)
     val filtered = appClasses.filter(c => filter.forall(c.startsWith))
     val initialQueries = filtered.map(c => AllReceiversNonNull(c))
@@ -316,7 +316,7 @@ object Driver {
     val w = new JimpleFlowdroidWrapper(apkPath, callGraph, Set())
     val config = SymbolicExecutorConfig(
       stepLimit = n, w, new SpecSpace(Set()), component = None)
-    val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
+    val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getSymbolicExecutor
 
 //    val queries = (0 until n).map{_ =>
 //      val appLoc = symbolicExecutor.appCodeResolver.sampleDeref(filter)//
@@ -353,7 +353,7 @@ object Driver {
     val w = new JimpleFlowdroidWrapper(apkPath, callGraph, Set())
     val config = SymbolicExecutorConfig(
       stepLimit = 0, w, new SpecSpace(Set()), component = None)
-    val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
+    val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getSymbolicExecutor
     //TODO:
   }
   def runAnalysis(cfg:RunConfig, apkPath: String, componentFilter:Option[Seq[String]], mode:OutputMode,
@@ -368,7 +368,7 @@ object Driver {
       val config = SymbolicExecutorConfig(
         stepLimit = stepLimit, w, new SpecSpace(specSet.getSpecSet(), specSet.getDisallowSpecSet()), component = componentFilter, outputMode = mode,
         timeLimit = cfg.timeLimit)
-      val symbolicExecutor: SymbolicExecutor[SootMethod, soot.Unit] = config.getSymbolicExecutor
+      val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getSymbolicExecutor
       initialQueries.flatMap{ initialQuery =>
         val results: Set[symbolicExecutor.QueryData] = symbolicExecutor.run(initialQuery, mode,cfg)
 

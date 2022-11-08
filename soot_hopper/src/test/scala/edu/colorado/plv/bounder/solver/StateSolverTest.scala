@@ -15,7 +15,7 @@ import scala.language.implicitConversions
 
 class StateSolverTest extends FixtureAnyFunSuite {
 
-  private val fooMethod = TestIRMethodLoc("","foo", List(Some(LocalWrapper("@this","Object"))))
+  private val fooMethod = SerializedIRMethodLoc("","foo", List(Some(LocalWrapper("@this","Object"))))
   private val dummyLoc = CallbackMethodReturn(tgtClazz = "",
      fmwName="void foo()", fooMethod, None)
   private val v = PureVar(230)
@@ -596,14 +596,14 @@ class StateSolverTest extends FixtureAnyFunSuite {
 
     val niaa = AbstractTrace(Not(foo_a), foo_b::Nil, Map(a->p1, b->p2))
     val state = State(StateFormula(Nil,Map(),Set(PureConstraint(p1, Equals, p2)),Map(), niaa),0)
-    val contains = stateSolver.traceInAbstraction(state,esp, Nil )
+    val contains = stateSolver.traceInAbstraction(state,esp, Trace.empty )
     assert(contains.isEmpty)
 
     val niaa2 = AbstractTrace(Or(Not(foo_a),bar_a), foo_b::Nil, Map(a->p1))
     val state2 = State(StateFormula(Nil,Map(),Set(),Map(), niaa2),0)
     val simpl = stateSolver.simplify(state2,esp)
     assert(simpl.isDefined)
-    val contains2 = stateSolver.traceInAbstraction(state2,esp, Nil)
+    val contains2 = stateSolver.traceInAbstraction(state2,esp, Trace.empty)
     assert(contains2.isDefined)
   }
 
@@ -662,7 +662,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
   test("Subsumption of stack"){ f =>
     val stateSolver = f.stateSolver
 
-    val loc = AppLoc(fooMethod, TestIRLineLoc(1), isPre = false)
+    val loc = AppLoc(fooMethod, SerializedIRLineLoc(1), isPre = false)
 
     val state = State(StateFormula(CallStackFrame(dummyLoc,None,Map(StackVar("x") -> p1))::Nil,
       Map(),Set(),Map(),AbstractTrace( Nil)),0)
@@ -1445,7 +1445,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     //TODO: |>
     val stateSolver = f.stateSolver
 
-    val loc = AppLoc(fooMethod, TestIRLineLoc(1), isPre = false)
+    val loc = AppLoc(fooMethod, SerializedIRLineLoc(1), isPre = false)
 
 
     val ifoo = Once(CBEnter, Set(("", "foo")), a :: Nil)
@@ -1462,7 +1462,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
 
     val p1t = BoundedTypeSet(Some("String"), None, Set())
     val p2t = BoundedTypeSet(Some("Foo"), None, Set())
-    val loc = AppLoc(fooMethod, TestIRLineLoc(1), isPre = false)
+    val loc = AppLoc(fooMethod, SerializedIRLineLoc(1), isPre = false)
 
     assert(p1t.intersect(p2t).isEmpty)
 
@@ -1482,7 +1482,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     //TODO: |>
     val stateSolver = f.stateSolver
 
-    val loc = AppLoc(fooMethod, TestIRLineLoc(1), isPre = false)
+    val loc = AppLoc(fooMethod, SerializedIRLineLoc(1), isPre = false)
 
     val ifoo = Once(CBEnter, Set(("", "foo")),  TopVal::a :: Nil)
     val ibar = Once(CBEnter, Set(("", "bar")),  TopVal::a :: Nil)
@@ -1547,7 +1547,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
   test("Subsumption of pure formula in states"){ f =>
     val stateSolver = f.stateSolver
 
-    val loc = AppLoc(fooMethod, TestIRLineLoc(1), isPre = false)
+    val loc = AppLoc(fooMethod, SerializedIRLineLoc(1), isPre = false)
 
     val state = State(
       StateFormula(CallStackFrame(dummyLoc,None,Map(StackVar("x") -> p1))::Nil, Map(),Set(),Map(),
@@ -1578,10 +1578,10 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val i_foo_y = Once(CIEnter, Set(("foo",""),("foo2","")), y::Nil)
     val i_bar_x = Once(CIEnter, Set(("bar",""),("bar2","")), x::Nil)
     val i_bar_y = Once(CIEnter, Set(("bar",""),("bar2","")), y::Nil)
-    val trace = List(
+    val trace = Trace(List(
       TMessage(CIEnter, foo, TAddr(1)::Nil),
       TMessage(CIEnter, bar, TAddr(1)::Nil)
-    )
+    ))
 
     val ni_foo_x_bar_x = NS(i_foo_x, i_bar_x)
     val ni_bar_x_foo_x = NS(i_bar_x, i_foo_x)
@@ -1605,7 +1605,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     // I(x.foo()) ! models empty
     assert(stateSolver.traceInAbstraction(
       stIFooX,spec,
-      Nil).isEmpty)
+      Trace.empty).isEmpty)
     //TODO: negation issue
     //assert(stateSolver.traceInAbstraction(stIFooX,spec,Nil, negate = true))
 
@@ -1616,7 +1616,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(stateSolver.traceInAbstraction(
       state = stIFooX,
       specNotFoo,
-      trace = Nil
+      trace = Trace.empty
     ).isDefined)
 
 
@@ -1628,7 +1628,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(stateSolver.traceInAbstraction(
       state = stIFooX,
       spec_NotFoo_OrBar ,
-      trace = Nil
+      trace = Trace.empty
     ).isDefined)
 
     val spec_NiFooBar = new SpecSpace(Set(
@@ -1637,7 +1637,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(stateSolver.traceInAbstraction(
       state = stIFooX,
       spec_NiFooBar,
-      trace = Nil
+      trace = Trace.empty
     ).isEmpty)
 
 
@@ -1653,7 +1653,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val res = stateSolver.traceInAbstraction(
       st(AbstractTrace(i_foo_y::targetFoo_y::Nil), Map(y->pv1)),
       spec_NiFooBar,
-      Nil
+      Trace.empty
     )
     assert(res.isDefined)
 
@@ -1662,7 +1662,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
       stateSolver.traceInAbstraction(
         st(AbstractTrace(i_foo_y::targetFoo_y::Nil),Map(y->pv1)),
         spec_NiFooBar,
-        TMessage(CIEnter, bar, TAddr(1)::Nil)::Nil
+        Trace(TMessage(CIEnter, bar, TAddr(1)::Nil)::Nil)
       ).isDefined)
 
     // NI(x.foo(),x.bar()) |> x.foo() models @1.foo();@1.bar()
@@ -1708,7 +1708,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
       stateSolver.traceInAbstraction(
         st(AbstractTrace(targetFoo_a_b::Nil),Map(a->pv1,b->pv2)),
         spec_Foo_x_y,
-        trace = TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil)::Nil
+        trace = Trace(TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil)::Nil)
       ).isDefined
     )
 
@@ -1721,10 +1721,10 @@ class StateSolverTest extends FixtureAnyFunSuite {
       stateSolver.traceInAbstraction(
         st(AbstractTrace(targetFoo_a_b::Nil),Map(a->pv1,b->pv2)),
         spec_NotFoo_Bar_x_y,
-        List(
+        Trace(List(
           TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil),
           TMessage(CIEnter, bar, TAddr(1)::TAddr(2)::Nil)
-        )
+        ))
       ).isEmpty
     )
 
@@ -1733,10 +1733,10 @@ class StateSolverTest extends FixtureAnyFunSuite {
       stateSolver.traceInAbstraction(
         st(AbstractTrace(targetFoo_a_b::Nil),Map(a->pv1,b->pv2)),
         spec_NotFoo_Bar_x_y,
-        List(
+        Trace(List(
           TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil),
           TMessage(CIEnter, bar, TAddr(1)::TAddr(1)::Nil)
-        )
+        ))
       ).isDefined
     )
 
@@ -1751,7 +1751,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
       stateSolver.traceInAbstraction(
         st(AbstractTrace(targetFoo_a_a::Nil),Map(a -> PureVar(1))),
         spec_Foo_y_y,
-        trace = TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil)::Nil,
+        trace = Trace(TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil)::Nil),
         debug = true
       ).isEmpty
     )
@@ -1761,7 +1761,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
       stateSolver.traceInAbstraction(
         st(AbstractTrace(targetFoo_a_b::Nil),Map(a->pv1, b->pv2)),
         spec_Foo_y_y,
-        trace = TMessage(CIEnter, foo, TAddr(2)::TAddr(2)::Nil)::Nil
+        trace = Trace(TMessage(CIEnter, foo, TAddr(2)::TAddr(2)::Nil)::Nil)
       ).isDefined
     )
   }
@@ -1778,10 +1778,10 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val i_bar_x = Once(CIEnter, Set(("bar",""),("bar2","")), x::Nil)
     val targetFoo_x_y = Once(CIExit, Set(("","targetFoo")), x::y::Nil)
     val targetFoo_a_b = Once(CIExit, Set(("","targetFoo")), a::b::Nil)
-    val trace = List(
+    val trace = Trace(List(
       TMessage(CIEnter, foo, TAddr(1)::Nil),
       TMessage(CIEnter, bar, TAddr(1)::Nil)
-    )
+    ))
     val spec = new SpecSpace(Set(
       LSSpec(x::y::Nil, Nil, NS(i_foo_x, i_bar_x), targetFoo_x_y,
         Set(LSConstraint(x, Equals, NullVal))),

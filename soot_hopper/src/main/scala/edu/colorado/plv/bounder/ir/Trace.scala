@@ -1,11 +1,18 @@
 package edu.colorado.plv.bounder.ir
-import edu.colorado.plv.bounder.symbolicexecutor.state.{NullVal, PureExpr, TVal}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{NullVal, PureExpr, StateFormula, TVal}
 import upickle.default.{macroRW, ReadWriter => RW}
 
 
+case class Trace(t:List[TMessage]) extends AnyVal{
+  def size:Int = t.size
+}
 object Trace {
+  def empty = Trace(Nil)
 
 }
+
+case class ConcGraph(init:TMessage, edges:Map[TMessage,(TMessage,StateFormula)])
+
 sealed trait MessageType {
   def toTex:String
 

@@ -267,6 +267,16 @@ object LifeState {
       macroRW[Or], macroRW[LSTrue.type], macroRW[LSFalse.type], macroRW[UComb])
   }
 
+  case object LSAnyPred extends LSPred {
+    override def toTex: String = "LSAny"
+
+    override def swap(swapMap: Map[PureVar, PureVar]): LSPred = LSAnyPred
+
+    override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean =
+      throw new IllegalStateException("Contains called on LSAny")
+
+    override def lsVar: Set[PureVar] = Set()
+  }
   sealed trait LSBexp extends LSPred{
     /**
      * process transfer in register machine
@@ -395,6 +405,7 @@ object LifeState {
 
     override def toTex: String = ???
   }
+  @deprecated //Note: delete this at some point, was old idea to choose boolean combinators
   case class UComb(name:String, dep:List[LSPred], argNegated:Boolean=false) extends LSPred{
     override def toTex: String = ???
 
@@ -507,6 +518,12 @@ object LifeState {
   }
 
   sealed trait SignatureMatcher{
+    /**
+     * Testing method
+     * @return an example of a signature that this would match
+     */
+    def example() :(String,String)
+
     def toTex(args:List[PureExpr]):String
 
     def matchesClass(sig: String):Boolean
@@ -530,6 +547,13 @@ object LifeState {
     override def matchesClass(sig: String): Boolean = ???
 
     override def toTex(args:List[PureExpr]): String = ???
+
+    /**
+     * Testing method
+     *
+     * @return an example of a signature that this would match
+     */
+    override def example(): (String, String) = sigSet.head
   }
   object SetSignatureMatcher{
     implicit val rw:RW[SetSignatureMatcher] = macroRW
@@ -612,6 +636,29 @@ object LifeState {
           ???
     }
     }
+
+    /**
+     * Quick and dirty method for generating example strings for regex used in unit testing
+     * @param r some regular expression
+     * @return a string that matches r if you are lucky (otherwise an exception)
+     */
+    private def exampleStringFromRegex(r:Regex):String = {
+      val str = r.toString.replaceAll("\\.\\*","")
+      val str2 = str.replaceAll("""\\""", "")
+      val str3 = str2.replaceAll("""\\""", "")
+      if(r.matches(str3)){
+        str3
+      }else{
+        throw new IllegalArgumentException(s"Failed to make string matching regex:${r.toString} -- attempt: ${str}")
+      }
+
+    }
+    /**
+     * Testing method
+     *
+     * @return an example of a signature that this would match
+     */
+    override def example(): (String, String) = (baseSubtypeOf.head, exampleStringFromRegex(sigR))
   }
   object SubClassMatcher{
     def apply(baseSubtypeOf:String, signatureMatcher: String, ident:String):SubClassMatcher =
@@ -739,7 +786,8 @@ object LifeState {
       case LSTrue => true
       case LSFalse => true
       case i:LSAtom => i.lsVar.forall(v => quant.contains(v))
-      case UComb(_,preds,_) => preds.forall(p => checkWF(quant,p))
+      //case UComb(_,preds,_) => preds.forall(p => checkWF(quant,p))
+      case LSAnyPred => true
       case v =>
         throw new IllegalArgumentException(s"${v} is not a valid lspred")
     }
@@ -876,8 +924,11 @@ object SpecSpace{
   }
 }
 /**
- * Representation of a set of possible lifestate specs */
-class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
+ * Representation of a set of possible lifestate specs
+ * disallowSpecs are conditions that a method should not be invoked under (e.g. throwing an exception)
+ * enableSpecs are conditions required for a callback or callin return
+ **/
+class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(), matcherSpace:Set[Once] = Set()) {
 
   private lazy val specUID:Map[LSSpec, Int] = (enableSpecs ++ disallowSpecs).zipWithIndex.map{
     case (spec, i) => spec->i
@@ -915,16 +966,7 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set()) {
   }
 
   def getSpecs:Set[LSSpec] = enableSpecs
-  private val allISpecs: Map[MessageType, Set[Once]] =
-    (enableSpecs ++ disallowSpecs).flatMap(SpecSpace.allI(_)).groupBy(i => i.mt)
 
-
-//  private var freshLSVarIndex = 0
-//  def nextFreshLSVar():String = {
-//    val ind = freshLSVarIndex
-//    freshLSVarIndex = freshLSVarIndex+1
-//    s"LS__${ind}"
-//  }
   /**
    * For step back over a place where the code may emit a message find the applicable I and assign fresh ls vars.
    * Return has arbitrary non-top pure expr for arguments that matter, top for ones that don't.

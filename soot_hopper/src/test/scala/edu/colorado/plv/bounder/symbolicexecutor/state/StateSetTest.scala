@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import com.microsoft.z3.Context
-import edu.colorado.plv.bounder.ir.{AppLoc, BitTypeSet, CallbackMethodReturn, LocalWrapper, TestIRLineLoc, TestIRMethodLoc, TypeSet}
+import edu.colorado.plv.bounder.ir.{AppLoc, BitTypeSet, CallbackMethodReturn, LocalWrapper, SerializedIRLineLoc, SerializedIRMethodLoc, TypeSet}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SolverTypeSolving, Z3StateSolver}
 import org.scalatest.funsuite.AnyFunSuite
@@ -30,9 +30,9 @@ class StateSetTest extends AnyFunSuite {
   val ch = new ClassHierarchyConstraints(hierarchy,Set("Runnable"),intToClass)
   val stateSolver = new Z3StateSolver(ch)
 
-  private val fooMethod = TestIRMethodLoc("","foo", List(Some(LocalWrapper("@this","Object"))))
-  private val barMethod = TestIRMethodLoc("","bar", List(Some(LocalWrapper("@this","Object"))))
-  private val lineLoc = TestIRLineLoc(-1)
+  private val fooMethod = SerializedIRMethodLoc("","foo", List(Some(LocalWrapper("@this","Object"))))
+  private val barMethod = SerializedIRMethodLoc("","bar", List(Some(LocalWrapper("@this","Object"))))
+  private val lineLoc = SerializedIRLineLoc(-1)
   private val dummyLoc1 = CallbackMethodReturn(tgtClazz = "", fmwName="void foo()", fooMethod, None)
   private val dummyLoc2 = CallbackMethodReturn(tgtClazz = "", fmwName="void bar()", barMethod, None)
   val pv0 = PureVar(0)
