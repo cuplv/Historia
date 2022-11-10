@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.solver
 import better.files.{File, Resource}
 import com.microsoft.z3._
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, FreshRef, LSConstraint, LSFalse, LSSpec, LSTrue, NS, Not, Once, Or, SignatureMatcher, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, FreshRef, LSConstraint, LSFalse, LSSpec, LSTrue, NS, Not, AbsMsg, Or, SignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LSExpParser, LifecycleSpec, RxJavaSpec, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs
 import edu.colorado.plv.bounder.symbolicexecutor.state._
@@ -308,8 +308,8 @@ class StateSolverTest extends FixtureAnyFunSuite {
   }
   test("Trace abstraction lsfalse is empty and lstrue is not"){ f =>
     val stateSolver = f.stateSolver
-    val iFoo_ac = Once(CBEnter, Set(("", "foo")), c::a :: Nil)
-    val iFoo_bd = Once(CBEnter, Set(("", "foo")), d::b :: Nil)
+    val iFoo_ac = AbsMsg(CBEnter, Set(("", "foo")), c::a :: Nil)
+    val iFoo_bd = AbsMsg(CBEnter, Set(("", "foo")), d::b :: Nil)
     val specSpace = new SpecSpace(Set(LSSpec(a::c::Nil, Nil, LSFalse, iFoo_ac)))
     val absFalse = AbstractTrace( iFoo_bd::Nil)
     val state = State.topState.copy(sf = State.topState.sf.copy(traceAbstraction = absFalse))
@@ -323,11 +323,11 @@ class StateSolverTest extends FixtureAnyFunSuite {
   }
   test("Trace abstraction O(a.bar()) && HN(b.bar()) && a == p1 (<==>false)") { f =>
     val stateSolver = f.stateSolver
-    val iBar_a = Once(CBEnter, Set(("", "bar")), a :: Nil)
-    val iTgtPosBar_a = Once(CBEnter, Set(("", "tgtPos")), a :: Nil)
-    val iTgtPosBar_b = Once(CBEnter, Set(("", "tgtPos")), b :: Nil)
-    val iTgtNegBar_a = Once(CBEnter, Set(("","tgtNeg")), a::Nil)
-    val iTgtNegBar_c = Once(CBEnter, Set(("","tgtNeg")), c::Nil)
+    val iBar_a = AbsMsg(CBEnter, Set(("", "bar")), a :: Nil)
+    val iTgtPosBar_a = AbsMsg(CBEnter, Set(("", "tgtPos")), a :: Nil)
+    val iTgtPosBar_b = AbsMsg(CBEnter, Set(("", "tgtPos")), b :: Nil)
+    val iTgtNegBar_a = AbsMsg(CBEnter, Set(("","tgtNeg")), a::Nil)
+    val iTgtNegBar_c = AbsMsg(CBEnter, Set(("","tgtNeg")), c::Nil)
     val spec = new SpecSpace(Set(
       LSSpec(a::Nil, Nil, iBar_a, iTgtPosBar_a),
       LSSpec(a::Nil, Nil, Not(iBar_a), iTgtNegBar_a)
@@ -342,10 +342,10 @@ class StateSolverTest extends FixtureAnyFunSuite {
   }
   test("Trace abstraction NI(a.bar(), a.baz()) && a == p1 (<==>true)") { f =>
     val stateSolver = f.stateSolver
-    val iFoo_ac = Once(CBEnter, Set(("", "foo")), c::a :: Nil)
-    val iFoo_bd = Once(CBEnter, Set(("", "foo")), d::b :: Nil)
-    val iBar_a = Once(CBEnter, Set(("", "bar")), a :: Nil)
-    val iBaz_a = Once(CBEnter, Set(("", "baz")), a :: Nil)
+    val iFoo_ac = AbsMsg(CBEnter, Set(("", "foo")), c::a :: Nil)
+    val iFoo_bd = AbsMsg(CBEnter, Set(("", "foo")), d::b :: Nil)
+    val iBar_a = AbsMsg(CBEnter, Set(("", "bar")), a :: Nil)
+    val iBaz_a = AbsMsg(CBEnter, Set(("", "baz")), a :: Nil)
     val niBarBaz = NS(iBar_a,iBaz_a)
     val spec = new SpecSpace(Set(LSSpec(a::c::Nil, Nil, niBarBaz, iFoo_ac)))
 
@@ -359,11 +359,11 @@ class StateSolverTest extends FixtureAnyFunSuite {
   test("Trace abstraction NI(a.bar(), a.baz()) |> I(a.bar()) (<==>true)") { f =>
     val stateSolver = f.stateSolver
 
-    val iFoo_ac = Once(CBEnter, Set(("", "foo")), c::a :: Nil)
-    val iFoo_bd = Once(CBEnter, Set(("", "foo")), d::b :: Nil)
-    val iBar_a = Once(CBEnter, Set(("", "bar")), a :: Nil)
-    val iBar_e = Once(CBEnter, Set(("", "bar")), e :: Nil)
-    val iBaz_a = Once(CBEnter, Set(("", "baz")), a :: Nil)
+    val iFoo_ac = AbsMsg(CBEnter, Set(("", "foo")), c::a :: Nil)
+    val iFoo_bd = AbsMsg(CBEnter, Set(("", "foo")), d::b :: Nil)
+    val iBar_a = AbsMsg(CBEnter, Set(("", "bar")), a :: Nil)
+    val iBar_e = AbsMsg(CBEnter, Set(("", "bar")), e :: Nil)
+    val iBaz_a = AbsMsg(CBEnter, Set(("", "baz")), a :: Nil)
     val niBarBaz = NS(iBar_a,iBaz_a)
     val spec = new SpecSpace(Set(LSSpec(a::c::Nil, Nil, niBarBaz, iFoo_ac)))
 
@@ -377,12 +377,12 @@ class StateSolverTest extends FixtureAnyFunSuite {
   test("Trace abstraction NI(a.bar(),a.baz()) |> I(c.baz()) && a == p1 && c == p1 (<=> false)") { f =>
     val stateSolver = f.stateSolver
 
-    val iBar_a = Once(CBEnter, Set(("_", "bar")), a :: Nil)
-    val iBaz_a = Once(CBEnter, Set(("_", "baz")), a :: Nil)
-    val iBaz_b = Once(CBEnter, Set(("_", "baz")), b :: Nil)
-    val iBaz_c = Once(CBEnter, Set(("_", "baz")), c :: Nil)
-    val tgt = Once(CBEnter, Set(("_", "tgt")), a::Nil)
-    val tgtx = Once(CBEnter, Set(("_", "tgt")), x::Nil)
+    val iBar_a = AbsMsg(CBEnter, Set(("_", "bar")), a :: Nil)
+    val iBaz_a = AbsMsg(CBEnter, Set(("_", "baz")), a :: Nil)
+    val iBaz_b = AbsMsg(CBEnter, Set(("_", "baz")), b :: Nil)
+    val iBaz_c = AbsMsg(CBEnter, Set(("_", "baz")), c :: Nil)
+    val tgt = AbsMsg(CBEnter, Set(("_", "tgt")), a::Nil)
+    val tgtx = AbsMsg(CBEnter, Set(("_", "tgt")), x::Nil)
 
     // NI(a.bar(), a.baz())
     val niBarBaz = NS(iBar_a,iBaz_a)
@@ -403,10 +403,10 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val stateSolver = f.stateSolver
 
     // Lifestate atoms for next few tests
-    val i = Once(CBEnter, Set(("foo", "bar")), a :: Nil)
-    val i2 = Once(CBEnter, Set(("foo", "baz")), a :: Nil)
-    val i3 = Once(CBEnter, Set(("foo", "baz")), b :: Nil)
-    val i4 = Once(CBEnter, Set(("foo", "bar")), c :: Nil)
+    val i = AbsMsg(CBEnter, Set(("foo", "bar")), a :: Nil)
+    val i2 = AbsMsg(CBEnter, Set(("foo", "baz")), a :: Nil)
+    val i3 = AbsMsg(CBEnter, Set(("foo", "baz")), b :: Nil)
+    val i4 = AbsMsg(CBEnter, Set(("foo", "bar")), c :: Nil)
     // NI(a.bar(), a.baz())
     val niBarBaz = NS(i, i2)
 
@@ -421,10 +421,10 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val stateSolver = f.stateSolver
 
     // Lifestate atoms for next few tests
-    val i = Once(CBEnter, Set(("foo", "bar")), a :: Nil)
-    val i2 = Once(CBEnter, Set(("foo", "baz")), a :: Nil)
-    val b_baz = Once(CBEnter, Set(("foo", "baz")), b :: Nil)
-    val c_bar = Once(CBEnter, Set(("foo", "bar")), c :: Nil)
+    val i = AbsMsg(CBEnter, Set(("foo", "bar")), a :: Nil)
+    val i2 = AbsMsg(CBEnter, Set(("foo", "baz")), a :: Nil)
+    val b_baz = AbsMsg(CBEnter, Set(("foo", "baz")), b :: Nil)
+    val c_bar = AbsMsg(CBEnter, Set(("foo", "bar")), c :: Nil)
     // NI(a.bar(), a.baz())
     val niBarBaz = NS(i, i2)
 
@@ -439,10 +439,10 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val stateSolver = f.stateSolver
 
     // Lifestate atoms for next few tests
-    val i = Once(CBEnter, Set(("foo", "bar")), a :: Nil)
-    val i2 = Once(CBEnter, Set(("foo", "baz")), a :: Nil)
-    val b_baz = Once(CBEnter, Set(("foo", "baz")), b :: Nil)
-    val c_bar = Once(CBEnter, Set(("foo", "bar")), c :: Nil)
+    val i = AbsMsg(CBEnter, Set(("foo", "bar")), a :: Nil)
+    val i2 = AbsMsg(CBEnter, Set(("foo", "baz")), a :: Nil)
+    val b_baz = AbsMsg(CBEnter, Set(("foo", "baz")), b :: Nil)
+    val c_bar = AbsMsg(CBEnter, Set(("foo", "bar")), c :: Nil)
     // NI(a.bar(), a.baz())
     val niBarBaz = NS(i, i2)
 
@@ -457,10 +457,10 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val stateSolver = f.stateSolver
 
     // Lifestate atoms for next few tests
-    val i = Once(CBEnter, Set(("foo", "bar")), a :: Nil)
-    val i2 = Once(CBEnter, Set(("foo", "baz")), a :: Nil)
-    val b_baz = Once(CBEnter, Set(("foo", "baz")), b :: Nil)
-    val c_bar = Once(CBEnter, Set(("foo", "bar")), c :: Nil)
+    val i = AbsMsg(CBEnter, Set(("foo", "bar")), a :: Nil)
+    val i2 = AbsMsg(CBEnter, Set(("foo", "baz")), a :: Nil)
+    val b_baz = AbsMsg(CBEnter, Set(("foo", "baz")), b :: Nil)
+    val c_bar = AbsMsg(CBEnter, Set(("foo", "bar")), c :: Nil)
     // NI(a.bar(), a.baz())
     val niBarBaz = NS(i, i2)
 
@@ -475,10 +475,10 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val stateSolver = f.stateSolver
 
     // Lifestate atoms for next few tests
-    val i = Once(CBEnter, Set(("foo", "bar")), a :: Nil)
-    val i2 = Once(CBEnter, Set(("foo", "baz")), a :: Nil)
-    val b_baz = Once(CBEnter, Set(("foo", "baz")), b :: Nil)
-    val c_bar = Once(CBEnter, Set(("foo", "bar")), c :: Nil)
+    val i = AbsMsg(CBEnter, Set(("foo", "bar")), a :: Nil)
+    val i2 = AbsMsg(CBEnter, Set(("foo", "baz")), a :: Nil)
+    val b_baz = AbsMsg(CBEnter, Set(("foo", "baz")), b :: Nil)
+    val c_bar = AbsMsg(CBEnter, Set(("foo", "bar")), c :: Nil)
     // NI(a.bar(), a.baz())
     val niBarBaz = NS(i, i2)
 
@@ -493,9 +493,9 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val stateSolver = f.stateSolver
 
     // Lifestate atoms for next few tests
-    val ibar = Once(CBEnter, Set(("", "bar")), a :: Nil)
-    val ibaz = Once(CBEnter, Set(("", "baz")), a :: Nil)
-    val ifoo = Once(CBEnter, Set(("", "foo")), a :: Nil)
+    val ibar = AbsMsg(CBEnter, Set(("", "bar")), a :: Nil)
+    val ibaz = AbsMsg(CBEnter, Set(("", "baz")), a :: Nil)
+    val ifoo = AbsMsg(CBEnter, Set(("", "foo")), a :: Nil)
     val t1 = AbstractTrace(NS(ibar,ibaz), ibar::Nil, Map())
     val t2 = AbstractTrace(NS(ifoo,ibaz), ifoo::Nil, Map())
 //    val s = state.copy(sf = state.sf.copy(traceAbstraction = Set(t1,t2)))
@@ -509,10 +509,10 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val stateSolver = f.stateSolver
 
     // Lifestate atoms for next few tests
-    val ibar_a = Once(CBEnter, Set(("", "bar")), a :: Nil)
-    val ibar_b = Once(CBEnter, Set(("", "bar")), b :: Nil)
-    val ibaz_a = Once(CBEnter, Set(("", "baz")), a :: Nil)
-    val ifoo = Once(CBEnter, Set(("", "foo")), a :: Nil)
+    val ibar_a = AbsMsg(CBEnter, Set(("", "bar")), a :: Nil)
+    val ibar_b = AbsMsg(CBEnter, Set(("", "bar")), b :: Nil)
+    val ibaz_a = AbsMsg(CBEnter, Set(("", "baz")), a :: Nil)
+    val ifoo = AbsMsg(CBEnter, Set(("", "foo")), a :: Nil)
 
     // (Not I(a.bar()))  |> I(b.bar()) && a = pv1 && b = pv1
     val pv1 = PureVar(1)
@@ -536,10 +536,10 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val stateSolver = f.stateSolver
 
     // Lifestate atoms for next few tests
-    val ibar_a = Once(CBEnter, Set(("", "bar")), a :: Nil)
-    val ibar_b = Once(CBEnter, Set(("", "bar")), b :: Nil)
-    val ifoo_a = Once(CBEnter, Set(("", "foo")), a :: Nil)
-    val ifoo_b = Once(CBEnter, Set(("", "foo")), b :: Nil)
+    val ibar_a = AbsMsg(CBEnter, Set(("", "bar")), a :: Nil)
+    val ibar_b = AbsMsg(CBEnter, Set(("", "bar")), b :: Nil)
+    val ifoo_a = AbsMsg(CBEnter, Set(("", "foo")), a :: Nil)
+    val ifoo_b = AbsMsg(CBEnter, Set(("", "foo")), b :: Nil)
 
     val pv1 = PureVar(1)
     val pv2 = PureVar(2)
@@ -565,8 +565,8 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val stateSolver = f.stateSolver
 
     // Lifestate atoms for next few tests
-    val ifoo_a_ = Once(CBEnter, Set(("", "foo")), a::TopVal :: Nil)
-    val ifoo_bc = Once(CBEnter, Set(("", "foo")), b::c :: Nil)
+    val ifoo_a_ = AbsMsg(CBEnter, Set(("", "foo")), a::TopVal :: Nil)
+    val ifoo_bc = AbsMsg(CBEnter, Set(("", "foo")), b::c :: Nil)
 
     val pv1 = PureVar(1)
     val pv2 = PureVar(2)
@@ -590,9 +590,9 @@ class StateSolverTest extends FixtureAnyFunSuite {
     implicit val zctx = stateSolver.getSolverCtx
 
     // Lifestate atoms for next few tests
-    val foo_a = Once(CBEnter, Set(("", "foo")), a :: Nil)
-    val foo_b = Once(CBEnter, Set(("", "foo")), b :: Nil)
-    val bar_a = Once(CBEnter, Set(("", "bar")), a :: Nil)
+    val foo_a = AbsMsg(CBEnter, Set(("", "foo")), a :: Nil)
+    val foo_b = AbsMsg(CBEnter, Set(("", "foo")), b :: Nil)
+    val bar_a = AbsMsg(CBEnter, Set(("", "bar")), a :: Nil)
 
     val niaa = AbstractTrace(Not(foo_a), foo_b::Nil, Map(a->p1, b->p2))
     val state = State(StateFormula(Nil,Map(),Set(PureConstraint(p1, Equals, p2)),Map(), niaa),0)
@@ -614,9 +614,9 @@ class StateSolverTest extends FixtureAnyFunSuite {
     implicit val zctx = stateSolver.getSolverCtx
 
     // Lifestate atoms for next few tests
-    val foo_a = Once(CBEnter, Set(("", "foo")), a:: c :: Nil)
-    val tgt_a = Once(CBEnter, Set(("", "tgt")), a:: c :: Nil)
-    val tgt_x = Once(CBEnter, Set(("", "tgt")), x:: y :: Nil)
+    val foo_a = AbsMsg(CBEnter, Set(("", "foo")), a:: c :: Nil)
+    val tgt_a = AbsMsg(CBEnter, Set(("", "tgt")), a:: c :: Nil)
+    val tgt_x = AbsMsg(CBEnter, Set(("", "tgt")), x:: y :: Nil)
     val spec = new SpecSpace(Set(LSSpec(a::c::Nil, Nil, foo_a, tgt_a)))
 
     val at = AbstractTrace(tgt_x::FreshRef(b)::Nil) //Map(a->p1, b -> p2, "c"->p3))
@@ -642,8 +642,8 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val stateSolver = f.stateSolver
 
     // Lifestate atoms for next few tests
-    val i = Once(CBEnter, Set(("foo", "bar")), a :: Nil)
-    val i4 = Once(CBEnter, Set(("foo", "bar")), b :: Nil)
+    val i = AbsMsg(CBEnter, Set(("foo", "bar")), a :: Nil)
+    val i4 = AbsMsg(CBEnter, Set(("foo", "bar")), b :: Nil)
     // NI(a.bar(), a.baz())
     val niBarBar = NS(i, i)
 
@@ -685,12 +685,12 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(f.canSubsume(state,state2,esp))
     assert(!f.canSubsume(state2,state,esp))
 
-    val iFoo_a = Once(CBEnter, Set(("", "foo")), a :: Nil)
-    val iBaz_a = Once(CBEnter, Set(("", "baz")), a :: Nil)
-    val iBaz_b = Once(CBEnter, Set(("", "baz")), b :: Nil)
-    val iBar_a = Once(CBEnter, Set(("", "bar")), a :: Nil)
-    val iBar_c = Once(CBEnter, Set(("", "bar")), c :: Nil)
-    val iFoo_c = Once(CBEnter, Set(("", "foo")), c :: Nil)
+    val iFoo_a = AbsMsg(CBEnter, Set(("", "foo")), a :: Nil)
+    val iBaz_a = AbsMsg(CBEnter, Set(("", "baz")), a :: Nil)
+    val iBaz_b = AbsMsg(CBEnter, Set(("", "baz")), b :: Nil)
+    val iBar_a = AbsMsg(CBEnter, Set(("", "bar")), a :: Nil)
+    val iBar_c = AbsMsg(CBEnter, Set(("", "bar")), c :: Nil)
+    val iFoo_c = AbsMsg(CBEnter, Set(("", "foo")), c :: Nil)
 
     val spec = new SpecSpace(Set(LSSpec(a::Nil, Nil, iFoo_a, iBaz_a)))
 
@@ -729,8 +729,8 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val resfoobarfoo = f.canSubsume(state3_, fooBarArrowFoo,spec2)
     assert(!resfoobarfoo)
 
-    val iZzz_a = Once(CBEnter, Set(("", "zzz")), a :: Nil)
-    val iZzz_d = Once(CBEnter, Set(("", "zzz")), d :: Nil)
+    val iZzz_a = AbsMsg(CBEnter, Set(("", "zzz")), a :: Nil)
+    val iZzz_d = AbsMsg(CBEnter, Set(("", "zzz")), d :: Nil)
     val spec3 = new SpecSpace(Set(
       LSSpec(a::Nil, Nil, NS(iFoo_a,iBar_a), iBaz_a),
       LSSpec(a::Nil, Nil, iFoo_a, iZzz_a)
@@ -785,12 +785,12 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val barM = SubClassMatcher("","bar","bar")
     val zzzM = SubClassMatcher("","zzz","zzz")
     val yyyM = SubClassMatcher("","yyy","yyy")
-    val iFoo_x = Once(CBEnter, fooM, x:: Nil)
-    val iBar_x = Once(CBEnter, barM, x::Nil)
-    val iZzz_x = Once(CBEnter, zzzM, x::Nil)
-    val iZzz_y = Once(CBEnter, zzzM, y::Nil)
-    val iYyy_x = Once(CBEnter, yyyM, x::Nil)
-    val iYyy_y = Once(CBEnter, yyyM, y::Nil)
+    val iFoo_x = AbsMsg(CBEnter, fooM, x:: Nil)
+    val iBar_x = AbsMsg(CBEnter, barM, x::Nil)
+    val iZzz_x = AbsMsg(CBEnter, zzzM, x::Nil)
+    val iZzz_y = AbsMsg(CBEnter, zzzM, y::Nil)
+    val iYyy_x = AbsMsg(CBEnter, yyyM, x::Nil)
+    val iYyy_y = AbsMsg(CBEnter, yyyM, y::Nil)
     val spec = new SpecSpace(Set(
       LSSpec(x::Nil, Nil, NS(iFoo_x, iBar_x),iZzz_x),
       LSSpec(x::Nil, Nil, iFoo_x, iYyy_x)
@@ -894,12 +894,12 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val barM = SubClassMatcher("","bar","bar")
     val yyyM = SubClassMatcher("","bar","yyy")
     val zzzM = SubClassMatcher("","bar","zzz")
-    val iFoo_x = Once(CBEnter, fooM, x :: Nil)
-    val iBar_zy = Once(CBEnter, barM, z::y ::Nil)
-    val iYyy_x = Once(CBEnter, yyyM, x::Nil)
-    val iYyy_k = Once(CBEnter, yyyM, k::Nil)
-    val iZzz_z = Once(CBEnter, zzzM, z::Nil)
-    val iZzz_j = Once(CBEnter, zzzM, j::Nil)
+    val iFoo_x = AbsMsg(CBEnter, fooM, x :: Nil)
+    val iBar_zy = AbsMsg(CBEnter, barM, z::y ::Nil)
+    val iYyy_x = AbsMsg(CBEnter, yyyM, x::Nil)
+    val iYyy_k = AbsMsg(CBEnter, yyyM, k::Nil)
+    val iZzz_z = AbsMsg(CBEnter, zzzM, z::Nil)
+    val iZzz_j = AbsMsg(CBEnter, zzzM, j::Nil)
     val spec = new SpecSpace(Set(
       LSSpec(x::Nil, Nil, iFoo_x, iYyy_x),
       LSSpec(z::Nil, y::Nil, iBar_zy, target = iZzz_z)
@@ -921,13 +921,13 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val stateSolver = f.stateSolver
     val fooM = SubClassMatcher("","foo","foo")
     val barM = SubClassMatcher("","bar","bar")
-    val iFoo_x = Once(CBEnter, fooM, x::Nil)
-    val iFoo_z = Once(CBEnter, fooM, z::Nil)
-    val iBar_z = Once(CBEnter, barM, z::Nil)
-    val notbar_tgt_z = Once(CBEnter, SubClassMatcher("","notbar_tgt","notbar_tgt"), z::Nil)
-    val notbar_tgt_a = Once(CBEnter, SubClassMatcher("","notbar_tgt","notbar_tgt"), a::Nil)
-    val foo_tgt_x = Once(CBEnter, SubClassMatcher("","foo_tgt","foo_tgt"), x::Nil)
-    val foo_tgt_b = Once(CBEnter, SubClassMatcher("","foo_tgt","foo_tgt"), b::Nil)
+    val iFoo_x = AbsMsg(CBEnter, fooM, x::Nil)
+    val iFoo_z = AbsMsg(CBEnter, fooM, z::Nil)
+    val iBar_z = AbsMsg(CBEnter, barM, z::Nil)
+    val notbar_tgt_z = AbsMsg(CBEnter, SubClassMatcher("","notbar_tgt","notbar_tgt"), z::Nil)
+    val notbar_tgt_a = AbsMsg(CBEnter, SubClassMatcher("","notbar_tgt","notbar_tgt"), a::Nil)
+    val foo_tgt_x = AbsMsg(CBEnter, SubClassMatcher("","foo_tgt","foo_tgt"), x::Nil)
+    val foo_tgt_b = AbsMsg(CBEnter, SubClassMatcher("","foo_tgt","foo_tgt"), b::Nil)
     val spec = new SpecSpace(Set(
       LSSpec(z::Nil, Nil, And(iFoo_z,Not(iBar_z)), notbar_tgt_z),
       LSSpec(x::Nil, Nil, iFoo_x, foo_tgt_x)
@@ -950,10 +950,10 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val fooM = SubClassMatcher("","foo","foo")
     val barM = SubClassMatcher("","bar","bar")
     val tgtM = SubClassMatcher("","tgt","tgt")
-    val iFoo_x = Once(CBEnter, fooM, x::Nil)
-    val iBar_x = Once(CBEnter, barM, x::Nil)
-    val iTgt_x = Once(CBEnter, tgtM, x::Nil)
-    val iTgt_a = Once(CBEnter, tgtM, a::Nil)
+    val iFoo_x = AbsMsg(CBEnter, fooM, x::Nil)
+    val iBar_x = AbsMsg(CBEnter, barM, x::Nil)
+    val iTgt_x = AbsMsg(CBEnter, tgtM, x::Nil)
+    val iTgt_a = AbsMsg(CBEnter, tgtM, a::Nil)
     val spec = new SpecSpace(Set(
       LSSpec(x::Nil, Nil, NS(iFoo_x, iBar_x), iTgt_x)
     ))
@@ -972,11 +972,11 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val stateSolver = f.stateSolver
     val fooM = SubClassMatcher("","foo","foo")
     val barM = SubClassMatcher("","bar","bar")
-    val iFoo_x = Once(CBEnter, fooM, x::Nil)
-    val iFoo_a = Once(CBEnter, fooM, a::Nil)
-    val iBar_xy = Once(CBEnter, barM, x::y::Nil)
-    val iBar_ab = Once(CBEnter, barM, a::b::Nil)
-    val iBar_xN = Once(CBEnter, barM, x::NullVal::Nil)
+    val iFoo_x = AbsMsg(CBEnter, fooM, x::Nil)
+    val iFoo_a = AbsMsg(CBEnter, fooM, a::Nil)
+    val iBar_xy = AbsMsg(CBEnter, barM, x::y::Nil)
+    val iBar_ab = AbsMsg(CBEnter, barM, a::b::Nil)
+    val iBar_xN = AbsMsg(CBEnter, barM, x::NullVal::Nil)
 
     val spec = new SpecSpace(Set(LSSpec(x::Nil, Nil, iBar_xN, iFoo_x)))
 
@@ -990,7 +990,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
 
     // Test const under negation
     val bazM = SubClassMatcher("","baz","baz")
-    val iBaz_x = Once(CBEnter, bazM, x::Nil)
+    val iBaz_x = AbsMsg(CBEnter, bazM, x::Nil)
     val spec2 = new SpecSpace(Set(LSSpec(x::Nil, y::Nil, NS(iBar_xy, iBar_xN), iFoo_x)))
 
     assert(stateSolver.simplify(sNull, spec2).isEmpty)
@@ -1003,13 +1003,13 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val fooM = SubClassMatcher("","foo","foo")
     val barM = SubClassMatcher("","bar","bar")
     val bazM = SubClassMatcher("","baz","baz")
-    val niTgt_x = Once(CBEnter, SubClassMatcher("","niTgtM","niTgtM"), x::Nil)
-    val niTgt_a = Once(CBEnter, SubClassMatcher("","niTgtM","niTgtM"), a::Nil)
-    val notTgt_z = Once(CBEnter, SubClassMatcher("", "notTgtM", "notTgtM"), z::Nil)
-    val notTgt_b = Once(CBEnter, SubClassMatcher("", "notTgtM", "notTgtM"), b::Nil)
-    val iFoo_x = Once(CBEnter, fooM, x::Nil)
-    val iBaz_x = Once(CBEnter, bazM, x::Nil)
-    val iBar_z = Once(CBEnter, barM, z::Nil)
+    val niTgt_x = AbsMsg(CBEnter, SubClassMatcher("","niTgtM","niTgtM"), x::Nil)
+    val niTgt_a = AbsMsg(CBEnter, SubClassMatcher("","niTgtM","niTgtM"), a::Nil)
+    val notTgt_z = AbsMsg(CBEnter, SubClassMatcher("", "notTgtM", "notTgtM"), z::Nil)
+    val notTgt_b = AbsMsg(CBEnter, SubClassMatcher("", "notTgtM", "notTgtM"), b::Nil)
+    val iFoo_x = AbsMsg(CBEnter, fooM, x::Nil)
+    val iBaz_x = AbsMsg(CBEnter, bazM, x::Nil)
+    val iBar_z = AbsMsg(CBEnter, barM, z::Nil)
 
     val spec = new SpecSpace(Set(
       LSSpec(x::Nil, Nil, NS(iFoo_x, iBaz_x), niTgt_x),
@@ -1029,9 +1029,9 @@ class StateSolverTest extends FixtureAnyFunSuite {
 
     // test v.setEnabled(false)
     val specClickDis = new SpecSpace(Set(ViewSpec.clickWhileNotDisabled))
-    val isetEnabled_x_y = Once(CIExit, ViewSpec.setEnabled, TopVal::x::yy::Nil)
-    val iOnClick_z = Once(CBEnter, ViewSpec.onClick, TopVal::z::Nil)
-    val iSetOnClickListener_x_z = ViewSpec.setOnClickListenerI.copy(lsVars = TopVal::x::z::Nil)
+    val isetEnabled_x_y = AbsMsg(CIExit, ViewSpec.setEnabled, TopVal::x::yy::Nil)
+    val iOnClick_z = AbsMsg(CBEnter, ViewSpec.onClick, TopVal::z::Nil)
+    val iSetOnClickListener_x_z = ViewSpec.setOnClickListenerI.copyMsg(lsVars = TopVal::x::z::Nil)
     val sDis = st(AbstractTrace(rightOfArrow = iSetOnClickListener_x_z::isetEnabled_x_y::iOnClick_z::Nil),
       Map(x->p1, yy->p2, z->p3))
     val sDis_False = sDis.addPureConstraint(PureConstraint(p2, Equals, BoolVal(false)))
@@ -1041,11 +1041,11 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val fooM = SubClassMatcher("","foo","foo")
     val barM = SubClassMatcher("","bar","bar")
 
-    val iFoo_x = Once(CBEnter, fooM, x :: Nil)
-    val iFoo_a = Once(CBEnter, fooM, a :: Nil)
-    val iBar_x_y = Once(CBEnter, barM, x::y::Nil)
-    val iBar_a_b = Once(CBEnter, barM, a::b::Nil)
-    val iBar_x_true = Once(CBEnter, barM, x::BoolVal(true)::Nil)
+    val iFoo_x = AbsMsg(CBEnter, fooM, x :: Nil)
+    val iFoo_a = AbsMsg(CBEnter, fooM, a :: Nil)
+    val iBar_x_y = AbsMsg(CBEnter, barM, x::y::Nil)
+    val iBar_a_b = AbsMsg(CBEnter, barM, a::b::Nil)
+    val iBar_x_true = AbsMsg(CBEnter, barM, x::BoolVal(true)::Nil)
 
     val spec = new SpecSpace(Set(LSSpec(x::Nil, Nil, iBar_x_true, iFoo_x)))
     val s = st(AbstractTrace(rightOfArrow = iBar_a_b::iFoo_a::Nil), Map(a->p1, b->p2))
@@ -1072,11 +1072,11 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val l = NamedPureVar("l")
     val l1 = NamedPureVar("l1")
 
-    val subI = Once(CIExit, subSig, s::TopVal::l::Nil)
-    val unsubI = Once(CIExit, unsubSig, TopVal::s::Nil)
-    val unsubITgt = Once(CIExit, unsubSig, TopVal :: s1 :: Nil)
-    val callI = Once(CBEnter, callSig, TopVal::l::Nil)
-    val callITgt = Once(CBEnter, callSig, TopVal::l1::Nil)
+    val subI = AbsMsg(CIExit, subSig, s::TopVal::l::Nil)
+    val unsubI = AbsMsg(CIExit, unsubSig, TopVal::s::Nil)
+    val unsubITgt = AbsMsg(CIExit, unsubSig, TopVal :: s1 :: Nil)
+    val callI = AbsMsg(CBEnter, callSig, TopVal::l::Nil)
+    val callITgt = AbsMsg(CBEnter, callSig, TopVal::l1::Nil)
     val spec = new SpecSpace(Set(
       LSSpec(l::Nil, s::Nil, NS(subI, unsubI),callI)
     ))
@@ -1088,9 +1088,9 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(!f.canSubsume(s_2,s_1,specReal)) // forall v ... arg(omega(...)) != v ...?
 
     // Test with real spec
-    val callTgt_x = SpecSignatures.RxJava_call_entry.copy(lsVars = TopVal::x::Nil)
-    val unsubTgt_y =  SpecSignatures.RxJava_unsubscribe_exit.copy(lsVars = TopVal::y::Nil)
-    val destTgt_z = SpecSignatures.Activity_onDestroy_exit.copy(lsVars = TopVal::z::Nil)
+    val callTgt_x = SpecSignatures.RxJava_call_entry.copyMsg(lsVars = TopVal::x::Nil)
+    val unsubTgt_y =  SpecSignatures.RxJava_unsubscribe_exit.copyMsg(lsVars = TopVal::y::Nil)
+    val destTgt_z = SpecSignatures.Activity_onDestroy_exit.copyMsg(lsVars = TopVal::z::Nil)
     val st1 = st(AbstractTrace(callTgt_x::Nil),Map(x->p1))
       .addTypeConstraint(p1,BitTypeSet(BitSet(1)))
 
@@ -1124,11 +1124,11 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val stateSolver = f.stateSolver
     val v = NamedPureVar("v")
     val v2 = NamedPureVar("v2")
-    val clickTgt = Once(CBEnter, ViewSpec.onClick, TopVal::v::Nil)
-    val clickTgt_x = Once(CBEnter, ViewSpec.onClick, TopVal::x::Nil)
-    val findVTgt = Once(CBEnter, SpecSignatures.Activity_findView, v2::a::Nil)
-    val findVTgt_yz = Once(CBEnter, SpecSignatures.Activity_findView, y::z::Nil)
-    val findV = Once(CBEnter, SpecSignatures.Activity_findView, v::a::Nil)
+    val clickTgt = AbsMsg(CBEnter, ViewSpec.onClick, TopVal::v::Nil)
+    val clickTgt_x = AbsMsg(CBEnter, ViewSpec.onClick, TopVal::x::Nil)
+    val findVTgt = AbsMsg(CBEnter, SpecSignatures.Activity_findView, v2::a::Nil)
+    val findVTgt_yz = AbsMsg(CBEnter, SpecSignatures.Activity_findView, y::z::Nil)
+    val findV = AbsMsg(CBEnter, SpecSignatures.Activity_findView, v::a::Nil)
 
 
     // Test for timeout with simplified click spec
@@ -1187,12 +1187,12 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val unsubSig = SpecSignatures.RxJava_unsubscribe
     val subSig = SpecSignatures.RxJava_subscribe
 
-    val subI = Once(CIExit, subSig, s::l::Nil)
-    val subITgt = Once(CIExit, subSig, s1::l1::Nil)
-    val unsubI = Once(CIExit, unsubSig, TopVal::s::Nil)
-    val unsubITgt = Once(CIExit, unsubSig, TopVal::s2::Nil)
-    val callI = Once(CBEnter, callSig, l::Nil)
-    val callITgt = Once(CBEnter, callSig, l2::Nil)
+    val subI = AbsMsg(CIExit, subSig, s::l::Nil)
+    val subITgt = AbsMsg(CIExit, subSig, s1::l1::Nil)
+    val unsubI = AbsMsg(CIExit, unsubSig, TopVal::s::Nil)
+    val unsubITgt = AbsMsg(CIExit, unsubSig, TopVal::s2::Nil)
+    val callI = AbsMsg(CBEnter, callSig, l::Nil)
+    val callITgt = AbsMsg(CBEnter, callSig, l2::Nil)
     val spec = new SpecSpace(Set(
       LSSpec(l::Nil, s::Nil, NS(subI, unsubI),callI)
     ))
@@ -1220,12 +1220,12 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val l2 = NamedPureVar("l2")
     val x1 = NamedPureVar("x1")
 
-    val subI = Once(CIExit, subSig, s::l::Nil)
-    val subITgt = Once(CIExit, subSig, s1::l1::Nil)
-    val unsubI = Once(CIExit, unsubSig, TopVal::s::Nil)
-    val unsubITgt = Once(CIExit, unsubSig, TopVal::s2::Nil)
-    val callI = Once(CBEnter, callSig, l::Nil)
-    val callITgt = Once(CBEnter, callSig, l2::Nil)
+    val subI = AbsMsg(CIExit, subSig, s::l::Nil)
+    val subITgt = AbsMsg(CIExit, subSig, s1::l1::Nil)
+    val unsubI = AbsMsg(CIExit, unsubSig, TopVal::s::Nil)
+    val unsubITgt = AbsMsg(CIExit, unsubSig, TopVal::s2::Nil)
+    val callI = AbsMsg(CBEnter, callSig, l::Nil)
+    val callITgt = AbsMsg(CBEnter, callSig, l2::Nil)
     val spec = new SpecSpace(Set(
       LSSpec(l::Nil, s::Nil, NS(subI, unsubI),callI)
     ))
@@ -1306,8 +1306,8 @@ class StateSolverTest extends FixtureAnyFunSuite {
     //    val iFoo_x_y = I(CBEnter, fooM, "x" :: "y" :: Nil)
     //    val iFoo_x1_y1 = I(CBEnter, fooM, "x1"::"y1" :: Nil)
 
-    val iFoo_x_y = Once(CBEnter, fooM, x::y :: Nil)
-    val iFoo_x1_y1 = Once(CBEnter, fooM, x1::y1 :: Nil)
+    val iFoo_x_y = AbsMsg(CBEnter, fooM, x::y :: Nil)
+    val iFoo_x1_y1 = AbsMsg(CBEnter, fooM, x1::y1 :: Nil)
 
 
     val pvy = PureVar(1)
@@ -1334,12 +1334,12 @@ class StateSolverTest extends FixtureAnyFunSuite {
     // cannot subsume if types must be different
     val stateSolver = f.stateSolver
     val fooM = SubClassMatcher("","foo","foo")
-    val iFoo_x_y = Once(CBEnter, fooM, x :: y :: Nil)
-    val iFoo_x1_y1 = Once(CBEnter, fooM, x1::y1 :: Nil)
-    val tgt_foo1_x_y = Once(CBEnter, SubClassMatcher("","tgt_foo_1","tgt_foo_1"),x::y::Nil)
-    val tgt_foo1_a_b = Once(CBEnter, SubClassMatcher("","tgt_foo_1","tgt_foo_1"),a::b::Nil)
-    val tgt_foo2_x1_y1 = Once(CBEnter, SubClassMatcher("","tgt_foo_2","tgt_foo_2"),x1::y1::Nil)
-    val tgt_foo2_c_d = Once(CBEnter, SubClassMatcher("","tgt_foo_2","tgt_foo_2"),c::d::Nil)
+    val iFoo_x_y = AbsMsg(CBEnter, fooM, x :: y :: Nil)
+    val iFoo_x1_y1 = AbsMsg(CBEnter, fooM, x1::y1 :: Nil)
+    val tgt_foo1_x_y = AbsMsg(CBEnter, SubClassMatcher("","tgt_foo_1","tgt_foo_1"),x::y::Nil)
+    val tgt_foo1_a_b = AbsMsg(CBEnter, SubClassMatcher("","tgt_foo_1","tgt_foo_1"),a::b::Nil)
+    val tgt_foo2_x1_y1 = AbsMsg(CBEnter, SubClassMatcher("","tgt_foo_2","tgt_foo_2"),x1::y1::Nil)
+    val tgt_foo2_c_d = AbsMsg(CBEnter, SubClassMatcher("","tgt_foo_2","tgt_foo_2"),c::d::Nil)
     val spec = new SpecSpace(Set(
       LSSpec(x::y::Nil,Nil,iFoo_x_y, tgt_foo1_x_y),
       LSSpec(x1::y1::Nil,Nil,iFoo_x1_y1, tgt_foo2_x1_y1)
@@ -1370,9 +1370,9 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val x2 = NamedPureVar("x2")
     val y2 = NamedPureVar("y2")
     val fooM = SubClassMatcher("","foo","foo")
-    val iFoo_x_y = Once(CBEnter, fooM, x :: y :: Nil)
-    val iFoo_x1_y1 = Once(CBEnter, fooM, x1::y1 :: Nil)
-    val iFoo_x2_y2 = Once(CBEnter, fooM, x2::y2 :: Nil)
+    val iFoo_x_y = AbsMsg(CBEnter, fooM, x :: y :: Nil)
+    val iFoo_x1_y1 = AbsMsg(CBEnter, fooM, x1::y1 :: Nil)
+    val iFoo_x2_y2 = AbsMsg(CBEnter, fooM, x2::y2 :: Nil)
     val pvy = PureVar(1)
     val pvy2 = PureVar(2)
     //I(x.foo(y)) && y:T1
@@ -1398,10 +1398,10 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val v = NamedPureVar("v")
     val fooM = SubClassMatcher("","foo","foo")
     val barM = SubClassMatcher("","bar","bar")
-    val iFoo = Once(CBEnter, fooM, a :: Nil)
-    val iBar = Once(CBEnter, barM, a :: Nil)
-    val iFoo_b = Once(CBEnter, fooM, b :: Nil)
-    val iBar_b = Once(CBEnter, barM, b :: Nil)
+    val iFoo = AbsMsg(CBEnter, fooM, a :: Nil)
+    val iBar = AbsMsg(CBEnter, barM, a :: Nil)
+    val iFoo_b = AbsMsg(CBEnter, fooM, b :: Nil)
+    val iBar_b = AbsMsg(CBEnter, barM, b :: Nil)
     val foobar = And(iFoo,iBar)
     val followsFoo = AbstractTrace(foobar, iFoo_b::Nil,Map())
     val followsBar = AbstractTrace(foobar, iBar_b::Nil, Map())
@@ -1412,15 +1412,15 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val fv = SubClassMatcher("","findView","findView")
     val de = SubClassMatcher("","onDestroy","onDestroy")
     val cr = SubClassMatcher("","onCreate","onCreate")
-    val findView = Once(CIExit, fv, v::a::Nil)
-    val onDestroy = Once(CBExit, de, TopVal::a::Nil)
-    val onCreate = Once(CBEnter, cr, TopVal::a::Nil)
+    val findView = AbsMsg(CIExit, fv, v::a::Nil)
+    val onDestroy = AbsMsg(CBExit, de, TopVal::a::Nil)
+    val onCreate = AbsMsg(CBEnter, cr, TopVal::a::Nil)
     val acl = And(findView, NS(onDestroy, onCreate))
 
-    val subsumer = AbstractTrace(acl, Once(CBEnter, cr, TopVal::b::Nil)::
-      Once(CIExit,fv,v::b::Nil)::Nil,Map())
+    val subsumer = AbstractTrace(acl, AbsMsg(CBEnter, cr, TopVal::b::Nil)::
+      AbsMsg(CIExit,fv,v::b::Nil)::Nil,Map())
 
-    val subsumee = AbstractTrace(acl, Once(CBExit,de,TopVal::b::Nil)::Nil,Map())
+    val subsumee = AbstractTrace(acl, AbsMsg(CBExit,de,TopVal::b::Nil)::Nil,Map())
     val res2 = f.canSubsume(st(subsumer,Map()),st(subsumee,Map()),esp)
     assert(!res2)
     val res3 = f.canSubsume(st(subsumee,Map()), st(subsumer,Map()),esp)
@@ -1430,8 +1430,8 @@ class StateSolverTest extends FixtureAnyFunSuite {
     //TODO: |>
     val stateSolver = f.stateSolver
 
-    val ifooa = Once(CBEnter, Set(("", "foo")), a :: Nil)
-    val ifoob = Once(CBEnter, Set(("", "foo")), b :: Nil)
+    val ifooa = AbsMsg(CBEnter, Set(("", "foo")), a :: Nil)
+    val ifoob = AbsMsg(CBEnter, Set(("", "foo")), b :: Nil)
     val state0 = State.topState.copy(sf = State.topState.sf.copy(
       traceAbstraction = AbstractTrace(ifooa, Nil, Map(a->p1))
     ))
@@ -1448,8 +1448,8 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val loc = AppLoc(fooMethod, SerializedIRLineLoc(1), isPre = false)
 
 
-    val ifoo = Once(CBEnter, Set(("", "foo")), a :: Nil)
-    val ibar = Once(CBEnter, Set(("", "bar")), a::b:: Nil)
+    val ifoo = AbsMsg(CBEnter, Set(("", "foo")), a :: Nil)
+    val ibar = AbsMsg(CBEnter, Set(("", "bar")), a::b:: Nil)
     val niSpec = NS(ibar,ifoo)
     val state = State.topState.copy(sf = State.topState.sf.copy(
       traceAbstraction = AbstractTrace(ibar, Nil, Map())))
@@ -1467,8 +1467,8 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(p1t.intersect(p2t).isEmpty)
 
 
-    val ifoo = Once(CBEnter, Set(("", "foo")), a :: Nil)
-    val ifoob = Once(CBEnter, Set(("", "foo")), b :: Nil)
+    val ifoo = AbsMsg(CBEnter, Set(("", "foo")), a :: Nil)
+    val ifoob = AbsMsg(CBEnter, Set(("", "foo")), b :: Nil)
     val state = State.topState.copy(sf = State.topState.sf.copy(traceAbstraction = AbstractTrace(ifoo, Nil, Map(a->p1))))
     val state2 = State.topState.copy(sf = State.topState.sf.copy(
       traceAbstraction = AbstractTrace(ifoo, ifoob::Nil, Map(a->p1, b->p2)),
@@ -1484,9 +1484,9 @@ class StateSolverTest extends FixtureAnyFunSuite {
 
     val loc = AppLoc(fooMethod, SerializedIRLineLoc(1), isPre = false)
 
-    val ifoo = Once(CBEnter, Set(("", "foo")),  TopVal::a :: Nil)
-    val ibar = Once(CBEnter, Set(("", "bar")),  TopVal::a :: Nil)
-    val ibarc = Once(CBEnter, Set(("", "bar")), TopVal::c :: Nil)
+    val ifoo = AbsMsg(CBEnter, Set(("", "foo")),  TopVal::a :: Nil)
+    val ibar = AbsMsg(CBEnter, Set(("", "bar")),  TopVal::a :: Nil)
+    val ibarc = AbsMsg(CBEnter, Set(("", "bar")), TopVal::c :: Nil)
 
     val at = AbstractTrace(NS(ifoo,ibar), ibarc::Nil, Map(a->p1, c->p1))
     val state = State(StateFormula(
@@ -1526,10 +1526,10 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(f.canSubsume(state_, state_,esp))
 
     // Combine type constraints and trace constraints
-    val iFoo = Once(CBEnter, Set(("", "foo")), a :: Nil)
-    val iBar = Once(CBEnter, Set(("", "bar")), a :: Nil)
-    val iBaz = Once(CBEnter, Set(("", "baz")), a :: Nil)
-    val iBaz_b = Once(CBEnter, Set(("", "baz")), b :: Nil)
+    val iFoo = AbsMsg(CBEnter, Set(("", "foo")), a :: Nil)
+    val iBar = AbsMsg(CBEnter, Set(("", "bar")), a :: Nil)
+    val iBaz = AbsMsg(CBEnter, Set(("", "baz")), a :: Nil)
+    val iBaz_b = AbsMsg(CBEnter, Set(("", "baz")), b :: Nil)
     val spec = new SpecSpace(Set(LSSpec(a::Nil,Nil,NS(iFoo,iBar),iBaz)))
 
     val formula = (AbstractTrace(iBaz_b::Nil), Map(b->p1))
@@ -1574,10 +1574,10 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val foo2 = FwkMethod("foo", "foo2")
     val bar = FwkMethod("bar", "")
 
-    val i_foo_x = Once(CIEnter, Set(("foo",""),("foo2","")), x::Nil)
-    val i_foo_y = Once(CIEnter, Set(("foo",""),("foo2","")), y::Nil)
-    val i_bar_x = Once(CIEnter, Set(("bar",""),("bar2","")), x::Nil)
-    val i_bar_y = Once(CIEnter, Set(("bar",""),("bar2","")), y::Nil)
+    val i_foo_x = AbsMsg(CIEnter, Set(("foo",""),("foo2","")), x::Nil)
+    val i_foo_y = AbsMsg(CIEnter, Set(("foo",""),("foo2","")), y::Nil)
+    val i_bar_x = AbsMsg(CIEnter, Set(("bar",""),("bar2","")), x::Nil)
+    val i_bar_y = AbsMsg(CIEnter, Set(("bar",""),("bar2","")), y::Nil)
     val trace = Trace(List(
       TMessage(CIEnter, foo, TAddr(1)::Nil),
       TMessage(CIEnter, bar, TAddr(1)::Nil)
@@ -1585,8 +1585,8 @@ class StateSolverTest extends FixtureAnyFunSuite {
 
     val ni_foo_x_bar_x = NS(i_foo_x, i_bar_x)
     val ni_bar_x_foo_x = NS(i_bar_x, i_foo_x)
-    val targetFoo_x = Once(CIExit, Set(("","targetFoo")), x::Nil)
-    val targetFoo_y = Once(CIExit, Set(("","targetFoo")), y::Nil)
+    val targetFoo_x = AbsMsg(CIExit, Set(("","targetFoo")), x::Nil)
+    val targetFoo_y = AbsMsg(CIExit, Set(("","targetFoo")), y::Nil)
     val spec = new SpecSpace(Set(
       LSSpec(x::Nil, Nil, i_foo_x, targetFoo_x)
     ))
@@ -1698,9 +1698,9 @@ class StateSolverTest extends FixtureAnyFunSuite {
 //      ))
 
     // I(foo(x,y)) models foo(@1,@2)
-    val i_foo_x_y = Once(CIEnter, Set(("foo",""),("foo2","")), x::y::Nil)
-    val targetFoo_x_y = Once(CIExit, Set(("","targetFoo")), x::y::Nil)
-    val targetFoo_a_b = Once(CIExit, Set(("","targetFoo")), a::b::Nil)
+    val i_foo_x_y = AbsMsg(CIEnter, Set(("foo",""),("foo2","")), x::y::Nil)
+    val targetFoo_x_y = AbsMsg(CIExit, Set(("","targetFoo")), x::y::Nil)
+    val targetFoo_a_b = AbsMsg(CIExit, Set(("","targetFoo")), a::b::Nil)
     val spec_Foo_x_y = new SpecSpace(Set(
       LSSpec(x::y::Nil, Nil, i_foo_x_y, targetFoo_x_y)
     ))
@@ -1713,7 +1713,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     )
 
     // foo(@1,@2);bar(@1,@2) !models [¬I(foo(x,y))] /\ I(bar(x,y))
-    val i_bar_x_y = Once(CIEnter, Set(("bar",""),("bar2","")), x::y::Nil)
+    val i_bar_x_y = AbsMsg(CIEnter, Set(("bar",""),("bar2","")), x::y::Nil)
     val spec_NotFoo_Bar_x_y = new SpecSpace(Set(
       LSSpec(x::y::Nil, Nil,And(Not(i_foo_x_y), i_bar_x_y), targetFoo_x_y)
     ))
@@ -1741,9 +1741,9 @@ class StateSolverTest extends FixtureAnyFunSuite {
     )
 
     // I(foo(y,y) !models foo(@1,@2)
-    val i_foo_y_y = Once(CIEnter, Set(("foo",""),("foo2","")), y::y::Nil)
-    val targetFoo_y_y = Once(CIExit, Set(("","targetFoo")), y::y::Nil)
-    val targetFoo_a_a = Once(CIExit, Set(("","targetFoo")), a::a::Nil)
+    val i_foo_y_y = AbsMsg(CIEnter, Set(("foo",""),("foo2","")), y::y::Nil)
+    val targetFoo_y_y = AbsMsg(CIExit, Set(("","targetFoo")), y::y::Nil)
+    val targetFoo_a_a = AbsMsg(CIExit, Set(("","targetFoo")), a::a::Nil)
     val spec_Foo_y_y = new SpecSpace(Set(
       LSSpec(x::y::Nil, Nil, i_foo_y_y, targetFoo_x_y)
     ))
@@ -1774,10 +1774,10 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val foo = FwkMethod("foo", "")
     val bar = FwkMethod("bar", "")
 
-    val i_foo_x = Once(CIEnter, Set(("foo",""),("foo2","")), x::Nil)
-    val i_bar_x = Once(CIEnter, Set(("bar",""),("bar2","")), x::Nil)
-    val targetFoo_x_y = Once(CIExit, Set(("","targetFoo")), x::y::Nil)
-    val targetFoo_a_b = Once(CIExit, Set(("","targetFoo")), a::b::Nil)
+    val i_foo_x = AbsMsg(CIEnter, Set(("foo",""),("foo2","")), x::Nil)
+    val i_bar_x = AbsMsg(CIEnter, Set(("bar",""),("bar2","")), x::Nil)
+    val targetFoo_x_y = AbsMsg(CIExit, Set(("","targetFoo")), x::y::Nil)
+    val targetFoo_a_b = AbsMsg(CIExit, Set(("","targetFoo")), a::b::Nil)
     val trace = Trace(List(
       TMessage(CIEnter, foo, TAddr(1)::Nil),
       TMessage(CIEnter, bar, TAddr(1)::Nil)
@@ -1813,9 +1813,9 @@ class StateSolverTest extends FixtureAnyFunSuite {
   test("Empty trace should not be contained in incomplete abstract trace") { f =>
     val stateSolver = f.stateSolver
 
-    val iFoo_a = Once(CBEnter, Set(("", "foo")), a :: Nil)
-    val iFoo_b = Once(CBEnter, Set(("", "foo")), b :: Nil)
-    val iBar_a = Once(CBEnter, Set(("", "bar")), a::Nil)
+    val iFoo_a = AbsMsg(CBEnter, Set(("", "foo")), a :: Nil)
+    val iFoo_b = AbsMsg(CBEnter, Set(("", "foo")), b :: Nil)
+    val iBar_a = AbsMsg(CBEnter, Set(("", "bar")), a::Nil)
     val spec = new SpecSpace(Set(LSSpec(a::Nil, Nil, iBar_a,iFoo_a,Set())),Set())
 //    def s(at:AbstractTrace):State = {
 //      val ts = State.topState
@@ -1834,10 +1834,10 @@ class StateSolverTest extends FixtureAnyFunSuite {
 
     val f = NamedPureVar("f")
 
-    val iFoo_ac = Once(CBEnter, Set(("", "foo")), c::a :: Nil)
-    val iFoo_null_c =  Once(CBEnter, Set(("", "foo")), NullVal::a :: Nil)
-    val iFoo_bd = Once(CBEnter, Set(("", "foo")), d::b :: Nil)
-    val iBar_a = Once(CBEnter, Set(("", "bar")), a::Nil)
+    val iFoo_ac = AbsMsg(CBEnter, Set(("", "foo")), c::a :: Nil)
+    val iFoo_null_c =  AbsMsg(CBEnter, Set(("", "foo")), NullVal::a :: Nil)
+    val iFoo_bd = AbsMsg(CBEnter, Set(("", "foo")), d::b :: Nil)
+    val iBar_a = AbsMsg(CBEnter, Set(("", "bar")), a::Nil)
     val s1 = LSSpec(a::c::Nil, Nil, iBar_a,iFoo_ac,Set(LSConstraint(c, Equals, NullVal)))
     val s2 = LSSpec(a::c::Nil, Nil, LSTrue, iFoo_ac,Set(LSConstraint(c, NotEquals, NullVal)))
     val spec = new SpecSpace(Set(s1,s2))
@@ -1857,8 +1857,8 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(res3.isEmpty)
 
     val pv3 = PureVar(3)
-    val iBaz_e = Once(CBEnter, Set(("", "baz")), e::Nil)
-    val iBaz_f = Once(CBEnter, Set(("", "baz")), f::Nil)
+    val iBaz_e = AbsMsg(CBEnter, Set(("", "baz")), e::Nil)
+    val iBaz_f = AbsMsg(CBEnter, Set(("", "baz")), f::Nil)
 
     val s4 = LSSpec(e::Nil, Nil, LSTrue,iBaz_e, Set())
 //    val spec4 = new SpecSpace(Set(s2,s3,s4))
@@ -1873,14 +1873,14 @@ class StateSolverTest extends FixtureAnyFunSuite {
 
     val g = NamedPureVar("g")
     val f = NamedPureVar("f")
-    val iFoo_ac = Once(CBEnter, Set(("", "foo")), c::a :: Nil)
-    val iFoo_null_c =  Once(CBEnter, Set(("", "foo")), NullVal::a :: Nil)
-    val iFoo_bd = Once(CBEnter, Set(("", "foo")), d::b :: Nil)
-    val iBar_a = Once(CBEnter, Set(("", "bar")), a::Nil)
-    val iBar_e = Once(CBEnter, Set(("", "bar")), e::Nil)
-    val iBaz_f = Once(CBEnter, Set(("", "baz")), f::Nil)
-    val iBaz_g = Once(CBEnter, Set(("", "baz")), g::Nil)
-    val iWap_g = Once(CBEnter, Set(("", "wap")), g::Nil)
+    val iFoo_ac = AbsMsg(CBEnter, Set(("", "foo")), c::a :: Nil)
+    val iFoo_null_c =  AbsMsg(CBEnter, Set(("", "foo")), NullVal::a :: Nil)
+    val iFoo_bd = AbsMsg(CBEnter, Set(("", "foo")), d::b :: Nil)
+    val iBar_a = AbsMsg(CBEnter, Set(("", "bar")), a::Nil)
+    val iBar_e = AbsMsg(CBEnter, Set(("", "bar")), e::Nil)
+    val iBaz_f = AbsMsg(CBEnter, Set(("", "baz")), f::Nil)
+    val iBaz_g = AbsMsg(CBEnter, Set(("", "baz")), g::Nil)
+    val iWap_g = AbsMsg(CBEnter, Set(("", "wap")), g::Nil)
     val s1 = LSSpec(a::c::Nil, Nil, iBar_a,iFoo_ac,Set(LSConstraint(c, Equals, NullVal)))
     val s2 = LSSpec(a::c::Nil, Nil, iBar_a, iFoo_ac,Set(LSConstraint(c, NotEquals, NullVal))) //TODO: does LSTrue cause issues?
     val s3 = LSSpec(g::Nil, Nil, iWap_g, iBaz_g, Set())
@@ -1916,12 +1916,12 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val specs = new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
       FragmentGetActivityNullSpec.getActivityNonNull,
     ) ++ LifecycleSpec.spec ++ RxJavaSpec.spec)
-    val destTgtX = Once(CBExit, SpecSignatures.Activity_onDestroy, TopVal::x::Nil)
-    val createTgtX = Once(CBEnter, SpecSignatures.Activity_onCreate, TopVal::x::Nil)
-    val destTgtY = Once(CBExit, SpecSignatures.Activity_onDestroy, TopVal::y::Nil)
-    val callTgtZ = Once(CBEnter, SpecSignatures.RxJava_call, TopVal::z::Nil)
-    val unsubTgtW = Once(CIExit, SpecSignatures.RxJava_unsubscribe, TopVal::w::Nil)
-    val subTgtWP = Once(CIExit, SpecSignatures.RxJava_subscribe, w::TopVal::p::Nil)
+    val destTgtX = AbsMsg(CBExit, SpecSignatures.Activity_onDestroy, TopVal::x::Nil)
+    val createTgtX = AbsMsg(CBEnter, SpecSignatures.Activity_onCreate, TopVal::x::Nil)
+    val destTgtY = AbsMsg(CBExit, SpecSignatures.Activity_onDestroy, TopVal::y::Nil)
+    val callTgtZ = AbsMsg(CBEnter, SpecSignatures.RxJava_call, TopVal::z::Nil)
+    val unsubTgtW = AbsMsg(CIExit, SpecSignatures.RxJava_unsubscribe, TopVal::w::Nil)
+    val subTgtWP = AbsMsg(CIExit, SpecSignatures.RxJava_subscribe, w::TopVal::p::Nil)
     val s1 = st(AbstractTrace(FreshRef(z)::destTgtX::callTgtZ::Nil), Map(x->p1, z->p3, w->p4))
     val s2 = st(AbstractTrace(FreshRef(z)::destTgtY::destTgtX::callTgtZ::Nil), Map(x->p1, y->p2, z->p3, w->p4))
       .addPureConstraint(PureConstraint(p1,NotEquals,p2))

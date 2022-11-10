@@ -6,6 +6,7 @@ import com.microsoft.z3.enumerations.Z3_ast_print_mode
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{AppMethod, CBEnter, CBExit, CIEnter, CIExit, FwkMethod, TCLInit, TMessage, TNew, TraceElement, WitnessExplanation}
 import edu.colorado.plv.bounder.lifestate.LifeState
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, CLInit, FreshRef, OAbsMsg}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, BotVal, NullVal, PureExpr, PureVal, PureVar, State, TAddr, TVal, TopVal}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -458,15 +459,15 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
 
 
     val trace = rightOfArrow.map{
-      case LifeState.CLInit(sig) => TCLInit(sig)
-      case LifeState.FreshRef(v) => TNew(pvv(mv(v).asInstanceOf[PureVar]))
-      case LifeState.Once(CBEnter, sig, vars) =>
+      case CLInit(sig) => TCLInit(sig)
+      case FreshRef(v) => TNew(pvv(mv(v).asInstanceOf[PureVar]))
+      case OAbsMsg(CBEnter, sig, vars) =>
         TMessage(CBEnter,AppMethod(sig.identifier, "", None), vars.map(v => pmv(v)))
-      case LifeState.Once(CBExit, sig, vars) =>
+      case OAbsMsg(CBExit, sig, vars) =>
         TMessage(CBExit,AppMethod(sig.identifier, "", None), vars.map(v => pmv(v)))
-      case LifeState.Once(CIEnter, sig, vars) =>
+      case OAbsMsg(CIEnter, sig, vars) =>
         TMessage(CIEnter,FwkMethod(sig.identifier, ""), vars.map(v => pmv(v)))
-      case LifeState.Once(CIExit, sig, vars) =>
+      case OAbsMsg(CIExit, sig, vars) =>
         TMessage(CIExit,FwkMethod(sig.identifier, ""), vars.map(v => pmv(v)))
     }
 

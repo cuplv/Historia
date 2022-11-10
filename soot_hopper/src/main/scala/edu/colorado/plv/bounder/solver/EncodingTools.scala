@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.solver
 
 import edu.colorado.plv.bounder.ir.{MessageType, TMessage, TraceElement}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, CLInit, Exists, Forall, FreshRef, LSAtom, LSBexp, LSConstraint, LSFalse, LSImplies, LSPred, LSSingle, LSSpec, LSTrue, NS, Not, Once, Or, SignatureMatcher, UComb}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, CLInit, Exists, Forall, FreshRef, LSAtom, LSBexp, LSConstraint, LSFalse, LSImplies, LSPred, LSSingle, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, SignatureMatcher, UComb}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, Equals, FieldPtEdge, NPureVar, NamedPureVar, NotEquals, PureConstraint, PureExpr, PureVal, PureVar, State, StaticPtEdge, TVal, TopVal}
 
@@ -11,7 +11,7 @@ object EncodingTools {
     case (_,TopVal) => false
     case _ => true
   }
-  def eqOnce(i1:Once, i2:Once):LSPred =
+  def eqOnce(i1:AbsMsg, i2:AbsMsg):LSPred =
     if(i1.signatures != i2.signatures || i1.mt != i2.mt)
       LSFalse
     else {
@@ -19,7 +19,7 @@ object EncodingTools {
       pairs.map(v => LSConstraint.mk(v._1, Equals,v._2)).reduce(And)
     }
 
-  private def neqOnce(i1:Once, i2:Once):LSPred = {
+  private def neqOnce(i1:AbsMsg, i2:AbsMsg):LSPred = {
     if(i1.signatures != i2.signatures || i1.mt != i2.mt)
       LSTrue
     else {
@@ -27,11 +27,11 @@ object EncodingTools {
       pairs.map(v => LSConstraint.mk(v._1,NotEquals,v._2)).reduce(Or)
     }
   }
-  private def updArrowPhi(i:Once, lsPred:LSPred):LSPred = lsPred match {
+  private def updArrowPhi(i:AbsMsg, lsPred:LSPred):LSPred = lsPred match {
     case UComb(name, dep, false) => UComb(name, dep.map(d => updArrowPhi(i,d)))
     case UComb(name, dep, true) => throw new IllegalArgumentException("cannot updated negated UComb")
-    case Forall(v,p) => Forall(v,updArrowPhi(i:Once, p:LSPred))
-    case Exists(v,p) => Exists(v,updArrowPhi(i:Once, p:LSPred))
+    case Forall(v,p) => Forall(v,updArrowPhi(i:AbsMsg, p:LSPred))
+    case Exists(v,p) => Exists(v,updArrowPhi(i:AbsMsg, p:LSPred))
     case l:LSConstraint => l
     case And(l1, l2) => And(updArrowPhi(i,l1), updArrowPhi(i,l2))
     case Or(l1, l2) => Or(updArrowPhi(i,l1), updArrowPhi(i,l2))
@@ -40,13 +40,13 @@ object EncodingTools {
     case LSImplies(l1,l2) => LSImplies(updArrowPhi(i,l1), updArrowPhi(i,l2))
     case FreshRef(v) =>
       throw new IllegalStateException("RefV cannot be updated (encoding handled elsewhere)")
-    case Not(i1:Once) =>
+    case Not(i1:AbsMsg) =>
       if(i1.mt == i.mt && i1.signatures == i.signatures)
         And(neqOnce(i1,i), lsPred)
       else lsPred
     case ni@NS(i1,i2) =>
       And(Or(eqOnce(i1,i), And(ni, neqOnce(i1,i))), neqOnce(i,i2))
-    case i1:Once =>
+    case i1:AbsMsg =>
       if(i1.mt == i.mt && i1.signatures == i.signatures)
         Or(eqOnce(i1,i), lsPred)
       else lsPred
@@ -58,7 +58,7 @@ object EncodingTools {
     case FreshRef(_) =>
       // Creation of reference (occurs earlier than instantiation)
       lSPred
-    case i:Once => updArrowPhi(i,lSPred)
+    case i:AbsMsg => updArrowPhi(i,lSPred)
     //    case CLInit(sig) => lSPred //TODO: make all I/NI referencing sig positively "false" =====
     case CLInit(sig) => clInitRefToFalse(lSPred, sig)
   }
@@ -72,15 +72,15 @@ object EncodingTools {
     case Or(l1, l2) => Or(clInitRefToFalse(l1,sig), clInitRefToFalse(l2, sig))
     case LifeState.LSTrue => LifeState.LSTrue
     case LifeState.LSFalse => LifeState.LSFalse
-    case Once(_,mSig, _) if mSig.matchesClass(sig) => LSFalse
-    case i:Once => i
-    case NS(Once(_,mSig, _),_) if mSig.matchesClass(sig) => LSFalse
+    case OAbsMsg(_,mSig, _) if mSig.matchesClass(sig) => LSFalse
+    case i:AbsMsg => i
+    case NS(OAbsMsg(_,mSig, _),_) if mSig.matchesClass(sig) => LSFalse
     case ni:NS => ni
     case CLInit(sig2) if sig == sig2 => LSFalse
     case f:FreshRef => f
   }
   private def instArrowPhi(target:LSSingle,specSpace: SpecSpace, includeDis:Boolean):LSPred= target match {
-    case i:Once =>
+    case i:AbsMsg =>
       val applicableSpecs: Set[LSSpec] =
         if(includeDis) specSpace.specsByI(i).union(specSpace.disSpecsByI(i)) else specSpace.specsByI(i)
       val swappedPreds = applicableSpecs.map{s =>
@@ -141,7 +141,7 @@ object EncodingTools {
           delta(q).view.flatMap {
             case AnyDelta(dst, b) => ???
             case EpsDelta(dst, b) => ???
-            case MDelta(dst, b, m:Once) if m.contains(mType, method.fwkSig.get) =>
+            case MDelta(dst, b, m:AbsMsg) if m.contains(mType, method.fwkSig.get) =>
               ???
             case _:MDelta => None
           }.headOption
@@ -176,7 +176,7 @@ object EncodingTools {
     case Exists(vars, p) => ???
     case LSImplies(l1, l2) => ???
     case UComb(name, dep, argNegated) => ???
-    case Not(o:Once) =>
+    case Not(o:AbsMsg) =>
       val init = Set(q0)
       val fin = Set(q0)
       val delt = Map[Q,Set[Delta]](
@@ -197,7 +197,7 @@ object EncodingTools {
       (rm1.intersect(rm2), maxPv__)
     case LSTrue => (topRM, maxPv)
     case LSFalse => (botRM, maxPv)
-    case o:Once =>
+    case o:AbsMsg =>
       val init = Set(q0)
       val fin = Set(q1)
       val delt = Map[Q,Set[Delta]](
@@ -265,7 +265,7 @@ object EncodingTools {
     case LifeState.LSFalse => Set()
     case CLInit(sig) => Set()
     case FreshRef(v) => Set()
-    case Once(mt, signatures, lsVars) => Set((mt,signatures))
+    case OAbsMsg(mt, signatures, lsVars) => Set((mt,signatures))
     case NS(i1, i2) => mustISet(i1)
   }
 
@@ -281,7 +281,7 @@ object EncodingTools {
       case Or(l1, l2) => mustI(l1).intersect(mustI(l2))
       case LifeState.LSTrue => Set()
       case LifeState.LSFalse => Set()
-      case i:Once => Set(s"I_${i.identitySignature}")
+      case i:AbsMsg => Set(s"I_${i.identitySignature}")
       case NS(i1,i2) => Set(s"NI_${i1.identitySignature}__${i2.identitySignature}") ++ mustI(i1)
     }
     pred.flatMap(mustI)
@@ -294,12 +294,12 @@ object EncodingTools {
       case Exists(vars, p) => mayI(p)
       case LSImplies(l1, l2) => Set()
       case And(l1, l2) => mayI(l1).union(mayI(l2))
-      case Not(i:Once) => Set()
+      case Not(i:AbsMsg) => Set()
       case Not(p) => throw new IllegalStateException(s"expected normal form in pred: ${p}")
       case Or(l1, l2) => mayI(l1).union(mayI(l2))
       case LifeState.LSTrue => Set()
       case LifeState.LSFalse => Set()
-      case i:Once => Set(s"I_${i.identitySignature}")
+      case i:AbsMsg => Set(s"I_${i.identitySignature}")
       case NS(i1,i2) => Set(s"NI_${i1.identitySignature}__${i2.identitySignature}") ++ mayI(i1)
     }
     pred.flatMap(mayI)

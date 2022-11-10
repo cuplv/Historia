@@ -251,6 +251,7 @@ class AbstractInterpreter[M,C](config: SymbolicExecutorConfig[M,C]) {
   sealed trait GroupType
   case class IfGroup(loc:AppLoc) extends GroupType
   case class InvokeGroup(loc:Option[Loc]) extends GroupType
+
   private def nodeGroup(pn:IPathNode):Option[(GroupType, List[(Loc, Option[Loc])], Int)] = {
     val stack = pn.state.callStack
     val groupStack = stack.map(sf => (sf.exitLoc, sf.retLoc))

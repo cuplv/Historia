@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools, Nameable}
 import edu.colorado.plv.bounder.ir.{AppLoc, BitTypeSet, BoolConst, CallbackMethodInvoke, CallbackMethodReturn, ClassConst, ConstVal, EmptyTypeSet, IRWrapper, IntConst, InternalMethodInvoke, InternalMethodReturn, LVal, Loc, LocalWrapper, MessageType, MethodLoc, NullConst, RVal, StringConst, TopTypeSet, TypeSet}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, FreshRef, LSPred, LSSingle, LSTrue, NS, Not, Once, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, FreshRef, LSPred, LSSingle, LSTrue, NS, Not, OAbsMsg, Or}
 import edu.colorado.plv.bounder.symbolicexecutor.state.State.findIAF
 import scalaz.Memo
 import upickle.default.{macroRW, ReadWriter => RW}
@@ -17,8 +17,8 @@ object State {
     State(StateFormula(Nil,Map(),Set(),Map(),AbstractTrace(Nil)),0)
 
   def findIAF(messageType: MessageType, signature: (String, String),
-              pred: LSPred)(implicit ch:ClassHierarchyConstraints):Set[Once] = pred match{
-    case i@Once(mt, sigs, _) if mt == messageType && sigs.matches(signature) => Set(i)
+              pred: LSPred)(implicit ch:ClassHierarchyConstraints):Set[AbsMsg] = pred match{
+    case i@OAbsMsg(mt, sigs, _) if mt == messageType && sigs.matches(signature) => Set(i)
     case NS(i1,i2) => Set(i1,i2).flatMap(findIAF(messageType, signature, _))
     case And(l1,l2) => findIAF(messageType,signature,l1).union(findIAF(messageType,signature,l2))
     case Or(l1,l2) => findIAF(messageType,signature,l1).union(findIAF(messageType,signature,l2))
@@ -100,7 +100,7 @@ case class StateFormula(callStack: List[CallStackFrame],
     this.copy(traceAbstraction = newTraceAbstraction)
   }
 
-  def allIRefByState(spec:SpecSpace): Set[Once] = allIRef(spec)
+  def allIRefByState(spec:SpecSpace): Set[AbsMsg] = allIRef(spec)
   def clearTC:StateFormula = {
     this.copy(typeConstraints = Map())
   }
@@ -206,7 +206,7 @@ case class StateFormula(callStack: List[CallStackFrame],
     val pureVarFromTrace = traceAbstraction.rightOfArrow.flatMap {
       case LifeState.CLInit(_) => None
       case FreshRef(_) => None
-      case o:Once => o.lsVar
+      case o:AbsMsg => o.lsVar
     }
     pureVarFromHeap ++ pureVarFromLocals ++ pureVarFromTrace
   }
@@ -385,7 +385,7 @@ case class State(sf:StateFormula,
     case ArrayPtEdge(_,_) => None
   }
 
-  def allIRefByState(spec:SpecSpace):Set[Once] = sf.allIRefByState(spec)
+  def allIRefByState(spec:SpecSpace):Set[AbsMsg] = sf.allIRefByState(spec)
   def fastIMatches(subsignature: String, spec:SpecSpace):Boolean =
     allIRefByState(spec:SpecSpace).exists(i => i.signatures.matchesSubSig(subsignature))
 
@@ -434,7 +434,7 @@ case class State(sf:StateFormula,
 
   def findIFromCurrent(dir: MessageType,
                        signature: (String, String), specSpace: SpecSpace)(implicit
-                                                    ch:ClassHierarchyConstraints): Set[Once] = {
+                                                    ch:ClassHierarchyConstraints): Set[AbsMsg] = {
     allIRefByState(specSpace).filter(i => i.mt == dir&& i.signatures.matches(signature))
   }
 

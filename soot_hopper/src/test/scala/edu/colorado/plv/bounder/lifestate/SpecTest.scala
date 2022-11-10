@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.ir.{CIEnter, CIExit, JimpleFlowdroidWrapper}
-import edu.colorado.plv.bounder.lifestate.LifeState.{Once, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, SubClassMatcher}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, DefaultAppCodeResolver, SparkCallGraph, SymbolicExecutorConfig, TransferFunctions}
 import org.scalatest.funsuite.AnyFunSuite
@@ -11,7 +11,7 @@ import soot.{Scene, SootMethod}
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 
 class SpecTest extends AnyFunSuite {
-  def findIInFwk[M, C](i: Once)(implicit ch:ClassHierarchyConstraints): Boolean = {
+  def findIInFwk[M, C](i: AbsMsg)(implicit ch:ClassHierarchyConstraints): Boolean = {
 //    val signatures = i.signatures
 //    val matching = signatures.filter{
 //      case (clazz, method) =>

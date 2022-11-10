@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.BounderSetupApplication.{ApkSource, SourceType}
 import java.util
 import java.util.{Collections, Objects}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper.cgEntryPointName
-import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, Once, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, LSSpec, OAbsMsg, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
 import edu.colorado.plv.bounder.{BounderSetupApplication, BounderUtil}
@@ -1109,8 +1109,8 @@ class JimpleFlowdroidWrapper(apkPath : String,
     }
     val iSet = toOverride.flatMap(s => allI(s,includeRhs = false))
     iSet.foreach {
-      case Once(CBExit, sig, _) => overrideAllCBForI(sig)
-      case Once(CBEnter, sig, _) => overrideAllCBForI(sig)
+      case OAbsMsg(CBExit, sig, _) => overrideAllCBForI(sig)
+      case OAbsMsg(CBEnter, sig, _) => overrideAllCBForI(sig)
       case _ => ()
     }
   }

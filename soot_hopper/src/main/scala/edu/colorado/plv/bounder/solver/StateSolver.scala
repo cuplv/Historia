@@ -273,12 +273,12 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     }
     mkAnd(argConstraints.prependedAll(nameConstraint))
   }
-  private def msgModelsOnce( msg:T,
-                             once: Once,
-                             messageTranslator: MessageTranslator,
-                             lsTypeMap: Map[PureVar, TypeSet],
-                             typeToSolverConst: Map[Int, T],
-                             pvMap: PureVar => T)(implicit zctx: C): T = {
+  private def msgModelsOnce(msg:T,
+                            once: AbsMsg,
+                            messageTranslator: MessageTranslator,
+                            lsTypeMap: Map[PureVar, TypeSet],
+                            typeToSolverConst: Map[Int, T],
+                            pvMap: PureVar => T)(implicit zctx: C): T = {
     val nameFun = messageTranslator.nameFun
     val nameConstraint = mkEq(mkNameConstraint(nameFun, msg), messageTranslator.enumFromI(once))
     val argConstraints = once.lsVars.zipWithIndex.flatMap {
@@ -356,10 +356,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         encodePred(l2, messageTranslator, modelVarMap, typeToSolverConst, typeMap, constMap))
 //      case Not(l) =>
 //        mkNot(encodePred(l, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap, constMap))
-      case Not(once:Once) =>
+      case Not(once:AbsMsg) =>
         mkNot(encodePred(once,messageTranslator,modelVarMap,typeToSolverConst,typeMap,constMap))
       case p@Not(_) => throw new IllegalArgumentException(s"arbitrary negation of lspred is not supported: $p")
-      case o: Once =>
+      case o: AbsMsg =>
         mkExistsMsg(mkTraceFn, msg => msgModelsOnce(msg, o, messageTranslator, typeMap, typeToSolverConst, modelVarMap))
       case NS(m1, m2) =>
         mkExistsMsg(mkTraceFn, msg1 => mkAnd(
@@ -383,13 +383,13 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   }
 
 
-  private def allITraceAbs(traceAbstractionSet: Set[AbstractTrace]): Set[Once] =
+  private def allITraceAbs(traceAbstractionSet: Set[AbstractTrace]): Set[AbsMsg] =
     traceAbstractionSet.flatMap(a => allI(a))
 
 
-  private def allI(abs: AbstractTrace): Set[Once] = {
+  private def allI(abs: AbstractTrace): Set[AbsMsg] = {
     abs.rightOfArrow.flatMap {
-      case i: Once => Some(i)
+      case i: AbsMsg => Some(i)
       case _ => None
     }.toSet
   }
@@ -652,7 +652,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   case class MessageTranslator(states: Iterable[State], specSpace: SpecSpace)(implicit zCtx: C) {
     // Trace messages
     private val alli = allITraceAbs(states.map(_.traceAbstraction).toSet) ++ specSpace.allI
-    private val inameToI: Map[String, Set[Once]] = alli.groupBy(_.identitySignature)
+    private val inameToI: Map[String, Set[AbsMsg]] = alli.groupBy(_.identitySignature)
     // OTHER is name for unmodeled messages, INIT is name for first message
     lazy val inamelist = "OTHEROTHEROTHER"::"INITINIT" :: inameToI.keySet.toList
     private val identitySignaturesToSolver = mkNames(inamelist)
@@ -662,7 +662,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
     // Maximum arity of arguments in encoding
     lazy val maxArgs:Int = alli.foldLeft(1){
-      case (acc,Once(_, _, lsVars)) if lsVars.size>acc => lsVars.size
+      case (acc,OAbsMsg(_, _, lsVars)) if lsVars.size>acc => lsVars.size
       case (acc,_) => acc
     }
 
@@ -702,12 +702,12 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
     def getZeroMsgName:T =
       identitySignaturesToSolver("INITINIT")
-    def enumFromI(m: Once): T =
+    def enumFromI(m: AbsMsg): T =
       identitySignaturesToSolver(m.identitySignature)
 
     def nameFun: T = mkINameFn()
 
-    def iForMsg(e: TraceElement): Option[Once] = e match{
+    def iForMsg(e: TraceElement): Option[AbsMsg] = e match{
       case TMessage(mType, method, _) =>
         val possibleI = alli.filter(ci => ci.contains(mType,method.fwkSig.get))
         //assert(possibleI.size < 2)
@@ -715,7 +715,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       case _ => None
     }
 
-    def iForZ3Name(z3Name: String): Set[Once] = {
+    def iForZ3Name(z3Name: String): Set[AbsMsg] = {
       inameToI.getOrElse(z3Name, Set())
     }
 
@@ -1166,8 +1166,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   // s2 state being subsumed
   // TODO: May want to handle alpha renaming, but see if this works first
   private def suffixSame(s1Suffix: List[LSSingle], s2Suffix:List[LSSingle]):Boolean = (s1Suffix, s2Suffix) match{
-    case (Once(mt1,sig1,v)::t1, Once(mt2,sig2,_)::t2) if mt1 != mt2 || sig1 != sig2 => suffixSame(Once(mt1,sig1,v)::t1, t2)
-    case (Once(mt1,sig1,_)::t1, Once(mt2,sig2,_)::t2) if mt1 == mt2 && sig1 == sig2 => suffixSame(t1,t2)
+    case (OAbsMsg(mt1,sig1,v)::t1, OAbsMsg(mt2,sig2,_)::t2) if mt1 != mt2 || sig1 != sig2 => suffixSame(AbsMsg(mt1,sig1,v)::t1, t2)
+    case (OAbsMsg(mt1,sig1,_)::t1, OAbsMsg(mt2,sig2,_)::t2) if mt1 == mt2 && sig1 == sig2 => suffixSame(t1,t2)
     case (FreshRef(_)::t1, s2Suffix) => suffixSame(t1,s2Suffix)
     case (CLInit(_)::t1, s2Suffix) => suffixSame(t1,s2Suffix)
     case (s1Suffix, FreshRef(_)::t2) => suffixSame(s1Suffix,t2)
@@ -1179,7 +1179,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     state.sf.traceAbstraction.rightOfArrow.map {
       case c@CLInit(_) => c.toString
       case FreshRef(_) => "FreshRef"
-      case Once(mt, signatures, _) => s"I(${mt}, ${signatures.identifier})"
+      case OAbsMsg(mt, signatures, _) => s"I(${mt}, ${signatures.identifier})"
     }
   }
 
@@ -1216,9 +1216,9 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val spt = tc(1,s1) ++ tc(2,s2)
 
     //Get set of all regions
-    var allSet = mutable.BitSet()
+    val allSet = mutable.BitSet()
     spt.foreach{
-      case (_,_, PrimTypeSet(n)) =>
+      case (_,_, PrimTypeSet(_)) =>
       case (_,_, EmptyTypeSet) =>
       case (_,_, TopTypeSet) =>
       case (_, _, set) => allSet.addAll(set.getValues.getOrElse(mutable.BitSet())) // addAll uses a |= b under the hood

@@ -4,7 +4,7 @@ import com.microsoft.z3.{AST, BoolExpr, BoolSort, Context, Expr, FuncDecl, IntEx
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.Loc
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecAssignment, SpecSpace}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, Exists, Forall, LSAtom, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, NS, Not, Once, Or, UComb}
+import edu.colorado.plv.bounder.lifestate.LifeState.{And, Exists, Forall, LSAtom, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, NS, Not, AbsMsg, Or, UComb}
 import edu.colorado.plv.bounder.solver.EncodingTools.Q
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools, Nameable, Z3SolverCtx, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{Equals, IPathNode, NamedPureVar, NotEquals, OutputMode, PureExpr, PureVal, PureVar, Qry, State}

@@ -18,7 +18,7 @@ object TransferFunctions{
     "/resources/NonNullReturnCallins.txt",
     "resources/NonNullReturnCallins.txt",
   )
-  lazy val nonNullCallins: Seq[Once] = {
+  lazy val nonNullCallins: Seq[AbsMsg] = {
     val mp = nonNullDefUrl.flatMap{ (path:String) =>
       //    val source = Source.fromFile(frameworkExtPath)
       try {
@@ -528,7 +528,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     state.traceAbstraction.rightOfArrow.exists{
         case CLInit(sig) => sig == clazz
         case _:FreshRef => false
-        case _:Once => false
+        case _:AbsMsg => false
       }
   }
 
@@ -544,18 +544,18 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
                      postState: State): Set[State] = {
     //TODO: just append to single abst trace if sig in spec =====
     //TODO: get rid of set of trace abstractions in abstract state
-    val freshI: Option[Once] = specSpace.getIWithMergedVars(mt,sig)
+    val freshI: Option[AbsMsg] = specSpace.getIWithMergedVars(mt,sig)
     freshI match {
       case None => Set(postState)
       case Some(i) =>
-        val (newState,newI) = (allVar zip i.lsVars).foldLeft((postState, i.copy(lsVars = Nil))){
+        val (newState,newI) = (allVar zip i.lsVars).foldLeft((postState, i.copyMsg(lsVars = Nil))){
           case ((acc,i), (None, _)) =>
-            (acc,i.copy(lsVars = i.lsVars.appended(TopVal)))
+            (acc,i.copyMsg(lsVars = i.lsVars.appended(TopVal)))
           case ((acc,i), (_, TopVal)) =>
-            (acc,i.copy(lsVars = i.lsVars.appended(TopVal)))
+            (acc,i.copyMsg(lsVars = i.lsVars.appended(TopVal)))
           case ((acc,i),(Some(rVal),_)) =>
             val (pv, stateDef) = acc.getOrDefine(rVal, Some(appMethod))
-            (stateDef, i.copy(lsVars = i.lsVars.appended(pv)))
+            (stateDef, i.copyMsg(lsVars = i.lsVars.appended(pv)))
           case ((acc,i),(v1,v2)) =>
             println(acc)
             println(i)

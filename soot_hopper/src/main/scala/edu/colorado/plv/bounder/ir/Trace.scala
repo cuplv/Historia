@@ -1,4 +1,7 @@
 package edu.colorado.plv.bounder.ir
+import edu.colorado.plv.bounder.ir.Trace.step
+import edu.colorado.plv.bounder.lifestate.LifeState.{LSPred, LSTrue}
+import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.symbolicexecutor.state.{NullVal, PureExpr, StateFormula, TVal}
 import upickle.default.{macroRW, ReadWriter => RW}
 
@@ -8,10 +11,54 @@ case class Trace(t:List[TMessage]) extends AnyVal{
 }
 object Trace {
   def empty = Trace(Nil)
+  def step(msg:TMessage, pred:LSPred):LSPred = {
+    ???
+  }
 
 }
 
-case class ConcGraph(init:TMessage, edges:Map[TMessage,(TMessage,StateFormula)])
+sealed trait ApproxDir
+case object OverApprox extends ApproxDir
+case object UnderApprox extends ApproxDir
+case object Exact extends ApproxDir
+
+/**
+ * Under approximate representation of message histories
+ * TODO: we may want some way to connect this with the associated nodes in the over-approximation
+ * @param tgt reachable or unreachable location
+ * @param edges under-approximate steps to the tgt location
+ */
+case class ConcGraph(tgt:TMessage, edges:Map[TMessage,Set[TMessage]]){
+
+  lazy val reverseEdges:Map[TMessage,TMessage] = edges.flatMap{
+    case (k,v) => v.map(_ -> k)
+  }
+
+  /**
+   * prune all paths not matching spec space
+   * @param specSpace
+   * @return (initial nodes, nodes that may be extended)
+   */
+  def filter(specSpace:SpecSpace, approxDir: ApproxDir):Set[(TMessage, LSPred)] = {
+
+    def iFilter(workList:List[(TMessage,LSPred)], acc:Set[(TMessage,LSPred)]):Set[(TMessage,LSPred)] = {
+      val (cMessage, cPred) = workList.head
+      val prev = step(cMessage, cPred)
+      //TODO========
+
+      ???
+    }
+    iFilter(List((tgt, LSTrue)), Set())
+  }
+  def add(src:TMessage,tgt:TMessage):ConcGraph = {
+    val newEdges = edges.get(src) match {
+      case Some(s) => edges + (src -> (s + tgt))
+      case None => edges + (src -> Set(tgt))
+    }
+    ConcGraph(tgt,newEdges)
+  }
+}
+
 
 sealed trait MessageType {
   def toTex:String

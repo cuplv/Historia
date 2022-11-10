@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit}
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, Forall, LSConstraint, LSFalse, LSPred, LSSpec, LSTrue, NS, Not, Once, Or, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Forall, LSConstraint, LSFalse, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, Equals, NamedPureVar, NotEquals, NullVal, PureExpr, TopVal}
 
 object SpecSignatures {
@@ -28,73 +28,73 @@ object SpecSignatures {
     "Activity_onCreate")
   val Activity_finish: SignatureMatcher =
     SubClassMatcher(Activity, "void finish\\(\\)", "Activity_finish")
-  val Activity_onResume_entry: Once =
-    Once(CBEnter, Activity_onResume, List(TopVal, a))
-  val Activity_onResume_exit: Once =
-    Once(CBExit, Activity_onResume, List(TopVal, a))
-  val Activity_onCreate_exit: Once =
-    Once(CBExit, Activity_onCreate, List(TopVal, a))
+  val Activity_onResume_entry: OAbsMsg =
+    AbsMsg(CBEnter, Activity_onResume, List(TopVal, a))
+  val Activity_onResume_exit: OAbsMsg =
+    AbsMsg(CBExit, Activity_onResume, List(TopVal, a))
+  val Activity_onCreate_exit: OAbsMsg =
+    AbsMsg(CBExit, Activity_onCreate, List(TopVal, a))
 
-  val Activity_onCreate_entry: Once =
-    Once(CBEnter, Activity_onCreate, List(TopVal, a))
+  val Activity_onCreate_entry: OAbsMsg =
+    AbsMsg(CBEnter, Activity_onCreate, List(TopVal, a))
 
   val Activity_onPause: SignatureMatcher =
     SubClassMatcher(Activity,"void onPause\\(\\)", "Activity_onPause")
-  val Activity_onPause_entry: Once = Once(CBEnter, Activity_onPause, List(TopVal, a))
-  val Activity_onPause_exit: Once =
-    Once(CBExit, Activity_onPause, List(TopVal, a))
+  val Activity_onPause_entry: OAbsMsg = AbsMsg(CBEnter, Activity_onPause, List(TopVal, a))
+  val Activity_onPause_exit: OAbsMsg =
+    AbsMsg(CBExit, Activity_onPause, List(TopVal, a))
 //  val Activity_init: SignatureMatcher =
 //    SubClassMatcher(Activity, "void \\<init\\>.*", "Activity_init")
 //  val Activity_init_exit: I =
 //    I(CBExit,Activity_init, List("_", "a"))
   val Activity_onDestroy: SignatureMatcher =
     SubClassMatcher(Activity, "void onDestroy\\(\\)", "Activity_onDestroy")
-  val Activity_onDestroy_exit: Once = Once(CBExit, Activity_onDestroy, List(TopVal,a))
+  val Activity_onDestroy_exit: OAbsMsg = AbsMsg(CBExit, Activity_onDestroy, List(TopVal,a))
 
 //  val Activity_init_entry: I = Activity_init_exit.copy(mt = CBEnter)
 
   val Activity_findView: SignatureMatcher=
     SubClassMatcher(Activity,".*findViewById.*","Activity_findView")
-  val Activity_findView_exit: Once = Once(CIExit,
+  val Activity_findView_exit: OAbsMsg = AbsMsg(CIExit,
     Activity_findView, List(v,a))
 
   // Fragment getActivity
   private val Fragment = Set("android.app.Fragment","androidx.fragment.app.Fragment","android.support.v4.app.Fragment")
   val Fragment_getActivity: SignatureMatcher= SubClassMatcher(Fragment,
   ".*Activity getActivity\\(\\)", "Fragment_getActivity")
-  val Fragment_get_activity_exit_null: Once = Once(CIExit, Fragment_getActivity, NullVal::f::Nil)
+  val Fragment_get_activity_exit_null: OAbsMsg = AbsMsg(CIExit, Fragment_getActivity, NullVal::f::Nil)
 
-  val Fragment_get_activity_exit: Once = Once(CIExit, Fragment_getActivity, a::f::Nil)
+  val Fragment_get_activity_exit: OAbsMsg = AbsMsg(CIExit, Fragment_getActivity, a::f::Nil)
 
   val Fragment_onActivityCreated: SignatureMatcher = SubClassMatcher(Fragment,
   "void onActivityCreated\\(android.os.Bundle\\)", "Fragment_onActivityCreated")
 
-  val Fragment_onActivityCreated_entry: Once = Once(CBEnter, Fragment_onActivityCreated, TopVal::f::Nil)
+  val Fragment_onActivityCreated_entry: OAbsMsg = AbsMsg(CBEnter, Fragment_onActivityCreated, TopVal::f::Nil)
 
   val Fragment_onDestroy: SignatureMatcher = SubClassMatcher(Fragment, "void onDestroy\\(\\)", "Fragment_onDestroy")
-  val Fragment_onDestroy_exit: Once = Once(CBExit, Fragment_onDestroy, TopVal::f::Nil)
+  val Fragment_onDestroy_exit: OAbsMsg = AbsMsg(CBExit, Fragment_onDestroy, TopVal::f::Nil)
 
   // rxjava
   val RxJava_call: SignatureMatcher = SubClassMatcher("rx.functions.Action1", "void call\\(java.lang.Object\\)", "rxJava_call")
 
-  val RxJava_call_entry: Once = Once(CBEnter, RxJava_call, TopVal::l::Nil)
+  val RxJava_call_entry: OAbsMsg = AbsMsg(CBEnter, RxJava_call, TopVal::l::Nil)
 
   //TODO: check that this actually matches things
   val RxJava_create: SignatureMatcher = SubClassMatcher("rx.Single", "rx.Single create\\(rx.Single#OnSubscribe\\)", "rxJava_create")
-  val RxJava_create_exit:Once = Once(CIExit, RxJava_create, t::Nil)
+  val RxJava_create_exit:OAbsMsg = AbsMsg(CIExit, RxJava_create, t::Nil)
 
   val Subscriber = Set("rx.Subscriber","rx.SingleSubscriber","rx.Subscription",
     "rx.subscriptions.RefCountSubscription",
     "rx.subscriptions.RefCountSubscription")
   val RxJava_unsubscribe: SignatureMatcher = SubClassMatcher(Subscriber, "void unsubscribe\\(\\)", "rxJava_unsubscribe")
 
-  val RxJava_unsubscribe_exit: Once = Once(CIExit, RxJava_unsubscribe, TopVal::s::Nil)
+  val RxJava_unsubscribe_exit: OAbsMsg = AbsMsg(CIExit, RxJava_unsubscribe, TopVal::s::Nil)
 
   val RxJava_subscribe: SignatureMatcher =
     SubClassMatcher("rx.Single", "rx.Subscription subscribe\\(rx.functions.Action1\\)",
       "RxJava_subscribe")
-  val RxJava_subscribe_exit: Once = Once(CIExit, RxJava_subscribe, s::TopVal::l::Nil)
-  val RxJava_subscribe_exit_null: Once = RxJava_subscribe_exit.copy(lsVars = NullVal::Nil)
+  val RxJava_subscribe_exit: OAbsMsg = AbsMsg(CIExit, RxJava_subscribe, s::TopVal::l::Nil)
+  val RxJava_subscribe_exit_null: OAbsMsg = RxJava_subscribe_exit.copyMsg(lsVars = NullVal::Nil)
 }
 
 object FragmentGetActivityNullSpec{
@@ -126,7 +126,7 @@ object RxJavaSpec{
     SpecSignatures.RxJava_unsubscribe_exit)
   val call:LSSpec = LSSpec(l::Nil, s::Nil, subUnsub, SpecSignatures.RxJava_call_entry)
 //  val subscribeDoesNotReturnNull = LSSpec(LSFalse, SpecSignatures.RxJava_subscribe_exit_null)
-  private val subscribe_s_only = SpecSignatures.RxJava_subscribe_exit.copy(lsVars = s::Nil)
+  private val subscribe_s_only = SpecSignatures.RxJava_subscribe_exit.copyMsg(lsVars = s::Nil)
   val subscribeIsUnique:LSSpec = LSSpec(s::Nil, Nil, Not(subscribe_s_only),
     subscribe_s_only) //,Set(LSConstraint("s",NotEquals,"@null")  )
   val spec = Set(call,subscribeIsUnique)
@@ -138,7 +138,7 @@ object LifecycleSpec {
   val v = NamedPureVar("v")
   //TODO: ======= check if this fixes connectBot
   val noResumeWhileFinish: LSSpec = LSSpec(a::Nil, Nil,
-    Not(Once(CIExit, SpecSignatures.Activity_finish, TopVal::a::Nil)),
+    Not(AbsMsg(CIExit, SpecSignatures.Activity_finish, TopVal::a::Nil)),
     SpecSignatures.Activity_onResume_entry
   )
 
@@ -197,17 +197,17 @@ object ViewSpec {
 
   implicit val convertList:List[String]=>List[PureExpr] = LSExpParser.convertList
 
-  val anyViewCallin: Once = Once(CIEnter, SubClassMatcher("android.view.View",".*","View_AnyExceptOther"),List(TopVal, v) )
+  val anyViewCallin: OAbsMsg = AbsMsg(CIEnter, SubClassMatcher("android.view.View",".*","View_AnyExceptOther"),List(TopVal, v) )
   val onClick:SignatureMatcher = SubClassMatcher("android.view.View$OnClickListener", ".*onClick.*", "ViewOnClickListener_onClick")
-  val setOnClickListenerI:Once = Once(CIExit,
+  val setOnClickListenerI:OAbsMsg = AbsMsg(CIExit,
     SubClassMatcher("android.view.View",".*setOnClickListener.*","View_setOnClickListener"),
     List(TopVal,v,l)
   )
-  val setOnClickListenerIl2:Once = Once(CIExit,
+  val setOnClickListenerIl2:AbsMsg = AbsMsg(CIExit,
     SubClassMatcher("android.view.View",".*setOnClickListener.*","View_setOnClickListener"),
     List(TopVal,v,TopVal)
   )
-  private val setOnClickListenerINull = Once(CIExit,
+  private val setOnClickListenerINull = AbsMsg(CIExit,
     SubClassMatcher("android.view.View",".*setOnClickListener.*","View_setOnClickListener"),
     List(TopVal,v,NullVal)
   )
@@ -224,20 +224,20 @@ object ViewSpec {
 
   val clickWhileActive:LSSpec = LSSpec(l::Nil,a::v::Nil,
     And(And(setOnClickListener, LifecycleSpec.viewAttached), Or(LifecycleSpec.resumed,
-      Once(CIExit, SpecSignatures.Activity_finish, TopVal::a::Nil))),
-    Once(CBEnter, onClick, List(TopVal, l)))
+      AbsMsg(CIExit, SpecSignatures.Activity_finish, TopVal::a::Nil))),
+    AbsMsg(CBEnter, onClick, List(TopVal, l)))
 
   val setEnabled:SubClassMatcher = SubClassMatcher(Set("android.view.View"), ".*setEnabled.*", "View_setEnabled")
-  private val buttonEnabled = Or(Not(Once(CIExit, setEnabled, TopVal::v::BoolVal(false)::Nil)),
-    NS(Once(CIExit, setEnabled, TopVal::v::BoolVal(true)::Nil), Once(CIExit, setEnabled, TopVal::v::BoolVal(false)::Nil))
+  private val buttonEnabled = Or(Not(AbsMsg(CIExit, setEnabled, TopVal::v::BoolVal(false)::Nil)),
+    NS(AbsMsg(CIExit, setEnabled, TopVal::v::BoolVal(true)::Nil), AbsMsg(CIExit, setEnabled, TopVal::v::BoolVal(false)::Nil))
   )
 //  private val buttonEnabled = Not(I(CIExit, setEnabled, "_"::"v"::"@false"::Nil)) //testing version, delete later
   val clickWhileNotDisabled:LSSpec = LSSpec(l::Nil, v::Nil,
     And(setOnClickListenerI, buttonEnabled),
-    Once(CBEnter, onClick, List(TopVal, l)))
-  private val fv1 = Once(CIExit, SpecSignatures.Activity_findView, v::a::Nil)
-  private val fv2 = Once(CIExit, SpecSignatures.Activity_findView, v::a2::Nil)
-  private val fv_exit = Once(CIExit, SpecSignatures.Activity_findView, v::TopVal::Nil)
+    AbsMsg(CBEnter, onClick, List(TopVal, l)))
+  private val fv1 = AbsMsg(CIExit, SpecSignatures.Activity_findView, v::a::Nil)
+  private val fv2 = AbsMsg(CIExit, SpecSignatures.Activity_findView, v::a2::Nil)
+  private val fv_exit = AbsMsg(CIExit, SpecSignatures.Activity_findView, v::TopVal::Nil)
   // Ɐv,a,a2. ¬ I(ci v:= a2.findViewByID()) \/ a = a2 <= ci v:= a.findViewByID()
   val viewOnlyReturnedFromOneActivity:LSSpec =
     LSSpec(a::v::Nil, Nil, Forall(a2::Nil, Or(Not(fv2), LSConstraint(a, Equals, a2))), fv1)
@@ -250,9 +250,9 @@ object SAsyncTask{
   val t = NamedPureVar("t")
   val AsyncTaskC = Set("android.os.AsyncTask")
   private val executeSig = SubClassMatcher(AsyncTaskC, ".*AsyncTask execute\\(.*\\)", "AsyncTask_execute")
-  private val executeI = Once(CIExit, executeSig, TopVal::t::Nil)
+  private val executeI = AbsMsg(CIExit, executeSig, TopVal::t::Nil)
   private val executeIEntry =
-    Once(CIEnter, executeSig, TopVal::t::Nil)
+    AbsMsg(CIEnter, executeSig, TopVal::t::Nil)
   val disallowDoubleExecute:LSSpec = LSSpec(t::Nil, Nil, executeI, executeIEntry )
 }
 object SDialog{
@@ -264,12 +264,12 @@ object SDialog{
   // <android.app.ProgressDialog: android.app.ProgressDialog
   //     show(android.content.Context,java.lang.CharSequence,java.lang.CharSequence)>($r2, "", "");
   val showSignature:SignatureMatcher = SubClassMatcher(DialogC, ".*show.*", "Dialog_show")
-  val showI = Once(CIExit, showSignature, d::TopVal::a::Nil)
+  val showI = AbsMsg(CIExit, showSignature, d::TopVal::a::Nil)
 
   val disallowDismiss:LSSpec = LSSpec(d::Nil, a::Nil,
     And(showI, LifecycleSpec.paused),
-    Once(CIEnter, dismissSignature, TopVal::d::Nil))
-  val showI2 = Once(CIExit, showSignature, d::TopVal::Nil)
+    AbsMsg(CIEnter, dismissSignature, TopVal::d::Nil))
+  val showI2 = AbsMsg(CIExit, showSignature, d::TopVal::Nil)
   val noDupeShow:LSSpec = LSSpec(d::Nil, Nil, Not(showI2), showI2)
 }
 
@@ -289,9 +289,9 @@ object Dummy{
     LSSpec(a::Nil, Nil, LSTrue, SpecSignatures.Activity_onResume_entry), // Dummy onCreate to include in trace
     LSSpec(a::Nil, Nil, LSTrue, SpecSignatures.Activity_onPause_entry), // Dummy onCreate to include in trace
     LSSpec(a::Nil, Nil, LSTrue, SpecSignatures.Activity_onDestroy_exit), // Dummy onDestroy
-    LSSpec(l::Nil, Nil, LSTrue, Once(CBEnter, SpecSignatures.RxJava_call, TopVal::l::Nil)), //Dummy call
+    LSSpec(l::Nil, Nil, LSTrue, AbsMsg(CBEnter, SpecSignatures.RxJava_call, TopVal::l::Nil)), //Dummy call
     LSSpec(v::a::Nil, Nil, LSTrue, SpecSignatures.Activity_findView_exit),
     LSSpec(v::l::Nil,Nil, LSTrue, ViewSpec.setOnClickListenerI),
-    LSSpec(l::Nil, Nil, LSTrue, Once(CBEnter, ViewSpec.onClick, TopVal::l::Nil))
+    LSSpec(l::Nil, Nil, LSTrue, AbsMsg(CBEnter, ViewSpec.onClick, TopVal::l::Nil))
   )
 }

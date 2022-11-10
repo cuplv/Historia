@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.solver
 
 import edu.colorado.plv.bounder.ir.{CBEnter, FwkMethod, TMessage}
-import edu.colorado.plv.bounder.lifestate.LifeState.{Once, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, SubClassMatcher}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{NPureVar, NamedPureVar, PureExpr, PureVal, PureVar, TAddr, TVal}
 import org.scalatest.Outcome
 import org.scalatest.funsuite.AnyFunSuite
@@ -24,7 +24,7 @@ class EncodingToolsTest extends AnyFunSuite{
     case _ => ???
   }
   def mkOnce(name:String, vars:List[Any]) =
-    Once(CBEnter, SubClassMatcher(Set(""), name,name),vars.map(bodgePv))
+    AbsMsg(CBEnter, SubClassMatcher(Set(""), name,name),vars.map(bodgePv))
   def mkTMsg(name:String, args:List[Any]) = TMessage(CBEnter, FwkMethod(name, ""), args.map(bodgeTraceV))
 
   val x = bodgePv("x")

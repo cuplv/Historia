@@ -1,10 +1,10 @@
 package edu.colorado.plv.bounder.synthesis
 
-import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, Loc, SerializedIRMethodLoc}
+import edu.colorado.plv.bounder.ir.{AppMethod, CBEnter, CBExit, CIEnter, CIExit, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, ConcGraph, FwkMethod, Loc, MessageType, Method, SerializedIRMethodLoc, TMessage}
 import edu.colorado.plv.bounder.lifestate.LifeState
-import edu.colorado.plv.bounder.lifestate.LifeState.{LSSingle, Once}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, LSSingle, OAbsMsg, SignatureMatcher}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, IPathNode, MemoryOutputMode, NamedPureVar, OrdCount, OutputMode, PathNode, PureExpr, Qry, State, Unknown}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, IPathNode, MemoryOutputMode, NamedPureVar, NullVal, OrdCount, OutputMode, PathNode, PureExpr, PureVar, Qry, State, TAddr, TVal, TopVal, Unknown}
 
 import scala.util.matching.Regex
 
@@ -37,13 +37,13 @@ object SynthTestUtil {
   def onceToTestLoc(o:LSSingle):Loc = o match {
     case LifeState.CLInit(sig) => ???
     case LifeState.FreshRef(v) => ???
-    case Once(CBEnter, signatures, lsVars) => //TODO: may want to gen args at some point
+    case OAbsMsg(CBEnter, signatures, lsVars) => //TODO: may want to gen args at some point
       val (clazz,sig) = signatures.example()
       CallbackMethodInvoke(clazz, sig, SerializedIRMethodLoc(clazz,sig,Nil))
-    case Once(CBExit, signatures, lsVars) =>
+    case OAbsMsg(CBExit, signatures, lsVars) =>
       val (clazz,sig) = signatures.example()
       CallinMethodReturn(clazz,sig)
-    case Once(CIEnter, signatures, lsVars) =>
+    case OAbsMsg(CIEnter, signatures, lsVars) =>
       val (clazz,sig) = signatures.example()
       CallinMethodInvoke(clazz,sig)
   }
@@ -63,6 +63,43 @@ object SynthTestUtil {
       Set(PathNode(qry, Nil, None))
     case Nil => Set.empty
   }
+  def methodFromSig(mt:MessageType,sig:SignatureMatcher):Method = {
+    val (clazz,methodSig) = sig.example()
+//    val mLoc = SerializedIRMethodLoc(clazz,methodSig,Nil)
+    val fwkMethod = FwkMethod(methodSig, clazz)
+    mt match {
+      case CBEnter => AppMethod(methodSig, clazz, Some(fwkMethod))
+      case CBExit => AppMethod(methodSig, clazz, Some(fwkMethod))
+      case CIEnter => fwkMethod
+      case CIExit => fwkMethod
+    }
+  }
+  def toConcGraph(history:List[LSSingle]):ConcGraph = {
+    val pvs: Map[PureVar, TVal] = history.flatMap{ v => v.lsVar}.zipWithIndex.map{
+      case (pureVar, i) => (pureVar, TAddr(i))
+    }.toMap
+    val tmessages = history.map {
+      case LifeState.CLInit(sig) => ???
+      case LifeState.FreshRef(v) => ???
+      case OAbsMsg(mt, signatures, lsVars) =>
+        val m = methodFromSig(mt,signatures)
+        TMessage(mt,m, lsVars.map{
+          case p:PureVar => pvs(p)
+          case TopVal => NullVal
+        })
+    }
+    val start = tmessages.head
+    val last = tmessages.last
+
+    def addEdgesToGraph(graph:ConcGraph, tmessages:List[TMessage]):ConcGraph = tmessages match {
+      case _::Nil => graph
+      case Nil => graph
+      case tmsg::tmsgTail =>
+        val newGraph = graph.add(tmsg,tmsgTail.head)
+        addEdgesToGraph(newGraph, tmsgTail)
+    }
+    addEdgesToGraph(ConcGraph(last, Map.empty), tmessages.tail)
+  }
   def targetIze(history:List[LSSingle]):List[LSSingle] = {
     def vTargetIze(pureExpr:PureExpr):PureExpr = pureExpr match {
       case NamedPureVar(name) => NamedPureVar(s"${name}_tgt")
@@ -71,7 +108,7 @@ object SynthTestUtil {
     history.map {
       case LifeState.CLInit(sig) => ???
       case LifeState.FreshRef(v) => ???
-      case Once(mt, signatures, lsVars) => Once(mt, signatures, lsVars.map(vTargetIze))
+      case OAbsMsg(mt, signatures, lsVars) => AbsMsg(mt, signatures, lsVars.map(vTargetIze))
     }
   }
 }

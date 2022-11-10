@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
-import edu.colorado.plv.bounder.lifestate.LifeState.Once
+import edu.colorado.plv.bounder.lifestate.LifeState.AbsMsg
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, FieldPtEdge, PureVar, State, StaticPtEdge}
 import scalaz.Memo
@@ -247,7 +247,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
         ???
     }
     // Find any call that matches a spec in the abstract trace
-    val relI: Set[Once] = calls.flatMap { call =>
+    val relI: Set[AbsMsg] = calls.flatMap { call =>
       Set(CIEnter, CIExit).flatMap{ cdir =>
         state.findIFromCurrent(cdir, (call.fmwClazz, call.fmwName), specSpace)
       }
@@ -255,7 +255,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     //Check if method call can alias all params
 
     def relIExistsForCmd(tgt: List[Option[RVal]],inv:Invoke)(implicit ch:ClassHierarchyConstraints):Boolean = {
-      val relIHere: Set[Once] = relI.filter{ i =>
+      val relIHere: Set[AbsMsg] = relI.filter{ i =>
         i.signatures.matches((inv.targetClass, inv.targetMethod))
       }
 //      relIHere.exists(v => v match{
