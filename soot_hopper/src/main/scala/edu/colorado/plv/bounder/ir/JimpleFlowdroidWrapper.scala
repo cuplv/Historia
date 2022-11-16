@@ -223,7 +223,6 @@ object JimpleFlowdroidWrapper{
           if(trap.getHandlerUnit == cmd) exceptionName = JimpleFlowdroidWrapper.stringNameOfClass(trap.getException)
         }
         val rightBox = CaughtException(exceptionName)
-        assert(loc.line == cmd)
         AssignCmd(leftBox, rightBox, loc)
       case cmd: AbstractDefinitionStmt => {
         val leftBox = makeVal(cmd.leftBox.getValue).asInstanceOf[LVal]

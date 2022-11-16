@@ -316,12 +316,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
                          typeMap: Map[PureVar, TypeSet],
                          constMap:Map[PureVal, T])(implicit zctx: C): T = {
     val res = combinedPred match {
-      case UComb(name, dep, neg) =>
-        val uc = mkUcomb(name, dep.map{d => encodePred(d, messageTranslator, modelVarMap,
-          typeToSolverConst, typeMap, constMap)})
-        if(neg){
-          mkNot(uc)
-        }else uc
       case Forall(h::t, p) =>
         mkForallAddr(h, (v:T) => {
           val newModelVarMap:PureVar => T = s => if(s == h) v else modelVarMap(s)

@@ -161,18 +161,9 @@ class PrettyPrinting() {
     val pw = File(s"${envOutDir.get}/$outFile" )
     val skipf: IPathNode => Boolean = p =>
       p.qry.loc match {
-        case AppLoc(method, line, isPre) =>
-          skipCmd
-        case CallinMethodReturn(fmwClazz, fmwName) => skipCmd
-        case CallinMethodInvoke(fmwClazz, fmwName) => skipCmd
-        case GroupedCallinMethodInvoke(targetClasses, fmwName) => skipCmd
-        case GroupedCallinMethodReturn(targetClasses, fmwName) => skipCmd
         case CallbackMethodInvoke(fmwClazz, fmwName, loc) => false
         case CallbackMethodReturn(fmwClazz, fmwName, loc, line) => false
-        case InternalMethodInvoke(clazz, name, loc) => skipCmd
-        case InternalMethodReturn(clazz, name, loc) => skipCmd
-        case SkippedInternalMethodInvoke(clazz, name, loc) => skipCmd
-        case SkippedInternalMethodReturn(clazz, name, rel, loc) => skipCmd
+        case _ => skipCmd
       }
     val printQry = qrySet.map(q => PrintingPathNode(q, skipf, p => p.toString))
     val (nodes,edges) = iDotNode(printQry,Set(),Set(),Set(), includeSubsEdges)
@@ -218,6 +209,7 @@ class PrettyPrinting() {
       }
     }
 
+    @tailrec
     def iter(acc: NodesAndEdges, worklist:Set[CmdWrapper],
              visited:Set[CmdWrapper] = Set()):NodesAndEdges = worklist match{
       case s if s.nonEmpty =>
@@ -243,8 +235,15 @@ class PrettyPrinting() {
     )
   }
 
+  /**
+   * Output witness or proof as dot graph
+   * @param qrySet
+   * @param outFile
+   * @param includeSubsEdges
+   * @return
+   */
   def printWitnessOrProof(qrySet : Set[IPathNode], outFile:String, includeSubsEdges:Boolean = false) =
-    qrySet.find(_.qry.isInstanceOf[WitnessedQry]) match{
+    qrySet.find(_.qry.isWitnessed ) match{
       case Some(v) => dotWitTree(Set(v), outFile, includeSubsEdges)
       case None => dotWitTree(qrySet, outFile, includeSubsEdges)
     }

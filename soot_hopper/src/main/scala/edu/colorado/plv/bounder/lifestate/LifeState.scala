@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType}
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, CLInit, Exists, Forall, FreshRef, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, UComb}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, CLInit, Exists, Forall, FreshRef, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or}
 import edu.colorado.plv.bounder.solver.EncodingTools.Assign
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, ClassVal, CmpOp, Equals, NamedPureVar, NotEquals, NullVal, PureExpr, PureVal, PureVar, State, TVal, TopVal, TypeComp}
@@ -238,6 +238,7 @@ object LifeState {
     override def toTex: String = op match {
       case Equals => s"${arg2tex(v1)} = ${arg2tex(v2)}"
       case NotEquals =>s"${arg2tex(v1)} \\neq ${arg2tex(v2)}"
+      case TypeComp => s"${arg2tex(v1)} : ${arg2tex(v2)}"
     }
   }
   object LSConstraint{
@@ -249,6 +250,7 @@ object LifeState {
       case (v1:PureVar, op, v2:PureExpr) => LSConstraint(v1,op,v2)
       case (v1:PureExpr, Equals, v2:PureVar) => LSConstraint(v2,op,v1)
       case (v1:PureExpr, NotEquals, v2:PureVar) => LSConstraint(v2,op,v1)
+      case v => throw new IllegalArgumentException(s"cannot make comp constraint: $v")
     }
     implicit val rw:RW[LSConstraint] = macroRW
   }
@@ -264,7 +266,7 @@ object LifeState {
   }
   object LSPred{
     implicit var rw:RW[LSPred] = RW.merge(LSConstraint.rw, LSAtom.rw, macroRW[Forall], macroRW[Exists], macroRW[Not], macroRW[And],
-      macroRW[Or], macroRW[LSTrue.type], macroRW[LSFalse.type], macroRW[UComb])
+      macroRW[Or], macroRW[LSTrue.type], macroRW[LSFalse.type])
   }
 
   case object LSAnyPred extends LSPred {
@@ -386,6 +388,12 @@ object LifeState {
       case LSFalse => None
       case _:NS => None
       case _:AbsMsg => None
+      case Exists(_, p) => containsRefV(p)
+      case Forall(_, p) => containsRefV(p)
+      case CLInit(_) => None
+      case LSAnyPred => None
+      case LSConstraint(_, _, _) => None
+      case LSImplies(l1, l2) => oneCont(l1,l2)
     }
 
     implicit var rw:RW[FreshRef] = macroRW
@@ -405,18 +413,7 @@ object LifeState {
 
     override def toTex: String = ???
   }
-  @deprecated //Note: delete this at some point, was old idea to choose boolean combinators
-  case class UComb(name:String, dep:List[LSPred], argNegated:Boolean=false) extends LSPred{
-    override def toTex: String = ???
 
-    override def swap(swapMap: Map[PureVar, PureVar]): LSPred = this.copy(dep = dep.map(p => p.swap(swapMap)))
-
-    override def contains(mt: MessageType, sig: (String, String))(implicit ch: ClassHierarchyConstraints): Boolean = {
-      dep.exists{p => p.contains(mt,sig)}
-    }
-
-    override def lsVar: Set[PureVar] = dep.flatMap{p => p.lsVar}.toSet
-  }
   case class And(l1 : LSPred, l2 : LSPred) extends LSBexp {
 
     override def apply(assign: Assign, currentArgs:List[TVal]): Option[Assign] = {
@@ -461,7 +458,6 @@ object LifeState {
       case Forall(vars, p) => ???
       case Exists(vars, p) => ???
       case LSImplies(l1, l2) => ???
-      case UComb(name, dep, argNegated) => ???
       case atom: LSAtom => ???
     }
   }
@@ -956,7 +952,6 @@ object SpecSpace{
     case Forall(_,p) => allI(p)
     case Exists(_,p) => allI(p)
     case LSConstraint(_,_, _) => Set()
-    case UComb(_, dep,_)=> dep.flatMap(d => allI(d)).toSet
   }
   def allI(spec:LSSpec, includeRhs:Boolean = true):Set[AbsMsg] = spec match{
     case LSSpec(_,_,pred, target,_) if includeRhs => allI(pred).union(allI(target))

@@ -120,7 +120,7 @@ object BounderUtil {
       }
       val succ = upd.flatMap{
         case (Some(n),ind) if n.succ.nonEmpty => n.succ.map(s=> (Some(s),ind))
-        case (Some(n),ind) if n.succ.isEmpty => List((None, ind))
+        case (Some(n),ind)  => List((None, ind)) //if n.succ.isEmpty
         case (None,ind) => List((None,ind))
       }
       if(succ == terminalsInd)
@@ -175,6 +175,8 @@ object BounderUtil {
           case PathNode(Qry(_,_,WitnessedQry(_)), _) => false
           case PathNode(Qry(_,_,Live), true) => true
           case PathNode(Qry(_,_,Live), false) => false
+          case v =>
+            throw new IllegalStateException(s"Supress compiler warning, this should be unreachable, pathNode: $v")
         }) {
           return if(result.nonEmpty) Proven else Unreachable
         }

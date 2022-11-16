@@ -6,7 +6,7 @@ import com.microsoft.z3.enumerations.Z3_ast_print_mode
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{AppMethod, CBEnter, CBExit, CIEnter, CIExit, FwkMethod, TCLInit, TMessage, TNew, TraceElement, WitnessExplanation}
 import edu.colorado.plv.bounder.lifestate.LifeState
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, CLInit, FreshRef, OAbsMsg}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, AnyAbsMsg, CLInit, FreshRef, OAbsMsg}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, BotVal, NullVal, PureExpr, PureVal, PureVar, State, TAddr, TVal, TopVal}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -414,7 +414,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
 
   override def explainWitness(messageTranslator: MessageTranslator,
                               pvMap: Map[PureVar, AST])(implicit zCtx: Z3SolverCtx): WitnessExplanation = {
-    //TODO: this seems to be broken, but we don't really use it for anything?
+    //TODO: have not implemented the set trace function here, will need this for synth loop
     ??? //TODO: update with set tracefn
     val ctx = zCtx.ctx
     assert(messageTranslator.states.size == 1, "Explain witness only applicable with single state")
@@ -460,7 +460,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
 
     val trace = rightOfArrow.map{
       case CLInit(sig) => TCLInit(sig)
-      case FreshRef(v) => TNew(pvv(mv(v).asInstanceOf[PureVar]))
+      case FreshRef(v) => TNew(pvv(mv(v).asInstanceOf[PureVar]), ???) //TODO: type set
       case OAbsMsg(CBEnter, sig, vars) =>
         TMessage(CBEnter,AppMethod(sig.identifier, "", None), vars.map(v => pmv(v)))
       case OAbsMsg(CBExit, sig, vars) =>
@@ -469,6 +469,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
         TMessage(CIEnter,FwkMethod(sig.identifier, ""), vars.map(v => pmv(v)))
       case OAbsMsg(CIExit, sig, vars) =>
         TMessage(CIExit,FwkMethod(sig.identifier, ""), vars.map(v => pmv(v)))
+      case AnyAbsMsg => ??? //TODO: how to explain any?
     }
 
     WitnessExplanation(trace)
@@ -720,7 +721,6 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   }
 
   override protected def mkArgConstraint(argIndex: Int, msg: AST)(implicit zCtx:Z3SolverCtx): AST = {
-    assert(msg.isInstanceOf[Expr[UninterpretedSort]])
     val argFun = mkArgFun(argIndex)
     argFun.asInstanceOf[FuncDecl[_]].apply(msg.asInstanceOf[Expr[UninterpretedSort]])
   }
@@ -744,7 +744,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     val sig = (i,msg) match {
 //      case (_,Some(TInitial)) => throw new IllegalArgumentException("bad initial message position")
       case (_,Some(TCLInit(_))) => ???
-      case (_,Some(TNew(_))) => ???
+      case (_,Some(TNew(_,_))) => ???
       case (i,Some(TMessage(mType, method, _))) => s"${mType}_${method.name}_$i"
       case (i,None) => s"__unn__$i"
     }

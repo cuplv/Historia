@@ -1,10 +1,9 @@
 package edu.colorado.plv.bounder.synthesis
 
-import edu.colorado.plv.bounder.lifestate.LifeState.{Exists, LSAnyPred, LSSpec, NS, UComb}
+import edu.colorado.plv.bounder.lifestate.LifeState.{LSAnyPred, LSSpec}
 import edu.colorado.plv.bounder.lifestate.{SpecSignatures, SpecSpace}
-import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{MemoryOutputMode, NamedPureVar, TopVal}
-import edu.colorado.plv.bounder.synthesis.SynthTestUtil.{cha, hierarchy, intToClass, targetIze, toConcGraph, witTreeFromMsgList}
+import edu.colorado.plv.bounder.synthesis.SynthTestUtil.{cha, targetIze, toConcGraph, witTreeFromMsgList}
 import org.scalatest.funsuite.AnyFunSuite
 
 class EnumModelGeneratorTest extends AnyFunSuite {
@@ -22,7 +21,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
   val t_create = SpecSignatures.RxJava_create_exit
   val a_call = SpecSignatures.RxJava_call_entry.copy(lsVars = TopVal::a::Nil)
 
-  test("Encode Node Reachability motivating example - ConcGraph"){
+  ignore("Encode Node Reachability motivating example - ConcGraph"){
     implicit val ord = new DummyOrd
     implicit val outputMode = MemoryOutputMode
     //TODO: may need to declare vars distinct
@@ -40,7 +39,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
 
 
   }
-  test("Encode Node Reachability motivating example - witTree"){
+  ignore("Encode Node Reachability motivating example - witTree"){
     implicit val ord = new DummyOrd
     implicit val outputMode = MemoryOutputMode
     //TODO: may need to declare vars distinct

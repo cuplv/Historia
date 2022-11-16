@@ -113,11 +113,11 @@ case class TCLInit(cl:String)extends TraceElement
 object TCLInit{
   implicit var rw:RW[TCLInit] = macroRW
 }
-case class TNew(v:TVal) extends TraceElement
+case class TNew(v:PureExpr, types:TypeSet) extends TraceElement
 object TNew{
   implicit var rw:RW[TNew] = macroRW
 }
-case class TMessage(mType : MessageType, method: Method, args: List[TVal]) extends TraceElement {
+case class TMessage(mType : MessageType, method: Method, args: List[PureExpr]) extends TraceElement {
   def fwkSig: Option[(String, String)] = method.fwkSig
 
   override def toString: String = s"$mType ${method.name}( ${args.mkString(",")} )"

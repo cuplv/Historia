@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.solver
 
 import edu.colorado.plv.bounder.ir.{MessageType, TMessage, TraceElement}
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, CLInit, Exists, Forall, FreshRef, LSAtom, LSBexp, LSConstraint, LSFalse, LSImplies, LSPred, LSSingle, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, SignatureMatcher, UComb}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, CLInit, Exists, Forall, FreshRef, LSAnyPred, LSAtom, LSBexp, LSConstraint, LSFalse, LSImplies, LSPred, LSSingle, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, SignatureMatcher}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, Equals, FieldPtEdge, NPureVar, NamedPureVar, NotEquals, PureConstraint, PureExpr, PureVal, PureVar, State, StaticPtEdge, TVal, TopVal}
 
@@ -28,8 +28,6 @@ object EncodingTools {
     }
   }
   private def updArrowPhi(i:AbsMsg, lsPred:LSPred):LSPred = lsPred match {
-    case UComb(name, dep, false) => UComb(name, dep.map(d => updArrowPhi(i,d)))
-    case UComb(name, dep, true) => throw new IllegalArgumentException("cannot updated negated UComb")
     case Forall(v,p) => Forall(v,updArrowPhi(i:AbsMsg, p:LSPred))
     case Exists(v,p) => Exists(v,updArrowPhi(i:AbsMsg, p:LSPred))
     case l:LSConstraint => l
@@ -175,7 +173,6 @@ object EncodingTools {
     }
     case Exists(vars, p) => ???
     case LSImplies(l1, l2) => ???
-    case UComb(name, dep, argNegated) => ???
     case Not(o:AbsMsg) =>
       val init = Set(q0)
       val fin = Set(q0)
@@ -213,14 +210,14 @@ object EncodingTools {
   }
 
   def simplifyPred(pred:LSPred):LSPred = pred match {
-    case UComb(name, dep, argNegated) => UComb(name, dep.map(simplifyPred), argNegated)
-    case LifeState.Exists(Nil, p) => simplifyPred(p)
-    case LifeState.Forall(Nil, p) => simplifyPred(p)
-    case c@LSConstraint(v1, op, v2) => c
-    case LifeState.Forall(vars, p) =>
-      LifeState.Forall(vars, simplifyPred(p))
-    case LifeState.Exists(vars, p) =>
-      LifeState.Exists(vars, simplifyPred(p))
+    case LSAnyPred => LSAnyPred
+    case Exists(Nil, p) => simplifyPred(p)
+    case Forall(Nil, p) => simplifyPred(p)
+    case c:LSConstraint => c
+    case Forall(vars, p) =>
+      Forall(vars, simplifyPred(p))
+    case Exists(vars, p) =>
+      Exists(vars, simplifyPred(p))
     case LSImplies(_,LSTrue) =>
       LSTrue
     case LSImplies(LSTrue, l2) =>
