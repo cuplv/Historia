@@ -5,7 +5,7 @@ import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{DepthResult, Proven, Timeout, Witnessed, interpretResult}
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, JimpleFlowdroidWrapper, MessageType}
-import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
+import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, Signature}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.{row1Specs, row2Specs, row4Specs, row5Specs}
@@ -129,17 +129,17 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
       println(fwkClassCount)
 
       // Helper class to accumulate callins and callbacks
-      case class MessageList(callin:Set[(String,String)] = Set(), callback:Set[(String,String)] = Set()){
-        private def str(sootMethod: SootMethod):(String,String) = {
+      case class MessageList(callin:Set[Signature] = Set(), callback:Set[Signature] = Set()){
+        private def sigOfMethod(sootMethod: SootMethod):Signature = {
           val sig = sootMethod.getSubSignature
           val clazz = sootMethod.getDeclaringClass.getName
-          (clazz,sig)
+          Signature(clazz,sig)
         }
-        def addCb(sig:Set[(String,String)]):MessageList = {
+        def addCb(sig:Set[Signature]):MessageList = {
           this.copy(callback = this.callback ++ sig)
         }
 
-        def addCi(sig:Set[(String,String)]):MessageList = {
+        def addCi(sig:Set[Signature]):MessageList = {
 //          assert(!sig._2.contains("void call(java.lang.Object)"), s"bad sig for addCi: ${sig}")
           this.copy(callin = this.callin ++ sig)
         }
@@ -147,9 +147,9 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
         def add(sootMethod: SootMethod):MessageList = {
           // Private methods can not be callins or overridden as callbacks
           // Final methods cannot be overridden as callbacks
-          val newCb = if(!sootMethod.isFinal && !sootMethod.isPrivate) callback + str(sootMethod) else callback
+          val newCb = if(!sootMethod.isFinal && !sootMethod.isPrivate) callback + sigOfMethod(sootMethod) else callback
           // Note: methods on interfaces are considered to be abstract
-          val newCallin = if(!sootMethod.isPrivate && !sootMethod.isAbstract) callin + str(sootMethod) else callin
+          val newCallin = if(!sootMethod.isPrivate && !sootMethod.isAbstract) callin + sigOfMethod(sootMethod) else callin
 //          assert(!newCallin.contains("void call(java.lang.Object)"))
           MessageList(newCallin, newCb)
         }
@@ -196,12 +196,13 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
       val columnNames = class2MsgL.keys.toList.sortBy{c => classSmallName(c)}
       val rowNames = specsByName.keySet.toList.sorted
 
-      def matchesSomeI(msgType:Set[MessageType], lSSpec: LSSpec,className:String,  signature:(String,String)):Boolean = {
+      def matchesSomeI(msgType:Set[MessageType], lSSpec: LSSpec,className:String,  signature:Signature):Boolean = {
         val classAndSuper = w.getClassHierarchyConstraints.getSupertypesOf(className) + className
         classAndSuper.exists { cc =>
           val allI = SpecSpace.allI(lSSpec.pred) + lSSpec.target
           allI.exists{i =>
-            msgType.contains(i.mt) && i.signatures.matches(cc, signature._2)(w.getClassHierarchyConstraints)
+            msgType.contains(i.mt) &&
+              i.signatures.matches(Signature(cc,signature.methodSignature))(w.getClassHierarchyConstraints)
           }
         }
       }
@@ -222,9 +223,9 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
         val currentSpec = specsByName(specName)
         s"\\ref{spec:$specName}"::columnNames.map{clazz =>
           val currentMessageList = class2MsgL(clazz)
-          val callbacks: Set[(String,String)] = currentMessageList.callback.filter(ccb =>
+          val callbacks = currentMessageList.callback.filter(ccb =>
             matchesSomeI(Set(CBEnter, CBExit),currentSpec, clazz, ccb))
-          val callins: Set[(String,String)] = currentMessageList.callin.filter(cci =>
+          val callins = currentMessageList.callin.filter(cci =>
             matchesSomeI(Set(CIEnter, CIExit),currentSpec, clazz, cci))
           val oldMessageList = totalUsedForClass.getOrElse(clazz, MessageList())
           totalUsedForClass.addOne(clazz, oldMessageList.addCb(callbacks).addCi(callins))
@@ -351,8 +352,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
         val symbolicExecutor = config.getSymbolicExecutor
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
         val query = CallinReturnNonNull(
-          "com.example.createdestroy.PlayerFragment",
-          "void call(java.lang.Object)", line,
+          Signature("com.example.createdestroy.PlayerFragment",
+          "void call(java.lang.Object)"), line,
           ".*getActivity.*")
 
         if(runVerif) {
@@ -562,8 +563,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
       // line in call is reachable
       val symbolicExecutor = config.getSymbolicExecutor
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
-      val query = Reachable("com.example.createdestroy.MyFragment",
-        "void call(java.lang.Object)",line)
+      val query = Reachable(Signature("com.example.createdestroy.MyFragment",
+        "void call(java.lang.Object)"),line)
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
       val fname = s"UnreachableLocation"
       // prettyPrinting.dumpDebugInfo(result, fname)
@@ -574,8 +575,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
       assert(interpretedResult == Witnessed)
 
       //line in call cannot throw npe since s is initialized
-      val query2 = ReceiverNonNull("com.example.createdestroy.MyFragment",
-        "void call(java.lang.Object)",line)
+      val query2 = ReceiverNonNull(Signature("com.example.createdestroy.MyFragment",
+        "void call(java.lang.Object)"),line)
       val result2 = symbolicExecutor.run(query2).flatMap(a => a.terminals)
       val interpretedResult2 = BounderUtil.interpretResult(result2,QueryFinished)
       assert(interpretedResult2 == Proven)
@@ -776,8 +777,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
             val symbolicExecutor = config.getSymbolicExecutor
             val line = BounderUtil.lineForRegex(".*query1.*".r, src)
 
-            val nullUnreach = ReceiverNonNull("com.example.createdestroy.MyActivity$1",
-              "void onClick(android.view.View)", line, Some(".*toString.*"))
+            val nullUnreach = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity$1",
+              "void onClick(android.view.View)"), line, Some(".*toString.*"))
 
             if(runVerif){
               val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)

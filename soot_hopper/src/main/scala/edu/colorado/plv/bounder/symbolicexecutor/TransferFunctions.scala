@@ -40,7 +40,7 @@ object TransferFunctions{
   // alias considerations are done later by the trace abstraction or by separation logic
   def relevantAliases(pre:State,
                       dir:MessageType,
-                      signature: (String,String),
+                      signature: Signature,
                       specSpace: SpecSpace,
                       lst : List[Option[RVal]])(implicit ch:ClassHierarchyConstraints):List[Option[RVal]] = {
     //TODO: should use pre to determine which vars should be materialized
@@ -96,8 +96,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
    * @return set of states that may reach the target state by stepping from source to target
    */
   def transfer(postState: State, target: Loc, source: Loc): Set[State] = (source, target) match {
-    case (source@AppLoc(m, _, false), cmret@CallinMethodReturn(_, _)) =>
-      val g = GroupedCallinMethodReturn(Set(cmret.fmwClazz), cmret.fmwName)
+    case (source@AppLoc(m, _, false), cmret:CallinMethodReturn) =>
+      val g = GroupedCallinMethodReturn(Set(cmret.sig.base), cmret.sig.methodSignature)
       transfer(postState,g,source)
     case (source@AppLoc(m, _, false), cmret@GroupedCallinMethodReturn(_, _)) =>
       // traverse back over the retun of a callin
@@ -119,16 +119,16 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         postState.addPureConstraint(PureConstraint(localV, NotEquals, NullVal))
       } else postState
 
-      val (pkg, name) = msgCmdToMsg(cmret)
+      val sig = msgCmdToMsg(cmret)
       val inVars: List[Option[RVal]] = inVarsForCall(source,w)
-      val relAliases = relevantAliases(postState2, CIExit, (pkg,name),specSpace,inVars)
+      val relAliases = relevantAliases(postState2, CIExit, sig,specSpace,inVars)
       val frame = CallStackFrame(target, Some(source.copy(isPre = true)), Map())
       val (_, state0) = getOrDefineRVals(m,relAliases, postState2)
-      val outState = newMsgTransfer(source.method, CIExit, (pkg, name), inVars, state0)
+      val outState = newMsgTransfer(source.method, CIExit, sig, inVars, state0)
       // if retVar is materialized and assigned, clear it from the state
       val outState1: Set[State] = inVars match{
         case Some(retVar:LocalWrapper)::_ =>
-          val outState11 = if (nonNullCallins.exists(i => i.contains(CIExit, (pkg,name))))
+          val outState11 = if (nonNullCallins.exists(i => i.contains(CIExit, sig)))
             // if non-null return callins defines this method, assume that the materialized return value is non null
             outState.map{s =>
               if(s.containsLocal(retVar))
@@ -155,8 +155,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     case (cminv@GroupedCallinMethodInvoke(targets, _), tgt@AppLoc(m,_,true)) =>
       assert(postState.callStack.nonEmpty, "Bad control flow, abstract stack must be non-empty.")
       val invars = inVarsForCall(tgt,w)
-      val (pkg,name) = msgCmdToMsg(cminv)
-      val relAliases = relevantAliases(postState, CIEnter, (pkg,name),specSpace,invars)
+      val sig = msgCmdToMsg(cminv)
+      val relAliases = relevantAliases(postState, CIEnter, sig,specSpace,invars)
       val ostates:Set[State] = {
         val (rvals, state0) = getOrDefineRVals(m,relAliases, postState)
         //TODO: handle callin entry, below code doesn't seem to work correctly
@@ -168,7 +168,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         Set(state0)
       }
       //Only add receiver if this or callin return is in abstract trace
-      val traceNeedRec = List(CIEnter, CIExit).exists( dir => specSpace.findIFromCurrent(dir, (pkg,name))
+      val traceNeedRec = List(CIEnter, CIExit).exists( dir => specSpace.findIFromCurrent(dir, sig)
         .nonEmpty)
       val cfNeedRec = postState.alternateCmd.exists(other => !postState.nextCmd.contains(other))
       //TODO: why does onDestroy exit have a bunch of alternate locations of pre-line: -1 r0:= @this:MyActivity$1/2...
@@ -189,20 +189,20 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
 
     case (GroupedCallinMethodReturn(_,_), GroupedCallinMethodInvoke(_,_)) =>
       Set(postState).map(_.copy(nextCmd = List(target), alternateCmd = Nil))
-    case (CallinMethodReturn(_, _), CallinMethodInvoke(_, _)) =>
+    case (_:CallinMethodReturn, _:CallinMethodInvoke) =>
       Set(postState).map(_.copy(nextCmd = List(target), alternateCmd = Nil))
-    case (cminv@CallinMethodInvoke(invokeType, _), tgt@AppLoc(m, _, true)) =>
+    case (cminv@CallinMethodInvoke(sig), tgt@AppLoc(m, _, true)) =>
       assert(postState.callStack.nonEmpty, "Bad control flow, abstract stack must be non-empty.")
       val invars = inVarsForCall(tgt,w)
-      val (pkg,name) = msgCmdToMsg(cminv)
-      val relAliases = relevantAliases(postState, CIEnter, (pkg,name),specSpace,invars)
+      val sig = msgCmdToMsg(cminv)
+      val relAliases = relevantAliases(postState, CIEnter, sig,specSpace,invars)
       val ostates:Set[State] = {
         val (rvals, state0) = getOrDefineRVals(m,relAliases, postState)
 //        val state1 = traceAllPredTransfer(CIEnter, (pkg, name), rvals, state0)
         Set(state0)
       }
       //Only add receiver if this or callin return is in abstract trace
-      val traceNeedRec = List(CIEnter, CIExit).exists( dir => specSpace.findIFromCurrent(dir, (pkg,name))
+      val traceNeedRec = List(CIEnter, CIExit).exists( dir => specSpace.findIFromCurrent(dir, sig)
         .nonEmpty)
       val cfNeedRec = postState.alternateCmd.exists(other => !postState.nextCmd.contains(other))
 
@@ -214,7 +214,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
           case _::Some(rec)::_ if traceNeedRec || cfNeedRec =>
             val (recV,stateWithRec) = s2.getOrDefine(rec,Some(tgt.method))
             stateWithRec.addPureConstraint(PureConstraint(recV, NotEquals, NullVal))
-              .constrainUpperType(recV, invokeType, ch)
+              .constrainUpperType(recV, sig.base, ch)
           case _ =>
             s2
         }
@@ -223,22 +223,22 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     case (AppLoc(_, _, true), AppLoc(_, _, false)) => Set(postState)
     case (appLoc@AppLoc(c1, m1, false), postLoc@AppLoc(c2, m2, true)) if c1 == c2 && m1 == m2 =>
       cmdTransfer(w.cmdAtLocation(appLoc), postState).map(_.setNextCmd(List(postLoc))).map(_.copy(alternateCmd = Nil))
-    case (AppLoc(containingMethod, _, true), cmInv@CallbackMethodInvoke(fc1, fn1, l1)) =>
+    case (AppLoc(containingMethod, _, true), cmInv@CallbackMethodInvoke(sig1, l1)) =>
       // If call doesn't match return on stack, return bottom
       // Target loc of CallbackMethodInvoke means just before callback is invoked
       if(postState.callStack.nonEmpty){
         postState.callStack.head match {
-          case CallStackFrame(CallbackMethodReturn(fc2,fn2,l2,_),_,_) if fc1 != fc2 || fn1 != fn2 || l1 != l2 =>
+          case CallStackFrame(CallbackMethodReturn(sig2,l2,_),_,_) if sig1 != sig2 || l1 != l2 =>
             throw new IllegalStateException("ControlFlowResolver should enforce stack matching")
           case _ =>
         }
       }
 
       val invars: List[Option[LocalWrapper]] = None :: containingMethod.getArgs
-      val (pkg, name) = msgCmdToMsg(cmInv)
-      val relAliases = relevantAliases(postState, CBEnter, (pkg,name),specSpace,invars)
+      val sig = msgCmdToMsg(cmInv)
+      val relAliases = relevantAliases(postState, CBEnter, sig,specSpace,invars)
       val (_, state0) = getOrDefineRVals(containingMethod, relAliases,postState)
-      val b = newMsgTransfer(containingMethod, CBEnter, (pkg, name), invars, state0)
+      val b = newMsgTransfer(containingMethod, CBEnter, sig, invars, state0)
 
       // pair state with this local before stack pop
       val thisStatePair: Set[(Option[PureExpr], State)] = b.map{ s =>
@@ -271,10 +271,10 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       // If processing the entry of <clinit> as a callback,
       //
       statePopped.flatMap {
-        case (Some(thisV:PureVar),s) if fn1.contains("void <init>(") =>
+        case (Some(thisV:PureVar),s) if sig1.methodSignature.contains("void <init>(") =>
           addRefCreateToState(s,thisV)
-        case (None, s) if fn1.contains("void <clinit>()") =>
-          val newTrAbs = s.traceAbstraction.copy(rightOfArrow = CLInit(fc1)::s.traceAbstraction.rightOfArrow)
+        case (None, s) if sig1.methodSignature.contains("void <clinit>()") =>
+          val newTrAbs = s.traceAbstraction.copy(rightOfArrow = CLInit(sig1.base)::s.traceAbstraction.rightOfArrow)
           Some(s.copy(sf = s.sf.copy(traceAbstraction = newTrAbs)))
         case (Some(_),s) => Some(s)
         case (None,s) => Some(s)
@@ -282,9 +282,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       }
 
 
-    case (CallbackMethodInvoke(tgtClazz, _, _), targetLoc@CallbackMethodReturn(_,_,mloc, _)) =>
+    case (CallbackMethodInvoke(tgtSig, _), targetLoc@CallbackMethodReturn(_,mloc, _)) =>
       // Cannot jump back to callback on a class that will have it's static initializer called in the future
-      if(futureCLInit(postState,tgtClazz))
+      if(futureCLInit(postState,tgtSig.base))
         return Set() //TODO:============
       // Case where execution goes to the exit of another callback
       // TODO: nested callbacks not supported yet, assuming we can't go back to callin entry
@@ -296,14 +296,14 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         case c => throw new IllegalStateException(s"return from non return command $c ")
       }
       val newFrame = CallStackFrame(targetLoc, None, Map())
-      val (pkg,name) = msgCmdToMsg(target)
+      val sig = msgCmdToMsg(target)
       // Push frame regardless of relevance
       val pre_push = postState.copy(sf = postState.sf.copy(callStack = newFrame::postState.callStack))
       val localVarOrVal: List[Option[RVal]] = rvar::mloc.getArgs
-      val relAliases = relevantAliases(postState, CBExit, (pkg,name),specSpace,localVarOrVal)
-      val state1 = newMsgTransfer(mloc, CBExit, (pkg,name), relAliases, pre_push)
+      val relAliases = relevantAliases(postState, CBExit, sig,specSpace,localVarOrVal)
+      val state1 = newMsgTransfer(mloc, CBExit, sig, relAliases, pre_push)
       state1.map(_.copy(nextCmd = List(target), alternateCmd = Nil))
-    case (CallbackMethodReturn(_,_,mloc1,_), AppLoc(mloc2,_,false)) =>
+    case (CallbackMethodReturn(_,mloc1,_), AppLoc(mloc2,_,false)) =>
       assert(mloc1 == mloc2)
       Set(postState).map(_.copy(nextCmd = List(source), alternateCmd = Nil))
     case (InternalMethodInvoke(invokeType, _,_), al@AppLoc(_, _, true)) =>
@@ -540,7 +540,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
    * @return a new trace abstraction for each possible rule
    */
   def newMsgTransfer(appMethod:MethodLoc, mt: MessageType,
-                     sig:(String,String), allVar:List[Option[RVal]],
+                     sig:Signature, allVar:List[Option[RVal]],
                      postState: State): Set[State] = {
     //TODO: just append to single abst trace if sig in spec =====
     //TODO: get rid of set of trace abstractions in abstract state
@@ -570,7 +570,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     }
   }
   def newDisallowTransfer(appMethod:MethodLoc, mt: MessageType,
-                     sig:(String,String), allVar:List[Option[RVal]],
+                     sig:Signature, allVar:List[Option[RVal]],
                      postState: State, disallow:Option[LSSpec] = None): Set[State] = {
     // TODO: get rid of this method, this is now handled by the StateSolver
     newMsgTransfer(appMethod, mt, sig, allVar, postState)
@@ -582,15 +582,14 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
    * @param loc transfer location (not AppLoc)
    * @return (pkg, function name)
    */
-  private def msgCmdToMsg(loc: Loc): (String, String) =
-
+  private def msgCmdToMsg(loc: Loc): Signature =
     loc match {
-      case CallbackMethodReturn(pkg, name, _,_) => (pkg, name)
-      case CallbackMethodInvoke(pkg, name, _) => (pkg,name)
-      case CallinMethodInvoke(clazz, name) => (clazz,name)
-      case CallinMethodReturn(clazz,name) => (clazz,name)
-      case GroupedCallinMethodInvoke(targetClasses, fmwName) => (targetClasses.head, fmwName)
-      case GroupedCallinMethodReturn(targetClasses,fmwName) => (targetClasses.head, fmwName)
+      case CallbackMethodReturn(sig, _,_) => sig
+      case CallbackMethodInvoke(sig, _) => sig
+      case CallinMethodInvoke(sig) => sig
+      case CallinMethodReturn(sig) => sig
+      case GroupedCallinMethodInvoke(targetClasses, fmwName) => Signature(targetClasses.head, fmwName)
+      case GroupedCallinMethodReturn(targetClasses,fmwName) => Signature(targetClasses.head, fmwName)
       case v =>
         throw new IllegalStateException(s"No command message for $v")
     }

@@ -6,7 +6,7 @@ import com.microsoft.z3.enumerations.Z3_ast_print_mode
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{AppMethod, CBEnter, CBExit, CIEnter, CIExit, FwkMethod, TCLInit, TMessage, TNew, TraceElement, WitnessExplanation}
 import edu.colorado.plv.bounder.lifestate.LifeState
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, AnyAbsMsg, CLInit, FreshRef, OAbsMsg}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, AnyAbsMsg, CLInit, FreshRef, OAbsMsg, Signature}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, BotVal, NullVal, PureExpr, PureVal, PureVar, State, TAddr, TVal, TopVal}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -462,13 +462,13 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
       case CLInit(sig) => TCLInit(sig)
       case FreshRef(v) => TNew(pvv(mv(v).asInstanceOf[PureVar]), ???) //TODO: type set
       case OAbsMsg(CBEnter, sig, vars) =>
-        TMessage(CBEnter,AppMethod(sig.identifier, "", None), vars.map(v => pmv(v)))
+        TMessage(CBEnter,AppMethod(Signature("",sig.identifier), None), vars.map(v => pmv(v)))
       case OAbsMsg(CBExit, sig, vars) =>
-        TMessage(CBExit,AppMethod(sig.identifier, "", None), vars.map(v => pmv(v)))
+        TMessage(CBExit,AppMethod(Signature("",sig.identifier), None), vars.map(v => pmv(v)))
       case OAbsMsg(CIEnter, sig, vars) =>
-        TMessage(CIEnter,FwkMethod(sig.identifier, ""), vars.map(v => pmv(v)))
+        TMessage(CIEnter,FwkMethod(Signature("",sig.identifier)), vars.map(v => pmv(v)))
       case OAbsMsg(CIExit, sig, vars) =>
-        TMessage(CIExit,FwkMethod(sig.identifier, ""), vars.map(v => pmv(v)))
+        TMessage(CIExit,FwkMethod(Signature("",sig.identifier)), vars.map(v => pmv(v)))
       case AnyAbsMsg => ??? //TODO: how to explain any?
     }
 
@@ -745,7 +745,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
 //      case (_,Some(TInitial)) => throw new IllegalArgumentException("bad initial message position")
       case (_,Some(TCLInit(_))) => ???
       case (_,Some(TNew(_,_))) => ???
-      case (i,Some(TMessage(mType, method, _))) => s"${mType}_${method.name}_$i"
+      case (i,Some(TMessage(mType, method, _, _))) => s"${mType}_${method.sig.methodSignature}_$i"
       case (i,None) => s"__unn__$i"
     }
     zCtx.ctx.mkConst(s"msgat_$sig", msgSort)

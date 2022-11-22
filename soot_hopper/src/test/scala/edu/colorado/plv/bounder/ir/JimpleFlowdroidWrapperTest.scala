@@ -1,7 +1,8 @@
 package edu.colorado.plv.bounder.ir
 
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.lifestate.{LifecycleSpec, FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
+import edu.colorado.plv.bounder.lifestate.LifeState.Signature
+import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifecycleSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.Qry
 import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, CallGraphSource, SparkCallGraph, SymbolicExecutorConfig, TransferFunctions}
@@ -73,8 +74,8 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
       val config = SymbolicExecutorConfig(
         stepLimit = 50, w, new SpecSpace(specs),
         component = None)
-      val query = Qry.makeReach(config.getSymbolicExecutor, "com.example.createdestroy.MyActivity",
-        "void onCreate(android.os.Bundle)",
+      val query = Qry.makeReach(config.getSymbolicExecutor,
+        Signature("com.example.createdestroy.MyActivity", "void onCreate(android.os.Bundle)"),
         BounderUtil.lineForRegex(".*query1.*".r,src))
       val loc = query.head.loc.asInstanceOf[AppLoc]
       val targets: UnresolvedMethodTarget = w.makeInvokeTargets(loc)
@@ -182,8 +183,8 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
 //      }
 
       // Test query building
-      val query = Qry.makeReceiverNonNull(config.getSymbolicExecutor, "com.example.createdestroy.MyActivity",
-        "void onResume()",
+      val query = Qry.makeReceiverNonNull(config.getSymbolicExecutor,
+        Signature("com.example.createdestroy.MyActivity", "void onResume()"),
         BounderUtil.lineForRegex(".*query1.*".r,src), Some(".*iterator.*".r))
       val loc = query.head.loc.asInstanceOf[AppLoc]
       val targets: UnresolvedMethodTarget = w.makeInvokeTargets(loc)
@@ -226,16 +227,14 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
       assert(targets.loc.nonEmpty)
 
       val query2 = Qry.makeReceiverNonNull(config.getSymbolicExecutor,
-        "com.example.createdestroy.MyActivity",
-        "void onResume()",
+        Signature("com.example.createdestroy.MyActivity", "void onResume()"),
         BounderUtil.lineForRegex(".*query2.*".r,src), Some(".*iterator.*".r))
       val loc2 = query2.head.loc.asInstanceOf[AppLoc]
       val targets2: UnresolvedMethodTarget = w.makeInvokeTargets(loc2)
       assert(targets2.loc.nonEmpty)
 
       val query3 = Qry.makeReceiverNonNull(config.getSymbolicExecutor,
-        "com.example.createdestroy.MyActivity",
-        "void onPause()",
+        Signature("com.example.createdestroy.MyActivity","void onPause()"),
         BounderUtil.lineForRegex(".*query3.*".r,src), Some(".*iterator.*".r))
       val loc3 = query3.head.loc.asInstanceOf[AppLoc]
       val targets3: UnresolvedMethodTarget = w.makeInvokeTargets(loc3)
@@ -243,8 +242,7 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
 
 
       val query4 = Qry.makeReceiverNonNull(config.getSymbolicExecutor,
-        "com.example.createdestroy.MyActivity",
-        "void onResume()",
+        Signature("com.example.createdestroy.MyActivity", "void onResume()"),
         BounderUtil.lineForRegex(".*query4.*".r,src), Some(".*iterator.*".r))
       val loc4 = query4.head.loc.asInstanceOf[AppLoc]
       val targets4: UnresolvedMethodTarget = w.makeInvokeTargets(loc4)
@@ -256,15 +254,13 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
       //assert(!targets4.loc.exists(m => m.classType == "com.example.createdestroy.MyActivity$2"))
 
       val query5 = Qry.makeReceiverNonNull(config.getSymbolicExecutor,
-        "com.example.createdestroy.MyActivity",
-        "void onResume()",
+        Signature("com.example.createdestroy.MyActivity", "void onResume()"),
         BounderUtil.lineForRegex(".*query5.*".r,src), Some(".*iterator.*".r))
       val loc5 = query5.head.loc.asInstanceOf[AppLoc]
       val targets5 = w.makeInvokeTargets(loc5)
       assert(targets5.loc.nonEmpty)
       val query6 = Qry.makeReceiverNonNull(config.getSymbolicExecutor,
-        "com.example.createdestroy.MyActivity",
-        "void onResume()",
+        Signature("com.example.createdestroy.MyActivity", "void onResume()"),
         BounderUtil.lineForRegex(".*query6.*".r,src), Some(".*setVisibility.*".r))
       val loc6 = query6.head.loc.asInstanceOf[AppLoc]
       val targets6 = w.makeInvokeTargets(loc6)
@@ -272,31 +268,27 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
 
       //TODO: does extra run edge here cause a problem?  I think probably not since the path is just refuted
       val query7 = Qry.makeReceiverNonNull(config.getSymbolicExecutor,
-        "com.example.createdestroy.MyActivity",
-        "void onResume()",
+        Signature("com.example.createdestroy.MyActivity", "void onResume()"),
         BounderUtil.lineForRegex(".*query7.*".r,src), Some(".*iterator.*".r))
       val loc7 = query7.head.loc.asInstanceOf[AppLoc]
       val targets7 = w.makeInvokeTargets(loc7)
 
       val query8 = Qry.makeReceiverNonNull(config.getSymbolicExecutor,
-        "com.example.createdestroy.MyActivity",
-        "void onResume()",
+        Signature("com.example.createdestroy.MyActivity", "void onResume()"),
         BounderUtil.lineForRegex(".*query8.*".r,src), Some(".*iterator.*".r))
       val loc8 = query8.head.loc.asInstanceOf[AppLoc]
       val targets8 = w.makeInvokeTargets(loc8)
       assert(targets8.loc.nonEmpty)
 
       val query9 = Qry.makeReceiverNonNull(config.getSymbolicExecutor,
-        "com.example.createdestroy.MyActivity",
-        "void someMethod()",
+        Signature("com.example.createdestroy.MyActivity", "void someMethod()"),
         BounderUtil.lineForRegex(".*query9.*".r,src), Some(".*iterator.*".r))
       val loc9 = query9.head.loc.asInstanceOf[AppLoc]
       val targets9 = w.makeInvokeTargets(loc9)
       assert(targets9.loc.nonEmpty)
 
       val query10 = Qry.makeReceiverNonNull(config.getSymbolicExecutor,
-        "com.example.createdestroy.MyActivity",
-        "void onResume()",
+        Signature("com.example.createdestroy.MyActivity", "void onResume()"),
         BounderUtil.lineForRegex(".*query_10.*".r,src), Some(".*iterator.*".r))
       val loc10 = query10.head.loc.asInstanceOf[AppLoc]
       val targets10 = w.makeInvokeTargets(loc10)

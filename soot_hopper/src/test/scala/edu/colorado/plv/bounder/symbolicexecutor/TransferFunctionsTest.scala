@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import better.files.Resource
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, LSSpec, SetSignatureMatcher, SignatureMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, LSSpec, SetSignatureMatcher, Signature, SignatureMatcher}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SetInclusionTypeSolving, SolverTypeSolving, StateTypeSolving, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
@@ -41,7 +41,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     (new Z3StateSolver(miniCha),miniCha)
   }
 
-  implicit def set2SigMat(s:Set[(String,String)]):SignatureMatcher = SetSignatureMatcher(s)
+  implicit def set2SigMat(s:Set[Signature]):SignatureMatcher = SetSignatureMatcher(s)
 
   val tr = (ir:SerializedIR, cha:ClassHierarchyConstraints) => new TransferFunctions(ir, new SpecSpace(Set()),cha)
   def testCmdTransfer(cmd:AppLoc => CmdWrapper, post:State, testIRMethod: SerializedIRMethodLoc):Set[State] = {
@@ -76,8 +76,8 @@ class TransferFunctionsTest extends AnyFunSuite {
   //Test transfer function where field is assigned and base may or may not be aliased
   // pre: this -> a^ * b^.out -> b1^ /\ b1^ == null
   // post: (this -> a^ * a^.out -> c^* d^.out -> e^) OR (this -> a^ * a^.out -> c^ AND a^=d^ AND c^=d^)
-  val fooMethod = SerializedIRMethodLoc("","foo", List(Some(LocalWrapper("@this","java.lang.Object"))))
-  val fooMethodReturn = CallbackMethodReturn("", "foo", fooMethod, None)
+  val fooMethod = SerializedIRMethodLoc("","foo()", List(Some(LocalWrapper("@this","java.lang.Object"))))
+  val fooMethodReturn = CallbackMethodReturn(Signature("", "foo()"), fooMethod, None)
   test("Transfer may or may not alias") {
     val cmd = (loc:AppLoc) => {
       val thisLocal = LocalWrapper("@this", "java.lang.Object")
@@ -141,7 +141,7 @@ class TransferFunctionsTest extends AnyFunSuite {
   ignore("Transfer assign local local") {
     val cmd= (loc:AppLoc) => AssignCmd(LocalWrapper("bar","Object"),LocalWrapper("baz","String"),loc)
     val post = State(StateFormula(
-      CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("bar") -> nullPv))::Nil,
+      CallStackFrame(CallbackMethodReturn(Signature("","foo()"),fooMethod, None), None, Map(StackVar("bar") -> nullPv))::Nil,
       heapConstraints = Map(),
       pureFormula = Set(PureConstraint(nullPv,Equals, NullVal)),Map(), AbstractTrace(Nil)),0)
     val prestate: Set[State] = testCmdTransfer(cmd, post,fooMethod)
@@ -160,7 +160,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     // post{x -> v-4 bar -> p-5 * v-1.f -> v-2}
     val cmd= (loc:AppLoc) => AssignCmd(LocalWrapper("bar","Object"),FieldReference(x,"Object","Object","f"),loc)
     val post = State(StateFormula(
-      CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None,
+      CallStackFrame(CallbackMethodReturn(Signature("","foo()"),fooMethod, None), None,
         Map(StackVar("x") -> PureVar(4), StackVar("bar") -> PureVar(5)))::Nil,
       heapConstraints = Map(FieldPtEdge(PureVar(1),"f") -> PureVar(2)),
       pureFormula = Set(PureConstraint(nullPv,Equals, NullVal)),
@@ -182,13 +182,13 @@ class TransferFunctionsTest extends AnyFunSuite {
 //    assert(res.exists{v => v.isDefined && v.get.heapConstraints.size == 2 && v.get.testGet(x) == Some(PureVar(4))}) //TODO:===========
   }
   private val a = NamedPureVar("a")
-  private val iFooA: AbsMsg = AbsMsg(CBEnter, Set(("", "foo")), TopVal :: a :: Nil)
+  private val iFooA: AbsMsg = AbsMsg(CBEnter, Set(Signature("", "foo()")), TopVal :: a :: Nil)
   ignore("Add matcher and phi abstraction when crossing callback entry") {
-    val preloc = CallbackMethodInvoke("","foo", fooMethod) // Transition to just before foo is invoked
+    val preloc = CallbackMethodInvoke(Signature("","foo()"), fooMethod) // Transition to just before foo is invoked
     val postloc = AppLoc(fooMethod,SerializedIRLineLoc(1), isPre=true)
     val ir = new SerializedIR(Set(MethodTransition(preloc, postloc)))
 
-    val lhs = AbsMsg(CBEnter, Set(("", "bar")), TopVal :: a :: Nil)
+    val lhs = AbsMsg(CBEnter, Set(Signature("", "bar()")), TopVal :: a :: Nil)
     //  I(cb a.bar()) <= I(cb a.foo())
     val spec = LSSpec(a::Nil, Nil,
       lhs,
@@ -197,7 +197,7 @@ class TransferFunctionsTest extends AnyFunSuite {
 //    val otheri = AbstractTrace(Once(CBExit, Set(("a","a")), "b"::Nil), Nil, Map())
     val otheri = ???
     val post = State(StateFormula(
-      CallStackFrame(CallbackMethodReturn("","foo",fooMethod, None), None, Map(StackVar("@this") -> recPv))::Nil,
+      CallStackFrame(CallbackMethodReturn(Signature("","foo"),fooMethod, None), None, Map(StackVar("@this") -> recPv))::Nil,
       heapConstraints = Map(),
       pureFormula = Set(),
       traceAbstraction = otheri,

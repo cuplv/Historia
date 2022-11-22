@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
-import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
+import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, Signature}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{DBOutputMode, IPathNode, InitialQuery, MemoryOutputMode, ReceiverNonNull}
@@ -88,8 +88,8 @@ class AbstractInterpreterTestSlow extends AnyFunSuite{
         //outputMode = DBOutputMode("/Users/shawnmeier/Desktop/bounder_debug_data/deref2.db"))
         val symbolicExecutor = config.getSymbolicExecutor
         val i = BounderUtil.lineForRegex(queryL, src)
-        val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
-          ".*onDestroy.*", i)
+        val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+          "void onDestroy()"), i)
         val qs = write[InitialQuery](query)
 
 

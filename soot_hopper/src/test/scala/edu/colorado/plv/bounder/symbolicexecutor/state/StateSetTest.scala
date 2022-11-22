@@ -2,6 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import com.microsoft.z3.Context
 import edu.colorado.plv.bounder.ir.{AppLoc, BitTypeSet, CallbackMethodReturn, LocalWrapper, SerializedIRLineLoc, SerializedIRMethodLoc, TypeSet}
+import edu.colorado.plv.bounder.lifestate.LifeState.Signature
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SolverTypeSolving, Z3StateSolver}
 import org.scalatest.funsuite.AnyFunSuite
@@ -33,8 +34,8 @@ class StateSetTest extends AnyFunSuite {
   private val fooMethod = SerializedIRMethodLoc("","foo", List(Some(LocalWrapper("@this","Object"))))
   private val barMethod = SerializedIRMethodLoc("","bar", List(Some(LocalWrapper("@this","Object"))))
   private val lineLoc = SerializedIRLineLoc(-1)
-  private val dummyLoc1 = CallbackMethodReturn(tgtClazz = "", fmwName="void foo()", fooMethod, None)
-  private val dummyLoc2 = CallbackMethodReturn(tgtClazz = "", fmwName="void bar()", barMethod, None)
+  private val dummyLoc1 = CallbackMethodReturn(Signature("", "void foo()"), fooMethod, None)
+  private val dummyLoc2 = CallbackMethodReturn(Signature("", "void bar()"), barMethod, None)
   val pv0 = PureVar(0)
   val pv1 = PureVar(1)
   val locals1 = Map(StackVar("foo")->pv0)

@@ -138,12 +138,12 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
   def printObsMessages(nodes:List[DBPathNode]):List[String] = {
     nodes.flatMap{n =>
       n.qry.loc match {
-        case c @ CallinMethodReturn(fmwClazz, fmwName) => Some(c.toString)
-        case c @ CallinMethodInvoke(fmwClazz, fmwName) => Some(c.toString)
-        case c @ GroupedCallinMethodInvoke(targetClasses, fmwName) => Some(c.toString)
-        case c @ GroupedCallinMethodReturn(targetClasses, fmwName) => Some(c.toString)
-        case c @ CallbackMethodInvoke(fmwClazz, fmwName, loc) => Some(c.toString)
-        case c @ CallbackMethodReturn(fmwClazz, fmwName, loc, line) => Some(c.toString)
+        case c : CallinMethodReturn => Some(c.toString)
+        case c : CallinMethodInvoke => Some(c.toString)
+        case c : GroupedCallinMethodInvoke => Some(c.toString)
+        case c : GroupedCallinMethodReturn => Some(c.toString)
+        case c : CallbackMethodInvoke => Some(c.toString)
+        case c : CallbackMethodReturn => Some(c.toString)
         case _ => None
       }}
   }
@@ -532,12 +532,12 @@ object PathNode{
       case _:CallbackMethodInvoke => false
       case AppLoc(method,line,isPre) =>
         !line.isFirstLocInMethod || !isPre
-      case SkippedInternalMethodInvoke(_, _, _) => true
-      case SkippedInternalMethodReturn(_, _, _, _) => true
-      case InternalMethodInvoke(_, _, _) => false
-      case InternalMethodReturn(_, _, _) => false
-      case CallbackMethodReturn(_,_,_,_) => false
-      case CallbackMethodInvoke(_,_,_) => false
+      case _:SkippedInternalMethodInvoke => true
+      case _:SkippedInternalMethodReturn => true
+      case _:InternalMethodInvoke => false
+      case _:InternalMethodReturn => false
+      case _:CallbackMethodReturn => false
+      case _:CallbackMethodInvoke => false
 
       case _ => true
     }

@@ -1,10 +1,10 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
 import java.util.NoSuchElementException
-
 import better.files.{File, Resource}
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodReturn, CmdWrapper, FieldReference, IRWrapper, InternalMethodReturn, Invoke, InvokeCmd, JimpleFlowdroidWrapper, JimpleMethodLoc, LineLoc, Loc, MethodLoc, SpecialInvoke, StaticInvoke, UnresolvedMethodTarget, VirtualInvoke}
+import edu.colorado.plv.bounder.lifestate.LifeState.Signature
 
 import scala.annotation.tailrec
 import scala.io.Source
@@ -131,7 +131,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     tgt.loc.map{m =>
       val classType = m.classType
       if(isFrameworkClass(classType)){
-        CallinMethodReturn(classType, m.simpleName)
+        CallinMethodReturn(Signature(classType, m.simpleName))
       }else {
         InternalMethodReturn(classType, m.simpleName, m)
       }
@@ -150,7 +150,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     }
     if (overrides.size > 0) {
       val leastPrecise: MethodLoc = overrides.last
-      Some(CallbackMethodReturn(method.classType, leastPrecise.simpleName, method, retCmdLoc))
+      Some(CallbackMethodReturn(Signature(method.classType, leastPrecise.simpleName), method, retCmdLoc))
     } else None
 
   }
@@ -172,7 +172,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     if (overrides.size > 0) {
       val leastPrecise: MethodLoc = overrides.last
 //      Some(CallbackMethodInvoke(leastPrecise.classType, leastPrecise.simpleName, method))
-      Some(CallbackMethodInvoke(method.classType, leastPrecise.simpleName, method))
+      Some(CallbackMethodInvoke(Signature(method.classType, leastPrecise.simpleName), method))
     } else None
   }
 }

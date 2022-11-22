@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
+import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, Signature}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, TransferFunctions}
 import ujson.Value
@@ -16,9 +16,8 @@ object Qry {
   implicit val rw:RW[Qry] = macroRW
 
   def makeReach[M,C](ex: AbstractInterpreter[M,C],
-                     className:String,
-                     methodName:String, line:Int):Set[Qry] = {
-    val locs = ex.w.findLineInMethod(className, methodName,line)
+                     sig:Signature, line:Int):Set[Qry] = {
+    val locs = ex.w.findLineInMethod(sig,line)
     assert(locs.nonEmpty, "found no locations")
     val targetLoc = locs.head
     val containingMethodPos: List[Loc] = BounderUtil.resolveMethodReturnForAppLoc(ex.getAppCodeResolver, targetLoc)
@@ -31,18 +30,17 @@ object Qry {
   }
 
   def makeCallinReturnNull[M,C](ex: AbstractInterpreter[M,C],
-                                className:String,
-                                methodName:String,
+                                sig:Signature,
                                 line:Int,
                                 callinMatches:Regex):Set[Qry] ={
     implicit val wr: IRWrapper[M, C] = ex.w
     implicit val ch: ClassHierarchyConstraints = ex.getClassHierarchy
-    val locs = wr.findLineInMethod(className, methodName,line)
+    val locs = wr.findLineInMethod(sig,line)
     val callinLocals = locs.flatMap(a => {
       wr.cmdAtLocation(a) match{
-        case AssignCmd(target : LocalWrapper, i:Invoke, loc) if callinMatches.matches(i.targetMethod) =>
-          Some((target,loc.copy(isPre = false)))
-        case InvokeCmd(i,loc) if callinMatches.matches(i.targetMethod) =>
+        case AssignCmd(tgt : LocalWrapper, i:Invoke, loc) if callinMatches.matches(i.targetSignature.methodSignature) =>
+          Some((tgt,loc.copy(isPre = false)))
+        case InvokeCmd(i,loc) if callinMatches.matches(i.targetSignature.methodSignature) =>
           throw new IllegalStateException("Callin return not assigned to variable.")
         case c =>
           None
@@ -103,15 +101,14 @@ object Qry {
   }
 
   def makeReceiverNonNull[M,C](ex: AbstractInterpreter[M,C],
-                               className:String,
-                               methodName:String,
+                               sig:Signature,
                                line:Int,
                                fieldOrMethod: Option[Regex] = None
                               ):Set[Qry] = {
     implicit val wr: IRWrapper[M, C] = ex.w
     implicit val ch: ClassHierarchyConstraints = ex.getClassHierarchy
 
-    val locs = wr.findLineInMethod(className, methodName,line)
+    val locs = wr.findLineInMethod(sig, line)
     val isTarget = fieldOrMethod.getOrElse("(.*)".r)
     val derefLocs = locs.filter(a => wr.cmdAtLocation(a) match {
       case AssignCmd(_, _:VirtualInvoke, _) => true
@@ -162,30 +159,30 @@ object InitialQuery{
   }
   implicit val rw:RW[InitialQuery] = upickle.default.readwriter[ujson.Value].bimap[InitialQuery](
     {
-      case Reachable(className, methodName, line) =>
+      case Reachable(sig, line) =>
         val m = Map(
           "t" -> "Reachable",
-          "className" -> className,
-          "methodName" -> methodName,
+          "className" -> sig.base,
+          "methodName" -> sig.methodSignature,
           "line" -> line
         ).map(vToJ)
         ujson.Obj.from(m)
-      case ReceiverNonNull(className, methodName, line, matcher) =>
+      case ReceiverNonNull(sig, line, matcher) =>
 
         val m = Map(
           "t" -> "ReceiverNonNull",
-          "className" -> className,
-          "methodName" -> methodName,
+          "className" -> sig.base,
+          "methodName" -> sig.methodSignature,
           "line" -> line
         )
         val m2 = if(matcher.isEmpty) m else m + ("matcher" -> matcher.get)
         val m3 = m2.map(vToJ)
         ujson.Obj.from(m3)
-      case CallinReturnNonNull(className, methodName, line, callinRegex) =>
+      case CallinReturnNonNull(sig, line, callinRegex) =>
         val m = Map(
           "t" -> "CallinReturnNull",
-          "className" -> className,
-          "methodName" -> methodName,
+          "className" -> sig.base,
+          "methodName" -> sig.methodSignature,
           "line" -> line,
           "callinRegex" -> callinRegex
         ).map(vToJ)
@@ -206,12 +203,14 @@ object InitialQuery{
         ujson.Obj.from(m)
     },
     json => json.obj("t").str match{
-      case "Reachable" => Reachable(json.obj("className").str, json.obj("methodName").str,json.obj("line").num.toInt)
+      case "Reachable" =>
+        Reachable(Signature(json.obj("className").str, json.obj("methodName").str),json.obj("line").num.toInt)
       case "ReceiverNonNull" =>
         val matcher = if(json.obj.contains("matcher")) Some(json.obj("matcher").str) else None
-        ReceiverNonNull(json.obj("className").str, json.obj("methodName").str,json.obj("line").num.toInt, matcher)
+        ReceiverNonNull(Signature(json.obj("className").str, json.obj("methodName").str),
+          json.obj("line").num.toInt, matcher)
       case "CallinReturnNonNull" =>
-        CallinReturnNonNull(json.obj("className").str, json.obj("methodName").str,json.obj("line").num.toInt,
+        CallinReturnNonNull(Signature(json.obj("className").str, json.obj("methodName").str),json.obj("line").num.toInt,
           json.obj("callinRegex").str)
       case "AllReceiversNonNull" =>
         AllReceiversNonNull(json.obj("className").str)
@@ -220,36 +219,35 @@ object InitialQuery{
     }
   )
 }
-case class Reachable(className:String, methodName:String, line:Integer) extends InitialQuery {
+case class Reachable(sig:Signature, line:Integer) extends InitialQuery {
   override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] =
-    Qry.makeReach(sym,className, methodName, line)
+    Qry.makeReach(sym,sig, line)
 }
-case class ReceiverNonNull(className:String, methodName:String, line:Integer,
+case class ReceiverNonNull(sig:Signature, line:Integer,
                            receiverMatcher:Option[String] = None) extends InitialQuery {
   override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] =
-    Qry.makeReceiverNonNull(sym, className, methodName, line,fieldOrMethod = receiverMatcher.map(_.r))
+    Qry.makeReceiverNonNull(sym, sig, line,fieldOrMethod = receiverMatcher.map(_.r))
 }
 case class AllReceiversNonNull(className:String) extends InitialQuery {
   override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] =
     Qry.makeAllReceiverNonNull(sym,className)
 }
-case class CallinReturnNonNull(className:String, methodName:String,
+case class CallinReturnNonNull(sig:Signature,
                                line:Integer, callinRegex:String) extends InitialQuery{
   override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] =
-    Qry.makeCallinReturnNull(sym, className, methodName, line, callinRegex.r)
+    Qry.makeCallinReturnNull(sym, sig, line, callinRegex.r)
 }
 
 case class DisallowedCallin(className:String, methodName:String, s:LSSpec) extends InitialQuery{
   assert(s.target.mt == CIEnter, "Disallow must be callin entry.")
-  private def invokeMatches(i:Invoke)(implicit ch:ClassHierarchyConstraints):Option[(String,String)] = {
-    val iClazz = i.targetClass
-    val iSign = i.targetMethod
-    val res = s.target.signatures.matches(iClazz, iSign)
-    if(res) Some(iClazz, iSign) else None
+  private def invokeMatches(i:Invoke)(implicit ch:ClassHierarchyConstraints):Option[Signature] = {
+    val tgtSig = i.targetSignature
+    val res = s.target.signatures.matches(tgtSig)
+    if(res) Some(tgtSig) else None
   }
 
   private def getMatchingCallin(cmd:CmdWrapper)
-                               (implicit ch:ClassHierarchyConstraints):Option[(String,String)] = cmd match {
+                               (implicit ch:ClassHierarchyConstraints):Option[Signature] = cmd match {
     case AssignCmd(_, i:Invoke, _) => invokeMatches(i)
     case InvokeCmd(method, _) => invokeMatches(method)
     case _ => None

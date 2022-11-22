@@ -135,7 +135,7 @@ object EncodingTools {
     }
     def containsTrace(trace:List[TraceElement])(implicit cha:ClassHierarchyConstraints):Option[Assign] = {
       def iContainsTrace(q:Q, assign:Assign, trace:List[TraceElement]):Option[Assign] = trace match {
-        case TMessage(mType, method, args)::next =>
+        case TMessage(mType, method, args, receiverType)::next =>
           delta(q).view.flatMap {
             case AnyDelta(dst, b) => ???
             case EpsDelta(dst, b) => ???

@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.BounderSetupApplication.{ApkSource, SourceType}
 import java.util
 import java.util.{Collections, Objects}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper.cgEntryPointName
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, LSSpec, OAbsMsg, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, LSSpec, OAbsMsg, SetSignatureMatcher, Signature, SignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
 import edu.colorado.plv.bounder.{BounderSetupApplication, BounderUtil}
@@ -508,14 +508,14 @@ class JimpleFlowdroidWrapper(apkPath : String,
       mFilter(strm)
     }
     val allcalls = cb.flatMap(cfResolver.computeAllCalls(_,true))
-    val callins = allcalls.filter(c => resolver.isFrameworkClass(c.classType))
+    val callins: Set[MethodLoc] = allcalls.filter(c => resolver.isFrameworkClass(c.classType))
     val callinsNoToSTR = callins.filter(c => !c.simpleName.contains("toString()"))
     val allI = spec.allI
-    val matchedCallins = callins.filter(c => allI.exists(i => i.contains(CIExit, (c.classType, c.simpleName))(ch)))
+    val matchedCallins = callins.filter(c => allI.exists(i => i.contains(CIExit, Signature(c.classType, c.simpleName))(ch)))
     val matchedCallbacks = cb.flatMap(c =>
       allI.flatMap(i =>
         List(CBEnter,CBExit).flatMap{d =>
-          if(i.contains(d,(c.classType,c.simpleName))(ch)) Some((d,c)) else None
+          if(i.contains(d,Signature(c.classType,c.simpleName))(ch)) Some((d,c)) else None
         }
       ))
     val cbsimp = cb.map(c => c.simpleName)
@@ -529,15 +529,15 @@ class JimpleFlowdroidWrapper(apkPath : String,
           u.toString().contains("(") && !u.toString().contains("newarray (")) {
           val loc = AppLoc(JimpleMethodLoc(method), JimpleLineLoc(u, method), false)
           val callinSet = resolver.resolveCallLocation(makeInvokeTargets(loc)).flatMap {
-            case CallinMethodReturn(fmwClazz, fmwName) => Some((fmwClazz,fmwName))
-            case CallinMethodInvoke(fmwClazz, fmwName) => Some((fmwClazz,fmwName))
+            case CallinMethodReturn(sig) => Some(sig)
+            case CallinMethodInvoke(sig) => Some(sig)
             case GroupedCallinMethodInvoke(targetClasses, fmwName) => ???
             case GroupedCallinMethodReturn(targetClasses, fmwName) => ???
             case _ => None
           }
           if (callinSet.nonEmpty) {
 //            val matchedBySpec = allI.filter(i => callinSet.exists(m => i.contains(CIExit, (m._1,m._2))(ch)))
-            val matchedBySpec = callinSet.filter(c => allI.exists(i => i.contains(CIExit, (c._1,c._2) )(ch)))
+            val matchedBySpec = callinSet.filter(c => allI.exists(i => i.contains(CIExit, c)(ch)))
             Some((method, u, matchedBySpec,callinSet))
           } else
             None
@@ -547,7 +547,6 @@ class JimpleFlowdroidWrapper(apkPath : String,
     }
     val syntCallinSitesInSpec = syntCallinSites.filter(_._3.nonEmpty)
 
-    val missedCi = callins.filter(ci => !syntCallinSites.exists(s => s._4.contains(ci.classType,ci.simpleName)))
     val callinCallGraphSize = syntCallinSites.toList.map(v => v._4.size).sum
     val matchedCallinCallGraphSize = syntCallinSites.toList.map(v => v._3.size).sum
 //    val callinCallGraphSize =callins.size  // old count was based on total call graph callins
@@ -1043,7 +1042,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
       val sName = JimpleFlowdroidWrapper.stringNameOfClass(sc)
       val current = sc.getMethods.asScala.find{m =>
         val methodSignature = m.getSubSignature
-        sig.matches((sName, methodSignature))(cha)
+        sig.matches(Signature(sName, methodSignature))(cha)
       }
       if(current.isEmpty && sc != Scene.v().getObjectType.getSootClass){
         findSuperMatching(sc.getSuperclass, sig)
@@ -1081,7 +1080,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
       val baseTypes: Set[String] = sig match{
         case SubClassMatcher(baseSubtypeOf, sig, ident) => baseSubtypeOf
         case SetSignatureMatcher(sigSet) => sigSet.collect{
-          case (c,_) => c
+          case Signature(c,_) => c
         }
       }
       baseTypes.foreach{t =>
@@ -1155,7 +1154,9 @@ class JimpleFlowdroidWrapper(apkPath : String,
       throw new IllegalArgumentException(s"No classes found matching: $className")
     }else foundClasses
   }
-  override def findMethodLoc(className: String, methodName: String):Iterable[JimpleMethodLoc] = {
+  override def findMethodLoc(sig:Signature):Iterable[JimpleMethodLoc] = {
+    val className = sig.base
+    val methodName = sig.methodSignature
     val classesFound = getClassByName(className)
     val res = classesFound.flatMap { clazzFound =>
       val clazz = if (clazzFound.isPhantom) {
@@ -1346,8 +1347,8 @@ class JimpleFlowdroidWrapper(apkPath : String,
     case _ => false
   }
 
-  override def findLineInMethod(className: String, methodName: String, line: Int): Iterable[AppLoc] = {
-    val loc: Iterable[JimpleMethodLoc] = findMethodLoc(className, methodName)
+  override def findLineInMethod(sig:Signature, line: Int): Iterable[AppLoc] = {
+    val loc: Iterable[JimpleMethodLoc] = findMethodLoc(sig)
     loc.flatMap(loc => {
       val activeBody = loc.method.retrieveActiveBody()
       val units: Iterable[soot.Unit] = activeBody.getUnits.asScala

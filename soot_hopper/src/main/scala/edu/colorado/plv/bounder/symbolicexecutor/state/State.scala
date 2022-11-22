@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools, Nameable}
 import edu.colorado.plv.bounder.ir.{AppLoc, BitTypeSet, BoolConst, CallbackMethodInvoke, CallbackMethodReturn, ClassConst, ConstVal, EmptyTypeSet, IRWrapper, IntConst, InternalMethodInvoke, InternalMethodReturn, LVal, Loc, LocalWrapper, MessageType, MethodLoc, NullConst, RVal, StringConst, TopTypeSet, TypeSet}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, FreshRef, LSPred, LSSingle, LSTrue, NS, Not, OAbsMsg, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, FreshRef, LSPred, LSSingle, LSTrue, NS, Not, OAbsMsg, Or, Signature}
 import edu.colorado.plv.bounder.symbolicexecutor.state.State.findIAF
 import scalaz.Memo
 import upickle.default.{macroRW, ReadWriter => RW}
@@ -16,7 +16,7 @@ object State {
   def topState:State =
     State(StateFormula(Nil,Map(),Set(),Map(),AbstractTrace(Nil)),0)
 
-  def findIAF(messageType: MessageType, signature: (String, String),
+  def findIAF(messageType: MessageType, signature: Signature,
               pred: LSPred)(implicit ch:ClassHierarchyConstraints):Set[AbsMsg] = pred match{
     case i@OAbsMsg(mt, sigs, _) if mt == messageType && sigs.matches(signature) => Set(i)
     case NS(i1,i2) => Set(i1,i2).flatMap(findIAF(messageType, signature, _))
@@ -390,10 +390,10 @@ case class State(sf:StateFormula,
     allIRefByState(spec:SpecSpace).exists(i => i.signatures.matchesSubSig(subsignature))
 
   def entryPossible(loc: Loc): Boolean = loc match{
-    case CallbackMethodInvoke(clazz, name, _) =>
+    case CallbackMethodInvoke(sig, _) =>
       sf.callStack.headOption match{
-        case Some(CallStackFrame(CallbackMethodReturn(clazz2, name2,_,_),_,_)) =>
-          clazz == clazz2 && name == name2
+        case Some(CallStackFrame(CallbackMethodReturn(sig2,_,_),_,_)) =>
+          sig==sig2
         case None => true
         case _ => false
       }
@@ -433,7 +433,7 @@ case class State(sf:StateFormula,
 //  }
 
   def findIFromCurrent(dir: MessageType,
-                       signature: (String, String), specSpace: SpecSpace)(implicit
+                       signature: Signature, specSpace: SpecSpace)(implicit
                                                     ch:ClassHierarchyConstraints): Set[AbsMsg] = {
     allIRefByState(specSpace).filter(i => i.mt == dir&& i.signatures.matches(signature))
   }

@@ -8,12 +8,12 @@ import better.files.File
 import edu.colorado.plv.bounder.BounderUtil.{MaxPathCharacterization, Proven, ResultSummary, Timeout, Unreachable, Witnessed, characterizeMaxPath}
 import edu.colorado.plv.bounder.Driver.{Default, LocResult, RunMode}
 import edu.colorado.plv.bounder.ir.{JimpleFlowdroidWrapper, Loc}
-import edu.colorado.plv.bounder.lifestate.LifeState.LSSpec
+import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, Signature}
 import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state._
-import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, QueryFinished, SparkCallGraph, AbstractInterpreter, SymbolicExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, CHACallGraph, QueryFinished, SparkCallGraph, SymbolicExecutorConfig, TransferFunctions}
 import scopt.OParser
 
 import scala.concurrent.Await
@@ -333,10 +333,9 @@ object Driver {
         sizesPrinted.add(queries.size)
       }
       val appLoc = symbolicExecutor.appCodeResolver.sampleDeref(filter)
-      val name = appLoc.method.simpleName
-      val clazz = appLoc.method.classType
+      val sig = Signature(appLoc.method.simpleName, appLoc.method.classType)
       val line = appLoc.line.lineNumber
-      queries.add(ReceiverNonNull(clazz, name, line))
+      queries.add(ReceiverNonNull(sig, line))
     }
     val outName = s"sample"
     val f = File(outFolder) / s"$outName.json"

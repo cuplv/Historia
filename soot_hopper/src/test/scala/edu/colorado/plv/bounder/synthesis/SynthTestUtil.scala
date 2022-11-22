@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.synthesis
 
 import edu.colorado.plv.bounder.ir.{AppMethod, CBEnter, CBExit, CIEnter, CIExit, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, ConcGraph, FwkMethod, Loc, MessageType, Method, SerializedIRMethodLoc, TMessage}
 import edu.colorado.plv.bounder.lifestate.LifeState
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, LSSingle, OAbsMsg, SignatureMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, LSSingle, OAbsMsg, Signature, SignatureMatcher}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, IPathNode, MemoryOutputMode, NamedPureVar, NullVal, OrdCount, OutputMode, PathNode, PureExpr, PureVar, Qry, State, TAddr, TVal, TopVal, Unknown}
 
@@ -26,26 +26,26 @@ object SynthTestUtil {
       "foo2" -> Set("foo2")
     )
 
-  val cha = new ClassHierarchyConstraints(hierarchy,Set("java.lang.Runnable"),intToClass)
+  implicit val cha = new ClassHierarchyConstraints(hierarchy,Set("java.lang.Runnable"),intToClass)
 
   val classToInt: Map[String, Int] = hierarchy.keySet.zipWithIndex.toMap
   val intToClass: Map[Int, String] = classToInt.map(k => (k._2, k._1))
 
   val dummyMethod = SerializedIRMethodLoc("","",Nil)
-  val dummyLoc = CallbackMethodInvoke("", "", dummyMethod)
+  val dummyLoc = CallbackMethodInvoke(Signature("", "a()"), dummyMethod)
   val top = State.topState
   def onceToTestLoc(o:LSSingle):Loc = o match {
     case LifeState.CLInit(sig) => ???
     case LifeState.FreshRef(v) => ???
     case OAbsMsg(CBEnter, signatures, lsVars) => //TODO: may want to gen args at some point
-      val (clazz,sig) = signatures.example()
-      CallbackMethodInvoke(clazz, sig, SerializedIRMethodLoc(clazz,sig,Nil))
+      val sig = signatures.example()
+      CallbackMethodInvoke( sig, SerializedIRMethodLoc(sig.base,sig.methodSignature,Nil))
     case OAbsMsg(CBExit, signatures, lsVars) =>
-      val (clazz,sig) = signatures.example()
-      CallinMethodReturn(clazz,sig)
+      val sig = signatures.example()
+      CallinMethodReturn(sig)
     case OAbsMsg(CIEnter, signatures, lsVars) =>
-      val (clazz,sig) = signatures.example()
-      CallinMethodInvoke(clazz,sig)
+      val sig = signatures.example()
+      CallinMethodInvoke(sig)
   }
 
   /**
@@ -64,12 +64,12 @@ object SynthTestUtil {
     case Nil => Set.empty
   }
   def methodFromSig(mt:MessageType,sig:SignatureMatcher):Method = {
-    val (clazz,methodSig) = sig.example()
+    val sigex = sig.example()
 //    val mLoc = SerializedIRMethodLoc(clazz,methodSig,Nil)
-    val fwkMethod = FwkMethod(methodSig, clazz)
+    val fwkMethod = FwkMethod(sigex)
     mt match {
-      case CBEnter => AppMethod(methodSig, clazz, Some(fwkMethod))
-      case CBExit => AppMethod(methodSig, clazz, Some(fwkMethod))
+      case CBEnter => AppMethod(sigex, Some(fwkMethod))
+      case CBExit => AppMethod(sigex, Some(fwkMethod))
       case CIEnter => fwkMethod
       case CIExit => fwkMethod
     }
@@ -116,8 +116,8 @@ object SynthTestUtil {
 class DummyOrd extends OrdCount{
 
   override def delta(current: Qry): Int = current.loc match {
-    case CallbackMethodInvoke(_, _, _) => 1
-    case CallbackMethodReturn(_, _, _, _) => 1
+    case _:CallbackMethodInvoke => 1
+    case _:CallbackMethodReturn => 1
     case _ => 0
   }
 

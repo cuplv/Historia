@@ -1,5 +1,6 @@
 package edu.colorado.plv.bounder.ir
 
+import edu.colorado.plv.bounder.lifestate.LifeState.Signature
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.AppCodeResolver
 import upickle.default.{macroRW, ReadWriter => RW}
@@ -20,8 +21,8 @@ trait IRWrapper[M,C]{
 
   def getAllMethods : Iterable[MethodLoc]
   def getOverrideChain( method : MethodLoc) : Seq[MethodLoc]
-  def findMethodLoc(className: String, methodName: String):Iterable[MethodLoc]
-  def findLineInMethod(className:String, methodName:String, line:Int):Iterable[AppLoc]
+  def findMethodLoc(sig:Signature):Iterable[MethodLoc]
+  def findLineInMethod(sig:Signature, line:Int):Iterable[AppLoc]
   def findInMethod(className:String, methodName:String, toFind: CmdWrapper => Boolean):Iterable[AppLoc]
   def makeMethodTargets(source: MethodLoc): Set[MethodLoc]
   def degreeOut(cmd: AppLoc):Int
@@ -373,8 +374,7 @@ case class ArrayLength(l:LocalWrapper) extends RVal {
 }
 
 sealed trait Invoke extends RVal {
-  def targetClass:String
-  def targetMethod:String
+  def targetSignature:Signature
   def params:List[RVal]
   def targetOptional: Option[LocalWrapper]
 }
@@ -386,6 +386,7 @@ case class VirtualInvoke(target:LocalWrapper,
                          targetClass:String,
                          targetMethod:String,
                          params:List[RVal]) extends Invoke {
+  override def targetSignature: Signature = Signature(targetClass, targetMethod)
   override def targetOptional: Option[LocalWrapper] = Some(target)
 
   override def isConst: Boolean = false
@@ -395,6 +396,7 @@ case class SpecialInvoke(target:LocalWrapper,
                          targetClass:String,
                          targetMethod:String,
                          params:List[RVal]) extends Invoke {
+  override def targetSignature: Signature = Signature(targetClass, targetMethod)
   override def targetOptional: Option[LocalWrapper] = Some(target)
 
   override def isConst: Boolean = false
@@ -402,6 +404,7 @@ case class SpecialInvoke(target:LocalWrapper,
 case class StaticInvoke(targetClass:String,
                         targetMethod:String,
                         params:List[RVal])extends Invoke {
+  override def targetSignature: Signature = Signature(targetClass, targetMethod)
   override def targetOptional: Option[LocalWrapper] = None
 
   override def isConst: Boolean = false

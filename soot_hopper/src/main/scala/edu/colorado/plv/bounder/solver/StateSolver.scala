@@ -702,7 +702,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     def nameFun: T = mkINameFn()
 
     def iForMsg(e: TraceElement): Option[AbsMsg] = e match{
-      case TMessage(mType, method, _) =>
+      case TMessage(mType, method, _, _) =>
         val possibleI = alli.filter(ci => ci.contains(mType,method.fwkSig.get))
         //assert(possibleI.size < 2)
         possibleI.headOption

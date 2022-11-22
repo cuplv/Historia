@@ -57,8 +57,8 @@ object BounderUtil {
     def characterizePath(node:IPathNode)(implicit mode : OutputMode):MaxPathCharacterization = {
       val methodsInPath:List[Loc] = node.methodsInPath
       methodsInPath.foldLeft(SingleMethod:MaxPathCharacterization){(acc,v) => v match {
-        case CallbackMethodInvoke(_,_,_) => reduceCharacterization(acc,MultiCallback)
-        case CallbackMethodReturn(_, _, _,_) => reduceCharacterization(acc,MultiCallback)
+        case CallbackMethodInvoke(_,_) => reduceCharacterization(acc,MultiCallback)
+        case CallbackMethodReturn(_, _,_) => reduceCharacterization(acc,MultiCallback)
         case InternalMethodReturn(_, _, _) => reduceCharacterization(acc,SingleCallbackMultiMethod)
         case InternalMethodInvoke(_, _, _) => reduceCharacterization(acc,SingleCallbackMultiMethod)
         case _ => acc // callins and skipped internal methods
@@ -113,7 +113,7 @@ object BounderUtil {
     def iCbCount(terminalsInd: List[(Option[IPathNode], Int)]): List[(Option[IPathNode], Int)] = {
       val upd = terminalsInd.map{
         case (Some(n), ind) => n.qry.loc match{
-          case CallbackMethodInvoke(_,_,_) => (Some(n), ind+1)
+          case CallbackMethodInvoke(_,_) => (Some(n), ind+1)
           case _ => (Some(n),ind)
         }
         case (None, ind) => (None, ind)
@@ -274,8 +274,8 @@ object BounderUtil {
 
   def resolveMethodEntryForAppLoc(resolver : AppCodeResolver, appLoc: AppLoc) :List[Loc]= {
     resolver.resolveCallbackEntry(appLoc.method) match {
-      case Some(CallbackMethodInvoke(clazz, name, loc)) =>
-        CallbackMethodInvoke(clazz, name, loc)::
+      case Some(CallbackMethodInvoke(sig, loc)) =>
+        CallbackMethodInvoke(sig, loc)::
           InternalMethodInvoke(appLoc.method.classType, appLoc.method.simpleName, appLoc.method)::Nil
       case None => {
         InternalMethodInvoke(appLoc.method.classType, appLoc.method.simpleName, appLoc.method)::Nil
@@ -286,8 +286,8 @@ object BounderUtil {
   }
   def resolveMethodReturnForAppLoc(resolver : AppCodeResolver, appLoc: AppLoc) :List[Loc]= {
     resolver.resolveCallbackEntry(appLoc.method) match {
-      case Some(CallbackMethodInvoke(clazz, name, loc)) =>
-        CallbackMethodReturn(clazz, name, loc, None)::
+      case Some(CallbackMethodInvoke(sig, loc)) =>
+        CallbackMethodReturn(sig, loc, None)::
           InternalMethodReturn(appLoc.method.classType, appLoc.method.simpleName, appLoc.method)::Nil
       case None => {
         InternalMethodReturn(appLoc.method.classType, appLoc.method.simpleName, appLoc.method)::Nil

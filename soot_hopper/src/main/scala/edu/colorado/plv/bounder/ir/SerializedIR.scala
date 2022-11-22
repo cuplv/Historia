@@ -1,5 +1,6 @@
 package edu.colorado.plv.bounder.ir
 
+import edu.colorado.plv.bounder.lifestate.LifeState.Signature
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.AppCodeResolver
@@ -9,9 +10,9 @@ import scala.collection.BitSet
 
 //TODO: serialize IR and points to, This should be able to continue where other left off
 class SerializedIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] {
-  override def findMethodLoc(className: String, methodName: String): Iterable[MethodLoc] = ???
+  override def findMethodLoc(sig:Signature): Iterable[MethodLoc] = ???
 
-  override def findLineInMethod(className: String, methodName: String, line: Int): Iterable[AppLoc] = ???
+  override def findLineInMethod(sig:Signature, line: Int): Iterable[AppLoc] = ???
 
   override def commandPredecessors(cmdWrapper: CmdWrapper): List[AppLoc] = ???
 

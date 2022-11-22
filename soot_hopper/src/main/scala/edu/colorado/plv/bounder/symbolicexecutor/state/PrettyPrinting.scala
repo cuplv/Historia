@@ -161,8 +161,8 @@ class PrettyPrinting() {
     val pw = File(s"${envOutDir.get}/$outFile" )
     val skipf: IPathNode => Boolean = p =>
       p.qry.loc match {
-        case CallbackMethodInvoke(fmwClazz, fmwName, loc) => false
-        case CallbackMethodReturn(fmwClazz, fmwName, loc, line) => false
+        case _:CallbackMethodInvoke => false
+        case _:CallbackMethodReturn => false
         case _ => skipCmd
       }
     val printQry = qrySet.map(q => PrintingPathNode(q, skipf, p => p.toString))

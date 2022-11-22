@@ -99,14 +99,14 @@ class ClassHierarchyConstraints(types : Map[String,Set[String]],
   } + ("java.lang.Object" -> types.getOrElse("java.lang.Object",Set()).union(ClassHierarchyConstraints.primitiveTypes.toSet))
 //  def getUseZ3TypeSolver:StateTypeSolving = useZ3TypeSolver
   def upperTypeBoundForReciever(methodReturnLoc: Loc):Option[String] = methodReturnLoc match {
-    case CallinMethodInvoke(clazz, _) =>
-      Some(clazz)
-    case CallbackMethodInvoke(fmwClazz,_,_) =>
-      Some(fmwClazz)
+    case CallinMethodInvoke(sig) =>
+      Some(sig.base)
+    case CallbackMethodInvoke(sig,_) =>
+      Some(sig.base)
     case InternalMethodInvoke(clazz,_,_) =>
       Some(clazz)
-    case CallinMethodReturn(clazz,_) => Some(clazz)
-    case CallbackMethodReturn(fmwClazz, _, _, _) => Some(fmwClazz)
+    case CallinMethodReturn(sig) => Some(sig.base)
+    case CallbackMethodReturn(sig, _, _) => Some(sig.base)
     case InternalMethodReturn(clazz, _,_) => Some(clazz)
     case _ => throw new IllegalArgumentException("Loc is not method entry/exit")
   }

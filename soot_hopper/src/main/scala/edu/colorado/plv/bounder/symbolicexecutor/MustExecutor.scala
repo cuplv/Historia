@@ -13,15 +13,15 @@ object MustExecutor {
   def execute(preConcState:StateFormula, loc:Loc, postAbsState:StateFormula):StateFormula= loc match {
     case AppLoc(method, line, isPre) =>
       ???
-    case CallinMethodReturn(fmwClazz, fmwName) => ???
-    case CallinMethodInvoke(fmwClazz, fmwName) => ???
+    case CallinMethodReturn(sig) => ???
+    case CallinMethodInvoke(sig) => ???
     case GroupedCallinMethodInvoke(targetClasses, fmwName) => ???
     case GroupedCallinMethodReturn(targetClasses, fmwName) => ???
-    case CallbackMethodInvoke(tgtClazz, fmwName, loc) =>
-      val parsed = parseJavaSignature(fmwName)
+    case CallbackMethodInvoke(sig, loc) =>
+      val parsed = parseJavaSignature(sig.base)
       println(loc)
       ???
-    case CallbackMethodReturn(tgtClazz, fmwName, loc, line) => ???
+    case CallbackMethodReturn(sig, loc, line) => ???
     case InternalMethodInvoke(clazz, name, loc) => ???
     case InternalMethodReturn(clazz, name, loc) => ???
     case SkippedInternalMethodInvoke(clazz, name, loc) => ???

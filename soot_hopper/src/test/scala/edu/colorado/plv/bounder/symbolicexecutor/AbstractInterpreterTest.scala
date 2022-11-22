@@ -4,7 +4,7 @@ import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{MultiCallback, Proven, SingleCallbackMultiMethod, SingleMethod, Witnessed}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, LSSpec, LSTrue, NS, Not, AbsMsg, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, LSSpec, LSTrue, NS, Not, Or, Signature}
 import edu.colorado.plv.bounder.lifestate.{Dummy, FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BottomQry, CallinReturnNonNull, DBOutputMode, DisallowedCallin, FieldPtEdge, IPathNode, MemoryOutputMode, NamedPureVar, OutputMode, PrettyPrinting, Qry, Reachable, ReceiverNonNull}
@@ -30,8 +30,7 @@ class AbstractInterpreterTest extends AnyFunSuite {
     implicit val om: OutputMode = config.outputMode
     val symbolicExecutor = config.getSymbolicExecutor
     val query = ReceiverNonNull(
-      "com.example.test_interproc_1.MainActivity",
-      "java.lang.String objectString()",21)
+      Signature("com.example.test_interproc_1.MainActivity", "java.lang.String objectString()"),21)
     // Call symbolic executor
     val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
 //    prettyPrinting.dumpDebugInfo(result, "test_interproc_1_derefSafe")
@@ -51,8 +50,7 @@ class AbstractInterpreterTest extends AnyFunSuite {
       component = Some(List("com\\.example\\.test_interproc_2\\.MainActivity.*")))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = ReceiverNonNull(
-      "com.example.test_interproc_2.MainActivity",
-      "void onPause()",27)
+      Signature("com.example.test_interproc_2.MainActivity", "void onPause()"),27)
     val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
     // prettyPrinting.dumpDebugInfo(result, "inter-callback", truncate = false)
     BounderUtil.throwIfStackTrace(result)
@@ -70,8 +68,7 @@ class AbstractInterpreterTest extends AnyFunSuite {
     //      component = Some(List("com\\.example\\.test_interproc_2\\.*"))
     val symbolicExecutor = new AbstractInterpreter[SootMethod, soot.Unit](config)
     val query = Reachable(
-      "com.example.test_interproc_2.MainActivity",
-      "void onPause()",25)
+      Signature("com.example.test_interproc_2.MainActivity", "void onPause()"),25)
     val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
 //    PrettyPrinting.printWitnessOrProof(result, "/Users/shawnmeier/Desktop/witnessOnPause.dot")
 //    prettyPrinting.dumpDebugInfo(result, "test_interproc_2_onPauseReach")
@@ -86,8 +83,7 @@ class AbstractInterpreterTest extends AnyFunSuite {
       stepLimit = 50, w,new SpecSpace(LifecycleSpec.spec),  z3Timeout = Some(30))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = Reachable(
-      "com.example.test_interproc_2.MainActivity",
-      "void onResume()",20)
+      Signature("com.example.test_interproc_2.MainActivity", "void onResume()"),20)
     val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
 //    prettyPrinting.dumpDebugInfo(result, "test_interproc_2_onResumeReach")
     BounderUtil.throwIfStackTrace(result)
@@ -133,8 +129,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
         stepLimit = 50, w, new SpecSpace(specs),
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       val symbolicExecutor = config.getSymbolicExecutor
-      val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
-        "void onCreate(android.os.Bundle)", BounderUtil.lineForRegex(".*query1.*".r,src))
+      val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+        "void onCreate(android.os.Bundle)"), BounderUtil.lineForRegex(".*query1.*".r,src))
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
 //      prettyPrinting.dumpDebugInfo(result, "readLiteral")
       assert(result.nonEmpty)
@@ -194,7 +190,7 @@ class AbstractInterpreterTest extends AnyFunSuite {
 
       // Entry of oncreate should be reachable (debugging spark issue)
       val queryEntry = Reachable(
-        "com.example.createdestroy.MyActivity","void onResume()",
+        Signature("com.example.createdestroy.MyActivity","void onResume()"),
         BounderUtil.lineForRegex(".*query0.*".r,src))
       val resultEntry = symbolicExecutor.run(queryEntry).flatMap(a => a.terminals)
 
@@ -202,8 +198,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
       assert(BounderUtil.interpretResult(resultEntry,QueryFinished) == Witnessed)
 
       // Dereference in loop should witness since we do not have a spec for the list
-      val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
-        "void onResume()", BounderUtil.lineForRegex(".*query1.*".r,src))
+      val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+        "void onResume()"), BounderUtil.lineForRegex(".*query1.*".r,src))
 
       // prettyPrinting.dotMethod( query.head.loc, symbolicExecutor.controlFlowResolver, "onPauseCond.dot")
 
@@ -280,8 +276,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       implicit val om = config.outputMode
       val symbolicExecutor = config.getSymbolicExecutor
-      val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
-        "void onPause()", BounderUtil.lineForRegex(".*query1.*".r,src))
+      val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+        "void onPause()"), BounderUtil.lineForRegex(".*query1.*".r,src))
 
       // prettyPrinting.dotMethod( query.head.loc, symbolicExecutor.controlFlowResolver, "onPauseCond.dot")
 
@@ -362,8 +358,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
           stepLimit = 200, w, new SpecSpace(specs),
           component = Some(List("com.example.createdestroy.MyActivity.*")))
         val symbolicExecutor = config.getSymbolicExecutor
-        val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
-          "void onCreate(android.os.Bundle)", BounderUtil.lineForRegex(".*query1.*".r, src))
+        val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+          "void onCreate(android.os.Bundle)"), BounderUtil.lineForRegex(".*query1.*".r, src))
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
         // prettyPrinting.dumpDebugInfo(result, s"alias_${expected}", truncate = false)
         assert(result.nonEmpty)
@@ -419,8 +415,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       implicit val om = config.outputMode
       val symbolicExecutor = config.getSymbolicExecutor
-      val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
-        "void onCreate(android.os.Bundle)",20)
+      val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+        "void onCreate(android.os.Bundle)"),20)
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
       // prettyPrinting.dumpDebugInfo(result,"setField")
       assert(result.nonEmpty)
@@ -492,8 +488,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
         implicit val om = config.outputMode
         val symbolicExecutor = config.getSymbolicExecutor
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
-        val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
-          "void onCreate(android.os.Bundle)", line)
+        val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+          "void onCreate(android.os.Bundle)"), line)
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
         prettyPrinting.dumpDebugInfo(result, s"setField_${bval}_${expected}") //==========
         assert(result.nonEmpty)
@@ -563,8 +559,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
         stepLimit = 200, w, new SpecSpace(specs),
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       val symbolicExecutor = config.getSymbolicExecutor
-      val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
-        "void onCreate(android.os.Bundle)",22)
+      val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+        "void onCreate(android.os.Bundle)"),22)
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
       // prettyPrinting.dumpDebugInfo(result,"assignFromTest")
       assert(result.nonEmpty)
@@ -625,14 +621,14 @@ class AbstractInterpreterTest extends AnyFunSuite {
       // Entry of oncreate should be reachable (debugging spark issue)
       val qrys = AllReceiversNonNull("com.example.createdestroy.MyActivity").make(symbolicExecutor)
       qrys.foreach(println)
-      val queryEntry = Reachable("com.example.createdestroy.MyActivity","void onResume()",
+      val queryEntry = Reachable(Signature("com.example.createdestroy.MyActivity","void onResume()"),
         BounderUtil.lineForRegex(".*query0.*".r,src))
       val resultEntry = symbolicExecutor.run(queryEntry).flatMap(a => a.terminals)
       BounderUtil.throwIfStackTrace(resultEntry)
       assert(BounderUtil.interpretResult(resultEntry, QueryFinished) == Witnessed)
       // Dereference in loop should witness since we do not have a spec for the list
-      val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
-        "void onResume()", BounderUtil.lineForRegex(".*query1.*".r,src))
+      val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+        "void onResume()"), BounderUtil.lineForRegex(".*query1.*".r,src))
 
       // prettyPrinting.dotMethod( query.head.loc, symbolicExecutor.controlFlowResolver, "onPauseCond.dot")
 
@@ -696,13 +692,13 @@ class AbstractInterpreterTest extends AnyFunSuite {
           component = Some(List("com.example.createdestroy.MyActivity.*")))
         val symbolicExecutor = config.getSymbolicExecutor
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
-        val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
-          "void onCreate(android.os.Bundle)", line, Some(".*toString.*"))
+        val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+          "void onCreate(android.os.Bundle)"), line, Some(".*toString.*"))
 
         val i = BounderUtil.lineForRegex(".*initializeabc.*".r, src)
         //Dump dot of while method
         val query2 = Qry.makeReach(symbolicExecutor,
-          "com.example.createdestroy.MyActivity", "void setO()",i )
+          Signature("com.example.createdestroy.MyActivity", "void setO()"),i )
         // prettyPrinting.dotMethod(query2.head.loc,symbolicExecutor.controlFlowResolver, "setO.dot")
 
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
@@ -776,8 +772,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
           component = Some(List("com.example.createdestroy.MyActivity.*")))
         val symbolicExecutor = config.getSymbolicExecutor
         val i = BounderUtil.lineForRegex(queryL, src)
-        val query = ReceiverNonNull("com.example.createdestroy.MyActivity.*",
-          ".*run.*", i)
+        val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity.*",
+          ".*run()"), i)
 
 
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
@@ -846,8 +842,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       val symbolicExecutor = config.getSymbolicExecutor
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
-      val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
-        "void onCreate(android.os.Bundle)",line)
+      val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+        "void onCreate(android.os.Bundle)"),line)
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
       // prettyPrinting.dumpDebugInfo(result,"DisaliasedObj")
       // prettyPrinting.dotWitTree(result, "DisaliasedObj.dot",true)
@@ -906,8 +902,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
           component = Some(List("com.example.createdestroy.MyActivity.*")))
         val symbolicExecutor = config.getSymbolicExecutor
         val line = BounderUtil.lineForRegex(".*query1.*".r,src)
-        val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
-          "void onDestroy()", 28)
+        val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+          "void onDestroy()"), 28)
 
 //        prettyPrinting.dotMethod(query.head.loc, symbolicExecutor.controlFlowResolver, "onDestroy_if_not_drop.dot")
 
@@ -982,8 +978,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
           stepLimit = 300, w, specSpace,z3Timeout = Some(30),
           component = Some(List("com\\.example\\.createdestroy\\.*MyActivity.*")))
         val symbolicExecutor = config.getSymbolicExecutor
-        val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
-          "void lambda$onCreate$1$MyActivity(java.lang.Object)", 31)
+        val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+          "void lambda$onCreate$1$MyActivity(java.lang.Object)"), 31)
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
         //prettyPrinting.dumpDebugInfo(result, "ProveFieldDerefWithSubscribe")
         assert(result.nonEmpty)
@@ -1050,8 +1046,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       val symbolicExecutor = config.getSymbolicExecutor
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
-      val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
-        "void lambda$onCreate$1$MyActivity(java.lang.Object)",line)
+      val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+        "void lambda$onCreate$1$MyActivity(java.lang.Object)"),line)
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
       // prettyPrinting.dumpDebugInfo(result,"WitnessFieldDerefWithSubscribe")
       assert(result.nonEmpty)
@@ -1135,8 +1131,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
         component = Some(List("com.example.createdestroy.MyFragment.*")))
       val symbolicExecutor = config.getSymbolicExecutor
       val query = ReceiverNonNull(
-        "com.example.createdestroy.MyFragment",
-        "void lambda$onActivityCreated$1$MyFragment(java.lang.Object)",BounderUtil.lineForRegex(".*query1.*".r, src))
+        Signature("com.example.createdestroy.MyFragment",
+        "void lambda$onActivityCreated$1$MyFragment(java.lang.Object)"),BounderUtil.lineForRegex(".*query1.*".r, src))
 
 
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
@@ -1221,8 +1217,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
         component = Some(List("com.example.createdestroy.MyFragment.*")))
       val symbolicExecutor = config.getSymbolicExecutor
       val query = CallinReturnNonNull(
-        "com.example.createdestroy.MyFragment",
-        "void lambda$onActivityCreated$1$MyFragment(java.lang.Object)",BounderUtil.lineForRegex(".*query1.*".r, src),
+        Signature("com.example.createdestroy.MyFragment",
+        "void lambda$onActivityCreated$1$MyFragment(java.lang.Object)"),BounderUtil.lineForRegex(".*query1.*".r, src),
         ".*getActivity.*")
 
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
@@ -1310,8 +1306,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
       implicit val om: OutputMode = config.outputMode
       val symbolicExecutor = config.getSymbolicExecutor
       val query = CallinReturnNonNull(
-        "com.example.createdestroy.MyFragment",
-        "void lambda$onActivityCreated$1$MyFragment(java.lang.Object)",43,
+        Signature("com.example.createdestroy.MyFragment",
+        "void lambda$onActivityCreated$1$MyFragment(java.lang.Object)"),43,
         ".*getActivity.*")
 
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
@@ -1435,8 +1431,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
           val symbolicExecutor = config.getSymbolicExecutor
           val line = BounderUtil.lineForRegex(".*query1.*".r, src)
           val query = CallinReturnNonNull(
-            "com.example.createdestroy.ExternalPlayerFragment",
-            "void call(java.lang.Object)", line,
+            Signature("com.example.createdestroy.ExternalPlayerFragment",
+            "void call(java.lang.Object)"), line,
             ".*getActivity.*")
 
 
@@ -1543,8 +1539,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
 
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
         val query = ReceiverNonNull(
-          "com.example.createdestroy.MyActivity",
-          "void call(java.lang.Object)", line,
+          Signature("com.example.createdestroy.MyActivity",
+          "void call(java.lang.Object)"), line,
           Some(".*toString.*"))
 
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
@@ -1622,8 +1618,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
           val symbolicExecutor = config.getSymbolicExecutor
           val line = BounderUtil.lineForRegex(".*query1.*".r, src)
           val query = ReceiverNonNull(
-            "com.example.createdestroy.RemoverActivity",
-            "void onClick(android.view.View)",
+            Signature("com.example.createdestroy.RemoverActivity",
+            "void onClick(android.view.View)"),
             line)
 
           val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
@@ -1703,8 +1699,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
 
       //line in call cannot throw npe since s is initialized
       // pre-line: -1 virtualinvoke $r1.<com.example.createdestroy.MyFragment: void lambda$onActivityCreated$0$MyFragment(rx.SingleSubscriber)>($r3)
-      val query2 = ReceiverNonNull("com.example.createdestroy.MyFragment",
-        "void lambda$onActivityCreated$0$MyFragment(rx.SingleSubscriber)",line,Some("toString"))
+      val query2 = ReceiverNonNull(Signature("com.example.createdestroy.MyFragment",
+        "void lambda$onActivityCreated$0$MyFragment(rx.SingleSubscriber)"),line,Some("toString"))
 
       val allClasses = Scene.v().getClasses.asScala.filter(c =>
         (c.getJavaPackageName.contains("rx") && c.getShortName.contains("Single")) || c.getJavaPackageName.contains("com.example") || c.getShortName.contains("CgEntryPoint___________a____b"))
@@ -1777,8 +1773,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
       // line in call is reachable
       val symbolicExecutor = config.getSymbolicExecutor
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
-      val query = Reachable("com.example.createdestroy.MyFragment",
-        "void call(java.lang.Object)",line)
+      val query = Reachable(Signature("com.example.createdestroy.MyFragment",
+        "void call(java.lang.Object)"),line)
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
       val fname = s"UnreachableLocation"
       // prettyPrinting.dumpDebugInfo(result, fname)
@@ -1789,8 +1785,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
       assert(interpretedResult == Witnessed)
 
       //line in call cannot throw npe since s is initialized
-      val query2 = ReceiverNonNull("com.example.createdestroy.MyFragment",
-        "void call(java.lang.Object)",line)
+      val query2 = ReceiverNonNull(Signature("com.example.createdestroy.MyFragment",
+        "void call(java.lang.Object)"),line)
       val result2 = symbolicExecutor.run(query2).flatMap(a => a.terminals)
       val interpretedResult2 = BounderUtil.interpretResult(result2,QueryFinished)
       assert(interpretedResult2 == Proven)
@@ -1854,8 +1850,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
       implicit val om = config.outputMode
       val symbolicExecutor = config.getSymbolicExecutor
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
-      val query = Reachable("com.example.createdestroy.MyFragment",
-        "void call(java.lang.Object)",line)
+      val query = Reachable(Signature("com.example.createdestroy.MyFragment",
+        "void call(java.lang.Object)"),line)
       //      val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
       //        "com.example.createdestroy.myfragment",
       //        "void call(java.lang.Object)", line,
@@ -1930,8 +1926,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
       implicit val om = config.outputMode
       val symbolicExecutor = config.getSymbolicExecutor
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
-      val query = Reachable("com.example.createdestroy.MyFragment",
-        "void call(java.lang.Object)",line)
+      val query = Reachable(Signature("com.example.createdestroy.MyFragment",
+        "void call(java.lang.Object)"),line)
 //      val query = Qry.makeCallinReturnNull(symbolicExecutor, w,
 //        "com.example.createdestroy.myfragment",
 //        "void call(java.lang.Object)", line,
@@ -1982,8 +1978,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       val symbolicExecutor = config.getSymbolicExecutor
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
-      val query = ReceiverNonNull("com.example.createdestroy.MyActivity",
-        "void onPause()",line)
+      val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+        "void onPause()"),line)
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
       //      prettyPrinting.dumpDebugInfo(result, "missingCb")
       assert(result.nonEmpty)
@@ -2030,8 +2026,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
           component = Some(List("com.example.createdestroy.MyActivity.*")))
         val symbolicExecutor = config.getSymbolicExecutor
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
-        val pauseReachable = Reachable("com.example.createdestroy.MyActivity",
-          "void onPause()", line)
+        val pauseReachable = Reachable(Signature("com.example.createdestroy.MyActivity",
+          "void onPause()"), line)
 
         val resultReachable = symbolicExecutor.run(pauseReachable)
           .flatMap(a => a.terminals)
@@ -2040,8 +2036,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
         BounderUtil.throwIfStackTrace(resultReachable)
         assert(BounderUtil.interpretResult(resultReachable, QueryFinished) == Witnessed)
 
-        val npe = ReceiverNonNull("com.example.createdestroy.MyActivity",
-          "void onPause()", line, Some(".*toString.*"))
+        val npe = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+          "void onPause()"), line, Some(".*toString.*"))
 
         val res2 = symbolicExecutor.run(npe).flatMap(a => a.terminals)
         //prettyPrinting.dumpDebugInfo(res2, "staticNPE")
@@ -2101,8 +2097,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
         val symbolicExecutor = config.getSymbolicExecutor
 
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
-        val reach = Reachable("com.example.createdestroy.MyActivity$1",
-          "void onClick(android.view.View)", line)
+        val reach = Reachable(Signature("com.example.createdestroy.MyActivity$1",
+          "void onClick(android.view.View)"), line)
         val nullReachRes = symbolicExecutor.run(reach,dbMode).flatMap(a => a.terminals)
 //        prettyPrinting.dumpDebugInfo(nullReachRes, "clickClickReach")
         BounderUtil.throwIfStackTrace(nullReachRes)
@@ -2157,8 +2153,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
           component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode)
         val symbolicExecutor = config.getSymbolicExecutor
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
-        val clickMethodReachable = Reachable("com.example.createdestroy.MyActivity$1",
-          "void onClick(android.view.View)", line)
+        val clickMethodReachable = Reachable(Signature("com.example.createdestroy.MyActivity$1",
+          "void onClick(android.view.View)"), line)
 
         val resultClickReachable = symbolicExecutor.run(clickMethodReachable, dbMode)
           .flatMap(a => a.terminals)
@@ -2167,8 +2163,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
         BounderUtil.throwIfStackTrace(resultClickReachable)
         assert(BounderUtil.interpretResult(resultClickReachable, QueryFinished) == Witnessed)
 
-        val nullUnreach = ReceiverNonNull("com.example.createdestroy.MyActivity$1",
-          "void onClick(android.view.View)",line, Some(".*toString.*"))
+        val nullUnreach = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity$1",
+          "void onClick(android.view.View)"),line, Some(".*toString.*"))
         val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals) // TODO: Slow
         // prettyPrinting.dumpDebugInfo(nullUnreachRes, "clickNullUnreachable")
         println("Witness Null")
@@ -2244,8 +2240,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
           component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode)
         val symbolicExecutor = config.getSymbolicExecutor
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
-        val clickMethodReachable = Reachable("com.example.createdestroy.MyActivity$1",
-          "void onClick(android.view.View)", line)
+        val clickMethodReachable = Reachable(Signature("com.example.createdestroy.MyActivity$1",
+          "void onClick(android.view.View)"), line)
 
         val resultClickReachable = symbolicExecutor.run(clickMethodReachable, dbMode)
           .flatMap(a => a.terminals)
@@ -2254,8 +2250,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
         BounderUtil.throwIfStackTrace(resultClickReachable)
         assert(BounderUtil.interpretResult(resultClickReachable, QueryFinished) == Witnessed)
 
-        val nullUnreach = ReceiverNonNull("com.example.createdestroy.MyActivity$1",
-          "void onClick(android.view.View)",line, Some(".*toString.*"))
+        val nullUnreach = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity$1",
+          "void onClick(android.view.View)"),line, Some(".*toString.*"))
         val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals) // TODO: Slow
         // prettyPrinting.dumpDebugInfo(nullUnreachRes, "clickNullUnreachable")
         println("Witness Null")
@@ -2353,8 +2349,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
             //            assert(BounderUtil.interpretResult(resultClickReachable, QueryFinished) == Witnessed)
 
 
-            val nullUnreach = ReceiverNonNull("com.example.createdestroy.MyActivity$1",
-              "void onClick(android.view.View)", line, Some(".*toString.*"))
+            val nullUnreach = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity$1",
+              "void onClick(android.view.View)"), line, Some(".*toString.*"))
             val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
             // prettyPrinting.dumpDebugInfo(nullUnreachRes, "finishNullUnreachRes")
             assert(nullUnreachRes.nonEmpty)
@@ -2410,8 +2406,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       val symbolicExecutor = config.getSymbolicExecutor
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
-      val runMethodReachable = Reachable("com.example.createdestroy.MyActivity$1",
-        "void run()", line)
+      val runMethodReachable = Reachable(Signature("com.example.createdestroy.MyActivity$1",
+        "void run()"), line)
 
       val resultRunMethodReachable = symbolicExecutor.run(runMethodReachable)
         .flatMap(a => a.terminals)
@@ -2488,8 +2484,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
 
         // Null deref onPause unreachable
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
-        val nullUnreach = ReceiverNonNull("com.example.createdestroy.MyActivity",
-          "void onPause()", line, Some(".*toString.*"))
+        val nullUnreach = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+          "void onPause()"), line, Some(".*toString.*"))
         val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
         // prettyPrinting.dumpDebugInfo(nullUnreachRes, s"ResumedPaused_NPE_Unreach")
         assert(nullUnreachRes.nonEmpty)
@@ -2498,7 +2494,7 @@ class AbstractInterpreterTest extends AnyFunSuite {
         assert(BounderUtil.interpretResult(nullUnreachRes, QueryFinished) == Proven)
 
         // Pause reachable
-        val pauseReachQ = Reachable("com.example.createdestroy.MyActivity", "void onPause()", line)
+        val pauseReachQ = Reachable(Signature("com.example.createdestroy.MyActivity", "void onPause()"), line)
         val pauseReachRes = symbolicExecutor.run(pauseReachQ, dbMode).flatMap(a => a.terminals)
         assert(pauseReachRes.nonEmpty)
         BounderUtil.throwIfStackTrace(pauseReachRes)
@@ -2506,8 +2502,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
 
         // Null deref onResume unreachable
         val line2 = BounderUtil.lineForRegex(".*query2.*".r, src)
-        val nullUnreach2 = ReceiverNonNull("com.example.createdestroy.MyActivity",
-          "void onResume()", line2, Some(".*toString.*"))
+        val nullUnreach2 = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+          "void onResume()"), line2, Some(".*toString.*"))
         val nullUnreachRes2 = symbolicExecutor.run(nullUnreach2, dbMode).flatMap(a => a.terminals)
         // prettyPrinting.dumpDebugInfo(nullUnreachRes2, s"ResumedPaused_NPE_Unreach2")
         assert(nullUnreachRes2.nonEmpty)
@@ -2562,8 +2558,8 @@ class AbstractInterpreterTest extends AnyFunSuite {
         component = Some(List("com.example.createdestroy.MyActivity.*")))
       val symbolicExecutor = config.getSymbolicExecutor
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
-      val runMethodReachable = Reachable("com.example.createdestroy.MyActivity$1",
-        "void run()", line)
+      val runMethodReachable = Reachable(Signature("com.example.createdestroy.MyActivity$1",
+        "void run()"), line)
 
       val resultRunMethodReachable = symbolicExecutor.run(runMethodReachable)
         .flatMap(a => a.terminals)

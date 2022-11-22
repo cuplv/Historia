@@ -1,8 +1,9 @@
 package edu.colorado.plv.bounder.ir
 import edu.colorado.plv.bounder.ir.Trace.step
-import edu.colorado.plv.bounder.lifestate.LifeState.{LSPred, LSTrue}
+import edu.colorado.plv.bounder.lifestate.LifeState.{LSPred, LSTrue, Signature}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
-import edu.colorado.plv.bounder.symbolicexecutor.state.{NullVal, PureExpr, StateFormula, TVal}
+import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
+import edu.colorado.plv.bounder.symbolicexecutor.state.PureExpr
 import upickle.default.{macroRW, ReadWriter => RW}
 
 
@@ -11,10 +12,13 @@ case class Trace(t:List[TMessage]) extends AnyVal{
 }
 object Trace {
   def empty = Trace(Nil)
-  def step(msg:TMessage, pred:LSPred):LSPred = {
-    ???
+  def step(msg:TraceElement, pred:LSPred, space:SpecSpace)(implicit cha:ClassHierarchyConstraints):LSPred = msg match {
+    case TCLInit(cl) => ???
+    case TNew(v, types) => ???
+    case msg:TMessage =>
+      val matchedMsgs = space.allI.filter(m => m.contains(msg.mType,msg.fwkSig))
+      ???
   }
-
 }
 
 sealed trait ApproxDir
@@ -39,11 +43,11 @@ case class ConcGraph(tgt:TMessage, edges:Map[TMessage,Set[TMessage]]){
    * @param specSpace
    * @return (initial nodes, nodes that may be extended)
    */
-  def filter(specSpace:SpecSpace, approxDir: ApproxDir):Set[(TMessage, LSPred)] = {
+  def filter(specSpace:SpecSpace)(implicit cha:ClassHierarchyConstraints):Set[(TMessage, LSPred)] = {
 
     def iFilter(workList:List[(TMessage,LSPred)], acc:Set[(TMessage,LSPred)]):Set[(TMessage,LSPred)] = {
       val (cMessage, cPred) = workList.head
-      val prev = step(cMessage, cPred)
+      val prev = step(cMessage, cPred, specSpace)
       //TODO========
 
       ???
@@ -83,20 +87,20 @@ case object CBExit extends MessageType {
 }
 
 sealed trait Method {
-  def name : String
-  def fwkSig : Option[(String,String)]
+  def sig:Signature
+  def fwkSig:Option[Signature]
 }
 object Method{
   implicit var rw:RW[Method] = RW.merge(AppMethod.rw, FwkMethod.rw)
 }
-case class AppMethod(name: String, declaringType: String, fwkOverride : Option[FwkMethod]) extends Method{
-  override def fwkSig: Option[(String, String)] = fwkOverride.flatMap(_.fwkSig)
+case class AppMethod(sig:Signature, fwkOverride : Option[FwkMethod]) extends Method{
+  override def fwkSig: Option[Signature] = fwkOverride.flatMap(_.fwkSig)
 }
 object AppMethod{
   implicit var rw:RW[AppMethod] = macroRW
 }
-case class FwkMethod(name: String, declaringType : String) extends Method{
-  override def fwkSig: Option[(String, String)] = Some(name,declaringType)
+case class FwkMethod(sig:Signature) extends Method{
+  override def fwkSig: Option[Signature] = Some(sig)
 }
 object FwkMethod{
   implicit var rw:RW[FwkMethod] = macroRW
@@ -117,10 +121,14 @@ case class TNew(v:PureExpr, types:TypeSet) extends TraceElement
 object TNew{
   implicit var rw:RW[TNew] = macroRW
 }
-case class TMessage(mType : MessageType, method: Method, args: List[PureExpr]) extends TraceElement {
-  def fwkSig: Option[(String, String)] = method.fwkSig
+case class TMessage(mType : MessageType, method: Method, args: List[PureExpr],
+                    receiverType:String = "java.lang.Object") extends TraceElement {
 
-  override def toString: String = s"$mType ${method.name}( ${args.mkString(",")} )"
+  def fwkSig: Signature = method.fwkSig.getOrElse{
+    throw new IllegalArgumentException(s"Trace message must be a callback or callin, found: $method")
+  }
+
+  override def toString: String = s"$mType ${method.sig.methodSignature}( ${args.mkString(",")} )"
 }
 object TMessage{
   implicit var rw:RW[TMessage] = macroRW

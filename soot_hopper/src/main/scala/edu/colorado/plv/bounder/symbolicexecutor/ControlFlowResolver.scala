@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
-import edu.colorado.plv.bounder.lifestate.LifeState.AbsMsg
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, Signature}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, FieldPtEdge, PureVar, State, StaticPtEdge}
 import scalaz.Memo
@@ -65,7 +65,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   private val specSpace:SpecSpace = config.specSpace
 
   def callbackInComponent(loc: Loc): Boolean = loc match {
-    case CallbackMethodReturn(_, _, methodLoc, _) =>
+    case CallbackMethodReturn(_, methodLoc, _) =>
       val className = methodLoc.classType
       //componentR.forall(_.exists(r => r.matches(className)))
       componentR match{
@@ -108,8 +108,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
           Some(oloc)
         else
           if(includeCallin) Some(oloc) else None
-      case CallinMethodReturn(fmwClazz, fmwName) if includeCallin =>
-        val res = wrapper.findMethodLoc(fmwClazz,fmwName)
+      case CallinMethodReturn(sig) if includeCallin =>
+        val res = wrapper.findMethodLoc(sig)
         res
       case _ =>
         None
@@ -249,14 +249,14 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     // Find any call that matches a spec in the abstract trace
     val relI: Set[AbsMsg] = calls.flatMap { call =>
       Set(CIEnter, CIExit).flatMap{ cdir =>
-        state.findIFromCurrent(cdir, (call.fmwClazz, call.fmwName), specSpace)
+        state.findIFromCurrent(cdir,call.sig, specSpace)
       }
     }
     //Check if method call can alias all params
 
     def relIExistsForCmd(tgt: List[Option[RVal]],inv:Invoke)(implicit ch:ClassHierarchyConstraints):Boolean = {
       val relIHere: Set[AbsMsg] = relI.filter{ i =>
-        i.signatures.matches((inv.targetClass, inv.targetMethod))
+        i.signatures.matches(inv.targetSignature)
       }
 //      relIHere.exists(v => v match{
 //        case (_,lsPar) =>
@@ -318,10 +318,10 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   val heapNamesModified:MethodLoc => Set[String] = Memo.mutableHashMapMemo{iHeapNamesModified}
   def iCallinNames(m:MethodLoc):Set[String] = {
     def modifiedNames(c: CmdWrapper): Option[String] = c match {
-      case AssignCmd(_,i : Invoke, _) => Some(i.targetMethod)
+      case AssignCmd(_,i : Invoke, _) => Some(i.targetSignature.methodSignature)
       case _: AssignCmd => None
       case _: ReturnCmd => None
-      case InvokeCmd(i,_) => Some(i.targetMethod)
+      case InvokeCmd(i,_) => Some(i.targetSignature.methodSignature)
       case _: If => None
       case _: NopCmd => None
       case _: ThrowCmd => None
@@ -419,7 +419,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   }
 
   def existsIAlias(locals: List[Option[RVal]], m:MethodLoc,
-                   dir: MessageType, sig: (String, String), state: State): Boolean = {
+                   dir: MessageType, sig: Signature, state: State): Boolean = {
 //    val aliasPos = TransferFunctions.relevantAliases(state, dir, sig)
 //    aliasPos.exists { aliasPo =>
 //      (aliasPo zip locals).forall {
@@ -450,8 +450,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   def relevantMethod(loc: Loc, state: State): RelevanceRelation = loc match {
     case InternalMethodReturn(_, _, m) =>
       relevantMethodBody(m,state)
-    case CallinMethodReturn(_, _) => RelevantMethod
-    case cr@CallbackMethodReturn(clazz, name, rloc, Some(retLine)) => {
+    case _:CallinMethodReturn => RelevantMethod
+    case cr@CallbackMethodReturn(sig, rloc, Some(retLine)) => {
       val retVars =
         if (rloc.isStatic)
           wrapper.makeMethodRetuns(rloc).map { retloc =>
@@ -462,8 +462,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
           } else List(None)
       val iExists = retVars.exists { retVar =>
         val locals: List[Option[RVal]] = retVar :: rloc.getArgs
-        val res = existsIAlias(locals,cr.containingMethod.get, CBExit, (clazz, name), state) || //TODO: is this used in relevantMethodBody?======
-          existsIAlias(None :: locals.tail,cr.containingMethod.get, CBEnter, (clazz, name), state)
+        val res = existsIAlias(locals,cr.containingMethod.get, CBExit, sig, state) || //TODO: is this used in relevantMethodBody?======
+          existsIAlias(None :: locals.tail,cr.containingMethod.get, CBEnter, sig, state)
         res
       }
       val relevantBody = relevantMethodBody(rloc, state) match{
@@ -481,21 +481,21 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   // Callins are equivalent if they match the same set of I predicates in the abstract trace
   def mergeEquivalentCallins(callins: Set[Loc], state: State): Set[Loc] ={
     val groups: Map[Object, Set[Loc]] = callins.groupBy{
-      case CallinMethodReturn(fc,fn) =>
-        specSpace.findIFromCurrent(CIExit,(fc,fn))
+      case CallinMethodReturn(sig) =>
+        specSpace.findIFromCurrent(CIExit,sig)
       case i => i
     }
     val out:Set[Loc] = groups.keySet.map{k =>
       val classesToGroup = groups(k).map{
-        case CallinMethodReturn(fmwClazz,_) => fmwClazz
+        case CallinMethodReturn(sig) => sig.base
         case InternalMethodReturn(clazz,_, _) => clazz
         case SkippedInternalMethodReturn(clazz, name, rel, loc) => clazz
         case v =>
           throw new IllegalStateException(s"${v}")
       }
       groups(k).collectFirst{
-        case CallinMethodReturn(_,name) =>
-          GroupedCallinMethodReturn(classesToGroup,name)
+        case CallinMethodReturn(sig) =>
+          GroupedCallinMethodReturn(classesToGroup,sig.methodSignature)
         case imr@InternalMethodReturn(_,_,_) => imr
         case imr@SkippedInternalMethodReturn(_, _, _, _) => imr
       }.getOrElse(throw new IllegalStateException())
@@ -571,17 +571,17 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     }
     case (SkippedInternalMethodReturn(clazz,name,_,loc),_) =>
       List(SkippedInternalMethodInvoke(clazz,name,loc))
-    case (CallinMethodReturn(clazz, name),_) =>
+    case (CallinMethodReturn(sig),_) =>
       // TODO: nested callbacks not currently handled
-      List(CallinMethodInvoke(clazz,name))
+      List(CallinMethodInvoke(sig))
     case (GroupedCallinMethodReturn(classes, name),_) =>
       // TODO: nested callbacks not currently handled
       List(GroupedCallinMethodInvoke(classes, name))
-    case (CallinMethodInvoke(_, _), CallStackFrame(_,Some(returnLoc@AppLoc(_,_,true)),_)::_) =>
+    case (_:CallinMethodInvoke, CallStackFrame(_,Some(returnLoc@AppLoc(_,_,true)),_)::_) =>
       List(returnLoc)
     case (GroupedCallinMethodInvoke(_,_),CallStackFrame(_,Some(returnLoc@AppLoc(_,_,true)),_)::_) =>
       List(returnLoc)
-    case (CallbackMethodInvoke(_, _, _), _) =>
+    case (_:CallbackMethodInvoke, _) =>
       val callbacks = resolver.getCallbacks
       val res: Seq[Loc] = callbacks.flatMap(callback => {
         val locCb = wrapper.makeMethodRetuns(callback)
@@ -596,16 +596,16 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       }}
       //TODO:Currently, all callbacks are relevant, may cause performance issues
       res2
-    case (CallbackMethodReturn(_,_, loc, Some(line)),_) =>
+    case (CallbackMethodReturn(_, loc, Some(line)),_) =>
       AppLoc(loc, line, isPre = false)::Nil
-    case (CallinMethodInvoke(fmwClazz, fmwName),Nil) =>
+    case (CallinMethodInvoke(sig),Nil) =>
       //TODO: these two cases for callin with empty stack only seem to be used by SootUtilsTest
-      val m: Iterable[MethodLoc] = wrapper.findMethodLoc(fmwClazz, fmwName)
+      val m: Iterable[MethodLoc] = wrapper.findMethodLoc(sig)
       assert(m.toList.size < 2, "Wrong number of methods found")
       m.flatMap(m2 =>
         wrapper.appCallSites(m2,resolver).map(v => v.copy(isPre = true)))
     case (GroupedCallinMethodInvoke(fmwClazzs, fmwName),Nil) =>
-      val m: Iterable[MethodLoc] = fmwClazzs.flatMap(c => wrapper.findMethodLoc(c, fmwName))
+      val m: Iterable[MethodLoc] = fmwClazzs.flatMap(c => wrapper.findMethodLoc(Signature(c, fmwName)))
       assert(m.toList.size < 2, "Wrong number of methods found")
       m.flatMap(m2 =>
         wrapper.appCallSites(m2,resolver).map(v => v.copy(isPre = true)))

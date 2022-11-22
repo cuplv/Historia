@@ -21,7 +21,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
   val t_create = SpecSignatures.RxJava_create_exit
   val a_call = SpecSignatures.RxJava_call_entry.copy(lsVars = TopVal::a::Nil)
 
-  ignore("Encode Node Reachability motivating example - ConcGraph"){
+  test("Encode Node Reachability motivating example - ConcGraph"){
     implicit val ord = new DummyOrd
     implicit val outputMode = MemoryOutputMode
     //TODO: may need to declare vars distinct
@@ -29,7 +29,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
       targetIze(List(a_onCreate, t_create, s_a_subscribe,a_onDestroy, s_unsubscribe, a_call)))
     val reachSeq = toConcGraph(
       targetIze(List(a_onCreate, t_create, s_a_subscribe,a_onDestroy, a_call)))
-    val gen = new EnumModelGenerator(cha)
+    val gen = new EnumModelGenerator()
     val spec = new SpecSpace(Set(
       LSSpec(a::Nil,Nil,  LSAnyPred , a_call)
     ), matcherSpace = Set())
@@ -47,7 +47,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
       targetIze(List(a_onCreate, t_create, s_a_subscribe,a_onDestroy, s_unsubscribe, a_call)))
     val reachSeq = witTreeFromMsgList(
       targetIze(List(a_onCreate, t_create, s_a_subscribe,a_onDestroy, a_call)))
-    val gen = new EnumModelGenerator(cha)
+    val gen = new EnumModelGenerator()
     val spec = new SpecSpace(Set(
       LSSpec(a::Nil,Nil,  LSAnyPred , a_call)
     ), matcherSpace = Set())

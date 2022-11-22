@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.ir.{CIEnter, CIExit, JimpleFlowdroidWrapper}
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, Signature, SubClassMatcher}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, DefaultAppCodeResolver, SparkCallGraph, SymbolicExecutorConfig, TransferFunctions}
 import org.scalatest.funsuite.AnyFunSuite
@@ -26,7 +26,7 @@ class SpecTest extends AnyFunSuite {
 //    matching.nonEmpty
     Scene.v().getClasses.asScala.exists{ c =>
       c.getMethods.asScala.exists{m =>
-        i.signatures.matches((c.getName, m.getSubSignature))
+        i.signatures.matches(Signature(c.getName, m.getSubSignature))
       }
     }
   }
@@ -51,9 +51,9 @@ class SpecTest extends AnyFunSuite {
       clMap.keySet.zipWithIndex.map{case (k,v) => v->k }.toMap)
     val i1 = LifeState.parseI("""I(ci [_, v, _] foobar foo(java.lang.List, _ ) v<:rx.Single )""")
     assert(i1.mt == CIEnter)
-    assert(i1.signatures.matches(("rx.Single","foobar foo(java.lang.List, int)")))
-    assert(i1.signatures.matches(("otherthing","foobar foo(java.lang.List, Bundle)")))
-    assert(!i1.signatures.matches(("MyRunnable","foobar foo(java.lang.List, Bundle)")))
+    assert(i1.signatures.matches(Signature("rx.Single","foobar foo(java.lang.List, int)")))
+    assert(i1.signatures.matches(Signature("otherthing","foobar foo(java.lang.List, Bundle)")))
+    assert(!i1.signatures.matches(Signature("MyRunnable","foobar foo(java.lang.List, Bundle)")))
     val i2 = LifeState.parseI("I(ciret [_,v,_] rx.Subscription subscribe(rx.functions.Action1) v<:rx.Single)")
     assert(i2.mt == CIExit)
     val i3 = LifeState.parseI("I(ciret [_,v,_] rx.Subscription\n subscribe(rx.functions.Action1) v<:rx.Single)")

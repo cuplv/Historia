@@ -1,11 +1,11 @@
 package edu.colorado.plv.bounder.ir
 
 import edu.colorado.plv.bounder.BounderSetupApplication
-import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NS}
+import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NS, Signature}
 import edu.colorado.plv.bounder.lifestate.{SpecSignatures, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state._
-import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, ControlFlowResolver, DefaultAppCodeResolver, SparkCallGraph, AbstractInterpreter, SymbolicExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, CHACallGraph, ControlFlowResolver, DefaultAppCodeResolver, SparkCallGraph, SymbolicExecutorConfig, TransferFunctions}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
 
@@ -84,8 +84,7 @@ class SootUtilsTest extends AnyFunSuite {
       stepLimit = 50, w, new SpecSpace(Set(testSpec)), printProgress = true, z3Timeout = Some(30))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = Qry.makeReceiverNonNull(symbolicExecutor,
-      "com.example.test_interproc_2.MainActivity",
-      "void onPause()", 27)
+      Signature("com.example.test_interproc_2.MainActivity", "void onPause()"), 27)
     val l = query.find {
       case Qry(s, _,Live) if s.callStack.head.exitLoc.isInstanceOf[CallbackMethodReturn] => true
       case _ => false
@@ -93,7 +92,7 @@ class SootUtilsTest extends AnyFunSuite {
 
 
     val entryloc = iterPredUntil(Set(l), symbolicExecutor.controlFlowResolver, {
-      case CallbackMethodInvoke(_, _, _) => true
+      case _:CallbackMethodInvoke => true
       case l => false
     }, State.topState, 12)
     assert(entryloc.isDefined)
@@ -101,7 +100,7 @@ class SootUtilsTest extends AnyFunSuite {
     val op_x = SpecSignatures.Activity_onPause_entry.copy(lsVars = TopVal::NamedPureVar("b")::Nil)
     val tr = AbstractTrace(op_x::Nil)
     val retPause = iterPredUntil(Set(l), symbolicExecutor.controlFlowResolver, {
-      case CallbackMethodReturn(_, name, _, _) if name.contains("onPause") => true
+      case CallbackMethodReturn(sig, _, _) if sig.methodSignature.contains("onPause") => true
       case _ => false
     }, State.topState.copy(sf =
       State.topState.sf.copy(traceAbstraction = tr)), 20)
@@ -119,8 +118,7 @@ class SootUtilsTest extends AnyFunSuite {
       stepLimit = 50, w, new SpecSpace(Set(testSpec)), printProgress = true, z3Timeout = Some(30))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = Qry.makeReach(symbolicExecutor,
-      "com.example.test_interproc_2.MainActivity",
-      "void onCreate(android.os.Bundle)", 16)
+      Signature("com.example.test_interproc_2.MainActivity", "void onCreate(android.os.Bundle)"), 16)
 
     val l = query.find {
       case Qry(s, _,Live) if s.callStack.head.exitLoc.isInstanceOf[CallbackMethodReturn] => true
@@ -128,8 +126,8 @@ class SootUtilsTest extends AnyFunSuite {
     }.get.loc
 
     val entryloc = iterPredUntil(Set(l), symbolicExecutor.controlFlowResolver, {
-      case CallbackMethodInvoke(_, _, _) => true
-      case l@AppLoc(a, b, false) =>
+      case _:CallbackMethodInvoke => true
+      case l@AppLoc(_, _, false) =>
         val cmd = w.cmdAtLocation(l)
         false
       case l => false

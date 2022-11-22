@@ -1,4 +1,5 @@
 package edu.colorado.plv.bounder.ir
+import edu.colorado.plv.bounder.lifestate.LifeState.Signature
 import edu.colorado.plv.bounder.symbolicexecutor.RelevanceRelation
 import upickle.default.{read, write}
 import upickle.default.{macroRW, ReadWriter => RW}
@@ -104,10 +105,10 @@ object AppLoc{
   implicit val rw:RW[AppLoc] = macroRW
 }
 
-case class CallinMethodReturn(fmwClazz : String, fmwName:String) extends Loc {
-  override def toString:String = "[CI Ret] " + fmwName
+case class CallinMethodReturn(sig:Signature) extends Loc {
+  override def toString:String = "[CI Ret] " + sig.methodSignature
 
-  override def msgSig: Option[String] = Some(s"[CI Ret] ${fmwClazz} ${fmwName}" )
+  override def msgSig: Option[String] = Some(s"[CI Ret] ${sig.base} ${sig.methodSignature}" )
 
   override def isEntry: Option[Boolean] = Some(false)
   private lazy val iser= write(this)
@@ -117,10 +118,10 @@ object CallinMethodReturn{
   implicit val rw:RW[CallinMethodReturn] = macroRW
 }
 
-case class CallinMethodInvoke(fmwClazz : String, fmwName:String) extends Loc {
-  override def toString:String = "[CI Inv] " + fmwName
+case class CallinMethodInvoke(sig: Signature) extends Loc {
+  override def toString:String = "[CI Inv] " + sig.methodSignature
 
-  override def msgSig: Option[String] = Some(s"[CI Inv] ${fmwClazz} ${fmwName}")
+  override def msgSig: Option[String] = Some(s"[CI Inv] ${sig.base} ${sig.methodSignature}")
 
   override def isEntry: Option[Boolean] = Some(true)
   private lazy val iser= write(this)
@@ -155,9 +156,9 @@ object GroupedCallinMethodReturn{
   implicit val rw:RW[GroupedCallinMethodReturn] = macroRW
 }
 
-case class CallbackMethodInvoke(tgtClazz: String, fmwName: String, loc:MethodLoc) extends Loc {
-  override def toString:String = s"[CB Inv] $tgtClazz $fmwName"
-  override def msgSig: Option[String] = Some(s"[CB Inv] ${tgtClazz} ${fmwName}")
+case class CallbackMethodInvoke(sig:Signature, loc:MethodLoc) extends Loc {
+  override def toString:String = s"[CB Inv] ${sig.base} ${sig.methodSignature}"
+  override def msgSig: Option[String] = Some(s"[CB Inv] ${sig.base} ${sig.methodSignature}")
 
   override def isEntry: Option[Boolean] = Some(true)
   private lazy val iser= write(this)
@@ -168,10 +169,10 @@ object CallbackMethodInvoke{
 }
 
 // post state of return on callback
-case class CallbackMethodReturn(tgtClazz: String, fmwName:String, loc:MethodLoc, line:Option[LineLoc]) extends Loc {
+case class CallbackMethodReturn(sig:Signature, loc:MethodLoc, line:Option[LineLoc]) extends Loc {
   if( line.isDefined && !line.get.isInstanceOf[SerializedIRLineLoc])
     assert(line.get.containingMethod == loc)
-  override def toString:String = s"[CB Ret] ${tgtClazz} $fmwName"
+  override def toString:String = s"[CB Ret] ${sig.base} ${sig.methodSignature}"
   override def msgSig: Option[String] = Some(s"")
 
   override def isEntry: Option[Boolean] = Some(false)

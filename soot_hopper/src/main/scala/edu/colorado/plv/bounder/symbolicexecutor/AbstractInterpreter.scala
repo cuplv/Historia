@@ -63,8 +63,8 @@ case class SymbolicExecutorConfig[M,C](stepLimit: Int,
 
 class LexicalStackThenTopo[M,C](w:IRWrapper[M,C]) extends OrdCount{
   override def delta(current: Qry): Int = current.loc match {
-    case CallbackMethodInvoke(_, _, _) => 1
-    case CallbackMethodReturn(_, _, _, _) => 1
+    case _:CallbackMethodInvoke => 1
+    case _:CallbackMethodReturn => 1
     case _ => 0
   }
   private def compareLocAtSameStack(l1:Loc, l2:Loc):Int = (l1,l2) match {
@@ -158,7 +158,7 @@ class AbstractInterpreter[M,C](config: SymbolicExecutorConfig[M,C]) {
           db.writeMethod(m,callbacks.contains(m))
           val directCalls = controlFlowResolver.directCallsGraph(m).map{
             case InternalMethodReturn(clazz,name,m) => (name,clazz,false)
-            case CallinMethodReturn(clazz,name) => (name,clazz,true)
+            case CallinMethodReturn(sig) => (sig.methodSignature,sig.base,true)
             case _ => throw new IllegalStateException()
           }
           directCalls.foreach{callee => db.writeCallEdge(m.simpleName,m.classType, callee._1,callee._2,callee._3)}
@@ -263,13 +263,13 @@ class AbstractInterpreter[M,C](config: SymbolicExecutorConfig[M,C]) {
           case If(_,_,_) => Some((IfGroup(l),groupStack,pn.ordDepth))
           case _ => None
         }
-      case InternalMethodInvoke(_, _, _) =>
+      case _:InternalMethodInvoke =>
         Some((retLoc,groupStack.tail,pn.ordDepth))
-      case CallinMethodInvoke(_, _) =>
+      case _:CallinMethodInvoke =>
         Some((retLoc,groupStack.tail,pn.ordDepth))
-      case GroupedCallinMethodInvoke(_, _) =>
+      case _:GroupedCallinMethodInvoke =>
         Some((retLoc,groupStack.tail,pn.ordDepth))
-      case SkippedInternalMethodInvoke(_, _, _) =>
+      case _:SkippedInternalMethodInvoke =>
         Some((retLoc,groupStack.tail,pn.ordDepth))
       case _ => None
     }

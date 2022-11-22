@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.lifestate.{LifeState, SpecAssignment, SpecSpace}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{IPathNode, OutputMode}
 
-class EnumModelGenerator(cha: ClassHierarchyConstraints) extends ModelGenerator(cha) {
+class EnumModelGenerator(implicit cha: ClassHierarchyConstraints) extends ModelGenerator(cha) {
 
 
 //  def mkTemporalFormula(pred: LSPred, approxDir: ApproxDir):LSPred = pred match {
@@ -44,7 +44,7 @@ class EnumModelGenerator(cha: ClassHierarchyConstraints) extends ModelGenerator(
   def learnRulesFromConcGraph(target:Set[ConcGraph], reachable:Set[ConcGraph], space:SpecSpace):Option[SpecSpace] = {
     def iLearn(target:Set[ConcGraph], reachable:Set[ConcGraph],
                worklist:List[SpecSpace], visited:Set[SpecSpace]): Option[SpecSpace]={
-      val over = target.map(c => c.filter(space, OverApprox))
+      val over = target.map(c => c.filter(space))
       ???
     }
     iLearn(target, reachable, List(space), Set())
