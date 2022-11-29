@@ -1577,8 +1577,8 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val i_bar_x = AbsMsg(CIEnter, Set(("bar","\\(\\)"),("bar2","\\(\\)")), x::Nil)
     val i_bar_y = AbsMsg(CIEnter, Set(("bar","\\(\\)"),("bar2","\\(\\)")), y::Nil)
     val trace = Trace(List(
-      TMessage(CIEnter, foo, TAddr(1)::Nil),
-      TMessage(CIEnter, bar, TAddr(1)::Nil)
+      TMessage(CIEnter, foo, ConcreteAddr(1)::Nil),
+      TMessage(CIEnter, bar, ConcreteAddr(1)::Nil)
     ))
 
     val ni_foo_x_bar_x = NS(i_foo_x, i_bar_x)
@@ -1660,7 +1660,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
       stateSolver.traceInAbstraction(
         st(AbstractTrace(i_foo_y::targetFoo_y::Nil),Map(y->pv1)),
         spec_NiFooBar,
-        Trace(TMessage(CIEnter, bar, TAddr(1)::Nil)::Nil)
+        Trace(TMessage(CIEnter, bar, ConcreteAddr(1)::Nil)::Nil)
       ).isDefined)
 
     // NI(x.foo(),x.bar()) |> x.foo() models @1.foo();@1.bar()
@@ -1706,7 +1706,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
       stateSolver.traceInAbstraction(
         st(AbstractTrace(targetFoo_a_b::Nil),Map(a->pv1,b->pv2)),
         spec_Foo_x_y,
-        trace = Trace(TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil)::Nil)
+        trace = Trace(TMessage(CIEnter, foo, ConcreteAddr(1)::ConcreteAddr(2)::Nil)::Nil)
       ).isDefined
     )
 
@@ -1720,8 +1720,8 @@ class StateSolverTest extends FixtureAnyFunSuite {
         st(AbstractTrace(targetFoo_a_b::Nil),Map(a->pv1,b->pv2)),
         spec_NotFoo_Bar_x_y,
         Trace(List(
-          TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil),
-          TMessage(CIEnter, bar, TAddr(1)::TAddr(2)::Nil)
+          TMessage(CIEnter, foo, ConcreteAddr(1)::ConcreteAddr(2)::Nil),
+          TMessage(CIEnter, bar, ConcreteAddr(1)::ConcreteAddr(2)::Nil)
         ))
       ).isEmpty
     )
@@ -1732,8 +1732,8 @@ class StateSolverTest extends FixtureAnyFunSuite {
         st(AbstractTrace(targetFoo_a_b::Nil),Map(a->pv1,b->pv2)),
         spec_NotFoo_Bar_x_y,
         Trace(List(
-          TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil),
-          TMessage(CIEnter, bar, TAddr(1)::TAddr(1)::Nil)
+          TMessage(CIEnter, foo, ConcreteAddr(1)::ConcreteAddr(2)::Nil),
+          TMessage(CIEnter, bar, ConcreteAddr(1)::ConcreteAddr(1)::Nil)
         ))
       ).isDefined
     )
@@ -1749,7 +1749,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
       stateSolver.traceInAbstraction(
         st(AbstractTrace(targetFoo_a_a::Nil),Map(a -> PureVar(1))),
         spec_Foo_y_y,
-        trace = Trace(TMessage(CIEnter, foo, TAddr(1)::TAddr(2)::Nil)::Nil),
+        trace = Trace(TMessage(CIEnter, foo, ConcreteAddr(1)::ConcreteAddr(2)::Nil)::Nil),
         debug = true
       ).isEmpty
     )
@@ -1759,7 +1759,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
       stateSolver.traceInAbstraction(
         st(AbstractTrace(targetFoo_a_b::Nil),Map(a->pv1, b->pv2)),
         spec_Foo_y_y,
-        trace = Trace(TMessage(CIEnter, foo, TAddr(2)::TAddr(2)::Nil)::Nil)
+        trace = Trace(TMessage(CIEnter, foo, ConcreteAddr(2)::ConcreteAddr(2)::Nil)::Nil)
       ).isDefined
     )
   }
@@ -1777,8 +1777,8 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val targetFoo_x_y = AbsMsg(CIExit, Set(("","targetFoo\\(\\)")), x::y::Nil)
     val targetFoo_a_b = AbsMsg(CIExit, Set(("","targetFoo\\(\\)")), a::b::Nil)
     val trace = Trace(List(
-      TMessage(CIEnter, foo, TAddr(1)::Nil),
-      TMessage(CIEnter, bar, TAddr(1)::Nil)
+      TMessage(CIEnter, foo, ConcreteAddr(1)::Nil),
+      TMessage(CIEnter, bar, ConcreteAddr(1)::Nil)
     ))
     val spec = new SpecSpace(Set(
       LSSpec(x::y::Nil, Nil, NS(i_foo_x, i_bar_x), targetFoo_x_y,

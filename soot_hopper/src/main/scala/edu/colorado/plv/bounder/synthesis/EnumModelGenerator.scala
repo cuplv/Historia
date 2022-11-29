@@ -1,5 +1,5 @@
 package edu.colorado.plv.bounder.synthesis
-import edu.colorado.plv.bounder.ir.{ConcGraph, OverApprox, TMessage}
+import edu.colorado.plv.bounder.ir.{CNode, ConcGraph, OverApprox, TMessage}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, LSFalse, LSPred, LSSpec, LSTrue, OAbsMsg}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecAssignment, SpecSpace}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, Z3StateSolver}
@@ -40,12 +40,47 @@ class EnumModelGenerator(implicit cha: ClassHierarchyConstraints) extends ModelG
   case class LearnSuccess(space:SpecSpace) extends LearnResult
   case class LearnCont(target:Set[(TMessage, LSPred)], reachable: Set[(TMessage, LSPred)]) extends LearnResult
 
+  def isTerminal(spec:SpecSpace):Boolean = {
+    ???
+  }
 
-  def learnRulesFromConcGraph(target:Set[ConcGraph], reachable:Set[ConcGraph], space:SpecSpace):Option[SpecSpace] = {
+  def step(rule:LSSpec):LSSpec = {
+    ???
+  }
+
+  def step(spec:SpecSpace):SpecSpace = {
+    ???
+  }
+
+  def learnRulesFromConcGraph(target:Set[ConcGraph], reachable:Set[ConcGraph], space:SpecSpace)
+                             (implicit cha:ClassHierarchyConstraints):Option[SpecSpace] = {
     def iLearn(target:Set[ConcGraph], reachable:Set[ConcGraph],
-               worklist:List[SpecSpace], visited:Set[SpecSpace]): Option[SpecSpace]={
-      val over = target.map(c => c.filter(space))
-      ???
+               workList:List[SpecSpace], visited:Set[SpecSpace]): Option[SpecSpace]={
+      if(workList.isEmpty)
+        return None
+      val currentSpace = workList.head
+      lazy val tgtLive:Boolean = target.exists{c =>
+        //TODO: skip if a path must exist to the target
+        val res: Set[(CNode, LSPred)] = c.filter(space)
+        ???
+      }
+      lazy val reachLive = reachable.exists{c =>
+        //TODO: skip if no path exists to a reachable location
+        val res = c.filter(space)
+        ???
+      }
+      if(tgtLive && reachLive) {
+        if(isTerminal(currentSpace))
+          Some(currentSpace)
+        else if(!visited.contains(currentSpace)) {
+          val nextSpace = step(currentSpace)
+          iLearn(target, reachable, nextSpace::workList.tail, visited + currentSpace)
+        }else{
+          ???
+        }
+      }else{
+        ???
+      }
     }
     iLearn(target, reachable, List(space), Set())
   }

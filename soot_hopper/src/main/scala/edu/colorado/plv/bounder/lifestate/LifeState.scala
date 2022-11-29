@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageTyp
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, CLInit, Exists, Forall, FreshRef, LSAnyPred, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, Signature}
 import edu.colorado.plv.bounder.solver.EncodingTools.Assign
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, ClassVal, CmpOp, Equals, NamedPureVar, NotEquals, NullVal, PureExpr, PureVal, PureVar, State, TVal, TopVal, TypeComp}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, BotVal, ClassVal, CmpOp, Equals, NamedPureVar, NotEquals, NullVal, PureExpr, PureVal, PureVar, State, ConcreteVal, TopVal, TypeComp}
 
 import scala.util.parsing.combinator._
 import upickle.default.{macroRW, ReadWriter => RW}
@@ -240,6 +240,10 @@ object LifeState {
   }
   object LSConstraint{
     def mk(v1:PureExpr, op:CmpOp, v2:PureExpr):LSPred = (v1,op,v2) match {
+      case (TopVal, _,_) => LSTrue
+      case (_,_,TopVal) => LSTrue
+      case (BotVal, _, _) => LSFalse
+      case (_, _, BotVal) => LSFalse
       case (v1:PureVal, Equals, v2:PureVal) if v1 == v2 => LSTrue
       case (v1:PureVal, Equals, v2:PureVal) if v1 != v2 => LSFalse
       case (v1:PureVal, NotEquals, v2:PureVal) if v1 != v2 => LSTrue
