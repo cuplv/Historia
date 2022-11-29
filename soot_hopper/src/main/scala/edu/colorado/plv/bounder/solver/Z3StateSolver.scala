@@ -7,7 +7,7 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{AppMethod, CBEnter, CBExit, CIEnter, CIExit, FwkMethod, TCLInit, TMessage, TNew, TraceElement, WitnessExplanation}
 import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, AnyAbsMsg, CLInit, FreshRef, OAbsMsg, Signature}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, BotVal, NullVal, PureExpr, PureVal, PureVar, State, TAddr, TVal, TopVal}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, BotVal, NullVal, PureExpr, PureVal, PureVar, State, ConcreteAddr, ConcreteVal, TopVal}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.immutable
@@ -435,17 +435,17 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     val pvValues: Map[Expr[UninterpretedSort], Int] = pvModelValues.values.toSet.zipWithIndex.toMap
     val constFn: FuncDecl[UninterpretedSort] = ctx.mkFuncDecl("constFn", addrSort, constSort)
     val constMap = messageTranslator.getConstMap()
-    val pvv: PureVar => TVal = pvi => {
+    val pvv: PureVar => ConcreteVal = pvi => {
       val pv = pvModelValues(pvi)
       val isNull = constMap.contains(NullVal) && model.eval(mkEq(constFn.apply(pv),
         constMap(NullVal)).asInstanceOf[Expr[UninterpretedSort]], true).isTrue
       if(isNull)
         NullVal
       else
-        TAddr(pvValues(pv))
+        ConcreteAddr(pvValues(pv))
     }
 
-    val pmv: PureExpr => TVal = {
+    val pmv: PureExpr => ConcreteVal = {
       case p:PureVar => pvv(p)
       //case TopVal => T_
       case v => throw new IllegalArgumentException(s"Undefined model variable ${v}")

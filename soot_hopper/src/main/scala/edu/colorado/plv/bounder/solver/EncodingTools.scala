@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.solver
 import edu.colorado.plv.bounder.ir.{MessageType, TMessage, TraceElement}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, CLInit, Exists, Forall, FreshRef, LSAnyPred, LSAtom, LSBexp, LSConstraint, LSFalse, LSImplies, LSPred, LSSingle, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, SignatureMatcher}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, Equals, FieldPtEdge, NPureVar, NamedPureVar, NotEquals, PureConstraint, PureExpr, PureVal, PureVar, State, StaticPtEdge, TVal, TopVal}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, Equals, FieldPtEdge, NPureVar, NamedPureVar, NotEquals, PureConstraint, PureExpr, PureVal, PureVar, State, StaticPtEdge, ConcreteVal, TopVal}
 
 object EncodingTools {
   private def filterAny(s:Seq[(PureExpr,PureExpr)]):Seq[(PureExpr,PureExpr)] = s.filter{
@@ -90,8 +90,8 @@ object EncodingTools {
     case FreshRef(_) => LSTrue
     case CLInit(_) => LSTrue
   }
-  def rhsToPred(rhs: Seq[LSSingle], specSpace: SpecSpace): Set[LSPred] = {
-    rhs.foldRight((Set[LSPred](), true)) {
+  def rhsToPred(rhs: Seq[LSSingle], specSpace: SpecSpace, post:Set[LSPred] = Set()): Set[LSPred] = {
+    rhs.foldRight((post, true)) {
       case (v, (acc, includeDis)) =>
         val updated = acc.map(lsPred => updArrowPhi(v, lsPred))
         val instantiated = instArrowPhi(v, specSpace, includeDis)
@@ -115,7 +115,7 @@ object EncodingTools {
     def b:LSBexp
   }
 
-  type Assign = Map[PureVar, TVal]
+  type Assign = Map[PureVar, ConcreteVal]
   case class MDelta(dst:Q, b:LSBexp, m:LSAtom) extends Delta
   case class AnyDelta(dst:Q, b:LSBexp) extends Delta
   case class EpsDelta(dst:Q, b:LSBexp) extends Delta

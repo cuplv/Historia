@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.solver
 
 import edu.colorado.plv.bounder.ir.{CBEnter, FwkMethod, TMessage}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, Signature, SubClassMatcher}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{NPureVar, NamedPureVar, PureExpr, PureVal, PureVar, TAddr, TVal}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{NPureVar, NamedPureVar, PureExpr, PureVal, PureVar, ConcreteAddr, ConcreteVal}
 import org.scalatest.Outcome
 import org.scalatest.funsuite.AnyFunSuite
 
@@ -18,9 +18,9 @@ class EncodingToolsTest extends AnyFunSuite{
     case v:PureVar => v
   }
 
-  def bodgeTraceV(v:Any):TVal = v match {
-    case i:Int => TAddr(i)
-    case v:TVal => v
+  def bodgeTraceV(v:Any):ConcreteVal = v match {
+    case i:Int => ConcreteAddr(i)
+    case v:ConcreteVal => v
     case _ => ???
   }
   def mkOnce(name:String, vars:List[Any]) =
@@ -38,7 +38,7 @@ class EncodingToolsTest extends AnyFunSuite{
   val oBar_x_y = mkOnce("bar", x::y::Nil)
 
   // trace elements
-  val foo_1_2 = mkTMsg("foo",1::2::Nil)
+  val foo_1_2 = mkTMsg("foo()",1::2::Nil)
 
   ignore("Encoded O foo(x,y) matches foo(@1,@2)"){
     //TODO: register machine not used for anything yet, un-ignore this test if we start using it

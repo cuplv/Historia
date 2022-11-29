@@ -1,10 +1,10 @@
 package edu.colorado.plv.bounder.synthesis
 
-import edu.colorado.plv.bounder.ir.{AppMethod, CBEnter, CBExit, CIEnter, CIExit, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, ConcGraph, FwkMethod, Loc, MessageType, Method, SerializedIRMethodLoc, TMessage}
+import edu.colorado.plv.bounder.ir.{AppMethod, CBEnter, CBExit, CIEnter, CIExit, CNode, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, ConcGraph, FwkMethod, Loc, MessageType, Method, SerializedIRMethodLoc, TMessage}
 import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, LSSingle, OAbsMsg, Signature, SignatureMatcher}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, IPathNode, MemoryOutputMode, NamedPureVar, NullVal, OrdCount, OutputMode, PathNode, PureExpr, PureVar, Qry, State, TAddr, TVal, TopVal, Unknown}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, ConcreteAddr, ConcreteVal, IPathNode, MemoryOutputMode, NamedPureVar, NullVal, OrdCount, OutputMode, PathNode, PureExpr, PureVal, PureVar, Qry, State, TopVal, Unknown}
 
 import scala.util.matching.Regex
 
@@ -22,6 +22,7 @@ object SynthTestUtil {
         Set("com.example.createdestroy.-$$Lambda$MyFragment$hAOPQ7FFP1lMCJX7gGOvwmZq1uk"),
       "rx.Single" -> Set("rx.Single"),
       "foo" -> Set("foo"),
+      "rx.functions.Action1"->Set("rx.functions.Action1"),
       "bar" -> Set("bar"),
       "foo2" -> Set("foo2")
     )
@@ -75,30 +76,32 @@ object SynthTestUtil {
     }
   }
   def toConcGraph(history:List[LSSingle]):ConcGraph = {
-    val pvs: Map[PureVar, TVal] = history.flatMap{ v => v.lsVar}.zipWithIndex.map{
-      case (pureVar, i) => (pureVar, TAddr(i))
+    if(history.isEmpty)
+      throw new IllegalArgumentException("History must not be empty")
+    val pvs: Map[PureVar, PureExpr] = history.flatMap{ v => v.lsVar}.zipWithIndex.map{
+      case (p@PureVar(id), i) => (p, NamedPureVar(s"${id}_$i"))
     }.toMap
-    val tmessages = history.map {
+    val tMessages = history.map {
       case LifeState.CLInit(sig) => ???
       case LifeState.FreshRef(v) => ???
       case OAbsMsg(mt, signatures, lsVars) =>
         val m = methodFromSig(mt,signatures)
-        TMessage(mt,m, lsVars.map{
+        new CNode(TMessage(mt,m, lsVars.map{
           case p:PureVar => pvs(p)
           case TopVal => NullVal
-        })
+        }))
     }
-    val start = tmessages.head
-    val last = tmessages.last
+    val start = tMessages.head
+    val last = tMessages.last
 
-    def addEdgesToGraph(graph:ConcGraph, tmessages:List[TMessage]):ConcGraph = tmessages match {
+    def addEdgesToGraph(graph:ConcGraph, tmessages:List[CNode]):ConcGraph = tmessages match {
       case _::Nil => graph
       case Nil => graph
       case tmsg::tmsgTail =>
         val newGraph = graph.add(tmsg,tmsgTail.head)
         addEdgesToGraph(newGraph, tmsgTail)
     }
-    addEdgesToGraph(ConcGraph(last, Map.empty), tmessages.tail)
+    addEdgesToGraph(ConcGraph(last, Set(start), Map.empty), tMessages)
   }
   def targetIze(history:List[LSSingle]):List[LSSingle] = {
     def vTargetIze(pureExpr:PureExpr):PureExpr = pureExpr match {

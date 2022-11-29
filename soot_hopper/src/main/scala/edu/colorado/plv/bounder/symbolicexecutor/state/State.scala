@@ -766,21 +766,21 @@ case object PureVal{
     macroRW[IntVal],macroRW[BoolVal],macroRW[StringVal], ClassVal.rw)
 }
 
-trait TVal extends PureVal{
+trait ConcreteVal extends PureVal{
   def pe:PureExpr
 }
-object TVal{
-  implicit var rw:RW[TVal] = RW.merge(macroRW[TAddr], macroRW[NullVal.type])
+object ConcreteVal{
+  implicit var rw:RW[ConcreteVal] = RW.merge(macroRW[ConcreteAddr], macroRW[NullVal.type])
 }
 //case object T_ extends TVal
-case class TAddr(i:Int) extends TVal{
+case class ConcreteAddr(i:Int) extends ConcreteVal{
   override def toString: String = s"@$i"
 
   override def pe: PureExpr = ???
 
   override def solverName: String = ???
 }
-case object NullVal extends TVal {
+case object NullVal extends ConcreteVal {
   override def toString:String = "NULL"
 
   //override def z3Tag: Option[String] = Some("NULL")
@@ -842,6 +842,11 @@ case class ImplementsInterface(typ:String) extends TypeConstraint {
 sealed trait PureVar extends PureExpr
 object PureVar{
   def apply(id:Int):PureVar = NPureVar(id)
+  def unapply(pv:PureVar):Option[Any] = pv match {
+    case NPureVar(id) => Some(id)
+    case NamedPureVar(n) => Some(n)
+    case _ => None
+  }
   implicit val rw:RW[PureVar] = RW.merge(NPureVar.rw, NamedPureVar.rw)
 }
 
@@ -871,17 +876,6 @@ sealed case class NamedPureVar(n:String) extends PureVar with Nameable {
   override def solverName: String = s"npv-$n"
 }
 
-/**
- * For use in register machine only
- * @param n nth argument of current message
- */
-sealed case class ArgAt(n:Int) extends PureVar {
-  override def substitute(toSub: PureExpr, subFor: PureVar): PureExpr = ???
-
-  override def getVars(s: Set[PureVar]): Set[PureVar] = ???
-}
-
 object NamedPureVar{
   implicit val rw:RW[NamedPureVar] = macroRW
 }
-
