@@ -1,5 +1,6 @@
 package edu.colorado.plv.bounder.ir
 
+import better.files.File
 import edu.colorado.plv.bounder.BounderSetupApplication.{ApkSource, SourceType}
 
 import java.util
@@ -482,16 +483,55 @@ class CallGraphWrapper(cg: CallGraph) extends CallGraphProvider{
  * //TODO: make this fully contain soot functionality
  * @param apkPath path to app under analysis
  * @param callGraphSource Spark app only, flowdroid, cha etc.
- * @param toOverride override callbacks that may be missing (e.g. onResume so that onPause may be executed)
+ * @param toOverride set of LSSpec or abstract messages to override
+ *                   callbacks that may be missing (e.g. onResume so that onPause may be executed)
  */
 class JimpleFlowdroidWrapper(apkPath : String,
                              callGraphSource: CallGraphSource,
-                             toOverride:Set[LSSpec],
+                             toOverride:Set[_<:Any], //TODO: use more precise type
                              sourceType:SourceType = ApkSource
                             ) extends IRWrapper[SootMethod, soot.Unit] {
   case class Messages(cbSize:Int, cbMsg:Int, matchedCb:Int, matchedCbRet:Int,
                       ciCallGraph:Int, matchedCiCallGraph:Int,
                       syntCi:Int, matchedSyntCi:Int)
+
+  /**
+   * print methods and points to regions for all classes containing the classFilter string
+   * @param classFilter
+   * @return
+   */
+  override def dumpDebug(classFilter:String): String= {
+    val classes =
+      Scene.v().getClasses.asScala.filter(c => c.getName.contains(classFilter) || c.getName.contains("CgEntryPoint"))
+    val methods = classes.flatMap(c => c.getMethods.asScala)
+    val stringBuilder = new StringBuilder()
+    def varAndPtRegions(m:MethodLoc, v: LocalWrapper):String = {
+      val ptRegions = pointsToSet(m,v)
+      s"var: ${v.name}, ptRegions: $ptRegions"
+    }
+    methods.foreach(m => {
+      val vars = m.getActiveBody.getUnits.asScala.flatMap{ c =>
+        val methodLoc = JimpleMethodLoc(m)
+        val ml = JimpleFlowdroidWrapper.makeCmd(c, m, AppLoc(methodLoc, JimpleLineLoc(c, m), true))
+        ml match {
+          case ReturnCmd(Some(returnVar:LocalWrapper), loc) => Set(varAndPtRegions(methodLoc, returnVar))
+          case AssignCmd(target:LocalWrapper, source, loc) => Set(varAndPtRegions(methodLoc, target))
+          case InvokeCmd(method, loc) => method.params.flatMap{
+            case p:LocalWrapper => Some(varAndPtRegions(methodLoc, p))
+            case _ => None
+          }
+          case If(b, trueLoc, loc) => Set.empty
+          case NopCmd(loc) => Set.empty
+          case SwitchCmd(key, targets, loc) => Set.empty
+          case ThrowCmd(loc) => Set.empty
+          case _ => Set.empty
+        }
+        //        s"${v.getName}:${pointsToSet(ml,lw)}"}
+      }.toSet
+      stringBuilder.append(s"=========${m.getDeclaringClass.getName} ${m.getName}\n${m.getActiveBody}\n ${vars.mkString("\n")}\n\n")
+    })
+    stringBuilder.toString()
+  }
   object Messages{
     implicit val rw:RW[Messages] = macroRW
   }
@@ -1105,7 +1145,11 @@ class JimpleFlowdroidWrapper(apkPath : String,
         }
       }
     }
-    val iSet = toOverride.flatMap(s => allI(s,includeRhs = false))
+    val iSet = toOverride.flatMap{
+      case s:LSSpec => allI(s,includeRhs = false)
+      case m:OAbsMsg => Set(m)
+      case v => throw new IllegalArgumentException(s"I don't know how to override methods matching $v")
+    }
     iSet.foreach {
       case OAbsMsg(CBExit, sig, _) => overrideAllCBForI(sig)
       case OAbsMsg(CBEnter, sig, _) => overrideAllCBForI(sig)

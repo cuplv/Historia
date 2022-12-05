@@ -1,5 +1,6 @@
 package edu.colorado.plv.bounder.ir
 
+import better.files.File
 import edu.colorado.plv.bounder.lifestate.LifeState.Signature
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
@@ -66,6 +67,8 @@ class SerializedIR(transitions: Set[TestTransition]) extends IRWrapper[String,St
   override def findInMethod(className: String, methodName: String, toFind: CmdWrapper => Boolean): Iterable[AppLoc] = ???
 
   override def appCallbackMsgCount: Int = ???
+
+  override def dumpDebug(classFilter: String): String = ???
 }
 
 /**

@@ -415,12 +415,11 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   override def explainWitness(messageTranslator: MessageTranslator,
                               pvMap: Map[PureVar, AST])(implicit zCtx: Z3SolverCtx): WitnessExplanation = {
     //TODO: have not implemented the set trace function here, will need this for synth loop
-    ??? //TODO: update with set tracefn
     val ctx = zCtx.ctx
     assert(messageTranslator.states.size == 1, "Explain witness only applicable with single state")
     val state = messageTranslator.states.head
     val pvSet = state.pureVars()
-    val varPairs = BounderUtil.repeatingPerm[PureVar](_ => pvSet, 2).filter(a => a(0) != a(1))
+    val varPairs = BounderUtil.repeatingPerm[PureVar](_ => pvSet, 2).filter(a => a.head != a(1))
 
     val model = zCtx.solver.getModel
 
@@ -435,7 +434,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     val pvValues: Map[Expr[UninterpretedSort], Int] = pvModelValues.values.toSet.zipWithIndex.toMap
     val constFn: FuncDecl[UninterpretedSort] = ctx.mkFuncDecl("constFn", addrSort, constSort)
     val constMap = messageTranslator.getConstMap()
-    val pvv: PureVar => ConcreteVal = pvi => {
+    def pvv(pvi : PureVar) :ConcreteVal = {
       val pv = pvModelValues(pvi)
       val isNull = constMap.contains(NullVal) && model.eval(mkEq(constFn.apply(pv),
         constMap(NullVal)).asInstanceOf[Expr[UninterpretedSort]], true).isTrue
@@ -445,10 +444,11 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
         ConcreteAddr(pvValues(pv))
     }
 
-    val pmv: PureExpr => ConcreteVal = {
+    val pmv: PureExpr => PureVal = {
       case p:PureVar => pvv(p)
-      //case TopVal => T_
-      case v => throw new IllegalArgumentException(s"Undefined model variable ${v}")
+      case TopVal => TopVal
+      case v =>
+        throw new IllegalArgumentException(s"Undefined model variable ${v}")
     }
     //    val pmv: String => TVal = v =>
     //      if(v == "_") T_ else {
@@ -460,15 +460,16 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
 
     val trace = rightOfArrow.map{
       case CLInit(sig) => TCLInit(sig)
-      case FreshRef(v) => TNew(pvv(mv(v).asInstanceOf[PureVar]), ???) //TODO: type set
+      case FreshRef(v) =>
+        TNew(v, state.sf.typeConstraints(v))
       case OAbsMsg(CBEnter, sig, vars) =>
-        TMessage(CBEnter,AppMethod(Signature("",sig.identifier), None), vars.map(v => pmv(v)))
+        TMessage(CBEnter,AppMethod(sig.example(), None), vars.map(v => pmv(v)))
       case OAbsMsg(CBExit, sig, vars) =>
-        TMessage(CBExit,AppMethod(Signature("",sig.identifier), None), vars.map(v => pmv(v)))
+        TMessage(CBExit,AppMethod(sig.example(), None), vars.map(v => pmv(v)))
       case OAbsMsg(CIEnter, sig, vars) =>
-        TMessage(CIEnter,FwkMethod(Signature("",sig.identifier)), vars.map(v => pmv(v)))
+        TMessage(CIEnter,FwkMethod(sig.example()), vars.map(v => pmv(v)))
       case OAbsMsg(CIExit, sig, vars) =>
-        TMessage(CIExit,FwkMethod(Signature("",sig.identifier)), vars.map(v => pmv(v)))
+        TMessage(CIExit,FwkMethod(sig.example()), vars.map(v => pmv(v)))
       case AnyAbsMsg => ??? //TODO: how to explain any?
     }
 

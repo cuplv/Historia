@@ -1063,6 +1063,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
     res
   }
+  def canSubsume(pred1:LSPred, pred2:LSPred, specSpace:SpecSpace):Boolean = {
+    ??? //TODO:
+  }
+
   /**
    *
    *
@@ -1352,6 +1356,19 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         locals.collect{case (StackVar(name),pValue:PureVar) => ((name,level),pValue)}
     }.toMap
   }
+
+  def witnessed(pred:LSPred, specSpace:SpecSpace):Option[WitnessExplanation] = {
+    val startTime = System.nanoTime()
+    val res:Option[WitnessExplanation] = None
+    try {
+      implicit val zCtx = getSolverCtx
+      val res = traceInAbstraction(pred, specSpace, Trace.empty)
+      res
+    }finally{
+      getLogger.warn(s"witnessed result: ${res.isDefined} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
+    }
+    ??? //TODO:====
+  }
   /**
    * Consider rearrangments of pure vars that could result in subsumption
    *
@@ -1359,7 +1376,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    * @param s2 contained state
    * @return
    */
-
   def witnessed(state: State, specSpace: SpecSpace, debug:Boolean = false): Option[WitnessExplanation] = {
 
     val startTime = System.nanoTime()
@@ -1376,7 +1392,26 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       getLogger.warn(s"witnessed result: ${res.isDefined} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
     }
   }
+  def traceInAbstraction(pred:LSPred, specSpace:SpecSpace, trace:Trace)(implicit zCtx:C):Option[WitnessExplanation] ={
+    //TODO:========
+    try {
+      zCtx.acquire()
+      val messageTranslator = MessageTranslator(???, specSpace)
+      initializeZeroAxioms(messageTranslator)
+      val pvMap: Map[PureVar, T] = encodeTraceContained(???, trace,
+        messageTranslator = messageTranslator, specSpace = specSpace)
+      val sat = checkSAT(messageTranslator,Some(List(initalizeConstAxioms,initializeNameAxioms,initializeOrderAxioms,initializeFieldAxioms)))
 
+      if (sat) {
+//        Some(WitnessExplanation(Nil)) //TODO: do we ever need this?
+          Some(explainWitness(messageTranslator, pvMap))
+      } else {
+        None
+      }
+    }finally{
+      zCtx.release()
+    }
+  }
   def traceInAbstraction(state: State,specSpace: SpecSpace,
                          trace: Trace,
                          debug: Boolean = false)(implicit zCtx: C): Option[WitnessExplanation] = {
@@ -1392,8 +1427,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         printDbgModel(messageTranslator, Set(state.traceAbstraction))
       }
       if (sat) {
-        Some(WitnessExplanation(Nil)) //TODO: do we ever need this?
-//        Some(explainWitness(messageTranslator, pvMap))
+//        Some(WitnessExplanation(Nil)) //TODO: do we ever need this?
+        Some(explainWitness(messageTranslator, pvMap))
       } else {
         None
       }
@@ -1457,8 +1492,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       case v =>
         ???
     }
-//    if(trace.length != 1)
-//      ??? //TODO%%%% enforce order on messages
     val distinctMsg = mkDistinctT(msgVars)
     val namedMsg = mkForallMsg(mkTraceFn(),m => mkOr(msgVars.map(msgVar =>
       mkEq(m,msgVar))))
@@ -1466,28 +1499,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val out = mkAnd(List(distinctMsg, namedMsg, msgOrdAndArg))
     out
   }
-//  def encodeTrace(trace: List[TMessage],
-//                  messageTranslator: MessageTranslator, valToT: Map[Int, T])(implicit zCtx: C): T = {
-//    val assertEachMsg: List[T] = trace.zipWithIndex.flatMap {
-//      case (m, ind) =>
-//        val (iv, isInd) = mkIndex(ind)
-//        zCtx.mkAssert(isInd)
-//        val msgExpr = iv
-//        val i = messageTranslator.iForMsg(m)
-//        val argConstraints: List[T] = m.args.zipWithIndex.map {
-//          case (TAddr(addr), ind) =>
-//            val lhs = mkArgConstraint(mkArgFun(), ind, msgExpr)
-//            mkEq(lhs, valToT(addr))
-//          case (TNullVal, _) => ???
-//        }
-//        i.map(ii => {
-//          mkAnd(assertIAt(iv, ii, messageTranslator, traceFN, negated = false,
-//            lsTypeMap = Map(), typeToSolverConst = Map(), s => mkModelVar(s, "")),
-//            mkAnd(argConstraints)
-//          )
-//        })
-//    }
-//    assertEachMsg.foldLeft(mkBoolVal(b = true))((a, b) => mkAnd(a, b))
-//  }
+
 
 }

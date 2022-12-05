@@ -53,7 +53,7 @@ class EnumModelGenerator(implicit cha: ClassHierarchyConstraints) extends ModelG
   }
 
   def learnRulesFromConcGraph(target:Set[ConcGraph], reachable:Set[ConcGraph], space:SpecSpace)
-                             (implicit cha:ClassHierarchyConstraints):Option[SpecSpace] = {
+                             (implicit cha:ClassHierarchyConstraints, solver:Z3StateSolver):Option[SpecSpace] = {
     def iLearn(target:Set[ConcGraph], reachable:Set[ConcGraph],
                workList:List[SpecSpace], visited:Set[SpecSpace]): Option[SpecSpace]={
       if(workList.isEmpty)

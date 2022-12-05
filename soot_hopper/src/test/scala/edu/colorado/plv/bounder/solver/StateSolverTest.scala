@@ -969,8 +969,8 @@ class StateSolverTest extends FixtureAnyFunSuite {
   }
   test("|>bar(x,y)|>foo(x) && y =/≠ null  under spec bar(x,null) <= foo(x)") {f =>
     val stateSolver = f.stateSolver
-    val fooM = SubClassMatcher("","foo","foo")
-    val barM = SubClassMatcher("","bar","bar")
+    val fooM = SubClassMatcher("","foo\\(","foo")
+    val barM = SubClassMatcher("","bar\\(","bar")
     val iFoo_x = AbsMsg(CBEnter, fooM, x::Nil)
     val iFoo_a = AbsMsg(CBEnter, fooM, a::Nil)
     val iBar_xy = AbsMsg(CBEnter, barM, x::y::Nil)
@@ -988,7 +988,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(stateSolver.witnessed(sNull, spec).isDefined)
 
     // Test const under negation
-    val bazM = SubClassMatcher("","baz","baz")
+    val bazM = SubClassMatcher("","baz\\(","baz")
     val iBaz_x = AbsMsg(CBEnter, bazM, x::Nil)
     val spec2 = new SpecSpace(Set(LSSpec(x::Nil, y::Nil, NS(iBar_xy, iBar_xN), iFoo_x)))
 
@@ -1037,8 +1037,8 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(stateSolver.witnessed(sDis_False,specClickDis).isEmpty)
 
 
-    val fooM = SubClassMatcher("","foo","foo")
-    val barM = SubClassMatcher("","bar","bar")
+    val fooM = SubClassMatcher("","foo\\(","foo")
+    val barM = SubClassMatcher("","bar\\(","bar")
 
     val iFoo_x = AbsMsg(CBEnter, fooM, x :: Nil)
     val iFoo_a = AbsMsg(CBEnter, fooM, a :: Nil)

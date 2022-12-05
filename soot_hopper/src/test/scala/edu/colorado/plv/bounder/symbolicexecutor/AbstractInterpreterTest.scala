@@ -2,16 +2,19 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.BounderUtil.{MultiCallback, Proven, SingleCallbackMultiMethod, SingleMethod, Witnessed}
-import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
+import edu.colorado.plv.bounder.BounderUtil.{DepthResult, MultiCallback, Proven, SingleCallbackMultiMethod, SingleMethod, Timeout, Witnessed, interpretResult}
+import edu.colorado.plv.bounder.ir.{CBEnter, JimpleFlowdroidWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, LSSpec, LSTrue, NS, Not, Or, Signature}
+import edu.colorado.plv.bounder.lifestate.ViewSpec.{a, l, onClick, onClickI, setOnClickListener, setOnClickListenerI, setOnClickListenerINull, v}
 import edu.colorado.plv.bounder.lifestate.{Dummy, FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BottomQry, CallinReturnNonNull, DBOutputMode, DisallowedCallin, FieldPtEdge, IPathNode, MemoryOutputMode, NamedPureVar, OutputMode, PrettyPrinting, Qry, Reachable, ReceiverNonNull}
+import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.row4Specs
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BottomQry, CallinReturnNonNull, DBOutputMode, DisallowedCallin, FieldPtEdge, IPathNode, MemoryOutputMode, NamedPureVar, OutputMode, PrettyPrinting, Qry, Reachable, ReceiverNonNull, TopVal}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.AnyFunSuite
 import soot.{Scene, SootMethod}
+import upickle.default.write
 
 import scala.jdk.CollectionConverters._
 
@@ -2582,5 +2585,101 @@ class AbstractInterpreterTest extends AnyFunSuite {
     }
 
     makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
+  }
+  test("Connect bot click/finish synth simp") {
+    val startTime = System.nanoTime()
+    List(
+      ("", Witnessed, "bug"),
+      ("v.setOnClickListener(null);", Proven, "fix"),
+    ).foreach {
+      case (disableClick, expected, fileSuffix) =>
+        //Click attached to different activity
+        //TODO: probably need to write specification for null preventing click
+        val src =
+          s"""package com.example.createdestroy;
+             |import android.app.Activity;
+             |import android.os.Bundle;
+             |import android.util.Log;
+             |import android.view.View;
+             |import android.os.Handler;
+             |import android.view.View.OnClickListener;
+             |
+             |
+             |public class MyActivity extends Activity {
+             |    String s = null;
+             |    View v = null;
+             |    @Override
+             |    protected void onResume(){
+             |        s = "";
+             |        v = findViewById(3);
+             |        v.setOnClickListener(new OnClickListener(){
+             |           @Override
+             |           public void onClick(View v){
+             |             s.toString(); // query1
+             |             MyActivity.this.finish();
+             |           }
+             |        });
+             |    }
+             |
+             |    @Override
+             |    protected void onPause() {
+             |        s = null;
+             |        ${disableClick}
+             |    }
+             |}""".stripMargin
+        val test: String => Unit = apk => {
+          File.usingTemporaryDirectory() { tmpDir =>
+            val startTime = System.nanoTime()
+            assert(apk != null)
+            val dbFile = tmpDir / "paths.db"
+            println(dbFile)
+            // implicit val dbMode = DBOutputMode(dbFile.toString, truncate = false)
+            // dbMode.startMeta()
+            implicit val dbMode = MemoryOutputMode
+
+            val iSet = Set(onClickI, setOnClickListenerI, setOnClickListenerINull)
+            val specs0 = Set[LSSpec](
+//              LSSpec(l::Nil, Nil, LSTrue, onClickI)
+            )
+            val specs1 = Set[LSSpec](
+//              LSSpec(a::Nil, Nil,
+//                  //Or(NS(SpecSignatures.Activity_onPause_exit,SpecSignatures.Activity_onResume_entry),
+//                    Not(SpecSignatures.Activity_onPause_exit),
+//                  SpecSignatures.Activity_onResume_entry),
+//              LSSpec(l::Nil, v::Nil, setOnClickListener,AbsMsg(CBEnter,onClick, List(TopVal, l)))
+              LSSpec(l::Nil, v::Nil, NS(setOnClickListenerI, setOnClickListenerINull), onClickI)
+            )
+            val specs = specs0
+            val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+
+            val specSpace = new SpecSpace(specs, matcherSpace = iSet)
+            val config = SymbolicExecutorConfig(
+              stepLimit = 2000, w, specSpace,
+              component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode)
+            val symbolicExecutor = config.getSymbolicExecutor
+            val line = BounderUtil.lineForRegex(".*query1.*".r, src)
+
+            val nullUnreach = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity$1",
+              "void onClick(android.view.View)"), line, Some(".*toString.*"))
+
+            val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
+            prettyPrinting.dumpDebugInfo(nullUnreachRes, s"ConnectBot_simpsynth_${expected}")
+            assert(nullUnreachRes.nonEmpty)
+            BounderUtil.throwIfStackTrace(nullUnreachRes)
+            prettyPrinting.printWitness(nullUnreachRes)
+            val interpretedResult: BounderUtil.ResultSummary =
+              BounderUtil.interpretResult(nullUnreachRes, QueryFinished)
+
+            println(s"expected: $expected")
+            println(s"actual: $interpretedResult")
+            val dbg = w.dumpDebug("MyActivity")
+
+            assert(expected == interpretedResult)
+          }
+
+        }
+        makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase,
+          test)
+    }
   }
 }

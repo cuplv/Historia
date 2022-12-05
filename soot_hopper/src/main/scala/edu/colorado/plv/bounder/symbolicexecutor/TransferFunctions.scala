@@ -159,12 +159,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val relAliases = relevantAliases(postState, CIEnter, sig,specSpace,invars)
       val ostates:Set[State] = {
         val (rvals, state0) = getOrDefineRVals(m,relAliases, postState)
-        //TODO: handle callin entry, below code doesn't seem to work correctly
-//        val state1 = traceAllPredTransfer(CIEnter, (pkg, name), rvals, state0)
-
-//        val inVars: List[Option[RVal]] = inVarsForCall(tgt,w)
-//        val state1: Set[State] = newMsgTransfer(tgt.method, CIExit, (pkg, name), inVars, state0)
-//        state1
         Set(state0)
       }
       //Only add receiver if this or callin return is in abstract trace
@@ -712,7 +706,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
             case (FieldPtEdge(pv, heapFieldName), materializedTgt) =>
               val fieldEq = fieldName == heapFieldName
               //TODO: === check that contianing method works here
-              lazy val canAlias = state1.canAlias(pv,l.containingMethod.get, base,w)
+              lazy val canAlias = state1.canAlias(pv,l.containingMethod.get, base,w,inCurrentStackFrame = true)
               lazy val tgtCanAlias = state1.canAliasEE(lhsV, materializedTgt)
               fieldEq && canAlias && tgtCanAlias //TODO: is target ok here?
             case _ =>
@@ -752,7 +746,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val possibleHeapCells = state2.heapConstraints.filter {
         case (FieldPtEdge(pv, heapFieldName), materializedTgt) =>
           val fieldEq = fieldName == heapFieldName
-          val canAlias = state2.canAlias(pv,l.containingMethod.get, base,w)
+          val canAlias = state2.canAlias(pv,l.containingMethod.get, base,w, inCurrentStackFrame = true)
           val tgtCanAlias = rhs match{
             case rhsL:LocalWrapper if state2.containsLocal(rhsL) => {
               state2.canAliasEE(materializedTgt, state2.get(rhsL).get)

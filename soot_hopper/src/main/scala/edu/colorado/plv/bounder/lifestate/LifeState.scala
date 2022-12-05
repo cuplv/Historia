@@ -641,8 +641,11 @@ object LifeState {
      */
     private def exampleStringFromRegex(r:Regex):String = {
       val str = r.toString.replaceAll("\\.\\*","")
-      val str2 = str.replaceAll("""\\""", "")
-      val str3 = str2.replaceAll("""\\""", "")
+        .replaceAll("""\\""", "")
+        .replaceAll("""\\""", "")
+      val str3 = if(str.contains("(")){
+        str
+      } else str + "(" // needed for passing well formed check in signature
       if(r.matches(str3)){
         str3
       }else{
@@ -966,7 +969,7 @@ object SpecSpace{
  * enableSpecs are conditions required for a callback or callin return
  * @matcherSpace additional matchers that may be used for synthesis (added to allI)
  **/
-class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(), matcherSpace:Set[AbsMsg] = Set()) {
+class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(), matcherSpace:Set[OAbsMsg] = Set()) {
 
   private lazy val specUID:Map[LSSpec, Int] = (enableSpecs ++ disallowSpecs).zipWithIndex.map{
     case (spec, i) => spec->i
@@ -1005,7 +1008,7 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(), mat
 
   def getSpecs:Set[LSSpec] = enableSpecs
   def getDisallowSpecs:Set[LSSpec] = disallowSpecs
-  def getMatcherSpace:Set[AbsMsg] = matcherSpace
+  def getMatcherSpace:Set[_<:AbsMsg] = matcherSpace
 
   /**
    * For step back over a place where the code may emit a message find the applicable I and assign fresh ls vars.

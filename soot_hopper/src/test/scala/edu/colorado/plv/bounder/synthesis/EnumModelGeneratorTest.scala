@@ -2,6 +2,7 @@ package edu.colorado.plv.bounder.synthesis
 
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSAnyPred, LSSpec}
 import edu.colorado.plv.bounder.lifestate.{SpecSignatures, SpecSpace}
+import edu.colorado.plv.bounder.solver.Z3StateSolver
 import edu.colorado.plv.bounder.symbolicexecutor.state.{MemoryOutputMode, NamedPureVar, TopVal}
 import edu.colorado.plv.bounder.synthesis.SynthTestUtil.{cha, targetIze, toConcGraph, witTreeFromMsgList}
 import org.scalatest.funsuite.AnyFunSuite
@@ -33,6 +34,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
     val spec = new SpecSpace(Set(
       LSSpec(a::Nil,Nil,  LSAnyPred , a_call)
     ), matcherSpace = Set())
+    implicit val solver = new Z3StateSolver(cha)
     val res = gen.learnRulesFromConcGraph(Set(unreachSeq), Set(reachSeq), spec)
     ???
 
