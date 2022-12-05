@@ -360,12 +360,32 @@ case class State(sf:StateFormula,
     }
     case pv:PureVar => canAliasPe(pv,pe2)
   }
-  def canAlias[M,C](pv:PureVar, method:MethodLoc, lw:LocalWrapper, w:IRWrapper[M,C]):Boolean = {
+
+  /**
+   * Can a pure variable alias a local variable?
+   * @param pv pure variable from state
+   * @param method method containing the local variable
+   * @param lw the local
+   * @param w IR of the program under analysis
+   * @param inCurrentStackFrame should we restrict the aliasing with the current stack frame?
+   *                            (should be true if used to determine materialization, false for relevance)
+   * @tparam M
+   * @tparam C
+   * @return
+   */
+  def canAlias[M,C](pv:PureVar, method:MethodLoc, lw:LocalWrapper, w:IRWrapper[M,C],
+                    inCurrentStackFrame:Boolean):Boolean = {
     implicit val wr = w
     sf.typeConstraints.get(pv) match{
       case Some(pvPt) =>
         val pt = w.pointsToSet(method, lw)
-        if(containsLocal(lw)){
+        if(inCurrentStackFrame && containsLocal(lw)){
+          assert(sf.callStack.headOption.forall(s => s.exitLoc.containingMethod.get == method),
+            "Error, call string and variable name must match if inCurrentStackFrame is set to true." +
+              s"Otherwise pts to sets for variable are incomparable. " +
+              s"Stack frame method: ${sf.callStack.headOption.map(_.exitLoc)}.  " +
+              s"Local: $lw . " +
+              s"Method containing local: $method")
           val lv = get(lw).get
           canAliasPe(pv,lv) && pt.intersectNonEmpty(pvPt)
         }else {

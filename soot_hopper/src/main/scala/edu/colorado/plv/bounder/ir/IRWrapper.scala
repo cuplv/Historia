@@ -1,5 +1,6 @@
 package edu.colorado.plv.bounder.ir
 
+import better.files.File
 import edu.colorado.plv.bounder.lifestate.LifeState.Signature
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.AppCodeResolver
@@ -14,6 +15,7 @@ import scala.collection.BitSet
  * @tparam C Command type for the underlying representation
  */
 trait IRWrapper[M,C]{
+  def dumpDebug(classFilter:String):String
   def getThisVar(methodLoc: Loc): Option[LocalWrapper]
   def getThisVar(methodLoc: MethodLoc): Option[LocalWrapper]
 

@@ -154,7 +154,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
         if(existsBaseType){
           (tgt,matTgt) match{
             case (Some(tgtLocal:LocalWrapper),mt:PureVar) =>
-              state.canAlias(mt,m,tgtLocal,wrapper)
+              state.canAlias(mt,m,tgtLocal,wrapper,inCurrentStackFrame = false)
             case _ => true
           }
         }else false
@@ -165,7 +165,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 
   def relevantHeap(m: MethodLoc, state: State): Boolean = {
     def canModifyHeap(c: CmdWrapper): Boolean = c match {
-      case AssignCmd(fr: FieldReference, tgt, _) => fieldCanPt(fr,m, state,Some(tgt))
+      case AssignCmd(fr: FieldReference, tgt, _) =>
+        fieldCanPt(fr,m, state,Some(tgt))
       case AssignCmd(src, fr: FieldReference, _) => fieldCanPt(fr,m, state,Some(src))
       case AssignCmd(StaticFieldReference(clazz, name, _), _, _) =>
         val out = state.heapConstraints.contains(StaticPtEdge(clazz, name))
