@@ -346,7 +346,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
         // TODO: relevance could probably be refined so this isn't necessary
         val w = new JimpleFlowdroidWrapper(apk, cgMode,row1Specs)
         val config = SymbolicExecutorConfig(
-          stepLimit = 80, w, new SpecSpace(row1Specs),
+          stepLimit = 200, w, new SpecSpace(row1Specs),
           component = Some(List("com.example.createdestroy.*PlayerFragment.*")))
         implicit val om = config.outputMode
         val symbolicExecutor = config.getSymbolicExecutor
