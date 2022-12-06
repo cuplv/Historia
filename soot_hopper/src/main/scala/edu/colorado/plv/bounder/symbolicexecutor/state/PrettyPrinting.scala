@@ -284,4 +284,41 @@ class PrettyPrinting() {
     }
 
   }
+
+  def escapeForHtml(s:String):String = {
+    s.replace("<","&lt;").replace(">","&gt;")
+  }
+
+  def nodeToHtml(node:IPathNode):String = escapeForHtml(node.toString)
+
+  /**
+   * Generate a html page to expand and search witness traces.
+   * @param qrySet
+   * @return
+   */
+  def treeToExpandableHTML(qrySet:Set[IPathNode]):String = {
+    val html = new StringBuilder()
+    html.append(
+      """
+        |<html>
+        |<head>
+        |<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+        |<script>
+        |$(document).ready(function(){
+        |    $("button").click(function(){
+        |        $(this).next().toggle();
+        |    });
+        |});
+        |</script>
+        |</head>
+        |<body>
+        |<h1>Witnesses</h1>
+        |</body>
+        |</html>
+        |""".stripMargin)
+    //TODO: better way to explore results.
+    html.toString
+  }
+
+
 }
