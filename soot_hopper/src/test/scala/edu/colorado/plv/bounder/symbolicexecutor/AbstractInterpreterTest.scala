@@ -2586,7 +2586,7 @@ class AbstractInterpreterTest extends AnyFunSuite {
 
     makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
   }
-  test("Connect bot click/finish synth simp") {
+  ignore("Connect bot click/finish synth simp") {
     val startTime = System.nanoTime()
     List(
       ("", Witnessed, "bug"),
