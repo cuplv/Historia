@@ -22,7 +22,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
   val t_create = SpecSignatures.RxJava_create_exit
   val a_call = SpecSignatures.RxJava_call_entry.copy(lsVars = TopVal::a::Nil)
 
-  test("Encode Node Reachability motivating example - ConcGraph"){
+  ignore("Encode Node Reachability motivating example - ConcGraph"){
     implicit val ord = new DummyOrd
     implicit val outputMode = MemoryOutputMode
     //TODO: may need to declare vars distinct
