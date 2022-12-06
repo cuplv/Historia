@@ -82,7 +82,7 @@ class AbstractInterpreterTestSlow extends AnyFunSuite{
         val specs:Set[LSSpec] = Set()
         val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
         val config = SymbolicExecutorConfig(
-          stepLimit = 200, w, new SpecSpace(specs),
+          stepLimit = 400, w, new SpecSpace(specs),
           component = Some(List("com.example.createdestroy.MyActivity.*")),
           outputMode = MemoryOutputMode)
         //outputMode = DBOutputMode("/Users/shawnmeier/Desktop/bounder_debug_data/deref2.db"))
