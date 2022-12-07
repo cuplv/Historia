@@ -11,7 +11,7 @@ import soot.JastAddJ.JastAddJavaParser.Terminals
 import scala.annotation.tailrec
 import scala.io.Source
 
-class PrettyPrinting() {
+object PrettyPrinting {
   def printWitness(terminals: Set[IPathNode]):Unit = {
     var witFound = false
     terminals.foreach(n => n.qry match {

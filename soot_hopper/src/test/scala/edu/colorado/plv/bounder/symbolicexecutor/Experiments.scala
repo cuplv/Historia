@@ -45,7 +45,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
   private val generateTex = false //TODO: flip to generate tex files
   private val logger = LoggerFactory.getLogger("Experiments")
   logger.warn("Starting experiments run")
-  private val prettyPrinting = new PrettyPrinting()
+  private val prettyPrinting = PrettyPrinting
   private val cgMode = SparkCallGraph
 
   {

@@ -112,12 +112,11 @@ object Driver {
     val dbPath = outFolder / "paths.db"
     implicit val db = DBOutputMode(dbPath.toString())
     val liveNodes: Set[IPathNode] = db.getTerminal().map(v=>v)
-    val pp = new PrettyPrinting()
-    pp.dumpDebugInfo(liveNodes, "out", outDir = Some(outFolder.toString))
+    PrettyPrinting.dumpDebugInfo(liveNodes, "out", outDir = Some(outFolder.toString))
 
     if(findNoPred){
       val noPredNodes: Set[IPathNode] = db.getNoPred().map(v=>v)
-      pp.dumpDebugInfo(noPredNodes, "noPred", outDir = Some(outFolder.toString))
+      PrettyPrinting.dumpDebugInfo(noPredNodes, "noPred", outDir = Some(outFolder.toString))
     }
   }
 
@@ -385,7 +384,7 @@ object Driver {
           val depthChar: BounderUtil.DepthResult = BounderUtil.computeDepthOfWitOrLive(finalLiveNodes,QueryFinished)(mode)
           //val depth = if(finalLiveNodes.nonEmpty) Some(finalLiveNodes.map{n => n.depth}.min) else None
           //val ordDepth = if(finalLiveNodes.nonEmpty) Some(finalLiveNodes.map{_.ordDepth}.min) else None
-          val pp = new PrettyPrinting()
+          val pp = PrettyPrinting
           val live: List[List[String]] = pp.nodeToWitness(finalLiveNodes.toList, cfg.truncateOut)(mode).sortBy(_.length).take(2)
           val witnessed = pp.nodeToWitness(groupedResults.flatMap{res => res.terminals.filter{pathNode =>
             pathNode.qry match {

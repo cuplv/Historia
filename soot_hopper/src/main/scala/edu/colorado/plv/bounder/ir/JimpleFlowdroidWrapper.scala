@@ -487,7 +487,7 @@ class CallGraphWrapper(cg: CallGraph) extends CallGraphProvider{
  *                   callbacks that may be missing (e.g. onResume so that onPause may be executed)
  */
 class JimpleFlowdroidWrapper(apkPath : String,
-                             callGraphSource: CallGraphSource,
+                             callGraphSource: CallGraphSource = SparkCallGraph,
                              toOverride:Set[_<:Any], //TODO: use more precise type
                              sourceType:SourceType = ApkSource
                             ) extends IRWrapper[SootMethod, soot.Unit] {

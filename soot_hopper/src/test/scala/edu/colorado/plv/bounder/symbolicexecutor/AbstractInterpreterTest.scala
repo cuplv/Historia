@@ -21,7 +21,6 @@ import scala.jdk.CollectionConverters._
 
 class AbstractInterpreterTest extends AnyFunSuite {
 
-  private val prettyPrinting = new PrettyPrinting()
   val cgMode = SparkCallGraph
 
   test("Symbolic Executor should prove an intraprocedural deref"){
@@ -495,7 +494,7 @@ class AbstractInterpreterTest extends AnyFunSuite {
         val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
           "void onCreate(android.os.Bundle)"), line)
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
-        prettyPrinting.dumpDebugInfo(result, s"setField_${bval}_${expected}") //==========
+        PrettyPrinting.dumpDebugInfo(result, s"setField_${bval}_${expected}") //==========
         assert(result.nonEmpty)
         BounderUtil.throwIfStackTrace(result)
         assert(BounderUtil.interpretResult(result, QueryFinished) == expected)
@@ -2512,7 +2511,7 @@ class AbstractInterpreterTest extends AnyFunSuite {
         // prettyPrinting.dumpDebugInfo(nullUnreachRes2, s"ResumedPaused_NPE_Unreach2")
         assert(nullUnreachRes2.nonEmpty)
         BounderUtil.throwIfStackTrace(nullUnreachRes2)
-        prettyPrinting.printWitness(nullUnreachRes2)
+        PrettyPrinting.printWitness(nullUnreachRes2)
         assert(BounderUtil.interpretResult(nullUnreachRes2, QueryFinished) == Proven)
       }
 
@@ -2601,7 +2600,7 @@ class AbstractInterpreterTest extends AnyFunSuite {
       ("v.setOnClickListener(null);", Proven, specs1),
     ).foreach {
       case (disableClick, expected, specs) =>
-        val src =
+        val srcUnreach =
           s"""package com.example.createdestroy;
              |import android.app.Activity;
              |import android.os.Bundle;
@@ -2623,7 +2622,7 @@ class AbstractInterpreterTest extends AnyFunSuite {
              |        v.setOnClickListener(new OnClickListener(){
              |           @Override
              |           public void onClick(View v){
-             |             s.toString(); // query1
+             |             s.toString(); // query1 unreachable
              |             MyActivity.this.finish();
              |           }
              |        });
@@ -2635,9 +2634,36 @@ class AbstractInterpreterTest extends AnyFunSuite {
              |        ${disableClick}
              |    }
              |}""".stripMargin
+        val srcReach =
+          s"""package com.example.createdestroy;
+             |import android.app.Activity;
+             |import android.os.Bundle;
+             |import android.util.Log;
+             |import android.view.View;
+             |import android.widget.Button;
+             |import android.os.Handler;
+             |import android.view.View.OnClickListener;
+             |
+             |
+             |public class OtherActivity extends Activity implements OnClickListener{
+             |    String s = "";
+             |    @Override
+             |    protected void onCreate(Bundle b){
+             |        (new Button(this)).setOnClickListener(this);
+             |    }
+             |    @Override
+             |    public void onClick(View v){
+             |      s.toString(); // query2 reachable
+             |      OtherActivity.this.finish();
+             |    }
+             |
+             |    @Override
+             |    protected void onPause() {
+             |        s = null;
+             |    }
+             |}""".stripMargin
         val test: String => Unit = apk => {
           File.usingTemporaryDirectory() { tmpDir =>
-            val startTime = System.nanoTime()
             assert(apk != null)
             val dbFile = tmpDir / "paths.db"
             println(dbFile)
@@ -2653,30 +2679,44 @@ class AbstractInterpreterTest extends AnyFunSuite {
             val specSpace = new SpecSpace(specs, matcherSpace = iSet)
             val config = SymbolicExecutorConfig(
               stepLimit = 2000, w, specSpace,
-              component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode)
-            val symbolicExecutor = config.getSymbolicExecutor
-            val line = BounderUtil.lineForRegex(".*query1.*".r, src)
+              component = Some(List("com.example.createdestroy.*")), outputMode = dbMode)
 
-            val nullUnreach = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity$1",
-              "void onClick(android.view.View)"), line, Some(".*toString.*"))
+            //Unreach Location
+            {
+              val symbolicExecutor = config.getSymbolicExecutor
+              val line = BounderUtil.lineForRegex(".*query1.*".r, srcUnreach)
+              val nullUnreach = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity$1",
+                "void onClick(android.view.View)"), line, Some(".*toString.*"))
+              val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
+//              PrettyPrinting.dumpDebugInfo(nullUnreachRes, s"ConnectBot_simpsynth_${expected}", truncate = false)
+              assert(nullUnreachRes.nonEmpty)
+              BounderUtil.throwIfStackTrace(nullUnreachRes)
+//              PrettyPrinting.printWitness(nullUnreachRes)
+              val interpretedResult: BounderUtil.ResultSummary =
+                BounderUtil.interpretResult(nullUnreachRes, QueryFinished)
+              println(s"expected: $expected")
+              println(s"actual: $interpretedResult")
+              assert(expected == interpretedResult)
+            }
 
-            val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
-            prettyPrinting.dumpDebugInfo(nullUnreachRes, s"ConnectBot_simpsynth_${expected}", truncate = false)
-            assert(nullUnreachRes.nonEmpty)
-            BounderUtil.throwIfStackTrace(nullUnreachRes)
-            prettyPrinting.printWitness(nullUnreachRes)
-            val interpretedResult: BounderUtil.ResultSummary =
-              BounderUtil.interpretResult(nullUnreachRes, QueryFinished)
 
-            println(s"expected: $expected")
-            println(s"actual: $interpretedResult")
-            //val dbg = w.dumpDebug("MyActivity")
 
-            assert(expected == interpretedResult)
+            //Reach Location
+            {
+              val symbolicExecutor_reach = config.getSymbolicExecutor
+              val line_reach = BounderUtil.lineForRegex(".*query2.*".r, srcReach)
+              val nullReach = ReceiverNonNull(Signature("com.example.createdestroy.OtherActivity",
+                "void onClick(android.view.View)"), line_reach, Some(".*toString.*"))
+              val nullReachRes = symbolicExecutor_reach.run(nullReach, dbMode).flatMap(a => a.terminals)
+              val interpretedResult = BounderUtil.interpretResult(nullReachRes,QueryFinished)
+              println(s"spec set: ${specs.size}")
+              PrettyPrinting.dumpDebugInfo(nullReachRes, s"ReachSamp_${specs.size}",truncate=false)
+              assert(interpretedResult == Witnessed)
+            }
           }
 
         }
-        makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase,
+        makeApkWithSources(Map("MyActivity.java" -> srcUnreach, "OtherActivity.java"->srcReach), MkApk.RXBase,
           test)
     }
   }
