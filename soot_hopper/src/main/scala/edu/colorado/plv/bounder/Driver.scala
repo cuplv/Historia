@@ -332,7 +332,7 @@ object Driver {
         sizesPrinted.add(queries.size)
       }
       val appLoc = symbolicExecutor.appCodeResolver.sampleDeref(filter)
-      val sig = Signature(appLoc.method.simpleName, appLoc.method.classType)
+      val sig = appLoc.method.getSignature
       val line = appLoc.line.lineNumber
       queries.add(ReceiverNonNull(sig, line))
     }

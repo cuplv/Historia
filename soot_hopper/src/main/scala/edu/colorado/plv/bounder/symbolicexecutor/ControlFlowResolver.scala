@@ -1,9 +1,10 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
 import edu.colorado.plv.bounder.BounderUtil
+import edu.colorado.plv.bounder.ir.EmptyTypeSet.intersect
 import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, Signature}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, OAbsMsg, Signature}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, FieldPtEdge, PureVar, State, StaticPtEdge}
 import scalaz.Memo
@@ -63,6 +64,43 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   private implicit val ch = cha
   private val componentR: Option[List[Regex]] = component.map(_.map(_.r))
   private val specSpace:SpecSpace = config.specSpace
+
+  //TODO:======   mapping from pts to regions to messages function of absmsg set
+
+  /**
+   * Get a mapping from points to messages to arg number and abstract message.
+   * @param msgs set of messages that may be used by the specification
+   * @return the mapping
+   */
+  def ptsToMsgs(msgs:Set[AbsMsg]):Set[(AbsMsg,List[TypeSet])] = {
+    resolver.getCallbacks.flatMap{cb =>
+
+      val ret = wrapper.makeMethodRetuns(cb)
+      val cbSig = cb.getSignature
+      val matchedCB = msgs.filter(absMsg => List(CBEnter,CBExit).exists(absMsg.contains(_,cbSig)))
+
+      // Get pts to regions for cb return var Empty if void
+      val retPts = ret.map(r => wrapper.cmdAtLocation(r) match {
+        case ReturnCmd(Some(returnVar:LocalWrapper), loc) => wrapper.pointsToSet(cb, returnVar)
+        case ReturnCmd(None,loc) => EmptyTypeSet
+        case otherCmd => throw new IllegalStateException(s"Cannot have non-return cmd as return location: $otherCmd")
+      }).foldLeft(EmptyTypeSet:TypeSet){
+        case  (acc,v) => acc.union(v)
+      }
+
+      // Get pts to regions for args of cb empty if static
+      val argPts = cb.getArgs.map(_.map(wrapper.pointsToSet(cb, _)).getOrElse(EmptyTypeSet))
+
+      val allMethodsCalled = allCalls(cb) + cb
+      val callins = allMethodsCalled.flatMap(callinNamesAndPts).flatMap{ci =>
+        msgs.filter(absMsg => absMsg.contains(CBExit, ci._1)).map(absMsg => (absMsg,ci._2))
+      }
+
+      val callbacks = matchedCB.map(absMsg => (absMsg, retPts::argPts))
+
+      callins ++ callbacks
+    }
+  }
 
   def callbackInComponent(loc: Loc): Boolean = loc match {
     case CallbackMethodReturn(_, methodLoc, _) =>
@@ -317,6 +355,38 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     ).flatMap{ case (_,v) => v}.toSet
   }
   val heapNamesModified:MethodLoc => Set[String] = Memo.mutableHashMapMemo{iHeapNamesModified}
+
+  def iCallinNamesAndPts(m:MethodLoc):Set[(Signature,List[TypeSet])] = {
+    def paramToTypeSet(p:RVal):TypeSet = p match{
+      case l:LocalWrapper =>
+        wrapper.pointsToSet(m,l)
+      case _ =>
+        EmptyTypeSet
+    }
+    def modifiedNames(c: CmdWrapper):Set[(Signature,List[TypeSet])] = c match {
+      case AssignCmd(x,i : Invoke, _) => Set((i.targetSignature,paramToTypeSet(x)
+        ::i.targetOptional.map(paramToTypeSet).getOrElse(EmptyTypeSet)::i.params.map(paramToTypeSet)))
+      case _: AssignCmd => Set.empty
+      case _: ReturnCmd => Set.empty
+      case InvokeCmd(i,_) =>
+        Set((i.targetSignature,EmptyTypeSet::i.targetOptional.map(paramToTypeSet).getOrElse(EmptyTypeSet)
+          ::i.params.map(paramToTypeSet)))
+      case _: If => Set.empty
+      case _: NopCmd => Set.empty
+      case _: ThrowCmd => Set.empty
+      case _: SwitchCmd => Set.empty
+    }
+    val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) =>
+      BounderUtil.cmdAtLocationNopIfUnknown(v,wrapper).mkPre)
+    BounderUtil.graphFixpoint[CmdWrapper, Set[(Signature,List[TypeSet])]](start = returns,Set(),Set(),
+      next = n => wrapper.commandPredecessors(n).map((v: AppLoc) =>
+        BounderUtil.cmdAtLocationNopIfUnknown(v,wrapper).mkPre).toSet,
+      comp = (acc,v) => acc ++ modifiedNames(v),
+      join = (a,b) => a.union(b)
+    ).flatMap{ case (_,v) => v}.toSet
+  }
+  val callinNamesAndPts:MethodLoc => Set[(Signature,List[TypeSet])] = Memo.mutableHashMapMemo{iCallinNamesAndPts}
+
   def iCallinNames(m:MethodLoc):Set[String] = {
     def modifiedNames(c: CmdWrapper): Option[String] = c match {
       case AssignCmd(_,i : Invoke, _) => Some(i.targetSignature.methodSignature)

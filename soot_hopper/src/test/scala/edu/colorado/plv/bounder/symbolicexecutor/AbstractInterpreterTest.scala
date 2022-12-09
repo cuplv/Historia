@@ -29,7 +29,7 @@ class AbstractInterpreterTest extends AnyFunSuite {
     val specs:Set[LSSpec] = Set()
     val w = new JimpleFlowdroidWrapper(test_interproc_1, cgMode,specs)
     val config = SymbolicExecutorConfig(
-      stepLimit = 8, w, new SpecSpace(specs), printProgress = true)
+      stepLimit = 8, w, new SpecSpace(specs), printAAProgress = true)
     implicit val om: OutputMode = config.outputMode
     val symbolicExecutor = config.getSymbolicExecutor
     val query = ReceiverNonNull(

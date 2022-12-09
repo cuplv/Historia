@@ -1126,10 +1126,10 @@ class JimpleFlowdroidWrapper(apkPath : String,
       baseTypes.foreach{t =>
         val sc = Scene.v().getSootClass(t)
         val subClasses: List[SootClass] = try{
-          ch.getSubclassesOf(sc).asScala.toList
+          (if(sc.isInterface) ch.getImplementersOf(sc) else
+            ch.getSubclassesOf(sc)).asScala.toList
         } catch{
-              // TODO: figure out why soot does this
-          case _:NullPointerException => List()
+          case _:NullPointerException => List() // TODO: figure out why soot does this
         }
         val appClassesImplementing = subClasses
           .filter(sc2 => appClasses.contains(JimpleFlowdroidWrapper.stringNameOfClass(sc2)))

@@ -40,7 +40,7 @@ case object SubsumptionModeTest extends SubsumptionMode
  * @param stepLimit Number of back steps to take from assertion before timeout (-1 for no limit)
  * @param w  IR representation defined by IRWrapper interface
  * @param specSpace CFTL specifications
- * @param printProgress print steps taken
+ * @param printAAProgress print steps taken
  * @param z3Timeout seconds that z3 can take on a query before timeout
  * @param component restrict analysis to callbacks that match the listed regular expressions
  * @tparam M Method type (IR wrapper)
@@ -49,12 +49,12 @@ case object SubsumptionModeTest extends SubsumptionMode
 case class SymbolicExecutorConfig[M,C](stepLimit: Int,
                                        w :  IRWrapper[M,C],
                                        specSpace:SpecSpace,
-                                       printProgress : Boolean = sys.env.getOrElse("DEBUG","false").toBoolean,
+                                       printAAProgress : Boolean = sys.env.getOrElse("DEBUG","false") == "AbstractInterpreter",
                                        z3Timeout : Option[Int] = None,
                                        component : Option[Seq[String]] = None,
                                        outputMode : OutputMode = MemoryOutputMode,
-//                                       timeLimit : Int = 7200,
-                                      timeLimit:Int = 1800, // Note: connectbot click finish does not seem to go any further with 2h vs 0.5hr
+                                       //                                       timeLimit : Int = 7200,
+                                       timeLimit:Int = 1800, // Note: connectbot click finish does not seem to go any further with 2h vs 0.5hr
                                        subsumptionMode:SubsumptionMode = SubsumptionModeIndividual //Note: seems to be faster without batch mode subsumption
                                       ){
   def getSymbolicExecutor =
@@ -350,7 +350,7 @@ class AbstractInterpreter[M,C](config: SymbolicExecutorConfig[M,C]) {
 
     val current = qrySet.nextWithGrouping()
 
-    if(config.printProgress) {
+    if(config.printAAProgress) {
       current match {
         case SwapLoc(FrameworkLocation) =>
           println("Framework location query")

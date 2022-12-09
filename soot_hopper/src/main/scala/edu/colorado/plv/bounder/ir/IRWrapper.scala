@@ -26,6 +26,11 @@ trait IRWrapper[M,C]{
   def findMethodLoc(sig:Signature):Iterable[MethodLoc]
   def findLineInMethod(sig:Signature, line:Int):Iterable[AppLoc]
   def findInMethod(className:String, methodName:String, toFind: CmdWrapper => Boolean):Iterable[AppLoc]
+
+  /**
+   * @param source a method in the application
+   * @return set of methods that source may call at runtime
+   */
   def makeMethodTargets(source: MethodLoc): Set[MethodLoc]
   def degreeOut(cmd: AppLoc):Int
   def degreeIn(cmd: AppLoc):Int
@@ -63,6 +68,7 @@ sealed case class UnresolvedMethodTarget(clazz: String, methodName:String, loc:S
 
 
 sealed abstract class TypeSet{
+  def union(other:TypeSet):TypeSet
   def intersect(other:TypeSet):TypeSet
   def intersectNonEmpty(other:TypeSet):Boolean
   def isEmpty:Boolean
@@ -121,6 +127,8 @@ case object TopTypeSet extends TypeSet {
   override def intersectNonEmpty(other: TypeSet): Boolean = true
 
   override def contains(i: Int): Boolean = true
+
+  override def union(other: TypeSet): TypeSet = TopTypeSet
 }
 case object EmptyTypeSet extends TypeSet{
   override def intersect(other: TypeSet): TypeSet = EmptyTypeSet
@@ -139,6 +147,8 @@ case object EmptyTypeSet extends TypeSet{
   override def intersectNonEmpty(other: TypeSet): Boolean = false
 
   override def contains(i: Int): Boolean = false
+
+  override def union(other: TypeSet): TypeSet = other
 }
 
 case object PrimTypeSet{
@@ -146,6 +156,13 @@ case object PrimTypeSet{
 }
 case class PrimTypeSet(name:String) extends TypeSet {
   override def intersect(other: TypeSet): TypeSet = if(contains(other)) this else EmptyTypeSet
+
+  override def union(other:TypeSet):TypeSet = other match {
+    case TopTypeSet => TopTypeSet
+    case EmptyTypeSet => this
+    case PrimTypeSet(otherName) if otherName == name => this
+    case ts => throw new IllegalArgumentException(s"cannot union primitive type set with: ${ts}")
+  }
 
   override def isEmpty: Boolean = false
 
@@ -222,6 +239,13 @@ case class BitTypeSet(s:BitSet) extends TypeSet {
   override def intersectNonEmpty(other: TypeSet): Boolean = !intersect(other).isEmpty
 
   override def contains(i: Int): Boolean = s.contains(i)
+
+  override def union(other: TypeSet): TypeSet = other match {
+    case TopTypeSet => TopTypeSet
+    case EmptyTypeSet => this
+    case p:PrimTypeSet => throw new IllegalArgumentException(s"Cannot union with primitive type set: ${this} + ${p}")
+    case BitTypeSet(otherS) => BitTypeSet(s.union(otherS))
+  }
 }
 
 
