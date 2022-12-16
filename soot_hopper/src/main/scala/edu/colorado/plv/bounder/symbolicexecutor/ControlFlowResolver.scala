@@ -72,7 +72,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
    * @param msgs set of messages that may be used by the specification
    * @return the mapping
    */
-  def ptsToMsgs(msgs:Set[AbsMsg]):Set[(AbsMsg,List[TypeSet])] = {
+  def ptsToMsgs(msgs:Set[OAbsMsg]):Set[(OAbsMsg,List[TypeSet])] = {
     resolver.getCallbacks.flatMap{cb =>
 
       val ret = wrapper.makeMethodRetuns(cb)

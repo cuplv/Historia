@@ -44,7 +44,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
       LSSpec(a::Nil,Nil,  LSAnyPred , a_call)
     ), matcherSpace = Set())
     implicit val solver = new Z3StateSolver(cha)
-    val res = gen.learnRulesFromConcGraph(Set(unreachSeq), Set(reachSeq), spec)
+//    val res = gen.learnRulesFromConcGraph(Set(unreachSeq), Set(reachSeq), spec)
     ???
 
 
@@ -71,11 +71,10 @@ class EnumModelGeneratorTest extends AnyFunSuite {
 
   test("Synthesis example - simplification of Connect bot click/finish") {
 
+    //Or(NS(SpecSignatures.Activity_onPause_exit, SpecSignatures.Activity_onResume_entry),
+    //          Not(SpecSignatures.Activity_onResume_entry))
     val specs = Set[LSSpec](
-      LSSpec(a :: Nil, Nil,
-        Or(NS(SpecSignatures.Activity_onPause_exit, SpecSignatures.Activity_onResume_entry),
-          Not(SpecSignatures.Activity_onResume_entry)),
-        SpecSignatures.Activity_onResume_entry),
+      LSSpec(a :: Nil, Nil, LSAnyPred, SpecSignatures.Activity_onResume_entry),
       LSSpec(l :: Nil, v :: Nil, LSAnyPred, onClickI)
     )
 

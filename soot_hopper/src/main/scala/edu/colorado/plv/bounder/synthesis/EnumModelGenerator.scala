@@ -1,17 +1,18 @@
 package edu.colorado.plv.bounder.synthesis
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.BounderUtil.ResultSummary
-import edu.colorado.plv.bounder.ir.{CNode, ConcGraph, OverApprox, TMessage, TopTypeSet, TypeSet}
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, AnyAbsMsg, Exists, Forall, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or}
-import edu.colorado.plv.bounder.lifestate.{LifeState, SpecAssignment, SpecSpace}
-import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, Z3StateSolver}
+import edu.colorado.plv.bounder.BounderUtil.{Proven, ResultSummary, Witnessed}
+import edu.colorado.plv.bounder.ir.{ApproxDir, CNode, ConcGraph, Exact, OverApprox, TMessage, TopTypeSet, TypeSet, UnderApprox}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Forall, LSAnyPred, LSAtom, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or}
+import edu.colorado.plv.bounder.lifestate.{LifeState, SpecAssignment, SpecSpace, SpecSpaceAnyOrder}
+import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, QueryFinished, SymbolicExecutorConfig}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{IPathNode, InitialQuery, MemoryOutputMode, OutputMode}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, IPathNode, InitialQuery, MemoryOutputMode, OutputMode, PureVar, State, TopVal}
 import edu.colorado.plv.bounder.synthesis.EnumModelGenerator.{NoStep, StepResult, StepSuccessM, StepSuccessP, isTerminal}
-import edu.colorado.plv.bounder.symbolicexecutor.state.PureVar
 
-import scala.collection.mutable
+import scala.collection.{View, immutable, mutable}
 import scala.collection.immutable.Queue
+import scala.collection.mutable.ListBuffer
+
 
 object EnumModelGenerator{
   def isTerminal(pred:LSPred):Boolean = pred match {
@@ -25,11 +26,11 @@ object EnumModelGenerator{
     case Exists(_, p) => isTerminal(p)
     case _:LSImplies =>
       throw new IllegalArgumentException("Shouldn't be using implies in synthesis")
-    case NS(AnyAbsMsg, _) => false
-    case NS(_,AnyAbsMsg) => false
+//    case NS(AnyAbsMsg, _) => false
+//    case NS(_,AnyAbsMsg) => false
     case _:NS => true
     case _:OAbsMsg => true
-    case AnyAbsMsg => false
+//    case AnyAbsMsg => false
     case Not(p) => isTerminal(p)
   }
   def isTerminal(lsSpec: LSSpec):Boolean = lsSpec match{
@@ -39,8 +40,8 @@ object EnumModelGenerator{
     spec.getSpecs.forall(isTerminal)
 
   sealed trait StepResult
-  case class StepSuccessP(preds:List[LSPred], toQuant:Set[PureVar]) extends StepResult
-  case class StepSuccessM(msg:List[OAbsMsg], toQuant:Set[PureVar]) extends StepResult
+  case class StepSuccessP(preds:List[(LSPred, Set[PureVar])]) extends StepResult
+  case class StepSuccessM(msg:List[(OAbsMsg ,Set[PureVar])]) extends StepResult
   case object NoStep extends StepResult
 
 
@@ -53,10 +54,11 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     new ControlFlowResolver[M,C](cfg.w, new DefaultAppCodeResolver(cfg.w), cha, cfg.component.map(_.toList),cfg)
   private val ptsMsg = controlFlowResolver.ptsToMsgs(initialSpec.allI)
 
-  def mkOverApproxResForQry(qry:InitialQuery, spec:SpecSpace):Set[IPathNode] = {
+  def mkApproxResForQry(qry:InitialQuery, spec:SpecSpace, approxDir: ApproxDir):Set[IPathNode] = {
     //TODO:=== do something smarter than recomputing full query each time, doing this for testing right now
     // note: this is just a matter of changing the labels on individual nodes in wit tree
-    val tConfig = cfg.copy(specSpace = spec)
+    val approxOfSpec = approxSpec(spec,approxDir)
+    val tConfig = cfg.copy(specSpace = approxOfSpec)
     val ex = tConfig.getSymbolicExecutor
     ex.run(qry,MemoryOutputMode).flatMap(_.terminals)
   }
@@ -74,55 +76,203 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
 
   def mergeOne(predConstruct:LSPred => LSPred, sub:LSPred, scope:Map[PureVar,TypeSet]):StepResult = {
     step(sub, scope) match{
-      case StepSuccessP(preds,tq) => StepSuccessP(preds.map(predConstruct),tq)
-      case StepSuccessM(preds,tq) => StepSuccessP(preds.map(predConstruct),tq)
+      case StepSuccessP(preds) => StepSuccessP(preds.map{case (p,tq) => (predConstruct(p),tq)})
+      case StepSuccessM(preds) => StepSuccessP(preds.map{case (p,tq) => (predConstruct(p),tq)})
       case NoStep => NoStep
     }
   }
-  def mergeTwo[T<:LSPred](predConstruct:(T,T) => LSPred, p1:T, p2:T, scope:Map[PureVar, TypeSet]):StepResult ={
-    ???
+  def mergeTwo(predConstruct:(LSPred,LSPred) => LSPred, p1:LSPred, p2:LSPred, scope:Map[PureVar, TypeSet]):StepResult ={
+    type T = LSPred
+    val (pred1Construct, other):(T=>LSPred,T) = if(!isTerminal(p1))
+      ((p:T) => predConstruct(p1,p),p2)
+    else if(!isTerminal(p2)){
+      ((p:T) => predConstruct(p,p2),p1)
+    }else
+      return StepSuccessP((predConstruct(p1,p2),Set[PureVar]())::Nil)
+    mergeOne(pred1Construct, other, scope)
   }
 
+  def mkRel(pv:PureVar, ts:TypeSet, avoid:Set[PureVar]):Set[OAbsMsg] = {
+    ptsMsg.flatMap{
+      case (msg,argPoints) =>
+        val argSwaps = argPoints.map{
+          case argPt if argPt.intersectNonEmpty(ts) => Some(pv)
+          case _ => None
+        }
+        argSwaps.zipWithIndex.flatMap{
+          case (Some(v), ind) => Some(msg.cloneWithVar(v,ind,avoid))
+          case _ => None
+        }.toSet
+    }
+  }
+  def absMsgToNs(m:OAbsMsg,scope:Map[PureVar,TypeSet]):Set[NS] ={
+    m.lsVar.flatMap{
+      case v if scope.contains(v) => mkRel(v, scope(v), scope.keySet).map{om =>
+        NS(m, om)
+      }
+      case _ => None
+    }
+  }
   def step(pred:LSPred, scope:Map[PureVar,TypeSet]):StepResult = pred match{
-    case LifeState.LSAnyPred =>
-      StepSuccessP(???,???)
-    case AnyAbsMsg =>
-      StepSuccessM(???,???)
+    case LifeState.LSAnyPred =>{
+      val relMsg: immutable.Iterable[OAbsMsg] = scope.flatMap{case(pv,ts) => mkRel(pv,ts, scope.keySet)}
+
+      val relNS = relMsg.flatMap{m =>
+        absMsgToNs(m,scope).map(ns => (ns:LSPred, ns.lsVar.filter(v => !scope.contains(v))))}
+      val relMsgToAdd = relMsg.map{m => (m.asInstanceOf[LSPred], m.lsVar.filter(!scope.contains(_)))}
+
+      val mutList = new ListBuffer[(LSPred, Set[PureVar])]()
+      mutList.addAll(relNS)
+      mutList.addAll(relMsgToAdd)
+      mutList.addAll(relMsg.map{ m => (Not(m.copyMsg(m.lsVars.map{
+        case v:PureVar if scope.contains(v) => v
+        case _ => TopVal
+      })), Set[PureVar]())})
+
+      List(Or,And).foreach { op =>
+        mutList.addOne((op(LSAnyPred, LSAnyPred), Set[PureVar]()))
+      }
+      StepSuccessP(mutList.toList)
+    }
+//    case AnyAbsMsg =>
+//      StepSuccessM(???) //TODO: remove AnyAbsMsg or change prev case
     case Or(l1, l2) => mergeTwo(Or, l1, l2, scope)
     case And(l1, l2) => mergeTwo(And, l1,l2, scope)
     case Forall(x, s) => mergeOne(v => Forall(x,v), s, scope ++ x.map(_ -> TopTypeSet))
     case Exists(x, p) => mergeOne(Exists(x,_), p, scope ++ x.map(_ -> TopTypeSet))
-    case NS(m1, m2) => mergeTwo((a:AbsMsg,b:AbsMsg) => NS(b,a),m2,m1,scope)
+    case n:NS => NoStep
+//    case NS(m1, m2) => mergeTwo((a:AbsMsg,b:AbsMsg) => NS(b,a),m2,m1,scope)
     case _:OAbsMsg => NoStep
     case Not(p) => mergeOne(Not,p,scope)
     case _:LSImplies =>
       throw new IllegalArgumentException("Shouldn't be using implies in synthesis")
     case v => NoStep
   }
-  def step(rule:LSSpec):LSSpec = {
-    ???
+
+  private def mkQuant(v:Iterable[PureVar],pred:LSPred):LSPred = {
+    if(v.isEmpty) pred else Exists(v.toList, pred)
+  }
+  /**
+   *
+   * @param rule to fill a hole
+   * @return next spec, whether spec was stepped
+   */
+  def step(rule:LSSpec, scope:Map[PureVar,TypeSet]):(List[LSSpec],Boolean) = rule match{
+    case s@LSSpec(_,_,pred,_,_) =>
+      step(pred,scope) match {
+        case StepSuccessP(preds) => (preds.map{case (p,quant) => s.copy(pred = mkQuant(quant,p))},true)
+        case NoStep => (List(s),false)
+      }
   }
 
-  def step(spec:SpecSpace):SpecSpace = {
-    ???
+  def mkScope(rule:LSSpec, state:State):Map[PureVar,TypeSet] = {
+    val tr = state.sf.traceAbstraction.rightOfArrow
+    val directM:Map[PureVar,TypeSet] = tr.flatMap{m =>
+      if(rule.target.identitySignature == m.identitySignature){
+        rule.target.lsVars.zip(m.lsVars).flatMap{
+          case (pv1:PureVar, pv2:PureVar) =>
+            Map(pv1 -> state.sf.typeConstraints.getOrElse(pv2,TopTypeSet))
+          case _ => Map.empty
+        }
+      }else None}.toMap
+    val enc = EncodingTools.rhsToPred(tr, new SpecSpace(Set(rule))).flatMap(SpecSpace.allI)
+
+    val lsVars = enc.flatMap{m => m.lsVar}
+    lsVars.map{v => (v -> state.sf.typeConstraints.getOrElse(v,TopTypeSet))}.foldLeft(directM){
+      case (acc,(k,v)) if acc.contains(k) => acc + (k -> acc(k).intersect(v))
+      case (acc, (k,v)) => acc + (k -> v)
+    }
+  }
+
+  def approxPred(lsPred: LSPred, approxDir: ApproxDir):LSPred = {
+    val replaceAnyWith = approxDir match {
+      case OverApprox => LSTrue
+      case UnderApprox => LSFalse
+      case Exact =>
+        ???
+    }
+    lsPred match {
+      case LSAnyPred => replaceAnyWith
+      case Or(l1,l2) => Or(approxPred(l1,approxDir), approxPred(l2,approxDir))
+      case And(l1,l2) => And(approxPred(l1,approxDir), approxPred(l2,approxDir))
+      case Forall(vars, p) => Forall(vars, approxPred(p,approxDir))
+      case Exists(vars, p) => Exists(vars,approxPred(p,approxDir))
+      case atom: LSAtom => atom
+      case v =>
+        println(v)
+        ???
+    }
+  }
+
+
+  def approxSpec(lsSpec: LSSpec, approxDir: ApproxDir):LSSpec = lsSpec.copy(pred = approxPred(lsSpec.pred, approxDir))
+
+  def approxSpec(spec:SpecSpace, approxDir: ApproxDir):SpecSpace = {
+    val specs = spec.getSpecs.map(approxSpec(_,approxDir))
+    spec.copy(enableSpecs = specs)
+  }
+
+  /**
+   *
+   * @param spec spec to expand an AST hole
+   * @return next spec, whether spec was stepped
+   */
+  def step(specSpace:SpecSpace, state:State):(Set[SpecSpace],Boolean) = {
+    val specToStep = specSpace.sortedEnableSpecs.collectFirst{case (s,Some(_)) => s}
+    if(specToStep.isEmpty)
+      return (Set(specSpace),false)
+    val (next:List[LSSpec],changed) =
+      step(specToStep.get,mkScope(specToStep.get, state))
+    assert(changed)
+    val base: Set[LSSpec] = specSpace.getSpecs.filter{s => s != specToStep.get}
+    (next.map{n => new SpecSpace(base + n)}.toSet,true)
   }
 
   def run():LearnResult = {
-    def iRun(queue: Queue[SpecSpace]):LearnResult = {
-      val cSpec = queue.head
-      val rest = queue.tail
+    val queue = mutable.PriorityQueue[SpecSpace]()(SpecSpaceAnyOrder)
+    queue.addOne(initialSpec)
+    while(queue.nonEmpty) {
+      val cSpec = queue.dequeue()
 
-      if(isTerminal(cSpec)){
-        val tgtRes = mkOverApproxResForQry(target,cSpec)
-        val reachRes = reachable.map(mkOverApproxResForQry(_,cSpec))
-        //BounderUtil.interpretResult(res, QueryFinished)
-        ??? //TODO ===
-      }else{
-        val nextSpecs = step(cSpec)
-        ???
+      val reachRefuted:Boolean = reachable.exists(qry => {
+        val res = mkApproxResForQry(qry,cSpec, OverApprox)
+        BounderUtil.interpretResult(res, QueryFinished) match{
+          case Witnessed => false
+          case Proven =>
+            true
+          case otherRes =>
+            throw new IllegalStateException(s"Failed to finish reachable query. Result: $otherRes Query:$qry")
+        }})
+
+      lazy val unreachAlwaysAlarm = {
+        val tgtRes = mkApproxResForQry(target, cSpec, UnderApprox)
+        BounderUtil.interpretResult(tgtRes, QueryFinished) match {
+          case Proven =>
+            false
+          case Witnessed =>
+            true
+          case otherRes =>
+            throw new IllegalStateException(s"Failure to generate abstract witness or prove target: ${otherRes}")
+        }
       }
+//      if(reachRefuted || unreachAlwaysAlarm){
+        // no expansion of spec can succeed, move on to the next one
+        //iRun(queue.ta
+      if(reachRefuted && unreachAlwaysAlarm && isTerminal(cSpec)){
+        return LearnSuccess(cSpec)
+      }else{
+        val overApproxAlarm: Set[IPathNode] = mkApproxResForQry(target, cSpec, OverApprox)
+        val someAlarm = overApproxAlarm.find(pn => pn.qry.isWitnessed)
+        if(!someAlarm.isEmpty){
+          val nextSpecs = step(cSpec, someAlarm.get.state)
+          println(s"next specs\n===========\n${nextSpecs._1.mkString("\n---\n")}")
+          queue.addAll(nextSpecs._1)
+        }
+      }
+
     }
-    iRun(Queue(initialSpec))
+
+    LearnFailure //no more spec expansions to try
   }
 
 
@@ -134,40 +284,44 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
    * * @param space
    */
   case class LearnSuccess(space:SpecSpace) extends LearnResult
+  case object LearnFailure extends LearnResult
   case class LearnCont(target:Set[(TMessage, LSPred)], reachable: Set[(TMessage, LSPred)]) extends LearnResult
 
-  def learnRulesFromConcGraph(target:Set[ConcGraph], reachable:Set[ConcGraph], space:SpecSpace)
-                             (implicit cha:ClassHierarchyConstraints, solver:Z3StateSolver):Option[SpecSpace] = {
-    def iLearn(target:Set[ConcGraph], reachable:Set[ConcGraph],
-               workList:List[SpecSpace], visited:Set[SpecSpace]): Option[SpecSpace]={
-      if(workList.isEmpty)
-        return None
-      val currentSpace = workList.head
-      lazy val tgtLive:Boolean = target.exists{c =>
-        //TODO: skip if a path must exist to the target
-        val res: Set[(CNode, LSPred)] = c.filter(space)
-        ???
-      }
-      lazy val reachLive = reachable.exists{c =>
-        //TODO: skip if no path exists to a reachable location
-        val res = c.filter(space)
-        ???
-      }
-      if(tgtLive && reachLive) {
-        if(isTerminal(currentSpace))
-          Some(currentSpace)
-        else if(!visited.contains(currentSpace)) {
-          val nextSpace = step(currentSpace)
-          iLearn(target, reachable, nextSpace::workList.tail, visited + currentSpace)
-        }else{
-          ???
-        }
-      }else{
-        ???
-      }
-    }
-    iLearn(target, reachable, List(space), Set())
-  }
+//  def learnRulesFromConcGraph(target:Set[ConcGraph], reachable:Set[ConcGraph], space:SpecSpace)
+//                             (implicit cha:ClassHierarchyConstraints, solver:Z3StateSolver):Option[SpecSpace] = {
+//    def iLearn(target:Set[ConcGraph], reachable:Set[ConcGraph],
+//               workList:List[SpecSpace], visited:Set[SpecSpace]): Option[SpecSpace]={
+//      if(workList.isEmpty)
+//        return None
+//      val currentSpace = workList.head
+//      lazy val tgtLive:Boolean = target.exists{c =>
+//        //TODO: skip if a path must exist to the target
+//        val res: Set[(CNode, LSPred)] = c.filter(space)
+//        ???
+//      }
+//      lazy val reachLive = reachable.exists{c =>
+//        //TODO: skip if no path exists to a reachable location
+//        val res = c.filter(space)
+//        ???
+//      }
+//      if(tgtLive && reachLive) {
+//        if(isTerminal(currentSpace))
+//          Some(currentSpace)
+//        else if(!visited.contains(currentSpace)) {
+//          val (nextSpace,hasChanged) = step(currentSpace)
+//          if(hasChanged)
+//            iLearn(target, reachable, nextSpace::workList.tail, visited + currentSpace)
+//          else
+//            ???
+//        }else{
+//          ???
+//        }
+//      }else{
+//        ???
+//      }
+//    }
+//    iLearn(target, reachable, List(space), Set())
+//  }
   /**
    *
    * @param posExamples set of traces representing reachable points (List in reverse execution order)

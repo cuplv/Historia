@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import better.files.Resource
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, LSSpec, SetSignatureMatcher, Signature, SignatureMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, LSSpec, OAbsMsg, SetSignatureMatcher, Signature, SignatureMatcher}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SetInclusionTypeSolving, SolverTypeSolving, StateTypeSolving, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
@@ -182,7 +182,7 @@ class TransferFunctionsTest extends AnyFunSuite {
 //    assert(res.exists{v => v.isDefined && v.get.heapConstraints.size == 2 && v.get.testGet(x) == Some(PureVar(4))}) //TODO:===========
   }
   private val a = NamedPureVar("a")
-  private val iFooA: AbsMsg = AbsMsg(CBEnter, Set(Signature("", "foo()")), TopVal :: a :: Nil)
+  private val iFooA: OAbsMsg = AbsMsg(CBEnter, Set(Signature("", "foo()")), TopVal :: a :: Nil)
   ignore("Add matcher and phi abstraction when crossing callback entry") {
     val preloc = CallbackMethodInvoke(Signature("","foo()"), fooMethod) // Transition to just before foo is invoked
     val postloc = AppLoc(fooMethod,SerializedIRLineLoc(1), isPre=true)

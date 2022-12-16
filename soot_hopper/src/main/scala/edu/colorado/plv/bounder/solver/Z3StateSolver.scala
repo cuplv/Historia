@@ -6,7 +6,7 @@ import com.microsoft.z3.enumerations.Z3_ast_print_mode
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{AppMethod, CBEnter, CBExit, CIEnter, CIExit, FwkMethod, TCLInit, TMessage, TNew, TraceElement, WitnessExplanation}
 import edu.colorado.plv.bounder.lifestate.LifeState
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, AnyAbsMsg, CLInit, FreshRef, OAbsMsg, Signature}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, CLInit, FreshRef, OAbsMsg, Signature}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, BotVal, NullVal, PureExpr, PureVal, PureVar, State, ConcreteAddr, ConcreteVal, TopVal}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -470,7 +470,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
         TMessage(CIEnter,FwkMethod(sig.example()), vars.map(v => pmv(v)))
       case OAbsMsg(CIExit, sig, vars) =>
         TMessage(CIExit,FwkMethod(sig.example()), vars.map(v => pmv(v)))
-      case AnyAbsMsg => ??? //TODO: how to explain any?
+//      case AnyAbsMsg => ??? //TODO: how to explain any?
     }
 
     WitnessExplanation(trace)
