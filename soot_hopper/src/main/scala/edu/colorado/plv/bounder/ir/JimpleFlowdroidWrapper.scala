@@ -510,25 +510,30 @@ class JimpleFlowdroidWrapper(apkPath : String,
       s"var: ${v.name}, ptRegions: $ptRegions"
     }
     methods.foreach(m => {
-      val vars = m.getActiveBody.getUnits.asScala.flatMap{ c =>
-        val methodLoc = JimpleMethodLoc(m)
-        val ml = JimpleFlowdroidWrapper.makeCmd(c, m, AppLoc(methodLoc, JimpleLineLoc(c, m), true))
-        ml match {
-          case ReturnCmd(Some(returnVar:LocalWrapper), loc) => Set(varAndPtRegions(methodLoc, returnVar))
-          case AssignCmd(target:LocalWrapper, source, loc) => Set(varAndPtRegions(methodLoc, target))
-          case InvokeCmd(method, loc) => method.params.flatMap{
-            case p:LocalWrapper => Some(varAndPtRegions(methodLoc, p))
-            case _ => None
+      if(m.hasActiveBody) {
+        val vars = m.getActiveBody.getUnits.asScala.flatMap { c =>
+          val methodLoc = JimpleMethodLoc(m)
+          val ml = JimpleFlowdroidWrapper.makeCmd(c, m, AppLoc(methodLoc, JimpleLineLoc(c, m), true))
+          ml match {
+            case ReturnCmd(Some(returnVar: LocalWrapper), loc) => Set(varAndPtRegions(methodLoc, returnVar))
+            case AssignCmd(target: LocalWrapper, source, loc) => Set(varAndPtRegions(methodLoc, target))
+            case InvokeCmd(method, loc) => method.params.flatMap {
+              case p: LocalWrapper => Some(varAndPtRegions(methodLoc, p))
+              case _ => None
+            }
+            case If(b, trueLoc, loc) => Set.empty
+            case NopCmd(loc) => Set.empty
+            case SwitchCmd(key, targets, loc) => Set.empty
+            case ThrowCmd(loc) => Set.empty
+            case _ => Set.empty
           }
-          case If(b, trueLoc, loc) => Set.empty
-          case NopCmd(loc) => Set.empty
-          case SwitchCmd(key, targets, loc) => Set.empty
-          case ThrowCmd(loc) => Set.empty
-          case _ => Set.empty
-        }
-        //        s"${v.getName}:${pointsToSet(ml,lw)}"}
-      }.toSet
-      stringBuilder.append(s"=========${m.getDeclaringClass.getName} ${m.getName}\n${m.getActiveBody}\n ${vars.mkString("\n")}\n\n")
+          //        s"${v.getName}:${pointsToSet(ml,lw)}"}
+        }.toSet
+        stringBuilder.append(s"=========${m.getDeclaringClass.getName} ${m.getName}\n${m.getActiveBody}\n ${vars.mkString("\n")}\n\n")
+      }else{
+        stringBuilder.append(s"=========${m.getDeclaringClass.getName} ${m.getName}\n  " +
+          s"THE SOOT HAS DEEMED THIS METHOD TO HAVE NO ACTIVE BODY!!!\n\n")
+      }
     })
     stringBuilder.toString()
   }

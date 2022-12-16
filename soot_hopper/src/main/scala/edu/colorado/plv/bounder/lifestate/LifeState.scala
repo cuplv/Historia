@@ -1021,7 +1021,7 @@ object SpecSpaceAnyOrder extends Ordering[SpecSpace]{
  * @matcherSpace additional matchers that may be used for synthesis (added to allI)
  **/
 class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(), matcherSpace:Set[OAbsMsg] = Set()) {
-  lazy val sortedEnableSpecs:List[(LSSpec,Option[Int])] = enableSpecs.map(s => (s,depthToAny(s.pred))).toList.sortBy(_._2)
+  lazy val sortedEnableSpecs:List[(LSSpec,Option[Int])] = enableSpecs.map(s => (s,depthToAny(s.pred))).toList.sortBy(_._2.getOrElse(Integer.MAX_VALUE))
   override def toString: String = {
     val builder = new StringBuilder()
     builder.append("enableSpecs\n------\n")

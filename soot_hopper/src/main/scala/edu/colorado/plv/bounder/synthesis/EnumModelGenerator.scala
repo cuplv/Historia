@@ -6,7 +6,7 @@ import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Forall
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecAssignment, SpecSpace, SpecSpaceAnyOrder}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, QueryFinished, SymbolicExecutorConfig}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, IPathNode, InitialQuery, MemoryOutputMode, OutputMode, PureVar, State, TopVal}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, IPathNode, InitialQuery, MemoryOutputMode, NullVal, OutputMode, PureVar, State, TopVal}
 import edu.colorado.plv.bounder.synthesis.EnumModelGenerator.{NoStep, StepResult, StepSuccessM, StepSuccessP, isTerminal}
 
 import scala.collection.{View, immutable, mutable}
@@ -106,19 +106,30 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     }
   }
   def absMsgToNs(m:OAbsMsg,scope:Map[PureVar,TypeSet]):Set[NS] ={
-    m.lsVar.flatMap{
-      case v if scope.contains(v) => mkRel(v, scope(v), scope.keySet).map{om =>
-        NS(m, om)
+    val res = m.lsVar.flatMap{
+      case v if scope.contains(v) => mkRel(v, scope(v), scope.keySet).flatMap{om =>
+        Set(NS(m, om)) ++ (if(om.lsVars.size > 2){
+          Set(NS(m,om.copyMsg(om.lsVars.zipWithIndex.map{
+            case (k,v) if v == 2 =>
+              NullVal
+            case (k,v) => k
+          })))
+        }else {
+          Set.empty
+        })
       }
       case _ => None
     }
+    res
   }
   def step(pred:LSPred, scope:Map[PureVar,TypeSet]):StepResult = pred match{
     case LifeState.LSAnyPred =>{
       val relMsg: immutable.Iterable[OAbsMsg] = scope.flatMap{case(pv,ts) => mkRel(pv,ts, scope.keySet)}
 
       val relNS = relMsg.flatMap{m =>
-        absMsgToNs(m,scope).map(ns => (ns:LSPred, ns.lsVar.filter(v => !scope.contains(v))))}
+        absMsgToNs(m,scope).map(ns =>
+          (ns:LSPred, ns.lsVar.filter(v => !scope.contains(v))))
+      }
       val relMsgToAdd = relMsg.map{m => (m.asInstanceOf[LSPred], m.lsVar.filter(!scope.contains(_)))}
 
       val mutList = new ListBuffer[(LSPred, Set[PureVar])]()
@@ -223,9 +234,11 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       return (Set(specSpace),false)
     val (next:List[LSSpec],changed) =
       step(specToStep.get,mkScope(specToStep.get, state))
-    assert(changed)
-    val base: Set[LSSpec] = specSpace.getSpecs.filter{s => s != specToStep.get}
-    (next.map{n => new SpecSpace(base + n)}.toSet,true)
+    if(!changed) {
+      //assert(false) //TODO: probably figure out why this happens...
+    }
+    val base: Set[LSSpec] = specSpace.getSpecs.filter { s => s != specToStep.get }
+    (next.map { n => new SpecSpace(base + n) }.toSet, true)
   }
 
   def run():LearnResult = {

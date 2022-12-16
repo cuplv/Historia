@@ -92,8 +92,11 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       val argPts = cb.getArgs.map(_.map(wrapper.pointsToSet(cb, _)).getOrElse(EmptyTypeSet))
 
       val allMethodsCalled = allCalls(cb) + cb
-      val callins = allMethodsCalled.flatMap(callinNamesAndPts).flatMap{ci =>
-        msgs.filter(absMsg => absMsg.contains(CBExit, ci._1)).map(absMsg => (absMsg,ci._2))
+      val callins_ = allMethodsCalled.flatMap(callinNamesAndPts)
+      val callins =  callins_.flatMap{ci =>
+        msgs.filter{absMsg =>
+          absMsg.contains(CIExit, ci._1)
+        }.map(absMsg => (absMsg,ci._2))
       }
 
       val callbacks = matchedCB.map(absMsg => (absMsg, retPts::argPts))

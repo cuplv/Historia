@@ -153,6 +153,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
           Activity_onResume_entry, Activity_onPause_entry, Button_init)
 
         val w = new JimpleFlowdroidWrapper(apk, toOverride = specs ++ iSet)
+        //val dbg = w.dumpDebug("com.example")
 
         val specSpace = new SpecSpace(specs, matcherSpace = iSet)
         val config = SymbolicExecutorConfig(
