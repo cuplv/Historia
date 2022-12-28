@@ -286,7 +286,16 @@ object LifeState {
 
   }
 
-  case class Forall(vars:List[PureVar], p:LSPred) extends LSPred{
+  sealed trait LSBinOp extends LSPred{
+    def l1:LSPred
+    def l2:LSPred
+  }
+
+  sealed trait LSUnOp extends LSPred{
+    def p:LSPred
+  }
+
+  case class Forall(vars:List[PureVar], p:LSPred) extends LSPred with LSUnOp{
 //    override def toString:String =
 //      if(vars.isEmpty) p.toString else s"Forall([${vars.mkString(",")}], ${p.toString})"
     override def toTex: String = ???
@@ -307,7 +316,7 @@ object LifeState {
         p.toString
   }
 
-  case class Exists(vars:List[PureVar], p:LSPred) extends LSPred {
+  case class Exists(vars:List[PureVar], p:LSPred) extends LSPred  with LSUnOp {
     //    override def toString:String =
     //      if(vars.isEmpty) p.toString else s"Exists([${vars.mkString(",")}],${p.toString})"
     override def swap(swapMap: Map[PureVar, PureVar]): Exists = {
@@ -411,7 +420,7 @@ object LifeState {
     override def toTex: String = ???
   }
 
-  case class And(l1 : LSPred, l2 : LSPred) extends LSBexp {
+  case class And(l1 : LSPred, l2 : LSPred) extends LSBexp with LSBinOp {
 
     override def lsVar: Set[PureVar] = l1.lsVar.union(l2.lsVar)
 
@@ -431,28 +440,28 @@ object LifeState {
 
     override def toTex: String = s"${l1.toTex} \\wedge ${l2.toTex}"
   }
-  case class Not(l: LSPred) extends LSAtom {
-    override def lsVar: Set[PureVar] = l.lsVar
+  case class Not(p: LSPred) extends LSAtom with LSUnOp {
+    override def lsVar: Set[PureVar] = p.lsVar
 
     override def contains(mt:MessageType,sig: Signature)(implicit ch:ClassHierarchyConstraints): Boolean =
-      l.contains(mt,sig)
+      p.contains(mt,sig)
 
-    override def swap(swapMap: Map[PureVar, PureVar]) = Not(l.swap(swapMap))
+    override def swap(swapMap: Map[PureVar, PureVar]) = Not(p.swap(swapMap))
 
-    override def toString: String = s"(Not ${l})"
+    override def toString: String = s"(Not ${p})"
 
-    override def toTex: String = l match {
+    override def toTex: String = p match {
       case i: AbsMsg=> s"\\notiDir{${i.mToTex}}"
       case _ => ??? //s"\\neg ${l.toTex}"
     }
 
-    override def identitySignature: String = l match {
+    override def identitySignature: String = p match {
       case once: AbsMsg => once.identitySignature
       case exp =>
         throw new IllegalArgumentException(s"identity sig only valid for AbsMsg and Not(AbsMsg), found: ${exp}")
     }
   }
-  case class Or(l1:LSPred, l2:LSPred) extends LSBexp {
+  case class Or(l1:LSPred, l2:LSPred) extends LSBexp with LSBinOp {
 
     override def lsVar: Set[PureVar] = l1.lsVar.union(l2.lsVar)
     override def contains(mt:MessageType,sig: Signature)(implicit ch:ClassHierarchyConstraints): Boolean =
@@ -980,35 +989,34 @@ object LSSPecAnyOrder extends Ordering[LSSpec]{
     LSPredAnyOrder.compare(x.pred,y.pred)
 }
 object LSPredAnyOrder extends Ordering[LSPred]{
-  private def comb(p1:LSPred, p2:LSPred):Option[Int] ={
-    (depthToAny(p1),depthToAny(p2)) match{
-      case (Some(v1), Some(v2)) => Some(Math.min(v1,v2))
-      case (Some(v), _) => Some(v)
-      case (_,o)  => o
-    }
-  }
-  def depthToAny(p:LSPred):Option[Int] = p match {
-    case LSAnyPred => Some(0)
-    case Or(p1, p2) => comb(p1,p2)
-    case And(p1, p2) => comb(p1,p2)
-    case Not(p) => depthToAny(p)
-    case Forall(vars, p) => depthToAny(p)
-    case Exists(vars, p) => depthToAny(p)
-    case _: LifeState.LSAtom => None
+//  private def comb(p1:LSPred, p2:LSPred):Option[Int] ={
+//    (depthToAny(p1),depthToAny(p2)) match{
+//      case (Some(v1), Some(v2)) => Some(Math.min(v1,v2))
+//      case (Some(v), _) => Some(v)
+//      case (_,o)  => o
+//    }
+//  }
+  private def comb(p1:LSPred, p2:LSPred):Int = Math.max(depthToAny(p1), depthToAny(p2))
+  def depthToAny(p:LSPred):Int = p match {
+    case LSAnyPred => 1
+    case Or(p1, p2) => comb(p1,p2) + 1
+    case And(p1, p2) => comb(p1,p2) + 1
+    case Not(p) => depthToAny(p) + 1
+    case Forall(vars, p) => depthToAny(p) + 1
+    case Exists(vars, p) => depthToAny(p) + 1
+    case _: LifeState.LSAtom => 0
   }
   override def compare(x: LSPred, y: LSPred): Int = {
-    val dx = depthToAny(x).getOrElse(-1)
-    val dy = depthToAny(y).getOrElse(-1)
+    val dx = depthToAny(x)
+    val dy = depthToAny(y)
     dy - dx
   }
 }
 object SpecSpaceAnyOrder extends Ordering[SpecSpace]{
   override def compare(x: SpecSpace, y: SpecSpace): Int = {
     val res = x.sortedEnableSpecs.view.zip(y.sortedEnableSpecs).collectFirst{
-      case ((s1,Some(d1)),(s2,Some(d2))) if(d1 != d2) =>
+      case ((s1,d1),(s2,d2)) =>
         d2 - d1
-      case ((_,Some(_)),(_,None)) => 1
-      case ((_,None),(_,Some(_))) => -1
     }.getOrElse(0)
     res
   }
@@ -1021,12 +1029,38 @@ object SpecSpaceAnyOrder extends Ordering[SpecSpace]{
  * @matcherSpace additional matchers that may be used for synthesis (added to allI)
  **/
 class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(), matcherSpace:Set[OAbsMsg] = Set()) {
-  lazy val sortedEnableSpecs:List[(LSSpec,Option[Int])] = enableSpecs.map(s => (s,depthToAny(s.pred))).toList.sortBy(_._2.getOrElse(Integer.MAX_VALUE))
+  lazy val sortedEnableSpecs:List[(LSSpec,Int)] = enableSpecs.map(s => (s,depthToAny(s.pred))).toList.sortBy(_._2)
+
+  println("")
   override def toString: String = {
     val builder = new StringBuilder()
     builder.append("enableSpecs\n------\n")
-    enableSpecs.foreach(s => builder.append(s.toString))
+    enableSpecs.foreach(s => builder.append(s"${s.toString}\n"))
     builder.toString
+  }
+
+  def zip(other:SpecSpace):Set[(LSSpec, LSSpec)] = {
+    val matched = mutable.HashSet[LSSpec]()
+    matched.addAll(other.getSpecs)
+    def matchWith(spec:LSSpec, other:SpecSpace):(LSSpec, LSSpec) = {
+      val otherSpecs = other.specsByI(spec.target).filter(_.target == spec.target)
+      assert(otherSpecs.size < 2 ,"Should only be one spec for each target.")
+      if(otherSpecs.isEmpty){
+        // if no other spec exists in other, then it is the same as "true"
+        (spec, spec.copy(pred = LSTrue))
+      }else{
+        val otherSpec = otherSpecs.head
+        matched.remove(otherSpec)
+        (spec,otherSpec)
+      }
+    }
+
+    enableSpecs.map{mySpec =>
+      matchWith(mySpec, other)
+    } ++ matched.map{otherSpec =>
+      val (a,b) = matchWith(otherSpec,this)
+      (b,a)
+    }
   }
 
   def copy(enableSpecs:Set[LSSpec] = this.enableSpecs,
@@ -1060,7 +1094,7 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(), mat
 
   def getSpecs:Set[LSSpec] = enableSpecs
   def getDisallowSpecs:Set[LSSpec] = disallowSpecs
-  def getMatcherSpace:Set[_<:AbsMsg] = matcherSpace
+  def getMatcherSpace:Set[OAbsMsg] = matcherSpace
 
   /**
    * For step back over a place where the code may emit a message find the applicable I and assign fresh ls vars.

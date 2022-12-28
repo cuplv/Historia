@@ -1962,7 +1962,12 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(f.canSubsume(s_2_,s_2_,specs2))
     assert(f.canSubsume(s_1_,s_2_,specs2))
   }
-
+  test("Subsumption of specifications") { f =>
+    val stateSolver = f.stateSolver
+    val iFoo_ac = AbsMsg(CBEnter, Set(("", "foo")), c::a :: Nil)
+    val iBar_a = AbsMsg(CBEnter, Set(("", "bar")), a::Nil)
+    ???
+  }
   test("z3 scratch"){f=>
     val ctx = new Context()
     val solver = ctx.mkSolver()
@@ -1970,5 +1975,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     println(solver.check())
 
   }
+
+
 
 }

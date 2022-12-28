@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.synthesis
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{Proven, ResultSummary, Witnessed}
 import edu.colorado.plv.bounder.ir.{ApproxDir, CNode, ConcGraph, Exact, OverApprox, TMessage, TopTypeSet, TypeSet, UnderApprox}
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Forall, LSAnyPred, LSAtom, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Forall, LSAnyPred, LSAtom, LSBinOp, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, LSUnOp, NS, Not, OAbsMsg, Or}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecAssignment, SpecSpace, SpecSpaceAnyOrder}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, QueryFinished, SymbolicExecutorConfig}
@@ -64,14 +64,48 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
   }
 
   private val exploredSpecs = mutable.HashSet[SpecSpace]()
-  private def hasExplored(spec:SpecSpace):Boolean = {
-    if(exploredSpecs.contains(spec)){
-      true
-    }else {
-      exploredSpecs.add(spec)
-      false
+
+  def isProgress(from:LSPred, to:LSPred):Boolean = {
+    def combProg(l1:LSPred, l2:LSPred, l1p :LSPred, l2p:LSPred):Boolean =
+      isProgress(l1,l1p) && isProgress(l2,l2p)
+    (from,to) match {
+      case (LSAnyPred, v) if(v != LSAnyPred) =>
+        true
+      case (Exists(_, p1), p2) => isProgress(p1,p2)
+      case (p1, Exists(_,p2)) => isProgress(p1, p2)
+      case (Forall(_, p1), p2) => isProgress(p1,p2)
+      case (p1, Forall(_,p2)) => isProgress(p1, p2)
+      case (v1:LSBinOp, v2:LSBinOp) if v1.getClass == v2.getClass => combProg(v1.l1,v1.l2,v2.l1,v2.l2)
+      case (v1:LSUnOp, v2:LSUnOp) if v1.getClass == v2.getClass => isProgress(v1.p, v2.p)
+      case (_,_) =>
+        false
     }
-  } //TODO: be smarter to avoid redundant search
+  }
+
+  def isProgress(from:SpecSpace, to:SpecSpace): Boolean ={
+    val specs: Set[(LSSpec, LSSpec)] = from.zip(to)
+    specs.forall{ pair => isProgress(pair._1.pred, pair._2.pred) }
+  }
+  /**
+   * Check if this spec has been explored and remember that it has been explored
+   * @param spec
+   * @return
+   */
+  private def hasExplored(spec:SpecSpace):Boolean = {
+    val otherExists = exploredSpecs.exists{other =>
+      //TODO:====== make lazy
+      val overOther = approxSpec(other, OverApprox)
+      val overSpec = approxSpec(spec,OverApprox)
+      val subs1 = stateSolver.canSubsume(overOther,overSpec)
+      val subs2 = stateSolver.canSubsume(overSpec,overOther)
+      val prog = isProgress(spec,other)
+      prog && subs1 && subs2
+    }
+
+    if(!otherExists)
+      exploredSpecs.add(spec)
+    otherExists
+  } //TODO: === be smarter to avoid redundant search
 
 
   def mergeOne(predConstruct:LSPred => LSPred, sub:LSPred, scope:Map[PureVar,TypeSet]):StepResult = {
@@ -176,6 +210,12 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       }
   }
 
+  /**
+   *
+   * @param rule
+   * @param state
+   * @return
+   */
   def mkScope(rule:LSSpec, state:State):Map[PureVar,TypeSet] = {
     val tr = state.sf.traceAbstraction.rightOfArrow
     val directM:Map[PureVar,TypeSet] = tr.flatMap{m =>
@@ -229,7 +269,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
    * @return next spec, whether spec was stepped
    */
   def step(specSpace:SpecSpace, state:State):(Set[SpecSpace],Boolean) = {
-    val specToStep = specSpace.sortedEnableSpecs.collectFirst{case (s,Some(_)) => s}
+    val specToStep = specSpace.sortedEnableSpecs.collectFirst{case (s,_) => s}
     if(specToStep.isEmpty)
       return (Set(specSpace),false)
     val (next:List[LSSpec],changed) =
@@ -242,6 +282,20 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
   }
 
   def run():LearnResult = {
+    // TODO: multiple holes which one is filled first - exploring down in the lattice - want to explore most complete spec first
+    // if you consider the alarms - intuition is that we want to consider messages in both alarms for reach/unreach
+    // "conflict clause" - used in sat solvers - conjunction that says "don't go there" - ask solver sequence of queries
+    //   to ask what holes to fill - key contribution guide search 1) data dependency and 2) conflict clause between reach/unreach
+    //   conflict between the reach and unreach that
+    //   under approx abstract interp -- somehow minimize materialized footprint in depth first search
+    //      - thresher - backwards in concrete and backwards in the abstract
+    //      - explicit state model checking backwards - backwards in concrete
+    //      - explicit state model checking tries to compile transition system up front to handle unboundedness, loses orig prog
+    //      - what we care about is when we include initial (w/ comp) we know we include initial
+    // oopsla apr or popl jul
+    //   confusion about correctness/incorrectness sound over sound under...  need to precisely define terms.
+    //   component thinking - what do you think with respect to the framework/application
+    //   what we care about at the end of the day is the classification of the data points and how the over/under approx affects
     val queue = mutable.PriorityQueue[SpecSpace]()(SpecSpaceAnyOrder)
     queue.addOne(initialSpec)
     while(queue.nonEmpty) {
@@ -279,7 +333,8 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
         if(!someAlarm.isEmpty){
           val nextSpecs = step(cSpec, someAlarm.get.state)
           println(s"next specs\n===========\n${nextSpecs._1.mkString("\n---\n")}")
-          queue.addAll(nextSpecs._1)
+          val filtered = nextSpecs._1.filter{spec =>  !hasExplored(spec)}
+          queue.addAll(filtered)
         }
       }
 

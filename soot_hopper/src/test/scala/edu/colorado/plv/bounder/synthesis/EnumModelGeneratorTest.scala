@@ -170,7 +170,8 @@ class EnumModelGeneratorTest extends AnyFunSuite {
           "void onClick(android.view.View)"), line_reach, Some(".*toString.*"))
 
         val gen = new EnumModelGenerator(nullUnreach,Set(nullReach), specSpace, config)
-        gen.run()
+        val res = gen.run()
+        println(res)
 
       }
     }
