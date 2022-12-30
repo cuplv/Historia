@@ -734,17 +734,7 @@ object LifeState {
         case (cpv, cInd) if cInd == ind => v
         case (cpv, _) => avoid.foldLeft(cpv.noCollide(v)){case (acc,v) => acc.noCollide(v)}
       })
-    //    def constVals(constraints: Set[LSConstraint]):List[Option[(CmpOp, PureExpr)]] = lsVars.map{
-    //      case LifeState.LSConst(v) => Some((Equals, v))
-    //      case LifeState.LSVar(v) =>
-    //        constraints.find(c => c.v1 == v || c.v2 == v) match {
-    //          case Some(LSConstraint(_, op, LifeState.LSConst(v2))) => Some(op,v2)
-    //          case Some(LSConstraint(LifeState.LSConst(v1), op, _)) => Some(op,v1)
-    //          case None => None
-    //          case c => throw new IllegalStateException(s"Malformed constraint: $c")
-    //        }
-    //      case _ => None
-    //    }
+
     override def lsVar: Set[PureVar] = lsVars.flatMap {
       case pureVar: PureVar => Some(pureVar)
       case _: PureVal => None
@@ -753,15 +743,46 @@ object LifeState {
     def getVar(i: Int): PureExpr = lsVars(i)
 
 
-//    override def getAtomSig: String = {
-//      s"I(${sortedSig.mkString(":")})"
-//    }
-
+    private def sanitizeIdentitySignature(s: String): String = {
+      s.replaceAll("\\\\", "")
+        .replaceAll("\\{", "")
+        .replaceAll("\\}", "")
+        .replaceAll("\\$", "")
+        .replaceAll("\\_", "")
+        .replaceAll("\\^", "")
+        .replaceAll("\\.", "")
+        .replaceAll("\\(", "")
+        .replaceAll("\\)", "")
+        .replaceAll("\\[", "")
+        .replaceAll("\\]", "")
+        .replaceAll("\\|", "")
+        .replaceAll("\\+", "")
+        .replaceAll("\\*", "")
+        .replaceAll("\\?", "")
+        .replaceAll("\\<", "")
+        .replaceAll("\\>", "")
+        .replaceAll("\\-", "")
+        .replaceAll("\\=", "")
+        .replaceAll("\\:", "")
+        .replaceAll("\\;", "")
+        .replaceAll("\\,", "")
+        .replaceAll("\\/", "")
+        .replaceAll("\\!", "")
+        .replaceAll("\\@", "")
+        .replaceAll("\\#", "")
+        .replaceAll("\\%", "")
+        .replaceAll("\\&", "")
+        .replaceAll("\\~", "")
+        .replaceAll("\\`", "")
+        .replaceAll("\\'", "")
+        .replaceAll("\\\"", "")
+        .replaceAll("\\ ", "")
+    }
     // Uesed for naming uninterpreted functions in z3 solver
     override def identitySignature: String = {
       // Note: this does not include varnames or
       // any other info that would distinguish this I from another with the same metods
-      s"I_${mt.toString}_${signatures.identifier}"
+      s"I_${mt.toString}_${sanitizeIdentitySignature(signatures.identifier)}"
     }
 
     override def contains(omt:MessageType,sig: Signature)(implicit ch:ClassHierarchyConstraints): Boolean =

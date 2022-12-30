@@ -7,14 +7,23 @@ import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, FreshRef, LSCo
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LSExpParser, LifecycleSpec, RxJavaSpec, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs
 import edu.colorado.plv.bounder.symbolicexecutor.state._
+import edu.colorado.plv.bounder.testutils.MkApk.getClass
+import org.scalatest.exceptions.TestFailedException
 import org.scalatest.funsuite.FixtureAnyFunSuite
+import smtlib.lexer.Lexer
+import smtlib.parser.Parser
+import smtlib.parser.Parser.UnknownCommandException
+import smtlib.trees.Commands.{Assert, Command}
+import smtlib.trees.Terms.SSymbol
 import upickle.default.read
 
+import java.io.StringReader
 import scala.collection.BitSet
+import scala.collection.mutable.ListBuffer
 import scala.language.implicitConversions
 
 class StateSolverTest extends FixtureAnyFunSuite {
-
+  private val MAX_SOLVER_TIME = 2 //seconds -- Each call to "canSubsume" should take no more than this.
   private val fooMethod = SerializedIRMethodLoc("","foo()", List(Some(LocalWrapper("@this","Object"))))
   private val dummyLoc = CallbackMethodReturn(Signature("","void foo()"), fooMethod, None)
   private val v = PureVar(230)
@@ -87,7 +96,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
   private def getZ3StateSolver(checkSatPush:Boolean):
   (Z3StateSolver, ClassHierarchyConstraints) = {
     val pc = new ClassHierarchyConstraints(hierarchy,Set("java.lang.Runnable"),intToClass)
-    (new Z3StateSolver(pc,timeout = 40000, defaultOnSubsumptionTimeout = (z3SolverCtx:Z3SolverCtx) => {
+    (new Z3StateSolver(pc,timeout = 20000, defaultOnSubsumptionTimeout = (z3SolverCtx:Z3SolverCtx) => {
       println(z3SolverCtx)
       throw new IllegalStateException("Exceeded time limit for test")
     }, pushSatCheck = checkSatPush),pc)
@@ -97,6 +106,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     // Some subsumption tests override type solving parameter
     // All other tests should work with either
 //    withFixture(test.toNoArgTest(FixtureParam(SetInclusionTypeSolving)))
+
     val out = List(true,false).flatMap{ check =>
       val (stateSolver, _) = getZ3StateSolver(check)
       //println(s"-normal subs, pushSatCheck:${check}")
@@ -104,7 +114,15 @@ class StateSolverTest extends FixtureAnyFunSuite {
         (s1, s2, spec) => {
           //val s1simp = stateSolver.simplify(s1,spec).get
           //val s2simp = stateSolver.simplify(s2,spec).get
-          stateSolver.canSubsume(s1, s2, spec)
+          val start = System.nanoTime()
+          val res = stateSolver.canSubsume(s1, s2, spec)
+          val end = System.nanoTime()
+          val totTime = (end - start)/1.0e9
+          if(totTime < MAX_SOLVER_TIME)
+            res
+          else
+            throw new IllegalStateException(s"subsume took $totTime")
+
         })))
       //println(s"-set subs, pushSatCheck:${check}")
       val t2 = withFixture(test.toNoArgTest(FixtureParam(stateSolver, (s1, s2, spec) => {
@@ -112,7 +130,14 @@ class StateSolverTest extends FixtureAnyFunSuite {
         s2.setSimplified() //For tests, just tell solver its simplified already
         //val s1simp = stateSolver.simplify(s1,spec).get
         //val s2simp = stateSolver.simplify(s2,spec).get
-        stateSolver.canSubsumeSet(Set(s1), s2, spec)
+        val start = System.nanoTime()
+        val res = stateSolver.canSubsumeSet(Set(s1), s2, spec)
+        val end = System.nanoTime()
+        val totTime = (end - start) / 1.0e9
+        if (totTime < MAX_SOLVER_TIME)
+          res
+        else
+          throw new IllegalStateException(s"subsume took $totTime")
       })))
       List(t1,t2)
     }
@@ -141,8 +166,8 @@ class StateSolverTest extends FixtureAnyFunSuite {
     )) //  ++ Dummy.specs)
     List(
       (new SpecSpace(ExperimentSpecs.row4Specs),
-        "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/s1.json",
-        "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/s2.json",
+        File(getClass.getResource("s1.json").getPath).toString,
+        File(getClass.getResource("s2.json").getPath).toString,
         (v:Boolean) =>{
         ???
       }),
@@ -1238,11 +1263,6 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val s1 = st(AbstractTrace(FreshRef(x)::Nil), Map(x->p1)).setSimplified()
     val s2 = st(AbstractTrace(FreshRef(x)::FreshRef(y)::Nil), Map(x->p1,y->p2)).setSimplified()
 
-    //TODO: DBG code ====
-    assert(stateSolver.canSubsume(s1,s2,esp))
-    assert(stateSolver.canSubsumeSet(Set(s1),s2,esp))
-    //TODO:DBG code ===
-
     assert(f.canSubsume(s1,s2,esp))
     //Note that an erroneous "OR" between Refs causes timeout, may cause timeouts in future due to negation
 
@@ -1946,9 +1966,9 @@ class StateSolverTest extends FixtureAnyFunSuite {
 //    assert(stateSolver.canSubsumeSet(Set(s_1), s_2_simp, specs2))
     //TODO: dbg code
     //TODO: is it a problem that this times out without simp?
-    val s_2_simp = stateSolver.simplify(s_2, specs2).get
+    val s_2_simp = stateSolver.simplify(s_2, specs2)
 
-    assert(f.canSubsume(s_1,s_2_simp,specs2))
+    assert(f.canSubsume(s_1,s_2_simp.get,specs2))
 
     val s_1_ = st(AbstractTrace(
       createTgtX::Nil),
@@ -1962,17 +1982,110 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(f.canSubsume(s_2_,s_2_,specs2))
     assert(f.canSubsume(s_1_,s_2_,specs2))
   }
-  test("Subsumption of specifications") { f =>
+  test("z3 to smtlib conversions test and extraneous quantifier removal"){ f=>
+    // Test the conversions between smtlib and z3
     val stateSolver = f.stateSolver
-    val iFoo_ac = AbsMsg(CBEnter, Set(("", "foo")), c::a :: Nil)
-    val iBar_a = AbsMsg(CBEnter, Set(("", "bar")), a::Nil)
-    ???
+    val busted =
+      """|
+         |(let ((a!1 (exists ((npv-s!10 Addr))
+         |               (let ((a!1 (exists ((msg_j!11 Msg))
+         |                            (and (traceFn msg_j!11)
+         |                                 (= (namefn_ msg_j!11) I_CIExit_RxJavasubscribe)
+         |                                 (= (argfun_0 msg_j!11) npv-s!10)
+         |                                 (= (argfun_2 msg_j!11) npv-z!1)
+         |                                 (forall ((msg_j!12 Msg))
+         |                                   (let ((a!1 (not (and (= (namefn_ msg_j!12)
+         |                                                           I_CIExit_rxJavaunsubscribe)
+         |                                                        (= (argfun_1 msg_j!12)
+         |                                                           npv-s!10)))))
+         |                                   (let ((a!2 (=> (and (msgLTE msg_j!11
+         |                                                               msg_j!12)
+         |                                                       (not (= msg_j!11
+         |                                                               msg_j!12)))
+         |                                                  a!1)))
+         |                                     (=> (traceFn msg_j!12) a!2))))))))
+         |               (let ((a!2 (and a!1
+         |                               (or (not (= npv-s!10 npv-w!9))
+         |                                   (not (= npv-z!1 npv-p!4))))))
+         |                 (and (or (and (= npv-s!10 npv-w!9) (= npv-z!1 npv-p!4)) a!2)
+         |                      (not (= npv-w!9 npv-s!10)))))))
+         |        (a!2 (exists ((msg_j!13 Msg))
+         |               (and (traceFn msg_j!13)
+         |                    (= (namefn_ msg_j!13) I_CIExit_RxJavasubscribe)
+         |                    (= (argfun_0 msg_j!13) npv-w!9))))
+         |        (a!3 (exists ((msg_j!14 Msg))
+         |               (and (traceFn msg_j!14)
+         |                    (= (namefn_ msg_j!14) I_CBEnter_ActivityonCreate)
+         |                    (= (argfun_1 msg_j!14) npv-x!8)))))
+         |    (and (= npv-z!1 pv-2!3)
+         |         (= npv-w!9 pv-4!2)
+         |         (= npv-p!4 pv-5!7)
+         |         (= npv-x!8 pv-1!0)
+         |         (= npv-y!6 pv-6!5)
+         |         a!1
+         |         (not a!2)
+         |         (not a!3)))
+        |         """.stripMargin
+      implicit val zCtx = stateSolver.getSolverCtx
+      try {
+        zCtx.acquire()
+        val expr = stateSolver.stringExprToSmtLib(busted)
+        val parsedBusted = stateSolver.smtToZ3(expr)
+        val pruned = stateSolver.pruneUnusedQuant(parsedBusted)
+        assert(
+          parsedBusted.toString.replace("\n","") ==
+            pruned.toString.replace("\n",""))
+
+        val expr2 = stateSolver.stringExprToSmtLib(s"(exists ((stupidAst Addr)) ${busted})")
+        val parsed2 = stateSolver.smtToZ3(expr2)
+        val pruned2 = stateSolver.pruneUnusedQuant(parsed2)
+        assert(!pruned2.toString.contains("stupidAst"))
+      }finally{
+        zCtx.release()
+      }
+
   }
+  //TODO:===== test subsumption of specifications
+//  test("Subsumption of specifications") { f =>
+//    val stateSolver = f.stateSolver
+//    val iFoo_ac = AbsMsg(CBEnter, Set(("", "foo")), c::a :: Nil)
+//    val iBar_a = AbsMsg(CBEnter, Set(("", "bar")), a::Nil)
+//    ???
+//  }
   test("z3 scratch"){f=>
-    val ctx = new Context()
-    val solver = ctx.mkSolver()
-    solver.add(ctx.mkAnd())
-    println(solver.check())
+    val timeout = File(getClass.getResource("/timeout.smt").getPath).contentAsString
+    val solver = f.stateSolver
+    val lexer = new Lexer(new StringReader(timeout))
+    val parser = new Parser(lexer)
+    val script: List[Command] = {
+      val cmds = new ListBuffer[Command]
+      try {
+        var cmd:Command = null
+        while({cmd = parser.parseCommand; cmd != null})
+          cmds.append(cmd)
+      }catch{
+        case e:UnknownCommandException =>
+          ???
+      }
+      cmds.toList
+    }
+
+    try {
+      implicit val ctx = solver.getSolverCtx
+      val assertions = script.flatMap {
+        case a@Assert(term) =>
+          val fv = solver.freeVar(term).filter{
+            case SSymbol(name) if(name.toBooleanOption.isDefined) => false
+//            case SSymbol(name) if(name.startsWith("type_")) => false
+//            case SSymbol(name) if(name.startsWith("I_C")) => false
+//            case SSymbol(name) if(name.startsWith("const_")) => false
+            case _ => true
+          }
+          if(fv.nonEmpty) Some((fv,a)) else None
+        case _ => None
+      }
+      println(assertions)
+    }
 
   }
 
