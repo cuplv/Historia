@@ -462,4 +462,25 @@ object EncodingTools {
       }))
     }
   }
+
+  def liftQuant(pred: LSPred): LSPred = {
+    // returns the pred with quantifiers removed and a list of quantifiers to be added.
+    def iLift(pred:LSPred):(LSPred,List[LSPred]) = pred match{
+      case Exists(vars,pred) =>
+        val (newPred, recursiveQuant) = iLift(pred)
+        (newPred,Exists(vars,LSTrue)::recursiveQuant)
+    }
+    ???
+  }
+
+  /**
+   * Converts a lifestate logical formula to conjunctive normal form
+   *
+   * @param pred the logical formula to convert
+   * @return an equivalent formula in conjunctive normal form
+   */
+  def toCNF(pred:LSPred):LSPred = {
+    val liftedQuant:LSPred = liftQuant(pred)
+    ???
+  }
 }

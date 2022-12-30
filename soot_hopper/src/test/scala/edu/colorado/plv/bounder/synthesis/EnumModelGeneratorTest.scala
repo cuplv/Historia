@@ -69,7 +69,8 @@ class EnumModelGeneratorTest extends AnyFunSuite {
 
   }
 
-  test("Synthesis example - simplification of Connect bot click/finish") {
+  //TODO: re-enable while working on synth, works but very slow
+  ignore("Synthesis example - simplification of Connect bot click/finish") {
 
     //Or(NS(SpecSignatures.Activity_onPause_exit, SpecSignatures.Activity_onResume_entry),
     //          Not(SpecSignatures.Activity_onResume_entry))
@@ -158,7 +159,8 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         val specSpace = new SpecSpace(specs, matcherSpace = iSet)
         val config = SymbolicExecutorConfig(
           stepLimit = 2000, w, specSpace,
-          component = Some(List("com.example.createdestroy.(MyActivity|OtherActivity)")), outputMode = dbMode)
+          component = Some(List("com.example.createdestroy.(MyActivity|OtherActivity)")),
+          outputMode = dbMode, timeLimit = 30)
 
         val line = BounderUtil.lineForRegex(".*query1.*".r, srcUnreach)
         val nullUnreach = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity$1",
@@ -171,8 +173,11 @@ class EnumModelGeneratorTest extends AnyFunSuite {
 
         val gen = new EnumModelGenerator(nullUnreach,Set(nullReach), specSpace, config)
         val res = gen.run()
-        println(res)
-
+        res match {
+          case LearnSuccess(space) =>
+            println(space)
+          case LearnFailure => throw new IllegalStateException("failed to learn a sufficient spec")
+        }
       }
     }
     makeApkWithSources(Map("MyActivity.java" -> srcUnreach, "OtherActivity.java" -> srcReach), MkApk.RXBase,

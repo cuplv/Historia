@@ -1,8 +1,8 @@
 package edu.colorado.plv.bounder.solver
 
 import edu.colorado.plv.bounder.ir.{CBEnter, FwkMethod, TMessage}
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, Signature, SubClassMatcher}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{NPureVar, NamedPureVar, PureExpr, PureVal, PureVar, ConcreteAddr, ConcreteVal}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Signature, SubClassMatcher}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ConcreteAddr, ConcreteVal, NPureVar, NamedPureVar, PureExpr, PureVal, PureVar}
 import org.scalatest.Outcome
 import org.scalatest.funsuite.AnyFunSuite
 
@@ -27,14 +27,17 @@ class EncodingToolsTest extends AnyFunSuite{
     AbsMsg(CBEnter, SubClassMatcher(Set(""), name,name),vars.map(bodgePv))
   def mkTMsg(name:String, args:List[Any]) = TMessage(CBEnter, FwkMethod(Signature("",name)), args.map(bodgeTraceV))
 
-  val x = bodgePv("x")
-  val y = bodgePv("y")
+  val x = NamedPureVar("x")
+  val y = NamedPureVar("y")
+  val a = NamedPureVar("a")
+  val b = NamedPureVar("b")
 
   val pv0 = NPureVar(0)
 
 
   // matchers
   val oFoo_x_y = mkOnce("foo", x::y::Nil)
+  val oFoo_a_a = mkOnce("foo", a::b::Nil)
   val oBar_x_y = mkOnce("bar", x::y::Nil)
 
   // trace elements
@@ -48,6 +51,9 @@ class EncodingToolsTest extends AnyFunSuite{
 
     assert(oFoo_regm.containsTrace(List.empty).isEmpty)
     assert(oFoo_regm.containsTrace(trace).nonEmpty)
+  }
 
+  test("Lift quantifiers from temporal formula"){
+    val pred = And(oFoo_x_y, Exists(x::Nil, oFoo_x_y))
   }
 }

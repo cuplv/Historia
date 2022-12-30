@@ -13,6 +13,12 @@ import scala.collection.{View, immutable, mutable}
 import scala.collection.immutable.Queue
 import scala.collection.mutable.ListBuffer
 
+sealed trait LearnResult
+
+// results of model generator
+case class LearnSuccess(space: SpecSpace) extends LearnResult
+
+case object LearnFailure extends LearnResult
 
 object EnumModelGenerator{
   def isTerminal(pred:LSPred):Boolean = pred match {
@@ -86,30 +92,40 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     val specs: Set[(LSSpec, LSSpec)] = from.zip(to)
     specs.forall{ pair => isProgress(pair._1.pred, pair._2.pred) }
   }
+
+
+  val simpleTestSet = mutable.HashSet[String]()
   /**
    * Check if this spec has been explored and remember that it has been explored
    * @param spec
    * @return
    */
   private def hasExplored(spec:SpecSpace):Boolean = {
-    val otherExists = exploredSpecs.exists{other =>
-      try {
-        lazy val overOther = approxSpec(other, OverApprox)
-        lazy val overSpec = approxSpec(spec, OverApprox)
-        lazy val subs1 = stateSolver.canSubsume(overOther, overSpec)
-        lazy val subs2 = stateSolver.canSubsume(overSpec, overOther)
-        lazy val prog = isProgress(spec, other)
-        prog && subs1 && subs2
-      }catch{
-        case e:IllegalArgumentException if e.getMessage.contains("Unknown, no") =>
-          // timeout //TODO: figure out why this is timing out at some point
-          false
-      }
-    }
+    val specString = spec.toString
+    val otherStrExists = simpleTestSet.contains(specString)
 
-    if(!otherExists)
+    //val otherExists = exploredSpecs.exists{other =>
+    //  try {
+    //    lazy val overOther = approxSpec(other, OverApprox)
+    //    lazy val overSpec = approxSpec(spec, OverApprox)
+    //    lazy val subs1 = stateSolver.canSubsume(overOther, overSpec)
+    //    lazy val subs2 = stateSolver.canSubsume(overSpec, overOther)
+    //    lazy val prog = isProgress(spec, other)
+    //    prog && subs1 && subs2
+    //  }catch{
+    //    case e:IllegalArgumentException if e.getMessage.contains("Unknown, no") =>
+    //      // timeout //TODO: figure out why this is timing out at some point
+    //      false
+    //  }
+    //}
+
+    if(!otherStrExists) {
       exploredSpecs.add(spec)
-    otherExists
+      simpleTestSet.add(specString)
+      false
+    }else{
+      true
+    }
   } //TODO: === be smarter to avoid redundant search
 
 
@@ -302,16 +318,10 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     //   component thinking - what do you think with respect to the framework/application
     //   what we care about at the end of the day is the classification of the data points and how the over/under approx affects
     //TODO: remove test set thing here
-    val simpleTestSet = mutable.HashSet[String]()
     val queue = mutable.PriorityQueue[SpecSpace]()(SpecSpaceAnyOrder)
     queue.addOne(initialSpec)
     while(queue.nonEmpty) {
       val cSpec = queue.dequeue()
-      val testStringRep = cSpec.toString
-      if(simpleTestSet.contains(testStringRep)){
-        println("should not duplicate checks")
-      }
-      simpleTestSet.addOne(testStringRep)
       println(s"---\nTesting spec:${cSpec}")
 
       // false if no expansion of this spec can succeed at making all reach locations reachable
@@ -325,7 +335,8 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
             //println(" reach refuted: true")
             false
           case otherRes =>
-            throw new IllegalStateException(s"Failed to finish reachable query. Result: $otherRes Query:$qry")
+            //throw new IllegalStateException(s"Failed to finish reachable query. Result: $otherRes Query:$qry")
+            false // dump spec on timeout
         }})
 
       // false if no expansion of this spec can prove the target location
@@ -337,22 +348,23 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
           case Witnessed =>
             false
           case otherRes =>
-            throw new IllegalStateException(s"Failure to generate abstract witness or prove target: ${otherRes}")
+            //throw new IllegalStateException(s"Failure to generate abstract witness or prove target: ${otherRes}")
+            false // dump spec on timeout
         }
       }
 
-      if(reachNotRefuted && unreachCanProve){
+      if (reachNotRefuted && unreachCanProve && isTerminal(cSpec)) {
+        return LearnSuccess(cSpec)
+      }else if(reachNotRefuted && unreachCanProve) {
         // Get alarm for current spec and target
         val overApproxAlarm: Set[IPathNode] = mkApproxResForQry(target, cSpec, OverApprox)
         val someAlarm = overApproxAlarm.find(pn => pn.qry.isWitnessed)
-        if(!someAlarm.isEmpty){
+        if (!someAlarm.isEmpty) {
           val nextSpecs = step(cSpec, someAlarm.get.state)
           //println(s"next specs\n===========\n${nextSpecs._1.mkString("\n---\n")}")
-          val filtered = nextSpecs._1.filter{spec =>  !hasExplored(spec)}
+          val filtered = nextSpecs._1.filter { spec => !hasExplored(spec) }
           queue.addAll(filtered)
         }
-      }else if (reachNotRefuted && unreachCanProve && isTerminal(cSpec)) {
-        return LearnSuccess(cSpec)
       }
 
     }
@@ -361,52 +373,6 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
   }
 
 
-  //TODO: ====
-  sealed trait LearnResult
-
-  /**
-   * Exact
-   * * @param space
-   */
-  case class LearnSuccess(space:SpecSpace) extends LearnResult
-  case object LearnFailure extends LearnResult
-  case class LearnCont(target:Set[(TMessage, LSPred)], reachable: Set[(TMessage, LSPred)]) extends LearnResult
-
-//  def learnRulesFromConcGraph(target:Set[ConcGraph], reachable:Set[ConcGraph], space:SpecSpace)
-//                             (implicit cha:ClassHierarchyConstraints, solver:Z3StateSolver):Option[SpecSpace] = {
-//    def iLearn(target:Set[ConcGraph], reachable:Set[ConcGraph],
-//               workList:List[SpecSpace], visited:Set[SpecSpace]): Option[SpecSpace]={
-//      if(workList.isEmpty)
-//        return None
-//      val currentSpace = workList.head
-//      lazy val tgtLive:Boolean = target.exists{c =>
-//        //TODO: skip if a path must exist to the target
-//        val res: Set[(CNode, LSPred)] = c.filter(space)
-//        ???
-//      }
-//      lazy val reachLive = reachable.exists{c =>
-//        //TODO: skip if no path exists to a reachable location
-//        val res = c.filter(space)
-//        ???
-//      }
-//      if(tgtLive && reachLive) {
-//        if(isTerminal(currentSpace))
-//          Some(currentSpace)
-//        else if(!visited.contains(currentSpace)) {
-//          val (nextSpace,hasChanged) = step(currentSpace)
-//          if(hasChanged)
-//            iLearn(target, reachable, nextSpace::workList.tail, visited + currentSpace)
-//          else
-//            ???
-//        }else{
-//          ???
-//        }
-//      }else{
-//        ???
-//      }
-//    }
-//    iLearn(target, reachable, List(space), Set())
-//  }
   /**
    *
    * @param posExamples set of traces representing reachable points (List in reverse execution order)
