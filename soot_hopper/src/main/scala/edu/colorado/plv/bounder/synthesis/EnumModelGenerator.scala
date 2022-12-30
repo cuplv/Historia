@@ -93,13 +93,18 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
    */
   private def hasExplored(spec:SpecSpace):Boolean = {
     val otherExists = exploredSpecs.exists{other =>
-      //TODO:====== make lazy
-      val overOther = approxSpec(other, OverApprox)
-      val overSpec = approxSpec(spec,OverApprox)
-      val subs1 = stateSolver.canSubsume(overOther,overSpec)
-      val subs2 = stateSolver.canSubsume(overSpec,overOther)
-      val prog = isProgress(spec,other)
-      prog && subs1 && subs2
+      try {
+        lazy val overOther = approxSpec(other, OverApprox)
+        lazy val overSpec = approxSpec(spec, OverApprox)
+        lazy val subs1 = stateSolver.canSubsume(overOther, overSpec)
+        lazy val subs2 = stateSolver.canSubsume(overSpec, overOther)
+        lazy val prog = isProgress(spec, other)
+        prog && subs1 && subs2
+      }catch{
+        case e:IllegalArgumentException if e.getMessage.contains("Unknown, no") =>
+          // timeout //TODO: figure out why this is timing out at some point
+          false
+      }
     }
 
     if(!otherExists)
@@ -296,46 +301,58 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     //   confusion about correctness/incorrectness sound over sound under...  need to precisely define terms.
     //   component thinking - what do you think with respect to the framework/application
     //   what we care about at the end of the day is the classification of the data points and how the over/under approx affects
+    //TODO: remove test set thing here
+    val simpleTestSet = mutable.HashSet[String]()
     val queue = mutable.PriorityQueue[SpecSpace]()(SpecSpaceAnyOrder)
     queue.addOne(initialSpec)
     while(queue.nonEmpty) {
       val cSpec = queue.dequeue()
+      val testStringRep = cSpec.toString
+      if(simpleTestSet.contains(testStringRep)){
+        println("should not duplicate checks")
+      }
+      simpleTestSet.addOne(testStringRep)
+      println(s"---\nTesting spec:${cSpec}")
 
-      val reachRefuted:Boolean = reachable.exists(qry => {
+      // false if no expansion of this spec can succeed at making all reach locations reachable
+      val reachNotRefuted:Boolean = reachable.forall(qry => {
         val res = mkApproxResForQry(qry,cSpec, OverApprox)
         BounderUtil.interpretResult(res, QueryFinished) match{
-          case Witnessed => false
-          case Proven =>
+          case Witnessed =>
+            //println(" reach refuted: false")
             true
+          case Proven =>
+            //println(" reach refuted: true")
+            false
           case otherRes =>
             throw new IllegalStateException(s"Failed to finish reachable query. Result: $otherRes Query:$qry")
         }})
 
-      lazy val unreachAlwaysAlarm = {
+      // false if no expansion of this spec can prove the target location
+      val unreachCanProve = {
         val tgtRes = mkApproxResForQry(target, cSpec, UnderApprox)
         BounderUtil.interpretResult(tgtRes, QueryFinished) match {
           case Proven =>
-            false
-          case Witnessed =>
             true
+          case Witnessed =>
+            false
           case otherRes =>
             throw new IllegalStateException(s"Failure to generate abstract witness or prove target: ${otherRes}")
         }
       }
-//      if(reachRefuted || unreachAlwaysAlarm){
-        // no expansion of spec can succeed, move on to the next one
-        //iRun(queue.ta
-      if(reachRefuted && unreachAlwaysAlarm && isTerminal(cSpec)){
-        return LearnSuccess(cSpec)
-      }else{
+
+      if(reachNotRefuted && unreachCanProve){
+        // Get alarm for current spec and target
         val overApproxAlarm: Set[IPathNode] = mkApproxResForQry(target, cSpec, OverApprox)
         val someAlarm = overApproxAlarm.find(pn => pn.qry.isWitnessed)
         if(!someAlarm.isEmpty){
           val nextSpecs = step(cSpec, someAlarm.get.state)
-          println(s"next specs\n===========\n${nextSpecs._1.mkString("\n---\n")}")
+          //println(s"next specs\n===========\n${nextSpecs._1.mkString("\n---\n")}")
           val filtered = nextSpecs._1.filter{spec =>  !hasExplored(spec)}
           queue.addAll(filtered)
         }
+      }else if (reachNotRefuted && unreachCanProve && isTerminal(cSpec)) {
+        return LearnSuccess(cSpec)
       }
 
     }

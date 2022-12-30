@@ -1019,13 +1019,13 @@ object LSPredAnyOrder extends Ordering[LSPred]{
 //  }
   private def comb(p1:LSPred, p2:LSPred):Int = Math.max(depthToAny(p1), depthToAny(p2))
   def depthToAny(p:LSPred):Int = p match {
-    case LSAnyPred => 1
+    case LSAnyPred => 0
     case Or(p1, p2) => comb(p1,p2) + 1
     case And(p1, p2) => comb(p1,p2) + 1
     case Not(p) => depthToAny(p) + 1
     case Forall(vars, p) => depthToAny(p) + 1
     case Exists(vars, p) => depthToAny(p) + 1
-    case _: LifeState.LSAtom => 0
+    case _: LifeState.LSAtom => 1
   }
   override def compare(x: LSPred, y: LSPred): Int = {
     val dx = depthToAny(x)
@@ -1050,9 +1050,11 @@ object SpecSpaceAnyOrder extends Ordering[SpecSpace]{
  * @matcherSpace additional matchers that may be used for synthesis (added to allI)
  **/
 class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(), matcherSpace:Set[OAbsMsg] = Set()) {
-  lazy val sortedEnableSpecs:List[(LSSpec,Int)] = enableSpecs.map(s => (s,depthToAny(s.pred))).toList.sortBy(_._2)
+  lazy val sortedEnableSpecs:List[(LSSpec,Int)] = enableSpecs.map{s =>
+    val depth = depthToAny(s.pred)
+    (s,depth)
+  }.toList.sortBy(_._2)
 
-  println("")
   override def toString: String = {
     val builder = new StringBuilder()
     builder.append("enableSpecs\n------\n")
