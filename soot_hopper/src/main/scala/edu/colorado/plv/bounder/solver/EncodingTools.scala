@@ -464,13 +464,12 @@ object EncodingTools {
   }
 
   def liftQuant(pred: LSPred): LSPred = {
-    // returns the pred with quantifiers removed and a list of quantifiers to be added.
-    def iLift(pred:LSPred):(LSPred,List[LSPred]) = pred match{
+    // returns the pred with quantifiers removed and
+    def iLift(pred:LSPred):List[PureVar] => LSPred = pred match{
       case Exists(vars,pred) =>
-        val (newPred, recursiveQuant) = iLift(pred)
-        (newPred,Exists(vars,LSTrue)::recursiveQuant)
+        ???
     }
-    ???
+    iLift(pred)(Nil)
   }
 
   /**
