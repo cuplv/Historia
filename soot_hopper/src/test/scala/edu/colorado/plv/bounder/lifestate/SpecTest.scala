@@ -79,7 +79,7 @@ class SpecTest extends AnyFunSuite {
     assert(apk != null)
     val w = new JimpleFlowdroidWrapper(apk,SparkCallGraph, Set())
     val config = SymbolicExecutorConfig(
-      stepLimit = 8, w,new SpecSpace(Set()), printProgress = true)
+      stepLimit = 8, w,new SpecSpace(Set()), printAAProgress = true)
     val symbolicExecutor = config.getSymbolicExecutor
     implicit val ch = w.getClassHierarchyConstraints
 
@@ -100,7 +100,7 @@ class SpecTest extends AnyFunSuite {
     assert(apk != null)
     val w = new JimpleFlowdroidWrapper(apk,SparkCallGraph, Set())
     val config = SymbolicExecutorConfig(
-      stepLimit = 8, w,new SpecSpace(Set()), printProgress = true)
+      stepLimit = 8, w,new SpecSpace(Set()), printAAProgress = true)
     val symbolicExecutor = config.getSymbolicExecutor
     implicit val ch = w.getClassHierarchyConstraints
 //    BounderSetupApplication.loadApk(apk, CHACallGraph)

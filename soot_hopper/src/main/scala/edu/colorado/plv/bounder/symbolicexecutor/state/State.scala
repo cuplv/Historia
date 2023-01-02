@@ -100,7 +100,7 @@ case class StateFormula(callStack: List[CallStackFrame],
     this.copy(traceAbstraction = newTraceAbstraction)
   }
 
-  def allIRefByState(spec:SpecSpace): Set[AbsMsg] = allIRef(spec)
+  def allIRefByState(spec:SpecSpace): Set[OAbsMsg] = allIRef(spec)
   def clearTC:StateFormula = {
     this.copy(typeConstraints = Map())
   }
@@ -405,7 +405,7 @@ case class State(sf:StateFormula,
     case ArrayPtEdge(_,_) => None
   }
 
-  def allIRefByState(spec:SpecSpace):Set[AbsMsg] = sf.allIRefByState(spec)
+  def allIRefByState(spec:SpecSpace):Set[OAbsMsg] = sf.allIRefByState(spec)
   def fastIMatches(subsignature: String, spec:SpecSpace):Boolean =
     allIRefByState(spec:SpecSpace).exists(i => i.signatures.matchesSubSig(subsignature))
 
@@ -454,7 +454,7 @@ case class State(sf:StateFormula,
 
   def findIFromCurrent(dir: MessageType,
                        signature: Signature, specSpace: SpecSpace)(implicit
-                                                    ch:ClassHierarchyConstraints): Set[AbsMsg] = {
+                                                    ch:ClassHierarchyConstraints): Set[OAbsMsg] = {
     allIRefByState(specSpace).filter(i => i.mt == dir&& i.signatures.matches(signature))
   }
 
@@ -749,6 +749,13 @@ object PureConstraint {
 }
 
 sealed abstract class PureExpr {
+  /**
+   * Make expression where variables do not collide with v
+   * @param v variable to not collide with
+   * @return a non colliding expression (does not change for non-var)
+   */
+  def noCollide(v: PureVar): PureExpr
+
   def substitute(toSub : PureExpr, subFor : PureVar) : PureExpr
   def isStringExpr : Boolean = false
   def isBitwiseExpr : Boolean = false
@@ -763,6 +770,7 @@ object PureExpr{
 
 // primitive values
 sealed abstract class PureVal(v:Any) extends PureExpr with Nameable {
+  override def noCollide(v: PureVar): PureExpr = this
   override def substitute(toSub : PureExpr, subFor : PureVar) : PureVal = ???
 
   def >(p : PureVal) : Boolean = sys.error("GT for arbitrary PureVal")
@@ -881,6 +889,17 @@ sealed case class NPureVar(id:Int) extends PureVar with Nameable {
   override def toString : String = "p-" + id
 
   override def solverName: String = s"pv-$id"
+
+  /**
+   * Make expression where variables do not collide with v
+   *
+   * @param v variable to not collide with
+   * @return a non colliding expression (does not change for non-var)
+   */
+  override def noCollide(v: PureVar): PureExpr = v match {
+    case NPureVar(oId) if id == oId => NPureVar(id + 1)
+    case _ => this
+  }
 }
 object NPureVar{
   implicit val rw:RW[NPureVar] = macroRW
@@ -894,6 +913,17 @@ sealed case class NamedPureVar(n:String) extends PureVar with Nameable {
   override def toString : String = "p-" + n
 
   override def solverName: String = s"npv-$n"
+
+  /**
+   * Make expression where variables do not collide with v
+   *
+   * @param v variable to not collide with
+   * @return a non colliding expression (does not change for non-var)
+   */
+  override def noCollide(v: PureVar): PureExpr = v match {
+    case NamedPureVar(oN) if n == oN => NamedPureVar(n + "1")
+    case _ => this
+  }
 }
 
 object NamedPureVar{

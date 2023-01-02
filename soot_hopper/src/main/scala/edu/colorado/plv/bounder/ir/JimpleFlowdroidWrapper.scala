@@ -487,7 +487,7 @@ class CallGraphWrapper(cg: CallGraph) extends CallGraphProvider{
  *                   callbacks that may be missing (e.g. onResume so that onPause may be executed)
  */
 class JimpleFlowdroidWrapper(apkPath : String,
-                             callGraphSource: CallGraphSource,
+                             callGraphSource: CallGraphSource = SparkCallGraph,
                              toOverride:Set[_<:Any], //TODO: use more precise type
                              sourceType:SourceType = ApkSource
                             ) extends IRWrapper[SootMethod, soot.Unit] {
@@ -510,25 +510,30 @@ class JimpleFlowdroidWrapper(apkPath : String,
       s"var: ${v.name}, ptRegions: $ptRegions"
     }
     methods.foreach(m => {
-      val vars = m.getActiveBody.getUnits.asScala.flatMap{ c =>
-        val methodLoc = JimpleMethodLoc(m)
-        val ml = JimpleFlowdroidWrapper.makeCmd(c, m, AppLoc(methodLoc, JimpleLineLoc(c, m), true))
-        ml match {
-          case ReturnCmd(Some(returnVar:LocalWrapper), loc) => Set(varAndPtRegions(methodLoc, returnVar))
-          case AssignCmd(target:LocalWrapper, source, loc) => Set(varAndPtRegions(methodLoc, target))
-          case InvokeCmd(method, loc) => method.params.flatMap{
-            case p:LocalWrapper => Some(varAndPtRegions(methodLoc, p))
-            case _ => None
+      if(m.hasActiveBody) {
+        val vars = m.getActiveBody.getUnits.asScala.flatMap { c =>
+          val methodLoc = JimpleMethodLoc(m)
+          val ml = JimpleFlowdroidWrapper.makeCmd(c, m, AppLoc(methodLoc, JimpleLineLoc(c, m), true))
+          ml match {
+            case ReturnCmd(Some(returnVar: LocalWrapper), loc) => Set(varAndPtRegions(methodLoc, returnVar))
+            case AssignCmd(target: LocalWrapper, source, loc) => Set(varAndPtRegions(methodLoc, target))
+            case InvokeCmd(method, loc) => method.params.flatMap {
+              case p: LocalWrapper => Some(varAndPtRegions(methodLoc, p))
+              case _ => None
+            }
+            case If(b, trueLoc, loc) => Set.empty
+            case NopCmd(loc) => Set.empty
+            case SwitchCmd(key, targets, loc) => Set.empty
+            case ThrowCmd(loc) => Set.empty
+            case _ => Set.empty
           }
-          case If(b, trueLoc, loc) => Set.empty
-          case NopCmd(loc) => Set.empty
-          case SwitchCmd(key, targets, loc) => Set.empty
-          case ThrowCmd(loc) => Set.empty
-          case _ => Set.empty
-        }
-        //        s"${v.getName}:${pointsToSet(ml,lw)}"}
-      }.toSet
-      stringBuilder.append(s"=========${m.getDeclaringClass.getName} ${m.getName}\n${m.getActiveBody}\n ${vars.mkString("\n")}\n\n")
+          //        s"${v.getName}:${pointsToSet(ml,lw)}"}
+        }.toSet
+        stringBuilder.append(s"=========${m.getDeclaringClass.getName} ${m.getName}\n${m.getActiveBody}\n ${vars.mkString("\n")}\n\n")
+      }else{
+        stringBuilder.append(s"=========${m.getDeclaringClass.getName} ${m.getName}\n  " +
+          s"THE SOOT HAS DEEMED THIS METHOD TO HAVE NO ACTIVE BODY!!!\n\n")
+      }
     })
     stringBuilder.toString()
   }
@@ -1126,10 +1131,10 @@ class JimpleFlowdroidWrapper(apkPath : String,
       baseTypes.foreach{t =>
         val sc = Scene.v().getSootClass(t)
         val subClasses: List[SootClass] = try{
-          ch.getSubclassesOf(sc).asScala.toList
+          (if(sc.isInterface) ch.getImplementersOf(sc) else
+            ch.getSubclassesOf(sc)).asScala.toList
         } catch{
-              // TODO: figure out why soot does this
-          case _:NullPointerException => List()
+          case _:NullPointerException => List() // TODO: figure out why soot does this
         }
         val appClassesImplementing = subClasses
           .filter(sc2 => appClasses.contains(JimpleFlowdroidWrapper.stringNameOfClass(sc2)))

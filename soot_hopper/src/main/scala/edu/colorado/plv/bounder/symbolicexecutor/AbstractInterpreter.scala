@@ -40,7 +40,7 @@ case object SubsumptionModeTest extends SubsumptionMode
  * @param stepLimit Number of back steps to take from assertion before timeout (-1 for no limit)
  * @param w  IR representation defined by IRWrapper interface
  * @param specSpace CFTL specifications
- * @param printProgress print steps taken
+ * @param printAAProgress print steps taken
  * @param z3Timeout seconds that z3 can take on a query before timeout
  * @param component restrict analysis to callbacks that match the listed regular expressions
  * @tparam M Method type (IR wrapper)
@@ -49,12 +49,12 @@ case object SubsumptionModeTest extends SubsumptionMode
 case class SymbolicExecutorConfig[M,C](stepLimit: Int,
                                        w :  IRWrapper[M,C],
                                        specSpace:SpecSpace,
-                                       printProgress : Boolean = sys.env.getOrElse("DEBUG","false").toBoolean,
+                                       printAAProgress : Boolean = sys.env.getOrElse("DEBUG","false") == "AbstractInterpreter",
                                        z3Timeout : Option[Int] = None,
                                        component : Option[Seq[String]] = None,
                                        outputMode : OutputMode = MemoryOutputMode,
-//                                       timeLimit : Int = 7200,
-                                      timeLimit:Int = 1800, // Note: connectbot click finish does not seem to go any further with 2h vs 0.5hr
+                                       //                                       timeLimit : Int = 7200,
+                                       timeLimit:Int = 1800, // Note: connectbot click finish does not seem to go any further with 2h vs 0.5hr
                                        subsumptionMode:SubsumptionMode = SubsumptionModeIndividual //Note: seems to be faster without batch mode subsumption
                                       ){
   def getSymbolicExecutor =
@@ -350,34 +350,36 @@ class AbstractInterpreter[M,C](config: SymbolicExecutorConfig[M,C]) {
 
     val current = qrySet.nextWithGrouping()
 
-    current match{
-      case SwapLoc(FrameworkLocation) =>
-        println("Framework location query")
-        println(s"    State: ${current.qry.state}")
-        println(s"    Loc  : ${current.qry.loc}")
-        println(s"    depth: ${current.depth}")
-        println(s"    size of worklist: ${qrySet.size}")
-        println(s"    ord depth: ${current.ordDepth}")
-      case _ =>
-    }
+    if(config.printAAProgress) {
       current match {
-        case p@PathNode(Qry(_,_,Live), true) =>
-          // current node is subsumed
-          // TODO: this branch is probably unreachable
-          executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p)
-        case p@PathNode(Qry(_,_,BottomQry), _) =>
-          // current node is refuted
-          executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p)
-        case p@PathNode(Qry(_,_,WitnessedQry(_)), _) =>
-          // current node is witnessed
-          refutedSubsumedOrWitnessed.union(qrySet.toSet) + p
-        case p: IPathNode if limit > 0 && p.depth > limit =>
-          // max steps reached
-          refutedSubsumedOrWitnessed.union(qrySet.toSet) + p
-        case p@PathNode(qry@Qry(_,_,Live), false) =>
-          // live path node
-          val subsuming = //try{
-              isSubsumed(p, ()=> checkDeadline(deadline, qrySet,refutedSubsumedOrWitnessed))
+        case SwapLoc(FrameworkLocation) =>
+          println("Framework location query")
+          println(s"    State: ${current.qry.state}")
+          println(s"    Loc  : ${current.qry.loc}")
+          println(s"    depth: ${current.depth}")
+          println(s"    size of worklist: ${qrySet.size}")
+          println(s"    ord depth: ${current.ordDepth}")
+        case _ =>
+      }
+    }
+    current match {
+      case p@PathNode(Qry(_,_,Live), true) =>
+        // current node is subsumed
+        // TODO: this branch is probably unreachable
+        executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p)
+      case p@PathNode(Qry(_,_,BottomQry), _) =>
+        // current node is refuted
+        executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p)
+      case p@PathNode(Qry(_,_,WitnessedQry(_)), _) =>
+        // current node is witnessed
+        refutedSubsumedOrWitnessed.union(qrySet.toSet) + p
+      case p: IPathNode if limit > 0 && p.depth > limit =>
+        // max steps reached
+        refutedSubsumedOrWitnessed.union(qrySet.toSet) + p
+      case p@PathNode(qry@Qry(_,_,Live), false) =>
+        // live path node
+        val subsuming = //try{
+            isSubsumed(p, ()=> checkDeadline(deadline, qrySet,refutedSubsumedOrWitnessed))
 //            }catch {
 //              case ze:Throwable =>
 //                // Get sequence trace to error when it occurs
@@ -385,32 +387,32 @@ class AbstractInterpreter[M,C](config: SymbolicExecutorConfig[M,C]) {
 //                ze.printStackTrace()
 //                throw QueryInterruptedException(refutedSubsumedOrWitnessed + current, ze.getMessage)
 //          }
-          subsuming match {
-            case v if v.nonEmpty =>
-              // Path node discovered to be subsumed
-              executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p.setSubsumed(v))
-            case v if v.isEmpty =>
-              // Add to invariant map if invariant location is tracked
-              current match {
-                case SwapLoc(v) => {
-                  val nodeSetAtLoc = invarMap.getOrElse(v, Set.empty)
-                  invarMap.addOne(v-> (nodeSetAtLoc + current))
-                }
-                case _ =>
+        subsuming match {
+          case v if v.nonEmpty =>
+            // Path node discovered to be subsumed
+            executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p.setSubsumed(v))
+          case v if v.isEmpty =>
+            // Add to invariant map if invariant location is tracked
+            current match {
+              case SwapLoc(v) => {
+                val nodeSetAtLoc = invarMap.getOrElse(v, Set.empty)
+                invarMap.addOne(v-> (nodeSetAtLoc + current))
               }
-              val nextQry = try{
-                executeStep(qry).map(q => PathNode(q, List(p), None))
-              }catch{
-                case ze:Throwable =>
-                  // Get sequence trace to error when it occurs
-                  current.setError(ze)
-                  ze.printStackTrace()
-                  throw QueryInterruptedException(refutedSubsumedOrWitnessed + current, ze.getMessage)
-              }
-              qrySet.addAll(nextQry)
-              executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed)
-          }
-      }
+              case _ =>
+            }
+            val nextQry = try{
+              executeStep(qry).map(q => PathNode(q, List(p), None))
+            }catch{
+              case ze:Throwable =>
+                // Get sequence trace to error when it occurs
+                current.setError(ze)
+                ze.printStackTrace()
+                throw QueryInterruptedException(refutedSubsumedOrWitnessed + current, ze.getMessage)
+            }
+            qrySet.addAll(nextQry)
+            executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed)
+        }
+    }
   }
 
   /**

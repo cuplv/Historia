@@ -45,7 +45,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
   private val generateTex = false //TODO: flip to generate tex files
   private val logger = LoggerFactory.getLogger("Experiments")
   logger.warn("Starting experiments run")
-  private val prettyPrinting = new PrettyPrinting()
+  private val prettyPrinting = PrettyPrinting
   private val cgMode = SparkCallGraph
 
   {
@@ -69,8 +69,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
     case id if id.contains("onCreate") => "createOnce"
     case id if id.contains("findView") => "findView"
     case id if id.contains("onActivityCreated") => "onActivityCreated"
-    case id if id.contains("Dialog_show") => "show"
-    case id if id.contains("AsyncTask_execute") => "execute"
+    case id if id.contains("Dialog_show") || id.contains("Dialogshow") => "show"
+    case id if id.contains("AsyncTask_execute") || id.contains("AsyncTaskexecute") => "execute"
     case id =>
       println(id);???
   }

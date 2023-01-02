@@ -81,7 +81,7 @@ class SootUtilsTest extends AnyFunSuite {
     val testSpec = LSSpec(a::Nil, Nil, NS(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
       SpecSignatures.Activity_onPause_entry)
     val config: SymbolicExecutorConfig[SootMethod, soot.Unit] = SymbolicExecutorConfig(
-      stepLimit = 50, w, new SpecSpace(Set(testSpec)), printProgress = true, z3Timeout = Some(30))
+      stepLimit = 50, w, new SpecSpace(Set(testSpec)), printAAProgress = true, z3Timeout = Some(30))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = Qry.makeReceiverNonNull(symbolicExecutor,
       Signature("com.example.test_interproc_2.MainActivity", "void onPause()"), 27)
@@ -115,7 +115,7 @@ class SootUtilsTest extends AnyFunSuite {
     val testSpec = LSSpec(a::Nil, Nil, NS(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
       SpecSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
     val config: SymbolicExecutorConfig[SootMethod, soot.Unit] = SymbolicExecutorConfig(
-      stepLimit = 50, w, new SpecSpace(Set(testSpec)), printProgress = true, z3Timeout = Some(30))
+      stepLimit = 50, w, new SpecSpace(Set(testSpec)), printAAProgress = true, z3Timeout = Some(30))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = Qry.makeReach(symbolicExecutor,
       Signature("com.example.test_interproc_2.MainActivity", "void onCreate(android.os.Bundle)"), 16)

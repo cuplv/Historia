@@ -29,6 +29,7 @@ object EncodingTools {
     }
   }
   private def updArrowPhi(i:AbsMsg, lsPred:LSPred):LSPred = lsPred match {
+    case LSAnyPred => LSAnyPred
     case Forall(v,p) => Forall(v,updArrowPhi(i:AbsMsg, p:LSPred))
     case Exists(v,p) => Exists(v,updArrowPhi(i:AbsMsg, p:LSPred))
     case l:LSConstraint => l
@@ -91,6 +92,14 @@ object EncodingTools {
     case FreshRef(_) => LSTrue
     case CLInit(_) => LSTrue
   }
+
+  /**
+   *
+   * @param rhs
+   * @param specSpace
+   * @param post preds to update in addition to current encode
+   * @return
+   */
   def rhsToPred(rhs: Seq[LSSingle], specSpace: SpecSpace, post:Set[LSPred] = Set()): Set[LSPred] = {
     rhs.foldRight((post, true)) {
       case (v, (acc, includeDis)) =>
@@ -452,5 +461,25 @@ object EncodingTools {
         case (pv,_) => markedSet.contains(pv)
       }))
     }
+  }
+
+  def liftQuant(pred: LSPred): LSPred = {
+    // returns the pred with quantifiers removed and
+    def iLift(pred:LSPred):List[PureVar] => LSPred = pred match{
+      case Exists(vars,pred) =>
+        ???
+    }
+    iLift(pred)(Nil)
+  }
+
+  /**
+   * Converts a lifestate logical formula to conjunctive normal form
+   *
+   * @param pred the logical formula to convert
+   * @return an equivalent formula in conjunctive normal form
+   */
+  def toCNF(pred:LSPred):LSPred = {
+    val liftedQuant:LSPred = liftQuant(pred)
+    ???
   }
 }

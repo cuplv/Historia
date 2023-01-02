@@ -21,7 +21,7 @@ trait SetEncoder[T, C <: SolverCtx[T]]{
 }
 
 trait SolverCtx[T]{
-  def mkAssert(t:T):Unit
+  //def mkAssert(t:T):Unit
   def acquire(randomSeed:Option[Int] = None):Unit
   def release():Unit
 }
@@ -29,6 +29,8 @@ trait SolverCtx[T]{
 
 /** SMT solver parameterized by its AST or expression type */
 trait StateSolver[T, C <: SolverCtx[T]] {
+  def mkAssert(t:T)(implicit zCtx:C):Unit
+  def pruneUnusedQuant(t: T)(implicit zCtx:C): T
 
   /**
    *
@@ -63,6 +65,13 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   def solverString(messageTranslator: MessageTranslator)(implicit zCtx:C):String
 
+  /**
+   *
+   * @param messageTranslator object to encode field and message names in solver
+   * @param axioms axioms for behavior of heap and message indices, none for default
+   * @param zCtx solver context
+   * @return whether formula is satisfiable
+   */
   def checkSAT(messageTranslator: MessageTranslator,
                   axioms: Option[List[MessageTranslator => Unit] ])(implicit zCtx: C): Boolean
   /**
@@ -642,10 +651,54 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   }
 
+  object MessageTranslator {
+    def getAllI(states: Iterable[State], specSpace: Iterable[SpecSpace]): Set[AbsMsg] = {
+      allITraceAbs(states.map(_.traceAbstraction).toSet) ++ specSpace.flatMap(_.allI)
+    }
 
-  case class MessageTranslator(states: Iterable[State], specSpace: SpecSpace)(implicit zCtx: C) {
+    def dynFieldSet(states: Iterable[State]): Set[String] = {
+      states.flatMap { s =>
+        s.sf.heapConstraints.flatMap {
+          case (FieldPtEdge(_, fieldName), _) => Some(fieldName)
+          case _ => None
+        }
+      }.toSet
+    }
+
+    def pureValSet(states: Iterable[State]): Set[PureVal] = {
+      states.foldLeft(Set[PureVal]()) {
+        case (acc, v) => acc.union(getPureValSet(v.pureFormula))
+      } + NullVal + IntVal(0) + IntVal(1) //+ BoolVal(true) + BoolVal(false) + IntVal(0) + IntVal(1)
+    }
+    def typeValSet(states:Iterable[State])(implicit ctx: C):Set[Int] = {
+      states.foldLeft(Set[Int]()){
+        case (acc,s) => acc.union(allTypes(s))
+      }
+    }
+
+    def localSet(states:Iterable[State]):Set[(String, Int)] = {
+      states.flatMap{ state =>
+        val localAtStackDepth: Map[(String, Int), PureVar] = levelLocalPv(state)
+        val out = localAtStackDepth.keySet
+        out
+      }.toSet
+    }
+    def apply(states:Iterable[State], specs:Iterable[SpecSpace])(implicit ctx:C):MessageTranslator = {
+      MessageTranslator(states.toList,
+        getAllI(states,specs), dynFieldSet(states), pureValSet(states), typeValSet(states),
+        localSet(states))
+    }
+  }
+
+  /**
+   * An object to consistently translate messages and heap fields to consistent solver names
+   * @param states for fields and message names
+   * @param specSpace for message names
+   * @param zCtx solver context
+   */
+  case class MessageTranslator(states:List[State], alli:Set[AbsMsg],dynFieldSet:Set[String], pureValSet:Set[PureVal],
+                               allTypeValues:Set[Int],allLocal: Set[(String, Int)])(implicit zCtx: C) {
     // Trace messages
-    private val alli = allITraceAbs(states.map(_.traceAbstraction).toSet) ++ specSpace.allI
     private val inameToI: Map[String, Set[AbsMsg]] = alli.groupBy(_.identitySignature)
     // OTHER is name for unmodeled messages, INIT is name for first message
     lazy val inamelist = "OTHEROTHEROTHER"::"INITINIT" :: inameToI.keySet.toList
@@ -660,15 +713,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       case (acc,_) => acc
     }
 
-    lazy val dynFieldSet:Set[String] = states.flatMap{s => s.sf.heapConstraints.flatMap{
-      case (FieldPtEdge(_,fieldName), _) => Some(fieldName)
-      case _ => None
-    }}.toSet
-
     // Constants
-    val pureValSet = states.foldLeft(Set[PureVal]()){
-      case (acc,v) => acc.union(getPureValSet(v.pureFormula))
-    } + NullVal + IntVal(0) + IntVal(1) //+ BoolVal(true) + BoolVal(false) + IntVal(0) + IntVal(1)
     private val constMap1 = mkConstConstraintsMap(pureValSet)
     val constMap = constMap1 +
       (BoolVal(true)-> constMap1(IntVal(1))) + (BoolVal(false) -> constMap1(IntVal(0)))
@@ -676,28 +721,26 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     //    zCtx.mkAssert(uniqueConst)
 
     // Types
-    private val allTypeValues = states.foldLeft(Set[Int]()){
-      case (acc,s) => acc.union(allTypes(s))
-    }
+//    private val allTypeValues =
 
     private val (typesUnique, typeToSolverConst: Map[Int, T]) = mkTypeConstraints(allTypeValues)
-    zCtx.mkAssert(typesUnique)
+    mkAssert(typesUnique)
     def getTypeToSolverConst:Map[Int,T] = typeToSolverConst
 
 
     // Locals
-    private val allLocal: Set[(String, Int)] = states.flatMap{ state =>
-      val localAtStackDepth: Map[(String, Int), PureVar] = levelLocalPv(state)
-      val out = localAtStackDepth.keySet
-      out
-    }.toSet
+    //    private val allLocal: Set[(String, Int)] =
     val (localDistinct, localDomain) = mkLocalDomain(allLocal)
-    zCtx.mkAssert(localDistinct)
+    mkAssert(localDistinct)
 
     def getZeroMsgName:T =
       identitySignaturesToSolver("INITINIT")
-    def enumFromI(m: AbsMsg): T =
-      identitySignaturesToSolver(m.identitySignature)
+    def enumFromI(m: AbsMsg): T = {
+      if(identitySignaturesToSolver.contains(m.identitySignature))
+        identitySignaturesToSolver(m.identitySignature)
+      else
+        throw new IllegalArgumentException(s"no key ${m.identitySignature}")
+    }
 
     def nameFun: T = mkINameFn()
 
@@ -733,18 +776,11 @@ trait StateSolver[T, C <: SolverCtx[T]] {
           case _ => true
         }))
 
-        // note: I think the following is wrong, empty points to set occurs when value must be null
-        //      // If no type possible for a pure var, state is not feasible
-        //      val pvMap2: Map[PureVar, TypeSet] = state.typeConstraints
-        //      if (pvMap2.exists{ a => a._2.isEmpty }) {
-        //        return None
-        //      }
-
         val nullsFromPt = state2.typeConstraints.filter(a => a._2.isEmpty)
         val stateWithNulls = nullsFromPt.foldLeft(state2) {
           case (state, (v, _)) => state.addPureConstraint(PureConstraint(v, Equals, NullVal))
         }
-        val messageTranslator = MessageTranslator(List(stateWithNulls), specSpace)
+        val messageTranslator = MessageTranslator(List(stateWithNulls), List(specSpace))
 
         // Only encode types in Z3 for subsumption check due to slow-ness
 
@@ -756,7 +792,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
           println(s"State ${System.identityHashCode(state2)} encoding: ")
           println(ast.toString)
         }
-        zCtx.mkAssert(ast)
+        mkAssert(ast)
         val sat = checkSAT(messageTranslator, Some(List(initalizeConstAxioms, initializeNameAxioms, initializeFieldAxioms, initializeOrderAxioms)))
         //      val simpleAst = solverSimplify(ast, stateWithNulls, messageTranslator, maxWitness.isDefined)
 
@@ -1020,13 +1056,13 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
     val res = try {
       zCtx.acquire()
-      val messageTranslator: MessageTranslator = MessageTranslator(s1 + s2, specSpace)
+      val messageTranslator: MessageTranslator = MessageTranslator(s1 + s2, List(specSpace))
       s1Filtered.foreach{state =>
         val stateEncode = mkNot(toASTState(state, messageTranslator, None, specSpace))
-        zCtx.mkAssert(stateEncode)
+        mkAssert(stateEncode)
       }
       val s2Encode = toASTState(s2, messageTranslator,None, specSpace)
-      zCtx.mkAssert(s2Encode)
+      mkAssert(s2Encode)
       val foundCounter =
         checkSAT(messageTranslator,Some(List(initalizeConstAxioms, initializeNameAxioms, initializeFieldAxioms, initializeOrderAxioms)))
       !foundCounter
@@ -1063,8 +1099,33 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
     res
   }
-  def canSubsume(pred1:LSPred, pred2:LSPred, specSpace:SpecSpace):Boolean = {
-    ??? //TODO:
+
+  /**
+   *
+   * @param spec1 subsuming specification
+   * @param spec2 subsumed specification
+   * @return
+   */
+  def canSubsume(spec1:SpecSpace, spec2:SpecSpace):Boolean = {
+    //TODO:====== test me
+    def predAndFree(s:LSSpec):LSPred = Exists(s.target.lsVar.toList, s.pred)
+    implicit val zCtx: C = getSolverCtx
+    try{
+      zCtx.acquire()
+      val msg = MessageTranslator(Set.empty, List(spec1, spec2))
+      val preds1 = spec1.getSpecs.map{predAndFree}
+      val preds2 = spec2.getSpecs.map{predAndFree}
+
+      val enc1 = preds1.map{encodePred(_,msg, Map.empty, Map.empty, Map.empty, msg.constMap)}
+      val enc2 = preds2.map{encodePred(_,msg, Map.empty, Map.empty, Map.empty, msg.constMap)}
+
+      mkAssert(mkAnd(mkNot(mkAnd(enc1)),mkAnd(enc2)))
+      val isSat = checkSAT(msg,None)
+
+      !isSat
+    }finally{
+      zCtx.release()
+    }
   }
 
   /**
@@ -1287,14 +1348,14 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       }else{
         throw new IllegalStateException("Timeout, exceeded rng seed attempts")
       }
-      val messageTranslator: MessageTranslator = MessageTranslator(List(s1, s2), specSpace)
+      val messageTranslator: MessageTranslator = MessageTranslator(List(s1, s2), List(specSpace))
 
       val s1Enc = mkNot(toASTState(s1, messageTranslator, maxLen,
         specSpace = specSpace, debug = maxLen.isDefined))
-      zCtx.mkAssert(s1Enc)
+      mkAssert(s1Enc)
       val s2Enc = toASTState(s2, messageTranslator, maxLen,
         specSpace = specSpace, debug = maxLen.isDefined)
-      zCtx.mkAssert(s2Enc)
+      mkAssert(s2Enc)
       val foundCounter =
         checkSAT(messageTranslator, Some(List(initalizeConstAxioms,initializeNameAxioms, initializeOrderAxioms,initializeFieldAxioms)))
 
@@ -1396,7 +1457,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     //TODO:========
     try {
       zCtx.acquire()
-      val messageTranslator = MessageTranslator(???, specSpace)
+      val messageTranslator = MessageTranslator(???, List(specSpace))
       initializeZeroAxioms(messageTranslator)
       val pvMap: Map[PureVar, T] = encodeTraceContained(???, trace,
         messageTranslator = messageTranslator, specSpace = specSpace)
@@ -1417,7 +1478,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
                          debug: Boolean = false)(implicit zCtx: C): Option[WitnessExplanation] = {
     try {
       zCtx.acquire()
-      val messageTranslator = MessageTranslator(List(state), specSpace)
+      val messageTranslator = MessageTranslator(List(state), List(specSpace))
       initializeZeroAxioms(messageTranslator)
       val pvMap: Map[PureVar, T] = encodeTraceContained(state, trace,
         messageTranslator = messageTranslator, specSpace = specSpace)
@@ -1448,24 +1509,24 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 //    val traceFn = mkTraceFn("")
     val usedTypes = allTypes(state)
     val (typesAreUnique, _) = mkTypeConstraints(usedTypes)
-    zCtx.mkAssert(typesAreUnique)
+    mkAssert(typesAreUnique)
 
 //    val traceLimit = trace.indices.foldLeft(mkZeroIndex){case (acc,_) => mkAddOneIndex(acc)}
     val (traceLimit, isInc) = mkMsgAtIndex(trace.size)
-    zCtx.mkAssert(isInc)
+    mkAssert(isInc)
     mkForallMsg(mkTraceFn, m => mkLTEMsg(m,traceLimit))
 
     // Maximum of 10 addresses in trace contained.  This method is typically used for empty traces with no addresses.
     // Only testing has non empty traces passed to this method
     val distinctAddr: Map[Int, T] = (0 until 10).map(v => (v, mkAddrConst(v))).toMap
     val assertDistinct = mkDistinctT(distinctAddr.keySet.map(distinctAddr(_)))
-    zCtx.mkAssert(assertDistinct)
+    mkAssert(assertDistinct)
     val (encodedState,pvMap) = toASTStateWithPv(state, messageTranslator, None,
       specSpace = specSpace,exposePv = true)
     val encodedTrace = encodeTrace(trace, messageTranslator, distinctAddr)
 
-    zCtx.mkAssert(encodedState)
-    zCtx.mkAssert(encodedTrace)
+    mkAssert(encodedState)
+    mkAssert(encodedTrace)
 
     pvMap
   }
@@ -1478,7 +1539,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
     // Each message must be in the trace function
     distinctMSG.foreach{
-      case (_, msg) => zCtx.mkAssert(mkTraceFnContains(mkTraceFn, msg))
+      case (_, msg) => mkAssert(mkTraceFnContains(mkTraceFn, msg))
     }
 
     val msgVars = distinctMSG.map{ case (_, t) => t}

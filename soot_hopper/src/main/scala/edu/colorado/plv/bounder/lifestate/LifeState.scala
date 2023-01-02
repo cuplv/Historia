@@ -2,14 +2,16 @@ package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType}
+import edu.colorado.plv.bounder.lifestate.LSPredAnyOrder.depthToAny
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, CLInit, Exists, Forall, FreshRef, LSAnyPred, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, Signature}
 import edu.colorado.plv.bounder.solver.EncodingTools.Assign
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, BotVal, ClassVal, CmpOp, Equals, NamedPureVar, NotEquals, NullVal, PureExpr, PureVal, PureVar, State, ConcreteVal, TopVal, TypeComp}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, BotVal, ClassVal, CmpOp, ConcreteVal, Equals, NamedPureVar, NotEquals, NullVal, PureExpr, PureVal, PureVar, State, TopVal, TypeComp}
 
 import scala.util.parsing.combinator._
 import upickle.default.{macroRW, ReadWriter => RW}
 
+import scala.collection.mutable
 import scala.util.matching.Regex
 
 //object LSVarGen{
@@ -284,7 +286,16 @@ object LifeState {
 
   }
 
-  case class Forall(vars:List[PureVar], p:LSPred) extends LSPred{
+  sealed trait LSBinOp extends LSPred{
+    def l1:LSPred
+    def l2:LSPred
+  }
+
+  sealed trait LSUnOp extends LSPred{
+    def p:LSPred
+  }
+
+  case class Forall(vars:List[PureVar], p:LSPred) extends LSPred with LSUnOp{
 //    override def toString:String =
 //      if(vars.isEmpty) p.toString else s"Forall([${vars.mkString(",")}], ${p.toString})"
     override def toTex: String = ???
@@ -305,7 +316,7 @@ object LifeState {
         p.toString
   }
 
-  case class Exists(vars:List[PureVar], p:LSPred) extends LSPred {
+  case class Exists(vars:List[PureVar], p:LSPred) extends LSPred  with LSUnOp {
     //    override def toString:String =
     //      if(vars.isEmpty) p.toString else s"Exists([${vars.mkString(",")}],${p.toString})"
     override def swap(swapMap: Map[PureVar, PureVar]): Exists = {
@@ -409,7 +420,7 @@ object LifeState {
     override def toTex: String = ???
   }
 
-  case class And(l1 : LSPred, l2 : LSPred) extends LSBexp {
+  case class And(l1 : LSPred, l2 : LSPred) extends LSBexp with LSBinOp {
 
     override def lsVar: Set[PureVar] = l1.lsVar.union(l2.lsVar)
 
@@ -429,28 +440,28 @@ object LifeState {
 
     override def toTex: String = s"${l1.toTex} \\wedge ${l2.toTex}"
   }
-  case class Not(l: LSPred) extends LSAtom {
-    override def lsVar: Set[PureVar] = l.lsVar
+  case class Not(p: LSPred) extends LSAtom with LSUnOp {
+    override def lsVar: Set[PureVar] = p.lsVar
 
     override def contains(mt:MessageType,sig: Signature)(implicit ch:ClassHierarchyConstraints): Boolean =
-      l.contains(mt,sig)
+      p.contains(mt,sig)
 
-    override def swap(swapMap: Map[PureVar, PureVar]) = Not(l.swap(swapMap))
+    override def swap(swapMap: Map[PureVar, PureVar]) = Not(p.swap(swapMap))
 
-    override def toString: String = s"(Not ${l})"
+    override def toString: String = s"(Not ${p})"
 
-    override def toTex: String = l match {
+    override def toTex: String = p match {
       case i: AbsMsg=> s"\\notiDir{${i.mToTex}}"
       case _ => ??? //s"\\neg ${l.toTex}"
     }
 
-    override def identitySignature: String = l match {
+    override def identitySignature: String = p match {
       case once: AbsMsg => once.identitySignature
       case exp =>
         throw new IllegalArgumentException(s"identity sig only valid for AbsMsg and Not(AbsMsg), found: ${exp}")
     }
   }
-  case class Or(l1:LSPred, l2:LSPred) extends LSBexp {
+  case class Or(l1:LSPred, l2:LSPred) extends LSBexp with LSBinOp {
 
     override def lsVar: Set[PureVar] = l1.lsVar.union(l2.lsVar)
     override def contains(mt:MessageType,sig: Signature)(implicit ch:ClassHierarchyConstraints): Boolean =
@@ -677,6 +688,7 @@ object LifeState {
   }
 
   sealed trait AbsMsg extends LSSingle {
+
     def mt:MessageType
     def signatures:SignatureMatcher
     def lsVars:List[PureExpr]
@@ -695,39 +707,34 @@ object LifeState {
       OAbsMsg(mt, signatures, lsVars)
   }
 
-  case object AnyAbsMsg extends AbsMsg {
-    override def mt: MessageType = ???
-
-    override def signatures: SignatureMatcher = ???
-
-    override def lsVars: List[PureExpr] = ???
-
-    override def swap(swapMap: Map[PureVar, PureVar]): AbsMsg = ???
-
-    override def mToTex: String = ???
-
-    override def identitySignature: String = ???
-
-    override def toTex: String = ???
-
-    override def contains(mt: MessageType, sig: Signature)(implicit ch: ClassHierarchyConstraints): Boolean = ???
-
-    override def lsVar: Set[PureVar] = ???
-  }
+//  case object AnyAbsMsg extends AbsMsg {
+//    override def mt: MessageType = ???
+//
+//    override def signatures: SignatureMatcher = ???
+//
+//    override def lsVars: List[PureExpr] = ???
+//
+//    override def swap(swapMap: Map[PureVar, PureVar]): AbsMsg = ???
+//
+//    override def mToTex: String = ???
+//
+//    override def identitySignature: String = ???
+//
+//    override def toTex: String = ???
+//
+//    override def contains(mt: MessageType, sig: Signature)(implicit ch: ClassHierarchyConstraints): Boolean = ???
+//
+//    override def lsVar: Set[PureVar] = ???
+//  }
 
 
   case class OAbsMsg(mt: MessageType, signatures: SignatureMatcher, lsVars : List[PureExpr]) extends AbsMsg {
-    //    def constVals(constraints: Set[LSConstraint]):List[Option[(CmpOp, PureExpr)]] = lsVars.map{
-    //      case LifeState.LSConst(v) => Some((Equals, v))
-    //      case LifeState.LSVar(v) =>
-    //        constraints.find(c => c.v1 == v || c.v2 == v) match {
-    //          case Some(LSConstraint(_, op, LifeState.LSConst(v2))) => Some(op,v2)
-    //          case Some(LSConstraint(LifeState.LSConst(v1), op, _)) => Some(op,v1)
-    //          case None => None
-    //          case c => throw new IllegalStateException(s"Malformed constraint: $c")
-    //        }
-    //      case _ => None
-    //    }
+    def cloneWithVar(v: PureVar, ind: Int, avoid:Set[PureVar]): OAbsMsg =
+      this.copy(lsVars = lsVars.zipWithIndex.map{
+        case (cpv, cInd) if cInd == ind => v
+        case (cpv, _) => avoid.foldLeft(cpv.noCollide(v)){case (acc,v) => acc.noCollide(v)}
+      })
+
     override def lsVar: Set[PureVar] = lsVars.flatMap {
       case pureVar: PureVar => Some(pureVar)
       case _: PureVal => None
@@ -736,15 +743,46 @@ object LifeState {
     def getVar(i: Int): PureExpr = lsVars(i)
 
 
-//    override def getAtomSig: String = {
-//      s"I(${sortedSig.mkString(":")})"
-//    }
-
+    private def sanitizeIdentitySignature(s: String): String = {
+      s.replaceAll("\\\\", "")
+        .replaceAll("\\{", "")
+        .replaceAll("\\}", "")
+        .replaceAll("\\$", "")
+        .replaceAll("\\_", "")
+        .replaceAll("\\^", "")
+        .replaceAll("\\.", "")
+        .replaceAll("\\(", "")
+        .replaceAll("\\)", "")
+        .replaceAll("\\[", "")
+        .replaceAll("\\]", "")
+        .replaceAll("\\|", "")
+        .replaceAll("\\+", "")
+        .replaceAll("\\*", "")
+        .replaceAll("\\?", "")
+        .replaceAll("\\<", "")
+        .replaceAll("\\>", "")
+        .replaceAll("\\-", "")
+        .replaceAll("\\=", "")
+        .replaceAll("\\:", "")
+        .replaceAll("\\;", "")
+        .replaceAll("\\,", "")
+        .replaceAll("\\/", "")
+        .replaceAll("\\!", "")
+        .replaceAll("\\@", "")
+        .replaceAll("\\#", "")
+        .replaceAll("\\%", "")
+        .replaceAll("\\&", "")
+        .replaceAll("\\~", "")
+        .replaceAll("\\`", "")
+        .replaceAll("\\'", "")
+        .replaceAll("\\\"", "")
+        .replaceAll("\\ ", "")
+    }
     // Uesed for naming uninterpreted functions in z3 solver
     override def identitySignature: String = {
       // Note: this does not include varnames or
       // any other info that would distinguish this I from another with the same metods
-      s"I_${mt.toString}_${signatures.identifier}"
+      s"I_${mt.toString}_${sanitizeIdentitySignature(signatures.identifier)}"
     }
 
     override def contains(omt:MessageType,sig: Signature)(implicit ch:ClassHierarchyConstraints): Boolean =
@@ -790,7 +828,7 @@ object LifeState {
     implicit val rw:RW[NS] = macroRW
   }
   case class LSSpec(univQuant:List[PureVar], existQuant:List[PureVar],
-                    pred:LSPred, target: AbsMsg, rhsConstraints: Set[LSConstraint] = Set()){
+                    pred:LSPred, target: OAbsMsg, rhsConstraints: Set[LSConstraint] = Set()){
     def toTex():String = {
       // in paper language, universal quantification of target vars is implicit
       val dispUnivQuant = univQuant.toSet -- target.lsVar
@@ -938,15 +976,18 @@ object LifeState {
   }
 }
 object SpecSpace{
-  def allI(pred:Option[LSPred]):Set[AbsMsg] = pred match {
+  def allI(pred:Option[LSPred]):Set[OAbsMsg] = pred match {
     case Some(v) => allI(v)
     case None => Set()
   }
-  def allI(pred:LSPred):Set[AbsMsg] = pred match{
+  def allI(pred:LSPred):Set[OAbsMsg] = pred match{
     case LSImplies(l1, l2) => allI(l1).union(allI(l2))
     case CLInit(_) => Set()
-    case i:AbsMsg => Set(i)
-    case NS(i1,i2) => Set(i1,i2)
+    case i:OAbsMsg => Set(i)
+    case NS(i1,i2) => Set(i1,i2).flatMap{
+      case o:OAbsMsg => Some(o)
+      case _ => None
+    }
     case And(p1,p2) => allI(p1).union(allI(p2))
     case Or(p1,p2) => allI(p1).union(allI(p2))
     case Not(p) => allI(p)
@@ -958,11 +999,50 @@ object SpecSpace{
     case LSConstraint(_,_, _) => Set()
     case LSAnyPred => Set()
   }
-  def allI(spec:LSSpec, includeRhs:Boolean = true):Set[AbsMsg] = spec match{
+  def allI(spec:LSSpec, includeRhs:Boolean = true):Set[OAbsMsg] = spec match{
     case LSSpec(_,_,pred, target,_) if includeRhs => allI(pred).union(allI(target))
     case LSSpec(_,_,pred, target,_) => allI(pred)
   }
 }
+
+object LSSPecAnyOrder extends Ordering[LSSpec]{
+  override def compare(x: LSSpec, y: LSSpec): Int =
+    LSPredAnyOrder.compare(x.pred,y.pred)
+}
+object LSPredAnyOrder extends Ordering[LSPred]{
+//  private def comb(p1:LSPred, p2:LSPred):Option[Int] ={
+//    (depthToAny(p1),depthToAny(p2)) match{
+//      case (Some(v1), Some(v2)) => Some(Math.min(v1,v2))
+//      case (Some(v), _) => Some(v)
+//      case (_,o)  => o
+//    }
+//  }
+  private def comb(p1:LSPred, p2:LSPred):Int = Math.max(depthToAny(p1), depthToAny(p2))
+  def depthToAny(p:LSPred):Int = p match {
+    case LSAnyPred => 0
+    case Or(p1, p2) => comb(p1,p2) + 1
+    case And(p1, p2) => comb(p1,p2) + 1
+    case Not(p) => depthToAny(p) + 1
+    case Forall(vars, p) => depthToAny(p) + 1
+    case Exists(vars, p) => depthToAny(p) + 1
+    case _: LifeState.LSAtom => 1
+  }
+  override def compare(x: LSPred, y: LSPred): Int = {
+    val dx = depthToAny(x)
+    val dy = depthToAny(y)
+    dy - dx
+  }
+}
+object SpecSpaceAnyOrder extends Ordering[SpecSpace]{
+  override def compare(x: SpecSpace, y: SpecSpace): Int = {
+    val res = x.sortedEnableSpecs.view.zip(y.sortedEnableSpecs).collectFirst{
+      case ((s1,d1),(s2,d2)) =>
+        d2 - d1
+    }.getOrElse(0)
+    res
+  }
+}
+
 /**
  * Representation of a set of possible lifestate specs
  * disallowSpecs are conditions that a method should not be invoked under (e.g. throwing an exception)
@@ -970,19 +1050,48 @@ object SpecSpace{
  * @matcherSpace additional matchers that may be used for synthesis (added to allI)
  **/
 class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(), matcherSpace:Set[OAbsMsg] = Set()) {
+  lazy val sortedEnableSpecs:List[(LSSpec,Int)] = enableSpecs.map{s =>
+    val depth = depthToAny(s.pred)
+    (s,depth)
+  }.toList.sortBy(_._2)
 
-  private lazy val specUID:Map[LSSpec, Int] = (enableSpecs ++ disallowSpecs).zipWithIndex.map{
-    case (spec, i) => spec->i
-  }.toMap
-  private lazy val uidToSpec:Map[Int,LSSpec] = specUID.map{
-    case (spec, i) => i->spec
+  override def toString: String = {
+    val builder = new StringBuilder()
+    builder.append("enableSpecs\n------\n")
+    enableSpecs.foreach(s => builder.append(s"${s.toString}\n"))
+    builder.toString
   }
 
-  def getSpecUID(spec: LSSpec): Int = specUID(spec)
+  def zip(other:SpecSpace):Set[(LSSpec, LSSpec)] = {
+    val matched = mutable.HashSet[LSSpec]()
+    matched.addAll(other.getSpecs)
+    def matchWith(spec:LSSpec, other:SpecSpace):(LSSpec, LSSpec) = {
+      val otherSpecs = other.specsByI(spec.target).filter(_.target == spec.target)
+      assert(otherSpecs.size < 2 ,"Should only be one spec for each target.")
+      if(otherSpecs.isEmpty){
+        // if no other spec exists in other, then it is the same as "true"
+        (spec, spec.copy(pred = LSTrue))
+      }else{
+        val otherSpec = otherSpecs.head
+        matched.remove(otherSpec)
+        (spec,otherSpec)
+      }
+    }
 
-  def getSpecByUID(uid:Int):LSSpec = uidToSpec(uid)
+    enableSpecs.map{mySpec =>
+      matchWith(mySpec, other)
+    } ++ matched.map{otherSpec =>
+      val (a,b) = matchWith(otherSpec,this)
+      (b,a)
+    }
+  }
 
-  def findIFromCurrent(dir: MessageType, signature: Signature)(implicit cha:ClassHierarchyConstraints):Set[AbsMsg] = {
+  def copy(enableSpecs:Set[LSSpec] = this.enableSpecs,
+           disallowSpecs:Set[LSSpec] = this.disallowSpecs,
+           matcherSpace:Set[OAbsMsg] = this.matcherSpace
+          ):SpecSpace = new SpecSpace(enableSpecs, disallowSpecs, matcherSpace)
+
+  def findIFromCurrent(dir: MessageType, signature: Signature)(implicit cha:ClassHierarchyConstraints):Set[OAbsMsg] = {
     allI.filter(i => i.mt == dir && i.signatures.matches(signature))
   }
 
@@ -997,8 +1106,8 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(), mat
     disSpecs
   }
 
-  private var allIMemo:Option[Set[AbsMsg]] = None
-  def allI:Set[AbsMsg] ={
+  private var allIMemo:Option[Set[OAbsMsg]] = None
+  def allI:Set[OAbsMsg] ={
     if(allIMemo.isEmpty)
       allIMemo = Some((enableSpecs ++ disallowSpecs).flatMap{spec =>
         SpecSpace.allI(spec.pred) + spec.target
@@ -1008,7 +1117,7 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(), mat
 
   def getSpecs:Set[LSSpec] = enableSpecs
   def getDisallowSpecs:Set[LSSpec] = disallowSpecs
-  def getMatcherSpace:Set[_<:AbsMsg] = matcherSpace
+  def getMatcherSpace:Set[OAbsMsg] = matcherSpace
 
   /**
    * For step back over a place where the code may emit a message find the applicable I and assign fresh ls vars.
@@ -1028,7 +1137,7 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(), mat
       case (v,_) => v
     }
     var solverSig:Option[String] = None
-    val out: Set[AbsMsg] = allI.filter{ i =>
+    val out: Set[OAbsMsg] = allI.filter{ i =>
       if(i.signatures.matches(sig) && i.mt == mt) {
         if (solverSig.isDefined) {
           assert(i.identitySignature == solverSig.get,
@@ -1048,18 +1157,13 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(), mat
       case (acc,OAbsMsg(_,_,vars)) =>
         acc.zipAll(vars,TopVal,TopVal).map(merge)
     }
-//    val parListFresh = ??? //parList.map(a => if(a!="_") LSVarGen.getNext else "_")
 
     val headSig = out.headOption.map(i => i.identitySignature)
     assert(out.tail.forall(i => headSig.forall(v => v == i.identitySignature)),
       "All matched i must have same identity signature")
-//    assert(out.size == 1 || out.isEmpty, "I must be unique for each message")
-    //copy I with intersection of defined vars
     out.headOption.map(v => v.copyMsg(lsVars = parList))
   }
-//  def getRefWithFreshVars(): FreshRef ={
-//    FreshRef(LSVarGen.getNext)
-//  }
+
 
   /**
    * Find a lifestate spec by
@@ -1070,7 +1174,7 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(), mat
    */
   def specsBySig(mt: MessageType, sig:Signature)(implicit ch: ClassHierarchyConstraints):Set[LSSpec] = {
     var solverSig:Option[String] = None
-    val out: Set[AbsMsg] = allI.filter{ i =>
+    val out: Set[OAbsMsg] = allI.filter{ i =>
       if(i.signatures.matches(sig) && i.mt == mt) {
         if (solverSig.isDefined) {
           assert(i.identitySignature == solverSig.get,

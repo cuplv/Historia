@@ -20,6 +20,7 @@ object SpecSignatures {
 
   // Activity lifecycle
   val Activity = Set("android.app.Activity", "androidx.fragment.app.FragmentActivity")
+  val Button = Set("android.widget.Button")
 
   val Activity_onResume: SignatureMatcher =
     SubClassMatcher(Activity, "void onResume\\(\\)", "Activity_onResume")
@@ -57,6 +58,8 @@ object SpecSignatures {
     SubClassMatcher(Activity,".*findViewById.*","Activity_findView")
   val Activity_findView_exit: OAbsMsg = AbsMsg(CIExit,
     Activity_findView, List(v,a))
+
+  val Button_init: OAbsMsg = AbsMsg(CIExit, SubClassMatcher(Button, ".*<init>.*", "Button_init"), List(TopVal, v))
 
   // Fragment getActivity
   private val Fragment = Set("android.app.Fragment","androidx.fragment.app.Fragment","android.support.v4.app.Fragment")
@@ -199,7 +202,7 @@ object ViewSpec {
 
   val anyViewCallin: OAbsMsg = AbsMsg(CIEnter, SubClassMatcher("android.view.View",".*","View_AnyExceptOther"),List(TopVal, v) )
   val onClick:SignatureMatcher = SubClassMatcher("android.view.View$OnClickListener", ".*onClick.*", "ViewOnClickListener_onClick")
-  val onClickI = AbsMsg(CBEnter, onClick, List(TopVal,l))
+  val onClickI = AbsMsg(CBEnter, onClick, List(TopVal,l,v))
   val setOnClickListenerI:OAbsMsg = AbsMsg(CIExit,
     SubClassMatcher("android.view.View",".*setOnClickListener.*","View_setOnClickListener"),
     List(TopVal,v,l)
