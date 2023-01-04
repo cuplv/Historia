@@ -43,7 +43,8 @@ class TransferFunctionsTest extends AnyFunSuite {
 
   implicit def set2SigMat(s:Set[Signature]):SignatureMatcher = SetSignatureMatcher(s)
 
-  val tr = (ir:SerializedIR, cha:ClassHierarchyConstraints) => new TransferFunctions(ir, new SpecSpace(Set()),cha)
+  val tr = (ir:SerializedIR, cha:ClassHierarchyConstraints) =>
+    new TransferFunctions(ir, new SpecSpace(Set()),cha, true)
   def testCmdTransfer(cmd:AppLoc => CmdWrapper, post:State, testIRMethod: SerializedIRMethodLoc):Set[State] = {
     val preloc = AppLoc(testIRMethod,SerializedIRLineLoc(1), isPre=true)
     val postloc = AppLoc(testIRMethod,SerializedIRLineLoc(1), isPre=false)
@@ -61,7 +62,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     val cha = read[ClassHierarchyConstraints](Resource.getAsString("TestStates/hierarchy2.json"))
 
     val ir = new SerializedIR(Set(CmdTransition(source,cmd,target)))
-    val transfer = new TransferFunctions(ir, spec,cha)
+    val transfer = new TransferFunctions(ir, spec,cha,true)
     val out = transfer.transfer(state, target, source)
     out
   }
@@ -193,7 +194,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     val spec = LSSpec(a::Nil, Nil,
       lhs,
       iFooA)
-    val tr = new TransferFunctions(ir, new SpecSpace(Set(spec)),miniCha)
+    val tr = new TransferFunctions(ir, new SpecSpace(Set(spec)),miniCha, true)
 //    val otheri = AbstractTrace(Once(CBExit, Set(("a","a")), "b"::Nil), Nil, Map())
     val otheri = ???
     val post = State(StateFormula(

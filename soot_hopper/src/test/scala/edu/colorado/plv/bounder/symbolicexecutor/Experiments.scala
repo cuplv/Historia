@@ -91,7 +91,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
     val test = (apk:String) => {
 
       val w = new JimpleFlowdroidWrapper(apk, cgMode,specSet)
-      val config = SymbolicExecutorConfig(
+      val config = ExecutorConfig(
         stepLimit = 80, w, new SpecSpace(Set()),
         component = Some(List(".*")))
       implicit val om = config.outputMode
@@ -345,7 +345,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
         //Note: subscribeIsUnique rule ommitted from this test to check state relevant to callback
         // TODO: relevance could probably be refined so this isn't necessary
         val w = new JimpleFlowdroidWrapper(apk, cgMode,row1Specs)
-        val config = SymbolicExecutorConfig(
+        val config = ExecutorConfig(
           stepLimit = 200, w, new SpecSpace(row1Specs),
           component = Some(List("com.example.createdestroy.*PlayerFragment.*")))
         implicit val om = config.outputMode
@@ -466,9 +466,9 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
 
         val w = new JimpleFlowdroidWrapper(apk, cgMode,row2Specs)
         val specSpace = new SpecSpace(row2Specs, Set(SAsyncTask.disallowDoubleExecute))
-        val config = SymbolicExecutorConfig(
+        val config = ExecutorConfig(
           stepLimit = 200, w,specSpace,
-          component = Some(List("com.example.createdestroy.*RemoverActivity.*")))
+          component = Some(List("com.example.createdestroy.*RemoverActivity.*")) )
         implicit val om = config.outputMode
         val symbolicExecutor = config.getSymbolicExecutor
 
@@ -480,7 +480,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
         if(runVerif) {
           val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
           val fname = s"Antennapod_AsyncTask_$fileSuffix"
-          // prettyPrinting.dumpDebugInfo(result, fname)
+          prettyPrinting.dumpDebugInfo(result, fname)
           prettyPrinting.printWitness(result)
           assert(result.nonEmpty)
           BounderUtil.throwIfStackTrace(result)
@@ -555,9 +555,9 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
         LifecycleSpec.Fragment_activityCreatedOnlyFirst
       ) ++ RxJavaSpec.spec
       val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
-      val config = SymbolicExecutorConfig(
+      val config = ExecutorConfig(
         stepLimit = 80, w,new SpecSpace(specs),
-        component = Some(List("com.example.createdestroy.*MyFragment.*")))
+        component = Some(List("com.example.createdestroy.*MyFragment.*")) )
       implicit val om = config.outputMode
 
       // line in call is reachable
@@ -667,9 +667,9 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
 //        dbMode.startMeta()
         implicit val dbMode = MemoryOutputMode
         val specSpace = new SpecSpace(row5Specs, row5Disallow)
-        val config = SymbolicExecutorConfig(
+        val config = ExecutorConfig(
           stepLimit = 2000, w, specSpace,
-          component = Some(List("com.example.createdestroy.*StatusActivity.*")), outputMode = dbMode)
+          component = Some(List("com.example.createdestroy.*StatusActivity.*")), outputMode = dbMode  )
         implicit val om = config.outputMode
         val symbolicExecutor = config.getSymbolicExecutor
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
@@ -771,7 +771,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
             val w = new JimpleFlowdroidWrapper(apk, cgMode, row4Specs)
 
             val specSpace = new SpecSpace(row4Specs)
-            val config = SymbolicExecutorConfig(
+            val config = ExecutorConfig(
               stepLimit = 2000, w, specSpace,
               component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode)
             val symbolicExecutor = config.getSymbolicExecutor

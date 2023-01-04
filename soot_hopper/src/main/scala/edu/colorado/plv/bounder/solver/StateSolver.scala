@@ -5,6 +5,7 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{AppMethod, BitTypeSet, EmptyTypeSet, MessageType, PrimTypeSet, TMessage, TopTypeSet, Trace, TraceElement, TypeSet, WitnessExplanation}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.LifeState._
+import edu.colorado.plv.bounder.solver.EncodingTools.repHeapCells
 import edu.colorado.plv.bounder.symbolicexecutor.state.{HeapPtEdge, _}
 import org.slf4j.{Logger, LoggerFactory}
 import upickle.default.{read, write}
@@ -688,6 +689,11 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         getAllI(states,specs), dynFieldSet(states), pureValSet(states), typeValSet(states),
         localSet(states))
     }
+    def apply(preds:Iterable[LSPred])(implicit ctx:C):MessageTranslator = {
+      val allI: Set[AbsMsg] = preds.flatMap{ p => SpecSpace.allI(p).asInstanceOf[Iterable[AbsMsg]]}.toSet
+      val allPv = preds.flatMap{p => p.lsVar}
+      MessageTranslator(Nil, allI, Set.empty, pureValSet(Nil), Set.empty, Set.empty)
+    }
   }
 
   /**
@@ -1003,11 +1009,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     }
 
     // s2 must contian all heap cells that s2 contains
-    val dummyPv = NPureVar(-10)
-    def repHeapCells(cell: (HeapPtEdge, PureExpr)):HeapPtEdge = cell match{
-      case (FieldPtEdge(pv,fn),_) => FieldPtEdge(dummyPv, fn)
-      case (StaticPtEdge(clazz,fn), _) => StaticPtEdge(clazz,fn)
-    }
+
     val s2heapCells: Map[HeapPtEdge, Map[HeapPtEdge, PureExpr]] = s2.heapConstraints.groupBy(repHeapCells)
     val s1heapCells = s1.heapConstraints.groupBy(repHeapCells)
 
@@ -1109,21 +1111,28 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   def canSubsume(spec1:SpecSpace, spec2:SpecSpace):Boolean = {
     //TODO:====== test me
     def predAndFree(s:LSSpec):LSPred = Exists(s.target.lsVar.toList, s.pred)
+
+    val preds1 = spec1.getSpecs.map(predAndFree).reduce(And)
+    val preds2 = spec2.getSpecs.map(predAndFree).reduce(And)
+    canSubsume(preds1,preds2)
+  }
+
+  def canSubsume(pred1:LSPred, pred2:LSPred):Boolean = {
     implicit val zCtx: C = getSolverCtx
-    try{
+    try {
       zCtx.acquire()
-      val msg = MessageTranslator(Set.empty, List(spec1, spec2))
-      val preds1 = spec1.getSpecs.map{predAndFree}
-      val preds2 = spec2.getSpecs.map{predAndFree}
+      val msg = MessageTranslator(List(pred1, pred2))
 
-      val enc1 = preds1.map{encodePred(_,msg, Map.empty, Map.empty, Map.empty, msg.constMap)}
-      val enc2 = preds2.map{encodePred(_,msg, Map.empty, Map.empty, Map.empty, msg.constMap)}
+      val p1E = pred1.lsVar
+      val p2E = pred2.lsVar
+      val enc1 = encodePred(Exists(p1E.toList,pred1), msg, Map.empty, Map.empty, Map.empty, msg.constMap)
+      val enc2 = encodePred(Exists(p2E.toList,pred2), msg, Map.empty, Map.empty, Map.empty, msg.constMap)
 
-      mkAssert(mkAnd(mkNot(mkAnd(enc1)),mkAnd(enc2)))
-      val isSat = checkSAT(msg,None)
+      mkAssert(mkAnd(mkNot(enc1), enc2))
+      val isSat = checkSAT(msg, None)
 
       !isSat
-    }finally{
+    } finally {
       zCtx.release()
     }
   }

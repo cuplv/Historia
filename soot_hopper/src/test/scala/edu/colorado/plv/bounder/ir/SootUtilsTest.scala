@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NS, Signature}
 import edu.colorado.plv.bounder.lifestate.{SpecSignatures, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state._
-import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, CHACallGraph, ControlFlowResolver, DefaultAppCodeResolver, SparkCallGraph, SymbolicExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, CHACallGraph, ControlFlowResolver, DefaultAppCodeResolver, SparkCallGraph, ExecutorConfig, TransferFunctions}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
 
@@ -80,7 +80,7 @@ class SootUtilsTest extends AnyFunSuite {
     val a = NamedPureVar("a")
     val testSpec = LSSpec(a::Nil, Nil, NS(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
       SpecSignatures.Activity_onPause_entry)
-    val config: SymbolicExecutorConfig[SootMethod, soot.Unit] = SymbolicExecutorConfig(
+    val config: ExecutorConfig[SootMethod, soot.Unit] = ExecutorConfig(
       stepLimit = 50, w, new SpecSpace(Set(testSpec)), printAAProgress = true, z3Timeout = Some(30))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = Qry.makeReceiverNonNull(symbolicExecutor,
@@ -114,7 +114,7 @@ class SootUtilsTest extends AnyFunSuite {
     val w = new JimpleFlowdroidWrapper(test_interproc_1, SparkCallGraph, Set())
     val testSpec = LSSpec(a::Nil, Nil, NS(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
       SpecSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
-    val config: SymbolicExecutorConfig[SootMethod, soot.Unit] = SymbolicExecutorConfig(
+    val config: ExecutorConfig[SootMethod, soot.Unit] = ExecutorConfig(
       stepLimit = 50, w, new SpecSpace(Set(testSpec)), printAAProgress = true, z3Timeout = Some(30))
     val symbolicExecutor = config.getSymbolicExecutor
     val query = Qry.makeReach(symbolicExecutor,

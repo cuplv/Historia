@@ -166,11 +166,11 @@ class StateSolverTest extends FixtureAnyFunSuite {
     )) //  ++ Dummy.specs)
     List(
       (new SpecSpace(ExperimentSpecs.row4Specs),
-        File(getClass.getResource("s1.json").getPath).toString,
-        File(getClass.getResource("s2.json").getPath).toString,
+        "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/s1.json",
+        "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/s2.json",
         (v:Boolean) =>{
-        ???
-      }),
+          ???
+        }),
       //      (spec2, "s1_diffz3unify.state", "s2_diffz3unify.state",true), // different in solver but same here???
       //(spec2, "/Users/shawnmeier/Desktop/outofInterpProblem/s1.json",
       //"/Users/shawnmeier/Desktop/outofInterpProblem/s2.json", true)

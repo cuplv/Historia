@@ -7,7 +7,7 @@ import edu.colorado.plv.bounder.ir.{AppLoc, CBEnter, CallbackMethodInvoke, Callb
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, Exists, LSPred, LSSingle, LSSpec, NS, AbsMsg, PredicateSpace, SetSignatureMatcher, SignatureMatcher}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSignatures, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.{QueryFinished, SparkCallGraph, SymbolicExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{QueryFinished, SparkCallGraph, ExecutorConfig, TransferFunctions}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, CallStackFrame, CallinReturnNonNull, DBOutputMode, IPathNode, MemoryOutputMode, NamedPureVar, OrdCount, OutputMode, PathNode, PrettyPrinting, PureExpr, PureVal, PureVar, Qry, StackVar, State, StateFormula, TopVal, Unknown}
 import edu.colorado.plv.bounder.synthesis.SynthTestUtil.{cha, hierarchy, intToClass, targetIze, top, witTreeFromMsgList}
 import edu.colorado.plv.bounder.testutils.MkApk

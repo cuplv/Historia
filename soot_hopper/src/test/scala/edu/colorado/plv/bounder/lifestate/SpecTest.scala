@@ -4,7 +4,7 @@ import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.ir.{CIEnter, CIExit, JimpleFlowdroidWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, Signature, SubClassMatcher}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, DefaultAppCodeResolver, SparkCallGraph, SymbolicExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, DefaultAppCodeResolver, SparkCallGraph, ExecutorConfig, TransferFunctions}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.{Scene, SootMethod}
 
@@ -78,7 +78,7 @@ class SpecTest extends AnyFunSuite {
     val apk = getClass.getResource("/Antennapod-fix-2856-app-free-debug.apk").getPath
     assert(apk != null)
     val w = new JimpleFlowdroidWrapper(apk,SparkCallGraph, Set())
-    val config = SymbolicExecutorConfig(
+    val config = ExecutorConfig(
       stepLimit = 8, w,new SpecSpace(Set()), printAAProgress = true)
     val symbolicExecutor = config.getSymbolicExecutor
     implicit val ch = w.getClassHierarchyConstraints
@@ -99,7 +99,7 @@ class SpecTest extends AnyFunSuite {
     val apk = getClass.getResource("/RXJavaSubscribe-fix-debug.apk").getPath
     assert(apk != null)
     val w = new JimpleFlowdroidWrapper(apk,SparkCallGraph, Set())
-    val config = SymbolicExecutorConfig(
+    val config = ExecutorConfig(
       stepLimit = 8, w,new SpecSpace(Set()), printAAProgress = true)
     val symbolicExecutor = config.getSymbolicExecutor
     implicit val ch = w.getClassHierarchyConstraints

@@ -13,7 +13,7 @@ import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state._
-import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, CHACallGraph, QueryFinished, SparkCallGraph, SymbolicExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, CHACallGraph, QueryFinished, SparkCallGraph, ExecutorConfig, TransferFunctions}
 import scopt.OParser
 
 import scala.concurrent.Await
@@ -283,7 +283,7 @@ object Driver {
     val w = new JimpleFlowdroidWrapper(apk, SparkCallGraph, Set())
 
     val pathMode = DBOutputMode(outFile.canonicalPath)
-    val config = SymbolicExecutorConfig(
+    val config = ExecutorConfig(
       stepLimit = 2, w, new SpecSpace(Set()), component = None, outputMode = pathMode,
       timeLimit = cfg.timeLimit)
     val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getSymbolicExecutor
@@ -293,7 +293,7 @@ object Driver {
                    outFolder:File, cfg:RunConfig, tag:Option[String]) = {
     val callGraph = CHACallGraph
     val w = new JimpleFlowdroidWrapper(apkPath, callGraph, Set())
-    val config = SymbolicExecutorConfig(
+    val config = ExecutorConfig(
       stepLimit = 0, w, new SpecSpace(Set()), component = None)
     val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getSymbolicExecutor
     val appClasses = symbolicExecutor.appCodeResolver.appMethods.map(m => m.classType)
@@ -313,7 +313,7 @@ object Driver {
     val n = cfg.samples
     val callGraph = CHACallGraph
     val w = new JimpleFlowdroidWrapper(apkPath, callGraph, Set())
-    val config = SymbolicExecutorConfig(
+    val config = ExecutorConfig(
       stepLimit = n, w, new SpecSpace(Set()), component = None)
     val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getSymbolicExecutor
 
@@ -349,7 +349,7 @@ object Driver {
     val callGraph = CHACallGraph
     //      val callGraph = FlowdroidCallGraph // flowdroid call graph immediately fails with "unreachable"
     val w = new JimpleFlowdroidWrapper(apkPath, callGraph, Set())
-    val config = SymbolicExecutorConfig(
+    val config = ExecutorConfig(
       stepLimit = 0, w, new SpecSpace(Set()), component = None)
     val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getSymbolicExecutor
     //TODO:
@@ -363,7 +363,7 @@ object Driver {
       //TODO: read location from json config
       val callGraph = SparkCallGraph
       val w = new JimpleFlowdroidWrapper(apkPath, callGraph, specSet.getSpecSet().union(specSet.getDisallowSpecSet()))
-      val config = SymbolicExecutorConfig(
+      val config = ExecutorConfig(
         stepLimit = stepLimit, w, new SpecSpace(specSet.getSpecSet(), specSet.getDisallowSpecSet()), component = componentFilter, outputMode = mode,
         timeLimit = cfg.timeLimit)
       val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getSymbolicExecutor

@@ -60,7 +60,7 @@ object DropHeapCellsMethod{
 class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
                                resolver: AppCodeResolver,
                                cha: ClassHierarchyConstraints,
-                               component: Option[List[String]], config:SymbolicExecutorConfig[M,C]) { //TODO: remove pathMode here
+                               component: Option[List[String]], config:ExecutorConfig[M,C]) { //TODO: remove pathMode here
   private implicit val ch = cha
   private val componentR: Option[List[Regex]] = component.map(_.map(_.r))
   private val specSpace:SpecSpace = config.specSpace

@@ -9,7 +9,7 @@ import edu.colorado.plv.bounder.lifestate.SpecSignatures.{Activity_onPause_entry
 import edu.colorado.plv.bounder.lifestate.ViewSpec.{onClickI, setOnClickListenerI, setOnClickListenerINull}
 import edu.colorado.plv.bounder.lifestate.{SpecSignatures, SpecSpace}
 import edu.colorado.plv.bounder.solver.Z3StateSolver
-import edu.colorado.plv.bounder.symbolicexecutor.{QueryFinished, SymbolicExecutorConfig}
+import edu.colorado.plv.bounder.symbolicexecutor.{QueryFinished, ExecutorConfig}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{MemoryOutputMode, NamedPureVar, PrettyPrinting, ReceiverNonNull, TopVal}
 import edu.colorado.plv.bounder.synthesis.SynthTestUtil.{cha, targetIze, toConcGraph, witTreeFromMsgList}
 import edu.colorado.plv.bounder.testutils.MkApk
@@ -157,7 +157,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         //val dbg = w.dumpDebug("com.example")
 
         val specSpace = new SpecSpace(specs, matcherSpace = iSet)
-        val config = SymbolicExecutorConfig(
+        val config = ExecutorConfig(
           stepLimit = 2000, w, specSpace,
           component = Some(List("com.example.createdestroy.(MyActivity|OtherActivity)")),
           outputMode = dbMode, timeLimit = 30)

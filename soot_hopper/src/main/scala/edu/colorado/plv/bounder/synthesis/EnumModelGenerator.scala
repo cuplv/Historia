@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.ir.{ApproxDir, CNode, ConcGraph, Exact, OverAppr
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Forall, LSAnyPred, LSAtom, LSBinOp, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, LSUnOp, NS, Not, OAbsMsg, Or}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecAssignment, SpecSpace, SpecSpaceAnyOrder}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools, Z3StateSolver}
-import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, QueryFinished, SymbolicExecutorConfig}
+import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, QueryFinished, ExecutorConfig}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, IPathNode, InitialQuery, MemoryOutputMode, NullVal, OutputMode, PureVar, State, TopVal}
 import edu.colorado.plv.bounder.synthesis.EnumModelGenerator.{NoStep, StepResult, StepSuccessM, StepSuccessP, isTerminal}
 
@@ -53,7 +53,7 @@ object EnumModelGenerator{
 
 }
 class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], initialSpec:SpecSpace
-                              ,cfg:SymbolicExecutorConfig[M,C])
+                              ,cfg:ExecutorConfig[M,C])
   extends ModelGenerator(cfg.w.getClassHierarchyConstraints) {
   private val cha = cfg.w.getClassHierarchyConstraints
   private val controlFlowResolver =

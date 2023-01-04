@@ -1,8 +1,9 @@
 package edu.colorado.plv.bounder.solver
 
-import edu.colorado.plv.bounder.ir.{CBEnter, FwkMethod, TMessage}
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Signature, SubClassMatcher}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ConcreteAddr, ConcreteVal, NPureVar, NamedPureVar, PureExpr, PureVal, PureVar}
+import edu.colorado.plv.bounder.ir.{CBEnter, CallbackMethodReturn, FwkMethod, TMessage}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Forall, Not, Or, Signature, SubClassMatcher}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, ConcreteAddr, ConcreteVal, Equals, NPureVar, NamedPureVar, NotEquals, PureConstraint, PureExpr, PureVal, PureVar, StackVar, State, StateFormula}
+import edu.colorado.plv.bounder.synthesis.SynthTestUtil.{dummyLoc, dummyMethod, intToClass}
 import org.scalatest.Outcome
 import org.scalatest.funsuite.AnyFunSuite
 
@@ -10,6 +11,15 @@ class EncodingToolsTest extends AnyFunSuite{
   implicit val cha = new ClassHierarchyConstraints(
     Map("foo"->Set("foo"), "bar"->Set("bar")),
     Set(), Map(1->"foo"))
+
+  private def getZ3StateSolver():
+  (Z3StateSolver, ClassHierarchyConstraints) = {
+//    val pc = new ClassHierarchyConstraints(cha, Set("java.lang.Runnable"), intToClass)
+    (new Z3StateSolver(cha, timeout = 20000, defaultOnSubsumptionTimeout = (z3SolverCtx: Z3SolverCtx) => {
+      println(z3SolverCtx)
+      throw new IllegalStateException("Exceeded time limit for test")
+    }, pushSatCheck = true), cha)
+  }
 
   def bodgePv(v:Any):PureExpr = v match{
     case v:String => NamedPureVar(v)
@@ -31,8 +41,10 @@ class EncodingToolsTest extends AnyFunSuite{
   val y = NamedPureVar("y")
   val a = NamedPureVar("a")
   val b = NamedPureVar("b")
-
   val pv0 = NPureVar(0)
+  val pv1 = NPureVar(1)
+  val pv2 = NPureVar(2)
+
 
 
   // matchers
@@ -54,6 +66,39 @@ class EncodingToolsTest extends AnyFunSuite{
   }
 
   test("Lift quantifiers from temporal formula"){
-    val pred = And(oFoo_x_y, Exists(x::Nil, oFoo_x_y))
+    val pred = And(Forall(x::Nil,Or(Not(oBar_x_y), Equals(x,y))), Exists(x::Nil, oFoo_x_y))
+    val res = EncodingTools.prenexNormalForm(pred)
+    val (solver,_) = getZ3StateSolver
+    assert(solver.canSubsume(pred,res))
+    assert(solver.canSubsume(res,pred))
+    //TODO: add code to convert to CNF
+  }
+  test("reduce state pure vars"){
+    val top = State.topState
+
+    val s1 = top.addPureConstraint(PureConstraint(pv1, Equals, pv2))
+    s1.setSimplified()
+    val redS1 = EncodingTools.reduceStatePureVars(s1)
+    assert(redS1.get.sf.pureFormula.isEmpty)
+
+    val s2 = s1.copy(sf = s1.sf.copy(callStack =
+      CallStackFrame(
+        CallbackMethodReturn(Signature("foo","foo()"), dummyMethod, None), None, Map(StackVar("x")-> pv1))::Nil))
+
+    def withLocal(state: State, name: String, tgt: PureExpr): State = {
+      val stackHead = state.sf.callStack.head
+      val newCallStack = stackHead.copy(locals = stackHead.locals + (StackVar(name) -> tgt))
+      state.copy(sf = state.sf.copy(newCallStack::state.sf.callStack.tail))
+    }
+    s2.setSimplified()
+    val redS2 = EncodingTools.reduceStatePureVars(s2)
+    assert(redS2.get.sf.pureFormula.isEmpty)
+
+    val s3 = withLocal(withLocal(s2,"z",pv2),"y",pv0)
+      .addPureConstraint(PureConstraint(pv0, NotEquals,pv2))
+    s3.setSimplified()
+    val redS3 = EncodingTools.reduceStatePureVars(s3)
+    assert(redS3.get.sf.pureFormula.size == 1)
+
   }
 }

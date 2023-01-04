@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.solver
 import edu.colorado.plv.bounder.ir.{MessageType, TMessage, TraceElement}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, CLInit, Exists, Forall, FreshRef, LSAnyPred, LSAtom, LSBexp, LSConstraint, LSFalse, LSImplies, LSPred, LSSingle, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, SignatureMatcher}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, Equals, FieldPtEdge, NPureVar, NamedPureVar, NotEquals, PureConstraint, PureExpr, PureVal, PureVar, State, StaticPtEdge, ConcreteVal, TopVal}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, ConcreteVal, Equals, FieldPtEdge, HeapPtEdge, NPureVar, NamedPureVar, NotEquals, PureConstraint, PureExpr, PureVal, PureVar, State, StaticPtEdge, TopVal}
 
 object EncodingTools {
 
@@ -463,13 +463,66 @@ object EncodingTools {
     }
   }
 
-  def liftQuant(pred: LSPred): LSPred = {
-    // returns the pred with quantifiers removed and
-    def iLift(pred:LSPred):List[PureVar] => LSPred = pred match{
-      case Exists(vars,pred) =>
-        ???
+  private val dummyPv = NPureVar(-10)
+  /**
+   * Used for groupBy on heap cells to match for entailment or group for widening
+   * TODO: may want to expand to type sets at some point to improve efficiency
+   * @param cell heap cell and target location
+   * @return
+   */
+  def repHeapCells(cell: (HeapPtEdge, PureExpr)): HeapPtEdge = cell match {
+    case (FieldPtEdge(pv, fn), _) => FieldPtEdge(dummyPv, fn)
+    case (StaticPtEdge(clazz, fn), _) => StaticPtEdge(clazz, fn)
+  }
+
+  def prenexNormalForm(pred: LSPred): LSPred = {
+
+    def mergeQuant(ql1:List[Quant], ql2:List[Quant]):List[Quant] = (ql1,ql2) match{
+      case (Nil, ql2) => ql2
+      case (ql1, Nil) => ql1
+      case ((e:QExists)::t1, ql2) => e::mergeQuant(t1,ql2)
+      case (ql1, (e:QExists)::t2) => e::mergeQuant(ql1,t2)
+      case (h1::t1, h2::t2) => h1::h2::mergeQuant(t1,t2)
     }
-    iLift(pred)(Nil)
+
+    sealed trait Quant{
+      def pv:List[PureVar]
+    }
+    def doQuant(vars:List[PureVar], defined:Set[PureVar], pred:LSPred):(LSPred,List[PureVar]) ={
+      val oldToNew: Map[PureVar, PureVar] =
+        vars.map { oldVar =>
+          (oldVar -> defined.foldLeft(oldVar) { case (acc, v) => acc.noCollide(v).asInstanceOf[PureVar] }) }.toMap
+
+      (pred.swap(oldToNew.filter{a => a._1 != a._2}),oldToNew.values.toList)
+    }
+    case class QForall(pv:List[PureVar]) extends Quant
+    case class QExists(pv:List[PureVar]) extends Quant
+    // renames
+    def iLift(pred:LSPred, defined:Set[PureVar]):(LSPred,List[Quant]) = pred match{
+      case And(l1,l2) =>
+        val (l1s, newQuant1) = iLift(l1,defined)
+        val (l2s, newQuant2) = iLift(l2,defined ++ newQuant1.flatMap{f => f.pv})
+        (And(l1s,l2s), mergeQuant(newQuant1,newQuant2))
+      case Or(l1, l2) =>
+        val (l1s, newQuant1) = iLift(l1, defined)
+        val (l2s, newQuant2) = iLift(l2, defined ++ newQuant1.flatMap { f => f.pv })
+        (Or(l1s, l2s), mergeQuant(newQuant1, newQuant2))
+      case Exists(vars,pred) =>
+        val (newPred,newPV) = doQuant(vars,defined,pred)
+        val (recPred,recQuant) = iLift(newPred, defined ++ newPV)
+        (recPred,QExists(newPV)::recQuant)
+      case Forall(vars,pred) =>
+        val (newPred, newPV) = doQuant(vars, defined, pred)
+        val (recPred, recQuant) = iLift(newPred, defined ++ newPV)
+        (recPred, QForall(newPV) :: recQuant)
+      case o:LSSingle => (o,Nil)
+      case n:Not => (n,Nil)
+    }
+    val (newPred, newQuant) = iLift(pred, Set.empty)
+    newQuant.reverse.foldLeft(newPred){
+      case (acc, QForall(pv)) => Forall(pv,acc)
+      case (acc, QExists(pv)) => Exists(pv,acc)
+    }
   }
 
   /**
@@ -479,7 +532,7 @@ object EncodingTools {
    * @return an equivalent formula in conjunctive normal form
    */
   def toCNF(pred:LSPred):LSPred = {
-    val liftedQuant:LSPred = liftQuant(pred)
+    val liftedQuant:LSPred = prenexNormalForm(pred)
     ???
   }
 }

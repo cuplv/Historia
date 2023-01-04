@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder
 import java.util.Collections
 import better.files.File
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdNotImplemented, CmdWrapper, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Loc, NopCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn}
-import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, QueryFinished, QueryInterrupted, QueryResult, SymbolicExecutorConfig}
+import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, QueryFinished, QueryInterrupted, QueryResult, ExecutorConfig}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, InitialQuery, Live, OutputMode, PathNode, Qry, WitnessedQry}
 
 import scala.annotation.tailrec

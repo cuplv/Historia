@@ -81,10 +81,10 @@ class AbstractInterpreterTestSlow extends AnyFunSuite{
         assert(apk != null)
         val specs:Set[LSSpec] = Set()
         val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
-        val config = SymbolicExecutorConfig(
+        val config = ExecutorConfig(
           stepLimit = 400, w, new SpecSpace(specs),
           component = Some(List("com.example.createdestroy.MyActivity.*")),
-          outputMode = MemoryOutputMode)
+          outputMode = MemoryOutputMode, approxMode = LimitMaterializationApproxMode())
         //outputMode = DBOutputMode("/Users/shawnmeier/Desktop/bounder_debug_data/deref2.db"))
         val symbolicExecutor = config.getSymbolicExecutor
         val i = BounderUtil.lineForRegex(queryL, src)

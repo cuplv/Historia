@@ -76,7 +76,7 @@ object TransferFunctions{
 }
 
 class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
-                             classHierarchyConstraints: ClassHierarchyConstraints) {
+                             classHierarchyConstraints: ClassHierarchyConstraints, canWeaken:Boolean) { //TODO:======= need to handle canWeaken
   private val resolver = new DefaultAppCodeResolver(w)
   private implicit val ch = classHierarchyConstraints
   private implicit val irWrapper = w
@@ -803,7 +803,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         case None => Set(state)
       }
     case _: InvokeCmd => Set(state) // Invoke not relevant and skipped
-    case AssignCmd(_, _: Invoke, _) => Set(state)
+    case AssignCmd(_, _: Invoke, _) =>
+      if(canWeaken) Set(state) else
+        ???
     case If(b, trueLoc, l) =>
       if (state.nextCmd.toSet.size == 1) {
         val stateLocationFrom: Loc = state.nextCmd.head
@@ -832,7 +834,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         val state1 = state.clearLVal(l)
         Set(state1.copy(sf =
           state1.sf.copy(heapConstraints = state1.heapConstraints + (StaticPtEdge(declaringClass,fname) -> v),
-//          pureFormula = state1.pureFormula + PureConstraint(v, TypeComp, SubclassOf(containedType))
         )).constrainUpperType(v,containedType,ch))
       }else Set(state)
     case AssignCmd(StaticFieldReference(declaringClass,fieldName,_), l,_) =>

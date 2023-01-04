@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.lifestate.LifeState.Signature
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifecycleSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.Qry
-import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, CallGraphSource, SparkCallGraph, SymbolicExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, CallGraphSource, SparkCallGraph, ExecutorConfig, TransferFunctions}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.FixtureAnyFunSuite
@@ -71,7 +71,7 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
       val w = new JimpleFlowdroidWrapper(apk, f.cgSource, specs)
 //      val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
 //        new SpecSpace(specs), cha)
-      val config = SymbolicExecutorConfig(
+      val config = ExecutorConfig(
         stepLimit = 50, w, new SpecSpace(specs),
         component = None)
       val query = Qry.makeReach(config.getSymbolicExecutor,
@@ -166,7 +166,7 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
 
 //      val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
 //        new SpecSpace(specs), cha)
-      val config = SymbolicExecutorConfig(
+      val config = ExecutorConfig(
         stepLimit = 50, w, new SpecSpace(specs),
         component = None)
 
