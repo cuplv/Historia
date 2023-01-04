@@ -162,7 +162,8 @@ object BounderUtil {
     }
   }
 
-  def interpretResult(result: Set[IPathNode], queryResult : symbolicexecutor.QueryResult):ResultSummary = {
+  def interpretResult(result: Set[IPathNode],
+                      queryResult : symbolicexecutor.QueryResult = QueryFinished):ResultSummary = {
     queryResult match {
       case QueryInterrupted(reason) => Interrupted(reason)
       case QueryFinished => {

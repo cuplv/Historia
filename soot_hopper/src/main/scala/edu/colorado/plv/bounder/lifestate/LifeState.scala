@@ -1020,6 +1020,8 @@ object LSPredAnyOrder extends Ordering[LSPred]{
 //    }
 //  }
   private def comb(p1:LSPred, p2:LSPred):Int = Math.max(depthToAny(p1), depthToAny(p2))
+  private def directCompare(pred1: LifeState.LSPred, pred2: LifeState.LSPred):Int =
+    pred1.toString.compareTo(pred2.toString) // ensure deterministic order, probably don't care what order it is.
   def depthToAny(p:LSPred):Int = p match {
     case LSAnyPred => 0
     case Or(p1, p2) => comb(p1,p2) + 1
@@ -1032,7 +1034,10 @@ object LSPredAnyOrder extends Ordering[LSPred]{
   override def compare(x: LSPred, y: LSPred): Int = {
     val dx = depthToAny(x)
     val dy = depthToAny(y)
-    dy - dx
+    if(dx != dy)
+      dy - dx
+    else
+      directCompare(x,y)
   }
 }
 object SpecSpaceAnyOrder extends Ordering[SpecSpace]{

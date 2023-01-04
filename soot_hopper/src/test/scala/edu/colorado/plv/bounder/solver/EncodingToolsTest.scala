@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.solver
 
 import edu.colorado.plv.bounder.ir.{CBEnter, CallbackMethodReturn, FwkMethod, TMessage}
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Forall, Not, Or, Signature, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Forall, LSConstraint, Not, Or, Signature, SubClassMatcher}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, ConcreteAddr, ConcreteVal, Equals, NPureVar, NamedPureVar, NotEquals, PureConstraint, PureExpr, PureVal, PureVar, StackVar, State, StateFormula}
 import edu.colorado.plv.bounder.synthesis.SynthTestUtil.{dummyLoc, dummyMethod, intToClass}
 import org.scalatest.Outcome
@@ -66,7 +66,7 @@ class EncodingToolsTest extends AnyFunSuite{
   }
 
   test("Lift quantifiers from temporal formula"){
-    val pred = And(Forall(x::Nil,Or(Not(oBar_x_y), Equals(x,y))), Exists(x::Nil, oFoo_x_y))
+    val pred = And(Forall(x::Nil,Or(Not(oBar_x_y), LSConstraint.mk(x,Equals,y))), Exists(x::Nil, oFoo_x_y))
     val res = EncodingTools.prenexNormalForm(pred)
     val (solver,_) = getZ3StateSolver
     assert(solver.canSubsume(pred,res))

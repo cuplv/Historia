@@ -2,14 +2,14 @@ package edu.colorado.plv.bounder.synthesis
 
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed}
+import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed, interpretResult}
 import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSAnyPred, LSSpec, NS, Not, Or, Signature}
 import edu.colorado.plv.bounder.lifestate.SpecSignatures.{Activity_onPause_entry, Activity_onResume_entry, Button_init}
 import edu.colorado.plv.bounder.lifestate.ViewSpec.{onClickI, setOnClickListenerI, setOnClickListenerINull}
 import edu.colorado.plv.bounder.lifestate.{SpecSignatures, SpecSpace}
 import edu.colorado.plv.bounder.solver.Z3StateSolver
-import edu.colorado.plv.bounder.symbolicexecutor.{QueryFinished, ExecutorConfig}
+import edu.colorado.plv.bounder.symbolicexecutor.{ExecutorConfig, QueryFinished}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{MemoryOutputMode, NamedPureVar, PrettyPrinting, ReceiverNonNull, TopVal}
 import edu.colorado.plv.bounder.synthesis.SynthTestUtil.{cha, targetIze, toConcGraph, witTreeFromMsgList}
 import edu.colorado.plv.bounder.testutils.MkApk
@@ -17,6 +17,7 @@ import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.AnyFunSuite
 
 class EnumModelGeneratorTest extends AnyFunSuite {
+  val DUMP_DBG = true //Uncomment to skip writing out paths from historia
 
   val a = NamedPureVar("a")
   val f = NamedPureVar("f")
@@ -175,7 +176,20 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         val res = gen.run()
         res match {
           case LearnSuccess(space) =>
+            println("final specification")
+            println("-------------------")
             println(space)
+            println("dumping debug info")
+            val newConfig = config.copy(specSpace = space)
+            val ex = newConfig.getSymbolicExecutor
+            val nullReachWit = ex.run(nullReach).flatMap(_.terminals)
+            assert(interpretResult(nullReachWit) == Witnessed)
+            if(DUMP_DBG)
+              PrettyPrinting.dumpDebugInfo(nullReachWit, "nullReachSynth")
+            val nullUnreachWit = ex.run(nullUnreach).flatMap(_.terminals)
+            assert(interpretResult(nullUnreachWit) == Proven)
+            if(DUMP_DBG)
+              PrettyPrinting.dumpDebugInfo(nullUnreachWit, "nullUnreachSynth")
           case LearnFailure => throw new IllegalStateException("failed to learn a sufficient spec")
         }
       }
