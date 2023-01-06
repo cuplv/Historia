@@ -71,7 +71,15 @@ class EncodingToolsTest extends AnyFunSuite{
     val (solver,_) = getZ3StateSolver
     assert(solver.canSubsume(pred,res))
     assert(solver.canSubsume(res,pred))
-    //TODO: add code to convert to CNF
+  }
+  test("Convert LSPred to CNF"){
+    val pred = Or(Forall(x::Nil,And(Not(oBar_x_y), LSConstraint.mk(x,Equals,y))), Exists(x::Nil, oFoo_x_y))
+    val res = EncodingTools.toCNF(pred)
+
+    val (solver,_) = getZ3StateSolver
+    assert(solver.canSubsume(pred,res))
+    assert(solver.canSubsume(res,pred))
+    println(res)
   }
   test("reduce state pure vars"){
     val top = State.topState
