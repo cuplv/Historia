@@ -8,12 +8,12 @@ import better.files.File
 import edu.colorado.plv.bounder.BounderUtil.{MaxPathCharacterization, Proven, ResultSummary, Timeout, Unreachable, Witnessed, characterizeMaxPath}
 import edu.colorado.plv.bounder.Driver.{Default, LocResult, RunMode}
 import edu.colorado.plv.bounder.ir.{JimpleFlowdroidWrapper, Loc}
-import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, Signature}
+import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, OAbsMsg, Signature}
 import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state._
-import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, CHACallGraph, QueryFinished, SparkCallGraph, ExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, CHACallGraph, ExecutorConfig, QueryFinished, SparkCallGraph, TransferFunctions}
 import scopt.OParser
 
 import scala.concurrent.Await
@@ -417,6 +417,7 @@ object Driver {
 trait SpecSetOption{
   def getSpecSet():Set[LSSpec]
   def getDisallowSpecSet(): Set[LSSpec]
+  def getSpecSpace():SpecSpace
 }
 object SpecSetOption{
   val testSpecSet: Map[String, Set[LSSpec]] = Map(
@@ -432,7 +433,7 @@ object SpecSetOption{
       case SpecFile(fname) => s"file:$fname"
       case TestSpec(name) => s"testSpec:$name"
       case TopSpecSet => s"top"
-      case p@PickleSpec(_,_) => write[PickleSpec](p)
+      case p:PickleSpec => write[PickleSpec](p)
     },
     str => str.split(":").toList match{
       case "file"::fname::Nil => SpecFile(fname)
@@ -450,24 +451,35 @@ case class SpecFile(fname:String) extends SpecSetOption {
   override def getSpecSet(): Set[LSSpec] = ???
 
   override def getDisallowSpecSet(): Set[LSSpec] = ???
+
+  override def getSpecSpace(): SpecSpace = ???
 }
 
 case class TestSpec(name:String) extends SpecSetOption {
   override def getSpecSet(): Set[LSSpec] = SpecSetOption.testSpecSet(name)
   override def getDisallowSpecSet(): Set[LSSpec] = Set()
+
+  override def getSpecSpace(): SpecSpace = ???
 }
 
-case class PickleSpec(specs:Set[LSSpec], disallow:Set[LSSpec] =Set()) extends SpecSetOption {
+case class PickleSpec(specs:Set[LSSpec], disallow:Set[LSSpec] =Set(),
+                      matcherSpace:Set[OAbsMsg] = Set()) extends SpecSetOption {
   override def getSpecSet(): Set[LSSpec] = specs
   override def getDisallowSpecSet(): Set[LSSpec] = disallow
+  override def getSpecSpace():SpecSpace = new SpecSpace(specs, disallow, matcherSpace)
 }
 object PickleSpec{
   implicit val rw:RW[PickleSpec] = macroRW
+  def mk(specSpace:SpecSpace):PickleSpec = {
+    PickleSpec(specSpace.getSpecs, specSpace.getDisallowSpecs, specSpace.getMatcherSpace)
+  }
 }
 
 case object TopSpecSet extends SpecSetOption {
   override def getSpecSet(): Set[LSSpec] = Set()
   override def getDisallowSpecSet(): Set[LSSpec] = Set()
+
+  override def getSpecSpace(): SpecSpace = ???
 }
 
 class ExperimentsDb(bounderJar:Option[String] = None){

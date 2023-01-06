@@ -1,9 +1,10 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
-import better.files.Dsl.SymbolicOperations
+import upickle.default.{macroRW, read, write, ReadWriter => RW}
 import better.files.File
-import edu.colorado.plv.bounder.BounderUtil
+import edu.colorado.plv.bounder.{BounderUtil, PickleSpec}
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, LineLoc, Loc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn}
+import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, ExecutorConfig}
 import org.apache.log4j.{EnhancedPatternLayout, PatternLayout}
 import soot.JastAddJ.JastAddJavaParser.Terminals
@@ -247,6 +248,18 @@ object PrettyPrinting {
       case Some(v) => dotWitTree(Set(v), outFile, includeSubsEdges)
       case None => dotWitTree(qrySet, outFile, includeSubsEdges)
     }
+
+  def dumpSpec(spec:SpecSpace, fileName:String,outDir : Option[String] = None) = {
+    val outDir3 = if(outDir.isDefined) outDir else envOutDir
+    outDir3 match {
+      case Some(baseDir) =>
+        val f = File(s"$baseDir/$fileName")
+        val strSpace = write(PickleSpec.mk(spec))
+        f.write(strSpace)
+        val fs = File(s"$baseDir/$fileName.txt")
+        fs.write(spec.toString)
+    }
+  }
 
   /**
    * Output debug info of proof witness or timeout

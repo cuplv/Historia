@@ -537,6 +537,49 @@ object EncodingTools {
    */
   def toCNF(pred:LSPred):LSPred = {
     val liftedQuant:LSPred = prenexNormalForm(pred)
-    ???
+
+
+    def iCnf(pred:LSPred):LSPred = pred match {
+      case _:Exists => throw new IllegalArgumentException("exists and forall should be removed before callign iCnf")
+      case _:Forall=> throw new IllegalArgumentException("exists and forall should be removed before callign iCnf")
+      case Or(And(p1,p2),p3) => And(Or(p1,p3), Or(p2,p3))
+      case Or(p1, And(p2,p3)) => iCnf(Or(And(p2,p3),p1))
+      case And(p1,p2) => And(iCnf(p1),iCnf(p2))
+      case Or(p1,p2) => Or(iCnf(p1), iCnf(p2))
+      case _ => ???
+    }
+
+    def stripQuant(pred:LSPred):(LSPred,LSPred =>LSPred) = pred match{
+      case Exists(vars,p) =>
+        val (strippedPred, recApp) = stripQuant(p)
+        (strippedPred, p => Exists(vars, recApp(p)))
+      case Forall(vars, p) =>
+        val (strippedPred, recApp) = stripQuant(p)
+        (strippedPred, p => Forall(vars, recApp(p)))
+      case p => (p, p => p)
+    }
+
+    def isCnf(pred:LSPred):Boolean = pred match{
+      case _:Exists => throw new IllegalArgumentException("Quant should be removed")
+      case _:Forall=> throw new IllegalArgumentException("Quant should be removed")
+      case Or(p1, p2) => isCnfOr(p1) && isCnfOr(p2)
+      case And(p1,p2) => isCnf(p1) && isCnf(p2)
+      case _ => true
+    }
+
+    def isCnfOr(pred:LSPred):Boolean = pred match{
+      case _: Exists => throw new IllegalArgumentException("Quant should be removed")
+      case _: Forall => throw new IllegalArgumentException("Quant should be removed")
+      case Or(p1, p2) => isCnfOr(p1) && isCnfOr(p2)
+      case And(_,_) => false
+      case _ => true
+    }
+
+    val (strippedQuant, reapplyQuant) = stripQuant(liftedQuant)
+    var predIter = strippedQuant
+    while(!isCnf(predIter)){
+      predIter = iCnf(predIter)
+    }
+    reapplyQuant(predIter)
   }
 }

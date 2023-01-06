@@ -2594,7 +2594,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
           Or(NS(SpecSignatures.Activity_onPause_exit,SpecSignatures.Activity_onResume_entry),
             Not(SpecSignatures.Activity_onResume_entry)),
           SpecSignatures.Activity_onResume_entry),
-      LSSpec(l::Nil, v::Nil, NS(setOnClickListenerI, setOnClickListenerINull), onClickI)
+      LSSpec(l::v::Nil, Nil, NS(setOnClickListenerI, setOnClickListenerINull), onClickI)
     )
     List(
       ("v.setOnClickListener(null);", f.expectReachable, specs0),

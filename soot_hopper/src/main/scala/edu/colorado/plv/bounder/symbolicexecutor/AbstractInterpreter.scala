@@ -72,7 +72,7 @@ case class PreciseApproxMode(canWeaken:Boolean) extends ApproxMode{
 
 case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2) extends ApproxMode {
 
-  override def canWeaken():Boolean = false
+  override def canWeaken:Boolean = false
   override def merge[M,C](existing: () => Iterable[IPathNode], newPN:IPathNode,
                      stateSolver: Z3StateSolver)(implicit w:IRWrapper[M,C]): Option[IPathNode] = {
     newPN match{
