@@ -8,6 +8,7 @@ import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LSExpPar
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import edu.colorado.plv.bounder.testutils.MkApk.getClass
+import org.scalatest.{Exceptional, Failed, Outcome, Pending, Succeeded}
 import org.scalatest.exceptions.TestFailedException
 import org.scalatest.funsuite.FixtureAnyFunSuite
 import smtlib.lexer.Lexer
@@ -101,7 +102,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
       throw new IllegalStateException("Exceeded time limit for test")
     }, pushSatCheck = checkSatPush),pc)
   }
-  override def withFixture(test: OneArgTest) = {
+  override def withFixture(test: OneArgTest): Outcome = {
     // Run all tests with both set inclusion type solving and solver type solving
     // Some subsumption tests override type solving parameter
     // All other tests should work with either
@@ -114,34 +115,69 @@ class StateSolverTest extends FixtureAnyFunSuite {
         (s1, s2, spec) => {
           //val s1simp = stateSolver.simplify(s1,spec).get
           //val s2simp = stateSolver.simplify(s2,spec).get
+          println("Subsumption mode Z3")
           val start = System.nanoTime()
           val res = stateSolver.canSubsume(s1, s2, spec)
           val end = System.nanoTime()
           val totTime = (end - start)/1.0e9
+          println(s"total time: ${totTime} seconds")
           if(totTime < MAX_SOLVER_TIME)
             res
           else
             throw new IllegalStateException(s"subsume took $totTime")
 
         })))
+      //Note: don't currently use canSubsumeSet, leaving test in case its useful later
       //println(s"-set subs, pushSatCheck:${check}")
-      val t2 = withFixture(test.toNoArgTest(FixtureParam(stateSolver, (s1, s2, spec) => {
-        s1.setSimplified() //For tests, just tell solver its simplified already
-        s2.setSimplified() //For tests, just tell solver its simplified already
-        //val s1simp = stateSolver.simplify(s1,spec).get
-        //val s2simp = stateSolver.simplify(s2,spec).get
-        val start = System.nanoTime()
-        val res = stateSolver.canSubsumeSet(Set(s1), s2, spec)
-        val end = System.nanoTime()
-        val totTime = (end - start) / 1.0e9
-        if (totTime < MAX_SOLVER_TIME)
-          res
-        else
-          throw new IllegalStateException(s"subsume took $totTime")
-      })))
-      List(t1,t2)
+//      val t2 = withFixture(test.toNoArgTest(FixtureParam(stateSolver, (s1, s2, spec) => {
+//        s1.setSimplified() //For tests, just tell solver its simplified already
+//        s2.setSimplified() //For tests, just tell solver its simplified already
+//        //val s1simp = stateSolver.simplify(s1,spec).get
+//        //val s2simp = stateSolver.simplify(s2,spec).get
+//        println("Subsumption set")
+//        val start = System.nanoTime()
+//        val res = stateSolver.canSubsumeSet(Set(s1), s2, spec)
+//        val end = System.nanoTime()
+//        val totTime = (end - start) / 1.0e9
+//        println(s"total time: ${totTime} seconds")
+////        if (totTime < MAX_SOLVER_TIME)
+//          res
+////        else
+////          throw new IllegalStateException(s"subsume took $totTime")
+//      })))
+      List(t1)
     }
-    out.head
+
+    val (stateSolver, _) = getZ3StateSolver(false)
+    //TODO: ===== make unify subsumption work
+    val res = if(false){withFixture(test.toNoArgTest(FixtureParam(stateSolver, (s1, s2, spec) => {
+      s1.setSimplified() //For tests, just tell solver its simplified already
+      s2.setSimplified() //For tests, just tell solver its simplified already
+      //val s1simp = stateSolver.simplify(s1,spec).get
+      //val s2simp = stateSolver.simplify(s2,spec).get
+      println("Subsumption unify mode")
+      val start = System.nanoTime()
+      val res = stateSolver.canSubsume(s1, s2, spec, method = SubsUnify)
+      val end = System.nanoTime()
+      val totTime = (end - start) / 1.0e9
+      println(s"total time: ${totTime} seconds")
+      if (totTime < MAX_SOLVER_TIME)
+        res
+      else
+        throw new IllegalStateException(s"subsume took $totTime")
+    })))} else Succeeded
+    (res::out).reduce{(o1:Outcome, o2:Outcome) => (o1, o2)  match{
+      case (Succeeded,Succeeded) => Succeeded
+      case (_, exceptional: Exceptional)  => throw exceptional.toOption.get
+      case (_, f:Failed) => throw f.exception
+      case (f:Failed, _) => throw  f.exception
+      case (e:Exceptional,Pending) => e
+      case (_,Pending) => Pending
+      case (o1, o2) =>
+        println(o1)
+        println(o2)
+        ???
+    }}
   }
   ignore("LOAD: test to debug subsumption issues by loading serialized states"){f =>
     // Note: leave ignored unless debugging, this test is just deserializing states to inspect

@@ -7,7 +7,7 @@ import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, Cal
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.EncodingTools.repHeapCells
 import edu.colorado.plv.bounder.solver.{EncodingTools, StateSolver, Z3StateSolver}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, BottomQry, DBOutputMode, FieldPtEdge, FrameworkLocation, HeapPtEdge, IPathNode, InitialQuery, Live, MemoryOutputMode, NPureVar, OrdCount, OutputMode, PathNode, PureExpr, Qry, State, StaticPtEdge, SubsumableLocation, SwapLoc, WitnessedQry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, BottomQry, DBOutputMode, FieldPtEdge, FrameworkLocation, HashableStateFormula, HeapPtEdge, IPathNode, InitialQuery, Live, MemoryOutputMode, NPureVar, OrdCount, OutputMode, PathNode, PureExpr, Qry, State, StaticPtEdge, SubsumableLocation, SwapLoc, WitnessedQry}
 
 import scala.annotation.tailrec
 import upickle.default._
@@ -221,7 +221,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
   implicit val ord = new LexicalStackThenTopo[M,C](w)
   private val cha = w.getClassHierarchyConstraints
 
-  private val invarMap = mutable.HashMap[SubsumableLocation, Set[IPathNode]]()
+  private val invarMap = mutable.HashMap[SubsumableLocation, Map[HashableStateFormula,IPathNode]]()
 
 
 
@@ -294,29 +294,43 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
     }.toSet
   }
 
+  //TODO: ==== figure out if this optimization actually does anything
+  var fastSubsumeCount:Int = 0
+  var slowSubsumeCount:Int = 0
   def isSubsumed(pathNode:IPathNode, checkTimeout: ()=>Unit):Set[IPathNode] = pathNode match{
     case SwapLoc(loc) if pathNode.qry.isInstanceOf[Qry] && invarMap.contains(loc) => {
-      val nodes:Set[IPathNode] = invarMap(loc)
-      val states = nodes.map(_.state)
-      val res = config.subsumptionMode match {
-        case SubsumptionModeIndividual =>
-          nodes.find(p => {
-            checkTimeout()
-            stateSolver.canSubsume(p.state,pathNode.state, transfer.getSpec)
-          }).toSet
-        case SubsumptionModeBatch =>
-          if(stateSolver.canSubsumeSet(states, pathNode.state, transfer.getSpec)) nodes else Set[IPathNode]()
-        case SubsumptionModeTest =>{
-          val singleResult = nodes.find(p => stateSolver.canSubsume(p.state,pathNode.state, transfer.getSpec)).toSet
-          val batchResult = stateSolver.canSubsumeSet(states, pathNode.state, transfer.getSpec)
-          if(singleResult.nonEmpty != batchResult){
-            println(s"current state:\n    ${pathNode.state}")
-            println("subsuming states:")
-            states.foreach(s => println(s"    ${s.toString}"))
-            val batchResult2 = stateSolver.canSubsumeSet(states, pathNode.state, transfer.getSpec)
-            println()
+      val hashableState = pathNode.state.sf.makeHashable(transfer.getSpec)
+      val currentInvarMap = invarMap(loc)
+      val res:Set[IPathNode] = if(currentInvarMap.contains(hashableState)) {
+        // Test if exact state is contained
+        fastSubsumeCount += 1
+        Set(currentInvarMap(hashableState))
+      } else {
+        // Else, iterate through to find if a state can subsume
+        slowSubsumeCount += 1
+        val nodes: Iterable[IPathNode] = currentInvarMap.values
+        val states = nodes.map(_.state)
+        config.subsumptionMode match {
+          case SubsumptionModeIndividual =>
+            nodes.find(p => {
+              checkTimeout()
+              stateSolver.canSubsume(p.state, pathNode.state, transfer.getSpec)
+            }).toSet
+          case SubsumptionModeBatch =>
+            if (stateSolver.canSubsumeSet(states.toSet, pathNode.state, transfer.getSpec))
+              nodes.toSet else Set[IPathNode]()
+          case SubsumptionModeTest => {
+            val singleResult = nodes.find(p => stateSolver.canSubsume(p.state, pathNode.state, transfer.getSpec)).toSet
+            val batchResult = stateSolver.canSubsumeSet(states.toSet, pathNode.state, transfer.getSpec)
+            if (singleResult.nonEmpty != batchResult) {
+              println(s"current state:\n    ${pathNode.state}")
+              println("subsuming states:")
+              states.foreach(s => println(s"    ${s.toString}"))
+              val batchResult2 = stateSolver.canSubsumeSet(states.toSet, pathNode.state, transfer.getSpec)
+              println()
+            }
+            singleResult
           }
-          singleResult
         }
       }
       res
@@ -476,8 +490,8 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
                 // Add to invariant map if invariant location is tracked
                 p2 match { //TODO:===== this was "current", should be pLive???  TODO: cb isn't getting to 5 cb, go back through history and figure out why
                   case SwapLoc(v) => {
-                    val nodeSetAtLoc = invarMap.getOrElse(v, Set.empty)
-                    invarMap.addOne(v -> (nodeSetAtLoc + p2))
+                    val nodeSetAtLoc = invarMap.getOrElse(v, Map.empty)
+                    invarMap.addOne(v -> (nodeSetAtLoc + (p2.state.sf.makeHashable(transfer.getSpec) -> p2)))
                   }
                   case _ =>
                 }

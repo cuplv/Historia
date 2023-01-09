@@ -6,6 +6,7 @@ import edu.colorado.plv.bounder.ir.{AppMethod, BitTypeSet, EmptyTypeSet, Message
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.LifeState._
 import edu.colorado.plv.bounder.solver.EncodingTools.repHeapCells
+import edu.colorado.plv.bounder.symbolicexecutor.SubsumptionMode
 import edu.colorado.plv.bounder.symbolicexecutor.state.{HeapPtEdge, _}
 import org.slf4j.{Logger, LoggerFactory}
 import upickle.default.{read, write}
@@ -27,7 +28,27 @@ trait SolverCtx[T]{
   def release():Unit
 }
 
+sealed trait SubsumptionMethod
 
+/**
+ * Encode subsumption as Z3 query
+ */
+case object SubsZ3 extends SubsumptionMethod
+
+/**
+ * Use a subtraction/unification like algorithm like O'Hearn papers
+ */
+case object SubsUnify extends SubsumptionMethod
+
+/**
+ * Use both subsumption methods and assert the results are the same
+ */
+case object SubsDebug extends SubsumptionMethod
+
+/**
+ * Try using Unify and if that fails use Z3
+ */
+case object SubsFailOver extends SubsumptionMethod
 /** SMT solver parameterized by its AST or expression type */
 trait StateSolver[T, C <: SolverCtx[T]] {
   def mkAssert(t:T)(implicit zCtx:C):Unit
@@ -1035,6 +1056,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   }
 
   def canSubsumeSet(s1:Set[State], s2: State, specSpace:SpecSpace,timeout:Option[Int] = None):Boolean = {
+    ??? //TODO: this is broken in several unit tests, don't use until fixed
     val startTime = System.nanoTime()
 
     val s1Filtered = s1.filter(other => fastMaySubsume(other,s2, specSpace))
@@ -1146,10 +1168,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    * @return
    */
   def canSubsume(s1: State, s2: State, specSpace: SpecSpace, maxLen: Option[Int] = None,
-                 timeout:Option[Int] = None): Boolean = {
+                 timeout:Option[Int] = None,method:SubsumptionMethod = SubsZ3): Boolean = {
 //     val method = "Unify"//TODO: benchmark and see if this is actually faster: Idea run both and log times then hist
 //     val method = "Debug"
-    val method = "Z3"
+
     // val method = "FailOver"
     val startTime = System.nanoTime()
     // Some states can be quickly shown not to subsume before z3 call
@@ -1187,16 +1209,16 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 //      return csu
 //    }
 
-    val res = if(method == "Z3")
+    val res = if(method == SubsZ3)
       canSubsumeZ3(s1Simp.get,s2Simp.get,specSpace, maxLen, timeout)
-    else if(method == "Unify")
+    else if(method == SubsUnify)
       canSubsumeUnify(s1Simp.get,s2Simp.get,specSpace)
-    else if(method == "FailOver"){
+    else if(method == SubsFailOver){
       try{canSubsumeUnify(s1Simp.get, s2Simp.get, specSpace)} catch{
         case _:IllegalStateException =>
           canSubsumeZ3(s1Simp.get, s2Simp.get, specSpace, maxLen, timeout)
       }
-    } else if(method == "Debug") {
+    } else if(method == SubsDebug) {
       val z3res = canSubsumeZ3(s1Simp.get, s2Simp.get, specSpace, maxLen, timeout)
       val unifyRes = canSubsumeUnify(s1Simp.get,s2Simp.get,specSpace)
       if(z3res != unifyRes) {

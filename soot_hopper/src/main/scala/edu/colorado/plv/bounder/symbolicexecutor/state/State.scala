@@ -67,6 +67,12 @@ case class LSConstConstraint(pureExpr: PureExpr, trace:AbstractTrace) extends LS
   override def optTraceAbs: Option[AbstractTrace] = Some(trace)
 }
 
+case class HashableStateFormula(callStack: List[CallStackFrame],
+                                heapConstraints: Map[HeapPtEdge, PureExpr],
+                                pureFormula: Set[PureConstraint],
+                                typeConstraints: Map[PureVar, TypeSet],
+                                traceAbstraction: Set[LSPred],
+                               )
 /**
  *
  * @param callStack Application only call stack abstraction, emtpy stack or callin on top means framework control.
@@ -81,8 +87,11 @@ case class StateFormula(callStack: List[CallStackFrame],
                         pureFormula: Set[PureConstraint],
                         typeConstraints: Map[PureVar, TypeSet],
                         traceAbstraction: AbstractTrace,
-                        isAbstract:Boolean = true //concrete or abstract
                        ){
+  def makeHashable(specSpace: SpecSpace):HashableStateFormula = {
+    val pred = EncodingTools.rhsToPred(traceAbstraction.rightOfArrow,specSpace)
+    HashableStateFormula(callStack, heapConstraints, pureFormula, typeConstraints , pred)
+  }
   // Remember if this state has been checked for satisfiability
   var isSimplified = false
   def setSimplified(): StateFormula = {
