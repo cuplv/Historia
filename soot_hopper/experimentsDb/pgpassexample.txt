@@ -1,0 +1,2 @@
+#put this in home dir named `.pgpass` remove this comment and set a password
+localhost:5433:postgres:postgres:[password]
