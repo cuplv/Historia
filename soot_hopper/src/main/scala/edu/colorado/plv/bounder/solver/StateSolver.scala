@@ -77,6 +77,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   // axiom initializers add interpreted properties to uninterpreted domains e.g. zero, heap cells, message order
   def initializeZeroAxioms(messageTranslator: MessageTranslator)(implicit zCtx:C):Unit
 
+
+  def initializeArgAxioms(messageTranslator:MessageTranslator)(implicit zCtx: C):Unit
   def initializeOrderAxioms(messageTranslator: MessageTranslator)(implicit zCtx:C):Unit
 
   def initializeFieldAxioms(messageTranslator: MessageTranslator)(implicit zCtx:C):Unit
@@ -95,7 +97,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    * @return whether formula is satisfiable
    */
   def checkSAT(messageTranslator: MessageTranslator,
-                  axioms: Option[List[MessageTranslator => Unit] ])(implicit zCtx: C): Boolean
+                  axioms: Option[List[MessageTranslator => Unit] ] = None)(implicit zCtx: C): Boolean
   /**
    * Check satisfiability of fomrula in solver
    * @throws IllegalStateException if formula is undecidable or times out
@@ -218,7 +220,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   protected def mkINameFn()(implicit zctx: C): T
 
   // functions for each argument msg -> addr
-  protected def mkArgFun(i:Int)(implicit zctx: C): T
+  //protected def mkArgFun(i:Int)(implicit zctx: C): T
 
   /**
    * Attempt to limit Uint and msg to fix z3 timeout
@@ -242,7 +244,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   protected def mkNameConstraint(nameFun: T, msg: T)(implicit zctx: C): T
 
   // function argumentindex -> msg -> argvalue
-  protected def mkArgConstraint(argIndex: Int, msg: T)(implicit zCtx: C): T
+  protected def mkArgConstraint(argIndex: Int, msg: T, addr:T)(implicit zCtx: C): T
 
   protected def mkAddrConst(i: Int)(implicit zCtx: C): T
 
@@ -299,7 +301,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val onceOpt = messageTranslator.iForMsg(element)
     val nameConstraint = onceOpt.map(o => mkEq(mkNameConstraint(nameFun, msg), messageTranslator.enumFromI(o)))
     val argConstraints:List[T] = element.args.zipWithIndex.map{
-      case (ConcreteAddr(addr), argnum) =>mkEq(argVals(addr), mkArgConstraint(argnum,msg))
+      case (ConcreteAddr(addr), argnum) => mkArgConstraint(argnum,msg, argVals(addr))
       case _ => ???
     }
     mkAnd(argConstraints.prependedAll(nameConstraint))
@@ -317,19 +319,21 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       case (msgVar:PureVar, ind) =>
         //        val modelVar = modelVarMap(msgVar)
         val modelExpr = pvMap(msgVar)
-        val argAt = mkArgConstraint(ind, msg)
+        val argAt: T => T = (expr:T) => mkArgConstraint(ind, msg, expr)
         val typeConstraint = lsTypeMap.get(msgVar) match {
           case Some(BitTypeSet(s)) =>
-            mkTypeConstraintForAddrExpr(createTypeFun(), typeToSolverConst, argAt, s.toSet)
+            mkForallAddr(NamedPureVar("argOf"), (addr:T) =>
+              mkImplies(argAt(addr),mkTypeConstraintForAddrExpr(createTypeFun(), typeToSolverConst, addr, s.toSet)))
           case _ => mkBoolVal(b = true)
         }
         Some(mkAnd(
-          mkEq(argAt, modelExpr),
+          argAt(modelExpr),
           typeConstraint
         ))
       case (const:PureVal, ind) =>
-        val argAt = mkArgConstraint(ind, msg)
-        Some(compareConstValueOf(argAt, Equals, const, messageTranslator.getConstMap()))
+        val argAt = (expr:T) => mkArgConstraint(ind, msg, expr)
+        Some(mkForallAddr(NamedPureVar("argOf"), (addr:T) =>
+              mkImplies(argAt(addr), compareConstValueOf(addr, Equals, const, messageTranslator.getConstMap()))))
     }
 
     // w[i] = cb foo(x,y)
@@ -382,7 +386,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 //      case Not(l) =>
 //        mkNot(encodePred(l, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap, constMap))
       case Not(once:AbsMsg) =>
-        mkNot(encodePred(once,messageTranslator,modelVarMap,typeToSolverConst,typeMap,constMap))
+        //mkNot(encodePred(once,messageTranslator,modelVarMap,typeToSolverConst,typeMap,constMap))
+        mkForallMsg(mkTraceFn, msg => mkNot(msgModelsOnce(msg,once, messageTranslator, typeMap, typeToSolverConst, modelVarMap)))
       case p@Not(_) => throw new IllegalArgumentException(s"arbitrary negation of lspred is not supported: $p")
       case o: AbsMsg =>
         mkExistsMsg(mkTraceFn, msg => msgModelsOnce(msg, o, messageTranslator, typeMap, typeToSolverConst, modelVarMap))
@@ -820,7 +825,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
           println(ast.toString)
         }
         mkAssert(ast)
-        val sat = checkSAT(messageTranslator, Some(List(initalizeConstAxioms, initializeNameAxioms, initializeFieldAxioms, initializeOrderAxioms)))
+        val sat = checkSAT(messageTranslator)
         //      val simpleAst = solverSimplify(ast, stateWithNulls, messageTranslator, maxWitness.isDefined)
 
         //      if(simpleAst.isEmpty)
@@ -1088,7 +1093,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       val s2Encode = toASTState(s2, messageTranslator,None, specSpace)
       mkAssert(s2Encode)
       val foundCounter =
-        checkSAT(messageTranslator,Some(List(initalizeConstAxioms, initializeNameAxioms, initializeFieldAxioms, initializeOrderAxioms)))
+        checkSAT(messageTranslator)
       !foundCounter
     }catch{
       case e:IllegalArgumentException if e.getLocalizedMessage.contains("timeout") =>
@@ -1388,7 +1393,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         specSpace = specSpace, debug = maxLen.isDefined)
       mkAssert(s2Enc)
       val foundCounter =
-        checkSAT(messageTranslator, Some(List(initalizeConstAxioms,initializeNameAxioms, initializeOrderAxioms,initializeFieldAxioms)))
+        checkSAT(messageTranslator)
 
       if (foundCounter && maxLen.isDefined) {
         printDbgModel(messageTranslator, Set(s1.traceAbstraction,s2.traceAbstraction))
@@ -1492,7 +1497,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       initializeZeroAxioms(messageTranslator)
       val pvMap: Map[PureVar, T] = encodeTraceContained(???, trace,
         messageTranslator = messageTranslator, specSpace = specSpace)
-      val sat = checkSAT(messageTranslator,Some(List(initalizeConstAxioms,initializeNameAxioms,initializeOrderAxioms,initializeFieldAxioms)))
+      val sat = checkSAT(messageTranslator)
 
       if (sat) {
 //        Some(WitnessExplanation(Nil)) //TODO: do we ever need this?
@@ -1513,7 +1518,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       initializeZeroAxioms(messageTranslator)
       val pvMap: Map[PureVar, T] = encodeTraceContained(state, trace,
         messageTranslator = messageTranslator, specSpace = specSpace)
-      val sat = checkSAT(messageTranslator,Some(List(initalizeConstAxioms,initializeNameAxioms,initializeOrderAxioms,initializeFieldAxioms)))
+      val sat = checkSAT(messageTranslator)
       if (sat && debug) {
         println(s"model:\n ${zCtx.asInstanceOf[Z3SolverCtx].solver.toString}")
         printDbgModel(messageTranslator, Set(state.traceAbstraction))

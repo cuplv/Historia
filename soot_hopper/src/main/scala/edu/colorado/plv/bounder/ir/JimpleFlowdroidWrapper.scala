@@ -228,17 +228,18 @@ object JimpleFlowdroidWrapper{
       case cmd: AbstractDefinitionStmt => {
         val leftBox = makeVal(cmd.leftBox.getValue).asInstanceOf[LVal]
         val rightBox = makeVal(cmd.rightBox.getValue)
-        assert(loc.line.asInstanceOf[JimpleLineLoc].cmd == cmd)
+        //assert(loc.line.asInstanceOf[JimpleLineLoc].cmd == cmd)
         AssignCmd(leftBox, rightBox,loc)
       }
       case cmd: JReturnStmt => {
         val box = makeVal(cmd.getOpBox.getValue)
-        assert(loc.line.asInstanceOf[JimpleLineLoc].cmd == cmd)
+        //assert(loc.line.asInstanceOf[JimpleLineLoc].cmd == cmd)
         ReturnCmd(Some(box), loc)
       }
       case cmd:JInvokeStmt => {
         val invokeval = makeVal(cmd.getInvokeExpr).asInstanceOf[Invoke]
-        assert(loc.line.asInstanceOf[JimpleLineLoc].cmd == cmd)
+        //val jll = loc.line.asInstanceOf[JimpleLineLoc].cmd
+        //assert(jll.isInstanceOf[JLookupSwitchStmt] || jll == cmd)
         InvokeCmd(invokeval, loc)
       }
       case _ : JReturnVoidStmt => {

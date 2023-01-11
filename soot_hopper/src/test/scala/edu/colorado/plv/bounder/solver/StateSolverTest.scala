@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.solver
 import better.files.{File, Resource}
 import com.microsoft.z3._
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, FreshRef, LSConstraint, LSFalse, LSSpec, LSTrue, NS, Not, Or, Signature, SignatureMatcher, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Forall, FreshRef, LSConstraint, LSFalse, LSPred, LSSpec, LSTrue, NS, Not, Or, Signature, SignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LSExpParser, LifecycleSpec, RxJavaSpec, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs
 import edu.colorado.plv.bounder.symbolicexecutor.state._
@@ -36,7 +36,10 @@ class StateSolverTest extends FixtureAnyFunSuite {
   private val p6 = PureVar(6)
   private val frame = CallStackFrame(dummyLoc, None, Map(StackVar("x") -> v))
   private val state = State.topState
-  case class FixtureParam(stateSolver:Z3StateSolver, canSubsume: (State,State,SpecSpace)=> Boolean)
+  case class FixtureParam(stateSolver:Z3StateSolver,
+                          canSubsume: (State,State,SpecSpace)=> Boolean,
+                          canSubsumePred:(LSPred,LSPred) => Boolean
+                         )
 
   private val a = NamedPureVar("a")
   private val b = NamedPureVar("b")
@@ -126,7 +129,19 @@ class StateSolverTest extends FixtureAnyFunSuite {
           else
             throw new IllegalStateException(s"subsume took $totTime")
 
-        })))
+        },
+        (p1,p2) => {
+          val start = System.nanoTime()
+          val res = stateSolver.canSubsume(p1, p2)
+          val end = System.nanoTime()
+          val totTime = (end - start)/1.0e9
+          if (totTime < MAX_SOLVER_TIME)
+            res
+          else
+            throw new IllegalStateException(s"subsume took $totTime")
+          res
+        }
+      )))
       //Note: don't currently use canSubsumeSet, leaving test in case its useful later
       //println(s"-set subs, pushSatCheck:${check}")
 //      val t2 = withFixture(test.toNoArgTest(FixtureParam(stateSolver, (s1, s2, spec) => {
@@ -165,7 +180,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
         res
       else
         throw new IllegalStateException(s"subsume took $totTime")
-    })))} else Succeeded
+    }, ???)))} else Succeeded
     (res::out).reduce{(o1:Outcome, o2:Outcome) => (o1, o2)  match{
       case (Succeeded,Succeeded) => Succeeded
       case (_, exceptional: Exceptional)  => throw exceptional.toOption.get
@@ -217,20 +232,32 @@ class StateSolverTest extends FixtureAnyFunSuite {
         val s1 = loadState(f1)
         val s2 = loadState(f2)
         val startTime = System.nanoTime()
-        //LSVarGen.setNext(List(s1,s2))
-//        val bt = BitTypeSet(BitSet(639))
-//        val s1 = s1p.addTypeConstraint(PureVar(3), bt).addTypeConstraint(PureVar(7), bt)
-//        val s2 = s2p.addTypeConstraint(PureVar(3), bt).addTypeConstraint(PureVar(8), bt)
-        val s1P = EncodingTools.rhsToPred(s1.sf.traceAbstraction.rightOfArrow,spec).map(EncodingTools.simplifyPred)
-        val s2P = EncodingTools.rhsToPred(s2.sf.traceAbstraction.rightOfArrow,spec).map(EncodingTools.simplifyPred)
-//        val s1S = s1.copy(sf = s1.sf.copy(typeConstraints = s1.sf.typeConstraints + (p4 -> BitTypeSet(BitSet(3)))))
-//        val s2S = s2.copy(sf = s2.sf.copy(typeConstraints = s2.sf.typeConstraints +
-//          (p4 -> BitTypeSet(BitSet(3))) + (p6 -> BitTypeSet(BitSet(3)))
-//        ))
 
-        //    val emptySpec = new SpecSpace(Set())
-        //    val emptyRes = f.canSubsumes1,s2, emptySpec)
-        //    assert(emptyRes)
+        val toCnfTest = (p:LSPred) => {
+          val res = EncodingTools.toCNF(p)
+          println("====")
+          println(s"p: ${p}")
+          println(s"res: ${res}")
+          val dir1 = f.stateSolver.canSubsume(p,res)
+          assert(dir1)
+          println(dir1)
+          println(s"dir1: $dir1")
+          val dir2 = f.stateSolver.canSubsume(res,p)
+          assert(dir2)
+          println(s"dir2: $dir2")
+          res
+        }
+        val s1P = EncodingTools.rhsToPred(s1.sf.traceAbstraction.rightOfArrow,spec).map(EncodingTools.simplifyPred).map(toCnfTest)
+        val s2P = EncodingTools.rhsToPred(s2.sf.traceAbstraction.rightOfArrow,spec).map(EncodingTools.simplifyPred).map(toCnfTest)
+
+        //TODO==== test code
+        val ex1P = s1P.find(p => p.isInstanceOf[Exists])
+        val ex2P = s2P.find(p => p.isInstanceOf[Exists])
+        val subspred = f.stateSolver.canSubsume(ex1P.reduce(And),ex2P.reduce(And))
+        println(subspred)
+
+        //TODO==== end test code
+
 
         val res = f.canSubsume(s1, s2, spec)
         println(s"Subsumption check took ${(System.nanoTime() - startTime)/1000000000.0} seconds")
@@ -2018,6 +2045,17 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(f.canSubsume(s_2_,s_2_,specs2))
     assert(f.canSubsume(s_1_,s_2_,specs2))
   }
+
+  test("Can subsume disjuncted has not temporal formula"){ f =>
+    val pa2 = NamedPureVar("p-a2")
+    val p8 = NPureVar(8)
+    val oFindView = AbsMsg(CIExit, SpecSignatures.Activity_findView, p6::pa2::Nil)
+
+    val p = Forall(pa2::Nil, Or(Not(oFindView), LSConstraint(p8,Equals,pa2)))
+    assert(f.canSubsumePred(p,p))
+
+  }
+
   test("z3 to smtlib conversions test and extraneous quantifier removal"){ f=>
     // Test the conversions between smtlib and z3
     val stateSolver = f.stateSolver

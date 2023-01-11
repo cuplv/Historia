@@ -518,6 +518,7 @@ object EncodingTools {
       case o:LSSingle => (o,Nil)
       case n:Not => (n,Nil)
       case l:LSConstraint => (l,Nil)
+      case ns:NS => (ns,Nil)
       case v =>
         println(v)
         ???
@@ -546,7 +547,7 @@ object EncodingTools {
       case Or(p1, And(p2,p3)) => iCnf(Or(And(p2,p3),p1))
       case And(p1,p2) => And(iCnf(p1),iCnf(p2))
       case Or(p1,p2) => Or(iCnf(p1), iCnf(p2))
-      case _ => ???
+      case l => l
     }
 
     def stripQuant(pred:LSPred):(LSPred,LSPred =>LSPred) = pred match{

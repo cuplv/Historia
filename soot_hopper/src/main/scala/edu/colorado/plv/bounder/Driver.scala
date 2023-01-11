@@ -160,7 +160,10 @@ object Driver {
               val readConfig = read[RunConfig](v).copy(configPath = Some(configurationPath))
 
               // Extract mode option if set
-              val vStr = File(configurationPath).contentAsString
+              val cfgFile = File(configurationPath)
+              if(cfgFile.notExists)
+                throw new IllegalArgumentException(s"file does not exist: ${configurationPath}")
+              val vStr = cfgFile.contentAsString
               val c1 = c.copy(config=readConfig)
               ujson.read(vStr) match {
                 case Obj(value) if value.contains("mode") => c1.copy(mode=decodeMode(value("mode")))
