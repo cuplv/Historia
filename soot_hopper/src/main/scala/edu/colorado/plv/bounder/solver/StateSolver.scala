@@ -322,8 +322,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         val argAt: T => T = (expr:T) => mkArgConstraint(ind, msg, expr)
         val typeConstraint = lsTypeMap.get(msgVar) match {
           case Some(BitTypeSet(s)) =>
-            mkForallAddr(NamedPureVar("argOf"), (addr:T) =>
-              mkImplies(argAt(addr),mkTypeConstraintForAddrExpr(createTypeFun(), typeToSolverConst, addr, s.toSet)))
+              mkTypeConstraintForAddrExpr(createTypeFun(), typeToSolverConst, pvMap(msgVar), s.toSet)
           case _ => mkBoolVal(b = true)
         }
         Some(mkAnd(
@@ -332,7 +331,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         ))
       case (const:PureVal, ind) =>
         val argAt = (expr:T) => mkArgConstraint(ind, msg, expr)
-        Some(mkForallAddr(NamedPureVar("argOf"), (addr:T) =>
+        Some(mkExistsAddr(NamedPureVar("argOf"), (addr:T) =>
               mkImplies(argAt(addr), compareConstValueOf(addr, Equals, const, messageTranslator.getConstMap()))))
     }
 
