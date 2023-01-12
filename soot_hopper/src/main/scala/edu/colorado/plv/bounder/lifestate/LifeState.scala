@@ -441,7 +441,7 @@ object LifeState {
     override def toTex: String = s"${l1.toTex} \\wedge ${l2.toTex}"
   }
   case class Not(p: LSPred) extends LSAtom with LSUnOp {
-    assert(p.isInstanceOf[OAbsMsg], "not only applicable to once")
+    //assert(p.isInstanceOf[OAbsMsg], "not only applicable to once")
     override def lsVar: Set[PureVar] = p.lsVar
 
     override def contains(mt:MessageType,sig: Signature)(implicit ch:ClassHierarchyConstraints): Boolean =

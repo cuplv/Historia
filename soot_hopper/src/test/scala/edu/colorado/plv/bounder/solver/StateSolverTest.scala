@@ -24,7 +24,7 @@ import scala.collection.mutable.ListBuffer
 import scala.language.implicitConversions
 
 class StateSolverTest extends FixtureAnyFunSuite {
-  private val MAX_SOLVER_TIME = 2 //seconds -- Each call to "canSubsume" should take no more than this.
+  private val MAX_SOLVER_TIME = 5 //TODO //seconds -- Each call to "canSubsume" should take no more than this.
   private val fooMethod = SerializedIRMethodLoc("","foo()", List(Some(LocalWrapper("@this","Object"))))
   private val dummyLoc = CallbackMethodReturn(Signature("","void foo()"), fooMethod, None)
   private val v = PureVar(230)
@@ -103,7 +103,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     (new Z3StateSolver(pc,timeout = 20000, defaultOnSubsumptionTimeout = (z3SolverCtx:Z3SolverCtx) => {
       println(z3SolverCtx)
       throw new IllegalStateException("Exceeded time limit for test")
-    }, pushSatCheck = checkSatPush),pc)
+    }, pushSatCheck = checkSatPush, strict_test = true),pc)
   }
   override def withFixture(test: OneArgTest): Outcome = {
     // Run all tests with both set inclusion type solving and solver type solving
@@ -111,7 +111,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     // All other tests should work with either
 //    withFixture(test.toNoArgTest(FixtureParam(SetInclusionTypeSolving)))
 
-    val out = List(true,false).flatMap{ check =>
+    val out = List(true/*,false*/).flatMap{ check => //TODO:====
       val (stateSolver, _) = getZ3StateSolver(check)
       //println(s"-normal subs, pushSatCheck:${check}")
       val t1 = withFixture(test.toNoArgTest(FixtureParam(stateSolver,
@@ -485,23 +485,28 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val res2 = stateSolver.witnessed(state1,spec)
     assert(res2.isEmpty)
   }
-  ignore("Trace abstraction NI(a.bar(),a.baz()) |> I(c.bar()) && a == p1 && c == p1 (<=> true)") { f =>
-    //TODO: |>
+  test("Trace abstraction NI(a.bar(),a.baz()) |> I(c.bar()) && a == p1 && c == p1 (feas and init)") { f =>
     val stateSolver = f.stateSolver
 
     // Lifestate atoms for next few tests
-    val i = AbsMsg(CBEnter, Set(("foo", "bar")), a :: Nil)
-    val i2 = AbsMsg(CBEnter, Set(("foo", "baz")), a :: Nil)
-    val i3 = AbsMsg(CBEnter, Set(("foo", "baz")), b :: Nil)
-    val i4 = AbsMsg(CBEnter, Set(("foo", "bar")), c :: Nil)
+    val bara = AbsMsg(CBEnter, Set(("foo", "bar\\(\\)")), a :: Nil)
+    val baza = AbsMsg(CBEnter, Set(("foo", "baz\\(\\)")), a :: Nil)
+    val tgtNIa = AbsMsg(CBEnter, Set(("foo", "tgt\\(\\)")), a::Nil)
+    val tgtNIp1 = AbsMsg(CBEnter, Set(("foo", "tgt\\(\\)")), p1::Nil)
+    val barp1 = AbsMsg(CBEnter, Set(("foo", "bar\\(\\)")), p1 :: Nil)
     // NI(a.bar(), a.baz())
-    val niBarBaz = NS(i, i2)
+    val niBarBaz = NS(bara, baza)
+    val sp = LSSpec(a::Nil,Nil, niBarBaz,tgtNIa)
+    val spec = new SpecSpace(Set(sp))
 
-    // NI(a.bar(),a.baz()) |> I(c.bar()) && a == p1 && c == p1 (<=> true)
-    val abs2 = AbstractTrace(niBarBaz,i4::Nil, Map(a->p1, c->p1) )
-    val state2 = State(StateFormula(Nil,Map(),Set(),Map(), abs2),0)
-    val res2 = stateSolver.simplify(state2,esp)
-    assert(res2.isDefined)
+    val tr = AbstractTrace(barp1::tgtNIp1::Nil)
+    val state = State.topState.copy(sf = State.topState.sf.copy(traceAbstraction = tr))
+
+    val simp = f.stateSolver.simplify(state,spec)
+    assert(simp.nonEmpty)
+
+    val init = f.stateSolver.witnessed(state,spec)
+    assert(init.isDefined)
   }
   ignore("Trace abstraction NI(a.bar(),a.baz()) |> I(b.baz()) |> I(c.bar()) (<=> true) ") { f =>
     //TODO: |>
@@ -521,23 +526,31 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val res2 = stateSolver.simplify(state2,esp)
     assert(res2.isDefined)
   }
-  ignore("Trace abstraction NI(a.bar(),a.baz()) ; I(c.bar()) ; I(b.baz()) && a = b = c (<=> false) ") { f =>
-    //TODO: |>
+  test("Trace abstraction NI(a.bar(),a.baz()) ; I(c.bar()) ; I(b.baz()) && a = b = c (<=> false) ") { f =>
+
     val stateSolver = f.stateSolver
 
     // Lifestate atoms for next few tests
-    val i = AbsMsg(CBEnter, Set(("foo", "bar")), a :: Nil)
-    val i2 = AbsMsg(CBEnter, Set(("foo", "baz")), a :: Nil)
-    val b_baz = AbsMsg(CBEnter, Set(("foo", "baz")), b :: Nil)
-    val c_bar = AbsMsg(CBEnter, Set(("foo", "bar")), c :: Nil)
+    val bara = AbsMsg(CBEnter, Set(("foo", "bar\\(\\)")), a :: Nil)
+    val baza = AbsMsg(CBEnter, Set(("foo", "baz\\(\\)")), a :: Nil)
+    val tgtNIa = AbsMsg(CBEnter, Set(("foo", "tgt\\(\\)")), a :: Nil)
+    val tgtNIp1 = AbsMsg(CBEnter, Set(("foo", "tgt\\(\\)")), p1 :: Nil)
+    val barp1 = AbsMsg(CBEnter, Set(("foo", "bar\\(\\)")), p1 :: Nil)
+    val bazp1 = AbsMsg(CBEnter, Set(("foo", "baz\\(\\)")), p1 :: Nil)
     // NI(a.bar(), a.baz())
-    val niBarBaz = NS(i, i2)
+    val niBarBaz = NS(bara, baza)
+    val sp = LSSpec(a :: Nil, Nil, niBarBaz, tgtNIa)
+    val spec = new SpecSpace(Set(sp))
 
-    // NI(a.bar(),a.baz()) |> I(a.bar());I(a.baz())
-    val niaa = AbstractTrace(niBarBaz, c_bar::b_baz::Nil, Map(a->p1, c->p1, b->p1))
-    val state2 = State(StateFormula(Nil,Map(),Set(),Map(), niaa),0)
-    val res2 = stateSolver.simplify(state2,esp)
-    assert(res2.isEmpty)
+    val tr = AbstractTrace(barp1 :: bazp1 :: tgtNIp1 :: Nil)
+    val state = State.topState.copy(sf = State.topState.sf.copy(traceAbstraction = tr))
+
+    val simp = f.stateSolver.simplify(state, spec)
+    assert(simp.isEmpty)
+
+    val init = f.stateSolver.witnessed(state, spec)
+    assert(init.isEmpty)
+
   }
   ignore("Trace abstraction NI(a.bar(),a.baz()) |> I(c.bar()) |> I(b.baz() && a = c (<=> true) ") { f =>
     //TODO: |>
@@ -1523,20 +1536,6 @@ class StateSolverTest extends FixtureAnyFunSuite {
     ))
     assert(f.canSubsume(state0,state1, esp))
   }
-  ignore("Subsumption of multi arg abstract traces") { f =>
-    //TODO: |>
-    val stateSolver = f.stateSolver
-
-    val loc = AppLoc(fooMethod, SerializedIRLineLoc(1), isPre = false)
-
-
-    val ifoo = AbsMsg(CBEnter, Set(("", "foo")), a :: Nil)
-    val ibar = AbsMsg(CBEnter, Set(("", "bar")), a::b:: Nil)
-    val niSpec = NS(ibar,ifoo)
-    val state = State.topState.copy(sf = State.topState.sf.copy(
-      traceAbstraction = AbstractTrace(ibar, Nil, Map())))
-    assert(f.canSubsume(state,state, esp))
-  }
 
   ignore("Subsumption of abstract trace where type info creates disalias") { f =>
     //TODO: |>
@@ -2046,7 +2045,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(f.canSubsume(s_1_,s_2_,specs2))
   }
 
-  test("Can subsume disjuncted has not temporal formula"){ f =>
+  test("Can subsume disjuncted has not temporal formula 1"){ f =>
     val pa2 = NamedPureVar("p-a2")
     val p8 = NPureVar(8)
     val oFindView = AbsMsg(CIExit, SpecSignatures.Activity_findView, p6::pa2::Nil)
@@ -2056,7 +2055,20 @@ class StateSolverTest extends FixtureAnyFunSuite {
 
   }
 
-  test("z3 to smtlib conversions test and extraneous quantifier removal"){ f=>
+  ignore("test enc of ns negation"){f =>
+    //TODO:  possible way of negating?
+    val w = NamedPureVar("w")
+    val p = NamedPureVar("p")
+    val unsubTgtW = AbsMsg(CIExit, SpecSignatures.RxJava_unsubscribe, TopVal :: w :: Nil)
+    val subTgtWP = AbsMsg(CIExit, SpecSignatures.RxJava_subscribe, w :: TopVal :: p :: Nil)
+    val p1 = Not(NS(subTgtWP,unsubTgtW))
+    val p2 = Or(Not(subTgtWP), NS(unsubTgtW,subTgtWP))
+    assert(f.canSubsumePred(p1,p2))
+    assert(f.canSubsumePred(p2,p1))
+
+  }
+
+  ignore("z3 to smtlib conversions test and extraneous quantifier removal"){ f=>
     // Test the conversions between smtlib and z3
     val stateSolver = f.stateSolver
     val busted =

@@ -51,6 +51,7 @@ case object SubsDebug extends SubsumptionMethod
 case object SubsFailOver extends SubsumptionMethod
 /** SMT solver parameterized by its AST or expression type */
 trait StateSolver[T, C <: SolverCtx[T]] {
+  def STRICT_TEST:Boolean
   def mkAssert(t:T)(implicit zCtx:C):Unit
   def pruneUnusedQuant(t: T)(implicit zCtx:C): T
 
@@ -149,7 +150,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   protected def mkExistsMsg(traceFn:T, cond: T => T)(implicit zCtx: C): T
 
-  protected def mkForallMsg(traceFn:T, cond: T => T)(implicit zCtx: C): T
+  protected def mkForallTraceMsg(traceFn:T, cond: T => T)(implicit zCtx: C): T
+  protected def mkForallMsg(cond: T => T)(implicit zCtx:C):T
 
   protected def mkLTEMsg(ind1: T, ind2: T)(implicit zctx: C): T
 
@@ -386,14 +388,15 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 //        mkNot(encodePred(l, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap, constMap))
       case Not(once:AbsMsg) =>
         //mkNot(encodePred(once,messageTranslator,modelVarMap,typeToSolverConst,typeMap,constMap))
-        mkForallMsg(mkTraceFn, msg => mkNot(msgModelsOnce(msg,once, messageTranslator, typeMap, typeToSolverConst, modelVarMap)))
-      case p@Not(_) => throw new IllegalArgumentException(s"arbitrary negation of lspred is not supported: $p")
+        mkForallTraceMsg(mkTraceFn, msg => mkNot(msgModelsOnce(msg,once, messageTranslator, typeMap, typeToSolverConst, modelVarMap)))
+      case Not(p) => //throw new IllegalArgumentException(s"arbitrary negation of lspred is not supported: $p")
+        mkNot(encodePred(p, messageTranslator, modelVarMap, typeToSolverConst, typeMap, constMap))
       case o: AbsMsg =>
         mkExistsMsg(mkTraceFn, msg => msgModelsOnce(msg, o, messageTranslator, typeMap, typeToSolverConst, modelVarMap))
       case NS(m1, m2) =>
         mkExistsMsg(mkTraceFn, msg1 => mkAnd(
           msgModelsOnce(msg1, m1, messageTranslator, typeMap, typeToSolverConst, modelVarMap),
-          mkForallMsg(mkTraceFn, msg2 => mkImplies(mkLTMsg(msg1,msg2),mkNot(msgModelsOnce(msg2, m2, messageTranslator,
+          mkForallTraceMsg(mkTraceFn, msg2 => mkImplies(mkLTMsg(msg1,msg2),mkNot(msgModelsOnce(msg2, m2, messageTranslator,
             typeMap, typeToSolverConst, modelVarMap))))
         ))
       case FreshRef(v) =>
@@ -647,7 +650,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       maxWitness match{
         case None => out
         case Some(len) => mkAnd(out, //max length means each message needs to be equal to one of len consts
-          mkForallMsg(mkTraceFn, m => //note: 0 mkMsgConst makes "zero" message equality
+          mkForallTraceMsg(mkTraceFn, m => //note: 0 mkMsgConst makes "zero" message equality
             mkOr((0 until len).map(i => mkEq(m,mkMsgConst(i,None))).toList)))
       }
     }
@@ -1427,6 +1430,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         // s1f.write(write(s1))
         // s2f.write(write(s2))
         // throw e
+        if (STRICT_TEST)
+          throw new IllegalStateException("Timeout")
 
         // try 3 times with different random seeds
         if(rngTry < 2){
@@ -1549,7 +1554,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 //    val traceLimit = trace.indices.foldLeft(mkZeroIndex){case (acc,_) => mkAddOneIndex(acc)}
     val (traceLimit, isInc) = mkMsgAtIndex(trace.size)
     mkAssert(isInc)
-    mkForallMsg(mkTraceFn, m => mkLTEMsg(m,traceLimit))
+    mkForallTraceMsg(mkTraceFn, m => mkLTEMsg(m,traceLimit))
 
     // Maximum of 10 addresses in trace contained.  This method is typically used for empty traces with no addresses.
     // Only testing has non empty traces passed to this method
@@ -1589,7 +1594,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         ???
     }
     val distinctMsg = mkDistinctT(msgVars)
-    val namedMsg = mkForallMsg(mkTraceFn(),m => mkOr(msgVars.map(msgVar =>
+    val namedMsg = mkForallTraceMsg(mkTraceFn(), m => mkOr(msgVars.map(msgVar =>
       mkEq(m,msgVar))))
 
     val out = mkAnd(List(distinctMsg, namedMsg, msgOrdAndArg))
