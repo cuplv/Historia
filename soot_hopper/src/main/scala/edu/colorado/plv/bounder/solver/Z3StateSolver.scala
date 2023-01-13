@@ -418,7 +418,8 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
         m => initializeNameAxioms(m),
         m => initializeFieldAxioms(m),
         m => initializeOrderAxioms(m),
-        m => initializeArgAxioms(m)
+        m => initializeArgFunAxioms(m),
+        m => initializeArgTotalityAxioms(m) // note: this one adds cycle in quant alternation graph
       ))
     if (pushSatCheck)
       checkSatPush(messageTranslator, getAxioms)
@@ -1200,13 +1201,19 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     }
   }
 
-  override def initializeArgAxioms(messageTranslator: MessageTranslator)(implicit zCtx: Z3SolverCtx): Unit = {
+  override def initializeArgTotalityAxioms(messageTranslator:MessageTranslator)(implicit zCtx: Z3SolverCtx):Unit = {
     val args = zCtx.getArgUsed()
-    args.foreach { arg =>
+    args.foreach{ arg =>
       val f = mkArgFun(arg)
       // Ɐ m:Msg. tracefn(msg) =>
       zCtx.mkAssert(mkForallMsg(msg => mkExistsAddr(NamedPureVar("argAddr"),
         (addr: AST) => f.apply(msg.asInstanceOf[Expr[UninterpretedSort]], addr.asInstanceOf[Expr[UninterpretedSort]]))))
+    }
+  }
+  override def initializeArgFunAxioms(messageTranslator: MessageTranslator)(implicit zCtx: Z3SolverCtx): Unit = {
+    val args = zCtx.getArgUsed()
+    args.foreach { arg =>
+      val f = mkArgFun(arg)
       // assert(forall((m Msg)(a1 Addr)(a2 Addr))( => (and(argfun_1 m a1)(argfun_1 m a2))( = a1 a2 ) ) ) )
       zCtx.mkAssert(mkForallMsg(msg =>
         mkForallAddr(NamedPureVar("a1"), (a1: AST) =>

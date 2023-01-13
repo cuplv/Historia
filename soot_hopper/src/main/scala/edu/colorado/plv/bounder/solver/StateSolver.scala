@@ -79,7 +79,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   def initializeZeroAxioms(messageTranslator: MessageTranslator)(implicit zCtx:C):Unit
 
 
-  def initializeArgAxioms(messageTranslator:MessageTranslator)(implicit zCtx: C):Unit
+  def initializeArgFunAxioms(messageTranslator:MessageTranslator)(implicit zCtx: C):Unit
+  def initializeArgTotalityAxioms(messageTranslator:MessageTranslator)(implicit zCtx: C):Unit
   def initializeOrderAxioms(messageTranslator: MessageTranslator)(implicit zCtx:C):Unit
 
   def initializeFieldAxioms(messageTranslator: MessageTranslator)(implicit zCtx:C):Unit
