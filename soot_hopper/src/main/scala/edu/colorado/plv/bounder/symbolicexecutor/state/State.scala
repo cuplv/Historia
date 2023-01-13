@@ -270,16 +270,34 @@ case class State(sf:StateFormula,
                  alternateCmd: List[Loc] = Nil
                 ) {
   def inlineConstEq():Option[State] = {
+    def swapIfPos(cSf:StateFormula,old:PureVar, newE:PureExpr):Option[StateFormula] = {
+      cSf.heapConstraints.foreach{
+        case (FieldPtEdge(p, _),_) if p == old && newE.isInstanceOf[PureVal] => return None
+        case _ =>
+      }
+      Some(cSf.swapPv(old,newE))
+    }
     @tailrec
     def iInline(cSf:StateFormula):Option[StateFormula] = {
       val newSfOpt = cSf.pureFormula.foldLeft(Some(cSf):Option[StateFormula]) {
-        case (Some(acc), p@PureConstraint(pl1: PureVal, Equals, pl2: PureVal)) if pl1 == pl2 => Some(acc.clearPure(p))
-        case (Some(_), PureConstraint(pl1: PureVal, NotEquals, pl2: PureVal)) if pl1 == pl2 => None
-        case (Some(_), PureConstraint(pl1: PureVal, Equals, pl2: PureVal)) if pl1 != pl2 => None
-        case (Some(acc), p@PureConstraint(pl1: PureVal, NotEquals, pl2: PureVal)) if pl1 != pl2 => Some(acc.clearPure(p))
-        case (Some(acc), p@PureConstraint(pr: PureVar, Equals, pl: PureVal)) => Some(acc.swapPv(pr, pl).clearPure(p))
-        case (Some(acc), p@PureConstraint(pl: PureVal, Equals, pr: PureVar)) => Some(acc.swapPv(pr, pl).clearPure(p))
-        case (acc, _) => acc
+        case (Some(acc), p@PureConstraint(pl1: PureVal, Equals, pl2: PureVal)) if pl1 == pl2 =>
+          Some(acc.clearPure(p))
+        case (Some(_), PureConstraint(pl1: PureVal, NotEquals, pl2: PureVal)) if pl1 == pl2 =>
+          None
+        case (Some(_), PureConstraint(pl1: PureVal, Equals, pl2: PureVal)) if pl1 != pl2 =>
+          None
+        case (Some(acc), p@PureConstraint(pl1: PureVal, NotEquals, pl2: PureVal)) if pl1 != pl2 =>
+          val res = Some(acc.clearPure(p))
+          res
+        case (Some(acc), p@PureConstraint(pr: PureVar, Equals, pl: PureVal)) =>
+          val res = swapIfPos(acc,pr, pl).map(_.clearPure(p))
+          res
+        case (Some(acc), p@PureConstraint(pl: PureVal, Equals, pr: PureVar)) =>
+          val res = swapIfPos(acc,pr, pl).map(_.clearPure(p))
+          //val res = Some(acc.swapPv(pr, pl).clearPure(p))
+          res
+        case (acc, _) =>
+          acc
       }
       newSfOpt match{
         case Some(newSf) if (newSf == cSf) => Some(newSf)

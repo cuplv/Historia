@@ -667,8 +667,8 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     }
 
     val pmv: PureExpr => PureVal = {
-      case p: PureExpr => pvv(p)
       case TopVal => TopVal
+      case p: PureExpr => pvv(p)
       case v =>
         throw new IllegalArgumentException(s"Undefined model variable ${v}")
     }

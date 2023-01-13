@@ -6,7 +6,7 @@ import edu.colorado.plv.bounder.lifestate.LSPredAnyOrder.depthToAny
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, CLInit, Exists, Forall, FreshRef, LSAnyPred, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, Signature}
 import edu.colorado.plv.bounder.solver.EncodingTools.Assign
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, BotVal, ClassVal, CmpOp, ConcreteVal, Equals, NamedPureVar, NotEquals, NullVal, PureExpr, PureVal, PureVar, State, TopVal, TypeComp}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, BotVal, ClassVal, CmpOp, ConcreteVal, Equals, IntVal, NamedPureVar, NotEquals, NullVal, PureExpr, PureVal, PureVar, State, TopVal, TypeComp}
 
 import scala.util.parsing.combinator._
 import upickle.default.{macroRW, ReadWriter => RW}
@@ -214,11 +214,13 @@ object LifeState {
 
   case class LSConstraint(v1:PureVar,op:CmpOp,v2:PureExpr ) extends LSBexp {
     override def swap(swapMap: Map[PureVar, PureExpr]) = {
-      def swapIfVar[T<:PureExpr](v: T):T= v match{
-        case v2:PureVar if swapMap.contains(v2) => swapMap(v2).asInstanceOf[T]
+      def swapIfVar(v: PureExpr):PureExpr= v match{
+        case v2:PureVar if swapMap.contains(v2) => swapMap(v2)
         case v2 => v2
       }
-      LSConstraint(swapIfVar(v1),op, swapIfVar(v2))
+      val v1Swap = swapIfVar(v1)
+      val v2Swap = swapIfVar(v2)
+      LSConstraint.mk(v1Swap,op,v2Swap)
     }
     override def contains(mt: MessageType, sig: Signature)(implicit ch: ClassHierarchyConstraints): Boolean =
       false
@@ -241,20 +243,26 @@ object LifeState {
     }
   }
   object LSConstraint{
-    def mk(v1:PureExpr, op:CmpOp, v2:PureExpr):LSPred = (v1,op,v2) match {
-      case (TopVal, _,_) => LSTrue
-      case (_,_,TopVal) => LSTrue
-      case (BotVal, _, _) => LSFalse
-      case (_, _, BotVal) => LSFalse
-      case (v1:PureVal, Equals, v2:PureVal) if v1 == v2 => LSTrue
-      case (v1:PureVal, Equals, v2:PureVal) if v1 != v2 => LSFalse
-      case (v1:PureVal, NotEquals, v2:PureVal) if v1 != v2 => LSTrue
-      case (v1:PureVal, NotEquals, v2:PureVal) if v1 == v2 => LSFalse
-      case (v1:PureVar, op, v2:PureExpr) => LSConstraint(v1,op,v2)
-      case (v1:PureExpr, Equals, v2:PureVar) => LSConstraint(v2,op,v1)
-      case (v1:PureExpr, NotEquals, v2:PureVar) => LSConstraint(v2,op,v1)
-      case v => throw new IllegalArgumentException(s"cannot make comp constraint: $v")
-    }
+    def mk(v1:PureExpr, op:CmpOp, v2:PureExpr):LSPred =
+      (v1,op,v2) match {
+        case (TopVal, _,_) => LSTrue
+        case (_,_,TopVal) => LSTrue
+        case (BotVal, _, _) => LSFalse
+        case (_, _, BotVal) => LSFalse
+        case (IntVal(1), op, BoolVal(true)) =>
+          if(op == Equals) LSTrue else LSFalse
+        case (IntVal(0), op, BoolVal(false)) =>
+          if(op == Equals) LSTrue else LSFalse
+        case (b:BoolVal, op, i:IntVal) => mk(i,op,b)
+        case (v1: PureVal, Equals, v2: PureVal) if v1 == v2 => LSTrue
+        case (v1: PureVal, Equals, v2: PureVal) if v1 != v2 => LSFalse
+        case (v1:PureVal, NotEquals, v2:PureVal) if v1 != v2 => LSTrue
+        case (v1:PureVal, NotEquals, v2:PureVal) if v1 == v2 => LSFalse
+        case (v1:PureVar, op, v2:PureExpr) => LSConstraint(v1,op,v2)
+        case (v1:PureExpr, Equals, v2:PureVar) => LSConstraint(v2,op,v1)
+        case (v1:PureExpr, NotEquals, v2:PureVar) => LSConstraint(v2,op,v1)
+        case v => throw new IllegalArgumentException(s"cannot make comp constraint: $v")
+      }
     implicit val rw:RW[LSConstraint] = macroRW
   }
 
@@ -903,13 +911,12 @@ object LifeState {
         case _ => None
       }
 
-      val toSwap: Map[PureVar,PureVar] = allPairs.flatMap{
+      val toSwap: Map[PureVar,PureExpr] = allPairs.flatMap{
         case (p1:PureVar, p2:PureVar) => Some(p1,p2)
         case (TopVal, _) => None
         case (_, TopVal) =>
           ???
-        case (p1:PureVar, p2:PureExpr) =>
-          ??? //TODO: refactor swap to accept PureExpr? (p1 won't exist after inst)
+        case (p1:PureVar, p2:PureExpr) => Some(p1,p2)
         case _ => None
       }.toMap
 
