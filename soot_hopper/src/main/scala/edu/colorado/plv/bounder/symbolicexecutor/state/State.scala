@@ -88,6 +88,8 @@ case class StateFormula(callStack: List[CallStackFrame],
                         typeConstraints: Map[PureVar, TypeSet],
                         traceAbstraction: AbstractTrace,
                        ){
+  def clearPure(p: PureConstraint): StateFormula = this.copy(pureFormula = pureFormula - p)
+
   def makeHashable(specSpace: SpecSpace):HashableStateFormula = {
     val pred = EncodingTools.rhsToPred(traceAbstraction.rightOfArrow,specSpace)
     HashableStateFormula(callStack, heapConstraints, pureFormula, typeConstraints , pred)
@@ -119,7 +121,7 @@ case class StateFormula(callStack: List[CallStackFrame],
       EncodingTools.rhsToPred(traceAbstraction.rightOfArrow, spec)
         .flatMap(p => SpecSpace.allI(p))
   }
-  def swapPv(oldPv : PureVar, newPv: PureVar):StateFormula = {
+  def swapPv(oldPv : PureVar, newPv: PureExpr):StateFormula = {
     if(oldPv == newPv)
       this
     else {
@@ -128,15 +130,23 @@ case class StateFormula(callStack: List[CallStackFrame],
         heapConstraints = heapConstraints.map(hc => heapSwapPv(oldPv, newPv, hc)),
         pureFormula = pureFormula.map(pf => pureSwapPv(oldPv, newPv, pf)),
         traceAbstraction = traceSwapPv(oldPv, newPv, traceAbstraction),
-        typeConstraints = typeConstraints.map {
-          case (k, v) if k == oldPv => (newPv, v)
-          case (k, v) => (k, v)
+        typeConstraints = newPv match{
+          case newPvv:PureVar =>
+            typeConstraints.map {
+              case (k, v) if k == oldPv => (newPvv, v)
+              case (k, v) => (k, v)
+            }
+          case _:PureExpr => //don't care about alloc sites for const
+            typeConstraints.flatMap{
+              case (k,v) if k == oldPv => None
+              case (k,v) => Some((k,v))
+            }
         }
       )
     }
   }
 
-  private def pureExprSwap[T<:PureExpr](oldPv : PureVar, newPv : PureVar, expr:T): T = expr match{
+  private def pureExprSwap[T<:PureExpr](oldPv : PureVar, newPv : PureExpr, expr:T): T = expr match{
     case p:PureVar if p==oldPv =>
       newPv.asInstanceOf[T]
     case pv:PureVar =>
@@ -144,12 +154,12 @@ case class StateFormula(callStack: List[CallStackFrame],
     case pv: PureVal =>
       pv.asInstanceOf[T]
   }
-  private def stackSwapPv(oldPv : PureVar, newPv : PureVar, frame: CallStackFrame): CallStackFrame =
+  private def stackSwapPv(oldPv : PureVar, newPv : PureExpr, frame: CallStackFrame): CallStackFrame =
     frame.copy(locals = frame.locals.map{
       case (k,v) => (k->pureExprSwap(oldPv, newPv, v))
     })
 
-  private def heapSwapPv(oldPv : PureVar, newPv : PureVar, hv: (HeapPtEdge, PureExpr)):(HeapPtEdge, PureExpr) = hv match{
+  private def heapSwapPv(oldPv : PureVar, newPv : PureExpr, hv: (HeapPtEdge, PureExpr)):(HeapPtEdge, PureExpr) = hv match{
     case (FieldPtEdge(pv, fieldName), pe) =>
       (FieldPtEdge(pureExprSwap(oldPv, newPv, pv), fieldName), pureExprSwap(oldPv, newPv, pe))
     case (StaticPtEdge(clazz,fname), pe) =>
@@ -157,13 +167,13 @@ case class StateFormula(callStack: List[CallStackFrame],
     case (ArrayPtEdge(base, index), pe) =>
       (ArrayPtEdge(pureExprSwap(oldPv,newPv, base), pureExprSwap(oldPv,newPv,index)),pureExprSwap(oldPv,newPv,pe))
   }
-  private def pureSwapPv(oldPv : PureVar, newPv : PureVar,
+  private def pureSwapPv(oldPv : PureVar, newPv : PureExpr,
                          pureConstraint: PureConstraint):PureConstraint = pureConstraint match{
     case PureConstraint(lhs, op, rhs) =>
       PureConstraint(pureExprSwap(oldPv, newPv, lhs),op, pureExprSwap(oldPv, newPv, rhs))
   }
 
-  private def traceSwapPv(oldPv : PureVar, newPv : PureVar, tr: AbstractTrace):AbstractTrace = {
+  private def traceSwapPv(oldPv : PureVar, newPv : PureExpr, tr: AbstractTrace):AbstractTrace = {
 //    val nmv = tr.modelVars.map{
 //      case (k,v) => (k,pureExprSwap(oldPv, newPv, v))
 //    }
@@ -259,6 +269,27 @@ case class State(sf:StateFormula,
                  nextCmd: List[Loc] = Nil,
                  alternateCmd: List[Loc] = Nil
                 ) {
+  def inlineConstEq():Option[State] = {
+    @tailrec
+    def iInline(cSf:StateFormula):Option[StateFormula] = {
+      val newSfOpt = cSf.pureFormula.foldLeft(Some(cSf):Option[StateFormula]) {
+        case (Some(acc), p@PureConstraint(pl1: PureVal, Equals, pl2: PureVal)) if pl1 == pl2 => Some(acc.clearPure(p))
+        case (Some(_), PureConstraint(pl1: PureVal, NotEquals, pl2: PureVal)) if pl1 == pl2 => None
+        case (Some(_), PureConstraint(pl1: PureVal, Equals, pl2: PureVal)) if pl1 != pl2 => None
+        case (Some(acc), p@PureConstraint(pl1: PureVal, NotEquals, pl2: PureVal)) if pl1 != pl2 => Some(acc.clearPure(p))
+        case (Some(acc), p@PureConstraint(pr: PureVar, Equals, pl: PureVal)) => Some(acc.swapPv(pr, pl).clearPure(p))
+        case (Some(acc), p@PureConstraint(pl: PureVal, Equals, pr: PureVar)) => Some(acc.swapPv(pr, pl).clearPure(p))
+        case (acc, _) => acc
+      }
+      newSfOpt match{
+        case Some(newSf) if (newSf == cSf) => Some(newSf)
+        case Some(newSf)  => iInline(newSf)
+        case None => None
+      }
+    }
+    iInline(sf).map{newSf => this.copy(sf = newSf)}
+  }
+
   def equivPv(pv: PureVar):Set[PureVar] = {
     def innerFP(pvs:Set[PureVar]) : Set[PureVar]= {
       val nextpvs = sf.pureFormula.foldLeft(pvs){
@@ -300,7 +331,7 @@ case class State(sf:StateFormula,
   def addPureConstraint(p:PureConstraint):State = {
     this.copy(sf = sf.copy(pureFormula = sf.pureFormula + p))
   }
-  def swapPv(oldPv : PureVar, newPv: PureVar):State = {
+  def swapPv(oldPv : PureVar, newPv: PureExpr):State = {
     this.copy(sf = sf.swapPv(oldPv, newPv))
   }
   def removePureConstraint(pc:PureConstraint) = {

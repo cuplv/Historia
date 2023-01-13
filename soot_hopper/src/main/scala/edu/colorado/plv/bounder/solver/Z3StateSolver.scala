@@ -634,7 +634,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   }
 
   override def explainWitness(messageTranslator: MessageTranslator,
-                              pvMap: Map[PureVar, AST])(implicit zCtx: Z3SolverCtx): WitnessExplanation = {
+                              pvMap: Map[PureExpr, AST])(implicit zCtx: Z3SolverCtx): WitnessExplanation = {
     //TODO: have not implemented the set trace function here, will need this for synth loop
     val ctx = zCtx.ctx
     assert(messageTranslator.states.size == 1, "Explain witness only applicable with single state")
@@ -648,17 +648,17 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     val mv = ta.modelVars
     val rightOfArrow = ta.rightOfArrow
 
-    val pvModelValues: Map[PureVar, Expr[UninterpretedSort]] = pvMap.map {
+    val pvModelValues: Map[PureExpr, Expr[UninterpretedSort]] = pvMap.map {
       case (pureVar, ast) =>
         (pureVar, model.eval(ast.asInstanceOf[Expr[UninterpretedSort]], true))
     }
     val pvValues: Map[Expr[UninterpretedSort], Int] = pvModelValues.values.toSet.zipWithIndex.toMap
-    val constFn: FuncDecl[UninterpretedSort] = mkConstFn
+//    val constFn: FuncDecl[UninterpretedSort] = mkConstFn
     val constMap = messageTranslator.getConstMap()
 
-    def pvv(pvi: PureVar): ConcreteVal = {
+    def pvv(pvi: PureExpr): ConcreteVal = {
       val pv = pvModelValues(pvi)
-      val isNull = constMap.contains(NullVal) && model.eval(mkEq(constFn.apply(pv),
+      val isNull = constMap.contains(NullVal) && model.eval(mkEq(pv,
         constMap(NullVal)).asInstanceOf[Expr[UninterpretedSort]], true).isTrue
       if (isNull)
         NullVal
@@ -667,7 +667,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     }
 
     val pmv: PureExpr => PureVal = {
-      case p: PureVar => pvv(p)
+      case p: PureExpr => pvv(p)
       case TopVal => TopVal
       case v =>
         throw new IllegalArgumentException(s"Undefined model variable ${v}")
@@ -942,10 +942,10 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     zCtx.ctx.mkFuncDecl(s"argfun_$i", args, zCtx.ctx.mkBoolSort())
   }
 
-  protected def mkConstValueConstraint(addr: AST)(implicit zCtx: Z3SolverCtx): AST = {
-    val constFn = zCtx.ctx.mkFuncDecl("constFn", addrSort, constSort)
-    constFn.apply(addr.asInstanceOf[Expr[UninterpretedSort]])
-  }
+//  protected def mkConstValueConstraint(addr: AST)(implicit zCtx: Z3SolverCtx): AST = {
+//    val constFn = zCtx.ctx.mkFuncDecl("constFn", addrSort, constSort)
+//    constFn.apply(addr.asInstanceOf[Expr[UninterpretedSort]])
+//  }
 
   override protected def mkIName(enum: AST, enumNum: Int)(implicit zCtx: Z3SolverCtx): AST = {
     enum.asInstanceOf[EnumSort[_]].getConst(enumNum)
@@ -993,7 +993,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   }
 
 
-  override protected def mkDistinct(pvList: Iterable[PureVar], pvMap: Map[PureVar, AST])(implicit zCtx: Z3SolverCtx): AST = {
+  override protected def mkDistinct(pvList: Iterable[PureVar], pvMap: Map[PureExpr, AST])(implicit zCtx: Z3SolverCtx): AST = {
     if (pvList.isEmpty) {
       mkBoolVal(boolVal = true)
     } else {
@@ -1016,11 +1016,11 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
 
   //TODO: hack to go b
   def functFromName(name: String)(implicit zCtx: Z3SolverCtx): FuncDecl[_] = {
-    if (name == "msgLTE")
+    if (name == "msgLTE") {
       msgLTE
-    else if (name == "constFn")
-      mkConstFn
-    else if (name == "localfn_")
+      //    else if (name == "constFn")
+      //      mkConstFn
+    } else if (name == "localfn_")
       mkLocalFn
     else if (name == "addressToTypeFn")
       createTypeFun
@@ -1054,9 +1054,9 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
       msgSort
     } else if (st("local_")) {
       localSort
-    } else if (st("const_"))
-      constSort
-    else if (st("pv-") || st("npv-") || st("a1!") || st("a2!") || st("a3!"))
+      //    } else if (st("const_"))
+      //      constSort
+    }else if (st("pv-") || st("npv-") || st("a1!") || st("a2!") || st("a3!"))
       addrSort
     else if (st("I_CB") || st("I_CI") || st("iname_"))
       iNameSort
@@ -1114,7 +1114,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
   protected def mkConstConstraintsMap(pvs: Set[PureVal])(implicit zCtx: Z3SolverCtx): Map[PureVal, AST] = {
     val ctx = zCtx.ctx
     val constMap = pvs.map { t =>
-      t -> ctx.mkConst(t.solverName, constSort)
+      t -> ctx.mkConst(t.solverName, addrSort)
     }.toMap
     constMap
   }
@@ -1129,7 +1129,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
 
   protected def msgSort(implicit zCtx: Z3SolverCtx): UninterpretedSort = zCtx.ctx.mkUninterpretedSort("Msg")
 
-  protected def constSort(implicit zCtx: Z3SolverCtx): UninterpretedSort = zCtx.ctx.mkUninterpretedSort("ConstVals")
+//  protected def constSort(implicit zCtx: Z3SolverCtx): UninterpretedSort = zCtx.ctx.mkUninterpretedSort("ConstVals")
 
   protected def localSort(implicit zCtx: Z3SolverCtx): UninterpretedSort = zCtx.ctx.mkUninterpretedSort("Locals")
 
@@ -1143,9 +1143,9 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     zCtx.ctx.mkFuncDecl("msgLTE", msgMsg, zCtx.ctx.mkBoolSort)
   }
 
-  private def mkConstFn(implicit zCtx: Z3SolverCtx): FuncDecl[UninterpretedSort] = {
-    zCtx.ctx.mkFuncDecl("constFn", addrSort, constSort)
-  }
+//  private def mkConstFn(implicit zCtx: Z3SolverCtx): FuncDecl[UninterpretedSort] = {
+//    zCtx.ctx.mkFuncDecl("constFn", addrSort, constSort)
+//  }
 
   override def initializeNameAxioms(messageTranslator: MessageTranslator)(implicit zCtx: Z3SolverCtx): Unit = {
     if (!zCtx.uninterpretedTypes.contains(iNameString)) {

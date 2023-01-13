@@ -213,7 +213,7 @@ object LifeState {
 
 
   case class LSConstraint(v1:PureVar,op:CmpOp,v2:PureExpr ) extends LSBexp {
-    override def swap(swapMap: Map[PureVar, PureVar]) = {
+    override def swap(swapMap: Map[PureVar, PureExpr]) = {
       def swapIfVar[T<:PureExpr](v: T):T= v match{
         case v2:PureVar if swapMap.contains(v2) => swapMap(v2).asInstanceOf[T]
         case v2 => v2
@@ -261,7 +261,7 @@ object LifeState {
   sealed trait LSPred {
     def toTex:String
 
-    def swap(swapMap: Map[PureVar, PureVar]):LSPred
+    def swap(swapMap: Map[PureVar, PureExpr]):LSPred
 
     def contains(mt:MessageType,sig: Signature)(implicit ch:ClassHierarchyConstraints):Boolean
 
@@ -275,7 +275,7 @@ object LifeState {
   case object LSAnyPred extends LSPred {
     override def toTex: String = "LSAny"
 
-    override def swap(swapMap: Map[PureVar, PureVar]): LSPred = LSAnyPred
+    override def swap(swapMap: Map[PureVar, PureExpr]): LSPred = LSAnyPred
 
     override def contains(mt: MessageType, sig: Signature)(implicit ch: ClassHierarchyConstraints): Boolean =
       throw new IllegalStateException("Contains called on LSAny")
@@ -299,7 +299,7 @@ object LifeState {
 //    override def toString:String =
 //      if(vars.isEmpty) p.toString else s"Forall([${vars.mkString(",")}], ${p.toString})"
     override def toTex: String = ???
-    override def swap(swapMap: Map[PureVar, PureVar]): Forall = {
+    override def swap(swapMap: Map[PureVar, PureExpr]): Forall = {
       assert(!vars.exists(v => swapMap.contains(v)),
         s"Swap failed, quantified forall vars $vars overlaps with swapMap: $swapMap ")
       Forall(vars, p.swap(swapMap))
@@ -319,7 +319,7 @@ object LifeState {
   case class Exists(vars:List[PureVar], p:LSPred) extends LSPred  with LSUnOp {
     //    override def toString:String =
     //      if(vars.isEmpty) p.toString else s"Exists([${vars.mkString(",")}],${p.toString})"
-    override def swap(swapMap: Map[PureVar, PureVar]): Exists = {
+    override def swap(swapMap: Map[PureVar, PureExpr]): Exists = {
       assert(!vars.exists(v => swapMap.contains(v)),
         s"Swap failed, quantified exist vars $vars overlaps with swapMap: $swapMap ")
       Exists(vars, p.swap(swapMap))
@@ -343,7 +343,7 @@ object LifeState {
     override def identitySignature: String =
       throw new IllegalStateException("No valid identity signature for CLInit")
 
-    override def swap(swapMap: Map[PureVar, PureVar]): CLInit = this
+    override def swap(swapMap: Map[PureVar, PureExpr]): CLInit = this
 
     override def contains(mt: MessageType, sig: Signature)(implicit ch: ClassHierarchyConstraints): Boolean =
       false
@@ -371,8 +371,13 @@ object LifeState {
 
     override def lsVars: List[PureVar] = lsVar.toList
 
-    override def swap(swapMap: Map[PureVar, PureVar]): LifeState.FreshRef = {
-      FreshRef(swapMap.getOrElse(v,v))
+    override def swap(swapMap: Map[PureVar, PureExpr]): LSPred = {
+      swapMap.getOrElse(v,v) match{
+        case v:PureVar => FreshRef(v)
+        case NullVal => LSFalse
+        case _ =>
+          ??? //TODO: this probably happens with boxed values, figure out what to do later
+      }
     }
 
     override def toString: String = v.toString
@@ -408,7 +413,7 @@ object LifeState {
   val LSGenerated = "LS_.*".r
 
   case class LSImplies(l1:LSPred, l2:LSPred) extends LSPred{
-    override def swap(swapMap: Map[PureVar, PureVar]) = LSImplies(l1.swap(swapMap), l2.swap(swapMap))
+    override def swap(swapMap: Map[PureVar, PureExpr]) = LSImplies(l1.swap(swapMap), l2.swap(swapMap))
 
     override def contains(mt: MessageType, sig: Signature)(implicit ch: ClassHierarchyConstraints): Boolean =
       l1.contains(mt,sig) || l2.contains(mt,sig)
@@ -427,7 +432,7 @@ object LifeState {
     override def contains(mt:MessageType, sig: Signature)(implicit ch:ClassHierarchyConstraints): Boolean =
       l1.contains(mt,sig) || l2.contains(mt,sig)
 
-    override def swap(swapWithFresh: Map[PureVar, PureVar]) =
+    override def swap(swapWithFresh: Map[PureVar, PureExpr]) =
       And(l1.swap(swapWithFresh), l2.swap(swapWithFresh))
 
     override def toString: String = (l1,l2) match {
@@ -447,7 +452,7 @@ object LifeState {
     override def contains(mt:MessageType,sig: Signature)(implicit ch:ClassHierarchyConstraints): Boolean =
       p.contains(mt,sig)
 
-    override def swap(swapMap: Map[PureVar, PureVar]) = Not(p.swap(swapMap))
+    override def swap(swapMap: Map[PureVar, PureExpr]) = Not(p.swap(swapMap))
 
     override def toString: String = s"(Not ${p})"
 
@@ -468,7 +473,7 @@ object LifeState {
     override def contains(mt:MessageType,sig: Signature)(implicit ch:ClassHierarchyConstraints): Boolean =
       l1.contains(mt, sig) || l2.contains(mt,sig)
 
-    override def swap(swapMap: Map[PureVar, PureVar]) = Or(l1.swap(swapMap), l2.swap(swapMap))
+    override def swap(swapMap: Map[PureVar, PureExpr]) = Or(l1.swap(swapMap), l2.swap(swapMap))
 
     override def toString: String = (l1, l2) match {
       case (LSFalse, l) => l.toString
@@ -484,7 +489,7 @@ object LifeState {
     override def lsVar: Set[PureVar] = Set.empty
     override def contains(mt:MessageType,sig: Signature)(implicit ch:ClassHierarchyConstraints): Boolean = false
 
-    override def swap(swapMap: Map[PureVar, PureVar]) = this
+    override def swap(swapMap: Map[PureVar, PureExpr]) = this
 
     override def toString: String = "True"
 
@@ -494,7 +499,7 @@ object LifeState {
     override def lsVar: Set[PureVar] = Set.empty
     override def contains(mt:MessageType,sig: Signature)(implicit ch:ClassHierarchyConstraints): Boolean = false
 
-    override def swap(swapMap: Map[PureVar, PureVar]) = this
+    override def swap(swapMap: Map[PureVar, PureExpr]) = this
 
     override def toString: String = "False"
 
@@ -697,7 +702,7 @@ object LifeState {
       case OAbsMsg(mt, signatures, _) => OAbsMsg(mt, signatures, lsVars)
     }
 
-    override def swap(swapMap: Map[PureVar, PureVar]): AbsMsg
+    override def swap(swapMap: Map[PureVar, PureExpr]): AbsMsg
 
     def mToTex: String
   }
@@ -789,7 +794,7 @@ object LifeState {
     override def contains(omt:MessageType,sig: Signature)(implicit ch:ClassHierarchyConstraints): Boolean =
       omt == mt && signatures.matches(sig)
 
-    override def swap(swapMap: Map[PureVar, PureVar]): AbsMsg = {
+    override def swap(swapMap: Map[PureVar, PureExpr]): AbsMsg = {
       val newLSVars = lsVars.map{
         case v:PureVar => swapMap.getOrElse(v,v)
         case c => c
@@ -819,7 +824,7 @@ object LifeState {
     override def contains(mt:MessageType,sig: Signature)(implicit ch:ClassHierarchyConstraints): Boolean =
       i1.contains(mt, sig) || i2.contains(mt, sig)
 
-    override def swap(swapMap: Map[PureVar, PureVar]) = NS(i1.swap(swapMap), i2.swap(swapMap))
+    override def swap(swapMap: Map[PureVar, PureExpr]) = NS(i1.swap(swapMap), i2.swap(swapMap))
 
     override def toString: String = s"NS( $i1 , $i2 )"
 

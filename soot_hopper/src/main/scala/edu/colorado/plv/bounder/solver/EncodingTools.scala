@@ -373,6 +373,7 @@ object EncodingTools {
             //            Some(acc.copy(pureFormula = acc.pureFormula - pc))
             Some(acc.removePureConstraint(pc))
           case (acc, PureConstraint(lhs, NotEquals, rhs)) => acc
+          case (acc, PureConstraint(lhs:PureVar, Equals, v:PureVal)) => acc.map{s => s.swapPv(lhs,v)}
           case (acc, PureConstraint(_, _, _:PureVal)) => acc
           case (acc, _) =>
             ???
