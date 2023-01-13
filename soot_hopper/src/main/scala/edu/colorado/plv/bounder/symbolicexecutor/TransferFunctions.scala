@@ -718,23 +718,29 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
                 .addPureConstraint(PureConstraint(lhsV, Equals, heapV))
             case _ => throw new IllegalStateException()
           }.toSet
-          val heapCell = FieldPtEdge(basev.asInstanceOf[PureVar], fieldName)
 
-          val pfFromExisting = if(state1.sf.heapConstraints.contains(heapCell)) {
-            val oldV = state1.sf.heapConstraints(heapCell)
-            Some(PureConstraint(oldV, Equals, lhsV))
-          }else {
-            None
-          }
-          val stateWhereNoHeapCellIsAliased = state1.copy(sf = state1.sf.copy(
-              heapConstraints = state1.heapConstraints + (heapCell -> lhsV),
-              pureFormula = state1.pureFormula ++ pfFromExisting ++ possibleHeapCells.map {
-                case (FieldPtEdge(p, _), _) => PureConstraint(p, NotEquals, basev)
-                case _ => throw new IllegalStateException()
+          basev match{
+            case basev:PureVar => {
+              val heapCell = FieldPtEdge(basev, fieldName)
+
+              val pfFromExisting = if (state1.sf.heapConstraints.contains(heapCell)) {
+                val oldV = state1.sf.heapConstraints(heapCell)
+                Some(PureConstraint(oldV, Equals, lhsV))
+              } else {
+                None
               }
-          ))
-          val res = statesWhereBaseAliasesExisting + stateWhereNoHeapCellIsAliased
-          res.map(s => s.clearLVal(lhs))
+              val stateWhereNoHeapCellIsAliased = state1.copy(sf = state1.sf.copy(
+                heapConstraints = state1.heapConstraints + (heapCell -> lhsV),
+                pureFormula = state1.pureFormula ++ pfFromExisting ++ possibleHeapCells.map {
+                  case (FieldPtEdge(p, _), _) => PureConstraint(p, NotEquals, basev)
+                  case _ => throw new IllegalStateException()
+                }
+              ))
+              val res = statesWhereBaseAliasesExisting + stateWhereNoHeapCellIsAliased
+              res.map(s => s.clearLVal(lhs))
+            }
+            case _:PureVal => Set.empty
+          }
         }
         case None => Set(state)
       }
