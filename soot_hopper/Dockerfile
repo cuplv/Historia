@@ -37,7 +37,7 @@ RUN apt-get update -qq -y \
  && wget -qO- https://github.com/Z3Prover/z3/archive/z3-${Z3_VERSION}.tar.gz | tar xz --strip-components=1 \
  && python scripts/mk_make.py --java \
  && cd build \
- && make \
+ && make -j \
  && sudo make install \
  && cd / \
  && rm -rf "$Z3_DIR"
