@@ -553,7 +553,9 @@ class ExperimentsDb(bounderJar:Option[String] = None){
         val outF = File(cfg.outFolder.get.replace("${baseDirOut}",baseDir.toString))
         outF.createDirectories()
         // TODO: read results of new structure
-        val runCfg = cfg.copy(apkPath = apkPath.toString, specSet = SpecFile(specFile.toString) )
+        val specContents = specFile.contentAsString
+        val runCfg = cfg.copy(apkPath = apkPath.toString,
+          specSet = if(specContents.trim == "") TopSpecSet else read[PickleSpec](specContents))
         val cfgFile = (baseDir / "config.json")
         cfgFile.append(write(runCfg))
         val z3Override = if(BounderUtil.mac)

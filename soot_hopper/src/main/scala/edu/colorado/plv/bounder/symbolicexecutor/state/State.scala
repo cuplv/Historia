@@ -361,7 +361,7 @@ case class State(sf:StateFormula,
   def constrainOneOfType(pe: PureExpr, classNames: Set[String], ch:ClassHierarchyConstraints):State = {
     val pv = pe match {
       case pureVar: PureVar => pureVar
-      case _: PureVal =>
+      case _: PureVal => //TODO: should we ever constrain here?
         return this
     }
 
