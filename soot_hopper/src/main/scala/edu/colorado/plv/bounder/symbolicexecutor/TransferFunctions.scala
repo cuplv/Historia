@@ -477,9 +477,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
           val v:PureVar = materializedReceiver.get.asInstanceOf[PureVar]
           (v,stateWithFrame.defineAs(LocalWrapper("@this","_"), v))
         }
-        val pts = stateWThis.typeConstraints.get(thisV).map(_.intersect(receiverTypesFromPT.get))
+        val pts = stateWThis.typeConstraints.get(thisV.asInstanceOf[PureVar]).map(_.intersect(receiverTypesFromPT.get))
           .getOrElse(receiverTypesFromPT.get)
-        Set(stateWThis.addTypeConstraint(thisV,pts))
+        Set(stateWThis.addTypeConstraint(thisV.asInstanceOf[PureVar],pts))
       } else {
         Set(stateWithFrame)
       }
@@ -718,7 +718,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
                 .addPureConstraint(PureConstraint(lhsV, Equals, heapV))
             case _ => throw new IllegalStateException()
           }.toSet
-          val heapCell = FieldPtEdge(basev, fieldName)
+          val heapCell = FieldPtEdge(basev.asInstanceOf[PureVar], fieldName)
 
           val pfFromExisting = if(state1.sf.heapConstraints.contains(heapCell)) {
             val oldV = state1.sf.heapConstraints(heapCell)

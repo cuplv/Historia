@@ -358,7 +358,13 @@ case class State(sf:StateFormula,
   def setCallStack(callStack: List[CallStackFrame]):State =
     this.copy(sf = sf.copy(callStack = callStack))
 
-  def constrainOneOfType(pv: PureVar, classNames: Set[String], ch:ClassHierarchyConstraints):State = {
+  def constrainOneOfType(pe: PureExpr, classNames: Set[String], ch:ClassHierarchyConstraints):State = {
+    val pv = pe match {
+      case pureVar: PureVar => pureVar
+      case _: PureVal =>
+        return this
+    }
+
     if(classNames.contains("_")) {
       return this
     }
@@ -383,7 +389,13 @@ case class State(sf:StateFormula,
     addTypeConstraint(pv,newTS)
   }
 
-  def constrainUpperType(pv:PureVar, clazz:String, ch:ClassHierarchyConstraints):State = {
+  def constrainUpperType(pe:PureExpr, clazz:String, ch:ClassHierarchyConstraints):State = {
+    val pv = pe match {
+      case pureVal: PureVal =>
+        return this
+      case pureVar: PureVar =>
+        pureVar
+    }
     if(clazz == "_"){
       return this
     }
@@ -690,7 +702,7 @@ case class State(sf:StateFormula,
    * @return
    */
   def getOrDefine[M,C](l : RVal, method:Option[MethodLoc])
-                      (implicit ch: ClassHierarchyConstraints, w:IRWrapper[M,C]): (PureVar,State) = l match{
+                      (implicit ch: ClassHierarchyConstraints, w:IRWrapper[M,C]): (PureExpr,State) = l match{
     case lw@LocalWrapper(name,localType) =>
       val cshead = sf.callStack.headOption.getOrElse(???) //TODO: add new stack frame if empty?
       val thisVar:Option[LocalWrapper] = w.getThisVar(cshead.exitLoc)
@@ -699,6 +711,7 @@ case class State(sf:StateFormula,
       val cstail = if (sf.callStack.isEmpty) Nil else sf.callStack.tail
 //      cshead.locals.get(StackVar(name)) match {
       get(lw) match {
+        case Some(v:PureVal) => (v,this)
         case Some(v:PureVar) => (v, this)
         case None if thisVar.contains(l) && cshead.locals.contains(StackVar("@this")) =>
           // case where we are getting/defining the variable representing "this" typically "r0"
