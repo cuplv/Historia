@@ -379,16 +379,6 @@ case class State(sf:StateFormula,
     addTypeConstraint(pv,newTS)
   }
 
-  def constrainIsType(pv: PureVar, className: String, ch: ClassHierarchyConstraints): State = {
-    if(className == "_") {
-      return this
-    }
-    val mask = BitTypeSet(ch.classToIntCache(className))
-    val newTS = sf.typeConstraints.get(pv).map(_.intersect(mask)).getOrElse(mask)
-//    this.copy(typeConstraints= typeConstraints + (pv -> newTS))
-    addTypeConstraint(pv,newTS)
-  }
-
   def constrainUpperType(pe:PureExpr, clazz:String, ch:ClassHierarchyConstraints):State = {
     val pv = pe match {
       case pureVal: PureVal =>
