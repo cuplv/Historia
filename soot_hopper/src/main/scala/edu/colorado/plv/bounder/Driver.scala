@@ -196,6 +196,8 @@ object Driver {
     OParser.parse(parser, args, Action()) match{
       case Some(act) if act.baseDirApk.isDefined && act.baseDirOut.isDefined =>
         runAction(act)
+      case Some(act) if act.mode == ExpLoop =>
+        runAction(act) // don't worry about paths if exp loop
       case Some(act) =>
         // If base directories are not defined, assume same as config
         assert(act.config.configPath.isDefined, "Internal failure, config file path not defined")
@@ -206,7 +208,7 @@ object Driver {
     }
   }
 
-  def expLoop(act: Action): Unit = {
+  def expLoop(): Unit = {
     val expDb = new ExperimentsDb
     expDb.loop()
     println()
@@ -255,8 +257,8 @@ object Driver {
         sampleDeref(cfg, act.getApkPath, act.getOutFolder, act.filter)
       case act@Action(ReadDB,_,_,_,_,_,_) =>
         readDB(File(act.getOutFolder))
-      case act@Action(ExpLoop,_, _,_,_,_,_) =>
-        expLoop(act)
+      case Action(ExpLoop,_, _,_,_,_,_) =>
+        expLoop()
       case act@Action(MakeAllDeref,_,_,cfg,_,tag,_) =>
         makeAllDeref(act.getApkPath, act.filter, File(act.getOutFolder),cfg, tag)
       case Action(Info, Some(out), Some(apk), cfg, _, _, _) =>
