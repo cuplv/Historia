@@ -230,6 +230,73 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
 
     makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
   }
+
+  test("Test simple alloc then deref.") { f =>
+    // TODO:  This test [should] exercises some of the substitution behavior of State (line 282)
+    val src =
+      """package com.example.createdestroy;
+        |import androidx.appcompat.app.AppCompatActivity;
+        |import android.os.Bundle;
+        |import android.util.Log;
+        |import java.util.List;
+        |import java.util.ArrayList;
+        |
+        |
+        |
+        |public class MyActivity extends AppCompatActivity {
+        |    String o = null;
+        |    Boolean o2 = null;
+        |    class Foo{
+        |        String method(){
+        |            return "";
+        |        }
+        |    }
+        |    @Override
+        |    protected void onResume() {
+        |        List<String> l = new ArrayList<String>();
+        |        l.add("hi there");
+        |        Foo s = new Foo(); //query0
+        |        String s2 = null;
+        |        s.method(); //query1
+        |    }
+        |
+        |    @Override
+        |    protected void onPause() {
+        |    }
+        |}""".stripMargin
+
+    val test: String => Unit = apk => {
+      assert(apk != null)
+      val specs: Set[LSSpec] = Set()
+      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+      val config = ExecutorConfig(
+        stepLimit = 200, w, new SpecSpace(specs),
+        component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
+      implicit val om = config.outputMode
+      val symbolicExecutor = config.getSymbolicExecutor
+      val resSig = Signature("com.example.createdestroy.MyActivity", "void onResume()")
+      val query0 = ReceiverNonNull(resSig, BounderUtil.lineForRegex(".*query0.*".r,src))
+      val result0 = symbolicExecutor.run(query0).flatMap(a => a.terminals)
+      assert(result0.nonEmpty)
+      BounderUtil.throwIfStackTrace(result0)
+      f.expectUnreachable(BounderUtil.interpretResult(result0,QueryFinished))
+
+      // Dereference in loop should witness since we do not have a spec for the list
+      val query = ReceiverNonNull(resSig, BounderUtil.lineForRegex(".*query1.*".r, src))
+
+      // prettyPrinting.dotMethod( query.head.loc, symbolicExecutor.controlFlowResolver, "onPauseCond.dot")
+
+      val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
+      //prettyPrinting.dumpDebugInfo(result, "forEach")
+      assert(result.nonEmpty)
+      BounderUtil.throwIfStackTrace(result)
+      f.expectUnreachable(BounderUtil.interpretResult(result, QueryFinished))
+
+    }
+
+    makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
+  }
+
   test("Test irrelevant condition") { f =>
     //TODO: add assertion that "useless" should not materialize and uncomment "doNothing" call
     val src =

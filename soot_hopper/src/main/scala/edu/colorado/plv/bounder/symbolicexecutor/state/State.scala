@@ -125,7 +125,7 @@ case class StateFormula(callStack: List[CallStackFrame],
     if(oldPv == newPv)
       this
     else {
-      this.copy(
+      this.copy( //TODO: change to option - none means swap is infeasible
         callStack = callStack.map(f => stackSwapPv(oldPv, newPv, f)),
         heapConstraints = heapConstraints.map(hc => heapSwapPv(oldPv, newPv, hc)),
         pureFormula = pureFormula.map(pf => pureSwapPv(oldPv, newPv, pf)),
@@ -274,6 +274,14 @@ case class State(sf:StateFormula,
       cSf.heapConstraints.foreach{
         case (FieldPtEdge(p, _),_) if p == old && newE.isInstanceOf[PureVal] => return None
         case _ =>
+      }
+      //TODO: probably do something if inlining other const value (e.g. boxed expr)
+      if(newE == NullVal) {
+        cSf.traceAbstraction.rightOfArrow.foreach {
+          case FreshRef(v) if v == old =>
+            return None // Null val cannot be allocated
+          case _ =>
+        }
       }
       Some(cSf.swapPv(old,newE))
     }
