@@ -303,7 +303,14 @@ object NopCmd{
   implicit var rw:RW[NopCmd] = macroRW
 }
 
-case class SwitchCmd(key: LocalWrapper, targets : List[CmdWrapper], loc:AppLoc)extends CmdWrapper(loc) {
+
+/**
+ *
+ * @param key variable being switched if exists (sometimes is a const???)
+ * @param targets
+ * @param loc location in app after command //TODO: it seems there should be a cleaner way to implement this
+ */
+case class SwitchCmd(key: Option[LocalWrapper], targets : List[CmdWrapper], loc:AppLoc) extends CmdWrapper(loc) {
   override def mkPre: CmdWrapper = this.copy(loc=loc.copy(isPre = true))
 }
 object SwitchCmd{

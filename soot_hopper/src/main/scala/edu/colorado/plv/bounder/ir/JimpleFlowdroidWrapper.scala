@@ -257,13 +257,14 @@ object JimpleFlowdroidWrapper{
       case _:JExitMonitorStmt => NopCmd(loc) // ignore concurrency
       case _:JEnterMonitorStmt => NopCmd(loc) // ignore concurrency
       case sw:JLookupSwitchStmt =>
+        val targets = sw.getTargets.asScala.map (u => makeCmd (u, method, loc) ).toList
         makeRVal(sw.getKey) match {
           case key:LocalWrapper =>
-            val targets = sw.getTargets.asScala.map (u => makeCmd (u, method, loc) )
-            SwitchCmd (key, targets.toList, loc)
-          case other =>
-            println(other)
-            ???
+            SwitchCmd (Some(key), targets, loc)
+          case intConst:IntConst =>
+            SwitchCmd(None, targets.drop(intConst.v),loc)
+          case other => //I really hope the java compiler can't put other crap here?
+            throw new IllegalStateException(s"${other} as expr in switch statement.")
         }
       case v =>
         throw CmdNotImplemented(s"Unimplemented command: ${v}")
