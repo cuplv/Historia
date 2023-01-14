@@ -552,15 +552,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     mkAnd(heapAst, mkAnd(heapFunConst))
   }
 
-  def getPureValSet(pf:Set[PureConstraint]):Set[PureVal] = {
-    pf.flatMap{
-      case PureConstraint(lhs:PureVal, _, rhs:PureVal) => Set(lhs,rhs)
-      case PureConstraint(_, _, rhs:PureVal) => Set(rhs)
-      case PureConstraint(lhs:PureVal, _, _) => Set(lhs)
-      case _ => Set()
-    }
-  }
-
   def mkPvName(pv:PureVar): String = pv match {
     case NPureVar(id) => s"pv-${id}"
     case NamedPureVar(n) => s"npv-${n}"
@@ -700,9 +691,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     }
 
     def pureValSet(states: Iterable[State]): Set[PureVal] = {
-      states.foldLeft(Set[PureVal]()) {
-        case (acc, v) => acc.union(getPureValSet(v.pureFormula))
-      } + NullVal + IntVal(0) + IntVal(1) //+ BoolVal(true) + BoolVal(false) + IntVal(0) + IntVal(1)
+      states.flatMap {
+        v => v.pureVals()
+      }.toSet + NullVal + IntVal(0) + IntVal(1) //+ BoolVal(true) + BoolVal(false) + IntVal(0) + IntVal(1)
+
     }
     def typeValSet(states:Iterable[State])(implicit ctx: C):Set[Int] = {
       states.foldLeft(Set[Int]()){

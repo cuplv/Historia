@@ -474,12 +474,18 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         val (thisV, stateWThis) = if(materializedReceiver.isEmpty) {
           stateWithFrame.getOrDefine(LocalWrapper("@this", "_"),Some(mRet.loc))
         } else {
-          val v:PureVar = materializedReceiver.get.asInstanceOf[PureVar]
+          val v = materializedReceiver.get
           (v,stateWithFrame.defineAs(LocalWrapper("@this","_"), v))
         }
-        val pts = stateWThis.typeConstraints.get(thisV.asInstanceOf[PureVar]).map(_.intersect(receiverTypesFromPT.get))
-          .getOrElse(receiverTypesFromPT.get)
-        Set(stateWThis.addTypeConstraint(thisV.asInstanceOf[PureVar],pts))
+        thisV match{
+          case thisV:PureVar => {
+            val pts = stateWThis.typeConstraints.get(thisV).map(_.intersect(receiverTypesFromPT.get))
+              .getOrElse(receiverTypesFromPT.get)
+            Set(stateWThis.addTypeConstraint(thisV, pts))
+          }
+          case NullVal =>
+            Set.empty
+        }
       } else {
         Set(stateWithFrame)
       }

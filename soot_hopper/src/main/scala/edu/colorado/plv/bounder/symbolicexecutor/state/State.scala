@@ -269,6 +269,30 @@ case class State(sf:StateFormula,
                  nextCmd: List[Loc] = Nil,
                  alternateCmd: List[Loc] = Nil
                 ) {
+  def pureVals(): Set[PureVal] = {
+    def pVals(in:Iterable[PureExpr]) = in.flatMap{
+      case pv:PureVal => Some(pv)
+      case _ => None
+    }
+
+    sf.callStack.flatMap{
+      case CallStackFrame(_,_,locals) => pVals(locals.values)
+    }.toSet ++
+      sf.heapConstraints.flatMap{
+        case (FieldPtEdge(_,_),v) => pVals(Some(v))
+        case (StaticPtEdge(_, _),v) => pVals(Some(v))
+        case (ArrayPtEdge(_,_),v) => pVals(Some(v))
+      } ++
+      sf.traceAbstraction.rightOfArrow.flatMap {
+        case LifeState.CLInit(_) => Set.empty
+        case FreshRef(_) => Set.empty
+        case msg: AbsMsg => pVals(msg.lsVars)
+      } ++
+      sf.pureFormula.flatMap{
+        case PureConstraint(lhs, _, rhs) => pVals(List(lhs,rhs))
+      }
+  }
+
   def inlineConstEq():Option[State] = {
     def swapIfPos(cSf:StateFormula,old:PureVar, newE:PureExpr):Option[StateFormula] = {
       cSf.heapConstraints.foreach{
