@@ -39,5 +39,9 @@ class IRParserTest extends AnyFunSuite {
     val name8 = "Ifoo/bar/Baz;"
     val res8 = IRParser.parseReflectiveRef(name8)
     assert(res8.sootString == "foo.bar.Baz")
+
+    val name9 = "J"
+    val res9 = IRParser.parseReflectiveRef(name9)
+    assert(res9.sootString == "long")
   }
 }

@@ -836,7 +836,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       cmdTransfer(AssignCmd(l,local,cmdloc),state1)
     case AssignCmd(l:LocalWrapper, StaticFieldReference(declaringClass, fname, containedType), _) =>
       if(state.containsLocal(l)){
-        val v = state.get(l).get.asInstanceOf[PureVar]
+        val v = state.get(l).get
         val state1 = state.clearLVal(l)
         Set(state1.copy(sf =
           state1.sf.copy(heapConstraints = state1.heapConstraints + (StaticPtEdge(declaringClass,fname) -> v),

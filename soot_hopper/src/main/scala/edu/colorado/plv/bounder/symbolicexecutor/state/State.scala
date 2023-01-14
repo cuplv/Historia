@@ -663,13 +663,12 @@ case class State(sf:StateFormula,
           addPureConstraint(PureConstraint(v.get, Equals, pureExpr))
         }else {
           val csheadNew = cshead.copy(locals = cshead.locals + (StackVar(localName) -> pureExpr))
+          val stateNew = this.copy(sf = sf.copy(callStack = csheadNew :: sf.callStack.tail))
           pureExpr match {
             case pureVar:PureVar =>
-              this.copy(sf = sf.copy(callStack = csheadNew :: sf.callStack.tail))
-                .constrainUpperType (pureVar, localType, ch)
-            case v =>
-              println(s"TODO: defineAs used on value: ${v}")
-              ???
+                stateNew.constrainUpperType (pureVar, localType, ch)
+            case _:PureVal =>
+              stateNew
           }
 //            pureFormula = pureFormula + PureConstraint(pureExpr, TypeComp, SubclassOf(localType)))
         }

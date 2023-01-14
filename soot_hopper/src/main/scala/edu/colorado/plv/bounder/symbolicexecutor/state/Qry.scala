@@ -71,7 +71,7 @@ object Qry {
     val cmds = (for {
       cl <-c
       m <- cl.getMethods.asScala
-      cmd <- m.getActiveBody.getUnits.asScala
+      cmd <- if(m.isAbstract) List.empty else m.getActiveBody.getUnits.asScala //abstract catches iface and abst classes
         .map(v => JimpleFlowdroidWrapper.makeCmd(v,m, AppLoc(JimpleMethodLoc(m),JimpleLineLoc(v,m),isPre = true)))
     } yield cmd).toSet
 

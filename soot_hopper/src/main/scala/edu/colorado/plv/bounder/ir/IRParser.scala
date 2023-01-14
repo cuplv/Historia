@@ -33,7 +33,7 @@ class IRParser extends RegexParsers{
 
   def decl : Parser[String] = ("L" | "I")
   def arrayDecl : Parser[String] = ("[")
-  def primitive :Parser[TRef] = ("C" | "Z" | "B" | "S" | "I" | "D") ^^ {
+  def primitive :Parser[TRef] = ("C" | "Z" | "B" | "S" | "I" | "D" | "J" | "D" | "F" | "V") ^^ {
     case "J" => PrimRef("long")
     case "S" => PrimRef("short")
     case "D" => PrimRef("double")

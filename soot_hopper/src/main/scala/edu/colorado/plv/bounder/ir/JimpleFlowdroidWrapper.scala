@@ -257,9 +257,14 @@ object JimpleFlowdroidWrapper{
       case _:JExitMonitorStmt => NopCmd(loc) // ignore concurrency
       case _:JEnterMonitorStmt => NopCmd(loc) // ignore concurrency
       case sw:JLookupSwitchStmt =>
-        val key = makeRVal(sw.getKey).asInstanceOf[LocalWrapper]
-        val targets = sw.getTargets.asScala.map(u => makeCmd(u,method, loc))
-        SwitchCmd(key,targets.toList,loc)
+        makeRVal(sw.getKey) match {
+          case key:LocalWrapper =>
+            val targets = sw.getTargets.asScala.map (u => makeCmd (u, method, loc) )
+            SwitchCmd (key, targets.toList, loc)
+          case other =>
+            println(other)
+            ???
+        }
       case v =>
         throw CmdNotImplemented(s"Unimplemented command: ${v}")
     }
