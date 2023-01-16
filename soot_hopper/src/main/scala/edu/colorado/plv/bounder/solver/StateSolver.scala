@@ -51,6 +51,7 @@ case object SubsDebug extends SubsumptionMethod
 case object SubsFailOver extends SubsumptionMethod
 /** SMT solver parameterized by its AST or expression type */
 trait StateSolver[T, C <: SolverCtx[T]] {
+  def shouldLogTimes:Boolean
   def STRICT_TEST:Boolean
   def mkAssert(t:T)(implicit zCtx:C):Unit
   def pruneUnusedQuant(t: T)(implicit zCtx:C): T
@@ -848,7 +849,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       }
     }finally{
       zCtx.release()
-      getLogger.warn(s"feasibility result: ${result} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
+      //if(shouldLogTimes)
+      //  getLogger.warn(s"feasibility result: ${result} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
     }
   }
 
@@ -1131,7 +1133,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       zCtx.release()
     }
 
-    getLogger.warn(s"subsumption result:${res} time(µs): ${(System.nanoTime() - startTime)/1000.0}")
+    if(shouldLogTimes)
+      getLogger.warn(s"subsumption result:${res} time(µs): ${(System.nanoTime() - startTime)/1000.0}")
 
     res
   }
@@ -1257,15 +1260,9 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       println("""Expected method: "Unify" or "Z3" """)
       throw new IllegalArgumentException("""Expected method: "Unify" or "Z3" """)
     }
-//    catch {
-//      case e:IllegalStateException =>
-//              throw e
-////        println(s"Subsumption returning false due to timeout: ${e.getMessage}")
-////        getLogger.warn(s"subsumption result:timeout time(ms): ${(System.nanoTime() - startTime)/1000.0}")
-////        false
-//    }
 
-    getLogger.warn(s"subsumption result:${res} time(µs): ${(System.nanoTime() - startTime)/1000.0}")
+    if(shouldLogTimes)
+      getLogger.warn(s"subsumption result:${res} time(µs): ${(System.nanoTime() - startTime)/1000.0}")
     res
   }
   // s1 subsuming state
@@ -1386,7 +1383,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     implicit val zCtx: C = getSolverCtx
     try {
       if(rngTry == 0)
-        zCtx.acquire(None)
+        zCtx.acquire()
       else if(rngTry > 0){
         // on retry, seed RNG with try number for determinism
         val rngSeed = rngTry
@@ -1475,7 +1472,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       val res = traceInAbstraction(pred, specSpace, Trace.empty)
       res
     }finally{
-      getLogger.warn(s"witnessed result: ${res.isDefined} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
+      //if(shouldLogTimes)
+      //  getLogger.warn(s"witnessed result: ${res.isDefined} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
     }
     ??? //TODO:====
   }
@@ -1499,7 +1497,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       val res = traceInAbstraction(state, specSpace, Trace.empty, debug)
       res
     }finally{
-      getLogger.warn(s"witnessed result: ${res.isDefined} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
+      if(shouldLogTimes)
+        getLogger.warn(s"witnessed result: ${res.isDefined} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
     }
   }
   def traceInAbstraction(pred:LSPred, specSpace:SpecSpace, trace:Trace)(implicit zCtx:C):Option[WitnessExplanation] ={

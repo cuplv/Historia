@@ -50,9 +50,11 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
     // Call symbolic executor
     val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
 //    prettyPrinting.dumpDebugInfo(result, "test_interproc_1_derefSafe")
-    if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) assert(result.size == 1)
-    assert(result.iterator.next.qry.searchState == BottomQry)
-    assert(BounderUtil.characterizeMaxPath(result)== SingleMethod)
+    if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) {
+      assert(result.size == 1)
+      assert(result.iterator.next.qry.searchState == BottomQry)
+      assert(BounderUtil.characterizeMaxPath(result)== SingleMethod)
+    }
     f.expectUnreachable(BounderUtil.interpretResult(result,QueryFinished))
   }
 
@@ -153,7 +155,10 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         "void onCreate(android.os.Bundle)"), BounderUtil.lineForRegex(".*query1.*".r,src))
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
 //      prettyPrinting.dumpDebugInfo(result, "readLiteral")
-      assert(result.nonEmpty)
+
+      if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) {
+        assert(result.nonEmpty)
+      }
       BounderUtil.throwIfStackTrace(result)
       f.expectUnreachable(BounderUtil.interpretResult(result,QueryFinished))
 
@@ -224,7 +229,10 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
 
       val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
       //prettyPrinting.dumpDebugInfo(result, "forEach")
-      assert(result.nonEmpty)
+
+      if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) {
+        assert(result.nonEmpty)
+      }
       BounderUtil.throwIfStackTrace(result)
       f.expectReachable(BounderUtil.interpretResult(result,QueryFinished))
 
@@ -278,7 +286,8 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val resSig = Signature("com.example.createdestroy.MyActivity", "void onResume()")
       val query0 = ReceiverNonNull(resSig, BounderUtil.lineForRegex(".*query0.*".r,src))
       val result0 = symbolicExecutor.run(query0).flatMap(a => a.terminals)
-      assert(result0.nonEmpty)
+
+      if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) assert(result0.nonEmpty)
       BounderUtil.throwIfStackTrace(result0)
       f.expectUnreachable(BounderUtil.interpretResult(result0,QueryFinished))
 
@@ -289,7 +298,10 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
 
       val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
       //prettyPrinting.dumpDebugInfo(result, "forEach")
-      assert(result.nonEmpty)
+
+      if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) {
+        assert(result.nonEmpty)
+      }
       BounderUtil.throwIfStackTrace(result)
       f.expectUnreachable(BounderUtil.interpretResult(result, QueryFinished))
 
@@ -368,7 +380,8 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
       // prettyPrinting.dumpDebugInfo(result, "irrelevantConditional", truncate = false)
       // prettyPrinting.dotWitTree(result, "irrelevantConditional.dot",true)
-      assert(result.nonEmpty)
+
+      if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) assert(result.nonEmpty)
       BounderUtil.throwIfStackTrace(result)
       f.expectUnreachable(BounderUtil.interpretResult(result,QueryFinished))
       // Search refutation state for materialized "o2" field
@@ -446,7 +459,8 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
           "void onCreate(android.os.Bundle)"), BounderUtil.lineForRegex(".*query1.*".r, src))
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
         // prettyPrinting.dumpDebugInfo(result, s"alias_${expected}", truncate = false)
-        assert(result.nonEmpty)
+
+        if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) assert(result.nonEmpty)
         BounderUtil.throwIfStackTrace(result)
         expected(BounderUtil.interpretResult(result,QueryFinished))
 
@@ -503,7 +517,10 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         "void onCreate(android.os.Bundle)"),20)
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
       // prettyPrinting.dumpDebugInfo(result,"setField")
-      assert(result.nonEmpty)
+
+      if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) {
+        assert(result.nonEmpty)
+      }
       BounderUtil.throwIfStackTrace(result)
       f.expectUnreachable(BounderUtil.interpretResult(result,QueryFinished))
       assert(BounderUtil.characterizeMaxPath(result)(outputMode) == SingleCallbackMultiMethod)
@@ -578,7 +595,8 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
           "void onCreate(android.os.Bundle)"), line)
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
         //PrettyPrinting.dumpDebugInfo(result, s"setField_${bval}_${expected}") //==========
-        assert(result.nonEmpty)
+
+        if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) assert(result.nonEmpty)
         BounderUtil.throwIfStackTrace(result)
         val interpretedResult = BounderUtil.interpretResult(result, QueryFinished)
         expected(interpretedResult)
@@ -641,7 +659,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         "void onCreate(android.os.Bundle)"),22)
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
       // prettyPrinting.dumpDebugInfo(result,"assignFromTest")
-      assert(result.nonEmpty)
+      if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) assert(result.nonEmpty)
       BounderUtil.throwIfStackTrace(result)
       f.expectUnreachable(BounderUtil.interpretResult(result,QueryFinished))
     }
@@ -710,7 +728,8 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
 
       val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
       // prettyPrinting.dumpDebugInfo(result, "forEach")
-      assert(result.nonEmpty)
+
+      if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) assert(result.nonEmpty)
       BounderUtil.throwIfStackTrace(result)
       f.expectReachable(BounderUtil.interpretResult(result, QueryFinished))
     }
@@ -779,7 +798,8 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
 
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
         // prettyPrinting.dumpDebugInfo(result, "whileTest")
-        assert(result.nonEmpty)
+
+        if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) assert(result.nonEmpty)
         BounderUtil.throwIfStackTrace(result)
         expectedResult(BounderUtil.interpretResult(result,QueryFinished))
 
@@ -855,7 +875,8 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
         // prettyPrinting.dumpDebugInfo(result, s"dynamicDispatchTest${expectedResult}")
         //        prettyPrinting.dotWitTree(result, "dynamicDispatchTest", true)
-        assert(result.nonEmpty)
+
+        if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) assert(result.nonEmpty)
         BounderUtil.throwIfStackTrace(result)
         expectedResult(BounderUtil.interpretResult(result,QueryFinished))
 
@@ -923,7 +944,8 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
       // prettyPrinting.dumpDebugInfo(result,"DisaliasedObj")
       // prettyPrinting.dotWitTree(result, "DisaliasedObj.dot",true)
-      assert(result.nonEmpty)
+
+      if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) assert(result.nonEmpty)
       BounderUtil.throwIfStackTrace(result)
       f.expectReachable(BounderUtil.interpretResult(result,QueryFinished))
 
@@ -1854,7 +1876,8 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       //val fname = s"UnreachableLocation"
       // prettyPrinting.dumpDebugInfo(result, fname)
       //      prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
-      assert(result.nonEmpty)
+
+      if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) assert(result.nonEmpty)
       BounderUtil.throwIfStackTrace(result)
       val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
       assert(interpretedResult == Witnessed)
@@ -1935,7 +1958,8 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val fname = s"UnreachableLocation"
       // prettyPrinting.dumpDebugInfo(result, fname)
       //      prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
-      assert(result.nonEmpty)
+
+      if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) assert(result.nonEmpty)
       BounderUtil.throwIfStackTrace(result)
       val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
       f.expectUnreachable(interpretedResult )
@@ -2010,7 +2034,8 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val fname = s"UnreachableLocation"
       // prettyPrinting.dumpDebugInfo(result, fname)
       //      prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
-      assert(result.nonEmpty)
+
+      if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) assert(result.nonEmpty)
       BounderUtil.throwIfStackTrace(result)
       val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
       f.expectUnreachable(interpretedResult)
@@ -2055,7 +2080,8 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         "void onPause()"),line)
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
       //      prettyPrinting.dumpDebugInfo(result, "missingCb")
-      assert(result.nonEmpty)
+
+      if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) assert(result.nonEmpty)
       BounderUtil.throwIfStackTrace(result)
       f.expectReachable(BounderUtil.interpretResult(result,QueryFinished) )
     }

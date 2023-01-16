@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NS, Signature}
 import edu.colorado.plv.bounder.lifestate.{SpecSignatures, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state._
-import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, CHACallGraph, ControlFlowResolver, DefaultAppCodeResolver, SparkCallGraph, ExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, ControlFlowResolver, DefaultAppCodeResolver, SparkCallGraph, ExecutorConfig, TransferFunctions}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
 

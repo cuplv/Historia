@@ -16,7 +16,7 @@ class ClassHierarchyConstraintsTest extends AnyFunSuite {
   test("Subtype"){
 
 
-    val stateSolver:StateSolver[com.microsoft.z3.AST, Z3SolverCtx] = new Z3StateSolver(ch)
+    val stateSolver:StateSolver[com.microsoft.z3.AST, Z3SolverCtx] = new Z3StateSolver(ch,true)
     implicit val zctx = stateSolver.getSolverCtx
 
     //TODO: test type function etc

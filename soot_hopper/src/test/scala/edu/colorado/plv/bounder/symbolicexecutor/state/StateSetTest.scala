@@ -29,7 +29,7 @@ class StateSetTest extends AnyFunSuite {
   }
 
   val ch = new ClassHierarchyConstraints(hierarchy,Set("Runnable"),intToClass)
-  val stateSolver = new Z3StateSolver(ch)
+  val stateSolver = new Z3StateSolver(ch, logTimes = true)
 
   private val fooMethod = SerializedIRMethodLoc("","foo", List(Some(LocalWrapper("@this","Object"))))
   private val barMethod = SerializedIRMethodLoc("","bar", List(Some(LocalWrapper("@this","Object"))))

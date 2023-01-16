@@ -19,7 +19,7 @@ abstract class ModelGenerator(cha:ClassHierarchyConstraints) {
   case object Unreachable extends Classification
   case object Unset extends Classification
 
-  implicit val stateSolver = new Z3StateSolver(cha, timeout = 30000, randomSeed = 3578,
+  implicit val stateSolver = new Z3StateSolver(cha, logTimes = false, timeout = 30000, randomSeed = 3578,
     defaultOnSubsumptionTimeout = _=>false, pushSatCheck = true)
   /**
    * A normalized path unifies the logic variables between abstract states at execution locations.

@@ -264,7 +264,11 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
   // Dump debug info from soot analysis to sqlite
 //  writeIR() //TODO: add debug flag to toggle this
 
-  lazy val stateSolver = new Z3StateSolver(cha)
+  lazy val stateSolver = new Z3StateSolver(cha, config.outputMode match {
+    case NoOutputMode => false
+    case MemoryOutputMode => true
+    case DBOutputMode(dbfile) => true
+  })
 
 
   case class QueryData(queryId:Int, location:Loc, terminals: Set[IPathNode], runTime:Long, result : QueryResult)

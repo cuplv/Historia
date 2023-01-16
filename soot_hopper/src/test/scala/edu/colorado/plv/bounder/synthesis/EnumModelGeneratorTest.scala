@@ -34,7 +34,6 @@ class EnumModelGeneratorTest extends AnyFunSuite {
 
   ignore("Encode Node Reachability motivating example - ConcGraph"){
     implicit val ord = new DummyOrd
-    implicit val outputMode = MemoryOutputMode
     //TODO: may need to declare vars distinct
     val unreachSeq = toConcGraph(
       targetIze(List(a_onCreate, t_create, s_a_subscribe,a_onDestroy, s_unsubscribe, a_call)))
@@ -44,7 +43,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
     val spec = new SpecSpace(Set(
       LSSpec(a::Nil,Nil,  LSAnyPred , a_call)
     ), matcherSpace = Set())
-    implicit val solver = new Z3StateSolver(cha)
+//    implicit val solver = new Z3StateSolver(cha)
 //    val res = gen.learnRulesFromConcGraph(Set(unreachSeq), Set(reachSeq), spec)
     ???
 

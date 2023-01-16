@@ -21,7 +21,7 @@ import soot.jimple._
 import soot.jimple.spark.pag.{AllocNode, Node, PAG}
 import soot.jimple.spark.sets.{DoublePointsToSet, EmptyPointsToSet, HybridPointsToSet, P2SetVisitor}
 import soot.jimple.toolkits.annotation.logic.LoopFinder
-import soot.jimple.toolkits.pointer.DumbPointerAnalysis
+import soot.jimple.toolkits.pointer.{DumbPointerAnalysis, FullObjectSet}
 import soot.options.Options
 import soot.toolkits.graph.pdg.EnhancedUnitGraph
 import soot.toolkits.graph.{PseudoTopologicalOrderer, SlowPseudoTopologicalOrderer, UnitGraph}
@@ -1046,6 +1046,7 @@ class SootWrapper(apkPath : String,
       buildSparkCallGraph()
       new CallGraphWrapper(Scene.v().getCallGraph)
     case CHACallGraph =>
+      ??? //TODO: spark call graph unsound don't use
       Scene.v().setEntryPoints(preCallbacks.toList.asJava)
       CHATransformer.v().transform()
       new CallGraphWrapper(Scene.v().getCallGraph)
@@ -1701,6 +1702,8 @@ class SootWrapper(apkPath : String,
         BitTypeSet(jimpleGetBitSet(d))
       case e:EmptyPointsToSet =>
         EmptyTypeSet
+      case _:FullObjectSet =>
+        TopTypeSet
     }
   }
 

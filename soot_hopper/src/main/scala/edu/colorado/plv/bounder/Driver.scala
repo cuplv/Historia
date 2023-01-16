@@ -7,13 +7,15 @@ import java.util.Date
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil.{MaxPathCharacterization, Proven, ResultSummary, Timeout, Unreachable, Witnessed, characterizeMaxPath}
 import edu.colorado.plv.bounder.Driver.{Default, LocResult, RunMode}
-import edu.colorado.plv.bounder.ir.{SootWrapper, Loc}
+import edu.colorado.plv.bounder.ir.{Loc, SootWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, OAbsMsg, Signature}
 import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state._
-import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, CHACallGraph, ExecutorConfig, QueryFinished, SparkCallGraph, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, ExecutorConfig, QueryFinished, SparkCallGraph, TransferFunctions}
+import org.slf4j.LoggerFactory
+import org.slf4j.impl.Log4jLoggerAdapter
 import scopt.OParser
 
 import scala.concurrent.Await
@@ -38,7 +40,7 @@ case class Action(mode:RunMode = Default,
                   config: RunConfig = RunConfig(),
                   filter:Option[String] = None, // for making allderef queries - only process classes beginning with
                   tag:Option[String] = None,
-                  outputMode: String = "MEM" // "DB" or "MEM" for writing nodes to file or keeping in memory.
+                  outputMode: String = "NONE" // "DB" or "MEM" for writing nodes to file or keeping in memory.
                  ){
   val baseDirVar = "${baseDir}"
   val outDirVar = "${baseDirOut}"
@@ -189,7 +191,7 @@ object Driver {
           .text("Tag for experiment, recorded when running")
           .action((v,c) => c.copy(tag = Some(v))),
         opt[String]('o', "outputMode").optional()
-          .text("keep intermediate path in mem (MEM) or write to db (DB)")
+          .text("keep intermediate path in mem (MEM), write to db (DB), or discard (NONE)")
           .action((v,c) => c.copy(outputMode = v))
       )
     }
@@ -298,7 +300,7 @@ object Driver {
   }
   def makeAllDeref(apkPath:String, filter:Option[String],
                    outFolder:File, cfg:RunConfig, tag:Option[String]) = {
-    val callGraph = CHACallGraph
+    val callGraph = SparkCallGraph
     val w = new SootWrapper(apkPath,  Set(), callGraph)
     val config = ExecutorConfig(
       stepLimit = 0, w, new SpecSpace(Set()), component = None)
@@ -318,7 +320,7 @@ object Driver {
   }
   def sampleDeref(cfg: RunConfig, apkPath:String, outFolder:String, filter:Option[String]) = {
     val n = cfg.samples
-    val callGraph = CHACallGraph
+    val callGraph = SparkCallGraph
     val w = new SootWrapper(apkPath, Set(), callGraph)
     val config = ExecutorConfig(
       stepLimit = n, w, new SpecSpace(Set()), component = None)
@@ -353,7 +355,7 @@ object Driver {
   }
 
   def dotMethod(apkPath:String, matches:Regex) = {
-    val callGraph = CHACallGraph
+    val callGraph = SparkCallGraph
     //      val callGraph = FlowdroidCallGraph // flowdroid call graph immediately fails with "unreachable"
     val w = new SootWrapper(apkPath, Set(),callGraph)
     val config = ExecutorConfig(

@@ -7,7 +7,7 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{AppMethod, CBEnter, CBExit, CIEnter, CIExit, FwkMethod, TCLInit, TMessage, TNew, TraceElement, WitnessExplanation}
 import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, CLInit, FreshRef, OAbsMsg, Signature}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, BotVal, ConcreteAddr, ConcreteVal, NamedPureVar, NullVal, PureExpr, PureVal, PureVar, State, TopVal}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, BotVal, ConcreteAddr, ConcreteVal, NamedPureVar, NullVal, OutputMode, PureExpr, PureVal, PureVar, State, TopVal}
 import org.slf4j.{Logger, LoggerFactory}
 import smtlib.lexer.Lexer
 import smtlib.lexer.Lexer.UnexpectedCharException
@@ -23,19 +23,21 @@ import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 
 case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
+  var acquired:Option[Long] = None
   private val argsUsed = mutable.HashSet[Integer]()
   def setArgUsed(i: Int) = argsUsed.add(i)
   def getArgUsed():Set[Integer] = argsUsed.toSet
 
-  private var ictx = new Context()
+  private val ictx = new Context()
   val checkStratifiedSets = false // set to true to check EPR stratified sets (see Paxos Made EPR, Padon OOPSLA 2017)
-  private var isolver:Solver = ictx.mkSolver()
+  private var isolver:Solver = makeSolver(timeout, Some(randomSeed))
   val initializedFieldFunctions : mutable.HashSet[String] = mutable.HashSet[String]()
   var indexInitialized:Boolean = false
   val uninterpretedTypes : mutable.HashSet[String] = mutable.HashSet[String]()
   //val sortEdges = mutable.HashSet[(String,String)]()
-  var acquired:Option[Long] = None
   private var zeroInitialized:Boolean = false
+  private var isInitialCtx = true
+  private var isInitialSolver = true
   def initializeZero:Unit ={
     zeroInitialized = true
   }
@@ -124,9 +126,9 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
     }
   }
   private def makeSolver(timeout:Int, newRandomSeed:Option[Int]):Solver = this.synchronized{
-    val solver = ctx.mkSolver
+    val solver = ictx.mkSolver
 //    val solver = ctx.mkSimpleSolver()
-    val params = ctx.mkParams()
+    val params = ictx.mkParams()
     params.add("timeout", timeout)
     params.add("logic", "AUFLIA")
     params.add("model.compact", true)
@@ -154,8 +156,9 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
       val currentThread: Long = Thread.currentThread().getId
       assert(acquired.get == currentThread)
       acquired = None
-      ictx.close()
-      isolver = null
+      //      ictx.close()
+      //isolver = null
+      isolver.reset()
       zeroInitialized = false
       indexInitialized = false
       initializedFieldFunctions.clear()
@@ -163,7 +166,7 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
 //    Thread.sleep(100)
   }
 
-  override def acquire(randomSeed:Option[Int]): Unit = {
+  override def acquire(cRandomSeed:Option[Int]): Unit = {
     val currentThread:Long = Thread.currentThread().getId
 
     assert(acquired.isEmpty)
@@ -172,8 +175,11 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
     indexInitialized = false
     uninterpretedTypes.clear()
 //    ictx.close()
-    ictx = new Context()
-    isolver = makeSolver(timeout, randomSeed)
+//    ictx = new Context()
+    if(cRandomSeed.isDefined && cRandomSeed.get != randomSeed)
+      isolver = makeSolver(timeout, cRandomSeed)
+    else
+      isolver.reset()
   }
 }
 object Z3StateSolver{
@@ -188,13 +194,17 @@ object Z3StateSolver{
  * @param pushSatCheck
  * @param strict_test true to crash if something times out
  */
-class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:Int = 30000,
+class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
+                    logTimes:Boolean,
+                    timeout:Int = 30000,
                     randomSeed:Int=3578,
                     defaultOnSubsumptionTimeout: Z3SolverCtx=> Boolean = _ => false,
                     pushSatCheck:Boolean = true,
                     strict_test:Boolean = false
                    ) extends StateSolver[AST,Z3SolverCtx] {
   //  private val MAX_ARGS = 10
+
+  override def shouldLogTimes:Boolean = this.logTimes
 
   /**
    * Used to dedup let exists and forall in free vars
@@ -1277,8 +1287,10 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints, timeout:In
     ctx.mkForall(Array(m), pred, 1, null, null, null, null)
   }
 
-  override def getLogger: Logger =
+  private lazy val logger =
     LoggerFactory.getLogger("Z3StateSolver")
+
+  override def getLogger: Logger = logger
 
   override protected def mkTraceFn()(implicit zCtx: Z3SolverCtx): FuncDecl[BoolSort] = {
     val ctx = zCtx.ctx
