@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.synthesis
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed, interpretResult}
-import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
+import edu.colorado.plv.bounder.ir.SootWrapper
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, LSAnyPred, LSSpec, NS, Not, Or, Signature}
 import edu.colorado.plv.bounder.lifestate.SpecSignatures.{Activity_onPause_entry, Activity_onPause_exit, Activity_onResume_entry, Button_init}
 import edu.colorado.plv.bounder.lifestate.ViewSpec.{onClickI, setOnClickListenerI, setOnClickListenerINull}
@@ -162,7 +162,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         val iSet = Set(onClickI, setOnClickListenerI, setOnClickListenerINull,
           Activity_onResume_entry, Activity_onPause_exit)
 
-        val w = new JimpleFlowdroidWrapper(apk, toOverride = specs ++ iSet)
+        val w = new SootWrapper(apk, toOverride = specs ++ iSet)
         //val dbg = w.dumpDebug("com.example")
 
         val specSpace = new SpecSpace(specs, matcherSpace = iSet)

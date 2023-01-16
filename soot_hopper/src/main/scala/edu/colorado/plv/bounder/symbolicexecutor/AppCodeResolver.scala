@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import java.util.NoSuchElementException
 import better.files.{File, Resource}
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodReturn, CmdWrapper, FieldReference, IRWrapper, InternalMethodReturn, Invoke, InvokeCmd, JimpleFlowdroidWrapper, JimpleMethodLoc, LineLoc, Loc, MethodLoc, SpecialInvoke, StaticInvoke, UnresolvedMethodTarget, VirtualInvoke}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodReturn, CmdWrapper, FieldReference, IRWrapper, InternalMethodReturn, Invoke, InvokeCmd, SootWrapper, JimpleMethodLoc, LineLoc, Loc, MethodLoc, SpecialInvoke, StaticInvoke, UnresolvedMethodTarget, VirtualInvoke}
 import edu.colorado.plv.bounder.lifestate.LifeState.Signature
 
 import scala.annotation.tailrec
@@ -31,7 +31,7 @@ object FrameworkExtensions{
         None
     }
   }
-  val extensionStrings: List[String] = JimpleFlowdroidWrapper.cgEntryPointName::
+  val extensionStrings: List[String] = SootWrapper.cgEntryPointName::
     urlPos.flatMap{ (frameworkExtPath:String) =>
 //    val source = Source.fromFile(frameworkExtPath)
     try {
@@ -163,7 +163,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
       return None // Interface methods cannot be callbacks
     val overrides = ir.getOverrideChain(method).filter(c =>
       isFrameworkClass(
-        JimpleFlowdroidWrapper.stringNameOfClass(
+        SootWrapper.stringNameOfClass(
           c.asInstanceOf[JimpleMethodLoc].method.getDeclaringClass)))
     if(overrides.size == 1 && overrides.last.classType == "java.lang.Object" && overrides.last.simpleName == "<init>"){
       // Object init is not considered a callback unless it overrides a subclass's init

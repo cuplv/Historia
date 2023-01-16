@@ -7,7 +7,7 @@ import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, Cal
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.EncodingTools.repHeapCells
 import edu.colorado.plv.bounder.solver.{EncodingTools, StateSolver, Z3StateSolver}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, BottomQry, DBOutputMode, FieldPtEdge, FrameworkLocation, HashableStateFormula, HeapPtEdge, IPathNode, InitialQuery, Live, MemoryOutputMode, NPureVar, OrdCount, OutputMode, PathNode, PureExpr, Qry, State, StaticPtEdge, SubsumableLocation, SwapLoc, WitnessedQry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, BottomQry, DBOutputMode, FieldPtEdge, FrameworkLocation, HashableStateFormula, HeapPtEdge, IPathNode, InitialQuery, Live, MemoryOutputMode, NPureVar, NoOutputMode, OrdCount, OutputMode, PathNode, PureExpr, Qry, State, StaticPtEdge, SubsumableLocation, SwapLoc, WitnessedQry}
 
 import scala.annotation.tailrec
 import upickle.default._
@@ -15,8 +15,21 @@ import upickle.default._
 import scala.collection.mutable
 
 sealed trait CallGraphSource
+
+/**
+ * Use only the class hierarchy to create call graph (faster but less precise)
+ */
 case object CHACallGraph extends CallGraphSource
+
+/**
+ * Compute an application only call graph using spark from soot
+ */
 case object SparkCallGraph extends CallGraphSource
+
+/**
+ * Compute an app only call graph independently of soot
+ * TODO: not used in a long time, needs work
+ */
 case object AppOnlyCallGraph extends CallGraphSource
 
 sealed trait SubsumptionMode
@@ -466,7 +479,11 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
         executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p)
       case p@PathNode(Qry(_,_,BottomQry), _) =>
         // current node is refuted
-        executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p)
+        val newRef = if(config.outputMode != NoOutputMode)
+          refutedSubsumedOrWitnessed + p
+        else
+          refutedSubsumedOrWitnessed
+        executeBackward(qrySet, limit, deadline, newRef)
       case p@PathNode(Qry(_,_,WitnessedQry(_)), _) =>
         // current node is witnessed
         refutedSubsumedOrWitnessed.union(qrySet.toSet) + p
@@ -482,7 +499,11 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
         subsuming match {
           case v if v.nonEmpty =>
             // Path node discovered to be subsumed
-            executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + pLive.setSubsumed(v))
+            val newRef = if (config.outputMode != NoOutputMode)
+              refutedSubsumedOrWitnessed + pLive.setSubsumed(v)
+            else
+              refutedSubsumedOrWitnessed
+            executeBackward(qrySet, limit, deadline, newRef)
           case v if v.isEmpty =>
             // widen if necessary
             config.approxMode.merge(() => ???, pLive, stateSolver) match {

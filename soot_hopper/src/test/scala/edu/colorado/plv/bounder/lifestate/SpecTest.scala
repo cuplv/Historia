@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderSetupApplication
-import edu.colorado.plv.bounder.ir.{CIEnter, CIExit, JimpleFlowdroidWrapper}
+import edu.colorado.plv.bounder.ir.{CIEnter, CIExit, SootWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, Signature, SubClassMatcher}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, DefaultAppCodeResolver, SparkCallGraph, ExecutorConfig, TransferFunctions}
@@ -77,7 +77,7 @@ class SpecTest extends AnyFunSuite {
   test("Antennapod: Each I in spec signatures corresponds to a method or interface in the framework"){
     val apk = getClass.getResource("/Antennapod-fix-2856-app-free-debug.apk").getPath
     assert(apk != null)
-    val w = new JimpleFlowdroidWrapper(apk,SparkCallGraph, Set())
+    val w = new SootWrapper(apk, Set())
     val config = ExecutorConfig(
       stepLimit = 8, w,new SpecSpace(Set()), printAAProgress = true)
     val symbolicExecutor = config.getSymbolicExecutor
@@ -98,7 +98,7 @@ class SpecTest extends AnyFunSuite {
   test("RXJavaSubscribe: Each I in spec signatures corresponds to a method or interface in the framework"){
     val apk = getClass.getResource("/RXJavaSubscribe-fix-debug.apk").getPath
     assert(apk != null)
-    val w = new JimpleFlowdroidWrapper(apk,SparkCallGraph, Set())
+    val w = new SootWrapper(apk,Set())
     val config = ExecutorConfig(
       stepLimit = 8, w,new SpecSpace(Set()), printAAProgress = true)
     val symbolicExecutor = config.getSymbolicExecutor
@@ -118,10 +118,10 @@ class SpecTest extends AnyFunSuite {
     val apk = getClass.getResource("/RXJavaSubscribe-fix-debug.apk").getPath
     assert(apk != null)
     BounderSetupApplication.loadApk(apk)
-    val w = new JimpleFlowdroidWrapper(apk,SparkCallGraph, Set())
+    val w = new SootWrapper(apk, Set())
     val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
     val frameworkMethods = Scene.v().getClasses.asScala.flatMap{clazz =>
-      val clazzname = JimpleFlowdroidWrapper.stringNameOfClass(clazz)
+      val clazzname = SootWrapper.stringNameOfClass(clazz)
       if(a.isFrameworkClass(clazzname))
         clazz.getMethods.asScala.map(method => (clazzname, method.getSubSignature, method))
       else Nil

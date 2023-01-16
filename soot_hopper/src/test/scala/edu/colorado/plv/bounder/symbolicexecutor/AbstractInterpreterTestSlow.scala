@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed}
-import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper
+import edu.colorado.plv.bounder.ir.SootWrapper
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, Signature}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
@@ -18,7 +18,6 @@ import upickle.default.{read, write}
  * Note that hopefully these will eventually be faster. Then they should be moved to SymbolicExecutorTest.scala
  */
 class AbstractInterpreterTestSlow extends AnyFunSuite{
-  val cgMode = SparkCallGraph
 
   test("Test dynamic dispatch2") {
     List(
@@ -80,7 +79,7 @@ class AbstractInterpreterTestSlow extends AnyFunSuite{
       val test: String => Unit = apk => {
         assert(apk != null)
         val specs:Set[LSSpec] = Set()
-        val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+        val w = new SootWrapper(apk, specs)
         val config = ExecutorConfig(
           stepLimit = 400, w, new SpecSpace(specs),
           component = Some(List("com.example.createdestroy.MyActivity.*")),

@@ -75,7 +75,7 @@ class SootUtilsTest extends AnyFunSuite {
   test("iterate transitions in real apk onPause"){
     val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath
     assert(test_interproc_1 != null)
-    val w = new JimpleFlowdroidWrapper(test_interproc_1, SparkCallGraph, Set())
+    val w = new SootWrapper(test_interproc_1, Set())
 //    val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
     val a = NamedPureVar("a")
     val testSpec = LSSpec(a::Nil, Nil, NS(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
@@ -111,7 +111,7 @@ class SootUtilsTest extends AnyFunSuite {
 
     val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath()
     assert(test_interproc_1 != null)
-    val w = new JimpleFlowdroidWrapper(test_interproc_1, SparkCallGraph, Set())
+    val w = new SootWrapper(test_interproc_1, Set())
     val testSpec = LSSpec(a::Nil, Nil, NS(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
       SpecSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
     val config: ExecutorConfig[SootMethod, soot.Unit] = ExecutorConfig(

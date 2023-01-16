@@ -1,9 +1,9 @@
 package edu.colorado.plv.bounder
 
 import better.files.Resource
-import edu.colorado.plv.bounder.ir.{BitTypeSet, JimpleFlowdroidWrapper, TopTypeSet, TypeSet}
+import edu.colorado.plv.bounder.ir.{BitTypeSet, SootWrapper, TopTypeSet, TypeSet}
 import edu.colorado.plv.bounder.lifestate.{LSExpParser, LifeState}
-import edu.colorado.plv.bounder.symbolicexecutor.{SparkCallGraph}
+import edu.colorado.plv.bounder.symbolicexecutor.SparkCallGraph
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, ClassType, DBPathNode, IntVal, NamedPureVar, PureExpr, PureVar, State, SubclassOf, TopVal, TypeConstraint}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.Scene

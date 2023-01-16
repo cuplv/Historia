@@ -7,7 +7,7 @@ import java.util.Date
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil.{MaxPathCharacterization, Proven, ResultSummary, Timeout, Unreachable, Witnessed, characterizeMaxPath}
 import edu.colorado.plv.bounder.Driver.{Default, LocResult, RunMode}
-import edu.colorado.plv.bounder.ir.{JimpleFlowdroidWrapper, Loc}
+import edu.colorado.plv.bounder.ir.{SootWrapper, Loc}
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, OAbsMsg, Signature}
 import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSpace}
@@ -243,8 +243,10 @@ object Driver {
         }
         val pathMode = if(mode == "DB"){
           DBOutputMode(outFile.canonicalPath)
-        }else if(mode == "MEM"){
+        }else if(mode == "MEM") {
           MemoryOutputMode
+        }else if(mode == "NONE"){
+          NoOutputMode
         } else throw new IllegalArgumentException(s"Mode ${mode} is invalid, options: DB - write nodes to sqlite, MEM " +
           s"- keep nodes in memory.")
         val res: List[LocResult] =
@@ -285,7 +287,7 @@ object Driver {
   def info(cfg:RunConfig, outBase:String, apkBase:String):Unit = {
     val apk = cfg.apkPath.replace("${baseDir}",apkBase)
     val outFile = File(cfg.outFolder.get.replace("${baseDirOut}", outBase)) / "out.db" //File(baseDirOut) / "out.db"
-    val w = new JimpleFlowdroidWrapper(apk, SparkCallGraph, Set())
+    val w = new SootWrapper(apk, Set(),SparkCallGraph)
 
     val pathMode = DBOutputMode(outFile.canonicalPath)
     val config = ExecutorConfig(
@@ -297,7 +299,7 @@ object Driver {
   def makeAllDeref(apkPath:String, filter:Option[String],
                    outFolder:File, cfg:RunConfig, tag:Option[String]) = {
     val callGraph = CHACallGraph
-    val w = new JimpleFlowdroidWrapper(apkPath, callGraph, Set())
+    val w = new SootWrapper(apkPath,  Set(), callGraph)
     val config = ExecutorConfig(
       stepLimit = 0, w, new SpecSpace(Set()), component = None)
     val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getSymbolicExecutor
@@ -317,7 +319,7 @@ object Driver {
   def sampleDeref(cfg: RunConfig, apkPath:String, outFolder:String, filter:Option[String]) = {
     val n = cfg.samples
     val callGraph = CHACallGraph
-    val w = new JimpleFlowdroidWrapper(apkPath, callGraph, Set())
+    val w = new SootWrapper(apkPath, Set(), callGraph)
     val config = ExecutorConfig(
       stepLimit = n, w, new SpecSpace(Set()), component = None)
     val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getSymbolicExecutor
@@ -353,7 +355,7 @@ object Driver {
   def dotMethod(apkPath:String, matches:Regex) = {
     val callGraph = CHACallGraph
     //      val callGraph = FlowdroidCallGraph // flowdroid call graph immediately fails with "unreachable"
-    val w = new JimpleFlowdroidWrapper(apkPath, callGraph, Set())
+    val w = new SootWrapper(apkPath, Set(),callGraph)
     val config = ExecutorConfig(
       stepLimit = 0, w, new SpecSpace(Set()), component = None)
     val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getSymbolicExecutor
@@ -362,12 +364,9 @@ object Driver {
   def runAnalysis(cfg:RunConfig, apkPath: String, componentFilter:Option[Seq[String]], mode:OutputMode,
                   specSet: SpecSetOption, stepLimit:Int,
                   initialQueries: List[InitialQuery]): List[LocResult] = {
-//  List[(InitialQuery,Int,Loc,(ResultSummary,MaxPathCharacterization),Long)] = {
     val startTime = System.nanoTime()
     try {
-      //TODO: read location from json config
-      val callGraph = SparkCallGraph
-      val w = new JimpleFlowdroidWrapper(apkPath, callGraph, specSet.getSpecSet().union(specSet.getDisallowSpecSet()))
+      val w = new SootWrapper(apkPath, specSet.getSpecSet().union(specSet.getDisallowSpecSet()))
       val config = ExecutorConfig(
         stepLimit = stepLimit, w, new SpecSpace(specSet.getSpecSet(), specSet.getDisallowSpecSet()), component = componentFilter, outputMode = mode,
         timeLimit = cfg.timeLimit)

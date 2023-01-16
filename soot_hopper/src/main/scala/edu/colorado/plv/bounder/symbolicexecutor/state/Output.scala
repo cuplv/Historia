@@ -32,6 +32,14 @@ sealed trait OutputMode{
                      maxPathCharacterization: MaxPathCharacterization, runTime:Long):Unit
 }
 
+case object NoOutputMode extends OutputMode {
+  override def initializeQuery(startingNodes: Loc, cfg: RunConfig, initialQuery: InitialQuery): Int = -1
+
+  override def writeLiveAtEnd(witness: Set[IPathNode], finalizeQryId: Int, status: String,
+                              result: ResultSummary,
+                              maxPathCharacterization: MaxPathCharacterization, runTime: Long): Unit = ()
+}
+
 case object MemoryOutputMode extends OutputMode {
   override def initializeQuery(startingNodes: Loc, cfg: RunConfig, initialQuery: InitialQuery): Int= -1
 
@@ -558,6 +566,8 @@ object PathNode{
     val depth = if (succ.isEmpty) 0 else succ.map(_.depth).max + 1
     val ordDepth =  if (succ.isEmpty) 0 else succ.map(_.ordDepth).max + ord.delta(qry)
     mode match {
+      case NoOutputMode =>
+        MemoryPathNode(qry, List.empty, subsumed.toSet, depth, ordDepth)
       case MemoryOutputMode =>
         MemoryPathNode(qry, succ, subsumed.toSet, depth,ordDepth)
       case m@DBOutputMode(_) =>

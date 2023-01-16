@@ -3,8 +3,8 @@ package edu.colorado.plv.bounder
 import java.util.Collections
 import better.files.File
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdNotImplemented, CmdWrapper, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Loc, NopCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn}
-import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, QueryFinished, QueryInterrupted, QueryResult, ExecutorConfig}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, InitialQuery, Live, OutputMode, PathNode, Qry, WitnessedQry}
+import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, ExecutorConfig, QueryFinished, QueryInterrupted, QueryResult}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, InitialQuery, Live, NoOutputMode, OutputMode, PathNode, Qry, WitnessedQry}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -29,17 +29,21 @@ object BounderUtil {
   case object SingleMethod extends MaxPathCharacterization
   case object SingleCallbackMultiMethod extends MaxPathCharacterization
   case object MultiCallback extends MaxPathCharacterization
+
+  case object UnknownCharacterization extends MaxPathCharacterization
   object MaxPathCharacterization{
     implicit val rw:RW[MaxPathCharacterization] = upickle.default.readwriter[String].bimap[MaxPathCharacterization](
       {
         case SingleMethod => "SingleMethod"
         case SingleCallbackMultiMethod => "SingleCallbackMultiMethod"
         case MultiCallback => "MultiCallback"
+        case UnknownCharacterization => "UnknownCharacterization"
       },
       {
         case "SingleMethod" => SingleMethod
         case "SingleCallbackMultiMethod" => SingleCallbackMultiMethod
         case "MultiCallback" => MultiCallback
+        case "UnknownCharacterization" => UnknownCharacterization
       }
     )
   }
@@ -53,6 +57,9 @@ object BounderUtil {
       case (MultiCallback,MultiCallback) => MultiCallback
     }
   def characterizeMaxPath(result: Set[IPathNode])(implicit mode : OutputMode):MaxPathCharacterization = {
+    if(mode == NoOutputMode){
+      return UnknownCharacterization
+    }
 
     def characterizePath(node:IPathNode)(implicit mode : OutputMode):MaxPathCharacterization = {
       val methodsInPath:List[Loc] = node.methodsInPath

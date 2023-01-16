@@ -66,13 +66,13 @@ object Qry {
     //TODO: clean up this method
     implicit val wra: IRWrapper[M, C] = ex.w
     implicit val ch: ClassHierarchyConstraints = wra.getClassHierarchyConstraints
-    val jw = wra.asInstanceOf[JimpleFlowdroidWrapper]
+    val jw = wra.asInstanceOf[SootWrapper]
     val c = jw.getClassByName(className)
     val cmds = (for {
       cl <-c
       m <- cl.getMethods.asScala
       cmd <- if(m.isAbstract || !m.hasActiveBody) List.empty else m.getActiveBody.getUnits.asScala //abstract catches iface and abst classes
-        .map(v => JimpleFlowdroidWrapper.makeCmd(v,m, AppLoc(JimpleMethodLoc(m),JimpleLineLoc(v,m),isPre = true)))
+        .map(v => SootWrapper.makeCmd(v,m, AppLoc(JimpleMethodLoc(m),JimpleLineLoc(v,m),isPre = true)))
     } yield cmd).toSet
 
     val qrys = cmds.map{cmd =>

@@ -2,15 +2,15 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.BounderUtil.{DepthResult, MultiCallback, Proven, ResultSummary, SingleCallbackMultiMethod, SingleMethod, Timeout, Witnessed, interpretResult}
-import edu.colorado.plv.bounder.ir.{CBEnter, JimpleFlowdroidWrapper}
+import edu.colorado.plv.bounder.BounderUtil.{MultiCallback, Proven, ResultSummary, SingleCallbackMultiMethod, SingleMethod, Timeout, Unreachable, Witnessed, interpretResult}
+import edu.colorado.plv.bounder.ir.SootWrapper
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, LSSpec, LSTrue, NS, Not, Or, Signature}
 import edu.colorado.plv.bounder.lifestate.SpecSignatures.{Activity_onPause_entry, Activity_onResume_entry, Button_init}
 import edu.colorado.plv.bounder.lifestate.ViewSpec.{a, l, onClick, onClickI, setOnClickListener, setOnClickListenerI, setOnClickListenerINull, v}
 import edu.colorado.plv.bounder.lifestate.{Dummy, FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.row4Specs
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BottomQry, CallinReturnNonNull, DBOutputMode, DisallowedCallin, FieldPtEdge, IPathNode, MemoryOutputMode, NamedPureVar, OutputMode, PrettyPrinting, Qry, Reachable, ReceiverNonNull, TopVal}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BottomQry, CallinReturnNonNull, DBOutputMode, DisallowedCallin, FieldPtEdge, IPathNode, MemoryOutputMode, NamedPureVar, NoOutputMode, OutputMode, PrettyPrinting, Qry, Reachable, ReceiverNonNull, TopVal}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.{AnyFunSuite, FixtureAnyFunSuite}
@@ -26,31 +26,31 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
                           expectReachable:ResultSummary => Unit)
   override def withFixture(test:OneArgTest) = {
     test(FixtureParam(LimitMaterializationApproxMode(), //TODO: why does dropping heap cells make this slower???
-      expectUnreachable = r => assert(r == Proven),
+      expectUnreachable = r => assert(r == Proven || r == Unreachable), //Note: no output mode cannot distinguish unreach/proven
       expectReachable = r => assert(r == Witnessed))) //Note: may need to switch witness/timeout
     test(FixtureParam(PreciseApproxMode(true),
-      expectUnreachable = r => assert(r == Proven),
+      expectUnreachable = r => assert(r == Proven || r == Unreachable),
       expectReachable = r => assert(r == Witnessed))) //Note: may need to switch witness/timeout
 
   }
 
-  val cgMode = SparkCallGraph
+  //implicit val om: OutputMode = NoOutputMode
+  implicit val om: OutputMode = MemoryOutputMode
 
   test("Symbolic Executor should prove an intraprocedural deref"){ f =>
     val test_interproc_1 = getClass.getResource("/test_interproc_1.apk").getPath
     assert(test_interproc_1 != null)
     val specs:Set[LSSpec] = Set()
-    val w = new JimpleFlowdroidWrapper(test_interproc_1, cgMode,specs)
+    val w = new SootWrapper(test_interproc_1,specs)
     val config = ExecutorConfig(
-      stepLimit = 8, w, new SpecSpace(specs), printAAProgress = true, approxMode = f.approxMode)
-    implicit val om: OutputMode = config.outputMode
+      stepLimit = 8, w, new SpecSpace(specs), printAAProgress = true, approxMode = f.approxMode, outputMode = om)
     val symbolicExecutor = config.getSymbolicExecutor
     val query = ReceiverNonNull(
       Signature("com.example.test_interproc_1.MainActivity", "java.lang.String objectString()"),21)
     // Call symbolic executor
     val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
 //    prettyPrinting.dumpDebugInfo(result, "test_interproc_1_derefSafe")
-    assert(result.size == 1)
+    if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) assert(result.size == 1)
     assert(result.iterator.next.qry.searchState == BottomQry)
     assert(BounderUtil.characterizeMaxPath(result)== SingleMethod)
     f.expectUnreachable(BounderUtil.interpretResult(result,QueryFinished))
@@ -60,11 +60,12 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
   test("Symbolic Executor should prove an inter-callback deref"){ f =>
     val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath
     assert(test_interproc_1 != null)
-    val w = new JimpleFlowdroidWrapper(test_interproc_1, cgMode, LifecycleSpec.spec)
+    val w = new SootWrapper(test_interproc_1, LifecycleSpec.spec)
 
     val config = ExecutorConfig(
       stepLimit = 200, w,new SpecSpace(LifecycleSpec.spec),  z3Timeout = Some(30),
-      component = Some(List("com\\.example\\.test_interproc_2\\.MainActivity.*")), approxMode = f.approxMode)
+      component = Some(List("com\\.example\\.test_interproc_2\\.MainActivity.*")), approxMode = f.approxMode,
+      outputMode = om)
     val symbolicExecutor = config.getSymbolicExecutor
     val query = ReceiverNonNull(
       Signature("com.example.test_interproc_2.MainActivity", "void onPause()"),27)
@@ -73,15 +74,16 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
     BounderUtil.throwIfStackTrace(result)
 
     f.expectUnreachable(BounderUtil.interpretResult(result,QueryFinished))
-    assert(result.nonEmpty)
+    if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) assert(result.nonEmpty)
   }
   test("Symbolic executor should witness onPause"){ f =>
     val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath
     assert(test_interproc_1 != null)
-    val w = new JimpleFlowdroidWrapper(test_interproc_1, cgMode,LifecycleSpec.spec)
+    val w = new SootWrapper(test_interproc_1, LifecycleSpec.spec)
     val config = ExecutorConfig(
       stepLimit = 50, w,new SpecSpace(LifecycleSpec.spec),  z3Timeout = Some(30),
-      component = Some(List("com\\.example\\.test_interproc_2\\.MainActivity.*")), approxMode = f.approxMode)
+      component = Some(List("com\\.example\\.test_interproc_2\\.MainActivity.*")), approxMode = f.approxMode,
+      outputMode = om)
     //      component = Some(List("com\\.example\\.test_interproc_2\\.*"))
     val symbolicExecutor = new AbstractInterpreter[SootMethod, soot.Unit](config)
     val query = Reachable(
@@ -95,9 +97,10 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
   test("Symbolic executor should witness onResume"){ f =>
     val test_interproc_1: String = getClass.getResource("/test_interproc_2.apk").getPath
     assert(test_interproc_1 != null)
-    val w = new JimpleFlowdroidWrapper(test_interproc_1, cgMode, LifecycleSpec.spec)
+    val w = new SootWrapper(test_interproc_1,  LifecycleSpec.spec)
     val config = ExecutorConfig(
-      stepLimit = 50, w,new SpecSpace(LifecycleSpec.spec),  z3Timeout = Some(30), approxMode = f.approxMode)
+      stepLimit = 50, w,new SpecSpace(LifecycleSpec.spec),  z3Timeout = Some(30), approxMode = f.approxMode,
+      outputMode = om)
     val symbolicExecutor = config.getSymbolicExecutor
     val query = Reachable(
       Signature("com.example.test_interproc_2.MainActivity", "void onResume()"),20)
@@ -141,10 +144,10 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
         FragmentGetActivityNullSpec.getActivityNonNull,
       ) ++ RxJavaSpec.spec
-      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+      val w = new SootWrapper(apk,  specs)
       val config = ExecutorConfig(
         stepLimit = 50, w, new SpecSpace(specs),
-        component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
+        component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode, outputMode = om)
       val symbolicExecutor = config.getSymbolicExecutor
       val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
         "void onCreate(android.os.Bundle)"), BounderUtil.lineForRegex(".*query1.*".r,src))
@@ -198,11 +201,10 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
     val test: String => Unit = apk => {
       assert(apk != null)
       val specs:Set[LSSpec] = Set()
-      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+      val w = new SootWrapper(apk, specs)
       val config = ExecutorConfig(
         stepLimit = 200, w, new SpecSpace(specs),
-        component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
-      implicit val om = config.outputMode
+        component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode, outputMode = om)
       val symbolicExecutor = config.getSymbolicExecutor
 
       // Entry of onCreate should be reachable (debugging spark issue)
@@ -268,11 +270,10 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
     val test: String => Unit = apk => {
       assert(apk != null)
       val specs: Set[LSSpec] = Set()
-      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+      val w = new SootWrapper(apk, specs)
       val config = ExecutorConfig(
         stepLimit = 200, w, new SpecSpace(specs),
-        component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
-      implicit val om = config.outputMode
+        component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode, outputMode = om)
       val symbolicExecutor = config.getSymbolicExecutor
       val resSig = Signature("com.example.createdestroy.MyActivity", "void onResume()")
       val query0 = ReceiverNonNull(resSig, BounderUtil.lineForRegex(".*query0.*".r,src))
@@ -354,11 +355,10 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         FragmentGetActivityNullSpec.getActivityNonNull,
         LifecycleSpec.Activity_onPause_onlyafter_onResume
       )
-      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+      val w = new SootWrapper(apk, specs)
       val config = ExecutorConfig(
         stepLimit = 60, w,new SpecSpace(specs),
-        component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
-      implicit val om: OutputMode = config.outputMode
+        component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode, outputMode = om)
       val symbolicExecutor = config.getSymbolicExecutor
       val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
         "void onPause()"), BounderUtil.lineForRegex(".*query1.*".r,src))
@@ -437,10 +437,10 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
           FragmentGetActivityNullSpec.getActivityNonNull,
         ) ++ RxJavaSpec.spec
-        val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+        val w = new SootWrapper(apk, specs)
         val config = ExecutorConfig(
           stepLimit = 200, w, new SpecSpace(specs),
-          component = Some(List("com.example.createdestroy.MyActivity.*")))
+          component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = om)
         val symbolicExecutor = config.getSymbolicExecutor
         val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
           "void onCreate(android.os.Bundle)"), BounderUtil.lineForRegex(".*query1.*".r, src))
@@ -493,11 +493,11 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
         FragmentGetActivityNullSpec.getActivityNonNull,
       ) ++ RxJavaSpec.spec
-      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+      val w = new SootWrapper(apk, specs)
+      implicit val outputMode = MemoryOutputMode
       val config = ExecutorConfig(
         stepLimit = 200, w, new SpecSpace(specs),
-        component = Some(List("com.example.createdestroy.MyActivity.*")))
-      implicit val om: OutputMode = config.outputMode
+        component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = outputMode)
       val symbolicExecutor = config.getSymbolicExecutor
       val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
         "void onCreate(android.os.Bundle)"),20)
@@ -506,7 +506,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       assert(result.nonEmpty)
       BounderUtil.throwIfStackTrace(result)
       f.expectUnreachable(BounderUtil.interpretResult(result,QueryFinished))
-      assert(BounderUtil.characterizeMaxPath(result) == SingleCallbackMultiMethod)
+      assert(BounderUtil.characterizeMaxPath(result)(outputMode) == SingleCallbackMultiMethod)
 
     }
 
@@ -565,11 +565,13 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
           FragmentGetActivityNullSpec.getActivityNonNull,
         ) ++ RxJavaSpec.spec
-        val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+        val w = new SootWrapper(apk, specs)
+
+        implicit val outputMode = MemoryOutputMode
         val config = ExecutorConfig(
           stepLimit = 200, w, new SpecSpace(specs),
-          component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
-        implicit val om: OutputMode = config.outputMode
+          component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode,
+          outputMode = outputMode)
         val symbolicExecutor = config.getSymbolicExecutor
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
         val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
@@ -581,7 +583,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val interpretedResult = BounderUtil.interpretResult(result, QueryFinished)
         expected(interpretedResult)
         if(interpretedResult == Proven)
-          assert(BounderUtil.characterizeMaxPath(result) == SingleCallbackMultiMethod)
+          assert(BounderUtil.characterizeMaxPath(result)(outputMode) == SingleCallbackMultiMethod)
       }
 
       makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
@@ -630,7 +632,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
         FragmentGetActivityNullSpec.getActivityNonNull,
       ) ++ RxJavaSpec.spec
-      val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
+      val w = new SootWrapper(apk, specs)
       val config = ExecutorConfig(
         stepLimit = 200, w, new SpecSpace(specs),
         component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
@@ -685,7 +687,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
     val test: String => Unit = apk => {
       assert(apk != null)
       val specs:Set[LSSpec] = Set()
-      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+      val w = new SootWrapper(apk, specs)
       val config = ExecutorConfig(
         stepLimit = 50, w, new SpecSpace(specs),
         component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
@@ -760,7 +762,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
           FragmentGetActivityNullSpec.getActivityNonNull,
         ) ++ RxJavaSpec.spec
-        val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
+        val w = new SootWrapper(apk, specs)
         val config = ExecutorConfig(
           stepLimit = 200, w,new SpecSpace(specs),
           component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
@@ -840,7 +842,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val test: String => Unit = apk => {
         assert(apk != null)
         val specs:Set[LSSpec] = Set()
-        val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
+        val w = new SootWrapper(apk, specs)
         val config = ExecutorConfig(
           stepLimit = 200, w, new SpecSpace(specs),
           component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
@@ -910,7 +912,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
         FragmentGetActivityNullSpec.getActivityNonNull,
       ) ++ RxJavaSpec.spec
-      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+      val w = new SootWrapper(apk, specs)
       val config = ExecutorConfig(
         stepLimit = 120, w, new SpecSpace(specs),
         component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
@@ -973,7 +975,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val test: String => Unit = apk => {
         assert(apk != null)
         val specs:Set[LSSpec] = Set()
-        val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+        val w = new SootWrapper(apk, specs)
         val config = ExecutorConfig(
           stepLimit = 200, w, new SpecSpace(specs),
           component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
@@ -1046,7 +1048,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
         FragmentGetActivityNullSpec.getActivityNonNull,
       ) ++ LifecycleSpec.spec ++ RxJavaSpec.spec
-      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+      val w = new SootWrapper(apk, specs)
       val specSpace = new SpecSpace(specs)
 
       File.usingTemporaryDirectory() { tmpDir =>
@@ -1115,12 +1117,12 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         FragmentGetActivityNullSpec.getActivityNonNull,
         LifecycleSpec.Fragment_activityCreatedOnlyFirst
       ) ++ RxJavaSpec.spec
-      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+      val w = new SootWrapper(apk, specs)
 
       val specSpace = new SpecSpace(specs)
       val config = ExecutorConfig(
         stepLimit = 200, w, specSpace,
-        component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
+        component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode, outputMode = om)
       val symbolicExecutor = config.getSymbolicExecutor
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
       val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
@@ -1201,7 +1203,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         FragmentGetActivityNullSpec.getActivityNonNull,
         LifecycleSpec.Fragment_activityCreatedOnlyFirst
       ) ++ RxJavaSpec.spec
-      val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
+      val w = new SootWrapper(apk, specs)
       val specSpace = new SpecSpace(specs)
       val config = ExecutorConfig(
         stepLimit = 300, w, specSpace,
@@ -1287,7 +1289,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         FragmentGetActivityNullSpec.getActivityNonNull,
         LifecycleSpec.Fragment_activityCreatedOnlyFirst
       ) ++ RxJavaSpec.spec
-      val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
+      val w = new SootWrapper(apk, specs)
       val specSpace = new SpecSpace(specs)
       val config = ExecutorConfig(
         stepLimit = 300, w, specSpace,
@@ -1376,7 +1378,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         FragmentGetActivityNullSpec.getActivityNonNull,
         LifecycleSpec.Fragment_activityCreatedOnlyFirst,
       ) ++ RxJavaSpec.spec
-      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+      val w = new SootWrapper(apk, specs)
       val specSpace = new SpecSpace(specs)
       val config = ExecutorConfig(
         stepLimit = 300, w, specSpace,
@@ -1491,12 +1493,13 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
           FragmentGetActivityNullSpec.getActivityNonNull,
           LifecycleSpec.Fragment_activityCreatedOnlyFirst,
         ) ++ RxJavaSpec.spec
-        val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+        val w = new SootWrapper(apk, specs)
         val specSpace = new SpecSpace(specs)
         File.usingTemporaryDirectory() { tmpDir =>
           assert(!(tmpDir / "paths.db").exists)
-          implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString)
-          dbMode.startMeta()
+          //          implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString)
+          //          dbMode.startMeta()
+          val dbMode = om
           val config = ExecutorConfig(
             stepLimit = 200, w, specSpace,
             component = Some(Seq("com.example.createdestroy.ItemDescriptionFragment",
@@ -1601,7 +1604,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
           LSSpec(a::Nil, Nil, Not(SpecSignatures.Activity_onCreate_entry),SpecSignatures.Activity_onCreate_entry),
           RxJavaSpec.call
         ) // ++ Dummy.specs
-        val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
+        val w = new SootWrapper(apk, specs)
         val config = ExecutorConfig(
           stepLimit = 180, w, new SpecSpace(specs),
           component = Some(List("com.example.createdestroy.*MyActivity.*")), approxMode = f.approxMode)
@@ -1684,11 +1687,11 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
             ViewSpec.clickWhileActive
 //            LifecycleSpec.Activity_createdOnlyFirst
           )
-          val w = new JimpleFlowdroidWrapper(apk, cgMode,specs)
+          val w = new SootWrapper(apk, specs)
           val config = ExecutorConfig(
             stepLimit = 200, w, new SpecSpace(specs, Set()),
-            component = Some(List("com.example.createdestroy.*RemoverActivity.*")), approxMode = f.approxMode)
-          implicit val om = config.outputMode
+            component = Some(List("com.example.createdestroy.*RemoverActivity.*")), approxMode = f.approxMode,
+            outputMode = om)
           val symbolicExecutor = config.getSymbolicExecutor
           val line = BounderUtil.lineForRegex(".*query1.*".r, src)
           val query = ReceiverNonNull(
@@ -1761,10 +1764,10 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
     val test: String => Unit = apk => {
       assert(apk != null)
       val specs = Set[LSSpec]()
-      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+      val w = new SootWrapper(apk, specs)
       val config = ExecutorConfig(
         stepLimit = 80, w, new SpecSpace(specs),
-        component = Some(List("com.example.createdestroy.*MyFragment.*")), approxMode = f.approxMode)
+        component = Some(List("com.example.createdestroy.*MyFragment.*")), approxMode = f.approxMode, outputMode = om)
 
       // line in call is reachable
       val symbolicExecutor = config.getSymbolicExecutor
@@ -1837,10 +1840,10 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         FragmentGetActivityNullSpec.getActivityNonNull,
         LifecycleSpec.Fragment_activityCreatedOnlyFirst
       ) ++ RxJavaSpec.spec
-      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+      val w = new SootWrapper(apk, specs)
       val config = ExecutorConfig(
         stepLimit = 80, w, new SpecSpace(specs),
-        component = Some(List("com.example.createdestroy.*MyFragment.*")), approxMode = f.approxMode)
+        component = Some(List("com.example.createdestroy.*MyFragment.*")), approxMode = f.approxMode, outputMode = om)
 
       // line in call is reachable
       val symbolicExecutor = config.getSymbolicExecutor
@@ -1915,11 +1918,10 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         FragmentGetActivityNullSpec.getActivityNonNull,
         LifecycleSpec.Fragment_activityCreatedOnlyFirst
       ) ++ RxJavaSpec.spec
-      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+      val w = new SootWrapper(apk, specs)
       val config = ExecutorConfig(
         stepLimit = 80, w, new SpecSpace(specs),
-        component = Some(List("com.example.createdestroy.*MyFragment.*")), approxMode = f.approxMode)
-      implicit val om = config.outputMode
+        component = Some(List("com.example.createdestroy.*MyFragment.*")), approxMode = f.approxMode, outputMode = om)
       val symbolicExecutor = config.getSymbolicExecutor
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
       val query = Reachable(Signature("com.example.createdestroy.MyFragment",
@@ -1991,11 +1993,10 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         FragmentGetActivityNullSpec.getActivityNonNull,
         LifecycleSpec.Fragment_activityCreatedOnlyFirst
       ) ++ RxJavaSpec.spec
-      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+      val w = new SootWrapper(apk, specs)
       val config = ExecutorConfig(
         stepLimit = 80, w, new SpecSpace(specs),
-        component = Some(List("com.example.createdestroy.*MyFragment.*")))
-      implicit val om = config.outputMode
+        component = Some(List("com.example.createdestroy.*MyFragment.*")), outputMode = om)
       val symbolicExecutor = config.getSymbolicExecutor
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
       val query = Reachable(Signature("com.example.createdestroy.MyFragment",
@@ -2043,11 +2044,11 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
     val test: String => Unit = apk => {
       assert(apk != null)
       val specs = LifecycleSpec.spec
-      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+      val w = new SootWrapper(apk, specs)
 
       val config = ExecutorConfig(
         stepLimit = 120, w, new SpecSpace(specs),
-        component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
+        component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode, outputMode = om)
       val symbolicExecutor = config.getSymbolicExecutor
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
       val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
@@ -2091,11 +2092,11 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         dbMode.startMeta()
         assert(apk != null)
         val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
-        val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
+        val w = new SootWrapper(apk, specs.getSpecs)
 
         val config = ExecutorConfig(
           stepLimit = 200, w, specs,
-          component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
+          component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode, outputMode = om)
         val symbolicExecutor = config.getSymbolicExecutor
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
         val pauseReachable = Reachable(Signature("com.example.createdestroy.MyActivity",
@@ -2161,7 +2162,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString)
         dbMode.startMeta()
         val specs = new SpecSpace(Set(ViewSpec.clickWhileActive, ViewSpec.viewOnlyReturnedFromOneActivity))
-        val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
+        val w = new SootWrapper(apk, specs.getSpecs)
 
         val config = ExecutorConfig(
           stepLimit = 200, w, specs,
@@ -2219,7 +2220,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val specs = new SpecSpace( Set(ViewSpec.clickWhileActive,
            ViewSpec.viewOnlyReturnedFromOneActivity))
 //        val specs = new SpecSpace(Set(ViewSpec.clickWhileActive))
-        val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
+        val w = new SootWrapper(apk, specs.getSpecs)
 
         val config = ExecutorConfig(
           stepLimit = 180, w, specs,
@@ -2307,7 +2308,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val specs = new SpecSpace( Set(ViewSpec.clickWhileActive, ViewSpec.viewOnlyReturnedFromOneActivity))
         // + ViewSpec.noDupeFindView) //TODO: =====================  add noDupe back in if other tests use it
         //        val specs = new SpecSpace(Set(ViewSpec.clickWhileActive))
-        val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
+        val w = new SootWrapper(apk, specs.getSpecs)
 
         val config = ExecutorConfig(
           stepLimit = 180, w, specs,
@@ -2403,7 +2404,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
               ViewSpec.clickWhileActive,
               ViewSpec.viewOnlyReturnedFromOneActivity,
             ) ++ Dummy.specs) // ++ LifecycleSpec.spec)
-            val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
+            val w = new SootWrapper(apk, specs.getSpecs)
 
             val config = ExecutorConfig(
               stepLimit = 280, w, specs,
@@ -2471,7 +2472,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
     val test: String => Unit = apk => {
       assert(apk != null)
       val specs = new SpecSpace(Set() /*LifecycleSpec.spec*/ , Set(ViewSpec.disallowCallinAfterActivityPause))
-      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
+      val w = new SootWrapper(apk, specs.getSpecs)
 
       val config = ExecutorConfig(
         stepLimit = 120, w, specs,
@@ -2547,7 +2548,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
           LifecycleSpec.Activity_onResume_first_orAfter_onPause,
           LifecycleSpec.Activity_onPause_onlyafter_onResume
         ))
-        val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
+        val w = new SootWrapper(apk, specs.getSpecs)
 
         val config = ExecutorConfig(
           stepLimit = 300, w, specs,
@@ -2623,7 +2624,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
     val test: String => Unit = apk => {
       assert(apk != null)
       val specs = new SpecSpace(Set() /*LifecycleSpec.spec*/ , Set(ViewSpec.disallowCallinAfterActivityPause))
-      val w = new JimpleFlowdroidWrapper(apk, cgMode, specs.getSpecs)
+      val w = new SootWrapper(apk, specs.getSpecs)
 
       val config = ExecutorConfig(
         stepLimit = 120, w, specs,
@@ -2743,7 +2744,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
             val iSet = Set(onClickI, setOnClickListenerI, setOnClickListenerINull,
               Activity_onResume_entry, Activity_onPause_entry, Button_init)
 
-            val w = new JimpleFlowdroidWrapper(apk, cgMode, specs)
+            val w = new SootWrapper(apk, specs)
 
             val specSpace = new SpecSpace(specs, matcherSpace = iSet)
             val config = ExecutorConfig(

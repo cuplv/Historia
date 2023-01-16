@@ -13,13 +13,13 @@ import soot.{Scene, SootMethod}
 
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 
-class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
+class SootWrapperTest extends FixtureAnyFunSuite  {
 
   case class FixtureParam(cgSource: CallGraphSource)
   override def withFixture(test: OneArgTest) = {
     // Run all tests with both CHA call graph and SparkCallGraph
     withFixture(test.toNoArgTest(FixtureParam(SparkCallGraph)))
-//    withFixture(test.toNoArgTest(FixtureParam(CHACallGraph)))
+    withFixture(test.toNoArgTest(FixtureParam(CHACallGraph)))
 //    withFixture(test.toNoArgTest(FixtureParam(FlowdroidCallGraph)))
   }
   ignore("Load jimple app"){ f =>
@@ -68,7 +68,7 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
         RxJavaSpec.call,
         //          RxJavaSpec.subscribeDoesNotReturnNull
       )
-      val w = new JimpleFlowdroidWrapper(apk, f.cgSource, specs)
+      val w = new SootWrapper(apk, specs,f.cgSource)
 //      val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
 //        new SpecSpace(specs), cha)
       val config = ExecutorConfig(
@@ -162,7 +162,7 @@ class JimpleFlowdroidWrapperTest extends FixtureAnyFunSuite  {
         RxJavaSpec.call,
         //          RxJavaSpec.subscribeDoesNotReturnNull
       )
-      val w = new JimpleFlowdroidWrapper(apk, f.cgSource, specs)
+      val w = new SootWrapper(apk, specs, f.cgSource)
 
 //      val transfer = (cha: ClassHierarchyConstraints) => new TransferFunctions[SootMethod, soot.Unit](w,
 //        new SpecSpace(specs), cha)

@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.BounderSetupApplication.{ApkSource, SourceType}
 
 import java.util
 import java.util.{Collections, Objects}
-import edu.colorado.plv.bounder.ir.JimpleFlowdroidWrapper.cgEntryPointName
+import edu.colorado.plv.bounder.ir.SootWrapper.cgEntryPointName
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, LSSpec, OAbsMsg, SetSignatureMatcher, Signature, SignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
@@ -35,7 +35,7 @@ import scala.collection.{BitSet, MapView, mutable}
 import scala.jdk.CollectionConverters._
 import scala.util.matching.Regex
 
-object JimpleFlowdroidWrapper{
+object SootWrapper{
   val cgEntryPointName:String = "CgEntryPoint___________a____b"
   def stringNameOfClass(m : SootClass): String = {
     val name = m.getName
@@ -115,9 +115,9 @@ object JimpleFlowdroidWrapper{
     case ne: JNeExpr => Binop(makeRVal(ne.getOp1),Ne, makeRVal(ne.getOp2))
     case eq: JEqExpr => Binop(makeRVal(eq.getOp1),Eq, makeRVal(eq.getOp2))
     case local: JimpleLocal =>
-      LocalWrapper(local.getName, JimpleFlowdroidWrapper.stringNameOfType(local.getType))
+      LocalWrapper(local.getName, SootWrapper.stringNameOfType(local.getType))
     case cast: JCastExpr =>
-      val castType = JimpleFlowdroidWrapper.stringNameOfType(cast.getCastType)
+      val castType = SootWrapper.stringNameOfType(cast.getCastType)
       val v = makeRVal(cast.getOp)
       Cast(castType, v)
     case mult: JMulExpr =>
@@ -155,9 +155,9 @@ object JimpleFlowdroidWrapper{
       val op2 = makeRVal(ge.getOp2)
       Binop(op1, Ge, op2)
     case staticRef : StaticFieldRef =>
-      val declaringClass = JimpleFlowdroidWrapper.stringNameOfClass(staticRef.getFieldRef.declaringClass())
+      val declaringClass = SootWrapper.stringNameOfClass(staticRef.getFieldRef.declaringClass())
       val fieldName = staticRef.getFieldRef.name()
-      val containedType = JimpleFlowdroidWrapper.stringNameOfType(staticRef.getFieldRef.`type`())
+      val containedType = SootWrapper.stringNameOfType(staticRef.getFieldRef.`type`())
       StaticFieldReference(declaringClass, fieldName, containedType)
 
     case const: RealConstant=>
@@ -177,7 +177,7 @@ object JimpleFlowdroidWrapper{
       val op2 = makeRVal(jcomp.getOp2)
       Binop(op1,Eq,op2)
     case i : JInstanceOfExpr =>
-      val targetClassType = JimpleFlowdroidWrapper.stringNameOfType(i.getCheckType)
+      val targetClassType = SootWrapper.stringNameOfType(i.getCheckType)
       val target = makeRVal(i.getOp).asInstanceOf[LocalWrapper]
       InstanceOf(targetClassType, target)
     case a : ArrayRef =>
@@ -185,7 +185,7 @@ object JimpleFlowdroidWrapper{
       val index = makeRVal(a.getIndex)
       ArrayReference(baseVar, makeRVal(a.getIndex))
     case a : NewArrayExpr =>
-      NewCommand(JimpleFlowdroidWrapper.stringNameOfType(a.getType))
+      NewCommand(SootWrapper.stringNameOfType(a.getType))
     case a : ClassConstant =>
       val t = IRParser.parseReflectiveRef(a.getValue)
       ClassConst(t.sootString)
@@ -221,7 +221,7 @@ object JimpleFlowdroidWrapper{
         val leftBox = makeVal(cmd.leftBox.getValue).asInstanceOf[LVal]
         var exceptionName:String = ""
         method.getActiveBody.getTraps.forEach{trap =>
-          if(trap.getHandlerUnit == cmd) exceptionName = JimpleFlowdroidWrapper.stringNameOfClass(trap.getException)
+          if(trap.getHandlerUnit == cmd) exceptionName = SootWrapper.stringNameOfClass(trap.getException)
         }
         val rightBox = CaughtException(exceptionName)
         AssignCmd(leftBox, rightBox, loc)
@@ -285,7 +285,7 @@ trait CallGraphProvider{
  */
 class AppOnlyCallGraph(cg: CallGraph,
                        callbacks: Set[SootMethod],
-                       wrapper: JimpleFlowdroidWrapper,
+                       wrapper: SootWrapper,
                        resolver: AppCodeResolver) extends CallGraphProvider {
   sealed trait PointLoc
   case class FieldPoint(clazz: SootClass, fname: String) extends PointLoc
@@ -367,7 +367,7 @@ class AppOnlyCallGraph(cg: CallGraph,
   }
 //  val callbacks = resolver.getCallbacks
   val allFwkClasses = Scene.v().getClasses.asScala.filter(c =>
-    resolver.isFrameworkClass(JimpleFlowdroidWrapper.stringNameOfClass(c))).toSet
+    resolver.isFrameworkClass(SootWrapper.stringNameOfClass(c))).toSet
   val ptState = iComputePt(Queue.from(callbacks),PTState(Map(), Map(), allFwkClasses))
 
   override def edgesInto(method : SootMethod): Set[(SootMethod,soot.Unit)] = {
@@ -427,14 +427,14 @@ class PatchingCallGraphWrapper(cg:CallGraph, appMethods: Set[SootMethod]) extend
     case v : JVirtualInvokeExpr =>
       // TODO: is base ever not a local?
       val base = v.getBase
-      val reachingObjects = JimpleFlowdroidWrapper.subThingsOf(baseType(base))
+      val reachingObjects = SootWrapper.subThingsOf(baseType(base))
       val ref: SootMethodRef = v.getMethodRef
       val out = reachingObjects.flatMap(findMethodInvoke(_, ref))
       Set(out.toList:_*).filter(m => !m.isAbstract)
     case i : JInterfaceInvokeExpr =>
       val base = i.getBase.asInstanceOf[JimpleLocal]
       val reachingObjects =
-        JimpleFlowdroidWrapper.subThingsOf(base.getType.asInstanceOf[RefType].getSootClass)
+        SootWrapper.subThingsOf(base.getType.asInstanceOf[RefType].getSootClass)
       val ref: SootMethodRef = i.getMethodRef
       val out = reachingObjects.flatMap(findMethodInvoke(_, ref)).filter(m => !m.isAbstract)
       Set(out.toList:_*)
@@ -493,10 +493,10 @@ class CallGraphWrapper(cg: CallGraph) extends CallGraphProvider{
  * @param toOverride set of LSSpec or abstract messages to override
  *                   callbacks that may be missing (e.g. onResume so that onPause may be executed)
  */
-class JimpleFlowdroidWrapper(apkPath : String,
-                             callGraphSource: CallGraphSource = SparkCallGraph,
-                             toOverride:Set[_<:Any], //TODO: use more precise type
-                             sourceType:SourceType = ApkSource
+class SootWrapper(apkPath : String,
+                  toOverride:Set[_<:Any], //TODO: use more precise type
+                  callGraphSource: CallGraphSource = SparkCallGraph,
+                  sourceType:SourceType = ApkSource
                             ) extends IRWrapper[SootMethod, soot.Unit] {
   case class Messages(cbSize:Int, cbMsg:Int, matchedCb:Int, matchedCbRet:Int,
                       ciCallGraph:Int, matchedCiCallGraph:Int,
@@ -520,7 +520,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
       if(m.hasActiveBody) {
         val vars = m.getActiveBody.getUnits.asScala.flatMap { c =>
           val methodLoc = JimpleMethodLoc(m)
-          val ml = JimpleFlowdroidWrapper.makeCmd(c, m, AppLoc(methodLoc, JimpleLineLoc(c, m), true))
+          val ml = SootWrapper.makeCmd(c, m, AppLoc(methodLoc, JimpleLineLoc(c, m), true))
           ml match {
             case ReturnCmd(Some(returnVar: LocalWrapper), loc) => Set(varAndPtRegions(methodLoc, returnVar))
             case AssignCmd(target: LocalWrapper, source, loc) => Set(varAndPtRegions(methodLoc, target))
@@ -709,7 +709,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
     }
     method.getDeclaringClass.setInScene(true)
     // Retrieve global field representing all values pointed to by the framework
-    val entryPoint = Scene.v().getSootClass(JimpleFlowdroidWrapper.cgEntryPointName)
+    val entryPoint = Scene.v().getSootClass(SootWrapper.cgEntryPointName)
     val globalField = entryPoint.getFieldByName("global")
     assert(globalField.getType.toString == "java.lang.Object")
 
@@ -763,7 +763,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
   }
   private def instrumentCallins(): Unit ={
     Scene.v().getClasses.asScala.foreach{c =>
-      if(!c.isInterface && resolver.isFrameworkClass(JimpleFlowdroidWrapper.stringNameOfClass(c))){
+      if(!c.isInterface && resolver.isFrameworkClass(SootWrapper.stringNameOfClass(c))){
         c.getMethods.asScala.foreach { m =>
           // exclude synthetic entry point from instrumentation
           if((m.getDeclaringClass.getName != cgEntryPointName)) {
@@ -789,7 +789,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
    */
   def canReflectiveRef(c: SootClass): Boolean = {
 
-    val strName = JimpleFlowdroidWrapper.stringNameOfClass(c)
+    val strName = SootWrapper.stringNameOfClass(c)
     if(initialClasses.contains(strName)){
       true
     }else if(c.hasSuperclass){
@@ -811,7 +811,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
       Some(c)
   }
   private def fwkInstantiate(entryMethod:SootMethod, c:SootClass,globalField:SootField):Unit = {
-    val fwkCanInit = resolver.isFrameworkClass(JimpleFlowdroidWrapper.stringNameOfClass(c)) || canReflectiveRef(c)
+    val fwkCanInit = resolver.isFrameworkClass(SootWrapper.stringNameOfClass(c)) || canReflectiveRef(c)
     if(fwkCanInit) {
       val entryPointBody = entryMethod.getActiveBody
       val units = entryPointBody.getUnits
@@ -902,7 +902,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
   def buildSparkCallGraph() = {
     //    Scene.v().setEntryPoints(callbacks.toList.asJava)
     val appClasses: Set[SootClass] = getAppMethods(resolver).flatMap { a =>
-      val cname = JimpleFlowdroidWrapper.stringNameOfClass(a.getDeclaringClass)
+      val cname = SootWrapper.stringNameOfClass(a.getDeclaringClass)
       if (!resolver.isFrameworkClass(cname)) {
         Some(a.getDeclaringClass)
       } else None
@@ -919,8 +919,8 @@ class JimpleFlowdroidWrapper(apkPath : String,
 
     Options.v().set_whole_program(true)
 //    Scene.v().addBasicClass(JimpleFlowdroidWrapper.cgEntryPointName, SootClass.HIERARCHY)
-    Scene.v().addBasicClass(JimpleFlowdroidWrapper.cgEntryPointName, SootClass.BODIES)
-    val entryPoint = Scene.v().getSootClass(JimpleFlowdroidWrapper.cgEntryPointName)
+    Scene.v().addBasicClass(SootWrapper.cgEntryPointName, SootClass.BODIES)
+    val entryPoint = Scene.v().getSootClass(SootWrapper.cgEntryPointName)
     entryPoint.setApplicationClass()
     entryPoint.setInScene(true)
 
@@ -952,7 +952,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
     entryPointBody.getLocals.add(allocLocal)
 
     Scene.v().getClasses.asScala.toList.foreach{v =>
-      if(resolver.isFrameworkClass(JimpleFlowdroidWrapper.stringNameOfClass(v))) {
+      if(resolver.isFrameworkClass(SootWrapper.stringNameOfClass(v))) {
         // if framework interface with no implementors, make a dummy implementor
         if (v.isInterface && Scene.v().getActiveHierarchy.getImplementersOf(v).size() == 0) {
           val dummy = dummyClassForFrameworkClass(v)
@@ -973,7 +973,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
     }
     // create new instance of each framework type and assign to allocLocal
     Scene.v().getClasses.asScala.toList.foreach{ v =>
-      if(resolver.isFrameworkClass(JimpleFlowdroidWrapper.stringNameOfClass(v)) && !v.isInterface){
+      if(resolver.isFrameworkClass(SootWrapper.stringNameOfClass(v)) && !v.isInterface){
         v.setApplicationClass()
         entryPointBody.getUnits.add(
           Jimple.v().newAssignStmt(allocLocal, Jimple.v().newNewExpr(v.getType))
@@ -1050,6 +1050,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
       CHATransformer.v().transform()
       new CallGraphWrapper(Scene.v().getCallGraph)
     case AppOnlyCallGraph =>
+      ??? //TODO: not used in a long time, test well
       val chacg: CallGraph = Scene.v().getCallGraph
       new AppOnlyCallGraph(chacg, preCallbacks, this, resolver)
   }
@@ -1064,13 +1065,13 @@ class JimpleFlowdroidWrapper(apkPath : String,
         val out = mutable.HashMap[Int,String]()
         v.getAllocNodeNumberer.forEach(n => {
           val number = n.getNumber
-          val typeName = JimpleFlowdroidWrapper.stringNameOfType(n.getType)
+          val typeName = SootWrapper.stringNameOfType(n.getType)
           assert(!out.contains(number) || out(number) == typeName, s"Malformed number $number for node ${n}")
           out.addOne(number, typeName)
         })
         v.allocSources().forEach(n => {
           val number = n.getNumber
-          val typeName = JimpleFlowdroidWrapper.stringNameOfType(n.getType)
+          val typeName = SootWrapper.stringNameOfType(n.getType)
           assert(!out.contains(number) || out(number) == typeName, s"Malformed number $number for node ${n}")
           out.addOne(number, typeName)
         })
@@ -1091,7 +1092,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
 
     val appClasses: Set[String] = resolver.appMethods.map(m => m.classType)
     def findSuperMatching(sc:SootClass, sig:SignatureMatcher):Option[SootMethod] = {
-      val sName = JimpleFlowdroidWrapper.stringNameOfClass(sc)
+      val sName = SootWrapper.stringNameOfClass(sc)
       val current = sc.getMethods.asScala.find{m =>
         val methodSignature = m.getSubSignature
         sig.matches(Signature(sName, methodSignature))(cha)
@@ -1115,7 +1116,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
       val units = body.getUnits
       val invExpr = Jimple.v().newSpecialInvokeExpr(body.getThisLocal, m.makeRef(),
         body.getParameterLocals)
-      if(JimpleFlowdroidWrapper.stringNameOfType(retType) == "void") {
+      if(SootWrapper.stringNameOfType(retType) == "void") {
         val invCmd = Jimple.v().newInvokeStmt(invExpr)
         units.add(invCmd)
         units.add(Jimple.v().newReturnVoidStmt())
@@ -1144,7 +1145,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
           case _:NullPointerException => List() // TODO: figure out why soot does this
         }
         val appClassesImplementing = subClasses
-          .filter(sc2 => appClasses.contains(JimpleFlowdroidWrapper.stringNameOfClass(sc2)))
+          .filter(sc2 => appClasses.contains(SootWrapper.stringNameOfClass(sc2)))
         appClassesImplementing.foreach{c =>
           val callbackExists = c.getMethods.asScala.exists{m =>
             sig.matchesSubSig(m.getSubSignature)
@@ -1383,14 +1384,14 @@ class JimpleFlowdroidWrapper(apkPath : String,
 
   private val iCmdAtLocation: AppLoc => CmdWrapper = Memo.mutableHashMapMemo {
     case loc@AppLoc(_, JimpleLineLoc(cmd, method), _) =>
-      JimpleFlowdroidWrapper.makeCmd(cmd, method, loc)
+      SootWrapper.makeCmd(cmd, method, loc)
     case loc => throw new IllegalStateException(s"No command associated with location: ${loc}")
   }
   override def cmdAtLocation(loc: AppLoc):CmdWrapper = iCmdAtLocation(loc)
 
-  protected def makeRVal(box:Value):RVal = JimpleFlowdroidWrapper.makeRVal(box)
+  protected def makeRVal(box:Value):RVal = SootWrapper.makeRVal(box)
 
-  protected def makeVal(box: Value):RVal = JimpleFlowdroidWrapper.makeVal(box)
+  protected def makeVal(box: Value):RVal = SootWrapper.makeVal(box)
 
   override def isMethodEntry(cmdWrapper: CmdWrapper): Boolean = cmdWrapper.getLoc match {
     case AppLoc(_, JimpleLineLoc(cmd,method),true) => {
@@ -1535,8 +1536,8 @@ class JimpleFlowdroidWrapper(apkPath : String,
       assert(Scene.v().containsClass(type2), s"Type: $type2 not in soot scene")
       val type1Soot = Scene.v().getSootClass(type1)
       val type2Soot = Scene.v().getSootClass(type2)
-      val sub1 = JimpleFlowdroidWrapper.subThingsOf(type1Soot)
-      val sub2 = JimpleFlowdroidWrapper.subThingsOf(type2Soot)
+      val sub1 = SootWrapper.subThingsOf(type1Soot)
+      val sub2 = SootWrapper.subThingsOf(type2Soot)
       sub1.exists(a => sub2.contains(a))
     }
   }
@@ -1567,7 +1568,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
       val incomingEdges = cg.edgesInto(sootMethod)
       val appLocations: Seq[AppLoc] = incomingEdges.flatMap{
         case (method,unit) =>
-          val className = JimpleFlowdroidWrapper.stringNameOfClass(method.getDeclaringClass)
+          val className = SootWrapper.stringNameOfClass(method.getDeclaringClass)
           if (!resolver.isFrameworkClass(className)){
             Some(cmdToLoc(unit, method))
           }else None
@@ -1612,14 +1613,14 @@ class JimpleFlowdroidWrapper(apkPath : String,
   }
 
   override def getInterfaces: Set[String] = {
-    val out = Scene.v().getClasses.asScala.filter(_.isInterface).toSet.map(JimpleFlowdroidWrapper.stringNameOfClass)
+    val out = Scene.v().getClasses.asScala.filter(_.isInterface).toSet.map(SootWrapper.stringNameOfClass)
     out
   }
 
   private def getClassHierarchy: Map[String, Set[String]] = {
     val hierarchy: Hierarchy = Scene.v().getActiveHierarchy
     Scene.v().getClasses().asScala.foldLeft(Map[String, Set[String]]()){ (acc,v) =>
-      val cname = JimpleFlowdroidWrapper.stringNameOfClass(v)
+      val cname = SootWrapper.stringNameOfClass(v)
       val subclasses = if(v.isInterface()) {
         hierarchy.getImplementersOf(v)
       }else {
@@ -1632,7 +1633,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
         }
       }
       val strSubClasses = subclasses.asScala.map(c =>
-        JimpleFlowdroidWrapper.stringNameOfClass(c)).toSet + cname
+        SootWrapper.stringNameOfClass(c)).toSet + cname
       acc  + (cname -> strSubClasses)
     }
   }
@@ -1711,7 +1712,7 @@ class JimpleFlowdroidWrapper(apkPath : String,
       case JimpleMethodLoc(method) if method.isStatic => None
       case JimpleMethodLoc(method) =>
         val l = method.getActiveBody.getThisLocal
-        Some(LocalWrapper(l.getName, JimpleFlowdroidWrapper.stringNameOfType(l.getType)))
+        Some(LocalWrapper(l.getName, SootWrapper.stringNameOfType(l.getType)))
       case _ => throw new IllegalArgumentException()
     }
   }
@@ -1723,8 +1724,8 @@ class JimpleFlowdroidWrapper(apkPath : String,
 }
 
 case class JimpleMethodLoc(method: SootMethod) extends MethodLoc {
-  def string(clazz: SootClass):String = JimpleFlowdroidWrapper.stringNameOfClass(clazz)
-  def string(t:Type) :String = JimpleFlowdroidWrapper.stringNameOfType(t)
+  def string(clazz: SootClass):String = SootWrapper.stringNameOfClass(clazz)
+  def string(t:Type) :String = SootWrapper.stringNameOfType(t)
   override def simpleName: String = {
     method.getSubSignature
   }

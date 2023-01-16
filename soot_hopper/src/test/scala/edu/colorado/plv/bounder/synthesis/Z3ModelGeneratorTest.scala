@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.synthesis
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{MultiCallback, Proven, Witnessed}
-import edu.colorado.plv.bounder.ir.{AppLoc, CBEnter, CallbackMethodInvoke, CallbackMethodReturn, JimpleFlowdroidWrapper, LocalWrapper, SerializedIRMethodLoc}
+import edu.colorado.plv.bounder.ir.{AppLoc, CBEnter, CallbackMethodInvoke, CallbackMethodReturn, SootWrapper, LocalWrapper, SerializedIRMethodLoc}
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, Exists, LSPred, LSSingle, LSSpec, NS, AbsMsg, PredicateSpace, SetSignatureMatcher, SignatureMatcher}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSignatures, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints

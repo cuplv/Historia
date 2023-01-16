@@ -2131,7 +2131,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
       }
 
   }
-  //TODO:===== test subsumption of specifications
+  //TODO: test subsumption of specifications
 //  test("Subsumption of specifications") { f =>
 //    val stateSolver = f.stateSolver
 //    val iFoo_ac = AbsMsg(CBEnter, Set(("", "foo")), c::a :: Nil)
@@ -2155,24 +2155,6 @@ class StateSolverTest extends FixtureAnyFunSuite {
       }
       cmds.toList
     }
-
-    try {
-      implicit val ctx = solver.getSolverCtx
-      val assertions = script.flatMap {
-        case a@Assert(term) =>
-          val fv = solver.freeVar(term).filter{
-            case SSymbol(name) if(name.toBooleanOption.isDefined) => false
-//            case SSymbol(name) if(name.startsWith("type_")) => false
-//            case SSymbol(name) if(name.startsWith("I_C")) => false
-//            case SSymbol(name) if(name.startsWith("const_")) => false
-            case _ => true
-          }
-          if(fv.nonEmpty) Some((fv,a)) else None
-        case _ => None
-      }
-      println(assertions)
-    }
-
   }
 
 
