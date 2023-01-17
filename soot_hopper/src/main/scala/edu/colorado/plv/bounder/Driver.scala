@@ -782,7 +782,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
 
     dataToDownload.foreach{
       case (Some(d), out) =>
-        println(s"downloading data $d to directory $out")
+        //println(s"downloading data $d to directory $out")
         val dataDir = out / s"data_$d"
         dataDir.createIfNotExists(asDirectory = true)
         val data = (dataDir / "data.zip")
