@@ -26,7 +26,7 @@ import soot.options.Options
 import soot.toolkits.graph.pdg.EnhancedUnitGraph
 import soot.toolkits.graph.{PseudoTopologicalOrderer, SlowPseudoTopologicalOrderer, UnitGraph}
 import soot.util.Chain
-import soot.{AnySubType, ArrayType, Body, BooleanType, ByteType, CharType, DoubleType, FloatType, G, Hierarchy, IntType, Local, LongType, Modifier, PackManager, PointsToSet, RefType, Scene, ShortType, SootClass, SootField, SootMethod, SootMethodRef, Type, Value}
+import soot.{AnySubType, ArrayType, Body, BooleanType, ByteType, CharType, DoubleType, EquivTo, FloatType, G, Hierarchy, IntType, Local, LongType, Modifier, PackManager, PointsToSet, RefType, Scene, ShortType, SootClass, SootField, SootMethod, SootMethodRef, Type, Value}
 import upickle.default.{macroRW, ReadWriter => RW}
 
 import scala.annotation.tailrec
@@ -1383,12 +1383,28 @@ class SootWrapper(apkPath : String,
         throw new IllegalStateException("command after pre location doesn't exist")
     }
 
-  private val iCmdAtLocation: AppLoc => CmdWrapper = Memo.mutableHashMapMemo {
-    case loc@AppLoc(_, JimpleLineLoc(cmd, method), _) =>
-      SootWrapper.makeCmd(cmd, method, loc)
-    case loc => throw new IllegalStateException(s"No command associated with location: ${loc}")
+//  private val iCmdAtLocation: AppLoc => CmdWrapper = Memo.mutableHashMapMemo {
+//    case loc@AppLoc(_, JimpleLineLoc(cmd, method), _) =>
+//      SootWrapper.makeCmd(cmd, method, loc)
+//    case loc => throw new IllegalStateException(s"No command associated with location: ${loc}")
+//  }
+//  override def cmdAtLocation(loc: AppLoc):CmdWrapper = iCmdAtLocation(loc)
+
+  val cmdCache = mutable.HashMap[soot.SootMethod, mutable.HashMap[AppLoc, CmdWrapper]]()
+  override def cmdAtLocation(loc:AppLoc):CmdWrapper = {
+    val method = loc.method.asInstanceOf[JimpleMethodLoc].method
+    val cmap:mutable.HashMap[AppLoc,CmdWrapper] = if(!cmdCache.contains(method)) {
+      val cmap: mutable.HashMap[AppLoc, CmdWrapper] = mutable.HashMap[AppLoc, CmdWrapper]()
+      cmdCache.addOne(method -> cmap)
+      cmap
+    }else{ cmdCache(method)}
+
+    if(!cmap.contains(loc)) {
+      val line = loc.line.asInstanceOf[JimpleLineLoc]
+      cmap.addOne(loc -> SootWrapper.makeCmd(line.cmd,method,loc))
+    }
+    cmap(loc)
   }
-  override def cmdAtLocation(loc: AppLoc):CmdWrapper = iCmdAtLocation(loc)
 
   protected def makeRVal(box:Value):RVal = SootWrapper.makeRVal(box)
 
@@ -1762,6 +1778,7 @@ case class JimpleMethodLoc(method: SootMethod) extends MethodLoc {
 }
 case class JimpleLineLoc(cmd: soot.Unit, method: SootMethod) extends LineLoc{
   lazy val cmdString: String = cmd.toString
+  lazy val columnNumber = cmd.getJavaSourceStartColumnNumber
   override def toString: String = "line: " + cmd.getJavaSourceStartLineNumber + " " + cmdString
   def returnTypeIfReturn :Option[String] = cmd match{
     case cmd :JReturnVoidStmt => Some("void")
@@ -1770,17 +1787,53 @@ case class JimpleLineLoc(cmd: soot.Unit, method: SootMethod) extends LineLoc{
   }
 
   override def hashCode(): Int =
-    Objects.hash(cmd.getJavaSourceStartLineNumber, method.getName, method.getDeclaringClass.getName)
+    Objects.hash(cmd.getJavaSourceStartLineNumber, method.getName, method.getDeclaringClass.getName, cmd.getClass)
+
+  def opEquiv(l1:EquivTo, l2:EquivTo): Boolean = {
+    if(l1 eq l2)
+      true
+    else
+      l1.equivTo(l2)
+  }
+
+  def isCmdEq(other:JimpleLineLoc):Boolean = {
+    if (other.cmd.equals(cmd)){
+      true
+    } else if (other.cmd.getClass != cmd.getClass) {
+      false
+    }else if(cmd.isInstanceOf[JAssignStmt] && other.cmd.isInstanceOf[JAssignStmt]) {
+      val a1 = cmd.asInstanceOf[JAssignStmt]
+      val a2 = other.cmd.asInstanceOf[JAssignStmt]
+      lazy val lhsEq = opEquiv(a1.getLeftOp,a2.getLeftOp)
+      lazy val rhsEq = opEquiv(a1.getRightOp,a2.getRightOp)
+      val res = lhsEq && rhsEq
+      res
+    }else if(cmd.isInstanceOf[JInvokeStmt] && other.cmd.isInstanceOf[JInvokeStmt]){
+
+      val a1 = cmd.asInstanceOf[JInvokeStmt]
+      val a2 = other.cmd.asInstanceOf[JInvokeStmt]
+      val res = a1.getInvokeExpr.equivTo(a2.getInvokeExpr)
+      res
+    } else {
+      other.cmdString == cmdString
+    }
+  }
 
   /**
    * Note: soot.Unit does not have reasonable implementation of .equals
    */
   override def equals(obj: Any): Boolean = obj match{
     case other: JimpleLineLoc =>
+      if(this eq other)
+        return true
       lazy val lineEq = other.cmd.getJavaSourceStartLineNumber == cmd.getJavaSourceStartLineNumber
-      lazy val methodEq = other.method == method
-      lazy val cmdEq = other.cmdString == cmdString
-      val res = lineEq && methodEq &&  cmdEq
+      lazy val columnEq = other.columnNumber == columnNumber
+      lazy val methodEq = method == other.method
+      lazy val cmdEq:Boolean = other match {
+        case other:JimpleLineLoc => isCmdEq(other)
+        case other => other.cmdString == cmdString
+      }
+      val res = lineEq && columnEq && methodEq && cmdEq
       res
     case _ =>
       false

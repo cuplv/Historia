@@ -833,10 +833,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     case AssignCmd(l,Cast(castT, local),cmdloc) =>
       val state1 = state.get(local) match{
         case Some(v:PureVar) => state.constrainUpperType(v, castT, ch)
-        case Some(v) =>
-          println(v)
-          ???
-//          .copy(pureFormula = state.pureFormula + PureConstraint(v, TypeComp, SubclassOf(castT)))
+        case Some(_) => state
         case None => state
       }
       cmdTransfer(AssignCmd(l,local,cmdloc),state1)
