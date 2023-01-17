@@ -768,7 +768,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
       val sOut:String = cfg.outFolder.get.replace("${baseDirOut}","").dropWhile(_ == '/')
       outFolder.createDirectoryIfNotExists(createParents = true)
       val currentOut = File(outFolder.toString + "/" +  sOut)
-      println("out folder: " + currentOut)
+      //println("out folder: " + currentOut)
       currentOut.createDirectoryIfNotExists(createParents = true)
 
       val resDir = currentOut / s"res_${res.id}"
