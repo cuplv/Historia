@@ -252,7 +252,7 @@ object Driver {
         } else throw new IllegalArgumentException(s"Mode ${mode} is invalid, options: DB - write nodes to sqlite, MEM " +
           s"- keep nodes in memory.")
         val res: List[LocResult] =
-          runAnalysis(cfg,apkPath, componentFilter,pathMode, specSet,stepLimit, initialQuery)
+          runAnalysis(cfg,apkPath, componentFilter,pathMode, specSet,stepLimit, initialQuery, Some(outFolder))
         res.zipWithIndex.foreach { case (iq, ind) =>
           val resFile = File(outFolder) / s"result_${ind}.txt"
           resFile.overwrite(write(iq))
@@ -365,7 +365,7 @@ object Driver {
   }
   def runAnalysis(cfg:RunConfig, apkPath: String, componentFilter:Option[Seq[String]], mode:OutputMode,
                   specSet: SpecSetOption, stepLimit:Int,
-                  initialQueries: List[InitialQuery]): List[LocResult] = {
+                  initialQueries: List[InitialQuery], outDir:Option[String]): List[LocResult] = {
     val startTime = System.nanoTime()
     try {
       val w = new SootWrapper(apkPath, specSet.getSpecSet().union(specSet.getDisallowSpecSet()))
@@ -397,6 +397,16 @@ object Driver {
               case Qry(_, _, WitnessedQry(_)) => true
               case _ => false
             }}}.toList, cfg.truncateOut)(mode).sortBy(_.length).take(2)
+
+          // Only print if path mode is enabled
+          val printWit = mode match {
+            case NoOutputMode => false
+            case MemoryOutputMode => true
+            case DBOutputMode(_) => true
+          }
+          if(printWit){
+            pp.dumpDebugInfo(finalLiveNodes, "wit", outDir = outDir)
+          }
 
           LocResult(initialQuery,id,loc,res,characterizedMaxPath,finalTime,
             depthChar, witnesses = live ++ witnessed)
