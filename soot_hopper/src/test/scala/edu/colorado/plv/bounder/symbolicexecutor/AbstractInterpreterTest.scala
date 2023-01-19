@@ -44,7 +44,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
     val w = new SootWrapper(test_interproc_1,specs)
     val config = ExecutorConfig(
       stepLimit = 8, w, new SpecSpace(specs), printAAProgress = true, approxMode = f.approxMode, outputMode = om)
-    val symbolicExecutor = config.getSymbolicExecutor
+    val symbolicExecutor = config.getAbstractInterpreter
     val query = ReceiverNonNull(
       Signature("com.example.test_interproc_1.MainActivity", "java.lang.String objectString()"),21)
     // Call symbolic executor
@@ -68,7 +68,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       stepLimit = 200, w,new SpecSpace(LifecycleSpec.spec),  z3Timeout = Some(30),
       component = Some(List("com\\.example\\.test_interproc_2\\.MainActivity.*")), approxMode = f.approxMode,
       outputMode = om)
-    val symbolicExecutor = config.getSymbolicExecutor
+    val symbolicExecutor = config.getAbstractInterpreter
     val query = ReceiverNonNull(
       Signature("com.example.test_interproc_2.MainActivity", "void onPause()"),27)
     val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
@@ -103,7 +103,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
     val config = ExecutorConfig(
       stepLimit = 50, w,new SpecSpace(LifecycleSpec.spec),  z3Timeout = Some(30), approxMode = f.approxMode,
       outputMode = om)
-    val symbolicExecutor = config.getSymbolicExecutor
+    val symbolicExecutor = config.getAbstractInterpreter
     val query = Reachable(
       Signature("com.example.test_interproc_2.MainActivity", "void onResume()"),20)
     val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
@@ -150,7 +150,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val config = ExecutorConfig(
         stepLimit = 50, w, new SpecSpace(specs),
         component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode, outputMode = om)
-      val symbolicExecutor = config.getSymbolicExecutor
+      val symbolicExecutor = config.getAbstractInterpreter
       val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
         "void onCreate(android.os.Bundle)"), BounderUtil.lineForRegex(".*query1.*".r,src))
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
@@ -210,7 +210,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val config = ExecutorConfig(
         stepLimit = 200, w, new SpecSpace(specs),
         component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode, outputMode = om)
-      val symbolicExecutor = config.getSymbolicExecutor
+      val symbolicExecutor = config.getAbstractInterpreter
 
       // Entry of onCreate should be reachable (debugging spark issue)
       val queryEntry = Reachable(
@@ -282,7 +282,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val config = ExecutorConfig(
         stepLimit = 200, w, new SpecSpace(specs),
         component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode, outputMode = om)
-      val symbolicExecutor = config.getSymbolicExecutor
+      val symbolicExecutor = config.getAbstractInterpreter
       val resSig = Signature("com.example.createdestroy.MyActivity", "void onResume()")
       val query0 = ReceiverNonNull(resSig, BounderUtil.lineForRegex(".*query0.*".r,src))
       val result0 = symbolicExecutor.run(query0).flatMap(a => a.terminals)
@@ -371,7 +371,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val config = ExecutorConfig(
         stepLimit = 60, w,new SpecSpace(specs),
         component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode, outputMode = om)
-      val symbolicExecutor = config.getSymbolicExecutor
+      val symbolicExecutor = config.getAbstractInterpreter
       val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
         "void onPause()"), BounderUtil.lineForRegex(".*query1.*".r,src))
 
@@ -454,7 +454,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val config = ExecutorConfig(
           stepLimit = 200, w, new SpecSpace(specs),
           component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = om)
-        val symbolicExecutor = config.getSymbolicExecutor
+        val symbolicExecutor = config.getAbstractInterpreter
         val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
           "void onCreate(android.os.Bundle)"), BounderUtil.lineForRegex(".*query1.*".r, src))
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
@@ -512,7 +512,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val config = ExecutorConfig(
         stepLimit = 200, w, new SpecSpace(specs),
         component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = outputMode)
-      val symbolicExecutor = config.getSymbolicExecutor
+      val symbolicExecutor = config.getAbstractInterpreter
       val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
         "void onCreate(android.os.Bundle)"),20)
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
@@ -589,7 +589,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
           stepLimit = 200, w, new SpecSpace(specs),
           component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode,
           outputMode = outputMode)
-        val symbolicExecutor = config.getSymbolicExecutor
+        val symbolicExecutor = config.getAbstractInterpreter
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
         val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
           "void onCreate(android.os.Bundle)"), line)
@@ -654,7 +654,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val config = ExecutorConfig(
         stepLimit = 200, w, new SpecSpace(specs),
         component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
-      val symbolicExecutor = config.getSymbolicExecutor
+      val symbolicExecutor = config.getAbstractInterpreter
       val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
         "void onCreate(android.os.Bundle)"),22)
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
@@ -710,7 +710,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         stepLimit = 50, w, new SpecSpace(specs),
         component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
       //implicit val om = config.outputMode
-      val symbolicExecutor = config.getSymbolicExecutor
+      val symbolicExecutor = config.getAbstractInterpreter
 
       // Entry of oncreate should be reachable (debugging spark issue)
       val qrys = AllReceiversNonNull("com.example.createdestroy.MyActivity").make(symbolicExecutor)
@@ -785,7 +785,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val config = ExecutorConfig(
           stepLimit = 200, w,new SpecSpace(specs),
           component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
-        val symbolicExecutor = config.getSymbolicExecutor
+        val symbolicExecutor = config.getAbstractInterpreter
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
         val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
           "void onCreate(android.os.Bundle)"), line, Some(".*toString.*"))
@@ -866,7 +866,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val config = ExecutorConfig(
           stepLimit = 200, w, new SpecSpace(specs),
           component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
-        val symbolicExecutor = config.getSymbolicExecutor
+        val symbolicExecutor = config.getAbstractInterpreter
         val i = BounderUtil.lineForRegex(queryL, src)
         val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity.*",
           ".*run()"), i)
@@ -937,7 +937,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val config = ExecutorConfig(
         stepLimit = 120, w, new SpecSpace(specs),
         component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
-      val symbolicExecutor = config.getSymbolicExecutor
+      val symbolicExecutor = config.getAbstractInterpreter
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
       val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
         "void onCreate(android.os.Bundle)"),line)
@@ -1001,7 +1001,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val config = ExecutorConfig(
           stepLimit = 200, w, new SpecSpace(specs),
           component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
-        val symbolicExecutor = config.getSymbolicExecutor
+        val symbolicExecutor = config.getAbstractInterpreter
         val line = BounderUtil.lineForRegex(".*query1.*".r,src)
         val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
           "void onDestroy()"), line)
@@ -1078,7 +1078,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val config = ExecutorConfig(
           stepLimit = 300, w, specSpace,z3Timeout = Some(30),
           component = Some(List("com\\.example\\.createdestroy\\.*MyActivity.*")), approxMode = f.approxMode)
-        val symbolicExecutor = config.getSymbolicExecutor
+        val symbolicExecutor = config.getAbstractInterpreter
         val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
           "void lambda$onCreate$1$MyActivity(java.lang.Object)"), 31)
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
@@ -1145,7 +1145,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val config = ExecutorConfig(
         stepLimit = 200, w, specSpace,
         component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode, outputMode = om)
-      val symbolicExecutor = config.getSymbolicExecutor
+      val symbolicExecutor = config.getAbstractInterpreter
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
       val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
         "void lambda$onCreate$1$MyActivity(java.lang.Object)"),line)
@@ -1230,7 +1230,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val config = ExecutorConfig(
         stepLimit = 300, w, specSpace,
         component = Some(List("com.example.createdestroy.MyFragment.*")), approxMode = f.approxMode)
-      val symbolicExecutor = config.getSymbolicExecutor
+      val symbolicExecutor = config.getAbstractInterpreter
       val query = ReceiverNonNull(
         Signature("com.example.createdestroy.MyFragment",
         "void lambda$onActivityCreated$1$MyFragment(java.lang.Object)"),BounderUtil.lineForRegex(".*query1.*".r, src))
@@ -1317,7 +1317,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         stepLimit = 300, w, specSpace,
         component = Some(List("com.example.createdestroy.MyFragment.*")), approxMode = f.approxMode,
         printAAProgress = true)
-      val symbolicExecutor = config.getSymbolicExecutor
+      val symbolicExecutor = config.getAbstractInterpreter
       val query = CallinReturnNonNull(
         Signature("com.example.createdestroy.MyFragment",
         "void lambda$onActivityCreated$1$MyFragment(java.lang.Object)"),BounderUtil.lineForRegex(".*query1.*".r, src),
@@ -1405,7 +1405,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val config = ExecutorConfig(
         stepLimit = 300, w, specSpace,
         component = Some(List("com.example.createdestroy.MyFragment.*")), approxMode = f.approxMode)
-      val symbolicExecutor = config.getSymbolicExecutor
+      val symbolicExecutor = config.getAbstractInterpreter
       val query = CallinReturnNonNull(
         Signature("com.example.createdestroy.MyFragment",
         "void lambda$onActivityCreated$1$MyFragment(java.lang.Object)"),43,
@@ -1528,7 +1528,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
               "com.example.createdestroy.ExternalPlayerFragment")),
             outputMode = dbMode, approxMode = f.approxMode)
 //          implicit val om = config.outputMode
-          val symbolicExecutor = config.getSymbolicExecutor
+          val symbolicExecutor = config.getAbstractInterpreter
           val line = BounderUtil.lineForRegex(".*query1.*".r, src)
           val query = CallinReturnNonNull(
             Signature("com.example.createdestroy.ExternalPlayerFragment",
@@ -1630,7 +1630,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val config = ExecutorConfig(
           stepLimit = 180, w, new SpecSpace(specs),
           component = Some(List("com.example.createdestroy.*MyActivity.*")), approxMode = f.approxMode)
-        val symbolicExecutor = config.getSymbolicExecutor
+        val symbolicExecutor = config.getAbstractInterpreter
 
         //print callbacks
         //val callbacks = symbolicExecutor.appCodeResolver.getCallbacks
@@ -1714,7 +1714,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
             stepLimit = 200, w, new SpecSpace(specs, Set()),
             component = Some(List("com.example.createdestroy.*RemoverActivity.*")), approxMode = f.approxMode,
             outputMode = om)
-          val symbolicExecutor = config.getSymbolicExecutor
+          val symbolicExecutor = config.getAbstractInterpreter
           val line = BounderUtil.lineForRegex(".*query1.*".r, src)
           val query = ReceiverNonNull(
             Signature("com.example.createdestroy.RemoverActivity",
@@ -1792,7 +1792,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         component = Some(List("com.example.createdestroy.*MyFragment.*")), approxMode = f.approxMode, outputMode = om)
 
       // line in call is reachable
-      val symbolicExecutor = config.getSymbolicExecutor
+      val symbolicExecutor = config.getAbstractInterpreter
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
 
       //line in call cannot throw npe since s is initialized
@@ -1868,7 +1868,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         component = Some(List("com.example.createdestroy.*MyFragment.*")), approxMode = f.approxMode, outputMode = om)
 
       // line in call is reachable
-      val symbolicExecutor = config.getSymbolicExecutor
+      val symbolicExecutor = config.getAbstractInterpreter
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
       val query = Reachable(Signature("com.example.createdestroy.MyFragment",
         "void call(java.lang.Object)"),line)
@@ -1945,7 +1945,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val config = ExecutorConfig(
         stepLimit = 80, w, new SpecSpace(specs),
         component = Some(List("com.example.createdestroy.*MyFragment.*")), approxMode = f.approxMode, outputMode = om)
-      val symbolicExecutor = config.getSymbolicExecutor
+      val symbolicExecutor = config.getAbstractInterpreter
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
       val query = Reachable(Signature("com.example.createdestroy.MyFragment",
         "void call(java.lang.Object)"),line)
@@ -2021,7 +2021,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val config = ExecutorConfig(
         stepLimit = 80, w, new SpecSpace(specs),
         component = Some(List("com.example.createdestroy.*MyFragment.*")), outputMode = om)
-      val symbolicExecutor = config.getSymbolicExecutor
+      val symbolicExecutor = config.getAbstractInterpreter
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
       val query = Reachable(Signature("com.example.createdestroy.MyFragment",
         "void call(java.lang.Object)"),line)
@@ -2074,7 +2074,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val config = ExecutorConfig(
         stepLimit = 120, w, new SpecSpace(specs),
         component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode, outputMode = om)
-      val symbolicExecutor = config.getSymbolicExecutor
+      val symbolicExecutor = config.getAbstractInterpreter
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
       val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
         "void onPause()"),line)
@@ -2123,7 +2123,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val config = ExecutorConfig(
           stepLimit = 200, w, specs,
           component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode, outputMode = om)
-        val symbolicExecutor = config.getSymbolicExecutor
+        val symbolicExecutor = config.getAbstractInterpreter
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
         val pauseReachable = Reachable(Signature("com.example.createdestroy.MyActivity",
           "void onPause()"), line)
@@ -2194,7 +2194,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
           stepLimit = 200, w, specs,
           component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode,
           approxMode = f.approxMode)
-        val symbolicExecutor = config.getSymbolicExecutor
+        val symbolicExecutor = config.getAbstractInterpreter
 
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
         val reach = Reachable(Signature("com.example.createdestroy.MyActivity$1",
@@ -2252,7 +2252,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
           stepLimit = 180, w, specs,
           component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode,
           approxMode = f.approxMode)
-        val symbolicExecutor = config.getSymbolicExecutor
+        val symbolicExecutor = config.getAbstractInterpreter
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
         val clickMethodReachable = Reachable(Signature("com.example.createdestroy.MyActivity$1",
           "void onClick(android.view.View)"), line)
@@ -2340,7 +2340,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
           stepLimit = 180, w, specs,
           component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode,
           approxMode = f.approxMode)
-        val symbolicExecutor = config.getSymbolicExecutor
+        val symbolicExecutor = config.getAbstractInterpreter
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
         val clickMethodReachable = Reachable(Signature("com.example.createdestroy.MyActivity$1",
           "void onClick(android.view.View)"), line)
@@ -2436,7 +2436,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
               stepLimit = 280, w, specs,
               component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode,
               z3Timeout = Some(30), approxMode = f.approxMode)
-            val symbolicExecutor = config.getSymbolicExecutor
+            val symbolicExecutor = config.getAbstractInterpreter
             val line = BounderUtil.lineForRegex(".*query1.*".r, src)
             //            val clickReachable = Reachable("com.example.createdestroy.MyActivity$1",
             //              "void onClick(android.view.View)", line)
@@ -2503,7 +2503,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val config = ExecutorConfig(
         stepLimit = 120, w, specs,
         component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
-      val symbolicExecutor = config.getSymbolicExecutor
+      val symbolicExecutor = config.getAbstractInterpreter
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
       val runMethodReachable = Reachable(Signature("com.example.createdestroy.MyActivity$1",
         "void run()"), line)
@@ -2579,7 +2579,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val config = ExecutorConfig(
           stepLimit = 300, w, specs,
           component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode)
-        val symbolicExecutor = config.getSymbolicExecutor
+        val symbolicExecutor = config.getAbstractInterpreter
 
         // Null deref onPause unreachable
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
@@ -2655,7 +2655,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val config = ExecutorConfig(
         stepLimit = 120, w, specs,
         component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
-      val symbolicExecutor = config.getSymbolicExecutor
+      val symbolicExecutor = config.getAbstractInterpreter
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
       val runMethodReachable = Reachable(Signature("com.example.createdestroy.MyActivity$1",
         "void run()"), line)
@@ -2779,7 +2779,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
 
             //Unreach Location
             {
-              val symbolicExecutor = config.getSymbolicExecutor
+              val symbolicExecutor = config.getAbstractInterpreter
               val line = BounderUtil.lineForRegex(".*query1.*".r, srcUnreach)
               val nullUnreach = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity$1",
                 "void onClick(android.view.View)"), line, Some(".*toString.*"))
@@ -2799,7 +2799,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
 
             //Reach Location
             {
-              val symbolicExecutor_reach = config.getSymbolicExecutor
+              val symbolicExecutor_reach = config.getAbstractInterpreter
               val line_reach = BounderUtil.lineForRegex(".*query2.*".r, srcReach)
               val nullReach = ReceiverNonNull(Signature("com.example.createdestroy.OtherActivity",
                 "void onClick(android.view.View)"), line_reach, Some(".*toString.*"))

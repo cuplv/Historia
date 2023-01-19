@@ -82,7 +82,7 @@ class SootUtilsTest extends AnyFunSuite {
       SpecSignatures.Activity_onPause_entry)
     val config: ExecutorConfig[SootMethod, soot.Unit] = ExecutorConfig(
       stepLimit = 50, w, new SpecSpace(Set(testSpec)), printAAProgress = true, z3Timeout = Some(30))
-    val symbolicExecutor = config.getSymbolicExecutor
+    val symbolicExecutor = config.getAbstractInterpreter
     val query = Qry.makeReceiverNonNull(symbolicExecutor,
       Signature("com.example.test_interproc_2.MainActivity", "void onPause()"), 27)
     val l = query.find {
@@ -116,7 +116,7 @@ class SootUtilsTest extends AnyFunSuite {
       SpecSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
     val config: ExecutorConfig[SootMethod, soot.Unit] = ExecutorConfig(
       stepLimit = 50, w, new SpecSpace(Set(testSpec)), printAAProgress = true, z3Timeout = Some(30))
-    val symbolicExecutor = config.getSymbolicExecutor
+    val symbolicExecutor = config.getAbstractInterpreter
     val query = Qry.makeReach(symbolicExecutor,
       Signature("com.example.test_interproc_2.MainActivity", "void onCreate(android.os.Bundle)"), 16)
 

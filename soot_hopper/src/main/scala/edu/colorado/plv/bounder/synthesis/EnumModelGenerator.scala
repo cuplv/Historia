@@ -65,7 +65,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     // note: this is just a matter of changing the labels on individual nodes in wit tree
     val approxOfSpec = approxSpec(spec,approxDir)
     val tConfig = cfg.copy(specSpace = approxOfSpec)
-    val ex = tConfig.getSymbolicExecutor
+    val ex = tConfig.getAbstractInterpreter
     ex.run(qry,MemoryOutputMode).flatMap(_.terminals)
   }
 

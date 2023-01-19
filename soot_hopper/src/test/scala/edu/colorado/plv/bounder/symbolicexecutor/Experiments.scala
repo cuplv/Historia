@@ -94,7 +94,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
         stepLimit = 80, w, new SpecSpace(Set()),
         component = Some(List(".*")))
       implicit val om = config.outputMode
-      val symbolicExecutor = config.getSymbolicExecutor
+      val symbolicExecutor = config.getAbstractInterpreter
       val resolver = symbolicExecutor.appCodeResolver
 
       val generatedFile = File("../paper2/generated")
@@ -348,7 +348,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           stepLimit = 200, w, new SpecSpace(row1Specs),
           component = Some(List("com.example.createdestroy.*PlayerFragment.*")))
         implicit val om = config.outputMode
-        val symbolicExecutor = config.getSymbolicExecutor
+        val symbolicExecutor = config.getAbstractInterpreter
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
         val query = CallinReturnNonNull(
           Signature("com.example.createdestroy.PlayerFragment",
@@ -469,7 +469,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           stepLimit = 200, w,specSpace,
           component = Some(List("com.example.createdestroy.*RemoverActivity.*")) )
         implicit val om = config.outputMode
-        val symbolicExecutor = config.getSymbolicExecutor
+        val symbolicExecutor = config.getAbstractInterpreter
 
         val query = DisallowedCallin(
           "com.example.createdestroy.RemoverActivity",
@@ -560,7 +560,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
       implicit val om = config.outputMode
 
       // line in call is reachable
-      val symbolicExecutor = config.getSymbolicExecutor
+      val symbolicExecutor = config.getAbstractInterpreter
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
       val query = Reachable(Signature("com.example.createdestroy.MyFragment",
         "void call(java.lang.Object)"),line)
@@ -670,7 +670,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           stepLimit = 2000, w, specSpace,
           component = Some(List("com.example.createdestroy.*StatusActivity.*")), outputMode = dbMode  )
         implicit val om = config.outputMode
-        val symbolicExecutor = config.getSymbolicExecutor
+        val symbolicExecutor = config.getAbstractInterpreter
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
         val cb = symbolicExecutor.appCodeResolver.getCallbacks
         val am = symbolicExecutor.appCodeResolver.appMethods
@@ -773,7 +773,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
             val config = ExecutorConfig(
               stepLimit = 2000, w, specSpace,
               component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode)
-            val symbolicExecutor = config.getSymbolicExecutor
+            val symbolicExecutor = config.getAbstractInterpreter
             val line = BounderUtil.lineForRegex(".*query1.*".r, src)
 
             val nullUnreach = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity$1",

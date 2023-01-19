@@ -196,7 +196,7 @@ object Z3StateSolver{
  */
 class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
                     logTimes:Boolean,
-                    timeout:Int = 30000,
+                    timeout:Int = 60000, //TODO: changed to 60 seconds
                     randomSeed:Int=3578,
                     defaultOnSubsumptionTimeout: Z3SolverCtx=> Boolean = _ => false,
                     pushSatCheck:Boolean = true,
@@ -427,9 +427,9 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
       List(m => initalizeConstAxioms(m),
         m => initializeNameAxioms(m),
         m => initializeFieldAxioms(m),
-        m => initializeOrderAxioms(m),
         m => initializeArgFunAxioms(m),
-        m => initializeArgTotalityAxioms(m) // note: this one adds cycle in quant alternation graph
+        m => initializeArgTotalityAxioms(m), // note: this one adds cycle in quant alternation graph
+        m => initializeOrderAxioms(m),
       ))
     if (pushSatCheck)
       checkSatPush(messageTranslator, getAxioms)

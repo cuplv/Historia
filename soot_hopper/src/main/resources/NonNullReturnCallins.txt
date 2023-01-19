@@ -6,3 +6,4 @@ I(ciret [_,v] boolean hasNext() v<:java.util.Iterator)
 I(ciret [_,v] java.lang.String getName() v<:java.io.File)
 # android
 I(ciret [_,v] android.content.SharedPreferences getSharedPreferences(java.lang.String,int) v<:android.content.Context)
+I(ciret [_,v] android.view.LayoutInflater getLayoutInflater() v<:android.app.Activity)

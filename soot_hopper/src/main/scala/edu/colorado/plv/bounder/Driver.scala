@@ -110,6 +110,12 @@ object Driver {
   case object ExpLoop extends RunMode
   case object MakeAllDeref extends RunMode
 
+  /**
+   * Find locations of all callins used in disallow specs from config file.
+   * TODO: if null returned from callin, find places where its dereferenced
+   */
+  case object FindCallins extends RunMode
+
   def readDB(outFolder:File, findNoPred:Boolean = false): Unit = {
     val dbPath = outFolder / "paths.db"
     implicit val db = DBOutputMode(dbPath.toString())
@@ -139,6 +145,7 @@ object Driver {
     case "readDB" => ReadDB
     case "expLoop" => ExpLoop
     case "makeAllDeref" => MakeAllDeref
+    case "findCallins" => FindCallins
     case m =>
       throw new IllegalArgumentException(s"Unsupported mode $m")
   }
@@ -259,6 +266,8 @@ object Driver {
         }
       case act@Action(SampleDeref,_,_,cfg,_,_,_) =>
         sampleDeref(cfg, act.getApkPath, act.getOutFolder, act.filter)
+      case act@Action(FindCallins, _,_,cfg,_,_,_) =>
+        findCallins(cfg,act.getApkPath,act.getOutFolder,act.filter)
       case act@Action(ReadDB,_,_,_,_,_,_) =>
         readDB(File(act.getOutFolder))
       case Action(ExpLoop,_, _,_,_,_,_) =>
@@ -295,7 +304,7 @@ object Driver {
     val config = ExecutorConfig(
       stepLimit = 2, w, new SpecSpace(Set()), component = None, outputMode = pathMode,
       timeLimit = cfg.timeLimit)
-    val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getSymbolicExecutor
+    val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
     symbolicExecutor.writeIR()
   }
   def makeAllDeref(apkPath:String, filter:Option[String],
@@ -304,7 +313,7 @@ object Driver {
     val w = new SootWrapper(apkPath,  Set(), callGraph)
     val config = ExecutorConfig(
       stepLimit = 0, w, new SpecSpace(Set()), component = None)
-    val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getSymbolicExecutor
+    val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
     val appClasses = symbolicExecutor.appCodeResolver.appMethods.map(m => m.classType)
     val filtered = appClasses.filter(c => filter.forall(c.startsWith))
     val initialQueries = filtered.map(c => AllReceiversNonNull(c))
@@ -318,13 +327,24 @@ object Driver {
       fname.append(write(cfg2))
     }
   }
+
+  def findCallins(cfg: RunConfig, apkPath:String, outFolder:String, filter:Option[String]) = {
+    val w = new SootWrapper(apkPath, Set())
+    val config = ExecutorConfig(
+      stepLimit = 200, w, new SpecSpace(Set()), component = None)
+    val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
+    val specSet = cfg.specSet.getSpecSpace()
+    val toFind = specSet.getDisallowSpecs.map{s => s.target}
+    val locations = symbolicExecutor.appCodeResolver.findCallinsAndCallbacks(toFind, filter)
+    ???
+  }
   def sampleDeref(cfg: RunConfig, apkPath:String, outFolder:String, filter:Option[String]) = {
     val n = cfg.samples
     val callGraph = SparkCallGraph
     val w = new SootWrapper(apkPath, Set(), callGraph)
     val config = ExecutorConfig(
       stepLimit = n, w, new SpecSpace(Set()), component = None)
-    val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getSymbolicExecutor
+    val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
 
 //    val queries = (0 until n).map{_ =>
 //      val appLoc = symbolicExecutor.appCodeResolver.sampleDeref(filter)//
@@ -360,7 +380,7 @@ object Driver {
     val w = new SootWrapper(apkPath, Set(),callGraph)
     val config = ExecutorConfig(
       stepLimit = 0, w, new SpecSpace(Set()), component = None)
-    val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getSymbolicExecutor
+    val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
     //TODO:
   }
   def runAnalysis(cfg:RunConfig, apkPath: String, componentFilter:Option[Seq[String]], mode:OutputMode,
@@ -372,7 +392,7 @@ object Driver {
       val config = ExecutorConfig(
         stepLimit = stepLimit, w, new SpecSpace(specSet.getSpecSet(), specSet.getDisallowSpecSet()), component = componentFilter, outputMode = mode,
         timeLimit = cfg.timeLimit)
-      val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getSymbolicExecutor
+      val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
       initialQueries.flatMap{ initialQuery =>
         val results: Set[symbolicExecutor.QueryData] = symbolicExecutor.run(initialQuery, mode,cfg)
 
