@@ -228,6 +228,41 @@ object BounderUtil {
     acc
   }
 
+  def sanitizeString(s: String): String = {
+    s.replaceAll("\\\\", "")
+      .replaceAll("\\{", "")
+      .replaceAll("\\}", "")
+      .replaceAll("\\$", "")
+      .replaceAll("\\_", "")
+      .replaceAll("\\^", "")
+      .replaceAll("\\.", "")
+      .replaceAll("\\(", "")
+      .replaceAll("\\)", "")
+      .replaceAll("\\[", "")
+      .replaceAll("\\]", "")
+      .replaceAll("\\|", "")
+      .replaceAll("\\+", "")
+      .replaceAll("\\*", "")
+      .replaceAll("\\?", "")
+      .replaceAll("\\<", "")
+      .replaceAll("\\>", "")
+      .replaceAll("\\-", "")
+      .replaceAll("\\=", "")
+      .replaceAll("\\:", "")
+      .replaceAll("\\;", "")
+      .replaceAll("\\,", "")
+      .replaceAll("\\/", "")
+      .replaceAll("\\!", "")
+      .replaceAll("\\@", "")
+      .replaceAll("\\#", "")
+      .replaceAll("\\%", "")
+      .replaceAll("\\&", "")
+      .replaceAll("\\~", "")
+      .replaceAll("\\`", "")
+      .replaceAll("\\'", "")
+      .replaceAll("\\\"", "")
+      .replaceAll("\\ ", "")
+  }
   // Abstract interpretation with no widen
   def graphFixpoint[N,V](start: Set[N],
                          startVal: V,

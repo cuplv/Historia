@@ -329,6 +329,8 @@ object Driver {
   }
 
   def findCallins(cfg: RunConfig, apkPath:String, outFolder:String, filter:Option[String]) = {
+    val outf = File(outFolder)
+    assert(outf.exists)
     val w = new SootWrapper(apkPath, Set())
     val config = ExecutorConfig(
       stepLimit = 200, w, new SpecSpace(Set()), component = None)
@@ -350,10 +352,17 @@ object Driver {
         DisallowedCallin.mk(loc,spec)
     }
 
-
-
     //TODO: null head find dereferences or something
-    ???
+    val all = disallowedCallins //++ ???
+
+    all.foreach{initialQuery =>
+      val cCfg = cfg.copy(initialQuery = List(initialQuery))
+      val fname = BounderUtil.sanitizeString(s"${initialQuery.className}__${initialQuery.methodName}__" +
+        s"disallow_${initialQuery.s.target.identitySignature}") +".cfg"
+      val contents = write(cCfg)
+      val f = outf / fname
+      f.write(contents)
+    }
   }
   def sampleDeref(cfg: RunConfig, apkPath:String, outFolder:String, filter:Option[String]) = {
     val n = cfg.samples
