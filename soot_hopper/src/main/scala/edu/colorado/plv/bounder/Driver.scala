@@ -7,7 +7,7 @@ import java.util.Date
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil.{MaxPathCharacterization, Proven, ResultSummary, Timeout, Unreachable, Witnessed, characterizeMaxPath}
 import edu.colorado.plv.bounder.Driver.{Default, LocResult, RunMode}
-import edu.colorado.plv.bounder.ir.{Loc, SootWrapper}
+import edu.colorado.plv.bounder.ir.{AppLoc, Loc, SootWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, OAbsMsg, Signature}
 import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSpace}
@@ -335,7 +335,24 @@ object Driver {
     val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
     val specSet = cfg.specSet.getSpecSpace()
     val toFind = specSet.getDisallowSpecs.map{s => s.target}
-    val locations = symbolicExecutor.appCodeResolver.findCallinsAndCallbacks(toFind, filter)
+    val locations: Set[(AppLoc, OAbsMsg)] = symbolicExecutor.appCodeResolver.findCallinsAndCallbacks(toFind, filter)
+    def splitNullHead(hasNullHead:Boolean, locs: Set[(AppLoc, OAbsMsg)]):Set[(AppLoc,OAbsMsg)] = {
+      locs.filter{
+        case (_,OAbsMsg(_, _, NullVal::_)) => hasNullHead
+        case (_,OAbsMsg(_, _, _::_)) => !hasNullHead}
+      }
+    //For non-null head we make disallow queries
+    def noNullHead = splitNullHead(false, locations)
+
+    val disallowedCallins = noNullHead.map{
+      case (loc,msg) =>
+        val spec  = specSet.getDisallowSpecs.find{s => s.target == msg}.get
+        DisallowedCallin.mk(loc,spec)
+    }
+
+
+
+    //TODO: null head find dereferences or something
     ???
   }
   def sampleDeref(cfg: RunConfig, apkPath:String, outFolder:String, filter:Option[String]) = {
