@@ -3,8 +3,9 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import java.util.NoSuchElementException
 import better.files.{File, Resource}
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodReturn, CmdWrapper, FieldReference, IRWrapper, InternalMethodReturn, Invoke, InvokeCmd, SootWrapper, JimpleMethodLoc, LineLoc, Loc, MethodLoc, SpecialInvoke, StaticInvoke, UnresolvedMethodTarget, VirtualInvoke}
-import edu.colorado.plv.bounder.lifestate.LifeState.Signature
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CBExit, CIEnter, CIExit, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodReturn, CmdWrapper, FieldReference, IRWrapper, InternalMethodReturn, Invoke, InvokeCmd, JimpleMethodLoc, LineLoc, Loc, MethodLoc, SootWrapper, SpecialInvoke, StaticInvoke, UnresolvedMethodTarget, VirtualInvoke}
+import edu.colorado.plv.bounder.lifestate.LifeState.{OAbsMsg, Signature}
+import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 
 import scala.annotation.tailrec
 import scala.io.Source
@@ -58,6 +59,46 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     callbacks = iGetCallbacks()
   }
 
+  final def findCallinsAndCallbacks(messages:Set[OAbsMsg],
+                                    packageFilter:Option[String]):Set[(AppLoc,OAbsMsg)] = {
+    implicit val ch = ir.getClassHierarchyConstraints
+    if(messages.exists{m => m.mt == CBEnter || m.mt == CBExit})
+      ??? //TODO: unimplemented, add callback and callin search
+    val cbMsg = messages.filter{m => m.mt == CIExit || m.mt == CIEnter}
+    def matchesCI(i:Invoke):Option[OAbsMsg] = {
+      val sig = i.targetSignature
+      cbMsg.find{oMsg =>
+        List(CIEnter,CIExit).exists{mt => oMsg.contains(mt, sig)}
+      }
+    }
+    val filteredAppMethods = appMethods.filter {
+      case methodLoc: MethodLoc => // apply package filter if it exists
+        packageFilter.forall(methodLoc.classType.startsWith)
+    }
+
+    val returns = filteredAppMethods.flatMap{m =>
+      ir.makeMethodRetuns(m).toSet.map((v: AppLoc) => BounderUtil.cmdAtLocationNopIfUnknown(v,ir).mkPre)}
+
+    val invokeCmds = BounderUtil.graphFixpoint[CmdWrapper, Set[(AppLoc,OAbsMsg)]](start = returns, Set(), Set(),
+      next = n => ir.commandPredecessors(n).map((v: AppLoc) =>
+        BounderUtil.cmdAtLocationNopIfUnknown(v, ir).mkPre).toSet,
+      comp = {
+        case (acc, v) =>
+          val newLocs: Set[(AppLoc,OAbsMsg)] = ir.commandPredecessors(v).flatMap { v =>
+            ir.cmdAtLocation(v) match {
+              case AssignCmd(_, i: SpecialInvoke, _) => matchesCI(i).map((v,_))
+              case AssignCmd(_, i: VirtualInvoke, _) => matchesCI(i).map((v,_))
+              case InvokeCmd(i: SpecialInvoke, _) => matchesCI(i).map((v,_))
+              case InvokeCmd(i: VirtualInvoke, _) => matchesCI(i).map((v,_))
+              case _ => None
+            }
+          }.toSet
+          acc ++ newLocs
+      },
+      join = (a, b) => a.union(b)
+    ).flatMap { case (_, v) => v }.toSet
+    invokeCmds
+  }
   @tailrec
   final def sampleDeref(packageFilter:Option[String]):AppLoc = {
     def keepI(i:Invoke):Boolean = i match {

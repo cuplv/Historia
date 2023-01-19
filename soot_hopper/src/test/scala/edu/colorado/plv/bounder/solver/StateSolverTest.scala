@@ -232,10 +232,10 @@ class StateSolverTest extends FixtureAnyFunSuite {
         val s1 = loadState(f1)
         val s2 = loadState(f2)
         val startTime = System.nanoTime()
-
+        var count = 0
         val toCnfTest = (p:LSPred) => {
           val res = EncodingTools.toCNF(p)
-          println("====")
+          println(s"====$count")
           println(s"p: ${p}")
           println(s"res: ${res}")
           val dir1 = f.stateSolver.canSubsume(p,res)
@@ -245,6 +245,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
           val dir2 = f.stateSolver.canSubsume(res,p)
           assert(dir2)
           println(s"dir2: $dir2")
+          count = count + 1
           res
         }
         val s1P = EncodingTools.rhsToPred(s1.sf.traceAbstraction.rightOfArrow,spec).map(EncodingTools.simplifyPred).map(toCnfTest)

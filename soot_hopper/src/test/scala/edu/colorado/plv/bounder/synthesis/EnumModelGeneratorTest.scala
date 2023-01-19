@@ -192,7 +192,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
             println(spaceStr)
             println("dumping debug info")
             val newConfig = config.copy(specSpace = space)
-            val ex = newConfig.getSymbolicExecutor
+            val ex = newConfig.getAbstractInterpreter
             val nullReachWit = ex.run(nullReach).flatMap(_.terminals)
             if(DUMP_DBG)
               PrettyPrinting.dumpSpec(space, "cbSpec")

@@ -1158,16 +1158,18 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     implicit val zCtx: C = getSolverCtx
     try {
       zCtx.acquire()
-      if(pred1.toString.contains("NULL") || pred2.toString.contains("NULL")){
-        //TODO: need const distinct assertion here
-        ???
-      }
-      val msg = MessageTranslator(List(pred1, pred2))
+//      if(pred1.toString.contains("NULL") || pred2.toString.contains("NULL")){
+//        //TODO: need const distinct assertion here
+//        ???
+//      }
+      val msg = MessageTranslator(List(pred1, pred2)).copy(pureValSet = pred1.lsVal ++ pred2.lsVal +
+        IntVal(0) + IntVal(1) + NullVal)
 
       val p1E = pred1.lsVar
       val p2E = pred2.lsVar
-      val enc1 = encodePred(Exists(p1E.toList,pred1), msg, Map.empty, Map.empty, Map.empty)
-      val enc2 = encodePred(Exists(p2E.toList,pred2), msg, Map.empty, Map.empty, Map.empty)
+      val pvals = msg.constMap.asInstanceOf[Map[PureExpr,T]]
+      val enc1 = encodePred(Exists(p1E.toList,pred1), msg, pvals, Map.empty, Map.empty)
+      val enc2 = encodePred(Exists(p2E.toList,pred2), msg, pvals, Map.empty, Map.empty)
 
       mkAssert(mkAnd(mkNot(enc1), enc2))
       val isSat = checkSAT(msg, None)

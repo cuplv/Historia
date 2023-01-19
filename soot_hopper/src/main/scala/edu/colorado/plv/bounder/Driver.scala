@@ -110,6 +110,12 @@ object Driver {
   case object ExpLoop extends RunMode
   case object MakeAllDeref extends RunMode
 
+  /**
+   * Find locations of all callins used in disallow specs from config file.
+   * TODO: if null returned from callin, find places where its dereferenced
+   */
+  case object FindCallins extends RunMode
+
   def readDB(outFolder:File, findNoPred:Boolean = false): Unit = {
     val dbPath = outFolder / "paths.db"
     implicit val db = DBOutputMode(dbPath.toString())
@@ -139,6 +145,7 @@ object Driver {
     case "readDB" => ReadDB
     case "expLoop" => ExpLoop
     case "makeAllDeref" => MakeAllDeref
+    case "findCallins" => FindCallins
     case m =>
       throw new IllegalArgumentException(s"Unsupported mode $m")
   }
@@ -252,13 +259,15 @@ object Driver {
         } else throw new IllegalArgumentException(s"Mode ${mode} is invalid, options: DB - write nodes to sqlite, MEM " +
           s"- keep nodes in memory.")
         val res: List[LocResult] =
-          runAnalysis(cfg,apkPath, componentFilter,pathMode, specSet,stepLimit, initialQuery)
+          runAnalysis(cfg,apkPath, componentFilter,pathMode, specSet,stepLimit, initialQuery, Some(outFolder))
         res.zipWithIndex.foreach { case (iq, ind) =>
           val resFile = File(outFolder) / s"result_${ind}.txt"
           resFile.overwrite(write(iq))
         }
       case act@Action(SampleDeref,_,_,cfg,_,_,_) =>
         sampleDeref(cfg, act.getApkPath, act.getOutFolder, act.filter)
+      case act@Action(FindCallins, _,_,cfg,_,_,_) =>
+        findCallins(cfg,act.getApkPath,act.getOutFolder,act.filter)
       case act@Action(ReadDB,_,_,_,_,_,_) =>
         readDB(File(act.getOutFolder))
       case Action(ExpLoop,_, _,_,_,_,_) =>
@@ -295,7 +304,7 @@ object Driver {
     val config = ExecutorConfig(
       stepLimit = 2, w, new SpecSpace(Set()), component = None, outputMode = pathMode,
       timeLimit = cfg.timeLimit)
-    val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getSymbolicExecutor
+    val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
     symbolicExecutor.writeIR()
   }
   def makeAllDeref(apkPath:String, filter:Option[String],
@@ -304,7 +313,7 @@ object Driver {
     val w = new SootWrapper(apkPath,  Set(), callGraph)
     val config = ExecutorConfig(
       stepLimit = 0, w, new SpecSpace(Set()), component = None)
-    val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getSymbolicExecutor
+    val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
     val appClasses = symbolicExecutor.appCodeResolver.appMethods.map(m => m.classType)
     val filtered = appClasses.filter(c => filter.forall(c.startsWith))
     val initialQueries = filtered.map(c => AllReceiversNonNull(c))
@@ -318,13 +327,24 @@ object Driver {
       fname.append(write(cfg2))
     }
   }
+
+  def findCallins(cfg: RunConfig, apkPath:String, outFolder:String, filter:Option[String]) = {
+    val w = new SootWrapper(apkPath, Set())
+    val config = ExecutorConfig(
+      stepLimit = 200, w, new SpecSpace(Set()), component = None)
+    val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
+    val specSet = cfg.specSet.getSpecSpace()
+    val toFind = specSet.getDisallowSpecs.map{s => s.target}
+    val locations = symbolicExecutor.appCodeResolver.findCallinsAndCallbacks(toFind, filter)
+    ???
+  }
   def sampleDeref(cfg: RunConfig, apkPath:String, outFolder:String, filter:Option[String]) = {
     val n = cfg.samples
     val callGraph = SparkCallGraph
     val w = new SootWrapper(apkPath, Set(), callGraph)
     val config = ExecutorConfig(
       stepLimit = n, w, new SpecSpace(Set()), component = None)
-    val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getSymbolicExecutor
+    val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
 
 //    val queries = (0 until n).map{_ =>
 //      val appLoc = symbolicExecutor.appCodeResolver.sampleDeref(filter)//
@@ -360,19 +380,19 @@ object Driver {
     val w = new SootWrapper(apkPath, Set(),callGraph)
     val config = ExecutorConfig(
       stepLimit = 0, w, new SpecSpace(Set()), component = None)
-    val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getSymbolicExecutor
+    val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
     //TODO:
   }
   def runAnalysis(cfg:RunConfig, apkPath: String, componentFilter:Option[Seq[String]], mode:OutputMode,
                   specSet: SpecSetOption, stepLimit:Int,
-                  initialQueries: List[InitialQuery]): List[LocResult] = {
+                  initialQueries: List[InitialQuery], outDir:Option[String]): List[LocResult] = {
     val startTime = System.nanoTime()
     try {
       val w = new SootWrapper(apkPath, specSet.getSpecSet().union(specSet.getDisallowSpecSet()))
       val config = ExecutorConfig(
         stepLimit = stepLimit, w, new SpecSpace(specSet.getSpecSet(), specSet.getDisallowSpecSet()), component = componentFilter, outputMode = mode,
         timeLimit = cfg.timeLimit)
-      val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getSymbolicExecutor
+      val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
       initialQueries.flatMap{ initialQuery =>
         val results: Set[symbolicExecutor.QueryData] = symbolicExecutor.run(initialQuery, mode,cfg)
 
@@ -397,6 +417,16 @@ object Driver {
               case Qry(_, _, WitnessedQry(_)) => true
               case _ => false
             }}}.toList, cfg.truncateOut)(mode).sortBy(_.length).take(2)
+
+          // Only print if path mode is enabled
+          val printWit = mode match {
+            case NoOutputMode => false
+            case MemoryOutputMode => true
+            case DBOutputMode(_) => true
+          }
+          if(printWit){
+            pp.dumpDebugInfo(finalLiveNodes, "wit", outDir = outDir)
+          }
 
           LocResult(initialQuery,id,loc,res,characterizedMaxPath,finalTime,
             depthChar, witnesses = live ++ witnessed)
@@ -768,7 +798,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
       val sOut:String = cfg.outFolder.get.replace("${baseDirOut}","").dropWhile(_ == '/')
       outFolder.createDirectoryIfNotExists(createParents = true)
       val currentOut = File(outFolder.toString + "/" +  sOut)
-      println("out folder: " + currentOut)
+      //println("out folder: " + currentOut)
       currentOut.createDirectoryIfNotExists(createParents = true)
 
       val resDir = currentOut / s"res_${res.id}"
@@ -782,7 +812,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
 
     dataToDownload.foreach{
       case (Some(d), out) =>
-        println(s"downloading data $d to directory $out")
+        //println(s"downloading data $d to directory $out")
         val dataDir = out / s"data_$d"
         dataDir.createIfNotExists(asDirectory = true)
         val data = (dataDir / "data.zip")

@@ -59,6 +59,12 @@ object SpecSignatures {
   val Activity_findView_exit: OAbsMsg = AbsMsg(CIExit,
     Activity_findView, List(v,a))
 
+  val Activity_getLayoutInflater: OAbsMsg =
+    AbsMsg(CIExit, SubClassMatcher(Activity,".*getLayoutInflater.*","getLayoutInflater"), NullVal::a::Nil)
+//  // 1min 09 sec
+  // note: this kind of specification can go in "NonNullReturnCallins.txt"
+//  val Activity_getLayoutInflater_nonNull = LSSpec(a::Nil, Nil, LSFalse, Activity_getLayoutInflater)
+
   val Button_init: OAbsMsg = AbsMsg(CIExit, SubClassMatcher(Button, ".*<init>.*", "Button_init"), List(TopVal, v))
 
   // Fragment getActivity

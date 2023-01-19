@@ -80,7 +80,7 @@ class SpecTest extends AnyFunSuite {
     val w = new SootWrapper(apk, Set())
     val config = ExecutorConfig(
       stepLimit = 8, w,new SpecSpace(Set()), printAAProgress = true)
-    val symbolicExecutor = config.getSymbolicExecutor
+    val symbolicExecutor = config.getAbstractInterpreter
     implicit val ch = w.getClassHierarchyConstraints
 
     assert(findIInFwk(SpecSignatures.Activity_onPause_entry))
@@ -101,7 +101,7 @@ class SpecTest extends AnyFunSuite {
     val w = new SootWrapper(apk,Set())
     val config = ExecutorConfig(
       stepLimit = 8, w,new SpecSpace(Set()), printAAProgress = true)
-    val symbolicExecutor = config.getSymbolicExecutor
+    val symbolicExecutor = config.getAbstractInterpreter
     implicit val ch = w.getClassHierarchyConstraints
 //    BounderSetupApplication.loadApk(apk, CHACallGraph)
 

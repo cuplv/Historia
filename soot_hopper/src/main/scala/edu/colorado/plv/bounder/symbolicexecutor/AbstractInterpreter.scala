@@ -152,7 +152,7 @@ case class ExecutorConfig[M,C](stepLimit: Int,
                                        subsumptionMode:SubsumptionMode = SubsumptionModeIndividual, //Note: seems to be faster without batch mode subsumption
                                        approxMode:ApproxMode = PreciseApproxMode(true) // default is to allow dropping of constraints and no widen //TODO: === make thresher version that drops things == make under approx version that drops states
                                       ){
-  def getSymbolicExecutor =
+  def getAbstractInterpreter =
     new AbstractInterpreter[M, C](this)
 }
 

@@ -241,6 +241,11 @@ object LifeState {
       case NotEquals =>s"${arg2tex(v1)} \\neq ${arg2tex(v2)}"
       case TypeComp => s"${arg2tex(v1)} : ${arg2tex(v2)}"
     }
+
+    override def lsVal: Set[PureVal] = v2 match {
+      case pureVal: PureVal => Set(pureVal)
+      case _ => Set.empty
+    }
   }
   object LSConstraint{
     def mk(v1:PureExpr, op:CmpOp, v2:PureExpr):LSPred =
@@ -274,6 +279,8 @@ object LifeState {
     def contains(mt:MessageType,sig: Signature)(implicit ch:ClassHierarchyConstraints):Boolean
 
     def lsVar: Set[PureVar]
+
+    def lsVal: Set[PureVal]
   }
   object LSPred{
     implicit var rw:RW[LSPred] = RW.merge(LSConstraint.rw, LSAtom.rw, macroRW[Forall], macroRW[Exists], macroRW[Not], macroRW[And],
@@ -288,7 +295,9 @@ object LifeState {
     override def contains(mt: MessageType, sig: Signature)(implicit ch: ClassHierarchyConstraints): Boolean =
       throw new IllegalStateException("Contains called on LSAny")
 
-    override def lsVar: Set[PureVar] = Set()
+    override def lsVar: Set[PureVar] = Set.empty
+
+    override def lsVal: Set[PureVal] = Set.empty
   }
   sealed trait LSBexp extends LSPred{
 
@@ -322,6 +331,8 @@ object LifeState {
         s"Ɐ ${vars.mkString(",")} . $p"
       else
         p.toString
+
+    override def lsVal: Set[PureVal] = p.lsVal
   }
 
   case class Exists(vars:List[PureVar], p:LSPred) extends LSPred  with LSUnOp {
@@ -343,6 +354,8 @@ object LifeState {
         p.toString
 
     override def toTex: String = ???
+
+    override def lsVal: Set[PureVal] = p.lsVal
   }
 
   case class CLInit(sig:String) extends LSSingle {
@@ -359,6 +372,8 @@ object LifeState {
     override def lsVar: Set[PureVar] = Set()
 
     override def toTex: String = ???
+
+    override def lsVal: Set[PureVal] = Set.empty
   }
   object CLInit{
     implicit var rw:RW[CLInit] = macroRW
@@ -391,6 +406,8 @@ object LifeState {
     override def toString: String = v.toString
 
     override def toTex: String = ???
+
+    override def lsVal: Set[PureVal] = Set.empty
   }
   object FreshRef{
     private def oneCont(a1:LSPred, a2:LSPred):Option[FreshRef] = {
@@ -431,6 +448,8 @@ object LifeState {
     override def toString: String = s"[ ${l1} ➡ ${l1} ]"
 
     override def toTex: String = ???
+
+    override def lsVal: Set[PureVal] = l1.lsVal ++ l2.lsVal
   }
 
   case class And(l1 : LSPred, l2 : LSPred) extends LSBexp with LSBinOp {
@@ -452,6 +471,8 @@ object LifeState {
     }
 
     override def toTex: String = s"${l1.toTex} \\wedge ${l2.toTex}"
+
+    override def lsVal: Set[PureVal] = l1.lsVal ++ l2.lsVal
   }
   case class Not(p: LSPred) extends LSAtom with LSUnOp {
     //assert(p.isInstanceOf[OAbsMsg], "not only applicable to once")
@@ -474,6 +495,8 @@ object LifeState {
       case exp =>
         throw new IllegalArgumentException(s"identity sig only valid for AbsMsg and Not(AbsMsg), found: ${exp}")
     }
+
+    override def lsVal: Set[PureVal] = p.lsVal
   }
   case class Or(l1:LSPred, l2:LSPred) extends LSBexp with LSBinOp {
 
@@ -492,6 +515,8 @@ object LifeState {
     }
 
     override def toTex: String = s"${l1.toTex} \\vee ${l2.toTex}"
+
+    override def lsVal: Set[PureVal] = l1.lsVal ++ l2.lsVal
   }
   case object LSTrue extends LSBexp {
     override def lsVar: Set[PureVar] = Set.empty
@@ -502,6 +527,8 @@ object LifeState {
     override def toString: String = "True"
 
     override def toTex: String = "\\enkwTrue"
+
+    override def lsVal: Set[PureVal] = Set.empty
   }
   case object LSFalse extends LSBexp {
     override def lsVar: Set[PureVar] = Set.empty
@@ -512,6 +539,8 @@ object LifeState {
     override def toString: String = "False"
 
     override def toTex: String = "\\enkwFalse"
+
+    override def lsVal: Set[PureVal] = Set.empty
   }
 
   sealed trait LSAtom extends LSPred {
@@ -816,6 +845,11 @@ object LifeState {
     def mToTex:String = s"${mt.toTex}~${signatures.toTex(lsVars)}"
 
     override def toTex: String = s"\\iDir{${mToTex}}"
+
+    override def lsVal: Set[PureVal] = lsVars.flatMap{
+      case v:PureVal => Some(v)
+      case _ => None
+    }.toSet
   }
   object OAbsMsg{
     implicit val rw:RW[OAbsMsg] = macroRW
@@ -837,6 +871,8 @@ object LifeState {
     override def toString: String = s"NS( $i1 , $i2 )"
 
     override def toTex: String = s"\\niDir{${i2.mToTex}}{${i1.mToTex}}"
+
+    override def lsVal: Set[PureVal] = i1.lsVal ++ i2.lsVal
   }
   object NS{
     implicit val rw:RW[NS] = macroRW
