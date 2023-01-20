@@ -246,7 +246,7 @@ object DisallowedCallin{
   }
 }
 case class DisallowedCallin(className:String, methodName:String, s:LSSpec) extends InitialQuery{
-  assert(s.target.mt == CIEnter, "Disallow must be callin entry.")
+  assert(s.target.mt == CIEnter, s"Disallow must be callin entry. found: ${s.target}")
   private def invokeMatches(i:Invoke)(implicit ch:ClassHierarchyConstraints):Option[Signature] = {
     val tgtSig = i.targetSignature
     val res = s.target.signatures.matches(tgtSig)
