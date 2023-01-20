@@ -349,16 +349,18 @@ object Driver {
     val disallowedCallins = noNullHead.map{
       case (loc,msg) =>
         val spec  = specSet.getDisallowSpecs.find{s => s.target == msg}.get
-        DisallowedCallin.mk(loc,spec)
+        (DisallowedCallin.mk(loc,spec),spec)
     }
 
     //TODO: null head find dereferences or something
     val all = disallowedCallins //++ ???
 
     all.foreach{initialQuery =>
-      val cCfg = cfg.copy(initialQuery = List(initialQuery))
-      val fname = BounderUtil.sanitizeString(s"${initialQuery.className}__${initialQuery.methodName}__" +
-        s"disallow_${initialQuery.s.target.identitySignature}") +".cfg"
+      val qry = initialQuery._1
+      val spec = PickleSpec.mk(new SpecSpace(Set.empty, Set(initialQuery._2)))
+      val cCfg = cfg.copy(initialQuery = List(qry),specSet = spec)
+      val fname = BounderUtil.sanitizeString(s"${qry.className}__${qry.methodName}__" +
+        s"disallow_${qry.s.target.identitySignature}") +".cfg"
       val contents = write(cCfg)
       val f = outf / fname
       f.write(contents)
