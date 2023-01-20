@@ -1740,6 +1740,14 @@ class SootWrapper(apkPath : String,
     //TODO:======
     ???
   }
+
+  override def allMethodLocations(m: MethodLoc): Set[AppLoc] = m match{
+    case m:JimpleMethodLoc =>
+      if(m.method.hasActiveBody)
+        m.method.getActiveBody.getUnits.asScala.map{u => cmdToLoc(u,m.method)}.toSet
+      else Set.empty
+    case _ => throw new IllegalArgumentException()
+  }
 }
 
 case class JimpleMethodLoc(method: SootMethod) extends MethodLoc {

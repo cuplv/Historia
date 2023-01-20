@@ -69,6 +69,8 @@ class SerializedIR(transitions: Set[TestTransition]) extends IRWrapper[String,St
   override def appCallbackMsgCount: Int = ???
 
   override def dumpDebug(classFilter: String): String = ???
+
+  override def allMethodLocations(m: MethodLoc): Set[AppLoc] = ???
 }
 
 /**
