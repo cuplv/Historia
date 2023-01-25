@@ -96,10 +96,11 @@ case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2) extend
         val toRemove: Set[HeapPtEdge] = collectedFields.flatMap {
           case (_, fields) if fields.size < 2 => Set.empty
           case (_, fields) if fields.head._1.isInstanceOf[FieldPtEdge] =>
-              fields.toList.sortBy{
+              val res = fields.toList.sortBy{
                 case (FieldPtEdge(NPureVar(id),_),_) => id
                 case _ => throw new IllegalStateException()
               }.map(_._1).drop(materializedFieldLimit)
+              res
           case (_,_) => Set.empty
 //            val min = fields.foldLeft() {
 //              case (acc, (FieldPtEdge(NPureVar(id), _), _)) => if (id < acc) id else acc
@@ -150,7 +151,8 @@ case class ExecutorConfig[M,C](stepLimit: Int,
                                        outputMode : OutputMode = MemoryOutputMode,
                                        timeLimit:Int = 1800, // Note: connectbot click finish does not seem to go any further with 2h vs 0.5hr
                                        subsumptionMode:SubsumptionMode = SubsumptionModeIndividual, //Note: seems to be faster without batch mode subsumption
-                                       approxMode:ApproxMode = PreciseApproxMode(true) // default is to allow dropping of constraints and no widen //TODO: === make thresher version that drops things == make under approx version that drops states
+                                       approxMode:ApproxMode =  LimitMaterializationApproxMode()
+                                                  //PreciseApproxMode(true) //default is to allow dropping of constraints and no widen //TODO: === make thresher version that drops things == make under approx version that drops states
                                       ){
   def getAbstractInterpreter =
     new AbstractInterpreter[M, C](this)

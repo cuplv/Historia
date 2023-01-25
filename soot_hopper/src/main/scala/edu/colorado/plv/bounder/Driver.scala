@@ -7,7 +7,7 @@ import java.util.Date
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil.{MaxPathCharacterization, Proven, ResultSummary, Timeout, Unreachable, Witnessed, characterizeMaxPath}
 import edu.colorado.plv.bounder.Driver.{Default, LocResult, RunMode}
-import edu.colorado.plv.bounder.ir.{Loc, SootWrapper}
+import edu.colorado.plv.bounder.ir.{AppLoc, Loc, SootWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, OAbsMsg, Signature}
 import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSpace}
@@ -329,14 +329,42 @@ object Driver {
   }
 
   def findCallins(cfg: RunConfig, apkPath:String, outFolder:String, filter:Option[String]) = {
+    val outf = File(outFolder)
+    assert(outf.exists)
     val w = new SootWrapper(apkPath, Set())
     val config = ExecutorConfig(
       stepLimit = 200, w, new SpecSpace(Set()), component = None)
     val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
     val specSet = cfg.specSet.getSpecSpace()
     val toFind = specSet.getDisallowSpecs.map{s => s.target}
-    val locations = symbolicExecutor.appCodeResolver.findCallinsAndCallbacks(toFind, filter)
-    ???
+    val locations: Set[(AppLoc, OAbsMsg)] = symbolicExecutor.appCodeResolver.findCallinsAndCallbacks(toFind, filter)
+    def splitNullHead(hasNullHead:Boolean, locs: Set[(AppLoc, OAbsMsg)]):Set[(AppLoc,OAbsMsg)] = {
+      locs.filter{
+        case (_,OAbsMsg(_, _, NullVal::_)) => hasNullHead
+        case (_,OAbsMsg(_, _, _::_)) => !hasNullHead}
+      }
+    //For non-null head we make disallow queries
+    def noNullHead = splitNullHead(hasNullHead = false, locations)
+
+    val disallowedCallins = noNullHead.map{
+      case (loc,msg) =>
+        val spec  = specSet.getDisallowSpecs.find{s => s.target == msg}.get
+        (DisallowedCallin.mk(loc,spec),spec)
+    }
+
+    //TODO: null head find dereferences or something
+    val all = disallowedCallins //++ ???
+
+    all.foreach{initialQuery =>
+      val qry = initialQuery._1
+      val spec = PickleSpec.mk(new SpecSpace(Set.empty, Set(initialQuery._2)))
+      val cCfg = cfg.copy(initialQuery = List(qry),specSet = spec)
+      val fname = BounderUtil.sanitizeString(s"${qry.className}__${qry.methodName}__" +
+        s"disallow_${qry.s.target.identitySignature}") +".cfg"
+      val contents = write(cCfg)
+      val f = outf / fname
+      f.write(contents)
+    }
   }
   def sampleDeref(cfg: RunConfig, apkPath:String, outFolder:String, filter:Option[String]) = {
     val n = cfg.samples

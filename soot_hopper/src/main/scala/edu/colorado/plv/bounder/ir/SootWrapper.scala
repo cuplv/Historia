@@ -1378,7 +1378,11 @@ class SootWrapper(apkPath : String,
   }
   override def commandNext(cmdWrapper: CmdWrapper):List[AppLoc] =
     cmdWrapper.getLoc match{
-      case AppLoc(method, line, _) => List(AppLoc(method,line,isPre = true))
+      case AppLoc(method, line, true) => List(AppLoc(method,line,isPre = false))
+      case AppLoc(method:JimpleMethodLoc, JimpleLineLoc(cmd,sootMethod), false) =>
+        val unitGraph = getUnitGraph(sootMethod.retrieveActiveBody())
+        val succCommands = unitGraph.getSuccsOf(cmd).asScala
+        succCommands.map(cmd => AppLoc(method,JimpleLineLoc(cmd,sootMethod), isPre = false)).toList
       case _ =>
         throw new IllegalStateException("command after pre location doesn't exist")
     }
@@ -1739,6 +1743,14 @@ class SootWrapper(apkPath : String,
   override def appCallbackMsgCount: Int = {
     //TODO:======
     ???
+  }
+
+  override def allMethodLocations(m: MethodLoc): Set[AppLoc] = m match{
+    case m:JimpleMethodLoc =>
+      if(m.method.hasActiveBody)
+        m.method.getActiveBody.getUnits.asScala.map{u => cmdToLoc(u,m.method)}.toSet
+      else Set.empty
+    case _ => throw new IllegalArgumentException()
   }
 }
 

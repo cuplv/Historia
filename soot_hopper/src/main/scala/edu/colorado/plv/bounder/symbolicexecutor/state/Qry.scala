@@ -238,8 +238,15 @@ case class CallinReturnNonNull(sig:Signature,
     Qry.makeCallinReturnNull(sym, sig, line, callinRegex.r)
 }
 
+object DisallowedCallin{
+  def mk(loc:AppLoc, s:LSSpec):DisallowedCallin = {
+    val className = loc.method.classType
+    val methodName = loc.method.simpleName
+    DisallowedCallin(className, methodName,s)
+  }
+}
 case class DisallowedCallin(className:String, methodName:String, s:LSSpec) extends InitialQuery{
-  assert(s.target.mt == CIEnter, "Disallow must be callin entry.")
+  assert(s.target.mt == CIEnter, s"Disallow must be callin entry. found: ${s.target}")
   private def invokeMatches(i:Invoke)(implicit ch:ClassHierarchyConstraints):Option[Signature] = {
     val tgtSig = i.targetSignature
     val res = s.target.signatures.matches(tgtSig)

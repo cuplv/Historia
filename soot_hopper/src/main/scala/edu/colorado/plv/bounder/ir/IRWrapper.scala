@@ -15,6 +15,8 @@ import scala.collection.BitSet
  * @tparam C Command type for the underlying representation
  */
 trait IRWrapper[M,C]{
+  def allMethodLocations(m: MethodLoc): Set[AppLoc]
+
   def dumpDebug(classFilter:String):String
   def getThisVar(methodLoc: Loc): Option[LocalWrapper]
   def getThisVar(methodLoc: MethodLoc): Option[LocalWrapper]

@@ -117,7 +117,6 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     case _ => throw new IllegalStateException("callbackInComponent should only be called on callback returns")
   }
 
-  def getResolver = resolver
   def getWrapper = wrapper
 
   def directCallsGraph(loc: MethodLoc): Set[Loc] = {
@@ -575,6 +574,63 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       }.getOrElse(throw new IllegalStateException())
     }
     out
+  }
+
+  private def methodRetToEntry(loc:Loc):Loc = loc match {
+    case AppLoc(method, line, isPre) => ???
+    case CallinMethodReturn(sig) => CallinMethodInvoke(sig)
+    case CallinMethodInvoke(sig) => ???
+    case GroupedCallinMethodInvoke(targetClasses, fmwName) => ???
+    case GroupedCallinMethodReturn(targetClasses, fmwName) => GroupedCallinMethodInvoke(targetClasses, fmwName)
+    case CallbackMethodInvoke(sig, loc) => ???
+    case CallbackMethodReturn(sig, loc, line) => CallbackMethodInvoke(sig,loc)
+    case InternalMethodInvoke(clazz, name, loc) => ???
+    case InternalMethodReturn(clazz, name, loc) => InternalMethodInvoke(clazz, name, loc)
+    case SkippedInternalMethodInvoke(clazz, name, loc) => ???
+    case SkippedInternalMethodReturn(clazz, name, rel, loc) => SkippedInternalMethodInvoke(clazz,name,loc)
+  }
+
+  /**
+   * TODO: this function is not complete yet, only used for partially implemented feature
+   * @param loc
+   * @param skipCallins
+   * @return
+   */
+  def resolveSuccessors(loc:Loc, skipCallins:Boolean):Iterable[Loc] = loc match {
+    case l@AppLoc(_,_,false) =>
+      val cmd:CmdWrapper = wrapper.cmdAtLocation(l)
+      cmd match{
+        case ReturnCmd(_,loc) => wrapper.appCallSites(loc.method,resolver)
+        case _ => wrapper.commandNext(cmd)
+      }
+
+    case l@AppLoc(_,_,true) =>
+      val cmd:CmdWrapper = wrapper.cmdAtLocation(l)
+
+      def handleInvoke(): Iterable[Loc] = {
+        val unresolvedTargets = wrapper.makeInvokeTargets(l)
+        val resolved: Set[Loc] = resolver.resolveCallLocation(unresolvedTargets)
+        resolved.map(methodRetToEntry).flatMap {
+          case _: CallinMethodInvoke if skipCallins => List(l.copy(isPre = false))
+          case v => Some(v)
+        }
+      }
+
+      val res = cmd match {
+        case InvokeCmd(method, loc) => handleInvoke()
+        case AssignCmd(target, _: Invoke, loc) => handleInvoke()
+        case _ =>
+          List(l.copy(isPre = false))
+      }
+      res
+    case InternalMethodInvoke(clazz,name,loc) =>
+      ???
+    case InternalMethodReturn(clazz, name, loc) =>
+      ???
+    case CallinMethodInvoke(sig) => List(CallinMethodReturn(sig))
+    case other =>
+      println(other)
+      ???
   }
   def resolvePredicessors(loc:Loc, state: State):Iterable[Loc] = (loc,state.callStack) match{
     case (l@AppLoc(_,_,true),_) => {

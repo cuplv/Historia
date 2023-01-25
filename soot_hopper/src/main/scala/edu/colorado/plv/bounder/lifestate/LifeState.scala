@@ -786,46 +786,11 @@ object LifeState {
     def getVar(i: Int): PureExpr = lsVars(i)
 
 
-    private def sanitizeIdentitySignature(s: String): String = {
-      s.replaceAll("\\\\", "")
-        .replaceAll("\\{", "")
-        .replaceAll("\\}", "")
-        .replaceAll("\\$", "")
-        .replaceAll("\\_", "")
-        .replaceAll("\\^", "")
-        .replaceAll("\\.", "")
-        .replaceAll("\\(", "")
-        .replaceAll("\\)", "")
-        .replaceAll("\\[", "")
-        .replaceAll("\\]", "")
-        .replaceAll("\\|", "")
-        .replaceAll("\\+", "")
-        .replaceAll("\\*", "")
-        .replaceAll("\\?", "")
-        .replaceAll("\\<", "")
-        .replaceAll("\\>", "")
-        .replaceAll("\\-", "")
-        .replaceAll("\\=", "")
-        .replaceAll("\\:", "")
-        .replaceAll("\\;", "")
-        .replaceAll("\\,", "")
-        .replaceAll("\\/", "")
-        .replaceAll("\\!", "")
-        .replaceAll("\\@", "")
-        .replaceAll("\\#", "")
-        .replaceAll("\\%", "")
-        .replaceAll("\\&", "")
-        .replaceAll("\\~", "")
-        .replaceAll("\\`", "")
-        .replaceAll("\\'", "")
-        .replaceAll("\\\"", "")
-        .replaceAll("\\ ", "")
-    }
     // Uesed for naming uninterpreted functions in z3 solver
     override def identitySignature: String = {
       // Note: this does not include varnames or
       // any other info that would distinguish this I from another with the same metods
-      s"I_${mt.toString}_${sanitizeIdentitySignature(signatures.identifier)}"
+      s"I_${mt.toString}_${BounderUtil.sanitizeString(signatures.identifier)}"
     }
 
     override def contains(omt:MessageType,sig: Signature)(implicit ch:ClassHierarchyConstraints): Boolean =

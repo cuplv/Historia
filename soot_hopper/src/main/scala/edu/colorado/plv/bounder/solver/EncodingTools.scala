@@ -17,7 +17,7 @@ object EncodingTools {
       LSFalse
     else {
       val pairs = filterAny(i1.lsVars zip i2.lsVars)
-      pairs.map(v => LSConstraint.mk(v._1, Equals,v._2)).reduce(And)
+      pairs.map(v => LSConstraint.mk(v._1, Equals,v._2)).reduceOption(And).getOrElse(LSTrue)
     }
 
   private def neqOnce(i1:AbsMsg, i2:AbsMsg):LSPred = {
