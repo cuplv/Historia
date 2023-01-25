@@ -223,6 +223,11 @@ case class Reachable(sig:Signature, line:Integer) extends InitialQuery {
   override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] =
     Qry.makeReach(sym,sig, line)
 }
+
+case class DirectInitialQuery(qry:Qry) extends InitialQuery{
+  override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] = Set(qry)
+}
+
 case class ReceiverNonNull(sig:Signature, line:Integer,
                            receiverMatcher:Option[String] = None) extends InitialQuery {
   override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] =
