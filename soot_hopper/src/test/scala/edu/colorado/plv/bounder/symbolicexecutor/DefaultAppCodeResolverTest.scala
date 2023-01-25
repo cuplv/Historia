@@ -4,13 +4,13 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{AppLoc, SootWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, Signature}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifecycleSpec, RxJavaSpec, SpecSpace}
-import edu.colorado.plv.bounder.symbolicexecutor.state.CallinReturnNonNull
+import edu.colorado.plv.bounder.symbolicexecutor.state.{CallinReturnNonNull, Qry}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.AnyFunSuite
 
 class DefaultAppCodeResolverTest extends AnyFunSuite {
-  test("Test app code resolver finds flow from getActivity to dereference") {
+  test("Test app code resolver can find syntactic locations of pattern misuses") {
     //TODO: this functionality is not complete
     val src =
       """
@@ -42,7 +42,7 @@ class DefaultAppCodeResolverTest extends AnyFunSuite {
         |    }
         |
         |    private void reqNonNull(Object v){
-        |      v.toString();
+        |      v.toString(); //deref2
         |    }
         |    @Override
         |    public void onActivityCreated(Bundle savedInstanceState){
@@ -60,7 +60,7 @@ class DefaultAppCodeResolverTest extends AnyFunSuite {
         |                .subscribe(a -> {
         |                    Activity b = getActivity();// query1
         |                    if(condition == 0){ //app code resolver analysis doesn't track this so non-deterministic
-        |                     Log.i("b", b.toString());
+        |                     Log.i("b", b.toString()); // deref1
         |                    }else{
         |                     reqNonNull(b);
         |                    }
@@ -86,14 +86,29 @@ class DefaultAppCodeResolverTest extends AnyFunSuite {
         component = Some(List("com.example.createdestroy.MyFragment.*")),
         printAAProgress = true)
       val symbolicExecutor = config.getAbstractInterpreter
+      val query1line = BounderUtil.lineForRegex(".*query1.*".r, src)
       val query = CallinReturnNonNull(
         Signature("com.example.createdestroy.MyFragment",
-          "void lambda$onActivityCreated$1$MyFragment(java.lang.Object)"), BounderUtil.lineForRegex(".*query1.*".r, src),
+          "void lambda$onActivityCreated$1$MyFragment(java.lang.Object)"), query1line,
         ".*getActivity.*")
       val resolver = symbolicExecutor.appCodeResolver
       val loc = query.make(symbolicExecutor).map{q => q.loc.asInstanceOf[AppLoc]}
-      val res = resolver.nullValueMayFlowTo(loc, symbolicExecutor.controlFlowResolver)
+      val res = resolver.allDeref(Some("com.example.createdestroy.MyFragment"), symbolicExecutor)
       assert(res.nonEmpty)
+
+      val deref1Line = BounderUtil.lineForRegex(".*deref1.*".r,src)
+      val deref2Line = BounderUtil.lineForRegex(".*deref2.*".r,src)
+
+      def contains(queries:Set[Qry], derefline:Int):Boolean =
+        queries.exists{q => q.loc.asInstanceOf[AppLoc].line.lineNumber == derefline}
+
+      //check that our 3 dereferences were found
+      assert(contains(res,query1line))
+      assert(contains(res,deref1Line))
+      assert(contains(res,deref2Line))
+
+
+
 
     }
 

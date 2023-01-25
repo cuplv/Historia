@@ -5,7 +5,9 @@ import better.files.{File, Resource}
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CBExit, CIEnter, CIExit, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldReference, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, If, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, JimpleMethodLoc, LVal, LineLoc, Loc, LocalWrapper, MethodLoc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper, SpecialInvoke, StaticInvoke, SwitchCmd, ThrowCmd, UnresolvedMethodTarget, VirtualInvoke}
 import edu.colorado.plv.bounder.lifestate.LifeState.{OAbsMsg, Signature}
+import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, Qry}
 
 import scala.annotation.tailrec
 import scala.collection.BitSet
@@ -26,6 +28,9 @@ trait AppCodeResolver {
 
   def getCallbacks: Set[MethodLoc]
 
+
+
+  def allDeref[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry]
   def nullValueMayFlowTo[M,C](sources: Iterable[AppLoc],
                          cfRes: ControlFlowResolver[M, C]): Set[AppLoc]
 }
@@ -69,6 +74,12 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
   }
 
 
+  override def allDeref[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry] = {
+    val appClasses = appMethods.map(m => m.classType)
+    val filtered = appClasses.filter(c => filter.forall(c.startsWith))
+    val initialQueries = filtered.map(c => AllReceiversNonNull(c))
+    initialQueries.flatMap{q => q.make(abs)}
+  }
 
 
   /**
