@@ -263,11 +263,13 @@ object BounderUtil {
       .replaceAll("\\\"", "")
       .replaceAll("\\ ", "")
   }
+
+
   // Abstract interpretation with no widen
   def graphFixpoint[N,V](start: Set[N],
                          startVal: V,
                          botVal: V,
-                         next: N=>Set[N],
+                         next: N=>Iterable[N],
                          comp: (V,N) => V,
                          join: (V,V)=>V ): Map[N,V] = {
     // computed : map from nodes to their outputs

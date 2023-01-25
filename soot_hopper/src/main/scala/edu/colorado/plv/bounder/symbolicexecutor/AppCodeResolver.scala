@@ -3,22 +3,31 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import java.util.NoSuchElementException
 import better.files.{File, Resource}
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CBExit, CIEnter, CIExit, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodReturn, CmdWrapper, FieldReference, IRWrapper, InternalMethodReturn, Invoke, InvokeCmd, JimpleMethodLoc, LineLoc, Loc, MethodLoc, SootWrapper, SpecialInvoke, StaticInvoke, UnresolvedMethodTarget, VirtualInvoke}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CBExit, CIEnter, CIExit, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldReference, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, If, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, JimpleMethodLoc, LVal, LineLoc, Loc, LocalWrapper, MethodLoc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper, SpecialInvoke, StaticInvoke, SwitchCmd, ThrowCmd, UnresolvedMethodTarget, VirtualInvoke}
 import edu.colorado.plv.bounder.lifestate.LifeState.{OAbsMsg, Signature}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 
 import scala.annotation.tailrec
+import scala.collection.BitSet
 import scala.io.Source
 import scala.util.matching.Regex
 import scala.util.Random
 
 trait AppCodeResolver {
-  def isFrameworkClass(packageName:String):Boolean
-  def isAppClass(fullClassName:String):Boolean
-  def resolveCallLocation(tgt : UnresolvedMethodTarget): Set[Loc]
-  def resolveCallbackExit(method : MethodLoc, retCmdLoc: Option[LineLoc]):Option[Loc]
-  def resolveCallbackEntry(method: MethodLoc):Option[Loc]
+  def isFrameworkClass(packageName: String): Boolean
+
+  def isAppClass(fullClassName: String): Boolean
+
+  def resolveCallLocation(tgt: UnresolvedMethodTarget): Set[Loc]
+
+  def resolveCallbackExit(method: MethodLoc, retCmdLoc: Option[LineLoc]): Option[Loc]
+
+  def resolveCallbackEntry(method: MethodLoc): Option[Loc]
+
   def getCallbacks: Set[MethodLoc]
+
+  def nullValueMayFlowTo[M,C](sources: Iterable[AppLoc],
+                         cfRes: ControlFlowResolver[M, C]): Set[AppLoc]
 }
 object FrameworkExtensions{
   private val urlPos = List("FrameworkExtensions.txt",
@@ -59,6 +68,94 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     callbacks = iGetCallbacks()
   }
 
+
+
+
+  /**
+   * TODO: not fully implemented
+   * Compute null data flows within a single callback.
+   * Warning: not a sound analysis, just best effort
+   * @param sources Locations returning the values of interest
+   * @param condition Condition to yield location that data flows to (e.g. value may be null)
+   * @param cfRes Control flow resolver
+   * @return
+   */
+  override def nullValueMayFlowTo[M,C](sources:Iterable[AppLoc],
+                                         cfRes:ControlFlowResolver[M,C]):Set[AppLoc] = {
+
+    def mk(v:Any):ValueSpot = v match{
+      case LocalWrapper(name, _) => LocalValue(name)
+    }
+    sealed trait ValueSpot  //note extend further for fields arrays etc if soundness is desired later
+    case class LocalValue(name:String) extends ValueSpot
+    type AbsState = Map[ValueSpot,Boolean]
+    val botVal:AbsState = Map.empty
+    def isSensitive(loc:AppLoc, absState:AbsState):Boolean = {
+      ir.cmdAtLocation(loc) match {
+        case ReturnCmd(returnVar, loc) => false
+        case AssignCmd(target, FieldReference(base,_,_,_), loc) =>
+          absState.contains(mk(base))
+        case AssignCmd(target, source, loc) => false
+        case InvokeCmd(_:StaticInvoke, _) => false //TODO: capture @NonNull annotations
+        case InvokeCmd(SpecialInvoke(base,_,_,_),_) =>
+          absState.contains(mk(base))
+        case InvokeCmd(VirtualInvoke(base,_,_,_),_) =>
+          absState.contains(mk(base))
+        case If(b, trueLoc, loc) => false
+        case NopCmd(loc) => false
+        case SwitchCmd(key, targets, loc) => false
+        case ThrowCmd(loc) => false
+      }
+    }
+    def mkInitFlow(loc:AppLoc):AbsState = BounderUtil.cmdAtLocationNopIfUnknown(loc,ir) match {
+      case AssignCmd(tgt, _,_) => Map(mk(tgt) -> true)
+      case _ => Map.empty
+    }
+    def transfer(absState:AbsState,loc:Loc):AbsState = loc match {
+      case appLoc@AppLoc(method, line, true) =>
+        val cmd = ir.cmdAtLocation(appLoc)
+        ???
+      case appLoc@AppLoc(_,_,false) => absState
+      case InternalMethodReturn(clazz, name, loc) =>
+        ???
+      case InternalMethodInvoke(clazz, name, loc) =>
+        ???
+      case CallinMethodReturn(sig) =>
+        absState //Note: if we wanted this to be sound, we would capture case where callin causes data flow
+      case CallinMethodInvoke(sig) =>
+        absState
+      case GroupedCallinMethodInvoke(targetClasses, fmwName) => absState
+      case GroupedCallinMethodReturn(targetClasses, fmwName) => absState
+      case CallbackMethodInvoke(sig, loc) => botVal
+      case CallbackMethodReturn(sig, loc, line) => botVal
+      case SkippedInternalMethodInvoke(clazz, name, loc) => throw new IllegalArgumentException()
+      case SkippedInternalMethodReturn(clazz, name, rel, loc) => throw new IllegalArgumentException()
+    }
+
+    def join(absState1: AbsState, absState2:AbsState):AbsState =
+      absState1.foldLeft(absState2){
+        case (acc,k->v) => acc + (k -> (v || acc.getOrElse(k,false)))
+      }
+
+    // accumulator BitSet is set of positions with data flow
+    // position 0 is output (value assigned such as x in x = f.y, y is position 1 etc).
+    // TODO: may be nice to have interproc version of this
+    val fp: Map[Loc, AbsState] = BounderUtil.graphFixpoint[Loc, AbsState](
+      start = sources.toSet,
+      startVal = sources.flatMap(mkInitFlow).toMap,
+      botVal = Map.empty,
+      next = n => cfRes.resolveSuccessors(n,skipCallins = true),
+      //          ir.commandPredecessors(n).map{v => BounderUtil.cmdAtLocationNopIfUnknown(v,ir).mkPre}.toSet
+      comp = transfer,
+      join = join
+    )
+    fp.flatMap{
+      case (loc:AppLoc,absState) =>
+        if(isSensitive(loc,absState)) Some(loc) else None
+      case _ => None
+    }.toSet
+
+  }
   final def findCallinsAndCallbacks(messages:Set[OAbsMsg],
                                     packageFilter:Option[String]):Set[(AppLoc,OAbsMsg)] = {
     implicit val ch = ir.getClassHierarchyConstraints
@@ -75,9 +172,6 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
       case methodLoc: MethodLoc => // apply package filter if it exists
         packageFilter.forall(methodLoc.classType.startsWith)
     }
-
-
-
     val invokeCmds = filteredAppMethods.flatMap{m =>
       ir.allMethodLocations(m).flatMap{v => BounderUtil.cmdAtLocationNopIfUnknown(v,ir) match{
         case AssignCmd(_, i: SpecialInvoke, _) => matchesCI(i).map((v, _))

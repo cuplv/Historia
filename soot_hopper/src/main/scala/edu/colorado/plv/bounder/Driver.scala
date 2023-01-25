@@ -344,7 +344,7 @@ object Driver {
         case (_,OAbsMsg(_, _, _::_)) => !hasNullHead}
       }
     //For non-null head we make disallow queries
-    def noNullHead = splitNullHead(false, locations)
+    def noNullHead = splitNullHead(hasNullHead = false, locations)
 
     val disallowedCallins = noNullHead.map{
       case (loc,msg) =>
