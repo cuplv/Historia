@@ -142,7 +142,7 @@ case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2) extend
  * @tparam M Method type (IR wrapper)
  * @tparam C Command type (IR wrapper)
  */
-case class ExecutorConfig[M,C](stepLimit: Int,
+case class ExecutorConfig[M,C](stepLimit: Int = -1,
                                        w :  IRWrapper[M,C],
                                        specSpace:SpecSpace,
                                        printAAProgress : Boolean = sys.env.getOrElse("DEBUG","false") == "AbstractInterpreter",
