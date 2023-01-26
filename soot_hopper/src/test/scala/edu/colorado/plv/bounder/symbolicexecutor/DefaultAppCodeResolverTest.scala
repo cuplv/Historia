@@ -113,7 +113,9 @@ class DefaultAppCodeResolverTest extends AnyFunSuite {
         packageFilter,
         interpreter)
       assert(derefs.nonEmpty)
-      assert(false) //TODO: test that correct derefs are included
+
+      assert(contains(derefs,deref1Line))
+      assert(contains(derefs,deref2Line))
 
 
 

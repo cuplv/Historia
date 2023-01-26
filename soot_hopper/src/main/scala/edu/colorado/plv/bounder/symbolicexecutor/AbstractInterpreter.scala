@@ -231,6 +231,13 @@ case class QueryInterrupted(reason:String) extends QueryResult
 case class QueryInterruptedException(terminals:Set[IPathNode], reason:String) extends Exception
 class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
 
+  def updateSpec(newSpec:SpecSpace):AbstractInterpreter[M,C] = {
+    //TODO: be smarter about updating spec so we can use this in synthesis later and avoid recomputing
+    config.copy(specSpace = newSpec).getAbstractInterpreter
+  }
+
+  def getConfig = config
+
   implicit val pathMode: OutputMode = config.outputMode
   implicit val w = config.w
   implicit val ord = new LexicalStackThenTopo[M,C](w)
@@ -325,7 +332,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
   var slowSubsumeCount:Int = 0
   def isSubsumed(pathNode:IPathNode, checkTimeout: ()=>Unit):Set[IPathNode] = pathNode match{
     case SwapLoc(loc) if pathNode.qry.isInstanceOf[Qry] && invarMap.contains(loc) => {
-      val hashableState = pathNode.state.sf.makeHashable(transfer.getSpec)
+      val hashableState = pathNode.state.sf.makeHashable(config.specSpace)
       val currentInvarMap = invarMap(loc)
       val res:Set[IPathNode] = if(currentInvarMap.contains(hashableState)) {
         // Test if exact state is contained
@@ -340,19 +347,19 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
           case SubsumptionModeIndividual =>
             nodes.find(p => {
               checkTimeout()
-              stateSolver.canSubsume(p.state, pathNode.state, transfer.getSpec)
+              stateSolver.canSubsume(p.state, pathNode.state,config.specSpace)
             }).toSet
           case SubsumptionModeBatch =>
-            if (stateSolver.canSubsumeSet(states.toSet, pathNode.state, transfer.getSpec))
+            if (stateSolver.canSubsumeSet(states.toSet, pathNode.state, config.specSpace))
               nodes.toSet else Set[IPathNode]()
           case SubsumptionModeTest => {
-            val singleResult = nodes.find(p => stateSolver.canSubsume(p.state, pathNode.state, transfer.getSpec)).toSet
-            val batchResult = stateSolver.canSubsumeSet(states.toSet, pathNode.state, transfer.getSpec)
+            val singleResult = nodes.find(p => stateSolver.canSubsume(p.state, pathNode.state, config.specSpace)).toSet
+            val batchResult = stateSolver.canSubsumeSet(states.toSet, pathNode.state, config.specSpace)
             if (singleResult.nonEmpty != batchResult) {
               println(s"current state:\n    ${pathNode.state}")
               println("subsuming states:")
               states.foreach(s => println(s"    ${s.toString}"))
-              val batchResult2 = stateSolver.canSubsumeSet(states.toSet, pathNode.state, transfer.getSpec)
+              val batchResult2 = stateSolver.canSubsumeSet(states.toSet, pathNode.state, config.specSpace)
               println()
             }
             singleResult
@@ -528,7 +535,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
                 p2 match { //TODO:===== this was "current", should be pLive???  TODO: cb isn't getting to 5 cb, go back through history and figure out why
                   case SwapLoc(v) => {
                     val nodeSetAtLoc = invarMap.getOrElse(v, Map.empty)
-                    invarMap.addOne(v -> (nodeSetAtLoc + (p2.state.sf.makeHashable(transfer.getSpec) -> p2)))
+                    invarMap.addOne(v -> (nodeSetAtLoc + (p2.state.sf.makeHashable(config.specSpace) -> p2)))
                   }
                   case _ =>
                 }
@@ -562,9 +569,9 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
       //predecessorLocations.par.flatMap(l => {
       predecessorLocations.flatMap(l => {
         val newStates = transfer.transfer(state,l,loc)
-        newStates.map(state => stateSolver.simplify(state, transfer.getSpec) match {
-          case Some(state) if stateSolver.witnessed(state, transfer.getSpec).isDefined =>
-            Qry(state, l, WitnessedQry(stateSolver.witnessed(state, transfer.getSpec)))
+        newStates.map(state => stateSolver.simplify(state, config.specSpace) match {
+          case Some(state) if stateSolver.witnessed(state, config.specSpace).isDefined =>
+            Qry(state, l, WitnessedQry(stateSolver.witnessed(state, config.specSpace)))
           case Some(state) => Qry(state, l, Live)
           case None =>
             Qry(state,l, BottomQry)
