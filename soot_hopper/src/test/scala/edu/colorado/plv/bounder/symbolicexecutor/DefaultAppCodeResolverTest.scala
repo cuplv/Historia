@@ -71,7 +71,7 @@ class DefaultAppCodeResolverTest extends AnyFunSuite {
         |    @Override
         |    public void onDestroy(){
         |        super.onDestroy();
-        |        subscription.unsubscribe();
+        |        subscription.unsubscribe(); //deref3
         |    }
         |}
         |""".stripMargin
@@ -99,23 +99,33 @@ class DefaultAppCodeResolverTest extends AnyFunSuite {
 
       val deref1Line = BounderUtil.lineForRegex(".*deref1.*".r,src)
       val deref2Line = BounderUtil.lineForRegex(".*deref2.*".r,src)
+      val deref3Line = BounderUtil.lineForRegex(".*deref3.*".r,src)
 
       def contains(queries:Set[Qry], derefline:Int):Boolean =
         queries.exists{q => q.loc.asInstanceOf[AppLoc].line.lineNumber == derefline}
 
-      //check that our 3 dereferences were found
+      //check that our dereferences were found
       assert(contains(res,query1line))
       assert(contains(res,deref1Line))
       assert(contains(res,deref2Line))
+      assert(contains(res,deref3Line))
 
-      val derefs = resolver.derefFromCallin(
+
+      val derefsFromGetActivity = resolver.derefFromCallin(
         Set(FragmentGetActivityNullSpec.getActivityNull.target),
         packageFilter,
         interpreter)
-      assert(derefs.nonEmpty)
+      assert(derefsFromGetActivity.nonEmpty)
 
-      assert(contains(derefs,deref1Line))
-      assert(contains(derefs,deref2Line))
+      assert(contains(derefsFromGetActivity,deref1Line))
+      assert(contains(derefsFromGetActivity,deref2Line))
+      assert(!contains(derefsFromGetActivity,deref3Line))
+
+      val derefsFromFields = resolver.derefFromField(packageFilter,interpreter)
+
+      assert(contains(derefsFromFields, deref3Line))
+      assert(!contains(derefsFromFields, deref2Line))
+      assert(!contains(derefsFromFields, deref1Line))
 
 
 

@@ -1,17 +1,12 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
-import java.util.NoSuchElementException
-import better.files.{File, Resource}
+import better.files.{Resource}
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CBExit, CIEnter, CIExit, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldReference, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, If, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, JimpleMethodLoc, LVal, LineLoc, Loc, LocalWrapper, MethodLoc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper, SpecialInvoke, StaticInvoke, SwitchCmd, ThrowCmd, UnresolvedMethodTarget, VirtualInvoke}
-import edu.colorado.plv.bounder.lifestate.LifeState.{LSSingle, OAbsMsg, Signature}
-import edu.colorado.plv.bounder.lifestate.SpecSpace
-import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, DirectInitialQuery, NullVal, Qry}
+import edu.colorado.plv.bounder.lifestate.LifeState.{OAbsMsg, Signature}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, DirectInitialQuery, FieldPtEdge, NullVal, Qry}
 
 import scala.annotation.tailrec
-import scala.collection.BitSet
-import scala.io.Source
 import scala.util.matching.Regex
 import scala.util.Random
 
@@ -29,6 +24,7 @@ trait AppCodeResolver {
   def getCallbacks: Set[MethodLoc]
 
 
+  def derefFromField[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry]
   def derefFromCallin[M,C](callins: Set[OAbsMsg], filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry]
 
   def allDeref[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry]
@@ -74,6 +70,41 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     callbacks = iGetCallbacks()
   }
 
+  /**
+   * Search for syntactic locations in callbacks that may crash if a field is null at the entry of the callback
+   * @param filter packages to include in the search
+   * @param abs abstract interpreter class
+   * @return queries for dereferences that may crash
+   */
+  override def derefFromField[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry] = {
+    val derefToFilter = allDeref(filter, abs)
+    def callbackEntryWithNullField(qry:Qry):Boolean = {
+      qry.state.callStack.isEmpty && {
+        qry.state.inlineConstEq().exists{ reducedState =>
+          reducedState.sf.heapConstraints.exists{
+            case (_:FieldPtEdge, NullVal) => true
+            case _ => false
+          }
+        }
+      }
+
+    }
+
+    derefToFilter.filter { q =>
+      val res = abs.run(DirectInitialQuery(q),
+        stopExplorationAt = q2 => if (q2.state.callStack.isEmpty) true else callbackEntryWithNullField(q2))
+      val resTerminals = res.flatMap(_.terminals)
+      resTerminals.exists(node => callbackEntryWithNullField(node.qry))
+    }
+  }
+
+  /**
+   * Search for syntactic locations where the return from specific callins is dereferenced
+   * @param callins that may return null
+   * @param filter packages to include in search
+   * @param abs abstract interpreter class
+   * @return query locations that may crash if callin returns null
+   */
   override def derefFromCallin[M,C](callins: Set[OAbsMsg], filter:Option[String],
                                     abs:AbstractInterpreter[M,C]):Set[Qry] = {
     // Add callins to matcher space of spec so they show up in abstract states

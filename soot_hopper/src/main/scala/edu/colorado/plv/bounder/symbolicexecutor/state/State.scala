@@ -293,6 +293,10 @@ case class State(sf:StateFormula,
       }
   }
 
+  /**
+   * Iterate through all must equals and swap values
+   * @return swapped state or none if contradiction encountered
+   */
   def inlineConstEq():Option[State] = {
     def swapIfPos(cSf:StateFormula,old:PureVar, newE:PureExpr):Option[StateFormula] = {
       cSf.heapConstraints.foreach{
