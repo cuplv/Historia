@@ -29,6 +29,7 @@ trait AppCodeResolver {
   def getCallbacks: Set[MethodLoc]
 
 
+  def derefFromCallin[M,C](callins: Set[OAbsMsg], filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry]
 
   def allDeref[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry]
   def nullValueMayFlowTo[M,C](sources: Iterable[AppLoc],
@@ -73,6 +74,11 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     callbacks = iGetCallbacks()
   }
 
+  override def derefFromCallin[M,C](callins: Set[OAbsMsg], filter:Option[String],
+                                    abs:AbstractInterpreter[M,C]):Set[Qry] = {
+    val derefToFilter = allDeref(filter, abs)
+    ???
+  }
 
   override def allDeref[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry] = {
     val appClasses = appMethods.map(m => m.classType)

@@ -276,11 +276,17 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
   case class QueryData(queryId:Int, location:Loc, terminals: Set[IPathNode], runTime:Long, result : QueryResult)
 
   /**
-   *
-   * @return  (id, Terminal path nodes)
+   * Run the abstract interpretation starting at a syntactic location.
+   * @param initialQuery defined syntactic location
+   * @param outputMode how much information to store about exploration
+   * @param cfg initial run configuration to be recorded in output  //TODO: only works with DBOutputMode
+   * @param stopExplorationAt used to limit backwards exploration but keep searching other paths.
+   *                          default is to not stop (return false)
+   *                          (e.g. to find callbacks requiring non-null fields)
+   * @return Query data with info on run
    */
   def run(initialQuery: InitialQuery, outputMode:OutputMode = MemoryOutputMode,
-          cfg:RunConfig = RunConfig()) : Set[QueryData] = {
+          cfg:RunConfig = RunConfig(), stopExplorationAt : Qry => Boolean = _ => false) : Set[QueryData] = {
     val qry: Set[Qry] = initialQuery.make(this)
       .map{q => q.copy(state = stateSolver.simplify(q.state.setSimplified, config.specSpace)
         .getOrElse(throw new IllegalArgumentException(s"Initial state was refuted: ${q.state}")))}
@@ -294,7 +300,8 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
         queue.addAll(pathNodes)
         val deadline = if(config.timeLimit > -1) Instant.now.getEpochSecond + config.timeLimit else -1
         invarMap.clear()
-        val res: Set[IPathNode] = executeBackward(queue, config.stepLimit, deadline)
+        val res: Set[IPathNode] = executeBackward(queue, config.stepLimit, deadline,
+          stopExplorationAt = stopExplorationAt)
 
         val interpretedRes = BounderUtil.interpretResult(res, QueryFinished)
         val char = BounderUtil.characterizeMaxPath(res)
@@ -458,13 +465,14 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
    */
   @tailrec
   final def executeBackward(qrySet: GrouperQ, limit:Int, deadline:Long,
-                            refutedSubsumedOrWitnessed: Set[IPathNode] = Set()):Set[IPathNode] = {
+                            refutedSubsumedOrWitnessed: Set[IPathNode] = Set(),
+                            stopExplorationAt:Qry => Boolean):Set[IPathNode] = {
     checkDeadline(deadline,qrySet, refutedSubsumedOrWitnessed)
     if(qrySet.isEmpty){
       return refutedSubsumedOrWitnessed
     }
 
-    val current = qrySet.nextWithGrouping()
+    val current: IPathNode = qrySet.nextWithGrouping()
 
     if(config.printAAProgress) {
       current match {
@@ -479,17 +487,19 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
       }
     }
     current match {
+      case p@PathNode(q@Qry(_,_,Live), false) if stopExplorationAt(q) =>
+        // input defined condition to no longer explore further on this node
+        executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p, stopExplorationAt)
       case p@PathNode(Qry(_,_,Live), true) =>
         // current node is subsumed
-        // TODO: this branch is probably unreachable
-        executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p)
+        executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p, stopExplorationAt)
       case p@PathNode(Qry(_,_,BottomQry), _) =>
         // current node is refuted
         val newRef = if(config.outputMode != NoOutputMode)
           refutedSubsumedOrWitnessed + p
         else
           refutedSubsumedOrWitnessed
-        executeBackward(qrySet, limit, deadline, newRef)
+        executeBackward(qrySet, limit, deadline, newRef, stopExplorationAt)
       case p@PathNode(Qry(_,_,WitnessedQry(_)), _) =>
         // current node is witnessed
         refutedSubsumedOrWitnessed.union(qrySet.toSet) + p
@@ -509,7 +519,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
               refutedSubsumedOrWitnessed + pLive.setSubsumed(v)
             else
               refutedSubsumedOrWitnessed
-            executeBackward(qrySet, limit, deadline, newRef)
+            executeBackward(qrySet, limit, deadline, newRef, stopExplorationAt)
           case v if v.isEmpty =>
             // widen if necessary
             config.approxMode.merge(() => ???, pLive, stateSolver) match {
@@ -532,10 +542,10 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
                     throw QueryInterruptedException(refutedSubsumedOrWitnessed + p2, ze.getMessage)
                 }
                 qrySet.addAll(nextQry)
-                executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed)
+                executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed, stopExplorationAt)
               case None =>
                 // approx mode indicates this state should be dropped (under approx)
-                executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed)
+                executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed, stopExplorationAt)
             }
         }
     }

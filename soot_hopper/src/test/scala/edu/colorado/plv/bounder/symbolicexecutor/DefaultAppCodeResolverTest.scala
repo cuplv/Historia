@@ -85,15 +85,16 @@ class DefaultAppCodeResolverTest extends AnyFunSuite {
         stepLimit = 300, w, specSpace,
         component = Some(List("com.example.createdestroy.MyFragment.*")),
         printAAProgress = true)
-      val symbolicExecutor = config.getAbstractInterpreter
+      val interpreter = config.getAbstractInterpreter
       val query1line = BounderUtil.lineForRegex(".*query1.*".r, src)
       val query = CallinReturnNonNull(
         Signature("com.example.createdestroy.MyFragment",
           "void lambda$onActivityCreated$1$MyFragment(java.lang.Object)"), query1line,
         ".*getActivity.*")
-      val resolver = symbolicExecutor.appCodeResolver
-      val loc = query.make(symbolicExecutor).map{q => q.loc.asInstanceOf[AppLoc]}
-      val res = resolver.allDeref(Some("com.example.createdestroy.MyFragment"), symbolicExecutor)
+      val resolver = interpreter.appCodeResolver
+      val packageFilter = Some("com.example.createdestroy.MyFragment")
+      val loc = query.make(interpreter).map{q => q.loc.asInstanceOf[AppLoc]}
+      val res = resolver.allDeref(packageFilter, interpreter)
       assert(res.nonEmpty)
 
       val deref1Line = BounderUtil.lineForRegex(".*deref1.*".r,src)
@@ -107,6 +108,12 @@ class DefaultAppCodeResolverTest extends AnyFunSuite {
       assert(contains(res,deref1Line))
       assert(contains(res,deref2Line))
 
+      val derefs = resolver.derefFromCallin(
+        Set(FragmentGetActivityNullSpec.getActivityNull.target),
+        packageFilter,
+        interpreter)
+      assert(derefs.nonEmpty)
+      assert(false) //TODO: test that correct derefs are included
 
 
 
