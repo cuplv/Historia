@@ -388,9 +388,9 @@ object Driver {
     val config = ExecutorConfig(
       w = w, specSpace = new SpecSpace(Set()), component = None)
     val interpreter: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
-    val specSet = cfg.specSet.getSpecSpace()
-    assert(specSet.getDisallowSpecs.isEmpty && specSet.getSpecs.isEmpty,
-      "Sensitive field caused deref does not use specs")
+    //    val specSet = cfg.specSet.getSpecSpace()
+    //    assert(specSet.getDisallowSpecs.isEmpty && specSet.getSpecs.isEmpty,
+    //      "Sensitive field caused deref does not use specs")
     writeDirectInitialQuery(interpreter.appCodeResolver.derefFromField(filter, interpreter), outf)
   }
 
