@@ -414,10 +414,15 @@ object Driver {
     val locations: Set[(AppLoc, OAbsMsg)] = symbolicExecutor.appCodeResolver.findCallinsAndCallbacks(toFind, filter)
 
 
-    val disallowedCallins = locations.map{
-      case (loc,msg) =>
-        val spec  = specSet.getDisallowSpecs.find{s => s.target == msg}.get
-        (DisallowedCallin.mk(loc,spec),spec)
+    val disallowedCallins = try {
+      locations.map {
+        case (loc, msg) =>
+          val spec = specSet.getDisallowSpecs.find { s => s.target == msg }.get
+          (DisallowedCallin.mk(loc, spec), spec)
+      }
+    }catch  {
+      case e:AssertionError if e.toString.contains("Disallow must be callin entry") =>
+        return //silently ignore bad disallows
     }
 
     disallowedCallins.foreach{initialQuery =>
