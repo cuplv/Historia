@@ -70,7 +70,7 @@ object BounderSetupApplication {
   sealed trait SourceType
   case object ApkSource extends SourceType
   case object JimpleSource extends SourceType
-
+  case object JarSource extends SourceType
 
   def loadApk(path : String, sourceType: SourceType = ApkSource):Unit ={
     G.reset()
@@ -100,6 +100,9 @@ object BounderSetupApplication {
         Options.v.set_src_prec(Options.src_prec_apk_class_jimple)
       case JimpleSource =>
         Options.v.set_src_prec(Options.src_prec_jimple)
+      case JarSource => {
+        Options.v.set_src_prec(Options.src_prec_class)
+      }
     }
     Options.v.set_keep_offset(false) //don't create tag that holds bytecode offset
     Options.v.set_keep_line_number(true)

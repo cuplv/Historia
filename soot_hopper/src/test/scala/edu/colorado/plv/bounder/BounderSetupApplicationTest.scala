@@ -1,6 +1,7 @@
 package edu.colorado.plv.bounder
 
 import better.files.Resource
+import edu.colorado.plv.bounder.BounderSetupApplication.JarSource
 import edu.colorado.plv.bounder.ir.{BitTypeSet, SootWrapper, TopTypeSet, TypeSet}
 import edu.colorado.plv.bounder.lifestate.{LSExpParser, LifeState}
 import edu.colorado.plv.bounder.symbolicexecutor.SparkCallGraph
@@ -62,4 +63,10 @@ class BounderSetupApplicationTest extends AnyFunSuite {
 //    val v = read[DBPathNode](js("TestStates/badJson"))
 //    println(v)
 //  }
+
+  val simple_jar = getClass.getResource("/JarTest.jar").getPath
+  test("Load Class file"){
+    BounderSetupApplication.loadApk(simple_jar, sourceType = JarSource)
+    assert(Scene.v().getMainClass.getName == "JarTest")
+  }
 }
