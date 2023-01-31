@@ -804,18 +804,71 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     try {
       zCtx.acquire()
 
+      // get rid of equal constraints in pure constraitns by inlining
+      val inlinedStateOpt = state.inlineConstEq()
+      if (inlinedStateOpt.isEmpty)
+        return None
+      val state2 = inlinedStateOpt.get
+
       if (state.isSimplified){
         // state previously simplified
         // result = "sat"
-        return Some(state)
+        return inlinedStateOpt
       }
 
-      // Drop useless constraints
-      val state2 = state.copy(sf = state.sf.copy(pureFormula = state.pureFormula.filter {
-        case PureConstraint(v1, Equals, v2) if v1 == v2 => false
-        case _ => true
-      }))
+      // if a stored value must be created in the future, state is infeasible
+      val createdInFuture = state2.sf.traceAbstraction.rightOfArrow.flatMap {
+        case FreshRef(v) => Some(v)
+        case _ => None
+      }
+      val stackVarCreatedInFuture = state2.callStack.exists{
+        case CallStackFrame(_,_,locals) => locals.values.exists{createdInFuture.contains}
+      }
 
+
+      if(stackVarCreatedInFuture)
+        return None
+
+      def equivSet( acc:Set[PureExpr]):Set[PureExpr] = {
+        val eqRefPv = state2.sf.pureFormula.flatMap{
+          case PureConstraint(lhs, Equals, rhs) if acc.contains(lhs) || acc.contains(rhs) => Set(lhs,rhs)
+          case _ => Set.empty
+        }
+        val newAcc = acc ++ eqRefPv
+        if(newAcc == acc)
+          acc
+        else
+          equivSet(eqRefPv)
+      }
+//      def mustNotNull(pv:PureExpr):Boolean = pv match{
+//        case NullVal => false
+//        case pv:PureVar =>
+//          state2.sf.pureFormula.forall{ // with pv reduction we eventually get to fields pointing to null directly
+//            case PureConstraint(lhs, Equals, rhs) => pv != lhs && pv != rhs
+//            case _ => true
+//          }
+//      }
+      val heapPtEdgeCreatedInFuture = state2.sf.heapConstraints.exists{
+        case (FieldPtEdge(base, _) , v) if !equivSet(Set(v)).contains(NullVal) =>
+          val equiv = equivSet(Set(base)) ++ equivSet(Set(v))
+          equiv.exists(createdInFuture.contains)
+        case (_:StaticPtEdge, v) if !equivSet(Set(v)).contains(NullVal) =>
+          val equiv = equivSet(Set(v))
+          equiv.exists(createdInFuture.contains)
+        case _ => false
+      }
+
+      if(heapPtEdgeCreatedInFuture)
+        return None
+
+
+      // Drop useless constraints
+//      val state2 = state.copy(sf = state.sf.copy(pureFormula = state.pureFormula.filter {
+//        case PureConstraint(v1, Equals, v2) if v1 == v2 => false
+//        case _ => true
+//      }))
+
+      // empty points to set means value must be null
       val nullsFromPt = state2.typeConstraints.filter(a => a._2.isEmpty)
       val stateWithNulls = nullsFromPt.foldLeft(state2) {
         case (state, (v, _)) => state.addPureConstraint(PureConstraint(v, Equals, NullVal))

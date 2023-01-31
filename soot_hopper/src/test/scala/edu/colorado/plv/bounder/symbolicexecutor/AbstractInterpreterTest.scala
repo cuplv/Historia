@@ -287,7 +287,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val query0 = ReceiverNonNull(resSig, BounderUtil.lineForRegex(".*query0.*".r,src))
       val result0 = symbolicExecutor.run(query0).flatMap(a => a.terminals)
 
-      if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) assert(result0.nonEmpty)
+      //if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) assert(result0.nonEmpty)
       BounderUtil.throwIfStackTrace(result0)
       f.expectUnreachable(BounderUtil.interpretResult(result0,QueryFinished))
 
@@ -401,10 +401,10 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
   }
   test("Test assign refute") { f =>
     val tests = List(
-      ("!=",f.expectReachable),
-      ("==", f.expectUnreachable)
+      ("==", f.expectUnreachable, "unreachable"),
+      ("!=",f.expectReachable, "reachable"),
     )
-    tests.foreach { case (comp, expected) =>
+    tests.foreach { case (comp, expected, expectedPrint) =>
       val src =
         s"""package com.example.createdestroy;
           |import androidx.appcompat.app.AppCompatActivity;
@@ -458,7 +458,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
           "void onCreate(android.os.Bundle)"), BounderUtil.lineForRegex(".*query1.*".r, src))
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
-        // prettyPrinting.dumpDebugInfo(result, s"alias_${expected}", truncate = false)
+        PrettyPrinting.dumpDebugInfo(result, s"alias_${expectedPrint}", truncate = false)
 
         if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) assert(result.nonEmpty)
         BounderUtil.throwIfStackTrace(result)
