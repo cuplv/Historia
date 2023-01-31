@@ -458,7 +458,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
           "void onCreate(android.os.Bundle)"), BounderUtil.lineForRegex(".*query1.*".r, src))
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
-        PrettyPrinting.dumpDebugInfo(result, s"alias_${expectedPrint}", truncate = false)
+        //PrettyPrinting.dumpDebugInfo(result, s"alias_${expectedPrint}", truncate = false)
 
         if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) assert(result.nonEmpty)
         BounderUtil.throwIfStackTrace(result)
