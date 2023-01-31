@@ -90,8 +90,8 @@ object RunConfig{
 }
 
 object Driver {
-  object RunMode{
-    implicit val rw:RW[RunMode] = upickle.default.readwriter[String].bimap[RunMode](
+  object RunMode {
+    implicit val rw: RW[RunMode] = upickle.default.readwriter[String].bimap[RunMode](
       x => x.toString,
       {
         case v if Verify.toString == v => Verify
@@ -101,14 +101,26 @@ object Driver {
     )
 
   }
+
   sealed trait RunMode
+
   case object Verify extends RunMode
+
   case object Info extends RunMode
+
   case object Default extends RunMode
+
   case object SampleDeref extends RunMode
+
   case object ReadDB extends RunMode
+
   case object ExpLoop extends RunMode
+
   case object MakeAllDeref extends RunMode
+
+  case object MakeSensitiveDerefFieldCaused extends RunMode
+
+  case object MakeSensitiveDerefCallinCaused extends RunMode
 
   /**
    * Find locations of all callins used in disallow specs from config file.
@@ -116,28 +128,29 @@ object Driver {
    */
   case object FindCallins extends RunMode
 
-  def readDB(outFolder:File, findNoPred:Boolean = false): Unit = {
+  def readDB(outFolder: File, findNoPred: Boolean = false): Unit = {
     val dbPath = outFolder / "paths.db"
     implicit val db = DBOutputMode(dbPath.toString())
-    val liveNodes: Set[IPathNode] = db.getTerminal().map(v=>v)
+    val liveNodes: Set[IPathNode] = db.getTerminal().map(v => v)
     PrettyPrinting.dumpDebugInfo(liveNodes, "out", outDir = Some(outFolder.toString))
 
-    if(findNoPred){
-      val noPredNodes: Set[IPathNode] = db.getNoPred().map(v=>v)
+    if (findNoPred) {
+      val noPredNodes: Set[IPathNode] = db.getNoPred().map(v => v)
       PrettyPrinting.dumpDebugInfo(noPredNodes, "noPred", outDir = Some(outFolder.toString))
     }
   }
 
-  def setZ3Path(path:String): Unit = {
-    val newPath = Array(path) ++  System.getProperty("java.library.path").split(":")
-    System.setProperty("java.library.path",newPath.distinct.mkString(":"))
+  def setZ3Path(path: String): Unit = {
+    val newPath = Array(path) ++ System.getProperty("java.library.path").split(":")
+    System.setProperty("java.library.path", newPath.distinct.mkString(":"))
     //set sys_paths to null so that java.library.path will be reevaluated next time it is needed
     val sysPathsField = classOf[ClassLoader].getDeclaredField("sys_paths");
     sysPathsField.setAccessible(true);
     sysPathsField.set(null, null);
     println(s"java.library.path set to: ${System.getProperty("java.library.path")}")
   }
-  def decodeMode(modeStr:Any):RunMode = modeStr match {
+
+  def decodeMode(modeStr: Any): RunMode = modeStr match {
     case Str(value) => decodeMode(value)
     case "verify" => Verify
     case "info" => Info
@@ -149,60 +162,61 @@ object Driver {
     case m =>
       throw new IllegalArgumentException(s"Unsupported mode $m")
   }
+
   def main(args: Array[String]): Unit = {
     val builder = OParser.builder[Action]
     val parser = {
       import builder._
       OParser.sequence(
         programName("Bounder"),
-        opt[String]('m',"mode").optional().text("run mode [verify, info, sampleDeref]").action{(v,c) =>
+        opt[String]('m', "mode").optional().text("run mode [verify, info, sampleDeref]").action { (v, c) =>
           c.copy(mode = decodeMode(v))
         },
         opt[String]('b', "baseDirApk").optional().text("Substitute for ${baseDir} in config file")
-          .action((v,c) => c.copy(baseDirApk = Some(v))),
+          .action((v, c) => c.copy(baseDirApk = Some(v))),
         opt[String]('u', "baseDirOut").optional().text("Substitute for ${baseDirOut} in config file")
-          .action((v,c) => c.copy(baseDirOut = Some(v))),
+          .action((v, c) => c.copy(baseDirOut = Some(v))),
         opt[java.io.File]('c', "config").optional()
-          .text("Json config file, use full option names as config keys.").action{(v,c) => {
-            try {
-              val configurationPath = v.getAbsolutePath
-              val readConfig = read[RunConfig](v).copy(configPath = Some(configurationPath))
+          .text("Json config file, use full option names as config keys.").action { (v, c) => {
+          try {
+            val configurationPath = v.getAbsolutePath
+            val readConfig = read[RunConfig](v).copy(configPath = Some(configurationPath))
 
-              // Extract mode option if set
-              val cfgFile = File(configurationPath)
-              if(cfgFile.notExists)
-                throw new IllegalArgumentException(s"file does not exist: ${configurationPath}")
-              val vStr = cfgFile.contentAsString
-              val c1 = c.copy(config=readConfig)
-              ujson.read(vStr) match {
-                case Obj(value) if value.contains("mode") => c1.copy(mode=decodeMode(value("mode")))
-                case Obj(_) => c1
-                case v =>
-                  throw new IllegalArgumentException(s"Invalid config json, top level must be object, found: $v")
-              }
-            }catch{
-              case t:AbortException =>
-                System.err.println(s"parseing json exception: ${t.clue}")
-                System.err.println(s"line: ${t.line}")
-                System.err.println(s"index: ${t.index}")
-                System.err.println(s"col: ${t.col}")
-                t.printStackTrace()
-                throw t
+            // Extract mode option if set
+            val cfgFile = File(configurationPath)
+            if (cfgFile.notExists)
+              throw new IllegalArgumentException(s"file does not exist: ${configurationPath}")
+            val vStr = cfgFile.contentAsString
+            val c1 = c.copy(config = readConfig)
+            ujson.read(vStr) match {
+              case Obj(value) if value.contains("mode") => c1.copy(mode = decodeMode(value("mode")))
+              case Obj(_) => c1
+              case v =>
+                throw new IllegalArgumentException(s"Invalid config json, top level must be object, found: $v")
             }
+          } catch {
+            case t: AbortException =>
+              System.err.println(s"parseing json exception: ${t.clue}")
+              System.err.println(s"line: ${t.line}")
+              System.err.println(s"index: ${t.index}")
+              System.err.println(s"col: ${t.col}")
+              t.printStackTrace()
+              throw t
           }
+        }
         },
-        opt[String]('f',"filter").optional()
+        opt[String]('f', "filter").optional()
           .text("Package filter for sampling(currently only supported by makeAllDeref)")
-          .action((v,c) => c.copy(filter = Some(v))),
+          .action((v, c) => c.copy(filter = Some(v))),
         opt[String]('t', "tag").optional()
           .text("Tag for experiment, recorded when running")
-          .action((v,c) => c.copy(tag = Some(v))),
+          .action((v, c) => c.copy(tag = Some(v))),
         opt[String]('o', "outputMode").optional()
           .text("keep intermediate path in mem (MEM), write to db (DB), or discard (NONE)")
-          .action((v,c) => c.copy(outputMode = v))
+          .action((v, c) => c.copy(outputMode = v))
       )
     }
-    OParser.parse(parser, args, Action()) match{
+    OParser.parse(parser, args, Action()) match {
       case Some(act) if act.baseDirApk.isDefined && act.baseDirOut.isDefined =>
         runAction(act)
       case Some(act) if act.mode == ExpLoop =>
@@ -222,83 +236,89 @@ object Driver {
     expDb.loop()
     println()
   }
+
   // [qry,id,loc, res, time]
-  case class LocResult(q:InitialQuery, sqliteId:Int, loc:Loc, resultSummary: ResultSummary,
-                       maxPathCharacterization: MaxPathCharacterization, time:Long,
-                       depthChar:BounderUtil.DepthResult, witnesses:List[List[String]])
-  object LocResult{
-    implicit var rw:RW[LocResult] = macroRW
+  case class LocResult(q: InitialQuery, sqliteId: Int, loc: Loc, resultSummary: ResultSummary,
+                       maxPathCharacterization: MaxPathCharacterization, time: Long,
+                       depthChar: BounderUtil.DepthResult, witnesses: List[List[String]])
+
+  object LocResult {
+    implicit var rw: RW[LocResult] = macroRW
   }
 
-  def runAction(act:Action):Unit = {
+  def runAction(act: Action): Unit = {
     println(s"java.library.path set to: ${System.getProperty("java.library.path")}")
-    act match{
-      case act@Action(Verify,_, _, cfg,_,_, mode) =>
+    act match {
+      case act@Action(Verify, _, _, cfg, _, _, mode) =>
         val componentFilter = cfg.componentFilter
         val specSet = cfg.specSet
         val apkPath = act.getApkPath
         val outFolder: String = act.getOutFolder
-          // Create output directory if not exists
-          // TODO: move db creation code to better location
+        // Create output directory if not exists
+        // TODO: move db creation code to better location
         File(outFolder).createIfNotExists(asDirectory = true)
         val initialQuery = cfg.initialQuery
-        if(initialQuery.isEmpty)
+        if (initialQuery.isEmpty)
           throw new IllegalArgumentException("Initial query must be defined for verify")
         val stepLimit = cfg.limit
         val outFile = (File(outFolder) / "paths.db")
-        if(outFile.exists) {
+        if (outFile.exists) {
           implicit val opt = File.CopyOptions(overwrite = true)
           outFile.moveTo(File(outFolder) / "paths.db1")
         }
-        val pathMode = if(mode == "DB"){
+        val pathMode = if (mode == "DB") {
           DBOutputMode(outFile.canonicalPath)
-        }else if(mode == "MEM") {
+        } else if (mode == "MEM") {
           MemoryOutputMode
-        }else if(mode == "NONE"){
+        } else if (mode == "NONE") {
           NoOutputMode
         } else throw new IllegalArgumentException(s"Mode ${mode} is invalid, options: DB - write nodes to sqlite, MEM " +
           s"- keep nodes in memory.")
         val res: List[LocResult] =
-          runAnalysis(cfg,apkPath, componentFilter,pathMode, specSet,stepLimit, initialQuery, Some(outFolder))
+          runAnalysis(cfg, apkPath, componentFilter, pathMode, specSet, stepLimit, initialQuery, Some(outFolder))
         res.zipWithIndex.foreach { case (iq, ind) =>
           val resFile = File(outFolder) / s"result_${ind}.txt"
           resFile.overwrite(write(iq))
         }
-      case act@Action(SampleDeref,_,_,cfg,_,_,_) =>
+      case act@Action(SampleDeref, _, _, cfg, _, _, _) =>
         sampleDeref(cfg, act.getApkPath, act.getOutFolder, act.filter)
-      case act@Action(FindCallins, _,_,cfg,_,_,_) =>
-        findCallins(cfg,act.getApkPath,act.getOutFolder,act.filter)
-      case act@Action(ReadDB,_,_,_,_,_,_) =>
+      case act@Action(FindCallins, _, _, cfg, _, _, _) =>
+        findCallins(cfg, act.getApkPath, act.getOutFolder, act.filter)
+      case act@Action(MakeSensitiveDerefCallinCaused, _, _, cfg, _, _, _) =>
+        makeSensitiveDerefCallinCaused(cfg, act.getApkPath, act.getOutFolder, act.filter)
+      case act@Action(MakeSensitiveDerefFieldCaused, _, _, cfg, _, _, _) =>
+        makeSensitiveDerefFieldCaused(cfg, act.getApkPath, act.getOutFolder, act.filter)
+      case act@Action(ReadDB, _, _, _, _, _, _) =>
         readDB(File(act.getOutFolder))
-      case Action(ExpLoop,_, _,_,_,_,_) =>
+      case Action(ExpLoop, _, _, _, _, _, _) =>
         expLoop()
-      case act@Action(MakeAllDeref,_,_,cfg,_,tag,_) =>
-        makeAllDeref(act.getApkPath, act.filter, File(act.getOutFolder),cfg, tag)
+      case act@Action(MakeAllDeref, _, _, cfg, _, tag, _) =>
+        makeAllDeref(act.getApkPath, act.filter, File(act.getOutFolder), cfg, tag)
       case Action(Info, Some(out), Some(apk), cfg, _, _, _) =>
         info(cfg, out, apk)
       case v => throw new IllegalArgumentException(s"Invalid action: $v")
     }
   }
 
-  def detectProguard(apkPath:String):Boolean = {
+  def detectProguard(apkPath: String): Boolean = {
     import sys.process._
-    val cmd = (File(BounderSetupApplication.androidHome) / "tools" /"bin"/"apkanalyzer").toString
-    var stdout:List[String] = List()
+    val cmd = (File(BounderSetupApplication.androidHome) / "tools" / "bin" / "apkanalyzer").toString
+    var stdout: List[String] = List()
     val stderr = new StringBuilder
 
-    val status = s"$cmd -h dex packages ${apkPath.replace(" ","\\ ")}".!(ProcessLogger(v => {
-      stdout = v::stdout
+    val status = s"$cmd -h dex packages ${apkPath.replace(" ", "\\ ")}".!(ProcessLogger(v => {
+      stdout = v :: stdout
     }, stderr append _))
-    if(status != 0){
+    if (status != 0) {
       throw new IllegalArgumentException(s"apk: $apkPath  error: $stderr")
     }
     stdout.exists(v => v.contains("a.a.a."))
   }
 
-  def info(cfg:RunConfig, outBase:String, apkBase:String):Unit = {
-    val apk = cfg.apkPath.replace("${baseDir}",apkBase)
+  def info(cfg: RunConfig, outBase: String, apkBase: String): Unit = {
+    val apk = cfg.apkPath.replace("${baseDir}", apkBase)
     val outFile = File(cfg.outFolder.get.replace("${baseDirOut}", outBase)) / "out.db" //File(baseDirOut) / "out.db"
-    val w = new SootWrapper(apk, Set(),SparkCallGraph)
+    val w = new SootWrapper(apk, Set(), SparkCallGraph)
 
     val pathMode = DBOutputMode(outFile.canonicalPath)
     val config = ExecutorConfig(
@@ -307,62 +327,111 @@ object Driver {
     val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
     symbolicExecutor.writeIR()
   }
-  def makeAllDeref(apkPath:String, filter:Option[String],
-                   outFolder:File, cfg:RunConfig, tag:Option[String]) = {
+
+  def makeAllDeref(apkPath: String, filter: Option[String],
+                   outFolder: File, cfg: RunConfig, tag: Option[String]) = {
     val callGraph = SparkCallGraph
-    val w = new SootWrapper(apkPath,  Set(), callGraph)
+    val w = new SootWrapper(apkPath, Set(), callGraph)
     val config = ExecutorConfig(
       stepLimit = 0, w, new SpecSpace(Set()), component = None)
     val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
     val appClasses = symbolicExecutor.appCodeResolver.appMethods.map(m => m.classType)
     val filtered = appClasses.filter(c => filter.forall(c.startsWith))
     val initialQueries = filtered.map(c => AllReceiversNonNull(c))
-    initialQueries.foreach{q =>
+    initialQueries.foreach { q =>
       //TODO: should we group more classes together in a job?
       val cfgOut = cfg.outFolder.get
       val cfg2 = cfg.copy(initialQuery = List(q),
-        tag = tag.getOrElse(""), outFolder = Some(cfgOut +"/"+ q.className))
+        tag = tag.getOrElse(""), outFolder = Some(cfgOut + "/" + q.className))
       val fname = outFolder / s"${q.className}.json"
-      if(fname.exists())fname.delete()
+      if (fname.exists()) fname.delete()
       fname.append(write(cfg2))
     }
   }
 
-  def findCallins(cfg: RunConfig, apkPath:String, outFolder:String, filter:Option[String]) = {
+  /**
+   * Used to split sensitive callins by whether they can throw an exception or return null value
+   * @param hasNullHead
+   * @param locs
+   * @return
+   */
+  private def splitNullHead(hasNullHead:Boolean, locs: Set[OAbsMsg]):Set[OAbsMsg] = {
+    locs.filter{
+      case OAbsMsg(_, _, NullVal::_) => hasNullHead
+      case OAbsMsg(_, _, _::_) => !hasNullHead}
+  }
+  private def writeDirectInitialQuery(queries:Iterable[Qry],outf:File):Unit =
+    queries.foreach{query =>
+      val initial = DirectInitialQuery(query)
+      val f = outf / initial.fileName
+      assert(!f.exists)
+      f.overwrite(write[InitialQuery](initial))
+    }
+  def makeSensitiveDerefCallinCaused(cfg: RunConfig, apkPath: String, outFolder: String,
+                                     filter: Option[String]): Unit = {
     val outf = File(outFolder)
     assert(outf.exists)
     val w = new SootWrapper(apkPath, Set())
     val config = ExecutorConfig(
-      stepLimit = 200, w, new SpecSpace(Set()), component = None)
+      w = w, specSpace = new SpecSpace(Set()), component = None)
+    val executor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
+    val specSet = cfg.specSet.getSpecSpace()
+    val toFind = splitNullHead(hasNullHead = true, specSet.getDisallowSpecs.map{s => s.target})
+    writeDirectInitialQuery(executor.appCodeResolver.derefFromCallin(toFind, filter, executor), outf)
+  }
+
+  def makeSensitiveDerefFieldCaused(cfg: RunConfig, apkPath: String, outFolder: String,
+                                    filter: Option[String]): Unit ={
+    val outf = File(outFolder)
+    assert(outf.exists)
+    val w = new SootWrapper(apkPath, Set())
+    val config = ExecutorConfig(
+      w = w, specSpace = new SpecSpace(Set()), component = None)
+    val interpreter: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
+    //    val specSet = cfg.specSet.getSpecSpace()
+    //    assert(specSet.getDisallowSpecs.isEmpty && specSet.getSpecs.isEmpty,
+    //      "Sensitive field caused deref does not use specs")
+    writeDirectInitialQuery(interpreter.appCodeResolver.derefFromField(filter, interpreter), outf)
+  }
+
+
+  /**
+   * Find callin usages matching the targets of the disallow specifications in the config
+   * @param cfg config with disallow specifications
+   * @param apkPath path to the target apk
+   * @param outFolder folder to write config files
+   * @param filter app packages to include
+   */
+  def findCallins(cfg: RunConfig, apkPath:String, outFolder:String, filter:Option[String]): Unit = {
+    val outf = File(outFolder)
+    assert(outf.exists)
+    val w = new SootWrapper(apkPath, Set())
+    val config = ExecutorConfig(
+      w = w, specSpace = new SpecSpace(Set()), component = None)
     val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
     val specSet = cfg.specSet.getSpecSpace()
-    val toFind = specSet.getDisallowSpecs.map{s => s.target}
+    val toFind = splitNullHead(hasNullHead = false, specSet.getDisallowSpecs.map{s => s.target})
     val locations: Set[(AppLoc, OAbsMsg)] = symbolicExecutor.appCodeResolver.findCallinsAndCallbacks(toFind, filter)
-    def splitNullHead(hasNullHead:Boolean, locs: Set[(AppLoc, OAbsMsg)]):Set[(AppLoc,OAbsMsg)] = {
-      locs.filter{
-        case (_,OAbsMsg(_, _, NullVal::_)) => hasNullHead
-        case (_,OAbsMsg(_, _, _::_)) => !hasNullHead}
-      }
-    //For non-null head we make disallow queries
-    def noNullHead = splitNullHead(hasNullHead = false, locations)
 
-    val disallowedCallins = noNullHead.map{
-      case (loc,msg) =>
-        val spec  = specSet.getDisallowSpecs.find{s => s.target == msg}.get
-        (DisallowedCallin.mk(loc,spec),spec)
+
+    val disallowedCallins = try {
+      locations.map {
+        case (loc, msg) =>
+          val spec = specSet.getDisallowSpecs.find { s => s.target == msg }.get
+          (DisallowedCallin.mk(loc, spec), spec)
+      }
+    }catch  {
+      case e:AssertionError if e.toString.contains("Disallow must be callin entry") =>
+        return //silently ignore bad disallows
     }
 
-    //TODO: null head find dereferences or something
-    val all = disallowedCallins //++ ???
-
-    all.foreach{initialQuery =>
+    disallowedCallins.foreach{initialQuery =>
       val qry = initialQuery._1
       val spec = PickleSpec.mk(new SpecSpace(Set.empty, Set(initialQuery._2)))
       val cCfg = cfg.copy(initialQuery = List(qry),specSet = spec)
-      val fname = BounderUtil.sanitizeString(s"${qry.className}__${qry.methodName}__" +
-        s"disallow_${qry.s.target.identitySignature}") +".cfg"
+      val fName = qry.fileName
       val contents = write(cCfg)
-      val f = outf / fname
+      val f = outf / fName
       f.write(contents)
     }
   }

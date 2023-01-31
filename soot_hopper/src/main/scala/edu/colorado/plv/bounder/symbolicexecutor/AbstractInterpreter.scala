@@ -142,7 +142,7 @@ case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2) extend
  * @tparam M Method type (IR wrapper)
  * @tparam C Command type (IR wrapper)
  */
-case class ExecutorConfig[M,C](stepLimit: Int,
+case class ExecutorConfig[M,C](stepLimit: Int = -1,
                                        w :  IRWrapper[M,C],
                                        specSpace:SpecSpace,
                                        printAAProgress : Boolean = sys.env.getOrElse("DEBUG","false") == "AbstractInterpreter",
@@ -231,6 +231,13 @@ case class QueryInterrupted(reason:String) extends QueryResult
 case class QueryInterruptedException(terminals:Set[IPathNode], reason:String) extends Exception
 class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
 
+  def updateSpec(newSpec:SpecSpace):AbstractInterpreter[M,C] = {
+    //TODO: be smarter about updating spec so we can use this in synthesis later and avoid recomputing
+    config.copy(specSpace = newSpec).getAbstractInterpreter
+  }
+
+  def getConfig = config
+
   implicit val pathMode: OutputMode = config.outputMode
   implicit val w = config.w
   implicit val ord = new LexicalStackThenTopo[M,C](w)
@@ -276,11 +283,17 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
   case class QueryData(queryId:Int, location:Loc, terminals: Set[IPathNode], runTime:Long, result : QueryResult)
 
   /**
-   *
-   * @return  (id, Terminal path nodes)
+   * Run the abstract interpretation starting at a syntactic location.
+   * @param initialQuery defined syntactic location
+   * @param outputMode how much information to store about exploration
+   * @param cfg initial run configuration to be recorded in output  //TODO: only works with DBOutputMode
+   * @param stopExplorationAt used to limit backwards exploration but keep searching other paths.
+   *                          default is to not stop (return false)
+   *                          (e.g. to find callbacks requiring non-null fields)
+   * @return Query data with info on run
    */
   def run(initialQuery: InitialQuery, outputMode:OutputMode = MemoryOutputMode,
-          cfg:RunConfig = RunConfig()) : Set[QueryData] = {
+          cfg:RunConfig = RunConfig(), stopExplorationAt : Qry => Boolean = _ => false) : Set[QueryData] = {
     val qry: Set[Qry] = initialQuery.make(this)
       .map{q => q.copy(state = stateSolver.simplify(q.state.setSimplified, config.specSpace)
         .getOrElse(throw new IllegalArgumentException(s"Initial state was refuted: ${q.state}")))}
@@ -294,7 +307,8 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
         queue.addAll(pathNodes)
         val deadline = if(config.timeLimit > -1) Instant.now.getEpochSecond + config.timeLimit else -1
         invarMap.clear()
-        val res: Set[IPathNode] = executeBackward(queue, config.stepLimit, deadline)
+        val res: Set[IPathNode] = executeBackward(queue, config.stepLimit, deadline,
+          stopExplorationAt = stopExplorationAt)
 
         val interpretedRes = BounderUtil.interpretResult(res, QueryFinished)
         val char = BounderUtil.characterizeMaxPath(res)
@@ -318,7 +332,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
   var slowSubsumeCount:Int = 0
   def isSubsumed(pathNode:IPathNode, checkTimeout: ()=>Unit):Set[IPathNode] = pathNode match{
     case SwapLoc(loc) if pathNode.qry.isInstanceOf[Qry] && invarMap.contains(loc) => {
-      val hashableState = pathNode.state.sf.makeHashable(transfer.getSpec)
+      val hashableState = pathNode.state.sf.makeHashable(config.specSpace)
       val currentInvarMap = invarMap(loc)
       val res:Set[IPathNode] = if(currentInvarMap.contains(hashableState)) {
         // Test if exact state is contained
@@ -333,19 +347,19 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
           case SubsumptionModeIndividual =>
             nodes.find(p => {
               checkTimeout()
-              stateSolver.canSubsume(p.state, pathNode.state, transfer.getSpec)
+              stateSolver.canSubsume(p.state, pathNode.state,config.specSpace)
             }).toSet
           case SubsumptionModeBatch =>
-            if (stateSolver.canSubsumeSet(states.toSet, pathNode.state, transfer.getSpec))
+            if (stateSolver.canSubsumeSet(states.toSet, pathNode.state, config.specSpace))
               nodes.toSet else Set[IPathNode]()
           case SubsumptionModeTest => {
-            val singleResult = nodes.find(p => stateSolver.canSubsume(p.state, pathNode.state, transfer.getSpec)).toSet
-            val batchResult = stateSolver.canSubsumeSet(states.toSet, pathNode.state, transfer.getSpec)
+            val singleResult = nodes.find(p => stateSolver.canSubsume(p.state, pathNode.state, config.specSpace)).toSet
+            val batchResult = stateSolver.canSubsumeSet(states.toSet, pathNode.state, config.specSpace)
             if (singleResult.nonEmpty != batchResult) {
               println(s"current state:\n    ${pathNode.state}")
               println("subsuming states:")
               states.foreach(s => println(s"    ${s.toString}"))
-              val batchResult2 = stateSolver.canSubsumeSet(states.toSet, pathNode.state, transfer.getSpec)
+              val batchResult2 = stateSolver.canSubsumeSet(states.toSet, pathNode.state, config.specSpace)
               println()
             }
             singleResult
@@ -458,13 +472,14 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
    */
   @tailrec
   final def executeBackward(qrySet: GrouperQ, limit:Int, deadline:Long,
-                            refutedSubsumedOrWitnessed: Set[IPathNode] = Set()):Set[IPathNode] = {
+                            refutedSubsumedOrWitnessed: Set[IPathNode] = Set(),
+                            stopExplorationAt:Qry => Boolean):Set[IPathNode] = {
     checkDeadline(deadline,qrySet, refutedSubsumedOrWitnessed)
     if(qrySet.isEmpty){
       return refutedSubsumedOrWitnessed
     }
 
-    val current = qrySet.nextWithGrouping()
+    val current: IPathNode = qrySet.nextWithGrouping()
 
     if(config.printAAProgress) {
       current match {
@@ -479,17 +494,19 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
       }
     }
     current match {
+      case p@PathNode(q@Qry(_,_,Live), false) if stopExplorationAt(q) =>
+        // input defined condition to no longer explore further on this node
+        executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p, stopExplorationAt)
       case p@PathNode(Qry(_,_,Live), true) =>
         // current node is subsumed
-        // TODO: this branch is probably unreachable
-        executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p)
+        executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p, stopExplorationAt)
       case p@PathNode(Qry(_,_,BottomQry), _) =>
         // current node is refuted
         val newRef = if(config.outputMode != NoOutputMode)
           refutedSubsumedOrWitnessed + p
         else
           refutedSubsumedOrWitnessed
-        executeBackward(qrySet, limit, deadline, newRef)
+        executeBackward(qrySet, limit, deadline, newRef, stopExplorationAt)
       case p@PathNode(Qry(_,_,WitnessedQry(_)), _) =>
         // current node is witnessed
         refutedSubsumedOrWitnessed.union(qrySet.toSet) + p
@@ -509,7 +526,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
               refutedSubsumedOrWitnessed + pLive.setSubsumed(v)
             else
               refutedSubsumedOrWitnessed
-            executeBackward(qrySet, limit, deadline, newRef)
+            executeBackward(qrySet, limit, deadline, newRef, stopExplorationAt)
           case v if v.isEmpty =>
             // widen if necessary
             config.approxMode.merge(() => ???, pLive, stateSolver) match {
@@ -518,7 +535,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
                 p2 match { //TODO:===== this was "current", should be pLive???  TODO: cb isn't getting to 5 cb, go back through history and figure out why
                   case SwapLoc(v) => {
                     val nodeSetAtLoc = invarMap.getOrElse(v, Map.empty)
-                    invarMap.addOne(v -> (nodeSetAtLoc + (p2.state.sf.makeHashable(transfer.getSpec) -> p2)))
+                    invarMap.addOne(v -> (nodeSetAtLoc + (p2.state.sf.makeHashable(config.specSpace) -> p2)))
                   }
                   case _ =>
                 }
@@ -532,10 +549,10 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
                     throw QueryInterruptedException(refutedSubsumedOrWitnessed + p2, ze.getMessage)
                 }
                 qrySet.addAll(nextQry)
-                executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed)
+                executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed, stopExplorationAt)
               case None =>
                 // approx mode indicates this state should be dropped (under approx)
-                executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed)
+                executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed, stopExplorationAt)
             }
         }
     }
@@ -552,9 +569,9 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
       //predecessorLocations.par.flatMap(l => {
       predecessorLocations.flatMap(l => {
         val newStates = transfer.transfer(state,l,loc)
-        newStates.map(state => stateSolver.simplify(state, transfer.getSpec) match {
-          case Some(state) if stateSolver.witnessed(state, transfer.getSpec).isDefined =>
-            Qry(state, l, WitnessedQry(stateSolver.witnessed(state, transfer.getSpec)))
+        newStates.map(state => stateSolver.simplify(state, config.specSpace) match {
+          case Some(state) if stateSolver.witnessed(state, config.specSpace).isDefined =>
+            Qry(state, l, WitnessedQry(stateSolver.witnessed(state, config.specSpace)))
           case Some(state) => Qry(state, l, Live)
           case None =>
             Qry(state,l, BottomQry)

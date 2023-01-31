@@ -223,6 +223,19 @@ case class Reachable(sig:Signature, line:Integer) extends InitialQuery {
   override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] =
     Qry.makeReach(sym,sig, line)
 }
+
+case class DirectInitialQuery(qry:Qry) extends InitialQuery{
+  def fileName = {
+    val appLoc = qry.loc.asInstanceOf[AppLoc]
+    val method = appLoc.method
+    val line = appLoc.line.lineNumber
+    BounderUtil.sanitizeString(s"${method.classType}__${method.simpleName}__" +
+    s"line_${line}__${qry.loc.hashCode()}__${qry.state.hashCode()}") + ".cfg"
+  }
+
+  override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] = Set(qry)
+}
+
 case class ReceiverNonNull(sig:Signature, line:Integer,
                            receiverMatcher:Option[String] = None) extends InitialQuery {
   override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] =
@@ -247,6 +260,8 @@ object DisallowedCallin{
 }
 case class DisallowedCallin(className:String, methodName:String, s:LSSpec) extends InitialQuery{
   assert(s.target.mt == CIEnter, s"Disallow must be callin entry. found: ${s.target}")
+  def fileName:String = BounderUtil.sanitizeString(s"${this.className}__${this.methodName}__" +
+    s"disallow_${this.s.target.identitySignature}") + ".cfg"
   private def invokeMatches(i:Invoke)(implicit ch:ClassHierarchyConstraints):Option[Signature] = {
     val tgtSig = i.targetSignature
     val res = s.target.signatures.matches(tgtSig)

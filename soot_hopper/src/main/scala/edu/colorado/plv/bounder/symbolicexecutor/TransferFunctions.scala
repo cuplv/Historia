@@ -80,7 +80,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
   private val resolver = new DefaultAppCodeResolver(w)
   private implicit val ch = classHierarchyConstraints
   private implicit val irWrapper = w
-  def getSpec:SpecSpace = specSpace //TODO: move spec space out of transfer functions
   def defineVarsAs(state: State, comb: List[(Option[RVal], Option[PureExpr])]):State =
     comb.foldLeft(state){
       case (stateNext, (None,_)) => stateNext
