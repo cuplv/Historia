@@ -799,53 +799,54 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   def simplify(state: State,specSpace: SpecSpace, maxWitness: Option[Int] = None): Option[State] = {
     implicit val zCtx = getSolverCtx
-    val startTime = System.nanoTime()
-    var result = "unfinished"
+    // val startTime = System.nanoTime()
+    // var result = "unfinished"
     try {
       zCtx.acquire()
 
       if (state.isSimplified){
-        result = "sat"
-        Some(state)
-      }else {
-        // Drop useless constraints
-        val state2 = state.copy(sf = state.sf.copy(pureFormula = state.pureFormula.filter {
-          case PureConstraint(v1, Equals, v2) if v1 == v2 => false
-          case _ => true
-        }))
+        // state previously simplified
+        // result = "sat"
+        return Some(state)
+      }
 
-        val nullsFromPt = state2.typeConstraints.filter(a => a._2.isEmpty)
-        val stateWithNulls = nullsFromPt.foldLeft(state2) {
-          case (state, (v, _)) => state.addPureConstraint(PureConstraint(v, Equals, NullVal))
-        }.inlineConstEq().getOrElse{
-          return None
-        }
-        val messageTranslator = MessageTranslator(List(stateWithNulls), List(specSpace))
+      // Drop useless constraints
+      val state2 = state.copy(sf = state.sf.copy(pureFormula = state.pureFormula.filter {
+        case PureConstraint(v1, Equals, v2) if v1 == v2 => false
+        case _ => true
+      }))
 
-        // Only encode types in Z3 for subsumption check due to slow-ness
+      val nullsFromPt = state2.typeConstraints.filter(a => a._2.isEmpty)
+      val stateWithNulls = nullsFromPt.foldLeft(state2) {
+        case (state, (v, _)) => state.addPureConstraint(PureConstraint(v, Equals, NullVal))
+      }.inlineConstEq().getOrElse{
+        return None
+      }
+      val messageTranslator = MessageTranslator(List(stateWithNulls), List(specSpace))
 
-        val ast =
-          toASTState(stateWithNulls, messageTranslator, maxWitness,
-             specSpace = specSpace, negate = false, debug = maxWitness.isDefined)
+      // Only encode types in Z3 for subsumption check due to slow-ness
 
-        if (maxWitness.isDefined) {
-          println(s"State ${System.identityHashCode(state2)} encoding: ")
-          println(ast.toString)
-        }
-        mkAssert(ast)
-        val sat = checkSAT(messageTranslator)
-        //      val simpleAst = solverSimplify(ast, stateWithNulls, messageTranslator, maxWitness.isDefined)
+      val ast =
+        toASTState(stateWithNulls, messageTranslator, maxWitness,
+           specSpace = specSpace, negate = false, debug = maxWitness.isDefined)
 
-        //      if(simpleAst.isEmpty)
-        if (!sat) {
-          result = "unsat"
-          None
-        } else {
-          result = "sat"
-          val reducedState = EncodingTools.reduceStatePureVars(stateWithNulls.setSimplified())
-            .map(EncodingTools.gcPureVars)
-          reducedState.map(_.setSimplified())
-        }
+      if (maxWitness.isDefined) {
+        println(s"State ${System.identityHashCode(state2)} encoding: ")
+        println(ast.toString)
+      }
+      mkAssert(ast)
+      val sat = checkSAT(messageTranslator)
+      //      val simpleAst = solverSimplify(ast, stateWithNulls, messageTranslator, maxWitness.isDefined)
+
+      //      if(simpleAst.isEmpty)
+      if (!sat) {
+        // result = "unsat"
+        None
+      } else {
+        // result = "sat"
+        val reducedState = EncodingTools.reduceStatePureVars(stateWithNulls.setSimplified())
+          .map(EncodingTools.gcPureVars)
+        reducedState.map(_.setSimplified())
       }
     }finally{
       zCtx.release()

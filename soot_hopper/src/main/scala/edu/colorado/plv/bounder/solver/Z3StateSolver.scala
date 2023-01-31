@@ -408,12 +408,14 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
     zctx.ctx.updateParamValue("random-seed", v.toString)
   }
 
-  private val iCtx = Z3SolverCtx(timeout, randomSeed)
+  //private val iCtx = Z3SolverCtx(timeout, randomSeed)
+
+  private val threadLocalCtx = ThreadLocal.withInitial(() => Z3SolverCtx(timeout, randomSeed))
 
   override def getSolverCtx: Z3SolverCtx = {
-    //    val ctx = threadLocalCtx.get()
-    //    ctx
-    iCtx
+    //    iCtx
+    val ctx = threadLocalCtx.get()
+    ctx
   }
 
   override def solverString(messageTranslator: MessageTranslator)(implicit zCtx: Z3SolverCtx): String = {
