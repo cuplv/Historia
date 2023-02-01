@@ -84,27 +84,25 @@ class EncodingToolsTest extends AnyFunSuite{
   test("reduce state pure vars"){
     val top = State.topState
 
-    val s1 = top.addPureConstraint(PureConstraint(pv1, Equals, pv2))
-    s1.setSimplified()
+    val s1 = top.addPureConstraint(PureConstraint(pv1, Equals, pv2)).setSimplified()
     val redS1 = EncodingTools.reduceStatePureVars(s1)
     assert(redS1.get.sf.pureFormula.isEmpty)
 
     val s2 = s1.copy(sf = s1.sf.copy(callStack =
       CallStackFrame(
         CallbackMethodReturn(Signature("foo","foo()"), dummyMethod, None), None, Map(StackVar("x")-> pv1))::Nil))
+      .setSimplified()
 
     def withLocal(state: State, name: String, tgt: PureExpr): State = {
       val stackHead = state.sf.callStack.head
       val newCallStack = stackHead.copy(locals = stackHead.locals + (StackVar(name) -> tgt))
       state.copy(sf = state.sf.copy(newCallStack::state.sf.callStack.tail))
     }
-    s2.setSimplified()
     val redS2 = EncodingTools.reduceStatePureVars(s2)
     assert(redS2.get.sf.pureFormula.isEmpty)
 
     val s3 = withLocal(withLocal(s2,"z",pv2),"y",pv0)
-      .addPureConstraint(PureConstraint(pv0, NotEquals,pv2))
-    s3.setSimplified()
+      .addPureConstraint(PureConstraint(pv0, NotEquals,pv2)).setSimplified()
     val redS3 = EncodingTools.reduceStatePureVars(s3)
     assert(redS3.get.sf.pureFormula.size == 1)
 
