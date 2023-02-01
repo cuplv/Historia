@@ -82,7 +82,7 @@ case class HashableStateFormula(callStack: List[CallStackFrame],
  *                    - type bounds
  * @param traceAbstraction Trace required to reach this point in the program execution
  */
-case class StateFormula(callStack: List[CallStackFrame],
+case class StateFormula(callStack: List[CallStackFrame], //TODO: cache z3 ast compiled from this
                         heapConstraints: Map[HeapPtEdge, PureExpr],
                         pureFormula: Set[PureConstraint],
                         typeConstraints: Map[PureVar, TypeSet],
