@@ -648,7 +648,7 @@ case class MemoryPathNode(qry: Qry, succV : List[IPathNode], subsumedV: Set[IPat
 
   override def setSubsumed(v: Set[IPathNode])(implicit mode: OutputMode): IPathNode = {
     assert(v.nonEmpty, "Value must not be empty for subsuming")
-    this.copy(subsumedV = v)
+    this.copy(subsumedV = v, qry = qry.copy(state = qry.state.copy(isSimplified = qry.state.isSimplified)))
   }
 
   override def succ(implicit mode: OutputMode): List[IPathNode] = succV
@@ -688,7 +688,8 @@ case class DBPathNode(qry:Qry, thisID:Int,
 
   override def setSubsumed(v: Set[IPathNode])(implicit db:OutputMode): IPathNode = {
     db.asInstanceOf[DBOutputMode].setSubsumed(this,v.headOption.asInstanceOf[Option[DBPathNode]])
-    this.copy(subsumedID = v.map(v2 => v2.asInstanceOf[DBPathNode].thisID))
+    this.copy(subsumedID = v.map(v2 => v2.asInstanceOf[DBPathNode].thisID),
+      qry = qry.copy(state = qry.state.copy(isSimplified = qry.state.isSimplified)))
   }
 
   override def copyWithNewQry(newQry: Qry): IPathNode = this.copy(qry=newQry)

@@ -24,7 +24,7 @@ import scala.collection.mutable.ListBuffer
 import scala.language.implicitConversions
 
 class StateSolverTest extends FixtureAnyFunSuite {
-  private val MAX_SOLVER_TIME = 5 //TODO //seconds -- Each call to "canSubsume" should take no more than this.
+  private val MAX_SOLVER_TIME = 5 //seconds -- Each call to "canSubsume" should take no more than this.
   private val fooMethod = SerializedIRMethodLoc("","foo()", List(Some(LocalWrapper("@this","Object"))))
   private val dummyLoc = CallbackMethodReturn(Signature("","void foo()"), fooMethod, None)
   private val v = PureVar(230)
@@ -325,6 +325,19 @@ class StateSolverTest extends FixtureAnyFunSuite {
         PureConstraint(v, Equals, v4)),Map(),AbstractTrace(Nil)),0)
     val simplifyResult3 = stateSolver.simplify(unrefutableState2,esp)
     assert(simplifyResult3.isDefined)
+  }
+  test("Value created in future cannot be held in materialized mem cell") { f =>
+    val stateSolver = f.stateSolver
+
+    val v2 = PureVar(2)
+    val v3 = PureVar(3)
+    val v4 = PureVar(4)
+    val refutableState = State(StateFormula(List(frame.copy(locals = Map(StackVar("x") -> v2))),
+      Map(), Set(PureConstraint(v2, Equals, v)), Map(v2 -> BitTypeSet(BitSet(1)), v -> BitTypeSet(BitSet(1,2))),
+      AbstractTrace(FreshRef(v)::Nil)), 0)
+    val simplifyResult = stateSolver.simplify(refutableState, esp)
+    assert(simplifyResult.isEmpty)
+
   }
   test("Transitive equality should be refuted by type constraints") { f=>
     val stateSolver = f.stateSolver
@@ -1337,8 +1350,8 @@ class StateSolverTest extends FixtureAnyFunSuite {
   }
   test("an arbitrary state s1 should subsume s1 with a ref added"){f =>
     val stateSolver = f.stateSolver
-    val s1 = st(AbstractTrace(FreshRef(x)::Nil), Map(x->p1)).setSimplified()
-    val s2 = st(AbstractTrace(FreshRef(x)::FreshRef(y)::Nil), Map(x->p1,y->p2)).setSimplified()
+    val s1 = st(AbstractTrace(FreshRef(x)::Nil), Map(x->p1))
+    val s2 = st(AbstractTrace(FreshRef(x)::FreshRef(y)::Nil), Map(x->p1,y->p2))
 
     assert(f.canSubsume(s1,s2,esp))
     //Note that an erroneous "OR" between Refs causes timeout, may cause timeouts in future due to negation

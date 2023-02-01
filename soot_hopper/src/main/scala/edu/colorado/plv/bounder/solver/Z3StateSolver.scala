@@ -408,12 +408,14 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
     zctx.ctx.updateParamValue("random-seed", v.toString)
   }
 
-  private val iCtx = Z3SolverCtx(timeout, randomSeed)
+  //private val iCtx = Z3SolverCtx(timeout, randomSeed)
+
+  private val threadLocalCtx = ThreadLocal.withInitial(() => Z3SolverCtx(timeout, randomSeed))
 
   override def getSolverCtx: Z3SolverCtx = {
-    //    val ctx = threadLocalCtx.get()
-    //    ctx
-    iCtx
+    //    iCtx
+    val ctx = threadLocalCtx.get()
+    ctx
   }
 
   override def solverString(messageTranslator: MessageTranslator)(implicit zCtx: Z3SolverCtx): String = {
@@ -1420,13 +1422,13 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
     Z3SetEncoder(values, typeName, allEqualToSomeValue, eachValueDistinct)
 
   override def mkAssert(t: AST)(implicit zCtx: Z3SolverCtx): Unit = {
-    z3ExprToSmtLib(t) match {
-      case FunctionApplication(fun, terms) if fun.id.symbol.name == "distinct" && terms.size < 2 =>
-        return
-      case QualifiedIdentifier(id,_) if id.symbol.name == "true" =>
-        return
-      case _ =>
-    }
+    //z3ExprToSmtLib(t) match { //TODO: Open bug on this to look at later, toString was taking too long
+    //  case FunctionApplication(fun, terms) if fun.id.symbol.name == "distinct" && terms.size < 2 =>
+    //    return
+    //  case QualifiedIdentifier(id,_) if id.symbol.name == "true" =>
+    //    return
+    //  case _ =>
+    //}
     // note: attempted to prune unused quantifiers to address timeout, does not seem to work
     // left smtlib conversion code because it seems useful for debug.
     //val pruned = pruneUnusedQuant(t)

@@ -159,6 +159,8 @@ object Driver {
     case "expLoop" => ExpLoop
     case "makeAllDeref" => MakeAllDeref
     case "findCallins" => FindCallins
+    case "nullFieldSample" => MakeSensitiveDerefFieldCaused
+    case "nullCallinSample" => MakeSensitiveDerefCallinCaused
     case m =>
       throw new IllegalArgumentException(s"Unsupported mode $m")
   }

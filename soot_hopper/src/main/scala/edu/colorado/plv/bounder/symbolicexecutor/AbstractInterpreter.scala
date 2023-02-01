@@ -9,10 +9,12 @@ import edu.colorado.plv.bounder.solver.EncodingTools.repHeapCells
 import edu.colorado.plv.bounder.solver.{EncodingTools, StateSolver, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, BottomQry, DBOutputMode, FieldPtEdge, FrameworkLocation, HashableStateFormula, HeapPtEdge, IPathNode, InitialQuery, Live, MemoryOutputMode, NPureVar, NoOutputMode, OrdCount, OutputMode, PathNode, PureExpr, Qry, State, StaticPtEdge, SubsumableLocation, SwapLoc, WitnessedQry}
 
+import scala.collection.parallel.immutable.ParIterable
 import scala.annotation.tailrec
 import upickle.default._
 
 import scala.collection.mutable
+import scala.collection.parallel.CollectionConverters.IterableIsParallelizable
 
 sealed trait CallGraphSource
 
@@ -85,7 +87,7 @@ case class PreciseApproxMode(canWeaken:Boolean) extends ApproxMode{
 
 case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2) extends ApproxMode {
 
-  override def canWeaken:Boolean = false
+  override def canWeaken:Boolean = true
   override def merge[M,C](existing: () => Iterable[IPathNode], newPN:IPathNode,
                      stateSolver: Z3StateSolver)(implicit w:IRWrapper[M,C]): Option[IPathNode] = {
     newPN match{
@@ -567,7 +569,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
     case Qry(state, loc, Live) =>
       val predecessorLocations = controlFlowResolver.resolvePredicessors(loc,state)
       //predecessorLocations.par.flatMap(l => {
-      predecessorLocations.flatMap(l => {
+      predecessorLocations.par.flatMap(l => {
         val newStates = transfer.transfer(state,l,loc)
         newStates.map(state => stateSolver.simplify(state, config.specSpace) match {
           case Some(state) if stateSolver.witnessed(state, config.specSpace).isDefined =>
@@ -576,7 +578,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
           case None =>
             Qry(state,l, BottomQry)
         })
-      }).toSet
+      }).seq.toSet
     case Qry(_,_, BottomQry) => Set()
     case Qry(_,_,WitnessedQry(_)) =>
       //TODO: this was "Set()". Is there a reason we may want to step here?

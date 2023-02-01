@@ -82,7 +82,7 @@ case class HashableStateFormula(callStack: List[CallStackFrame],
  *                    - type bounds
  * @param traceAbstraction Trace required to reach this point in the program execution
  */
-case class StateFormula(callStack: List[CallStackFrame],
+case class StateFormula(callStack: List[CallStackFrame], //TODO: cache z3 ast compiled from this
                         heapConstraints: Map[HeapPtEdge, PureExpr],
                         pureFormula: Set[PureConstraint],
                         typeConstraints: Map[PureVar, TypeSet],
@@ -94,12 +94,7 @@ case class StateFormula(callStack: List[CallStackFrame],
     val pred = EncodingTools.rhsToPred(traceAbstraction.rightOfArrow,specSpace)
     HashableStateFormula(callStack, heapConstraints, pureFormula, typeConstraints , pred)
   }
-  // Remember if this state has been checked for satisfiability
-  var isSimplified = false
-  def setSimplified(): StateFormula = {
-    isSimplified = true
-    this
-  }
+
 
   /**
    * Remove fresh ref from state
@@ -267,8 +262,16 @@ object StateFormula{
 case class State(sf:StateFormula,
                  nextAddr:Int,
                  nextCmd: List[Loc] = Nil,
-                 alternateCmd: List[Loc] = Nil
+                 alternateCmd: List[Loc] = Nil,
+                 isSimplified:Boolean = false // should only be set by simplify method of StateSolver
                 ) {
+  def copy(sf:StateFormula = sf, nextAddr:Int = nextAddr, nextCmd:List[Loc] = nextCmd,
+           alternateCmd:List[Loc] = alternateCmd,
+           isSimplified:Boolean = isSimplified): State = {
+    // can only be simplified if thing copying from has same state formula
+    State(sf, nextAddr, nextCmd, alternateCmd, sf == this.sf && isSimplified)
+  }
+
   def pureVals(): Set[PureVal] = {
     def pVals(in:Iterable[PureExpr]) = in.flatMap{
       case pv:PureVal => Some(pv)
@@ -364,10 +367,8 @@ case class State(sf:StateFormula,
     case _ => ???
   }.toList
 
-  def isSimplified:Boolean = sf.isSimplified
   def setSimplified():State = {
-    sf.setSimplified()
-    this
+    this.copy(isSimplified = true)
   }
   // sf accessors
   def callStack: List[CallStackFrame] = sf.callStack

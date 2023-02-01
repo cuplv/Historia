@@ -57,7 +57,7 @@ class DefaultAppCodeResolverTest extends AnyFunSuite {
         |        })
         |                .subscribeOn(Schedulers.newThread())
         |                .observeOn(AndroidSchedulers.mainThread())
-        |                .subscribe(a -> {
+        |                .subscribe(a -> {  // perhaps focus on single procedure get/use of getActivity
         |                    Activity b = getActivity();// query1
         |                    if(condition == 0){ //app code resolver analysis doesn't track this so non-deterministic
         |                     Log.i("b", b.toString()); // deref1
@@ -70,7 +70,14 @@ class DefaultAppCodeResolverTest extends AnyFunSuite {
         |
         |    @Override
         |    public void onDestroy(){
-        |        super.onDestroy();
+        |        // !!  First dereference in a basic block that is from a null field at the entry of the current method
+        |        // !! fields actively set to null not in init
+        |        super.onDestroy(); //perhaps focus on dereference of fields on Activities and Fragments
+        |        // perhaps may be assigned/used in different callbacks
+        |        // perhaps fields intentionally set to null (e.g. to avoid leaks)
+        |        // pdg - program dependence graph - may help with the double dereference double counting thing?
+        |        // idea: take first deref in each basic block
+        |        // ~70 apps found with reasonable criteria - we randomly choose n (8ish eventually)
         |        subscription.unsubscribe(); //deref3
         |    }
         |}

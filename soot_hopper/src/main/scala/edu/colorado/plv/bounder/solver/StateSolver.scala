@@ -11,6 +11,7 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.{HeapPtEdge, _}
 import org.slf4j.{Logger, LoggerFactory}
 import upickle.default.{read, write}
 
+import scala.annotation.tailrec
 import scala.collection.{immutable, mutable}
 
 //TODO: replace all "sets of things" with SetOfEncoder
@@ -799,53 +800,111 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   def simplify(state: State,specSpace: SpecSpace, maxWitness: Option[Int] = None): Option[State] = {
     implicit val zCtx = getSolverCtx
-    val startTime = System.nanoTime()
-    var result = "unfinished"
+    // val startTime = System.nanoTime()
+    // var result = "unfinished"
     try {
       zCtx.acquire()
 
+      // get rid of equal constraints in pure constraitns by inlining
+      val inlinedStateOpt = state.inlineConstEq()
+      if (inlinedStateOpt.isEmpty)
+        return None
+      val state2 = inlinedStateOpt.get
+
       if (state.isSimplified){
-        result = "sat"
-        Some(state)
-      }else {
-        // Drop useless constraints
-        val state2 = state.copy(sf = state.sf.copy(pureFormula = state.pureFormula.filter {
-          case PureConstraint(v1, Equals, v2) if v1 == v2 => false
-          case _ => true
-        }))
+        // state previously simplified
+        // result = "sat"
+        return inlinedStateOpt
+      }
 
-        val nullsFromPt = state2.typeConstraints.filter(a => a._2.isEmpty)
-        val stateWithNulls = nullsFromPt.foldLeft(state2) {
-          case (state, (v, _)) => state.addPureConstraint(PureConstraint(v, Equals, NullVal))
-        }.inlineConstEq().getOrElse{
-          return None
+      // if a stored value must be created in the future, state is infeasible
+      val createdInFuture = state2.sf.traceAbstraction.rightOfArrow.flatMap {
+        case FreshRef(v) => Some(v)
+        case _ => None
+      }
+      val stackVarCreatedInFuture = state2.callStack.exists{
+        case CallStackFrame(_,_,locals) => locals.values.exists{createdInFuture.contains}
+      }
+
+
+      if(stackVarCreatedInFuture)
+        return None
+
+      @tailrec
+      def equivSet( acc:Set[PureExpr]):Set[PureExpr] = {
+        val eqRefPv = state2.sf.pureFormula.flatMap{
+          case PureConstraint(lhs, Equals, rhs) if acc.contains(lhs) || acc.contains(rhs) => Set(lhs,rhs)
+          case _ => Set.empty
         }
-        val messageTranslator = MessageTranslator(List(stateWithNulls), List(specSpace))
+        val newAcc = acc ++ eqRefPv
+        if(newAcc == acc)
+          acc
+        else
+          equivSet(eqRefPv)
+      }
+//      def mustNotNull(pv:PureExpr):Boolean = pv match{
+//        case NullVal => false
+//        case pv:PureVar =>
+//          state2.sf.pureFormula.forall{ // with pv reduction we eventually get to fields pointing to null directly
+//            case PureConstraint(lhs, Equals, rhs) => pv != lhs && pv != rhs
+//            case _ => true
+//          }
+//      }
+      val heapPtEdgeCreatedInFuture = state2.sf.heapConstraints.exists{
+        case (FieldPtEdge(base, _) , v) =>
+          val equivV = equivSet(Set(v))
+          //if(!equivV.contains(NullVal) ) { //TODO: pts to null ok for val created in future?
+          val equiv = equivSet(Set(base)) ++ equivV
+          equiv.exists(createdInFuture.contains)
+          //} else false
+        case (_:StaticPtEdge, v) if !equivSet(Set(v)).contains(NullVal) =>
+          val equiv = equivSet(Set(v))
+          equiv.exists(createdInFuture.contains)
+        case _ => false
+      }
 
-        // Only encode types in Z3 for subsumption check due to slow-ness
+      if(heapPtEdgeCreatedInFuture)
+        return None
 
-        val ast =
-          toASTState(stateWithNulls, messageTranslator, maxWitness,
-             specSpace = specSpace, negate = false, debug = maxWitness.isDefined)
 
-        if (maxWitness.isDefined) {
-          println(s"State ${System.identityHashCode(state2)} encoding: ")
-          println(ast.toString)
-        }
-        mkAssert(ast)
-        val sat = checkSAT(messageTranslator)
-        //      val simpleAst = solverSimplify(ast, stateWithNulls, messageTranslator, maxWitness.isDefined)
+      // Drop useless constraints
+//      val state2 = state.copy(sf = state.sf.copy(pureFormula = state.pureFormula.filter {
+//        case PureConstraint(v1, Equals, v2) if v1 == v2 => false
+//        case _ => true
+//      }))
 
-        //      if(simpleAst.isEmpty)
-        if (!sat) {
-          result = "unsat"
-          None
-        } else {
-          result = "sat"
-          val reducedState = EncodingTools.reduceStatePureVars(stateWithNulls.setSimplified())
-            .map(EncodingTools.gcPureVars)
-          reducedState.map(_.setSimplified())
-        }
+      // empty points to set means value must be null
+      val nullsFromPt = state2.typeConstraints.filter(a => a._2.isEmpty)
+      val stateWithNulls = nullsFromPt.foldLeft(state2) {
+        case (state, (v, _)) => state.addPureConstraint(PureConstraint(v, Equals, NullVal))
+      }.inlineConstEq().getOrElse{
+        return None
+      }
+      val messageTranslator = MessageTranslator(List(stateWithNulls), List(specSpace))
+
+      // Only encode types in Z3 for subsumption check due to slow-ness
+
+      val ast =
+        toASTState(stateWithNulls, messageTranslator, maxWitness,
+           specSpace = specSpace, negate = false, debug = maxWitness.isDefined)
+
+      if (maxWitness.isDefined) {
+        println(s"State ${System.identityHashCode(state2)} encoding: ")
+        println(ast.toString)
+      }
+      mkAssert(ast)
+      val sat = checkSAT(messageTranslator)
+      //      val simpleAst = solverSimplify(ast, stateWithNulls, messageTranslator, maxWitness.isDefined)
+
+      //      if(simpleAst.isEmpty)
+      if (!sat) {
+        // result = "unsat"
+        None
+      } else {
+        // result = "sat"
+        val reducedState = EncodingTools.reduceStatePureVars(stateWithNulls.setSimplified())
+          .map(EncodingTools.gcPureVars)
+        reducedState.map(_.setSimplified())
       }
     }finally{
       zCtx.release()
