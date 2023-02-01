@@ -11,6 +11,7 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.{HeapPtEdge, _}
 import org.slf4j.{Logger, LoggerFactory}
 import upickle.default.{read, write}
 
+import scala.annotation.tailrec
 import scala.collection.{immutable, mutable}
 
 //TODO: replace all "sets of things" with SetOfEncoder
@@ -829,6 +830,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       if(stackVarCreatedInFuture)
         return None
 
+      @tailrec
       def equivSet( acc:Set[PureExpr]):Set[PureExpr] = {
         val eqRefPv = state2.sf.pureFormula.flatMap{
           case PureConstraint(lhs, Equals, rhs) if acc.contains(lhs) || acc.contains(rhs) => Set(lhs,rhs)
@@ -849,9 +851,12 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 //          }
 //      }
       val heapPtEdgeCreatedInFuture = state2.sf.heapConstraints.exists{
-        case (FieldPtEdge(base, _) , v) if !equivSet(Set(v)).contains(NullVal) =>
-          val equiv = equivSet(Set(base)) ++ equivSet(Set(v))
+        case (FieldPtEdge(base, _) , v) =>
+          val equivV = equivSet(Set(v))
+          //if(!equivV.contains(NullVal) ) { //TODO: pts to null ok for val created in future?
+          val equiv = equivSet(Set(base)) ++ equivV
           equiv.exists(createdInFuture.contains)
+          //} else false
         case (_:StaticPtEdge, v) if !equivSet(Set(v)).contains(NullVal) =>
           val equiv = equivSet(Set(v))
           equiv.exists(createdInFuture.contains)
