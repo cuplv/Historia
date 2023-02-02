@@ -36,16 +36,19 @@ class DefaultAppCodeResolverTest extends AnyFunSuite {
         |public class MyFragment extends Fragment {
         |    Subscription subscription;
         |    int condition = 0;
+        |    static Object foo = new Object();
         |
         |    public MyFragment() {
         |        // Required empty public constructor
         |    }
         |
         |    private void reqNonNull(Object v){
-        |      v.toString(); //deref2
+        |      v.toString(); //deref2 //note: heuristic search won't find this one because contained in separate block
+        |      foo.toString(); //deref4
         |    }
         |    @Override
         |    public void onActivityCreated(Bundle savedInstanceState){
+        |        foo = null;
         |        super.onActivityCreated(savedInstanceState);
         |        subscription = Single.create(subscriber -> {
         |            try {
@@ -79,6 +82,7 @@ class DefaultAppCodeResolverTest extends AnyFunSuite {
         |        // idea: take first deref in each basic block
         |        // ~70 apps found with reasonable criteria - we randomly choose n (8ish eventually)
         |        subscription.unsubscribe(); //deref3
+        |        subscription = null;
         |    }
         |}
         |""".stripMargin
@@ -101,12 +105,15 @@ class DefaultAppCodeResolverTest extends AnyFunSuite {
       val resolver = interpreter.appCodeResolver
       val packageFilter = Some("com.example.createdestroy.MyFragment")
       val loc = query.make(interpreter).map{q => q.loc.asInstanceOf[AppLoc]}
+
+      // Use Historia to find derefs
       val res = resolver.allDeref(packageFilter, interpreter)
       assert(res.nonEmpty)
 
       val deref1Line = BounderUtil.lineForRegex(".*deref1.*".r,src)
       val deref2Line = BounderUtil.lineForRegex(".*deref2.*".r,src)
       val deref3Line = BounderUtil.lineForRegex(".*deref3.*".r,src)
+      val deref4Line = BounderUtil.lineForRegex(".*deref4.*".r,src)
 
       def contains(queries:Set[Qry], derefline:Int):Boolean =
         queries.exists{q => q.loc.asInstanceOf[AppLoc].line.lineNumber == derefline}
@@ -134,7 +141,12 @@ class DefaultAppCodeResolverTest extends AnyFunSuite {
       assert(!contains(derefsFromFields, deref2Line))
       assert(!contains(derefsFromFields, deref1Line))
 
-
+      // Heuristic find deref - basic blocks that read and dereference fields that may be set to null elsewhere
+      val heuristicLocations = resolver.heuristicDerefNull(packageFilter, interpreter)
+      assert(contains(heuristicLocations, deref3Line))
+      assert(contains(heuristicLocations, deref4Line))
+      assert(!contains(heuristicLocations, deref1Line))
+      //TODO: heuristic find getAct derefs
 
     }
 

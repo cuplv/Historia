@@ -8,6 +8,7 @@ import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, TransferF
 import ujson.Value
 import upickle.default.{macroRW, read, write, ReadWriter => RW}
 
+import java.util.Objects
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 import scala.util.matching.Regex
 

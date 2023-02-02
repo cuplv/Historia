@@ -1,10 +1,11 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
-import better.files.{Resource}
+import better.files.Resource
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CBExit, CIEnter, CIExit, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldReference, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, If, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, JimpleMethodLoc, LVal, LineLoc, Loc, LocalWrapper, MethodLoc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper, SpecialInvoke, StaticInvoke, SwitchCmd, ThrowCmd, UnresolvedMethodTarget, VirtualInvoke}
+import edu.colorado.plv.bounder.BounderUtil.{derefNameOf, findFirstDerefFor}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CBExit, CIEnter, CIExit, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldReference, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, If, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, JimpleMethodLoc, LVal, LineLoc, Loc, LocalWrapper, MethodLoc, NopCmd, NullConst, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper, SpecialInvoke, StaticFieldReference, StaticInvoke, SwitchCmd, ThrowCmd, TopTypeSet, TypeSet, UnresolvedMethodTarget, VirtualInvoke}
 import edu.colorado.plv.bounder.lifestate.LifeState.{OAbsMsg, Signature}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, DirectInitialQuery, FieldPtEdge, NullVal, Qry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, DirectInitialQuery, FieldPtEdge, NullVal, Qry, ReceiverNonNull}
 
 import scala.annotation.tailrec
 import scala.util.matching.Regex
@@ -24,6 +25,7 @@ trait AppCodeResolver {
   def getCallbacks: Set[MethodLoc]
 
 
+  def heuristicDerefNull[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry]
   def derefFromField[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry]
   def derefFromCallin[M,C](callins: Set[OAbsMsg], filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry]
 
@@ -68,6 +70,65 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
   def invalidateCallbacks() = {
     appMethods = ir.getAllMethods.filter(m => !isFrameworkClass(m.classType)).toSet
     callbacks = iGetCallbacks()
+  }
+
+  override def heuristicDerefNull[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry] = {
+
+    val filteredAppMethods: Set[MethodLoc] = appMethods.filter {
+      methodLoc: MethodLoc => // apply package filter if it exists
+        filter.forall(methodLoc.classType.startsWith)
+    }
+
+    // find all fields set to null (and points to sets for dynamic fields)
+    def findNullAssign(v:AppLoc):Option[(LVal, TypeSet)] = {
+      BounderUtil.cmdAtLocationNopIfUnknown(v, ir) match {
+        case AssignCmd(f: FieldReference, NullConst, _) => Some((f, ir.pointsToSet(v.method, f.base)))
+        case AssignCmd(f: StaticFieldReference, NullConst, _) => Some((f, TopTypeSet))
+        case _ => None
+      }
+    }
+    val fields = filteredAppMethods.flatMap { m =>
+      ir.allMethodLocations(m).flatMap ( findNullAssign )
+    }
+
+    // group field references by name
+    val fieldNames: Map[String, Set[(LVal, TypeSet)]] = fields.groupBy{
+      case (f:FieldReference, _) => f.name
+      case (f:StaticFieldReference, _) => f.fieldName
+      case _ => "----------------------"
+    }
+
+    // determine if a command within a method may alias one of the fields found earlier
+    def matchesField(m:MethodLoc, cmd:CmdWrapper):Boolean = cmd match {
+      case AssignCmd(_:LocalWrapper, FieldReference(base, _, _, name), _) =>
+        val basePts = ir.pointsToSet(m, base)
+        fieldNames.getOrElse(name, Set.empty).exists{
+          case (f:FieldReference, pts) if f.name == name => basePts.intersectNonEmpty(pts)
+          case _ => false
+        }
+      case AssignCmd(_:LocalWrapper, StaticFieldReference(declaringClass,name,_),_) =>
+        fieldNames.getOrElse(name, Set.empty).exists{
+          case (StaticFieldReference(fDeclaringClass, fName, _), _) =>
+            fName == name && declaringClass == fDeclaringClass
+          case _ => false
+        }
+      case _ => false
+    }
+
+    // Use simple scan through methods to find possible usages of the fields
+    def findFieldMayBeAssignedTo(m:MethodLoc):Set[AppLoc] = {
+      ir.allMethodLocations(m).filter{(loc:AppLoc) =>
+        matchesField(m,ir.cmdAtLocation(loc))
+      }
+    }
+
+    filteredAppMethods.flatMap{m =>
+      val fieldUse = findFieldMayBeAssignedTo(m)
+      val res = fieldUse.flatMap(findFirstDerefFor(m,_, ir))
+      res.flatMap{loc =>
+        ReceiverNonNull(loc.method.getSignature, loc.line.lineNumber,derefNameOf(loc,ir)).make(abs)}
+    }
+
   }
 
   /**

@@ -463,6 +463,14 @@ case class LocalWrapper(name:String, localType:String) extends LVal {
   override def toString:String = name
 
   override def isConst: Boolean = false
+
+  //Locals are uniquely identified by name, soot often gives conflicting type info breaking type comparison
+  override def equals(other:Any):Boolean = other match{
+    case LocalWrapper(oName, _) =>
+      name == oName
+    case _ => false
+  }
+  override def hashCode(): Int = name.hashCode
 }
 object LocalWrapper{
   implicit val rw:RW[LocalWrapper] = macroRW

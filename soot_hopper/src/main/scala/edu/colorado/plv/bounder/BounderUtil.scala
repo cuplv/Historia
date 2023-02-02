@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder
 
 import java.util.Collections
 import better.files.File
-import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdNotImplemented, CmdWrapper, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Loc, NopCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdNotImplemented, CmdWrapper, FieldReference, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, If, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, Loc, LocalWrapper, MethodLoc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SpecialInvoke, StaticFieldReference, SwitchCmd, ThrowCmd, VirtualInvoke}
 import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, ExecutorConfig, QueryFinished, QueryInterrupted, QueryResult}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, InitialQuery, Live, NoOutputMode, OutputMode, PathNode, Qry, WitnessedQry}
 
@@ -485,31 +485,66 @@ object BounderUtil {
       }
     }
   }
-}
 
-//class Queue[+T] private (
-//                          private[this] var leading: List[T],
-//                          private[this] var trailing: List[T]
-//                        ) {
-//
-//  private def mirror() =
-//    if (leading.isEmpty) {
-//      while (!trailing.isEmpty) {
-//        leading = trailing.head :: leading
-//        trailing = trailing.tail
-//      }
-//    }
-//
-//  def head: T = {
-//    mirror()
-//    leading.head
-//  }
-//
-//  def tail: Queue[T] = {
-//    mirror()
-//    new Queue(leading.tail, trailing)
-//  }
-//
-//  def enqueue[U >: T](x: U) =
-//    new Queue[U](leading, x :: trailing)
-//}
+  /**
+   * Find name of thing being dereferenced at a location.
+   *
+   * @return Some(name) if it exists, None if not a dereference
+   */
+  def derefNameOf[M,C](loc:AppLoc, ir:IRWrapper[M,C]):Option[String] = {
+    def derefNameCmd(cmd:CmdWrapper):Option[String] = cmd match {
+        case AssignCmd(_, f: FieldReference, _) => Some(f.name)
+        case AssignCmd(_, f: StaticFieldReference, _) => Some(f.fieldName)
+        case InvokeCmd(i: SpecialInvoke, _) => Some(i.targetSignature.methodSignature)
+        case InvokeCmd(i: VirtualInvoke, _) => Some(i.targetSignature.methodSignature)
+        case AssignCmd(target, f: Invoke, loc) => derefNameCmd(InvokeCmd(f, loc))
+        case _ => None
+      }
+    derefNameCmd(ir.cmdAtLocation(loc))
+  }
+
+  /**
+   * Given an assign command, src, find the next place it may be dereferenced.
+   * Ignore chained derefs.
+   * e.g.
+   * x = ... //src
+   * if(?)
+   *    x.toString() //find this one
+   * x.toString() // find this one
+   * x.toString() // don't find this one
+   *
+   * Only operates within a single method/basic block
+   * @param m method containing the assign
+   * @param src assign command sourcing the value
+   * @return
+   */
+  def findFirstDerefFor[M,C](m:MethodLoc, src:AppLoc, ir:IRWrapper[M,C]):Set[AppLoc] = {
+    val srcCmd = ir.cmdAtLocation(src)
+    val srcLocal:LocalWrapper = srcCmd match{
+      case AssignCmd(tgt:LocalWrapper, _,_) => tgt
+      case _ => throw new IllegalArgumentException(s"Source command must be assign to local, got: ${src}")
+    }
+    def iFind(assigned:Set[LocalWrapper], current:CmdWrapper, visited:Set[CmdWrapper]):Set[CmdWrapper] = {
+      if(visited.contains(current)) return Set.empty
+      val nextVisited = visited + current
+      val successors = ir.commandNext(current)
+      successors.flatMap{ loc => ir.cmdAtLocation(loc) match{
+        case next@AssignCmd(tgt:LocalWrapper, src:LocalWrapper, _) if assigned.contains(src) =>
+          iFind(assigned + tgt, next, nextVisited)
+        case next@AssignCmd(_, FieldReference(base, _ , _,_), _) if assigned.contains(base) =>
+          Set(next)
+        case next@AssignCmd(_,SpecialInvoke(base, _, _,_), _) if assigned.contains(base) =>
+          Set(next)
+        case next@AssignCmd(_,VirtualInvoke(base, _, _,_), _) if assigned.contains(base) =>
+          Set(next)
+        case next@InvokeCmd(SpecialInvoke(base, _, _, _), _) if assigned.contains(base) =>
+          Set(next)
+        case next@InvokeCmd(VirtualInvoke(base, _, _, _), _) if assigned.contains(base) =>
+          Set(next)
+        case next =>
+          iFind(assigned, next, nextVisited)
+      }}.toSet
+    }
+    iFind(Set(srcLocal), srcCmd, Set.empty).map(_.getLoc)
+  }
+}
