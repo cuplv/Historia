@@ -1,10 +1,11 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
-import better.files.{Resource}
+import better.files.Resource
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CBExit, CIEnter, CIExit, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldReference, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, If, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, JimpleMethodLoc, LVal, LineLoc, Loc, LocalWrapper, MethodLoc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper, SpecialInvoke, StaticInvoke, SwitchCmd, ThrowCmd, UnresolvedMethodTarget, VirtualInvoke}
+import edu.colorado.plv.bounder.BounderUtil.{derefNameOf, findFirstDerefFor}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CBExit, CIEnter, CIExit, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldReference, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, If, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, JimpleMethodLoc, LVal, LineLoc, Loc, LocalWrapper, MethodLoc, NopCmd, NullConst, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper, SpecialInvoke, StaticFieldReference, StaticInvoke, SwitchCmd, ThrowCmd, TopTypeSet, TypeSet, UnresolvedMethodTarget, VirtualInvoke}
 import edu.colorado.plv.bounder.lifestate.LifeState.{OAbsMsg, Signature}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, DirectInitialQuery, FieldPtEdge, NullVal, Qry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, DirectInitialQuery, FieldPtEdge, InitialQuery, NullVal, Qry, ReceiverNonNull}
 
 import scala.annotation.tailrec
 import scala.util.matching.Regex
@@ -24,8 +25,11 @@ trait AppCodeResolver {
   def getCallbacks: Set[MethodLoc]
 
 
+  def heuristicCbFlowsToDeref[M, C](messages: Set[OAbsMsg], filter: Option[String],
+                                             abs: AbstractInterpreter[M, C]): Set[InitialQuery]
+  def heuristicDerefNull[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[InitialQuery]
   def derefFromField[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry]
-  def derefFromCallin[M,C](callins: Set[OAbsMsg], filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry]
+  def derefFromCallin[M,C](callins: Set[OAbsMsg], filter:Option[String], abs:AbstractInterpreter[M,C]):Set[InitialQuery]
 
   def allDeref[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry]
   def nullValueMayFlowTo[M,C](sources: Iterable[AppLoc],
@@ -70,6 +74,79 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     callbacks = iGetCallbacks()
   }
 
+  override def heuristicCbFlowsToDeref[M,C](messages:Set[OAbsMsg], filter:Option[String],
+                                            abs:AbstractInterpreter[M,C]):Set[InitialQuery] = {
+
+    val swappedMessages = messages.flatMap{
+      case OAbsMsg(CIExit, signatures, lsVars) => Some(OAbsMsg(CIEnter, signatures, lsVars))
+      case _ => None
+    }
+    val callinTargets = findCallinsAndCallbacks(swappedMessages,filter)
+    val derefLocs = callinTargets.flatMap{
+      case (loc, _) => findFirstDerefFor(loc.method, loc, abs.w)
+    }
+    derefLocs.map{loc =>
+      ReceiverNonNull(loc.method.getSignature, loc.line.lineNumber, derefNameOf(loc,ir))
+    }
+  }
+  override def heuristicDerefNull[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[InitialQuery] = {
+
+    val filteredAppMethods: Set[MethodLoc] = appMethods.filter {
+      methodLoc: MethodLoc => // apply package filter if it exists
+        filter.forall(methodLoc.classType.startsWith)
+    }
+
+    // find all fields set to null (and points to sets for dynamic fields)
+    def findNullAssign(v:AppLoc):Option[(LVal, TypeSet)] = {
+      BounderUtil.cmdAtLocationNopIfUnknown(v, ir) match {
+        case AssignCmd(f: FieldReference, NullConst, _) => Some((f, ir.pointsToSet(v.method, f.base)))
+        case AssignCmd(f: StaticFieldReference, NullConst, _) => Some((f, TopTypeSet))
+        case _ => None
+      }
+    }
+    val fields = filteredAppMethods.flatMap { m =>
+      ir.allMethodLocations(m).flatMap ( findNullAssign )
+    }
+
+    // group field references by name
+    val fieldNames: Map[String, Set[(LVal, TypeSet)]] = fields.groupBy{
+      case (f:FieldReference, _) => f.name
+      case (f:StaticFieldReference, _) => f.fieldName
+      case _ => "----------------------"
+    }
+
+    // determine if a command within a method may alias one of the fields found earlier
+    def matchesField(m:MethodLoc, cmd:CmdWrapper):Boolean = cmd match {
+      case AssignCmd(_:LocalWrapper, FieldReference(base, _, _, name), _) =>
+        val basePts = ir.pointsToSet(m, base)
+        fieldNames.getOrElse(name, Set.empty).exists{
+          case (f:FieldReference, pts) if f.name == name => basePts.intersectNonEmpty(pts)
+          case _ => false
+        }
+      case AssignCmd(_:LocalWrapper, StaticFieldReference(declaringClass,name,_),_) =>
+        fieldNames.getOrElse(name, Set.empty).exists{
+          case (StaticFieldReference(fDeclaringClass, fName, _), _) =>
+            fName == name && declaringClass == fDeclaringClass
+          case _ => false
+        }
+      case _ => false
+    }
+
+    // Use simple scan through methods to find possible usages of the fields
+    def findFieldMayBeAssignedTo(m:MethodLoc):Set[AppLoc] = {
+      ir.allMethodLocations(m).filter{(loc:AppLoc) =>
+        matchesField(m,ir.cmdAtLocation(loc))
+      }
+    }
+
+    filteredAppMethods.flatMap{m =>
+      val fieldUse = findFieldMayBeAssignedTo(m)
+      val res = fieldUse.flatMap(findFirstDerefFor(m,_, ir))
+      res.map{loc =>
+        ReceiverNonNull(loc.method.getSignature, loc.line.lineNumber,derefNameOf(loc,ir))}
+    }
+  }
+
   /**
    * Search for syntactic locations in callbacks that may crash if a field is null at the entry of the callback
    * @param filter packages to include in the search
@@ -106,7 +183,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
    * @return query locations that may crash if callin returns null
    */
   override def derefFromCallin[M,C](callins: Set[OAbsMsg], filter:Option[String],
-                                    abs:AbstractInterpreter[M,C]):Set[Qry] = {
+                                    abs:AbstractInterpreter[M,C]):Set[InitialQuery] = {
     // Add callins to matcher space of spec so they show up in abstract states
     val absCallinAdded =
       abs.updateSpec(abs.getConfig.specSpace.copy(matcherSpace = abs.getConfig.specSpace.getMatcherSpace ++ callins))
@@ -127,12 +204,15 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
 
     // run goal directed analysis on each location
     // stop if callback entry reached (call stack empty) or message history has obligate null value from a callin
-    derefToFilter.filter{q =>
+    val outQ = derefToFilter.filter{q =>
       val res = absCallinAdded.run(DirectInitialQuery(q),
         stopExplorationAt = q2 => if(q2.state.callStack.isEmpty) true else nullValueFrom(q2))
       val resTerminals = res.flatMap(_.terminals)
       resTerminals.exists(node => nullValueFrom(node.qry))
     }
+    outQ.map{qry =>
+      val appLoc = qry.loc.asInstanceOf[AppLoc]
+      ReceiverNonNull(qry.loc.containingMethod.get.getSignature, appLoc.line.lineNumber,derefNameOf(appLoc, ir))}
   }
 
   override def allDeref[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry] = {
@@ -154,6 +234,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
   override def nullValueMayFlowTo[M,C](sources:Iterable[AppLoc],
                                          cfRes:ControlFlowResolver[M,C]):Set[AppLoc] = {
 
+    //TODO: this is meant to be a interprocedural version of "findFirstDerefFor", only complete if needed
     def mk(v:Any):ValueSpot = v match{
       case LocalWrapper(name, _) => LocalValue(name)
     }
