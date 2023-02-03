@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{derefNameOf, findFirstDerefFor}
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CBExit, CIEnter, CIExit, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldReference, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, If, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, JimpleMethodLoc, LVal, LineLoc, Loc, LocalWrapper, MethodLoc, NopCmd, NullConst, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper, SpecialInvoke, StaticFieldReference, StaticInvoke, SwitchCmd, ThrowCmd, TopTypeSet, TypeSet, UnresolvedMethodTarget, VirtualInvoke}
 import edu.colorado.plv.bounder.lifestate.LifeState.{OAbsMsg, Signature}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, DirectInitialQuery, FieldPtEdge, NullVal, Qry, ReceiverNonNull}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, DirectInitialQuery, FieldPtEdge, InitialQuery, NullVal, Qry, ReceiverNonNull}
 
 import scala.annotation.tailrec
 import scala.util.matching.Regex
@@ -25,7 +25,9 @@ trait AppCodeResolver {
   def getCallbacks: Set[MethodLoc]
 
 
-  def heuristicDerefNull[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry]
+  def heuristicCbFlowsToDeref[M, C](messages: Set[OAbsMsg], filter: Option[String],
+                                             abs: AbstractInterpreter[M, C]): Set[InitialQuery]
+  def heuristicDerefNull[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[InitialQuery]
   def derefFromField[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry]
   def derefFromCallin[M,C](callins: Set[OAbsMsg], filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry]
 
@@ -72,7 +74,22 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     callbacks = iGetCallbacks()
   }
 
-  override def heuristicDerefNull[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry] = {
+  override def heuristicCbFlowsToDeref[M,C](messages:Set[OAbsMsg], filter:Option[String],
+                                            abs:AbstractInterpreter[M,C]):Set[InitialQuery] = {
+
+    val swappedMessages = messages.flatMap{
+      case OAbsMsg(CIExit, signatures, lsVars) => Some(OAbsMsg(CIEnter, signatures, lsVars))
+      case _ => None
+    }
+    val callinTargets = findCallinsAndCallbacks(swappedMessages,filter)
+    val derefLocs = callinTargets.flatMap{
+      case (loc, _) => findFirstDerefFor(loc.method, loc, abs.w)
+    }
+    derefLocs.map{loc =>
+      ReceiverNonNull(loc.method.getSignature, loc.line.lineNumber, derefNameOf(loc,ir))
+    }
+  }
+  override def heuristicDerefNull[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[InitialQuery] = {
 
     val filteredAppMethods: Set[MethodLoc] = appMethods.filter {
       methodLoc: MethodLoc => // apply package filter if it exists
@@ -125,10 +142,9 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     filteredAppMethods.flatMap{m =>
       val fieldUse = findFieldMayBeAssignedTo(m)
       val res = fieldUse.flatMap(findFirstDerefFor(m,_, ir))
-      res.flatMap{loc =>
-        ReceiverNonNull(loc.method.getSignature, loc.line.lineNumber,derefNameOf(loc,ir)).make(abs)}
+      res.map{loc =>
+        ReceiverNonNull(loc.method.getSignature, loc.line.lineNumber,derefNameOf(loc,ir))}
     }
-
   }
 
   /**
@@ -215,6 +231,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
   override def nullValueMayFlowTo[M,C](sources:Iterable[AppLoc],
                                          cfRes:ControlFlowResolver[M,C]):Set[AppLoc] = {
 
+    //TODO: this is meant to be a interprocedural version of "findFirstDerefFor", only complete if needed
     def mk(v:Any):ValueSpot = v match{
       case LocalWrapper(name, _) => LocalValue(name)
     }

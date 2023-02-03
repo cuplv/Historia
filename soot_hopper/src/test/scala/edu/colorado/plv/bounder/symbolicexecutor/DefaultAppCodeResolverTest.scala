@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{AppLoc, SootWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, Signature}
-import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifecycleSpec, RxJavaSpec, SpecSpace}
+import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, SpecSpace}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{CallinReturnNonNull, Qry}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
@@ -125,8 +125,9 @@ class DefaultAppCodeResolverTest extends AnyFunSuite {
       assert(contains(res,deref3Line))
 
 
+      val getActNullAbsMsg = Set(FragmentGetActivityNullSpec.getActivityNull.target)
       val derefsFromGetActivity = resolver.derefFromCallin(
-        Set(FragmentGetActivityNullSpec.getActivityNull.target),
+        getActNullAbsMsg,
         packageFilter,
         interpreter)
       assert(derefsFromGetActivity.nonEmpty)
@@ -143,10 +144,17 @@ class DefaultAppCodeResolverTest extends AnyFunSuite {
 
       // Heuristic find deref - basic blocks that read and dereference fields that may be set to null elsewhere
       val heuristicLocations = resolver.heuristicDerefNull(packageFilter, interpreter)
-      assert(contains(heuristicLocations, deref3Line))
-      assert(contains(heuristicLocations, deref4Line))
-      assert(!contains(heuristicLocations, deref1Line))
-      //TODO: heuristic find getAct derefs
+      assert(contains(heuristicLocations.flatMap(_.make(interpreter)), deref3Line))
+      assert(contains(heuristicLocations.flatMap(_.make(interpreter)), deref4Line))
+      assert(!contains(heuristicLocations.flatMap(_.make(interpreter)), deref1Line))
+
+      //heuristic find getAct derefs
+      val heuristicGetActDerefs =
+        resolver.heuristicCbFlowsToDeref(getActNullAbsMsg, packageFilter, interpreter)
+      assert(contains(heuristicGetActDerefs.flatMap(_.make(interpreter)), deref1Line))
+      assert(!contains(heuristicGetActDerefs.flatMap(_.make(interpreter)), deref3Line))
+      assert(!contains(heuristicGetActDerefs.flatMap(_.make(interpreter)), deref4Line))
+      //Note: not checking for deref2Line because heuristic is not inter-procedural
 
     }
 
