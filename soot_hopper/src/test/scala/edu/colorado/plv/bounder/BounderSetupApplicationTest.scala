@@ -66,7 +66,10 @@ class BounderSetupApplicationTest extends AnyFunSuite {
 
   val simple_jar = getClass.getResource("/JarTest.jar").getPath
   test("Load Class file"){
-    BounderSetupApplication.loadApk(simple_jar, sourceType = JarSource)
-    assert(Scene.v().getMainClass.getName == "JarTest")
+    val wrapper = new SootWrapper(simple_jar, Set(),sourceType = JarSource)
+    val jar_classes = wrapper.getClassByName("JarTest").toList
+    assert(jar_classes.size == 1)
+    val x = jar_classes.head.getMethodByName("main")
+    assert(x.isMain)
   }
 }
