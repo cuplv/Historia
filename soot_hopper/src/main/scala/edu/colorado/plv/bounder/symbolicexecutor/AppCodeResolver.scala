@@ -204,13 +204,15 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
 
     // run goal directed analysis on each location
     // stop if callback entry reached (call stack empty) or message history has obligate null value from a callin
-    derefToFilter.filter{q =>
+    val outQ = derefToFilter.filter{q =>
       val res = absCallinAdded.run(DirectInitialQuery(q),
         stopExplorationAt = q2 => if(q2.state.callStack.isEmpty) true else nullValueFrom(q2))
       val resTerminals = res.flatMap(_.terminals)
       resTerminals.exists(node => nullValueFrom(node.qry))
     }
-    ??? //TODO: if used, fix to avoid DirectQuery (direct query causes overcounting)
+    outQ.map{qry =>
+      val appLoc = qry.loc.asInstanceOf[AppLoc]
+      ReceiverNonNull(qry.loc.containingMethod.get.getSignature, appLoc.line.lineNumber,derefNameOf(appLoc, ir))}
   }
 
   override def allDeref[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry] = {
