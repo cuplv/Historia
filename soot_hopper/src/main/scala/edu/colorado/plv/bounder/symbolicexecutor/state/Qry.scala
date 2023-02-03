@@ -150,6 +150,8 @@ object Qry {
 
 }
 sealed trait InitialQuery{
+  def fileName:String
+
   def make[M,C](sym:AbstractInterpreter[M,C]):Set[Qry]
 }
 object InitialQuery{
@@ -223,6 +225,8 @@ object InitialQuery{
 case class Reachable(sig:Signature, line:Integer) extends InitialQuery {
   override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] =
     Qry.makeReach(sym,sig, line)
+
+  override def fileName: String = s"Reachable_${sig}_${line}"
 }
 
 case class DirectInitialQuery(qry:Qry) extends InitialQuery{
@@ -241,15 +245,22 @@ case class ReceiverNonNull(sig:Signature, line:Integer,
                            receiverMatcher:Option[String] = None) extends InitialQuery {
   override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] =
     Qry.makeReceiverNonNull(sym, sig, line,fieldOrMethod = receiverMatcher.map(_.r))
+
+  override def fileName: String = s"ReceiverNonNull_${sig}_${line}_" +
+    s"${receiverMatcher.map(BounderUtil.sanitizeString).getOrElse("")}"
 }
 case class AllReceiversNonNull(className:String) extends InitialQuery {
   override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] =
     Qry.makeAllReceiverNonNull(sym,className)
+
+  override def fileName: String = ???
 }
 case class CallinReturnNonNull(sig:Signature,
                                line:Integer, callinRegex:String) extends InitialQuery{
   override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] =
     Qry.makeCallinReturnNull(sym, sig, line, callinRegex.r)
+
+  override def fileName: String = s"CallinReturnNonNull_${sig}_${line}_${BounderUtil.sanitizeString(callinRegex)}"
 }
 
 object DisallowedCallin{

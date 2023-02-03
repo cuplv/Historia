@@ -132,9 +132,9 @@ class DefaultAppCodeResolverTest extends AnyFunSuite {
         interpreter)
       assert(derefsFromGetActivity.nonEmpty)
 
-      assert(contains(derefsFromGetActivity,deref1Line))
-      assert(contains(derefsFromGetActivity,deref2Line))
-      assert(!contains(derefsFromGetActivity,deref3Line))
+      assert(contains(derefsFromGetActivity.flatMap(_.make(interpreter)),deref1Line))
+      assert(contains(derefsFromGetActivity.flatMap(_.make(interpreter)),deref2Line))
+      assert(!contains(derefsFromGetActivity.flatMap(_.make(interpreter)),deref3Line))
 
       val derefsFromFields = resolver.derefFromField(packageFilter,interpreter)
 

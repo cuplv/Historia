@@ -158,9 +158,9 @@ object Driver {
     case "readDB" => ReadDB
     case "expLoop" => ExpLoop
     case "makeAllDeref" => MakeAllDeref
-    case "findCallins" => FindCallins
-    case "nullFieldSample" => MakeSensitiveDerefFieldCaused
-    case "nullCallinSample" => MakeSensitiveDerefCallinCaused
+    case "findCallinsPattern" => FindCallins
+    case "nullFieldPattern" => MakeSensitiveDerefFieldCaused
+    case "nullCallinPattern" => MakeSensitiveDerefCallinCaused
     case m =>
       throw new IllegalArgumentException(s"Unsupported mode $m")
   }
@@ -362,13 +362,12 @@ object Driver {
       case OAbsMsg(_, _, NullVal::_) => hasNullHead
       case OAbsMsg(_, _, _::_) => !hasNullHead}
   }
-  private def writeDirectInitialQuery(queries:Iterable[Qry],outf:File):Unit =
-    queries.foreach{query =>
-      val initial = DirectInitialQuery(query)
-      val f = outf / initial.fileName
-      assert(!f.exists)
-      f.overwrite(write[InitialQuery](initial))
+  private def writeInitialQuery(queries:Iterable[InitialQuery], qPrefix:String, outf:File):Unit = {
+    queries.zipWithIndex.foreach{case (query, index) =>
+      val f = outf / s"${qPrefix}_$index"
+      f.overwrite(write[InitialQuery](query))
     }
+  }
   def makeSensitiveDerefCallinCaused(cfg: RunConfig, apkPath: String, outFolder: String,
                                      filter: Option[String]): Unit = {
     val outf = File(outFolder)
@@ -379,7 +378,8 @@ object Driver {
     val executor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
     val specSet = cfg.specSet.getSpecSpace()
     val toFind = splitNullHead(hasNullHead = true, specSet.getDisallowSpecs.map{s => s.target})
-    writeDirectInitialQuery(executor.appCodeResolver.derefFromCallin(toFind, filter, executor), outf)
+    writeInitialQuery(executor.appCodeResolver.heuristicCbFlowsToDeref(toFind, filter, executor),
+      "SensitiveDerefCallinCaused", outf)
   }
 
   def makeSensitiveDerefFieldCaused(cfg: RunConfig, apkPath: String, outFolder: String,
@@ -393,7 +393,8 @@ object Driver {
     //    val specSet = cfg.specSet.getSpecSpace()
     //    assert(specSet.getDisallowSpecs.isEmpty && specSet.getSpecs.isEmpty,
     //      "Sensitive field caused deref does not use specs")
-    writeDirectInitialQuery(interpreter.appCodeResolver.derefFromField(filter, interpreter), outf)
+    val derefFieldNulls = interpreter.appCodeResolver.heuristicDerefNull(filter, interpreter)
+    writeInitialQuery(derefFieldNulls, "SensitiveDerefFieldCaused", outf)
   }
 
 

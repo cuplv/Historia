@@ -29,7 +29,7 @@ trait AppCodeResolver {
                                              abs: AbstractInterpreter[M, C]): Set[InitialQuery]
   def heuristicDerefNull[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[InitialQuery]
   def derefFromField[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry]
-  def derefFromCallin[M,C](callins: Set[OAbsMsg], filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry]
+  def derefFromCallin[M,C](callins: Set[OAbsMsg], filter:Option[String], abs:AbstractInterpreter[M,C]):Set[InitialQuery]
 
   def allDeref[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry]
   def nullValueMayFlowTo[M,C](sources: Iterable[AppLoc],
@@ -183,7 +183,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
    * @return query locations that may crash if callin returns null
    */
   override def derefFromCallin[M,C](callins: Set[OAbsMsg], filter:Option[String],
-                                    abs:AbstractInterpreter[M,C]):Set[Qry] = {
+                                    abs:AbstractInterpreter[M,C]):Set[InitialQuery] = {
     // Add callins to matcher space of spec so they show up in abstract states
     val absCallinAdded =
       abs.updateSpec(abs.getConfig.specSpace.copy(matcherSpace = abs.getConfig.specSpace.getMatcherSpace ++ callins))
@@ -210,6 +210,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
       val resTerminals = res.flatMap(_.terminals)
       resTerminals.exists(node => nullValueFrom(node.qry))
     }
+    ??? //TODO: if used, fix to avoid DirectQuery (direct query causes overcounting)
   }
 
   override def allDeref[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry] = {
