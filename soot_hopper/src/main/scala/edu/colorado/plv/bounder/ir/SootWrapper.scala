@@ -43,8 +43,7 @@ object SootWrapper{
     name
   }
   def stringNameOfType(t : Type) : String = t match {
-    case v:AnySubType =>
-      throw new IllegalStateException("String name of type only applicable to single types")
+    case _:AnySubType => "java.lang.Object"
     case t:RefType =>
       val str = t.toString
       str
