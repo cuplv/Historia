@@ -9,3 +9,4 @@ Running Unit Tests
 * Run `sbt test`
 * Note that some tests may take a while.
 * It is recommended to develop in Intellij (community edition is fine)
+* If using a non-default version of java and jenv, set the `JENV_VERSION` environment variable to the jenv version you want to use (e.g. `export JENV_VERSION=1.8`). You can list available versions using the command `jenv versions`.
