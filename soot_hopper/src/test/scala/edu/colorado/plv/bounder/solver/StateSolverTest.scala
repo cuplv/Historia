@@ -194,7 +194,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
         ???
     }}
   }
-  ignore("LOAD: test to debug subsumption issues by loading serialized states"){f =>
+  test("LOAD: test to debug subsumption issues by loading serialized states"){f =>
     // Note: leave ignored unless debugging, this test is just deserializing states to inspect
     val stateSolver = f.stateSolver
     val spec1 = new SpecSpace(
@@ -215,8 +215,13 @@ class StateSolverTest extends FixtureAnyFunSuite {
       //              LifecycleSpec.noResumeWhileFinish,
       LifecycleSpec.Activity_onResume_first_orAfter_onPause //TODO: ==== testing if this prevents timeout
     )) //  ++ Dummy.specs)
+    val buttonEnableDisable = new SpecSpace(Set[LSSpec](
+      ViewSpec.clickWhileNotDisabled,
+      ViewSpec.clickWhileActive
+      //            LifecycleSpec.Activity_createdOnlyFirst
+    ))
     List(
-      (new SpecSpace(ExperimentSpecs.row4Specs),
+      (buttonEnableDisable,
         "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/s1.json",
         "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/s2.json",
         (v:Boolean) =>{
@@ -234,6 +239,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
         val startTime = System.nanoTime()
         var count = 0
         val toCnfTest = (p:LSPred) => {
+          val startTime = System.nanoTime()
           val res = EncodingTools.toCNF(p)
           println(s"====$count")
           println(s"p: ${p}")
@@ -243,8 +249,12 @@ class StateSolverTest extends FixtureAnyFunSuite {
           println(dir1)
           println(s"dir1: $dir1")
           val dir2 = f.stateSolver.canSubsume(res,p)
+          val endTime1 = System.nanoTime()
+          println(s"time: ${(endTime1 - startTime)/1e9f}")
           assert(dir2)
           println(s"dir2: $dir2")
+          val endTime2 = System.nanoTime()
+          println(s"time: ${(endTime2 - endTime1)/1e9f}")
           count = count + 1
           res
         }
