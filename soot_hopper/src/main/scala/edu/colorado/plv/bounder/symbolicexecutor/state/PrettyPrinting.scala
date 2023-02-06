@@ -249,6 +249,9 @@ object PrettyPrinting {
       case None => dotWitTree(qrySet, outFile, includeSubsEdges)
     }
 
+  def warnNoOutDir():Unit = println("no OUT_DIR environment variable set and no outDir param, " +
+    "dump method does nothing.")
+
   def dumpSpec(spec:SpecSpace, fileName:String,outDir : Option[String] = None) = {
     val outDir3 = if(outDir.isDefined) outDir else envOutDir
     outDir3 match {
@@ -258,6 +261,7 @@ object PrettyPrinting {
         f.write(strSpace)
         val fs = File(s"$baseDir/$fileName.txt")
         fs.write(spec.toString)
+      case None => warnNoOutDir()
     }
   }
 
@@ -293,7 +297,7 @@ object PrettyPrinting {
           case PathNode(Qry(_,_,Live), false) => true
           case _ => false
         }, s"$fname.live",truncate)
-      case None =>
+      case None => warnNoOutDir()
     }
 
   }
