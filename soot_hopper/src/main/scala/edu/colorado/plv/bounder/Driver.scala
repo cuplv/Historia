@@ -365,6 +365,7 @@ object Driver {
   private def writeInitialQuery(queries:Iterable[InitialQuery], qPrefix:String, outf:File):Unit = {
     queries.zipWithIndex.foreach{case (query, index) =>
       val f = outf / s"${qPrefix}_$index"
+      assert(!f.exists)
       f.overwrite(write[InitialQuery](query))
     }
   }
@@ -428,13 +429,15 @@ object Driver {
         return //silently ignore bad disallows
     }
 
-    disallowedCallins.foreach{initialQuery =>
+    disallowedCallins.zipWithIndex.foreach{case (initialQuery, index) =>
       val qry = initialQuery._1
       val spec = PickleSpec.mk(new SpecSpace(Set.empty, Set(initialQuery._2)))
       val cCfg = cfg.copy(initialQuery = List(qry),specSet = spec)
-      val fName = qry.fileName
+//      val fName = qry.fileName
+      val fName = s"Disallow_${index}"
       val contents = write(cCfg)
       val f = outf / fName
+      assert(!f.exists)
       f.write(contents)
     }
   }
