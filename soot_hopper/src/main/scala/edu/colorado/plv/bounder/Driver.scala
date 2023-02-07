@@ -47,7 +47,7 @@ case class Action(mode:RunMode = Default,
   def runCmdFork(jarPath:String): Unit = {
     File.usingTemporaryFile() { cfgTmp =>
       cfgTmp.overwrite(write(config))
-      val cmd = s"-m ${modeToString(mode)} -b ${baseDirApk.get} -u ${baseDirOut} -c ${cfgTmp.pathAsString} " +
+      val cmd = s"-m ${modeToString(mode)} -b ${baseDirApk.get} -u ${baseDirOut.get} -c ${cfgTmp.pathAsString} " +
         s"-o outputMode"
       val cmd2 = filter.map(f => cmd + s" -f ${f}").getOrElse(cmd)
       val cmd3 = tag.map(f => cmd2 + s" -t ${f}").getOrElse(cmd)
