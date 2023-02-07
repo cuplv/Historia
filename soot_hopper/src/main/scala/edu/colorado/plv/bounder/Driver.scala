@@ -376,6 +376,7 @@ object Driver {
   private def writeInitialQuery(queries:Iterable[InitialQuery], qPrefix:String, outf:File):Unit = {
     queries.zipWithIndex.foreach{case (query, index) =>
       val f = outf / s"${qPrefix}_$index"
+      println(s"writing initial query: ${f.toString}")
       assert(!f.exists)
       f.overwrite(write[InitialQuery](query))
     }
