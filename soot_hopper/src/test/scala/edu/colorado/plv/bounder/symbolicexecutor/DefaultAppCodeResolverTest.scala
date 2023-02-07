@@ -83,6 +83,7 @@ class DefaultAppCodeResolverTest extends AnyFunSuite {
         |        // ~70 apps found with reasonable criteria - we randomly choose n (8ish eventually)
         |        subscription.unsubscribe(); //deref3
         |        subscription = null;
+        |        getActivity(); // check for bug where no assign crashes heuristic find
         |    }
         |}
         |""".stripMargin

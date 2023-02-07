@@ -83,7 +83,9 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
       case _ => None
     }
     val callinTargets = findCallinsAndCallbacks(swappedMessages,filter)
-    val derefLocs = callinTargets.flatMap{
+    val derefLocs = callinTargets.filter{ case (loc,_) =>
+      ir.cmdAtLocation(loc).isInstanceOf[AssignCmd]
+    }.flatMap{
       case (loc, _) => findFirstDerefFor(loc.method, loc, abs.w)
     }
     derefLocs.map{loc =>

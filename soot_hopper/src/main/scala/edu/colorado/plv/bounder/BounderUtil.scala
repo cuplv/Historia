@@ -522,7 +522,8 @@ object BounderUtil {
     val srcCmd = ir.cmdAtLocation(src)
     val srcLocal:LocalWrapper = srcCmd match{
       case AssignCmd(tgt:LocalWrapper, _,_) => tgt
-      case _ => throw new IllegalArgumentException(s"Source command must be assign to local, got: ${src}")
+      case _ =>
+        throw new IllegalArgumentException(s"Source command must be assign to local, got: ${src}")
     }
 
     val worklist = mutable.Queue[CmdWrapper]()
