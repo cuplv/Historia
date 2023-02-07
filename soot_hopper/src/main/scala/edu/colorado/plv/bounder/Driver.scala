@@ -383,7 +383,8 @@ object Driver {
   def makeSensitiveDerefCallinCaused(cfg: RunConfig, apkPath: String, outFolder: String,
                                      filter: Option[String]): Unit = {
     val outf = File(outFolder)
-    assert(outf.exists)
+    if (!outf.exists)
+      mkdir(outf) // make dir if not exists
     val w = new SootWrapper(apkPath, Set())
     val config = ExecutorConfig(
       w = w, specSpace = new SpecSpace(Set()), component = None)
@@ -397,7 +398,8 @@ object Driver {
   def makeSensitiveDerefFieldCaused(cfg: RunConfig, apkPath: String, outFolder: String,
                                     filter: Option[String]): Unit ={
     val outf = File(outFolder)
-    assert(outf.exists)
+    if (!outf.exists)
+      mkdir(outf) // make dir if not exists
     val w = new SootWrapper(apkPath, Set())
     val config = ExecutorConfig(
       w = w, specSpace = new SpecSpace(Set()), component = None)
@@ -420,7 +422,7 @@ object Driver {
   def findCallins(cfg: RunConfig, apkPath:String, outFolder:String, filter:Option[String]): Unit = {
     val outf = File(outFolder)
     if(!outf.exists)
-      mkdir(outf) //TODO make dir if not exists
+      mkdir(outf) // make dir if not exists
     val w = new SootWrapper(apkPath, Set())
     val config = ExecutorConfig(
       w = w, specSpace = new SpecSpace(Set()), component = None)
