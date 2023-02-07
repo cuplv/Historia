@@ -194,7 +194,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
         ???
     }}
   }
-  test("LOAD: test to debug subsumption issues by loading serialized states"){f =>
+  ignore("LOAD: test to debug subsumption issues by loading serialized states"){f => //TODO===== disable test later
     // Note: leave ignored unless debugging, this test is just deserializing states to inspect
     val stateSolver = f.stateSolver
     val spec1 = new SpecSpace(
@@ -711,7 +711,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
   ignore("Not I(a.foo) |> a.foo does not contain empty trace"){ f =>
     //TODO: |>
     val stateSolver = f.stateSolver
-    implicit val zctx = stateSolver.getSolverCtx
+    implicit val zctx = stateSolver.getSolverCtx()
 
     // Lifestate atoms for next few tests
     val foo_a = AbsMsg(CBEnter, Set(("", "foo")), a :: Nil)
@@ -735,7 +735,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
   test("refuted: I(a.foo()) |> Ref(a)"){ f =>
     // a.foo() must be invoked before a is created
     val stateSolver = f.stateSolver
-    implicit val zctx = stateSolver.getSolverCtx
+    implicit val zctx = stateSolver.getSolverCtx()
 
     // Lifestate atoms for next few tests
     val foo_a = AbsMsg(CBEnter, Set(("", "foo")), a:: c :: Nil)
@@ -1673,7 +1673,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
 
   test("Trace contained in abstraction") { f =>
     val stateSolver = f.stateSolver
-    implicit val zCTX: Z3SolverCtx = stateSolver.getSolverCtx
+    implicit val zCTX: Z3SolverCtx = stateSolver.getSolverCtx()
 
     val foo = FwkMethod(Signature("foo", "()"))
     val bar = FwkMethod(Signature("bar", "()"))
@@ -1871,7 +1871,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
   }
   test("app mem restricted trace contained"){f =>
     val stateSolver = f.stateSolver
-    implicit val zCTX: Z3SolverCtx = stateSolver.getSolverCtx
+    implicit val zCTX: Z3SolverCtx = stateSolver.getSolverCtx()
 
     val pv1 = PureVar(1)
     val pv2 = PureVar(2)
@@ -2136,7 +2136,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
          |         (not a!2)
          |         (not a!3)))
         |         """.stripMargin
-      implicit val zCtx = stateSolver.getSolverCtx
+      implicit val zCtx = stateSolver.getSolverCtx()
       try {
         zCtx.acquire()
         val expr = stateSolver.stringExprToSmtLib(busted)

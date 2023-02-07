@@ -45,13 +45,19 @@ case class Action(mode:RunMode = Default,
                   outputMode: String = "NONE" // "DB" or "MEM" for writing nodes to file or keeping in memory.
                  ){
   def runCmdFork(jarPath:String): Unit = {
-    File.usingTemporaryFile() { cfgTmp =>
-      cfgTmp.overwrite(write(config))
-      val cmd = s"-m ${modeToString(mode)} -b ${baseDirApk.get} -u ${baseDirOut.get} -c ${cfgTmp.pathAsString} " +
-        s"-o outputMode"
-      val cmd2 = filter.map(f => cmd + s" -f ${f}").getOrElse(cmd)
-      val cmd3 = tag.map(f => cmd2 + s" -t ${f}").getOrElse(cmd)
-      BounderUtil.runCmdStdout(s"java -jar ${jarPath} $cmd3")
+    try {
+      File.usingTemporaryFile() { cfgTmp =>
+        cfgTmp.overwrite(write(config))
+        val cmd = s"-m ${modeToString(mode)} -b ${baseDirApk.get} -u ${baseDirOut.get} -c ${cfgTmp.pathAsString} " +
+          s"-o outputMode"
+        val cmd2 = filter.map(f => cmd + s" -f ${f}").getOrElse(cmd)
+        val cmd3 = tag.map(f => cmd2 + s" -t ${f}").getOrElse(cmd)
+        BounderUtil.runCmdStdout(s"java -jar ${jarPath} $cmd3")
+      }
+    }catch {
+      case t : Throwable =>
+        println(s"failed: ${filter}")
+        throw t
     }
   }
 

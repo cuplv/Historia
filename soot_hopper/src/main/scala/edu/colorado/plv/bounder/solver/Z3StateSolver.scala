@@ -197,7 +197,7 @@ object Z3StateSolver{
  */
 class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
                     logTimes:Boolean,
-                    timeout:Int = 60000, //TODO: changed to 60 seconds
+                    timeout:Int = 20000, //TODO: changed to 60 seconds
                     randomSeed:Int=3578,
                     defaultOnSubsumptionTimeout: Z3SolverCtx=> Boolean = _ => false,
                     pushSatCheck:Boolean = true,
@@ -413,10 +413,13 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
 
   private val threadLocalCtx = ThreadLocal.withInitial(() => Z3SolverCtx(timeout, randomSeed))
 
-  override def getSolverCtx: Z3SolverCtx = {
+  override def getSolverCtx(overrideTimeout:Option[Int]): Z3SolverCtx = {
     //    iCtx
     val ctx = threadLocalCtx.get()
-    ctx
+    if(overrideTimeout.isEmpty) {
+      ctx
+    }else
+      ctx.copy(timeout = overrideTimeout.get)
   }
 
   override def solverString(messageTranslator: MessageTranslator)(implicit zCtx: Z3SolverCtx): String = {
@@ -618,7 +621,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
     var result: Option[T] = None
     val currentTime = (System.currentTimeMillis() / 1000).toInt
     val f = File(s"z3Timeout_${currentTime}")
-    f.write(getSolverCtx.solver.toString)
+    f.write(getSolverCtx().solver.toString)
     try {
       println(s"z3 dbg file written: ${f}")
       result = Some(cont())
