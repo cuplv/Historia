@@ -1,14 +1,16 @@
 package edu.colorado.plv.bounder
 
+import better.files.Dsl.mkdir
+
 import java.io.{PrintWriter, StringWriter}
 import java.sql.Timestamp
 import java.time.Instant
 import java.util.Date
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil.{MaxPathCharacterization, Proven, ResultSummary, Timeout, Unreachable, Witnessed, characterizeMaxPath}
-import edu.colorado.plv.bounder.Driver.{Default, LocResult, RunMode}
+import edu.colorado.plv.bounder.Driver.{Default, LocResult, RunMode, modeToString}
 import edu.colorado.plv.bounder.ir.{AppLoc, Loc, SootWrapper}
-import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, OAbsMsg, Signature}
+import edu.colorado.plv.bounder.lifestate.LifeState.{LSConstraint, LSSpec, OAbsMsg, Signature}
 import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
@@ -42,6 +44,24 @@ case class Action(mode:RunMode = Default,
                   tag:Option[String] = None,
                   outputMode: String = "NONE" // "DB" or "MEM" for writing nodes to file or keeping in memory.
                  ){
+  def runCmdFork(jarPath:String): Option[Throwable] = {
+    try {
+      File.usingTemporaryFile() { cfgTmp =>
+        cfgTmp.overwrite(write(config))
+        val cmd = s"-m ${modeToString(mode)} -b ${baseDirApk.get} -u ${baseDirOut.get} -c ${cfgTmp.pathAsString} " +
+          s"-o outputMode"
+        val cmd2 = filter.map(f => cmd + s" -f ${f}").getOrElse(cmd)
+        val cmd3 = tag.map(f => cmd2 + s" -t ${f}").getOrElse(cmd)
+        BounderUtil.runCmdStdout(s"java -jar ${jarPath} $cmd3")
+      }
+      None
+    }catch {
+      case t : Throwable =>
+        println(s"failed: ${filter}")
+        Some(t)
+    }
+  }
+
   val baseDirVar = "${baseDir}"
   val outDirVar = "${baseDirOut}"
   def getApkPath:String = baseDirApk match{
@@ -150,20 +170,25 @@ object Driver {
     println(s"java.library.path set to: ${System.getProperty("java.library.path")}")
   }
 
+  val stringToMode:Map[String,RunMode] = Map(
+  "verify" -> Verify,
+  "info" -> Info,
+  "sampleDeref" -> SampleDeref,
+  "readDB" -> ReadDB,
+  "expLoop" -> ExpLoop,
+  "makeAllDeref" -> MakeAllDeref,
+  "findCallinsPattern" -> FindCallins,
+  "nullFieldPattern" -> MakeSensitiveDerefFieldCaused,
+  "nullCallinPattern" -> MakeSensitiveDerefCallinCaused
+  )
+  lazy val modeToString: Map[RunMode,String] = stringToMode.map{case (k,v) => v->k}
   def decodeMode(modeStr: Any): RunMode = modeStr match {
     case Str(value) => decodeMode(value)
-    case "verify" => Verify
-    case "info" => Info
-    case "sampleDeref" => SampleDeref
-    case "readDB" => ReadDB
-    case "expLoop" => ExpLoop
-    case "makeAllDeref" => MakeAllDeref
-    case "findCallinsPattern" => FindCallins
-    case "nullFieldPattern" => MakeSensitiveDerefFieldCaused
-    case "nullCallinPattern" => MakeSensitiveDerefCallinCaused
+    case s:String if stringToMode.contains(s) => stringToMode(s)
     case m =>
-      throw new IllegalArgumentException(s"Unsupported mode $m")
+      throw new IllegalArgumentException(s"Unsupported mode $m. Options: ${stringToMode.keySet}")
   }
+  def encodeMode(mode:RunMode):String = modeToString(mode)
 
   def main(args: Array[String]): Unit = {
     val builder = OParser.builder[Action]
@@ -357,27 +382,40 @@ object Driver {
    * @param locs
    * @return
    */
-  private def splitNullHead(hasNullHead:Boolean, locs: Set[OAbsMsg]):Set[OAbsMsg] = {
-    locs.filter{
-      case OAbsMsg(_, _, NullVal::_) => hasNullHead
-      case OAbsMsg(_, _, _::_) => !hasNullHead}
+  private def splitNullHead(hasNullHead:Boolean, locs: Set[LSSpec]):Set[OAbsMsg] = {
+    locs.flatMap{ spec =>
+      def out(res:Boolean) = if(res == hasNullHead) Some(spec.target) else None
+      val target = spec.target
+      target.lsVars.headOption match {
+        case Some(NullVal) => out(true)
+        case Some(pv:PureVar) => if(spec.rhsConstraints.exists{
+          case LSConstraint(pv2, Equals, NullVal) if pv2 == pv => true
+          case _ => false
+        }) out(true) else out(false)
+        case Some(_) => out(false)
+        case None => out(false)
+      }
+    }
   }
   private def writeInitialQuery(queries:Iterable[InitialQuery], qPrefix:String, outf:File):Unit = {
     queries.zipWithIndex.foreach{case (query, index) =>
       val f = outf / s"${qPrefix}_$index"
+      println(s"writing initial query: ${f.toString}")
+      assert(!f.exists)
       f.overwrite(write[InitialQuery](query))
     }
   }
   def makeSensitiveDerefCallinCaused(cfg: RunConfig, apkPath: String, outFolder: String,
                                      filter: Option[String]): Unit = {
     val outf = File(outFolder)
-    assert(outf.exists)
+    if (!outf.exists)
+      mkdir(outf) // make dir if not exists
     val w = new SootWrapper(apkPath, Set())
     val config = ExecutorConfig(
       w = w, specSpace = new SpecSpace(Set()), component = None)
     val executor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
     val specSet = cfg.specSet.getSpecSpace()
-    val toFind = splitNullHead(hasNullHead = true, specSet.getDisallowSpecs.map{s => s.target})
+    val toFind = splitNullHead(hasNullHead = true, specSet.getDisallowSpecs)
     writeInitialQuery(executor.appCodeResolver.heuristicCbFlowsToDeref(toFind, filter, executor),
       "SensitiveDerefCallinCaused", outf)
   }
@@ -385,7 +423,8 @@ object Driver {
   def makeSensitiveDerefFieldCaused(cfg: RunConfig, apkPath: String, outFolder: String,
                                     filter: Option[String]): Unit ={
     val outf = File(outFolder)
-    assert(outf.exists)
+    if (!outf.exists)
+      mkdir(outf) // make dir if not exists
     val w = new SootWrapper(apkPath, Set())
     val config = ExecutorConfig(
       w = w, specSpace = new SpecSpace(Set()), component = None)
@@ -407,34 +446,37 @@ object Driver {
    */
   def findCallins(cfg: RunConfig, apkPath:String, outFolder:String, filter:Option[String]): Unit = {
     val outf = File(outFolder)
-    assert(outf.exists)
+    if(!outf.exists)
+      mkdir(outf) // make dir if not exists
     val w = new SootWrapper(apkPath, Set())
     val config = ExecutorConfig(
       w = w, specSpace = new SpecSpace(Set()), component = None)
     val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
     val specSet = cfg.specSet.getSpecSpace()
-    val toFind = splitNullHead(hasNullHead = false, specSet.getDisallowSpecs.map{s => s.target})
+    val toFind = splitNullHead(hasNullHead = false, specSet.getDisallowSpecs)
     val locations: Set[(AppLoc, OAbsMsg)] = symbolicExecutor.appCodeResolver.findCallinsAndCallbacks(toFind, filter)
 
 
-    val disallowedCallins = try {
-      locations.map {
-        case (loc, msg) =>
+    val disallowedCallins = locations.flatMap {
+      case (loc, msg) =>
+        try {
           val spec = specSet.getDisallowSpecs.find { s => s.target == msg }.get
-          (DisallowedCallin.mk(loc, spec), spec)
-      }
-    }catch  {
-      case e:AssertionError if e.toString.contains("Disallow must be callin entry") =>
-        return //silently ignore bad disallows
+          Some(DisallowedCallin.mk(loc, spec), spec)
+        } catch {
+            case e: AssertionError if e.toString.contains("Disallow must be callin entry") => None
+        }
     }
 
-    disallowedCallins.foreach{initialQuery =>
+
+    disallowedCallins.zipWithIndex.foreach{case (initialQuery, index) =>
       val qry = initialQuery._1
       val spec = PickleSpec.mk(new SpecSpace(Set.empty, Set(initialQuery._2)))
       val cCfg = cfg.copy(initialQuery = List(qry),specSet = spec)
-      val fName = qry.fileName
+//      val fName = qry.fileName
+      val fName = s"Disallow_${index}"
       val contents = write(cCfg)
       val f = outf / fName
+      assert(!f.exists)
       f.write(contents)
     }
   }

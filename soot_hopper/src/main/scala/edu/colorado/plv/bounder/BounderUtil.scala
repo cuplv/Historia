@@ -522,29 +522,65 @@ object BounderUtil {
     val srcCmd = ir.cmdAtLocation(src)
     val srcLocal:LocalWrapper = srcCmd match{
       case AssignCmd(tgt:LocalWrapper, _,_) => tgt
-      case _ => throw new IllegalArgumentException(s"Source command must be assign to local, got: ${src}")
+      case _ =>
+        throw new IllegalArgumentException(s"Source command must be assign to local, got: ${src}")
     }
-    def iFind(assigned:Set[LocalWrapper], current:CmdWrapper, visited:Set[CmdWrapper]):Set[CmdWrapper] = {
-      if(visited.contains(current)) return Set.empty
-      val nextVisited = visited + current
-      val successors = ir.commandNext(current)
-      successors.flatMap{ loc => ir.cmdAtLocation(loc) match{
-        case next@AssignCmd(tgt:LocalWrapper, src:LocalWrapper, _) if assigned.contains(src) =>
-          iFind(assigned + tgt, next, nextVisited)
-        case next@AssignCmd(_, FieldReference(base, _ , _,_), _) if assigned.contains(base) =>
-          Set(next)
-        case next@AssignCmd(_,SpecialInvoke(base, _, _,_), _) if assigned.contains(base) =>
-          Set(next)
-        case next@AssignCmd(_,VirtualInvoke(base, _, _,_), _) if assigned.contains(base) =>
-          Set(next)
-        case next@InvokeCmd(SpecialInvoke(base, _, _, _), _) if assigned.contains(base) =>
-          Set(next)
-        case next@InvokeCmd(VirtualInvoke(base, _, _, _), _) if assigned.contains(base) =>
-          Set(next)
-        case next =>
-          iFind(assigned, next, nextVisited)
-      }}.toSet
+
+    val worklist = mutable.Queue[CmdWrapper]()
+    worklist.addOne(srcCmd)
+    val assigned = mutable.Set[LocalWrapper]()
+    assigned.addOne(srcLocal)
+    val visited = mutable.Set[CmdWrapper]()
+    val sinks = mutable.Set[CmdWrapper]()
+    while(worklist.nonEmpty){
+      val current = worklist.dequeue()
+      if(!visited.contains(current)){
+        visited.addOne(current)
+
+        val successors = ir.commandNext(current)
+        successors.map{ loc => ir.cmdAtLocation(loc) match{
+          case next@AssignCmd(tgt:LocalWrapper, src:LocalWrapper, _) if assigned.contains(src) =>
+            assigned.addOne(tgt)
+            worklist.append(next)
+          case next@AssignCmd(_, FieldReference(base, _ , _,_), _) if assigned.contains(base) =>
+            sinks.addOne(next)
+          case next@AssignCmd(_,SpecialInvoke(base, _, _,_), _) if assigned.contains(base) =>
+            sinks.addOne(next)
+          case next@AssignCmd(_,VirtualInvoke(base, _, _,_), _) if assigned.contains(base) =>
+            sinks.addOne(next)
+          case next@InvokeCmd(SpecialInvoke(base, _, _, _), _) if assigned.contains(base) =>
+            sinks.addOne(next)
+          case next@InvokeCmd(VirtualInvoke(base, _, _, _), _) if assigned.contains(base) =>
+            sinks.addOne(next)
+          case next =>
+            worklist.append(next)
+        }}
+      }
     }
-    iFind(Set(srcLocal), srcCmd, Set.empty).map(_.getLoc)
+    sinks.toSet.map{(cmd:CmdWrapper) => cmd.getLoc}
+
+//    @tailrec
+//    def iFind(assigned:Set[LocalWrapper], current:CmdWrapper, visited:Set[CmdWrapper]):Set[CmdWrapper] = {
+//      if(visited.contains(current)) return Set.empty
+//      val nextVisited = visited + current
+//      val successors = ir.commandNext(current)
+//      successors.map{ loc => ir.cmdAtLocation(loc) match{
+//        case next@AssignCmd(tgt:LocalWrapper, src:LocalWrapper, _) if assigned.contains(src) =>
+//          iFind(assigned + tgt, next, nextVisited)
+//        case next@AssignCmd(_, FieldReference(base, _ , _,_), _) if assigned.contains(base) =>
+//          Set(next)
+//        case next@AssignCmd(_,SpecialInvoke(base, _, _,_), _) if assigned.contains(base) =>
+//          Set(next)
+//        case next@AssignCmd(_,VirtualInvoke(base, _, _,_), _) if assigned.contains(base) =>
+//          Set(next)
+//        case next@InvokeCmd(SpecialInvoke(base, _, _, _), _) if assigned.contains(base) =>
+//          Set(next)
+//        case next@InvokeCmd(VirtualInvoke(base, _, _, _), _) if assigned.contains(base) =>
+//          Set(next)
+//        case next =>
+//          iFind(assigned, next, nextVisited)
+//      }}
+//    }
+//    iFind(Set(srcLocal), srcCmd, Set.empty).map(_.getLoc)
   }
 }

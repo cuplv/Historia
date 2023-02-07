@@ -73,7 +73,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
                    ):SetEncoder[T,C]
   def setSeed(v:Int)(implicit zCtx: C):Unit
   // checking
-  def getSolverCtx: C
+  def getSolverCtx(overrideTimeout:Option[Int] = None): C
   def getLogger:Logger
   def iDefaultOnSubsumptionTimeout(implicit zCtx:C):Boolean
 
@@ -799,7 +799,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   }
 
   def simplify(state: State,specSpace: SpecSpace, maxWitness: Option[Int] = None): Option[State] = {
-    implicit val zCtx = getSolverCtx
+    implicit val zCtx = getSolverCtx()
     // val startTime = System.nanoTime()
     // var result = "unfinished"
     try {
@@ -1149,7 +1149,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
     //TODO: two state subsumption tries to reduce pt regions, may want to do that here as well?
 
-    implicit val zCtx: C = getSolverCtx
+    implicit val zCtx: C = getSolverCtx()
 
     val res = try {
       zCtx.acquire()
@@ -1214,7 +1214,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   }
 
   def canSubsume(pred1:LSPred, pred2:LSPred):Boolean = {
-    implicit val zCtx: C = getSolverCtx
+    implicit val zCtx: C = getSolverCtx()
     try {
       zCtx.acquire()
 //      if(pred1.toString.contains("NULL") || pred2.toString.contains("NULL")){
@@ -1441,15 +1441,20 @@ trait StateSolver[T, C <: SolverCtx[T]] {
                    rngTry:Int = 0):Boolean = {
     val (s1,s2) = reducePtRegions(s1i,s2i) //TODO: does reducing pts regions help?
 //    val (s1,s2) = (s1i,s2i)
-    implicit val zCtx: C = getSolverCtx
+    implicit var zCtx = getSolverCtx()
     try {
-      if(rngTry == 0)
-        zCtx.acquire()
-      else if(rngTry > 0){
+      val existingSolver = getSolverCtx()
+      zCtx = if(rngTry == 0) {
+        existingSolver.acquire()
+        existingSolver
+      }else if(rngTry > 0){
         // on retry, seed RNG with try number for determinism
+        val newTimeout = 120000
+        val newTimeoutSolver = getSolverCtx(Some(newTimeout))
         val rngSeed = rngTry
-        println(s"try again with new random seed: ${rngSeed}")
-        zCtx.acquire(Some(rngSeed))
+        println(s"try again with new random seed: ${rngSeed} and timeout ${newTimeout}")
+        newTimeoutSolver.acquire(Some(rngSeed))
+        newTimeoutSolver
       }else{
         throw new IllegalStateException("Timeout, exceeded rng seed attempts")
       }
@@ -1529,7 +1534,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val startTime = System.nanoTime()
     val res:Option[WitnessExplanation] = None
     try {
-      implicit val zCtx = getSolverCtx
+      implicit val zCtx = getSolverCtx()
       val res = traceInAbstraction(pred, specSpace, Trace.empty)
       res
     }finally{
@@ -1550,7 +1555,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val startTime = System.nanoTime()
     val res:Option[WitnessExplanation] = None
     try {
-      implicit val zCtx = getSolverCtx
+      implicit val zCtx = getSolverCtx()
       if (state.heapConstraints.nonEmpty)
         return None
       if (state.callStack.nonEmpty)
@@ -1564,7 +1569,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   }
   def traceInAbstraction(pred:LSPred, specSpace:SpecSpace, trace:Trace)(implicit zCtx:C):Option[WitnessExplanation] ={
     ???
-    //TODO:========
+    //TODO:trace in abstraction for pred only
     try {
       zCtx.acquire()
       val messageTranslator = MessageTranslator(???, List(specSpace))

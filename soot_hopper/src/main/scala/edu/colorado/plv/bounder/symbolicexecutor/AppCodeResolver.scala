@@ -8,6 +8,7 @@ import edu.colorado.plv.bounder.lifestate.LifeState.{OAbsMsg, Signature}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, DirectInitialQuery, FieldPtEdge, InitialQuery, NullVal, Qry, ReceiverNonNull}
 
 import scala.annotation.tailrec
+import scala.collection.parallel.CollectionConverters.ImmutableIterableIsParallelizable
 import scala.util.matching.Regex
 import scala.util.Random
 
@@ -82,7 +83,9 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
       case _ => None
     }
     val callinTargets = findCallinsAndCallbacks(swappedMessages,filter)
-    val derefLocs = callinTargets.flatMap{
+    val derefLocs = callinTargets.filter{ case (loc,_) =>
+      ir.cmdAtLocation(loc).isInstanceOf[AssignCmd]
+    }.flatMap{
       case (loc, _) => findFirstDerefFor(loc.method, loc, abs.w)
     }
     derefLocs.map{loc =>
@@ -144,7 +147,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
       val res = fieldUse.flatMap(findFirstDerefFor(m,_, ir))
       res.map{loc =>
         ReceiverNonNull(loc.method.getSignature, loc.line.lineNumber,derefNameOf(loc,ir))}
-    }
+    }.toSet
   }
 
   /**

@@ -194,7 +194,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
         ???
     }}
   }
-  ignore("LOAD: test to debug subsumption issues by loading serialized states"){f =>
+  ignore("LOAD: test to debug subsumption issues by loading serialized states"){f => //TODO===== disable test later
     // Note: leave ignored unless debugging, this test is just deserializing states to inspect
     val stateSolver = f.stateSolver
     val spec1 = new SpecSpace(
@@ -215,6 +215,11 @@ class StateSolverTest extends FixtureAnyFunSuite {
       //              LifecycleSpec.noResumeWhileFinish,
       LifecycleSpec.Activity_onResume_first_orAfter_onPause //TODO: ==== testing if this prevents timeout
     )) //  ++ Dummy.specs)
+    val buttonEnableDisable = new SpecSpace(Set[LSSpec](
+      ViewSpec.clickWhileNotDisabled,
+      ViewSpec.clickWhileActive
+      //            LifecycleSpec.Activity_createdOnlyFirst
+    ))
     List(
       (new SpecSpace(ExperimentSpecs.row4Specs),
         "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/s1.json",
@@ -234,6 +239,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
         val startTime = System.nanoTime()
         var count = 0
         val toCnfTest = (p:LSPred) => {
+          val startTime = System.nanoTime()
           val res = EncodingTools.toCNF(p)
           println(s"====$count")
           println(s"p: ${p}")
@@ -243,8 +249,12 @@ class StateSolverTest extends FixtureAnyFunSuite {
           println(dir1)
           println(s"dir1: $dir1")
           val dir2 = f.stateSolver.canSubsume(res,p)
+          val endTime1 = System.nanoTime()
+          println(s"time: ${(endTime1 - startTime)/1e9f}")
           assert(dir2)
           println(s"dir2: $dir2")
+          val endTime2 = System.nanoTime()
+          println(s"time: ${(endTime2 - endTime1)/1e9f}")
           count = count + 1
           res
         }
@@ -701,7 +711,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
   ignore("Not I(a.foo) |> a.foo does not contain empty trace"){ f =>
     //TODO: |>
     val stateSolver = f.stateSolver
-    implicit val zctx = stateSolver.getSolverCtx
+    implicit val zctx = stateSolver.getSolverCtx()
 
     // Lifestate atoms for next few tests
     val foo_a = AbsMsg(CBEnter, Set(("", "foo")), a :: Nil)
@@ -725,7 +735,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
   test("refuted: I(a.foo()) |> Ref(a)"){ f =>
     // a.foo() must be invoked before a is created
     val stateSolver = f.stateSolver
-    implicit val zctx = stateSolver.getSolverCtx
+    implicit val zctx = stateSolver.getSolverCtx()
 
     // Lifestate atoms for next few tests
     val foo_a = AbsMsg(CBEnter, Set(("", "foo")), a:: c :: Nil)
@@ -1663,7 +1673,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
 
   test("Trace contained in abstraction") { f =>
     val stateSolver = f.stateSolver
-    implicit val zCTX: Z3SolverCtx = stateSolver.getSolverCtx
+    implicit val zCTX: Z3SolverCtx = stateSolver.getSolverCtx()
 
     val foo = FwkMethod(Signature("foo", "()"))
     val bar = FwkMethod(Signature("bar", "()"))
@@ -1861,7 +1871,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
   }
   test("app mem restricted trace contained"){f =>
     val stateSolver = f.stateSolver
-    implicit val zCTX: Z3SolverCtx = stateSolver.getSolverCtx
+    implicit val zCTX: Z3SolverCtx = stateSolver.getSolverCtx()
 
     val pv1 = PureVar(1)
     val pv2 = PureVar(2)
@@ -2126,7 +2136,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
          |         (not a!2)
          |         (not a!3)))
         |         """.stripMargin
-      implicit val zCtx = stateSolver.getSolverCtx
+      implicit val zCtx = stateSolver.getSolverCtx()
       try {
         zCtx.acquire()
         val expr = stateSolver.stringExprToSmtLib(busted)

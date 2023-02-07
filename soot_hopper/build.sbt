@@ -34,6 +34,7 @@ libraryDependencies += "com.h2database" % "h2" % "1.4.187"
 libraryDependencies += "de.learnlib.distribution" % "learnlib-distribution" % "0.16.0"
 libraryDependencies += "net.automatalib.distribution" % "automata-distribution" % "0.10.0"
 libraryDependencies += "com.regblanc" %% "scala-smtlib" % "0.2.1-42-gc68dbaa"
+// libraryDependencies += "org.apache.spark" % "spark-core_2.13" % "3.3.1"
 
 
 libraryDependencies ++= {
