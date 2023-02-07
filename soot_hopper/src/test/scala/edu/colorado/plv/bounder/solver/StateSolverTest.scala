@@ -221,7 +221,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
       //            LifecycleSpec.Activity_createdOnlyFirst
     ))
     List(
-      (buttonEnableDisable,
+      (new SpecSpace(ExperimentSpecs.row4Specs),
         "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/s1.json",
         "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/s2.json",
         (v:Boolean) =>{
