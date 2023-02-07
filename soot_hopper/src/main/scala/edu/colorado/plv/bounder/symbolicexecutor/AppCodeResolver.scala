@@ -83,7 +83,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
       case _ => None
     }
     val callinTargets = findCallinsAndCallbacks(swappedMessages,filter)
-    val derefLocs = callinTargets.par.flatMap{
+    val derefLocs = callinTargets.flatMap{
       case (loc, _) => findFirstDerefFor(loc.method, loc, abs.w)
     }.seq.toSet
     derefLocs.map{loc =>
@@ -140,12 +140,12 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
       }
     }
 
-    filteredAppMethods.par.flatMap{m =>
+    filteredAppMethods.flatMap{m =>
       val fieldUse = findFieldMayBeAssignedTo(m)
       val res = fieldUse.flatMap(findFirstDerefFor(m,_, ir))
       res.map{loc =>
         ReceiverNonNull(loc.method.getSignature, loc.line.lineNumber,derefNameOf(loc,ir))}
-    }.seq.toSet
+    }.toSet
   }
 
   /**
@@ -325,7 +325,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
       case methodLoc: MethodLoc => // apply package filter if it exists
         packageFilter.forall(methodLoc.classType.startsWith)
     }
-    val invokeCmds = filteredAppMethods.par.flatMap{m =>
+    val invokeCmds = filteredAppMethods.flatMap{m =>
       ir.allMethodLocations(m).flatMap{v => BounderUtil.cmdAtLocationNopIfUnknown(v,ir) match{
         case AssignCmd(_, i: SpecialInvoke, _) => matchesCI(i).map((v, _))
         case AssignCmd(_, i: VirtualInvoke, _) => matchesCI(i).map((v, _))
