@@ -287,7 +287,6 @@ object Driver {
       case act@Action(SampleDeref, _, _, cfg, _, _, _) =>
         sampleDeref(cfg, act.getApkPath, act.getOutFolder, act.filter)
       case act@Action(FindCallins, _, _, cfg, _, _, _) =>
-        println("TODO=== dbg find callins")
         findCallins(cfg, act.getApkPath, act.getOutFolder, act.filter)
       case act@Action(MakeSensitiveDerefCallinCaused, _, _, cfg, _, _, _) =>
         makeSensitiveDerefCallinCaused(cfg, act.getApkPath, act.getOutFolder, act.filter)
@@ -362,15 +361,16 @@ object Driver {
    */
   private def splitNullHead(hasNullHead:Boolean, locs: Set[LSSpec]):Set[OAbsMsg] = {
     locs.flatMap{ spec =>
+      def out(res:Boolean) = if(res == hasNullHead) Some(spec.target) else None
       val target = spec.target
       target.lsVars.headOption match {
-        case Some(NullVal) => Some(target)
+        case Some(NullVal) => out(true)
         case Some(pv:PureVar) => if(spec.rhsConstraints.exists{
           case LSConstraint(pv2, Equals, NullVal) if pv2 == pv => true
           case _ => false
-        }) Some(target) else None
-        case Some(_) => None
-        case None => None
+        }) out(true) else out(false)
+        case Some(_) => out(false)
+        case None => out(false)
       }
     }
   }
