@@ -287,6 +287,7 @@ object Driver {
       case act@Action(SampleDeref, _, _, cfg, _, _, _) =>
         sampleDeref(cfg, act.getApkPath, act.getOutFolder, act.filter)
       case act@Action(FindCallins, _, _, cfg, _, _, _) =>
+        println("TODO=== dbg find callins")
         findCallins(cfg, act.getApkPath, act.getOutFolder, act.filter)
       case act@Action(MakeSensitiveDerefCallinCaused, _, _, cfg, _, _, _) =>
         makeSensitiveDerefCallinCaused(cfg, act.getApkPath, act.getOutFolder, act.filter)
