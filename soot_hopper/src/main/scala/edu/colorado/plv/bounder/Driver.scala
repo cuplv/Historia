@@ -8,7 +8,7 @@ import java.time.Instant
 import java.util.Date
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil.{MaxPathCharacterization, Proven, ResultSummary, Timeout, Unreachable, Witnessed, characterizeMaxPath}
-import edu.colorado.plv.bounder.Driver.{Default, LocResult, RunMode}
+import edu.colorado.plv.bounder.Driver.{Default, LocResult, RunMode, modeToString}
 import edu.colorado.plv.bounder.ir.{AppLoc, Loc, SootWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSConstraint, LSSpec, OAbsMsg, Signature}
 import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
@@ -44,6 +44,17 @@ case class Action(mode:RunMode = Default,
                   tag:Option[String] = None,
                   outputMode: String = "NONE" // "DB" or "MEM" for writing nodes to file or keeping in memory.
                  ){
+  def runCmdFork(jarPath:String): Unit = {
+    File.usingTemporaryFile() { cfgTmp =>
+      cfgTmp.overwrite(write(config))
+      val cmd = s"-m ${modeToString(mode)} -b ${baseDirApk.get} -u ${baseDirOut} -c ${cfgTmp.pathAsString} " +
+        s"-o outputMode"
+      val cmd2 = filter.map(f => cmd + s" -f ${f}").getOrElse(cmd)
+      val cmd3 = tag.map(f => cmd2 + s" -t ${f}").getOrElse(cmd)
+      BounderUtil.runCmdStdout(s"java -jar ${jarPath} $cmd3")
+    }
+  }
+
   val baseDirVar = "${baseDir}"
   val outDirVar = "${baseDirOut}"
   def getApkPath:String = baseDirApk match{
@@ -152,20 +163,25 @@ object Driver {
     println(s"java.library.path set to: ${System.getProperty("java.library.path")}")
   }
 
+  val stringToMode:Map[String,RunMode] = Map(
+  "verify" -> Verify,
+  "info" -> Info,
+  "sampleDeref" -> SampleDeref,
+  "readDB" -> ReadDB,
+  "expLoop" -> ExpLoop,
+  "makeAllDeref" -> MakeAllDeref,
+  "findCallinsPattern" -> FindCallins,
+  "nullFieldPattern" -> MakeSensitiveDerefFieldCaused,
+  "nullCallinPattern" -> MakeSensitiveDerefCallinCaused
+  )
+  lazy val modeToString: Map[RunMode,String] = stringToMode.map{case (k,v) => v->k}
   def decodeMode(modeStr: Any): RunMode = modeStr match {
     case Str(value) => decodeMode(value)
-    case "verify" => Verify
-    case "info" => Info
-    case "sampleDeref" => SampleDeref
-    case "readDB" => ReadDB
-    case "expLoop" => ExpLoop
-    case "makeAllDeref" => MakeAllDeref
-    case "findCallinsPattern" => FindCallins
-    case "nullFieldPattern" => MakeSensitiveDerefFieldCaused
-    case "nullCallinPattern" => MakeSensitiveDerefCallinCaused
+    case s:String if stringToMode.contains(s) => stringToMode(s)
     case m =>
-      throw new IllegalArgumentException(s"Unsupported mode $m")
+      throw new IllegalArgumentException(s"Unsupported mode $m. Options: ${stringToMode.keySet}")
   }
+  def encodeMode(mode:RunMode):String = modeToString(mode)
 
   def main(args: Array[String]): Unit = {
     val builder = OParser.builder[Action]

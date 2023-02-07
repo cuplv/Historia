@@ -85,7 +85,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     val callinTargets = findCallinsAndCallbacks(swappedMessages,filter)
     val derefLocs = callinTargets.flatMap{
       case (loc, _) => findFirstDerefFor(loc.method, loc, abs.w)
-    }.seq.toSet
+    }
     derefLocs.map{loc =>
       ReceiverNonNull(loc.method.getSignature, loc.line.lineNumber, derefNameOf(loc,ir))
     }
@@ -355,7 +355,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
 //      },
 //      join = (a, b) => a.union(b)
 //    ).flatMap { case (_, v) => v }.toSet
-    invokeCmds.seq.toSet
+    invokeCmds
   }
   @tailrec
   final def sampleDeref(packageFilter:Option[String]):AppLoc = {
