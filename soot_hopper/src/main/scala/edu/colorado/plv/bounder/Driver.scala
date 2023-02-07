@@ -1,5 +1,7 @@
 package edu.colorado.plv.bounder
 
+import better.files.Dsl.mkdir
+
 import java.io.{PrintWriter, StringWriter}
 import java.sql.Timestamp
 import java.time.Instant
@@ -8,7 +10,7 @@ import better.files.File
 import edu.colorado.plv.bounder.BounderUtil.{MaxPathCharacterization, Proven, ResultSummary, Timeout, Unreachable, Witnessed, characterizeMaxPath}
 import edu.colorado.plv.bounder.Driver.{Default, LocResult, RunMode}
 import edu.colorado.plv.bounder.ir.{AppLoc, Loc, SootWrapper}
-import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, OAbsMsg, Signature}
+import edu.colorado.plv.bounder.lifestate.LifeState.{LSConstraint, LSSpec, OAbsMsg, Signature}
 import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
@@ -357,10 +359,19 @@ object Driver {
    * @param locs
    * @return
    */
-  private def splitNullHead(hasNullHead:Boolean, locs: Set[OAbsMsg]):Set[OAbsMsg] = {
-    locs.filter{
-      case OAbsMsg(_, _, NullVal::_) => hasNullHead
-      case OAbsMsg(_, _, _::_) => !hasNullHead}
+  private def splitNullHead(hasNullHead:Boolean, locs: Set[LSSpec]):Set[OAbsMsg] = {
+    locs.flatMap{ spec =>
+      val target = spec.target
+      target.lsVars.headOption match {
+        case Some(NullVal) => Some(target)
+        case Some(pv:PureVar) => if(spec.rhsConstraints.exists{
+          case LSConstraint(pv2, Equals, NullVal) if pv2 == pv => true
+          case _ => false
+        }) Some(target) else None
+        case Some(_) => None
+        case None => None
+      }
+    }
   }
   private def writeInitialQuery(queries:Iterable[InitialQuery], qPrefix:String, outf:File):Unit = {
     queries.zipWithIndex.foreach{case (query, index) =>
@@ -378,7 +389,7 @@ object Driver {
       w = w, specSpace = new SpecSpace(Set()), component = None)
     val executor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
     val specSet = cfg.specSet.getSpecSpace()
-    val toFind = splitNullHead(hasNullHead = true, specSet.getDisallowSpecs.map{s => s.target})
+    val toFind = splitNullHead(hasNullHead = true, specSet.getDisallowSpecs)
     writeInitialQuery(executor.appCodeResolver.heuristicCbFlowsToDeref(toFind, filter, executor),
       "SensitiveDerefCallinCaused", outf)
   }
@@ -408,26 +419,27 @@ object Driver {
    */
   def findCallins(cfg: RunConfig, apkPath:String, outFolder:String, filter:Option[String]): Unit = {
     val outf = File(outFolder)
-    assert(outf.exists)
+    if(!outf.exists)
+      mkdir(outf) //TODO make dir if not exists
     val w = new SootWrapper(apkPath, Set())
     val config = ExecutorConfig(
       w = w, specSpace = new SpecSpace(Set()), component = None)
     val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
     val specSet = cfg.specSet.getSpecSpace()
-    val toFind = splitNullHead(hasNullHead = false, specSet.getDisallowSpecs.map{s => s.target})
+    val toFind = splitNullHead(hasNullHead = false, specSet.getDisallowSpecs)
     val locations: Set[(AppLoc, OAbsMsg)] = symbolicExecutor.appCodeResolver.findCallinsAndCallbacks(toFind, filter)
 
 
-    val disallowedCallins = try {
-      locations.map {
-        case (loc, msg) =>
+    val disallowedCallins = locations.flatMap {
+      case (loc, msg) =>
+        try {
           val spec = specSet.getDisallowSpecs.find { s => s.target == msg }.get
-          (DisallowedCallin.mk(loc, spec), spec)
-      }
-    }catch  {
-      case e:AssertionError if e.toString.contains("Disallow must be callin entry") =>
-        return //silently ignore bad disallows
+          Some(DisallowedCallin.mk(loc, spec), spec)
+        } catch {
+            case e: AssertionError if e.toString.contains("Disallow must be callin entry") => None
+        }
     }
+
 
     disallowedCallins.zipWithIndex.foreach{case (initialQuery, index) =>
       val qry = initialQuery._1

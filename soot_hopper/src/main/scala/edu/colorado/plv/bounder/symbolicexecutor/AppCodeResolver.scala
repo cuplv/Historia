@@ -8,6 +8,7 @@ import edu.colorado.plv.bounder.lifestate.LifeState.{OAbsMsg, Signature}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, DirectInitialQuery, FieldPtEdge, InitialQuery, NullVal, Qry, ReceiverNonNull}
 
 import scala.annotation.tailrec
+import scala.collection.parallel.CollectionConverters.ImmutableIterableIsParallelizable
 import scala.util.matching.Regex
 import scala.util.Random
 
@@ -82,9 +83,9 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
       case _ => None
     }
     val callinTargets = findCallinsAndCallbacks(swappedMessages,filter)
-    val derefLocs = callinTargets.flatMap{
+    val derefLocs = callinTargets.par.flatMap{
       case (loc, _) => findFirstDerefFor(loc.method, loc, abs.w)
-    }
+    }.seq.toSet
     derefLocs.map{loc =>
       ReceiverNonNull(loc.method.getSignature, loc.line.lineNumber, derefNameOf(loc,ir))
     }
@@ -139,12 +140,12 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
       }
     }
 
-    filteredAppMethods.flatMap{m =>
+    filteredAppMethods.par.flatMap{m =>
       val fieldUse = findFieldMayBeAssignedTo(m)
       val res = fieldUse.flatMap(findFirstDerefFor(m,_, ir))
       res.map{loc =>
         ReceiverNonNull(loc.method.getSignature, loc.line.lineNumber,derefNameOf(loc,ir))}
-    }
+    }.seq.toSet
   }
 
   /**
@@ -324,7 +325,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
       case methodLoc: MethodLoc => // apply package filter if it exists
         packageFilter.forall(methodLoc.classType.startsWith)
     }
-    val invokeCmds = filteredAppMethods.flatMap{m =>
+    val invokeCmds = filteredAppMethods.par.flatMap{m =>
       ir.allMethodLocations(m).flatMap{v => BounderUtil.cmdAtLocationNopIfUnknown(v,ir) match{
         case AssignCmd(_, i: SpecialInvoke, _) => matchesCI(i).map((v, _))
         case AssignCmd(_, i: VirtualInvoke, _) => matchesCI(i).map((v, _))
@@ -354,7 +355,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
 //      },
 //      join = (a, b) => a.union(b)
 //    ).flatMap { case (_, v) => v }.toSet
-    invokeCmds
+    invokeCmds.seq.toSet
   }
   @tailrec
   final def sampleDeref(packageFilter:Option[String]):AppLoc = {
