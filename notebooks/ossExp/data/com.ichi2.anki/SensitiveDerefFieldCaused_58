@@ -1,0 +1,1 @@
+{"methodName":"boolean onOptionsItemSelected(android.view.MenuItem)","line":13,"t":"ReceiverNonNull","matcher":"void setStatType(com.ichi2.libanki.stats.Stats$AxisType)","className":"com.ichi2.anki.Statistics"}

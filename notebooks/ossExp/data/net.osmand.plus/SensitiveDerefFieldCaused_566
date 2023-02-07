@@ -1,0 +1,1 @@
+{"methodName":"void drawLineAndText(android.graphics.Canvas,net.osmand.data.RotatedTileBox,net.osmand.plus.views.layers.base.OsmandMapLayer$DrawSettings)","line":1019,"t":"ReceiverNonNull","matcher":"void <init>(double,double)","className":"net.osmand.plus.views.layers.MapMarkersLayer"}

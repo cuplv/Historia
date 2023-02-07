@@ -1,0 +1,1 @@
+{"methodName":"void onDestroyView()","line":678,"t":"ReceiverNonNull","matcher":"void removeEnableSwipeRefreshCallback()","className":"com.duckduckgo.app.browser.BrowserTabFragment"}

@@ -1,0 +1,1 @@
+{"methodName":"boolean appendWhereStatement(java.lang.StringBuilder,java.util.List,com.j256.ormlite.stmt.StatementBuilder$WhereOperation)","line":4,"t":"ReceiverNonNull","matcher":"void appendSql(java.lang.String,java.lang.StringBuilder,java.util.List)","className":"com.j256.ormlite.stmt.StatementBuilder"}

@@ -1,0 +1,1 @@
+{"methodName":"void addAttrib(java.lang.String,com.caverock.androidsvg.CSSParser$AttribOp,java.lang.String)","line":178,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"com.caverock.androidsvg.CSSParser$SimpleSelector"}

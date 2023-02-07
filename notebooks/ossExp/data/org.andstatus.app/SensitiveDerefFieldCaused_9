@@ -1,0 +1,1 @@
+{"methodName":"int writeEntityData2(byte[],int)","line":93,"t":"ReceiverNonNull","matcher":"android.net.Uri getUri()","className":"org.andstatus.app.backup.MyBackupDataOutput"}

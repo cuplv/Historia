@@ -1,0 +1,1 @@
+{"methodName":"void onPhotoSelected(java.lang.String,android.view.View)","line":370,"t":"ReceiverNonNull","matcher":"boolean delete()","className":"info.guardianproject.pixelknot.SendActivity"}

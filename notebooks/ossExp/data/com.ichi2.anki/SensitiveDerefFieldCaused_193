@@ -1,0 +1,1 @@
+{"methodName":"void _rescheduleNew(com.ichi2.libanki.Card,com.ichi2.utils.JSONObject,boolean)","line":2,"t":"ReceiverNonNull","matcher":"int intValue()","className":"com.ichi2.libanki.sched.SchedV2"}

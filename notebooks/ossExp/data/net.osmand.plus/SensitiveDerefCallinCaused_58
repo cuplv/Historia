@@ -1,0 +1,1 @@
+{"methodName":"void showExitDialog()","line":454,"t":"ReceiverNonNull","matcher":"androidx.fragment.app.FragmentManager getSupportFragmentManager()","className":"net.osmand.plus.mapcontextmenu.editors.EditorFragment"}

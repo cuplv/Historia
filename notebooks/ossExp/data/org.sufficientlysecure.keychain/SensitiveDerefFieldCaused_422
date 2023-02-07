@@ -1,0 +1,1 @@
+{"methodName":"void getAndMoveToFrontDecode()","line":13,"t":"ReceiverNonNull","matcher":"int read()","className":"org.bouncycastle.apache.bzip2.CBZip2InputStream"}

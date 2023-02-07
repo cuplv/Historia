@@ -1,0 +1,1 @@
+{"methodName":"void endAnimation()","line":1030,"t":"ReceiverNonNull","matcher":"java.lang.Object clone()","className":"com.nineoldandroids.animation.ValueAnimator"}

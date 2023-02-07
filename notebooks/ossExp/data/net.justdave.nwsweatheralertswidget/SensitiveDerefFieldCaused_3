@@ -1,0 +1,1 @@
+{"methodName":"void endElement(java.lang.String,java.lang.String,java.lang.String)","line":52,"t":"ReceiverNonNull","matcher":"void setId(java.lang.String)","className":"net.justdave.nwsweatheralertswidget.NWSFeedHandler"}

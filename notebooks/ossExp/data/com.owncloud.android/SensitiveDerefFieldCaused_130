@@ -1,0 +1,1 @@
+{"methodName":"void <init>(com.caverock.androidsvg.SVGAndroidRenderer,com.caverock.androidsvg.SVG$PathDefinition)","line":2854,"t":"ReceiverNonNull","matcher":"void add(com.caverock.androidsvg.SVGAndroidRenderer$MarkerVector)","className":"com.caverock.androidsvg.SVGAndroidRenderer$MarkerPositionCalculator"}

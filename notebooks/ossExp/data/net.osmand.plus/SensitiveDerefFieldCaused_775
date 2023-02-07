@@ -1,0 +1,1 @@
+{"methodName":"void onStopTask()","line":567,"t":"ReceiverNonNull","matcher":"android.os.AsyncTask$Status getStatus()","className":"net.osmand.plus.settings.datastorage.DataStorageFragment"}

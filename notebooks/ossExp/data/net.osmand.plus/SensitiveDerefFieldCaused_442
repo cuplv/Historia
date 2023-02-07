@@ -1,0 +1,1 @@
+{"methodName":"void updateCompassVal()","line":615,"t":"ReceiverNonNull","matcher":"float floatValue()","className":"net.osmand.plus.OsmAndLocationProvider"}

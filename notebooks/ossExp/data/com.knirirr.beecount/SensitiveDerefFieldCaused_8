@@ -1,0 +1,1 @@
+{"methodName":"void openList(sheetrock.panda.changelog.ChangeLog$Listmode)","line":295,"t":"ReceiverNonNull","matcher":"java.lang.StringBuffer append(java.lang.String)","className":"sheetrock.panda.changelog.ChangeLog"}

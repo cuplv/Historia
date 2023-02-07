@@ -1,0 +1,1 @@
+{"methodName":"void play(java.lang.String,b.a$a)","line":17,"t":"ReceiverNonNull","matcher":"void setLooping(boolean)","className":"com.watabou.noosa.audio.Music"}

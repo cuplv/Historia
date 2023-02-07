@@ -1,0 +1,1 @@
+{"methodName":"void resetGenerators(boolean)","line":8,"t":"ReceiverNonNull","matcher":"void clear()","className":"com.watabou.utils.PlatformSupport"}

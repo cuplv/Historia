@@ -1,0 +1,1 @@
+{"methodName":"java.lang.Long getPhoneDataConnectionTime(int,long,int)","line":1271,"t":"ReceiverNonNull","matcher":"java.lang.reflect.Method getMethod(java.lang.String,java.lang.Class[])","className":"com.asksven.android.common.privateapiproxies.BatteryStatsProxy"}

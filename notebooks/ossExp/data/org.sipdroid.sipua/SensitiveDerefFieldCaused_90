@@ -1,0 +1,1 @@
+{"methodName":"org.zoolu.sip.provider.ConnectionIdentifier sendMessage(org.zoolu.sip.message.Message)","line":901,"t":"ReceiverNonNull","matcher":"int getPort()","className":"org.zoolu.sip.provider.SipProvider"}

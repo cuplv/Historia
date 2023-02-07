@@ -1,0 +1,1 @@
+{"methodName":"int drainDecoder(long)","line":192,"t":"ReceiverNonNull","matcher":"boolean swapBuffers()","className":"net.ypresto.androidtranscoder.engine.VideoTrackTranscoder"}

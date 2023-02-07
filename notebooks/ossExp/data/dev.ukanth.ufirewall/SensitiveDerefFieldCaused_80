@@ -1,0 +1,1 @@
+{"methodName":"void onPostExecute(java.lang.String)","line":133,"t":"ReceiverNonNull","matcher":"boolean isShowing()","className":"dev.ukanth.ufirewall.util.LogNetUtil$NetTask"}

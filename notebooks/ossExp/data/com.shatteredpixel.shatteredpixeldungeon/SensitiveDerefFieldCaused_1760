@@ -1,0 +1,1 @@
+{"methodName":"boolean articlesAvailable()","line":10,"t":"ReceiverNonNull","matcher":"boolean isEmpty()","className":"com.shatteredpixel.shatteredpixeldungeon.services.news.News"}

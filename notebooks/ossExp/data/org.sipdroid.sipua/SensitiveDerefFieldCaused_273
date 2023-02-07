@@ -1,0 +1,1 @@
+{"methodName":"void onReceivedMessage(org.zoolu.sip.provider.SipProvider,org.zoolu.sip.message.Message)","line":197,"t":"ReceiverNonNull","matcher":"void <init>(java.lang.String)","className":"org.zoolu.sip.transaction.InviteTransactionServer"}

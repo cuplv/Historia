@@ -1,0 +1,1 @@
+{"methodName":"de.danoeh.antennapod.model.feed.FeedItemFilter getFilter()","line":43,"t":"ReceiverNonNull","matcher":"android.content.SharedPreferences getSharedPreferences(java.lang.String,int)","className":"de.danoeh.antennapod.fragment.AllEpisodesFragment"}

@@ -1,0 +1,1 @@
+{"methodName":"int compare(com.shatteredpixel.shatteredpixeldungeon.levels.traps.Trap,com.shatteredpixel.shatteredpixeldungeon.levels.traps.Trap)","line":2,"t":"ReceiverNonNull","matcher":"float trueDistance(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.items.stones.StoneOfDisarming$1"}

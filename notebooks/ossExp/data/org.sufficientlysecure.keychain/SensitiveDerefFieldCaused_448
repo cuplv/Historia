@@ -1,0 +1,1 @@
+{"methodName":"void emitMarkedLines(java.lang.StringBuilder,com.github.rjeschke.txtmark.Line)","line":3,"t":"ReceiverNonNull","matcher":"int length()","className":"com.github.rjeschke.txtmark.Emitter"}

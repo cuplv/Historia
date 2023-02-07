@@ -1,0 +1,1 @@
+{"methodName":"boolean onContextItemSelected(android.view.MenuItem)","line":1950,"t":"ReceiverNonNull","matcher":"android.webkit.WebView$HitTestResult getHitTestResult()","className":"com.duckduckgo.app.browser.BrowserTabFragment"}

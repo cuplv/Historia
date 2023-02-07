@@ -1,0 +1,1 @@
+{"methodName":"void onReleaseResources(java.util.List)","line":98,"t":"ReceiverNonNull","matcher":"void stopWatching()","className":"com.seafile.seadroid2.fileschooser.FileLoader"}

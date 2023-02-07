@@ -1,0 +1,1 @@
+{"methodName":"void doRender()","line":355,"t":"ReceiverNonNull","matcher":"android.graphics.Picture renderToPicture(com.caverock.androidsvg.RenderOptions)","className":"com.caverock.androidsvg.SVGImageView"}

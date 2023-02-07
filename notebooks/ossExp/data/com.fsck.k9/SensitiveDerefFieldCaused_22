@@ -1,0 +1,1 @@
+{"methodName":"java.util.Map appendMessages(java.util.List)","line":984,"t":"ReceiverNonNull","matcher":"java.io.OutputStream getOutputStream()","className":"com.fsck.k9.mail.store.imap.RealImapFolder"}

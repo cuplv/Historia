@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String getStickyErrorMessage(android.content.ContextWrapper)","line":139,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"de.srlabs.patchanalysis_module.helpers.SharedPrefsHelper"}

@@ -1,0 +1,1 @@
+{"methodName":"j$.util.stream.Node evaluateToArrayNode(j$.util.function.IntFunction)","line":0,"t":"ReceiverNonNull","matcher":"j$.util.Spliterator sourceSpliterator(int)","className":"j$.util.stream.AbstractPipeline"}

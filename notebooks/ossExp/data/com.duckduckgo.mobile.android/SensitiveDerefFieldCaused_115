@@ -1,0 +1,1 @@
+{"methodName":"void onUserLongPressedBack()","line":821,"t":"ReceiverNonNull","matcher":"java.util.List getNavigationHistory()","className":"com.duckduckgo.app.browser.BrowserTabViewModel"}

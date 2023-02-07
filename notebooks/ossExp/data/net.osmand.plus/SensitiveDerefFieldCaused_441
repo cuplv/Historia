@@ -1,0 +1,1 @@
+{"methodName":"org.mozilla.javascript.Node transformTry(org.mozilla.javascript.ast.TryStatement)","line":1162,"t":"ReceiverNonNull","matcher":"void addToken(int)","className":"org.mozilla.javascript.IRFactory"}

@@ -1,0 +1,1 @@
+{"methodName":"void processReceivedMessage(org.zoolu.sip.message.Message)","line":1047,"t":"ReceiverNonNull","matcher":"java.lang.Object get(java.lang.Object)","className":"org.zoolu.sip.provider.SipProvider"}

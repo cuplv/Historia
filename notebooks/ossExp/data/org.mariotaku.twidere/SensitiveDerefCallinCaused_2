@@ -1,0 +1,1 @@
+{"methodName":"void <init>(org.mariotaku.twidere.fragment.NetworkDiagnosticsFragment)","line":99,"t":"ReceiverNonNull","matcher":"android.content.Context getApplicationContext()","className":"org.mariotaku.twidere.fragment.NetworkDiagnosticsFragment$DiagnosticsTask"}

@@ -1,0 +1,1 @@
+{"methodName":"void drawMarker(net.osmand.core.jni.MapMarkersCollection,android.graphics.Bitmap,net.osmand.core.jni.PointI,java.lang.String)","line":398,"t":"ReceiverNonNull","matcher":"float getSize()","className":"net.osmand.plus.views.layers.PointNavigationLayer"}

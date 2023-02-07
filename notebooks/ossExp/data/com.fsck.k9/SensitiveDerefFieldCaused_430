@@ -1,0 +1,1 @@
+{"methodName":"void fetchEnvelope(java.util.List,com.fsck.k9.mail.MessageRetrievalListener)","line":379,"t":"ReceiverNonNull","matcher":"java.lang.String readLine()","className":"com.fsck.k9.mail.store.pop3.Pop3Folder"}

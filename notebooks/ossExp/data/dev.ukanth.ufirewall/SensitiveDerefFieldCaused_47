@@ -1,0 +1,1 @@
+{"methodName":"com.stericson.rootshell.execution.Shell startRootShell(int,com.stericson.rootshell.execution.Shell$ShellContext,int)","line":854,"t":"ReceiverNonNull","matcher":"void <init>(java.lang.String,com.stericson.rootshell.execution.Shell$ShellType,com.stericson.rootshell.execution.Shell$ShellContext,int)","className":"com.stericson.rootshell.execution.Shell"}

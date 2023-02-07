@@ -1,0 +1,1 @@
+{"methodName":"void onCollectionLoaded(com.ichi2.libanki.Collection)","line":8,"t":"ReceiverNonNull","matcher":"long getLong(java.lang.String)","className":"com.ichi2.anki.CardTemplatePreviewer"}

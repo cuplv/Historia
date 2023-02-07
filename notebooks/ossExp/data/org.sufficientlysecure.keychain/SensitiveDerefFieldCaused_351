@@ -1,0 +1,1 @@
+{"methodName":"void readBytesFromBuffer(int,int)","line":4,"t":"ReceiverNonNull","matcher":"java.nio.Buffer position(int)","className":"org.sufficientlysecure.keychain.util.CharsetVerifier"}

@@ -1,0 +1,1 @@
+{"methodName":"void <init>(android.database.Cursor,com.j256.ormlite.dao.ObjectCache,boolean)","line":7,"t":"ReceiverNonNull","matcher":"java.lang.Object put(java.lang.Object,java.lang.Object)","className":"com.j256.ormlite.android.AndroidDatabaseResults"}

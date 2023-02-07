@@ -1,0 +1,1 @@
+{"methodName":"void attack(int)","line":9,"t":"ReceiverNonNull","matcher":"boolean adjacent(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.sprites.ScorpioSprite"}

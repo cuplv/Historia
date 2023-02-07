@@ -1,0 +1,1 @@
+{"methodName":"void addExceptions(org.dmfs.rfc5545.recurrenceset.AbstractRecurrenceAdapter)","line":81,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"org.dmfs.rfc5545.recurrenceset.RecurrenceSet"}

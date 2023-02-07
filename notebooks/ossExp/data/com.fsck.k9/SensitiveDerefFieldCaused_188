@@ -1,0 +1,1 @@
+{"methodName":"void scrollToMessage(com.fsck.k9.controller.MessageReference)","line":1562,"t":"ReceiverNonNull","matcher":"androidx.recyclerview.widget.RecyclerView$LayoutManager getLayoutManager()","className":"com.fsck.k9.ui.messagelist.MessageListFragment"}

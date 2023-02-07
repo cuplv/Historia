@@ -1,0 +1,1 @@
+{"methodName":"void lookupAddressForPointToNavigate()","line":248,"t":"ReceiverNonNull","matcher":"boolean isSearchingAddress(android.content.Context)","className":"net.osmand.plus.helpers.TargetPointsHelper"}

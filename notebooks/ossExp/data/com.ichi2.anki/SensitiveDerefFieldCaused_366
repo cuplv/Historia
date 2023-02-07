@@ -1,0 +1,1 @@
+{"methodName":"void close(boolean)","line":5,"t":"ReceiverNonNull","matcher":"void executeInTransaction(java.lang.Runnable)","className":"com.ichi2.libanki.Collection"}

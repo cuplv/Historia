@@ -1,0 +1,1 @@
+{"methodName":"void unregister(int)","line":253,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"org.sipdroid.sipua.SipdroidEngine"}

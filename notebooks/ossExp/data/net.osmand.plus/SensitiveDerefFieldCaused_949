@@ -1,0 +1,1 @@
+{"methodName":"void onFilesCopyFinished(java.util.Map,java.util.List)","line":359,"t":"ReceiverNonNull","matcher":"void dismiss()","className":"net.osmand.plus.settings.datastorage.StorageMigrationFragment"}

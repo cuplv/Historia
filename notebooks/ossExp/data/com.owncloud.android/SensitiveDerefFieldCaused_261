@@ -1,0 +1,1 @@
+{"methodName":"void observeShares$lambda-13(com.owncloud.android.presentation.ui.sharing.fragments.ShareFileFragment,com.owncloud.android.domain.utils.Event)","line":348,"t":"ReceiverNonNull","matcher":"void showLoading()","className":"com.owncloud.android.presentation.ui.sharing.fragments.ShareFileFragment"}

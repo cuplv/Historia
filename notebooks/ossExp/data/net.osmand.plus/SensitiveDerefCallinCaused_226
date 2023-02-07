@@ -1,0 +1,1 @@
+{"methodName":"void onDestroy()","line":304,"t":"ReceiverNonNull","matcher":"boolean isChangingConfigurations()","className":"net.osmand.plus.plugins.weather.dialogs.WeatherForecastFragment"}

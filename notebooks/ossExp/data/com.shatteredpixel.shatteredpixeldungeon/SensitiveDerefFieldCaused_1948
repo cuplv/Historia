@@ -1,0 +1,1 @@
+{"methodName":"void activate()","line":69,"t":"ReceiverNonNull","matcher":"int pointToCell(com.watabou.utils.Point)","className":"com.shatteredpixel.shatteredpixeldungeon.levels.traps.RockfallTrap"}

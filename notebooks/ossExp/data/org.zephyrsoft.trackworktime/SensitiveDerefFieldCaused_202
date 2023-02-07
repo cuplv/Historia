@@ -1,0 +1,1 @@
+{"methodName":"void doRestore()","line":1070,"t":"ReceiverNonNull","matcher":"android.database.Cursor getAllEventsAndTasks()","className":"org.zephyrsoft.trackworktime.WorkTimeTrackerActivity"}

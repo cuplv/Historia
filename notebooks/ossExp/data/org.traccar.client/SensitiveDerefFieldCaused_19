@@ -1,0 +1,1 @@
+{"methodName":"void closeBlock()","line":101,"t":"ReceiverNonNull","matcher":"java.lang.String getString()","className":"org.commonmark.internal.HtmlBlockParser"}

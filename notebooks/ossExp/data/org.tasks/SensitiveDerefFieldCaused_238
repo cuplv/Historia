@@ -1,0 +1,1 @@
+{"methodName":"void parseCSSStyleSheet(java.lang.String)","line":4487,"t":"ReceiverNonNull","matcher":"void addCSSRules(com.caverock.androidsvg.CSSParser$Ruleset)","className":"com.caverock.androidsvg.SVGParser"}

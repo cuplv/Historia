@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String readUntil(char[])","line":3,"t":"ReceiverNonNull","matcher":"int length()","className":"com.github.rjeschke.txtmark.Line"}

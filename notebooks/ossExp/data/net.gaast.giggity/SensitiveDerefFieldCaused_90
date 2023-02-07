@@ -1,0 +1,1 @@
+{"methodName":"void cancel()","line":253,"t":"ReceiverNonNull","matcher":"boolean delete()","className":"net.gaast.giggity.Fetcher"}

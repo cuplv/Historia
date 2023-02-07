@@ -1,0 +1,1 @@
+{"methodName":"net.osmand.plus.poi.NominatimPoiFilter getNominatimPOIFilter()","line":95,"t":"ReceiverNonNull","matcher":"void <init>(net.osmand.plus.OsmandApplication,boolean)","className":"net.osmand.plus.poi.PoiFiltersHelper"}

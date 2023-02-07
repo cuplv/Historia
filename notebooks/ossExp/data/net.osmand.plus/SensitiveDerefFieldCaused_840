@@ -1,0 +1,1 @@
+{"methodName":"void removeTopToolbarController(net.osmand.plus.views.mapwidgets.TopToolbarController)","line":118,"t":"ReceiverNonNull","matcher":"void removeController(net.osmand.plus.views.mapwidgets.TopToolbarController)","className":"net.osmand.plus.views.layers.MapInfoLayer"}

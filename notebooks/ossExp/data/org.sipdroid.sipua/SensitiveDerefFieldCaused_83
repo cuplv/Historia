@@ -1,0 +1,1 @@
+{"methodName":"boolean isOnCall()","line":119,"t":"ReceiverNonNull","matcher":"boolean isSessionActive()","className":"org.zoolu.sip.call.Call"}

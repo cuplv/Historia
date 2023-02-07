@@ -1,0 +1,1 @@
+{"methodName":"void updateSpeedAltitudeLegend(boolean)","line":82,"t":"ReceiverNonNull","matcher":"boolean isElevationSpecified()","className":"net.osmand.plus.track.cards.ColoringTypeCard"}

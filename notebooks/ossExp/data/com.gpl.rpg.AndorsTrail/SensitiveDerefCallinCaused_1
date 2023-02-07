@@ -1,0 +1,1 @@
+{"methodName":"android.view.View onCreateView(android.view.LayoutInflater,android.view.ViewGroup,android.os.Bundle)","line":57,"t":"ReceiverNonNull","matcher":"android.content.Intent getIntent()","className":"com.gpl.rpg.AndorsTrail.activity.fragment.ShopActivityFragment"}

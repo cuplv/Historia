@@ -1,0 +1,1 @@
+{"methodName":"int i(java.lang.Object,int,int,db.b,int)","line":35,"t":"ReceiverNonNull","matcher":"void g(java.lang.Object,int,int,db.b,int)","className":"db.b"}

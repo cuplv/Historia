@@ -1,0 +1,1 @@
+{"methodName":"void render(br.tiagohm.markdownview.ext.twitter.Twitter,com.vladsch.flexmark.html.renderer.NodeRendererContext,com.vladsch.flexmark.html.HtmlWriter)","line":85,"t":"ReceiverNonNull","matcher":"java.lang.String replaceAll(java.lang.String,java.lang.String)","className":"br.tiagohm.markdownview.ext.twitter.internal.TwitterNodeRenderer"}

@@ -1,0 +1,1 @@
+{"methodName":"void addRoute(net.osmand.data.TransportRoute)","line":45,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"net.osmand.data.TransportStop"}

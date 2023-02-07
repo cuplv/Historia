@@ -1,0 +1,1 @@
+{"methodName":"int getPlayingPosition()","line":1771,"t":"ReceiverNonNull","matcher":"int getCurrentPosition()","className":"net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin"}

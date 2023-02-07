@@ -1,0 +1,1 @@
+{"methodName":"void cleanup()","line":241,"t":"ReceiverNonNull","matcher":"boolean delete()","className":"info.guardianproject.pixelknot.StegoEncryptionJob"}

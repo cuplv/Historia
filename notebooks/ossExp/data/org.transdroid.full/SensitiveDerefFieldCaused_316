@@ -1,0 +1,1 @@
+{"methodName":"void stopAutoRefresh()","line":2,"t":"ReceiverNonNull","matcher":"boolean cancel(boolean)","className":"org.transdroid.core.gui.TorrentsActivity"}

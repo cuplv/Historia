@@ -1,0 +1,1 @@
+{"methodName":"void registerLayers(android.content.Context,net.osmand.plus.activities.MapActivity)","line":635,"t":"ReceiverNonNull","matcher":"void <init>(android.content.Context,net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin)","className":"net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin"}

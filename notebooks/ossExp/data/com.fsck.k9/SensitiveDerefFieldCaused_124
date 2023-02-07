@@ -1,0 +1,1 @@
+{"methodName":"java.util.Map sendHello(java.lang.String)","line":333,"t":"ReceiverNonNull","matcher":"com.fsck.k9.mail.transport.smtp.SmtpHelloResponse readHelloResponse()","className":"com.fsck.k9.mail.transport.smtp.SmtpTransport"}

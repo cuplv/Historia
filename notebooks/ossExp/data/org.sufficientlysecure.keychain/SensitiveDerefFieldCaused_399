@@ -1,0 +1,1 @@
+{"methodName":"void stop()","line":2,"t":"ReceiverNonNull","matcher":"void disable()","className":"com.journeyapps.barcodescanner.RotationListener"}

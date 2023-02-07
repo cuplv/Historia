@@ -1,0 +1,1 @@
+{"methodName":"void lookupAddressForStartPoint()","line":227,"t":"ReceiverNonNull","matcher":"boolean isSearchingAddress(android.content.Context)","className":"net.osmand.plus.helpers.TargetPointsHelper"}

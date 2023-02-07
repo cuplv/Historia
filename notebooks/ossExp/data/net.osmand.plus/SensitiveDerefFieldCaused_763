@@ -1,0 +1,1 @@
+{"methodName":"void setMovableObject(double,double)","line":440,"t":"ReceiverNonNull","matcher":"int getY()","className":"net.osmand.plus.views.layers.base.OsmandMapLayer"}

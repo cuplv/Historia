@@ -1,0 +1,1 @@
+{"methodName":"void doInsertData(java.lang.Object,net.osmand.data.QuadRect,net.osmand.data.QuadTree$Node,int)","line":83,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"net.osmand.data.QuadTree"}

@@ -1,0 +1,1 @@
+{"methodName":"void setupTasksAdapter()","line":578,"t":"ReceiverNonNull","matcher":"java.util.List getActiveTasks()","className":"org.zephyrsoft.trackworktime.WorkTimeTrackerActivity"}

@@ -1,0 +1,1 @@
+{"methodName":"boolean renderLineBreak(java.lang.String,java.lang.String,com.vladsch.flexmark.ast.Node,com.vladsch.flexmark.html.renderer.NodeRendererContext,com.vladsch.flexmark.html.HtmlWriter)","line":508,"t":"ReceiverNonNull","matcher":"int size()","className":"com.vladsch.flexmark.html.renderer.CoreNodeRenderer"}

@@ -1,0 +1,1 @@
+{"methodName":"void redrawCachedCryptoStatusIcon()","line":420,"t":"ReceiverNonNull","matcher":"boolean isEncryptionEnabled()","className":"com.fsck.k9.activity.compose.RecipientPresenter"}

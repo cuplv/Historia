@@ -1,0 +1,1 @@
+{"methodName":"void storeWhiteboardVisibility(android.content.Context,long,boolean)","line":4,"t":"ReceiverNonNull","matcher":"void execSQL(java.lang.String,java.lang.Object[])","className":"com.ichi2.anki.MetaDB"}

@@ -1,0 +1,1 @@
+{"methodName":"void parseAttributesStyle(com.caverock.androidsvg.SVG$SvgElementBase,org.xml.sax.Attributes)","line":2927,"t":"ReceiverNonNull","matcher":"void <init>()","className":"com.caverock.androidsvg.SVGParser"}

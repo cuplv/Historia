@@ -1,0 +1,1 @@
+{"methodName":"boolean crop()","line":9,"t":"ReceiverNonNull","matcher":"int getHeight()","className":"com.yalantis.ucrop.task.BitmapCropTask"}

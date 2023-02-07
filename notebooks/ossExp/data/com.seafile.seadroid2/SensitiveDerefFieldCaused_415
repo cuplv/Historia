@@ -1,0 +1,1 @@
+{"methodName":"boolean onMenuItemClick(android.view.MenuItem)","line":529,"t":"ReceiverNonNull","matcher":"boolean getRepoPasswordSet(java.lang.String)","className":"com.seafile.seadroid2.ui.activity.BrowserActivity"}

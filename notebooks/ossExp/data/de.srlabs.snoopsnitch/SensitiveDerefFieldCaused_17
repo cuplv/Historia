@@ -1,0 +1,1 @@
+{"methodName":"void run(android.database.sqlite.SQLiteDatabase)","line":1400,"t":"ReceiverNonNull","matcher":"java.lang.String[] split(java.lang.String)","className":"de.srlabs.snoopsnitch.qdmon.MsdService$PendingSqliteStatement"}

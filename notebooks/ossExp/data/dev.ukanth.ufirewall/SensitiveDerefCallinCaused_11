@@ -1,0 +1,1 @@
+{"methodName":"void onActivityCreated(android.os.Bundle)","line":38,"t":"ReceiverNonNull","matcher":"java.lang.String getString(int)","className":"dev.ukanth.ufirewall.ui.about.AboutFragment"}

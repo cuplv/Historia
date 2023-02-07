@@ -1,0 +1,1 @@
+{"methodName":"void showParameterBar(net.osmand.plus.views.layers.MapTileLayer)","line":777,"t":"ReceiverNonNull","matcher":"void setVisibility(int)","className":"net.osmand.plus.views.layers.MapControlsLayer"}

@@ -1,0 +1,1 @@
+{"methodName":"int endCheckBlock()","line":2,"t":"ReceiverNonNull","matcher":"int endCheck()","className":"org.mozilla.javascript.Node"}

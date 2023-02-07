@@ -1,0 +1,1 @@
+{"methodName":"boolean isPlaying()","line":116,"t":"ReceiverNonNull","matcher":"com.owncloud.android.media.MediaService$State getState()","className":"com.owncloud.android.media.MediaServiceBinder"}

@@ -1,0 +1,1 @@
+{"methodName":"void onDestroy()","line":123,"t":"ReceiverNonNull","matcher":"void close()","className":"org.osmdroid.views.overlay.OverlayWithIW"}

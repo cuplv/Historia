@@ -1,0 +1,1 @@
+{"methodName":"void selectCell(com.shatteredpixel.shatteredpixeldungeon.scenes.CellSelector$Listener)","line":35,"t":"ReceiverNonNull","matcher":"void prompt(java.lang.String)","className":"com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene"}

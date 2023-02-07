@@ -1,0 +1,1 @@
+{"methodName":"void forEachRemaining(j$.util.function.Consumer)","line":-1,"t":"ReceiverNonNull","matcher":"void forEach(j$.util.function.Consumer)","className":"j$.util.stream.Nodes$InternalNodeSpliterator$OfRef"}

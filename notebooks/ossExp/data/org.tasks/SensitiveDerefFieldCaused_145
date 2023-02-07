@@ -1,0 +1,1 @@
+{"methodName":"void drawWithPath(android.graphics.Canvas,org.osmdroid.views.Projection)","line":285,"t":"ReceiverNonNull","matcher":"org.osmdroid.util.PointL buildPathPortion(org.osmdroid.views.Projection,org.osmdroid.util.PointL,boolean)","className":"org.osmdroid.views.overlay.PolyOverlayWithIW"}

@@ -1,0 +1,1 @@
+{"methodName":"boolean canAttack(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","line":19,"t":"ReceiverNonNull","matcher":"boolean adjacent(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Scorpio"}

@@ -1,0 +1,1 @@
+{"methodName":"void performFiltering(java.lang.CharSequence,int)","line":269,"t":"ReceiverNonNull","matcher":"void destroyLoader(int)","className":"com.fsck.k9.view.RecipientSelectView"}

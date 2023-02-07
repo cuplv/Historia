@@ -1,0 +1,1 @@
+{"methodName":"void measureCroutonView()","line":760,"t":"ReceiverNonNull","matcher":"android.view.Window getWindow()","className":"de.keyboardsurfer.android.widget.crouton.Crouton"}

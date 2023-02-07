@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String getAltitudeString()","line":244,"t":"ReceiverNonNull","matcher":"double getAltitude()","className":"net.osmand.plus.plugins.accessibility.NavigationInfo"}

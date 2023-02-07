@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String sendCommand(java.lang.String,boolean)","line":763,"t":"ReceiverNonNull","matcher":"void write(byte[])","className":"com.fsck.k9.mail.store.imap.RealImapConnection"}

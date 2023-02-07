@@ -1,0 +1,1 @@
+{"methodName":"void sendContinuation(java.lang.String)","line":789,"t":"ReceiverNonNull","matcher":"void write(byte[])","className":"com.fsck.k9.mail.store.imap.RealImapConnection"}

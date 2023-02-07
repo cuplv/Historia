@@ -1,0 +1,1 @@
+{"methodName":"void close()","line":6,"t":"ReceiverNonNull","matcher":"long toJni()","className":"net.ankiweb.rsdroid.BackendV1Impl"}

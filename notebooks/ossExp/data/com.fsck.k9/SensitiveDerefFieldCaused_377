@@ -1,0 +1,1 @@
+{"methodName":"void disconnect()","line":211,"t":"ReceiverNonNull","matcher":"void unbindFromService()","className":"org.openintents.openpgp.OpenPgpApiManager"}

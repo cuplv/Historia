@@ -1,0 +1,1 @@
+{"methodName":"boolean currentCardIsInQueueWithDeck(int,long)","line":3,"t":"ReceiverNonNull","matcher":"int getQueue()","className":"com.ichi2.libanki.sched.SchedV2"}

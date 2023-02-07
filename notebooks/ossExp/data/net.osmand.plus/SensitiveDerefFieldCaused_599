@@ -1,0 +1,1 @@
+{"methodName":"java.util.List prepareResults(net.osmand.router.TransportRoutingContext,java.util.List)","line":226,"t":"ReceiverNonNull","matcher":"distFromStart","className":"net.osmand.router.TransportRoutePlanner"}

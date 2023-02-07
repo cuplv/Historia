@@ -1,0 +1,1 @@
+{"methodName":"void recycleVelocityTracker()","line":502,"t":"ReceiverNonNull","matcher":"void recycle()","className":"net.osmand.plus.mapcontextmenu.MapContextMenuFragment$10"}

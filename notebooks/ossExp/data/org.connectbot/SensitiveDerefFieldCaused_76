@@ -1,0 +1,1 @@
+{"methodName":"void onPageSelected(int)","line":537,"t":"ReceiverNonNull","matcher":"java.lang.CharSequence getPageTitle(int)","className":"org.connectbot.ConsoleActivity$5"}

@@ -1,0 +1,1 @@
+{"methodName":"void runNextCommand(boolean)","line":1732,"t":"ReceiverNonNull","matcher":"boolean isSuspended()","className":"eu.chainfire.libsuperuser.Shell$Interactive"}

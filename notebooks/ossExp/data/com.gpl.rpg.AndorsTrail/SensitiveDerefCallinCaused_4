@@ -1,0 +1,1 @@
+{"methodName":"void showContextMenuForItem(com.gpl.rpg.AndorsTrail.model.item.ItemType)","line":286,"t":"ReceiverNonNull","matcher":"android.view.MenuInflater getMenuInflater()","className":"com.gpl.rpg.AndorsTrail.activity.fragment.HeroinfoActivity_Inventory"}

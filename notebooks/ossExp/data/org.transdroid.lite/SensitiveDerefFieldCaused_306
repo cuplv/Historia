@@ -1,0 +1,1 @@
+{"methodName":"void refreshTorrents()","line":6,"t":"ReceiverNonNull","matcher":"org.transdroid.daemon.DaemonSettings getSettings()","className":"org.transdroid.core.gui.TorrentsActivity"}

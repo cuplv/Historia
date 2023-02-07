@@ -1,0 +1,1 @@
+{"methodName":"void addPoiAdditional(net.osmand.osm.PoiType)","line":103,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"net.osmand.osm.AbstractPoiType"}

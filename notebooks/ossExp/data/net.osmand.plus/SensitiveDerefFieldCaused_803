@@ -1,0 +1,1 @@
+{"methodName":"void loadMap(net.osmand.data.RotatedTileBox,net.osmand.map.MapTileDownloader)","line":761,"t":"ReceiverNonNull","matcher":"void setDensityValue(float)","className":"net.osmand.plus.render.MapRenderRepositories"}

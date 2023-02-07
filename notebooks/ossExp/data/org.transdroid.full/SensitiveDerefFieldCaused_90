@@ -1,0 +1,1 @@
+{"methodName":"java.lang.Object getSqlArgValue()","line":10,"t":"ReceiverNonNull","matcher":"java.lang.Object convertJavaFieldToSqlArgValue(java.lang.Object)","className":"com.j256.ormlite.stmt.SelectArg"}

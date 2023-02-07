@@ -1,0 +1,1 @@
+{"methodName":"void draw()","line":145,"t":"ReceiverNonNull","matcher":"void updateViewLayout(android.view.View,android.view.ViewGroup$LayoutParams)","className":"org.osmdroid.views.overlay.infowindow.InfoWindow"}

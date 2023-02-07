@@ -1,0 +1,1 @@
+{"methodName":"void S1(android.widget.LinearLayout,boolean)","line":30,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"de.blau.android.propertyeditor.TagEditorFragment"}

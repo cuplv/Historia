@@ -1,0 +1,1 @@
+{"methodName":"void observe(int)","line":56,"t":"ReceiverNonNull","matcher":"int width()","className":"com.shatteredpixel.shatteredpixeldungeon.Dungeon"}

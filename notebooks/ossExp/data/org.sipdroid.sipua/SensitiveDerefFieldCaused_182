@@ -1,0 +1,1 @@
+{"methodName":"boolean StartEngine()","line":144,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"org.sipdroid.sipua.SipdroidEngine"}

@@ -1,0 +1,1 @@
+{"methodName":"boolean isArchiveFolder()","line":1371,"t":"ReceiverNonNull","matcher":"java.lang.Long getArchiveFolderId()","className":"com.fsck.k9.ui.messagelist.MessageListFragment"}

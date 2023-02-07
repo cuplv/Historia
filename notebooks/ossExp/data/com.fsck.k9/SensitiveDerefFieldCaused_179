@@ -1,0 +1,1 @@
+{"methodName":"void performFormBasedAuthentication(com.fsck.k9.mail.store.webdav.ConnectionInfo)","line":561,"t":"ReceiverNonNull","matcher":"void clear()","className":"com.fsck.k9.mail.store.webdav.WebDavStore"}

@@ -1,0 +1,1 @@
+{"methodName":"void updatePushFolders(java.util.List)","line":92,"t":"ReceiverNonNull","matcher":"void updateFolders(java.util.Collection)","className":"com.fsck.k9.controller.push.AccountPushController"}

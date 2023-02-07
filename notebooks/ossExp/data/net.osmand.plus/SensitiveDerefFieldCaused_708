@@ -1,0 +1,1 @@
+{"methodName":"net.osmand.plus.views.layers.PointLocationLayer$CoreMapMarker recreateMarker(android.graphics.drawable.Drawable,int,int,boolean)","line":248,"t":"ReceiverNonNull","matcher":"void <init>()","className":"net.osmand.plus.views.layers.PointLocationLayer"}

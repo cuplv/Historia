@@ -1,0 +1,1 @@
+{"methodName":"void run()","line":169,"t":"ReceiverNonNull","matcher":"void onStreamClosed()","className":"eu.chainfire.libsuperuser.StreamGobbler"}

@@ -1,0 +1,1 @@
+{"methodName":"void activate(int)","line":13,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.items.Heap drop(com.shatteredpixel.shatteredpixeldungeon.items.Item,int)","className":"com.shatteredpixel.shatteredpixeldungeon.items.stones.StoneOfBlink"}

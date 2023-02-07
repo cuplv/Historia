@@ -1,0 +1,1 @@
+{"methodName":"void <init>(com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag,com.shatteredpixel.shatteredpixeldungeon.windows.WndBag$ItemSelector)","line":4,"t":"ReceiverNonNull","matcher":"void hide()","className":"com.shatteredpixel.shatteredpixeldungeon.windows.WndBag"}

@@ -1,0 +1,1 @@
+{"methodName":"boolean dispatchTouchEvent(android.view.MotionEvent)","line":217,"t":"ReceiverNonNull","matcher":"void recycle()","className":"com.byagowi.persiancalendar.ui.astronomy.SolarView"}

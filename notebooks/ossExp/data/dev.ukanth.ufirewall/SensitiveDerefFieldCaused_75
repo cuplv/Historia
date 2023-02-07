@@ -1,0 +1,1 @@
+{"methodName":"void closeImmediately(boolean)","line":2206,"t":"ReceiverNonNull","matcher":"void destroy()","className":"eu.chainfire.libsuperuser.Shell$Interactive"}

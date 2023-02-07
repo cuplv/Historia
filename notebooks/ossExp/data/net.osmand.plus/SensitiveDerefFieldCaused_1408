@@ -1,0 +1,1 @@
+{"methodName":"com.vividsolutions.jts.geom.Envelope computeEnvelopeInternal()","line":310,"t":"ReceiverNonNull","matcher":"com.vividsolutions.jts.geom.Envelope getEnvelopeInternal()","className":"com.vividsolutions.jts.geom.Polygon"}

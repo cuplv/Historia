@@ -1,0 +1,1 @@
+{"methodName":"void onCreate(android.os.Bundle)","line":33,"t":"ReceiverNonNull","matcher":"void setWebViewClient(android.webkit.WebViewClient)","className":"de.blau.android.util.DownloadActivity"}

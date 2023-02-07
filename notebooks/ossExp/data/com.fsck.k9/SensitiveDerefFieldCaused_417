@@ -1,0 +1,1 @@
+{"methodName":"java.util.List executeSimpleCommand(java.lang.String)","line":84,"t":"ReceiverNonNull","matcher":"java.util.List executeSimpleCommand(java.lang.String)","className":"com.fsck.k9.mail.store.imap.RealImapFolder"}

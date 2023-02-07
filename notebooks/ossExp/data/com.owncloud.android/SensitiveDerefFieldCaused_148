@@ -1,0 +1,1 @@
+{"methodName":"android.graphics.Picture renderToPicture(com.caverock.androidsvg.RenderOptions)","line":381,"t":"ReceiverNonNull","matcher":"float maxX()","className":"com.caverock.androidsvg.SVG"}

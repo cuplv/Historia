@@ -1,0 +1,1 @@
+{"methodName":"void onDismiss(android.content.DialogInterface)","line":207,"t":"ReceiverNonNull","matcher":"boolean isChangingConfigurations()","className":"net.osmand.plus.settings.bottomsheets.HazmatCategoryBottomSheet"}

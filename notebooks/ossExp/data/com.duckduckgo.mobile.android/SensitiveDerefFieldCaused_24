@@ -1,0 +1,1 @@
+{"methodName":"void onTrackerListDisplayed(com.duckduckgo.mobile.android.vpn.ui.tracker_activity.DeviceShieldActivityFeedViewModel$Command$TrackerListDisplayed)","line":173,"t":"ReceiverNonNull","matcher":"void onTrackerListShowed(int)","className":"com.duckduckgo.mobile.android.vpn.ui.tracker_activity.DeviceShieldActivityFeedFragment"}

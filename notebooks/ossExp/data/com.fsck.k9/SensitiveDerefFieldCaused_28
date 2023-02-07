@@ -1,0 +1,1 @@
+{"methodName":"void expungeUids(java.util.List)","line":1081,"t":"ReceiverNonNull","matcher":"java.util.List executeCommandWithIdSet(java.lang.String,java.lang.String,java.util.Set)","className":"com.fsck.k9.mail.store.imap.RealImapFolder"}

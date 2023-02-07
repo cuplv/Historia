@@ -1,0 +1,1 @@
+{"methodName":"void returnDirectoryFinishActivity()","line":254,"t":"ReceiverNonNull","matcher":"java.lang.String getAbsolutePath()","className":"org.navitproject.navit.FileBrowserActivity"}

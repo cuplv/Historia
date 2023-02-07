@@ -1,0 +1,1 @@
+{"methodName":"com.github.rjeschke.txtmark.LineType getLineType(boolean)","line":19,"t":"ReceiverNonNull","matcher":"char charAt(int)","className":"com.github.rjeschke.txtmark.Line"}

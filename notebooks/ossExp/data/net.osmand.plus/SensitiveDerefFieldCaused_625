@@ -1,0 +1,1 @@
+{"methodName":"void cancelMovableObject()","line":477,"t":"ReceiverNonNull","matcher":"int getY()","className":"net.osmand.plus.views.layers.base.OsmandMapLayer"}

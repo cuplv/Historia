@@ -1,0 +1,1 @@
+{"methodName":"void arc(com.shatteredpixel.shatteredpixeldungeon.actors.Char,com.shatteredpixel.shatteredpixeldungeon.actors.Char,int,java.util.ArrayList,java.util.ArrayList)","line":26,"t":"ReceiverNonNull","matcher":"solid","className":"com.shatteredpixel.shatteredpixeldungeon.items.weapon.enchantments.Shocking"}

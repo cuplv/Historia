@@ -1,0 +1,1 @@
+{"methodName":"void toggleFolded()","line":3,"t":"ReceiverNonNull","matcher":"void setVisibility(int)","className":"org.sufficientlysecure.keychain.ui.widget.FoldableLinearLayout"}

@@ -1,0 +1,1 @@
+{"methodName":"void setVideoSurfaceInternal(android.view.Surface,boolean)","line":705,"t":"ReceiverNonNull","matcher":"void release()","className":"tv.danmaku.ijk.media.exo2.demo.player.SimpleExoPlayer2"}

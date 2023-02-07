@@ -1,0 +1,1 @@
+{"methodName":"void finishAsSuppressed()","line":2,"t":"ReceiverNonNull","matcher":"void setResult(int)","className":"org.sufficientlysecure.keychain.remote.ui.RemoteSecurityProblemDialogActivity$RemoteRegisterDialogFragment$1"}

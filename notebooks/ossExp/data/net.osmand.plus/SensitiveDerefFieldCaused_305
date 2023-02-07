@@ -1,0 +1,1 @@
+{"methodName":"void showParameterBar(net.osmand.plus.views.layers.MapTileLayer)","line":779,"t":"ReceiverNonNull","matcher":"void setValueTo(float)","className":"net.osmand.plus.views.layers.MapControlsLayer"}

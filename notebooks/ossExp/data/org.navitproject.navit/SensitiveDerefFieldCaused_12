@@ -1,0 +1,1 @@
+{"methodName":"void handleMessage(android.os.Message)","line":90,"t":"ReceiverNonNull","matcher":"void setProgress(int)","className":"org.navitproject.navit.NavitDialogs"}

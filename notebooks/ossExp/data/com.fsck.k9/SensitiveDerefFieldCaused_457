@@ -1,0 +1,1 @@
+{"methodName":"boolean shouldShowExpungeAction()","line":1399,"t":"ReceiverNonNull","matcher":"com.fsck.k9.Account$Expunge getExpungePolicy()","className":"com.fsck.k9.ui.messagelist.MessageListFragment"}

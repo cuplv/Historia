@@ -1,0 +1,1 @@
+{"methodName":"void remove()","line":771,"t":"ReceiverNonNull","matcher":"gnu.trove.list.TLinkable getNext()","className":"gnu.trove.list.linked.TLinkedList$IteratorImpl"}

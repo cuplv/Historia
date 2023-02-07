@@ -1,0 +1,1 @@
+{"methodName":"void updateChart(com.github.mikephil.charting.charts.LineChart)","line":786,"t":"ReceiverNonNull","matcher":"void <init>(android.graphics.Matrix)","className":"net.osmand.plus.myplaces.ui.GPXItemPagerAdapter"}

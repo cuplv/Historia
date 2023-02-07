@@ -1,0 +1,1 @@
+{"methodName":"java.util.List searchMapIndex(net.osmand.binary.BinaryMapIndexReader$SearchRequest,net.osmand.binary.BinaryMapIndexReader$MapIndex)","line":902,"t":"ReceiverNonNull","matcher":"int pushLimit(int)","className":"net.osmand.binary.BinaryMapIndexReader"}

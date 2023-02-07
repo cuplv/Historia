@@ -1,0 +1,1 @@
+{"methodName":"void showTransparencyBar(net.osmand.plus.settings.backend.preferences.CommonPreference)","line":743,"t":"ReceiverNonNull","matcher":"void setVisibility(int)","className":"net.osmand.plus.views.layers.MapControlsLayer"}

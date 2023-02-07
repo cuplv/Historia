@@ -1,0 +1,1 @@
+{"methodName":"com.theartofdev.edmodo.cropper.BitmapCroppingWorkerTask$Result doInBackground(java.lang.Void[])","line":221,"t":"ReceiverNonNull","matcher":"void recycle()","className":"com.theartofdev.edmodo.cropper.BitmapCroppingWorkerTask"}

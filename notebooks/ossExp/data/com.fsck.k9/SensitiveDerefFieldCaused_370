@@ -1,0 +1,1 @@
+{"methodName":"void end()","line":123,"t":"ReceiverNonNull","matcher":"void free()","className":"com.jcraft.jzlib.ZOutputStream"}

@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String getWarningDetails(android.content.Context)","line":3,"t":"ReceiverNonNull","matcher":"long longValue()","className":"com.ichi2.anki.CollectionHelper$CollectionIntegrityStorageCheck"}

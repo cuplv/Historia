@@ -1,0 +1,1 @@
+{"methodName":"void writeJournal()","line":318,"t":"ReceiverNonNull","matcher":"void close()","className":"coil.disk.DiskLruCache"}

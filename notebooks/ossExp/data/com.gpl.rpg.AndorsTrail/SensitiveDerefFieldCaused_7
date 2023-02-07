@@ -1,0 +1,1 @@
+{"methodName":"void onPlayerEnteredNewMap(com.gpl.rpg.AndorsTrail.model.map.PredefinedMap,com.gpl.rpg.AndorsTrail.util.Coord)","line":547,"t":"ReceiverNonNull","matcher":"boolean setColorFilter(android.graphics.Paint,android.graphics.Paint,boolean)","className":"com.gpl.rpg.AndorsTrail.view.MainView"}

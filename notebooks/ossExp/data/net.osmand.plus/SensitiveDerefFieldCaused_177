@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String getSpeedString()","line":216,"t":"ReceiverNonNull","matcher":"boolean hasSpeed()","className":"net.osmand.plus.plugins.accessibility.NavigationInfo"}

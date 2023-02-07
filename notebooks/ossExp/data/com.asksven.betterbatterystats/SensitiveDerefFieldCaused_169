@@ -1,0 +1,1 @@
+{"methodName":"java.lang.Long getScreenBrightnessTime(int,long,int)","line":1368,"t":"ReceiverNonNull","matcher":"java.lang.reflect.Method getMethod(java.lang.String,java.lang.Class[])","className":"com.asksven.android.common.privateapiproxies.BatteryStatsProxy"}

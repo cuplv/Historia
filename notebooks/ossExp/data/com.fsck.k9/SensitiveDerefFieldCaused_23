@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String readLine()","line":373,"t":"ReceiverNonNull","matcher":"int read()","className":"com.fsck.k9.mail.store.pop3.Pop3Connection"}

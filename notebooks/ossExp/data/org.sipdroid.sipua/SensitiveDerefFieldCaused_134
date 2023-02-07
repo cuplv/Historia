@@ -1,0 +1,1 @@
+{"methodName":"org.zoolu.sip.address.SipURL completeSipURL(java.lang.String)","line":1341,"t":"ReceiverNonNull","matcher":"org.zoolu.net.IpAddress getAddress()","className":"org.zoolu.sip.provider.SipProvider"}

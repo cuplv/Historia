@@ -1,0 +1,1 @@
+{"methodName":"void addListeners()","line":550,"t":"ReceiverNonNull","matcher":"void setNotifications(boolean)","className":"jwtc.android.chess.ics.ICSClient"}

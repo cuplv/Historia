@@ -1,0 +1,1 @@
+{"methodName":"boolean actOpenChest(com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroAction$OpenChest)","line":9,"t":"ReceiverNonNull","matcher":"boolean adjacent(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero"}

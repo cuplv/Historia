@@ -1,0 +1,1 @@
+{"methodName":"void initialize(com.google.api.client.http.HttpRequest)","line":53,"t":"ReceiverNonNull","matcher":"boolean hasRequestMetadata()","className":"com.todoroo.astrid.gtasks.api.HttpCredentialsAdapter"}

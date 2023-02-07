@@ -1,0 +1,1 @@
+{"methodName":"void maybeHideFloatingActionButton()","line":304,"t":"ReceiverNonNull","matcher":"void setVisibility(int)","className":"com.fsck.k9.ui.messagelist.MessageListFragment"}

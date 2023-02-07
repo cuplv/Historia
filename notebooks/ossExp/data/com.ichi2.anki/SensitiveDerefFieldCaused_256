@@ -1,0 +1,1 @@
+{"methodName":"void playSoundInternal(java.lang.String,android.media.MediaPlayer$OnCompletionListener,android.widget.VideoView,com.ichi2.libanki.Sound$OnErrorListener)","line":25,"t":"ReceiverNonNull","matcher":"void setAudioStreamType(int)","className":"com.ichi2.libanki.Sound"}

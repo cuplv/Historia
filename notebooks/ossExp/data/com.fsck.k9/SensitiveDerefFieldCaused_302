@@ -1,0 +1,1 @@
+{"methodName":"boolean onContextItemSelected(android.view.MenuItem)","line":112,"t":"ReceiverNonNull","matcher":"int size()","className":"com.fsck.k9.activity.ManageIdentities"}

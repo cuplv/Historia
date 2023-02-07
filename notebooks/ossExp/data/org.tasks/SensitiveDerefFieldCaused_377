@@ -1,0 +1,1 @@
+{"methodName":"void onDetach(org.osmdroid.views.MapView)","line":169,"t":"ReceiverNonNull","matcher":"void destroy()","className":"org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay"}

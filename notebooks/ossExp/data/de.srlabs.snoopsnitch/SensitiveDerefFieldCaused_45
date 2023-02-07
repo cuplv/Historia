@@ -1,0 +1,1 @@
+{"methodName":"boolean operatorUnknown()","line":188,"t":"ReceiverNonNull","matcher":"boolean isValid()","className":"de.srlabs.snoopsnitch.analysis.Risk"}

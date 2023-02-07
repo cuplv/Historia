@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String getPoiTranslation(java.lang.String)","line":843,"t":"ReceiverNonNull","matcher":"java.lang.String getTranslation(java.lang.String)","className":"net.osmand.osm.MapPoiTypes"}

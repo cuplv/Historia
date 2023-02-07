@@ -1,0 +1,1 @@
+{"methodName":"net.osmand.plus.download.DownloadResourceGroup getGroupByIndex(int)","line":267,"t":"ReceiverNonNull","matcher":"int size()","className":"net.osmand.plus.download.DownloadResourceGroup"}

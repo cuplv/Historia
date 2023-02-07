@@ -1,0 +1,1 @@
+{"methodName":"void drawPathLine(net.osmand.data.RotatedTileBox,java.util.List)","line":665,"t":"ReceiverNonNull","matcher":"void <init>()","className":"net.osmand.plus.views.layers.geometry.GeometryWay"}

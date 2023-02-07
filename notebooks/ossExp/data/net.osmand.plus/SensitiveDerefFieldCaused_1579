@@ -1,0 +1,1 @@
+{"methodName":"void onStopTask()","line":568,"t":"ReceiverNonNull","matcher":"boolean cancel(boolean)","className":"net.osmand.plus.settings.datastorage.DataStorageFragment"}

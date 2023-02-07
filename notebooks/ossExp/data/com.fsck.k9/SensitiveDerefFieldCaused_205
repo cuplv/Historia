@@ -1,0 +1,1 @@
+{"methodName":"void addMessageListFragment(com.fsck.k9.ui.messagelist.MessageListFragment)","line":1017,"t":"ReceiverNonNull","matcher":"void setActive(boolean)","className":"com.fsck.k9.activity.MessageList"}

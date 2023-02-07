@@ -1,0 +1,1 @@
+{"methodName":"void registerOnViewChangedListener(org.androidannotations.api.view.OnViewChangedListener)","line":2,"t":"ReceiverNonNull","matcher":"listeners","className":"org.androidannotations.api.view.OnViewChangedNotifier"}

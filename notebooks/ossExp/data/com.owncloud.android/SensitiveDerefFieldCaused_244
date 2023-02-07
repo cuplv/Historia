@@ -1,0 +1,1 @@
+{"methodName":"com.owncloud.android.lib.common.operations.RemoteOperationResult run(com.owncloud.android.lib.common.OwnCloudClient)","line":75,"t":"ReceiverNonNull","matcher":"name","className":"com.owncloud.android.lib.resources.files.ReadRemoteFileOperation"}

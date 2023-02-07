@@ -1,0 +1,1 @@
+{"methodName":"void onLocationChanged(android.location.Location,org.osmdroid.views.overlay.mylocation.IMyLocationProvider)","line":427,"t":"ReceiverNonNull","matcher":"boolean postAtTime(java.lang.Runnable,java.lang.Object,long)","className":"org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay"}

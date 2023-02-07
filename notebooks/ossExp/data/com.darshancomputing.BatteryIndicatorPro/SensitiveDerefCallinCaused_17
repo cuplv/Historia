@@ -1,0 +1,1 @@
+{"methodName":"void updateResources()","line":159,"t":"ReceiverNonNull","matcher":"android.content.res.Resources getResources()","className":"com.darshancomputing.BatteryIndicatorPro.PersistentFragment"}

@@ -1,0 +1,1 @@
+{"methodName":"android.graphics.Rect calculateFramingRect(android.graphics.Rect,android.graphics.Rect)","line":4,"t":"ReceiverNonNull","matcher":"width","className":"com.journeyapps.barcodescanner.CameraPreview"}

@@ -1,0 +1,1 @@
+{"methodName":"void toggleFolded()","line":5,"t":"ReceiverNonNull","matcher":"int intValue()","className":"org.sufficientlysecure.keychain.ui.widget.FoldableLinearLayout"}

@@ -1,0 +1,1 @@
+{"methodName":"void onZap(com.shatteredpixel.shatteredpixeldungeon.mechanics.Ballistica)","line":55,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff buff(java.lang.Class)","className":"com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfLivingEarth"}

@@ -1,0 +1,1 @@
+{"methodName":"void <init>(net.osmand.plus.mapcontextmenu.MenuBuilder,net.osmand.plus.activities.MapActivity,net.osmand.data.PointDescription,net.osmand.GPXUtilities$WptPt)","line":53,"t":"ReceiverNonNull","matcher":"history","className":"net.osmand.plus.mapcontextmenu.controllers.WptPtMenuController"}

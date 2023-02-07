@@ -1,0 +1,1 @@
+{"methodName":"void onServiceConnected(android.content.ComponentName,android.os.IBinder)","line":104,"t":"ReceiverNonNull","matcher":"void updateDashboardCallback(de.srlabs.patchanalysis_module.ITestExecutorDashboardCallbacks)","className":"de.srlabs.snoopsnitch.DashboardActivity$1"}

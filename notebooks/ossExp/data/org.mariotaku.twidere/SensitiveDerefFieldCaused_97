@@ -1,0 +1,1 @@
+{"methodName":"void deliverResult(java.util.List)","line":94,"t":"ReceiverNonNull","matcher":"boolean isClosed()","className":"org.mariotaku.twidere.loader.ObjectCursorLoader"}

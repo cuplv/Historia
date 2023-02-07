@@ -1,0 +1,1 @@
+{"methodName":"void enterAddGpxPointMode(net.osmand.plus.views.AddGpxPointBottomSheetHelper$NewGpxPoint)","line":606,"t":"ReceiverNonNull","matcher":"void updateMapCenter(net.osmand.data.LatLon)","className":"net.osmand.plus.views.layers.ContextMenuLayer"}

@@ -1,0 +1,1 @@
+{"methodName":"void measureFloatView()","line":2116,"t":"ReceiverNonNull","matcher":"int getMeasuredHeight()","className":"com.mobeta.android.dslv.DragSortListView"}

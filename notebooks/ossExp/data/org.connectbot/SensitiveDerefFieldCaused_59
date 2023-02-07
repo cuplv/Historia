@@ -1,0 +1,1 @@
+{"methodName":"void onCreate(android.os.Bundle)","line":610,"t":"ReceiverNonNull","matcher":"void setLayoutParams(android.view.ViewGroup$LayoutParams)","className":"org.connectbot.ConsoleActivity"}

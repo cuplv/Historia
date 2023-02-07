@@ -1,0 +1,1 @@
+{"methodName":"void onScrolled(androidx.recyclerview.widget.RecyclerView,int)","line":32,"t":"ReceiverNonNull","matcher":"void onChatLinesScrolled(int,boolean,boolean)","className":"com.ubergeek42.WeechatAndroid.fragments.BufferFragment$onCreateView$3$1"}

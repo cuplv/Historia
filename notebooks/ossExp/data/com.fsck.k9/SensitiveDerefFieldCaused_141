@@ -1,0 +1,1 @@
+{"methodName":"boolean isOpen()","line":204,"t":"ReceiverNonNull","matcher":"boolean isClosed()","className":"com.fsck.k9.mail.store.pop3.Pop3Connection"}

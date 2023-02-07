@@ -1,0 +1,1 @@
+{"methodName":"java.util.List getApps(android.content.Context,dev.ukanth.ufirewall.MainActivity$GetAppList)","line":1650,"t":"ReceiverNonNull","matcher":"java.lang.Object put(java.lang.Object,java.lang.Object)","className":"dev.ukanth.ufirewall.Api"}

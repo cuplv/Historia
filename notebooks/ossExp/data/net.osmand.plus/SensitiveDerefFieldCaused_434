@@ -1,0 +1,1 @@
+{"methodName":"void lambda$notifyShowProgress$4$net-osmand-plus-inapp-InAppPurchaseHelper(net.osmand.plus.inapp.InAppPurchaseHelper$InAppPurchaseTaskType)","line":1044,"t":"ReceiverNonNull","matcher":"void showProgress(net.osmand.plus.inapp.InAppPurchaseHelper$InAppPurchaseTaskType)","className":"net.osmand.plus.inapp.InAppPurchaseHelper"}

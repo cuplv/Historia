@@ -1,0 +1,1 @@
+{"methodName":"boolean onCreateActionMode(android.view.ActionMode,android.view.Menu)","line":2,"t":"ReceiverNonNull","matcher":"void setVisibility(int)","className":"org.transdroid.core.gui.DetailsFragment$1"}

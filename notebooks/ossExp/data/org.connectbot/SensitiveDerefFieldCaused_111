@@ -1,0 +1,1 @@
+{"methodName":"java.lang.Object instantiateItem(android.view.ViewGroup,int)","line":1287,"t":"ReceiverNonNull","matcher":"android.view.View inflate(int,android.view.ViewGroup,boolean)","className":"org.connectbot.ConsoleActivity$TerminalPagerAdapter"}

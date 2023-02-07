@@ -1,0 +1,1 @@
+{"methodName":"byte[] getEncoded()","line":-1,"t":"ReceiverNonNull","matcher":"java.math.BigInteger getOrder()","className":"org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPrivateKey"}

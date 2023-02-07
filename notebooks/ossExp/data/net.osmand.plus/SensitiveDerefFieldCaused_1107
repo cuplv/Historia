@@ -1,0 +1,1 @@
+{"methodName":"void hideActionButton()","line":483,"t":"ReceiverNonNull","matcher":"void setVisibility(int)","className":"net.osmand.plus.dashboard.DashboardOnMap"}

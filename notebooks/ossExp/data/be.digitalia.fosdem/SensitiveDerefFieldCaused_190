@@ -1,0 +1,1 @@
+{"methodName":"void onItemClick(android.widget.AdapterView,android.view.View,int,long)","line":95,"t":"ReceiverNonNull","matcher":"long getSelectedItemId()","className":"p1.a"}

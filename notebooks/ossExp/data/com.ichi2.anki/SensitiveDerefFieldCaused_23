@@ -1,0 +1,1 @@
+{"methodName":"void storeLanguage(android.content.Context,long,int,com.ichi2.libanki.Sound$SoundSide,java.lang.String)","line":9,"t":"ReceiverNonNull","matcher":"void execSQL(java.lang.String,java.lang.Object[])","className":"com.ichi2.anki.MetaDB"}

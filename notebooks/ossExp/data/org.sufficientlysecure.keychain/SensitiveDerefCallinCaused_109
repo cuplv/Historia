@@ -1,0 +1,1 @@
+{"methodName":"void finishWithResult(org.sufficientlysecure.keychain.operations.results.OperationResult)","line":5,"t":"ReceiverNonNull","matcher":"void setResult(int,android.content.Intent)","className":"org.sufficientlysecure.keychain.ui.CreateKeyFinalFragment"}

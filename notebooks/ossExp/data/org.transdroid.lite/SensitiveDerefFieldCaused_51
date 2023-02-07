@@ -1,0 +1,1 @@
+{"methodName":"void filterSelected(org.transdroid.core.gui.lists.SimpleListItem,boolean)","line":4,"t":"ReceiverNonNull","matcher":"org.transdroid.daemon.DaemonSettings getSettings()","className":"org.transdroid.core.gui.TorrentsActivity"}

@@ -1,0 +1,1 @@
+{"methodName":"void onActivityResult(int,int,android.content.Intent)","line":1368,"t":"ReceiverNonNull","matcher":"com.seafile.seadroid2.data.SeafRepo getCachedRepoByID(java.lang.String)","className":"com.seafile.seadroid2.ui.activity.BrowserActivity"}

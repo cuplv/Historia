@@ -1,0 +1,1 @@
+{"methodName":"void discard(com.shatteredpixel.shatteredpixeldungeon.items.Heap)","line":7,"t":"ReceiverNonNull","matcher":"void addDiscardedSprite(com.shatteredpixel.shatteredpixeldungeon.items.Heap)","className":"com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene"}

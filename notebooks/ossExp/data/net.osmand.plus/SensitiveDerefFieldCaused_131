@@ -1,0 +1,1 @@
+{"methodName":"void updateLocation(boolean,boolean,boolean)","line":67,"t":"ReceiverNonNull","matcher":"boolean isMapLinkedToLocation()","className":"net.osmand.plus.dashboard.DashLocationFragment"}

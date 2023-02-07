@@ -1,0 +1,1 @@
+{"methodName":"com.vladsch.flexmark.internal.InlineParserImpl$ReferenceProcessorMatch matchLinkRef(com.vladsch.flexmark.internal.Bracket,int,int,int)","line":1138,"t":"ReceiverNonNull","matcher":"java.lang.Object get(int)","className":"com.vladsch.flexmark.internal.InlineParserImpl"}

@@ -1,0 +1,1 @@
+{"methodName":"boolean hasAttributes()","line":1066,"t":"ReceiverNonNull","matcher":"boolean isEmpty()","className":"org.jdom2.Element"}

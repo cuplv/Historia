@@ -1,0 +1,1 @@
+{"methodName":"boolean onMenuItemClick(android.view.MenuItem)","line":881,"t":"ReceiverNonNull","matcher":"org.connectbot.TerminalView getCurrentTerminalView()","className":"org.connectbot.ConsoleActivity$17"}

@@ -1,0 +1,1 @@
+{"methodName":"java.io.InputStream getResourceAsStream(java.lang.String)","line":1,"t":"ReceiverNonNull","matcher":"android.content.Context getApplicationContext()","className":"com.ichi2.anki.AnkiDroidApp"}

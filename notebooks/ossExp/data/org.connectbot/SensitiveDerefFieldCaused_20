@@ -1,0 +1,1 @@
+{"methodName":"void onServiceConnected(android.content.ComponentName,android.os.IBinder)","line":185,"t":"ReceiverNonNull","matcher":"boolean post(java.lang.Runnable)","className":"org.connectbot.ConsoleActivity$1"}

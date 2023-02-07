@@ -1,0 +1,1 @@
+{"methodName":"void updateServers(java.util.List)","line":11,"t":"ReceiverNonNull","matcher":"void notifyDataSetChanged()","className":"org.transdroid.core.gui.navigation.FilterListAdapter"}

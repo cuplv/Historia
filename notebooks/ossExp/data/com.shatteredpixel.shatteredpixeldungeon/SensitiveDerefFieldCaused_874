@@ -1,0 +1,1 @@
+{"methodName":"java.util.ArrayList getObjectsAtCell(int)","line":72,"t":"ReceiverNonNull","matcher":"traps","className":"com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene"}

@@ -1,0 +1,1 @@
+{"methodName":"void releaseVelocityTracker()","line":999,"t":"ReceiverNonNull","matcher":"void recycle()","className":"app.k9mail.ui.utils.itemtouchhelper.ItemTouchHelper"}

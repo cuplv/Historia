@@ -1,0 +1,1 @@
+{"methodName":"void run()","line":139,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"eu.chainfire.libsuperuser.StreamGobbler"}

@@ -1,0 +1,1 @@
+{"methodName":"void setWatching(java.io.File)","line":5,"t":"ReceiverNonNull","matcher":"java.lang.String getFileName()","className":"nl.mpcjanssen.simpletask.remote.FileStore"}

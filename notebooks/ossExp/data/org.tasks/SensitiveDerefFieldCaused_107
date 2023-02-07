@@ -1,0 +1,1 @@
+{"methodName":"void setTintList(android.content.res.ColorStateList)","line":186,"t":"ReceiverNonNull","matcher":"void setTintList(android.content.res.ColorStateList)","className":"coil.drawable.CrossfadeDrawable"}

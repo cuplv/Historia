@@ -1,0 +1,1 @@
+{"methodName":"void setTileBackgroundColor(int)","line":5,"t":"ReceiverNonNull","matcher":"void setColor(int)","className":"com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView"}

@@ -1,0 +1,1 @@
+{"methodName":"void populateAppList()","line":119,"t":"ReceiverNonNull","matcher":"android.content.pm.PackageManager getPackageManager()","className":"com.fsck.k9.ui.settings.account.OpenPgpAppSelectDialog$OpenPgpAppSelectFragment"}

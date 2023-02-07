@@ -1,0 +1,1 @@
+{"methodName":"void restoreCompassButton()","line":165,"t":"ReceiverNonNull","matcher":"void moveToDefaultPosition()","className":"net.osmand.plus.views.layers.MapControlsLayer"}

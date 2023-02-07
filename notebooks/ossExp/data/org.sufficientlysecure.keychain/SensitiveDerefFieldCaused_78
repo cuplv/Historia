@@ -1,0 +1,1 @@
+{"methodName":"void removeListIndent(boolean)","line":6,"t":"ReceiverNonNull","matcher":"java.lang.String substring(int)","className":"com.github.rjeschke.txtmark.Block"}

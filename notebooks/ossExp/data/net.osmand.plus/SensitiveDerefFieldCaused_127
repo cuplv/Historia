@@ -1,0 +1,1 @@
+{"methodName":"void readIndexedStringTable(net.osmand.Collator,java.util.List,java.lang.String,java.util.List,gnu.trove.list.array.TIntArrayList)","line":2460,"t":"ReceiverNonNull","matcher":"int readRawVarint32()","className":"net.osmand.binary.BinaryMapIndexReader"}

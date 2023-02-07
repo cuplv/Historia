@@ -1,0 +1,1 @@
+{"methodName":"void onPostExecute(java.util.List)","line":266,"t":"ReceiverNonNull","matcher":"int getCode()","className":"com.seafile.seadroid2.ui.activity.GalleryActivity$LoadPhotosTask"}

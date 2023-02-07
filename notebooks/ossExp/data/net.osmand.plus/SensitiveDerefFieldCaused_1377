@@ -1,0 +1,1 @@
+{"methodName":"int getGroupCount()","line":1005,"t":"ReceiverNonNull","matcher":"int size()","className":"net.osmand.plus.download.ui.LocalIndexesFragment$LocalIndexesAdapter"}

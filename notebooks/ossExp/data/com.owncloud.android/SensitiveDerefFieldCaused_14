@@ -1,0 +1,1 @@
+{"methodName":"void updateParentBoundingBox(com.caverock.androidsvg.SVG$SvgElement)","line":696,"t":"ReceiverNonNull","matcher":"float maxX()","className":"com.caverock.androidsvg.SVGAndroidRenderer"}

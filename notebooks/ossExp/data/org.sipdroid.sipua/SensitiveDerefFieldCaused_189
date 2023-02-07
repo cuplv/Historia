@@ -1,0 +1,1 @@
+{"methodName":"void addQueryListener(int,org.sipdroid.sipua.phone.CallerInfoAsyncQuery$OnQueryCompleteListener,java.lang.Object)","line":320,"t":"ReceiverNonNull","matcher":"void startQuery(int,java.lang.Object,android.net.Uri,java.lang.String[],java.lang.String,java.lang.String[],java.lang.String)","className":"org.sipdroid.sipua.phone.CallerInfoAsyncQuery"}

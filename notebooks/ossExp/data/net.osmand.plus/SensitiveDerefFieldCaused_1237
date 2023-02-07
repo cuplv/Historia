@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String getClipboardText()","line":992,"t":"ReceiverNonNull","matcher":"android.content.ClipData getPrimaryClip()","className":"org.qtproject.qt5.android.QtNative"}

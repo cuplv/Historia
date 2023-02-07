@@ -1,0 +1,1 @@
+{"methodName":"void parseHtmlChunk(java.lang.CharSequence,boolean,boolean,boolean)","line":267,"t":"ReceiverNonNull","matcher":"close","className":"com.vladsch.flexmark.internal.HtmlDeepParser"}

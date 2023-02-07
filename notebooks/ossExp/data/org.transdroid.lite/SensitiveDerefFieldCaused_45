@@ -1,0 +1,1 @@
+{"methodName":"com.j256.ormlite.field.DatabaseFieldConfig fromField(com.j256.ormlite.db.DatabaseType,java.lang.String,java.lang.reflect.Field)","line":52,"t":"ReceiverNonNull","matcher":"com.j256.ormlite.field.DatabaseFieldConfig createFieldConfig(com.j256.ormlite.db.DatabaseType,java.lang.reflect.Field)","className":"com.j256.ormlite.field.DatabaseFieldConfig"}

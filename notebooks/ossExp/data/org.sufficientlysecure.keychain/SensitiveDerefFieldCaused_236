@@ -1,0 +1,1 @@
+{"methodName":"void addView(android.view.View)","line":2,"t":"ReceiverNonNull","matcher":"void addView(android.view.View)","className":"org.sufficientlysecure.keychain.ui.widget.FoldableLinearLayout"}

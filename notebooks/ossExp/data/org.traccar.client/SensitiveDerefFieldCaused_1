@@ -1,0 +1,1 @@
+{"methodName":"java.util.Map extractAttributes(ru.noties.markwon.html.jsoup.parser.Token$StartTag)","line":455,"t":"ReceiverNonNull","matcher":"int size()","className":"ru.noties.markwon.html.MarkwonHtmlParserImpl"}

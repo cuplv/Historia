@@ -1,0 +1,1 @@
+{"methodName":"void addLine(java.lang.CharSequence)","line":-1,"t":"ReceiverNonNull","matcher":"void add(java.lang.CharSequence)","className":"org.commonmark.internal.ParagraphParser"}

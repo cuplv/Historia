@@ -1,0 +1,1 @@
+{"methodName":"void startCameraPreview(com.journeyapps.barcodescanner.camera.CameraSurface)","line":4,"t":"ReceiverNonNull","matcher":"void startPreview()","className":"com.journeyapps.barcodescanner.CameraPreview"}

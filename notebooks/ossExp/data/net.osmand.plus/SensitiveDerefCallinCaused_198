@@ -1,0 +1,1 @@
+{"methodName":"void onPreExecute()","line":1375,"t":"ReceiverNonNull","matcher":"android.content.res.Resources getResources()","className":"net.osmand.plus.myplaces.ui.AvailableGPXFragment$OpenGpxDetailsTask"}

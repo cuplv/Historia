@@ -1,0 +1,1 @@
+{"methodName":"org.connectbot.service.PromptHelper getCurrentPromptHelper()","line":431,"t":"ReceiverNonNull","matcher":"org.connectbot.TerminalView getCurrentTerminalView()","className":"org.connectbot.ConsoleActivity"}

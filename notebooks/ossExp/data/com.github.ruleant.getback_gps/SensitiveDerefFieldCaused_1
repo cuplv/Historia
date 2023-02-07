@@ -1,0 +1,1 @@
+{"methodName":"boolean isCustomViewNotNull()","line":688,"t":"ReceiverNonNull","matcher":"android.view.ViewParent getParent()","className":"de.keyboardsurfer.android.widget.crouton.Crouton"}

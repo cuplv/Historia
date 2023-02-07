@@ -1,0 +1,1 @@
+{"methodName":"void parsePattern(java.lang.String)","line":1500,"t":"ReceiverNonNull","matcher":"parent","className":"org.threeten.bp.format.DateTimeFormatterBuilder"}

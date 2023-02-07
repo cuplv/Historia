@@ -1,0 +1,1 @@
+{"methodName":"void setArguments(java.util.List)","line":81,"t":"ReceiverNonNull","matcher":"void clear()","className":"org.mozilla.javascript.ast.FunctionCall"}

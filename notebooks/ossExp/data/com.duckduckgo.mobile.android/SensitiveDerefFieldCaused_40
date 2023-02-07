@@ -1,0 +1,1 @@
+{"methodName":"void setAdapter(androidx.recyclerview.widget.RecyclerView$Adapter)","line":101,"t":"ReceiverNonNull","matcher":"void unregisterAdapterDataObserver(androidx.recyclerview.widget.RecyclerView$AdapterDataObserver)","className":"com.duckduckgo.mobile.android.ui.recyclerviewext.StickyHeadersLinearLayoutManager"}

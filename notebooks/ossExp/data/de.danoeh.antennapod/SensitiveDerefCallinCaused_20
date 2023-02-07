@@ -1,0 +1,1 @@
+{"methodName":"void onFilterChanged(de.danoeh.antennapod.dialog.AllEpisodesFilterDialog$AllEpisodesFilterChangedEvent)","line":80,"t":"ReceiverNonNull","matcher":"android.content.SharedPreferences getSharedPreferences(java.lang.String,int)","className":"de.danoeh.antennapod.fragment.AllEpisodesFragment"}

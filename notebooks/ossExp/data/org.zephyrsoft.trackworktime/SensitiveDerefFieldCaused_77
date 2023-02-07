@@ -1,0 +1,1 @@
+{"methodName":"java.lang.Long getDateAsId()","line":43,"t":"ReceiverNonNull","matcher":"long toEpochDay()","className":"org.zephyrsoft.trackworktime.model.CalcCacheEntry"}

@@ -1,0 +1,1 @@
+{"methodName":"void notifyDataSetChanged()","line":1352,"t":"ReceiverNonNull","matcher":"void setVisibility(int)","className":"org.connectbot.ConsoleActivity$TerminalPagerAdapter"}

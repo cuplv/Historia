@@ -1,0 +1,1 @@
+{"methodName":"android.view.View B0(android.view.LayoutInflater,android.view.ViewGroup,android.os.Bundle)","line":42,"t":"ReceiverNonNull","matcher":"void setText(java.lang.CharSequence)","className":"de.blau.android.propertyeditor.b"}

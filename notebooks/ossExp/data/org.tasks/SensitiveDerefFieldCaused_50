@@ -1,0 +1,1 @@
+{"methodName":"void setDefaultIcon()","line":142,"t":"ReceiverNonNull","matcher":"android.graphics.drawable.Drawable getDefaultMarkerIcon()","className":"org.osmdroid.views.overlay.Marker"}

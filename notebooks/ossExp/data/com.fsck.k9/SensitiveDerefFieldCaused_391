@@ -1,0 +1,1 @@
+{"methodName":"com.fsck.k9.ui.messagelist.MessageListItem getSelectedMessageListItem()","line":1314,"t":"ReceiverNonNull","matcher":"android.view.View getFocusedChild()","className":"com.fsck.k9.ui.messagelist.MessageListFragment"}

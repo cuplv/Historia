@@ -1,0 +1,1 @@
+{"methodName":"void openOutput()","line":86,"t":"ReceiverNonNull","matcher":"void start()","className":"de.srlabs.snoopsnitch.qdmon.EncryptedFileWriter"}

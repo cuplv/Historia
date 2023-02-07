@@ -1,0 +1,1 @@
+{"methodName":"void storeSmallWidgetStatus(android.content.Context,android.util.Pair)","line":5,"t":"ReceiverNonNull","matcher":"void setTransactionSuccessful()","className":"com.ichi2.anki.MetaDB"}

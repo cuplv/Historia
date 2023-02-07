@@ -1,0 +1,1 @@
+{"methodName":"void printRoad(java.lang.String,net.osmand.router.BinaryRoutePlanner$RouteSegment,java.lang.Boolean)","line":376,"t":"ReceiverNonNull","matcher":"road","className":"net.osmand.router.BinaryRoutePlanner"}

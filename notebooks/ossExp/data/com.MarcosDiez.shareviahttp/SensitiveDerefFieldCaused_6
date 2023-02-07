@@ -1,0 +1,1 @@
+{"methodName":"void run()","line":249,"t":"ReceiverNonNull","matcher":"java.net.Socket accept()","className":"com.MarcosDiez.shareviahttp.MyHttpServer"}

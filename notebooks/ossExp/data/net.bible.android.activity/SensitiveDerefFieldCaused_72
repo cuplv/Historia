@@ -1,0 +1,1 @@
+{"methodName":"void <init>(org.crosswire.jsword.book.BookMetaData)","line":80,"t":"ReceiverNonNull","matcher":"java.lang.String getAbsolutePath()","className":"org.crosswire.jsword.book.sword.state.ZLDBackendState"}

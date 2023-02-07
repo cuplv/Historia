@@ -1,0 +1,1 @@
+{"methodName":"void clearXAxisPoints()","line":301,"t":"ReceiverNonNull","matcher":"void clearPoints(net.osmand.core.android.MapRendererView)","className":"net.osmand.plus.views.layers.RouteLayer"}

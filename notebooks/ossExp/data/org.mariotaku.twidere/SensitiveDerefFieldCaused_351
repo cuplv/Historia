@@ -1,0 +1,1 @@
+{"methodName":"boolean saveFile(org.osmdroid.tileprovider.tilesource.ITileSource,org.osmdroid.tileprovider.MapTile,java.io.InputStream)","line":145,"t":"ReceiverNonNull","matcher":"boolean isOpen()","className":"org.osmdroid.tileprovider.modules.SqlTileWriter"}

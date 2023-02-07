@@ -1,0 +1,1 @@
+{"methodName":"boolean changed(de.srlabs.snoopsnitch.analysis.Risk)","line":198,"t":"ReceiverNonNull","matcher":"int size()","className":"de.srlabs.snoopsnitch.analysis.Risk"}

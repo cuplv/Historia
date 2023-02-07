@@ -1,0 +1,1 @@
+{"methodName":"void invalidateToken()","line":77,"t":"ReceiverNonNull","matcher":"com.google.auth.oauth2.AccessToken getAccessToken()","className":"com.todoroo.astrid.gtasks.api.HttpCredentialsAdapter"}

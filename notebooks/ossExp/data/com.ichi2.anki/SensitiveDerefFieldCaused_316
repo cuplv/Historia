@@ -1,0 +1,1 @@
+{"methodName":"java.util.ArrayList deleteCardsWithInvalidModelOrdinals(java.lang.Runnable,com.ichi2.libanki.Model)","line":12,"t":"ReceiverNonNull","matcher":"java.util.ArrayList queryLongList(java.lang.String,java.lang.Object[])","className":"com.ichi2.libanki.Collection"}

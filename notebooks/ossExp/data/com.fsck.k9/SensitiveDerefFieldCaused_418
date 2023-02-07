@@ -1,0 +1,1 @@
+{"methodName":"void callAsyncDetachedVerify(android.content.Intent)","line":403,"t":"ReceiverNonNull","matcher":"part","className":"com.fsck.k9.ui.crypto.MessageCryptoHelper"}

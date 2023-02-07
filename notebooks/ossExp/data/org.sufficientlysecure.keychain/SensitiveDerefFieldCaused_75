@@ -1,0 +1,1 @@
+{"methodName":"void ensureHeaderParent()","line":1,"t":"ReceiverNonNull","matcher":"android.view.View getContentView()","className":"eu.davidea.flexibleadapter.helpers.StickyHeaderHelper"}

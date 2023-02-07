@@ -1,0 +1,1 @@
+{"methodName":"void stopService()","line":272,"t":"ReceiverNonNull","matcher":"void exitService()","className":"de.srlabs.snoopsnitch.qdmon.MsdServiceHelper"}

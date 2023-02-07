@@ -1,0 +1,1 @@
+{"methodName":"boolean getCloser(int)","line":98,"t":"ReceiverNonNull","matcher":"boolean adjacent(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob"}

@@ -1,0 +1,1 @@
+{"methodName":"void usePath(boolean)","line":91,"t":"ReceiverNonNull","matcher":"java.util.ArrayList getPoints()","className":"org.osmdroid.views.overlay.PolyOverlayWithIW"}

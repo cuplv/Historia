@@ -1,0 +1,1 @@
+{"methodName":"java.util.List getOtherNames(boolean)","line":120,"t":"ReceiverNonNull","matcher":"java.util.Collection values()","className":"net.osmand.data.MapObject"}

@@ -1,0 +1,1 @@
+{"methodName":"void loadResourcesSync(com.gpl.rpg.AndorsTrail.context.WorldContext,android.content.res.Resources)","line":81,"t":"ReceiverNonNull","matcher":"int prepareTileID(int,int)","className":"com.gpl.rpg.AndorsTrail.resource.ResourceLoader"}

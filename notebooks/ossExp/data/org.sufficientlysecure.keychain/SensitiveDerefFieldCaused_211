@@ -1,0 +1,1 @@
+{"methodName":"boolean checkHTML()","line":15,"t":"ReceiverNonNull","matcher":"char charAt(int)","className":"com.github.rjeschke.txtmark.Line"}

@@ -1,0 +1,1 @@
+{"methodName":"void emit(java.lang.StringBuilder,com.github.rjeschke.txtmark.Block)","line":25,"t":"ReceiverNonNull","matcher":"next","className":"com.github.rjeschke.txtmark.Emitter"}

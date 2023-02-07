@@ -1,0 +1,1 @@
+{"methodName":"void <init>(net.osmand.plus.activities.MapActivity,net.osmand.data.PointDescription,net.osmand.data.FavouritePoint)","line":59,"t":"ReceiverNonNull","matcher":"net.osmand.data.PointDescription getPointDescription(android.content.Context)","className":"net.osmand.plus.mapcontextmenu.controllers.FavouritePointMenuController"}

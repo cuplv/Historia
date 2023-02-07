@@ -1,0 +1,1 @@
+{"methodName":"void create()","line":208,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff buff(java.lang.Class)","className":"com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene"}

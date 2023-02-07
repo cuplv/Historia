@@ -1,0 +1,1 @@
+{"methodName":"net.osmand.plus.mapcontextmenu.CollapsableView getCollapsableWaypointsView(android.content.Context,boolean,net.osmand.GPXUtilities$GPXFile,net.osmand.GPXUtilities$WptPt)","line":179,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"net.osmand.plus.mapcontextmenu.builders.WptPtMenuBuilder"}

@@ -1,0 +1,1 @@
+{"methodName":"void indexMsgNums(int,int)","line":181,"t":"ReceiverNonNull","matcher":"java.lang.String readLine()","className":"com.fsck.k9.mail.store.pop3.Pop3Folder"}

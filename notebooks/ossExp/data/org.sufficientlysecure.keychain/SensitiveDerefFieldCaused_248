@@ -1,0 +1,1 @@
+{"methodName":"void setListShown(boolean,boolean)","line":21,"t":"ReceiverNonNull","matcher":"void setVisibility(int)","className":"org.sufficientlysecure.keychain.ui.base.RecyclerFragment"}

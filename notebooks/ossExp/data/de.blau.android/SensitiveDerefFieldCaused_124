@@ -1,0 +1,1 @@
+{"methodName":"void N0(de.blau.android.osm.Way)","line":2,"t":"ReceiverNonNull","matcher":"boolean remove(java.lang.Object)","className":"de.blau.android.Logic"}

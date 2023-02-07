@@ -1,0 +1,1 @@
+{"methodName":"int getPaddingViewHeight()","line":209,"t":"ReceiverNonNull","matcher":"android.content.res.Resources getResources()","className":"net.osmand.plus.mapcontextmenu.other.MapMultiSelectionMenuFragment"}

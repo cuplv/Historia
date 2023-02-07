@@ -1,0 +1,1 @@
+{"methodName":"void updateRemoteItems(java.util.List,boolean)","line":8,"t":"ReceiverNonNull","matcher":"void setVisibility(int)","className":"org.transdroid.core.gui.remoterss.RemoteRssFragment"}

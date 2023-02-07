@@ -1,0 +1,1 @@
+{"methodName":"void openExternalDialog(android.content.Intent,java.lang.String,android.content.Intent,boolean,java.util.Map)","line":1318,"t":"ReceiverNonNull","matcher":"void loadUrl(java.lang.String,java.util.Map)","className":"com.duckduckgo.app.browser.BrowserTabFragment"}

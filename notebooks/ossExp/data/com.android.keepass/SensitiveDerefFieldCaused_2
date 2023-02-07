@@ -1,0 +1,1 @@
+{"methodName":"boolean equals(java.lang.Object)","line":-1,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"org.bouncycastle.jce.spec.GOST3410ParameterSpec"}

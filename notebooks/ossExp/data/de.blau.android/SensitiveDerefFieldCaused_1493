@@ -1,0 +1,1 @@
+{"methodName":"org.mozilla.javascript.Node transformDefaultXmlNamepace(org.mozilla.javascript.ast.UnaryExpression)","line":1,"t":"ReceiverNonNull","matcher":"void addToken(int)","className":"org.mozilla.javascript.IRFactory"}

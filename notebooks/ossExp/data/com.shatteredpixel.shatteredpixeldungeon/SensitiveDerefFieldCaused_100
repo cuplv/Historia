@@ -1,0 +1,1 @@
+{"methodName":"boolean act()","line":144,"t":"ReceiverNonNull","matcher":"void occupyCell(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Ghoul"}

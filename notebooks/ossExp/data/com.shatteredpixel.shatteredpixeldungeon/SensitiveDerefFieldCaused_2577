@@ -1,0 +1,1 @@
+{"methodName":"com.shatteredpixel.shatteredpixeldungeon.items.Item random(com.shatteredpixel.shatteredpixeldungeon.items.Generator$Category)","line":11,"t":"ReceiverNonNull","matcher":"long longValue()","className":"com.shatteredpixel.shatteredpixeldungeon.items.Generator"}

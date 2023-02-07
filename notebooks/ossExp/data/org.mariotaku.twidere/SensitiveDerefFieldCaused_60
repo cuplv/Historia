@@ -1,0 +1,1 @@
+{"methodName":"void onMeasure(int,int)","line":1458,"t":"ReceiverNonNull","matcher":"int getHeight()","className":"com.theartofdev.edmodo.cropper.CropImageView"}

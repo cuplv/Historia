@@ -1,0 +1,1 @@
+{"methodName":"void affectTarget(com.shatteredpixel.shatteredpixeldungeon.mechanics.Ballistica,com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero)","line":14,"t":"ReceiverNonNull","matcher":"traps","className":"com.shatteredpixel.shatteredpixeldungeon.items.spells.ReclaimTrap"}

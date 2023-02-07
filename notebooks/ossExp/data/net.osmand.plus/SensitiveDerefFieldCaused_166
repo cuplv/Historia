@@ -1,0 +1,1 @@
+{"methodName":"net.osmand.router.network.NetworkRouteContext$NetworkRouteSegment getMatchingGpxSegments(net.osmand.router.network.NetworkRouteGpxApproximator$GpxRoutePoint,net.osmand.router.network.NetworkRouteGpxApproximator$GpxRoutePoint)","line":75,"t":"ReceiverNonNull","matcher":"double distance(int,int)","className":"net.osmand.router.network.NetworkRouteGpxApproximator"}

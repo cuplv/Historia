@@ -1,0 +1,1 @@
+{"methodName":"void translateHeader()","line":12,"t":"ReceiverNonNull","matcher":"androidx.recyclerview.widget.RecyclerView$LayoutManager getLayoutManager()","className":"eu.davidea.flexibleadapter.helpers.StickyHeaderHelper"}

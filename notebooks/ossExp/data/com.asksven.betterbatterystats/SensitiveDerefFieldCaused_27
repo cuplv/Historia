@@ -1,0 +1,1 @@
+{"methodName":"boolean isSELinuxEnforcing()","line":495,"t":"ReceiverNonNull","matcher":"boolean booleanValue()","className":"com.asksven.android.contrib.Shell$SU"}

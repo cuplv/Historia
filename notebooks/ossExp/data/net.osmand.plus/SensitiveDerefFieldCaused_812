@@ -1,0 +1,1 @@
+{"methodName":"int[] createInitialLocals()","line":2696,"t":"ReceiverNonNull","matcher":"java.lang.String getName()","className":"org.mozilla.classfile.ClassFileWriter"}

@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String getVersionName()","line":939,"t":"ReceiverNonNull","matcher":"android.content.pm.PackageManager getPackageManager()","className":"org.zephyrsoft.trackworktime.Basics"}

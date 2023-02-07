@@ -1,0 +1,1 @@
+{"methodName":"boolean search(boolean)","line":89,"t":"ReceiverNonNull","matcher":"com.watabou.utils.Point cellToPoint(int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero"}

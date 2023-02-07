@@ -1,0 +1,1 @@
+{"methodName":"void onPostExecute(com.asksven.betterbatterystats.data.GraphSeriesFactory)","line":127,"t":"ReceiverNonNull","matcher":"void dismiss()","className":"com.asksven.betterbatterystats.GraphActivity$LoadSerieData"}

@@ -1,0 +1,1 @@
+{"methodName":"java.util.List getChildrenOfType(java.lang.Class)","line":80,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"org.attoparser.dom.AbstractNestableNode"}

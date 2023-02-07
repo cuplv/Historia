@@ -1,0 +1,1 @@
+{"methodName":"void bindButtons()","line":456,"t":"ReceiverNonNull","matcher":"android.content.pm.PackageManager getPackageManager()","className":"com.darshancomputing.BatteryIndicatorPro.CurrentInfoFragment"}

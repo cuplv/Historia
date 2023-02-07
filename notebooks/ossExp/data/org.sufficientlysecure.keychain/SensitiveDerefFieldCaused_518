@@ -1,0 +1,1 @@
+{"methodName":"void quit()","line":2,"t":"ReceiverNonNull","matcher":"boolean quit()","className":"com.journeyapps.barcodescanner.camera.CameraThread"}

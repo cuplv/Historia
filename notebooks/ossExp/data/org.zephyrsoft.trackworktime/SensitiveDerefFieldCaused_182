@@ -1,0 +1,1 @@
+{"methodName":"void disableWifiBasedTracking()","line":858,"t":"ReceiverNonNull","matcher":"android.content.SharedPreferences$Editor edit()","className":"org.zephyrsoft.trackworktime.Basics"}

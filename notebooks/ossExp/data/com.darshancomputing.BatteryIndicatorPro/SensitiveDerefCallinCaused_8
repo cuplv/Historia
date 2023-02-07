@@ -1,0 +1,1 @@
+{"methodName":"void closeApp()","line":203,"t":"ReceiverNonNull","matcher":"void finishActivity(int)","className":"com.darshancomputing.BatteryIndicatorPro.PersistentFragment"}

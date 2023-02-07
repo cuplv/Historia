@@ -1,0 +1,1 @@
+{"methodName":"boolean createPoiFilter(net.osmand.plus.poi.PoiUIFilter,boolean)","line":426,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"net.osmand.plus.poi.PoiFiltersHelper"}

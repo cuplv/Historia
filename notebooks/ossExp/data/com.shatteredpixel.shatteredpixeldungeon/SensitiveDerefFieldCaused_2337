@@ -1,0 +1,1 @@
+{"methodName":"void chainEnemy(com.shatteredpixel.shatteredpixeldungeon.mechanics.Ballistica,com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero,com.shatteredpixel.shatteredpixeldungeon.actors.Char)","line":114,"t":"ReceiverNonNull","matcher":"int distance(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.items.artifacts.EtherealChains"}

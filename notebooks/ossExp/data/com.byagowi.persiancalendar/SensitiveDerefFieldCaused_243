@@ -1,0 +1,1 @@
+{"methodName":"void a(java.nio.CharBuffer)","line":90,"t":"ReceiverNonNull","matcher":"int remaining()","className":"s6.d"}

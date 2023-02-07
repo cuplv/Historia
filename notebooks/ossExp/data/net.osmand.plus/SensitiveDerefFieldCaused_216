@@ -1,0 +1,1 @@
+{"methodName":"void stopMethod(short)","line":383,"t":"ReceiverNonNull","matcher":"java.lang.Object get(int)","className":"org.mozilla.classfile.ClassFileWriter"}

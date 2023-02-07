@@ -1,0 +1,1 @@
+{"methodName":"void updateDownloadedItem()","line":450,"t":"ReceiverNonNull","matcher":"java.lang.String getSizeDescription(android.content.Context)","className":"net.osmand.plus.firstusage.FirstUsageWizardFragment"}

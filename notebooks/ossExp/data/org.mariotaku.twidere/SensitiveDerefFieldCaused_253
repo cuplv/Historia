@@ -1,0 +1,1 @@
+{"methodName":"boolean onLinkClick(java.lang.String,java.lang.String,org.mariotaku.twidere.model.UserKey,long,int,boolean,int,int)","line":1317,"t":"ReceiverNonNull","matcher":"account_key","className":"org.mariotaku.twidere.fragment.UserFragment"}

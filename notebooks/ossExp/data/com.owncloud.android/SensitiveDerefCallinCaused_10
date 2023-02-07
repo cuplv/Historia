@@ -1,0 +1,1 @@
+{"methodName":"void sendLogContent(java.util.List,java.lang.String)","line":232,"t":"ReceiverNonNull","matcher":"android.view.View findViewById(int)","className":"info.hannes.logcat.base.LogBaseFragment"}

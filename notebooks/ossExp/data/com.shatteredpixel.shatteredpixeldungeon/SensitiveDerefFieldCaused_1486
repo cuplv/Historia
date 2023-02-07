@@ -1,0 +1,1 @@
+{"methodName":"void explode(int)","line":217,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.plants.Plant plant(com.shatteredpixel.shatteredpixeldungeon.plants.Plant$Seed,int)","className":"com.shatteredpixel.shatteredpixeldungeon.items.bombs.RegrowthBomb"}

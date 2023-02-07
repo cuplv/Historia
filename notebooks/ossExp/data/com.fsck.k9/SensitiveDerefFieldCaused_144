@@ -1,0 +1,1 @@
+{"methodName":"java.util.List saslAuthPlain()","line":464,"t":"ReceiverNonNull","matcher":"void write(byte[])","className":"com.fsck.k9.mail.store.imap.RealImapConnection"}

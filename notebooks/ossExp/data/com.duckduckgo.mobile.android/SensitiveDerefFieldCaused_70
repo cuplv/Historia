@@ -1,0 +1,1 @@
+{"methodName":"void navigateBackHistoryStack(int)","line":2358,"t":"ReceiverNonNull","matcher":"void goBackOrForward(int)","className":"com.duckduckgo.app.browser.BrowserTabFragment"}

@@ -1,0 +1,1 @@
+{"methodName":"com.watabou.utils.PointF worldToCamera(int)","line":9,"t":"ReceiverNonNull","matcher":"int width()","className":"com.shatteredpixel.shatteredpixeldungeon.sprites.CharSprite"}

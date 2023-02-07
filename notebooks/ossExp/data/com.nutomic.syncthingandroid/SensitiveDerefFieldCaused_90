@@ -1,0 +1,1 @@
+{"methodName":"void onPause()","line":192,"t":"ReceiverNonNull","matcher":"void pauseTimers()","className":"com.nutomic.syncthingandroid.activities.WebGuiActivity"}

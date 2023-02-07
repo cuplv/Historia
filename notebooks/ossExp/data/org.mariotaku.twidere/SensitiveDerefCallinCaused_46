@@ -1,0 +1,1 @@
+{"methodName":"void onSharedPreferenceChanged(android.content.SharedPreferences,java.lang.String)","line":100,"t":"ReceiverNonNull","matcher":"void recreate()","className":"org.mariotaku.twidere.fragment.SettingsDetailsFragment"}

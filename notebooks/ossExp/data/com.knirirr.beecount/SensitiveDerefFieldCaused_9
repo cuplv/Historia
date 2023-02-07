@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String getLog(boolean)","line":286,"t":"ReceiverNonNull","matcher":"java.lang.String toString()","className":"sheetrock.panda.changelog.ChangeLog"}

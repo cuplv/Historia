@@ -1,0 +1,1 @@
+{"methodName":"void surfaceDestroyed(android.view.SurfaceHolder)","line":75,"t":"ReceiverNonNull","matcher":"void stopPreview()","className":"org.navitproject.navit.NavitCamera"}

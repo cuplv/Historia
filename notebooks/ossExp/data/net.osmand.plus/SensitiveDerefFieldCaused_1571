@@ -1,0 +1,1 @@
+{"methodName":"boolean equalsExact(com.vividsolutions.jts.geom.Geometry,double)","line":320,"t":"ReceiverNonNull","matcher":"boolean equalsExact(com.vividsolutions.jts.geom.Geometry,double)","className":"com.vividsolutions.jts.geom.Polygon"}

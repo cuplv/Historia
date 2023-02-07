@@ -1,0 +1,1 @@
+{"methodName":"void loadFileList()","line":297,"t":"ReceiverNonNull","matcher":"java.lang.String[] list(java.io.FilenameFilter)","className":"org.navitproject.navit.FileBrowserActivity"}

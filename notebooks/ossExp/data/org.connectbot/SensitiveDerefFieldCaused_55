@@ -1,0 +1,1 @@
+{"methodName":"int inflateEnd()","line":135,"t":"ReceiverNonNull","matcher":"void free()","className":"com.jcraft.jzlib.Inflate"}

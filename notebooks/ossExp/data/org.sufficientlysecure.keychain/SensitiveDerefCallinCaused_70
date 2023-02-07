@@ -1,0 +1,1 @@
+{"methodName":"void hideKeyboard()","line":4,"t":"ReceiverNonNull","matcher":"android.view.View getCurrentFocus()","className":"org.sufficientlysecure.keychain.ui.CreateKeyEmailFragment"}

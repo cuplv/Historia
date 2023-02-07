@@ -1,0 +1,1 @@
+{"methodName":"void notifyOnBufferingUpdate(int)","line":90,"t":"ReceiverNonNull","matcher":"void onBufferingUpdate(tv.danmaku.ijk.media.player.IMediaPlayer,int)","className":"tv.danmaku.ijk.media.player.AbstractMediaPlayer"}

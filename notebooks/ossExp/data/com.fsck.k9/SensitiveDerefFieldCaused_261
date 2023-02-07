@@ -1,0 +1,1 @@
+{"methodName":"void <init>(com.fsck.k9.search.ConditionsTreeNode,java.lang.String,boolean)","line":58,"t":"ReceiverNonNull","matcher":"java.util.Set getLeafSet()","className":"com.fsck.k9.search.LocalSearch"}

@@ -1,0 +1,1 @@
+{"methodName":"int readXMLComment(com.github.rjeschke.txtmark.Line,int)","line":6,"t":"ReceiverNonNull","matcher":"int length()","className":"com.github.rjeschke.txtmark.Line"}

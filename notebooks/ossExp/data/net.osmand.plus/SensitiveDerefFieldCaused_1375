@@ -1,0 +1,1 @@
+{"methodName":"boolean isLastGpxPoint(java.util.List,int)","line":20,"t":"ReceiverNonNull","matcher":"java.lang.Object get(int)","className":"net.osmand.plus.measurementtool.MeasurementEditingContextUtils"}

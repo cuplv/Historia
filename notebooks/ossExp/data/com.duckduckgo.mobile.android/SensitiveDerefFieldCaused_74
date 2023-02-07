@@ -1,0 +1,1 @@
+{"methodName":"void enableSwipeRefresh(boolean)","line":205,"t":"ReceiverNonNull","matcher":"java.lang.Object invoke(java.lang.Object)","className":"com.duckduckgo.app.browser.DuckDuckGoWebView"}

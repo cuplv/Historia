@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String buildHostnameToReport()","line":294,"t":"ReceiverNonNull","matcher":"java.net.InetAddress getLocalAddress()","className":"com.fsck.k9.mail.transport.smtp.SmtpTransport"}

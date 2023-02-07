@@ -1,0 +1,1 @@
+{"methodName":"void writeLeft(short[],int,int)","line":101,"t":"ReceiverNonNull","matcher":"int read(byte[],int,int)","className":"org.sipdroid.media.WavWriter"}

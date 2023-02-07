@@ -1,0 +1,1 @@
+{"methodName":"void updateState(java.lang.String,java.lang.String,int,de.blinkt.openvpn.core.ConnectionStatus,android.content.Intent)","line":665,"t":"ReceiverNonNull","matcher":"void runOnUiThread(java.lang.Runnable)","className":"de.blinkt.openvpn.fragments.LogFragment"}

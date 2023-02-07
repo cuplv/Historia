@@ -1,0 +1,1 @@
+{"methodName":"android.view.View onCreateView(android.view.LayoutInflater,android.view.ViewGroup,android.os.Bundle)","line":179,"t":"ReceiverNonNull","matcher":"android.view.WindowManager getWindowManager()","className":"de.blinkt.openvpn.fragments.FaqFragment"}

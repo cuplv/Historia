@@ -1,0 +1,1 @@
+{"methodName":"void setOrReplaceText(java.lang.String)","line":10,"t":"ReceiverNonNull","matcher":"java.lang.CharSequence c(java.lang.CharSequence)","className":"de.blau.android.views.CustomAutoCompleteTextView"}

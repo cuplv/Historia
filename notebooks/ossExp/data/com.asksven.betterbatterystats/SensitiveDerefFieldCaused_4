@@ -1,0 +1,1 @@
+{"methodName":"void onPreExecute()","line":161,"t":"ReceiverNonNull","matcher":"void <init>(android.content.Context)","className":"com.asksven.betterbatterystats.GraphActivity$LoadSerieData"}

@@ -1,0 +1,1 @@
+{"methodName":"void seekToPrevChapter()","line":220,"t":"ReceiverNonNull","matcher":"void seekTo(int)","className":"de.danoeh.antennapod.fragment.CoverFragment"}

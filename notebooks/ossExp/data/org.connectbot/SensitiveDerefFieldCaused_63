@@ -1,0 +1,1 @@
+{"methodName":"void onResume()","line":1040,"t":"ReceiverNonNull","matcher":"boolean getBoolean(java.lang.String,boolean)","className":"org.connectbot.ConsoleActivity"}

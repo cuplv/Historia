@@ -1,0 +1,1 @@
+{"methodName":"void closeWelcomeFragment()","line":55,"t":"ReceiverNonNull","matcher":"androidx.fragment.app.FragmentManager getSupportFragmentManager()","className":"net.osmand.plus.firstusage.FirstUsageWelcomeFragment"}

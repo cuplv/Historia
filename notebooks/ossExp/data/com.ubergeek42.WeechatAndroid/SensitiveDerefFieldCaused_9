@@ -1,0 +1,1 @@
+{"methodName":"org.bouncycastle.math.ec.PreCompInfo precompute(org.bouncycastle.math.ec.PreCompInfo)","line":44,"t":"ReceiverNonNull","matcher":"int getSize()","className":"org.bouncycastle.math.ec.FixedPointUtil$1"}

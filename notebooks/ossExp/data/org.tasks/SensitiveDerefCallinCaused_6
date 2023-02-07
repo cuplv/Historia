@@ -1,0 +1,1 @@
+{"methodName":"void beastMode$lambda$0(com.todoroo.astrid.activity.TaskEditFragment,androidx.activity.result.ActivityResult)","line":119,"t":"ReceiverNonNull","matcher":"void recreate()","className":"com.todoroo.astrid.activity.TaskEditFragment"}

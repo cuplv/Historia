@@ -1,0 +1,1 @@
+{"methodName":"void T(short)","line":173,"t":"ReceiverNonNull","matcher":"int size()","className":"org.mozilla.classfile.ClassFileWriter"}

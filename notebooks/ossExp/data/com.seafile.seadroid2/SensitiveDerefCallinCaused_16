@@ -1,0 +1,1 @@
+{"methodName":"void onValidateUserInput()","line":127,"t":"ReceiverNonNull","matcher":"android.content.res.Resources getResources()","className":"com.seafile.seadroid2.ui.dialog.PasswordDialog"}

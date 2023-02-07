@@ -1,0 +1,1 @@
+{"methodName":"int getButtonInfoIndex(int,int)","line":170,"t":"ReceiverNonNull","matcher":"int getCols()","className":"net.bible.android.view.util.buttongrid.ButtonGrid"}

@@ -1,0 +1,1 @@
+{"methodName":"void dismissImmediate()","line":354,"t":"ReceiverNonNull","matcher":"androidx.fragment.app.FragmentManager getSupportFragmentManager()","className":"net.osmand.plus.plugins.PluginsFragment"}

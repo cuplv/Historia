@@ -1,0 +1,1 @@
+{"methodName":"void indexCachedResources(java.util.Map,java.util.Map)","line":141,"t":"ReceiverNonNull","matcher":"android.database.Cursor rawQuery(java.lang.String,java.lang.String[])","className":"net.osmand.plus.plugins.srtm.TerrainLayer$1"}

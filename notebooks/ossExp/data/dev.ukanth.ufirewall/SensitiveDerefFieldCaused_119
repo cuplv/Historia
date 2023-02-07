@@ -1,0 +1,1 @@
+{"methodName":"void lambda$processCommands$0$dev-ukanth-ufirewall-service-RootShellService(dev.ukanth.ufirewall.service.RootCommand,int,int,java.util.List,java.util.List)","line":159,"t":"ReceiverNonNull","matcher":"java.lang.StringBuilder append(java.lang.String)","className":"dev.ukanth.ufirewall.service.RootShellService"}

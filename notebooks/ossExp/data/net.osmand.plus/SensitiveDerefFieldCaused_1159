@@ -1,0 +1,1 @@
+{"methodName":"boolean compareObject(net.osmand.data.MapObject)","line":271,"t":"ReceiverNonNull","matcher":"long longValue()","className":"net.osmand.data.MapObject"}

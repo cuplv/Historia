@@ -1,0 +1,1 @@
+{"methodName":"void configureOrientation()","line":803,"t":"ReceiverNonNull","matcher":"java.lang.String getString(java.lang.String,java.lang.String)","className":"org.connectbot.ConsoleActivity"}

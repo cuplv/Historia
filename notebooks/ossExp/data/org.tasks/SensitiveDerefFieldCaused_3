@@ -1,0 +1,1 @@
+{"methodName":"boolean selectorMatch(com.caverock.androidsvg.CSSParser$RuleMatchContext,com.caverock.androidsvg.CSSParser$SimpleSelector,java.util.List,int,com.caverock.androidsvg.SVG$SvgElementBase)","line":1464,"t":"ReceiverNonNull","matcher":"int hashCode()","className":"com.caverock.androidsvg.CSSParser"}

@@ -1,0 +1,1 @@
+{"methodName":"boolean continueWandering()","line":46,"t":"ReceiverNonNull","matcher":"int randomDestination(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob$Wandering"}

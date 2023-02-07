@@ -1,0 +1,1 @@
+{"methodName":"java.util.List ensureCardsHaveHomeDeck(java.lang.Runnable,com.ichi2.libanki.Collection$CheckDatabaseResult)","line":9,"t":"ReceiverNonNull","matcher":"java.util.ArrayList queryLongList(java.lang.String,java.lang.Object[])","className":"com.ichi2.libanki.Collection"}

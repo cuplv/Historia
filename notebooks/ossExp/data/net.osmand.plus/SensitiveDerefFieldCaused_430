@@ -1,0 +1,1 @@
+{"methodName":"net.osmand.plus.views.mapwidgets.TopToolbarController getTopToolbarController()","line":127,"t":"ReceiverNonNull","matcher":"net.osmand.plus.views.mapwidgets.TopToolbarController getTopController()","className":"net.osmand.plus.views.layers.MapInfoLayer"}

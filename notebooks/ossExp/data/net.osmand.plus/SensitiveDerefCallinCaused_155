@@ -1,0 +1,1 @@
+{"methodName":"void select(int)","line":358,"t":"ReceiverNonNull","matcher":"android.app.Application getApplication()","className":"net.osmand.plus.activities.NavigatePointFragment"}

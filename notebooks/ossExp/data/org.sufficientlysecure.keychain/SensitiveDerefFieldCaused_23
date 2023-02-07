@@ -1,0 +1,1 @@
+{"methodName":"void emitPluginLines(java.lang.StringBuilder,com.github.rjeschke.txtmark.Line,java.lang.String)","line":7,"t":"ReceiverNonNull","matcher":"isEmpty","className":"com.github.rjeschke.txtmark.Emitter"}

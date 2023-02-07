@@ -1,0 +1,1 @@
+{"methodName":"void launchTabSwitcher()","line":648,"t":"ReceiverNonNull","matcher":"void overridePendingTransition(int,int)","className":"com.duckduckgo.app.browser.BrowserTabFragment"}

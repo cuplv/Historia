@@ -1,0 +1,1 @@
+{"methodName":"boolean throwShocker(com.shatteredpixel.shatteredpixeldungeon.actors.Char,com.shatteredpixel.shatteredpixeldungeon.actors.Char)","line":63,"t":"ReceiverNonNull","matcher":"int distance(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Tengu"}

@@ -1,0 +1,1 @@
+{"methodName":"void onDeckSelected(com.ichi2.anki.dialogs.DeckSelectionDialog$SelectableDeck)","line":3,"t":"ReceiverNonNull","matcher":"void setDeckId(long)","className":"com.ichi2.anki.Statistics"}

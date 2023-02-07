@@ -1,0 +1,1 @@
+{"methodName":"void WriteCompressedData(java.io.BufferedOutputStream)","line":572,"t":"ReceiverNonNull","matcher":"int read()","className":"info.guardianproject.f5android.plugins.f5.james.JpegEncoder"}

@@ -1,0 +1,1 @@
+{"methodName":"byte[] getEncoded()","line":-1,"t":"ReceiverNonNull","matcher":"java.security.spec.EllipticCurve getCurve()","className":"org.bouncycastle.jcajce.provider.asymmetric.dstu.BCDSTU4145PublicKey"}

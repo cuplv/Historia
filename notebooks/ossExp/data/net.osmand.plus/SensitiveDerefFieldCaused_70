@@ -1,0 +1,1 @@
+{"methodName":"boolean showMenuAction(java.lang.Object)","line":1708,"t":"ReceiverNonNull","matcher":"void <init>(androidx.fragment.app.FragmentActivity,net.osmand.router.network.NetworkRouteSelector$RouteKey,net.osmand.data.QuadRect,net.osmand.CallbackWithObject)","className":"net.osmand.plus.views.layers.GPXLayer"}

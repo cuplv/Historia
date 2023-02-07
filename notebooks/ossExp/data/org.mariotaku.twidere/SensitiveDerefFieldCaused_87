@@ -1,0 +1,1 @@
+{"methodName":"int drainEncoder(long)","line":206,"t":"ReceiverNonNull","matcher":"android.media.MediaFormat getOutputFormat()","className":"net.ypresto.androidtranscoder.engine.VideoTrackTranscoder"}

@@ -1,0 +1,1 @@
+{"methodName":"void clearPointsProvider()","line":682,"t":"ReceiverNonNull","matcher":"void clearSymbols(net.osmand.core.android.MapRendererView)","className":"net.osmand.plus.measurementtool.MeasurementToolLayer"}

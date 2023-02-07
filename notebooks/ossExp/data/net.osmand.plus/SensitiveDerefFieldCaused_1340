@@ -1,0 +1,1 @@
+{"methodName":"void onPrepareBufferImage(android.graphics.Canvas,net.osmand.data.RotatedTileBox,net.osmand.plus.views.layers.base.OsmandMapLayer$DrawSettings)","line":144,"t":"ReceiverNonNull","matcher":"void <init>(net.osmand.plus.OsmandApplication,net.osmand.map.ITileSource,float)","className":"net.osmand.plus.plugins.mapillary.MapillaryVectorLayer"}

@@ -1,0 +1,1 @@
+{"methodName":"org.mozilla.javascript.ast.ScriptNode transformTree(org.mozilla.javascript.ast.AstRoot)","line":3,"t":"ReceiverNonNull","matcher":"int getCurrentOffset()","className":"org.mozilla.javascript.IRFactory"}

@@ -1,0 +1,1 @@
+{"methodName":"org.transdroid.core.seedbox.SeedboxPreference setServerSetting(org.transdroid.core.app.settings.ServerSetting)","line":6,"t":"ReceiverNonNull","matcher":"org.transdroid.core.seedbox.SeedboxSettings getSettings()","className":"org.transdroid.core.seedbox.SeedboxPreference"}

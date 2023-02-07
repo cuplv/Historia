@@ -1,0 +1,1 @@
+{"methodName":"com.nineoldandroids.animation.ValueAnimator clone()","line":1189,"t":"ReceiverNonNull","matcher":"int size()","className":"com.nineoldandroids.animation.ValueAnimator"}

@@ -1,0 +1,1 @@
+{"methodName":"void <init>(java.util.List,java.util.List,net.osmand.plus.routing.RouteCalculationParams,java.util.List,boolean)","line":118,"t":"ReceiverNonNull","matcher":"calculatedRouteTimeSpeed","className":"net.osmand.plus.routing.RouteCalculationResult"}

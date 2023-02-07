@@ -1,0 +1,1 @@
+{"methodName":"void setupEditings()","line":114,"t":"ReceiverNonNull","matcher":"android.view.LayoutInflater getLayoutInflater()","className":"net.osmand.plus.plugins.osmedit.fragments.DashOsmEditsFragment"}

@@ -1,0 +1,1 @@
+{"methodName":"void goBackWithoutSaving()","line":864,"t":"ReceiverNonNull","matcher":"void onBackPressed()","className":"net.osmand.plus.settings.fragments.ProfileAppearanceFragment"}

@@ -1,0 +1,1 @@
+{"methodName":"int getPoint31XTile(int)","line":363,"t":"ReceiverNonNull","matcher":"int getPoint31XTile(int)","className":"net.osmand.router.network.NetworkRouteContext$NetworkRouteSegment"}

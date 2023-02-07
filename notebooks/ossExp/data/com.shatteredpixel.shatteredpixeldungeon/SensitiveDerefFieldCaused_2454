@@ -1,0 +1,1 @@
+{"methodName":"void initialize()","line":5,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"com.shatteredpixel.shatteredpixeldungeon.windows.WndHero$StatsTab"}

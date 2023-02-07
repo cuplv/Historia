@@ -1,0 +1,1 @@
+{"methodName":"void enterMovingMode(net.osmand.data.RotatedTileBox)","line":649,"t":"ReceiverNonNull","matcher":"android.graphics.drawable.Drawable getRightIcon()","className":"net.osmand.plus.views.layers.ContextMenuLayer"}

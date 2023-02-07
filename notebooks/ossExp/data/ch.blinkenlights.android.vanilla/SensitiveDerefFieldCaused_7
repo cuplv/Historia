@@ -1,0 +1,1 @@
+{"methodName":"android.view.View getView(int,android.view.View,android.view.ViewGroup)","line":493,"t":"ReceiverNonNull","matcher":"android.view.View inflate(int,android.view.ViewGroup,boolean)","className":"ch.blinkenlights.android.vanilla.MediaAdapter"}

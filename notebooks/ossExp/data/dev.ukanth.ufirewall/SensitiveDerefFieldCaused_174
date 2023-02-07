@@ -1,0 +1,1 @@
+{"methodName":"void runNextCommand(boolean)","line":1757,"t":"ReceiverNonNull","matcher":"void flush()","className":"eu.chainfire.libsuperuser.Shell$Interactive"}

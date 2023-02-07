@@ -1,0 +1,1 @@
+{"methodName":"void restartActivity()","line":2,"t":"ReceiverNonNull","matcher":"java.lang.Integer getId()","className":"org.liberty.android.fantastischmemo.ui.CardEditor"}

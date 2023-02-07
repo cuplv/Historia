@@ -1,0 +1,1 @@
+{"methodName":"boolean awaitTermination(long,java.util.concurrent.TimeUnit)","line":102,"t":"ReceiverNonNull","matcher":"java.lang.Object get(long,java.util.concurrent.TimeUnit)","className":"com.topjohnwu.superuser.internal.SerialExecutorService"}

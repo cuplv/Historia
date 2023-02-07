@@ -1,0 +1,1 @@
+{"methodName":"com.vladsch.flexmark.ast.Node next()","line":52,"t":"ReceiverNonNull","matcher":"java.lang.Object pop()","className":"com.vladsch.flexmark.ast.DescendantNodeIterator"}

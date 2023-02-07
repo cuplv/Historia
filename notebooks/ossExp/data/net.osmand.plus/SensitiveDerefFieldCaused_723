@@ -1,0 +1,1 @@
+{"methodName":"boolean onTouchEvent(android.view.MotionEvent)","line":310,"t":"ReceiverNonNull","matcher":"void onClick()","className":"net.osmand.plus.views.controls.DynamicListView"}

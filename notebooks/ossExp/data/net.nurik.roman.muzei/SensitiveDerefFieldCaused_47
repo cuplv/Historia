@@ -1,0 +1,1 @@
+{"methodName":"void doubleTapZoom(android.graphics.PointF,android.graphics.PointF)","line":944,"t":"ReceiverNonNull","matcher":"x","className":"com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView"}

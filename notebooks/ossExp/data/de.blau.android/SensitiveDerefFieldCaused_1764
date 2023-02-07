@@ -1,0 +1,1 @@
+{"methodName":"android.view.View B0(android.view.LayoutInflater,android.view.ViewGroup,android.os.Bundle)","line":45,"t":"ReceiverNonNull","matcher":"void setOnTouchListener(android.view.View$OnTouchListener)","className":"de.blau.android.propertyeditor.b"}

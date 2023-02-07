@@ -1,0 +1,1 @@
+{"methodName":"com.fsck.k9.search.ConditionsTreeNode add(com.fsck.k9.search.ConditionsTreeNode,com.fsck.k9.search.ConditionsTreeNode$Operator)","line":293,"t":"ReceiverNonNull","matcher":"void <init>(com.fsck.k9.search.ConditionsTreeNode,com.fsck.k9.search.ConditionsTreeNode$Operator)","className":"com.fsck.k9.search.ConditionsTreeNode"}

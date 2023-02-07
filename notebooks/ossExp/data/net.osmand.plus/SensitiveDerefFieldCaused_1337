@@ -1,0 +1,1 @@
+{"methodName":"void <init>(org.immutables.gson.stream.GsonProviderOptionsBuilder)","line":187,"t":"ReceiverNonNull","matcher":"void gson(com.google.gson.Gson)","className":"org.immutables.gson.stream.GsonProviderOptionsBuilder$ImmutableGsonProviderOptions"}

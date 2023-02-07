@@ -1,0 +1,1 @@
+{"methodName":"boolean open()","line":2015,"t":"ReceiverNonNull","matcher":"java.io.InputStream getInputStream()","className":"eu.chainfire.libsuperuser.Shell$Interactive"}

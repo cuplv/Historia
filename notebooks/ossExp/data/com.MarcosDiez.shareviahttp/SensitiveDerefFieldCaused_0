@@ -1,0 +1,1 @@
+{"methodName":"void stopServer()","line":161,"t":"ReceiverNonNull","matcher":"void close()","className":"com.MarcosDiez.shareviahttp.MyHttpServer"}

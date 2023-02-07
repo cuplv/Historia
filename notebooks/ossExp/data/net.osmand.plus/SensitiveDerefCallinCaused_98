@@ -1,0 +1,1 @@
+{"methodName":"void onRegisterDevice(int,java.lang.String,net.osmand.plus.backup.BackupError)","line":392,"t":"ReceiverNonNull","matcher":"androidx.fragment.app.FragmentManager getSupportFragmentManager()","className":"net.osmand.plus.backup.ui.AuthorizeFragment"}

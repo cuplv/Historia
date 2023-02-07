@@ -1,0 +1,1 @@
+{"methodName":"com.shatteredpixel.shatteredpixeldungeon.actors.Char chooseEnemy()","line":145,"t":"ReceiverNonNull","matcher":"int distance(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Bee"}

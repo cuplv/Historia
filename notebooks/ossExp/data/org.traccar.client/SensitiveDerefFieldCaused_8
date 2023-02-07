@@ -1,0 +1,1 @@
+{"methodName":"void newAttribute()","line":115,"t":"ReceiverNonNull","matcher":"java.lang.String trim()","className":"ru.noties.markwon.html.jsoup.parser.Token$Tag"}

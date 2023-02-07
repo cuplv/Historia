@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String toString()","line":86,"t":"ReceiverNonNull","matcher":"java.lang.String toString()","className":"org.zephyrsoft.trackworktime.model.CalcCacheEntry"}

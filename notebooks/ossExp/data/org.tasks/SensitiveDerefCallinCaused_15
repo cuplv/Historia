@@ -1,0 +1,1 @@
+{"methodName":"void resetPictureButton()","line":171,"t":"ReceiverNonNull","matcher":"android.content.res.Resources$Theme getTheme()","className":"org.tasks.fragments.CommentBarFragment"}

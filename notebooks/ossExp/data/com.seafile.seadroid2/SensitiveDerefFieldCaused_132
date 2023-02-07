@@ -1,0 +1,1 @@
+{"methodName":"com.transitionseverywhere.Transition removeListener(com.transitionseverywhere.Transition$TransitionListener)","line":1985,"t":"ReceiverNonNull","matcher":"int size()","className":"com.transitionseverywhere.Transition"}

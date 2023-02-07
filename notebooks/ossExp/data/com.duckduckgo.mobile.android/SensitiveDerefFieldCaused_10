@@ -1,0 +1,1 @@
+{"methodName":"void setWriteAheadLoggingEnabled(boolean)","line":313,"t":"ReceiverNonNull","matcher":"boolean isReadOnly()","className":"net.sqlcipher.database.SQLiteOpenHelper"}

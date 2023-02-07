@@ -1,0 +1,1 @@
+{"methodName":"void updateList()","line":237,"t":"ReceiverNonNull","matcher":"java.util.List getPortForwards()","className":"org.connectbot.PortForwardListActivity"}

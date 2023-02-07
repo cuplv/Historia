@@ -1,0 +1,1 @@
+{"methodName":"void collectDBPoints(android.database.sqlite.SQLiteDatabase,java.util.Map)","line":350,"t":"ReceiverNonNull","matcher":"int length()","className":"net.osmand.plus.plugins.monitoring.SavingTrackHelper"}

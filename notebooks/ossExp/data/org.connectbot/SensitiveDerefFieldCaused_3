@@ -1,0 +1,1 @@
+{"methodName":"void readExecutionData()","line":150,"t":"ReceiverNonNull","matcher":"void visitClassExecution(org.jacoco.agent.rt.internal_28bab1d.core.data.ExecutionData)","className":"org.jacoco.agent.rt.internal_28bab1d.core.data.ExecutionDataReader"}

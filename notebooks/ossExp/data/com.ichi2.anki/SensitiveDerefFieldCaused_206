@@ -1,0 +1,1 @@
+{"methodName":"void onCollectionLoaded(com.ichi2.libanki.Collection)","line":72,"t":"ReceiverNonNull","matcher":"long getId()","className":"com.ichi2.anki.NoteEditor"}

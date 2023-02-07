@@ -1,0 +1,1 @@
+{"methodName":"void showSitePermissionsDialog(java.lang.String[],android.webkit.PermissionRequest)","line":3163,"t":"ReceiverNonNull","matcher":"java.lang.String getUrl()","className":"com.duckduckgo.app.browser.BrowserTabFragment"}

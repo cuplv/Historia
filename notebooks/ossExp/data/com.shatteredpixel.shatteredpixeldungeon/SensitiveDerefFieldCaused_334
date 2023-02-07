@@ -1,0 +1,1 @@
+{"methodName":"void volume(float)","line":17,"t":"ReceiverNonNull","matcher":"void setVolume(float,float)","className":"com.watabou.noosa.audio.Music"}

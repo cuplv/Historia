@@ -1,0 +1,1 @@
+{"methodName":"boolean onPreferenceChange(android.preference.Preference,java.lang.Object)","line":543,"t":"ReceiverNonNull","matcher":"android.content.Intent getIntent()","className":"com.nutomic.syncthingandroid.activities.SettingsActivity$SettingsFragment"}

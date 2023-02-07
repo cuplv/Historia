@@ -1,0 +1,1 @@
+{"methodName":"java.io.File getCurrentLogFile()","line":198,"t":"ReceiverNonNull","matcher":"java.io.File getFilesDir()","className":"org.zephyrsoft.trackworktime.Basics"}

@@ -1,0 +1,1 @@
+{"methodName":"void stopLocationTrackerService()","line":532,"t":"ReceiverNonNull","matcher":"boolean stopService(android.content.Intent)","className":"org.zephyrsoft.trackworktime.Basics"}

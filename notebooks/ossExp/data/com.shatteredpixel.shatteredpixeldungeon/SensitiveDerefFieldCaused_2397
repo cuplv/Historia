@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String desc()","line":10,"t":"ReceiverNonNull","matcher":"int pointsInTalent(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.buffs.HoldFast"}

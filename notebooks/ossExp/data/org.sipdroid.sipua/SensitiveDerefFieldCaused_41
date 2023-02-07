@@ -1,0 +1,1 @@
+{"methodName":"void <init>(org.zoolu.net.IpAddress,int,java.lang.String)","line":71,"t":"ReceiverNonNull","matcher":"void connect(java.net.SocketAddress,int)","className":"org.zoolu.net.TcpSocket"}

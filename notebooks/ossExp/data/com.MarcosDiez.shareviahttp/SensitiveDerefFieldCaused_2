@@ -1,0 +1,1 @@
+{"methodName":"void getMime(android.net.Uri,android.content.ContentResolver)","line":114,"t":"ReceiverNonNull","matcher":"int lastIndexOf(int)","className":"com.MarcosDiez.shareviahttp.UriInterpretation"}

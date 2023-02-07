@@ -1,0 +1,1 @@
+{"methodName":"void setupCryptoProvider()","line":88,"t":"ReceiverNonNull","matcher":"void <init>(android.content.Context,java.lang.String,org.openintents.openpgp.util.OpenPgpServiceConnection$OnBound)","className":"org.openintents.openpgp.OpenPgpApiManager"}

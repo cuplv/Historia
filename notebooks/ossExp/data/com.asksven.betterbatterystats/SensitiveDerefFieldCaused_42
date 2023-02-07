@@ -1,0 +1,1 @@
+{"methodName":"java.util.ArrayList getWakeupStatsPost6(android.content.Context,int)","line":3279,"t":"ReceiverNonNull","matcher":"java.lang.Object valueAt(int)","className":"com.asksven.android.common.privateapiproxies.BatteryStatsProxy"}

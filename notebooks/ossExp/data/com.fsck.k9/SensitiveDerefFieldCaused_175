@@ -1,0 +1,1 @@
+{"methodName":"void progress(boolean)","line":477,"t":"ReceiverNonNull","matcher":"void setRefreshing(boolean)","className":"com.fsck.k9.ui.messagelist.MessageListFragment"}

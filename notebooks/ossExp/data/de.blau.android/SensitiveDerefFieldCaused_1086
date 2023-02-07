@@ -1,0 +1,1 @@
+{"methodName":"void onDraw(android.graphics.Canvas)","line":65,"t":"ReceiverNonNull","matcher":"int getHeight()","className":"com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView"}

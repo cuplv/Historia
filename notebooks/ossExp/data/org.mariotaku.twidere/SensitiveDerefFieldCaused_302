@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String getDraftAction()","line":179,"t":"ReceiverNonNull","matcher":"action_type","className":"org.mariotaku.twidere.activity.ComposeActivity"}

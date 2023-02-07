@@ -1,0 +1,1 @@
+{"methodName":"org.mozilla.javascript.Node transformScript(org.mozilla.javascript.ast.ScriptNode)","line":1037,"t":"ReceiverNonNull","matcher":"void addToken(int)","className":"org.mozilla.javascript.IRFactory"}

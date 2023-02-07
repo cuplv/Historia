@@ -1,0 +1,1 @@
+{"methodName":"void takePhotoWithCamera(double,double,net.osmand.plus.activities.MapActivity)","line":1274,"t":"ReceiverNonNull","matcher":"android.view.SurfaceView prepareSurfaceView(int,int)","className":"net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin"}

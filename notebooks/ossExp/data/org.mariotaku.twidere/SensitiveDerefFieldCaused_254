@@ -1,0 +1,1 @@
+{"methodName":"void setupSetterAndGetter(java.lang.Object)","line":518,"t":"ReceiverNonNull","matcher":"java.lang.String getName()","className":"com.nineoldandroids.animation.PropertyValuesHolder"}

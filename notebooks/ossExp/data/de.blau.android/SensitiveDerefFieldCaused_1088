@@ -1,0 +1,1 @@
+{"methodName":"void b(org.openstreetmap.osmosis.osmbinary.Osmformat$PrimitiveBlock)","line":41,"t":"ReceiverNonNull","matcher":"boolean q(de.blau.android.osm.BoundingBox)","className":"org.openstreetmap.osmosis.osmbinary.a"}

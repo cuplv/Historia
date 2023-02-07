@@ -1,0 +1,1 @@
+{"methodName":"void refreshHeaderView()","line":436,"t":"ReceiverNonNull","matcher":"java.lang.String getAuthor()","className":"de.danoeh.antennapod.fragment.FeedItemlistFragment"}

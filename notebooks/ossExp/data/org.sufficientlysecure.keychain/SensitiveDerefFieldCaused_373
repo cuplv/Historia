@@ -1,0 +1,1 @@
+{"methodName":"void calcRecyclerCacheSize(androidx.recyclerview.widget.RecyclerView$Recycler)","line":1,"t":"ReceiverNonNull","matcher":"int intValue()","className":"com.beloo.widget.chipslayoutmanager.ChipsLayoutManager"}

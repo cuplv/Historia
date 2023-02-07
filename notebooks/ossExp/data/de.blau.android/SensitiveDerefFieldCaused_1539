@@ -1,0 +1,1 @@
+{"methodName":"boolean S(java.util.Map)","line":3,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"de.blau.android.osm.OsmElement"}

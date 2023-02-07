@@ -1,0 +1,1 @@
+{"methodName":"void drawRouteLinePreview(android.graphics.Canvas,net.osmand.data.RotatedTileBox,net.osmand.plus.routing.PreviewRouteLineInfo)","line":185,"t":"ReceiverNonNull","matcher":"android.graphics.drawable.Drawable getDrawable(int)","className":"net.osmand.plus.views.layers.PreviewRouteLineLayer"}

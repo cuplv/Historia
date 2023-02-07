@@ -1,0 +1,1 @@
+{"methodName":"java.util.List getSelectionDetailsAtIndex(int)","line":2,"t":"ReceiverNonNull","matcher":"int getDataSetCount()","className":"com.github.mikephil.charting.charts.PieRadarChartBase"}

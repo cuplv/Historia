@@ -1,0 +1,1 @@
+{"methodName":"void stopRecording()","line":2,"t":"ReceiverNonNull","matcher":"void stop()","className":"com.ichi2.anki.multimediacard.AudioRecorder"}

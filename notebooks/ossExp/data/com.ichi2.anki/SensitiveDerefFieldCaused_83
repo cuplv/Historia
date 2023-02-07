@@ -1,0 +1,1 @@
+{"methodName":"void onActivityResult(int,int,android.content.Intent)","line":8,"t":"ReceiverNonNull","matcher":"long getId()","className":"com.ichi2.anki.NoteEditor"}

@@ -1,0 +1,1 @@
+{"methodName":"boolean isNearYog()","line":20,"t":"ReceiverNonNull","matcher":"int distance(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.YogFist"}

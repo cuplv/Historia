@@ -1,0 +1,1 @@
+{"methodName":"boolean onPrepareOptionsMenu(android.view.Menu)","line":242,"t":"ReceiverNonNull","matcher":"java.util.ArrayList getBridges()","className":"org.connectbot.HostListActivity"}

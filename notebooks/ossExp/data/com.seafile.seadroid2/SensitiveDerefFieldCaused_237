@@ -1,0 +1,1 @@
+{"methodName":"void saveCertificate(java.lang.String,java.security.cert.X509Certificate)","line":146,"t":"ReceiverNonNull","matcher":"long replace(java.lang.String,java.lang.String,android.content.ContentValues)","className":"com.seafile.seadroid2.ssl.CertsDBHelper"}

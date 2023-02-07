@@ -1,0 +1,1 @@
+{"methodName":"void selectModel(net.osmand.plus.helpers.SearchHistoryHelper$HistoryEntry)","line":193,"t":"ReceiverNonNull","matcher":"android.app.Application getApplication()","className":"net.osmand.plus.activities.search.SearchHistoryFragment"}

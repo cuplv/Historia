@@ -1,0 +1,1 @@
+{"methodName":"void onLoadPronunciation(android.view.View)","line":8,"t":"ReceiverNonNull","matcher":"android.os.AsyncTask execute(java.lang.Object[])","className":"com.ichi2.anki.multimediacard.activity.LoadPronounciationActivity"}

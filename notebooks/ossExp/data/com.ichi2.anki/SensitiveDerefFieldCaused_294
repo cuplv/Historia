@@ -1,0 +1,1 @@
+{"methodName":"boolean webViewRendererLastCrashedOnCard(long)","line":1,"t":"ReceiverNonNull","matcher":"long longValue()","className":"com.ichi2.anki.AbstractFlashcardViewer"}

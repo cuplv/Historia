@@ -1,0 +1,1 @@
+{"methodName":"boolean removeLeadingEmptyLines()","line":2,"t":"ReceiverNonNull","matcher":"isEmpty","className":"com.github.rjeschke.txtmark.Block"}

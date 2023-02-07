@@ -1,0 +1,1 @@
+{"methodName":"com.vladsch.flexmark.ast.Node next()","line":83,"t":"ReceiverNonNull","matcher":"com.vladsch.flexmark.ast.Node getPrevious()","className":"com.vladsch.flexmark.ast.NodeIterator"}

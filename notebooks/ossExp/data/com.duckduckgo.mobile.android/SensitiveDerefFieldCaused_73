@@ -1,0 +1,1 @@
+{"methodName":"void onCreateContextMenu(android.view.ContextMenu,android.view.View,android.view.ContextMenu$ContextMenuInfo)","line":1908,"t":"ReceiverNonNull","matcher":"android.webkit.WebView$HitTestResult getHitTestResult()","className":"com.duckduckgo.app.browser.BrowserTabFragment"}

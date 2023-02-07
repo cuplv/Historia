@@ -1,0 +1,1 @@
+{"methodName":"boolean getIncludeGeneralSettings()","line":37,"t":"ReceiverNonNull","matcher":"boolean getIncludeGeneralSettings()","className":"com.fsck.k9.ui.settings.export.SettingsExportViewModel"}

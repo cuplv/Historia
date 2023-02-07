@@ -1,0 +1,1 @@
+{"methodName":"void createNewKeyIfNeeded(boolean)","line":255,"t":"ReceiverNonNull","matcher":"void load(java.security.KeyStore$LoadStoreParameter)","className":"com.keepassdroid.biometric.BiometricHelper"}

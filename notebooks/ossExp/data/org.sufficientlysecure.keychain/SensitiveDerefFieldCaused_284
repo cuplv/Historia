@@ -1,0 +1,1 @@
+{"methodName":"int bsR(int)","line":2,"t":"ReceiverNonNull","matcher":"int read()","className":"org.bouncycastle.apache.bzip2.CBZip2InputStream"}

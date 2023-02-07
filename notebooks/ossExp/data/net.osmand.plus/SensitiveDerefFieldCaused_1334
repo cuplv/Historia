@@ -1,0 +1,1 @@
+{"methodName":"org.json.JSONObject toJSON(boolean)","line":169,"t":"ReceiverNonNull","matcher":"java.lang.String name()","className":"net.osmand.data.City"}

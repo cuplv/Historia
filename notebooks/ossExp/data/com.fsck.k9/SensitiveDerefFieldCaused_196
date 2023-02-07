@@ -1,0 +1,1 @@
+{"methodName":"org.openintents.openpgp.util.OpenPgpApi getOpenPgpApi()","line":217,"t":"ReceiverNonNull","matcher":"boolean isBound()","className":"org.openintents.openpgp.OpenPgpApiManager"}

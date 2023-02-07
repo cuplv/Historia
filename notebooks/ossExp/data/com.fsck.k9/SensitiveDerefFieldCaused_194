@@ -1,0 +1,1 @@
+{"methodName":"void readGreeting()","line":282,"t":"ReceiverNonNull","matcher":"com.fsck.k9.mail.transport.smtp.SmtpResponse readGreeting()","className":"com.fsck.k9.mail.transport.smtp.SmtpTransport"}

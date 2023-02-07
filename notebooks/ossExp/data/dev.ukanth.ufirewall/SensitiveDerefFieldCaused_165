@@ -1,0 +1,1 @@
+{"methodName":"boolean onTouchEvent(android.view.MotionEvent)","line":222,"t":"ReceiverNonNull","matcher":"void menuActiviated()","className":"dev.ukanth.ufirewall.widget.RadialMenuWidget"}

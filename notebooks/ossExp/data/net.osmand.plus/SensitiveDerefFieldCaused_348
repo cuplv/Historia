@@ -1,0 +1,1 @@
+{"methodName":"java.math.BigInteger getPathLenConstraint()","line":-1,"t":"ReceiverNonNull","matcher":"java.math.BigInteger getValue()","className":"org.bouncycastle.asn1.x509.BasicConstraints"}

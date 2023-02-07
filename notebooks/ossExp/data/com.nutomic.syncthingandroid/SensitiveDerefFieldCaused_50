@@ -1,0 +1,1 @@
+{"methodName":"void onClick(android.view.View)","line":254,"t":"ReceiverNonNull","matcher":"boolean getBoolean(java.lang.String,boolean)","className":"com.nutomic.syncthingandroid.fragments.DrawerFragment"}

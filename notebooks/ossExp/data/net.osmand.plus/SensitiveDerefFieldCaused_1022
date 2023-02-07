@@ -1,0 +1,1 @@
+{"methodName":"void playMakeTurn(net.osmand.router.RouteSegmentResult,net.osmand.plus.routing.RouteDirectionInfo,net.osmand.plus.routing.RouteCalculationResult$NextDirectionInfo)","line":795,"t":"ReceiverNonNull","matcher":"net.osmand.router.TurnType getTurnType()","className":"net.osmand.plus.routing.VoiceRouter"}

@@ -1,0 +1,1 @@
+{"methodName":"void stopRingtone()","line":166,"t":"ReceiverNonNull","matcher":"void stop()","className":"org.sipdroid.sipua.ui.Receiver"}

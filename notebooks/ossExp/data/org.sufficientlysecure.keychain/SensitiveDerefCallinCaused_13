@@ -1,0 +1,1 @@
+{"methodName":"void onQueuedOperationSuccess(org.sufficientlysecure.keychain.operations.results.SignEncryptResult)","line":9,"t":"ReceiverNonNull","matcher":"androidx.fragment.app.FragmentManager getSupportFragmentManager()","className":"org.sufficientlysecure.keychain.ui.EncryptFilesFragment"}

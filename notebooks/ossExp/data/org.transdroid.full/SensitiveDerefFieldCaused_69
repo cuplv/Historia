@@ -1,0 +1,1 @@
+{"methodName":"java.lang.Object extractRawJavaFieldValue(java.lang.Object)","line":4,"t":"ReceiverNonNull","matcher":"java.lang.Object invoke(java.lang.Object,java.lang.Object[])","className":"com.j256.ormlite.field.FieldType"}

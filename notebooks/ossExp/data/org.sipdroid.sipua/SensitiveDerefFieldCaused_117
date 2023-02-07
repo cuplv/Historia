@@ -1,0 +1,1 @@
+{"methodName":"void onTransFailureResponse(org.zoolu.sip.transaction.TransactionClient,org.zoolu.sip.message.Message)","line":510,"t":"ReceiverNonNull","matcher":"void onUaRegistrationFailure(org.sipdroid.sipua.RegisterAgent,org.zoolu.sip.address.NameAddress,org.zoolu.sip.address.NameAddress,java.lang.String)","className":"org.sipdroid.sipua.RegisterAgent"}

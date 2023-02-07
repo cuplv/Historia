@@ -1,0 +1,1 @@
+{"methodName":"java.util.List getSuggestedMapDownloadItems()","line":196,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"net.osmand.plus.routepreparationmenu.cards.SuggestionsMapsDownloadWarningCard"}

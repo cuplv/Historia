@@ -1,0 +1,1 @@
+{"methodName":"void removeAppFromBatteryOptimization()","line":954,"t":"ReceiverNonNull","matcher":"java.lang.Object getSystemService(java.lang.String)","className":"org.zephyrsoft.trackworktime.Basics"}

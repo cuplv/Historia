@@ -1,0 +1,1 @@
+{"methodName":"java.lang.Long getBatteryRealtime(long)","line":725,"t":"ReceiverNonNull","matcher":"java.lang.reflect.Method getMethod(java.lang.String,java.lang.Class[])","className":"com.asksven.android.common.privateapiproxies.BatteryStatsProxy"}

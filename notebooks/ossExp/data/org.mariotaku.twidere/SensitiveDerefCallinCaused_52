@@ -1,0 +1,1 @@
+{"methodName":"void onAnimationStart(android.animation.Animator)","line":473,"t":"ReceiverNonNull","matcher":"boolean isFinishing()","className":"org.mariotaku.twidere.fragment.AccountsDashboardFragment$onAccountSelected$1"}

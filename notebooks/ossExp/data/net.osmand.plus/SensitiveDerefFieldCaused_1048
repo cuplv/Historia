@@ -1,0 +1,1 @@
+{"methodName":"void addItem(net.osmand.plus.download.DownloadItem)","line":243,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"net.osmand.plus.download.DownloadResourceGroup"}
