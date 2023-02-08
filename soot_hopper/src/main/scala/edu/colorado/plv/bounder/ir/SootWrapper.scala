@@ -1402,11 +1402,16 @@ class SootWrapper(apkPath : String,
       cmap
     }else{ cmdCache(method)}
 
-    if(!cmap.contains(loc)) {
-      val line = loc.line.asInstanceOf[JimpleLineLoc]
-      cmap.addOne(loc -> SootWrapper.makeCmd(line.cmd,method,loc))
+    try {
+      if (!cmap.contains(loc)) {
+        val line = loc.line.asInstanceOf[JimpleLineLoc]
+        cmap.addOne(loc -> SootWrapper.makeCmd(line.cmd, method, loc))
+      }
+      cmap(loc)
+    }catch {
+      case _:NoSuchElementException => //Not sure why this happens? Some concurrency issu?
+        cmdAtLocation(loc)
     }
-    cmap(loc)
   }
 
   protected def makeRVal(box:Value):RVal = SootWrapper.makeRVal(box)
