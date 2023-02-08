@@ -1028,6 +1028,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     )
   }
   def downloadApk(name:String, outFile:File) :Boolean= {
+    println(s"downloading apk: ${name}")
     val qry = for {
       row <- apkQry if row.name === name
     } yield row.img
