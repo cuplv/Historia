@@ -1,0 +1,1 @@
+{"methodName":"void drawSelectedFilesPointsOpenGl(net.osmand.core.android.MapRendererView,net.osmand.data.RotatedTileBox,java.util.List,boolean)","line":947,"t":"ReceiverNonNull","matcher":"void drawSymbols(net.osmand.core.android.MapRendererView)","className":"net.osmand.plus.views.layers.GPXLayer"}

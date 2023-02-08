@@ -1,0 +1,1 @@
+{"methodName":"boolean onTouchEvent(android.view.MotionEvent)","line":10,"t":"ReceiverNonNull","matcher":"boolean onTouchEvent(android.view.MotionEvent)","className":"com.getbase.floatingactionbutton.TouchDelegateGroup"}

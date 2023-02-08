@@ -1,0 +1,1 @@
+{"methodName":"void close(boolean)","line":100,"t":"ReceiverNonNull","matcher":"void interrupt()","className":"org.xbill.DNS.NioClient"}

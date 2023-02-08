@@ -1,0 +1,1 @@
+{"methodName":"void write(byte[],int,int)","line":83,"t":"ReceiverNonNull","matcher":"int deflate(int)","className":"com.jcraft.jzlib.ZOutputStream"}

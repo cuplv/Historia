@@ -1,0 +1,1 @@
+{"methodName":"void awaken(boolean)","line":93,"t":"ReceiverNonNull","matcher":"int distance(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob$Sleeping"}

@@ -1,0 +1,1 @@
+{"methodName":"void setupVideoAspectRatio()","line":402,"t":"ReceiverNonNull","matcher":"android.util.Pair getVideoSize()","className":"de.danoeh.antennapod.activity.VideoplayerActivity"}

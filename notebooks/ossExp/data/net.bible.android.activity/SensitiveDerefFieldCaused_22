@@ -1,0 +1,1 @@
+{"methodName":"void removeBookmark()","line":381,"t":"ReceiverNonNull","matcher":"void setPlaybackSettings(net.bible.android.database.bookmarks.PlaybackSettings)","className":"net.bible.service.device.speak.BibleSpeakTextProvider"}

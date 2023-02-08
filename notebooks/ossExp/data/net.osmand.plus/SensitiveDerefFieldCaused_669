@@ -1,0 +1,1 @@
+{"methodName":"boolean setLayerState(boolean)","line":263,"t":"ReceiverNonNull","matcher":"void setActions(java.util.List)","className":"net.osmand.plus.views.layers.MapQuickActionLayer"}

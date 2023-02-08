@@ -1,0 +1,1 @@
+{"methodName":"boolean veryRareEffect(com.shatteredpixel.shatteredpixeldungeon.items.Item,com.shatteredpixel.shatteredpixeldungeon.actors.Char,int)","line":25,"t":"ReceiverNonNull","matcher":"int length()","className":"com.shatteredpixel.shatteredpixeldungeon.items.wands.CursedWand"}

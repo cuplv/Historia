@@ -1,0 +1,1 @@
+{"methodName":"net.osmand.data.LatLon getMapCenter()","line":481,"t":"ReceiverNonNull","matcher":"net.osmand.data.LatLon getRegionCenter()","className":"net.osmand.plus.firstusage.FirstUsageWizardFragment"}

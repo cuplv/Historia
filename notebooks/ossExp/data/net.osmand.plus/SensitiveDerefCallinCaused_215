@@ -1,0 +1,1 @@
+{"methodName":"android.content.Intent createIntent(java.lang.Class)","line":132,"t":"ReceiverNonNull","matcher":"android.content.Intent getIntent()","className":"net.osmand.plus.activities.search.SearchAddressFragment"}

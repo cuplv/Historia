@@ -1,0 +1,1 @@
+{"methodName":"void applyLayoutParamsAndMargins(android.view.View)","line":5,"t":"ReceiverNonNull","matcher":"itemView","className":"eu.davidea.flexibleadapter.helpers.StickyHeaderHelper"}

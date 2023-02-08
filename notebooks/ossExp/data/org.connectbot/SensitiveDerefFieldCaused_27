@@ -1,0 +1,1 @@
+{"methodName":"void onClick(android.content.DialogInterface,int)","line":322,"t":"ReceiverNonNull","matcher":"void disconnectAll(boolean,boolean)","className":"org.connectbot.HostListActivity$7"}

@@ -1,0 +1,1 @@
+{"methodName":"void refreshRequiredTiles(boolean)","line":1298,"t":"ReceiverNonNull","matcher":"java.util.Set entrySet()","className":"com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView"}

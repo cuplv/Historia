@@ -1,0 +1,1 @@
+{"methodName":"void onDismiss(android.content.DialogInterface)","line":57,"t":"ReceiverNonNull","matcher":"boolean isFinishing()","className":"org.mariotaku.twidere.activity.InvalidAccountAlertActivity$InvalidAccountAlertDialogFragment"}

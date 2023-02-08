@@ -1,0 +1,1 @@
+{"methodName":"int defenseProc(com.shatteredpixel.shatteredpixeldungeon.actors.Char,int)","line":16,"t":"ReceiverNonNull","matcher":"int pointsInTalent(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.rogue.ShadowClone$ShadowAlly"}

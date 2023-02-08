@@ -1,0 +1,1 @@
+{"methodName":"void onProgressUpdate(java.lang.Integer[])","line":310,"t":"ReceiverNonNull","matcher":"void incrementProgress(int)","className":"dev.ukanth.ufirewall.activity.LogDetailActivity$CollectDetailLog"}

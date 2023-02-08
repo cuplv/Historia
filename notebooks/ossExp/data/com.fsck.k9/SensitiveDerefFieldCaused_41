@@ -1,0 +1,1 @@
+{"methodName":"void cleanupAfterProcessingFinished()","line":709,"t":"ReceiverNonNull","matcher":"void unbindFromService()","className":"com.fsck.k9.ui.crypto.MessageCryptoHelper"}

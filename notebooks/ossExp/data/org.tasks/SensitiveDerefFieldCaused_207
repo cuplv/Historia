@@ -1,0 +1,1 @@
+{"methodName":"org.commonmark.node.Node parseCloseBracket()","line":434,"t":"ReceiverNonNull","matcher":"allowed","className":"org.commonmark.internal.InlineParserImpl"}

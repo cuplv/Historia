@@ -1,0 +1,1 @@
+{"methodName":"void _closeLog()","line":3,"t":"ReceiverNonNull","matcher":"void close()","className":"com.ichi2.libanki.Collection"}

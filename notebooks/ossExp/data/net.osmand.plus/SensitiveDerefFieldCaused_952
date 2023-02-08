@@ -1,0 +1,1 @@
+{"methodName":"org.mozilla.javascript.Node transformGenExpr(org.mozilla.javascript.ast.GeneratorExpression)","line":675,"t":"ReceiverNonNull","matcher":"void addToken(int)","className":"org.mozilla.javascript.IRFactory"}

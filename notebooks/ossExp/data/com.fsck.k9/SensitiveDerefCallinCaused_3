@@ -1,0 +1,1 @@
+{"methodName":"void onClick(android.content.DialogInterface,int)","line":209,"t":"ReceiverNonNull","matcher":"void startActivity(android.content.Intent)","className":"com.fsck.k9.ui.settings.account.OpenPgpAppSelectDialog$OpenPgpAppSelectFragment$2"}

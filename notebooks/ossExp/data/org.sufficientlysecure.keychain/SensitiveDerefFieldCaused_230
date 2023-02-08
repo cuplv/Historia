@@ -1,0 +1,1 @@
+{"methodName":"void handleResult(org.sufficientlysecure.keychain.operations.results.ImportKeyResult,java.lang.Integer)","line":10,"t":"ReceiverNonNull","matcher":"java.lang.Object get(int)","className":"org.sufficientlysecure.keychain.ui.adapter.ImportKeysAdapter"}

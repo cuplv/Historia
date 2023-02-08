@@ -1,0 +1,1 @@
+{"methodName":"void readPipelinedResponse(java.util.List)","line":535,"t":"ReceiverNonNull","matcher":"com.fsck.k9.mail.transport.smtp.SmtpResponse readResponse(boolean)","className":"com.fsck.k9.mail.transport.smtp.SmtpTransport"}

@@ -1,0 +1,1 @@
+{"methodName":"boolean onTouchEventInternal(android.view.MotionEvent)","line":768,"t":"ReceiverNonNull","matcher":"void set(android.graphics.PointF)","className":"com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView"}

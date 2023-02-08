@@ -1,0 +1,1 @@
+{"methodName":"void update(java.util.Stack,org.bouncycastle.pqc.crypto.xmss.WOTSPlus,byte[],byte[],org.bouncycastle.pqc.crypto.xmss.OTSHashAddress)","line":-1,"t":"ReceiverNonNull","matcher":"int getHeight()","className":"org.bouncycastle.pqc.crypto.xmss.BDSTreeHash"}

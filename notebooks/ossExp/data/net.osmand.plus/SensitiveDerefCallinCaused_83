@@ -1,0 +1,1 @@
+{"methodName":"void setAdapterForPoiTypeEditText()","line":649,"t":"ReceiverNonNull","matcher":"android.content.res.Resources$Theme getTheme()","className":"net.osmand.plus.plugins.osmedit.dialogs.EditPoiDialogFragment"}

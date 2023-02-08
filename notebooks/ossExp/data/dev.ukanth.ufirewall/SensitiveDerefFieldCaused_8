@@ -1,0 +1,1 @@
+{"methodName":"com.raizlabs.android.dbflow.sql.migration.AlterTableMigration addColumn(com.raizlabs.android.dbflow.sql.SQLiteType,java.lang.String)","line":129,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"com.raizlabs.android.dbflow.sql.migration.AlterTableMigration"}

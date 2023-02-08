@@ -1,0 +1,1 @@
+{"methodName":"boolean canInteract(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","line":41,"t":"ReceiverNonNull","matcher":"int pointsInTalent(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.Char"}

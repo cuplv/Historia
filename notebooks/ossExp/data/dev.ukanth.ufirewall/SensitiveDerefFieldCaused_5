@@ -1,0 +1,1 @@
+{"methodName":"void onBindViewHolder(dev.ukanth.ufirewall.log.LogRecyclerViewAdapter$ViewHolder,int)","line":115,"t":"ReceiverNonNull","matcher":"applicationInfo","className":"dev.ukanth.ufirewall.log.LogRecyclerViewAdapter"}

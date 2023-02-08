@@ -1,0 +1,1 @@
+{"methodName":"org.mozilla.javascript.Node transformReturn(org.mozilla.javascript.ast.ReturnStatement)","line":1030,"t":"ReceiverNonNull","matcher":"void addEOL(int)","className":"org.mozilla.javascript.IRFactory"}

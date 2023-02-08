@@ -1,0 +1,1 @@
+{"methodName":"void dispatchDraw(android.graphics.Canvas)","line":827,"t":"ReceiverNonNull","matcher":"void draw(android.graphics.Canvas)","className":"com.mobeta.android.dslv.DragSortListView"}

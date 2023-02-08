@@ -1,0 +1,1 @@
+{"methodName":"void startThreadOperation(int,java.lang.String,int)","line":87,"t":"ReceiverNonNull","matcher":"void setMax(int)","className":"net.osmand.plus.activities.ContributionVersionActivity"}

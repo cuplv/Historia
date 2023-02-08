@@ -1,0 +1,1 @@
+{"methodName":"void process(com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob)","line":44,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.items.Heap drop(com.shatteredpixel.shatteredpixeldungeon.items.Item,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.Imp$Quest"}

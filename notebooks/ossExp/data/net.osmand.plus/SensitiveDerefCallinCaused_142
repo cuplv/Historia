@@ -1,0 +1,1 @@
+{"methodName":"void <init>(net.osmand.plus.liveupdates.UsersReportFragment,int)","line":108,"t":"ReceiverNonNull","matcher":"android.content.res.Resources$Theme getTheme()","className":"net.osmand.plus.liveupdates.UsersReportFragment$ListAdapter"}

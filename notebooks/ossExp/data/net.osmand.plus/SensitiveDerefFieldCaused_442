@@ -1,0 +1,1 @@
+{"methodName":"java.lang.Void doInBackground(java.lang.Void[])","line":96,"t":"ReceiverNonNull","matcher":"void execSQL(java.lang.String)","className":"net.osmand.plus.plugins.srtm.TerrainLayer$1"}

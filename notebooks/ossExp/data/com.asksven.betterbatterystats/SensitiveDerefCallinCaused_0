@@ -1,0 +1,1 @@
+{"methodName":"void onSharedPreferenceChanged(android.content.SharedPreferences,java.lang.String)","line":177,"t":"ReceiverNonNull","matcher":"android.content.Context getBaseContext()","className":"com.asksven.betterbatterystats.PreferencesFragmentActivity$PrefsFragment"}

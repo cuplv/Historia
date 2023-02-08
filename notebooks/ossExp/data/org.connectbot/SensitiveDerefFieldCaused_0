@@ -1,0 +1,1 @@
+{"methodName":"void updateList()","line":374,"t":"ReceiverNonNull","matcher":"java.util.List getHosts(boolean)","className":"org.connectbot.HostListActivity"}

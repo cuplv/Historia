@@ -1,0 +1,1 @@
+{"methodName":"void run()","line":160,"t":"ReceiverNonNull","matcher":"void onServerTerminated(org.zoolu.net.TcpServer,java.lang.Exception)","className":"org.zoolu.net.TcpServer"}

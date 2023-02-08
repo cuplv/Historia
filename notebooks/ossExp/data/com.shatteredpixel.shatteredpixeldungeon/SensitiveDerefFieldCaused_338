@@ -1,0 +1,1 @@
+{"methodName":"void updateFieldOfView(com.shatteredpixel.shatteredpixeldungeon.actors.Char,boolean[])","line":911,"t":"ReceiverNonNull","matcher":"mindVisionEnemies","className":"com.shatteredpixel.shatteredpixeldungeon.levels.Level"}

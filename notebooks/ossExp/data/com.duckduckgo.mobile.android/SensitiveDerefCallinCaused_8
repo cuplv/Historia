@@ -1,0 +1,1 @@
+{"methodName":"void showAuthenticationDialog(com.duckduckgo.app.browser.model.BasicAuthenticationRequest)","line":1470,"t":"ReceiverNonNull","matcher":"androidx.fragment.app.FragmentManager getSupportFragmentManager()","className":"com.duckduckgo.app.browser.BrowserTabFragment"}

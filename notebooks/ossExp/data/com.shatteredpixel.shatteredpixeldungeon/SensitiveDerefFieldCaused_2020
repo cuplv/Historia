@@ -1,0 +1,1 @@
+{"methodName":"void spawn(com.shatteredpixel.shatteredpixeldungeon.levels.SewerLevel)","line":168,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.items.Item upgrade(int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.Ghost$Quest"}

@@ -1,0 +1,1 @@
+{"methodName":"void updateFieldCache(java.lang.String)","line":12,"t":"ReceiverNonNull","matcher":"void executeMany(java.lang.String,java.util.List)","className":"com.ichi2.libanki.Collection"}

@@ -1,0 +1,1 @@
+{"methodName":"int getNotificationStatus(android.content.Context)","line":2,"t":"ReceiverNonNull","matcher":"android.database.Cursor query(java.lang.String,java.lang.String[],java.lang.String,java.lang.String[],java.lang.String,java.lang.String,java.lang.String)","className":"com.ichi2.anki.MetaDB"}

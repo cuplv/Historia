@@ -1,0 +1,1 @@
+{"methodName":"void closeBlock(com.vladsch.flexmark.parser.block.ParserState)","line":98,"t":"ReceiverNonNull","matcher":"java.util.List getLines()","className":"com.vladsch.flexmark.internal.FencedCodeBlockParser"}

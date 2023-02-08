@@ -1,0 +1,1 @@
+{"methodName":"void onStop()","line":1276,"t":"ReceiverNonNull","matcher":"boolean cancel(boolean)","className":"com.fsck.k9.ui.messagelist.MessageListFragment"}

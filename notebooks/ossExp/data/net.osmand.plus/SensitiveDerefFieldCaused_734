@@ -1,0 +1,1 @@
+{"methodName":"void hide(boolean)","line":1008,"t":"ReceiverNonNull","matcher":"void setVisibility(int)","className":"net.osmand.plus.dashboard.DashboardOnMap"}

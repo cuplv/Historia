@@ -1,0 +1,1 @@
+{"methodName":"void startCropWorkerTask(int,int,com.theartofdev.edmodo.cropper.CropImageView$RequestSizeOptions,android.net.Uri,android.graphics.Bitmap$CompressFormat,int)","line":1315,"t":"ReceiverNonNull","matcher":"void <init>(java.lang.Object)","className":"com.theartofdev.edmodo.cropper.CropImageView"}

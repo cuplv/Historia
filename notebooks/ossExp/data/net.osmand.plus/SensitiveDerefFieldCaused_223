@@ -1,0 +1,1 @@
+{"methodName":"java.util.Collection getAdditionalInfoKeys()","line":154,"t":"ReceiverNonNull","matcher":"java.util.Set keySet()","className":"net.osmand.data.Amenity"}

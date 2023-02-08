@@ -1,0 +1,1 @@
+{"methodName":"void releaseSound()","line":7,"t":"ReceiverNonNull","matcher":"int abandonAudioFocus(android.media.AudioManager$OnAudioFocusChangeListener)","className":"com.ichi2.libanki.Sound"}

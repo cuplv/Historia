@@ -1,0 +1,1 @@
+{"methodName":"net.osmand.plus.routing.RouteCalculationResult calculateGpxRoute(net.osmand.plus.routing.RouteCalculationParams)","line":198,"t":"ReceiverNonNull","matcher":"route","className":"net.osmand.plus.routing.RouteProvider"}

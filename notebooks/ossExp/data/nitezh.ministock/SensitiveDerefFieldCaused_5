@@ -1,0 +1,1 @@
+{"methodName":"void putBoolean(java.lang.String,java.lang.Boolean)","line":90,"t":"ReceiverNonNull","matcher":"android.content.SharedPreferences$Editor putBoolean(java.lang.String,boolean)","className":"nitezh.ministock.PreferenceStorage"}

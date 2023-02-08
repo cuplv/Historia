@@ -1,0 +1,1 @@
+{"methodName":"boolean interact(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","line":34,"t":"ReceiverNonNull","matcher":"void spendAndNext(float)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.Sheep"}

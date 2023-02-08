@@ -1,0 +1,1 @@
+{"methodName":"boolean onTouchEvent(android.view.MotionEvent)","line":75,"t":"ReceiverNonNull","matcher":"long getEventTime()","className":"net.osmand.plus.views.DoubleTapScaleDetector"}

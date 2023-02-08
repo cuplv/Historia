@@ -1,0 +1,1 @@
+{"methodName":"void showResults()","line":9,"t":"ReceiverNonNull","matcher":"void setVisibility(int)","className":"org.transdroid.core.gui.search.SearchResultsFragment"}

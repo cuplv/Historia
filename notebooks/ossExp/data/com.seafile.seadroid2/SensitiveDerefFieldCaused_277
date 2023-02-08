@@ -1,0 +1,1 @@
+{"methodName":"void notifyOnTimedText(tv.danmaku.ijk.media.player.IjkTimedText)","line":115,"t":"ReceiverNonNull","matcher":"void onTimedText(tv.danmaku.ijk.media.player.IMediaPlayer,tv.danmaku.ijk.media.player.IjkTimedText)","className":"tv.danmaku.ijk.media.player.AbstractMediaPlayer"}

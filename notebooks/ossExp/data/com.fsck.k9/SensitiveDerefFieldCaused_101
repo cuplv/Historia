@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String sendSaslIrCommand(java.lang.String,java.lang.String,boolean)","line":731,"t":"ReceiverNonNull","matcher":"void write(byte[])","className":"com.fsck.k9.mail.store.imap.RealImapConnection"}

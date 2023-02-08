@@ -1,0 +1,1 @@
+{"methodName":"boolean onOptionsItemSelected(android.view.MenuItem)","line":9,"t":"ReceiverNonNull","matcher":"void startActivity(android.content.Intent)","className":"org.transdroid.core.gui.remoterss.RemoteRssFragment_"}

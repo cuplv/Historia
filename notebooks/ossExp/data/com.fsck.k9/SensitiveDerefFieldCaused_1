@@ -1,0 +1,1 @@
+{"methodName":"boolean isShowingTrashFolder()","line":749,"t":"ReceiverNonNull","matcher":"java.lang.Long getTrashFolderId()","className":"com.fsck.k9.ui.messagelist.MessageListFragment"}

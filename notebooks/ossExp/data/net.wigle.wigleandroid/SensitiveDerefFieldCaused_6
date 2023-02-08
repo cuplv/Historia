@@ -1,0 +1,1 @@
+{"methodName":"void setupBluetooth()","line":2081,"t":"ReceiverNonNull","matcher":"void <init>(net.wigle.wigleandroid.MainActivity,net.wigle.wigleandroid.db.DatabaseHelper,boolean)","className":"net.wigle.wigleandroid.MainActivity"}

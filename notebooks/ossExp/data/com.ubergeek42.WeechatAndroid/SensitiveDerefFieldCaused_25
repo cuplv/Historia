@@ -1,0 +1,1 @@
+{"methodName":"void close(java.lang.Throwable)","line":12,"t":"ReceiverNonNull","matcher":"channels","className":"com.trilead.ssh2.Connection"}

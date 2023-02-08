@@ -1,0 +1,1 @@
+{"methodName":"boolean act(boolean,boolean)","line":608,"t":"ReceiverNonNull","matcher":"int randomDestination(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.RipperDemon$Hunting"}

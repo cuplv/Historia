@@ -1,0 +1,1 @@
+{"methodName":"void drawAt(android.graphics.Canvas,int,int,float)","line":558,"t":"ReceiverNonNull","matcher":"int getIntrinsicHeight()","className":"org.osmdroid.views.overlay.Marker"}

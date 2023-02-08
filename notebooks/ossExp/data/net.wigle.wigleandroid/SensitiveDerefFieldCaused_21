@@ -1,0 +1,1 @@
+{"methodName":"void updateLocationData(android.location.Location)","line":234,"t":"ReceiverNonNull","matcher":"java.lang.String getProvider()","className":"net.wigle.wigleandroid.listener.GPSListener"}

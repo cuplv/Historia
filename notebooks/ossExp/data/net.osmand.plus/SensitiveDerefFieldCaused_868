@@ -1,0 +1,1 @@
+{"methodName":"org.mozilla.javascript.ScriptableObject$Slot get(java.lang.Object,int,org.mozilla.javascript.ScriptableObject$SlotAccess)","line":121,"t":"ReceiverNonNull","matcher":"name","className":"org.mozilla.javascript.EmbeddedSlotMap"}

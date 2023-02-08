@@ -1,0 +1,1 @@
+{"methodName":"int compareTo(java.lang.Object)","line":7,"t":"ReceiverNonNull","matcher":"int compareTo(java.lang.String)","className":"m2.g"}

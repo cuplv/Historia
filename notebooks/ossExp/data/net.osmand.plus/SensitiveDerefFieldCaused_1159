@@ -1,0 +1,1 @@
+{"methodName":"java.util.List searchPoi(net.osmand.binary.BinaryMapIndexReader$SearchRequest)","line":1397,"t":"ReceiverNonNull","matcher":"void seek(long)","className":"net.osmand.binary.BinaryMapIndexReader"}

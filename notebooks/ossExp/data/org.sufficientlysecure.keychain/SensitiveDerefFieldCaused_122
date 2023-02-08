@@ -1,0 +1,1 @@
+{"methodName":"void setLayoutManager(androidx.recyclerview.widget.RecyclerView$LayoutManager)","line":4,"t":"ReceiverNonNull","matcher":"void setLayoutManager(androidx.recyclerview.widget.RecyclerView$LayoutManager)","className":"org.sufficientlysecure.keychain.ui.base.RecyclerFragment"}

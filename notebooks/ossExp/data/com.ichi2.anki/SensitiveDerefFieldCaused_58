@@ -1,0 +1,1 @@
+{"methodName":"int parse_save_field()","line":5,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"com.ichi2.libanki.importer.python.CsvReaderIterator"}

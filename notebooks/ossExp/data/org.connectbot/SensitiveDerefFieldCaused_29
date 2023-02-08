@@ -1,0 +1,1 @@
+{"methodName":"void cancelTimeoutHandler(com.trilead.ssh2.util.TimeoutService$TimeoutToken)","line":145,"t":"ReceiverNonNull","matcher":"void interrupt()","className":"com.trilead.ssh2.util.TimeoutService"}

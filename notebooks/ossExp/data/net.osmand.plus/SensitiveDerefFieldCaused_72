@@ -1,0 +1,1 @@
+{"methodName":"boolean launchPrevActivityIntent()","line":626,"t":"ReceiverNonNull","matcher":"android.content.Intent putExtra(java.lang.String,double)","className":"net.osmand.plus.activities.MapActivity"}

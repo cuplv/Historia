@@ -1,0 +1,1 @@
+{"methodName":"void updateLocationUi()","line":1417,"t":"ReceiverNonNull","matcher":"android.app.Application getApplication()","className":"net.osmand.plus.mapmarkers.CoordinateInputDialogFragment"}

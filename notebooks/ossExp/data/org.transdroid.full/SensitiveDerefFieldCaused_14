@@ -1,0 +1,1 @@
+{"methodName":"void updateViewVisibility()","line":4,"t":"ReceiverNonNull","matcher":"void setVisibility(int)","className":"org.transdroid.core.gui.TorrentsFragment"}

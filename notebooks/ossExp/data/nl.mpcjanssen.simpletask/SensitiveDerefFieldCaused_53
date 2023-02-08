@@ -1,0 +1,1 @@
+{"methodName":"org.luaj.vm2.Varargs eval()","line":-1,"t":"ReceiverNonNull","matcher":"org.luaj.vm2.Varargs onInvoke(org.luaj.vm2.Varargs)","className":"org.luaj.vm2.TailcallVarargs"}

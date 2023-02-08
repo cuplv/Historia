@@ -1,0 +1,1 @@
+{"methodName":"void updateFixLeakScript(boolean)","line":192,"t":"ReceiverNonNull","matcher":"android.content.Context getApplicationContext()","className":"dev.ukanth.ufirewall.preferences.ExpPreferenceFragment"}

@@ -1,0 +1,1 @@
+{"methodName":"void fetch(java.util.List,com.fsck.k9.mail.FetchProfile,com.fsck.k9.mail.store.imap.FetchListener,int)","line":583,"t":"ReceiverNonNull","matcher":"com.fsck.k9.mail.store.imap.ImapResponse readResponse(com.fsck.k9.mail.store.imap.ImapResponseCallback)","className":"com.fsck.k9.mail.store.imap.RealImapFolder"}

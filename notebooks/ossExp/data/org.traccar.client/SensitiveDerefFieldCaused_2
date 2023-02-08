@@ -1,0 +1,1 @@
+{"methodName":"void processDelimiters(org.commonmark.internal.Delimiter)","line":840,"t":"ReceiverNonNull","matcher":"delimiterChar","className":"org.commonmark.internal.InlineParserImpl"}

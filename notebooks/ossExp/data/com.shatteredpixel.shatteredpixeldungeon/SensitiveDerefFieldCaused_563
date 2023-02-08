@@ -1,0 +1,1 @@
+{"methodName":"void onClick()","line":38,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.items.Heap drop(com.shatteredpixel.shatteredpixeldungeon.items.Item,int)","className":"com.shatteredpixel.shatteredpixeldungeon.windows.WndTradeItem$5"}

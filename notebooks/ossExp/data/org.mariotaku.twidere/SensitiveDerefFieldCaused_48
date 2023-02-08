@@ -1,0 +1,1 @@
+{"methodName":"void destroyFloatView()","line":2409,"t":"ReceiverNonNull","matcher":"void setVisibility(int)","className":"com.mobeta.android.dslv.DragSortListView"}

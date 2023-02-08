@@ -1,0 +1,1 @@
+{"methodName":"void setTitle(androidx.fragment.app.Fragment,java.lang.CharSequence)","line":30,"t":"ReceiverNonNull","matcher":"java.lang.CharSequence getTitle()","className":"org.mariotaku.twidere.extension.FragmentExtensionsKt"}

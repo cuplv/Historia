@@ -1,0 +1,1 @@
+{"methodName":"void onAttach(android.app.Activity)","line":100,"t":"ReceiverNonNull","matcher":"android.content.Context getApplicationContext()","className":"com.darshancomputing.BatteryIndicatorPro.LogViewFragment"}

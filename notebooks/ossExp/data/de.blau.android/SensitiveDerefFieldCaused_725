@@ -1,0 +1,1 @@
+{"methodName":"void onServiceConnected(android.content.ComponentName,android.os.IBinder)","line":13,"t":"ReceiverNonNull","matcher":"void i(boolean)","className":"de.blau.android.Main"}

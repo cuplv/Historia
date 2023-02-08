@@ -1,0 +1,1 @@
+{"methodName":"boolean act(boolean,boolean)","line":76,"t":"ReceiverNonNull","matcher":"int distance(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob$Sleeping"}

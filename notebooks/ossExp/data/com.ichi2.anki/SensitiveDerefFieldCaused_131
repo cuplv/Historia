@@ -1,0 +1,1 @@
+{"methodName":"void closeDB()","line":2,"t":"ReceiverNonNull","matcher":"void close()","className":"com.ichi2.anki.MetaDB"}

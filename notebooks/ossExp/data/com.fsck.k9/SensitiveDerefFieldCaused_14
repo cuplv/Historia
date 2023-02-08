@@ -1,0 +1,1 @@
+{"methodName":"void setUserFolders(com.fsck.k9.ui.folders.FolderList)","line":404,"t":"ReceiverNonNull","matcher":"long longValue()","className":"com.fsck.k9.ui.K9Drawer"}

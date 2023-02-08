@@ -1,0 +1,1 @@
+{"methodName":"void createEnergy()","line":48,"t":"ReceiverNonNull","matcher":"int availableEnergy()","className":"com.shatteredpixel.shatteredpixeldungeon.scenes.AlchemyScene"}

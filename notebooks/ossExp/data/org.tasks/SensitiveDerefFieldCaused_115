@@ -1,0 +1,1 @@
+{"methodName":"org.osmdroid.util.GeoPoint getCloseTo(org.osmdroid.util.GeoPoint,double,org.osmdroid.views.MapView)","line":599,"t":"ReceiverNonNull","matcher":"org.osmdroid.util.GeoPoint getCloseTo(org.osmdroid.util.GeoPoint,double,org.osmdroid.views.Projection,boolean)","className":"org.osmdroid.views.overlay.PolyOverlayWithIW"}

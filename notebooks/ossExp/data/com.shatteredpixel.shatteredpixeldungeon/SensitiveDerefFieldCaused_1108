@@ -1,0 +1,1 @@
+{"methodName":"void evolve()","line":137,"t":"ReceiverNonNull","matcher":"boolean spawnMob(int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.blobs.SacrificialFire"}

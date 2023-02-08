@@ -1,0 +1,1 @@
+{"methodName":"org.mariotaku.twidere.model.ParcelableStatusUpdate getStatusUpdate(boolean)","line":1603,"t":"ReceiverNonNull","matcher":"user_key","className":"org.mariotaku.twidere.activity.ComposeActivity"}

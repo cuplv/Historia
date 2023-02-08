@@ -1,0 +1,1 @@
+{"methodName":"void animateView(androidx.recyclerview.widget.RecyclerView$ViewHolder,int)","line":2,"t":"ReceiverNonNull","matcher":"int getChildCount()","className":"eu.davidea.flexibleadapter.AnimatorAdapter"}

@@ -1,0 +1,1 @@
+{"methodName":"void speak(java.lang.String)","line":43,"t":"ReceiverNonNull","matcher":"int setOnUtteranceCompletedListener(android.speech.tts.TextToSpeech$OnUtteranceCompletedListener)","className":"com.todoroo.astrid.voice.VoiceOutputAssistant"}

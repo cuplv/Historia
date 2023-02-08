@@ -1,0 +1,1 @@
+{"methodName":"void setPlayer(net.osmand.plus.voice.CommandPlayer)","line":151,"t":"ReceiverNonNull","matcher":"void play(net.osmand.plus.voice.CommandBuilder)","className":"net.osmand.plus.routing.VoiceRouter"}

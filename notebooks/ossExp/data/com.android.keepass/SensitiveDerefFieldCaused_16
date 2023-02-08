@@ -1,0 +1,1 @@
+{"methodName":"void onViewCreated(android.view.View,android.os.Bundle)","line":153,"t":"ReceiverNonNull","matcher":"android.content.SharedPreferences getSharedPreferences(java.lang.String,int)","className":"com.keepassdroid.fragments.PasswordFragment"}

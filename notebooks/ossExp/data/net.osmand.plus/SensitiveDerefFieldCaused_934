@@ -1,0 +1,1 @@
+{"methodName":"void onDraw(android.graphics.Canvas,net.osmand.data.RotatedTileBox,net.osmand.plus.views.layers.base.OsmandMapLayer$DrawSettings)","line":367,"t":"ReceiverNonNull","matcher":"void setCustomLatLon(net.osmand.data.LatLon)","className":"net.osmand.plus.views.layers.MapMarkersLayer"}

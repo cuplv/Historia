@@ -1,0 +1,1 @@
+{"methodName":"void updateState()","line":74,"t":"ReceiverNonNull","matcher":"boolean adjacent(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.levels.CavesBossLevel$ArenaVisuals"}

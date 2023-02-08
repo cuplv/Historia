@@ -1,0 +1,1 @@
+{"methodName":"void kickOffScrollThread()","line":78,"t":"ReceiverNonNull","matcher":"void <init>(java.lang.Runnable)","className":"net.bible.android.view.activity.page.screen.PageTiltScroller"}

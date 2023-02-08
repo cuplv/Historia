@@ -1,0 +1,1 @@
+{"methodName":"void removeObserver()","line":56,"t":"ReceiverNonNull","matcher":"void removeObserver(androidx.lifecycle.Observer)","className":"org.zephyrsoft.trackworktime.weektimes.WeekTimesViewHolder"}

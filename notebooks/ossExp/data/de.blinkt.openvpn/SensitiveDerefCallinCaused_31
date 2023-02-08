@@ -1,0 +1,1 @@
+{"methodName":"void onCreateView$lambda$2(de.blinkt.openvpn.fragments.Settings_Allowed_Apps,android.view.View)","line":94,"t":"ReceiverNonNull","matcher":"void runOnUiThread(java.lang.Runnable)","className":"de.blinkt.openvpn.fragments.Settings_Allowed_Apps"}

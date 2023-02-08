@@ -1,0 +1,1 @@
+{"methodName":"void onCreateOptionsMenu(android.view.Menu,android.view.MenuInflater)","line":134,"t":"ReceiverNonNull","matcher":"android.content.ComponentName getComponentName()","className":"info.hannes.logcat.base.LogBaseFragment"}

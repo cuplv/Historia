@@ -1,0 +1,1 @@
+{"methodName":"void continueSearchAfterError()","line":1,"t":"ReceiverNonNull","matcher":"void statusLineError()","className":"org.sufficientlysecure.keychain.ui.token.ManageSecurityTokenPresenter"}

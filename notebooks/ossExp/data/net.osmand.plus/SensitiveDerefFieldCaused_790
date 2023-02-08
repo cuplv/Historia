@@ -1,0 +1,1 @@
+{"methodName":"void showAidlTileProvider(float)","line":533,"t":"ReceiverNonNull","matcher":"void addToData(net.osmand.aidl.AidlMapPointWrapper,android.graphics.Bitmap,boolean,java.lang.String)","className":"net.osmand.plus.views.layers.AidlMapLayer"}

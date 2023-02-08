@@ -1,0 +1,1 @@
+{"methodName":"void fetchPart(com.fsck.k9.mail.store.imap.ImapMessage,com.fsck.k9.mail.Part,com.fsck.k9.mail.BodyFactory,int)","line":649,"t":"ReceiverNonNull","matcher":"java.lang.String sendCommand(java.lang.String,boolean)","className":"com.fsck.k9.mail.store.imap.RealImapFolder"}

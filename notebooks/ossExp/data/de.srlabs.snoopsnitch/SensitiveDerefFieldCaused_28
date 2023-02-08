@@ -1,0 +1,1 @@
+{"methodName":"long getLastAnalysisTimeMs()","line":282,"t":"ReceiverNonNull","matcher":"long getLastAnalysisTimeMs()","className":"de.srlabs.snoopsnitch.qdmon.MsdServiceHelper"}

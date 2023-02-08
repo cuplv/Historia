@@ -1,0 +1,1 @@
+{"methodName":"void onServiceConnected(android.content.ComponentName,android.os.IBinder)","line":354,"t":"ReceiverNonNull","matcher":"void send(android.os.Message)","className":"com.darshancomputing.BatteryIndicatorPro.BatteryInfoService$RemoteConnection"}

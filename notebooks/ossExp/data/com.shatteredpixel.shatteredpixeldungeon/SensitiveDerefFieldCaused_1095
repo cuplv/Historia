@@ -1,0 +1,1 @@
+{"methodName":"void wandProc(com.shatteredpixel.shatteredpixeldungeon.actors.Char,int,int)","line":3,"t":"ReceiverNonNull","matcher":"int pointsInTalent(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent)","className":"com.shatteredpixel.shatteredpixeldungeon.items.wands.Wand"}

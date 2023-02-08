@@ -1,0 +1,1 @@
+{"methodName":"void setupGpxExport(android.view.View)","line":376,"t":"ReceiverNonNull","matcher":"android.content.SharedPreferences getSharedPreferences(java.lang.String,int)","className":"net.wigle.wigleandroid.DataFragment"}

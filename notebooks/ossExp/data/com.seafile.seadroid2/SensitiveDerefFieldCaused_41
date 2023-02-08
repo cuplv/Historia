@@ -1,0 +1,1 @@
+{"methodName":"void removeSurfaceCallbacks()","line":680,"t":"ReceiverNonNull","matcher":"void setSurfaceTextureListener(android.view.TextureView$SurfaceTextureListener)","className":"tv.danmaku.ijk.media.exo2.demo.player.SimpleExoPlayer2"}

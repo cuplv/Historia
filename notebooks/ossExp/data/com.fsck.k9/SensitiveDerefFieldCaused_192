@@ -1,0 +1,1 @@
+{"methodName":"void handleOAuthUntaggedResponse(com.fsck.k9.mail.store.imap.ImapResponse)","line":408,"t":"ReceiverNonNull","matcher":"void write(int)","className":"com.fsck.k9.mail.store.imap.RealImapConnection"}

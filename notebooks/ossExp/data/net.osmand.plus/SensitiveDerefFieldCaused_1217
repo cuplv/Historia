@@ -1,0 +1,1 @@
+{"methodName":"void loadMap(net.osmand.data.RotatedTileBox,net.osmand.map.MapTileDownloader)","line":688,"t":"ReceiverNonNull","matcher":"net.osmand.data.QuadRect getLatLonBounds()","className":"net.osmand.plus.render.MapRenderRepositories"}

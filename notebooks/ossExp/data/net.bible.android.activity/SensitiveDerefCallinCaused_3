@@ -1,0 +1,1 @@
+{"methodName":"android.view.View createPickerView()","line":286,"t":"ReceiverNonNull","matcher":"android.content.res.TypedArray obtainStyledAttributes(int,int[])","className":"com.jaredrummler.android.colorpicker.ColorPickerDialog"}

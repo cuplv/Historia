@@ -1,0 +1,1 @@
+{"methodName":"void fetchBody(com.fsck.k9.mail.store.pop3.Pop3Message,int)","line":445,"t":"ReceiverNonNull","matcher":"java.io.InputStream getInputStream()","className":"com.fsck.k9.mail.store.pop3.Pop3Folder"}

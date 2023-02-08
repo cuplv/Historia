@@ -1,0 +1,1 @@
+{"methodName":"void applyAllFilters()","line":12,"t":"ReceiverNonNull","matcher":"boolean contains(java.lang.CharSequence)","className":"org.transdroid.core.gui.TorrentsFragment"}

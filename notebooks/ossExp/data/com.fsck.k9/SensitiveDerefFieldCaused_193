@@ -1,0 +1,1 @@
+{"methodName":"void release()","line":73,"t":"ReceiverNonNull","matcher":"long longValue()","className":"com.fsck.k9.power.AndroidPowerManager$AndroidWakeLock"}

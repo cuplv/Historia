@@ -1,0 +1,1 @@
+{"methodName":"void releaseNetWorkState()","line":762,"t":"ReceiverNonNull","matcher":"void onHostPause()","className":"com.shuyu.gsyvideoplayer.video.base.GSYVideoView"}

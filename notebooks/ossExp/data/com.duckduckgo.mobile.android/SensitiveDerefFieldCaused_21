@@ -1,0 +1,1 @@
+{"methodName":"void refreshUserAgent(java.lang.String,boolean)","line":2103,"t":"ReceiverNonNull","matcher":"android.webkit.WebSettings getSettings()","className":"com.duckduckgo.app.browser.BrowserTabFragment"}

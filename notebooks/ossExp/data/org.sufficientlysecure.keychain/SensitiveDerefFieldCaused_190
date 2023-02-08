@@ -1,0 +1,1 @@
+{"methodName":"void initListBlock(com.github.rjeschke.txtmark.Block)","line":3,"t":"ReceiverNonNull","matcher":"com.github.rjeschke.txtmark.LineType getLineType(boolean)","className":"com.github.rjeschke.txtmark.Processor"}

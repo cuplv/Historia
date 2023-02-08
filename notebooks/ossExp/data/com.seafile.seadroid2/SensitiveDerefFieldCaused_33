@@ -1,0 +1,1 @@
+{"methodName":"void addUpdateBlocksTask(java.lang.String,java.lang.String,java.lang.String,java.lang.String)","line":185,"t":"ReceiverNonNull","matcher":"int addTaskToUploadQueBlock(com.seafile.seadroid2.account.Account,java.lang.String,java.lang.String,java.lang.String,java.lang.String,boolean,boolean)","className":"com.seafile.seadroid2.ui.activity.BrowserActivity"}

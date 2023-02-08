@@ -1,0 +1,1 @@
+{"methodName":"void disable(net.osmand.plus.OsmandApplication)","line":87,"t":"ReceiverNonNull","matcher":"void release()","className":"net.osmand.plus.plugins.accessibility.AccessibilityPlugin"}

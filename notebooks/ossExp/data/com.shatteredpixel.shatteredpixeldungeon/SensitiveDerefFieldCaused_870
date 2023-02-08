@@ -1,0 +1,1 @@
+{"methodName":"com.watabou.noosa.Tilemap create()","line":53,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob findMob(int)","className":"com.shatteredpixel.shatteredpixeldungeon.levels.rooms.special.DemonSpawnerRoom$CustomFloor"}

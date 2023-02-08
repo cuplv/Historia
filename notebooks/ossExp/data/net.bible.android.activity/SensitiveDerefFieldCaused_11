@@ -1,0 +1,1 @@
+{"methodName":"void loadDailyReading(java.lang.String,java.lang.Integer)","line":139,"t":"ReceiverNonNull","matcher":"android.widget.TableRow getRoot()","className":"net.bible.android.view.activity.readingplan.DailyReading"}

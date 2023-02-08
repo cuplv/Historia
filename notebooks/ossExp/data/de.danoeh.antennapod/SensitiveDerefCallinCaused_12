@@ -1,0 +1,1 @@
+{"methodName":"boolean lambda$setupScreen$1$SynchronizationPreferencesFragment(androidx.preference.Preference)","line":96,"t":"ReceiverNonNull","matcher":"android.content.Context getApplicationContext()","className":"de.danoeh.antennapod.fragment.preferences.synchronization.SynchronizationPreferencesFragment"}

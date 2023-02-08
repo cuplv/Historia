@@ -1,0 +1,1 @@
+{"methodName":"org.zoolu.net.IpAddress getRemoteAddress()","line":80,"t":"ReceiverNonNull","matcher":"org.zoolu.net.IpAddress getRemoteAddress()","className":"org.zoolu.sip.provider.TcpTransport"}

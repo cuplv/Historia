@@ -1,0 +1,1 @@
+{"methodName":"void setInfoWindow(org.osmdroid.views.overlay.infowindow.InfoWindow)","line":160,"t":"ReceiverNonNull","matcher":"void setRelatedObject(java.lang.Object)","className":"org.osmdroid.views.overlay.PolyOverlayWithIW"}

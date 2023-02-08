@@ -1,0 +1,1 @@
+{"methodName":"android.app.Dialog onCreateDialog(android.os.Bundle)","line":26,"t":"ReceiverNonNull","matcher":"android.app.Application getApplication()","className":"net.osmand.plus.plugins.osmedit.dialogs.PoiSubTypeDialogFragment"}

@@ -1,0 +1,1 @@
+{"methodName":"void requestComplete(org.json.JSONObject,boolean)","line":274,"t":"ReceiverNonNull","matcher":"void runOnUiThread(java.lang.Runnable)","className":"net.wigle.wigleandroid.UploadsListAdapter$7$1"}

@@ -1,0 +1,1 @@
+{"methodName":"void refreshChart(com.github.mikephil.charting.charts.LineChart,boolean,boolean,boolean)","line":477,"t":"ReceiverNonNull","matcher":"void <init>()","className":"net.osmand.plus.mapcontextmenu.other.TrackDetailsMenu"}

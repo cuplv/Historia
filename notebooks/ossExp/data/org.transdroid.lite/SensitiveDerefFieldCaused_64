@@ -1,0 +1,1 @@
+{"methodName":"boolean onActionItemClicked(android.view.ActionMode,android.view.MenuItem)","line":3,"t":"ReceiverNonNull","matcher":"android.util.SparseBooleanArray getCheckedItemPositions()","className":"org.transdroid.core.gui.search.SearchResultsFragment$1"}

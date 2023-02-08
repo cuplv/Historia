@@ -1,0 +1,1 @@
+{"methodName":"net.sqlcipher.database.SQLiteDatabase getWritableDatabase(byte[])","line":155,"t":"ReceiverNonNull","matcher":"void lock()","className":"net.sqlcipher.database.SQLiteOpenHelper"}

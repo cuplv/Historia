@@ -1,0 +1,1 @@
+{"methodName":"void onCancel(android.content.DialogInterface)","line":3,"t":"ReceiverNonNull","matcher":"void finish()","className":"org.sufficientlysecure.keychain.ui.DeleteKeyDialogActivity$DeleteKeyDialogFragment"}

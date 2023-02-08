@@ -1,0 +1,1 @@
+{"methodName":"void fall()","line":41,"t":"ReceiverNonNull","matcher":"int fallCell(boolean)","className":"com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene"}

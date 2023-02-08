@@ -1,0 +1,1 @@
+{"methodName":"void setAnimatedValue(java.lang.Object)","line":967,"t":"ReceiverNonNull","matcher":"void set(java.lang.Object,java.lang.Object)","className":"com.nineoldandroids.animation.PropertyValuesHolder$FloatPropertyValuesHolder"}

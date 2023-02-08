@@ -1,0 +1,1 @@
+{"methodName":"void onClickLoadFile()","line":1,"t":"ReceiverNonNull","matcher":"void showFileSelectDialog()","className":"org.sufficientlysecure.keychain.ui.token.ManageSecurityTokenPresenter"}

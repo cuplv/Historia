@@ -1,0 +1,1 @@
+{"methodName":"void setText(com.ubergeek42.WeechatAndroid.relay.Line)","line":73,"t":"ReceiverNonNull","matcher":"void cancel()","className":"com.ubergeek42.WeechatAndroid.views.LineView"}

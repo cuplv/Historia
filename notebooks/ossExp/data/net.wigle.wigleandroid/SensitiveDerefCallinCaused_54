@@ -1,0 +1,1 @@
+{"methodName":"void startDownload(androidx.fragment.app.Fragment)","line":151,"t":"ReceiverNonNull","matcher":"android.content.SharedPreferences getSharedPreferences(java.lang.String,int)","className":"net.wigle.wigleandroid.background.ObservationUploader"}

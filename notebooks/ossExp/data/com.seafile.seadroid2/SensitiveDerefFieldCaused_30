@@ -1,0 +1,1 @@
+{"methodName":"void startFileActivity(java.lang.String,java.lang.String,java.lang.String)","line":439,"t":"ReceiverNonNull","matcher":"int addDownloadTask(com.seafile.seadroid2.account.Account,java.lang.String,java.lang.String,java.lang.String)","className":"com.seafile.seadroid2.ui.activity.SearchActivity"}

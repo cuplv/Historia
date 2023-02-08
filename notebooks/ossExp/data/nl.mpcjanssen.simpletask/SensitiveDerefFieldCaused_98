@@ -1,0 +1,1 @@
+{"methodName":"void test_then_block(org.luaj.vm2.compiler.IntPtr)","line":-1,"t":"ReceiverNonNull","matcher":"void patchtohere(int)","className":"org.luaj.vm2.compiler.LexState"}

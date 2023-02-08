@@ -1,0 +1,1 @@
+{"methodName":"int getType(int)","line":216,"t":"ReceiverNonNull","matcher":"int getType(int,int)","className":"net.sqlcipher.AbstractWindowedCursor"}

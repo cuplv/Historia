@@ -1,0 +1,1 @@
+{"methodName":"int writeEntityData2(byte[],int)","line":92,"t":"ReceiverNonNull","matcher":"boolean exists()","className":"org.andstatus.app.backup.MyBackupDataOutput"}

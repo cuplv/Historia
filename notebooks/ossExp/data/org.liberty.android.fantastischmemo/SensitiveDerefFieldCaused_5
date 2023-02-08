@@ -1,0 +1,1 @@
+{"methodName":"void clearDaoCache()","line":5,"t":"ReceiverNonNull","matcher":"void clear()","className":"com.j256.ormlite.dao.DaoManager"}

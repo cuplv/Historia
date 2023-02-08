@@ -1,0 +1,1 @@
+{"methodName":"boolean shouldDrawPoints()","line":344,"t":"ReceiverNonNull","matcher":"int size()","className":"net.osmand.plus.views.layers.MapMarkersLayer"}

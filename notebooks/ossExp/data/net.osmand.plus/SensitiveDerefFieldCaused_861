@@ -1,0 +1,1 @@
+{"methodName":"void addImageCard(net.osmand.plus.mapcontextmenu.builders.cards.ImageCard)","line":179,"t":"ReceiverNonNull","matcher":"void setCards(java.util.Collection)","className":"net.osmand.plus.mapcontextmenu.MenuBuilder"}

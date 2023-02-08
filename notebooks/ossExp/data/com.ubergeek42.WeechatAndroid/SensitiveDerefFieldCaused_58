@@ -1,0 +1,1 @@
+{"methodName":"java.lang.Object instantiateItem(android.view.ViewGroup,int)","line":87,"t":"ReceiverNonNull","matcher":"void doAddOp(int,androidx.fragment.app.Fragment,java.lang.String,int)","className":"com.ubergeek42.WeechatAndroid.adapters.MainPagerAdapter"}

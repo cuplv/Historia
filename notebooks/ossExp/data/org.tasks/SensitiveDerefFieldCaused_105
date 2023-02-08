@@ -1,0 +1,1 @@
+{"methodName":"android.graphics.drawable.Drawable getDefaultMarkerIcon()","line":83,"t":"ReceiverNonNull","matcher":"android.content.Context getContext()","className":"org.osmdroid.views.MapViewRepository"}

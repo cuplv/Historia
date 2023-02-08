@@ -1,0 +1,1 @@
+{"methodName":"void searchCountryMap()","line":513,"t":"ReceiverNonNull","matcher":"void startActivity(android.content.Intent)","className":"net.osmand.plus.firstusage.FirstUsageWizardFragment"}

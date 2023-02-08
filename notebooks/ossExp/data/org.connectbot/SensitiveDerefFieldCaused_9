@@ -1,0 +1,1 @@
+{"methodName":"void onNewIntent(android.content.Intent)","line":1094,"t":"ReceiverNonNull","matcher":"java.util.ArrayList getBridges()","className":"org.connectbot.ConsoleActivity"}

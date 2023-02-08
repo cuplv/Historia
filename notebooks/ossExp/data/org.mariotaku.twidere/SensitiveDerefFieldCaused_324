@@ -1,0 +1,1 @@
+{"methodName":"void stop()","line":58,"t":"ReceiverNonNull","matcher":"void cancel()","className":"org.mariotaku.twidere.nyan.NyanSurfaceHelper"}

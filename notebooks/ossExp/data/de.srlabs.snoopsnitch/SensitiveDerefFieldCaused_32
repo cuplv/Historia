@@ -1,0 +1,1 @@
+{"methodName":"de.srlabs.snoopsnitch.util.MSDServiceHelperCreator getInstance(android.content.Context)","line":35,"t":"ReceiverNonNull","matcher":"void <init>(android.content.Context,boolean)","className":"de.srlabs.snoopsnitch.util.MSDServiceHelperCreator"}

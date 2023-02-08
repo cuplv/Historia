@@ -1,0 +1,1 @@
+{"methodName":"void onPreExecute()","line":124,"t":"ReceiverNonNull","matcher":"void setMessage(java.lang.CharSequence)","className":"com.asksven.betterbatterystats.ReceiversFragmentActivity$ReceiversListFragment$LoadStatData"}

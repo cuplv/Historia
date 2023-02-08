@@ -1,0 +1,1 @@
+{"methodName":"org.mozilla.javascript.Node transformWith(org.mozilla.javascript.ast.WithStatement)","line":1275,"t":"ReceiverNonNull","matcher":"void addToken(int)","className":"org.mozilla.javascript.IRFactory"}

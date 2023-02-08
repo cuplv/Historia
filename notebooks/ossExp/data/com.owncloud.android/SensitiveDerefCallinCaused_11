@@ -1,0 +1,1 @@
+{"methodName":"void lambda$onCreateView$2$com-owncloud-android-ui-dialog-RateMeDialog(android.view.View)","line":123,"t":"ReceiverNonNull","matcher":"android.content.SharedPreferences getSharedPreferences(java.lang.String,int)","className":"com.owncloud.android.ui.dialog.RateMeDialog"}

@@ -1,0 +1,1 @@
+{"methodName":"void flash(int,boolean)","line":2,"t":"ReceiverNonNull","matcher":"void fadeIn(int,boolean)","className":"com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene"}

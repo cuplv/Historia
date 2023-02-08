@@ -1,0 +1,1 @@
+{"methodName":"boolean getWhiteboardState(android.content.Context,long)","line":2,"t":"ReceiverNonNull","matcher":"android.database.Cursor rawQuery(java.lang.String,java.lang.String[])","className":"com.ichi2.anki.MetaDB"}

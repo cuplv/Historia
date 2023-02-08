@@ -1,0 +1,1 @@
+{"methodName":"org.mozilla.javascript.Node transformExprStmt(org.mozilla.javascript.ast.ExpressionStatement)","line":517,"t":"ReceiverNonNull","matcher":"void addEOL(int)","className":"org.mozilla.javascript.IRFactory"}

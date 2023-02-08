@@ -1,0 +1,1 @@
+{"methodName":"boolean onSingleTapConfirmed(android.view.MotionEvent,org.osmdroid.views.MapView)","line":406,"t":"ReceiverNonNull","matcher":"boolean onMarkerClick(org.osmdroid.views.overlay.Marker,org.osmdroid.views.MapView)","className":"org.osmdroid.views.overlay.Marker"}

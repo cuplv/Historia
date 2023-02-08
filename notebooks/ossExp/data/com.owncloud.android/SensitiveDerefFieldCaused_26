@@ -1,0 +1,1 @@
+{"methodName":"void stopKoin()","line":51,"t":"ReceiverNonNull","matcher":"void close()","className":"org.koin.core.context.GlobalContext"}

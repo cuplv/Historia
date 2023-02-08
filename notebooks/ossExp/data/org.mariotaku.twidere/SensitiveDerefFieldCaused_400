@@ -1,0 +1,1 @@
+{"methodName":"int drainEncoder(long)","line":151,"t":"ReceiverNonNull","matcher":"int dequeueOutputBuffer(android.media.MediaCodec$BufferInfo,long)","className":"net.ypresto.androidtranscoder.engine.AudioTrackTranscoder"}

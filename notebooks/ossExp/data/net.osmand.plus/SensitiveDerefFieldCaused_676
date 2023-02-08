@@ -1,0 +1,1 @@
+{"methodName":"void lockScreenOrientation()","line":1060,"t":"ReceiverNonNull","matcher":"void setRequestedOrientation(int)","className":"net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin"}

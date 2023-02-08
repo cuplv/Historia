@@ -1,0 +1,1 @@
+{"methodName":"void onClick(android.view.View)","line":328,"t":"ReceiverNonNull","matcher":"java.lang.String getPackageName()","className":"com.darshancomputing.BatteryIndicatorPro.AlarmsFragment$6"}

@@ -1,0 +1,1 @@
+{"methodName":"void recurse(com.github.rjeschke.txtmark.Block,boolean)","line":88,"t":"ReceiverNonNull","matcher":"isEmpty","className":"com.github.rjeschke.txtmark.Processor"}

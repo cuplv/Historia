@@ -1,0 +1,1 @@
+{"methodName":"com.ichi2.libanki.sync.Syncer$ConnectionResultType download()","line":8,"t":"ReceiverNonNull","matcher":"void close()","className":"com.ichi2.libanki.sync.FullSyncer"}

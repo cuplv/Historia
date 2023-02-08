@@ -1,0 +1,1 @@
+{"methodName":"void onCreate(android.os.Bundle)","line":102,"t":"ReceiverNonNull","matcher":"android.content.SharedPreferences getSharedPreferences(java.lang.String,int)","className":"de.danoeh.antennapod.fragment.QueueFragment"}

@@ -1,0 +1,1 @@
+{"methodName":"org.mozilla.javascript.IdFunctionObject createPrecachedConstructor()","line":157,"t":"ReceiverNonNull","matcher":"void markAsConstructor(org.mozilla.javascript.Scriptable)","className":"org.mozilla.javascript.IdScriptableObject$PrototypeValues"}

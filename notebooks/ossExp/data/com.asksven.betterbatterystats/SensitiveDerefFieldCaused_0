@@ -1,0 +1,1 @@
+{"methodName":"void onPreExecute()","line":164,"t":"ReceiverNonNull","matcher":"void setCancelable(boolean)","className":"com.asksven.betterbatterystats.GraphActivity$LoadSerieData"}

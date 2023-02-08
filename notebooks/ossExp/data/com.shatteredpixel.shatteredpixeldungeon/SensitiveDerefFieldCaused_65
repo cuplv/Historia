@@ -1,0 +1,1 @@
+{"methodName":"boolean crossbowHasEnchant(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","line":6,"t":"ReceiverNonNull","matcher":"enchantment","className":"com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.darts.Dart"}

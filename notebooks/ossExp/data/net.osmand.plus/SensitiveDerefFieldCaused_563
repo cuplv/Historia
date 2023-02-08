@@ -1,0 +1,1 @@
+{"methodName":"void runMediaRecorder(net.osmand.plus.activities.MapActivity,android.media.MediaRecorder,java.io.File)","line":1551,"t":"ReceiverNonNull","matcher":"void show()","className":"net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin"}

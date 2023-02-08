@@ -1,0 +1,1 @@
+{"methodName":"boolean onStateChange(int[])","line":311,"t":"ReceiverNonNull","matcher":"boolean setState(int[])","className":"f.e"}

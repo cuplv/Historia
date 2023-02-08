@@ -1,0 +1,1 @@
+{"methodName":"boolean onPreferenceTreeClick(androidx.preference.Preference)","line":357,"t":"ReceiverNonNull","matcher":"java.lang.String getPackageName()","className":"com.darshancomputing.BatteryIndicatorPro.SettingsFragment"}

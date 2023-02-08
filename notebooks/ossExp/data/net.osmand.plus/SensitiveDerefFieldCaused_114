@@ -1,0 +1,1 @@
+{"methodName":"org.mozilla.javascript.Node transformAssignment(org.mozilla.javascript.ast.Assignment)","line":431,"t":"ReceiverNonNull","matcher":"void addToken(int)","className":"org.mozilla.javascript.IRFactory"}

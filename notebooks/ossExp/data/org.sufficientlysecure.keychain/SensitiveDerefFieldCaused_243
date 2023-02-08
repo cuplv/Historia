@@ -1,0 +1,1 @@
+{"methodName":"void restoreHeaderItemVisibility()","line":3,"t":"ReceiverNonNull","matcher":"android.view.View getChildAt(int)","className":"eu.davidea.flexibleadapter.helpers.StickyHeaderHelper"}

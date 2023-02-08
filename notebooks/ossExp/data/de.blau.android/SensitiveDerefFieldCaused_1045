@@ -1,0 +1,1 @@
+{"methodName":"boolean onSingleTapConfirmed(android.view.MotionEvent)","line":25,"t":"ReceiverNonNull","matcher":"boolean j(float,float)","className":"de.blau.android.c$a$b"}

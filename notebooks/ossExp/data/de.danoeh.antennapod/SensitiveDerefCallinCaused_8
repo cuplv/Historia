@@ -1,0 +1,1 @@
+{"methodName":"void loadToplist()","line":115,"t":"ReceiverNonNull","matcher":"android.content.SharedPreferences getSharedPreferences(java.lang.String,int)","className":"de.danoeh.antennapod.fragment.QuickFeedDiscoveryFragment"}

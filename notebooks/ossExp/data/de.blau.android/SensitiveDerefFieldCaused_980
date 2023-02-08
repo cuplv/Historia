@@ -1,0 +1,1 @@
+{"methodName":"void K(de.blau.android.tasks.OsmoseBug)","line":2,"t":"ReceiverNonNull","matcher":"boolean contains(java.lang.CharSequence)","className":"de.blau.android.tasks.OsmoseBug"}

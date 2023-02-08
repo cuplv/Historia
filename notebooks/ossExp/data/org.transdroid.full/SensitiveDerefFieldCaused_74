@@ -1,0 +1,1 @@
+{"methodName":"void applyAllFilters()","line":16,"t":"ReceiverNonNull","matcher":"android.widget.ListAdapter getAdapter()","className":"org.transdroid.core.gui.TorrentsFragment"}

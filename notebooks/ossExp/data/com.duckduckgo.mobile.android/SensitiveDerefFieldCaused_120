@@ -1,0 +1,1 @@
+{"methodName":"void deactivateCommon()","line":536,"t":"ReceiverNonNull","matcher":"void close()","className":"net.sqlcipher.database.SQLiteCursor"}

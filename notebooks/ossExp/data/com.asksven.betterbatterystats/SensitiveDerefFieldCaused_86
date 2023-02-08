@@ -1,0 +1,1 @@
+{"methodName":"com.asksven.betterbatterystats.data.ReferenceDto toReferenceDto()","line":261,"t":"ReceiverNonNull","matcher":"void <init>()","className":"com.asksven.betterbatterystats.data.Reference"}

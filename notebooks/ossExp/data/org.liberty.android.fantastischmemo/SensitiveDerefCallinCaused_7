@@ -1,0 +1,1 @@
+{"methodName":"org.liberty.android.fantastischmemo.modules.FragmentComponents fragmentComponents()","line":3,"t":"ReceiverNonNull","matcher":"android.app.Application getApplication()","className":"org.liberty.android.fantastischmemo.common.BaseDialogFragment"}

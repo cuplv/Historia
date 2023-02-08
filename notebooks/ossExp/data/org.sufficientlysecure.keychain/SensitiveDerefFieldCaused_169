@@ -1,0 +1,1 @@
+{"methodName":"void listen(android.content.Context,com.journeyapps.barcodescanner.RotationCallback)","line":7,"t":"ReceiverNonNull","matcher":"android.view.Display getDefaultDisplay()","className":"com.journeyapps.barcodescanner.RotationListener"}

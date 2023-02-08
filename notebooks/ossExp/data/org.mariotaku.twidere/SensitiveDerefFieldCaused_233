@@ -1,0 +1,1 @@
+{"methodName":"int drainEncoder(long)","line":177,"t":"ReceiverNonNull","matcher":"void releaseOutputBuffer(int,boolean)","className":"net.ypresto.androidtranscoder.engine.AudioTrackTranscoder"}

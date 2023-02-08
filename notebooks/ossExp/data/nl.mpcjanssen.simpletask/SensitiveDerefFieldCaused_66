@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String getTitle(int,int,java.lang.CharSequence,java.lang.CharSequence,java.lang.CharSequence,java.lang.CharSequence,java.lang.CharSequence,java.lang.CharSequence,java.lang.CharSequence)","line":11,"t":"ReceiverNonNull","matcher":"int length()","className":"nl.mpcjanssen.simpletask.Query"}

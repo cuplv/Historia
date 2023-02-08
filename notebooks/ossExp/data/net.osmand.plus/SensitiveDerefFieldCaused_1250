@@ -1,0 +1,1 @@
+{"methodName":"void copyDerivedFields(net.osmand.data.RotatedTileBox)","line":68,"t":"ReceiverNonNull","matcher":"void <init>(net.osmand.data.QuadRect)","className":"net.osmand.data.RotatedTileBox"}

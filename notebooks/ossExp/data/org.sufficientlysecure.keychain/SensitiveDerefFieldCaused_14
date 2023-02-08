@@ -1,0 +1,1 @@
+{"methodName":"void performKeyCheck()","line":14,"t":"ReceiverNonNull","matcher":"void statusLineOk()","className":"org.sufficientlysecure.keychain.ui.token.ManageSecurityTokenPresenter"}

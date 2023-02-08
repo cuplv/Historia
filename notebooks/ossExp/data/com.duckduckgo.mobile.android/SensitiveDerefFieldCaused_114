@@ -1,0 +1,1 @@
+{"methodName":"void endTransaction()","line":826,"t":"ReceiverNonNull","matcher":"void onRollback()","className":"net.sqlcipher.database.SQLiteDatabase"}

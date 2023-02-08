@@ -1,0 +1,1 @@
+{"methodName":"void speak(java.lang.String)","line":54,"t":"ReceiverNonNull","matcher":"int speak(java.lang.String,int,java.util.HashMap)","className":"com.todoroo.astrid.voice.VoiceOutputAssistant"}

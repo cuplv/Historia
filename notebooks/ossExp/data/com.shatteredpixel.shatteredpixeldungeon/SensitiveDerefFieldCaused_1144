@@ -1,0 +1,1 @@
+{"methodName":"boolean moveFromActions(com.watabou.input.GameAction[])","line":7,"t":"ReceiverNonNull","matcher":"ready","className":"com.shatteredpixel.shatteredpixeldungeon.scenes.CellSelector"}

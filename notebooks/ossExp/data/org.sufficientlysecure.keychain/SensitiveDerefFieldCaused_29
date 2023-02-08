@@ -1,0 +1,1 @@
+{"methodName":"void stopDecoderThread()","line":2,"t":"ReceiverNonNull","matcher":"void stop()","className":"com.journeyapps.barcodescanner.BarcodeView"}

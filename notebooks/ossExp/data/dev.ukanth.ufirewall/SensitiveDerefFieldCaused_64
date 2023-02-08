@@ -1,0 +1,1 @@
+{"methodName":"void cbFunc(dev.ukanth.ufirewall.service.RootCommand)","line":81,"t":"ReceiverNonNull","matcher":"java.lang.String toString()","className":"dev.ukanth.ufirewall.preferences.RulesPreferenceFragment$2"}

@@ -1,0 +1,1 @@
+{"methodName":"void onCreate(android.os.Bundle)","line":22,"t":"ReceiverNonNull","matcher":"android.webkit.WebSettings getSettings()","className":"de.blau.android.Authorize"}

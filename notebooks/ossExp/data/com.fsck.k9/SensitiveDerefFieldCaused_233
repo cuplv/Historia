@@ -1,0 +1,1 @@
+{"methodName":"java.util.List getMessages(int,int,java.util.Date,boolean,com.fsck.k9.mail.MessageRetrievalListener)","line":410,"t":"ReceiverNonNull","matcher":"java.util.List executeSimpleCommand(java.lang.String)","className":"com.fsck.k9.mail.store.imap.RealImapFolder"}

@@ -1,0 +1,1 @@
+{"methodName":"net.osmand.plus.OsmandApplication getMyApplication()","line":95,"t":"ReceiverNonNull","matcher":"android.app.Application getApplication()","className":"net.osmand.plus.search.QuickSearchPoiFilterFragment"}

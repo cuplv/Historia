@@ -1,0 +1,1 @@
+{"methodName":"boolean onTouch(android.view.View,android.view.MotionEvent)","line":45,"t":"ReceiverNonNull","matcher":"void addMovement(android.view.MotionEvent)","className":"com.nispok.snackbar.listeners.SwipeDismissTouchListener"}

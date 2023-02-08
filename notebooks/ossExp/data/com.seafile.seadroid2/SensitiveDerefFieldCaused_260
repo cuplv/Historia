@@ -1,0 +1,1 @@
+{"methodName":"int drainTo(java.util.Collection,int)","line":722,"t":"ReceiverNonNull","matcher":"item","className":"com.nostra13.universalimageloader.core.assist.deque.LinkedBlockingDeque"}

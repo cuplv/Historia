@@ -1,0 +1,1 @@
+{"methodName":"void write(byte[],int,int)","line":88,"t":"ReceiverNonNull","matcher":"avail_out","className":"com.jcraft.jzlib.ZOutputStream"}

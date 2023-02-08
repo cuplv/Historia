@@ -1,0 +1,1 @@
+{"methodName":"void addElement(org.mozilla.javascript.ast.ObjectProperty)","line":90,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"org.mozilla.javascript.ast.ObjectLiteral"}

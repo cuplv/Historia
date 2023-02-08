@@ -1,0 +1,1 @@
+{"methodName":"void drawSelectedFilesPointsOpenGl(net.osmand.core.android.MapRendererView,net.osmand.data.RotatedTileBox,java.util.List,boolean)","line":946,"t":"ReceiverNonNull","matcher":"int getPointsCount()","className":"net.osmand.plus.views.layers.GPXLayer"}

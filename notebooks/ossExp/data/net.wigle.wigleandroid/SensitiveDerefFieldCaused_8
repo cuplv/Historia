@@ -1,0 +1,1 @@
+{"methodName":"void saveLocation()","line":467,"t":"ReceiverNonNull","matcher":"double getLongitude()","className":"net.wigle.wigleandroid.listener.GPSListener"}

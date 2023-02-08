@@ -1,0 +1,1 @@
+{"methodName":"void resetGenerators(boolean)","line":6,"t":"ReceiverNonNull","matcher":"java.lang.Object get(java.lang.Object)","className":"com.watabou.utils.PlatformSupport"}

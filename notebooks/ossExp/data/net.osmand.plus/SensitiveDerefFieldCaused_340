@@ -1,0 +1,1 @@
+{"methodName":"void disable(net.osmand.plus.OsmandApplication)","line":1648,"t":"ReceiverNonNull","matcher":"void release()","className":"net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin"}

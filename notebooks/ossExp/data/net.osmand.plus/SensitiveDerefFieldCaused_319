@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String getLanguage()","line":143,"t":"ReceiverNonNull","matcher":"java.lang.String getLanguage()","className":"net.osmand.plus.helpers.LocaleHelper"}

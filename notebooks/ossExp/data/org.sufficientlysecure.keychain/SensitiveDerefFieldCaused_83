@@ -1,0 +1,1 @@
+{"methodName":"void connect()","line":8,"t":"ReceiverNonNull","matcher":"void close()","className":"org.sufficientlysecure.keychain.securitytoken.usb.UsbTransport"}

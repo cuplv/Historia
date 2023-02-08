@@ -1,0 +1,1 @@
+{"methodName":"boolean onKey(android.view.View,int,android.view.KeyEvent)","line":32,"t":"ReceiverNonNull","matcher":"boolean q(java.lang.Character)","className":"de.blau.android.Main$h"}

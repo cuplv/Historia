@@ -1,0 +1,1 @@
+{"methodName":"void scrapStickyHeader(androidx.recyclerview.widget.RecyclerView$Recycler)","line":476,"t":"ReceiverNonNull","matcher":"void setTranslationX(float)","className":"com.duckduckgo.mobile.android.ui.recyclerviewext.StickyHeadersLinearLayoutManager"}

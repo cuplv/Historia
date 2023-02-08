@@ -1,0 +1,1 @@
+{"methodName":"void stop()","line":52,"t":"ReceiverNonNull","matcher":"void stop()","className":"com.fsck.k9.backend.imap.ImapFolderPusher"}

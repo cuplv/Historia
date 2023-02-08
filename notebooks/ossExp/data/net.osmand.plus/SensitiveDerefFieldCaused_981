@@ -1,0 +1,1 @@
+{"methodName":"void onSaveInstanceState(android.os.Bundle)","line":227,"t":"ReceiverNonNull","matcher":"java.lang.String name()","className":"net.osmand.plus.backup.ui.BackupCloudFragment"}

@@ -1,0 +1,1 @@
+{"methodName":"void update(org.transdroid.core.rssparser.Channel,boolean,boolean)","line":7,"t":"ReceiverNonNull","matcher":"void setText(int)","className":"org.transdroid.core.gui.rss.RssItemsFragment"}

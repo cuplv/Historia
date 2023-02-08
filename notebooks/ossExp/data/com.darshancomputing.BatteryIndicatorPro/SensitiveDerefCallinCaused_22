@@ -1,0 +1,1 @@
+{"methodName":"void loadSettingsFiles()","line":185,"t":"ReceiverNonNull","matcher":"android.content.SharedPreferences getSharedPreferences(java.lang.String,int)","className":"com.darshancomputing.BatteryIndicatorPro.PersistentFragment"}

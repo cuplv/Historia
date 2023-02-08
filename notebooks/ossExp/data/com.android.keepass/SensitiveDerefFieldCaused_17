@@ -1,0 +1,1 @@
+{"methodName":"void onCreateOptionsMenu(android.view.Menu,android.view.MenuInflater)","line":194,"t":"ReceiverNonNull","matcher":"android.view.MenuInflater getMenuInflater()","className":"com.keepassdroid.fragments.PasswordFragment"}

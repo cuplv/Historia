@@ -1,0 +1,1 @@
+{"methodName":"boolean showContextMenu(net.osmand.data.LatLon,net.osmand.data.PointDescription,java.lang.Object,net.osmand.plus.views.layers.ContextMenuLayer$IContextMenuProvider)","line":698,"t":"ReceiverNonNull","matcher":"void setTitle(java.lang.String)","className":"net.osmand.plus.views.layers.ContextMenuLayer"}

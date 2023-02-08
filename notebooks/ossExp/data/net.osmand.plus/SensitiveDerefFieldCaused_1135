@@ -1,0 +1,1 @@
+{"methodName":"boolean loadVectorDataNative(net.osmand.data.QuadRect,int,net.osmand.render.RenderingRuleSearchRequest,net.osmand.plus.render.NativeOsmandLibrary)","line":320,"t":"ReceiverNonNull","matcher":"void deleteNativeResult()","className":"net.osmand.plus.render.MapRenderRepositories"}

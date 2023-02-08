@@ -1,0 +1,1 @@
+{"methodName":"void onZap(com.shatteredpixel.shatteredpixeldungeon.mechanics.Ballistica)","line":68,"t":"ReceiverNonNull","matcher":"java.util.HashSet buffs(java.lang.Class)","className":"com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfMagicMissile"}

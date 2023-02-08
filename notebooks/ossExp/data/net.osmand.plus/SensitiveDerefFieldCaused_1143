@@ -1,0 +1,1 @@
+{"methodName":"void launchMapActivityMoveToTop(android.content.Context,android.os.Bundle,android.net.Uri,android.os.Bundle)","line":1390,"t":"ReceiverNonNull","matcher":"android.content.Intent putExtras(android.os.Bundle)","className":"net.osmand.plus.activities.MapActivity"}

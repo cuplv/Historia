@@ -1,0 +1,1 @@
+{"methodName":"void fillWindow(int)","line":326,"t":"ReceiverNonNull","matcher":"int getNumRows()","className":"net.sqlcipher.database.SQLiteCursor"}

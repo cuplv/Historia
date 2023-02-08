@@ -1,0 +1,1 @@
+{"methodName":"void updateTransparencySliderValue()","line":733,"t":"ReceiverNonNull","matcher":"void setValue(float)","className":"net.osmand.plus.views.layers.MapControlsLayer"}

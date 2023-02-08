@@ -1,0 +1,1 @@
+{"methodName":"void checkrepeated(org.luaj.vm2.compiler.LexState$Labeldesc[],int,org.luaj.vm2.LuaString)","line":-1,"t":"ReceiverNonNull","matcher":"firstlabel","className":"org.luaj.vm2.compiler.FuncState"}

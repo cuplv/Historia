@@ -1,0 +1,1 @@
+{"methodName":"void remCards(java.util.Collection,boolean)","line":6,"t":"ReceiverNonNull","matcher":"void execute(java.lang.String,java.lang.Object[])","className":"com.ichi2.libanki.Collection"}

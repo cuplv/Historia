@@ -1,0 +1,1 @@
+{"methodName":"android.content.Intent registerReceiver(android.content.BroadcastReceiver,android.content.IntentFilter)","line":21,"t":"ReceiverNonNull","matcher":"android.content.Intent registerReceiver(android.content.BroadcastReceiver,android.content.IntentFilter)","className":"org.osmdroid.tileprovider.util.SimpleRegisterReceiver"}

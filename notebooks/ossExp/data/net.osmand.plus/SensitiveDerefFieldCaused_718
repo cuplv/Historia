@@ -1,0 +1,1 @@
+{"methodName":"void init()","line":241,"t":"ReceiverNonNull","matcher":"int getTotalBytesRead()","className":"net.osmand.binary.BinaryMapIndexReader"}

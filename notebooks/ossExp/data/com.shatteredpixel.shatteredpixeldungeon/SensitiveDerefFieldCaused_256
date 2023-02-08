@@ -1,0 +1,1 @@
+{"methodName":"boolean interact(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","line":139,"t":"ReceiverNonNull","matcher":"java.lang.String name()","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.Ghost"}

@@ -1,0 +1,1 @@
+{"methodName":"void enterLoop(org.mozilla.javascript.ast.Loop)","line":11,"t":"ReceiverNonNull","matcher":"int getPosition()","className":"org.mozilla.javascript.Parser"}

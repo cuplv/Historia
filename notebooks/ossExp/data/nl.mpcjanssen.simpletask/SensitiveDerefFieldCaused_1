@@ -1,0 +1,1 @@
+{"methodName":"void adjustlocalvars(int)","line":-1,"t":"ReceiverNonNull","matcher":"nactvar","className":"org.luaj.vm2.compiler.LexState"}

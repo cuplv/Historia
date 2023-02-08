@@ -1,0 +1,1 @@
+{"methodName":"void dispatchPointerDataPacket(java.nio.ByteBuffer,int)","line":-1,"t":"ReceiverNonNull","matcher":"long longValue()","className":"io.flutter.embedding.engine.FlutterJNI"}

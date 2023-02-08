@@ -1,0 +1,1 @@
+{"methodName":"void update(boolean,boolean,boolean)","line":165,"t":"ReceiverNonNull","matcher":"int intValue()","className":"net.osmand.plus.views.controls.maphudbuttons.MapButton"}

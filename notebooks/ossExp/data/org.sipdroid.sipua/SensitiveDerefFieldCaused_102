@@ -1,0 +1,1 @@
+{"methodName":"void <init>(java.lang.String,int)","line":59,"t":"ReceiverNonNull","matcher":"void writeBytes(java.lang.String)","className":"org.sipdroid.media.WavWriter"}

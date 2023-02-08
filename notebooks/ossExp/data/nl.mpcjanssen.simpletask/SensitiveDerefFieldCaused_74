@@ -1,0 +1,1 @@
+{"methodName":"int newlabelentry(org.luaj.vm2.compiler.LexState$Labeldesc[],int,org.luaj.vm2.LuaString,int,int)","line":-1,"t":"ReceiverNonNull","matcher":"nactvar","className":"org.luaj.vm2.compiler.LexState"}

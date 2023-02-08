@@ -1,0 +1,1 @@
+{"methodName":"void insertData(net.osmand.GPXUtilities$WptPt,java.lang.String)","line":540,"t":"ReceiverNonNull","matcher":"double getLongitude()","className":"net.osmand.plus.plugins.monitoring.SavingTrackHelper"}

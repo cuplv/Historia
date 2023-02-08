@@ -1,0 +1,1 @@
+{"methodName":"java.util.List v(float,float,de.blau.android.osm.ViewBox)","line":7,"t":"ReceiverNonNull","matcher":"void s(java.util.Collection,de.blau.android.osm.BoundingBox)","className":"de.blau.android.layer.geojson.MapOverlay"}

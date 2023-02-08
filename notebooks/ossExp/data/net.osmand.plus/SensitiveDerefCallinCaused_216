@@ -1,0 +1,1 @@
+{"methodName":"android.app.Dialog onCreateDialog(android.os.Bundle)","line":86,"t":"ReceiverNonNull","matcher":"java.lang.String getString(int)","className":"net.osmand.plus.plugins.osmedit.dialogs.OpeningHoursDaysDialogFragment"}

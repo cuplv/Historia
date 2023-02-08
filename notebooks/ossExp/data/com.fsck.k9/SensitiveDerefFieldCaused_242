@@ -1,0 +1,1 @@
+{"methodName":"boolean isSpamFolder()","line":1374,"t":"ReceiverNonNull","matcher":"java.lang.Long getSpamFolderId()","className":"com.fsck.k9.ui.messagelist.MessageListFragment"}

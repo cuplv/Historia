@@ -1,0 +1,1 @@
+{"methodName":"boolean continueWandering()","line":33,"t":"ReceiverNonNull","matcher":"int distance(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Ghoul$Wandering"}

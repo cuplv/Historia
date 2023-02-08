@@ -1,0 +1,1 @@
+{"methodName":"void endBluetooth(android.content.SharedPreferences)","line":2101,"t":"ReceiverNonNull","matcher":"void stopScanning()","className":"net.wigle.wigleandroid.MainActivity"}

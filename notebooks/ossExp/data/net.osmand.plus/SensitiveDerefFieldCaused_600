@@ -1,0 +1,1 @@
+{"methodName":"net.osmand.map.MapTileDownloader getInstance(java.lang.String)","line":56,"t":"ReceiverNonNull","matcher":"void <init>(int)","className":"net.osmand.map.MapTileDownloader"}

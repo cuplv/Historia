@@ -1,0 +1,1 @@
+{"methodName":"int drainDecoder(long)","line":189,"t":"ReceiverNonNull","matcher":"void awaitNewImage()","className":"net.ypresto.androidtranscoder.engine.VideoTrackTranscoder"}

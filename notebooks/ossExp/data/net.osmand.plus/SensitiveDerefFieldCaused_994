@@ -1,0 +1,1 @@
+{"methodName":"void renderFrame(net.osmand.data.RotatedTileBox,net.osmand.plus.views.layers.base.OsmandMapLayer$DrawSettings)","line":256,"t":"ReceiverNonNull","matcher":"void unlockCanvasAndPost(android.graphics.Canvas)","className":"net.osmand.plus.auto.SurfaceRenderer"}

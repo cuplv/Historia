@@ -1,0 +1,1 @@
+{"methodName":"void release(java.util.function.Supplier)","line":236,"t":"ReceiverNonNull","matcher":"void close()","className":"org.andstatus.app.context.MyContextImpl"}
