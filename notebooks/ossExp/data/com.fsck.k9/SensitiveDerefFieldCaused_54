@@ -1,0 +1,1 @@
+{"methodName":"boolean updateAnchorFromPendingData(androidx.recyclerview.widget.RecyclerView$State,app.k9mail.ui.utils.linearlayoutmanager.LinearLayoutManager$AnchorInfo)","line":958,"t":"ReceiverNonNull","matcher":"mAnchorOffset","className":"app.k9mail.ui.utils.linearlayoutmanager.LinearLayoutManager"}

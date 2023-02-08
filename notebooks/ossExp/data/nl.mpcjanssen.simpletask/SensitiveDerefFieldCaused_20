@@ -1,0 +1,1 @@
+{"methodName":"java.io.File saveTasksToFile(java.io.File,java.util.List,java.lang.String)","line":5,"t":"ReceiverNonNull","matcher":"void ignoreEvents(boolean)","className":"nl.mpcjanssen.simpletask.remote.FileStore"}

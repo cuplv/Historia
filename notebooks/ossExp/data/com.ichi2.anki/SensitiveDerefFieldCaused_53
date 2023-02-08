@@ -1,0 +1,1 @@
+{"methodName":"void sendAnalyticsException(java.lang.String,boolean)","line":4,"t":"ReceiverNonNull","matcher":"com.brsanthu.googleanalytics.request.ExceptionHit exception()","className":"com.ichi2.anki.analytics.UsageAnalytics"}

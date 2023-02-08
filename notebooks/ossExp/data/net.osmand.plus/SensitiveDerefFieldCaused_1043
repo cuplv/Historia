@@ -1,0 +1,1 @@
+{"methodName":"java.util.List getCities(net.osmand.binary.BinaryMapIndexReader$SearchRequest,net.osmand.StringMatcher,java.lang.String,int)","line":629,"t":"ReceiverNonNull","matcher":"int pushLimit(int)","className":"net.osmand.binary.BinaryMapIndexReader"}

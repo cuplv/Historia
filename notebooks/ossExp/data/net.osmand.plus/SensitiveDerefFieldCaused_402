@@ -1,0 +1,1 @@
+{"methodName":"org.mozilla.javascript.Node transformIf(org.mozilla.javascript.ast.IfStatement)","line":804,"t":"ReceiverNonNull","matcher":"void addEOL(int)","className":"org.mozilla.javascript.IRFactory"}

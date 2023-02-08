@@ -1,0 +1,1 @@
+{"methodName":"java.lang.Object get()","line":5,"t":"ReceiverNonNull","matcher":"java.lang.Object get()","className":"dagger.internal.DoubleCheck"}

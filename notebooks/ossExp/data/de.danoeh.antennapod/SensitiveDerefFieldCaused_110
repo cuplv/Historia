@@ -1,0 +1,1 @@
+{"methodName":"void findUsingReflectionInSingleClass(org.greenrobot.eventbus.SubscriberMethodFinder$FindState)","line":160,"t":"ReceiverNonNull","matcher":"java.lang.String getName()","className":"org.greenrobot.eventbus.SubscriberMethodFinder"}

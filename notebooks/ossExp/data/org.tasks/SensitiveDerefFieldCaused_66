@@ -1,0 +1,1 @@
+{"methodName":"void <init>(int,org.osmdroid.views.MapView)","line":60,"t":"ReceiverNonNull","matcher":"void setOnTouchListener(android.view.View$OnTouchListener)","className":"org.osmdroid.views.overlay.infowindow.BasicInfoWindow"}

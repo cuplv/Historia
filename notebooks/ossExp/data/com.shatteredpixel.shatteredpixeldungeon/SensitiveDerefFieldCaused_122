@@ -1,0 +1,1 @@
+{"methodName":"boolean act(boolean,boolean)","line":373,"t":"ReceiverNonNull","matcher":"boolean adjacent(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Necromancer$Hunting"}

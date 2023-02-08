@@ -1,0 +1,1 @@
+{"methodName":"boolean onTouch(android.view.View,android.view.MotionEvent)","line":144,"t":"ReceiverNonNull","matcher":"java.lang.Object getSystemService(java.lang.String)","className":"com.jaredrummler.android.colorpicker.ColorPickerDialog$1"}

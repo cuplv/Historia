@@ -1,0 +1,1 @@
+{"methodName":"void setupGeneralTab(android.view.View,com.github.mikephil.charting.charts.LineChart,int)","line":455,"t":"ReceiverNonNull","matcher":"timeSpan","className":"net.osmand.plus.myplaces.ui.GPXItemPagerAdapter"}

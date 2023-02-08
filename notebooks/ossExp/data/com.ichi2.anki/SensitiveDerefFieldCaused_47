@@ -1,0 +1,1 @@
+{"methodName":"void lambda$installDefaultExceptionHandler$1(java.lang.Thread,java.lang.Throwable)","line":2,"t":"ReceiverNonNull","matcher":"void uncaughtException(java.lang.Thread,java.lang.Throwable)","className":"com.ichi2.anki.analytics.UsageAnalytics"}

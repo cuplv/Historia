@@ -1,0 +1,1 @@
+{"methodName":"void setMessageList(com.fsck.k9.ui.messagelist.MessageListInfo)","line":1427,"t":"ReceiverNonNull","matcher":"void setRefreshing(boolean)","className":"com.fsck.k9.ui.messagelist.MessageListFragment"}

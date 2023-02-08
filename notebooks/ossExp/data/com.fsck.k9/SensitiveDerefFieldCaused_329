@@ -1,0 +1,1 @@
+{"methodName":"void performFiltering(java.lang.CharSequence,int)","line":275,"t":"ReceiverNonNull","matcher":"androidx.loader.content.Loader restartLoader(int,android.os.Bundle,androidx.loader.app.LoaderManager$LoaderCallbacks)","className":"com.fsck.k9.view.RecipientSelectView"}

@@ -1,0 +1,1 @@
+{"methodName":"void registerLayers(android.content.Context,net.osmand.plus.activities.MapActivity)","line":196,"t":"ReceiverNonNull","matcher":"void <init>(android.content.Context,net.osmand.plus.plugins.srtm.SRTMPlugin)","className":"net.osmand.plus.plugins.srtm.SRTMPlugin"}

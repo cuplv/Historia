@@ -1,0 +1,1 @@
+{"methodName":"android.graphics.PointF vTranslateForSCenter(float,float,float)","line":4,"t":"ReceiverNonNull","matcher":"void <init>(float,android.graphics.PointF,com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView$1)","className":"com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView"}

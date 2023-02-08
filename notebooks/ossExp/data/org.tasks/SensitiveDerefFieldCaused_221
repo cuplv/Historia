@@ -1,0 +1,1 @@
+{"methodName":"org.osmdroid.views.overlay.infowindow.MarkerInfoWindow getDefaultMarkerInfoWindow()","line":55,"t":"ReceiverNonNull","matcher":"void <init>(int,org.osmdroid.views.MapView)","className":"org.osmdroid.views.MapViewRepository"}

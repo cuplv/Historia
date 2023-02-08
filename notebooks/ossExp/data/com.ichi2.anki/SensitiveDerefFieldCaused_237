@@ -1,0 +1,1 @@
+{"methodName":"void sendAnalyticsEvent(java.lang.String,java.lang.String,int,java.lang.String)","line":4,"t":"ReceiverNonNull","matcher":"com.brsanthu.googleanalytics.request.EventHit event()","className":"com.ichi2.anki.analytics.UsageAnalytics"}

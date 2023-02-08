@@ -1,0 +1,1 @@
+{"methodName":"android.view.View onCreateView(android.view.LayoutInflater,android.view.ViewGroup,android.os.Bundle)","line":61,"t":"ReceiverNonNull","matcher":"java.lang.String getBSSID()","className":"net.wigle.wigleandroid.SearchFragment"}

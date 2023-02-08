@@ -1,0 +1,1 @@
+{"methodName":"int startDefinition(java.lang.CharSequence,int)","line":97,"t":"ReceiverNonNull","matcher":"java.lang.StringBuilder append(char)","className":"org.commonmark.internal.LinkReferenceDefinitionParser"}

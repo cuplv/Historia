@@ -1,0 +1,1 @@
+{"methodName":"void draw(android.graphics.Canvas)","line":100,"t":"ReceiverNonNull","matcher":"void setAlpha(int)","className":"coil.drawable.CrossfadeDrawable"}

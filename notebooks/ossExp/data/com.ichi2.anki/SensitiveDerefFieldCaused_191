@@ -1,0 +1,1 @@
+{"methodName":"void releaseTts(android.content.Context)","line":3,"t":"ReceiverNonNull","matcher":"void shutdown()","className":"com.ichi2.anki.ReadText"}

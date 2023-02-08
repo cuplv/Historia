@@ -1,0 +1,1 @@
+{"methodName":"void findgotos(org.luaj.vm2.compiler.LexState$Labeldesc)","line":-1,"t":"ReceiverNonNull","matcher":"firstgoto","className":"org.luaj.vm2.compiler.LexState"}

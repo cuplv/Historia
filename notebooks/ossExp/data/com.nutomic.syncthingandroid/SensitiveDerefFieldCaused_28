@@ -1,0 +1,1 @@
+{"methodName":"void close()","line":220,"t":"ReceiverNonNull","matcher":"void release()","className":"com.journeyapps.barcodescanner.camera.CameraManager"}

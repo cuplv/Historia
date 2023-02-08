@@ -1,0 +1,1 @@
+{"methodName":"int subexpr(org.luaj.vm2.compiler.LexState$expdesc,int)","line":-1,"t":"ReceiverNonNull","matcher":"void posfix(int,org.luaj.vm2.compiler.LexState$expdesc,org.luaj.vm2.compiler.LexState$expdesc,int)","className":"org.luaj.vm2.compiler.LexState"}

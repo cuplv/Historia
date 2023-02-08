@@ -1,0 +1,1 @@
+{"methodName":"android.view.View moveCompassButton(android.view.ViewGroup,android.view.ViewGroup$LayoutParams)","line":161,"t":"ReceiverNonNull","matcher":"android.widget.ImageView moveToSpecialPosition(android.view.ViewGroup,android.view.ViewGroup$LayoutParams)","className":"net.osmand.plus.views.layers.MapControlsLayer"}

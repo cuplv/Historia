@@ -1,0 +1,1 @@
+{"methodName":"void handleUserInteractionRequest()","line":540,"t":"ReceiverNonNull","matcher":"android.os.Parcelable getParcelableExtra(java.lang.String)","className":"com.fsck.k9.ui.crypto.MessageCryptoHelper"}

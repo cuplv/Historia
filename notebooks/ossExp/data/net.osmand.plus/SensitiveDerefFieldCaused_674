@@ -1,0 +1,1 @@
+{"methodName":"void refreshChart(com.github.mikephil.charting.charts.LineChart,boolean,boolean,boolean)","line":506,"t":"ReceiverNonNull","matcher":"void setHighlightedPoint(net.osmand.data.LatLon)","className":"net.osmand.plus.mapcontextmenu.other.TrackDetailsMenu"}

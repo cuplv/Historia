@@ -1,0 +1,1 @@
+{"methodName":"void onDestroyView()","line":209,"t":"ReceiverNonNull","matcher":"android.view.View findViewById(int)","className":"net.osmand.plus.measurementtool.SnapTrackWarningFragment"}

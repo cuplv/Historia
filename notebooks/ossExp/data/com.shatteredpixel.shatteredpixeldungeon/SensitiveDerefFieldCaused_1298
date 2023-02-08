@@ -1,0 +1,1 @@
+{"methodName":"void createItems()","line":394,"t":"ReceiverNonNull","matcher":"boolean hasTalent(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent)","className":"com.shatteredpixel.shatteredpixeldungeon.levels.RegularLevel"}

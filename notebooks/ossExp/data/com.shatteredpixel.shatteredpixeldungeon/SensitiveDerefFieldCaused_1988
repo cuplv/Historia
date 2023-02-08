@@ -1,0 +1,1 @@
+{"methodName":"com.watabou.noosa.Gizmo remove(com.watabou.noosa.Gizmo)","line":6,"t":"ReceiverNonNull","matcher":"boolean remove(java.lang.Object)","className":"com.watabou.noosa.Group"}

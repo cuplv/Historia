@@ -1,0 +1,1 @@
+{"methodName":"void configureLayoutElevation()","line":2,"t":"ReceiverNonNull","matcher":"android.content.Context getContext()","className":"eu.davidea.flexibleadapter.helpers.StickyHeaderHelper"}

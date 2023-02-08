@@ -1,0 +1,1 @@
+{"methodName":"void markAllGroupsAsDirty()","line":265,"t":"ReceiverNonNull","matcher":"java.util.List getGroups()","className":"com.keepassdroid.Database"}

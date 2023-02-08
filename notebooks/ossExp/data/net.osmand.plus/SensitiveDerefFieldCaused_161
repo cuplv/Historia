@@ -1,0 +1,1 @@
+{"methodName":"void init()","line":202,"t":"ReceiverNonNull","matcher":"int pushLimit(int)","className":"net.osmand.binary.BinaryMapIndexReader"}

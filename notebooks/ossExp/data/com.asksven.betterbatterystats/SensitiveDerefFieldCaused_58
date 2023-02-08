@@ -1,0 +1,1 @@
+{"methodName":"java.util.ArrayList getNetworkUsageStats(android.content.Context,int)","line":3463,"t":"ReceiverNonNull","matcher":"int size()","className":"com.asksven.android.common.privateapiproxies.BatteryStatsProxy"}

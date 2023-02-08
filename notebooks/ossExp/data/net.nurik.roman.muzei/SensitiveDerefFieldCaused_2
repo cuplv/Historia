@@ -1,0 +1,1 @@
+{"methodName":"void onDraw(android.graphics.Canvas)","line":1068,"t":"ReceiverNonNull","matcher":"boolean setPolyToPoly(float[],int,float[],int,int)","className":"com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView"}

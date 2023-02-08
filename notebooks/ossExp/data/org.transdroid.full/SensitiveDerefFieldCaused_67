@@ -1,0 +1,1 @@
+{"methodName":"void onDataSetChanged()","line":40,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"org.transdroid.core.widget.WidgetViewsFactory"}

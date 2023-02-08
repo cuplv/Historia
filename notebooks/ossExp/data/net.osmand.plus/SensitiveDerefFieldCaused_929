@@ -1,0 +1,1 @@
+{"methodName":"void getImagesFromPointOpenGL(net.osmand.data.RotatedTileBox,android.graphics.PointF,java.util.List)","line":576,"t":"ReceiverNonNull","matcher":"net.osmand.data.QuadTree getQuadTreeByPoint(net.osmand.core.jni.PointI)","className":"net.osmand.plus.plugins.mapillary.MapillaryVectorLayer"}

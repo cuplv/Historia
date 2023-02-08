@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String defaultObjectToSource(org.mozilla.javascript.Context,org.mozilla.javascript.Scriptable,org.mozilla.javascript.Scriptable,java.lang.Object[])","line":988,"t":"ReceiverNonNull","matcher":"void <init>(int)","className":"org.mozilla.javascript.ScriptRuntime"}

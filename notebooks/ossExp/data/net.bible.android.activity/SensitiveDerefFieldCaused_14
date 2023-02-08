@@ -1,0 +1,1 @@
+{"methodName":"void onInitListener$lambda$0(net.bible.service.device.speak.TextToSpeechServiceManager,int)","line":153,"t":"ReceiverNonNull","matcher":"int addEarcon(java.lang.String,java.lang.String,int)","className":"net.bible.service.device.speak.TextToSpeechServiceManager"}

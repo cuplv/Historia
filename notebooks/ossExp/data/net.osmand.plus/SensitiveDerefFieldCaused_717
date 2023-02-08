@@ -1,0 +1,1 @@
+{"methodName":"void cancelPhotoTimer()","line":1935,"t":"ReceiverNonNull","matcher":"void cancel()","className":"net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin"}

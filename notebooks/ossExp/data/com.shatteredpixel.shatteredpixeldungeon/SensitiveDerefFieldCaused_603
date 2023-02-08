@@ -1,0 +1,1 @@
+{"methodName":"void onZap(com.shatteredpixel.shatteredpixeldungeon.mechanics.Ballistica)","line":72,"t":"ReceiverNonNull","matcher":"boolean adjacent(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfFireblast"}

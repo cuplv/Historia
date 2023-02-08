@@ -1,0 +1,1 @@
+{"methodName":"void updateRemoteItems(java.util.List,boolean)","line":5,"t":"ReceiverNonNull","matcher":"void smoothScrollToPosition(int)","className":"org.transdroid.core.gui.remoterss.RemoteRssFragment"}

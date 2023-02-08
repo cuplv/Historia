@@ -1,0 +1,1 @@
+{"methodName":"void playFile(java.io.File)","line":196,"t":"ReceiverNonNull","matcher":"void setAudioAttributes(android.media.AudioAttributes)","className":"net.osmand.plus.voice.JsMediaCommandPlayer"}

@@ -1,0 +1,1 @@
+{"methodName":"void onFileDownloadProgress(com.seafile.seadroid2.transfer.DownloadTaskInfo)","line":196,"t":"ReceiverNonNull","matcher":"void saveDownloadNotifProvider(com.seafile.seadroid2.notification.DownloadNotificationProvider)","className":"com.seafile.seadroid2.ui.activity.FileActivity"}

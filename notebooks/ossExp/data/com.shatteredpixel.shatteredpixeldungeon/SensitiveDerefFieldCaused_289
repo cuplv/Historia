@@ -1,0 +1,1 @@
+{"methodName":"void bossSlain()","line":35,"t":"ReceiverNonNull","matcher":"void showBanner(com.shatteredpixel.shatteredpixeldungeon.ui.Banner)","className":"com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene"}

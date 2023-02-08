@@ -1,0 +1,1 @@
+{"methodName":"boolean onTouchEvent(android.view.MotionEvent,net.osmand.data.RotatedTileBox)","line":926,"t":"ReceiverNonNull","matcher":"boolean isVisible()","className":"net.osmand.plus.views.layers.ContextMenuLayer"}

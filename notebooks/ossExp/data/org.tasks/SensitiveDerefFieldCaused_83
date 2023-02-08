@@ -1,0 +1,1 @@
+{"methodName":"android.util.SparseArray getSections()","line":106,"t":"ReceiverNonNull","matcher":"long longValue()","className":"org.tasks.tasklist.SectionedDataSource"}

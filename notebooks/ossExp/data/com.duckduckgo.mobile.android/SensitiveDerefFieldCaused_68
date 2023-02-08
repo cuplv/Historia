@@ -1,0 +1,1 @@
+{"methodName":"void dismissAppLinkSnackBar()","line":1282,"t":"ReceiverNonNull","matcher":"void dismiss()","className":"com.duckduckgo.app.browser.BrowserTabFragment"}

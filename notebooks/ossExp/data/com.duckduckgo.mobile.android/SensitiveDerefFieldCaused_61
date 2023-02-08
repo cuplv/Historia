@@ -1,0 +1,1 @@
+{"methodName":"boolean onKeyLongPress(int,android.view.KeyEvent)","line":268,"t":"ReceiverNonNull","matcher":"void onLongPressBackButton()","className":"com.duckduckgo.app.browser.BrowserActivity"}

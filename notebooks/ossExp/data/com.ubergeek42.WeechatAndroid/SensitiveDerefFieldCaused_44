@@ -1,0 +1,1 @@
+{"methodName":"void requestThumbnail(com.ubergeek42.WeechatAndroid.media.Strategy$Url)","line":82,"t":"ReceiverNonNull","matcher":"void <init>(com.ubergeek42.WeechatAndroid.views.LineView,int,int)","className":"com.ubergeek42.WeechatAndroid.views.LineView"}

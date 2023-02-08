@@ -1,0 +1,1 @@
+{"methodName":"void onMessageBuildSuccess(com.fsck.k9.mail.internet.MimeMessage,boolean)","line":1595,"t":"ReceiverNonNull","matcher":"java.lang.String getSubject()","className":"com.fsck.k9.activity.MessageCompose"}

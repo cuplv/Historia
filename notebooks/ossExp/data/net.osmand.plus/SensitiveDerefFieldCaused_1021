@@ -1,0 +1,1 @@
+{"methodName":"boolean onTouchEvent(android.view.MotionEvent)","line":1514,"t":"ReceiverNonNull","matcher":"boolean isDoubleTapping()","className":"net.osmand.plus.views.OsmandMapTileView"}

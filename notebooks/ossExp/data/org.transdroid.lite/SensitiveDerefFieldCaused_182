@@ -1,0 +1,1 @@
+{"methodName":"void onViewChanged(org.androidannotations.api.view.HasViews)","line":20,"t":"ReceiverNonNull","matcher":"void setOnMenuItemClickListener(androidx.appcompat.widget.ActionMenuView$OnMenuItemClickListener)","className":"org.transdroid.core.gui.DetailsFragment_"}

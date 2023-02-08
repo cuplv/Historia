@@ -1,0 +1,1 @@
+{"methodName":"float durabilityPerUse()","line":23,"t":"ReceiverNonNull","matcher":"boolean hasTalent(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent)","className":"com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.MissileWeapon"}

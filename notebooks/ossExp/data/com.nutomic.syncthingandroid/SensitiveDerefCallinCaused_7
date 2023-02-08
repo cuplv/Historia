@@ -1,0 +1,1 @@
+{"methodName":"void lambda$onPreferenceClick$7$com-nutomic-syncthingandroid-activities-SettingsActivity$SettingsFragment(android.content.Intent,android.content.DialogInterface,int)","line":623,"t":"ReceiverNonNull","matcher":"android.content.ComponentName startService(android.content.Intent)","className":"com.nutomic.syncthingandroid.activities.SettingsActivity$SettingsFragment"}

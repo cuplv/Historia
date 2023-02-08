@@ -1,0 +1,1 @@
+{"methodName":"void onCreate(android.os.Bundle)","line":28,"t":"ReceiverNonNull","matcher":"android.view.Window getWindow()","className":"net.osmand.plus.base.BaseOsmAndDialogFragment"}

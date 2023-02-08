@@ -1,0 +1,1 @@
+{"methodName":"com.watabou.utils.PathFinder$Path findPath(com.shatteredpixel.shatteredpixeldungeon.actors.Char,int,boolean[],boolean[],boolean)","line":54,"t":"ReceiverNonNull","matcher":"openSpace","className":"com.shatteredpixel.shatteredpixeldungeon.Dungeon"}

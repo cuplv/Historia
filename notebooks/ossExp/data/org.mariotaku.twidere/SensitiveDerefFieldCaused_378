@@ -1,0 +1,1 @@
+{"methodName":"void setup()","line":92,"t":"ReceiverNonNull","matcher":"java.nio.ByteBuffer[] getInputBuffers()","className":"net.ypresto.androidtranscoder.engine.VideoTrackTranscoder"}

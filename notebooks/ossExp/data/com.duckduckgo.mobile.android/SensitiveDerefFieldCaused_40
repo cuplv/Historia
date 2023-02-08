@@ -1,0 +1,1 @@
+{"methodName":"void updateStickyHeader(androidx.recyclerview.widget.RecyclerView$Recycler,boolean)","line":361,"t":"ReceiverNonNull","matcher":"int getItemViewType(int)","className":"com.duckduckgo.mobile.android.ui.recyclerviewext.StickyHeadersLinearLayoutManager"}

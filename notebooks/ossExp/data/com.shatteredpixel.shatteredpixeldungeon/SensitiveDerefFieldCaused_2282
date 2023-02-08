@@ -1,0 +1,1 @@
+{"methodName":"void onZap(com.shatteredpixel.shatteredpixeldungeon.mechanics.Ballistica)","line":126,"t":"ReceiverNonNull","matcher":"int id()","className":"com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfTransfusion"}

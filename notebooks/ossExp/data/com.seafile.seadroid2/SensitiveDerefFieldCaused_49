@@ -1,0 +1,1 @@
+{"methodName":"boolean isNeedUpdateProgress()","line":44,"t":"ReceiverNonNull","matcher":"java.util.List getAllDownloadTaskInfos()","className":"com.seafile.seadroid2.ui.fragment.DownloadTaskFragment"}

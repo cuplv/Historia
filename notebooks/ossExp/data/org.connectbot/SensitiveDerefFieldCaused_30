@@ -1,0 +1,1 @@
+{"methodName":"void onConfigurationChanged(android.content.res.Configuration)","line":1227,"t":"ReceiverNonNull","matcher":"hardKeyboardHidden","className":"org.connectbot.ConsoleActivity"}

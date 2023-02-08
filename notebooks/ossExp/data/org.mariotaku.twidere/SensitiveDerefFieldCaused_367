@@ -1,0 +1,1 @@
+{"methodName":"void openVideo()","line":351,"t":"ReceiverNonNull","matcher":"void setScreenOnWhilePlaying(boolean)","className":"com.sprylab.android.widget.TextureVideoView"}

@@ -1,0 +1,1 @@
+{"methodName":"void shutdown()","line":70,"t":"ReceiverNonNull","matcher":"void registerCacheListener(com.danikula.videocache.CacheListener)","className":"com.danikula.videocache.HttpProxyCacheServerClients"}

@@ -1,0 +1,1 @@
+{"methodName":"void enterMovingMode(net.osmand.data.RotatedTileBox)","line":634,"t":"ReceiverNonNull","matcher":"boolean hide()","className":"net.osmand.plus.views.layers.ContextMenuLayer"}

@@ -1,0 +1,1 @@
+{"methodName":"void onCertificateReceived(android.net.http.SslCertificate)","line":1679,"t":"ReceiverNonNull","matcher":"void setCertificate(android.net.http.SslCertificate)","className":"com.duckduckgo.app.browser.BrowserTabViewModel"}

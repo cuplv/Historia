@@ -1,0 +1,1 @@
+{"methodName":"boolean onMenuItemClick(android.view.MenuItem)","line":3,"t":"ReceiverNonNull","matcher":"int intValue()","className":"org.sufficientlysecure.keychain.ui.keyview.ViewKeyFragment"}

@@ -1,0 +1,1 @@
+{"methodName":"void setURLSpan(android.view.View)","line":97,"t":"ReceiverNonNull","matcher":"java.lang.String getString(int)","className":"net.osmand.plus.plugins.openplacereviews.OprStartFragment"}

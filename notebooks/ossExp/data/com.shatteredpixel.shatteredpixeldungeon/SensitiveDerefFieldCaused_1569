@@ -1,0 +1,1 @@
+{"methodName":"void activate(com.shatteredpixel.shatteredpixeldungeon.items.armor.ClassArmor,com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero,java.lang.Integer)","line":11,"t":"ReceiverNonNull","matcher":"int width()","className":"com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.mage.ElementalBlast"}

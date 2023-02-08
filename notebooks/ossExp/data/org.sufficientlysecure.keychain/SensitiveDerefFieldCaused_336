@@ -1,0 +1,1 @@
+{"methodName":"void onDetachedFromRecyclerView(androidx.recyclerview.widget.RecyclerView)","line":2,"t":"ReceiverNonNull","matcher":"void detachFromRecyclerView()","className":"eu.davidea.flexibleadapter.FlexibleAdapter"}

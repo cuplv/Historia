@@ -1,0 +1,1 @@
+{"methodName":"void <init>(com.shatteredpixel.shatteredpixeldungeon.mechanics.Ballistica,float,float,int)","line":25,"t":"ReceiverNonNull","matcher":"int width()","className":"com.shatteredpixel.shatteredpixeldungeon.mechanics.ConeAOE"}

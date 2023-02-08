@@ -1,0 +1,1 @@
+{"methodName":"void refreshSearch()","line":16,"t":"ReceiverNonNull","matcher":"void setVisibility(int)","className":"org.transdroid.core.gui.search.SearchActivity"}

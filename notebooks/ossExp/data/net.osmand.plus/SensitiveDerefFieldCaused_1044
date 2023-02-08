@@ -1,0 +1,1 @@
+{"methodName":"void loadMap(net.osmand.data.RotatedTileBox,net.osmand.map.MapTileDownloader)","line":787,"t":"ReceiverNonNull","matcher":"defaultColor","className":"net.osmand.plus.render.MapRenderRepositories"}

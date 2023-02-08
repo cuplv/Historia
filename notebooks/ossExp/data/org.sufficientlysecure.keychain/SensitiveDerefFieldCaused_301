@@ -1,0 +1,1 @@
+{"methodName":"void ensureHeaderParent()","line":2,"t":"ReceiverNonNull","matcher":"itemView","className":"eu.davidea.flexibleadapter.helpers.StickyHeaderHelper"}

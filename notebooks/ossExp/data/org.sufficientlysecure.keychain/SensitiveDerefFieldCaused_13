@@ -1,0 +1,1 @@
+{"methodName":"void continueSearch()","line":14,"t":"ReceiverNonNull","matcher":"void statusLineAdd(org.sufficientlysecure.keychain.ui.token.ManageSecurityTokenFragment$StatusLine)","className":"org.sufficientlysecure.keychain.ui.token.ManageSecurityTokenPresenter"}

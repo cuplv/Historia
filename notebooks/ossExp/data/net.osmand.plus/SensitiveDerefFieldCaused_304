@@ -1,0 +1,1 @@
+{"methodName":"void closeDashboard()","line":121,"t":"ReceiverNonNull","matcher":"void hideDashboard(boolean)","className":"net.osmand.plus.dashboard.DashBaseFragment"}

@@ -1,0 +1,1 @@
+{"methodName":"void register(java.lang.Object)","line":208,"t":"ReceiverNonNull","matcher":"java.lang.Class getSuperclass()","className":"org.greenrobot.eventbus.EventBus"}

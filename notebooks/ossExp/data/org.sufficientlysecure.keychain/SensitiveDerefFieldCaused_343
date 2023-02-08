@@ -1,0 +1,1 @@
+{"methodName":"void ensureList()","line":19,"t":"ReceiverNonNull","matcher":"void addOnScrollListener(androidx.recyclerview.widget.RecyclerView$OnScrollListener)","className":"org.sufficientlysecure.keychain.ui.base.RecyclerFragment"}

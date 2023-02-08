@@ -1,0 +1,1 @@
+{"methodName":"void showMarkAsRead(boolean)","line":1949,"t":"ReceiverNonNull","matcher":"android.view.MenuItem setVisible(boolean)","className":"com.fsck.k9.ui.messagelist.MessageListFragment$ActionModeCallback"}

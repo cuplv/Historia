@@ -1,0 +1,1 @@
+{"methodName":"boolean onTouch(android.view.View,android.view.MotionEvent)","line":436,"t":"ReceiverNonNull","matcher":"void addMovement(android.view.MotionEvent)","className":"net.osmand.plus.mapcontextmenu.MapContextMenuFragment$10"}

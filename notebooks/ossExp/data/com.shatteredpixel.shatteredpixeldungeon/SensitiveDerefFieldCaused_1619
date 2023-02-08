@@ -1,0 +1,1 @@
+{"methodName":"com.shatteredpixel.shatteredpixeldungeon.items.Item next()","line":3,"t":"ReceiverNonNull","matcher":"java.lang.Object next()","className":"com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag$ItemIterator"}

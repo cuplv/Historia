@@ -1,0 +1,1 @@
+{"methodName":"void onViewChanged(org.androidannotations.api.view.HasViews)","line":10,"t":"ReceiverNonNull","matcher":"void setMultiChoiceModeListener(android.widget.AbsListView$MultiChoiceModeListener)","className":"org.transdroid.core.gui.search.SearchResultsFragment_"}

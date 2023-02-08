@@ -1,0 +1,1 @@
+{"methodName":"void activate()","line":68,"t":"ReceiverNonNull","matcher":"boolean insideMap(int)","className":"com.shatteredpixel.shatteredpixeldungeon.levels.traps.FlockTrap"}

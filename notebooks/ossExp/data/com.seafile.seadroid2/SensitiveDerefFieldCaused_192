@@ -1,0 +1,1 @@
+{"methodName":"void cancelProgressTimer()","line":862,"t":"ReceiverNonNull","matcher":"void cancel()","className":"com.shuyu.gsyvideoplayer.video.base.GSYVideoControlView"}

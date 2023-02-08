@@ -1,0 +1,1 @@
+{"methodName":"org.jdom2.Content next()","line":416,"t":"ReceiverNonNull","matcher":"boolean booleanValue()","className":"org.jdom2.output.support.AbstractFormattedWalker"}

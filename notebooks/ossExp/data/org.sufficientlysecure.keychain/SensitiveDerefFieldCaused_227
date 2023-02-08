@@ -1,0 +1,1 @@
+{"methodName":"void cacheNext()","line":7,"t":"ReceiverNonNull","matcher":"void <init>(java.io.InputStream,org.bouncycastle.openpgp.operator.KeyFingerPrintCalculator)","className":"org.sufficientlysecure.keychain.pgp.UncachedKeyRing$2"}

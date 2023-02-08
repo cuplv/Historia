@@ -1,0 +1,1 @@
+{"methodName":"boolean onActionItemClicked(android.view.ActionMode,android.view.MenuItem)","line":163,"t":"ReceiverNonNull","matcher":"void setSelectedAccountKeys(org.mariotaku.twidere.model.UserKey[])","className":"org.mariotaku.twidere.util.MultiSelectEventHandler"}

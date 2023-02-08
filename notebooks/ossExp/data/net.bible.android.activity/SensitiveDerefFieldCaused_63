@@ -1,0 +1,1 @@
+{"methodName":"boolean incrementToken()","line":87,"t":"ReceiverNonNull","matcher":"java.lang.String getStrongsNumber()","className":"org.crosswire.jsword.index.lucene.analysis.StrongsNumberFilter"}

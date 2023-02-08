@@ -1,0 +1,1 @@
+{"methodName":"void clearTransportStopsTileProvider()","line":497,"t":"ReceiverNonNull","matcher":"void clearSymbols(net.osmand.core.android.MapRendererView)","className":"net.osmand.plus.views.layers.TransportStopsLayer"}

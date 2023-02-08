@@ -1,0 +1,1 @@
+{"methodName":"void updateByteCount(long,long,long,long)","line":133,"t":"ReceiverNonNull","matcher":"void runOnUiThread(java.lang.Runnable)","className":"de.blinkt.openvpn.fragments.LogFragment"}

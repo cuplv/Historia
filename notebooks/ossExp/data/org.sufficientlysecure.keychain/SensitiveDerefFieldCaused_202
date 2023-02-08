@@ -1,0 +1,1 @@
+{"methodName":"void executeNotifications(eu.davidea.flexibleadapter.Payload)","line":6,"t":"ReceiverNonNull","matcher":"int size()","className":"eu.davidea.flexibleadapter.FlexibleAdapter"}

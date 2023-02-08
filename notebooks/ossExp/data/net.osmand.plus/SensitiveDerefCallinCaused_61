@@ -1,0 +1,1 @@
+{"methodName":"void onResume()","line":127,"t":"ReceiverNonNull","matcher":"android.app.Application getApplication()","className":"net.osmand.plus.activities.NavigatePointFragment"}

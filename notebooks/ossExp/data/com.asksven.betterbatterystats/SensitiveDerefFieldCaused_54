@@ -1,0 +1,1 @@
+{"methodName":"java.lang.Long getSyncOnTime(android.content.Context,long,int)","line":3377,"t":"ReceiverNonNull","matcher":"int size()","className":"com.asksven.android.common.privateapiproxies.BatteryStatsProxy"}

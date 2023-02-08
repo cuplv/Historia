@@ -1,0 +1,1 @@
+{"methodName":"boolean canInteract(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","line":17,"t":"ReceiverNonNull","matcher":"int distance(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.rogue.ShadowClone$ShadowAlly"}

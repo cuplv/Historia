@@ -1,0 +1,1 @@
+{"methodName":"void onListItemClick(android.widget.ListView,android.view.View,int,long)","line":311,"t":"ReceiverNonNull","matcher":"java.lang.CharSequence getText(int)","className":"de.blinkt.openvpn.fragments.FileSelectionFragment"}

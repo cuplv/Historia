@@ -1,0 +1,1 @@
+{"methodName":"void removeRange(int,int,java.lang.Object)","line":16,"t":"ReceiverNonNull","matcher":"java.lang.Object remove(int)","className":"eu.davidea.flexibleadapter.FlexibleAdapter"}

@@ -1,0 +1,1 @@
+{"methodName":"boolean isEmpty()","line":340,"t":"ReceiverNonNull","matcher":"int getEntryCount()","className":"com.github.mikephil.charting.charts.Chart"}

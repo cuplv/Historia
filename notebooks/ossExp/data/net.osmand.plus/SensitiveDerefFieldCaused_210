@@ -1,0 +1,1 @@
+{"methodName":"void updateWidgets()","line":343,"t":"ReceiverNonNull","matcher":"void updateInfo(net.osmand.plus.views.layers.base.OsmandMapLayer$DrawSettings)","className":"net.osmand.plus.plugins.monitoring.OsmandMonitoringPlugin"}

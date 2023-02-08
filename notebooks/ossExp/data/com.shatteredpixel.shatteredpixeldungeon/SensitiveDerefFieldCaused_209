@@ -1,0 +1,1 @@
+{"methodName":"void build(int,int,boolean,boolean,boolean,boolean)","line":7,"t":"ReceiverNonNull","matcher":"int width()","className":"com.shatteredpixel.shatteredpixeldungeon.mechanics.Ballistica"}

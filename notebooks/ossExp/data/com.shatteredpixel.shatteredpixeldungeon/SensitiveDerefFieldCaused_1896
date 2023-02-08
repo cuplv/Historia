@@ -1,0 +1,1 @@
+{"methodName":"void activate()","line":144,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob createMob()","className":"com.shatteredpixel.shatteredpixeldungeon.levels.traps.SummoningTrap"}

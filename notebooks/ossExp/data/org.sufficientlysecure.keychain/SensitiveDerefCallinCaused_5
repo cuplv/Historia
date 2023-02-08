@@ -1,0 +1,1 @@
+{"methodName":"void shareLog()","line":9,"t":"ReceiverNonNull","matcher":"androidx.fragment.app.FragmentManager getSupportFragmentManager()","className":"org.sufficientlysecure.keychain.ui.LogDisplayFragment"}

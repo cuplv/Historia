@@ -1,0 +1,1 @@
+{"methodName":"void activateProgressPanel(androidx.fragment.app.FragmentActivity)","line":167,"t":"ReceiverNonNull","matcher":"void setMessage(java.lang.String)","className":"net.wigle.wigleandroid.background.AbstractBackgroundTask"}

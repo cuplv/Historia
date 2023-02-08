@@ -1,0 +1,1 @@
+{"methodName":"void <init>(org.osmdroid.views.overlay.mylocation.IMyLocationProvider,org.osmdroid.views.MapView)","line":104,"t":"ReceiverNonNull","matcher":"void setARGB(int,int,int,int)","className":"org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay"}

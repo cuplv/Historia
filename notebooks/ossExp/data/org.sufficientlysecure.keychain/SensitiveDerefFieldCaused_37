@@ -1,0 +1,1 @@
+{"methodName":"void animateTo(java.util.List,eu.davidea.flexibleadapter.Payload)","line":11,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"eu.davidea.flexibleadapter.FlexibleAdapter"}

@@ -1,0 +1,1 @@
+{"methodName":"void releaseBitmap()","line":752,"t":"ReceiverNonNull","matcher":"void setBitmap(android.graphics.Bitmap)","className":"com.github.mikephil.charting.renderer.LineChartRenderer"}

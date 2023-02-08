@@ -1,0 +1,1 @@
+{"methodName":"void stopRecording()","line":3,"t":"ReceiverNonNull","matcher":"void release()","className":"org.liberty.android.fantastischmemo.ui.AudioRecorderFragment"}

@@ -1,0 +1,1 @@
+{"methodName":"void enterEditMode()","line":2,"t":"ReceiverNonNull","matcher":"android.view.ActionMode startActionMode(android.view.ActionMode$Callback)","className":"org.sufficientlysecure.keychain.ui.ViewKeyAdvUserIdsFragment"}

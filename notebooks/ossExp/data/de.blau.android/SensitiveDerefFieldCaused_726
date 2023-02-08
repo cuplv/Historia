@@ -1,0 +1,1 @@
+{"methodName":"void onDestroy()","line":4,"t":"ReceiverNonNull","matcher":"void h(de.blau.android.services.TrackerService$TrackerLocationListener)","className":"de.blau.android.Main"}

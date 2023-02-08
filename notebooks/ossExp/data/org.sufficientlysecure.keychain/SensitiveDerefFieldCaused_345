@@ -1,0 +1,1 @@
+{"methodName":"void onCancel(android.content.DialogInterface)","line":3,"t":"ReceiverNonNull","matcher":"void onDialogCancel()","className":"org.sufficientlysecure.keychain.remote.ui.dialog.RemoteSelectIdKeyActivity$RemoteSelectIdentityKeyDialogFragment"}

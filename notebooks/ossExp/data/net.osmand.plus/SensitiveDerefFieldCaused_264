@@ -1,0 +1,1 @@
+{"methodName":"void stopMethod(short)","line":406,"t":"ReceiverNonNull","matcher":"void setCodeAttribute(byte[])","className":"org.mozilla.classfile.ClassFileWriter"}

@@ -1,0 +1,1 @@
+{"methodName":"boolean tryToZap(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero,int)","line":37,"t":"ReceiverNonNull","matcher":"java.util.LinkedHashSet buffs()","className":"com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfWarding"}

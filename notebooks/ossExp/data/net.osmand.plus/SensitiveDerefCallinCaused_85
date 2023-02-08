@@ -1,0 +1,1 @@
+{"methodName":"void setupGpxFiles()","line":148,"t":"ReceiverNonNull","matcher":"android.view.LayoutInflater getLayoutInflater()","className":"net.osmand.plus.plugins.monitoring.DashTrackFragment"}

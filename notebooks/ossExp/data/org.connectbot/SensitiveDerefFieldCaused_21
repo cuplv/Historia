@@ -1,0 +1,1 @@
+{"methodName":"void closeSelectionActionMode()","line":139,"t":"ReceiverNonNull","matcher":"void finish()","className":"org.connectbot.util.TerminalTextViewOverlay"}

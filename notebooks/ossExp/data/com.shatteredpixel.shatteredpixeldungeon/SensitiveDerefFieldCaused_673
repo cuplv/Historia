@@ -1,0 +1,1 @@
+{"methodName":"void clear()","line":12,"t":"ReceiverNonNull","matcher":"java.lang.Object get(int)","className":"com.watabou.noosa.Group"}

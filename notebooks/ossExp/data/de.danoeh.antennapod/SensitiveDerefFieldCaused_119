@@ -1,0 +1,1 @@
+{"methodName":"void onPositionObserverUpdate()","line":641,"t":"ReceiverNonNull","matcher":"int getPosition()","className":"de.danoeh.antennapod.activity.VideoplayerActivity"}

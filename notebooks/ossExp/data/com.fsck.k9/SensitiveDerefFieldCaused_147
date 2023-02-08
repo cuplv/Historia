@@ -1,0 +1,1 @@
+{"methodName":"void loadMessageList(com.fsck.k9.ui.messagelist.MessageListConfig)","line":21,"t":"ReceiverNonNull","matcher":"com.fsck.k9.ui.messagelist.MessageListConfig getConfig()","className":"com.fsck.k9.ui.messagelist.MessageListViewModel"}

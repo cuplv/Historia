@@ -1,0 +1,1 @@
+{"methodName":"void onItemClick(android.widget.AdapterView,android.view.View,int,long)","line":300,"t":"ReceiverNonNull","matcher":"java.util.List getItems()","className":"de.danoeh.antennapod.fragment.FeedItemlistFragment"}

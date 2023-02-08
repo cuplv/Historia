@@ -1,0 +1,1 @@
+{"methodName":"boolean parseCloseBracket()","line":4,"t":"ReceiverNonNull","matcher":"allowed","className":"org.commonmark.internal.InlineParserImpl"}

@@ -1,0 +1,1 @@
+{"methodName":"boolean onPreferenceChange(android.preference.Preference,java.lang.Object)","line":5,"t":"ReceiverNonNull","matcher":"android.app.FragmentManager getFragmentManager()","className":"org.sufficientlysecure.keychain.ui.SettingsActivity$ProxyPrefsFragment$Initializer$1"}

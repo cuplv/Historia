@@ -1,0 +1,1 @@
+{"methodName":"java.util.List makeFileListRequest(org.transdroid.core.gui.log.Log_,org.transdroid.daemon.Torrent)","line":4,"t":"ReceiverNonNull","matcher":"org.apache.http.HttpResponse execute(org.apache.http.client.methods.HttpUriRequest)","className":"org.transdroid.daemon.adapters.kTorrent.KTorrentAdapter"}

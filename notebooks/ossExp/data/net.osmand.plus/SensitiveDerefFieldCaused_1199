@@ -1,0 +1,1 @@
+{"methodName":"android.hardware.Camera$Size getPreviewSize()","line":1073,"t":"ReceiverNonNull","matcher":"boolean isLandscapeLayout()","className":"net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin"}

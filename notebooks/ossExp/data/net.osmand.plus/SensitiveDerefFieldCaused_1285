@@ -1,0 +1,1 @@
+{"methodName":"void stopCamera()","line":1113,"t":"ReceiverNonNull","matcher":"void stopPreview()","className":"net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin"}

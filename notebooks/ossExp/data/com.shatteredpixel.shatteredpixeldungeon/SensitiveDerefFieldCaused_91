@@ -1,0 +1,1 @@
+{"methodName":"boolean doAttack(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","line":66,"t":"ReceiverNonNull","matcher":"float cooldown()","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Goo"}

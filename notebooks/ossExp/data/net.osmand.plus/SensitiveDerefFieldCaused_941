@@ -1,0 +1,1 @@
+{"methodName":"boolean setLayerState(boolean)","line":265,"t":"ReceiverNonNull","matcher":"void setSelectionListener(net.osmand.plus.quickaction.QuickAction$QuickActionSelectionListener)","className":"net.osmand.plus.views.layers.MapQuickActionLayer"}

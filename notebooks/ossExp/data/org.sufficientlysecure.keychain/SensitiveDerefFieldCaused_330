@@ -1,0 +1,1 @@
+{"methodName":"void connect()","line":11,"t":"ReceiverNonNull","matcher":"boolean claimInterface(android.hardware.usb.UsbInterface,boolean)","className":"org.sufficientlysecure.keychain.securitytoken.usb.UsbTransport"}

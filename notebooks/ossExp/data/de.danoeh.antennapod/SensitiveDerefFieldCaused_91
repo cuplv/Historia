@@ -1,0 +1,1 @@
+{"methodName":"void pause()","line":41,"t":"ReceiverNonNull","matcher":"void unregisterListener(android.hardware.SensorEventListener)","className":"de.danoeh.antennapod.core.service.playback.ShakeListener"}

@@ -1,0 +1,1 @@
+{"methodName":"void setAppInfo(com.seafile.seadroid2.ui.dialog.AppChoiceDialog$AppsListAdapter$Viewholder,android.content.pm.ResolveInfo)","line":130,"t":"ReceiverNonNull","matcher":"android.content.pm.PackageManager getPackageManager()","className":"com.seafile.seadroid2.ui.dialog.AppChoiceDialog$AppsListAdapter"}

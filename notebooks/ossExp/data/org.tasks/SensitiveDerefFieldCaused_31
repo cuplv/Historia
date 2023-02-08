@@ -1,0 +1,1 @@
+{"methodName":"java.lang.Long getAccessTokenExpirationTime()","line":246,"t":"ReceiverNonNull","matcher":"accessToken","className":"net.openid.appauth.AuthState"}

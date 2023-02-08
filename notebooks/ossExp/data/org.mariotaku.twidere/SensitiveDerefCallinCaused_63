@@ -1,0 +1,1 @@
+{"methodName":"void invoke(org.mariotaku.twidere.fragment.BaseFragment)","line":414,"t":"ReceiverNonNull","matcher":"void finish()","className":"org.mariotaku.twidere.fragment.UserProfileEditorFragment$UpdateProfileTaskInternal$onSucceed$2"}

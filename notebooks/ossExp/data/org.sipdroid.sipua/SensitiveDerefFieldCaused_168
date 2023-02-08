@@ -1,0 +1,1 @@
+{"methodName":"void run()","line":175,"t":"ReceiverNonNull","matcher":"void onReceivedData(org.zoolu.net.TcpConnection,byte[],int)","className":"org.zoolu.net.TcpConnection"}

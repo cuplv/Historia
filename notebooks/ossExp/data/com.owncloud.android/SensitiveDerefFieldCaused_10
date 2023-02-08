@@ -1,0 +1,1 @@
+{"methodName":"void onViewCreated$lambda-3(com.owncloud.android.presentation.ui.sharing.fragments.ShareFileFragment,android.view.View)","line":269,"t":"ReceiverNonNull","matcher":"void showAddPublicShare(java.lang.String)","className":"com.owncloud.android.presentation.ui.sharing.fragments.ShareFileFragment"}

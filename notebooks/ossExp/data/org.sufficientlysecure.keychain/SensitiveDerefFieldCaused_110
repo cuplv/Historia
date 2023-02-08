@@ -1,0 +1,1 @@
+{"methodName":"void onImportSuccess(org.sufficientlysecure.keychain.operations.results.OperationResult)","line":2,"t":"ReceiverNonNull","matcher":"void statusLineOk()","className":"org.sufficientlysecure.keychain.ui.token.ManageSecurityTokenPresenter"}

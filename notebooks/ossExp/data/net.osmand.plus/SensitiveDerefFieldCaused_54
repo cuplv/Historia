@@ -1,0 +1,1 @@
+{"methodName":"net.osmand.data.RotatedTileBox build()","line":601,"t":"ReceiverNonNull","matcher":"void calculateDerivedFields()","className":"net.osmand.data.RotatedTileBox$RotatedTileBoxBuilder"}

@@ -1,0 +1,1 @@
+{"methodName":"void onSelect(java.lang.Integer)","line":231,"t":"ReceiverNonNull","matcher":"void occupyCell(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Preparation$1"}

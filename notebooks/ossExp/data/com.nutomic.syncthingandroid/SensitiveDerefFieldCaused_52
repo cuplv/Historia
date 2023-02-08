@@ -1,0 +1,1 @@
+{"methodName":"void setParameters()","line":380,"t":"ReceiverNonNull","matcher":"android.hardware.Camera$Parameters getParameters()","className":"com.journeyapps.barcodescanner.camera.CameraManager"}

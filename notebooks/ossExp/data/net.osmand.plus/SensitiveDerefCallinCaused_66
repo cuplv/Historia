@@ -1,0 +1,1 @@
+{"methodName":"void onClick(android.view.View)","line":242,"t":"ReceiverNonNull","matcher":"void onBackPressed()","className":"net.osmand.plus.settings.fragments.ConfigureMenuItemsFragment$2"}

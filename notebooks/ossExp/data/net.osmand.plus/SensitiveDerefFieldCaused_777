@@ -1,0 +1,1 @@
+{"methodName":"boolean pressedContextMarker(net.osmand.data.RotatedTileBox,float,float)","line":828,"t":"ReceiverNonNull","matcher":"boolean isActive()","className":"net.osmand.plus.views.layers.ContextMenuLayer"}

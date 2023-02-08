@@ -1,0 +1,1 @@
+{"methodName":"void enterLoop(org.mozilla.javascript.ast.Loop)","line":537,"t":"ReceiverNonNull","matcher":"void setStatement(org.mozilla.javascript.ast.AstNode)","className":"org.mozilla.javascript.Parser"}

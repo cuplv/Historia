@@ -1,0 +1,1 @@
+{"methodName":"void showFavorites()","line":268,"t":"ReceiverNonNull","matcher":"void drawSymbols(net.osmand.core.android.MapRendererView)","className":"net.osmand.plus.views.layers.FavouritesLayer"}

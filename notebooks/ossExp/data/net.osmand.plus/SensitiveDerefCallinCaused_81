@@ -1,0 +1,1 @@
+{"methodName":"void select(int)","line":353,"t":"ReceiverNonNull","matcher":"void setResult(int,android.content.Intent)","className":"net.osmand.plus.activities.search.SearchAddressFragment"}

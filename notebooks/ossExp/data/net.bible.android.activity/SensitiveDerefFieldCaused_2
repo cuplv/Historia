@@ -1,0 +1,1 @@
+{"methodName":"void onActivityResult(int,int,android.content.Intent)","line":196,"t":"ReceiverNonNull","matcher":"int getOrdinal()","className":"net.bible.android.view.activity.speak.BibleSpeakActivity"}

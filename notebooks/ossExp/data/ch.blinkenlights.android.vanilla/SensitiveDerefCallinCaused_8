@@ -1,0 +1,1 @@
+{"methodName":"void setSong(long,ch.blinkenlights.android.vanilla.Song)","line":272,"t":"ReceiverNonNull","matcher":"android.content.Context getApplicationContext()","className":"ch.blinkenlights.android.vanilla.ShowQueueFragment"}

@@ -1,0 +1,1 @@
+{"methodName":"void reset(com.watabou.noosa.Visual,int,com.shatteredpixel.shatteredpixeldungeon.items.Item,com.watabou.utils.Callback)","line":5,"t":"ReceiverNonNull","matcher":"solid","className":"com.shatteredpixel.shatteredpixeldungeon.sprites.MissileSprite"}

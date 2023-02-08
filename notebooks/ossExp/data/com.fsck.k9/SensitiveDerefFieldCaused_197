@@ -1,0 +1,1 @@
+{"methodName":"void open()","line":67,"t":"ReceiverNonNull","matcher":"java.io.OutputStream getOutputStream()","className":"com.fsck.k9.mail.store.pop3.Pop3Connection"}

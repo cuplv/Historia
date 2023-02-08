@@ -1,0 +1,1 @@
+{"methodName":"com.watabou.noosa.Gizmo addToBack(com.watabou.noosa.Gizmo)","line":20,"t":"ReceiverNonNull","matcher":"boolean isEmpty()","className":"com.watabou.noosa.Group"}

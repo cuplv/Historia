@@ -1,0 +1,1 @@
+{"methodName":"void parse()","line":43,"t":"ReceiverNonNull","matcher":"java.lang.String substring(int)","className":"net.osmand.util.LocationParser$ParsedOpenLocationCode"}

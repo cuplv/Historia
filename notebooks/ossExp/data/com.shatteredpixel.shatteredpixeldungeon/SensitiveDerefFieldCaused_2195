@@ -1,0 +1,1 @@
+{"methodName":"int defenseProc(com.shatteredpixel.shatteredpixeldungeon.actors.Char,int)","line":18,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.items.Heap drop(com.shatteredpixel.shatteredpixeldungeon.items.Item,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Thief"}

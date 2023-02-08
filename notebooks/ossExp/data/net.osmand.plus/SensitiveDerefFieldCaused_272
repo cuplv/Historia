@@ -1,0 +1,1 @@
+{"methodName":"java.lang.Boolean enumNext(java.lang.Object)","line":2335,"t":"ReceiverNonNull","matcher":"boolean has(java.lang.String,org.mozilla.javascript.Scriptable)","className":"org.mozilla.javascript.ScriptRuntime"}

@@ -1,0 +1,1 @@
+{"methodName":"int deflateReset(com.jcraft.jzlib.ZStream)","line":1397,"t":"ReceiverNonNull","matcher":"long adler32(long,byte[],int,int)","className":"com.jcraft.jzlib.Deflate"}

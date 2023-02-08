@@ -1,0 +1,1 @@
+{"methodName":"boolean onRequestPermissionsResult(int,java.lang.String[],int[])","line":-1,"t":"ReceiverNonNull","matcher":"boolean c(int,java.lang.String[],int[])","className":"io.flutter.embedding.engine.c"}

@@ -1,0 +1,1 @@
+{"methodName":"void closeForTests()","line":2,"t":"ReceiverNonNull","matcher":"void shutdown()","className":"com.ichi2.anki.ReadText"}

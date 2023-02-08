@@ -1,0 +1,1 @@
+{"methodName":"void onBindDialogView(android.view.View)","line":64,"t":"ReceiverNonNull","matcher":"long getNumRounds()","className":"com.keepassdroid.settings.RoundsPreferenceFragment"}

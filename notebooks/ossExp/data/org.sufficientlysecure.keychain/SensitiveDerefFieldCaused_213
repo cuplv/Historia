@@ -1,0 +1,1 @@
+{"methodName":"void onClickSelect()","line":5,"t":"ReceiverNonNull","matcher":"int intValue()","className":"org.sufficientlysecure.keychain.remote.ui.dialog.RemoteSelectAuthenticationKeyPresenter"}

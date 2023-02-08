@@ -1,0 +1,1 @@
+{"methodName":"boolean onMenuItemClick(android.view.MenuItem)","line":280,"t":"ReceiverNonNull","matcher":"android.content.ComponentName resolveActivity(android.content.pm.PackageManager)","className":"org.navitproject.navit.NavitGraphics$NavitView"}

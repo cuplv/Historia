@@ -1,0 +1,1 @@
+{"methodName":"void onResume()","line":131,"t":"ReceiverNonNull","matcher":"android.view.LayoutInflater getLayoutInflater()","className":"net.osmand.plus.plugins.audionotes.NotesFragment"}

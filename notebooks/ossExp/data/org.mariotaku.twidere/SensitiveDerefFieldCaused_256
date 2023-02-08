@@ -1,0 +1,1 @@
+{"methodName":"void setSkipDrawing(boolean)","line":46,"t":"ReceiverNonNull","matcher":"void setSkipDrawing(boolean)","className":"org.mariotaku.twidere.nyan.NyanSurfaceHelper"}

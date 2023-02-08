@@ -1,0 +1,1 @@
+{"methodName":"void clearAllInternalObjectCaches()","line":2,"t":"ReceiverNonNull","matcher":"void clearAll()","className":"com.j256.ormlite.dao.BaseDaoImpl"}

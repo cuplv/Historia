@@ -1,0 +1,1 @@
+{"methodName":"void <init>(com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag)","line":96,"t":"ReceiverNonNull","matcher":"boolean hasTalent(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent)","className":"com.shatteredpixel.shatteredpixeldungeon.windows.WndQuickBag"}

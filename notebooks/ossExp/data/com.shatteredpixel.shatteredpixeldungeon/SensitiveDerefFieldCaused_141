@@ -1,0 +1,1 @@
+{"methodName":"boolean getCloser(int)","line":61,"t":"ReceiverNonNull","matcher":"float trueDistance(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.DM300"}

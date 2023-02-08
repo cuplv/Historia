@@ -1,0 +1,1 @@
+{"methodName":"net.osmand.plus.api.SQLiteAPI$SQLiteConnection getDatabase()","line":251,"t":"ReceiverNonNull","matcher":"boolean isClosed()","className":"net.osmand.plus.resources.SQLiteTileSource"}

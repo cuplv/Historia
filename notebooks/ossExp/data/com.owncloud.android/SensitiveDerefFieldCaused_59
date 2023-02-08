@@ -1,0 +1,1 @@
+{"methodName":"void onStop()","line":330,"t":"ReceiverNonNull","matcher":"void unregisterMediaController(com.owncloud.android.media.MediaControlView)","className":"com.owncloud.android.ui.preview.PreviewAudioFragment"}

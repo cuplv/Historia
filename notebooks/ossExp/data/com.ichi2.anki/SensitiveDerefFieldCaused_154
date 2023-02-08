@@ -1,0 +1,1 @@
+{"methodName":"java.util.ArrayList genCards(java.lang.String,com.ichi2.libanki.Model,com.ichi2.async.ProgressSender)","line":72,"t":"ReceiverNonNull","matcher":"void executeMany(java.lang.String,java.util.List)","className":"com.ichi2.libanki.Collection"}

@@ -1,0 +1,1 @@
+{"methodName":"void loadCameraSound()","line":620,"t":"ReceiverNonNull","matcher":"int load(android.content.res.AssetFileDescriptor,int)","className":"net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin"}

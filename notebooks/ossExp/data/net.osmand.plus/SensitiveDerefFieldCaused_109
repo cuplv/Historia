@@ -1,0 +1,1 @@
+{"methodName":"java.util.Collection getAdditionalInfoValues(boolean)","line":129,"t":"ReceiverNonNull","matcher":"java.util.Collection values()","className":"net.osmand.data.Amenity"}

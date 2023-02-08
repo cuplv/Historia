@@ -1,0 +1,1 @@
+{"methodName":"int searchRouteEncodingRule(java.lang.String,java.lang.String)","line":336,"t":"ReceiverNonNull","matcher":"boolean containsKey(java.lang.Object)","className":"net.osmand.binary.BinaryMapRouteReaderAdapter$RouteRegion"}

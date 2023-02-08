@@ -1,0 +1,1 @@
+{"methodName":"boolean onTouch(android.view.View,android.view.MotionEvent)","line":317,"t":"ReceiverNonNull","matcher":"void setTranslationX(float)","className":"org.mariotaku.twidere.util.SwipeDismissListViewTouchListener"}

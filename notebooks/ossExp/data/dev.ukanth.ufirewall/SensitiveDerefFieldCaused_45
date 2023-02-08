@@ -1,0 +1,1 @@
+{"methodName":"java.util.List shutdownNow()","line":78,"t":"ReceiverNonNull","matcher":"boolean cancel(boolean)","className":"com.topjohnwu.superuser.internal.SerialExecutorService"}

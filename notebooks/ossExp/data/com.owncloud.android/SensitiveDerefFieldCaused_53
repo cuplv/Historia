@@ -1,0 +1,1 @@
+{"methodName":"int getRowHeight()","line":279,"t":"ReceiverNonNull","matcher":"android.view.ViewGroup$LayoutParams getLayoutParams()","className":"third_parties.in.srain.cube.GridViewWithHeaderAndFooter"}

@@ -1,0 +1,1 @@
+{"methodName":"void onPlayerStateChanged(boolean,int)","line":228,"t":"ReceiverNonNull","matcher":"void seekTo(long)","className":"com.owncloud.android.ui.preview.PreviewVideoActivity"}

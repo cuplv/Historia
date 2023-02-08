@@ -1,0 +1,1 @@
+{"methodName":"boolean stopMediaRecording(boolean)","line":1134,"t":"ReceiverNonNull","matcher":"void stop()","className":"net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin"}

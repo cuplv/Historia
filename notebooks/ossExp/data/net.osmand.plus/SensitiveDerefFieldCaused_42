@@ -1,0 +1,1 @@
+{"methodName":"boolean calculateGpxApproximation(boolean)","line":365,"t":"ReceiverNonNull","matcher":"void cancelApproximation()","className":"net.osmand.plus.measurementtool.GpxApproximationFragment"}

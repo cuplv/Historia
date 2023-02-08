@@ -1,0 +1,1 @@
+{"methodName":"void loadRouteRegionData(java.util.List,net.osmand.ResultMatcher)","line":1103,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"net.osmand.binary.BinaryMapRouteReaderAdapter"}

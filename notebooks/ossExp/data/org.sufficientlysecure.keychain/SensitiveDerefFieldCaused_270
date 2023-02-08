@@ -1,0 +1,1 @@
+{"methodName":"void processResultSuccess(org.sufficientlysecure.keychain.ui.token.PublicKeyRetriever$KeyRetrievalResult)","line":4,"t":"ReceiverNonNull","matcher":"void showActionImport()","className":"org.sufficientlysecure.keychain.ui.token.ManageSecurityTokenPresenter"}

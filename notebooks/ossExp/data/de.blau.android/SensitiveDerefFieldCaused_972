@@ -1,0 +1,1 @@
+{"methodName":"org.mozilla.javascript.Node transformXmlRef(org.mozilla.javascript.Node,org.mozilla.javascript.ast.XmlRef,int)","line":10,"t":"ReceiverNonNull","matcher":"void addName(java.lang.String)","className":"org.mozilla.javascript.IRFactory"}

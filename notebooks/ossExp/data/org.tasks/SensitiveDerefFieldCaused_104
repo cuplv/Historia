@@ -1,0 +1,1 @@
+{"methodName":"void showInfoWindow()","line":172,"t":"ReceiverNonNull","matcher":"void open(java.lang.Object,org.osmdroid.util.GeoPoint,int,int)","className":"org.osmdroid.views.overlay.PolyOverlayWithIW"}

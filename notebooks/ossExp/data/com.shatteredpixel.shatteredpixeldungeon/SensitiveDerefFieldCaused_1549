@@ -1,0 +1,1 @@
+{"methodName":"boolean surprisedBy(com.shatteredpixel.shatteredpixeldungeon.actors.Char,boolean)","line":3,"t":"ReceiverNonNull","matcher":"boolean canSurpriseAttack()","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob"}

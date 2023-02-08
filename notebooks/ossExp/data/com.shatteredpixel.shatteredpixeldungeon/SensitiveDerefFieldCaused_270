@@ -1,0 +1,1 @@
+{"methodName":"boolean canTele(int)","line":22,"t":"ReceiverNonNull","matcher":"int distance(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Golem"}

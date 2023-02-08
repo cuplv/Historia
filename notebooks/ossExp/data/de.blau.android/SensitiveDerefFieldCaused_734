@@ -1,0 +1,1 @@
+{"methodName":"void addArgument(org.mozilla.javascript.ast.AstNode)","line":4,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"org.mozilla.javascript.ast.FunctionCall"}

@@ -1,0 +1,1 @@
+{"methodName":"void onDialogCreated(android.app.Dialog)","line":56,"t":"ReceiverNonNull","matcher":"java.lang.String getString(int)","className":"com.seafile.seadroid2.ui.dialog.CopyMoveDialog"}

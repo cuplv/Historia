@@ -1,0 +1,1 @@
+{"methodName":"void rebuildIfInvalid()","line":6,"t":"ReceiverNonNull","matcher":"java.lang.String getPath()","className":"com.ichi2.libanki.Media"}

@@ -1,0 +1,1 @@
+{"methodName":"void afterTextChanged(android.text.Editable)","line":300,"t":"ReceiverNonNull","matcher":"int length()","className":"net.osmand.plus.activities.NavigatePointFragment$3"}

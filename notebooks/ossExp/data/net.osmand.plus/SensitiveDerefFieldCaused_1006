@@ -1,0 +1,1 @@
+{"methodName":"void startCuller(double)","line":379,"t":"ReceiverNonNull","matcher":"boolean cancel(boolean)","className":"net.osmand.plus.views.Renderable$StandardTrack"}

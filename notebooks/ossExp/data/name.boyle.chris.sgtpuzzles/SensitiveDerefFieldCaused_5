@@ -1,0 +1,1 @@
+{"methodName":"void changedState(boolean,boolean)","line":59,"t":"ReceiverNonNull","matcher":"android.inputmethodservice.Keyboard getKeyboard()","className":"name.boyle.chris.sgtpuzzles.GamePlay"}

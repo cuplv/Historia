@@ -1,0 +1,1 @@
+{"methodName":"void playRecording(android.content.Context,net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin$Recording)","line":1855,"t":"ReceiverNonNull","matcher":"void setOnCompletionListener(android.media.MediaPlayer$OnCompletionListener)","className":"net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin"}

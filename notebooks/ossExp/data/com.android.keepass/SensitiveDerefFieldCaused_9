@@ -1,0 +1,1 @@
+{"methodName":"boolean validatePassword(android.content.Context,android.content.DialogInterface$OnClickListener)","line":59,"t":"ReceiverNonNull","matcher":"boolean validatePasswordEncoding(java.lang.String)","className":"com.keepassdroid.database.edit.SetPassword"}

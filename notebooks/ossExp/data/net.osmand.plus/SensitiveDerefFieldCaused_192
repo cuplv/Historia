@@ -1,0 +1,1 @@
+{"methodName":"void readMapTreeBounds(net.osmand.binary.BinaryMapIndexReader$MapTree,int,int,int,int)","line":852,"t":"ReceiverNonNull","matcher":"boolean readBool()","className":"net.osmand.binary.BinaryMapIndexReader"}

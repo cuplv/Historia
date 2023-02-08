@@ -1,0 +1,1 @@
+{"methodName":"void constructor(org.luaj.vm2.compiler.LexState$expdesc)","line":-1,"t":"ReceiverNonNull","matcher":"int codeABC(int,int,int,int)","className":"org.luaj.vm2.compiler.LexState"}

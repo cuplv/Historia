@@ -1,0 +1,1 @@
+{"methodName":"void insertSpan(com.tokenautocomplete.TokenCompleteTextView$TokenImageSpan)","line":1092,"t":"ReceiverNonNull","matcher":"void setSpan(java.lang.Object,int,int,int)","className":"com.tokenautocomplete.TokenCompleteTextView"}

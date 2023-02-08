@@ -1,0 +1,1 @@
+{"methodName":"android.view.View nextViewFromScrapList()","line":2389,"t":"ReceiverNonNull","matcher":"java.lang.Object get(int)","className":"app.k9mail.ui.utils.linearlayoutmanager.LinearLayoutManager$LayoutState"}

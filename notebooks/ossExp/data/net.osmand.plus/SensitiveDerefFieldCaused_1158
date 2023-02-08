@@ -1,0 +1,1 @@
+{"methodName":"int addToPolygonsCollection(java.util.List,android.graphics.Paint,int)","line":763,"t":"ReceiverNonNull","matcher":"void <init>()","className":"net.osmand.plus.views.layers.DownloadedRegionsLayer"}

@@ -1,0 +1,1 @@
+{"methodName":"boolean parseCloseBracket()","line":1325,"t":"ReceiverNonNull","matcher":"bracketAfter","className":"com.vladsch.flexmark.internal.InlineParserImpl"}

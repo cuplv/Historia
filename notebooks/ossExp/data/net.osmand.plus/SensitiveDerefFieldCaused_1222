@@ -1,0 +1,1 @@
+{"methodName":"void <init>(java.util.List,java.util.List,net.osmand.plus.routing.RouteCalculationParams,java.util.List,boolean)","line":107,"t":"ReceiverNonNull","matcher":"int size()","className":"net.osmand.plus.routing.RouteCalculationResult"}

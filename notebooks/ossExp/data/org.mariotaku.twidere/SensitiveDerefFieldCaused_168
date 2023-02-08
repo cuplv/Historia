@@ -1,0 +1,1 @@
+{"methodName":"void release()","line":204,"t":"ReceiverNonNull","matcher":"void stop()","className":"net.ypresto.androidtranscoder.engine.AudioTrackTranscoder"}

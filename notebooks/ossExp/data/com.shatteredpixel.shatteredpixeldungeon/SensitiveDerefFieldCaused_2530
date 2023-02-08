@@ -1,0 +1,1 @@
+{"methodName":"int distance(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","line":9,"t":"ReceiverNonNull","matcher":"int distance(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.Char"}

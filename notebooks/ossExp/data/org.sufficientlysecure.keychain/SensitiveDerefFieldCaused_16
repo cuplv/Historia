@@ -1,0 +1,1 @@
+{"methodName":"void onLayoutUpdatedFromPosition(int)","line":5,"t":"ReceiverNonNull","matcher":"int intValue()","className":"com.beloo.widget.chipslayoutmanager.ChipsLayoutManager"}

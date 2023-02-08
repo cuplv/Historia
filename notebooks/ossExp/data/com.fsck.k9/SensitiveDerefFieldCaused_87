@@ -1,0 +1,1 @@
+{"methodName":"void writeLine(java.lang.String)","line":335,"t":"ReceiverNonNull","matcher":"void write(int)","className":"com.fsck.k9.mail.store.pop3.Pop3Connection"}

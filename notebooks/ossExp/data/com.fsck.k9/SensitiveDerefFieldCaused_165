@@ -1,0 +1,1 @@
+{"methodName":"void performStartTlsUpgrade(com.fsck.k9.mail.ssl.TrustedSocketFactory,java.lang.String,int,java.lang.String)","line":153,"t":"ReceiverNonNull","matcher":"void setSoTimeout(int)","className":"com.fsck.k9.mail.store.pop3.Pop3Connection"}

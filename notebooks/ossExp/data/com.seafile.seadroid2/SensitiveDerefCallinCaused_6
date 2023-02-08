@@ -1,0 +1,1 @@
+{"methodName":"void <init>(com.seafile.seadroid2.cameraupload.BucketsSelectionFragment)","line":116,"t":"ReceiverNonNull","matcher":"java.lang.Object getSystemService(java.lang.String)","className":"com.seafile.seadroid2.cameraupload.BucketsSelectionFragment$ImageAdapter"}

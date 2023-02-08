@@ -1,0 +1,1 @@
+{"methodName":"void setKeyboardVisibility(name.boyle.chris.sgtpuzzles.BackendName,android.content.res.Configuration)","line":69,"t":"ReceiverNonNull","matcher":"android.inputmethodservice.Keyboard getKeyboard()","className":"name.boyle.chris.sgtpuzzles.GamePlay"}

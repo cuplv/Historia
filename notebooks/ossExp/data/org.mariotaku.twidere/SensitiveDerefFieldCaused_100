@@ -1,0 +1,1 @@
+{"methodName":"void onAttachedToWindow()","line":74,"t":"ReceiverNonNull","matcher":"void <init>(android.content.Context,com.bumptech.glide.RequestManager)","className":"org.mariotaku.twidere.view.ComposeEditText"}

@@ -1,0 +1,1 @@
+{"methodName":"void onCreate(android.os.Bundle)","line":31,"t":"ReceiverNonNull","matcher":"boolean requestFocus(int)","className":"de.blau.android.util.DownloadActivity"}

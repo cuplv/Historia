@@ -1,0 +1,1 @@
+{"methodName":"net.osmand.plus.api.SQLiteAPI$SQLiteConnection openConnection(boolean)","line":714,"t":"ReceiverNonNull","matcher":"int getVersion()","className":"net.osmand.plus.poi.PoiFiltersHelper$PoiFilterDbHelper"}

@@ -1,0 +1,1 @@
+{"methodName":"void invoke()","line":91,"t":"ReceiverNonNull","matcher":"void finish()","className":"org.mariotaku.twidere.fragment.sync.SyncSettingsFragment$cleanupAndDisconnect$1"}

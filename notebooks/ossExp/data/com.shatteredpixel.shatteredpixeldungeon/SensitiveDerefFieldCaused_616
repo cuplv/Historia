@@ -1,0 +1,1 @@
+{"methodName":"void setupFontGenerators(int,boolean)","line":404,"t":"ReceiverNonNull","matcher":"java.lang.Object put(java.lang.Object,java.lang.Object)","className":"com.shatteredpixel.shatteredpixeldungeon.android.AndroidPlatformSupport"}

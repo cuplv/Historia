@@ -1,0 +1,1 @@
+{"methodName":"void stop()","line":134,"t":"ReceiverNonNull","matcher":"void setVisibility(int)","className":"com.duckduckgo.app.browser.PulseAnimation"}

@@ -1,0 +1,1 @@
+{"methodName":"java.lang.Object getMoveableObject()","line":426,"t":"ReceiverNonNull","matcher":"java.lang.Object getObject()","className":"net.osmand.plus.views.layers.ContextMenuLayer"}

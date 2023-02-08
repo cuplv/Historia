@@ -1,0 +1,1 @@
+{"methodName":"boolean onMenuItemClicked(androidx.fragment.app.Fragment,int,de.danoeh.antennapod.model.feed.FeedItem)","line":198,"t":"ReceiverNonNull","matcher":"androidx.fragment.app.FragmentManager getSupportFragmentManager()","className":"de.danoeh.antennapod.menuhandler.FeedItemMenuHandler"}

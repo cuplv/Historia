@@ -1,0 +1,1 @@
+{"methodName":"boolean isPersistentConnectionAllowed()","line":2,"t":"ReceiverNonNull","matcher":"boolean isEstablished()","className":"org.sufficientlysecure.keychain.securitytoken.SecurityTokenConnection"}

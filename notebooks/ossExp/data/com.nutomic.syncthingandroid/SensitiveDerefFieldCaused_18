@@ -1,0 +1,1 @@
+{"methodName":"void initCamera()","line":759,"t":"ReceiverNonNull","matcher":"void setReadyHandler(android.os.Handler)","className":"com.journeyapps.barcodescanner.CameraPreview"}

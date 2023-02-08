@@ -1,0 +1,1 @@
+{"methodName":"void onActivityCreated(android.os.Bundle)","line":72,"t":"ReceiverNonNull","matcher":"android.content.Intent getIntent()","className":"com.asksven.betterbatterystats.ReceiversFragmentActivity$ReceiversListFragment"}

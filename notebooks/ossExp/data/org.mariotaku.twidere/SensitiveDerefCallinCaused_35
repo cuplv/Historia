@@ -1,0 +1,1 @@
+{"methodName":"void invoke(org.mariotaku.twidere.fragment.BaseFragment)","line":837,"t":"ReceiverNonNull","matcher":"void finish()","className":"org.mariotaku.twidere.fragment.message.MessageConversationInfoFragment$performClearMessages$1$$special$$inlined$dismissDialogThen$1"}

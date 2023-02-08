@@ -1,0 +1,1 @@
+{"methodName":"void onActivityResult(int,int,android.content.Intent)","line":126,"t":"ReceiverNonNull","matcher":"void finish()","className":"org.mariotaku.twidere.fragment.search.SearchFragment"}

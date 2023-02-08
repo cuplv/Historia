@@ -1,0 +1,1 @@
+{"methodName":"boolean isBuildFromLastAnalysisCertified(android.content.Context)","line":165,"t":"ReceiverNonNull","matcher":"boolean booleanValue()","className":"de.srlabs.patchanalysis_module.helpers.SharedPrefsHelper"}

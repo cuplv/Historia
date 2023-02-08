@@ -1,0 +1,1 @@
+{"methodName":"void requestPreviewFrame(com.journeyapps.barcodescanner.camera.PreviewCallback)","line":433,"t":"ReceiverNonNull","matcher":"void setOneShotPreviewCallback(android.hardware.Camera$PreviewCallback)","className":"com.journeyapps.barcodescanner.camera.CameraManager"}

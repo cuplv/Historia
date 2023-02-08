@@ -1,0 +1,1 @@
+{"methodName":"void write(int)","line":19,"t":"ReceiverNonNull","matcher":"char charAt(int)","className":"org.bouncycastle.bcpg.ArmoredOutputStream"}

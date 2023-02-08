@@ -1,0 +1,1 @@
+{"methodName":"int label(java.lang.CharSequence,int)","line":109,"t":"ReceiverNonNull","matcher":"java.lang.StringBuilder append(java.lang.CharSequence,int,int)","className":"org.commonmark.internal.LinkReferenceDefinitionParser"}

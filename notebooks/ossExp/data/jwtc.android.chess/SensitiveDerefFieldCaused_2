@@ -1,0 +1,1 @@
+{"methodName":"void onInit(int)","line":404,"t":"ReceiverNonNull","matcher":"int setLanguage(java.util.Locale)","className":"jwtc.android.chess.activities.ChessBoardActivity"}

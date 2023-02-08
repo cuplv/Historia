@@ -1,0 +1,1 @@
+{"methodName":"void finishAndReturn(long)","line":4,"t":"ReceiverNonNull","matcher":"void setResult(int,android.content.Intent)","className":"org.sufficientlysecure.keychain.remote.ui.dialog.RemoteSelectIdKeyActivity$RemoteSelectIdentityKeyDialogFragment$1"}

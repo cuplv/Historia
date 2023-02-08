@@ -1,0 +1,1 @@
+{"methodName":"void setupTilesDownloadInfo()","line":375,"t":"ReceiverNonNull","matcher":"boolean isApproximate()","className":"net.osmand.plus.plugins.rastermaps.DownloadTilesFragment"}

@@ -1,0 +1,1 @@
+{"methodName":"void drawImage()","line":254,"t":"ReceiverNonNull","matcher":"void drawFrame(android.graphics.SurfaceTexture)","className":"net.ypresto.androidtranscoder.engine.OutputSurface"}

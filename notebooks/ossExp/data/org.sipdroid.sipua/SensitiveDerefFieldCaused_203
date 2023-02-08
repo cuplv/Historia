@@ -1,0 +1,1 @@
+{"methodName":"void launchMediaApplication()","line":473,"t":"ReceiverNonNull","matcher":"boolean startMedia()","className":"org.sipdroid.sipua.UserAgent"}

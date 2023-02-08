@@ -1,0 +1,1 @@
+{"methodName":"boolean startLocationUpdateIfEnabled()","line":1456,"t":"ReceiverNonNull","matcher":"void onLocationChanged(android.location.Location)","className":"org.mariotaku.twidere.activity.ComposeActivity"}

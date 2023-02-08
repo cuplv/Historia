@@ -1,0 +1,1 @@
+{"methodName":"void onProgressUpdate(java.lang.String[])","line":59,"t":"ReceiverNonNull","matcher":"void onLogcatLogs(java.lang.String,java.util.List)","className":"net.osmand.plus.plugins.development.LogcatAsyncTask"}

@@ -1,0 +1,1 @@
+{"methodName":"void onCreateOptionsMenu(android.view.Menu,android.view.MenuInflater)","line":615,"t":"ReceiverNonNull","matcher":"android.os.AsyncTask$Status getStatus()","className":"net.osmand.plus.download.ui.LocalIndexesFragment"}

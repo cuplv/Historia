@@ -1,0 +1,1 @@
+{"methodName":"boolean onTouchEvent(android.view.MotionEvent)","line":1505,"t":"ReceiverNonNull","matcher":"boolean onTouchEvent(android.view.MotionEvent)","className":"net.osmand.plus.views.OsmandMapTileView"}

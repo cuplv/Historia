@@ -1,0 +1,1 @@
+{"methodName":"java.lang.Object parseLiteral()","line":350,"t":"ReceiverNonNull","matcher":"com.fsck.k9.mail.store.imap.ImapResponseCallback getCallback()","className":"com.fsck.k9.mail.store.imap.ImapResponseParser"}

@@ -1,0 +1,1 @@
+{"methodName":"void stopLocationProvider()","line":131,"t":"ReceiverNonNull","matcher":"void removeUpdates(android.location.LocationListener)","className":"org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider"}

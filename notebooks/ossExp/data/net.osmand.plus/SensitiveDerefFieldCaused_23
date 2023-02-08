@@ -1,0 +1,1 @@
+{"methodName":"void showDownloadWikiMapsScreen()","line":411,"t":"ReceiverNonNull","matcher":"net.osmand.plus.views.OsmandMapTileView getMapView()","className":"net.osmand.plus.wikipedia.WikipediaPlugin"}

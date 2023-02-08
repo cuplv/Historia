@@ -1,0 +1,1 @@
+{"methodName":"void init(java.lang.String)","line":320,"t":"ReceiverNonNull","matcher":"java.lang.String toUpperCase()","className":"org.zoolu.sip.provider.SipStack"}

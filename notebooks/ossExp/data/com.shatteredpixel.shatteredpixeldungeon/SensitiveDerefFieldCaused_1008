@@ -1,0 +1,1 @@
+{"methodName":"void spawnWandmaker(com.shatteredpixel.shatteredpixeldungeon.levels.Level,com.shatteredpixel.shatteredpixeldungeon.levels.rooms.Room)","line":128,"t":"ReceiverNonNull","matcher":"java.lang.Class getClass()","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.Wandmaker$Quest"}

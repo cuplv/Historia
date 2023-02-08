@@ -1,0 +1,1 @@
+{"methodName":"void runCleanupOperation()","line":130,"t":"ReceiverNonNull","matcher":"long length()","className":"org.osmdroid.tileprovider.modules.SqlTileWriter"}
