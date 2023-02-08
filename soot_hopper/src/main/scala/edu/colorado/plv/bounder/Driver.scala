@@ -397,12 +397,13 @@ object Driver {
       }
     }
   }
-  private def writeInitialQuery(queries:Iterable[InitialQuery], qPrefix:String, outf:File):Unit = {
+  private def writeInitialQuery(cfg:RunConfig, queries:Iterable[InitialQuery], qPrefix:String, outf:File):Unit = {
     queries.zipWithIndex.foreach{case (query, index) =>
       val f = outf / s"${qPrefix}_$index"
       println(s"writing initial query: ${f.toString}")
       assert(!f.exists)
-      f.overwrite(write[InitialQuery](query))
+      val cfgWithInit = cfg.copy(initialQuery = List(query))
+      f.overwrite(write[RunConfig](cfgWithInit))
     }
   }
   def makeSensitiveDerefCallinCaused(cfg: RunConfig, apkPath: String, outFolder: String,
@@ -416,7 +417,7 @@ object Driver {
     val executor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
     val specSet = cfg.specSet.getSpecSpace()
     val toFind = splitNullHead(hasNullHead = true, specSet.getDisallowSpecs)
-    writeInitialQuery(executor.appCodeResolver.heuristicCbFlowsToDeref(toFind, filter, executor),
+    writeInitialQuery(cfg,executor.appCodeResolver.heuristicCbFlowsToDeref(toFind, filter, executor),
       "SensitiveDerefCallinCaused", outf)
   }
 
@@ -433,7 +434,7 @@ object Driver {
     //    assert(specSet.getDisallowSpecs.isEmpty && specSet.getSpecs.isEmpty,
     //      "Sensitive field caused deref does not use specs")
     val derefFieldNulls = interpreter.appCodeResolver.heuristicDerefNull(filter, interpreter)
-    writeInitialQuery(derefFieldNulls, "SensitiveDerefFieldCaused", outf)
+    writeInitialQuery(cfg,derefFieldNulls, "SensitiveDerefFieldCaused", outf)
   }
 
 
@@ -1028,6 +1029,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     )
   }
   def downloadApk(name:String, outFile:File) :Boolean= {
+    println(s"downloading apk: ${name}") //TODO:==== remove debug code
     val qry = for {
       row <- apkQry if row.name === name
     } yield row.img

@@ -213,7 +213,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         }
         out
       }.map(_.copy(nextCmd = List(target), alternateCmd = Nil))
-    case (AppLoc(_, _, true), AppLoc(_, _, false)) => Set(postState)
+    case (src@AppLoc(_, _, true), AppLoc(_, _, false)) =>
+      Set(postState.setNextCmd(List(src)))
     case (appLoc@AppLoc(c1, m1, false), postLoc@AppLoc(c2, m2, true)) if c1 == c2 && m1 == m2 =>
       cmdTransfer(w.cmdAtLocation(appLoc), postState).map(_.setNextCmd(List(postLoc))).map(_.copy(alternateCmd = Nil))
     case (AppLoc(containingMethod, _, true), cmInv@CallbackMethodInvoke(sig1, l1)) =>

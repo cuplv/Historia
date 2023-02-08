@@ -108,7 +108,10 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
       }
     }
     val fields = filteredAppMethods.flatMap { m =>
-      ir.allMethodLocations(m).flatMap ( findNullAssign )
+      if(m.simpleName.startsWith("void <init>")) //Ignore fields set to null in initializers
+        None
+      else
+        ir.allMethodLocations(m).flatMap ( findNullAssign )
     }
 
     // group field references by name
