@@ -1,0 +1,1 @@
+{"methodName":"com.j256.ormlite.field.DataPersister lookupForField(java.lang.reflect.Field)","line":2,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"com.j256.ormlite.field.DataPersisterManager"}

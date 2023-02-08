@@ -1,0 +1,1 @@
+{"methodName":"void onPostExecute(com.asksven.betterbatterystats.adapters.StatsAdapter)","line":1041,"t":"ReceiverNonNull","matcher":"void printStackTrace()","className":"com.asksven.betterbatterystats.StatsActivity$LoadStatData"}

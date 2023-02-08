@@ -1,0 +1,1 @@
+{"methodName":"void cubicTo(float,float,float,float,float,float)","line":2903,"t":"ReceiverNonNull","matcher":"void add(float,float)","className":"com.caverock.androidsvg.SVGAndroidRenderer$MarkerPositionCalculator"}

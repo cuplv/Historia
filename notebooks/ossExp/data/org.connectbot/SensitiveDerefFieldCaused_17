@@ -1,0 +1,1 @@
+{"methodName":"boolean onKey(android.view.View,int,android.view.KeyEvent)","line":314,"t":"ReceiverNonNull","matcher":"java.lang.CharSequence getText()","className":"org.connectbot.service.TerminalKeyListener"}

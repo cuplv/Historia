@@ -1,0 +1,1 @@
+{"methodName":"net.osmand.plus.download.DownloadResourceGroup getSubGroupById(java.lang.String[],int)","line":335,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"net.osmand.plus.download.DownloadResourceGroup"}

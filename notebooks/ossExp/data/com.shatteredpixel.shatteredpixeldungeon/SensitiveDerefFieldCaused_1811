@@ -1,0 +1,1 @@
+{"methodName":"void endEnduring()","line":21,"t":"ReceiverNonNull","matcher":"int pointsInTalent(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.warrior.Endure$EndureTracker"}

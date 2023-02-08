@@ -1,0 +1,1 @@
+{"methodName":"com.watabou.noosa.Gizmo add(com.watabou.noosa.Gizmo)","line":12,"t":"ReceiverNonNull","matcher":"com.watabou.noosa.Gizmo remove(com.watabou.noosa.Gizmo)","className":"com.watabou.noosa.Group"}

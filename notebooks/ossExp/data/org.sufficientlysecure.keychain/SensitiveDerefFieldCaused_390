@@ -1,0 +1,1 @@
+{"methodName":"void setListShown(boolean,boolean)","line":10,"t":"ReceiverNonNull","matcher":"void clearAnimation()","className":"org.sufficientlysecure.keychain.ui.base.RecyclerFragment"}

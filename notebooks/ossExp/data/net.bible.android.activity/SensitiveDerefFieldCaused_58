@@ -1,0 +1,1 @@
+{"methodName":"void recordButtonPositions()","line":315,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"net.bible.android.view.util.buttongrid.ButtonGrid"}

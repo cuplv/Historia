@@ -1,0 +1,1 @@
+{"methodName":"void promoteKeyWithTokenInfo(java.lang.Long)","line":1,"t":"ReceiverNonNull","matcher":"void operationPromote(long,byte[],java.util.List)","className":"org.sufficientlysecure.keychain.ui.token.ManageSecurityTokenPresenter"}

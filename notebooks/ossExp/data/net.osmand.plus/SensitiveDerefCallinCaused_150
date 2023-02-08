@@ -1,0 +1,1 @@
+{"methodName":"void authorizationFinished()","line":271,"t":"ReceiverNonNull","matcher":"androidx.fragment.app.FragmentManager getSupportFragmentManager()","className":"net.osmand.plus.plugins.osmedit.fragments.OsmEditingFragment"}

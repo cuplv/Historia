@@ -1,0 +1,1 @@
+{"methodName":"void addStraightLine(net.osmand.router.RoutePlannerFrontEnd$GpxRouteApproximation,java.util.List,net.osmand.router.RoutePlannerFrontEnd$GpxPoint,net.osmand.binary.BinaryMapRouteReaderAdapter$RouteRegion)","line":568,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"net.osmand.router.RoutePlannerFrontEnd"}

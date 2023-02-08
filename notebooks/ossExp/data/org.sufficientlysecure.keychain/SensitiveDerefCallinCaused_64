@@ -1,0 +1,1 @@
+{"methodName":"void onActivityResult(int,int,android.content.Intent)","line":4,"t":"ReceiverNonNull","matcher":"android.content.res.Resources getResources()","className":"org.sufficientlysecure.keychain.ui.SettingsActivity$ExperimentalPrefsFragment"}

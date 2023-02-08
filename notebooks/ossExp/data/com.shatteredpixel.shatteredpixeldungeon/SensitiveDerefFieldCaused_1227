@@ -1,0 +1,1 @@
+{"methodName":"void checkVisibleMobs()","line":94,"t":"ReceiverNonNull","matcher":"int distance(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero"}

@@ -1,0 +1,1 @@
+{"methodName":"boolean onPrepareOptionsMenu(android.view.Menu)","line":4,"t":"ReceiverNonNull","matcher":"void setOnMenuItemClickListener(androidx.appcompat.widget.ActionMenuView$e)","className":"de.blau.android.Main"}

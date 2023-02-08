@@ -1,0 +1,1 @@
+{"methodName":"boolean test1()","line":107,"t":"ReceiverNonNull","matcher":"com.jstun.core.util.Address getAddress()","className":"com.jstun.demo.DiscoveryTest"}

@@ -1,0 +1,1 @@
+{"methodName":"void showOpenKeychainIntent()","line":2,"t":"ReceiverNonNull","matcher":"android.content.Context getApplicationContext()","className":"org.sufficientlysecure.keychain.remote.ui.dialog.RemoteSelectIdKeyActivity$RemoteSelectIdentityKeyDialogFragment$1"}

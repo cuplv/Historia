@@ -1,0 +1,1 @@
+{"methodName":"void quadTo(float,float,float,float)","line":2953,"t":"ReceiverNonNull","matcher":"void <init>(com.caverock.androidsvg.SVGAndroidRenderer,float,float,float,float)","className":"com.caverock.androidsvg.SVGAndroidRenderer$MarkerPositionCalculator"}

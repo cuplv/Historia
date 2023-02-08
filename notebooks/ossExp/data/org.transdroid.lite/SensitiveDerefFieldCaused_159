@@ -1,0 +1,1 @@
+{"methodName":"boolean onActionItemClicked(android.view.ActionMode,android.view.MenuItem)","line":35,"t":"ReceiverNonNull","matcher":"password","className":"org.transdroid.core.gui.DetailsFragment$1"}

@@ -1,0 +1,1 @@
+{"methodName":"void drawWithLines(android.graphics.Canvas,org.osmdroid.views.Projection)","line":326,"t":"ReceiverNonNull","matcher":"void buildLinePortion(org.osmdroid.views.Projection,boolean)","className":"org.osmdroid.views.overlay.PolyOverlayWithIW"}

@@ -1,0 +1,1 @@
+{"methodName":"void add(com.shatteredpixel.shatteredpixeldungeon.actors.blobs.Blob)","line":3,"t":"ReceiverNonNull","matcher":"void addBlobSprite(com.shatteredpixel.shatteredpixeldungeon.actors.blobs.Blob)","className":"com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene"}

@@ -1,0 +1,1 @@
+{"methodName":"void pause(boolean)","line":435,"t":"ReceiverNonNull","matcher":"int stop()","className":"net.bible.service.device.speak.TextToSpeechServiceManager"}

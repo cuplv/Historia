@@ -1,0 +1,1 @@
+{"methodName":"void findPartsForAutocryptPass()","line":193,"t":"ReceiverNonNull","matcher":"boolean isEmpty()","className":"com.fsck.k9.ui.crypto.MessageCryptoHelper"}

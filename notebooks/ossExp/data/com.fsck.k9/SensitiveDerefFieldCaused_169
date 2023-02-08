@@ -1,0 +1,1 @@
+{"methodName":"void onActivityResult(int,int,android.content.Intent)","line":1273,"t":"ReceiverNonNull","matcher":"void onPendingIntentResult(int,int,android.content.Intent)","className":"com.fsck.k9.activity.MessageList"}

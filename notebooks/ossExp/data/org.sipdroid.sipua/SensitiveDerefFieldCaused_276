@@ -1,0 +1,1 @@
+{"methodName":"void hangup()","line":236,"t":"ReceiverNonNull","matcher":"void bye()","className":"org.zoolu.sip.call.Call"}

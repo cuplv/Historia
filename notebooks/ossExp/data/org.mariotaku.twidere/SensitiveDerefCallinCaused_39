@@ -1,0 +1,1 @@
+{"methodName":"void createOrOpenConversation()","line":274,"t":"ReceiverNonNull","matcher":"void startActivity(android.content.Intent)","className":"org.mariotaku.twidere.fragment.message.MessageNewConversationFragment"}

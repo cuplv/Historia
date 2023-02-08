@@ -1,0 +1,1 @@
+{"methodName":"org.zoolu.net.IpAddress getAddress()","line":95,"t":"ReceiverNonNull","matcher":"java.net.InetAddress getInetAddress()","className":"org.zoolu.net.TcpSocket"}

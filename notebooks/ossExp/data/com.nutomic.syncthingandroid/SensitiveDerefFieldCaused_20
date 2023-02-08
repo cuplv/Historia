@@ -1,0 +1,1 @@
+{"methodName":"void kill()","line":2369,"t":"ReceiverNonNull","matcher":"void close()","className":"eu.chainfire.libsuperuser.Shell$Interactive"}

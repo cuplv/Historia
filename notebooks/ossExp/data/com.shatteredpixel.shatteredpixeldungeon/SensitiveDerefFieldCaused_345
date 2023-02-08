@@ -1,0 +1,1 @@
+{"methodName":"void measure()","line":89,"t":"ReceiverNonNull","matcher":"int length()","className":"com.watabou.noosa.RenderedText"}

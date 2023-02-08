@@ -1,0 +1,1 @@
+{"methodName":"void assignment(org.luaj.vm2.compiler.LexState$LHS_assign,int)","line":-1,"t":"ReceiverNonNull","matcher":"void setoneret(org.luaj.vm2.compiler.LexState$expdesc)","className":"org.luaj.vm2.compiler.LexState"}

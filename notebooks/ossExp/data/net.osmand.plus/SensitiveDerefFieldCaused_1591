@@ -1,0 +1,1 @@
+{"methodName":"org.bouncycastle.asn1.ASN1Primitive getObject()","line":-1,"t":"ReceiverNonNull","matcher":"org.bouncycastle.asn1.ASN1Primitive toASN1Primitive()","className":"org.bouncycastle.asn1.ASN1TaggedObject"}

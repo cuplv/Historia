@@ -1,0 +1,1 @@
+{"methodName":"de.danoeh.antennapod.model.feed.Feed addLocalFolder(android.net.Uri)","line":199,"t":"ReceiverNonNull","matcher":"android.content.ContentResolver getContentResolver()","className":"de.danoeh.antennapod.fragment.AddFeedFragment"}

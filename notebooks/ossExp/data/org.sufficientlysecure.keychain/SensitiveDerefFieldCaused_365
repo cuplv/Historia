@@ -1,0 +1,1 @@
+{"methodName":"void onDismiss(android.content.DialogInterface)","line":3,"t":"ReceiverNonNull","matcher":"void setView(org.sufficientlysecure.keychain.remote.ui.dialog.RemoteSelectIdentityKeyPresenter$RemoteSelectIdentityKeyView)","className":"org.sufficientlysecure.keychain.remote.ui.dialog.RemoteSelectIdKeyActivity$RemoteSelectIdentityKeyDialogFragment"}

@@ -1,0 +1,1 @@
+{"methodName":"void checkZoomButtons()","line":1406,"t":"ReceiverNonNull","matcher":"void setZoomInEnabled(boolean)","className":"org.osmdroid.views.MapView"}

@@ -1,0 +1,1 @@
+{"methodName":"org.bouncycastle.math.ec.PreCompInfo precompute(org.bouncycastle.math.ec.ECPoint,java.lang.String,org.bouncycastle.math.ec.PreCompCallback)","line":17,"t":"ReceiverNonNull","matcher":"void <init>(int)","className":"org.bouncycastle.math.ec.ECCurve"}

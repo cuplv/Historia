@@ -1,0 +1,1 @@
+{"methodName":"void follow(org.xbill.DNS.Name,org.xbill.DNS.Name)","line":435,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"org.xbill.DNS.Lookup"}

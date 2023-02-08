@@ -1,0 +1,1 @@
+{"methodName":"void startRecording(java.lang.String)","line":4,"t":"ReceiverNonNull","matcher":"void setAudioSamplingRate(int)","className":"com.ichi2.anki.multimediacard.AudioRecorder"}

@@ -1,0 +1,1 @@
+{"methodName":"void setupTargets()","line":104,"t":"ReceiverNonNull","matcher":"android.view.LayoutInflater getLayoutInflater()","className":"net.osmand.plus.dashboard.DashWaypointsFragment"}

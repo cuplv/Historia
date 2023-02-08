@@ -1,0 +1,1 @@
+{"methodName":"coil.request.ImageRequest build()","line":962,"t":"ReceiverNonNull","matcher":"boolean booleanValue()","className":"coil.request.ImageRequest$Builder"}

@@ -1,0 +1,1 @@
+{"methodName":"void onBoundsChange(android.graphics.Rect)","line":-1,"t":"ReceiverNonNull","matcher":"void setBounds(android.graphics.Rect)","className":"f.h"}

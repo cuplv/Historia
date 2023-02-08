@@ -1,0 +1,1 @@
+{"methodName":"void onActivityResult(int,int,android.content.Intent)","line":1295,"t":"ReceiverNonNull","matcher":"java.util.List getCachedDirents(java.lang.String,java.lang.String)","className":"com.seafile.seadroid2.ui.activity.BrowserActivity"}

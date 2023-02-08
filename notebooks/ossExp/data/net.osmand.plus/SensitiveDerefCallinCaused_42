@@ -1,0 +1,1 @@
+{"methodName":"void setupNotes()","line":91,"t":"ReceiverNonNull","matcher":"android.view.LayoutInflater getLayoutInflater()","className":"net.osmand.plus.plugins.audionotes.DashAudioVideoNotesFragment"}

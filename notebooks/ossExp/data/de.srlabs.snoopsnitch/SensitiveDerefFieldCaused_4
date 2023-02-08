@@ -1,0 +1,1 @@
+{"methodName":"boolean stopRecording()","line":111,"t":"ReceiverNonNull","matcher":"boolean stopRecording()","className":"de.srlabs.snoopsnitch.qdmon.MsdServiceHelper"}

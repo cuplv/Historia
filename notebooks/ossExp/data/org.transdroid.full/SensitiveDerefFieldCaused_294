@@ -1,0 +1,1 @@
+{"methodName":"android.view.View internalFindViewById(int)","line":1,"t":"ReceiverNonNull","matcher":"android.view.View findViewById(int)","className":"org.transdroid.core.gui.rss.RssFeedsFragment_"}

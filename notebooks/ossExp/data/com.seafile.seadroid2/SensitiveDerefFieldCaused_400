@@ -1,0 +1,1 @@
+{"methodName":"com.seafile.seadroid2.data.StorageManager$Location getPreferredStorage()","line":286,"t":"ReceiverNonNull","matcher":"boolean isDirectory()","className":"com.seafile.seadroid2.data.StorageManager"}

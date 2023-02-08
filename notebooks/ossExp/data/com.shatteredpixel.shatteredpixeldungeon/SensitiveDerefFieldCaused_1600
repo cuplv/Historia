@@ -1,0 +1,1 @@
+{"methodName":"void updateState()","line":118,"t":"ReceiverNonNull","matcher":"com.watabou.utils.Point cellToPoint(int)","className":"com.shatteredpixel.shatteredpixeldungeon.levels.CavesBossLevel$ArenaVisuals"}

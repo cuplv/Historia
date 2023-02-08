@@ -1,0 +1,1 @@
+{"methodName":"void filterCategories(java.util.EnumSet)","line":871,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"net.osmand.plus.download.ui.LocalIndexesFragment$LocalIndexesAdapter"}

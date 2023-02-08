@@ -1,0 +1,1 @@
+{"methodName":"void display(org.mariotaku.twidere.model.ParcelableStatus,boolean,boolean)","line":214,"t":"ReceiverNonNull","matcher":"java.lang.String getHost()","className":"org.mariotaku.twidere.view.holder.StatusViewHolder"}

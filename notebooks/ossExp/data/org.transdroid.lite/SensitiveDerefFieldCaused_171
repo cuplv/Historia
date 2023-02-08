@@ -1,0 +1,1 @@
+{"methodName":"boolean onPreferenceClick(androidx.preference.Preference)","line":5,"t":"ReceiverNonNull","matcher":"org.transdroid.core.seedbox.SeedboxSettings getSettings()","className":"org.transdroid.core.seedbox.-$$Lambda$SeedboxPreference$I9jUdQM7_A3PSlHih6TKjo--_kI"}

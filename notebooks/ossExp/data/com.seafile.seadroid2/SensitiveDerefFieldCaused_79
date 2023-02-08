@@ -1,0 +1,1 @@
+{"methodName":"void clearFullscreenLayout()","line":352,"t":"ReceiverNonNull","matcher":"void setEnable(boolean)","className":"com.shuyu.gsyvideoplayer.video.base.GSYBaseVideoPlayer"}

@@ -1,0 +1,1 @@
+{"methodName":"void onReceivedData(org.zoolu.net.TcpConnection,byte[],int)","line":148,"t":"ReceiverNonNull","matcher":"void onReceivedMessage(org.zoolu.sip.provider.Transport,org.zoolu.sip.message.Message)","className":"org.zoolu.sip.provider.TcpTransport"}

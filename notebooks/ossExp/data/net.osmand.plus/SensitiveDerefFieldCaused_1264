@@ -1,0 +1,1 @@
+{"methodName":"net.osmand.plus.routing.RouteCalculationResult calculateRouteImpl(net.osmand.plus.routing.RouteCalculationParams)","line":121,"t":"ReceiverNonNull","matcher":"calculateOsmAndRoute","className":"net.osmand.plus.routing.RouteProvider"}

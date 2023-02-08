@@ -1,0 +1,1 @@
+{"methodName":"void onLayoutChildren(androidx.recyclerview.widget.RecyclerView$Recycler,androidx.recyclerview.widget.RecyclerView$State)","line":30,"t":"ReceiverNonNull","matcher":"int intValue()","className":"com.beloo.widget.chipslayoutmanager.ChipsLayoutManager"}

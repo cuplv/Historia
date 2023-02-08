@@ -1,0 +1,1 @@
+{"methodName":"void addIntersectedStreet(net.osmand.data.Street)","line":39,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"net.osmand.data.Street"}

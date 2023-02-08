@@ -1,0 +1,1 @@
+{"methodName":"void text(char[],int,int)","line":996,"t":"ReceiverNonNull","matcher":"java.lang.StringBuilder append(char[],int,int)","className":"com.caverock.androidsvg.SVGParser"}

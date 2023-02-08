@@ -1,0 +1,1 @@
+{"methodName":"void setFastScroller(eu.davidea.fastscroller.FastScroller)","line":4,"t":"ReceiverNonNull","matcher":"void setEnabled(boolean)","className":"eu.davidea.fastscroller.FastScroller$Delegate"}

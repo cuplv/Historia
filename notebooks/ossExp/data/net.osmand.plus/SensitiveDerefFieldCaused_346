@@ -1,0 +1,1 @@
+{"methodName":"void startCuller(double)","line":392,"t":"ReceiverNonNull","matcher":"android.os.AsyncTask executeOnExecutor(java.util.concurrent.Executor,java.lang.Object[])","className":"net.osmand.plus.views.Renderable$StandardTrack"}

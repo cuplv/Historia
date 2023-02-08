@@ -1,0 +1,1 @@
+{"methodName":"boolean equals(java.lang.Object)","line":120,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"org.zephyrsoft.trackworktime.model.Task"}

@@ -1,0 +1,1 @@
+{"methodName":"void runBundleAndSnapshotFromLibrary(java.lang.String,java.lang.String,java.lang.String,android.content.res.AssetManager,java.util.List)","line":-1,"t":"ReceiverNonNull","matcher":"long longValue()","className":"io.flutter.embedding.engine.FlutterJNI"}

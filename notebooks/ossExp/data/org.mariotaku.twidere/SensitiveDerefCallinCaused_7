@@ -1,0 +1,1 @@
+{"methodName":"void onActivityCreated(android.os.Bundle)","line":182,"t":"ReceiverNonNull","matcher":"void finish()","className":"org.mariotaku.twidere.fragment.UserProfileEditorFragment"}

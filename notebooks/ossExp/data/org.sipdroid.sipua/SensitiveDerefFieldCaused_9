@@ -1,0 +1,1 @@
+{"methodName":"void addConnection(org.zoolu.sip.provider.ConnectedTransport)","line":1140,"t":"ReceiverNonNull","matcher":"java.lang.Object remove(java.lang.Object)","className":"org.zoolu.sip.provider.SipProvider"}

@@ -1,0 +1,1 @@
+{"methodName":"int getItemCount()","line":2,"t":"ReceiverNonNull","matcher":"int getItemCount()","className":"org.sufficientlysecure.keychain.ui.base.RecyclerFragment"}

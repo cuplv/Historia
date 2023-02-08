@@ -1,0 +1,1 @@
+{"methodName":"java.lang.Object run()","line":11,"t":"ReceiverNonNull","matcher":"java.io.InputStream getResourceAsStream(java.lang.String)","className":"org.joda.time.tz.ZoneInfoProvider$1"}

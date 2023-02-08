@@ -1,0 +1,1 @@
+{"methodName":"int getTodaysWeekIndex()","line":377,"t":"ReceiverNonNull","matcher":"j$.time.ZoneId getHomeTimeZone()","className":"org.zephyrsoft.trackworktime.WorkTimeTrackerActivity"}

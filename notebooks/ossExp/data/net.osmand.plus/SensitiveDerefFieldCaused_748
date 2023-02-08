@@ -1,0 +1,1 @@
+{"methodName":"void add(net.osmand.binary.RouteDataObject)","line":866,"t":"ReceiverNonNull","matcher":"nextLoaded","className":"net.osmand.router.RoutingContext$RoutingSubregionTile"}

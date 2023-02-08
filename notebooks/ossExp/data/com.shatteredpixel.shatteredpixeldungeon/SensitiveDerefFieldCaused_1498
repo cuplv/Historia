@@ -1,0 +1,1 @@
+{"methodName":"void onSelect(java.lang.Integer)","line":21,"t":"ReceiverNonNull","matcher":"boolean isCharmedBy(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Preparation$1"}

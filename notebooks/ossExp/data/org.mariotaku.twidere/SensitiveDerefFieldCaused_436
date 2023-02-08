@@ -1,0 +1,1 @@
+{"methodName":"void onDetach()","line":867,"t":"ReceiverNonNull","matcher":"void detach()","className":"org.osmdroid.views.MapView"}

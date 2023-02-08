@@ -1,0 +1,1 @@
+{"methodName":"double setZoomLevel(double)","line":489,"t":"ReceiverNonNull","matcher":"void forceFinished(boolean)","className":"org.osmdroid.views.MapView"}

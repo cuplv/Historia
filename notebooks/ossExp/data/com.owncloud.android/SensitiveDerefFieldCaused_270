@@ -1,0 +1,1 @@
+{"methodName":"void showSignature(android.view.View)","line":98,"t":"ReceiverNonNull","matcher":"java.lang.String getSigAlgName()","className":"com.owncloud.android.ui.adapter.X509CertificateViewAdapter"}

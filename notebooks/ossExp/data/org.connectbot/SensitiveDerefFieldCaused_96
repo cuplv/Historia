@@ -1,0 +1,1 @@
+{"methodName":"void setupTabLayoutWithViewPager()","line":782,"t":"ReceiverNonNull","matcher":"void addOnPageChangeListener(androidx.viewpager.widget.ViewPager$OnPageChangeListener)","className":"org.connectbot.ConsoleActivity"}

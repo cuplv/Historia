@@ -1,0 +1,1 @@
+{"methodName":"net.osmand.router.BinaryRoutePlanner$RouteSegmentPoint getRecalculationEnd(net.osmand.router.RoutingContext)","line":961,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"net.osmand.router.RoutePlannerFrontEnd"}

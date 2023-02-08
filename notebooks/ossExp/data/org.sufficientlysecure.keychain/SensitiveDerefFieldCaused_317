@@ -1,0 +1,1 @@
+{"methodName":"void onDestroyView()","line":2,"t":"ReceiverNonNull","matcher":"void setLayoutManager(androidx.recyclerview.widget.RecyclerView$LayoutManager)","className":"org.sufficientlysecure.keychain.ui.base.RecyclerFragment"}

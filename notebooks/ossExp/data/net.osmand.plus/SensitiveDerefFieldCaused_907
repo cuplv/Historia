@@ -1,0 +1,1 @@
+{"methodName":"boolean readBoxField(int,int,int,int,int,int,int,gnu.trove.map.hash.TIntLongHashMap,gnu.trove.set.hash.TLongHashSet,net.osmand.binary.BinaryMapIndexReader$SearchRequest,net.osmand.binary.BinaryMapPoiReaderAdapter$PoiRegion)","line":983,"t":"ReceiverNonNull","matcher":"boolean contains(long)","className":"net.osmand.binary.BinaryMapPoiReaderAdapter"}

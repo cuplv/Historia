@@ -1,0 +1,1 @@
+{"methodName":"void load()","line":1,"t":"ReceiverNonNull","matcher":"android.database.Cursor query(java.lang.String,java.lang.Object[])","className":"com.ichi2.libanki.Collection"}

@@ -1,0 +1,1 @@
+{"methodName":"void processRestriction(net.osmand.router.RoutingContext,net.osmand.router.BinaryRoutePlanner$RouteSegment,boolean,long,net.osmand.binary.RouteDataObject)","line":650,"t":"ReceiverNonNull","matcher":"road","className":"net.osmand.router.BinaryRoutePlanner"}

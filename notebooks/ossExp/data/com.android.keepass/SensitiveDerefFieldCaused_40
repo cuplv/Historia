@@ -1,0 +1,1 @@
+{"methodName":"void createNewKeyIfNeeded(boolean)","line":273,"t":"ReceiverNonNull","matcher":"javax.crypto.SecretKey generateKey()","className":"com.keepassdroid.biometric.BiometricHelper"}

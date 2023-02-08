@@ -1,0 +1,1 @@
+{"methodName":"void handleAutoCloseElementEnd(char[],int,int,int,int)","line":472,"t":"ReceiverNonNull","matcher":"void handleAutoCloseElementEnd(char[],int,int,int,int,org.attoparser.IMarkupHandler,org.attoparser.ParseStatus,boolean,boolean)","className":"org.attoparser.HtmlMarkupHandler"}

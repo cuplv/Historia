@@ -1,0 +1,1 @@
+{"methodName":"void removeDaoToClassMap(com.j256.ormlite.dao.DaoManager$ClassConnectionSource,com.j256.ormlite.dao.Dao)","line":2,"t":"ReceiverNonNull","matcher":"java.lang.Object remove(java.lang.Object)","className":"com.j256.ormlite.dao.DaoManager"}

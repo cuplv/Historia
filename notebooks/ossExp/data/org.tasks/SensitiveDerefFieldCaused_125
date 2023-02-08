@@ -1,0 +1,1 @@
+{"methodName":"void onMediaUnmounted()","line":113,"t":"ReceiverNonNull","matcher":"void <init>()","className":"org.osmdroid.tileprovider.modules.MapTileSqlCacheProvider"}

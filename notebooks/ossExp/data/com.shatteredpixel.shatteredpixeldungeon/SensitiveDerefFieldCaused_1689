@@ -1,0 +1,1 @@
+{"methodName":"void damage(int,java.lang.Object)","line":352,"t":"ReceiverNonNull","matcher":"java.lang.String name()","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.DwarfKing"}

@@ -1,0 +1,1 @@
+{"methodName":"void engineInit(byte[],java.lang.String)","line":42,"t":"ReceiverNonNull","matcher":"java.math.BigInteger getValue()","className":"org.bouncycastle.jcajce.provider.symmetric.RC2$AlgParams"}

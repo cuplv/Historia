@@ -1,0 +1,1 @@
+{"methodName":"void processDelimiters(com.vladsch.flexmark.internal.Delimiter)","line":1796,"t":"ReceiverNonNull","matcher":"delimiterChar","className":"com.vladsch.flexmark.internal.InlineParserImpl"}

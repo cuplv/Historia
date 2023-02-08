@@ -1,0 +1,1 @@
+{"methodName":"android.graphics.drawable.Drawable loadTile(org.osmdroid.tileprovider.MapTileRequestState)","line":141,"t":"ReceiverNonNull","matcher":"java.io.InputStream open(java.lang.String)","className":"org.osmdroid.tileprovider.modules.MapTileAssetsProvider$TileLoader"}

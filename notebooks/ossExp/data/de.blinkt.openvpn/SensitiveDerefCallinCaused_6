@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String readHtmlFromAssets()","line":113,"t":"ReceiverNonNull","matcher":"android.content.res.AssetManager getAssets()","className":"de.blinkt.openvpn.fragments.AboutFragment"}

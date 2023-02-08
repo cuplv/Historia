@@ -1,0 +1,1 @@
+{"methodName":"org.mozilla.javascript.Callable getValueFunctionAndThis(java.lang.Object,org.mozilla.javascript.Context)","line":6,"t":"ReceiverNonNull","matcher":"org.mozilla.javascript.Scriptable getParentScope()","className":"org.mozilla.javascript.ScriptRuntime"}

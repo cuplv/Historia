@@ -1,0 +1,1 @@
+{"methodName":"void parseDirectoryPath()","line":137,"t":"ReceiverNonNull","matcher":"java.lang.String getAbsolutePath()","className":"org.navitproject.navit.FileBrowserActivity"}

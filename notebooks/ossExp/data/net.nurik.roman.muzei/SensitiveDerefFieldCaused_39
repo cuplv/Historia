@@ -1,0 +1,1 @@
+{"methodName":"void onDraw(android.graphics.Canvas)","line":1098,"t":"ReceiverNonNull","matcher":"boolean postTranslate(float,float)","className":"com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView"}

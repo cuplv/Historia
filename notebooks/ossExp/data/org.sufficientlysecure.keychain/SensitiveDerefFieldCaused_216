@@ -1,0 +1,1 @@
+{"methodName":"java.util.List getDeletedChildren(eu.davidea.flexibleadapter.items.IExpandable)","line":3,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"eu.davidea.flexibleadapter.FlexibleAdapter"}

@@ -1,0 +1,1 @@
+{"methodName":"void startGame(name.boyle.chris.sgtpuzzles.GameLaunch,boolean)","line":97,"t":"ReceiverNonNull","matcher":"void setCancelable(boolean)","className":"name.boyle.chris.sgtpuzzles.GamePlay"}

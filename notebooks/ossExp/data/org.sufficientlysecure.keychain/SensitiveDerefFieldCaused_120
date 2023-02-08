@@ -1,0 +1,1 @@
+{"methodName":"org.sufficientlysecure.keychain.securitytoken.ResponseApdu smDecryptIfAvailable(org.sufficientlysecure.keychain.securitytoken.ResponseApdu)","line":1,"t":"ReceiverNonNull","matcher":"boolean isEstablished()","className":"org.sufficientlysecure.keychain.securitytoken.SecurityTokenConnection"}

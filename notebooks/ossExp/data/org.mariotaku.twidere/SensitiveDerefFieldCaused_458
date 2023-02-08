@@ -1,0 +1,1 @@
+{"methodName":"void detach()","line":110,"t":"ReceiverNonNull","matcher":"void onDetach()","className":"org.osmdroid.tileprovider.MapTileProviderBasic"}

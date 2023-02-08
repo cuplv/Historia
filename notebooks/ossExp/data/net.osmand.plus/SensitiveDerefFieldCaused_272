@@ -1,0 +1,1 @@
+{"methodName":"void updateControls(net.osmand.data.RotatedTileBox,net.osmand.plus.views.layers.base.OsmandMapLayer$DrawSettings)","line":608,"t":"ReceiverNonNull","matcher":"boolean needShowMenu()","className":"net.osmand.plus.views.layers.MapControlsLayer"}

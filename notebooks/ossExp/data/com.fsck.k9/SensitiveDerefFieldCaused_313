@@ -1,0 +1,1 @@
+{"methodName":"void performSendAfterChecks()","line":812,"t":"ReceiverNonNull","matcher":"void buildAsync(com.fsck.k9.message.MessageBuilder$Callback)","className":"com.fsck.k9.activity.MessageCompose"}

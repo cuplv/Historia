@@ -1,0 +1,1 @@
+{"methodName":"android.graphics.drawable.Drawable getEmojiDrawableFor(int[])","line":108,"t":"ReceiverNonNull","matcher":"int getIdentifier(java.lang.String,java.lang.String,java.lang.String)","className":"org.mariotaku.twidere.util.ExternalThemeManager$Emoji"}

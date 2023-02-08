@@ -1,0 +1,1 @@
+{"methodName":"net.osmand.plus.OsmandApplication getApplication()","line":88,"t":"ReceiverNonNull","matcher":"android.app.Application getApplication()","className":"net.osmand.plus.myplaces.ui.FavoritesListFragment"}

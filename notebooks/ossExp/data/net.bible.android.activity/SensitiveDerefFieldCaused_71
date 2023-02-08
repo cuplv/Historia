@@ -1,0 +1,1 @@
+{"methodName":"org.jdom2.Element setNamespace(org.jdom2.Namespace)","line":263,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"org.jdom2.Element"}

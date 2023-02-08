@@ -1,0 +1,1 @@
+{"methodName":"nl.komponents.kovenant.Promise loadProfileImage()","line":118,"t":"ReceiverNonNull","matcher":"boolean isFinishing()","className":"org.mariotaku.twidere.fragment.UserQrDialogFragment"}

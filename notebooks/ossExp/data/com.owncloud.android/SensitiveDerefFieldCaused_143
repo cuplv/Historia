@@ -1,0 +1,1 @@
+{"methodName":"void updateParentBoundingBox(com.caverock.androidsvg.SVG$SvgElement)","line":714,"t":"ReceiverNonNull","matcher":"void union(com.caverock.androidsvg.SVG$Box)","className":"com.caverock.androidsvg.SVGAndroidRenderer"}

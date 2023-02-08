@@ -1,0 +1,1 @@
+{"methodName":"void finishUpdate()","line":9,"t":"ReceiverNonNull","matcher":"int commitInternal(boolean)","className":"com.ubergeek42.WeechatAndroid.adapters.MainPagerAdapter"}

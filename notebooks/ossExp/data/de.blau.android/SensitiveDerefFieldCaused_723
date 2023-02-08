@@ -1,0 +1,1 @@
+{"methodName":"void E0(boolean)","line":6,"t":"ReceiverNonNull","matcher":"boolean registerListener(android.hardware.SensorEventListener,android.hardware.Sensor,int)","className":"de.blau.android.Main"}

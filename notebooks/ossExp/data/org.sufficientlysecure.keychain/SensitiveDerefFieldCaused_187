@@ -1,0 +1,1 @@
+{"methodName":"boolean changeTheme()","line":2,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"org.sufficientlysecure.keychain.ui.util.ThemeChanger"}

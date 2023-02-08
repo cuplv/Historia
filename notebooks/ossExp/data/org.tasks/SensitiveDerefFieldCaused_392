@@ -1,0 +1,1 @@
+{"methodName":"void removeFromSource(com.caverock.androidsvg.CSSParser$Source)","line":270,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"com.caverock.androidsvg.CSSParser$Ruleset"}

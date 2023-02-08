@@ -1,0 +1,1 @@
+{"methodName":"void onStopTrackingTouch(android.widget.SeekBar)","line":691,"t":"ReceiverNonNull","matcher":"int getDuration()","className":"de.danoeh.antennapod.activity.VideoplayerActivity"}

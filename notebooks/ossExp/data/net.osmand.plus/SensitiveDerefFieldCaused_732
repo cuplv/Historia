@@ -1,0 +1,1 @@
+{"methodName":"boolean isExcluded(long,java.util.List,int)","line":816,"t":"ReceiverNonNull","matcher":"boolean contains(long)","className":"net.osmand.router.RoutingContext$RoutingSubregionTile"}

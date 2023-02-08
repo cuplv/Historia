@@ -1,0 +1,1 @@
+{"methodName":"void init()","line":183,"t":"ReceiverNonNull","matcher":"int readTag()","className":"net.osmand.binary.BinaryMapIndexReader"}

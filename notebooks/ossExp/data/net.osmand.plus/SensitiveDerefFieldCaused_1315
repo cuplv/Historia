@@ -1,0 +1,1 @@
+{"methodName":"boolean match(java.lang.Object)","line":-1,"t":"ReceiverNonNull","matcher":"int compareTo(java.math.BigInteger)","className":"org.bouncycastle.x509.X509CRLStoreSelector"}

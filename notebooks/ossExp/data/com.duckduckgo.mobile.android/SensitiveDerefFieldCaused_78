@@ -1,0 +1,1 @@
+{"methodName":"void pageChanged(java.lang.String,java.lang.String)","line":1230,"t":"ReceiverNonNull","matcher":"android.net.Uri getUri()","className":"com.duckduckgo.app.browser.BrowserTabViewModel"}

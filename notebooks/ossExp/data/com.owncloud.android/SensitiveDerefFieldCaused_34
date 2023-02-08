@@ -1,0 +1,1 @@
+{"methodName":"void marker(org.xml.sax.Attributes)","line":1943,"t":"ReceiverNonNull","matcher":"void addChild(com.caverock.androidsvg.SVG$SvgObject)","className":"com.caverock.androidsvg.SVGParser"}

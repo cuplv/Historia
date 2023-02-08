@@ -1,0 +1,1 @@
+{"methodName":"void processCommand(com.duckduckgo.app.browser.BrowserTabViewModel$Command)","line":970,"t":"ReceiverNonNull","matcher":"void findAllAsync(java.lang.String)","className":"com.duckduckgo.app.browser.BrowserTabFragment"}

@@ -1,0 +1,1 @@
+{"methodName":"void persistCache(org.json.JSONObject)","line":49,"t":"ReceiverNonNull","matcher":"nitezh.ministock.Storage putString(java.lang.String,java.lang.String)","className":"nitezh.ministock.utils.StorageCache"}

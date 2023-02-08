@@ -1,0 +1,1 @@
+{"methodName":"int countChars(char)","line":2,"t":"ReceiverNonNull","matcher":"char charAt(int)","className":"com.github.rjeschke.txtmark.Line"}

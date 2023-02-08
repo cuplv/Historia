@@ -1,0 +1,1 @@
+{"methodName":"void createUI(android.content.Context,android.widget.LinearLayout)","line":17,"t":"ReceiverNonNull","matcher":"void setVisibility(int)","className":"com.ichi2.anki.multimediacard.fields.BasicImageFieldController"}

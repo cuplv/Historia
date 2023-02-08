@@ -1,0 +1,1 @@
+{"methodName":"void onActivityResult(int,int,android.content.Intent)","line":217,"t":"ReceiverNonNull","matcher":"void recreate()","className":"org.mariotaku.twidere.fragment.AccountsDashboardFragment"}

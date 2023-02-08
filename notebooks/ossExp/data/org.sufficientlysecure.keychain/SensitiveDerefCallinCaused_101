@@ -1,0 +1,1 @@
+{"methodName":"void onClick(android.content.DialogInterface,int)","line":1,"t":"ReceiverNonNull","matcher":"void setResult(int)","className":"org.sufficientlysecure.keychain.ui.RetryUploadDialogActivity$UploadRetryDialogFragment$1"}

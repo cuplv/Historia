@@ -1,0 +1,1 @@
+{"methodName":"void applyImageMatrix(float,float,boolean,boolean)","line":1640,"t":"ReceiverNonNull","matcher":"int getWidth()","className":"com.theartofdev.edmodo.cropper.CropImageView"}

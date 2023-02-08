@@ -1,0 +1,1 @@
+{"methodName":"void setUserVisibleHint(boolean)","line":82,"t":"ReceiverNonNull","matcher":"void invalidateOptionsMenu()","className":"org.mariotaku.twidere.fragment.media.ExternalBrowserPageFragment"}

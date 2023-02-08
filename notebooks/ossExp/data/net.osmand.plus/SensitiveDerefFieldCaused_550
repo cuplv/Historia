@@ -1,0 +1,1 @@
+{"methodName":"void drawTrackImage(net.osmand.plus.importfiles.ui.TrackItem,net.osmand.plus.myplaces.TrackBitmapDrawer$TrackBitmapDrawerListener)","line":133,"t":"ReceiverNonNull","matcher":"boolean initAndDraw()","className":"net.osmand.plus.importfiles.ui.TrackViewHolder"}

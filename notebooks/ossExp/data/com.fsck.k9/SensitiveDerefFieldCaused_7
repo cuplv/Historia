@@ -1,0 +1,1 @@
+{"methodName":"android.app.PendingIntent getOpenPgpSigningKeyIntentIfAny()","line":127,"t":"ReceiverNonNull","matcher":"android.app.PendingIntent getOpenPgpPendingIntent()","className":"com.fsck.k9.mailstore.CryptoResultAnnotation"}

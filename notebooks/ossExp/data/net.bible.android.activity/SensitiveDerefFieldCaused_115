@@ -1,0 +1,1 @@
+{"methodName":"void drawHuePanel(android.graphics.Canvas)","line":378,"t":"ReceiverNonNull","matcher":"bitmap","className":"com.jaredrummler.android.colorpicker.ColorPickerView"}

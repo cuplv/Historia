@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String getSpeedString()","line":217,"t":"ReceiverNonNull","matcher":"float getSpeed()","className":"net.osmand.plus.plugins.accessibility.NavigationInfo"}

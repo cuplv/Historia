@@ -1,0 +1,1 @@
+{"methodName":"void mStartActivity(java.lang.Class)","line":449,"t":"ReceiverNonNull","matcher":"java.lang.String getPackageName()","className":"com.darshancomputing.BatteryIndicatorPro.CurrentInfoFragment"}

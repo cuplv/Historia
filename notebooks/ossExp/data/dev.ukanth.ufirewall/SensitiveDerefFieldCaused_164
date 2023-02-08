@@ -1,0 +1,1 @@
+{"methodName":"void filterApps(int)","line":545,"t":"ReceiverNonNull","matcher":"void setAdapter(android.widget.ListAdapter)","className":"dev.ukanth.ufirewall.MainActivity"}

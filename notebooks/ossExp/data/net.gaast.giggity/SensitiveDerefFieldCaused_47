@@ -1,0 +1,1 @@
+{"methodName":"void keep()","line":242,"t":"ReceiverNonNull","matcher":"boolean renameTo(java.io.File)","className":"net.gaast.giggity.Fetcher"}

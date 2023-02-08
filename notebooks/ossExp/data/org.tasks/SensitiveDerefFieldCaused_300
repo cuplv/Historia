@@ -1,0 +1,1 @@
+{"methodName":"void stopLocationProvider()","line":503,"t":"ReceiverNonNull","matcher":"void stopLocationProvider()","className":"org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay"}

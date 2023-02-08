@@ -1,0 +1,1 @@
+{"methodName":"com.ichi2.utils.JSONObject chunk()","line":9,"t":"ReceiverNonNull","matcher":"int getColumnCount()","className":"com.ichi2.libanki.sync.Syncer"}

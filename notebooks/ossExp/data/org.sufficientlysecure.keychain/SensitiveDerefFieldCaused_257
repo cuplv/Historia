@@ -1,0 +1,1 @@
+{"methodName":"void onActivityResult(int,int,android.content.Intent)","line":6,"t":"ReceiverNonNull","matcher":"void finish()","className":"org.sufficientlysecure.keychain.ui.KeyListFragment"}

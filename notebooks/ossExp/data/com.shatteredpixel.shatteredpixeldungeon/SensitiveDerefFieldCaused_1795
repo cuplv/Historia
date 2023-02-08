@@ -1,0 +1,1 @@
+{"methodName":"int defenseProc(com.shatteredpixel.shatteredpixeldungeon.actors.Char,int)","line":166,"t":"ReceiverNonNull","matcher":"void occupyCell(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Swarm"}

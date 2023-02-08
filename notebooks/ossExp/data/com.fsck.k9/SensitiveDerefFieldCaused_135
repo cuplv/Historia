@@ -1,0 +1,1 @@
+{"methodName":"int checkVerticalSwipe(androidx.recyclerview.widget.RecyclerView$ViewHolder,int)","line":1333,"t":"ReceiverNonNull","matcher":"float getYVelocity(int)","className":"app.k9mail.ui.utils.itemtouchhelper.ItemTouchHelper"}

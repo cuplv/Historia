@@ -1,0 +1,1 @@
+{"methodName":"int drainDecoder(long)","line":180,"t":"ReceiverNonNull","matcher":"void signalEndOfInputStream()","className":"net.ypresto.androidtranscoder.engine.VideoTrackTranscoder"}

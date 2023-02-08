@@ -1,0 +1,1 @@
+{"methodName":"void saveProfile()","line":729,"t":"ReceiverNonNull","matcher":"void onBackPressed()","className":"net.osmand.plus.settings.fragments.ProfileAppearanceFragment"}

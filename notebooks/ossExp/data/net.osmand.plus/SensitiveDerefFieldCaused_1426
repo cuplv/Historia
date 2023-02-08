@@ -1,0 +1,1 @@
+{"methodName":"void stop()","line":242,"t":"ReceiverNonNull","matcher":"int stop()","className":"net.osmand.plus.voice.JsTtsCommandPlayer"}

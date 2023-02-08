@@ -1,0 +1,1 @@
+{"methodName":"void showKeyboard()","line":382,"t":"ReceiverNonNull","matcher":"java.lang.Object getSystemService(java.lang.String)","className":"net.osmand.plus.mapcontextmenu.editors.EditorFragment"}

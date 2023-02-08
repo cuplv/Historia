@@ -1,0 +1,1 @@
+{"methodName":"void updateTextCount(android.content.DialogInterface,java.lang.CharSequence,org.mariotaku.twidere.model.ParcelableStatus,org.mariotaku.twidere.model.AccountDetails)","line":373,"t":"ReceiverNonNull","matcher":"int hashCode()","className":"org.mariotaku.twidere.fragment.status.RetweetQuoteDialogFragment"}

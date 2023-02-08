@@ -1,0 +1,1 @@
+{"methodName":"void refreshChart(com.github.mikephil.charting.charts.LineChart,boolean,boolean,boolean)","line":512,"t":"ReceiverNonNull","matcher":"void setXAxisPoints(java.util.List)","className":"net.osmand.plus.mapcontextmenu.other.TrackDetailsMenu"}

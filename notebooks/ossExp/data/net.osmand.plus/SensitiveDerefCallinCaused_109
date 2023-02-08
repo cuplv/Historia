@@ -1,0 +1,1 @@
+{"methodName":"android.view.View getView(int,android.view.View,android.view.ViewGroup)","line":284,"t":"ReceiverNonNull","matcher":"android.view.LayoutInflater getLayoutInflater()","className":"net.osmand.plus.activities.search.SearchPoiFilterFragment$PoiFiltersAdapter"}

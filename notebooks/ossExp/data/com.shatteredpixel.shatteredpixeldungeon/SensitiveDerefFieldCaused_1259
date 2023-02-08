@@ -1,0 +1,1 @@
+{"methodName":"void <init>(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent,int)","line":134,"t":"ReceiverNonNull","matcher":"int pointsInTalent(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent)","className":"com.shatteredpixel.shatteredpixeldungeon.items.scrolls.exotic.ScrollOfMetamorphosis$WndMetamorphReplace"}

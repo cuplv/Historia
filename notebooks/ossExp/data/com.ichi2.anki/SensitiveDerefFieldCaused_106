@@ -1,0 +1,1 @@
+{"methodName":"void _updateCutoff()","line":4,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"com.ichi2.libanki.sched.Sched"}

@@ -1,0 +1,1 @@
+{"methodName":"long next()","line":64,"t":"ReceiverNonNull","matcher":"boolean hasNext()","className":"org.dmfs.rfc5545.recur.ByMonthSkipFilter"}

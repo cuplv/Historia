@@ -1,0 +1,1 @@
+{"methodName":"java.lang.Object mapRow(com.j256.ormlite.support.DatabaseResults)","line":10,"t":"ReceiverNonNull","matcher":"java.lang.Class getClass()","className":"com.j256.ormlite.stmt.mapped.BaseMappedQuery"}

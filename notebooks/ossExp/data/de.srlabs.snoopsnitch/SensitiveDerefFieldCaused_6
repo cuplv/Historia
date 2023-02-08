@@ -1,0 +1,1 @@
+{"methodName":"void refreshPatchanalysisResultSum()","line":375,"t":"ReceiverNonNull","matcher":"boolean isAnalysisRunning()","className":"de.srlabs.snoopsnitch.DashboardActivity"}

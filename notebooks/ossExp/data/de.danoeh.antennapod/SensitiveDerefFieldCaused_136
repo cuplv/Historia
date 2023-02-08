@@ -1,0 +1,1 @@
+{"methodName":"void moveToSuperclass()","line":270,"t":"ReceiverNonNull","matcher":"java.lang.Class getSuperclass()","className":"org.greenrobot.eventbus.SubscriberMethodFinder$FindState"}

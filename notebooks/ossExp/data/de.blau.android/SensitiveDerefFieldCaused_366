@@ -1,0 +1,1 @@
+{"methodName":"void onSensorChanged(android.hardware.SensorEvent)","line":26,"t":"ReceiverNonNull","matcher":"double getLatitude()","className":"de.blau.android.Main$c"}

@@ -1,0 +1,1 @@
+{"methodName":"void stopUploadFileTask()","line":899,"t":"ReceiverNonNull","matcher":"boolean cancel(boolean)","className":"net.osmand.plus.measurementtool.MeasurementToolFragment"}

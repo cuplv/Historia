@@ -1,0 +1,1 @@
+{"methodName":"org.osmdroid.views.overlay.infowindow.BasicInfoWindow getDefaultPolylineInfoWindow()","line":62,"t":"ReceiverNonNull","matcher":"void <init>(int,org.osmdroid.views.MapView)","className":"org.osmdroid.views.MapViewRepository"}

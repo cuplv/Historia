@@ -1,0 +1,1 @@
+{"methodName":"void setDecoderFactory(com.journeyapps.barcodescanner.DecoderFactory)","line":108,"t":"ReceiverNonNull","matcher":"void setDecoder(com.journeyapps.barcodescanner.Decoder)","className":"com.journeyapps.barcodescanner.BarcodeView"}

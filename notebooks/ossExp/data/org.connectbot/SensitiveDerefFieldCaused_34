@@ -1,0 +1,1 @@
+{"methodName":"android.view.View findCurrentView(int)","line":423,"t":"ReceiverNonNull","matcher":"int getCurrentItem()","className":"org.connectbot.ConsoleActivity"}

@@ -1,0 +1,1 @@
+{"methodName":"int proc(com.shatteredpixel.shatteredpixeldungeon.actors.Char,com.shatteredpixel.shatteredpixeldungeon.actors.Char,int)","line":81,"t":"ReceiverNonNull","matcher":"int pointsInTalent(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent)","className":"com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.MagesStaff"}

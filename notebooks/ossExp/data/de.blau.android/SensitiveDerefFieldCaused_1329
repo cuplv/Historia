@@ -1,0 +1,1 @@
+{"methodName":"void f(org.xml.sax.Attributes)","line":23,"t":"ReceiverNonNull","matcher":"void f(com.caverock.androidsvg.SVG$k0)","className":"com.caverock.androidsvg.SVGParser"}

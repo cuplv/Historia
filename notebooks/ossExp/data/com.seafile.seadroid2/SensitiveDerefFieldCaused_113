@@ -1,0 +1,1 @@
+{"methodName":"boolean parseCloseBracket()","line":1346,"t":"ReceiverNonNull","matcher":"boolean isStraddling(com.vladsch.flexmark.util.sequence.BasedSequence)","className":"com.vladsch.flexmark.internal.InlineParserImpl"}

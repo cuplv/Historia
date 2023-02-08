@@ -1,0 +1,1 @@
+{"methodName":"android.widget.Filter$FilterResults performFiltering(java.lang.CharSequence)","line":639,"t":"ReceiverNonNull","matcher":"java.lang.String toLowerCase()","className":"net.osmand.plus.track.cards.TrackPointsCard$PointsFilter"}

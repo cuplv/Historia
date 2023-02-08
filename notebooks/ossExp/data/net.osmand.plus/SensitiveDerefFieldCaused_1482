@@ -1,0 +1,1 @@
+{"methodName":"boolean isLeftPanelVisible()","line":224,"t":"ReceiverNonNull","matcher":"int getVisibility()","className":"net.osmand.plus.views.layers.RadiusRulerControlLayer"}

@@ -1,0 +1,1 @@
+{"methodName":"void <init>(net.osmand.plus.liveupdates.CountrySelectionFragment,int)","line":237,"t":"ReceiverNonNull","matcher":"android.content.res.Resources$Theme getTheme()","className":"net.osmand.plus.liveupdates.CountrySelectionFragment$ListAdapter"}

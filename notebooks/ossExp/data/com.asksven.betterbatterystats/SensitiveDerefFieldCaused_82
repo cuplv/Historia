@@ -1,0 +1,1 @@
+{"methodName":"long getPowerSaveModeEnabledTime(long,int)","line":2262,"t":"ReceiverNonNull","matcher":"java.lang.reflect.Method getMethod(java.lang.String,java.lang.Class[])","className":"com.asksven.android.common.privateapiproxies.BatteryStatsProxy"}

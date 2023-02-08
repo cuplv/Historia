@@ -1,0 +1,1 @@
+{"methodName":"void writeLine(java.lang.String,boolean)","line":489,"t":"ReceiverNonNull","matcher":"void write(byte[])","className":"com.fsck.k9.mail.transport.smtp.SmtpTransport"}

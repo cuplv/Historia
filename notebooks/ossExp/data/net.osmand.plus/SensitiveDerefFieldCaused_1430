@@ -1,0 +1,1 @@
+{"methodName":"org.mozilla.javascript.Node transformRegExp(org.mozilla.javascript.ast.RegExpLiteral)","line":1013,"t":"ReceiverNonNull","matcher":"void addRegexp(java.lang.String,java.lang.String)","className":"org.mozilla.javascript.IRFactory"}

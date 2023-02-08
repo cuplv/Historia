@@ -1,0 +1,1 @@
+{"methodName":"void writeIncoming(short[],int,int)","line":60,"t":"ReceiverNonNull","matcher":"void writeLeft(short[],int,int)","className":"org.sipdroid.media.CallRecorder"}

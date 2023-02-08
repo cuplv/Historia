@@ -1,0 +1,1 @@
+{"methodName":"void scrollToPositionWithOffset(int,int,boolean)","line":212,"t":"ReceiverNonNull","matcher":"int getHeight()","className":"com.duckduckgo.mobile.android.ui.recyclerviewext.StickyHeadersLinearLayoutManager"}

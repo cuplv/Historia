@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String getTagValue(java.lang.String)","line":408,"t":"ReceiverNonNull","matcher":"net.osmand.binary.BinaryMapIndexReader$TagValuePair decodeType(int)","className":"net.osmand.binary.BinaryMapDataObject"}

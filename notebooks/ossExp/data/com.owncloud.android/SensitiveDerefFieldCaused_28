@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String getDisplayName()","line":145,"t":"ReceiverNonNull","matcher":"java.lang.String getUsername()","className":"com.owncloud.android.lib.common.OwnCloudAccount"}

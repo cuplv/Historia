@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String nameToHex(java.lang.String)","line":6,"t":"ReceiverNonNull","matcher":"boolean containsKey(java.lang.Object)","className":"com.ichi2.themes.HtmlColors"}

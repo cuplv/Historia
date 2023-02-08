@@ -1,0 +1,1 @@
+{"methodName":"void refreshEvents()","line":261,"t":"ReceiverNonNull","matcher":"boolean addAll(java.util.Collection)","className":"org.zephyrsoft.trackworktime.EventListActivity"}

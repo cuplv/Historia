@@ -1,0 +1,1 @@
+{"methodName":"void drawSatValPanel(android.graphics.Canvas)","line":293,"t":"ReceiverNonNull","matcher":"void <init>(com.jaredrummler.android.colorpicker.ColorPickerView,com.jaredrummler.android.colorpicker.ColorPickerView$1)","className":"com.jaredrummler.android.colorpicker.ColorPickerView"}

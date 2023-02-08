@@ -1,0 +1,1 @@
+{"methodName":"void y(javassist.compiler.ast.Stmnt)","line":272,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"k8.c"}

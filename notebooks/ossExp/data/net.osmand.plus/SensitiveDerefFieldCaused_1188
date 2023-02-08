@@ -1,0 +1,1 @@
+{"methodName":"long getFirstNodeId()","line":59,"t":"ReceiverNonNull","matcher":"long get(int)","className":"net.osmand.osm.edit.Way"}

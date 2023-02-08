@@ -1,0 +1,1 @@
+{"methodName":"void updateLocation(net.osmand.Location)","line":257,"t":"ReceiverNonNull","matcher":"void <init>(java.lang.String)","className":"net.osmand.plus.plugins.accessibility.NavigationInfo"}

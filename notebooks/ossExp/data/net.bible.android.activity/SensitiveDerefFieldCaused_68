@@ -1,0 +1,1 @@
+{"methodName":"void drawAlphaPanel(android.graphics.Canvas)","line":420,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"com.jaredrummler.android.colorpicker.ColorPickerView"}

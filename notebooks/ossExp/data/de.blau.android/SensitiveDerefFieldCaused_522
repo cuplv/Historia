@@ -1,0 +1,1 @@
+{"methodName":"org.mozilla.javascript.ast.ScriptNode transformTree(org.mozilla.javascript.ast.AstRoot)","line":8,"t":"ReceiverNonNull","matcher":"java.lang.String getEncodedSource()","className":"org.mozilla.javascript.IRFactory"}

@@ -1,0 +1,1 @@
+{"methodName":"org.bouncycastle.asn1.x509.DistributionPoint[] getDistributionPoints()","line":-1,"t":"ReceiverNonNull","matcher":"org.bouncycastle.asn1.ASN1Encodable getObjectAt(int)","className":"org.bouncycastle.asn1.x509.CRLDistPoint"}

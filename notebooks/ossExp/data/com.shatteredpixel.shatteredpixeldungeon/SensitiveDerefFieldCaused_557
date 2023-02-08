@@ -1,0 +1,1 @@
+{"methodName":"boolean getCloser(int)","line":14,"t":"ReceiverNonNull","matcher":"int distance(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Succubus"}

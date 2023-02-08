@@ -1,0 +1,1 @@
+{"methodName":"void observe(int)","line":25,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff buff(java.lang.Class)","className":"com.shatteredpixel.shatteredpixeldungeon.Dungeon"}

@@ -1,0 +1,1 @@
+{"methodName":"void setRate(int)","line":670,"t":"ReceiverNonNull","matcher":"int setSpeechRate(float)","className":"net.bible.service.device.speak.TextToSpeechServiceManager"}

@@ -1,0 +1,1 @@
+{"methodName":"void onChange(boolean,android.net.Uri)","line":15,"t":"ReceiverNonNull","matcher":"android.database.sqlite.SQLiteDatabase getWritableDatabase()","className":"y6.a$b"}

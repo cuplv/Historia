@@ -1,0 +1,1 @@
+{"methodName":"void moveToCard(org.sufficientlysecure.keychain.operations.results.EditKeyResult)","line":5,"t":"ReceiverNonNull","matcher":"long longValue()","className":"org.sufficientlysecure.keychain.ui.CreateKeyFinalFragment"}

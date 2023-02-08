@@ -1,0 +1,1 @@
+{"methodName":"void onCreatePreferences(android.os.Bundle,java.lang.String)","line":55,"t":"ReceiverNonNull","matcher":"boolean appSettingsEnabled()","className":"com.keepassdroid.settings.MainSettingsFragement"}

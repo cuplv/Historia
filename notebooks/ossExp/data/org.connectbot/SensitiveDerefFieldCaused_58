@@ -1,0 +1,1 @@
+{"methodName":"void updatePromptVisible()","line":1148,"t":"ReceiverNonNull","matcher":"org.connectbot.TerminalView getCurrentTerminalView()","className":"org.connectbot.ConsoleActivity"}

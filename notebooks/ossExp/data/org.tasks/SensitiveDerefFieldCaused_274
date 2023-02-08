@@ -1,0 +1,1 @@
+{"methodName":"void writeJournal()","line":321,"t":"ReceiverNonNull","matcher":"okio.BufferedSink writeUtf8(java.lang.String)","className":"coil.disk.DiskLruCache"}

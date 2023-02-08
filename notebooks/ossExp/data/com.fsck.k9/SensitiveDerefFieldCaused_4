@@ -1,0 +1,1 @@
+{"methodName":"void setEncoding(java.lang.String)","line":52,"t":"ReceiverNonNull","matcher":"boolean equalsIgnoreCase(java.lang.String)","className":"com.fsck.k9.mail.internet.BinaryTempFileBody"}

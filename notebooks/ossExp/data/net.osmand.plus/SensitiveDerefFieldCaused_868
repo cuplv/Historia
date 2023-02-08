@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String getAccuracyString()","line":231,"t":"ReceiverNonNull","matcher":"float getAccuracy()","className":"net.osmand.plus.plugins.accessibility.NavigationInfo"}

@@ -1,0 +1,1 @@
+{"methodName":"void addObjectToClip(com.caverock.androidsvg.SVG$Text,android.graphics.Path,android.graphics.Matrix)","line":4065,"t":"ReceiverNonNull","matcher":"void <init>(float,float,float,float)","className":"com.caverock.androidsvg.SVGAndroidRenderer"}

@@ -1,0 +1,1 @@
+{"methodName":"org.transdroid.core.rssparser.Item getItem(int)","line":3,"t":"ReceiverNonNull","matcher":"items","className":"org.transdroid.core.gui.rss.RssitemsAdapter_"}

@@ -1,0 +1,1 @@
+{"methodName":"boolean doAdvance()","line":-1,"t":"ReceiverNonNull","matcher":"long getExactSizeIfKnown()","className":"j$.util.stream.StreamSpliterators$AbstractWrappingSpliterator"}

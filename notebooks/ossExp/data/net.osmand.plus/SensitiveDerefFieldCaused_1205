@@ -1,0 +1,1 @@
+{"methodName":"net.osmand.binary.BinaryMapIndexReader$MapRoot readMapLevel(net.osmand.binary.BinaryMapIndexReader$MapRoot)","line":798,"t":"ReceiverNonNull","matcher":"int readInt32()","className":"net.osmand.binary.BinaryMapIndexReader"}

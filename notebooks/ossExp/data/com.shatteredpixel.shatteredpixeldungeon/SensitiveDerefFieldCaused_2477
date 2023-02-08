@@ -1,0 +1,1 @@
+{"methodName":"int autoAim(com.shatteredpixel.shatteredpixeldungeon.actors.Char,com.shatteredpixel.shatteredpixeldungeon.items.Item)","line":3,"t":"ReceiverNonNull","matcher":"int length()","className":"com.shatteredpixel.shatteredpixeldungeon.ui.QuickSlotButton"}

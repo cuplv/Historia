@@ -1,0 +1,1 @@
+{"methodName":"boolean o1(de.blau.android.propertyeditor.b,android.view.MotionEvent)","line":5,"t":"ReceiverNonNull","matcher":"void getLocationOnScreen(int[])","className":"de.blau.android.propertyeditor.b"}

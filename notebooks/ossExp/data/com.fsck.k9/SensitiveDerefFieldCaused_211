@@ -1,0 +1,1 @@
+{"methodName":"void readContinuationRequest(com.fsck.k9.mail.store.imap.ImapResponseCallback)","line":63,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"com.fsck.k9.mail.store.imap.ImapResponseParser"}

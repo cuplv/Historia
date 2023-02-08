@@ -1,0 +1,1 @@
+{"methodName":"void endElement(java.lang.String,java.lang.String,java.lang.String)","line":1061,"t":"ReceiverNonNull","matcher":"java.lang.String toString()","className":"com.caverock.androidsvg.SVGParser"}

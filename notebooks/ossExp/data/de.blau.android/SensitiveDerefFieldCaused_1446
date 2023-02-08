@@ -1,0 +1,1 @@
+{"methodName":"void addCatchClause(org.mozilla.javascript.ast.CatchClause)","line":4,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"org.mozilla.javascript.ast.TryStatement"}

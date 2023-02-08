@@ -1,0 +1,1 @@
+{"methodName":"void update()","line":8,"t":"ReceiverNonNull","matcher":"boolean isAlive()","className":"com.shatteredpixel.shatteredpixeldungeon.ui.BusyIndicator"}

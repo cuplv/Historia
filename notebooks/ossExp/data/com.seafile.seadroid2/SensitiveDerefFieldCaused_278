@@ -1,0 +1,1 @@
+{"methodName":"boolean onTouchEvent(android.view.MotionEvent)","line":99,"t":"ReceiverNonNull","matcher":"void addMovement(android.view.MotionEvent)","className":"uk.co.senab.photoview.gestures.CupcakeGestureDetector"}

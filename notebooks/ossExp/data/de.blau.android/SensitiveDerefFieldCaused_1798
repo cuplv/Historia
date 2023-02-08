@@ -1,0 +1,1 @@
+{"methodName":"android.view.View B0(android.view.LayoutInflater,android.view.ViewGroup,android.os.Bundle)","line":49,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"de.blau.android.propertyeditor.tagform.ConditionalRestrictionFragment"}

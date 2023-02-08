@@ -1,0 +1,1 @@
+{"methodName":"void outputNextLineBreakSpan(com.vladsch.flexmark.ast.Node,com.vladsch.flexmark.html.HtmlWriter,boolean)","line":472,"t":"ReceiverNonNull","matcher":"java.lang.Object get(int)","className":"com.vladsch.flexmark.html.renderer.CoreNodeRenderer"}

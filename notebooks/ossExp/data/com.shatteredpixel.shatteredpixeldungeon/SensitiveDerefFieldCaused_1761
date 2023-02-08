@@ -1,0 +1,1 @@
+{"methodName":"boolean teleportInNonRegularLevel(com.shatteredpixel.shatteredpixeldungeon.actors.Char,boolean)","line":104,"t":"ReceiverNonNull","matcher":"visited","className":"com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfTeleportation"}

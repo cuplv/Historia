@@ -1,0 +1,1 @@
+{"methodName":"org.jdom2.Element clone()","line":1446,"t":"ReceiverNonNull","matcher":"int size()","className":"org.jdom2.Element"}

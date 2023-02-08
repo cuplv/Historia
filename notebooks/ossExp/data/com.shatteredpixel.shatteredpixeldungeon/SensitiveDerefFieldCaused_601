@@ -1,0 +1,1 @@
+{"methodName":"void onItemSelected(com.shatteredpixel.shatteredpixeldungeon.items.Item)","line":95,"t":"ReceiverNonNull","matcher":"void updateHT(boolean)","className":"com.shatteredpixel.shatteredpixeldungeon.items.spells.CurseInfusion"}

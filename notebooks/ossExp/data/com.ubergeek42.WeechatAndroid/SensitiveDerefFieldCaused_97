@@ -1,0 +1,1 @@
+{"methodName":"org.bouncycastle.math.ec.ECPoint multiplyPositive(org.bouncycastle.math.ec.ECPoint,java.math.BigInteger)","line":85,"t":"ReceiverNonNull","matcher":"org.bouncycastle.math.ec.ECPoint lookup(int)","className":"org.bouncycastle.math.ec.FixedPointCombMultiplier"}

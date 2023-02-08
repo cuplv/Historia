@@ -1,0 +1,1 @@
+{"methodName":"boolean compareWay(net.osmand.osm.edit.Way)","line":204,"t":"ReceiverNonNull","matcher":"int size()","className":"net.osmand.osm.edit.Way"}

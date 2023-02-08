@@ -1,0 +1,1 @@
+{"methodName":"android.graphics.Path makePathAndBoundingBox(com.caverock.androidsvg.SVG$Line)","line":4134,"t":"ReceiverNonNull","matcher":"void <init>(float,float,float,float)","className":"com.caverock.androidsvg.SVGAndroidRenderer"}

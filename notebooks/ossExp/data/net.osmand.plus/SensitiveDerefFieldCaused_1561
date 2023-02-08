@@ -1,0 +1,1 @@
+{"methodName":"boolean search(net.osmand.search.core.SearchPhrase,net.osmand.search.SearchUICore$SearchResultMatcher)","line":234,"t":"ReceiverNonNull","matcher":"int length()","className":"net.osmand.plus.search.QuickSearchHelper$SearchWptAPI"}

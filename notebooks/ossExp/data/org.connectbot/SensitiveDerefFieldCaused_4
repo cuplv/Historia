@@ -1,0 +1,1 @@
+{"methodName":"void onServiceConnected(android.content.ComponentName,android.os.IBinder)","line":177,"t":"ReceiverNonNull","matcher":"void notifyDataSetChanged()","className":"org.connectbot.ConsoleActivity$1"}

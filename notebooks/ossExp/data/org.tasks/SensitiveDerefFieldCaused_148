@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String toString()","line":2237,"t":"ReceiverNonNull","matcher":"int size()","className":"org.dmfs.rfc5545.recur.RecurrenceRule"}

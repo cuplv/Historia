@@ -1,0 +1,1 @@
+{"methodName":"void selectAllVPN(boolean)","line":1731,"t":"ReceiverNonNull","matcher":"android.widget.ListAdapter getAdapter()","className":"dev.ukanth.ufirewall.MainActivity"}

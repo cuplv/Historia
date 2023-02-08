@@ -1,0 +1,1 @@
+{"methodName":"org.crosswire.jsword.passage.VerseRange getRangeAt(int,org.crosswire.jsword.passage.RestrictionType)","line":229,"t":"ReceiverNonNull","matcher":"org.crosswire.jsword.passage.VerseRange getRangeAt(int,org.crosswire.jsword.passage.RestrictionType)","className":"org.crosswire.jsword.passage.RocketPassage"}

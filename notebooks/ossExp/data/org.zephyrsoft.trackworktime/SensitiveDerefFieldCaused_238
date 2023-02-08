@@ -1,0 +1,1 @@
+{"methodName":"boolean hasToRemoveAppFromBatteryOptimization()","line":949,"t":"ReceiverNonNull","matcher":"java.lang.String getPackageName()","className":"org.zephyrsoft.trackworktime.Basics"}

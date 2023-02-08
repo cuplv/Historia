@@ -1,0 +1,1 @@
+{"methodName":"void buildNearestPhotosRow(android.view.View)","line":465,"t":"ReceiverNonNull","matcher":"android.view.View getContentView()","className":"net.osmand.plus.mapcontextmenu.MenuBuilder"}

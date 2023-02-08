@@ -1,0 +1,1 @@
+{"methodName":"void lambda$onCreateDialog$0$net-osmand-plus-download-DownloadValidationManager$InstallPaidVersionDialogFragment(android.content.DialogInterface,int)","line":231,"t":"ReceiverNonNull","matcher":"android.app.Application getApplication()","className":"net.osmand.plus.download.DownloadValidationManager$InstallPaidVersionDialogFragment"}

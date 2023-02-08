@@ -1,0 +1,1 @@
+{"methodName":"com.ichi2.utils.JSONObject chunk()","line":18,"t":"ReceiverNonNull","matcher":"void close()","className":"com.ichi2.libanki.sync.Syncer"}

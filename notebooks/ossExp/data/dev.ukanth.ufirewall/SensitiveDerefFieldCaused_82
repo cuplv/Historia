@@ -1,0 +1,1 @@
+{"methodName":"void selectAllWifi(boolean)","line":1898,"t":"ReceiverNonNull","matcher":"android.widget.ListAdapter getAdapter()","className":"dev.ukanth.ufirewall.MainActivity"}

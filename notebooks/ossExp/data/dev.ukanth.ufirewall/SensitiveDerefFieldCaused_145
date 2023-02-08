@@ -1,0 +1,1 @@
+{"methodName":"void runNextCommand(boolean)","line":1753,"t":"ReceiverNonNull","matcher":"void write(byte[])","className":"eu.chainfire.libsuperuser.Shell$Interactive"}

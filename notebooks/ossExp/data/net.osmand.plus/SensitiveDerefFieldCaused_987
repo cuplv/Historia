@@ -1,0 +1,1 @@
+{"methodName":"void downloadHasFinished()","line":176,"t":"ReceiverNonNull","matcher":"boolean isDownloaded()","className":"net.osmand.plus.settings.fragments.VoiceLanguageBottomSheetFragment"}

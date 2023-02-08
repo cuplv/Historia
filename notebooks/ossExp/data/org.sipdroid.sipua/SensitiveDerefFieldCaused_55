@@ -1,0 +1,1 @@
+{"methodName":"boolean test1()","line":103,"t":"ReceiverNonNull","matcher":"void setError(int,java.lang.String)","className":"com.jstun.demo.DiscoveryTest"}

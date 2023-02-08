@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String lookupCustomAmPmFor(java.lang.Integer)","line":2,"t":"ReceiverNonNull","matcher":"AmPmIndicators","className":"hirondelle.date4j.DateTimeFormatter"}

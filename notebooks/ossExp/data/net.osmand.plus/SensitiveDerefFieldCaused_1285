@@ -1,0 +1,1 @@
+{"methodName":"void drawRouteSegment(net.osmand.data.RotatedTileBox,android.graphics.Canvas,java.util.List,java.util.List,java.util.List,java.util.List,java.util.List,java.util.List,java.util.List,double,java.util.List)","line":182,"t":"ReceiverNonNull","matcher":"void <init>()","className":"net.osmand.plus.views.layers.geometry.PublicTransportGeometryWay"}

@@ -1,0 +1,1 @@
+{"methodName":"java.util.List getGeometry()","line":419,"t":"ReceiverNonNull","matcher":"void <init>(long)","className":"net.osmand.router.TransportRoutePlanner$TransportRouteResultSegment"}

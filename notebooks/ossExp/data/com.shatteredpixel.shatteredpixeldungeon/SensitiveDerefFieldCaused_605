@@ -1,0 +1,1 @@
+{"methodName":"void evolve()","line":45,"t":"ReceiverNonNull","matcher":"boolean insideMap(int)","className":"com.shatteredpixel.shatteredpixeldungeon.levels.rooms.special.ToxicGasRoom$ToxicGasSeed"}

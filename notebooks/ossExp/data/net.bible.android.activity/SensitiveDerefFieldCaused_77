@@ -1,0 +1,1 @@
+{"methodName":"void <init>(java.util.List,org.jdom2.output.support.FormatStack,boolean)","line":384,"t":"ReceiverNonNull","matcher":"void done()","className":"org.jdom2.output.support.AbstractFormattedWalker"}

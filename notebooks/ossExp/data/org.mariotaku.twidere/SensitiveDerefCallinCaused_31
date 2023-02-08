@@ -1,0 +1,1 @@
+{"methodName":"void displayCurrentAccount(android.graphics.drawable.Drawable)","line":553,"t":"ReceiverNonNull","matcher":"boolean isFinishing()","className":"org.mariotaku.twidere.fragment.AccountsDashboardFragment"}

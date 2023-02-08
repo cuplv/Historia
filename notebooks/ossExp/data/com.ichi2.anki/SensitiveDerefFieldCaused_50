@@ -1,0 +1,1 @@
+{"methodName":"void saveNote()","line":33,"t":"ReceiverNonNull","matcher":"com.ichi2.libanki.Note note()","className":"com.ichi2.anki.NoteEditor"}

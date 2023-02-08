@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String doInBackground(java.lang.Long[])","line":1034,"t":"ReceiverNonNull","matcher":"android.app.Application getApplication()","className":"net.wigle.wigleandroid.DataFragment$AsyncGpxExportTask"}

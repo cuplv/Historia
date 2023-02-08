@@ -1,0 +1,1 @@
+{"methodName":"boolean applyReplacements(com.gpl.rpg.AndorsTrail.model.map.PredefinedMap,com.gpl.rpg.AndorsTrail.model.map.LayeredTileMap)","line":213,"t":"ReceiverNonNull","matcher":"boolean equalsIgnoreCase(java.lang.String)","className":"com.gpl.rpg.AndorsTrail.controller.MapController"}

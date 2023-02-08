@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String[] getClipboardUris()","line":1105,"t":"ReceiverNonNull","matcher":"boolean hasPrimaryClip()","className":"org.qtproject.qt5.android.QtNative"}

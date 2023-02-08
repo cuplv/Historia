@@ -1,0 +1,1 @@
+{"methodName":"void addTorrentByMagnetUrl(java.lang.String,java.lang.String)","line":11,"t":"ReceiverNonNull","matcher":"org.transdroid.daemon.Daemon getType()","className":"org.transdroid.core.gui.TorrentsActivity"}

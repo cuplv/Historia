@@ -1,0 +1,1 @@
+{"methodName":"java.util.ArrayList getHistory(android.content.Context)","line":3637,"t":"ReceiverNonNull","matcher":"java.lang.reflect.Method getMethod(java.lang.String,java.lang.Class[])","className":"com.asksven.android.common.privateapiproxies.BatteryStatsProxy"}

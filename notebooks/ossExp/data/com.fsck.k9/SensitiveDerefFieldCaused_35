@@ -1,0 +1,1 @@
+{"methodName":"android.view.View findChildView(android.view.MotionEvent)","line":1108,"t":"ReceiverNonNull","matcher":"itemView","className":"app.k9mail.ui.utils.itemtouchhelper.ItemTouchHelper"}

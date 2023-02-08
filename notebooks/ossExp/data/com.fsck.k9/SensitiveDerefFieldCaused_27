@@ -1,0 +1,1 @@
+{"methodName":"void resetSwipedView(com.fsck.k9.controller.MessageReference)","line":1244,"t":"ReceiverNonNull","matcher":"void stopSwipe(androidx.recyclerview.widget.RecyclerView$ViewHolder)","className":"com.fsck.k9.ui.messagelist.MessageListFragment"}

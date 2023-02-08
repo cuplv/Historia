@@ -1,0 +1,1 @@
+{"methodName":"boolean onSnapToItem(int,int,android.graphics.Point,org.osmdroid.api.IMapView)","line":273,"t":"ReceiverNonNull","matcher":"org.osmdroid.views.Projection getProjection()","className":"org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay"}

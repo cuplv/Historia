@@ -1,0 +1,1 @@
+{"methodName":"void createHillshadeSRTMGroups()","line":202,"t":"ReceiverNonNull","matcher":"java.lang.Object remove(int)","className":"net.osmand.plus.download.DownloadResourceGroup"}

@@ -1,0 +1,1 @@
+{"methodName":"java.util.ArrayList getItemsToPreserveFromSealedResurrect()","line":94,"t":"ReceiverNonNull","matcher":"java.util.HashSet buffs(java.lang.Class)","className":"com.shatteredpixel.shatteredpixeldungeon.levels.Level"}

@@ -1,0 +1,1 @@
+{"methodName":"void updateUi(de.danoeh.antennapod.model.playback.Playable)","line":214,"t":"ReceiverNonNull","matcher":"boolean isPlayingVideoLocally()","className":"de.danoeh.antennapod.fragment.ExternalPlayerFragment"}

@@ -1,0 +1,1 @@
+{"methodName":"void copyTable(org.mozilla.javascript.ScriptableObject$Slot[],org.mozilla.javascript.ScriptableObject$Slot[])","line":2,"t":"ReceiverNonNull","matcher":"next","className":"org.mozilla.javascript.EmbeddedSlotMap"}

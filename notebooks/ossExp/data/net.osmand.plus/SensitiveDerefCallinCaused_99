@@ -1,0 +1,1 @@
+{"methodName":"void onOpenDash()","line":128,"t":"ReceiverNonNull","matcher":"android.view.LayoutInflater getLayoutInflater()","className":"net.osmand.plus.dashboard.DashPluginsFragment"}

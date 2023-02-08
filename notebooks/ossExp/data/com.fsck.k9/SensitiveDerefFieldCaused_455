@@ -1,0 +1,1 @@
+{"methodName":"void close()","line":396,"t":"ReceiverNonNull","matcher":"void close()","className":"com.fsck.k9.mail.store.pop3.Pop3Connection"}

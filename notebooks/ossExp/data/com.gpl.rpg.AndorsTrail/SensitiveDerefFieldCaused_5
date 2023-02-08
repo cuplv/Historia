@@ -1,0 +1,1 @@
+{"methodName":"void onPlayerEnteredNewMap(com.gpl.rpg.AndorsTrail.model.map.PredefinedMap,com.gpl.rpg.AndorsTrail.util.Coord)","line":530,"t":"ReceiverNonNull","matcher":"height","className":"com.gpl.rpg.AndorsTrail.view.MainView"}

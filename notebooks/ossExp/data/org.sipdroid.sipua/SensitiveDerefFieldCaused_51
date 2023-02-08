@@ -1,0 +1,1 @@
+{"methodName":"void registerMore()","line":271,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"org.sipdroid.sipua.SipdroidEngine"}

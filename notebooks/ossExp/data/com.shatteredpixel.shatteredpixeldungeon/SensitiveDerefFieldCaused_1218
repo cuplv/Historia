@@ -1,0 +1,1 @@
+{"methodName":"boolean collect(com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag)","line":13,"t":"ReceiverNonNull","matcher":"boolean isAlive()","className":"com.shatteredpixel.shatteredpixeldungeon.items.Item"}

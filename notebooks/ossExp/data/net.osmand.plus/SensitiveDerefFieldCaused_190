@@ -1,0 +1,1 @@
+{"methodName":"void indexNonCachedResources(java.util.Map,java.util.Map)","line":132,"t":"ReceiverNonNull","matcher":"long insert(java.lang.String,java.lang.String,android.content.ContentValues)","className":"net.osmand.plus.plugins.srtm.TerrainLayer$1"}

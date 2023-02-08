@@ -1,0 +1,1 @@
+{"methodName":"void checkPersistentNotification()","line":378,"t":"ReceiverNonNull","matcher":"long calculateTimeSum(j$.time.LocalDate,org.zephyrsoft.trackworktime.model.PeriodEnum)","className":"org.zephyrsoft.trackworktime.Basics"}

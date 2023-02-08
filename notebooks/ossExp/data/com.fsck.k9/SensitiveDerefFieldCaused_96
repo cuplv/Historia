@@ -1,0 +1,1 @@
+{"methodName":"void finishActionMode()","line":1487,"t":"ReceiverNonNull","matcher":"void finish()","className":"com.fsck.k9.ui.messagelist.MessageListFragment"}

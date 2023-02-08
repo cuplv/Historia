@@ -1,0 +1,1 @@
+{"methodName":"void onResume()","line":271,"t":"ReceiverNonNull","matcher":"android.widget.SpinnerAdapter getAdapter()","className":"org.zephyrsoft.trackworktime.TargetEditActivity"}

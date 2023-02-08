@@ -1,0 +1,1 @@
+{"methodName":"java.io.InputStream getInputStream()","line":100,"t":"ReceiverNonNull","matcher":"java.io.InputStream getInputStream()","className":"org.zoolu.net.TcpSocket"}

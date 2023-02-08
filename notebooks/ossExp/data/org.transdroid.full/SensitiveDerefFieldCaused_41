@@ -1,0 +1,1 @@
+{"methodName":"void updateConnectionStatus(boolean,org.transdroid.daemon.Daemon)","line":9,"t":"ReceiverNonNull","matcher":"void setEnabled(boolean)","className":"org.transdroid.core.gui.TorrentsFragment"}

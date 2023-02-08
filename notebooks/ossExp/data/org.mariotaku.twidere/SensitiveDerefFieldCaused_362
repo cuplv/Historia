@@ -1,0 +1,1 @@
+{"methodName":"void onDetach()","line":246,"t":"ReceiverNonNull","matcher":"boolean isOpen()","className":"org.osmdroid.tileprovider.modules.SqlTileWriter"}

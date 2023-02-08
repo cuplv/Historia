@@ -1,0 +1,1 @@
+{"methodName":"void onDraw(android.graphics.Canvas)","line":82,"t":"ReceiverNonNull","matcher":"int getHeight()","className":"com.commonsware.cwac.layouts.Mirror"}

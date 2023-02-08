@@ -1,0 +1,1 @@
+{"methodName":"void stopClock()","line":45,"t":"ReceiverNonNull","matcher":"void interrupt()","className":"jwtc.android.chess.services.LocalClockApi"}

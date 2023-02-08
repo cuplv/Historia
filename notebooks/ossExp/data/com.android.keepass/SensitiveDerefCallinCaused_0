@@ -1,0 +1,1 @@
+{"methodName":"void onDialogClosed(boolean)","line":108,"t":"ReceiverNonNull","matcher":"androidx.fragment.app.FragmentManager getSupportFragmentManager()","className":"com.keepassdroid.settings.RoundsPreferenceFragment"}

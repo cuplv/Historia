@@ -1,0 +1,1 @@
+{"methodName":"java.util.ArrayList getAlarmsStatList(boolean,com.asksven.betterbatterystats.data.Reference,com.asksven.betterbatterystats.data.Reference)","line":278,"t":"ReceiverNonNull","matcher":"java.lang.String toString()","className":"com.asksven.betterbatterystats.data.StatsProvider"}

@@ -1,0 +1,1 @@
+{"methodName":"void dump(java.lang.String,java.io.FileDescriptor,java.io.PrintWriter,java.lang.String[])","line":244,"t":"ReceiverNonNull","matcher":"android.database.Cursor getCursor()","className":"org.mariotaku.twidere.loader.ObjectCursorLoader"}

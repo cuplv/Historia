@@ -1,0 +1,1 @@
+{"methodName":"void checkXposed(android.preference.Preference)","line":35,"t":"ReceiverNonNull","matcher":"void setEnabled(boolean)","className":"dev.ukanth.ufirewall.preferences.LanguagePreferenceFragment"}

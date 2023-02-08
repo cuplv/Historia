@@ -1,0 +1,1 @@
+{"methodName":"void onAnimationUpdate(android.animation.ValueAnimator)","line":522,"t":"ReceiverNonNull","matcher":"float floatValue()","className":"org.osmdroid.views.MapController$MapAnimatorListener"}

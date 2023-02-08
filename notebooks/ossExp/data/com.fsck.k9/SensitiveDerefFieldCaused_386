@@ -1,0 +1,1 @@
+{"methodName":"java.util.List getObjects()","line":329,"t":"ReceiverNonNull","matcher":"int length()","className":"com.tokenautocomplete.TokenCompleteTextView"}

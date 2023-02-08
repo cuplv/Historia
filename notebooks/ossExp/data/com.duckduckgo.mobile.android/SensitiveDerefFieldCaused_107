@@ -1,0 +1,1 @@
+{"methodName":"byte[] getCollationKeyInBytes(java.lang.String)","line":355,"t":"ReceiverNonNull","matcher":"java.text.CollationKey getCollationKey(java.lang.String)","className":"net.sqlcipher.DatabaseUtils"}

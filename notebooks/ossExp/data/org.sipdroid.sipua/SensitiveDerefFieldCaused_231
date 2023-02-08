@@ -1,0 +1,1 @@
+{"methodName":"void printException(java.lang.Exception,int)","line":1395,"t":"ReceiverNonNull","matcher":"org.zoolu.tools.Log printException(java.lang.Exception,int)","className":"org.zoolu.sip.provider.SipProvider"}

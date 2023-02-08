@@ -1,0 +1,1 @@
+{"methodName":"void onViewChanged(org.androidannotations.api.view.HasViews)","line":8,"t":"ReceiverNonNull","matcher":"void setBackgroundResource(int)","className":"org.transdroid.core.gui.search.SearchResultsFragment_"}

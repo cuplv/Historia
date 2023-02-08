@@ -1,0 +1,1 @@
+{"methodName":"boolean equals(java.lang.Object)","line":154,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"com.todoroo.astrid.api.Filter"}

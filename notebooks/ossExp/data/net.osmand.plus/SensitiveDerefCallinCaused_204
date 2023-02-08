@@ -1,0 +1,1 @@
+{"methodName":"void dismiss()","line":144,"t":"ReceiverNonNull","matcher":"void onBackPressed()","className":"net.osmand.plus.views.mapwidgets.configure.settings.WidgetSettingsBaseFragment"}

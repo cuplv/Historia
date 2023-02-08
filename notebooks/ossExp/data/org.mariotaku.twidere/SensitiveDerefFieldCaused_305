@@ -1,0 +1,1 @@
+{"methodName":"void loadTranslation$twidere_fdroidRelease(org.mariotaku.twidere.model.ParcelableStatus)","line":513,"t":"ReceiverNonNull","matcher":"boolean isFinished()","className":"org.mariotaku.twidere.fragment.status.StatusFragment"}

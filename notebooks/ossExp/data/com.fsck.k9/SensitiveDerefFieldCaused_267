@@ -1,0 +1,1 @@
+{"methodName":"void onSaveInstanceState(android.os.Bundle)","line":629,"t":"ReceiverNonNull","matcher":"long longValue()","className":"com.fsck.k9.activity.MessageCompose"}

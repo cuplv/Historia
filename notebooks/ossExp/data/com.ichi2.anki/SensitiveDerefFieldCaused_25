@@ -1,0 +1,1 @@
+{"methodName":"android.util.Pair _changes()","line":2,"t":"ReceiverNonNull","matcher":"android.database.Cursor query(java.lang.String,java.lang.Object[])","className":"com.ichi2.libanki.Media"}

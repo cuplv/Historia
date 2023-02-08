@@ -1,0 +1,1 @@
+{"methodName":"boolean onActionMenuItemClicked(android.view.ActionMode,android.view.MenuItem)","line":304,"t":"ReceiverNonNull","matcher":"java.lang.String getText()","className":"net.bible.android.view.activity.page.BibleView"}

@@ -1,0 +1,1 @@
+{"methodName":"void onSensorChanged(android.hardware.SensorEvent)","line":24,"t":"ReceiverNonNull","matcher":"double getLongitude()","className":"de.blau.android.Main$c"}

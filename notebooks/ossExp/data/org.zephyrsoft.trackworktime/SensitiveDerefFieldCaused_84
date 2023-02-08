@@ -1,0 +1,1 @@
+{"methodName":"void checkWifiBasedTracking()","line":545,"t":"ReceiverNonNull","matcher":"java.lang.String getString(java.lang.String,java.lang.String)","className":"org.zephyrsoft.trackworktime.Basics"}

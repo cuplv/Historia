@@ -1,0 +1,1 @@
+{"methodName":"void onClickImport()","line":3,"t":"ReceiverNonNull","matcher":"void operationImportKey(byte[])","className":"org.sufficientlysecure.keychain.ui.token.ManageSecurityTokenPresenter"}

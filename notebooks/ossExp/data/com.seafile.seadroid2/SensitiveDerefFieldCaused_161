@@ -1,0 +1,1 @@
+{"methodName":"void addLine(com.vladsch.flexmark.parser.block.ParserState,com.vladsch.flexmark.util.sequence.BasedSequence)","line":35,"t":"ReceiverNonNull","matcher":"void add(com.vladsch.flexmark.util.sequence.BasedSequence,int)","className":"com.vladsch.flexmark.internal.ParagraphParser"}

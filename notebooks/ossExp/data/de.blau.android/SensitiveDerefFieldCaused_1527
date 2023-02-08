@@ -1,0 +1,1 @@
+{"methodName":"org.mozilla.javascript.Node transformWhileLoop(org.mozilla.javascript.ast.WhileLoop)","line":1,"t":"ReceiverNonNull","matcher":"void addToken(int)","className":"org.mozilla.javascript.IRFactory"}

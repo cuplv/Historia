@@ -1,0 +1,1 @@
+{"methodName":"java.lang.Void doInBackground(java.lang.Void[])","line":94,"t":"ReceiverNonNull","matcher":"void setVersion(int)","className":"net.osmand.plus.plugins.srtm.TerrainLayer$1"}

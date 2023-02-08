@@ -1,0 +1,1 @@
+{"methodName":"android.graphics.PointF getMovableCenterPoint(net.osmand.data.RotatedTileBox)","line":419,"t":"ReceiverNonNull","matcher":"double getLongitude()","className":"net.osmand.plus.views.layers.ContextMenuLayer"}

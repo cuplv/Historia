@@ -1,0 +1,1 @@
+{"methodName":"void release()","line":2,"t":"ReceiverNonNull","matcher":"boolean releaseInterface(android.hardware.usb.UsbInterface)","className":"org.sufficientlysecure.keychain.securitytoken.usb.UsbTransport"}

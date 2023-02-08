@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String getTtfFontName(java.lang.String)","line":12,"t":"ReceiverNonNull","matcher":"void seek(long)","className":"nl.mpcjanssen.simpletask.util.TTFAnalyzer"}

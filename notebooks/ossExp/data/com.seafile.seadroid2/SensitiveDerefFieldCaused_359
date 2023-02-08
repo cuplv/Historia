@@ -1,0 +1,1 @@
+{"methodName":"java.util.ArrayList getCurrentText()","line":181,"t":"ReceiverNonNull","matcher":"void <init>()","className":"com.vladsch.flexmark.internal.InlineParserImpl"}

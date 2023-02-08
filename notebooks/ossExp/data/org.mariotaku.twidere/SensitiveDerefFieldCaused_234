@@ -1,0 +1,1 @@
+{"methodName":"boolean saveFile(org.osmdroid.tileprovider.tilesource.ITileSource,org.osmdroid.tileprovider.MapTile,java.io.InputStream)","line":176,"t":"ReceiverNonNull","matcher":"long insert(java.lang.String,java.lang.String,android.content.ContentValues)","className":"org.osmdroid.tileprovider.modules.SqlTileWriter"}

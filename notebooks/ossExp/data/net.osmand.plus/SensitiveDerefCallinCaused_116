@@ -1,0 +1,1 @@
+{"methodName":"void onClick(android.view.View)","line":807,"t":"ReceiverNonNull","matcher":"android.app.Application getApplication()","className":"net.osmand.plus.download.DownloadActivity$GoToMapFragment$2"}

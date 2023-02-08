@@ -1,0 +1,1 @@
+{"methodName":"void callbackProgress(int,int)","line":756,"t":"ReceiverNonNull","matcher":"void onCryptoHelperProgress(int,int)","className":"com.fsck.k9.ui.crypto.MessageCryptoHelper"}

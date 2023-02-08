@@ -1,0 +1,1 @@
+{"methodName":"void onClick(android.content.DialogInterface,int)","line":44,"t":"ReceiverNonNull","matcher":"void startActivityForResult(android.content.Intent,int)","className":"com.seafile.seadroid2.ui.dialog.UploadChoiceDialog$1"}

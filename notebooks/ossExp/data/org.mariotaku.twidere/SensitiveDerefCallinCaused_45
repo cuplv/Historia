@@ -1,0 +1,1 @@
+{"methodName":"void updateConversationStatus()","line":507,"t":"ReceiverNonNull","matcher":"boolean isFinishing()","className":"org.mariotaku.twidere.fragment.message.MessagesConversationFragment"}

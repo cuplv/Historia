@@ -1,0 +1,1 @@
+{"methodName":"void onPerformSync(android.accounts.Account,android.os.Bundle,java.lang.String,android.content.ContentProviderClient,android.content.SyncResult)","line":359,"t":"ReceiverNonNull","matcher":"void cancelUploadTasksByIds(java.util.List)","className":"com.seafile.seadroid2.cameraupload.CameraSyncAdapter"}

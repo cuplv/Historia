@@ -1,0 +1,1 @@
+{"methodName":"void ensureToken()","line":8,"t":"ReceiverNonNull","matcher":"java.lang.String replaceAll(java.lang.String,java.lang.String)","className":"org.transdroid.daemon.adapters.uTorrent.UTorrentAdapter"}

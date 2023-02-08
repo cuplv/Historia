@@ -1,0 +1,1 @@
+{"methodName":"void showRouteInfoMenu(int)","line":217,"t":"ReceiverNonNull","matcher":"void setShowMenu(int)","className":"net.osmand.plus.views.layers.MapControlsLayer"}

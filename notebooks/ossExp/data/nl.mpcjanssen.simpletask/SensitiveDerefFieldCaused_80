@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String lookupCustomMonthFor(java.lang.Integer)","line":-1,"t":"ReceiverNonNull","matcher":"Months","className":"hirondelle.date4j.DateTimeFormatter"}

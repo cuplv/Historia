@@ -1,0 +1,1 @@
+{"methodName":"void onTextChanged(java.lang.CharSequence,int,int,int)","line":11,"t":"ReceiverNonNull","matcher":"boolean postDelayed(java.lang.Runnable,long)","className":"de.blau.android.propertyeditor.b$a"}

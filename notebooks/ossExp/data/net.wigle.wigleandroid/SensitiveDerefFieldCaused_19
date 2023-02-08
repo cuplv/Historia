@@ -1,0 +1,1 @@
+{"methodName":"void uploadFile(net.wigle.wigleandroid.db.DatabaseHelper)","line":847,"t":"ReceiverNonNull","matcher":"void startDownload(androidx.fragment.app.Fragment)","className":"net.wigle.wigleandroid.ListFragment"}

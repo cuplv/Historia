@@ -1,0 +1,1 @@
+{"methodName":"void stopReading()","line":238,"t":"ReceiverNonNull","matcher":"boolean cancel(boolean)","className":"net.osmand.plus.track.helpers.GpxDbHelper"}

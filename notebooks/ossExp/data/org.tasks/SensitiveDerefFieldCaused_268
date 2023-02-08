@@ -1,0 +1,1 @@
+{"methodName":"void enableFollowLocation()","line":392,"t":"ReceiverNonNull","matcher":"android.location.Location getLastKnownLocation()","className":"org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay"}

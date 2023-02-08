@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String getTagValue(java.lang.String)","line":405,"t":"ReceiverNonNull","matcher":"gnu.trove.iterator.TIntObjectIterator iterator()","className":"net.osmand.binary.BinaryMapDataObject"}

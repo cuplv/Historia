@@ -1,0 +1,1 @@
+{"methodName":"void cancelThreadDecoding(java.lang.Thread,android.content.ContentResolver)","line":101,"t":"ReceiverNonNull","matcher":"void requestCancelDecode()","className":"com.seafile.seadroid2.gallery.BitmapManager"}

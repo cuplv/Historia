@@ -1,0 +1,1 @@
+{"methodName":"void requiresAuthentication(com.duckduckgo.app.browser.model.BasicAuthenticationRequest)","line":2542,"t":"ReceiverNonNull","matcher":"android.net.Uri getUri()","className":"com.duckduckgo.app.browser.BrowserTabViewModel"}

@@ -1,0 +1,1 @@
+{"methodName":"void updateFoldedState(boolean,boolean)","line":234,"t":"ReceiverNonNull","matcher":"void setVisibility(int)","className":"com.fsck.k9.view.FoldableLinearLayout"}

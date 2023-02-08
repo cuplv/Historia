@@ -1,0 +1,1 @@
+{"methodName":"void drawXAxisPointsOpenGl(net.osmand.plus.mapcontextmenu.other.TrackChartPoints,net.osmand.core.android.MapRendererView,net.osmand.data.RotatedTileBox)","line":273,"t":"ReceiverNonNull","matcher":"void <init>(int,java.util.List,android.graphics.Bitmap)","className":"net.osmand.plus.views.layers.RouteLayer"}

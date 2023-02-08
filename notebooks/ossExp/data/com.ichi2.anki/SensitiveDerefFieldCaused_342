@@ -1,0 +1,1 @@
+{"methodName":"com.ichi2.libanki.Card getNewLinkedCard(com.ichi2.libanki.Card,com.ichi2.libanki.Note,com.ichi2.utils.JSONObject,int,long,boolean)","line":5,"t":"ReceiverNonNull","matcher":"long queryLongScalar(java.lang.String,java.lang.Object[])","className":"com.ichi2.libanki.Collection"}

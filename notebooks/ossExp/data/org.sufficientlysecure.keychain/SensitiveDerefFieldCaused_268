@@ -1,0 +1,1 @@
+{"methodName":"void onRestoreInstanceState(android.os.Parcelable)","line":12,"t":"ReceiverNonNull","matcher":"int intValue()","className":"com.beloo.widget.chipslayoutmanager.ChipsLayoutManager"}

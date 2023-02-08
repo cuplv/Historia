@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String getTagByIndex(int)","line":3,"t":"ReceiverNonNull","matcher":"java.lang.Object get(int)","className":"com.ichi2.anki.dialogs.tags.TagsArrayAdapter"}

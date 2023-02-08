@@ -1,0 +1,1 @@
+{"methodName":"boolean act()","line":48,"t":"ReceiverNonNull","matcher":"void updateFieldOfView(com.shatteredpixel.shatteredpixeldungeon.actors.Char,boolean[])","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Ghoul$GhoulLifeLink"}

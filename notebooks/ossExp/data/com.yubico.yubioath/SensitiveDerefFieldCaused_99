@@ -1,0 +1,1 @@
+{"methodName":"void onGetSentenceSuggestions(android.view.textservice.SentenceSuggestionsInfo[])","line":-1,"t":"ReceiverNonNull","matcher":"void a(java.lang.Object)","className":"io.flutter.plugin.editing.d"}

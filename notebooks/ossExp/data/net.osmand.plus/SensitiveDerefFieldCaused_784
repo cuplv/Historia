@@ -1,0 +1,1 @@
+{"methodName":"void showDownloadWikiMapsScreen()","line":418,"t":"ReceiverNonNull","matcher":"void startActivity(android.content.Intent)","className":"net.osmand.plus.wikipedia.WikipediaPlugin"}

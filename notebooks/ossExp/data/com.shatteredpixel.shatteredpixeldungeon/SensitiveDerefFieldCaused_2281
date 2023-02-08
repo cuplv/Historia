@@ -1,0 +1,1 @@
+{"methodName":"void spawnWandmaker(com.shatteredpixel.shatteredpixeldungeon.levels.Level,com.shatteredpixel.shatteredpixeldungeon.levels.rooms.Room)","line":142,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.items.Item upgrade()","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.Wandmaker$Quest"}

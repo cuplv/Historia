@@ -1,0 +1,1 @@
+{"methodName":"int directionFromAction(com.watabou.input.GameAction)","line":23,"t":"ReceiverNonNull","matcher":"int width()","className":"com.shatteredpixel.shatteredpixeldungeon.scenes.CellSelector"}

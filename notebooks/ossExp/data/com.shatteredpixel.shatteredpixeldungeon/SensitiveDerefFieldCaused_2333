@@ -1,0 +1,1 @@
+{"methodName":"int damageRoll()","line":17,"t":"ReceiverNonNull","matcher":"boolean hasTalent(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.Ratmogrify$TransmogRat"}

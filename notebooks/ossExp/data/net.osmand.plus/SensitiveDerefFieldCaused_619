@@ -1,0 +1,1 @@
+{"methodName":"gnu.trove.list.TLinkable next()","line":703,"t":"ReceiverNonNull","matcher":"gnu.trove.list.TLinkable getNext()","className":"gnu.trove.list.linked.TLinkedList$IteratorImpl"}

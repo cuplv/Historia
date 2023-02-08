@@ -1,0 +1,1 @@
+{"methodName":"void preloadBuildings(net.osmand.data.Street,net.osmand.binary.BinaryMapIndexReader$SearchRequest)","line":684,"t":"ReceiverNonNull","matcher":"int readRawVarint32()","className":"net.osmand.binary.BinaryMapIndexReader"}

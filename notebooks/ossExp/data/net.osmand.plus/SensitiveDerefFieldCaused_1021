@@ -1,0 +1,1 @@
+{"methodName":"void cancelLocationSearchTimer()","line":575,"t":"ReceiverNonNull","matcher":"void cancel()","className":"net.osmand.plus.firstusage.FirstUsageWizardFragment"}

@@ -1,0 +1,1 @@
+{"methodName":"com.transitionseverywhere.TransitionValues getMatchedTransitionValues(android.view.View,boolean)","line":1631,"t":"ReceiverNonNull","matcher":"com.transitionseverywhere.TransitionValues getMatchedTransitionValues(android.view.View,boolean)","className":"com.transitionseverywhere.Transition"}

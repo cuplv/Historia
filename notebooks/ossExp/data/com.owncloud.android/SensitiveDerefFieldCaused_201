@@ -1,0 +1,1 @@
+{"methodName":"boolean isPlaying(com.owncloud.android.domain.files.model.OCFile)","line":58,"t":"ReceiverNonNull","matcher":"com.owncloud.android.domain.files.model.OCFile getCurrentFile()","className":"com.owncloud.android.media.MediaServiceBinder"}

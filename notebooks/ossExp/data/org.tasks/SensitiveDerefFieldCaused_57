@@ -1,0 +1,1 @@
+{"methodName":"net.fortuna.ical4j.model.Date getLatestOnset(net.fortuna.ical4j.model.Date)","line":231,"t":"ReceiverNonNull","matcher":"long getTime()","className":"net.fortuna.ical4j.model.component.Observance"}

@@ -1,0 +1,1 @@
+{"methodName":"long getLong(int)","line":110,"t":"ReceiverNonNull","matcher":"long getLong(int,int)","className":"net.sqlcipher.AbstractWindowedCursor"}

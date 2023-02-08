@@ -1,0 +1,1 @@
+{"methodName":"int getSimpleLayer()","line":166,"t":"ReceiverNonNull","matcher":"negativeLayers","className":"net.osmand.binary.BinaryMapDataObject"}

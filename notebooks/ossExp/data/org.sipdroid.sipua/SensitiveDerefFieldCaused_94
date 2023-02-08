@@ -1,0 +1,1 @@
+{"methodName":"int indexOfFirstSemi()","line":80,"t":"ReceiverNonNull","matcher":"int length()","className":"org.zoolu.sip.header.NameAddressHeader"}

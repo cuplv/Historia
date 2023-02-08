@@ -1,0 +1,1 @@
+{"methodName":"boolean isNewVersion()","line":318,"t":"ReceiverNonNull","matcher":"android.content.SharedPreferences getSharedPreferences(java.lang.String,int)","className":"com.gpl.rpg.AndorsTrail.activity.fragment.StartScreenActivity_MainMenu"}

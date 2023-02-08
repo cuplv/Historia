@@ -1,0 +1,1 @@
+{"methodName":"android.content.res.Resources getAppResources()","line":1,"t":"ReceiverNonNull","matcher":"android.content.res.Resources getResources()","className":"com.ichi2.anki.AnkiDroidApp"}

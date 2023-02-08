@@ -1,0 +1,1 @@
+{"methodName":"void loadWeekState()","line":125,"t":"ReceiverNonNull","matcher":"android.view.View getChildAt(int)","className":"org.zephyrsoft.trackworktime.weektimes.WeekTimesView"}

@@ -1,0 +1,1 @@
+{"methodName":"void <init>(java.util.List)","line":45,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"ch.poole.openinghoursparser.OpeningHoursParseException"}

@@ -1,0 +1,1 @@
+{"methodName":"void onCreateContextMenu(android.view.ContextMenu,android.view.View,android.view.ContextMenu$ContextMenuInfo)","line":183,"t":"ReceiverNonNull","matcher":"java.lang.String getTitle()","className":"de.danoeh.antennapod.adapter.SubscriptionsRecyclerAdapter"}

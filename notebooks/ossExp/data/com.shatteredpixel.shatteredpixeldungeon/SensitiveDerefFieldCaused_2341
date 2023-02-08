@@ -1,0 +1,1 @@
+{"methodName":"boolean surprisedBy(com.shatteredpixel.shatteredpixeldungeon.actors.Char,boolean)","line":43,"t":"ReceiverNonNull","matcher":"void updateFieldOfView(com.shatteredpixel.shatteredpixeldungeon.actors.Char,boolean[])","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Piranha"}

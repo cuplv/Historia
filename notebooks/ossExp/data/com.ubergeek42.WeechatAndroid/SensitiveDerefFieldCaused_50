@@ -1,0 +1,1 @@
+{"methodName":"void printTo(java.lang.StringBuilder,long,org.joda.time.Chronology)","line":45,"t":"ReceiverNonNull","matcher":"int getOffset(long)","className":"org.joda.time.format.DateTimeFormatter"}

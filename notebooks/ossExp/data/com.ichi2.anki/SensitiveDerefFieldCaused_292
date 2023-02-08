@@ -1,0 +1,1 @@
+{"methodName":"void flush(long)","line":12,"t":"ReceiverNonNull","matcher":"int update(java.lang.String,android.content.ContentValues)","className":"com.ichi2.libanki.Collection"}

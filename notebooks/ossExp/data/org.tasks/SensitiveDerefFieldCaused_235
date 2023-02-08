@@ -1,0 +1,1 @@
+{"methodName":"boolean onStateChange(int[])","line":165,"t":"ReceiverNonNull","matcher":"boolean setState(int[])","className":"coil.drawable.CrossfadeDrawable"}

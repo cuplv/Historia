@@ -1,0 +1,1 @@
+{"methodName":"android.graphics.Rect getCropRect()","line":649,"t":"ReceiverNonNull","matcher":"int getWidth()","className":"com.theartofdev.edmodo.cropper.CropImageView"}

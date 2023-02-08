@@ -1,0 +1,1 @@
+{"methodName":"void endExpression(int)","line":225,"t":"ReceiverNonNull","matcher":"java.lang.String toString()","className":"com.damnhandy.uri.template.impl.UriTemplateParser"}

@@ -1,0 +1,1 @@
+{"methodName":"void processPostFinished(com.ichi2.anki.multimediacard.activity.LoadPronounciationActivity$BackgroundPost,java.lang.String)","line":13,"t":"ReceiverNonNull","matcher":"android.os.AsyncTask execute(java.lang.Object[])","className":"com.ichi2.anki.multimediacard.activity.LoadPronounciationActivity"}

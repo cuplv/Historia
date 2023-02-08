@@ -1,0 +1,1 @@
+{"methodName":"void checkEnemies()","line":21,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob visibleEnemy(int)","className":"com.shatteredpixel.shatteredpixeldungeon.ui.AttackIndicator"}

@@ -1,0 +1,1 @@
+{"methodName":"void openOutput()","line":71,"t":"ReceiverNonNull","matcher":"java.io.InputStream getErrorStream()","className":"de.srlabs.snoopsnitch.qdmon.EncryptedFileWriter"}

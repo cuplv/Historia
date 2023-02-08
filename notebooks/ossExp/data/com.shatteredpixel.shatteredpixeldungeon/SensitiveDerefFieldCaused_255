@@ -1,0 +1,1 @@
+{"methodName":"void dropRocks(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","line":226,"t":"ReceiverNonNull","matcher":"boolean insideMap(int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.DM300"}

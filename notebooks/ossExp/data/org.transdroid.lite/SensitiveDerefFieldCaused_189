@@ -1,0 +1,1 @@
+{"methodName":"void onItemClick(android.widget.AdapterView,android.view.View,int,long)","line":6,"t":"ReceiverNonNull","matcher":"items","className":"org.transdroid.core.gui.rss.RssFeedsFragment_$1"}

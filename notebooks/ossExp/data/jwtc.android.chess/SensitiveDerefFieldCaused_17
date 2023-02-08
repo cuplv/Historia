@@ -1,0 +1,1 @@
+{"methodName":"void OnMove(int)","line":130,"t":"ReceiverNonNull","matcher":"int play(int,float,float,int,int,float)","className":"jwtc.android.chess.activities.ChessBoardActivity"}

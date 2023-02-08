@@ -1,0 +1,1 @@
+{"methodName":"void onClick(android.view.View)","line":140,"t":"ReceiverNonNull","matcher":"androidx.fragment.app.FragmentManager getSupportFragmentManager()","className":"net.osmand.plus.measurementtool.SaveAsNewTrackBottomSheetDialogFragment$2"}

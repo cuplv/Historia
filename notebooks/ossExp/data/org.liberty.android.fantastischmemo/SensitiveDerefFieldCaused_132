@@ -1,0 +1,1 @@
+{"methodName":"java.lang.Void doInBackground(java.lang.Void[])","line":18,"t":"ReceiverNonNull","matcher":"org.liberty.android.fantastischmemo.entity.Category getCategory()","className":"org.liberty.android.fantastischmemo.ui.CardEditor$InitTask"}

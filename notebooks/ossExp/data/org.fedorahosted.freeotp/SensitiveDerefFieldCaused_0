@@ -1,0 +1,1 @@
+{"methodName":"boolean getLock()","line":335,"t":"ReceiverNonNull","matcher":"boolean booleanValue()","className":"org.fedorahosted.freeotp.Token"}

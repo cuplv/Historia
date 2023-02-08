@@ -1,0 +1,1 @@
+{"methodName":"boolean processTouchEvent(android.view.MotionEvent)","line":182,"t":"ReceiverNonNull","matcher":"void recycle()","className":"com.github.chrisbanes.photoview.CustomGestureDetector"}

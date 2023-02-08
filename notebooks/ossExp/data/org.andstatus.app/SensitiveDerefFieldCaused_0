@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String getFilePath()","line":46,"t":"ReceiverNonNull","matcher":"java.lang.String getAbsolutePath()","className":"org.andstatus.app.data.DownloadFile"}

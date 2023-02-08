@@ -1,0 +1,1 @@
+{"methodName":"boolean hasRevocation()","line":4,"t":"ReceiverNonNull","matcher":"int size()","className":"org.bouncycastle.openpgp.PGPPublicKey"}

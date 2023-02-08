@@ -1,0 +1,1 @@
+{"methodName":"void encode(org.bouncycastle.bcpg.BCPGOutputStream)","line":4,"t":"ReceiverNonNull","matcher":"byte[] toByteArray()","className":"org.bouncycastle.bcpg.MPInteger"}

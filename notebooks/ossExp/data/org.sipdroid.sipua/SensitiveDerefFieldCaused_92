@@ -1,0 +1,1 @@
+{"methodName":"void ackWithAnswer(java.lang.String)","line":167,"t":"ReceiverNonNull","matcher":"void ackWithAnswer(java.lang.String,java.lang.String)","className":"org.zoolu.sip.call.Call"}

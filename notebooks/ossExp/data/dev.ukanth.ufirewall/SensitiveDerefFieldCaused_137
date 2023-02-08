@@ -1,0 +1,1 @@
+{"methodName":"void closeImmediately(boolean)","line":2182,"t":"ReceiverNonNull","matcher":"int waitFor()","className":"eu.chainfire.libsuperuser.Shell$Interactive"}

@@ -1,0 +1,1 @@
+{"methodName":"void onCreate(android.os.Bundle)","line":45,"t":"ReceiverNonNull","matcher":"android.content.res.Resources$Theme getTheme()","className":"com.takisoft.preferencex.PreferenceFragmentCompat"}

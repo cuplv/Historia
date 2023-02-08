@@ -1,0 +1,1 @@
+{"methodName":"i6.b x(android.content.Context,de.blau.android.osm.a,de.blau.android.osm.BoundingBox,c7.n,i6.t0,boolean,boolean)","line":6,"t":"ReceiverNonNull","matcher":"de.blau.android.osm.BoundingBox a()","className":"de.blau.android.Logic"}

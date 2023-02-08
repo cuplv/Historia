@@ -1,0 +1,1 @@
+{"methodName":"boolean startLocationProvider(org.osmdroid.views.overlay.mylocation.IMyLocationConsumer)","line":110,"t":"ReceiverNonNull","matcher":"java.util.List getProviders(boolean)","className":"org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider"}

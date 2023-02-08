@@ -1,0 +1,1 @@
+{"methodName":"void validate(net.openid.appauth.TokenRequest,net.openid.appauth.Clock,boolean)","line":220,"t":"ReceiverNonNull","matcher":"java.lang.String getIssuer()","className":"net.openid.appauth.IdToken"}

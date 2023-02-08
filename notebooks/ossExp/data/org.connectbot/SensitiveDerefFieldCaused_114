@@ -1,0 +1,1 @@
+{"methodName":"void setupTabLayoutWithViewPager()","line":781,"t":"ReceiverNonNull","matcher":"void setTabsFromPagerAdapter(androidx.viewpager.widget.PagerAdapter)","className":"org.connectbot.ConsoleActivity"}

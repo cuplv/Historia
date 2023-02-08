@@ -1,0 +1,1 @@
+{"methodName":"void onViewCreated$lambda-0(com.owncloud.android.presentation.ui.migration.MigrationCompletedFragment,android.view.View)","line":34,"t":"ReceiverNonNull","matcher":"void finish()","className":"com.owncloud.android.presentation.ui.migration.MigrationCompletedFragment"}

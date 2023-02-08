@@ -1,0 +1,1 @@
+{"methodName":"void clear()","line":2,"t":"ReceiverNonNull","matcher":"void setVisibility(int)","className":"org.transdroid.core.gui.DetailsFragment"}

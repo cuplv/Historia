@@ -1,0 +1,1 @@
+{"methodName":"org.json.JSONObject loadCache()","line":57,"t":"ReceiverNonNull","matcher":"java.lang.String getString(java.lang.String,java.lang.String)","className":"nitezh.ministock.utils.StorageCache"}

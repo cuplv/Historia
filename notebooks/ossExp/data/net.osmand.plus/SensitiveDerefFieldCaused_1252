@@ -1,0 +1,1 @@
+{"methodName":"void updateColorShadowsOfText()","line":257,"t":"ReceiverNonNull","matcher":"void updateColors(net.osmand.plus.views.layers.MapInfoLayer$TextState)","className":"net.osmand.plus.views.layers.MapInfoLayer"}

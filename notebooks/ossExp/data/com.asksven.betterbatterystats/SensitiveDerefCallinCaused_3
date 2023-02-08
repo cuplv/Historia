@@ -1,0 +1,1 @@
+{"methodName":"android.view.View onCreateView(android.view.LayoutInflater,android.view.ViewGroup,android.os.Bundle)","line":86,"t":"ReceiverNonNull","matcher":"android.content.Intent getIntent()","className":"com.asksven.betterbatterystats.PackageFragmentActivity$PackageFragment"}

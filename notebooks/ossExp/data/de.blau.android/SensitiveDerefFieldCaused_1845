@@ -1,0 +1,1 @@
+{"methodName":"boolean r(androidx.coordinatorlayout.widget.CoordinatorLayout,android.view.View,android.view.MotionEvent)","line":13,"t":"ReceiverNonNull","matcher":"float getYVelocity(int)","className":"p4.c"}

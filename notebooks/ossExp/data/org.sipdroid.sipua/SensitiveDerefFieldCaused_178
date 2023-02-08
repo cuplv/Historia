@@ -1,0 +1,1 @@
+{"methodName":"void <init>(org.zoolu.sip.provider.SipProvider,org.zoolu.sip.message.Message,org.zoolu.sip.transaction.TransactionClientListener,int)","line":73,"t":"ReceiverNonNull","matcher":"org.zoolu.sip.provider.TransactionIdentifier getTransactionId()","className":"org.zoolu.sip.transaction.TransactionClient"}

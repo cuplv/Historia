@@ -1,0 +1,1 @@
+{"methodName":"android.view.View onCreateView(android.view.LayoutInflater,android.view.ViewGroup,android.os.Bundle)","line":42,"t":"ReceiverNonNull","matcher":"android.content.SharedPreferences getSharedPreferences(java.lang.String,int)","className":"de.danoeh.antennapod.fragment.InboxFragment"}

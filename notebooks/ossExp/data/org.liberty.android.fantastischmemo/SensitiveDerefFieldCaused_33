@@ -1,0 +1,1 @@
+{"methodName":"void onPostInit()","line":5,"t":"ReceiverNonNull","matcher":"org.liberty.android.fantastischmemo.entity.Card dequeuePosition(int)","className":"org.liberty.android.fantastischmemo.ui.StudyActivity"}

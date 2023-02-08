@@ -1,0 +1,1 @@
+{"methodName":"void onDlgSubscriptionFailure(org.zoolu.sip.dialog.SubscriberDialog,int,java.lang.String,org.zoolu.sip.message.Message)","line":382,"t":"ReceiverNonNull","matcher":"void subscribe(org.zoolu.sip.message.Message)","className":"org.sipdroid.sipua.RegisterAgent"}

@@ -1,0 +1,1 @@
+{"methodName":"boolean isPlaying()","line":260,"t":"ReceiverNonNull","matcher":"boolean getPlayWhenReady()","className":"tv.danmaku.ijk.media.exo2.IjkExo2MediaPlayer"}

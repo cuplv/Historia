@@ -1,0 +1,1 @@
+{"methodName":"java.lang.Object getValue(java.lang.Object,kotlin.reflect.KProperty)","line":45,"t":"ReceiverNonNull","matcher":"java.lang.Object invoke()","className":"nl.komponents.kovenant.properties.ThreadSafeLazyVar"}

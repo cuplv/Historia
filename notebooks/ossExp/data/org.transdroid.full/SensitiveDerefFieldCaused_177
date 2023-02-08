@@ -1,0 +1,1 @@
+{"methodName":"boolean onCreateActionMode(android.view.ActionMode,android.view.Menu)","line":3,"t":"ReceiverNonNull","matcher":"void setOnMenuItemClickListener(androidx.appcompat.widget.ActionMenuView$OnMenuItemClickListener)","className":"org.transdroid.core.gui.DetailsFragment$1"}

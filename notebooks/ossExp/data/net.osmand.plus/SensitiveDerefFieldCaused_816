@@ -1,0 +1,1 @@
+{"methodName":"boolean updateInfo(net.osmand.plus.views.layers.base.OsmandMapLayer$DrawSettings,boolean)","line":161,"t":"ReceiverNonNull","matcher":"void setText(java.lang.CharSequence)","className":"net.osmand.plus.views.mapwidgets.widgets.AlarmWidget"}

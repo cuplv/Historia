@@ -1,0 +1,1 @@
+{"methodName":"void propertyValue(java.lang.String)","line":151,"t":"ReceiverNonNull","matcher":"net.fortuna.ical4j.model.PropertyBuilder value(java.lang.String)","className":"net.fortuna.ical4j.data.DefaultContentHandler"}

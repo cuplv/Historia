@@ -1,0 +1,1 @@
+{"methodName":"void ascend()","line":33,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition getTransition(com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition$Type)","className":"com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene"}

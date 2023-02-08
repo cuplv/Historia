@@ -1,0 +1,1 @@
+{"methodName":"void open(java.lang.Object,org.osmdroid.util.GeoPoint,int,int)","line":125,"t":"ReceiverNonNull","matcher":"void addView(android.view.View,android.view.ViewGroup$LayoutParams)","className":"org.osmdroid.views.overlay.infowindow.InfoWindow"}

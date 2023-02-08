@@ -1,0 +1,1 @@
+{"methodName":"void startThreadOperation(int,java.lang.String,int)","line":88,"t":"ReceiverNonNull","matcher":"void setProgress(int)","className":"net.osmand.plus.activities.ContributionVersionActivity"}

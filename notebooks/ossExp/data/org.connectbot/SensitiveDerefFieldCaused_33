@@ -1,0 +1,1 @@
+{"methodName":"void handleHostChange()","line":691,"t":"ReceiverNonNull","matcher":"void onValidHostConfigured(org.connectbot.bean.HostBean)","className":"org.connectbot.HostEditorFragment"}

@@ -1,0 +1,1 @@
+{"methodName":"gnu.trove.list.array.TLongArrayList getNodeIds()","line":118,"t":"ReceiverNonNull","matcher":"void <init>(int)","className":"net.osmand.osm.edit.Way"}

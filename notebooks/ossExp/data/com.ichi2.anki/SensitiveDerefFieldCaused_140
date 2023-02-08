@@ -1,0 +1,1 @@
+{"methodName":"void updateSearchItemQA()","line":15,"t":"ReceiverNonNull","matcher":"void <init>(java.lang.Object,java.lang.Object)","className":"com.ichi2.anki.CardBrowser$CardCache"}

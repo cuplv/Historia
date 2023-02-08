@@ -1,0 +1,1 @@
+{"methodName":"boolean onPrepareOptionsMenu(android.view.Menu)","line":204,"t":"ReceiverNonNull","matcher":"boolean getProtectionEnabled()","className":"com.duckduckgo.mobile.android.vpn.ui.tracker_activity.AppTPCompanyTrackersActivity"}

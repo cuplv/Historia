@@ -1,0 +1,1 @@
+{"methodName":"void onLocationChanged(android.location.Location)","line":170,"t":"ReceiverNonNull","matcher":"void onLocationChanged(android.location.Location,org.osmdroid.views.overlay.mylocation.IMyLocationProvider)","className":"org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider"}

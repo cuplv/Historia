@@ -1,0 +1,1 @@
+{"methodName":"void onItemClick(android.widget.AdapterView,android.view.View,int,long)","line":80,"t":"ReceiverNonNull","matcher":"int getSelectedItemPosition()","className":"p1.a"}

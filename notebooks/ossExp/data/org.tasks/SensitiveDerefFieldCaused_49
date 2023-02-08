@@ -1,0 +1,1 @@
+{"methodName":"void parseUsingXmlPullParser(java.io.InputStream,boolean)","line":730,"t":"ReceiverNonNull","matcher":"com.caverock.androidsvg.SVG$Svg getRootElement()","className":"com.caverock.androidsvg.SVGParser"}

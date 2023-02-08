@@ -1,0 +1,1 @@
+{"methodName":"void stopGestureDetection()","line":516,"t":"ReceiverNonNull","matcher":"void doNotReactToLongPress()","className":"app.k9mail.ui.utils.itemtouchhelper.ItemTouchHelper"}

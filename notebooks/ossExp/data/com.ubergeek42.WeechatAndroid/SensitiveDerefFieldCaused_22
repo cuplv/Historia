@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String getAlgorithmName()","line":-1,"t":"ReceiverNonNull","matcher":"java.lang.String getAlgorithmName()","className":"org.bouncycastle.crypto.modes.CFBBlockCipher"}

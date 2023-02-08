@@ -1,0 +1,1 @@
+{"methodName":"void onDestroy()","line":3,"t":"ReceiverNonNull","matcher":"void setVisibility(int)","className":"com.ichi2.anki.multimediacard.fields.BasicImageFieldController"}

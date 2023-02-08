@@ -1,0 +1,1 @@
+{"methodName":"boolean canAttackWithExtraReach(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","line":11,"t":"ReceiverNonNull","matcher":"int distance(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.buffs.ChampionEnemy$Giant"}

@@ -1,0 +1,1 @@
+{"methodName":"void removeOnSceneLoadedListener(com.gpl.rpg.AndorsTrail.WorldSetup$OnSceneLoadedListener)","line":97,"t":"ReceiverNonNull","matcher":"java.lang.Object get()","className":"com.gpl.rpg.AndorsTrail.WorldSetup"}

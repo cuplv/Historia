@@ -1,0 +1,1 @@
+{"methodName":"int getCount()","line":2,"t":"ReceiverNonNull","matcher":"int size()","className":"org.transdroid.core.gui.search.SearchSitesAdapter_"}

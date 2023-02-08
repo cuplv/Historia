@@ -1,0 +1,1 @@
+{"methodName":"void endEnduring()","line":70,"t":"ReceiverNonNull","matcher":"int distance(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.warrior.Endure$EndureTracker"}

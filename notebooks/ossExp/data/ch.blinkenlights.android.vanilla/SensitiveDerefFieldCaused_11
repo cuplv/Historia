@@ -1,0 +1,1 @@
+{"methodName":"void setLimiter(ch.blinkenlights.android.vanilla.Limiter)","line":283,"t":"ReceiverNonNull","matcher":"void stopWatching()","className":"ch.blinkenlights.android.vanilla.FileSystemAdapter"}

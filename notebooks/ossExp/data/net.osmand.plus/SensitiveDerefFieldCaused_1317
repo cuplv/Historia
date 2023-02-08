@@ -1,0 +1,1 @@
+{"methodName":"void setElements(java.util.List)","line":74,"t":"ReceiverNonNull","matcher":"void clear()","className":"org.mozilla.javascript.ast.ObjectLiteral"}

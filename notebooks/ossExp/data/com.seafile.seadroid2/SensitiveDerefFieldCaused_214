@@ -1,0 +1,1 @@
+{"methodName":"void addLine(com.vladsch.flexmark.parser.block.ParserState,com.vladsch.flexmark.util.sequence.BasedSequence)","line":141,"t":"ReceiverNonNull","matcher":"int getLineCount()","className":"com.vladsch.flexmark.internal.HtmlBlockParser"}

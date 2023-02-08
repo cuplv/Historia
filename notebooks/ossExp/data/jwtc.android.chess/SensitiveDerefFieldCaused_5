@@ -1,0 +1,1 @@
+{"methodName":"void sendString(java.lang.String)","line":621,"t":"ReceiverNonNull","matcher":"boolean sendString(java.lang.String)","className":"jwtc.android.chess.ics.ICSClient"}

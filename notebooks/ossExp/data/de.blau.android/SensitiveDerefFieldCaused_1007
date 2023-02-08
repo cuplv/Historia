@@ -1,0 +1,1 @@
+{"methodName":"boolean onCreateOptionsMenu(android.view.Menu)","line":136,"t":"ReceiverNonNull","matcher":"android.hardware.Sensor getDefaultSensor(int)","className":"de.blau.android.Main"}

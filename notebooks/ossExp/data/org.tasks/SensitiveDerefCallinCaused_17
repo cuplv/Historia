@@ -1,0 +1,1 @@
+{"methodName":"boolean refreshUi$lambda$11$lambda$10(org.tasks.preferences.fragments.TasksAccount,androidx.preference.Preference)","line":197,"t":"ReceiverNonNull","matcher":"void startActivityForResult(android.content.Intent,int)","className":"org.tasks.preferences.fragments.TasksAccount"}

@@ -1,0 +1,1 @@
+{"methodName":"void onPrepareOptionsMenu(android.view.Menu)","line":309,"t":"ReceiverNonNull","matcher":"com.owncloud.android.datamodel.FileDataStorageManager getStorageManager()","className":"com.owncloud.android.ui.preview.PreviewTextFragment"}

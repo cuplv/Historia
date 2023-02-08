@@ -1,0 +1,1 @@
+{"methodName":"void setupCryptoProvider()","line":75,"t":"ReceiverNonNull","matcher":"boolean isBound()","className":"org.openintents.openpgp.OpenPgpApiManager"}

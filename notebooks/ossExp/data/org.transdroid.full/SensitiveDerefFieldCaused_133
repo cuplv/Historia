@@ -1,0 +1,1 @@
+{"methodName":"boolean onActionItemClicked(android.view.ActionMode,android.view.MenuItem)","line":23,"t":"ReceiverNonNull","matcher":"username","className":"org.transdroid.core.gui.DetailsFragment$1"}

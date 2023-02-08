@@ -1,0 +1,1 @@
+{"methodName":"ch.poole.openinghoursparser.OpeningHoursParseException d()","line":2,"t":"ReceiverNonNull","matcher":"java.lang.Object get(int)","className":"ch.poole.openinghoursparser.OpeningHoursParseException"}

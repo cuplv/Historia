@@ -1,0 +1,1 @@
+{"methodName":"boolean isConnected()","line":127,"t":"ReceiverNonNull","matcher":"boolean isConnected()","className":"com.fsck.k9.mail.store.imap.RealImapConnection"}

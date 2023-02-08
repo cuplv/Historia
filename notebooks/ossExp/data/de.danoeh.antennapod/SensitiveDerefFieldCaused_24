@@ -1,0 +1,1 @@
+{"methodName":"void onSwiped(androidx.recyclerview.widget.RecyclerView$ViewHolder,int)","line":148,"t":"ReceiverNonNull","matcher":"void performAction(de.danoeh.antennapod.model.feed.FeedItem,androidx.fragment.app.Fragment,de.danoeh.antennapod.model.feed.FeedItemFilter)","className":"de.danoeh.antennapod.fragment.swipeactions.SwipeActions"}

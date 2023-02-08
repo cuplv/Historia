@@ -1,0 +1,1 @@
+{"methodName":"void onSaveInstanceState(android.os.Bundle)","line":561,"t":"ReceiverNonNull","matcher":"java.lang.String toIdentityString()","className":"com.fsck.k9.ui.messagelist.MessageListFragment"}

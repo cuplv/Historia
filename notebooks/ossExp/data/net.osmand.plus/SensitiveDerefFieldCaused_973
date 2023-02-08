@@ -1,0 +1,1 @@
+{"methodName":"void onActionsUpdated()","line":460,"t":"ReceiverNonNull","matcher":"void setActions(java.util.List)","className":"net.osmand.plus.views.layers.MapQuickActionLayer"}

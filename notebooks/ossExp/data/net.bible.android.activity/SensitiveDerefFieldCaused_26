@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String getAttributeValue(java.lang.String,org.jdom2.Namespace,java.lang.String)","line":1207,"t":"ReceiverNonNull","matcher":"org.jdom2.Attribute get(java.lang.String,org.jdom2.Namespace)","className":"org.jdom2.Element"}

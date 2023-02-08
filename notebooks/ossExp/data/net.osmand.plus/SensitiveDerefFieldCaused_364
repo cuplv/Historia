@@ -1,0 +1,1 @@
+{"methodName":"java.lang.Boolean enumNextInOrder(org.mozilla.javascript.ScriptRuntime$IdEnumeration)","line":2357,"t":"ReceiverNonNull","matcher":"org.mozilla.javascript.Scriptable getParentScope()","className":"org.mozilla.javascript.ScriptRuntime"}

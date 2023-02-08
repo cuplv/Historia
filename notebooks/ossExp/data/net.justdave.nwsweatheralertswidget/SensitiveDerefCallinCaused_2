@@ -1,0 +1,1 @@
+{"methodName":"void onSharedPreferenceChanged(android.content.SharedPreferences,java.lang.String)","line":96,"t":"ReceiverNonNull","matcher":"android.content.ComponentName startService(android.content.Intent)","className":"net.justdave.nwsweatheralertswidget.SettingsFragment"}

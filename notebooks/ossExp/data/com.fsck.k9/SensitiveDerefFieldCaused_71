@@ -1,0 +1,1 @@
+{"methodName":"void deliverResult()","line":628,"t":"ReceiverNonNull","matcher":"void onMessageBuildReturnPendingIntent(android.app.PendingIntent,int)","className":"com.fsck.k9.message.MessageBuilder"}

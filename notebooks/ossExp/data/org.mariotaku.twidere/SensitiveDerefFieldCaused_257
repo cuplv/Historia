@@ -1,0 +1,1 @@
+{"methodName":"void clearLoadingTile()","line":419,"t":"ReceiverNonNull","matcher":"android.graphics.Bitmap getBitmap()","className":"org.osmdroid.views.overlay.TilesOverlay"}

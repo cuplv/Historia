@@ -1,0 +1,1 @@
+{"methodName":"void onDraw(android.graphics.Canvas,net.osmand.data.RotatedTileBox,net.osmand.plus.views.layers.base.OsmandMapLayer$DrawSettings)","line":325,"t":"ReceiverNonNull","matcher":"boolean updateInfo(net.osmand.plus.views.layers.base.OsmandMapLayer$DrawSettings,boolean)","className":"net.osmand.plus.views.layers.MapInfoLayer"}

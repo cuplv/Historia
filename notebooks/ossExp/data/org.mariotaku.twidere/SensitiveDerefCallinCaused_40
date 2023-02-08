@@ -1,0 +1,1 @@
+{"methodName":"void onLoadFinished(androidx.loader.content.Loader,org.mariotaku.twidere.fragment.AccountsDashboardFragment$AccountsInfo)","line":267,"t":"ReceiverNonNull","matcher":"boolean isFinishing()","className":"org.mariotaku.twidere.fragment.AccountsDashboardFragment"}

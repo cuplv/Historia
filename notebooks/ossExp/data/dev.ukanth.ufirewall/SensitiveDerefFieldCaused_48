@@ -1,0 +1,1 @@
+{"methodName":"void processReadyKeys()","line":138,"t":"ReceiverNonNull","matcher":"java.util.Set selectedKeys()","className":"org.xbill.DNS.NioClient"}

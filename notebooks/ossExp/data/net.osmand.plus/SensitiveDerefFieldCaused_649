@@ -1,0 +1,1 @@
+{"methodName":"java.util.List getObjects()","line":210,"t":"ReceiverNonNull","matcher":"objects","className":"net.osmand.router.network.NetworkRouteGpxApproximator$GpxRoutePoint"}

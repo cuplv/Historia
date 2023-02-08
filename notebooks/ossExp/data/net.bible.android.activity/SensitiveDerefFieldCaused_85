@@ -1,0 +1,1 @@
+{"methodName":"void clearTtsQueue()","line":542,"t":"ReceiverNonNull","matcher":"int speak(java.lang.String,int,java.util.HashMap)","className":"net.bible.service.device.speak.TextToSpeechServiceManager"}

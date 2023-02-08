@@ -1,0 +1,1 @@
+{"methodName":"boolean animationFrame(long)","line":1122,"t":"ReceiverNonNull","matcher":"java.lang.Object get(int)","className":"com.nineoldandroids.animation.ValueAnimator"}

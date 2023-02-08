@@ -1,0 +1,1 @@
+{"methodName":"org.mozilla.javascript.ast.AstNode statementHelper()","line":1,"t":"ReceiverNonNull","matcher":"org.mozilla.javascript.ast.AstNode getStatement()","className":"org.mozilla.javascript.Parser"}

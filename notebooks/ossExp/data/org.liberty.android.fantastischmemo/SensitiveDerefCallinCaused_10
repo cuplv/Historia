@@ -1,0 +1,1 @@
+{"methodName":"android.view.View onCreateView(android.view.LayoutInflater,android.view.ViewGroup,android.os.Bundle)","line":5,"t":"ReceiverNonNull","matcher":"java.lang.Object getSystemService(java.lang.String)","className":"org.liberty.android.fantastischmemo.downloader.common.AbstractDownloaderFragment"}

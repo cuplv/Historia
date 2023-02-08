@@ -1,0 +1,1 @@
+{"methodName":"void setInitialDirectory()","line":126,"t":"ReceiverNonNull","matcher":"boolean isDirectory()","className":"org.navitproject.navit.FileBrowserActivity"}

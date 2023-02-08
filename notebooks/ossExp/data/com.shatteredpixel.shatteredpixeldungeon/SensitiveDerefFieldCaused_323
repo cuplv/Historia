@@ -1,0 +1,1 @@
+{"methodName":"void explode(int)","line":8,"t":"ReceiverNonNull","matcher":"int length()","className":"com.shatteredpixel.shatteredpixeldungeon.items.bombs.ShrapnelBomb"}

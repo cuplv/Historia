@@ -1,0 +1,1 @@
+{"methodName":"void checkForNews()","line":25,"t":"ReceiverNonNull","matcher":"long getTime()","className":"com.shatteredpixel.shatteredpixeldungeon.services.news.News"}

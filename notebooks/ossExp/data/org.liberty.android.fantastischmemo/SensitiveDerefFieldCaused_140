@@ -1,0 +1,1 @@
+{"methodName":"com.j256.ormlite.dao.Dao lookupDao(com.j256.ormlite.dao.DaoManager$ClassConnectionSource)","line":12,"t":"ReceiverNonNull","matcher":"java.lang.Object get(java.lang.Object)","className":"com.j256.ormlite.dao.DaoManager"}

@@ -1,0 +1,1 @@
+{"methodName":"void doOnResumeAndBound()","line":366,"t":"ReceiverNonNull","matcher":"void addOperationListener(com.owncloud.android.lib.common.operations.OnRemoteOperationListener,android.os.Handler)","className":"com.owncloud.android.ui.activity.FileActivity"}

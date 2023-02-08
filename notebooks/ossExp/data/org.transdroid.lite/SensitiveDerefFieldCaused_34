@@ -1,0 +1,1 @@
+{"methodName":"void updateServers(java.util.List)","line":5,"t":"ReceiverNonNull","matcher":"void <init>(android.content.Context,java.util.List)","className":"org.transdroid.core.gui.navigation.FilterListAdapter"}

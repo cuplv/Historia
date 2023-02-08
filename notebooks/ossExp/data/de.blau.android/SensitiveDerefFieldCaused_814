@@ -1,0 +1,1 @@
+{"methodName":"java.util.List G(org.xmlpull.v1.XmlPullParser,de.blau.android.tasks.Note)","line":35,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"de.blau.android.tasks.Note"}

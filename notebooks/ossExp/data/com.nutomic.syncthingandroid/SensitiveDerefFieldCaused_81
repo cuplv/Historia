@@ -1,0 +1,1 @@
+{"methodName":"void onBackPressed()","line":181,"t":"ReceiverNonNull","matcher":"boolean canGoBack()","className":"com.nutomic.syncthingandroid.activities.WebGuiActivity"}

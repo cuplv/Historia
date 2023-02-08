@@ -1,0 +1,1 @@
+{"methodName":"boolean onTouchEvent(android.view.MotionEvent)","line":966,"t":"ReceiverNonNull","matcher":"void computeCurrentVelocity(int,float)","className":"com.takisoft.datetimepicker.widget.NumberPicker"}

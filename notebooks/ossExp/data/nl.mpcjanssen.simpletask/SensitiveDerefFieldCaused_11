@@ -1,0 +1,1 @@
+{"methodName":"int cond()","line":-1,"t":"ReceiverNonNull","matcher":"void goiftrue(org.luaj.vm2.compiler.LexState$expdesc)","className":"org.luaj.vm2.compiler.LexState"}

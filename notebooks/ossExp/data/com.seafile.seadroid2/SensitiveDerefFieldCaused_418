@@ -1,0 +1,1 @@
+{"methodName":"void matchNames(android.support.v4.util.ArrayMap,android.support.v4.util.ArrayMap,android.support.v4.util.ArrayMap,android.support.v4.util.ArrayMap)","line":614,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"com.transitionseverywhere.Transition"}

@@ -1,0 +1,1 @@
+{"methodName":"boolean actPickUp(com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroAction$PickUp)","line":142,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition getTransition(int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero"}

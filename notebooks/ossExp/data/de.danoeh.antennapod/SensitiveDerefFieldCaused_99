@@ -1,0 +1,1 @@
+{"methodName":"void setupOptionsMenu(de.danoeh.antennapod.model.playback.Playable)","line":493,"t":"ReceiverNonNull","matcher":"boolean sleepTimerActive()","className":"de.danoeh.antennapod.fragment.AudioPlayerFragment"}

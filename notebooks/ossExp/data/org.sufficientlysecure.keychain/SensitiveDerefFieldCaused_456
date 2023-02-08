@@ -1,0 +1,1 @@
+{"methodName":"void startLoadingFile(android.net.Uri)","line":1,"t":"ReceiverNonNull","matcher":"void resetStatusLines()","className":"org.sufficientlysecure.keychain.ui.token.ManageSecurityTokenPresenter"}

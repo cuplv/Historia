@@ -1,0 +1,1 @@
+{"methodName":"void encryptData(java.lang.String)","line":174,"t":"ReceiverNonNull","matcher":"java.security.AlgorithmParameters getParameters()","className":"com.keepassdroid.biometric.BiometricHelper"}

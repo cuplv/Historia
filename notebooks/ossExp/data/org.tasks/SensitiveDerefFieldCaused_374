@@ -1,0 +1,1 @@
+{"methodName":"void setPoints(java.util.List)","line":379,"t":"ReceiverNonNull","matcher":"void setPoints(java.util.List)","className":"org.osmdroid.views.overlay.PolyOverlayWithIW"}

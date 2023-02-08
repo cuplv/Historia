@@ -1,0 +1,1 @@
+{"methodName":"void onFoldersListSelected()","line":368,"t":"ReceiverNonNull","matcher":"androidx.fragment.app.FragmentManager getSupportFragmentManager()","className":"net.osmand.plus.importfiles.ui.ImportTracksFragment"}

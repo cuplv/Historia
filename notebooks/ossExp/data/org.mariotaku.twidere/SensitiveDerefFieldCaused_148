@@ -1,0 +1,1 @@
+{"methodName":"void updateMultiSelectState()","line":208,"t":"ReceiverNonNull","matcher":"void finish()","className":"org.mariotaku.twidere.util.MultiSelectEventHandler"}

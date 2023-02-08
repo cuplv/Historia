@@ -1,0 +1,1 @@
+{"methodName":"void clockOutAction(int)","line":486,"t":"ReceiverNonNull","matcher":"void stopTracking(int,org.zephyrsoft.trackworktime.timer.TimerManager$EventOrigin)","className":"org.zephyrsoft.trackworktime.WorkTimeTrackerActivity"}

@@ -1,0 +1,1 @@
+{"methodName":"void onViewChanged(org.androidannotations.api.view.HasViews)","line":6,"t":"ReceiverNonNull","matcher":"void setOnItemClickListener(android.widget.AdapterView$OnItemClickListener)","className":"org.transdroid.core.gui.remoterss.RemoteRssFragment_"}

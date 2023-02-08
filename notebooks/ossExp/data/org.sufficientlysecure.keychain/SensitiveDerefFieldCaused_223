@@ -1,0 +1,1 @@
+{"methodName":"com.github.rjeschke.txtmark.Block readLines()","line":20,"t":"ReceiverNonNull","matcher":"char charAt(int)","className":"com.github.rjeschke.txtmark.Processor"}

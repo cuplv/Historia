@@ -1,0 +1,1 @@
+{"methodName":"boolean check(java.lang.String)","line":95,"t":"ReceiverNonNull","matcher":"java.lang.Object get(java.lang.Object)","className":"org.xbill.DNS.Options"}

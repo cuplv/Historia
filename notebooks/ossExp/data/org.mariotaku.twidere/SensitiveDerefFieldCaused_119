@@ -1,0 +1,1 @@
+{"methodName":"void onReset()","line":170,"t":"ReceiverNonNull","matcher":"void close()","className":"org.mariotaku.twidere.loader.ObjectCursorLoader"}

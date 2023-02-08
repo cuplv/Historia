@@ -1,0 +1,1 @@
+{"methodName":"void onThrow(int)","line":69,"t":"ReceiverNonNull","matcher":"int pointsInTalent(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent)","className":"com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.MissileWeapon"}

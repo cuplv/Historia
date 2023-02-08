@@ -1,0 +1,1 @@
+{"methodName":"void onViewChanged(org.androidannotations.api.view.HasViews)","line":34,"t":"ReceiverNonNull","matcher":"void setText(java.lang.CharSequence)","className":"org.transdroid.core.gui.TorrentsFragment_"}

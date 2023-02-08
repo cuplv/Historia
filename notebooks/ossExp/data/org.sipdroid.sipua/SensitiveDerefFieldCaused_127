@@ -1,0 +1,1 @@
+{"methodName":"void onConnectionTerminated(org.zoolu.net.TcpConnection,java.lang.Exception)","line":160,"t":"ReceiverNonNull","matcher":"void onTransportTerminated(org.zoolu.sip.provider.Transport,java.lang.Exception)","className":"org.zoolu.sip.provider.TcpTransport"}

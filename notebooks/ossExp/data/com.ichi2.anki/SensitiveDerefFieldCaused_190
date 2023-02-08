@@ -1,0 +1,1 @@
+{"methodName":"java.lang.Throwable doInBackground(java.lang.Void[])","line":4,"t":"ReceiverNonNull","matcher":"boolean isRecycled()","className":"com.yalantis.ucrop.task.BitmapCropTask"}

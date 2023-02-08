@@ -1,0 +1,1 @@
+{"methodName":"void moveTo(float,float)","line":2876,"t":"ReceiverNonNull","matcher":"void add(com.caverock.androidsvg.SVGAndroidRenderer$MarkerVector)","className":"com.caverock.androidsvg.SVGAndroidRenderer$MarkerPositionCalculator"}

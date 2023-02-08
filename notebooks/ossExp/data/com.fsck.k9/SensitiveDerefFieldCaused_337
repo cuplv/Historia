@@ -1,0 +1,1 @@
+{"methodName":"java.util.List authCramMD5()","line":428,"t":"ReceiverNonNull","matcher":"void write(byte[])","className":"com.fsck.k9.mail.store.imap.RealImapConnection"}

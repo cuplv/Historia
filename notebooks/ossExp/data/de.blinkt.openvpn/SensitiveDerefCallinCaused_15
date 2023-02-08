@@ -1,0 +1,1 @@
+{"methodName":"void onCreate(android.os.Bundle)","line":50,"t":"ReceiverNonNull","matcher":"void setTitle(java.lang.CharSequence)","className":"de.blinkt.openvpn.fragments.Settings_Allowed_Apps"}

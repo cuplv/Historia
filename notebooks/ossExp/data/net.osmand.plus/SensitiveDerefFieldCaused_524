@@ -1,0 +1,1 @@
+{"methodName":"void drawMapPolygons(int)","line":704,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"net.osmand.plus.views.layers.DownloadedRegionsLayer"}

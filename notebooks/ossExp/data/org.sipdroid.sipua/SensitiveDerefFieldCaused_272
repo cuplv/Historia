@@ -1,0 +1,1 @@
+{"methodName":"void init(java.lang.String,int,java.lang.String[],java.lang.String)","line":306,"t":"ReceiverNonNull","matcher":"boolean equalsIgnoreCase(java.lang.String)","className":"org.zoolu.sip.provider.SipProvider"}

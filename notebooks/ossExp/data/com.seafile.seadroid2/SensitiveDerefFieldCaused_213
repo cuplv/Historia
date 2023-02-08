@@ -1,0 +1,1 @@
+{"methodName":"void processRequest(com.danikula.videocache.GetRequest,java.net.Socket)","line":42,"t":"ReceiverNonNull","matcher":"void processRequest(com.danikula.videocache.GetRequest,java.net.Socket)","className":"com.danikula.videocache.HttpProxyCacheServerClients"}

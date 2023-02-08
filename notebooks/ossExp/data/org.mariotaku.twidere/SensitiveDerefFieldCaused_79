@@ -1,0 +1,1 @@
+{"methodName":"void unregisterReceiver(android.content.BroadcastReceiver)","line":26,"t":"ReceiverNonNull","matcher":"void unregisterReceiver(android.content.BroadcastReceiver)","className":"org.osmdroid.tileprovider.util.SimpleRegisterReceiver"}

@@ -1,0 +1,1 @@
+{"methodName":"void onCreate(android.os.Bundle)","line":119,"t":"ReceiverNonNull","matcher":"void setAdapter(android.widget.SpinnerAdapter)","className":"org.zephyrsoft.trackworktime.editevent.EventEditActivity"}

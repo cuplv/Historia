@@ -1,0 +1,1 @@
+{"methodName":"void abortPeek()","line":206,"t":"ReceiverNonNull","matcher":"void interrupt()","className":"jwtc.android.chess.engine.LocalEngine"}

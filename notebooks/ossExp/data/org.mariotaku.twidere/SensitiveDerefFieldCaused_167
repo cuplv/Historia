@@ -1,0 +1,1 @@
+{"methodName":"void createPaints()","line":1231,"t":"ReceiverNonNull","matcher":"void setDither(boolean)","className":"com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView"}

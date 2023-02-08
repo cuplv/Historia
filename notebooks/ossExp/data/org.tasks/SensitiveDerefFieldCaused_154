@@ -1,0 +1,1 @@
+{"methodName":"void setColorFilter(android.graphics.ColorFilter)","line":148,"t":"ReceiverNonNull","matcher":"void setColorFilter(android.graphics.ColorFilter)","className":"coil.drawable.CrossfadeDrawable"}

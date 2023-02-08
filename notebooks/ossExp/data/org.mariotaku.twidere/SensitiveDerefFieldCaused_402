@@ -1,0 +1,1 @@
+{"methodName":"void openVideo()","line":343,"t":"ReceiverNonNull","matcher":"void setOnCompletionListener(android.media.MediaPlayer$OnCompletionListener)","className":"com.sprylab.android.widget.TextureVideoView"}

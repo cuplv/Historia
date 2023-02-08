@@ -1,0 +1,1 @@
+{"methodName":"void b(de.blau.android.osm.Issue)","line":3,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"de.blau.android.osm.Result"}

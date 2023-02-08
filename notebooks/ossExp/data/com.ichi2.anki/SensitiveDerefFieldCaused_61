@@ -1,0 +1,1 @@
+{"methodName":"android.util.Pair upload()","line":6,"t":"ReceiverNonNull","matcher":"void beforeUpload()","className":"com.ichi2.libanki.sync.FullSyncer"}

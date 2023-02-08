@@ -1,0 +1,1 @@
+{"methodName":"void onQueuedOperationSuccess(org.sufficientlysecure.keychain.operations.results.InputDataResult)","line":6,"t":"ReceiverNonNull","matcher":"int size()","className":"org.sufficientlysecure.keychain.ui.DecryptListFragment"}

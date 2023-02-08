@@ -1,0 +1,1 @@
+{"methodName":"void call()","line":32,"t":"ReceiverNonNull","matcher":"boolean hasTalent(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent)","className":"com.shatteredpixel.shatteredpixeldungeon.items.Item$2"}

@@ -1,0 +1,1 @@
+{"methodName":"java.lang.String extractTableName(com.j256.ormlite.db.DatabaseType,java.lang.Class)","line":5,"t":"ReceiverNonNull","matcher":"java.lang.String getEntityName(java.lang.Class)","className":"com.j256.ormlite.table.DatabaseTableConfig"}

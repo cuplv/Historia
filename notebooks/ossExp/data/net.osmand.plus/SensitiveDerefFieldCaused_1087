@@ -1,0 +1,1 @@
+{"methodName":"org.mozilla.javascript.Node transformParenExpr(org.mozilla.javascript.ast.ParenthesizedExpression)","line":998,"t":"ReceiverNonNull","matcher":"void addToken(int)","className":"org.mozilla.javascript.IRFactory"}

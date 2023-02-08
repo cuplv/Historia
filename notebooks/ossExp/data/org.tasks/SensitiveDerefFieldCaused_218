@@ -1,0 +1,1 @@
+{"methodName":"org.osmdroid.views.Projection getProjection()","line":372,"t":"ReceiverNonNull","matcher":"void <init>(org.osmdroid.views.MapView)","className":"org.osmdroid.views.MapView"}

@@ -1,0 +1,1 @@
+{"methodName":"void setCombatSelection(com.gpl.rpg.AndorsTrail.util.Coord)","line":146,"t":"ReceiverNonNull","matcher":"boolean isWalkable(com.gpl.rpg.AndorsTrail.util.Coord)","className":"com.gpl.rpg.AndorsTrail.controller.CombatController"}

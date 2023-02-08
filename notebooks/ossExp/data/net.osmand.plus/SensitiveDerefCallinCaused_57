@@ -1,0 +1,1 @@
+{"methodName":"void startFavoritesActivity(int)","line":158,"t":"ReceiverNonNull","matcher":"void startActivity(android.content.Intent)","className":"net.osmand.plus.dashboard.DashBaseFragment"}

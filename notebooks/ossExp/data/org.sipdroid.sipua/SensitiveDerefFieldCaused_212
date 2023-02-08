@@ -1,0 +1,1 @@
+{"methodName":"void processReceivedMessage(org.zoolu.sip.message.Message)","line":1039,"t":"ReceiverNonNull","matcher":"int size()","className":"org.zoolu.sip.provider.SipProvider"}

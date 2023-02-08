@@ -1,0 +1,1 @@
+{"methodName":"void playFile(java.io.File)","line":203,"t":"ReceiverNonNull","matcher":"void setOnCompletionListener(android.media.MediaPlayer$OnCompletionListener)","className":"net.osmand.plus.voice.JsMediaCommandPlayer"}

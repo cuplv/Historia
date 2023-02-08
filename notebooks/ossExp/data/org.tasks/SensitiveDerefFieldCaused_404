@@ -1,0 +1,1 @@
+{"methodName":"void checkXMLSpaceAttribute(com.caverock.androidsvg.SVG$SvgObject)","line":467,"t":"ReceiverNonNull","matcher":"boolean booleanValue()","className":"com.caverock.androidsvg.SVGAndroidRenderer"}
