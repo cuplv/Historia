@@ -4,11 +4,12 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, Signature}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, MustExecutor, TransferFunctions}
 import ujson.Value
 import upickle.default.{macroRW, read, write, ReadWriter => RW}
 
 import java.util.Objects
+import java.util.regex.PatternSyntaxException
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 import scala.util.matching.Regex
 
@@ -243,8 +244,17 @@ case class DirectInitialQuery(qry:Qry) extends InitialQuery{
 
 case class ReceiverNonNull(sig:Signature, line:Integer,
                            receiverMatcher:Option[String] = None) extends InitialQuery {
-  override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] =
-    Qry.makeReceiverNonNull(sym, sig, line,fieldOrMethod = receiverMatcher.map(_.r))
+  override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] = {
+    try {
+      Qry.makeReceiverNonNull(sym, sig, line, fieldOrMethod = receiverMatcher.map(_.r))
+    }catch{
+      case _:PatternSyntaxException => {
+        // receiver matcher wasn't a regex, attempt to automatically convert
+        val newRecMat:Option[String] = receiverMatcher.map(v => s".*${MustExecutor.parseJavaSignature(v)._2}.*")
+        Qry.makeReceiverNonNull(sym, sig, line, fieldOrMethod = newRecMat.map(_.r))
+      }
+    }
+  }
 
   override def fileName: String = s"ReceiverNonNull_${sig}_${line}_" +
     s"${receiverMatcher.map(BounderUtil.sanitizeString).getOrElse("")}"
