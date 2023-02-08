@@ -1,1 +1,0 @@
-{"methodName":"void commitOpenFolderTransaction()","line":598,"t":"ReceiverNonNull","matcher":"int commit()","className":"com.fsck.k9.activity.MessageList"}

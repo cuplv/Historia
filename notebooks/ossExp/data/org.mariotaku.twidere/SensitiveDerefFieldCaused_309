@@ -1,1 +1,0 @@
-{"methodName":"void writeToParcel(org.mariotaku.microblog.library.twitter.model.User,android.os.Parcel,int)","line":116,"t":"ReceiverNonNull","matcher":"boolean booleanValue()","className":"org.mariotaku.microblog.library.twitter.model.UserParcelablePlease"}

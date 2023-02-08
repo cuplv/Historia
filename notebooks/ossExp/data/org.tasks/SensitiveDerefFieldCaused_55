@@ -1,1 +1,0 @@
-{"methodName":"coil.disk.DiskLruCache$Snapshot get(java.lang.String)","line":371,"t":"ReceiverNonNull","matcher":"okio.BufferedSink writeUtf8(java.lang.String)","className":"coil.disk.DiskLruCache"}

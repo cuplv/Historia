@@ -1,1 +1,0 @@
-{"methodName":"void setUpdateIntervalText()","line":84,"t":"ReceiverNonNull","matcher":"android.content.Context getApplicationContext()","className":"de.danoeh.antennapod.fragment.preferences.NetworkPreferencesFragment"}

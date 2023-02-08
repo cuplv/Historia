@@ -1,1 +1,0 @@
-{"methodName":"void move(int,boolean)","line":2,"t":"ReceiverNonNull","matcher":"boolean adjacent(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.Char"}

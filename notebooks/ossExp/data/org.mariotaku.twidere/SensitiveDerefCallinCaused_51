@@ -1,1 +1,0 @@
-{"methodName":"void initViews()","line":475,"t":"ReceiverNonNull","matcher":"android.view.MenuInflater getMenuInflater()","className":"org.mariotaku.twidere.view.holder.status.DetailStatusViewHolder"}

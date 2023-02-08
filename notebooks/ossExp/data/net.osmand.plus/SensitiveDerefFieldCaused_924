@@ -1,1 +1,0 @@
-{"methodName":"int compare(net.osmand.plus.poi.PoiUIFilter,net.osmand.plus.poi.PoiUIFilter)","line":350,"t":"ReceiverNonNull","matcher":"int compareToIgnoreCase(java.lang.String)","className":"net.osmand.plus.poi.RearrangePoiFiltersFragment$6"}

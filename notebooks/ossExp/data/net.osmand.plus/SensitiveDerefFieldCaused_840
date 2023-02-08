@@ -1,1 +1,0 @@
-{"methodName":"void initVectorLinesCollection(net.osmand.data.LatLon,net.osmand.plus.mapmarkers.MapMarker,int,boolean)","line":824,"t":"ReceiverNonNull","matcher":"void <init>()","className":"net.osmand.plus.views.layers.MapMarkersLayer"}

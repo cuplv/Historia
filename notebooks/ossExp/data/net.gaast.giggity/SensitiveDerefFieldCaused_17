@@ -1,1 +1,0 @@
-{"methodName":"void showItem(net.gaast.giggity.Schedule$Item,java.util.AbstractList,boolean,android.view.View)","line":841,"t":"ReceiverNonNull","matcher":"void <init>(android.content.Context,net.gaast.giggity.Schedule$Item,java.util.AbstractList)","className":"net.gaast.giggity.ScheduleViewActivity"}

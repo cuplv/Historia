@@ -1,1 +1,0 @@
-{"methodName":"boolean removeEntry(coil.disk.DiskLruCache$Entry)","line":538,"t":"ReceiverNonNull","matcher":"okio.BufferedSink writeUtf8(java.lang.String)","className":"coil.disk.DiskLruCache"}

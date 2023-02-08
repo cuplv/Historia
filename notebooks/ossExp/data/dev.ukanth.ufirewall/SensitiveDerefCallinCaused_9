@@ -1,1 +1,0 @@
-{"methodName":"void onSharedPreferenceChanged(android.content.SharedPreferences,java.lang.String)","line":145,"t":"ReceiverNonNull","matcher":"android.content.Context getApplicationContext()","className":"dev.ukanth.ufirewall.preferences.ExpPreferenceFragment"}

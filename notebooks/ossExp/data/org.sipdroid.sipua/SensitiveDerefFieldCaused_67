@@ -1,1 +1,0 @@
-{"methodName":"void init(org.sipdroid.net.SipdroidSocket)","line":107,"t":"ReceiverNonNull","matcher":"org.sipdroid.net.SipdroidSocket getDatagramSocket()","className":"org.sipdroid.media.RtpStreamReceiver"}

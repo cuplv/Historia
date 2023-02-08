@@ -1,1 +1,0 @@
-{"methodName":"boolean onMove(int,int)","line":282,"t":"ReceiverNonNull","matcher":"int getNumRows()","className":"net.sqlcipher.database.SQLiteCursor"}

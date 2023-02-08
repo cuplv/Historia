@@ -1,1 +1,0 @@
-{"methodName":"boolean onInterceptTouchEvent(androidx.recyclerview.widget.RecyclerView,android.view.MotionEvent)","line":314,"t":"ReceiverNonNull","matcher":"boolean onTouchEvent(android.view.MotionEvent)","className":"app.k9mail.ui.utils.itemtouchhelper.ItemTouchHelper$2"}

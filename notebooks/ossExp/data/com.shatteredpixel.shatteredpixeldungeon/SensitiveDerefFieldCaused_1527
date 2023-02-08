@@ -1,1 +1,0 @@
-{"methodName":"void <init>(com.shatteredpixel.shatteredpixeldungeon.mechanics.Ballistica,float,float,int)","line":37,"t":"ReceiverNonNull","matcher":"int pointToCell(com.watabou.utils.Point)","className":"com.shatteredpixel.shatteredpixeldungeon.mechanics.ConeAOE"}

@@ -1,1 +1,0 @@
-{"methodName":"void <init>(org.osmdroid.views.MapView,android.content.Context)","line":127,"t":"ReceiverNonNull","matcher":"void <init>(int,org.osmdroid.views.MapView)","className":"org.osmdroid.views.overlay.Marker"}

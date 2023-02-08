@@ -1,1 +1,0 @@
-{"methodName":"java.util.ArrayList getKernelWakelockStatList(boolean,com.asksven.betterbatterystats.data.Reference,int,int,com.asksven.betterbatterystats.data.Reference)","line":1091,"t":"ReceiverNonNull","matcher":"java.lang.String toString()","className":"com.asksven.betterbatterystats.data.StatsProvider"}

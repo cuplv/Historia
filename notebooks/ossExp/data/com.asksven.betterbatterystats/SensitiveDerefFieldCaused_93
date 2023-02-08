@@ -1,1 +1,0 @@
-{"methodName":"com.asksven.android.common.privateapiproxies.BatteryStatsProxy getInstance(android.content.Context)","line":143,"t":"ReceiverNonNull","matcher":"void <init>(android.content.Context,boolean)","className":"com.asksven.android.common.privateapiproxies.BatteryStatsProxy"}

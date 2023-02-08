@@ -1,1 +1,0 @@
-{"methodName":"com.raizlabs.android.dbflow.sql.QueryBuilder getAlterTableQueryBuilder()","line":188,"t":"ReceiverNonNull","matcher":"void <init>()","className":"com.raizlabs.android.dbflow.sql.migration.AlterTableMigration"}

@@ -1,1 +1,0 @@
-{"methodName":"com.transitionseverywhere.Transition removeListener(com.transitionseverywhere.Transition$TransitionListener)","line":1984,"t":"ReceiverNonNull","matcher":"boolean remove(java.lang.Object)","className":"com.transitionseverywhere.Transition"}

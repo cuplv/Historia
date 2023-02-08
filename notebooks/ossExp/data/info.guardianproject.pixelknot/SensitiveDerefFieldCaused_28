@@ -1,1 +1,0 @@
-{"methodName":"void setImageBitmap(android.graphics.Bitmap)","line":147,"t":"ReceiverNonNull","matcher":"android.graphics.Shader setShader(android.graphics.Shader)","className":"info.guardianproject.pixelknot.views.RoundedImageView"}

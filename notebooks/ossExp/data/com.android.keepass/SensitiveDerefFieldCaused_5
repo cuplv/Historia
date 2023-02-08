@@ -1,1 +1,0 @@
-{"methodName":"void clear(android.content.Context)","line":250,"t":"ReceiverNonNull","matcher":"void clearCache()","className":"com.keepassdroid.Database"}

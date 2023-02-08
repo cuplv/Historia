@@ -1,1 +1,0 @@
-{"methodName":"boolean contains(android.view.MotionEvent)","line":572,"t":"ReceiverNonNull","matcher":"void computeBounds(android.graphics.RectF,boolean)","className":"org.osmdroid.views.overlay.PolyOverlayWithIW"}

@@ -1,1 +1,0 @@
-{"methodName":"void open()","line":69,"t":"ReceiverNonNull","matcher":"void setSoTimeout(int)","className":"com.fsck.k9.mail.store.pop3.Pop3Connection"}

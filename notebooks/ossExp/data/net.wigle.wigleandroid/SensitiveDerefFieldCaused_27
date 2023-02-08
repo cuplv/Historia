@@ -1,1 +1,0 @@
-{"methodName":"boolean locationOK(android.location.Location,int,long,long)","line":378,"t":"ReceiverNonNull","matcher":"long longValue()","className":"net.wigle.wigleandroid.listener.GPSListener"}

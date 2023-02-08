@@ -1,1 +1,0 @@
-{"methodName":"com.stericson.rootshell.execution.Shell startRootShell(int,com.stericson.rootshell.execution.Shell$ShellContext,int)","line":875,"t":"ReceiverNonNull","matcher":"com.stericson.rootshell.execution.Shell switchRootShellContext(com.stericson.rootshell.execution.Shell$ShellContext)","className":"com.stericson.rootshell.execution.Shell"}

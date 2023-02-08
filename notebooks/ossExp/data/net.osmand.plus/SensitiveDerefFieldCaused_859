@@ -1,1 +1,0 @@
-{"methodName":"void enterMovingMode(net.osmand.data.RotatedTileBox)","line":633,"t":"ReceiverNonNull","matcher":"void updateMapCenter(net.osmand.data.LatLon)","className":"net.osmand.plus.views.layers.ContextMenuLayer"}

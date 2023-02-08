@@ -1,1 +1,0 @@
-{"methodName":"boolean onActionItemClicked(android.view.ActionMode,android.view.MenuItem)","line":4,"t":"ReceiverNonNull","matcher":"android.util.SparseBooleanArray getCheckedItemPositions()","className":"org.transdroid.core.gui.TorrentsFragment$1"}

@@ -1,1 +1,0 @@
-{"methodName":"boolean execute()","line":75,"t":"ReceiverNonNull","matcher":"void clear()","className":"net.osmand.plus.measurementtool.command.ChangeRouteModeCommand"}

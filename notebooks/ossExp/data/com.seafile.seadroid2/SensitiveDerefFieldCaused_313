@@ -1,1 +1,0 @@
-{"methodName":"void downloadAnim()","line":280,"t":"ReceiverNonNull","matcher":"void setInterpolator(android.animation.TimeInterpolator)","className":"moe.codeest.enviews.ENDownloadView"}

@@ -1,1 +1,0 @@
-{"methodName":"void downloadHasFinished()","line":307,"t":"ReceiverNonNull","matcher":"boolean endsWith(java.lang.String)","className":"net.osmand.plus.download.DownloadActivity"}

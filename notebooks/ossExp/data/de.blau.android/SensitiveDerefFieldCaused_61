@@ -1,1 +1,0 @@
-{"methodName":"boolean p0(android.content.Context,java.io.InputStream,boolean)","line":14,"t":"ReceiverNonNull","matcher":"void n(t7.a)","className":"de.blau.android.layer.geojson.MapOverlay"}

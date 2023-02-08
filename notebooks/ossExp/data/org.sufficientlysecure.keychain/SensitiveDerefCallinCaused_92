@@ -1,1 +1,0 @@
-{"methodName":"void finishAsCancelled()","line":2,"t":"ReceiverNonNull","matcher":"void setResult(int)","className":"org.sufficientlysecure.keychain.remote.ui.dialog.RemoteSelectIdKeyActivity$RemoteSelectIdentityKeyDialogFragment$1"}

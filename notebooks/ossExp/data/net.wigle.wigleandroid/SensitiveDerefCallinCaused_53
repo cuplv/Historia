@@ -1,1 +1,0 @@
-{"methodName":"void handleDialog(int)","line":419,"t":"ReceiverNonNull","matcher":"android.content.SharedPreferences getSharedPreferences(java.lang.String,int)","className":"net.wigle.wigleandroid.DataFragment"}

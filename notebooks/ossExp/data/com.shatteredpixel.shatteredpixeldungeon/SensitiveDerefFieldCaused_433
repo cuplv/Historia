@@ -1,1 +1,0 @@
-{"methodName":"void wandProc(com.shatteredpixel.shatteredpixeldungeon.actors.Char,int,int)","line":2,"t":"ReceiverNonNull","matcher":"boolean hasTalent(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent)","className":"com.shatteredpixel.shatteredpixeldungeon.items.wands.Wand"}

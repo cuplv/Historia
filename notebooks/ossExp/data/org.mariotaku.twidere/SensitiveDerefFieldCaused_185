@@ -1,1 +1,0 @@
-{"methodName":"boolean onKeyDown(int,android.view.KeyEvent)","line":671,"t":"ReceiverNonNull","matcher":"boolean isPlaying()","className":"com.sprylab.android.widget.TextureVideoView"}

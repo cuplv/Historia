@@ -1,1 +1,0 @@
-{"methodName":"void showOrHidePrivateLink$lambda-20$lambda-18(com.owncloud.android.presentation.ui.sharing.fragments.ShareFileFragment,android.view.View)","line":379,"t":"ReceiverNonNull","matcher":"void copyOrSendPrivateLink(com.owncloud.android.domain.files.model.OCFile)","className":"com.owncloud.android.presentation.ui.sharing.fragments.ShareFileFragment"}

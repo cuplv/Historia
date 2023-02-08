@@ -1,1 +1,0 @@
-{"methodName":"void onClick(android.content.DialogInterface,int)","line":15,"t":"ReceiverNonNull","matcher":"java.lang.String getString(int)","className":"org.sufficientlysecure.keychain.ui.dialog.DeleteFileDialogFragment$1"}

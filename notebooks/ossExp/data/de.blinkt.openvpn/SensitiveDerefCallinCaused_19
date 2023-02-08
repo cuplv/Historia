@@ -1,1 +1,0 @@
-{"methodName":"void onCreate(android.os.Bundle)","line":39,"t":"ReceiverNonNull","matcher":"boolean bindService(android.content.Intent,android.content.ServiceConnection,int)","className":"de.blinkt.openvpn.core.PasswordDialogFragment"}

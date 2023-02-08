@@ -1,1 +1,0 @@
-{"methodName":"int proc(com.shatteredpixel.shatteredpixeldungeon.items.armor.Armor,com.shatteredpixel.shatteredpixeldungeon.actors.Char,com.shatteredpixel.shatteredpixeldungeon.actors.Char,int)","line":46,"t":"ReceiverNonNull","matcher":"passable","className":"com.shatteredpixel.shatteredpixeldungeon.items.armor.curses.Multiplicity"}

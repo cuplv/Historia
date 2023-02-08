@@ -1,1 +1,0 @@
-{"methodName":"void closeDB()","line":673,"t":"ReceiverNonNull","matcher":"void close()","className":"net.osmand.plus.resources.SQLiteTileSource"}

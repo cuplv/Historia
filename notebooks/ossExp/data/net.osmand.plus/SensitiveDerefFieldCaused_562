@@ -1,1 +1,0 @@
-{"methodName":"net.osmand.plus.routing.CurrentStreetName getCurrentName(net.osmand.plus.routing.RoutingHelper,net.osmand.plus.routing.RouteCalculationResult$NextDirectionInfo)","line":54,"t":"ReceiverNonNull","matcher":"java.lang.String getDestinationName()","className":"net.osmand.plus.routing.CurrentStreetName"}

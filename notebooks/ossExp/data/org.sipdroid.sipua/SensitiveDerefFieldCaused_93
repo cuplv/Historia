@@ -1,1 +1,0 @@
-{"methodName":"void sendMessage(org.zoolu.sip.message.Message,org.zoolu.net.IpAddress,int)","line":90,"t":"ReceiverNonNull","matcher":"void send(org.zoolu.net.UdpPacket)","className":"org.zoolu.sip.provider.UdpTransport"}

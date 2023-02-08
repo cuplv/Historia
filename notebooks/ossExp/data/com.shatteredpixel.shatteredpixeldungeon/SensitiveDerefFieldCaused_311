@@ -1,1 +1,0 @@
-{"methodName":"int findStep(com.shatteredpixel.shatteredpixeldungeon.actors.Char,int,boolean[],boolean[],boolean)","line":24,"t":"ReceiverNonNull","matcher":"avoid","className":"com.shatteredpixel.shatteredpixeldungeon.Dungeon"}

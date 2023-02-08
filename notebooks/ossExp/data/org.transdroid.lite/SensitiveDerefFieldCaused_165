@@ -1,1 +1,0 @@
-{"methodName":"boolean onActionItemClicked(android.view.ActionMode,android.view.MenuItem)","line":3,"t":"ReceiverNonNull","matcher":"android.widget.ListAdapter getAdapter()","className":"org.transdroid.core.gui.TorrentsFragment$1"}

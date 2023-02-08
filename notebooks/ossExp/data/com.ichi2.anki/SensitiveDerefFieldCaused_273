@@ -1,1 +1,0 @@
-{"methodName":"boolean onTouchEvent(android.view.MotionEvent)","line":22,"t":"ReceiverNonNull","matcher":"float getXVelocity()","className":"com.drakeet.drawer.FullDraggableHelper"}

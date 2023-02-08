@@ -1,1 +1,0 @@
-{"methodName":"void displayDowngrade(android.graphics.Canvas,org.osmdroid.views.Projection)","line":489,"t":"ReceiverNonNull","matcher":"void getBestOffset(org.osmdroid.views.Projection,org.osmdroid.util.PointL,org.osmdroid.util.PointL)","className":"org.osmdroid.views.overlay.PolyOverlayWithIW"}

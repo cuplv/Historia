@@ -1,1 +1,0 @@
-{"methodName":"void stopGameGeneration()","line":9,"t":"ReceiverNonNull","matcher":"boolean cancel(boolean)","className":"name.boyle.chris.sgtpuzzles.GamePlay"}

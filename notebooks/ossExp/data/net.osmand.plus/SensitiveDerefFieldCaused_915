@@ -1,1 +1,0 @@
-{"methodName":"net.osmand.router.BinaryRoutePlanner$RouteSegment loadRouteSegment(int,int,net.osmand.router.RoutingContext,gnu.trove.map.hash.TLongObjectHashMap,net.osmand.router.BinaryRoutePlanner$RouteSegment,java.util.List,int,boolean)","line":784,"t":"ReceiverNonNull","matcher":"java.lang.Object get(long)","className":"net.osmand.router.RoutingContext$RoutingSubregionTile"}

@@ -1,1 +1,0 @@
-{"methodName":"void awaitNewImage()","line":221,"t":"ReceiverNonNull","matcher":"void updateTexImage()","className":"net.ypresto.androidtranscoder.engine.OutputSurface"}

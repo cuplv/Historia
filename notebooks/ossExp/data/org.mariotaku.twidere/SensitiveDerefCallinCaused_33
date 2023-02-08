@@ -1,1 +1,0 @@
-{"methodName":"void displayGroup(org.mariotaku.twidere.model.ParcelableGroup)","line":77,"t":"ReceiverNonNull","matcher":"void setTitle(java.lang.CharSequence)","className":"org.mariotaku.twidere.fragment.GroupFragment"}

@@ -1,1 +1,0 @@
-{"methodName":"void refreshHeaderView()","line":422,"t":"ReceiverNonNull","matcher":"boolean hasLastUpdateFailed()","className":"de.danoeh.antennapod.fragment.FeedItemlistFragment"}

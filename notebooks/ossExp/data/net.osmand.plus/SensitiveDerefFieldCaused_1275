@@ -1,1 +1,0 @@
-{"methodName":"void zoomToAnimate(net.osmand.data.RotatedTileBox,float,int,int)","line":1320,"t":"ReceiverNonNull","matcher":"boolean isInZoomMode()","className":"net.osmand.plus.views.OsmandMapTileView"}

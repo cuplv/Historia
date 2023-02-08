@@ -1,1 +1,0 @@
-{"methodName":"void onFileSelected(android.net.Uri)","line":3,"t":"ReceiverNonNull","matcher":"void requestStoragePermission()","className":"org.sufficientlysecure.keychain.ui.token.ManageSecurityTokenPresenter"}

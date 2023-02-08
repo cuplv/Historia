@@ -1,1 +1,0 @@
-{"methodName":"void lambda$onCreateView$8$net-osmand-plus-firstusage-FirstUsageWizardFragment(android.widget.TextView,android.view.View,android.view.View,android.widget.ImageButton,android.view.View)","line":224,"t":"ReceiverNonNull","matcher":"java.lang.String getSizeDescription(android.content.Context)","className":"net.osmand.plus.firstusage.FirstUsageWizardFragment"}

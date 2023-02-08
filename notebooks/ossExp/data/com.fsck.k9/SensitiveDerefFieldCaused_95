@@ -1,1 +1,0 @@
-{"methodName":"void onDecodeMessageFinished(com.fsck.k9.mailstore.MessageViewInfo)","line":407,"t":"ReceiverNonNull","matcher":"void onMessageViewInfoLoadFinished(com.fsck.k9.mailstore.MessageViewInfo)","className":"com.fsck.k9.activity.MessageLoaderHelper"}

@@ -1,1 +1,0 @@
-{"methodName":"void activate()","line":11,"t":"ReceiverNonNull","matcher":"int distance(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.levels.traps.WarpingTrap"}

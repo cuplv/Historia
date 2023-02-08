@@ -1,1 +1,0 @@
-{"methodName":"void toggleWikipediaPoi(boolean,net.osmand.CallbackWithObject)","line":331,"t":"ReceiverNonNull","matcher":"void refreshMap()","className":"net.osmand.plus.wikipedia.WikipediaPlugin"}

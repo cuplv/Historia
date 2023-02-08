@@ -1,1 +1,0 @@
-{"methodName":"void processCommand(com.duckduckgo.app.browser.BrowserViewModel$Command)","line":387,"t":"ReceiverNonNull","matcher":"void submitQuery(java.lang.String)","className":"com.duckduckgo.app.browser.BrowserActivity"}

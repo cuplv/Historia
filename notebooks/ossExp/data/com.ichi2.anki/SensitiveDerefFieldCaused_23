@@ -1,1 +1,0 @@
-{"methodName":"com.ichi2.libanki.Collection$CheckDatabaseResult fixIntegrity(com.ichi2.async.TaskManager$ProgressCallback)","line":15,"t":"ReceiverNonNull","matcher":"androidx.sqlite.db.SupportSQLiteDatabase getDatabase()","className":"com.ichi2.libanki.Collection"}

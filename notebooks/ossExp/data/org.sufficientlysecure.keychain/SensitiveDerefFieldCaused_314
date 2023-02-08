@@ -1,1 +1,0 @@
-{"methodName":"boolean hasStickyHeaderTranslated(int)","line":1,"t":"ReceiverNonNull","matcher":"androidx.recyclerview.widget.RecyclerView$ViewHolder findViewHolderForAdapterPosition(int)","className":"eu.davidea.flexibleadapter.helpers.StickyHeaderHelper"}

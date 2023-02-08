@@ -1,1 +1,0 @@
-{"methodName":"boolean guessDirection(android.view.MotionEvent)","line":81,"t":"ReceiverNonNull","matcher":"boolean onGenericMotionEvent(android.view.MotionEvent)","className":"org.mariotaku.twidere.util.MouseScrollDirectionDecider"}

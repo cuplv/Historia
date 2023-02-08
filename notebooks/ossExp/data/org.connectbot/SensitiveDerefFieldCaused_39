@@ -1,1 +1,0 @@
-{"methodName":"void onConfigurationChanged(android.content.res.Configuration)","line":1219,"t":"ReceiverNonNull","matcher":"void setResizeAllowed(boolean)","className":"org.connectbot.ConsoleActivity"}

@@ -1,1 +1,0 @@
-{"methodName":"void onDestroy()","line":168,"t":"ReceiverNonNull","matcher":"void cancelIfRunning()","className":"com.fsck.k9.activity.MessageLoaderHelper"}

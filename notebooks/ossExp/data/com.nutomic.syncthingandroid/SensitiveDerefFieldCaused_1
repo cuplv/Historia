@@ -1,1 +1,0 @@
-{"methodName":"boolean onOptionsItemSelected(android.view.MenuItem)","line":203,"t":"ReceiverNonNull","matcher":"java.lang.String getAbsolutePath()","className":"com.nutomic.syncthingandroid.activities.FolderPickerActivity"}

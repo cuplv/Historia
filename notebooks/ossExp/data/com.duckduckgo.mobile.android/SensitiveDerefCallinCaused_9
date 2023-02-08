@@ -1,1 +1,0 @@
-{"methodName":"void configureToolbar()","line":113,"t":"ReceiverNonNull","matcher":"void addMenuProvider(androidx.core.view.MenuProvider,androidx.lifecycle.LifecycleOwner,androidx.lifecycle.Lifecycle$State)","className":"com.duckduckgo.autofill.ui.credential.management.viewing.AutofillManagementListMode"}

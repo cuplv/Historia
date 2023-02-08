@@ -1,1 +1,0 @@
-{"methodName":"void onCreatePreferences(android.os.Bundle,java.lang.String)","line":76,"t":"ReceiverNonNull","matcher":"android.content.Intent getIntent()","className":"com.darshancomputing.BatteryIndicatorPro.AlarmEditFragment"}

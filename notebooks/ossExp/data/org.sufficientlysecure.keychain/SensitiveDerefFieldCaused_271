@@ -1,1 +1,0 @@
-{"methodName":"void clearSecureMessaging()","line":2,"t":"ReceiverNonNull","matcher":"void clearSession()","className":"org.sufficientlysecure.keychain.securitytoken.SecurityTokenConnection"}

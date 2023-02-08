@@ -1,1 +1,0 @@
-{"methodName":"void endElement(java.lang.String,java.lang.String,java.lang.String)","line":861,"t":"ReceiverNonNull","matcher":"java.lang.Object get(java.lang.Object)","className":"net.gaast.giggity.Schedule$XcalParser"}

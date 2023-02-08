@@ -1,1 +1,0 @@
-{"methodName":"void setupAltitudeTab(android.view.View,com.github.mikephil.charting.charts.LineChart,int)","line":383,"t":"ReceiverNonNull","matcher":"hasElevationData","className":"net.osmand.plus.myplaces.ui.GPXItemPagerAdapter"}

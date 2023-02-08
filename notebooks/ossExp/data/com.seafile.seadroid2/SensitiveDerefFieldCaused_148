@@ -1,1 +1,0 @@
-{"methodName":"boolean onOptionsItemSelected(android.view.MenuItem)","line":315,"t":"ReceiverNonNull","matcher":"void cancelNotification()","className":"com.seafile.seadroid2.ui.activity.FileActivity"}

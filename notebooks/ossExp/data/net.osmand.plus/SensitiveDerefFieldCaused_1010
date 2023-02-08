@@ -1,1 +1,0 @@
-{"methodName":"void onSurfaceDestroyed(androidx.car.app.SurfaceContainer)","line":92,"t":"ReceiverNonNull","matcher":"void release()","className":"net.osmand.plus.auto.SurfaceRenderer$1"}

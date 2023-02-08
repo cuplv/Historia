@@ -1,1 +1,0 @@
-{"methodName":"void surrogateDetected(com.duckduckgo.app.surrogates.SurrogateResponse)","line":1649,"t":"ReceiverNonNull","matcher":"void surrogateDetected(com.duckduckgo.app.surrogates.SurrogateResponse)","className":"com.duckduckgo.app.browser.BrowserTabViewModel"}

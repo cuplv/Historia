@@ -1,1 +1,0 @@
-{"methodName":"org.mozilla.javascript.Node transformSwitch(org.mozilla.javascript.ast.SwitchStatement)","line":1098,"t":"ReceiverNonNull","matcher":"void addToken(int)","className":"org.mozilla.javascript.IRFactory"}

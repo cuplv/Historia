@@ -1,1 +1,0 @@
-{"methodName":"java.lang.String getAccessToken()","line":221,"t":"ReceiverNonNull","matcher":"accessToken","className":"net.openid.appauth.AuthState"}

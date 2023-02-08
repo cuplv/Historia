@@ -1,1 +1,0 @@
-{"methodName":"void init()","line":192,"t":"ReceiverNonNull","matcher":"boolean equalsIgnoreCase(java.lang.String)","className":"org.sipdroid.sipua.UserAgentProfile"}

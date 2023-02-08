@@ -1,1 +1,0 @@
-{"methodName":"boolean onCustomKeyDown(android.view.KeyEvent)","line":784,"t":"ReceiverNonNull","matcher":"void onArchive()","className":"com.fsck.k9.activity.MessageList"}

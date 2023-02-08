@@ -1,1 +1,0 @@
-{"methodName":"void updateFieldOfView(com.shatteredpixel.shatteredpixeldungeon.actors.Char,boolean[])","line":166,"t":"ReceiverNonNull","matcher":"losBlocking","className":"com.shatteredpixel.shatteredpixeldungeon.levels.Level"}

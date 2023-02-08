@@ -1,1 +1,0 @@
-{"methodName":"void updateLightFilter()","line":126,"t":"ReceiverNonNull","matcher":"android.graphics.ColorFilter setColorFilter(android.graphics.ColorFilter)","className":"info.guardianproject.pixelknot.views.RoundedImageView"}

@@ -1,1 +1,0 @@
-{"methodName":"void closeCamera()","line":1050,"t":"ReceiverNonNull","matcher":"void release()","className":"net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin"}

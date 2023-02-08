@@ -1,1 +1,0 @@
-{"methodName":"void emailMiniDumps()","line":98,"t":"ReceiverNonNull","matcher":"java.lang.String getPackageName()","className":"de.blinkt.openvpn.fragments.SendDumpFragment"}

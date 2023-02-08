@@ -1,1 +1,0 @@
-{"methodName":"void addBuffer(java.lang.String,boolean)","line":1967,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"eu.chainfire.libsuperuser.Shell$Interactive"}

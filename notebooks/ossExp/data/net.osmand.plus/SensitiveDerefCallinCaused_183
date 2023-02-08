@@ -1,1 +1,0 @@
-{"methodName":"void showTrackAltitudeDialog(int)","line":1449,"t":"ReceiverNonNull","matcher":"androidx.fragment.app.FragmentManager getSupportFragmentManager()","className":"net.osmand.plus.track.fragments.TrackMenuFragment"}

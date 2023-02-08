@@ -1,1 +1,0 @@
-{"methodName":"void onScrollStateChanged(android.widget.AbsListView,int)","line":386,"t":"ReceiverNonNull","matcher":"android.view.View getCurrentFocus()","className":"net.osmand.plus.myplaces.ui.AvailableGPXFragment$6"}

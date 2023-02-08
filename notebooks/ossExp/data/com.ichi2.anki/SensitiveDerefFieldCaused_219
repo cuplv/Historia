@@ -1,1 +1,0 @@
-{"methodName":"void stopSounds()","line":2,"t":"ReceiverNonNull","matcher":"void stop()","className":"com.ichi2.libanki.Sound"}

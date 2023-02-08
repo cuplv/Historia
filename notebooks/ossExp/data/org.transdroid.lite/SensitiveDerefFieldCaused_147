@@ -1,1 +1,0 @@
-{"methodName":"void applyAllFilters()","line":12,"t":"ReceiverNonNull","matcher":"java.lang.String toLowerCase(java.util.Locale)","className":"org.transdroid.core.gui.TorrentsFragment"}

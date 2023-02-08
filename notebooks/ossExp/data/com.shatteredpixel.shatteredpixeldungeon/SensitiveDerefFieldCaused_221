@@ -1,1 +1,0 @@
-{"methodName":"void turnTo(int,int)","line":12,"t":"ReceiverNonNull","matcher":"int width()","className":"com.shatteredpixel.shatteredpixeldungeon.sprites.CharSprite"}

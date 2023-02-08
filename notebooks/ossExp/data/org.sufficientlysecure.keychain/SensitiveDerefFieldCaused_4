@@ -1,1 +1,0 @@
-{"methodName":"void onMenuClickViewLog()","line":2,"t":"ReceiverNonNull","matcher":"void showDisplayLogActivity(org.sufficientlysecure.keychain.operations.results.OperationResult)","className":"org.sufficientlysecure.keychain.ui.token.ManageSecurityTokenPresenter"}

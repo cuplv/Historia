@@ -1,1 +1,0 @@
-{"methodName":"android.widget.RemoteViews getViewAt(int)","line":4,"t":"ReceiverNonNull","matcher":"java.lang.Object get(int)","className":"org.transdroid.core.widget.WidgetViewsFactory"}

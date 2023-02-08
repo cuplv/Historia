@@ -1,1 +1,0 @@
-{"methodName":"void buildAutodownloadSelectedNetworksPreference()","line":101,"t":"ReceiverNonNull","matcher":"android.content.Context getApplicationContext()","className":"de.danoeh.antennapod.fragment.preferences.AutoDownloadPreferencesFragment"}

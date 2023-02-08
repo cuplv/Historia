@@ -1,1 +1,0 @@
-{"methodName":"void onTransRequest(org.zoolu.sip.transaction.TransactionServer,org.zoolu.sip.message.Message)","line":852,"t":"ReceiverNonNull","matcher":"org.zoolu.sip.header.ToHeader getToHeader()","className":"org.zoolu.sip.dialog.InviteDialog"}

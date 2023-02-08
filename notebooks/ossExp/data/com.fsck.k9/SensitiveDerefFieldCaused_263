@@ -1,1 +1,0 @@
-{"methodName":"void startOrResumeCryptoOperation(java.lang.String)","line":312,"t":"ReceiverNonNull","matcher":"void <init>(android.content.Context,com.fsck.k9.ui.crypto.OpenPgpApiFactory,com.fsck.k9.autocrypt.AutocryptOperations,java.lang.String)","className":"com.fsck.k9.activity.MessageLoaderHelper"}

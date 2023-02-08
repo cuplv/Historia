@@ -1,1 +1,0 @@
-{"methodName":"void onServiceTerminated(org.zoolu.net.UdpProvider,java.lang.Exception)","line":123,"t":"ReceiverNonNull","matcher":"void onTransportTerminated(org.zoolu.sip.provider.Transport,java.lang.Exception)","className":"org.zoolu.sip.provider.UdpTransport"}

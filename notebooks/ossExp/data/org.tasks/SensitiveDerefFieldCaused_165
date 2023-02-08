@@ -1,1 +1,0 @@
-{"methodName":"void setDefaultInfoWindowLocation()","line":213,"t":"ReceiverNonNull","matcher":"java.util.ArrayList getPoints()","className":"org.osmdroid.views.overlay.PolyOverlayWithIW"}

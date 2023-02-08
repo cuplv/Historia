@@ -1,1 +1,0 @@
-{"methodName":"void checkClose()","line":91,"t":"ReceiverNonNull","matcher":"void close()","className":"org.sipdroid.media.CallRecorder"}

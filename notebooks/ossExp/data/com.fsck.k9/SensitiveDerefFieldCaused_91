@@ -1,1 +1,0 @@
-{"methodName":"void login(android.content.Intent)","line":215,"t":"ReceiverNonNull","matcher":"void launch(java.lang.Object)","className":"com.fsck.k9.activity.setup.AuthViewModel$AppAuthResultObserver"}

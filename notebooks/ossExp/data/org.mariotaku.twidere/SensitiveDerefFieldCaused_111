@@ -1,1 +1,0 @@
-{"methodName":"void mapImagePointsByImageMatrix()","line":1741,"t":"ReceiverNonNull","matcher":"int getHeight()","className":"com.theartofdev.edmodo.cropper.CropImageView"}

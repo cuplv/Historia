@@ -1,1 +1,0 @@
-{"methodName":"androidx.fragment.app.Fragment getDaxDialogFromActivity()","line":615,"t":"ReceiverNonNull","matcher":"androidx.fragment.app.FragmentManager getSupportFragmentManager()","className":"com.duckduckgo.app.browser.BrowserTabFragment"}

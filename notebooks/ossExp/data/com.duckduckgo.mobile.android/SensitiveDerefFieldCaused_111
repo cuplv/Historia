@@ -1,1 +1,0 @@
-{"methodName":"void trackerDetected(com.duckduckgo.app.trackerdetection.model.TrackingEvent)","line":1660,"t":"ReceiverNonNull","matcher":"void trackerDetected(com.duckduckgo.app.trackerdetection.model.TrackingEvent)","className":"com.duckduckgo.app.browser.BrowserTabViewModel"}

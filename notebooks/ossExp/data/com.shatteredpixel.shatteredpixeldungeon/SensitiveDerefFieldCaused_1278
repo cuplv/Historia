@@ -1,1 +1,0 @@
-{"methodName":"boolean teleportChar(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","line":110,"t":"ReceiverNonNull","matcher":"void interrupt()","className":"com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfTeleportation"}

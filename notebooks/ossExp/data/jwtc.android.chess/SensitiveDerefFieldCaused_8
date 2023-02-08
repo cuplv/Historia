@@ -1,1 +1,0 @@
-{"methodName":"void OnMove(int)","line":134,"t":"ReceiverNonNull","matcher":"void moveToSpeech(java.lang.String,int)","className":"jwtc.android.chess.activities.ChessBoardActivity"}

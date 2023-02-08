@@ -1,1 +1,0 @@
-{"methodName":"void onDestroyView()","line":3,"t":"ReceiverNonNull","matcher":"void removeOnScrollListener(androidx.recyclerview.widget.RecyclerView$OnScrollListener)","className":"org.sufficientlysecure.keychain.ui.base.RecyclerFragment"}

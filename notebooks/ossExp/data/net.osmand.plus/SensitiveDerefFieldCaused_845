@@ -1,1 +1,0 @@
-{"methodName":"java.util.List searchRouteImpl(net.osmand.router.RoutingContext,java.util.List,net.osmand.router.PrecalculatedRouteDirection)","line":1082,"t":"ReceiverNonNull","matcher":"int size()","className":"net.osmand.router.RoutePlannerFrontEnd"}

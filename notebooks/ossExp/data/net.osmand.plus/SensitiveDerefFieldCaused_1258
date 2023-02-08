@@ -1,1 +1,0 @@
-{"methodName":"void updateMarker(net.osmand.Location,net.osmand.core.jni.PointI,long)","line":325,"t":"ReceiverNonNull","matcher":"float floatValue()","className":"net.osmand.plus.views.layers.PointLocationLayer"}

@@ -1,1 +1,0 @@
-{"methodName":"java.util.List searchTransportIndex(net.osmand.binary.BinaryMapTransportReaderAdapter$TransportIndex,net.osmand.binary.BinaryMapIndexReader$SearchRequest)","line":572,"t":"ReceiverNonNull","matcher":"void seek(long)","className":"net.osmand.binary.BinaryMapIndexReader"}

@@ -1,1 +1,0 @@
-{"methodName":"void setupList(android.view.View)","line":654,"t":"ReceiverNonNull","matcher":"void setListAdapter(net.wigle.wigleandroid.ui.SetNetworkListAdapter)","className":"net.wigle.wigleandroid.ListFragment"}

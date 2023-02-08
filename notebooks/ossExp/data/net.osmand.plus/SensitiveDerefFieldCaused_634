@@ -1,1 +1,0 @@
-{"methodName":"boolean isDbOpened()","line":405,"t":"ReceiverNonNull","matcher":"boolean isClosed()","className":"net.osmand.plus.resources.SQLiteTileSource"}

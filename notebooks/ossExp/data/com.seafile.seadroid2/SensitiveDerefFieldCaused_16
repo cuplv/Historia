@@ -1,1 +1,0 @@
-{"methodName":"boolean processCustomCharacters()","line":724,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"com.vladsch.flexmark.internal.InlineParserImpl"}

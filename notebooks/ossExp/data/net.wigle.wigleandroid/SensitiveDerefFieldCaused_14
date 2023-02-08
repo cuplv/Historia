@@ -1,1 +1,0 @@
-{"methodName":"void updateLocationData(android.location.Location)","line":284,"t":"ReceiverNonNull","matcher":"float getSpeed()","className":"net.wigle.wigleandroid.listener.GPSListener"}

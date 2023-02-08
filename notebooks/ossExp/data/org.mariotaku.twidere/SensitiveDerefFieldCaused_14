@@ -1,1 +1,0 @@
-{"methodName":"void transcodeVideo(java.lang.String,net.ypresto.androidtranscoder.format.MediaFormatStrategy)","line":101,"t":"ReceiverNonNull","matcher":"void stop()","className":"net.ypresto.androidtranscoder.engine.MediaTranscoderEngine"}

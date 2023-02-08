@@ -1,1 +1,0 @@
-{"methodName":"void onDraw(android.graphics.Canvas)","line":1133,"t":"ReceiverNonNull","matcher":"void setColor(int)","className":"com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView"}

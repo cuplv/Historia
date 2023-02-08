@@ -1,1 +1,0 @@
-{"methodName":"void removeTypeTagWithPrefix(boolean)","line":252,"t":"ReceiverNonNull","matcher":"java.lang.String getEditOsmTag()","className":"net.osmand.plus.plugins.osmedit.data.EditPoiData"}

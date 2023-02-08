@@ -1,1 +1,0 @@
-{"methodName":"void updateTopButton(int)","line":1190,"t":"ReceiverNonNull","matcher":"void setVisibility(int)","className":"net.osmand.plus.dashboard.DashboardOnMap"}

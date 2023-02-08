@@ -1,1 +1,0 @@
-{"methodName":"void lambda$initializeTts$2(com.ichi2.anki.ReadText$ReadTextListener,int)","line":7,"t":"ReceiverNonNull","matcher":"int setOnUtteranceProgressListener(android.speech.tts.UtteranceProgressListener)","className":"com.ichi2.anki.ReadText"}

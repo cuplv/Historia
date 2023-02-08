@@ -1,1 +1,0 @@
-{"methodName":"boolean r(androidx.coordinatorlayout.widget.CoordinatorLayout,android.view.View,android.view.MotionEvent)","line":11,"t":"ReceiverNonNull","matcher":"void addMovement(android.view.MotionEvent)","className":"p4.c"}

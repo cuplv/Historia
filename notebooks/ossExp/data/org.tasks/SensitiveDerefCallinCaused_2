@@ -1,1 +1,0 @@
-{"methodName":"boolean setupPreferences$lambda$1(org.tasks.preferences.fragments.LookAndFeel,androidx.preference.Preference,java.lang.Object)","line":78,"t":"ReceiverNonNull","matcher":"void recreate()","className":"org.tasks.preferences.fragments.LookAndFeel"}

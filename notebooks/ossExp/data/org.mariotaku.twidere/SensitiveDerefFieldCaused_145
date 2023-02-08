@@ -1,1 +1,0 @@
-{"methodName":"void createPaints()","line":1240,"t":"ReceiverNonNull","matcher":"void setStyle(android.graphics.Paint$Style)","className":"com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView"}

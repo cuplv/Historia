@@ -1,1 +1,0 @@
-{"methodName":"nitezh.ministock.Storage putString(java.lang.String,java.lang.String)","line":83,"t":"ReceiverNonNull","matcher":"android.content.SharedPreferences$Editor putString(java.lang.String,java.lang.String)","className":"nitezh.ministock.PreferenceStorage"}

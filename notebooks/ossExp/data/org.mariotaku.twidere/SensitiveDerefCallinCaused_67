@@ -1,1 +1,0 @@
-{"methodName":"void displayAccountBanner(org.mariotaku.twidere.model.AccountDetails)","line":529,"t":"ReceiverNonNull","matcher":"boolean isFinishing()","className":"org.mariotaku.twidere.fragment.AccountsDashboardFragment"}

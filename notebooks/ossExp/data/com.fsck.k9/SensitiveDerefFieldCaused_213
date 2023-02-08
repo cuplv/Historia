@@ -1,1 +1,0 @@
-{"methodName":"void startOrResumeLocalMessageLoader()","line":218,"t":"ReceiverNonNull","matcher":"androidx.loader.content.Loader initLoader(int,android.os.Bundle,androidx.loader.app.LoaderManager$LoaderCallbacks)","className":"com.fsck.k9.activity.MessageLoaderHelper"}

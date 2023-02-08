@@ -1,1 +1,0 @@
-{"methodName":"void resetService(boolean)","line":250,"t":"ReceiverNonNull","matcher":"android.content.ComponentName startForegroundService(android.content.Intent)","className":"com.darshancomputing.BatteryIndicatorPro.SettingsFragment"}

@@ -1,1 +1,0 @@
-{"methodName":"void setUpTransferList()","line":36,"t":"ReceiverNonNull","matcher":"java.util.List getAllDownloadTaskInfos()","className":"com.seafile.seadroid2.ui.fragment.DownloadTaskFragment"}

@@ -1,1 +1,0 @@
-{"methodName":"void setAlgorithm(com.keepassdroid.Database,androidx.preference.Preference)","line":111,"t":"ReceiverNonNull","matcher":"com.keepassdroid.database.PwEncryptionAlgorithm getEncAlgorithm()","className":"com.keepassdroid.settings.DBSettingsFragement"}

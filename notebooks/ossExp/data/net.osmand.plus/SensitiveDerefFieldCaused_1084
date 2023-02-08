@@ -1,1 +1,0 @@
-{"methodName":"androidx.core.app.NotificationCompat$Builder buildNotification(boolean)","line":169,"t":"ReceiverNonNull","matcher":"net.osmand.router.TurnType getTurnType()","className":"net.osmand.plus.notifications.NavigationNotification"}

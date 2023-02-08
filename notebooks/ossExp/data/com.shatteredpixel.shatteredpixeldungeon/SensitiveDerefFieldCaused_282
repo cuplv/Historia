@@ -1,1 +1,0 @@
-{"methodName":"void upgradeTalent()","line":7,"t":"ReceiverNonNull","matcher":"int talentPointsAvailable(int)","className":"com.shatteredpixel.shatteredpixeldungeon.ui.TalentButton"}

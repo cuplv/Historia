@@ -1,1 +1,0 @@
-{"methodName":"boolean onOptionsItemSelected(android.view.MenuItem)","line":441,"t":"ReceiverNonNull","matcher":"android.view.View findViewById(int)","className":"net.wigle.wigleandroid.UploadsFragment"}

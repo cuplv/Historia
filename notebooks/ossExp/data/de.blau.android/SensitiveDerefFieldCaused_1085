@@ -1,1 +1,0 @@
-{"methodName":"boolean dispatchKeyEvent(android.view.KeyEvent)","line":8,"t":"ReceiverNonNull","matcher":"java.lang.Class getClass()","className":"de.blau.android.Main"}

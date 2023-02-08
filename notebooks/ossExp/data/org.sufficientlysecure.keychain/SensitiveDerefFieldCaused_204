@@ -1,1 +1,0 @@
-{"methodName":"void onMenuClickChangePin()","line":3,"t":"ReceiverNonNull","matcher":"void showErrorCannotUnlock()","className":"org.sufficientlysecure.keychain.ui.token.ManageSecurityTokenPresenter"}

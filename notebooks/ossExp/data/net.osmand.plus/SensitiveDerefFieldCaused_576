@@ -1,1 +1,0 @@
-{"methodName":"boolean onLongPressEvent(android.graphics.PointF,net.osmand.data.RotatedTileBox)","line":409,"t":"ReceiverNonNull","matcher":"void show(net.osmand.data.LatLon,net.osmand.data.PointDescription,java.lang.Object)","className":"net.osmand.plus.views.layers.ContextMenuLayer"}

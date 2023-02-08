@@ -1,1 +1,0 @@
-{"methodName":"void onAttach(android.content.Context)","line":438,"t":"ReceiverNonNull","matcher":"java.lang.String toString()","className":"com.owncloud.android.presentation.ui.sharing.fragments.PublicShareDialogFragment"}

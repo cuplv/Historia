@@ -1,1 +1,0 @@
-{"methodName":"void searchMapTreeBounds(net.osmand.binary.BinaryMapIndexReader$MapTree,net.osmand.binary.BinaryMapIndexReader$MapTree,net.osmand.binary.BinaryMapIndexReader$SearchRequest,java.util.List)","line":1028,"t":"ReceiverNonNull","matcher":"int readTag()","className":"net.osmand.binary.BinaryMapIndexReader"}

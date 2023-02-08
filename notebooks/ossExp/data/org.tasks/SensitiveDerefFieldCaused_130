@@ -1,1 +1,0 @@
-{"methodName":"void drawMyLocation(android.graphics.Canvas,org.osmdroid.views.Projection,android.location.Location)","line":249,"t":"ReceiverNonNull","matcher":"float getMapOrientation()","className":"org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay"}

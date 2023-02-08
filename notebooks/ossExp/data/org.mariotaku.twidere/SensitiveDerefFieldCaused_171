@@ -1,1 +1,0 @@
-{"methodName":"void writeSampleData(net.ypresto.androidtranscoder.engine.QueuedMuxer$SampleType,java.nio.ByteBuffer,android.media.MediaCodec$BufferInfo)","line":102,"t":"ReceiverNonNull","matcher":"java.nio.ByteBuffer put(java.nio.ByteBuffer)","className":"net.ypresto.androidtranscoder.engine.QueuedMuxer"}

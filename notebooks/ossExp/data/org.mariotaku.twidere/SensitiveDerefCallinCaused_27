@@ -1,1 +1,0 @@
-{"methodName":"void onLoadFinished(androidx.loader.content.Loader,org.mariotaku.twidere.model.ParcelableMessageConversation)","line":296,"t":"ReceiverNonNull","matcher":"void invalidateOptionsMenu()","className":"org.mariotaku.twidere.fragment.message.MessageConversationInfoFragment"}

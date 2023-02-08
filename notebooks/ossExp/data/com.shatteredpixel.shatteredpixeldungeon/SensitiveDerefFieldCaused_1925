@@ -1,1 +1,0 @@
-{"methodName":"void die(java.lang.Object)","line":15,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.items.Heap drop(com.shatteredpixel.shatteredpixeldungeon.items.Item,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.ArmoredStatue"}

@@ -1,1 +1,0 @@
-{"methodName":"void haltConnections()","line":392,"t":"ReceiverNonNull","matcher":"java.util.Enumeration elements()","className":"org.zoolu.sip.provider.SipProvider"}

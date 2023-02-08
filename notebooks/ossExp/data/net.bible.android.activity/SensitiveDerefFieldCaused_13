@@ -1,1 +1,0 @@
-{"methodName":"android.content.Intent createProcessTextIntent()","line":406,"t":"ReceiverNonNull","matcher":"java.lang.String getText()","className":"net.bible.android.view.activity.page.BibleView"}

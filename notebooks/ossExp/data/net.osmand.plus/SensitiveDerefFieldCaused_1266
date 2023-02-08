@@ -1,1 +1,0 @@
-{"methodName":"void onPause()","line":530,"t":"ReceiverNonNull","matcher":"boolean cancel(boolean)","className":"net.osmand.plus.download.ui.LocalIndexesFragment"}

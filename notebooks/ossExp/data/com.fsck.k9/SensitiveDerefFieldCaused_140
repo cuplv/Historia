@@ -1,1 +1,0 @@
-{"methodName":"void head(org.jsoup.nodes.Node,int)","line":36,"t":"ReceiverNonNull","matcher":"java.lang.String tagName()","className":"app.k9mail.html.cleaner.CleaningVisitor"}

@@ -1,1 +1,0 @@
-{"methodName":"void handleCryptoOperationResult(com.fsck.k9.mail.internet.MimeBodyPart)","line":516,"t":"ReceiverNonNull","matcher":"int getIntExtra(java.lang.String,int)","className":"com.fsck.k9.ui.crypto.MessageCryptoHelper"}

@@ -1,1 +1,0 @@
-{"methodName":"void startRecording()","line":3,"t":"ReceiverNonNull","matcher":"void setOutputFormat(int)","className":"org.liberty.android.fantastischmemo.ui.AudioRecorderFragment"}

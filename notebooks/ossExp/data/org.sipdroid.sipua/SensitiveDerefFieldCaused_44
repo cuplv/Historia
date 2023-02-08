@@ -1,1 +1,0 @@
-{"methodName":"void onCallTimeout(org.zoolu.sip.call.Call)","line":808,"t":"ReceiverNonNull","matcher":"void notify(int,java.lang.String)","className":"org.sipdroid.sipua.UserAgent"}

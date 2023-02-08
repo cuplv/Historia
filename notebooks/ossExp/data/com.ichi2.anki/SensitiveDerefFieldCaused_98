@@ -1,1 +1,0 @@
-{"methodName":"boolean crop()","line":8,"t":"ReceiverNonNull","matcher":"int getWidth()","className":"com.yalantis.ucrop.task.BitmapCropTask"}

@@ -1,1 +1,0 @@
-{"methodName":"void drawHole(android.graphics.Canvas)","line":715,"t":"ReceiverNonNull","matcher":"void drawPath(android.graphics.Path,android.graphics.Paint)","className":"com.github.mikephil.charting.renderer.PieChartRenderer"}

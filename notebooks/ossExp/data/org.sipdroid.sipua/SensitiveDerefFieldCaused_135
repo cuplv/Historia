@@ -1,1 +1,0 @@
-{"methodName":"org.zoolu.sip.message.Message getSubscribeMessage(boolean)","line":304,"t":"ReceiverNonNull","matcher":"java.lang.String getEvent()","className":"org.sipdroid.sipua.RegisterAgent"}

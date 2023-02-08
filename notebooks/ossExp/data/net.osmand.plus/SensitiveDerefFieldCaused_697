@@ -1,1 +1,0 @@
-{"methodName":"void selectAddress(java.lang.String,double,double,net.osmand.plus.search.QuickSearchDialogFragment$QuickSearchType)","line":893,"t":"ReceiverNonNull","matcher":"void selectAddress(java.lang.String,net.osmand.data.LatLon,net.osmand.plus.routepreparationmenu.MapRouteInfoMenu$PointType)","className":"net.osmand.plus.views.layers.MapControlsLayer"}

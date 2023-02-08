@@ -1,1 +1,0 @@
-{"methodName":"void move(int,boolean)","line":14,"t":"ReceiverNonNull","matcher":"void occupyCell(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.Char"}

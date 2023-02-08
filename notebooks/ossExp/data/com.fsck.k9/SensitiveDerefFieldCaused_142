@@ -1,1 +1,0 @@
-{"methodName":"void registerFileCleanupReceiver(android.content.Context)","line":187,"t":"ReceiverNonNull","matcher":"void <init>(com.fsck.k9.provider.AttachmentTempFileProvider$AttachmentTempFileProviderCleanupReceiver-IA)","className":"com.fsck.k9.provider.AttachmentTempFileProvider"}

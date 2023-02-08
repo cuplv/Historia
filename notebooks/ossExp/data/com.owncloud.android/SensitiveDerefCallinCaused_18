@@ -1,1 +1,0 @@
-{"methodName":"void dismissLoadingDialog()","line":282,"t":"ReceiverNonNull","matcher":"androidx.fragment.app.FragmentManager getSupportFragmentManager()","className":"com.owncloud.android.ui.preview.PreviewTextFragment$TextLoadAsyncTask"}

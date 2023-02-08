@@ -1,1 +1,0 @@
-{"methodName":"void add(com.shatteredpixel.shatteredpixeldungeon.items.Heap)","line":6,"t":"ReceiverNonNull","matcher":"void addHeapSprite(com.shatteredpixel.shatteredpixeldungeon.items.Heap)","className":"com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene"}

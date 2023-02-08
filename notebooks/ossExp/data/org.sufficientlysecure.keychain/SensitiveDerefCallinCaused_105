@@ -1,1 +1,0 @@
-{"methodName":"android.view.View getDropDownView(int,android.view.View,android.view.ViewGroup)","line":1,"t":"ReceiverNonNull","matcher":"android.view.LayoutInflater getLayoutInflater()","className":"org.sufficientlysecure.keychain.ui.CreateSecurityTokenAlgorithmFragment$TwoLineArrayAdapter"}

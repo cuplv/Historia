@@ -1,1 +1,0 @@
-{"methodName":"void openDBs()","line":61,"t":"ReceiverNonNull","matcher":"boolean isOpen()","className":"com.darshancomputing.BatteryIndicatorPro.LogDatabase"}

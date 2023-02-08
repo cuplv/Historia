@@ -1,1 +1,0 @@
-{"methodName":"void rangedHit(com.shatteredpixel.shatteredpixeldungeon.actors.Char,int)","line":58,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.items.Heap drop(com.shatteredpixel.shatteredpixeldungeon.items.Item,int)","className":"com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.darts.TippedDart"}

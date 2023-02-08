@@ -1,1 +1,0 @@
-{"methodName":"void onLoadFinished(androidx.loader.content.Loader,android.database.Cursor)","line":192,"t":"ReceiverNonNull","matcher":"void invalidate()","className":"org.mariotaku.twidere.fragment.filter.BaseFiltersFragment"}

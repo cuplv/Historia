@@ -1,1 +1,0 @@
-{"methodName":"void showMessage$lambda$3(org.andstatus.app.MyActivity,org.andstatus.app.backup.DefaultProgressListener,java.lang.String,java.lang.String)","line":86,"t":"ReceiverNonNull","matcher":"void <init>(android.content.Context,int)","className":"org.andstatus.app.backup.DefaultProgressListener"}

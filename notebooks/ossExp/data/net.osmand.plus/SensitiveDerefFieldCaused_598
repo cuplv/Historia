@@ -1,1 +1,0 @@
-{"methodName":"void setupTilesDownloadInfo()","line":376,"t":"ReceiverNonNull","matcher":"long getMissingTiles()","className":"net.osmand.plus.plugins.rastermaps.DownloadTilesFragment"}

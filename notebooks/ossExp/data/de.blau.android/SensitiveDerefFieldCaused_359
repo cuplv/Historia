@@ -1,1 +1,0 @@
-{"methodName":"org.mozilla.javascript.Node transformContinue(org.mozilla.javascript.ast.ContinueStatement)","line":4,"t":"ReceiverNonNull","matcher":"void addEOL(int)","className":"org.mozilla.javascript.IRFactory"}

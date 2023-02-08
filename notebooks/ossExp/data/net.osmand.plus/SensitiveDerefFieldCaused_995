@@ -1,1 +1,0 @@
-{"methodName":"net.osmand.router.TransportRouteResult getCurrentRouteResult()","line":118,"t":"ReceiverNonNull","matcher":"int size()","className":"net.osmand.plus.routing.TransportRoutingHelper"}

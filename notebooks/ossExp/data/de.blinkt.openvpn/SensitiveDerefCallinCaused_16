@@ -1,1 +1,0 @@
-{"methodName":"void updateByteCount(long,long,long,long)","line":127,"t":"ReceiverNonNull","matcher":"android.content.res.Resources getResources()","className":"de.blinkt.openvpn.fragments.LogFragment"}

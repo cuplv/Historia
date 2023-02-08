@@ -1,1 +1,0 @@
-{"methodName":"void hideKeyboard()","line":392,"t":"ReceiverNonNull","matcher":"android.view.View getCurrentFocus()","className":"net.osmand.plus.mapcontextmenu.editors.EditorFragment"}

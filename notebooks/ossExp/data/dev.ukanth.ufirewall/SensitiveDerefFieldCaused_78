@@ -1,1 +1,0 @@
-{"methodName":"boolean isIp4Address(java.lang.String)","line":1146,"t":"ReceiverNonNull","matcher":"java.util.regex.Matcher matcher(java.lang.CharSequence)","className":"dev.ukanth.ufirewall.util.G"}

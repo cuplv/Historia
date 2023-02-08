@@ -1,1 +1,0 @@
-{"methodName":"void onPreExecute()","line":126,"t":"ReceiverNonNull","matcher":"void setCancelable(boolean)","className":"com.asksven.betterbatterystats.ReceiversFragmentActivity$ReceiversListFragment$LoadStatData"}

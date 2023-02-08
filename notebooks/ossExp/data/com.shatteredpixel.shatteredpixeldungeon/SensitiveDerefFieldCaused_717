@@ -1,1 +1,0 @@
-{"methodName":"boolean throwBomb(com.shatteredpixel.shatteredpixeldungeon.actors.Char,com.shatteredpixel.shatteredpixeldungeon.actors.Char)","line":23,"t":"ReceiverNonNull","matcher":"float trueDistance(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Tengu"}

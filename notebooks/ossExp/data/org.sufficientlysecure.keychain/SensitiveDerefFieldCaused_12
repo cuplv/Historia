@@ -1,1 +1,0 @@
-{"methodName":"void close()","line":16,"t":"ReceiverNonNull","matcher":"char charAt(int)","className":"org.bouncycastle.bcpg.ArmoredOutputStream"}

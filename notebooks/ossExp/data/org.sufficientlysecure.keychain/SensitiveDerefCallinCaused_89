@@ -1,1 +1,0 @@
-{"methodName":"java.lang.String getVersion()","line":2,"t":"ReceiverNonNull","matcher":"java.lang.String getPackageName()","className":"org.sufficientlysecure.keychain.ui.HelpAboutFragment"}

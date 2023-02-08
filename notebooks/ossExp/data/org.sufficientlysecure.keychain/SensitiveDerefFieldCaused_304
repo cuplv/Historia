@@ -1,1 +1,0 @@
-{"methodName":"void applyLayoutParamsAndMargins(android.view.View)","line":11,"t":"ReceiverNonNull","matcher":"androidx.recyclerview.widget.RecyclerView$LayoutManager getLayoutManager()","className":"eu.davidea.flexibleadapter.helpers.StickyHeaderHelper"}

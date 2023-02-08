@@ -1,1 +1,0 @@
-{"methodName":"void onCreatePreferences(android.os.Bundle,java.lang.String)","line":3,"t":"ReceiverNonNull","matcher":"androidx.preference.Preference getPreference(int)","className":"org.transdroid.core.gui.settings.PreferenceCompatActivity$LowerPreferencesFragment"}

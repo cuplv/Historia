@@ -1,1 +1,0 @@
-{"methodName":"void retrieveCloudmadeKey(android.content.Context)","line":73,"t":"ReceiverNonNull","matcher":"boolean commit()","className":"org.osmdroid.tileprovider.util.CloudmadeUtil"}

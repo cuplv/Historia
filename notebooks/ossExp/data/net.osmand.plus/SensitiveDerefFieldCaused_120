@@ -1,1 +1,0 @@
-{"methodName":"void updateLocationView(net.osmand.plus.utils.UiUtilities$UpdateLocationViewCache,android.widget.ImageView,android.widget.TextView,net.osmand.data.LatLon)","line":255,"t":"ReceiverNonNull","matcher":"void <init>(double,double)","className":"net.osmand.plus.utils.UiUtilities"}

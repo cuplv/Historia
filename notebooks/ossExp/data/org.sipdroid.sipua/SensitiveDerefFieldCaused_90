@@ -1,1 +1,0 @@
-{"methodName":"void onTransTimeout(org.zoolu.sip.transaction.TransactionClient)","line":647,"t":"ReceiverNonNull","matcher":"void onUaRegistrationSuccess(org.sipdroid.sipua.RegisterAgent,org.zoolu.sip.address.NameAddress,org.zoolu.sip.address.NameAddress,java.lang.String)","className":"org.sipdroid.sipua.RegisterAgent"}

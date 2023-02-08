@@ -1,1 +1,0 @@
-{"methodName":"void refreshScreen()","line":30,"t":"ReceiverNonNull","matcher":"void setAdapter(android.widget.SpinnerAdapter)","className":"org.transdroid.core.gui.remoterss.RemoteRssFragment"}

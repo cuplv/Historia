@@ -1,1 +1,0 @@
-{"methodName":"void onDestroy()","line":94,"t":"ReceiverNonNull","matcher":"void destroy()","className":"org.mariotaku.twidere.fragment.BaseWebViewFragment"}

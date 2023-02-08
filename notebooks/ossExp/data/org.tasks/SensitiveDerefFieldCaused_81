@@ -1,1 +1,0 @@
-{"methodName":"void <init>(android.graphics.drawable.Drawable,android.graphics.drawable.Drawable,coil.size.Scale,int,boolean,boolean)","line":64,"t":"ReceiverNonNull","matcher":"void setCallback(android.graphics.drawable.Drawable$Callback)","className":"coil.drawable.CrossfadeDrawable"}

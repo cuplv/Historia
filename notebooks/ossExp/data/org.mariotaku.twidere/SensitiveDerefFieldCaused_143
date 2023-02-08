@@ -1,1 +1,0 @@
-{"methodName":"void handleDocType(char[],int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int)","line":676,"t":"ReceiverNonNull","matcher":"char[] getStructureName(char[],int,int)","className":"org.attoparser.MarkupEventProcessorHandler"}

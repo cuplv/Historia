@@ -1,1 +1,0 @@
-{"methodName":"void urlUpdated(java.lang.String)","line":1357,"t":"ReceiverNonNull","matcher":"void setUrl(java.lang.String)","className":"com.duckduckgo.app.browser.BrowserTabViewModel"}

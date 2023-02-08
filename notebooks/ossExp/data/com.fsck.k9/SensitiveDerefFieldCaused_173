@@ -1,1 +1,0 @@
-{"methodName":"void startOrResumeCryptoOperation(java.lang.String)","line":310,"t":"ReceiverNonNull","matcher":"boolean isConfiguredForOpenPgpProvider(java.lang.String)","className":"com.fsck.k9.activity.MessageLoaderHelper"}

@@ -1,1 +1,0 @@
-{"methodName":"void checkRunning()","line":71,"t":"ReceiverNonNull","matcher":"android.os.Looper getLooper()","className":"com.journeyapps.barcodescanner.camera.CameraThread"}

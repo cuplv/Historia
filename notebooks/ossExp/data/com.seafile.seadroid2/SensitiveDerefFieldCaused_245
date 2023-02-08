@@ -1,1 +1,0 @@
-{"methodName":"com.vladsch.flexmark.ast.Node getLastChildAnyNot(java.lang.Class[])","line":309,"t":"ReceiverNonNull","matcher":"prev","className":"com.vladsch.flexmark.ast.Node"}

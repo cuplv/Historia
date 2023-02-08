@@ -1,1 +1,0 @@
-{"methodName":"long calculateAnimationDelay(androidx.recyclerview.widget.RecyclerView$ViewHolder,int)","line":4,"t":"ReceiverNonNull","matcher":"int getChildCount()","className":"eu.davidea.flexibleadapter.AnimatorAdapter"}

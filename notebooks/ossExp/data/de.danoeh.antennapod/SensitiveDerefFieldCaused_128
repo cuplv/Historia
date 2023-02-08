@@ -1,1 +1,0 @@
-{"methodName":"void updateFromOther(de.danoeh.antennapod.model.feed.FeedItem)","line":142,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"de.danoeh.antennapod.model.feed.FeedItem"}

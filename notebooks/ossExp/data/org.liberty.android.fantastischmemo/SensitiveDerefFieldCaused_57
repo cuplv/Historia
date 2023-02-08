@@ -1,1 +1,0 @@
-{"methodName":"void setObjectCache(boolean)","line":8,"t":"ReceiverNonNull","matcher":"void registerClass(java.lang.Class)","className":"com.j256.ormlite.dao.BaseDaoImpl"}

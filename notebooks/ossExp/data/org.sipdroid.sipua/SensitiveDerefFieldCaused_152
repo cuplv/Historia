@@ -1,1 +1,0 @@
-{"methodName":"void onCallIncoming(org.zoolu.sip.call.Call,org.zoolu.sip.address.NameAddress,org.zoolu.sip.address.NameAddress,java.lang.String,org.zoolu.sip.message.Message)","line":548,"t":"ReceiverNonNull","matcher":"uas","className":"org.sipdroid.sipua.UserAgent"}

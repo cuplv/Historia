@@ -1,1 +1,0 @@
-{"methodName":"void onCast(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero)","line":105,"t":"ReceiverNonNull","matcher":"void spendAndNext(float)","className":"com.shatteredpixel.shatteredpixeldungeon.items.spells.SummonElemental"}

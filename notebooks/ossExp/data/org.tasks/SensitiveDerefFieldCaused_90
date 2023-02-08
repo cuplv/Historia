@@ -1,1 +1,0 @@
-{"methodName":"void stopAnimation(boolean)","line":256,"t":"ReceiverNonNull","matcher":"void end()","className":"org.osmdroid.views.MapController"}

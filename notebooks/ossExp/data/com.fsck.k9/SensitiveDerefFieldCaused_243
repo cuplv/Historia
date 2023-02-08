@@ -1,1 +1,0 @@
-{"methodName":"void showMessageList()","line":1181,"t":"ReceiverNonNull","matcher":"void setActiveMessage(com.fsck.k9.controller.MessageReference)","className":"com.fsck.k9.activity.MessageList"}

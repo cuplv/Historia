@@ -1,1 +1,0 @@
-{"methodName":"void startDisplayLogActivity()","line":4,"t":"ReceiverNonNull","matcher":"void startActivity(android.content.Intent)","className":"org.sufficientlysecure.keychain.ui.DecryptFragment"}

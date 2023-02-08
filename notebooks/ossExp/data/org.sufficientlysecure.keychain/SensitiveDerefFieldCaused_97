@@ -1,1 +1,0 @@
-{"methodName":"org.sufficientlysecure.keychain.securitytoken.SecurityTokenConnection getInstanceForTransport(org.sufficientlysecure.keychain.securitytoken.Transport,org.sufficientlysecure.keychain.util.Passphrase)","line":2,"t":"ReceiverNonNull","matcher":"cachedPin","className":"org.sufficientlysecure.keychain.securitytoken.SecurityTokenConnection"}

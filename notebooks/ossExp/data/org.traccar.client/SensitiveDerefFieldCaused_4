@@ -1,1 +1,0 @@
-{"methodName":"void processInlineTagStart(java.lang.Appendable,ru.noties.markwon.html.jsoup.parser.Token$StartTag)","line":250,"t":"ReceiverNonNull","matcher":"int length()","className":"ru.noties.markwon.html.MarkwonHtmlParserImpl"}

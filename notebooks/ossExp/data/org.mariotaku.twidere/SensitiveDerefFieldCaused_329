@@ -1,1 +1,0 @@
-{"methodName":"void fitToBounds(boolean)","line":1475,"t":"ReceiverNonNull","matcher":"void set(android.graphics.PointF)","className":"com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView"}

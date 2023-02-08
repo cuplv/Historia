@@ -1,1 +1,0 @@
-{"methodName":"void uploadFile(com.seafile.seadroid2.data.DataManager,java.io.File,java.lang.String)","line":649,"t":"ReceiverNonNull","matcher":"int addUploadTask(com.seafile.seadroid2.account.Account,java.lang.String,java.lang.String,java.lang.String,java.lang.String,boolean,boolean)","className":"com.seafile.seadroid2.cameraupload.CameraSyncAdapter"}

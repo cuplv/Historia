@@ -1,1 +1,0 @@
-{"methodName":"eu.davidea.viewholders.FlexibleViewHolder getHeaderViewHolder(int)","line":13,"t":"ReceiverNonNull","matcher":"int getPaddingRight()","className":"eu.davidea.flexibleadapter.helpers.StickyHeaderHelper"}

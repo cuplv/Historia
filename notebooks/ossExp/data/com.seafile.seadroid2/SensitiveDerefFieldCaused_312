@@ -1,1 +1,0 @@
-{"methodName":"void setImageViewMatrix(android.graphics.Matrix)","line":855,"t":"ReceiverNonNull","matcher":"void onMatrixChanged(android.graphics.RectF)","className":"uk.co.senab.photoview.PhotoViewAttacher"}

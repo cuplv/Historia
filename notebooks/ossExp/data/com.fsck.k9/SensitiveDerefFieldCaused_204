@@ -1,1 +1,0 @@
-{"methodName":"void addCryptoResultAnnotationToMessage(com.fsck.k9.mailstore.CryptoResultAnnotation)","line":650,"t":"ReceiverNonNull","matcher":"void put(com.fsck.k9.mail.Part,com.fsck.k9.mailstore.CryptoResultAnnotation)","className":"com.fsck.k9.ui.crypto.MessageCryptoHelper"}

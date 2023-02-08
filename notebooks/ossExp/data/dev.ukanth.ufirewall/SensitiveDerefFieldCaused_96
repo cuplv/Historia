@@ -1,1 +1,0 @@
-{"methodName":"com.raizlabs.android.dbflow.structure.database.OpenHelper getHelper()","line":250,"t":"ReceiverNonNull","matcher":"void performRestoreFromBackup()","className":"com.raizlabs.android.dbflow.config.DatabaseDefinition"}

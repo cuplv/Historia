@@ -1,1 +1,0 @@
-{"methodName":"void run()","line":86,"t":"ReceiverNonNull","matcher":"void removeGroupFrom(com.keepassdroid.database.PwGroup,com.keepassdroid.database.PwGroup)","className":"com.keepassdroid.database.edit.AddGroup$AfterAdd"}

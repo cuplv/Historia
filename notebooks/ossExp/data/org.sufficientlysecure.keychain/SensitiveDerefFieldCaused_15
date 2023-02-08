@@ -1,1 +1,0 @@
-{"methodName":"void bsFinishedWithStream()","line":3,"t":"ReceiverNonNull","matcher":"void close()","className":"org.bouncycastle.apache.bzip2.CBZip2InputStream"}

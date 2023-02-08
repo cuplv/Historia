@@ -1,1 +1,0 @@
-{"methodName":"void activate()","line":66,"t":"ReceiverNonNull","matcher":"int randomRespawnCell(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","className":"com.shatteredpixel.shatteredpixeldungeon.levels.traps.TeleportationTrap"}

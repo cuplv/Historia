@@ -1,1 +1,0 @@
-{"methodName":"boolean onOptionsItemSelected(android.view.MenuItem)","line":901,"t":"ReceiverNonNull","matcher":"void startActivityForResult(android.content.Intent,int)","className":"net.wigle.wigleandroid.MappingFragment"}

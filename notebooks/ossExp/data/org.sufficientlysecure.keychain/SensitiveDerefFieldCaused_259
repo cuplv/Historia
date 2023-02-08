@@ -1,1 +1,0 @@
-{"methodName":"void connect()","line":12,"t":"ReceiverNonNull","matcher":"byte[] getRawDescriptors()","className":"org.sufficientlysecure.keychain.securitytoken.usb.UsbTransport"}

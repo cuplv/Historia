@@ -1,1 +1,0 @@
-{"methodName":"org.mozilla.javascript.Node transformVariables(org.mozilla.javascript.ast.VariableDeclaration)","line":1,"t":"ReceiverNonNull","matcher":"void addToken(int)","className":"org.mozilla.javascript.IRFactory"}

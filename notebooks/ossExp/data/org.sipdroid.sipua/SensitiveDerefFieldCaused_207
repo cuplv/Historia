@@ -1,1 +1,0 @@
-{"methodName":"org.sipdroid.sipua.SipdroidEngine engine(android.content.Context)","line":147,"t":"ReceiverNonNull","matcher":"void CheckEngine()","className":"org.sipdroid.sipua.ui.Receiver"}

@@ -1,1 +1,0 @@
-{"methodName":"void setMapActivity(net.osmand.plus.activities.MapActivity)","line":110,"t":"ReceiverNonNull","matcher":"void setContentDescription(java.lang.CharSequence)","className":"net.osmand.plus.views.layers.MapQuickActionLayer"}

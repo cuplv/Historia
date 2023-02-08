@@ -1,1 +1,0 @@
-{"methodName":"void releaseHelper()","line":6,"t":"ReceiverNonNull","matcher":"void close()","className":"com.j256.ormlite.android.apptools.OpenHelperManager"}

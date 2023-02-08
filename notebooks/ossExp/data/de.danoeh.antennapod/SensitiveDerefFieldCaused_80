@@ -1,1 +1,0 @@
-{"methodName":"void loadFeedImage()","line":512,"t":"ReceiverNonNull","matcher":"java.lang.String getImageUrl()","className":"de.danoeh.antennapod.fragment.FeedItemlistFragment"}

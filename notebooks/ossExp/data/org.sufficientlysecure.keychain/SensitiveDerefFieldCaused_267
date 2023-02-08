@@ -1,1 +1,0 @@
-{"methodName":"void startPreviewIfReady()","line":2,"t":"ReceiverNonNull","matcher":"void <init>(int,int)","className":"com.journeyapps.barcodescanner.CameraPreview"}

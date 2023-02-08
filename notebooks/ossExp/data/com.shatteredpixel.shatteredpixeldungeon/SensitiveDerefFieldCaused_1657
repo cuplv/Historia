@@ -1,1 +1,0 @@
-{"methodName":"void execute(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero,java.lang.String)","line":154,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.items.Heap drop(com.shatteredpixel.shatteredpixeldungeon.items.Item,int)","className":"com.shatteredpixel.shatteredpixeldungeon.items.armor.Armor"}

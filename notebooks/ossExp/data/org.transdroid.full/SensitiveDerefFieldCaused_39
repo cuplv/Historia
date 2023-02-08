@@ -1,1 +1,0 @@
-{"methodName":"int compare(java.lang.Object,java.lang.Object)","line":2,"t":"ReceiverNonNull","matcher":"int compareToIgnoreCase(java.lang.String)","className":"org.transdroid.daemon.adapters.uTorrent.-$$Lambda$UTorrentAdapter$E6tGFLJw1ATBORaVUJxYvQF_YBg"}

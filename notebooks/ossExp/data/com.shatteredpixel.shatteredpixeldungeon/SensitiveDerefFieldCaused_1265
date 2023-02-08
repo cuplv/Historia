@@ -1,1 +1,0 @@
-{"methodName":"boolean attachTo(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","line":24,"t":"ReceiverNonNull","matcher":"boolean search(boolean)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Foresight"}

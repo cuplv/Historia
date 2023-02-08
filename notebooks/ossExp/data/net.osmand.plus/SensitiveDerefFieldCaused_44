@@ -1,1 +1,0 @@
-{"methodName":"java.util.List readStringTable()","line":1435,"t":"ReceiverNonNull","matcher":"java.lang.String readString()","className":"net.osmand.binary.BinaryMapIndexReader"}

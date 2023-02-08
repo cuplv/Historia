@@ -1,1 +1,0 @@
-{"methodName":"void onLayoutChildren(androidx.recyclerview.widget.RecyclerView$Recycler,androidx.recyclerview.widget.RecyclerView$State)","line":550,"t":"ReceiverNonNull","matcher":"boolean hasValidAnchor()","className":"app.k9mail.ui.utils.linearlayoutmanager.LinearLayoutManager"}

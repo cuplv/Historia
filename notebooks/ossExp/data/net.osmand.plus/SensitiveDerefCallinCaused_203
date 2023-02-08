@@ -1,1 +1,0 @@
-{"methodName":"void recreate()","line":356,"t":"ReceiverNonNull","matcher":"androidx.fragment.app.FragmentManager getSupportFragmentManager()","className":"net.osmand.plus.settings.fragments.BaseSettingsFragment"}

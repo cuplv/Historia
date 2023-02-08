@@ -1,1 +1,0 @@
-{"methodName":"android.view.View onCreateView(android.view.LayoutInflater,android.view.ViewGroup)","line":503,"t":"ReceiverNonNull","matcher":"searchCancelButton","className":"com.ubergeek42.WeechatAndroid.fragments.BufferFragment"}

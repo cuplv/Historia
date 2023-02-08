@@ -1,1 +1,0 @@
-{"methodName":"void setupNavigation()","line":72,"t":"ReceiverNonNull","matcher":"android.view.LayoutInflater getLayoutInflater()","className":"net.osmand.plus.dashboard.DashNavigationFragment"}

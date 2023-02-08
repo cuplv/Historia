@@ -1,1 +1,0 @@
-{"methodName":"boolean isCalculatingSrtmData()","line":894,"t":"ReceiverNonNull","matcher":"android.os.AsyncTask$Status getStatus()","className":"net.osmand.plus.measurementtool.MeasurementToolFragment"}

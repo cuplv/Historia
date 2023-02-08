@@ -1,1 +1,0 @@
-{"methodName":"void onClick(android.content.DialogInterface,int)","line":483,"t":"ReceiverNonNull","matcher":"void onBackPressed()","className":"net.osmand.plus.settings.fragments.ConfigureProfileFragment$4"}

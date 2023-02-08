@@ -1,1 +1,0 @@
-{"methodName":"void onServiceConnected(android.content.ComponentName,android.os.IBinder)","line":164,"t":"ReceiverNonNull","matcher":"org.connectbot.service.TerminalBridge getConnectedBridge(java.lang.String)","className":"org.connectbot.ConsoleActivity$1"}

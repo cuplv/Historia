@@ -1,1 +1,0 @@
-{"methodName":"void onPatternDetected(java.util.List)","line":282,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"com.seafile.seadroid2.ui.activity.CreateGesturePasswordActivity$2"}

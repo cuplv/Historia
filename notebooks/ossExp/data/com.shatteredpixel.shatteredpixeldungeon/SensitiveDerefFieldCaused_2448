@@ -1,1 +1,0 @@
-{"methodName":"void damageHero(int)","line":5,"t":"ReceiverNonNull","matcher":"void damage(int,java.lang.Object)","className":"com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfTransfusion"}

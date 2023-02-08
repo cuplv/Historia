@@ -1,1 +1,0 @@
-{"methodName":"void S()","line":3,"t":"ReceiverNonNull","matcher":"void unregisterListener(android.hardware.SensorEventListener)","className":"de.blau.android.Main"}

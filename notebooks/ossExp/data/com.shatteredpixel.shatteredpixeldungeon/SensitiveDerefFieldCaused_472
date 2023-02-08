@@ -1,1 +1,0 @@
-{"methodName":"void add(com.shatteredpixel.shatteredpixeldungeon.tiles.CustomTilemap,boolean)","line":17,"t":"ReceiverNonNull","matcher":"void addCustomWall(com.shatteredpixel.shatteredpixeldungeon.tiles.CustomTilemap)","className":"com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene"}

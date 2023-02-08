@@ -1,1 +1,0 @@
-{"methodName":"int getCurrentChapter(de.danoeh.antennapod.model.playback.Playable)","line":133,"t":"ReceiverNonNull","matcher":"int getPosition()","className":"de.danoeh.antennapod.fragment.ChaptersFragment"}

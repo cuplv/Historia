@@ -1,1 +1,0 @@
-{"methodName":"org.zephyrsoft.trackworktime.WorkTimeTrackerActivity getInstanceOrNull()","line":934,"t":"ReceiverNonNull","matcher":"java.lang.Object get()","className":"org.zephyrsoft.trackworktime.WorkTimeTrackerActivity"}

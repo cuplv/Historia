@@ -1,1 +1,0 @@
-{"methodName":"java.util.HashMap getVerbsMap()","line":189,"t":"ReceiverNonNull","matcher":"java.lang.Object put(java.lang.Object,java.lang.Object)","className":"com.seafile.seadroid2.data.SeafEvent"}

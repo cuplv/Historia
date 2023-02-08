@@ -1,1 +1,0 @@
-{"methodName":"void updateContextMenu(net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin$Recording)","line":1581,"t":"ReceiverNonNull","matcher":"net.osmand.data.PointDescription getObjectName(java.lang.Object)","className":"net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin"}

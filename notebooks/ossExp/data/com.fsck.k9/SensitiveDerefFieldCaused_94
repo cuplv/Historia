@@ -1,1 +1,0 @@
-{"methodName":"void scrollToPosition(int)","line":1135,"t":"ReceiverNonNull","matcher":"void invalidateAnchor()","className":"app.k9mail.ui.utils.linearlayoutmanager.LinearLayoutManager"}

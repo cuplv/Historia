@@ -1,1 +1,0 @@
-{"methodName":"boolean onOptionsItemSelected(android.view.MenuItem)","line":8,"t":"ReceiverNonNull","matcher":"void startActivity(android.content.Intent)","className":"org.transdroid.core.gui.rss.RssFeedsFragment_"}

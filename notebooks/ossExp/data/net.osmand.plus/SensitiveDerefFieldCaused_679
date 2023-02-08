@@ -1,1 +1,0 @@
-{"methodName":"void drawSegments(net.osmand.data.RotatedTileBox,android.graphics.Canvas,double,double,double,double,net.osmand.Location,int)","line":277,"t":"ReceiverNonNull","matcher":"int getSize()","className":"net.osmand.plus.views.layers.geometry.GeometryWay"}

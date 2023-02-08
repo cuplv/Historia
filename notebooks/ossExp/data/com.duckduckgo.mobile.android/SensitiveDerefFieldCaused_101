@@ -1,1 +1,0 @@
-{"methodName":"void close()","line":286,"t":"ReceiverNonNull","matcher":"void close()","className":"net.sqlcipher.database.SQLiteOpenHelper"}

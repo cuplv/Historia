@@ -1,1 +1,0 @@
-{"methodName":"void head(org.jsoup.nodes.Node,int)","line":46,"t":"ReceiverNonNull","matcher":"org.jsoup.nodes.Element appendChild(org.jsoup.nodes.Node)","className":"app.k9mail.html.cleaner.CleaningVisitor"}

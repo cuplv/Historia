@@ -1,1 +1,0 @@
-{"methodName":"void onHit(com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.MagesStaff,com.shatteredpixel.shatteredpixeldungeon.actors.Char,com.shatteredpixel.shatteredpixeldungeon.actors.Char,int)","line":4,"t":"ReceiverNonNull","matcher":"mobs","className":"com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfLivingEarth"}

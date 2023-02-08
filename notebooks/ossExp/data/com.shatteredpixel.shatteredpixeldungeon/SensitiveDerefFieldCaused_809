@@ -1,1 +1,0 @@
-{"methodName":"void spreadFromCell(int,int)","line":13,"t":"ReceiverNonNull","matcher":"int width()","className":"com.shatteredpixel.shatteredpixeldungeon.actors.blobs.Electricity"}

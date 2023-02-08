@@ -1,1 +1,0 @@
-{"methodName":"net.openid.appauth.AuthorizationService getAuthService()","line":56,"t":"ReceiverNonNull","matcher":"void <init>(android.content.Context)","className":"com.fsck.k9.activity.setup.AuthViewModel"}

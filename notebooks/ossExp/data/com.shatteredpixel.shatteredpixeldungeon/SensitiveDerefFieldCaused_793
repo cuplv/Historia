@@ -1,1 +1,0 @@
-{"methodName":"void add(com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob)","line":9,"t":"ReceiverNonNull","matcher":"void addMobSprite(com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob)","className":"com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene"}

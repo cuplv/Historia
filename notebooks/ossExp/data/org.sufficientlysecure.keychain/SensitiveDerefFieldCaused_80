@@ -1,1 +1,0 @@
-{"methodName":"void onClickViewKey()","line":1,"t":"ReceiverNonNull","matcher":"void finishAndShowKey(long)","className":"org.sufficientlysecure.keychain.ui.token.ManageSecurityTokenPresenter"}

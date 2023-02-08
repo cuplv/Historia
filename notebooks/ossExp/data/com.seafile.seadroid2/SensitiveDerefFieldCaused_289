@@ -1,1 +1,0 @@
-{"methodName":"void closeBlock(com.vladsch.flexmark.parser.block.ParserState)","line":105,"t":"ReceiverNonNull","matcher":"com.vladsch.flexmark.util.sequence.BasedSequence getSpanningChars()","className":"com.vladsch.flexmark.internal.FencedCodeBlockParser"}

@@ -1,1 +1,0 @@
-{"methodName":"boolean hasNext()","line":9,"t":"ReceiverNonNull","matcher":"boolean hasNext()","className":"com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag$ItemIterator"}

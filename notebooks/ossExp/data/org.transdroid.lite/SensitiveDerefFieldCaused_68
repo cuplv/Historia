@@ -1,1 +1,0 @@
-{"methodName":"void onViewChanged(org.androidannotations.api.view.HasViews)","line":23,"t":"ReceiverNonNull","matcher":"void setFastScrollEnabled(boolean)","className":"org.transdroid.core.gui.DetailsFragment_"}

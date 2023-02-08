@@ -1,1 +1,0 @@
-{"methodName":"void onServiceConnected(android.content.ComponentName,android.os.IBinder)","line":105,"t":"ReceiverNonNull","matcher":"boolean isAnalysisRunning()","className":"de.srlabs.snoopsnitch.DashboardActivity$1"}

@@ -1,1 +1,0 @@
-{"methodName":"androidx.core.app.NotificationCompat$Builder buildNotification(boolean)","line":189,"t":"ReceiverNonNull","matcher":"java.lang.String getDescriptionRoutePart()","className":"net.osmand.plus.notifications.NavigationNotification"}

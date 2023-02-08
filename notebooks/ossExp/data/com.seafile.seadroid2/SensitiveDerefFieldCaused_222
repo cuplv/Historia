@@ -1,1 +1,0 @@
-{"methodName":"void waitForUploads()","line":575,"t":"ReceiverNonNull","matcher":"com.seafile.seadroid2.transfer.UploadTaskInfo getUploadTaskInfo(int)","className":"com.seafile.seadroid2.cameraupload.CameraSyncAdapter"}

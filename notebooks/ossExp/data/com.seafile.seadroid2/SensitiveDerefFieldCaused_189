@@ -1,1 +1,0 @@
-{"methodName":"void downloadAnim()","line":281,"t":"ReceiverNonNull","matcher":"void addUpdateListener(android.animation.ValueAnimator$AnimatorUpdateListener)","className":"moe.codeest.enviews.ENDownloadView"}

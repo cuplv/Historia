@@ -1,1 +1,0 @@
-{"methodName":"void moveCurrentMonster()","line":414,"t":"ReceiverNonNull","matcher":"int getMoveCost()","className":"com.gpl.rpg.AndorsTrail.controller.CombatController"}

@@ -1,1 +1,0 @@
-{"methodName":"void onServiceConnected(android.content.ComponentName,android.os.IBinder)","line":161,"t":"ReceiverNonNull","matcher":"void setResizeAllowed(boolean)","className":"org.connectbot.ConsoleActivity$1"}

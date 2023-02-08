@@ -1,1 +1,0 @@
-{"methodName":"void setCatchClauses(java.util.List)","line":3,"t":"ReceiverNonNull","matcher":"void clear()","className":"org.mozilla.javascript.ast.TryStatement"}

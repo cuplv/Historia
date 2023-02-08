@@ -1,1 +1,0 @@
-{"methodName":"void lambda$internalShoot$7$net-osmand-plus-plugins-audionotes-AudioVideoNotesPlugin()","line":1378,"t":"ReceiverNonNull","matcher":"void takePicture(android.hardware.Camera$ShutterCallback,android.hardware.Camera$PictureCallback,android.hardware.Camera$PictureCallback)","className":"net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin"}

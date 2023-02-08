@@ -1,1 +1,0 @@
-{"methodName":"void loadSignerKeyData()","line":2,"t":"ReceiverNonNull","matcher":"void removeObservers(androidx.lifecycle.LifecycleOwner)","className":"org.sufficientlysecure.keychain.ui.DecryptFragment"}

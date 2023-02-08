@@ -1,1 +1,0 @@
-{"methodName":"void addLine(java.lang.CharSequence)","line":92,"t":"ReceiverNonNull","matcher":"void add(java.lang.CharSequence)","className":"org.commonmark.internal.HtmlBlockParser"}

@@ -1,1 +1,0 @@
-{"methodName":"boolean containsLatLon(net.osmand.data.RotatedTileBox,double,double,double,double)","line":525,"t":"ReceiverNonNull","matcher":"int getMapMarkersBarWidgetHeight()","className":"net.osmand.plus.views.layers.MapMarkersLayer"}

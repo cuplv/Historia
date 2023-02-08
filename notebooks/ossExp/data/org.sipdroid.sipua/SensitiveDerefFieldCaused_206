@@ -1,1 +1,0 @@
-{"methodName":"void run()","line":539,"t":"ReceiverNonNull","matcher":"void stopOutgoing()","className":"org.sipdroid.media.RtpStreamSender"}

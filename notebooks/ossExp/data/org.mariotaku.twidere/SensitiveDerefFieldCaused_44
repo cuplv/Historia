@@ -1,1 +1,0 @@
-{"methodName":"void setBitmap(android.graphics.Bitmap,int,android.net.Uri,int,int)","line":1191,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"com.theartofdev.edmodo.cropper.CropImageView"}

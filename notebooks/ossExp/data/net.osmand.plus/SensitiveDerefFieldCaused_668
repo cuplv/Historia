@@ -1,1 +1,0 @@
-{"methodName":"void initCaptionStyle()","line":417,"t":"ReceiverNonNull","matcher":"void setColor(net.osmand.core.jni.ColorARGB)","className":"net.osmand.plus.views.layers.PointNavigationLayer"}

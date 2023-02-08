@@ -1,1 +1,0 @@
-{"methodName":"com.j256.ormlite.android.apptools.OrmLiteSqliteOpenHelper loadHelper(android.content.Context,java.lang.Class)","line":11,"t":"ReceiverNonNull","matcher":"void clear()","className":"com.j256.ormlite.android.apptools.OpenHelperManager"}

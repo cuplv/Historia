@@ -1,1 +1,0 @@
-{"methodName":"void cacheNext()","line":12,"t":"ReceiverNonNull","matcher":"void <init>(org.bouncycastle.openpgp.PGPKeyRing)","className":"org.sufficientlysecure.keychain.pgp.UncachedKeyRing$2"}

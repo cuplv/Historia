@@ -1,1 +1,0 @@
-{"methodName":"java.lang.String getTargetUrlForImageSource()","line":1921,"t":"ReceiverNonNull","matcher":"void requestFocusNodeHref(android.os.Message)","className":"com.duckduckgo.app.browser.BrowserTabFragment"}

@@ -1,1 +1,0 @@
-{"methodName":"void removeConnection(org.zoolu.sip.provider.ConnectionIdentifier)","line":1176,"t":"ReceiverNonNull","matcher":"java.lang.Object get(java.lang.Object)","className":"org.zoolu.sip.provider.SipProvider"}

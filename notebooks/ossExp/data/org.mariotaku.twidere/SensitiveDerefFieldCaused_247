@@ -1,1 +1,0 @@
-{"methodName":"boolean handleReplyIntent(org.mariotaku.twidere.model.ParcelableStatus)","line":2344,"t":"ReceiverNonNull","matcher":"java.lang.String getHost()","className":"org.mariotaku.twidere.activity.ComposeActivity"}

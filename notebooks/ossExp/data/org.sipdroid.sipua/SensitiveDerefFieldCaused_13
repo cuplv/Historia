@@ -1,1 +1,0 @@
-{"methodName":"void startTrasport()","line":362,"t":"ReceiverNonNull","matcher":"int getPort()","className":"org.zoolu.sip.provider.SipProvider"}

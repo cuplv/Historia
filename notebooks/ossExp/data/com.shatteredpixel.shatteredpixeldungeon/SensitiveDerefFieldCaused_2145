@@ -1,1 +1,0 @@
-{"methodName":"boolean act()","line":55,"t":"ReceiverNonNull","matcher":"void updateFieldOfView(com.shatteredpixel.shatteredpixeldungeon.actors.Char,boolean[])","className":"com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero"}

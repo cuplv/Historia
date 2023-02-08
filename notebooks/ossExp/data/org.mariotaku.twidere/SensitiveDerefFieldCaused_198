@@ -1,1 +1,0 @@
-{"methodName":"void awaitNewImage()","line":220,"t":"ReceiverNonNull","matcher":"void checkGlError(java.lang.String)","className":"net.ypresto.androidtranscoder.engine.OutputSurface"}

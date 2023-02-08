@@ -1,1 +1,0 @@
-{"methodName":"boolean needScan()","line":1,"t":"ReceiverNonNull","matcher":"long queryLongScalar(java.lang.String,java.lang.Object[])","className":"com.ichi2.libanki.Media"}

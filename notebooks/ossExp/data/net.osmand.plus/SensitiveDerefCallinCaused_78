@@ -1,1 +1,0 @@
-{"methodName":"void onCreate(android.os.Bundle)","line":112,"t":"ReceiverNonNull","matcher":"android.content.Context getApplicationContext()","className":"net.osmand.plus.activities.search.SearchHistoryFragment"}

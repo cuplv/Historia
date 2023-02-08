@@ -1,1 +1,0 @@
-{"methodName":"void onCollectionLoaded(com.ichi2.libanki.Collection)","line":9,"t":"ReceiverNonNull","matcher":"com.ichi2.libanki.Model getModel()","className":"com.ichi2.anki.CardTemplateEditor"}

@@ -1,1 +1,0 @@
-{"methodName":"void drawAt(android.graphics.Canvas,int,int,float)","line":589,"t":"ReceiverNonNull","matcher":"void draw(android.graphics.Canvas)","className":"org.osmdroid.views.overlay.Marker"}

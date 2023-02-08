@@ -1,1 +1,0 @@
-{"methodName":"java.lang.String getAdditionalInfo(java.lang.String)","line":111,"t":"ReceiverNonNull","matcher":"java.lang.Object get(java.lang.Object)","className":"net.osmand.data.Amenity"}

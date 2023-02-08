@@ -1,1 +1,0 @@
-{"methodName":"boolean checkForNewCfg(android.content.Context)","line":184,"t":"ReceiverNonNull","matcher":"boolean equals(dev.ukanth.ufirewall.InterfaceDetails)","className":"dev.ukanth.ufirewall.InterfaceTracker"}

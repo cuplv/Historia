@@ -1,1 +1,0 @@
-{"methodName":"org.osmdroid.util.BoundingBox getBounds()","line":367,"t":"ReceiverNonNull","matcher":"org.osmdroid.util.BoundingBox getBoundingBox()","className":"org.osmdroid.views.overlay.PolyOverlayWithIW"}

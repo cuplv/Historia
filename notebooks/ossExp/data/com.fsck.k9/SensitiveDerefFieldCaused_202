@@ -1,1 +1,0 @@
-{"methodName":"void initializeSortSettings()","line":395,"t":"ReceiverNonNull","matcher":"com.fsck.k9.Account$SortType getSortType()","className":"com.fsck.k9.ui.messagelist.MessageListFragment"}

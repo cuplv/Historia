@@ -1,1 +1,0 @@
-{"methodName":"void onSuccessfulTtsInit(java.util.Locale,float)","line":131,"t":"ReceiverNonNull","matcher":"int setLanguage(java.util.Locale)","className":"net.osmand.plus.voice.JsTtsCommandPlayer"}

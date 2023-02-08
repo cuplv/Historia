@@ -1,1 +1,0 @@
-{"methodName":"void onItemSelected(android.widget.AdapterView,android.view.View,int,long)","line":331,"t":"ReceiverNonNull","matcher":"void setDefaultColorsForScheme(int,int,int)","className":"org.connectbot.ColorsActivity"}

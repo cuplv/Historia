@@ -1,1 +1,0 @@
-{"methodName":"void refreshWikiOnMap()","line":340,"t":"ReceiverNonNull","matcher":"net.osmand.plus.dashboard.DashboardOnMap getDashboard()","className":"net.osmand.plus.wikipedia.WikipediaPlugin"}

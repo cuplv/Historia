@@ -1,1 +1,0 @@
-{"methodName":"void updateList()","line":240,"t":"ReceiverNonNull","matcher":"java.util.List getPortForwardsForHost(org.connectbot.bean.HostBean)","className":"org.connectbot.PortForwardListActivity"}

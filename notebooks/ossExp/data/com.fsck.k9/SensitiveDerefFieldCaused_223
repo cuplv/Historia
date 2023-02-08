@@ -1,1 +1,0 @@
-{"methodName":"void deliverResult()","line":622,"t":"ReceiverNonNull","matcher":"void onMessageBuildSuccess(com.fsck.k9.mail.internet.MimeMessage,boolean)","className":"com.fsck.k9.message.MessageBuilder"}

@@ -1,1 +1,0 @@
-{"methodName":"void onLoadFinished(androidx.loader.content.Loader,java.util.List)","line":412,"t":"ReceiverNonNull","matcher":"void destroyLoader(int)","className":"com.fsck.k9.view.RecipientSelectView"}

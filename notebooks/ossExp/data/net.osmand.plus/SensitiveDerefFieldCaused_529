@@ -1,1 +1,0 @@
-{"methodName":"void onPreExecute()","line":297,"t":"ReceiverNonNull","matcher":"void setMessage(java.lang.CharSequence)","className":"net.osmand.plus.download.ui.DownloadResourceGroupFragment$2"}

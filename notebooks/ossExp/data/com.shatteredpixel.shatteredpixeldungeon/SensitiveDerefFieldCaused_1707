@@ -1,1 +1,0 @@
-{"methodName":"void updateLevelExplored()","line":25,"t":"ReceiverNonNull","matcher":"boolean isLevelExplored(int)","className":"com.shatteredpixel.shatteredpixeldungeon.Dungeon"}

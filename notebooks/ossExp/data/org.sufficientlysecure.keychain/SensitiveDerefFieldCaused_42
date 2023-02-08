@@ -1,1 +1,0 @@
-{"methodName":"void emitCodeLines(java.lang.StringBuilder,com.github.rjeschke.txtmark.Line,java.lang.String,boolean)","line":3,"t":"ReceiverNonNull","matcher":"isEmpty","className":"com.github.rjeschke.txtmark.Emitter"}

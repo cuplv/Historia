@@ -1,1 +1,0 @@
-{"methodName":"boolean findlabel(int)","line":-1,"t":"ReceiverNonNull","matcher":"void patchclose(int,int)","className":"org.luaj.vm2.compiler.LexState"}

@@ -1,1 +1,0 @@
-{"methodName":"void updateHeader(int,boolean)","line":12,"t":"ReceiverNonNull","matcher":"int getItemViewType()","className":"eu.davidea.flexibleadapter.helpers.StickyHeaderHelper"}

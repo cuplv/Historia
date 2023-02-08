@@ -1,1 +1,0 @@
-{"methodName":"void onFileMetadataChanged()","line":195,"t":"ReceiverNonNull","matcher":"com.owncloud.android.datamodel.FileDataStorageManager getStorageManager()","className":"com.owncloud.android.ui.preview.FileDownloadFragment"}

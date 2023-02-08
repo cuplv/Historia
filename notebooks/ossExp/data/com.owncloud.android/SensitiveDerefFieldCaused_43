@@ -1,1 +1,0 @@
-{"methodName":"void finish()","line":793,"t":"ReceiverNonNull","matcher":"void onResult(android.os.Bundle)","className":"com.owncloud.android.presentation.ui.authentication.LoginActivity"}

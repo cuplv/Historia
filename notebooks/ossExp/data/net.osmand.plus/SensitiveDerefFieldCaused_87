@@ -1,1 +1,0 @@
-{"methodName":"java.lang.String getVoiceUsed()","line":155,"t":"ReceiverNonNull","matcher":"android.speech.tts.Voice getVoice()","className":"net.osmand.plus.voice.JsTtsCommandPlayer"}

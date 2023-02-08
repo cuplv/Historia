@@ -1,1 +1,0 @@
-{"methodName":"void enableUrlParametersRemovedFlag()","line":1683,"t":"ReceiverNonNull","matcher":"void setUrlParametersRemoved(boolean)","className":"com.duckduckgo.app.browser.BrowserTabViewModel"}

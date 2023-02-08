@@ -1,1 +1,0 @@
-{"methodName":"int unreadArticles(java.util.Date)","line":11,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"com.shatteredpixel.shatteredpixeldungeon.services.news.News"}
