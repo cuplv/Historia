@@ -93,6 +93,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     }
   }
   override def heuristicDerefNull[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[InitialQuery] = {
+    //TODO: split this into deref in onClick and other ui callbacks where finish is invoked and deref in synchronization cb like onPostExecute or Action1
 
     val filteredAppMethods: Set[MethodLoc] = appMethods.filter {
       methodLoc: MethodLoc => // apply package filter if it exists
