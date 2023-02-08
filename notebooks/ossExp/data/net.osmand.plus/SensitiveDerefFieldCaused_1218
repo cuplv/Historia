@@ -1,1 +1,0 @@
-{"methodName":"net.osmand.GPXUtilities$WptPt addPoint(boolean)","line":906,"t":"ReceiverNonNull","matcher":"double getLongitude()","className":"net.osmand.plus.measurementtool.MeasurementToolLayer"}

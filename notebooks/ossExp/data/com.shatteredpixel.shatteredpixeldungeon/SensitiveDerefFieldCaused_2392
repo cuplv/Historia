@@ -1,1 +1,0 @@
-{"methodName":"void saveGameData(com.shatteredpixel.shatteredpixeldungeon.Rankings$Record)","line":112,"t":"ReceiverNonNull","matcher":"java.util.LinkedHashSet buffs()","className":"com.shatteredpixel.shatteredpixeldungeon.Rankings"}

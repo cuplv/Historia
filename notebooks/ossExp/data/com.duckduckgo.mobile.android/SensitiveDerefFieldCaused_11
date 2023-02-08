@@ -1,1 +1,0 @@
-{"methodName":"boolean onPrepareOptionsMenu(android.view.Menu)","line":524,"t":"ReceiverNonNull","matcher":"com.duckduckgo.mobile.android.vpn.state.VpnStateMonitor$VpnRunningState getState()","className":"com.duckduckgo.mobile.android.vpn.ui.tracker_activity.DeviceShieldTrackerActivity"}

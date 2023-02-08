@@ -1,1 +1,0 @@
-{"methodName":"void simulatePositionImpl()","line":746,"t":"ReceiverNonNull","matcher":"net.osmand.Location getSimulatedLocation()","className":"net.osmand.plus.OsmAndLocationProvider"}

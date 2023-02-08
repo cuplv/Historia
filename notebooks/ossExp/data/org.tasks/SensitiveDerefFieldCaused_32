@@ -1,1 +1,0 @@
-{"methodName":"void displayDowngrade(android.graphics.Canvas,org.osmdroid.views.Projection)","line":462,"t":"ReceiverNonNull","matcher":"org.osmdroid.util.BoundingBox getBoundingBox()","className":"org.osmdroid.views.overlay.PolyOverlayWithIW"}

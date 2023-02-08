@@ -1,1 +1,0 @@
-{"methodName":"void decompile(org.mozilla.javascript.ast.AstNode)","line":10,"t":"ReceiverNonNull","matcher":"void addToken(int)","className":"org.mozilla.javascript.IRFactory"}

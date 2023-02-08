@@ -1,1 +1,0 @@
-{"methodName":"void finishWithResult(android.content.Intent)","line":2,"t":"ReceiverNonNull","matcher":"void setResult(int,android.content.Intent)","className":"org.sufficientlysecure.keychain.remote.ui.RemoteRegisterActivity$RemoteRegisterDialogFragment$1"}

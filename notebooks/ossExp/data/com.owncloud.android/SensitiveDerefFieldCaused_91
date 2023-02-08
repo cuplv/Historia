@@ -1,1 +1,0 @@
-{"methodName":"void onPause()","line":164,"t":"ReceiverNonNull","matcher":"void removeOperationListener(com.owncloud.android.lib.common.operations.OnRemoteOperationListener)","className":"com.owncloud.android.ui.activity.FileActivity"}

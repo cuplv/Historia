@@ -1,1 +1,0 @@
-{"methodName":"java.lang.String getCloudmadeToken()","line":145,"t":"ReceiverNonNull","matcher":"boolean commit()","className":"org.osmdroid.tileprovider.util.CloudmadeUtil"}

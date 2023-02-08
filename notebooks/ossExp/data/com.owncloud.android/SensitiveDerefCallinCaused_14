@@ -1,1 +1,0 @@
-{"methodName":"void bindMediaService()","line":359,"t":"ReceiverNonNull","matcher":"boolean bindService(android.content.Intent,android.content.ServiceConnection,int)","className":"com.owncloud.android.ui.preview.PreviewAudioFragment"}

@@ -1,1 +1,0 @@
-{"methodName":"void <init>(com.shatteredpixel.shatteredpixeldungeon.items.Recipe,java.util.ArrayList,com.shatteredpixel.shatteredpixeldungeon.items.Item)","line":9,"t":"ReceiverNonNull","matcher":"belongings","className":"com.shatteredpixel.shatteredpixeldungeon.ui.QuickRecipe"}

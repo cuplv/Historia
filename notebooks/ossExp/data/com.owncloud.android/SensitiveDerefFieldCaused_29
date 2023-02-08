@@ -1,1 +1,0 @@
-{"methodName":"boolean onOptionsItemSelected(android.view.MenuItem)","line":238,"t":"ReceiverNonNull","matcher":"com.owncloud.android.ui.helpers.FileOperationsHelper getFileOperationsHelper()","className":"com.owncloud.android.ui.preview.PreviewImageFragment"}

@@ -1,1 +1,0 @@
-{"methodName":"void reloadGenerators()","line":31,"t":"ReceiverNonNull","matcher":"java.lang.Object get(java.lang.Object)","className":"com.watabou.utils.PlatformSupport"}

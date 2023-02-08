@@ -1,1 +1,0 @@
-{"methodName":"void showBrightnessDialog(float)","line":321,"t":"ReceiverNonNull","matcher":"boolean isShowing()","className":"com.shuyu.gsyvideoplayer.video.StandardGSYVideoPlayer"}

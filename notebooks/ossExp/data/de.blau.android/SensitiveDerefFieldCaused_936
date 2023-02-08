@@ -1,1 +1,0 @@
-{"methodName":"boolean onTouchEvent(android.view.MotionEvent)","line":34,"t":"ReceiverNonNull","matcher":"void clear()","className":"cn.carbswang.android.numberpickerview.library.NumberPickerView"}

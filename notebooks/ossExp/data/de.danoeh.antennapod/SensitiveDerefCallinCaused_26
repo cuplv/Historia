@@ -1,1 +1,0 @@
-{"methodName":"boolean onMenuItemActionCollapse(android.view.MenuItem)","line":176,"t":"ReceiverNonNull","matcher":"androidx.fragment.app.FragmentManager getSupportFragmentManager()","className":"de.danoeh.antennapod.fragment.OnlineSearchFragment$3"}

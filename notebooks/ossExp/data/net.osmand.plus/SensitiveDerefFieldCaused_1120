@@ -1,1 +1,0 @@
-{"methodName":"boolean containsLatLon(net.osmand.data.RotatedTileBox,double,double,double,double)","line":523,"t":"ReceiverNonNull","matcher":"boolean isMapMarkersBarWidgetVisible()","className":"net.osmand.plus.views.layers.MapMarkersLayer"}

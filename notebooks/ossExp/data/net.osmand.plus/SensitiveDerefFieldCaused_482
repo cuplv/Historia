@@ -1,1 +1,0 @@
-{"methodName":"void clearAudioVideoNotes()","line":280,"t":"ReceiverNonNull","matcher":"void clearSymbols(net.osmand.core.android.MapRendererView)","className":"net.osmand.plus.plugins.audionotes.AudioNotesLayer"}

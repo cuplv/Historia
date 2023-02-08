@@ -1,1 +1,0 @@
-{"methodName":"java.lang.Object onRetainCustomNonConfigurationInstance()","line":648,"t":"ReceiverNonNull","matcher":"void detachCallback()","className":"com.fsck.k9.activity.MessageCompose"}

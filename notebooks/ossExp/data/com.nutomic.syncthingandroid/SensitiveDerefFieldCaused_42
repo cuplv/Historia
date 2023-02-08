@@ -1,1 +1,0 @@
-{"methodName":"void enqueue(java.lang.Runnable)","line":44,"t":"ReceiverNonNull","matcher":"boolean post(java.lang.Runnable)","className":"com.journeyapps.barcodescanner.camera.CameraThread"}

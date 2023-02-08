@@ -1,1 +1,0 @@
-{"methodName":"void updateQuickActionButton(boolean)","line":324,"t":"ReceiverNonNull","matcher":"void setContentDescription(java.lang.CharSequence)","className":"net.osmand.plus.views.layers.MapQuickActionLayer"}

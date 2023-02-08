@@ -1,1 +1,0 @@
-{"methodName":"void cryptoOperation(org.sufficientlysecure.keychain.service.input.CryptoInputParcel)","line":3,"t":"ReceiverNonNull","matcher":"java.lang.Class getClass()","className":"org.sufficientlysecure.keychain.ui.base.CryptoOperationHelper"}

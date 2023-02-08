@@ -1,1 +1,0 @@
-{"methodName":"void renderFrame(net.osmand.data.RotatedTileBox,net.osmand.plus.views.layers.base.OsmandMapLayer$DrawSettings)","line":236,"t":"ReceiverNonNull","matcher":"boolean isValid()","className":"net.osmand.plus.auto.SurfaceRenderer"}

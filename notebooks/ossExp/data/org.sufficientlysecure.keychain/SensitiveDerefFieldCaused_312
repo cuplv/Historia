@@ -1,1 +1,0 @@
-{"methodName":"void release()","line":3,"t":"ReceiverNonNull","matcher":"void close()","className":"org.sufficientlysecure.keychain.securitytoken.usb.UsbTransport"}

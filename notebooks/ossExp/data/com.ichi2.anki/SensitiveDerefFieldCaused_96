@@ -1,1 +1,0 @@
-{"methodName":"com.ichi2.libanki.sync.Syncer$ConnectionResultType download()","line":7,"t":"ReceiverNonNull","matcher":"java.lang.String getPath()","className":"com.ichi2.libanki.sync.FullSyncer"}

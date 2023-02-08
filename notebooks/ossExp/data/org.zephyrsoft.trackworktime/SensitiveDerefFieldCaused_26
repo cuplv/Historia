@@ -1,1 +1,0 @@
-{"methodName":"boolean activate()","line":-1,"t":"ReceiverNonNull","matcher":"boolean covers(org.pmw.tinylog.WritingThread)","className":"org.pmw.tinylog.Configurator"}

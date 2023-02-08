@@ -1,1 +1,0 @@
-{"methodName":"int flee(com.shatteredpixel.shatteredpixeldungeon.actors.Char,int,boolean[],boolean[],boolean)","line":25,"t":"ReceiverNonNull","matcher":"int length()","className":"com.shatteredpixel.shatteredpixeldungeon.Dungeon"}

@@ -1,1 +1,0 @@
-{"methodName":"void stopMWI()","line":279,"t":"ReceiverNonNull","matcher":"void onMWIUpdate(org.sipdroid.sipua.RegisterAgent,boolean,int,java.lang.String)","className":"org.sipdroid.sipua.RegisterAgent"}

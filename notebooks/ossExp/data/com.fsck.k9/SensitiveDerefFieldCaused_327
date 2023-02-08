@@ -1,1 +1,0 @@
-{"methodName":"void requestUidl()","line":514,"t":"ReceiverNonNull","matcher":"boolean supportsUidl()","className":"com.fsck.k9.mail.store.pop3.Pop3Folder"}

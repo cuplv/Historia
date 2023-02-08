@@ -1,1 +1,0 @@
-{"methodName":"boolean stepBackAndFindPrevPointInRoute(net.osmand.router.RoutePlannerFrontEnd$GpxRouteApproximation,java.util.List,net.osmand.router.RoutePlannerFrontEnd$GpxPoint,net.osmand.router.RoutePlannerFrontEnd$GpxPoint)","line":406,"t":"ReceiverNonNull","matcher":"java.lang.Object get(int)","className":"net.osmand.router.RoutePlannerFrontEnd"}

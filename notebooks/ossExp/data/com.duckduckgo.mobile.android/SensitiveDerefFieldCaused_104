@@ -1,1 +1,0 @@
-{"methodName":"void emitLoop()","line":374,"t":"ReceiverNonNull","matcher":"void forEachWhile(com.jakewharton.rxrelay2.AppendOnlyLinkedArrayList$NonThrowingPredicate)","className":"com.jakewharton.rxrelay2.BehaviorRelay$BehaviorDisposable"}

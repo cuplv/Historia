@@ -1,1 +1,0 @@
-{"methodName":"void setMovableObject(double,double)","line":437,"t":"ReceiverNonNull","matcher":"net.osmand.core.jni.QListMapMarker getMarkers()","className":"net.osmand.plus.views.layers.base.OsmandMapLayer"}

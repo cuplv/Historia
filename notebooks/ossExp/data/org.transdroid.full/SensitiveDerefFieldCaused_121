@@ -1,1 +1,0 @@
-{"methodName":"void updateRemoteItems(java.util.List,boolean)","line":9,"t":"ReceiverNonNull","matcher":"void setText(int)","className":"org.transdroid.core.gui.remoterss.RemoteRssFragment"}

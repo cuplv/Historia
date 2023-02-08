@@ -1,1 +1,0 @@
-{"methodName":"void setParallelDownloadsText(int)","line":110,"t":"ReceiverNonNull","matcher":"android.content.res.Resources getResources()","className":"de.danoeh.antennapod.fragment.preferences.NetworkPreferencesFragment"}

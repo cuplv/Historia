@@ -1,1 +1,0 @@
-{"methodName":"void addDaoToClassMap(com.j256.ormlite.dao.DaoManager$ClassConnectionSource,com.j256.ormlite.dao.Dao)","line":3,"t":"ReceiverNonNull","matcher":"java.lang.Object put(java.lang.Object,java.lang.Object)","className":"com.j256.ormlite.dao.DaoManager"}

@@ -1,1 +1,0 @@
-{"methodName":"void migrate(com.raizlabs.android.dbflow.structure.database.DatabaseWrapper)","line":78,"t":"ReceiverNonNull","matcher":"java.lang.Object get(int)","className":"com.raizlabs.android.dbflow.sql.migration.AlterTableMigration"}

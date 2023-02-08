@@ -1,1 +1,0 @@
-{"methodName":"org.mozilla.javascript.Node transformThrow(org.mozilla.javascript.ast.ThrowStatement)","line":1135,"t":"ReceiverNonNull","matcher":"void addEOL(int)","className":"org.mozilla.javascript.IRFactory"}

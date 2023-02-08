@@ -1,1 +1,0 @@
-{"methodName":"boolean onUserPressedBack()","line":1063,"t":"ReceiverNonNull","matcher":"boolean getCanGoBack()","className":"com.duckduckgo.app.browser.BrowserTabViewModel"}

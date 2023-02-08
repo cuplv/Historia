@@ -1,1 +1,0 @@
-{"methodName":"void render(com.caverock.androidsvg.SVG$Svg,com.caverock.androidsvg.SVG$Box,com.caverock.androidsvg.SVG$Box,com.caverock.androidsvg.PreserveAspectRatio)","line":613,"t":"ReceiverNonNull","matcher":"minY","className":"com.caverock.androidsvg.SVGAndroidRenderer"}

@@ -1,1 +1,0 @@
-{"methodName":"void onCreate(android.os.Bundle)","line":118,"t":"ReceiverNonNull","matcher":"java.lang.Object getLastNonConfigurationInstance()","className":"net.osmand.plus.download.ui.LocalIndexesFragment"}

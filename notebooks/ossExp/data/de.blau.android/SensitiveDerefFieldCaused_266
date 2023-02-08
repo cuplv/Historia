@@ -1,1 +1,0 @@
-{"methodName":"void Q(android.graphics.Canvas,v7.a)","line":14,"t":"ReceiverNonNull","matcher":"void s(java.util.Collection,de.blau.android.osm.BoundingBox)","className":"de.blau.android.layer.geojson.MapOverlay"}

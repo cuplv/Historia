@@ -1,1 +1,0 @@
-{"methodName":"void returnBeacon(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero)","line":151,"t":"ReceiverNonNull","matcher":"void occupyCell(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","className":"com.shatteredpixel.shatteredpixeldungeon.items.spells.BeaconOfReturning"}

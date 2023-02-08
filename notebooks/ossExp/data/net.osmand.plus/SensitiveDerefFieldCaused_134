@@ -1,1 +1,0 @@
-{"methodName":"boolean lambda$setMapActivity$1$net-osmand-plus-views-layers-MapQuickActionLayer(net.osmand.plus.activities.MapActivity,android.view.View)","line":122,"t":"ReceiverNonNull","matcher":"void setAlpha(float)","className":"net.osmand.plus.views.layers.MapQuickActionLayer"}

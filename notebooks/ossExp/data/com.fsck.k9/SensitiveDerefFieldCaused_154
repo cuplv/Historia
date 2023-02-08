@@ -1,1 +1,0 @@
-{"methodName":"void propagateEncapsulatedSignedPart(com.fsck.k9.mailstore.CryptoResultAnnotation,com.fsck.k9.mail.Part)","line":617,"t":"ReceiverNonNull","matcher":"com.fsck.k9.mailstore.CryptoResultAnnotation get(com.fsck.k9.mail.Part)","className":"com.fsck.k9.ui.crypto.MessageCryptoHelper"}

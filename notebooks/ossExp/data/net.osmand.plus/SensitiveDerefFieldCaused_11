@@ -1,1 +1,0 @@
-{"methodName":"void onClick(android.view.View)","line":35,"t":"ReceiverNonNull","matcher":"void hideFragmentByTag(java.lang.String)","className":"net.osmand.plus.dashboard.DashDashboardOrDrawerFragment$2"}

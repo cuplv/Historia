@@ -1,1 +1,0 @@
-{"methodName":"java.util.Iterator rangeIterator(org.crosswire.jsword.passage.RestrictionType)","line":187,"t":"ReceiverNonNull","matcher":"java.util.Iterator rangeIterator(org.crosswire.jsword.passage.RestrictionType)","className":"org.crosswire.jsword.passage.RocketPassage"}

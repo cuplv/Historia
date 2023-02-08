@@ -1,1 +1,0 @@
-{"methodName":"byte[] getPublicKey()","line":109,"t":"ReceiverNonNull","matcher":"java.lang.Object clone()","className":"org.connectbot.bean.PubkeyBean"}

@@ -1,1 +1,0 @@
-{"methodName":"void sendStateChanged(float,android.graphics.PointF,int)","line":2884,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView"}

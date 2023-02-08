@@ -1,1 +1,0 @@
-{"methodName":"void checkEnemies()","line":27,"t":"ReceiverNonNull","matcher":"boolean canAttack(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","className":"com.shatteredpixel.shatteredpixeldungeon.ui.AttackIndicator"}

@@ -1,1 +1,0 @@
-{"methodName":"void onPrepareOptionsMenu(android.view.Menu)","line":282,"t":"ReceiverNonNull","matcher":"boolean isProviderStateOk()","className":"com.fsck.k9.activity.compose.RecipientPresenter"}

@@ -1,1 +1,0 @@
-{"methodName":"android.view.View getGroupView(int,boolean,android.view.View,android.view.ViewGroup)","line":1234,"t":"ReceiverNonNull","matcher":"android.view.LayoutInflater getLayoutInflater()","className":"net.osmand.plus.myplaces.ui.AvailableGPXFragment$GpxIndexesAdapter"}

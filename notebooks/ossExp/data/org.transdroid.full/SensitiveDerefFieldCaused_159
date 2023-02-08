@@ -1,1 +1,0 @@
-{"methodName":"void onActivityResult(int,int,android.content.Intent)","line":7,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"org.transdroid.core.gui.TorrentsActivity_"}

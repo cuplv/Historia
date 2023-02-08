@@ -1,1 +1,0 @@
-{"methodName":"void destroyItem(android.view.ViewGroup,java.lang.Object)","line":14,"t":"ReceiverNonNull","matcher":"void <init>(androidx.fragment.app.FragmentManagerImpl)","className":"com.ubergeek42.WeechatAndroid.adapters.MainPagerAdapter"}

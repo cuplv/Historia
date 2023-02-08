@@ -1,1 +1,0 @@
-{"methodName":"void readMapEncodingRule(net.osmand.binary.BinaryMapIndexReader$MapIndex,int)","line":768,"t":"ReceiverNonNull","matcher":"int readUInt32()","className":"net.osmand.binary.BinaryMapIndexReader"}

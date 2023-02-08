@@ -1,1 +1,0 @@
-{"methodName":"boolean onCustomKeyDown(android.view.KeyEvent)","line":768,"t":"ReceiverNonNull","matcher":"void onToggleFlagged()","className":"com.fsck.k9.activity.MessageList"}

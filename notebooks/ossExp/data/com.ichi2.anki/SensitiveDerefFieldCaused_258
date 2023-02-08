@@ -1,1 +1,0 @@
-{"methodName":"boolean basicCheck()","line":10,"t":"ReceiverNonNull","matcher":"int queryScalar(java.lang.String,java.lang.Object[])","className":"com.ichi2.libanki.Collection"}

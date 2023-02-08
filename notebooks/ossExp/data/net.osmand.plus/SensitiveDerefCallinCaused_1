@@ -1,1 +1,0 @@
-{"methodName":"void onListItemClick(android.widget.ListView,android.view.View,int,long)","line":155,"t":"ReceiverNonNull","matcher":"android.content.Intent getIntent()","className":"net.osmand.plus.myplaces.ui.FavoritesListFragment"}

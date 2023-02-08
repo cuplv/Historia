@@ -1,1 +1,0 @@
-{"methodName":"void onValidateUserInput()","line":72,"t":"ReceiverNonNull","matcher":"android.content.res.Resources getResources()","className":"com.seafile.seadroid2.ui.dialog.GetShareLinkEncryptDialog"}

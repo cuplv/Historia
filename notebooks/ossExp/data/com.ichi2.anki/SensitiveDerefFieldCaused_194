@@ -1,1 +1,0 @@
-{"methodName":"void stopTts()","line":2,"t":"ReceiverNonNull","matcher":"int stop()","className":"com.ichi2.anki.ReadText"}

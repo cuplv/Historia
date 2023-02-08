@@ -1,1 +1,0 @@
-{"methodName":"void onSaveInstanceState(android.os.Bundle)","line":1620,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"com.fsck.k9.ui.messagelist.MessageListFragment"}

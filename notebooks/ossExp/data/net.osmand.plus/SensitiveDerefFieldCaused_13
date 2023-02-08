@@ -1,1 +1,0 @@
-{"methodName":"java.util.List getStartFinishIntermediatePoints()","line":70,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"net.osmand.plus.routing.MissingMapsHelper"}

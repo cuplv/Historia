@@ -1,1 +1,0 @@
-{"methodName":"boolean setLayerState(boolean)","line":250,"t":"ReceiverNonNull","matcher":"boolean isAttachedToWindow()","className":"net.osmand.plus.views.layers.MapQuickActionLayer"}

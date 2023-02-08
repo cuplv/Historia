@@ -1,1 +1,0 @@
-{"methodName":"java.util.List recreateFieldsFromState()","line":1,"t":"ReceiverNonNull","matcher":"int size()","className":"com.ichi2.anki.noteeditor.FieldState"}

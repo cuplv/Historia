@@ -1,1 +1,0 @@
-{"methodName":"android.database.Cursor getAlarm(int)","line":90,"t":"ReceiverNonNull","matcher":"android.database.Cursor rawQuery(java.lang.String,java.lang.String[])","className":"com.darshancomputing.BatteryIndicatorPro.AlarmDatabase"}

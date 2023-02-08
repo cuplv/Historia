@@ -1,1 +1,0 @@
-{"methodName":"void stopPlaying()","line":1782,"t":"ReceiverNonNull","matcher":"void stop()","className":"net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin"}

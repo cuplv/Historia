@@ -1,1 +1,0 @@
-{"methodName":"void doOpen()","line":1,"t":"ReceiverNonNull","matcher":"void write(int)","className":"org.bouncycastle.openpgp.PGPCompressedDataGenerator"}

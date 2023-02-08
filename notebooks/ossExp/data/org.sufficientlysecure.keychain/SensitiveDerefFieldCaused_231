@@ -1,1 +1,0 @@
-{"methodName":"void setCameraDisplayOrientation(int)","line":1,"t":"ReceiverNonNull","matcher":"void setDisplayOrientation(int)","className":"com.journeyapps.barcodescanner.camera.CameraManager"}

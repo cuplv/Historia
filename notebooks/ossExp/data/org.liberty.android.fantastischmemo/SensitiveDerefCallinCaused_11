@@ -1,1 +1,0 @@
-{"methodName":"void invokeConverterService(java.lang.String,java.lang.String)","line":8,"t":"ReceiverNonNull","matcher":"android.content.ComponentName startService(android.content.Intent)","className":"org.liberty.android.fantastischmemo.ui.ConverterFragment"}

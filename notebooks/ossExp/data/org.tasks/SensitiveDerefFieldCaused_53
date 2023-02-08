@@ -1,1 +1,0 @@
-{"methodName":"void draw(android.graphics.Canvas,org.osmdroid.views.Projection)","line":357,"t":"ReceiverNonNull","matcher":"void draw()","className":"org.osmdroid.views.overlay.Marker"}

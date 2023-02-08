@@ -1,1 +1,0 @@
-{"methodName":"void onOpen(java.lang.Object)","line":80,"t":"ReceiverNonNull","matcher":"android.view.View findViewById(int)","className":"org.osmdroid.views.overlay.infowindow.BasicInfoWindow"}

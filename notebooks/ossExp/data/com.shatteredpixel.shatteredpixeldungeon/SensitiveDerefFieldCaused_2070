@@ -1,1 +1,0 @@
-{"methodName":"int defenseProc(com.shatteredpixel.shatteredpixeldungeon.actors.Char,int)","line":122,"t":"ReceiverNonNull","matcher":"int distance(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob"}

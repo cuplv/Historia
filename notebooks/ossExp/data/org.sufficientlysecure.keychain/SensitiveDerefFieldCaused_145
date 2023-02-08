@@ -1,1 +1,0 @@
-{"methodName":"void applyAndAnimateAdditions(java.util.List,java.util.List)","line":12,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"eu.davidea.flexibleadapter.FlexibleAdapter"}

@@ -1,1 +1,0 @@
-{"methodName":"boolean shouldOverrideUrlLoading(android.webkit.WebView,java.lang.String)","line":101,"t":"ReceiverNonNull","matcher":"androidx.fragment.app.FragmentManager getSupportFragmentManager()","className":"net.osmand.plus.dialogs.HelpArticleDialogFragment$2"}

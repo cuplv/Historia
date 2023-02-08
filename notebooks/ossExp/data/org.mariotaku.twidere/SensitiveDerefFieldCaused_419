@@ -1,1 +1,0 @@
-{"methodName":"void finish()","line":213,"t":"ReceiverNonNull","matcher":"void onError(int,java.lang.String)","className":"org.mariotaku.twidere.activity.SignInActivity"}

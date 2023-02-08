@@ -1,1 +1,0 @@
-{"methodName":"void updateContextMenu(net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin$Recording)","line":1580,"t":"ReceiverNonNull","matcher":"net.osmand.plus.mapcontextmenu.MapContextMenu getContextMenu()","className":"net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin"}

@@ -1,1 +1,0 @@
-{"methodName":"java.lang.Object doInBackground(java.lang.Object[])","line":800,"t":"ReceiverNonNull","matcher":"int getZoom()","className":"net.osmand.plus.views.layers.base.OsmandMapLayer$MapLayerData$Task"}

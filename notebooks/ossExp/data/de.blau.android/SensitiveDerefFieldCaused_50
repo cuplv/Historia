@@ -1,1 +1,0 @@
-{"methodName":"org.mozilla.javascript.Node transformInfix(org.mozilla.javascript.ast.InfixExpression)","line":5,"t":"ReceiverNonNull","matcher":"void addToken(int)","className":"org.mozilla.javascript.IRFactory"}

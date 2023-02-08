@@ -1,1 +1,0 @@
-{"methodName":"eu.davidea.flexibleadapter.common.IFlexibleLayoutManager getFlexibleLayoutManager()","line":2,"t":"ReceiverNonNull","matcher":"androidx.recyclerview.widget.RecyclerView$LayoutManager getLayoutManager()","className":"eu.davidea.flexibleadapter.SelectableAdapter"}

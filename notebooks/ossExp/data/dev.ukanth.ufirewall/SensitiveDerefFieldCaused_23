@@ -1,1 +1,0 @@
-{"methodName":"void closeShell()","line":371,"t":"ReceiverNonNull","matcher":"void close()","className":"com.stericson.rootshell.execution.Shell"}

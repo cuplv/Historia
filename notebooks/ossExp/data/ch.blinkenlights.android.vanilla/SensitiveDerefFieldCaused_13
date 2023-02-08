@@ -1,1 +1,0 @@
-{"methodName":"void onDestroyFloatView(android.view.View)","line":84,"t":"ReceiverNonNull","matcher":"void recycle()","className":"com.mobeta.android.dslv.SimpleFloatViewManager"}

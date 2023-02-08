@@ -1,1 +1,0 @@
-{"methodName":"void onZap(com.shatteredpixel.shatteredpixeldungeon.mechanics.Ballistica)","line":458,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.plants.Plant plant(com.shatteredpixel.shatteredpixeldungeon.plants.Plant$Seed,int)","className":"com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfRegrowth"}

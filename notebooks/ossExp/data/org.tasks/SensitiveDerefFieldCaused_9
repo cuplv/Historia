@@ -1,1 +1,0 @@
-{"methodName":"void onOpen(java.lang.Object)","line":65,"t":"ReceiverNonNull","matcher":"android.graphics.drawable.Drawable getImage()","className":"org.osmdroid.views.overlay.infowindow.MarkerInfoWindow"}

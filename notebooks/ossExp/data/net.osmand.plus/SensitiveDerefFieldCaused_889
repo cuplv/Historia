@@ -1,1 +1,0 @@
-{"methodName":"java.lang.Object next()","line":127,"t":"ReceiverNonNull","matcher":"boolean hasNext()","className":"com.vividsolutions.jts.geom.GeometryCollectionIterator"}

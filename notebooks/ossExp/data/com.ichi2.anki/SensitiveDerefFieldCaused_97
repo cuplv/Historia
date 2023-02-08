@@ -1,1 +1,0 @@
-{"methodName":"void speak(java.lang.String,java.lang.String,int)","line":1,"t":"ReceiverNonNull","matcher":"int setLanguage(java.util.Locale)","className":"com.ichi2.anki.ReadText"}

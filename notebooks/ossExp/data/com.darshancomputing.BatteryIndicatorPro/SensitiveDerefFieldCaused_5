@@ -1,1 +1,0 @@
-{"methodName":"void openDBs()","line":57,"t":"ReceiverNonNull","matcher":"boolean isOpen()","className":"com.darshancomputing.BatteryIndicatorPro.AlarmDatabase"}

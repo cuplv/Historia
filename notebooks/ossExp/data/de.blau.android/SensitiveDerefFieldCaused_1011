@@ -1,1 +1,0 @@
-{"methodName":"boolean isBaseLayerReady()","line":3,"t":"ReceiverNonNull","matcher":"java.util.Set entrySet()","className":"com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView"}

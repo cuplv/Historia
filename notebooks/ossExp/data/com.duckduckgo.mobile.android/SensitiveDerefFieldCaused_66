@@ -1,1 +1,0 @@
-{"methodName":"void launchFire$lambda-12(com.duckduckgo.app.browser.BrowserActivity,android.content.DialogInterface)","line":421,"t":"ReceiverNonNull","matcher":"void onFireDialogVisibilityChanged(boolean)","className":"com.duckduckgo.app.browser.BrowserActivity"}

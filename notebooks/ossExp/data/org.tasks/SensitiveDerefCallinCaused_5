@@ -1,1 +1,0 @@
-{"methodName":"boolean requestLogin()","line":109,"t":"ReceiverNonNull","matcher":"void startActivityForResult(android.content.Intent,int)","className":"org.tasks.preferences.fragments.GoogleTasksAccount"}

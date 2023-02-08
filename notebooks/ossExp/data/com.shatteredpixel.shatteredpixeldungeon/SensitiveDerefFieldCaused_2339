@@ -1,1 +1,0 @@
-{"methodName":"boolean act()","line":30,"t":"ReceiverNonNull","matcher":"void updateFieldOfView(com.shatteredpixel.shatteredpixeldungeon.actors.Char,boolean[])","className":"com.shatteredpixel.shatteredpixeldungeon.levels.rooms.special.SentryRoom$Sentry"}

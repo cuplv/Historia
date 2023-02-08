@@ -1,1 +1,0 @@
-{"methodName":"org.mozilla.javascript.Node transformLabeledStatement(org.mozilla.javascript.ast.LabeledStatement)","line":828,"t":"ReceiverNonNull","matcher":"void addEOL(int)","className":"org.mozilla.javascript.IRFactory"}

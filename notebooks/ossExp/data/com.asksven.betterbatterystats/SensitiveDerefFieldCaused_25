@@ -1,1 +1,0 @@
-{"methodName":"java.util.List run(java.lang.String)","line":78,"t":"ReceiverNonNull","matcher":"isClosed","className":"com.asksven.android.common.NonRootShell"}

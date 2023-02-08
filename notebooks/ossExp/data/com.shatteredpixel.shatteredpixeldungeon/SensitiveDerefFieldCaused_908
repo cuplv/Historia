@@ -1,1 +1,0 @@
-{"methodName":"void resetGenerators(boolean)","line":3,"t":"ReceiverNonNull","matcher":"java.util.Set keySet()","className":"com.watabou.utils.PlatformSupport"}

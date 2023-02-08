@@ -1,1 +1,0 @@
-{"methodName":"void putSymbol(org.mozilla.javascript.ast.Symbol)","line":3,"t":"ReceiverNonNull","matcher":"java.lang.Object put(java.lang.Object,java.lang.Object)","className":"org.mozilla.javascript.ast.Scope"}

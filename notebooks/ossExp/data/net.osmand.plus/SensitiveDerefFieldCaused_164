@@ -1,1 +1,0 @@
-{"methodName":"java.util.List searchAddressDataByName(net.osmand.binary.BinaryMapIndexReader$SearchRequest,java.util.List)","line":1306,"t":"ReceiverNonNull","matcher":"int pushLimit(int)","className":"net.osmand.binary.BinaryMapIndexReader"}

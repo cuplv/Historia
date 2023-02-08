@@ -1,1 +1,0 @@
-{"methodName":"void setup(com.watabou.utils.PointF,com.watabou.utils.PointF,com.shatteredpixel.shatteredpixeldungeon.items.Item,com.watabou.utils.Callback)","line":187,"t":"ReceiverNonNull","matcher":"belongings","className":"com.shatteredpixel.shatteredpixeldungeon.sprites.MissileSprite"}

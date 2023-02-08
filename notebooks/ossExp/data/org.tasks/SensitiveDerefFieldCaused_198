@@ -1,1 +1,0 @@
-{"methodName":"void setLocation(android.location.Location)","line":445,"t":"ReceiverNonNull","matcher":"double getLongitude()","className":"org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay"}

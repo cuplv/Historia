@@ -1,1 +1,0 @@
-{"methodName":"void execute(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero,java.lang.String)","line":272,"t":"ReceiverNonNull","matcher":"void occupyCell(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","className":"com.shatteredpixel.shatteredpixeldungeon.items.artifacts.LloydsBeacon"}

@@ -1,1 +1,0 @@
-{"methodName":"void cancelDismissControlViewTimer()","line":949,"t":"ReceiverNonNull","matcher":"boolean cancel()","className":"com.shuyu.gsyvideoplayer.video.base.GSYVideoControlView"}

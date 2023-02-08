@@ -1,1 +1,0 @@
-{"methodName":"void setListShown(boolean,boolean)","line":15,"t":"ReceiverNonNull","matcher":"void startAnimation(android.view.animation.Animation)","className":"org.sufficientlysecure.keychain.ui.base.RecyclerFragment"}

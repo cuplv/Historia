@@ -1,1 +1,0 @@
-{"methodName":"android.database.Cursor getCursor()","line":92,"t":"ReceiverNonNull","matcher":"boolean requery()","className":"com.seafile.seadroid2.gallery.BaseImageList"}

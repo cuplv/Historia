@@ -1,1 +1,0 @@
-{"methodName":"void writeToParcel(org.mariotaku.microblog.library.twitter.model.Activity,android.os.Parcel,int)","line":16,"t":"ReceiverNonNull","matcher":"long getTime()","className":"org.mariotaku.microblog.library.twitter.model.ActivityParcelablePlease"}

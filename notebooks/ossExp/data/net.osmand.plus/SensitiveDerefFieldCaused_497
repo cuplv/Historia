@@ -1,1 +1,0 @@
-{"methodName":"void onTrackBitmapDrawn(boolean)","line":153,"t":"ReceiverNonNull","matcher":"boolean initAndDraw()","className":"net.osmand.plus.importfiles.ui.ImportTracksAdapter$1"}

@@ -1,1 +1,0 @@
-{"methodName":"void onActivityCreated(android.os.Bundle)","line":37,"t":"ReceiverNonNull","matcher":"android.content.Context getBaseContext()","className":"dev.ukanth.ufirewall.ui.about.FAQFragment"}

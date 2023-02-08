@@ -1,1 +1,0 @@
-{"methodName":"boolean isWidgetVisible()","line":229,"t":"ReceiverNonNull","matcher":"int getVisibility()","className":"net.osmand.plus.views.layers.MapQuickActionLayer"}

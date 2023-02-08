@@ -1,1 +1,0 @@
-{"methodName":"void storeInBundle(com.watabou.utils.Bundle)","line":13,"t":"ReceiverNonNull","matcher":"int length()","className":"com.shatteredpixel.shatteredpixeldungeon.actors.blobs.Blob"}

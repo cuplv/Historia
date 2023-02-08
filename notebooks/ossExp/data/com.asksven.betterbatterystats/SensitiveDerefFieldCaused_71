@@ -1,1 +1,0 @@
-{"methodName":"java.util.List run(java.lang.String)","line":121,"t":"ReceiverNonNull","matcher":"com.stericson.RootShell.execution.Command add(com.stericson.RootShell.execution.Command)","className":"com.asksven.android.common.RootShell"}

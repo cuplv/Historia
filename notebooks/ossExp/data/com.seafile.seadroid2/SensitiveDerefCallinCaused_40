@@ -1,1 +1,0 @@
-{"methodName":"void onTaskFailed(com.seafile.seadroid2.SeafException)","line":160,"t":"ReceiverNonNull","matcher":"java.lang.String getString(int)","className":"com.seafile.seadroid2.ui.dialog.FetchFileDialog"}

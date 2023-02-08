@@ -1,1 +1,0 @@
-{"methodName":"void reInitialize()","line":2,"t":"ReceiverNonNull","matcher":"void flush()","className":"com.ichi2.anki.analytics.UsageAnalytics"}

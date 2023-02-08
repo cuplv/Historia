@@ -1,1 +1,0 @@
-{"methodName":"void onDraw(android.graphics.Canvas,net.osmand.data.RotatedTileBox,net.osmand.plus.views.layers.base.OsmandMapLayer$DrawSettings)","line":293,"t":"ReceiverNonNull","matcher":"void onDraw(net.osmand.data.RotatedTileBox)","className":"net.osmand.plus.views.layers.ContextMenuLayer"}

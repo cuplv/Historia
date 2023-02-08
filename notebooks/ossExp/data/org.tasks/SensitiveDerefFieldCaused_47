@@ -1,1 +1,0 @@
-{"methodName":"void onDetach(org.osmdroid.views.MapView)","line":354,"t":"ReceiverNonNull","matcher":"void clear()","className":"org.osmdroid.views.overlay.PolyOverlayWithIW"}

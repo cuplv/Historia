@@ -1,1 +1,0 @@
-{"methodName":"boolean onSingleTap(android.graphics.PointF,net.osmand.data.RotatedTileBox)","line":863,"t":"ReceiverNonNull","matcher":"boolean processResult(java.lang.Object)","className":"net.osmand.plus.views.layers.ContextMenuLayer"}

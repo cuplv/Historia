@@ -1,1 +1,0 @@
-{"methodName":"org.json.JSONObject makeUtorrentRequest(org.transdroid.core.gui.log.Log_,java.lang.String,int)","line":9,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"org.transdroid.daemon.adapters.uTorrent.UTorrentAdapter"}

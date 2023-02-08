@@ -1,1 +1,0 @@
-{"methodName":"int title(java.lang.CharSequence,int)","line":208,"t":"ReceiverNonNull","matcher":"java.lang.StringBuilder append(java.lang.CharSequence)","className":"org.commonmark.internal.LinkReferenceDefinitionParser"}

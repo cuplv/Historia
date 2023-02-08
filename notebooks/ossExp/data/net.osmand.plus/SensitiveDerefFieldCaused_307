@@ -1,1 +1,0 @@
-{"methodName":"java.util.List playCommands(net.osmand.plus.voice.CommandBuilder)","line":176,"t":"ReceiverNonNull","matcher":"int setAudioAttributes(android.media.AudioAttributes)","className":"net.osmand.plus.voice.JsTtsCommandPlayer"}

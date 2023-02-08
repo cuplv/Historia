@@ -1,1 +1,0 @@
-{"methodName":"int getRemotePort()","line":88,"t":"ReceiverNonNull","matcher":"int getRemotePort()","className":"org.zoolu.sip.provider.TcpTransport"}

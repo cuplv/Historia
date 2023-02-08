@@ -1,1 +1,0 @@
-{"methodName":"void cancelSplashScreenTimer()","line":958,"t":"ReceiverNonNull","matcher":"void cancel()","className":"net.osmand.plus.activities.MapActivity"}

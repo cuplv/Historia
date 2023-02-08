@@ -1,1 +1,0 @@
-{"methodName":"void stopTrasport()","line":382,"t":"ReceiverNonNull","matcher":"void halt()","className":"org.zoolu.sip.provider.SipProvider"}

@@ -1,1 +1,0 @@
-{"methodName":"void updateStyle(com.caverock.androidsvg.SVGAndroidRenderer$RendererState,com.caverock.androidsvg.SVG$Style)","line":2302,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"com.caverock.androidsvg.SVGAndroidRenderer"}

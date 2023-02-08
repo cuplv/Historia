@@ -1,1 +1,0 @@
-{"methodName":"void queryNewData(net.osmand.data.RotatedTileBox)","line":713,"t":"ReceiverNonNull","matcher":"void <init>(net.osmand.plus.views.layers.base.OsmandMapLayer$MapLayerData,net.osmand.data.RotatedTileBox,net.osmand.data.RotatedTileBox)","className":"net.osmand.plus.views.layers.base.OsmandMapLayer$MapLayerData"}

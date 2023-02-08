@@ -1,1 +1,0 @@
-{"methodName":"com.github.kevinsawicki.http.HttpRequest openOutput()","line":2728,"t":"ReceiverNonNull","matcher":"void <init>(java.io.OutputStream,java.lang.String,int)","className":"com.github.kevinsawicki.http.HttpRequest"}

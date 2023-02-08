@@ -1,1 +1,0 @@
-{"methodName":"android.view.View onCreateView(android.view.LayoutInflater,android.view.ViewGroup,android.os.Bundle)","line":167,"t":"ReceiverNonNull","matcher":"java.lang.String getPackageName()","className":"net.wigle.wigleandroid.UploadsFragment"}

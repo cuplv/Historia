@@ -1,1 +1,0 @@
-{"methodName":"void onActivityCreated(android.os.Bundle)","line":754,"t":"ReceiverNonNull","matcher":"android.content.res.Resources getResources()","className":"org.mariotaku.twidere.fragment.UserFragment"}

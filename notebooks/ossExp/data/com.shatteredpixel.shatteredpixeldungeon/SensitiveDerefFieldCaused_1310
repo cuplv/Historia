@@ -1,1 +1,0 @@
-{"methodName":"void reset(int)","line":8,"t":"ReceiverNonNull","matcher":"int width()","className":"com.shatteredpixel.shatteredpixeldungeon.effects.Ripple"}

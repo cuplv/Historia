@@ -1,1 +1,0 @@
-{"methodName":"void setNext()","line":148,"t":"ReceiverNonNull","matcher":"int getEndIndex()","className":"org.nibor.autolink.LinkExtractor$LinkIterator"}

@@ -1,1 +1,0 @@
-{"methodName":"boolean isRouteCloseToGpxPoints(net.osmand.router.RoutePlannerFrontEnd$GpxRouteApproximation,java.util.List,net.osmand.router.RoutePlannerFrontEnd$GpxPoint,net.osmand.router.RoutePlannerFrontEnd$GpxPoint)","line":348,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"net.osmand.router.RoutePlannerFrontEnd"}

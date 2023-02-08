@@ -1,1 +1,0 @@
-{"methodName":"boolean hasMoreElements()","line":92,"t":"ReceiverNonNull","matcher":"boolean isValid()","className":"org.conscrypt.AbstractSessionContext$2"}

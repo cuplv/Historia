@@ -1,1 +1,0 @@
-{"methodName":"boolean tryAcquireEglContextLocked(net.osmand.core.android.GLSurfaceView$GLThread)","line":1916,"t":"ReceiverNonNull","matcher":"void requestReleaseEglContextLocked()","className":"net.osmand.core.android.GLSurfaceView$GLThreadManager"}

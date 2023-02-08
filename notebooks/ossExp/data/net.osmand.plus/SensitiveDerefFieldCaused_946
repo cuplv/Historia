@@ -1,1 +1,0 @@
-{"methodName":"void fillCanvas(android.graphics.Canvas,net.osmand.plus.views.layers.base.OsmandMapLayer$DrawSettings)","line":904,"t":"ReceiverNonNull","matcher":"colorDay","className":"net.osmand.plus.views.OsmandMapTileView"}

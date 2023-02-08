@@ -1,1 +1,0 @@
-{"methodName":"void setupSpeedTab(android.view.View,com.github.mikephil.charting.charts.LineChart,int)","line":317,"t":"ReceiverNonNull","matcher":"boolean isSpeedSpecified()","className":"net.osmand.plus.myplaces.ui.GPXItemPagerAdapter"}

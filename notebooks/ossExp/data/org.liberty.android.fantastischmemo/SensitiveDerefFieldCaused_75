@@ -1,1 +1,0 @@
-{"methodName":"java.lang.Object createDaoFromConfig(com.j256.ormlite.support.ConnectionSource,java.lang.Class)","line":2,"t":"ReceiverNonNull","matcher":"java.lang.Object get(java.lang.Object)","className":"com.j256.ormlite.dao.DaoManager"}

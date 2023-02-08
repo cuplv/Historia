@@ -1,1 +1,0 @@
-{"methodName":"void onSelect(com.shatteredpixel.shatteredpixeldungeon.items.Item)","line":198,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.items.Item detach(com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag)","className":"com.shatteredpixel.shatteredpixeldungeon.items.BrokenSeal$1"}

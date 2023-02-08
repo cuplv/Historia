@@ -1,1 +1,0 @@
-{"methodName":"com.shatteredpixel.shatteredpixeldungeon.actors.Char findChar(com.shatteredpixel.shatteredpixeldungeon.mechanics.Ballistica,com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero,int,java.util.HashSet)","line":49,"t":"ReceiverNonNull","matcher":"solid","className":"com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.huntress.SpectralBlades"}

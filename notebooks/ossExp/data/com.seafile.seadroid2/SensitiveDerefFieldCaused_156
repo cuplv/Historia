@@ -1,1 +1,0 @@
-{"methodName":"org.greenrobot.eventbus.meta.SubscriberInfo getSubscriberInfo(org.greenrobot.eventbus.SubscriberMethodFinder$FindState)","line":123,"t":"ReceiverNonNull","matcher":"org.greenrobot.eventbus.meta.SubscriberInfo getSuperSubscriberInfo()","className":"org.greenrobot.eventbus.SubscriberMethodFinder"}

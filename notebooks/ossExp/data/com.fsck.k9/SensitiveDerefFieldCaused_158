@@ -1,1 +1,0 @@
-{"methodName":"void animatePicker(boolean,long)","line":743,"t":"ReceiverNonNull","matcher":"void setAutoCancel(boolean)","className":"com.takisoft.datetimepicker.widget.RadialTimePickerView"}

@@ -1,1 +1,0 @@
-{"methodName":"void setControlBarVisibleAnimate(boolean,org.mariotaku.twidere.activity.iface.IControlBarActivity$ControlBarShowHideHelper$ControlBarAnimationListener)","line":73,"t":"ReceiverNonNull","matcher":"void setInterpolator(android.animation.TimeInterpolator)","className":"org.mariotaku.twidere.activity.iface.IControlBarActivity$ControlBarShowHideHelper"}

@@ -1,1 +1,0 @@
-{"methodName":"void onReceivedMessage(org.zoolu.sip.provider.SipProvider,org.zoolu.sip.message.Message)","line":623,"t":"ReceiverNonNull","matcher":"org.zoolu.sip.header.ToHeader getToHeader()","className":"org.zoolu.sip.dialog.InviteDialog"}

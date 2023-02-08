@@ -1,1 +1,0 @@
-{"methodName":"void onSaveInstanceState(android.os.Bundle)","line":237,"t":"ReceiverNonNull","matcher":"java.lang.String getPackageName()","className":"de.blinkt.openvpn.fragments.Settings_Basic"}

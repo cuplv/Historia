@@ -1,1 +1,0 @@
-{"methodName":"void onDismiss(android.content.DialogInterface)","line":83,"t":"ReceiverNonNull","matcher":"boolean isChangingConfigurations()","className":"net.osmand.plus.plugins.osmedit.dialogs.DismissRouteBottomSheetFragment"}

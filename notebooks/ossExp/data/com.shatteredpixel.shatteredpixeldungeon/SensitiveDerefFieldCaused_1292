@@ -1,1 +1,0 @@
-{"methodName":"void put(java.lang.String,java.lang.String)","line":24,"t":"ReceiverNonNull","matcher":"android.content.SharedPreferences$Editor putString(java.lang.String,java.lang.String)","className":"com.watabou.utils.GameSettings"}

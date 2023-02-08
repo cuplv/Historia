@@ -1,1 +1,0 @@
-{"methodName":"void lambda$loadItems$16$FeedItemlistFragment(de.danoeh.antennapod.model.feed.Feed)","line":535,"t":"ReceiverNonNull","matcher":"java.util.List getItems()","className":"de.danoeh.antennapod.fragment.FeedItemlistFragment"}

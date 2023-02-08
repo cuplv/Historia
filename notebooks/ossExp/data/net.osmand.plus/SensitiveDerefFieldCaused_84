@@ -1,1 +1,0 @@
-{"methodName":"boolean pressedContextMarker(net.osmand.data.RotatedTileBox,float,float)","line":829,"t":"ReceiverNonNull","matcher":"net.osmand.data.LatLon getLatLon()","className":"net.osmand.plus.views.layers.ContextMenuLayer"}

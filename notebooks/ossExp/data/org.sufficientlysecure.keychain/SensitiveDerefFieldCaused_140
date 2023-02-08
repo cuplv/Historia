@@ -1,1 +1,0 @@
-{"methodName":"void onBindViewHolder(androidx.recyclerview.widget.RecyclerView$ViewHolder,int,java.util.List)","line":7,"t":"ReceiverNonNull","matcher":"int getStickyPosition()","className":"eu.davidea.flexibleadapter.FlexibleAdapter"}

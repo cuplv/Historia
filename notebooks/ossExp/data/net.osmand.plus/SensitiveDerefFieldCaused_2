@@ -1,1 +1,0 @@
-{"methodName":"void decompileElementGet(org.mozilla.javascript.ast.ElementGet)","line":2458,"t":"ReceiverNonNull","matcher":"void addToken(int)","className":"org.mozilla.javascript.IRFactory"}

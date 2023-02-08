@@ -1,1 +1,0 @@
-{"methodName":"void lambda$fixIntegrity$1(com.ichi2.libanki.Collection$CheckDatabaseResult,java.lang.Runnable,com.ichi2.utils.FunctionalInterfaces$FunctionThrowable)","line":3,"t":"ReceiverNonNull","matcher":"androidx.sqlite.db.SupportSQLiteDatabase getDatabase()","className":"com.ichi2.libanki.Collection"}

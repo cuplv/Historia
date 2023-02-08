@@ -1,1 +1,0 @@
-{"methodName":"void parameter(java.lang.String,java.lang.String)","line":187,"t":"ReceiverNonNull","matcher":"net.fortuna.ical4j.model.PropertyBuilder parameter(net.fortuna.ical4j.model.Parameter)","className":"net.fortuna.ical4j.data.DefaultContentHandler"}

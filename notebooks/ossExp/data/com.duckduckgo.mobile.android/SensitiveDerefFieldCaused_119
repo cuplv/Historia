@@ -1,1 +1,0 @@
-{"methodName":"void destroyWebView()","line":2195,"t":"ReceiverNonNull","matcher":"void destroy()","className":"com.duckduckgo.app.browser.BrowserTabFragment"}

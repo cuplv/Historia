@@ -1,1 +1,0 @@
-{"methodName":"void downloadAnim()","line":279,"t":"ReceiverNonNull","matcher":"android.animation.ValueAnimator setDuration(long)","className":"moe.codeest.enviews.ENDownloadView"}

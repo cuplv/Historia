@@ -1,1 +1,0 @@
-{"methodName":"com.jakewharton.disklrucache.DiskLruCache$Snapshot get(java.lang.String)","line":437,"t":"ReceiverNonNull","matcher":"java.io.Writer append(java.lang.CharSequence)","className":"com.jakewharton.disklrucache.DiskLruCache"}

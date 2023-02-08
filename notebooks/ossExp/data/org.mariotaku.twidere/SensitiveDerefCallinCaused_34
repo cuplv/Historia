@@ -1,1 +1,0 @@
-{"methodName":"void onClick(android.content.DialogInterface,int)","line":41,"t":"ReceiverNonNull","matcher":"android.content.Intent getIntent()","className":"org.mariotaku.twidere.activity.InvalidAccountAlertActivity$InvalidAccountAlertDialogFragment$onCreateDialog$1"}

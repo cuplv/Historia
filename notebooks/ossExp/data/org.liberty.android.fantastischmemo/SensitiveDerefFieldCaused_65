@@ -1,1 +1,0 @@
-{"methodName":"void startElement(java.lang.String,java.lang.String,java.lang.String,org.xml.sax.Attributes)","line":8,"t":"ReceiverNonNull","matcher":"void setLearningData(org.liberty.android.fantastischmemo.entity.LearningData)","className":"org.liberty.android.fantastischmemo.converter.MnemosyneXMLImporter"}

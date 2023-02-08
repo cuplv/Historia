@@ -1,1 +1,0 @@
-{"methodName":"void doAction(int)","line":647,"t":"ReceiverNonNull","matcher":"android.os.AsyncTask executeOnExecutor(java.util.concurrent.Executor,java.lang.Object[])","className":"net.osmand.plus.download.ui.LocalIndexesFragment"}

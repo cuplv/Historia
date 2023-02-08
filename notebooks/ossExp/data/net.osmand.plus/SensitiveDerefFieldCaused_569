@@ -1,1 +1,0 @@
-{"methodName":"boolean isDownloadFinished()","line":49,"t":"ReceiverNonNull","matcher":"android.os.AsyncTask$Status getStatus()","className":"net.osmand.plus.plugins.rastermaps.DownloadTilesHelper"}

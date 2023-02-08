@@ -1,1 +1,0 @@
-{"methodName":"boolean pressedQuickActionWidget(float,float)","line":422,"t":"ReceiverNonNull","matcher":"int getHeight()","className":"net.osmand.plus.views.layers.MapQuickActionLayer"}

@@ -1,1 +1,0 @@
-{"methodName":"void showFavorites()","line":264,"t":"ReceiverNonNull","matcher":"void addToData(net.osmand.data.FavouritePoint,int,boolean,boolean,float,double,double)","className":"net.osmand.plus.views.layers.FavouritesLayer"}

@@ -1,1 +1,0 @@
-{"methodName":"void openVideo()","line":342,"t":"ReceiverNonNull","matcher":"void setOnVideoSizeChangedListener(android.media.MediaPlayer$OnVideoSizeChangedListener)","className":"com.sprylab.android.widget.TextureVideoView"}

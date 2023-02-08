@@ -1,1 +1,0 @@
-{"methodName":"void deliverResult()","line":774,"t":"ReceiverNonNull","matcher":"boolean startPendingIntentForCryptoHelper(android.content.IntentSender,int,android.content.Intent,int,int,int)","className":"com.fsck.k9.ui.crypto.MessageCryptoHelper"}

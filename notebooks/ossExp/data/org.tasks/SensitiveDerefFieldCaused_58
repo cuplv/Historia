@@ -1,1 +1,0 @@
-{"methodName":"void drawFrame(android.graphics.Canvas)","line":133,"t":"ReceiverNonNull","matcher":"void draw(android.graphics.Canvas)","className":"coil.drawable.MovieDrawable"}

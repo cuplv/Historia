@@ -1,1 +1,0 @@
-{"methodName":"void releaseWakeLocks()","line":99,"t":"ReceiverNonNull","matcher":"boolean isHeld()","className":"net.osmand.plus.helpers.LockHelper"}

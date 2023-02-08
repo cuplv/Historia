@@ -1,1 +1,0 @@
-{"methodName":"void onPrepareBufferImage(android.graphics.Canvas,net.osmand.data.RotatedTileBox,net.osmand.plus.views.layers.base.OsmandMapLayer$DrawSettings)","line":146,"t":"ReceiverNonNull","matcher":"void swigReleaseOwnership()","className":"net.osmand.plus.plugins.mapillary.MapillaryVectorLayer"}

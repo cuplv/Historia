@@ -1,1 +1,0 @@
-{"methodName":"void forbody(int,int,int,boolean)","line":-1,"t":"ReceiverNonNull","matcher":"int codeAsBx(int,int,int)","className":"org.luaj.vm2.compiler.LexState"}

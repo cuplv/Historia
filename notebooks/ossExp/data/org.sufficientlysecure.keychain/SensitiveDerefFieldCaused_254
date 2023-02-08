@@ -1,1 +1,0 @@
-{"methodName":"void onMenuClickChangePin()","line":4,"t":"ReceiverNonNull","matcher":"void showAdminPinDialog()","className":"org.sufficientlysecure.keychain.ui.token.ManageSecurityTokenPresenter"}

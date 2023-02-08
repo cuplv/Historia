@@ -1,1 +1,0 @@
-{"methodName":"void surfaceCreated(android.view.SurfaceHolder)","line":57,"t":"ReceiverNonNull","matcher":"void setPreviewDisplay(android.view.SurfaceHolder)","className":"org.navitproject.navit.NavitCamera"}

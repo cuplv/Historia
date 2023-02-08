@@ -1,1 +1,0 @@
-{"methodName":"void finishReference()","line":237,"t":"ReceiverNonNull","matcher":"java.lang.String toString()","className":"org.commonmark.internal.LinkReferenceDefinitionParser"}

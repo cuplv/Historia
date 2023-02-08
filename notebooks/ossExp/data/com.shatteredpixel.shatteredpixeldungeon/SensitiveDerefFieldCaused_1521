@@ -1,1 +1,0 @@
-{"methodName":"boolean handle(int)","line":256,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition getTransition(int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero"}

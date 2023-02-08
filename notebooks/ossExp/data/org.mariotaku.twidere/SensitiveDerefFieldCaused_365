@@ -1,1 +1,0 @@
-{"methodName":"void setupTrackTranscoders(net.ypresto.androidtranscoder.format.MediaFormatStrategy)","line":190,"t":"ReceiverNonNull","matcher":"void selectTrack(int)","className":"net.ypresto.androidtranscoder.engine.MediaTranscoderEngine"}

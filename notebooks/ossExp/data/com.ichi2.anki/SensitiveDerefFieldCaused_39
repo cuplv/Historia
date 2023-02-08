@@ -1,1 +1,0 @@
-{"methodName":"void writeLog(java.lang.String)","line":2,"t":"ReceiverNonNull","matcher":"void println(java.lang.String)","className":"com.ichi2.libanki.Collection"}

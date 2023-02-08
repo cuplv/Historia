@@ -1,1 +1,0 @@
-{"methodName":"void onPromoteSuccess(org.sufficientlysecure.keychain.operations.results.OperationResult)","line":3,"t":"ReceiverNonNull","matcher":"void showActionViewKey()","className":"org.sufficientlysecure.keychain.ui.token.ManageSecurityTokenPresenter"}

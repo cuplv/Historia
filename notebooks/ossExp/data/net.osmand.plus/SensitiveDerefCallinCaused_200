@@ -1,1 +1,0 @@
-{"methodName":"boolean isLightActionBar()","line":114,"t":"ReceiverNonNull","matcher":"android.app.Application getApplication()","className":"net.osmand.plus.base.OsmandExpandableListFragment"}

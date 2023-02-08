@@ -1,1 +1,0 @@
-{"methodName":"android.view.View onCreateView(android.view.LayoutInflater,android.view.ViewGroup,android.os.Bundle)","line":588,"t":"ReceiverNonNull","matcher":"android.content.SharedPreferences getPreferences(int)","className":"de.blinkt.openvpn.fragments.LogFragment"}

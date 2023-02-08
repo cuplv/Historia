@@ -1,1 +1,0 @@
-{"methodName":"int recoverLocations(android.location.Location)","line":1104,"t":"ReceiverNonNull","matcher":"double getLongitude()","className":"net.wigle.wigleandroid.db.DatabaseHelper"}

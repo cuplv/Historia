@@ -1,1 +1,0 @@
-{"methodName":"void stopTimer()","line":524,"t":"ReceiverNonNull","matcher":"boolean cancel()","className":"net.bible.android.control.speak.SpeakControl"}

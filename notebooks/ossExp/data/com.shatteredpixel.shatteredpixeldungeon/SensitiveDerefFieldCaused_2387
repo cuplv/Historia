@@ -1,1 +1,0 @@
-{"methodName":"int defenseSkill(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","line":7,"t":"ReceiverNonNull","matcher":"boolean hasTalent(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.huntress.SpiritHawk$HawkAlly"}

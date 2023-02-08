@@ -1,1 +1,0 @@
-{"methodName":"java.lang.String getUrl()","line":492,"t":"ReceiverNonNull","matcher":"java.lang.String getUrl()","className":"com.duckduckgo.app.browser.BrowserTabViewModel"}

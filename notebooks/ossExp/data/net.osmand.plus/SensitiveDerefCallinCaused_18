@@ -1,1 +1,0 @@
-{"methodName":"void delete(boolean)","line":295,"t":"ReceiverNonNull","matcher":"android.app.Application getApplication()","className":"net.osmand.plus.mapcontextmenu.editors.FavoritePointEditorFragment"}

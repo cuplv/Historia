@@ -1,1 +1,0 @@
-{"methodName":"org.eclipse.egit.github.core.Issue a(java.lang.String,java.lang.String,org.eclipse.egit.github.core.Issue)","line":34,"t":"ReceiverNonNull","matcher":"byte[] getBytes(java.lang.String)","className":"ra.a"}

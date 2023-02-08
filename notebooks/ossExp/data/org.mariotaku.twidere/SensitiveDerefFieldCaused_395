@@ -1,1 +1,0 @@
-{"methodName":"void handleOpenElement(java.lang.String,java.util.Map,int,int)","line":178,"t":"ReceiverNonNull","matcher":"java.lang.String getNameLower()","className":"org.mariotaku.twidere.util.HtmlSpanBuilder$HtmlSpanHandler"}

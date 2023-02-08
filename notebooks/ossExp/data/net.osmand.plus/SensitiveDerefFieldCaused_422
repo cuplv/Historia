@@ -1,1 +1,0 @@
-{"methodName":"void downloadHasFinished()","line":291,"t":"ReceiverNonNull","matcher":"java.lang.String getRegionDownloadNameLC()","className":"net.osmand.plus.download.DownloadActivity"}

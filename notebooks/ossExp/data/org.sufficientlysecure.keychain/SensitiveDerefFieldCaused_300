@@ -1,1 +1,0 @@
-{"methodName":"void performKeyCheck()","line":4,"t":"ReceiverNonNull","matcher":"void showActionUnsupportedToken()","className":"org.sufficientlysecure.keychain.ui.token.ManageSecurityTokenPresenter"}

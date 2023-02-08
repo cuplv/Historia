@@ -1,1 +1,0 @@
-{"methodName":"void showSkipMigrationDialog()","line":138,"t":"ReceiverNonNull","matcher":"androidx.fragment.app.FragmentManager getSupportFragmentManager()","className":"net.osmand.plus.settings.datastorage.SharedStorageWarningFragment"}

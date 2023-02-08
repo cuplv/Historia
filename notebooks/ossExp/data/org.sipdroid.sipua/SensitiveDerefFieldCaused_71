@@ -1,1 +1,0 @@
-{"methodName":"void closeMediaApplication()","line":480,"t":"ReceiverNonNull","matcher":"boolean stopMedia()","className":"org.sipdroid.sipua.UserAgent"}

@@ -1,1 +1,0 @@
-{"methodName":"void endElement(java.lang.String,java.lang.String,java.lang.String)","line":31,"t":"ReceiverNonNull","matcher":"void setLastLearnDate(java.util.Date)","className":"org.liberty.android.fantastischmemo.converter.SupermemoXMLImporter"}

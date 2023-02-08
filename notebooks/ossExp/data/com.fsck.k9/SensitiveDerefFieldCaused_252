@@ -1,1 +1,0 @@
-{"methodName":"void registerFileCleanupReceiver(android.content.Context)","line":193,"t":"ReceiverNonNull","matcher":"void <init>(com.fsck.k9.provider.DecryptedFileProvider$DecryptedFileProviderCleanupReceiver-IA)","className":"com.fsck.k9.provider.DecryptedFileProvider"}

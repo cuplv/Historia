@@ -1,1 +1,0 @@
-{"methodName":"void onChangeBrowserModeClicked()","line":2163,"t":"ReceiverNonNull","matcher":"android.net.Uri getUri()","className":"com.duckduckgo.app.browser.BrowserTabViewModel"}

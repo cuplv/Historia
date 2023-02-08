@@ -1,1 +1,0 @@
-{"methodName":"boolean attachTo(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","line":158,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.items.Heap drop(com.shatteredpixel.shatteredpixeldungeon.items.Item,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Frost"}

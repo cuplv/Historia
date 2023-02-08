@@ -1,1 +1,0 @@
-{"methodName":"double getDouble(int)","line":140,"t":"ReceiverNonNull","matcher":"double getDouble(int,int)","className":"net.sqlcipher.AbstractWindowedCursor"}

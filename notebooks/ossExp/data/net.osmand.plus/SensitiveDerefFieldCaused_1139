@@ -1,1 +1,0 @@
-{"methodName":"void lambda$initTransparencyBar$0(net.osmand.plus.activities.MapActivity,com.google.android.material.slider.Slider,float,boolean)","line":686,"t":"ReceiverNonNull","matcher":"boolean set(java.lang.Object)","className":"net.osmand.plus.views.layers.MapControlsLayer"}

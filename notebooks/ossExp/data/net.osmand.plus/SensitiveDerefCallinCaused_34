@@ -1,1 +1,0 @@
-{"methodName":"void onCardPressed(net.osmand.plus.routepreparationmenu.cards.BaseCard)","line":172,"t":"ReceiverNonNull","matcher":"androidx.fragment.app.FragmentManager getSupportFragmentManager()","className":"net.osmand.plus.settings.purchase.PurchasesFragment"}

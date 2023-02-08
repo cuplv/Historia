@@ -1,1 +1,0 @@
-{"methodName":"void attackWithCurrentMonster()","line":433,"t":"ReceiverNonNull","matcher":"int getAttackCost()","className":"com.gpl.rpg.AndorsTrail.controller.CombatController"}

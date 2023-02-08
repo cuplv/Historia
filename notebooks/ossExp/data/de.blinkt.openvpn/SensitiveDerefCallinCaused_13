@@ -1,1 +1,0 @@
-{"methodName":"void lambda$onCreateView$0$de-blinkt-openvpn-fragments-GraphFragment(android.widget.CompoundButton,boolean)","line":108,"t":"ReceiverNonNull","matcher":"android.content.SharedPreferences getPreferences(int)","className":"de.blinkt.openvpn.fragments.GraphFragment"}

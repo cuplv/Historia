@@ -1,1 +1,0 @@
-{"methodName":"void print()","line":552,"t":"ReceiverNonNull","matcher":"android.app.Application getApplication()","className":"net.osmand.plus.routepreparationmenu.ChooseRouteFragment"}

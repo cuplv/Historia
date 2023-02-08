@@ -1,1 +1,0 @@
-{"methodName":"float adjacentAccFactor(com.shatteredpixel.shatteredpixeldungeon.actors.Char,com.shatteredpixel.shatteredpixeldungeon.actors.Char)","line":9,"t":"ReceiverNonNull","matcher":"boolean adjacent(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.MissileWeapon"}

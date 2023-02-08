@@ -1,1 +1,0 @@
-{"methodName":"void onSelect(com.shatteredpixel.shatteredpixeldungeon.items.Item)","line":132,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff buff(java.lang.Class)","className":"com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.MagesStaff$1"}

@@ -1,1 +1,0 @@
-{"methodName":"void callAsyncDetachedVerify(android.content.Intent)","line":406,"t":"ReceiverNonNull","matcher":"android.os.AsyncTask executeApiAsync(android.content.Intent,org.openintents.openpgp.util.OpenPgpApi$OpenPgpDataSource,org.openintents.openpgp.util.OpenPgpApi$IOpenPgpSinkResultCallback)","className":"com.fsck.k9.ui.crypto.MessageCryptoHelper"}

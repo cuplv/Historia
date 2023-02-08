@@ -1,1 +1,0 @@
-{"methodName":"void speak(java.lang.String,java.lang.String,int)","line":6,"t":"ReceiverNonNull","matcher":"int speak(java.lang.CharSequence,int,android.os.Bundle,java.lang.String)","className":"com.ichi2.anki.ReadText"}

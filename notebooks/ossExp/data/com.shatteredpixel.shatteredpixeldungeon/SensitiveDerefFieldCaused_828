@@ -1,1 +1,0 @@
-{"methodName":"void onSelect(int)","line":12,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.items.weapon.Weapon enchant(com.shatteredpixel.shatteredpixeldungeon.items.weapon.Weapon$Enchantment)","className":"com.shatteredpixel.shatteredpixeldungeon.items.scrolls.exotic.ScrollOfEnchantment$WndEnchantSelect"}

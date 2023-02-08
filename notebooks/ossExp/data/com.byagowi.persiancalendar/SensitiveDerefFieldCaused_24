@@ -1,1 +1,0 @@
-{"methodName":"boolean dispatchTouchEvent(android.view.MotionEvent)","line":26,"t":"ReceiverNonNull","matcher":"void addMovement(android.view.MotionEvent)","className":"q2.n"}

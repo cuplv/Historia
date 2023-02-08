@@ -1,1 +1,0 @@
-{"methodName":"void retstat()","line":-1,"t":"ReceiverNonNull","matcher":"void setmultret(org.luaj.vm2.compiler.LexState$expdesc)","className":"org.luaj.vm2.compiler.LexState"}

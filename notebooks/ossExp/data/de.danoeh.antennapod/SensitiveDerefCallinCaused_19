@@ -1,1 +1,0 @@
-{"methodName":"void onScrollStateChanged(androidx.recyclerview.widget.RecyclerView,int)","line":180,"t":"ReceiverNonNull","matcher":"java.lang.Object getSystemService(java.lang.String)","className":"de.danoeh.antennapod.fragment.SearchFragment$2"}

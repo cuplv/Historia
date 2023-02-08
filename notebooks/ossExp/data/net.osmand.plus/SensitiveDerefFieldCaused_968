@@ -1,1 +1,0 @@
-{"methodName":"void drawOverMap(android.graphics.Canvas,net.osmand.data.RotatedTileBox,net.osmand.plus.views.layers.base.OsmandMapLayer$DrawSettings)","line":1003,"t":"ReceiverNonNull","matcher":"float getCenterY()","className":"net.osmand.plus.views.OsmandMapTileView"}

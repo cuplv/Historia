@@ -1,1 +1,0 @@
-{"methodName":"void check(java.security.cert.Certificate)","line":-1,"t":"ReceiverNonNull","matcher":"java.security.cert.CertPath getCertPath()","className":"org.bouncycastle.jce.provider.ProvCrlRevocationChecker"}

@@ -1,1 +1,0 @@
-{"methodName":"void updateControls(net.osmand.data.RotatedTileBox,net.osmand.plus.views.layers.base.OsmandMapLayer$DrawSettings)","line":621,"t":"ReceiverNonNull","matcher":"void setVisibility(int)","className":"net.osmand.plus.views.layers.MapControlsLayer"}

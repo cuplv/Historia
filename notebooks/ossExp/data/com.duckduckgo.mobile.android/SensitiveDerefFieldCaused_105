@@ -1,1 +1,0 @@
-{"methodName":"void configureFindInPage$lambda-66(com.duckduckgo.app.browser.BrowserTabFragment,android.view.View)","line":1587,"t":"ReceiverNonNull","matcher":"void findNext(boolean)","className":"com.duckduckgo.app.browser.BrowserTabFragment"}

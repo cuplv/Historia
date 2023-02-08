@@ -1,1 +1,0 @@
-{"methodName":"void onClickUnlockToken()","line":1,"t":"ReceiverNonNull","matcher":"void showAdminPinDialog()","className":"org.sufficientlysecure.keychain.ui.token.ManageSecurityTokenPresenter"}

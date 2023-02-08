@@ -1,1 +1,0 @@
-{"methodName":"boolean teleportInNonRegularLevel(com.shatteredpixel.shatteredpixeldungeon.actors.Char,boolean)","line":120,"t":"ReceiverNonNull","matcher":"heroFOV","className":"com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfTeleportation"}

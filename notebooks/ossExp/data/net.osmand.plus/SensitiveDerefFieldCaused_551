@@ -1,1 +1,0 @@
-{"methodName":"void onPrepareBufferImage(android.graphics.Canvas,net.osmand.data.RotatedTileBox,net.osmand.plus.views.layers.base.OsmandMapLayer$DrawSettings)","line":112,"t":"ReceiverNonNull","matcher":"void addToData(net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin$Recording,float)","className":"net.osmand.plus.plugins.audionotes.AudioNotesLayer"}

@@ -1,1 +1,0 @@
-{"methodName":"org.mozilla.javascript.Node transformFunction(org.mozilla.javascript.ast.FunctionNode)","line":13,"t":"ReceiverNonNull","matcher":"int markFunctionEnd(int)","className":"org.mozilla.javascript.IRFactory"}

@@ -1,1 +1,0 @@
-{"methodName":"void setDefaultInfoWindowLocation()","line":221,"t":"ReceiverNonNull","matcher":"org.osmdroid.util.GeoPoint getCenter(org.osmdroid.util.GeoPoint)","className":"org.osmdroid.views.overlay.PolyOverlayWithIW"}

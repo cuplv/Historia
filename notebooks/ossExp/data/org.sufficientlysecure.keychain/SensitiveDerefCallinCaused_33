@@ -1,1 +1,0 @@
-{"methodName":"void onRequestPermissionsResult(int,java.lang.String[],int[])","line":5,"t":"ReceiverNonNull","matcher":"void setResult(int)","className":"org.sufficientlysecure.keychain.ui.EncryptFilesFragment"}

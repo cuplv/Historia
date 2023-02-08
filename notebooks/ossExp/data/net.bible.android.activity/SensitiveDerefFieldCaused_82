@@ -1,1 +1,0 @@
-{"methodName":"void activate(org.crosswire.common.activate.Lock)","line":80,"t":"ReceiverNonNull","matcher":"java.lang.Object put(java.lang.Object,java.lang.Object)","className":"org.crosswire.jsword.book.sword.SwordGenBook"}

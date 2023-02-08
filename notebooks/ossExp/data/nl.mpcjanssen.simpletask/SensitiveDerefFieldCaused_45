@@ -1,1 +1,0 @@
-{"methodName":"void whilestat(int)","line":-1,"t":"ReceiverNonNull","matcher":"int getlabel()","className":"org.luaj.vm2.compiler.LexState"}

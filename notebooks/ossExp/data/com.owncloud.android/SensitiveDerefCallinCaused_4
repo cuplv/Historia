@@ -1,1 +1,0 @@
-{"methodName":"void onFileMetadataChanged(com.owncloud.android.domain.files.model.OCFile)","line":423,"t":"ReceiverNonNull","matcher":"void invalidateOptionsMenu()","className":"com.owncloud.android.ui.preview.PreviewTextFragment"}

@@ -1,1 +1,0 @@
-{"methodName":"void onRequestPermissionsResult(int,java.lang.String[],int[])","line":16,"t":"ReceiverNonNull","matcher":"java.lang.String getScheme()","className":"org.sufficientlysecure.keychain.ui.DecryptListFragment"}

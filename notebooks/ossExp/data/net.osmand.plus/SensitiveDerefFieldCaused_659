@@ -1,1 +1,0 @@
-{"methodName":"net.osmand.plus.routing.RouteCalculationResult$NextDirectionInfo getNextRouteDirectionInfoAfter(net.osmand.plus.routing.RouteCalculationResult$NextDirectionInfo,net.osmand.plus.routing.RouteCalculationResult$NextDirectionInfo,boolean)","line":1166,"t":"ReceiverNonNull","matcher":"routePointOffset","className":"net.osmand.plus.routing.RouteCalculationResult"}

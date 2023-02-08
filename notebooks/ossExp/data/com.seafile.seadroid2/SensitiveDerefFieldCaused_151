@@ -1,1 +1,0 @@
-{"methodName":"com.vladsch.flexmark.util.sequence.BasedSequence getChildChars()","line":681,"t":"ReceiverNonNull","matcher":"com.vladsch.flexmark.util.sequence.BasedSequence getChars()","className":"com.vladsch.flexmark.ast.Node"}

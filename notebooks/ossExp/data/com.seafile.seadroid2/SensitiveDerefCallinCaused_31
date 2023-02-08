@@ -1,1 +1,0 @@
-{"methodName":"void refreshCameraUploadView()","line":643,"t":"ReceiverNonNull","matcher":"android.content.Context getApplicationContext()","className":"com.seafile.seadroid2.ui.fragment.SettingsFragment"}

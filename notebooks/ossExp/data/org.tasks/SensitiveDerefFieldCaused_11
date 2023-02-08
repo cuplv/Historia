@@ -1,1 +1,0 @@
-{"methodName":"void enableFollowLocation()","line":400,"t":"ReceiverNonNull","matcher":"void postInvalidate()","className":"org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay"}

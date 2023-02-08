@@ -1,1 +1,0 @@
-{"methodName":"void onConfigurationChanged(android.content.res.Configuration)","line":5,"t":"ReceiverNonNull","matcher":"void c()","className":"de.blau.android.propertyeditor.RelationMembershipFragment"}

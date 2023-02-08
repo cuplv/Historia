@@ -1,1 +1,0 @@
-{"methodName":"void onChange(ch.blinkenlights.android.medialibrary.LibraryObserver$Type,long,boolean)","line":113,"t":"ReceiverNonNull","matcher":"void runOnUiThread(java.lang.Runnable)","className":"ch.blinkenlights.android.vanilla.PreferencesMediaLibrary$1"}

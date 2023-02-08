@@ -1,1 +1,0 @@
-{"methodName":"net.osmand.plus.routing.RoutingEnvironment calculateRoutingEnvironment(net.osmand.plus.routing.RouteCalculationParams,boolean,boolean)","line":734,"t":"ReceiverNonNull","matcher":"int size()","className":"net.osmand.plus.routing.RouteProvider"}

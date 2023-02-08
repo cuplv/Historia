@@ -1,1 +1,0 @@
-{"methodName":"org.json.JSONObject toJSON()","line":400,"t":"ReceiverNonNull","matcher":"int size()","className":"net.osmand.data.Amenity"}

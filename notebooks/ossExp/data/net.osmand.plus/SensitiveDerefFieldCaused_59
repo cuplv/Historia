@@ -1,1 +1,0 @@
-{"methodName":"void applyMovableObject(net.osmand.data.LatLon)","line":456,"t":"ReceiverNonNull","matcher":"net.osmand.core.jni.QListMapMarker getMarkers()","className":"net.osmand.plus.views.layers.base.OsmandMapLayer"}

@@ -1,1 +1,0 @@
-{"methodName":"com.google.android.material.snackbar.Snackbar makeSnackbar(java.lang.String)","line":560,"t":"ReceiverNonNull","matcher":"int getColor(int)","className":"com.todoroo.astrid.activity.TaskListFragment"}

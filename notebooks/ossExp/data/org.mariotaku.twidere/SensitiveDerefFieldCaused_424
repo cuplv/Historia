@@ -1,1 +1,0 @@
-{"methodName":"void setup()","line":70,"t":"ReceiverNonNull","matcher":"android.view.Surface createInputSurface()","className":"net.ypresto.androidtranscoder.engine.VideoTrackTranscoder"}

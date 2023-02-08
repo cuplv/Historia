@@ -1,1 +1,0 @@
-{"methodName":"boolean onTouch(android.view.View,android.view.MotionEvent)","line":728,"t":"ReceiverNonNull","matcher":"void setTranslationX(float)","className":"net.osmand.plus.views.controls.SwipeDismissListViewTouchListener"}

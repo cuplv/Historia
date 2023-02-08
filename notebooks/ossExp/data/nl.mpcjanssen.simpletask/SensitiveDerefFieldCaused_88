@@ -1,1 +1,0 @@
-{"methodName":"void updateCurrentMove(int,int)","line":5,"t":"ReceiverNonNull","matcher":"int getFromLineIndex()","className":"nl.mpcjanssen.simpletask.task.DragTasksCallback"}

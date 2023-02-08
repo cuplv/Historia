@@ -1,1 +1,0 @@
-{"methodName":"void setPreferences()","line":347,"t":"ReceiverNonNull","matcher":"boolean bindService(android.content.Intent,android.content.ServiceConnection,int)","className":"com.darshancomputing.BatteryIndicatorPro.SettingsFragment"}

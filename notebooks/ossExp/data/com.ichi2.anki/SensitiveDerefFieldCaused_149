@@ -1,1 +1,0 @@
-{"methodName":"java.util.ArrayList fixDecimalCardsData(java.lang.Runnable)","line":4,"t":"ReceiverNonNull","matcher":"androidx.sqlite.db.SupportSQLiteDatabase getDatabase()","className":"com.ichi2.libanki.Collection"}

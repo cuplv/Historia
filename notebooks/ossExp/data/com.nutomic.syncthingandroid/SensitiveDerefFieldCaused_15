@@ -1,1 +1,0 @@
-{"methodName":"void stopPreview()","line":203,"t":"ReceiverNonNull","matcher":"void stop()","className":"com.journeyapps.barcodescanner.camera.CameraManager"}

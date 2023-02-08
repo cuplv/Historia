@@ -1,1 +1,0 @@
-{"methodName":"void newCustomFilter(int)","line":126,"t":"ReceiverNonNull","matcher":"void startActivityForResult(android.content.Intent,int)","className":"org.tasks.dialogs.NewFilterDialog"}

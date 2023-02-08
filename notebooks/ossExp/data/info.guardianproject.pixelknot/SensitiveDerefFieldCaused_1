@@ -1,1 +1,0 @@
-{"methodName":"void updateShader()","line":119,"t":"ReceiverNonNull","matcher":"void setLocalMatrix(android.graphics.Matrix)","className":"info.guardianproject.pixelknot.views.RoundedImageView"}

@@ -1,1 +1,0 @@
-{"methodName":"void checkForUpdate()","line":25,"t":"ReceiverNonNull","matcher":"long getTime()","className":"com.shatteredpixel.shatteredpixeldungeon.services.updates.Updates"}

@@ -1,1 +1,0 @@
-{"methodName":"net.osmand.plus.OsmandApplication getMyApplication()","line":32,"t":"ReceiverNonNull","matcher":"android.app.Application getApplication()","className":"net.osmand.plus.base.BaseOsmAndDialogFragment"}

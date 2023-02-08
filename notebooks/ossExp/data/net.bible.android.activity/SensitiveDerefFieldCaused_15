@@ -1,1 +1,0 @@
-{"methodName":"void rewind(net.bible.android.database.bookmarks.SpeakSettings$RewindAmount,boolean)","line":450,"t":"ReceiverNonNull","matcher":"void <init>(org.crosswire.jsword.versification.Versification,org.crosswire.jsword.versification.BibleBook,int,int)","className":"net.bible.service.device.speak.BibleSpeakTextProvider"}

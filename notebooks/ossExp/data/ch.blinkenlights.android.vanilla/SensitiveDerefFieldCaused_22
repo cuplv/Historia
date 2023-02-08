@@ -1,1 +1,0 @@
-{"methodName":"boolean handleMessage(android.os.Message)","line":94,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"ch.blinkenlights.android.vanilla.ReadaheadThread"}

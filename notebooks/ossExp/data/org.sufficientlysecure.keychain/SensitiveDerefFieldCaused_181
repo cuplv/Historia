@@ -1,1 +1,0 @@
-{"methodName":"android.widget.FrameLayout createContainer(int,int)","line":1,"t":"ReceiverNonNull","matcher":"android.content.Context getContext()","className":"eu.davidea.flexibleadapter.helpers.StickyHeaderHelper"}

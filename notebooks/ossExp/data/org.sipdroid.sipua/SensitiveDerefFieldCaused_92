@@ -1,1 +1,0 @@
-{"methodName":"void halt()","line":121,"t":"ReceiverNonNull","matcher":"void halt()","className":"org.zoolu.sip.provider.TcpTransport"}

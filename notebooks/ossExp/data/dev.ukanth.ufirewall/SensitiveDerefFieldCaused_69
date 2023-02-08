@@ -1,1 +1,0 @@
-{"methodName":"void initialize()","line":39,"t":"ReceiverNonNull","matcher":"java.lang.Object getSystemService(java.lang.Class)","className":"org.xbill.DNS.config.AndroidResolverConfigProvider"}

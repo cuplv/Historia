@@ -1,1 +1,0 @@
-{"methodName":"void decompilePropertyGet(org.mozilla.javascript.ast.PropertyGet)","line":2,"t":"ReceiverNonNull","matcher":"void addToken(int)","className":"org.mozilla.javascript.IRFactory"}

@@ -1,1 +1,0 @@
-{"methodName":"void containerSized(com.journeyapps.barcodescanner.Size)","line":429,"t":"ReceiverNonNull","matcher":"com.journeyapps.barcodescanner.camera.DisplayConfiguration getDisplayConfiguration()","className":"com.journeyapps.barcodescanner.CameraPreview"}

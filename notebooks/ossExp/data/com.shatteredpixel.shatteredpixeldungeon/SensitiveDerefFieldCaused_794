@@ -1,1 +1,0 @@
-{"methodName":"void processFearTheReaper(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","line":25,"t":"ReceiverNonNull","matcher":"boolean hasTalent(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.rogue.DeathMark"}

@@ -1,1 +1,0 @@
-{"methodName":"java.util.ArrayList getWakelockStats(android.content.Context,int,int,int)","line":2672,"t":"ReceiverNonNull","matcher":"java.lang.Object valueAt(int)","className":"com.asksven.android.common.privateapiproxies.BatteryStatsProxy"}

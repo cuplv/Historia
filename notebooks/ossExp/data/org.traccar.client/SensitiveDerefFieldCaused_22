@@ -1,1 +1,0 @@
-{"methodName":"boolean parseDelimiters(org.commonmark.parser.delimiter.DelimiterProcessor,char)","line":455,"t":"ReceiverNonNull","matcher":"previous","className":"org.commonmark.internal.InlineParserImpl"}

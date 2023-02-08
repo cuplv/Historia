@@ -1,1 +1,0 @@
-{"methodName":"void l(android.graphics.SurfaceTexture)","line":-1,"t":"ReceiverNonNull","matcher":"void unlockCanvasAndPost(android.graphics.Canvas)","className":"io.flutter.plugin.platform.h"}

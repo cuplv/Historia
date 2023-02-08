@@ -1,1 +1,0 @@
-{"methodName":"void onSelect(java.lang.Integer)","line":13,"t":"ReceiverNonNull","matcher":"void cast(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero,int)","className":"com.shatteredpixel.shatteredpixeldungeon.items.Item$4"}

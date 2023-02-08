@@ -1,1 +1,0 @@
-{"methodName":"void setOptIn(boolean)","line":3,"t":"ReceiverNonNull","matcher":"void flush()","className":"com.ichi2.anki.analytics.UsageAnalytics"}

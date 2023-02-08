@@ -1,1 +1,0 @@
-{"methodName":"void initialiseTileMap(android.graphics.Point)","line":1522,"t":"ReceiverNonNull","matcher":"java.lang.Object put(java.lang.Object,java.lang.Object)","className":"com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView"}

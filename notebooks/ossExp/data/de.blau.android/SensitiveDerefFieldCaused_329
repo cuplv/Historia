@@ -1,1 +1,0 @@
-{"methodName":"org.mozilla.javascript.ScriptableObject$Slot createSlot(java.lang.Object,int,org.mozilla.javascript.ScriptableObject$SlotAccess,org.mozilla.javascript.ScriptableObject$Slot)","line":5,"t":"ReceiverNonNull","matcher":"indexOrHash","className":"org.mozilla.javascript.EmbeddedSlotMap"}

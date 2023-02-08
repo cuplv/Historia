@@ -1,1 +1,0 @@
-{"methodName":"void showExitDialog()","line":400,"t":"ReceiverNonNull","matcher":"androidx.fragment.app.FragmentManager getSupportFragmentManager()","className":"net.osmand.plus.importfiles.ui.ImportTracksFragment"}

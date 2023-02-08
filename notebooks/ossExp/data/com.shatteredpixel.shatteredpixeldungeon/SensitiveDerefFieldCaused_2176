@@ -1,1 +1,0 @@
-{"methodName":"int getTileVisual(int,int,boolean)","line":274,"t":"ReceiverNonNull","matcher":"boolean insideMap(int)","className":"com.shatteredpixel.shatteredpixeldungeon.tiles.DungeonWallsTilemap"}

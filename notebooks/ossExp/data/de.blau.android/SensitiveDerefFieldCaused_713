@@ -1,1 +1,0 @@
-{"methodName":"void initialiseBaseLayer(android.graphics.Point)","line":12,"t":"ReceiverNonNull","matcher":"java.lang.Object get(java.lang.Object)","className":"com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView"}

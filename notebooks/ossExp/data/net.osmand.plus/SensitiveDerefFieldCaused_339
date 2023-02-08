@@ -1,1 +1,0 @@
-{"methodName":"boolean hasClipboardHtml()","line":1050,"t":"ReceiverNonNull","matcher":"boolean hasPrimaryClip()","className":"org.qtproject.qt5.android.QtNative"}

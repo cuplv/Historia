@@ -1,1 +1,0 @@
-{"methodName":"boolean shouldClearHistoryOnNewQuery()","line":935,"t":"ReceiverNonNull","matcher":"boolean getHasNavigationHistory()","className":"com.duckduckgo.app.browser.BrowserTabViewModel"}

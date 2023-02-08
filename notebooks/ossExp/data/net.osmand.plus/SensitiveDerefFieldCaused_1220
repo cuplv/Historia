@@ -1,1 +1,0 @@
-{"methodName":"void lambda$notifyError$1$net-osmand-plus-inapp-InAppPurchaseHelper(net.osmand.plus.inapp.InAppPurchaseHelper$InAppPurchaseTaskType,java.lang.String)","line":1020,"t":"ReceiverNonNull","matcher":"void onError(net.osmand.plus.inapp.InAppPurchaseHelper$InAppPurchaseTaskType,java.lang.String)","className":"net.osmand.plus.inapp.InAppPurchaseHelper"}

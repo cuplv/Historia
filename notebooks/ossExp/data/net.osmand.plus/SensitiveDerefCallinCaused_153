@@ -1,1 +1,0 @@
-{"methodName":"void showUploadItemsProgressDialog(androidx.fragment.app.Fragment,net.osmand.plus.plugins.osmedit.data.OsmPoint[])","line":99,"t":"ReceiverNonNull","matcher":"android.content.res.Resources getResources()","className":"net.osmand.plus.plugins.osmedit.helpers.OsmEditsUploadListenerHelper"}

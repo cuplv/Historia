@@ -1,1 +1,0 @@
-{"methodName":"void initTransparencyBar()","line":706,"t":"ReceiverNonNull","matcher":"void addOnChangeListener(com.google.android.material.slider.BaseOnChangeListener)","className":"net.osmand.plus.views.layers.MapControlsLayer"}

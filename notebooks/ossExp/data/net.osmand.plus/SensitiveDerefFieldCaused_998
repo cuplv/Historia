@@ -1,1 +1,0 @@
-{"methodName":"net.osmand.plus.api.SQLiteAPI$SQLiteConnection getDatabase()","line":258,"t":"ReceiverNonNull","matcher":"net.osmand.plus.api.SQLiteAPI$SQLiteCursor rawQuery(java.lang.String,java.lang.String[])","className":"net.osmand.plus.resources.SQLiteTileSource"}

@@ -1,1 +1,0 @@
-{"methodName":"void occupyCell(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","line":47,"t":"ReceiverNonNull","matcher":"int distance(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.levels.CavesBossLevel"}

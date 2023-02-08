@@ -1,1 +1,0 @@
-{"methodName":"boolean attachTo(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","line":32,"t":"ReceiverNonNull","matcher":"boolean adjacent(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Shadows"}

@@ -1,1 +1,0 @@
-{"methodName":"void onScrollStateChanged(android.widget.AbsListView,int)","line":122,"t":"ReceiverNonNull","matcher":"java.lang.Object getSystemService(java.lang.String)","className":"de.danoeh.antennapod.fragment.OnlineSearchFragment$1"}

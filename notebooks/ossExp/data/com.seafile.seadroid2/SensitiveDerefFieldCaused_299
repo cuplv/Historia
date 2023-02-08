@@ -1,1 +1,0 @@
-{"methodName":"boolean onOptionsItemSelected(android.view.MenuItem)","line":314,"t":"ReceiverNonNull","matcher":"void cancelDownloadTask(int)","className":"com.seafile.seadroid2.ui.activity.FileActivity"}

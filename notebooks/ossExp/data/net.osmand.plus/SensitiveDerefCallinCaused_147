@@ -1,1 +1,0 @@
-{"methodName":"void setupFavorites()","line":122,"t":"ReceiverNonNull","matcher":"android.view.LayoutInflater getLayoutInflater()","className":"net.osmand.plus.dashboard.DashFavoritesFragment"}

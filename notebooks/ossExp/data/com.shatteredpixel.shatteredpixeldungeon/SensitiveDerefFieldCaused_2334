@@ -1,1 +1,0 @@
-{"methodName":"void onSelect(com.shatteredpixel.shatteredpixeldungeon.items.Item)","line":146,"t":"ReceiverNonNull","matcher":"boolean hasTalent(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent)","className":"com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.MagesStaff$1"}

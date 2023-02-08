@@ -1,1 +1,0 @@
-{"methodName":"void onClickResetToken()","line":5,"t":"ReceiverNonNull","matcher":"void showConfirmResetDialog()","className":"org.sufficientlysecure.keychain.ui.token.ManageSecurityTokenPresenter"}

@@ -1,1 +1,0 @@
-{"methodName":"java.util.ArrayList _fieldData(java.lang.String)","line":2,"t":"ReceiverNonNull","matcher":"android.database.Cursor query(java.lang.String,java.lang.Object[])","className":"com.ichi2.libanki.Collection"}

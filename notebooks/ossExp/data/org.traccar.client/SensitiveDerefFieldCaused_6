@@ -1,1 +1,0 @@
-{"methodName":"void processBlockTagEnd(java.lang.Appendable,ru.noties.markwon.html.jsoup.parser.Token$EndTag)","line":344,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"ru.noties.markwon.html.MarkwonHtmlParserImpl"}

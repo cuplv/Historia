@@ -1,1 +1,0 @@
-{"methodName":"void endElement(java.lang.String,java.lang.String,java.lang.String)","line":1113,"t":"ReceiverNonNull","matcher":"java.lang.Object put(java.lang.Object,java.lang.Object)","className":"net.gaast.giggity.Schedule$PentabarfParser"}

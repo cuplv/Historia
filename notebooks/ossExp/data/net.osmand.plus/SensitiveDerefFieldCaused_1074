@@ -1,1 +1,0 @@
-{"methodName":"void drawExtras(android.graphics.Canvas)","line":677,"t":"ReceiverNonNull","matcher":"java.lang.Object get()","className":"com.github.mikephil.charting.renderer.PieChartRenderer"}

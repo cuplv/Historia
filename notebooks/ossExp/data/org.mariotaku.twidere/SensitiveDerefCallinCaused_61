@@ -1,1 +1,0 @@
-{"methodName":"void finishFavoriteConfirmActivity()","line":100,"t":"ReceiverNonNull","matcher":"void finish()","className":"org.mariotaku.twidere.fragment.status.FavoriteConfirmDialogFragment"}

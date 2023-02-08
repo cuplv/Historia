@@ -1,1 +1,0 @@
-{"methodName":"void onItemSelected(com.shatteredpixel.shatteredpixeldungeon.items.Item)","line":72,"t":"ReceiverNonNull","matcher":"float cooldown()","className":"com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfTransmutation"}

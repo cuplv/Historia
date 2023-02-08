@@ -1,1 +1,0 @@
-{"methodName":"boolean onContextItemSelected(android.view.MenuItem)","line":307,"t":"ReceiverNonNull","matcher":"void removeAccount(com.seafile.seadroid2.account.Account)","className":"com.seafile.seadroid2.ui.activity.AccountsActivity"}

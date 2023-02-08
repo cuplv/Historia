@@ -1,1 +1,0 @@
-{"methodName":"void animateWidget(boolean)","line":277,"t":"ReceiverNonNull","matcher":"int getWidth()","className":"net.osmand.plus.views.layers.MapQuickActionLayer"}

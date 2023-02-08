@@ -1,1 +1,0 @@
-{"methodName":"void afterTextChanged(android.text.Editable)","line":21,"t":"ReceiverNonNull","matcher":"boolean cancel()","className":"com.ubergeek42.WeechatAndroid.fragments.BufferFragment$onCreateView$lambda-17$$inlined$afterTextChanged$1"}

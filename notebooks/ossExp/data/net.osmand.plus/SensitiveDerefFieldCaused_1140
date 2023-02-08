@@ -1,1 +1,0 @@
-{"methodName":"void updateInfo(net.osmand.plus.views.layers.base.OsmandMapLayer$DrawSettings)","line":145,"t":"ReceiverNonNull","matcher":"boolean contains(java.lang.CharSequence)","className":"net.osmand.plus.views.mapwidgets.widgets.StreetNameWidget"}

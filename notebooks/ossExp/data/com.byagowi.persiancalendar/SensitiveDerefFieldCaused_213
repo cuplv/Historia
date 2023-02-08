@@ -1,1 +1,0 @@
-{"methodName":"boolean dispatchTouchEvent(android.view.MotionEvent)","line":90,"t":"ReceiverNonNull","matcher":"float getXVelocity()","className":"q2.n"}

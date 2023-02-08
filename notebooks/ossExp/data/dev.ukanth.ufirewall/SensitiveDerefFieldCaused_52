@@ -1,1 +1,0 @@
-{"methodName":"boolean isSELinuxEnforcing()","line":632,"t":"ReceiverNonNull","matcher":"boolean booleanValue()","className":"eu.chainfire.libsuperuser.Shell$SU"}

@@ -1,1 +1,0 @@
-{"methodName":"void drawWithLines(android.graphics.Canvas,org.osmdroid.views.Projection)","line":337,"t":"ReceiverNonNull","matcher":"org.osmdroid.util.ListPointL getPointsForMilestones()","className":"org.osmdroid.views.overlay.PolyOverlayWithIW"}

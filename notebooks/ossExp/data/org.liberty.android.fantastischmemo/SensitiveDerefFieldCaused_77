@@ -1,1 +1,0 @@
-{"methodName":"void stopSpeak()","line":2,"t":"ReceiverNonNull","matcher":"void stop()","className":"org.liberty.android.fantastischmemo.utils.CardTTSUtil"}

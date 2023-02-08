@@ -1,1 +1,0 @@
-{"methodName":"void parseInlines(org.commonmark.parser.InlineParser)","line":61,"t":"ReceiverNonNull","matcher":"java.lang.String getString()","className":"org.commonmark.internal.ParagraphParser"}

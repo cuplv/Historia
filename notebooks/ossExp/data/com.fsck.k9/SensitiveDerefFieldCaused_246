@@ -1,1 +1,0 @@
-{"methodName":"void findPartsForMultipartSignaturePass()","line":151,"t":"ReceiverNonNull","matcher":"com.fsck.k9.mail.Part findKeyForAnnotationWithReplacementPart(com.fsck.k9.mail.Part)","className":"com.fsck.k9.ui.crypto.MessageCryptoHelper"}

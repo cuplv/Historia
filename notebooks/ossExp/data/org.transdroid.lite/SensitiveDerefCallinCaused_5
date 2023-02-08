@@ -1,1 +1,0 @@
-{"methodName":"boolean onCreateActionMode(android.view.ActionMode,android.view.Menu)","line":5,"t":"ReceiverNonNull","matcher":"android.view.MenuInflater getMenuInflater()","className":"org.transdroid.core.gui.DetailsFragment$1"}

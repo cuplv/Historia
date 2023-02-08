@@ -1,1 +1,0 @@
-{"methodName":"void run()","line":55,"t":"ReceiverNonNull","matcher":"void runOnUiThread(java.lang.Runnable)","className":"com.nutomic.syncthingandroid.fragments.FolderListFragment$1"}

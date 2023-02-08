@@ -1,1 +1,0 @@
-{"methodName":"void onActivityCreated(android.os.Bundle)","line":284,"t":"ReceiverNonNull","matcher":"android.content.pm.PackageManager getPackageManager()","className":"com.nutomic.syncthingandroid.activities.SettingsActivity$SettingsFragment"}

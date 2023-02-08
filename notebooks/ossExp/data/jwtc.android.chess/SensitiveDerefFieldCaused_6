@@ -1,1 +1,0 @@
-{"methodName":"void startClock(long,long,long,int,long)","line":36,"t":"ReceiverNonNull","matcher":"void <init>(java.lang.Runnable)","className":"jwtc.android.chess.services.LocalClockApi"}

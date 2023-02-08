@@ -1,1 +1,0 @@
-{"methodName":"void openVideo()","line":346,"t":"ReceiverNonNull","matcher":"void setOnBufferingUpdateListener(android.media.MediaPlayer$OnBufferingUpdateListener)","className":"com.sprylab.android.widget.TextureVideoView"}

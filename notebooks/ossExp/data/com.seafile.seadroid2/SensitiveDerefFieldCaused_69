@@ -1,1 +1,0 @@
-{"methodName":"boolean onTouchEvent(android.view.MotionEvent)","line":125,"t":"ReceiverNonNull","matcher":"float getYVelocity()","className":"uk.co.senab.photoview.gestures.CupcakeGestureDetector"}

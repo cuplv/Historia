@@ -1,1 +1,0 @@
-{"methodName":"boolean onOptionsItemSelected(android.view.MenuItem)","line":462,"t":"ReceiverNonNull","matcher":"void finish()","className":"de.blinkt.openvpn.fragments.LogFragment"}

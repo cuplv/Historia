@@ -1,1 +1,0 @@
-{"methodName":"void onFileUploaded(int)","line":2148,"t":"ReceiverNonNull","matcher":"com.seafile.seadroid2.transfer.UploadTaskInfo getUploadTaskInfo(int)","className":"com.seafile.seadroid2.ui.activity.BrowserActivity"}

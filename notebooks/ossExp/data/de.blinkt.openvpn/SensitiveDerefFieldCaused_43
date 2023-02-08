@@ -1,1 +1,0 @@
-{"methodName":"void performAction()","line":66,"t":"ReceiverNonNull","matcher":"boolean isAllowedExternalApp(java.lang.String)","className":"de.blinkt.openvpn.api.RemoteAction"}

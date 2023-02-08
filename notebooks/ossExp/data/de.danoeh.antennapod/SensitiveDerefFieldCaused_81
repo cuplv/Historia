@@ -1,1 +1,0 @@
-{"methodName":"void seekToPrevChapter()","line":215,"t":"ReceiverNonNull","matcher":"float getCurrentPlaybackSpeedMultiplier()","className":"de.danoeh.antennapod.fragment.CoverFragment"}

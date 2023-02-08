@@ -1,1 +1,0 @@
-{"methodName":"void onServiceConnected(android.content.ComponentName,android.os.IBinder)","line":141,"t":"ReceiverNonNull","matcher":"void registerCallback(de.srlabs.snoopsnitch.qdmon.IMsdServiceCallback)","className":"de.srlabs.snoopsnitch.qdmon.MsdServiceHelper$MyServiceConnection"}

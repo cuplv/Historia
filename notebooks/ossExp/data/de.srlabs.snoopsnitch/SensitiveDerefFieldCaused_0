@@ -1,1 +1,0 @@
-{"methodName":"void close()","line":270,"t":"ReceiverNonNull","matcher":"boolean isAlive()","className":"de.srlabs.snoopsnitch.qdmon.EncryptedFileWriter"}

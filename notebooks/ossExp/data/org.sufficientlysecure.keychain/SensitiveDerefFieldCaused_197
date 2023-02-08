@@ -1,1 +1,0 @@
-{"methodName":"void smoothScrollToPosition(int)","line":2,"t":"ReceiverNonNull","matcher":"boolean postDelayed(java.lang.Runnable,long)","className":"eu.davidea.flexibleadapter.FlexibleAdapter"}
