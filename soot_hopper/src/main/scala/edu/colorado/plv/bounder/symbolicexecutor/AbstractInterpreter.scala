@@ -534,7 +534,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
             config.approxMode.merge(() => ???, pLive, stateSolver) match {
               case Some(p2) =>
                 // Add to invariant map if invariant location is tracked
-                p2 match { //TODO:===== this was "current", should be pLive???  TODO: cb isn't getting to 5 cb, go back through history and figure out why
+                p2 match {
                   case SwapLoc(v) => {
                     val nodeSetAtLoc = invarMap.getOrElse(v, Map.empty)
                     invarMap.addOne(v -> (nodeSetAtLoc + (p2.state.sf.makeHashable(config.specSpace) -> p2)))
@@ -568,8 +568,8 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
   def executeStep(qry:Qry):Set[Qry] = qry match{
     case Qry(state, loc, Live) =>
       val predecessorLocations = controlFlowResolver.resolvePredicessors(loc,state)
-      //predecessorLocations.par.flatMap(l => {
-      predecessorLocations.par.flatMap(l => {
+      predecessorLocations.flatMap(l => { //TODO: re-enable par after dbg
+//      predecessorLocations.par.flatMap(l => {
         val newStates = transfer.transfer(state,l,loc)
         newStates.map(state => stateSolver.simplify(state, config.specSpace) match {
           case Some(state) if stateSolver.witnessed(state, config.specSpace).isDefined =>
