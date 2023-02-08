@@ -1,1 +1,0 @@
-{"methodName":"int[] a(org.mozilla.classfile.ClassFileWriter)","line":9,"t":"ReceiverNonNull","matcher":"b","className":"org.mozilla.classfile.ClassFileWriter"}

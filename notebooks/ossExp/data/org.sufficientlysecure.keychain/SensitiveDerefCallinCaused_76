@@ -1,1 +1,0 @@
-{"methodName":"void startCertifyActivity()","line":2,"t":"ReceiverNonNull","matcher":"android.content.Intent getIntent()","className":"org.sufficientlysecure.keychain.ui.CertifyFingerprintFragment"}

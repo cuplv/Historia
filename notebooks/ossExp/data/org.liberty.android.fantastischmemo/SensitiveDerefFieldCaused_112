@@ -1,1 +1,0 @@
-{"methodName":"void onPreExecute()","line":10,"t":"ReceiverNonNull","matcher":"void setQuestion(java.lang.String)","className":"org.liberty.android.fantastischmemo.ui.CardEditor$SaveCardTask"}

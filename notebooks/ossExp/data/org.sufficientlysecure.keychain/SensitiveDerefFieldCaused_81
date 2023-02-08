@@ -1,1 +1,0 @@
-{"methodName":"void recurse(com.github.rjeschke.txtmark.Block,boolean)","line":4,"t":"ReceiverNonNull","matcher":"java.lang.String stripID()","className":"com.github.rjeschke.txtmark.Processor"}

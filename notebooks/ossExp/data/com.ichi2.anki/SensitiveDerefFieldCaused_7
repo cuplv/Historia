@@ -1,1 +1,0 @@
-{"methodName":"java.lang.String read()","line":10,"t":"ReceiverNonNull","matcher":"boolean apply(java.lang.Object)","className":"org.acra.util.StreamReader"}

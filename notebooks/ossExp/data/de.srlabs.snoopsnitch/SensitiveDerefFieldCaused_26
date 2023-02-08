@@ -1,1 +1,0 @@
-{"methodName":"void writeLog(java.lang.String)","line":186,"t":"ReceiverNonNull","matcher":"void writeLog(java.lang.String)","className":"de.srlabs.snoopsnitch.qdmon.MsdServiceHelper"}

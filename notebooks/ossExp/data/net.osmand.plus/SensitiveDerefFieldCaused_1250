@@ -1,1 +1,0 @@
-{"methodName":"net.osmand.binary.BinaryMapPoiReaderAdapter$PoiSubType getSubtypeFromId(int,java.lang.StringBuilder)","line":118,"t":"ReceiverNonNull","matcher":"java.lang.Object get(int)","className":"net.osmand.binary.BinaryMapPoiReaderAdapter$PoiRegion"}

@@ -1,1 +1,0 @@
-{"methodName":"void capture(char)","line":112,"t":"ReceiverNonNull","matcher":"java.lang.StringBuilder append(char)","className":"com.damnhandy.uri.template.impl.UriTemplateParser"}

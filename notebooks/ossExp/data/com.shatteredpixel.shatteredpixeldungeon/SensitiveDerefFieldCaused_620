@@ -1,1 +1,0 @@
-{"methodName":"com.watabou.noosa.Gizmo bringToFront(com.watabou.noosa.Gizmo)","line":6,"t":"ReceiverNonNull","matcher":"boolean contains(java.lang.Object)","className":"com.watabou.noosa.Group"}

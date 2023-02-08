@@ -1,1 +1,0 @@
-{"methodName":"void onPreExecute()","line":298,"t":"ReceiverNonNull","matcher":"void setCancelable(boolean)","className":"net.osmand.plus.download.ui.DownloadResourceGroupFragment$2"}

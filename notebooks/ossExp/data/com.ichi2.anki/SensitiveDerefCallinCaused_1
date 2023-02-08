@@ -1,1 +1,0 @@
-{"methodName":"android.view.View onCreateView(android.view.LayoutInflater,android.view.ViewGroup,android.os.Bundle)","line":4,"t":"ReceiverNonNull","matcher":"java.lang.Class getClass()","className":"com.ichi2.anki.StudyOptionsFragment"}

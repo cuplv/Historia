@@ -1,1 +1,0 @@
-{"methodName":"void check(java.security.cert.Certificate)","line":-1,"t":"ReceiverNonNull","matcher":"int getIndex()","className":"org.bouncycastle.jce.provider.ProvOcspRevocationChecker"}

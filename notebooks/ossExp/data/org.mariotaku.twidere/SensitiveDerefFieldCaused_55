@@ -1,1 +1,0 @@
-{"methodName":"void onDetach()","line":136,"t":"ReceiverNonNull","matcher":"void interrupt()","className":"org.osmdroid.tileprovider.modules.TileWriter"}

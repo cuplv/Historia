@@ -1,1 +1,0 @@
-{"methodName":"com.fsck.k9.mail.transport.smtp.SmtpResponse executeCommand(boolean,java.lang.String,java.lang.Object[])","line":506,"t":"ReceiverNonNull","matcher":"com.fsck.k9.mail.transport.smtp.SmtpResponse readResponse(boolean)","className":"com.fsck.k9.mail.transport.smtp.SmtpTransport"}

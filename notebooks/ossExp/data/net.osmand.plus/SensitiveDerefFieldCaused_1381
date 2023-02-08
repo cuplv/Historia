@@ -1,1 +1,0 @@
-{"methodName":"boolean updateMapIsNeeded(net.osmand.data.RotatedTileBox,net.osmand.plus.views.layers.base.OsmandMapLayer$DrawSettings)","line":245,"t":"ReceiverNonNull","matcher":"double getMapDensity()","className":"net.osmand.plus.render.MapRenderRepositories"}

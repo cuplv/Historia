@@ -1,1 +1,0 @@
-{"methodName":"void rebuildJournal()","line":347,"t":"ReceiverNonNull","matcher":"void close()","className":"com.jakewharton.disklrucache.DiskLruCache"}

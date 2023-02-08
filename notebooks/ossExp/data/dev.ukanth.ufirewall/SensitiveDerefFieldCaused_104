@@ -1,1 +1,0 @@
-{"methodName":"void updateRulesFromJson(android.content.Context,org.json.JSONObject,java.lang.String)","line":2954,"t":"ReceiverNonNull","matcher":"java.lang.Object get(java.lang.Object)","className":"dev.ukanth.ufirewall.Api"}

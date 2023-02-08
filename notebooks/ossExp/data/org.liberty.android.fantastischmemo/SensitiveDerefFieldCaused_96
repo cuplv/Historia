@@ -1,1 +1,0 @@
-{"methodName":"void configCardFragmentTransitionAnimation(androidx.fragment.app.FragmentTransaction)","line":6,"t":"ReceiverNonNull","matcher":"java.lang.Integer getOrdinal()","className":"org.liberty.android.fantastischmemo.ui.QACardActivity"}

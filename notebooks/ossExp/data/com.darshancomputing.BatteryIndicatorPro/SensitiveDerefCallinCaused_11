@@ -1,1 +1,0 @@
-{"methodName":"void onClick(android.content.DialogInterface,int)","line":247,"t":"ReceiverNonNull","matcher":"java.lang.String getPackageName()","className":"com.darshancomputing.BatteryIndicatorPro.CurrentInfoFragment$NotificationsDisabledDialogFragment$2"}

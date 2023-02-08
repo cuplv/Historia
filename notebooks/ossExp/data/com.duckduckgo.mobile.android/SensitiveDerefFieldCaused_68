@@ -1,1 +1,0 @@
-{"methodName":"void navigate(java.lang.String,java.util.Map)","line":872,"t":"ReceiverNonNull","matcher":"void loadUrl(java.lang.String,java.util.Map)","className":"com.duckduckgo.app.browser.BrowserTabFragment"}

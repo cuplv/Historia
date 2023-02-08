@@ -1,1 +1,0 @@
-{"methodName":"void putFloat(java.lang.String,java.lang.Float)","line":96,"t":"ReceiverNonNull","matcher":"android.content.SharedPreferences$Editor putFloat(java.lang.String,float)","className":"nitezh.ministock.PreferenceStorage"}

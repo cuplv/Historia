@@ -1,1 +1,0 @@
-{"methodName":"void onDialogCreated(android.app.Dialog)","line":171,"t":"ReceiverNonNull","matcher":"java.lang.String getString(int)","className":"com.seafile.seadroid2.ui.dialog.DeleteFileDialog"}

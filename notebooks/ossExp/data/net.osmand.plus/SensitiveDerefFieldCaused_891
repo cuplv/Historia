@@ -1,1 +1,0 @@
-{"methodName":"java.util.List convertFinalSegmentToResults(net.osmand.router.RoutingContext,net.osmand.router.BinaryRoutePlanner$FinalRouteSegment)","line":473,"t":"ReceiverNonNull","matcher":"road","className":"net.osmand.router.RouteResultPreparation"}

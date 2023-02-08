@@ -1,1 +1,0 @@
-{"methodName":"void call(java.lang.String,java.lang.String,java.lang.String,java.lang.String,java.lang.String)","line":128,"t":"ReceiverNonNull","matcher":"void inviteWithoutOffer(java.lang.String,java.lang.String,java.lang.String)","className":"org.zoolu.sip.call.ExtendedCall"}

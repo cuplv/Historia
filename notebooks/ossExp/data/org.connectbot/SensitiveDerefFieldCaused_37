@@ -1,1 +1,0 @@
-{"methodName":"void onSaveInstanceState(android.os.Bundle)","line":1114,"t":"ReceiverNonNull","matcher":"org.connectbot.TerminalView getCurrentTerminalView()","className":"org.connectbot.ConsoleActivity"}

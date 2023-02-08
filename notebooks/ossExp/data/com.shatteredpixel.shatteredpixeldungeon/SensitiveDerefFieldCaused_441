@@ -1,1 +1,0 @@
-{"methodName":"void execute(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero,java.lang.String)","line":188,"t":"ReceiverNonNull","matcher":"boolean hasTalent(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent)","className":"com.shatteredpixel.shatteredpixeldungeon.items.artifacts.HornOfPlenty"}

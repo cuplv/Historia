@@ -1,1 +1,0 @@
-{"methodName":"void selectTab(com.duckduckgo.app.tabs.model.TabEntity)","line":239,"t":"ReceiverNonNull","matcher":"java.lang.String getTabId()","className":"com.duckduckgo.app.browser.BrowserActivity"}

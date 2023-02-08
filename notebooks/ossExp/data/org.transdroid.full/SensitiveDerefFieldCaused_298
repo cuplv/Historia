@@ -1,1 +1,0 @@
-{"methodName":"void updateTorrentDetails(org.transdroid.daemon.Torrent,org.transdroid.daemon.TorrentDetails)","line":23,"t":"ReceiverNonNull","matcher":"void notifyDataSetChanged()","className":"org.transdroid.core.gui.DetailsFragment"}

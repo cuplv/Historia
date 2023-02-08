@@ -1,1 +1,0 @@
-{"methodName":"net.osmand.data.LatLon getNextRecordingLocation()","line":1569,"t":"ReceiverNonNull","matcher":"net.osmand.data.LatLon getMapLocation()","className":"net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin"}

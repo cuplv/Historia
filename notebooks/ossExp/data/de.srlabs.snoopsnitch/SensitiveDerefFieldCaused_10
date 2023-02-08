@@ -1,1 +1,0 @@
-{"methodName":"void onServiceConnected(android.content.ComponentName,android.os.IBinder)","line":148,"t":"ReceiverNonNull","matcher":"void writeLog(java.lang.String)","className":"de.srlabs.snoopsnitch.qdmon.MsdServiceHelper$MyServiceConnection"}

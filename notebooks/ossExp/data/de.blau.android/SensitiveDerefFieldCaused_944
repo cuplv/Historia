@@ -1,1 +1,0 @@
-{"methodName":"void A(java.lang.String)","line":2,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"de.blau.android.tasks.Note"}

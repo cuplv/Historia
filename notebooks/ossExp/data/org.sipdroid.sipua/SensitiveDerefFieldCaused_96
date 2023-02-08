@@ -1,1 +1,0 @@
-{"methodName":"void initContactAddress(org.zoolu.sip.provider.SipProvider)","line":217,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"org.sipdroid.sipua.UserAgentProfile"}

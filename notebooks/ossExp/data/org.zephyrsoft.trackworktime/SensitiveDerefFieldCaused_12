@@ -1,1 +1,0 @@
-{"methodName":"void end()","line":-1,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"j$.util.stream.SortedOps$RefSortingSink"}

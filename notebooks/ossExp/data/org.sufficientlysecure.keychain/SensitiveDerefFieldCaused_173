@@ -1,1 +1,0 @@
-{"methodName":"void executeNotifications(eu.davidea.flexibleadapter.Payload)","line":9,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"eu.davidea.flexibleadapter.FlexibleAdapter"}

@@ -1,1 +1,0 @@
-{"methodName":"void setupListView(android.view.View)","line":223,"t":"ReceiverNonNull","matcher":"android.content.SharedPreferences getSharedPreferences(java.lang.String,int)","className":"net.wigle.wigleandroid.RankStatsFragment"}

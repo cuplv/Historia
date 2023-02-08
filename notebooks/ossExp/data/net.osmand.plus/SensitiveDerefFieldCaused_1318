@@ -1,1 +1,0 @@
-{"methodName":"boolean updateInfo(net.osmand.plus.views.layers.base.OsmandMapLayer$DrawSettings,boolean)","line":162,"t":"ReceiverNonNull","matcher":"android.content.Context getContext()","className":"net.osmand.plus.views.mapwidgets.widgets.AlarmWidget"}

@@ -1,1 +1,0 @@
-{"methodName":"boolean isOutbox()","line":1365,"t":"ReceiverNonNull","matcher":"java.lang.Long getOutboxFolderId()","className":"com.fsck.k9.ui.messagelist.MessageListFragment"}

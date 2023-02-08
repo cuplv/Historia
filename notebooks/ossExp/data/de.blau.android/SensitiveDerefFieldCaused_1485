@@ -1,1 +1,0 @@
-{"methodName":"void onNewIntent(android.content.Intent)","line":15,"t":"ReceiverNonNull","matcher":"boolean addAll(java.util.Collection)","className":"de.blau.android.photos.PhotoViewerActivity"}

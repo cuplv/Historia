@@ -1,1 +1,0 @@
-{"methodName":"void onSharedPreferenceChanged(android.content.SharedPreferences,java.lang.String)","line":49,"t":"ReceiverNonNull","matcher":"void invalidateOptionsMenu()","className":"de.srlabs.snoopsnitch.SettingsFragment"}

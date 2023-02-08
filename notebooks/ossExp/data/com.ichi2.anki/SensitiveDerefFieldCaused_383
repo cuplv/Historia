@@ -1,1 +1,0 @@
-{"methodName":"java.lang.Object actualDoInBackground()","line":2,"t":"ReceiverNonNull","matcher":"android.os.AsyncTask$Status getStatus()","className":"com.ichi2.async.CollectionTask"}

@@ -1,1 +1,0 @@
-{"methodName":"void onQueuedOperationSuccess(org.sufficientlysecure.keychain.operations.results.InputDataResult)","line":14,"t":"ReceiverNonNull","matcher":"void startActivity(android.content.Intent)","className":"org.sufficientlysecure.keychain.ui.DecryptListFragment"}

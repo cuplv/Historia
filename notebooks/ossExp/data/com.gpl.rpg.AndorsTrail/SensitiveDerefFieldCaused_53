@@ -1,1 +1,0 @@
-{"methodName":"com.gpl.rpg.AndorsTrail.controller.CombatController$MonsterAction determineNextMonsterAction(com.gpl.rpg.AndorsTrail.util.Coord)","line":360,"t":"ReceiverNonNull","matcher":"boolean isAgressive(com.gpl.rpg.AndorsTrail.model.actor.Player)","className":"com.gpl.rpg.AndorsTrail.controller.CombatController"}

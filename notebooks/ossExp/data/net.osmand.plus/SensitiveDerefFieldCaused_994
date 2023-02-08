@@ -1,1 +1,0 @@
-{"methodName":"boolean wasVisited(net.osmand.router.TransportRoutePlanner$TransportRouteSegment)","line":523,"t":"ReceiverNonNull","matcher":"boolean wasVisited(net.osmand.router.TransportRoutePlanner$TransportRouteSegment)","className":"net.osmand.router.TransportRoutePlanner$TransportRouteSegment"}

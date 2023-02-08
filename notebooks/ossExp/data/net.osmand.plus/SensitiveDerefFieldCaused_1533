@@ -1,1 +1,0 @@
-{"methodName":"boolean execute()","line":88,"t":"ReceiverNonNull","matcher":"java.lang.Object remove(java.lang.Object)","className":"net.osmand.plus.measurementtool.command.ChangeRouteModeCommand"}

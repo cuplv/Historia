@@ -1,1 +1,0 @@
-{"methodName":"eu.davidea.flexibleadapter.FlexibleAdapter$RestoreInfo getPendingRemovedItem(eu.davidea.flexibleadapter.items.IFlexible)","line":2,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"eu.davidea.flexibleadapter.FlexibleAdapter"}

@@ -1,1 +1,0 @@
-{"methodName":"void explode(int)","line":16,"t":"ReceiverNonNull","matcher":"com.watabou.utils.Point cellToPoint(int)","className":"com.shatteredpixel.shatteredpixeldungeon.items.bombs.ShrapnelBomb"}

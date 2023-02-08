@@ -1,1 +1,0 @@
-{"methodName":"void activate(com.shatteredpixel.shatteredpixeldungeon.items.armor.ClassArmor,com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero,java.lang.Integer)","line":140,"t":"ReceiverNonNull","matcher":"int distance(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.mage.WarpBeacon"}

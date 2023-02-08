@@ -1,1 +1,0 @@
-{"methodName":"net.osmand.data.Amenity readPoiPoint(int,int,int,int,int,int,int,net.osmand.binary.BinaryMapIndexReader$SearchRequest,net.osmand.binary.BinaryMapPoiReaderAdapter$PoiRegion,boolean)","line":748,"t":"ReceiverNonNull","matcher":"java.lang.Object get(long)","className":"net.osmand.binary.BinaryMapPoiReaderAdapter"}

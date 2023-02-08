@@ -1,1 +1,0 @@
-{"methodName":"net.osmand.binary.OsmandIndex$FileIndex addToCache(net.osmand.binary.BinaryMapIndexReader,java.io.File)","line":141,"t":"ReceiverNonNull","matcher":"fileOffset","className":"net.osmand.binary.CachedOsmandIndexes"}

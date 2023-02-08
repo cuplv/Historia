@@ -1,1 +1,0 @@
-{"methodName":"void b(org.openstreetmap.osmosis.osmbinary.Osmformat$PrimitiveBlock)","line":73,"t":"ReceiverNonNull","matcher":"java.lang.String getString(int,java.lang.Object[])","className":"org.openstreetmap.osmosis.osmbinary.a"}

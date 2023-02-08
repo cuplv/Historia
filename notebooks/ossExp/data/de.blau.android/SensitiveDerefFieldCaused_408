@@ -1,1 +1,0 @@
-{"methodName":"org.mozilla.javascript.ScriptableObject getPropertyDescriptor(org.mozilla.javascript.Context,org.mozilla.javascript.Scriptable)","line":8,"t":"ReceiverNonNull","matcher":"java.lang.String toString()","className":"org.mozilla.javascript.ScriptableObject$GetterSlot"}

@@ -1,1 +1,0 @@
-{"methodName":"void onUserNicknameChanged(org.mariotaku.twidere.model.UserKey,java.lang.String)","line":1343,"t":"ReceiverNonNull","matcher":"key","className":"org.mariotaku.twidere.fragment.UserFragment"}

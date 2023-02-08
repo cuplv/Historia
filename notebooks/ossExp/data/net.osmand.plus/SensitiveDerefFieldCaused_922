@@ -1,1 +1,0 @@
-{"methodName":"int readByte()","line":447,"t":"ReceiverNonNull","matcher":"byte readRawByte()","className":"net.osmand.binary.BinaryMapIndexReader"}

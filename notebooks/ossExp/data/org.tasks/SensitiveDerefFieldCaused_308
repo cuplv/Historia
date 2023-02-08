@@ -1,1 +1,0 @@
-{"methodName":"void disableMyLocation()","line":497,"t":"ReceiverNonNull","matcher":"void postInvalidate()","className":"org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay"}

@@ -1,1 +1,0 @@
-{"methodName":"void pasteIntoTerminal()","line":1257,"t":"ReceiverNonNull","matcher":"org.connectbot.TerminalView getCurrentTerminalView()","className":"org.connectbot.ConsoleActivity"}

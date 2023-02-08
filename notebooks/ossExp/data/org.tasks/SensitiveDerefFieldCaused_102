@@ -1,1 +1,0 @@
-{"methodName":"void acquire()","line":81,"t":"ReceiverNonNull","matcher":"void acquire()","className":"org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase"}

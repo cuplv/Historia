@@ -1,1 +1,0 @@
-{"methodName":"void setAdapter(androidx.recyclerview.widget.RecyclerView$Adapter)","line":6,"t":"ReceiverNonNull","matcher":"void setAdapter(androidx.recyclerview.widget.RecyclerView$Adapter)","className":"org.sufficientlysecure.keychain.ui.base.RecyclerFragment"}

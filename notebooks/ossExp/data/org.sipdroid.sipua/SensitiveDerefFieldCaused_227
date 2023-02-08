@@ -1,1 +1,0 @@
-{"methodName":"android.net.Uri getPhotoUri()","line":158,"t":"ReceiverNonNull","matcher":"person_id","className":"org.sipdroid.sipua.phone.ContactsAsyncHelper$ImageTracker"}

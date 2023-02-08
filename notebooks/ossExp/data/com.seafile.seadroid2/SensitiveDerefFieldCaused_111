@@ -1,1 +1,0 @@
-{"methodName":"void onImageTapped(int)","line":648,"t":"ReceiverNonNull","matcher":"com.seafile.seadroid2.gallery.IImage getImageAt(int)","className":"com.seafile.seadroid2.gallery.MultipleImageSelectionActivity"}

@@ -1,1 +1,0 @@
-{"methodName":"void delEnckey(java.lang.String)","line":603,"t":"ReceiverNonNull","matcher":"int delete(java.lang.String,java.lang.String,java.lang.String[])","className":"com.seafile.seadroid2.data.DatabaseHelper"}

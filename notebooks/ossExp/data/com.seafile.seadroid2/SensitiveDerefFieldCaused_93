@@ -1,1 +1,0 @@
-{"methodName":"void showBrightnessDialog(float)","line":307,"t":"ReceiverNonNull","matcher":"android.view.Window getWindow()","className":"com.shuyu.gsyvideoplayer.video.StandardGSYVideoPlayer"}

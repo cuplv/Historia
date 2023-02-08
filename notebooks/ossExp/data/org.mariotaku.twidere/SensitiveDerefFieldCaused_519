@@ -1,1 +1,0 @@
-{"methodName":"void setImageUriAsync(android.net.Uri)","line":1026,"t":"ReceiverNonNull","matcher":"void <init>(java.lang.Object)","className":"com.theartofdev.edmodo.cropper.CropImageView"}

@@ -1,1 +1,0 @@
-{"methodName":"void addCurrentSpeed()","line":102,"t":"ReceiverNonNull","matcher":"float getCurrentPlaybackSpeedMultiplier()","className":"de.danoeh.antennapod.dialog.VariableSpeedDialog"}

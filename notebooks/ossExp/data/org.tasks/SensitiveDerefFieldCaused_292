@@ -1,1 +1,0 @@
-{"methodName":"void usePath(boolean)","line":95,"t":"ReceiverNonNull","matcher":"void <init>(android.graphics.Path,boolean)","className":"org.osmdroid.views.overlay.PolyOverlayWithIW"}

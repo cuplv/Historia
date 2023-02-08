@@ -1,1 +1,0 @@
-{"methodName":"com.vladsch.flexmark.parser.block.BlockStart tryStart(com.vladsch.flexmark.parser.block.ParserState,com.vladsch.flexmark.parser.block.MatchedBlockParser)","line":315,"t":"ReceiverNonNull","matcher":"void <init>(com.vladsch.flexmark.ast.util.Parsing)","className":"com.vladsch.flexmark.internal.HtmlBlockParser$BlockFactory"}

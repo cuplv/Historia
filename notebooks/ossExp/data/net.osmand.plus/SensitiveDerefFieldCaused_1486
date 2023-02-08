@@ -1,1 +1,0 @@
-{"methodName":"int getActualColor()","line":980,"t":"ReceiverNonNull","matcher":"int intValue()","className":"net.osmand.plus.settings.fragments.ProfileAppearanceFragment$ApplicationProfileObject"}

@@ -1,1 +1,0 @@
-{"methodName":"boolean hasNext()","line":455,"t":"ReceiverNonNull","matcher":"boolean containsRouteData(int,int,int,int,int)","className":"net.osmand.search.core.SearchPhrase$2"}

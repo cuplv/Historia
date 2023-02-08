@@ -1,1 +1,0 @@
-{"methodName":"void readMapDataBlocks(net.osmand.binary.BinaryMapIndexReader$SearchRequest,net.osmand.binary.BinaryMapIndexReader$MapTree,net.osmand.binary.BinaryMapIndexReader$MapIndex)","line":1008,"t":"ReceiverNonNull","matcher":"int getBytesUntilLimit()","className":"net.osmand.binary.BinaryMapIndexReader"}

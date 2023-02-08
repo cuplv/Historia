@@ -1,1 +1,0 @@
-{"methodName":"void onDetach(org.osmdroid.views.MapView)","line":119,"t":"ReceiverNonNull","matcher":"android.graphics.Bitmap getBitmap()","className":"org.osmdroid.views.overlay.TilesOverlay"}

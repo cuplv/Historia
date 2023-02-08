@@ -1,1 +1,0 @@
-{"methodName":"void <init>(de.blau.android.Main,de.blau.android.Logic,java.lang.String,de.blau.android.osm.BoundingBox,boolean,long)","line":30,"t":"ReceiverNonNull","matcher":"java.lang.Class getClass()","className":"de.blau.android.util.EditState"}

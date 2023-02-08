@@ -1,1 +1,0 @@
-{"methodName":"void deleteRecording(net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin$Recording,boolean)","line":1719,"t":"ReceiverNonNull","matcher":"void refreshMap()","className":"net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin"}

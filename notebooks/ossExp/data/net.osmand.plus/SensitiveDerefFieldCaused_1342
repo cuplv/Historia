@@ -1,1 +1,0 @@
-{"methodName":"javax.microedition.khronos.opengles.GL createGL()","line":1128,"t":"ReceiverNonNull","matcher":"javax.microedition.khronos.opengles.GL getGL()","className":"net.osmand.core.android.GLSurfaceView$EglHelper"}

@@ -1,1 +1,0 @@
-{"methodName":"void setDisplayedTerminal(int)","line":1251,"t":"ReceiverNonNull","matcher":"java.lang.CharSequence getPageTitle(int)","className":"org.connectbot.ConsoleActivity"}

@@ -1,1 +1,0 @@
-{"methodName":"android.view.View getView(int,android.view.View,android.view.ViewGroup)","line":73,"t":"ReceiverNonNull","matcher":"java.lang.Object get(int)","className":"com.asksven.betterbatterystats.adapters.CreditsAdapter"}

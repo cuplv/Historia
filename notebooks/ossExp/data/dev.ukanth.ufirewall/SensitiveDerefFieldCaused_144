@@ -1,1 +1,0 @@
-{"methodName":"boolean isSELinuxEnforcing()","line":542,"t":"ReceiverNonNull","matcher":"boolean booleanValue()","className":"com.stericson.rootshell.execution.Shell"}

@@ -1,1 +1,0 @@
-{"methodName":"java.lang.String getCachedDirents(java.lang.String,java.lang.String)","line":495,"t":"ReceiverNonNull","matcher":"android.database.Cursor query(java.lang.String,java.lang.String[],java.lang.String,java.lang.String[],java.lang.String,java.lang.String,java.lang.String)","className":"com.seafile.seadroid2.data.DatabaseHelper"}

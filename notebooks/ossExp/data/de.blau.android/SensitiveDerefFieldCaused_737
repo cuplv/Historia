@@ -1,1 +1,0 @@
-{"methodName":"org.mozilla.javascript.Node decompileFunctionHeader(org.mozilla.javascript.ast.FunctionNode)","line":14,"t":"ReceiverNonNull","matcher":"void addToken(int)","className":"org.mozilla.javascript.IRFactory"}

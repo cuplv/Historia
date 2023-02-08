@@ -1,1 +1,0 @@
-{"methodName":"void startElement(org.xmlpull.v1.XmlPullParser,java.lang.String)","line":236,"t":"ReceiverNonNull","matcher":"java.lang.String putTagNoLC(java.lang.String,java.lang.String)","className":"net.osmand.osm.io.OsmBaseStorage"}

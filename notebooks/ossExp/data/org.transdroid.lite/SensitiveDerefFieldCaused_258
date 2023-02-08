@@ -1,1 +1,0 @@
-{"methodName":"void onDestroyActionMode(android.view.ActionMode)","line":6,"t":"ReceiverNonNull","matcher":"void setVisibility(int)","className":"org.transdroid.core.gui.DetailsFragment$1"}

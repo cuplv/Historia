@@ -1,1 +1,0 @@
-{"methodName":"int setZoomLevel(int)","line":385,"t":"ReceiverNonNull","matcher":"void forceFinished(boolean)","className":"org.osmdroid.views.MapView"}

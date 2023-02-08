@@ -1,1 +1,0 @@
-{"methodName":"java8.util.concurrent.CompletableFuture sendAsync()","line":2,"t":"ReceiverNonNull","matcher":"java8.util.concurrent.CompletableFuture postAsync(com.brsanthu.googleanalytics.request.GoogleAnalyticsRequest)","className":"com.brsanthu.googleanalytics.request.GoogleAnalyticsRequest"}

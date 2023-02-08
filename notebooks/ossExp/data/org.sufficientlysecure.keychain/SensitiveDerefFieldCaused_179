@@ -1,1 +1,0 @@
-{"methodName":"void toggleFolded()","line":7,"t":"ReceiverNonNull","matcher":"void setText(java.lang.CharSequence)","className":"org.sufficientlysecure.keychain.ui.widget.FoldableLinearLayout"}

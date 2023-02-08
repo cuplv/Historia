@@ -1,1 +1,0 @@
-{"methodName":"void notifyStopRecord()","line":7,"t":"ReceiverNonNull","matcher":"void onRecordingFinish(android.view.View)","className":"com.ichi2.anki.multimediacard.AudioView"}

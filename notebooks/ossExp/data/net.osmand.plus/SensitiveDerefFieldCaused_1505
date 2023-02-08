@@ -1,1 +1,0 @@
-{"methodName":"java.lang.String getName()","line":58,"t":"ReceiverNonNull","matcher":"java.lang.Object get(int)","className":"net.osmand.binary.BinaryMapDataObject"}

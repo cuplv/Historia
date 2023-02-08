@@ -1,1 +1,0 @@
-{"methodName":"void lambda$onContextItemSelected$9$org-zephyrsoft-trackworktime-TaskListActivity(org.zephyrsoft.trackworktime.model.Task,int,android.content.DialogInterface,int)","line":285,"t":"ReceiverNonNull","matcher":"boolean deleteTask(org.zephyrsoft.trackworktime.model.Task)","className":"org.zephyrsoft.trackworktime.TaskListActivity"}

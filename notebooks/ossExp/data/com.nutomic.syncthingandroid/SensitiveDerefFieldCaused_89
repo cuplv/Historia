@@ -1,1 +1,0 @@
-{"methodName":"void displayFolder(java.io.File)","line":233,"t":"ReceiverNonNull","matcher":"java.io.File[] listFiles()","className":"com.nutomic.syncthingandroid.activities.FolderPickerActivity"}

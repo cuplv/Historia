@@ -1,1 +1,0 @@
-{"methodName":"boolean setCellToWater(boolean,int)","line":115,"t":"ReceiverNonNull","matcher":"traps","className":"com.shatteredpixel.shatteredpixeldungeon.levels.Level"}

@@ -1,1 +1,0 @@
-{"methodName":"void fetchBody(com.fsck.k9.mail.store.pop3.Pop3Message,int)","line":411,"t":"ReceiverNonNull","matcher":"boolean supportsTop()","className":"com.fsck.k9.mail.store.pop3.Pop3Folder"}

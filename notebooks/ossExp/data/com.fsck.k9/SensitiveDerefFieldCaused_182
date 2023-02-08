@@ -1,1 +1,0 @@
-{"methodName":"void deliverResult()","line":772,"t":"ReceiverNonNull","matcher":"void onCryptoOperationsFinished(com.fsck.k9.mailstore.MessageCryptoAnnotations)","className":"com.fsck.k9.ui.crypto.MessageCryptoHelper"}

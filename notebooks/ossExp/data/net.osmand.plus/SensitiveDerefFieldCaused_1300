@@ -1,1 +1,0 @@
-{"methodName":"double getOrthogonalDistance(net.osmand.router.network.NetworkRouteGpxApproximator$GpxRoutePoint,net.osmand.router.network.NetworkRouteContext$NetworkRouteSegment)","line":184,"t":"ReceiverNonNull","matcher":"pointsX","className":"net.osmand.router.network.NetworkRouteGpxApproximator"}

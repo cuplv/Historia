@@ -1,1 +1,0 @@
-{"methodName":"void updateTopButton(int)","line":1186,"t":"ReceiverNonNull","matcher":"android.view.ViewGroup$LayoutParams getLayoutParams()","className":"net.osmand.plus.dashboard.DashboardOnMap"}

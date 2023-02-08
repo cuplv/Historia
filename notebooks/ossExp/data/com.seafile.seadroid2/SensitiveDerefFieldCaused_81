@@ -1,1 +1,0 @@
-{"methodName":"void ensureList()","line":304,"t":"ReceiverNonNull","matcher":"void setOnKeyListener(android.view.View$OnKeyListener)","className":"com.seafile.seadroid2.ui.fragment.CustomPreferenceFragment"}

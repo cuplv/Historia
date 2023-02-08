@@ -1,1 +1,0 @@
-{"methodName":"void onUserColorChanged(org.mariotaku.twidere.model.UserKey,int)","line":1348,"t":"ReceiverNonNull","matcher":"key","className":"org.mariotaku.twidere.fragment.UserFragment"}

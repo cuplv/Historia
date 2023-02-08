@@ -1,1 +1,0 @@
-{"methodName":"com.j256.ormlite.support.CompiledStatement compile(com.j256.ormlite.support.DatabaseConnection,com.j256.ormlite.stmt.StatementBuilder$StatementType,int)","line":5,"t":"ReceiverNonNull","matcher":"int intValue()","className":"com.j256.ormlite.stmt.mapped.MappedPreparedStmt"}

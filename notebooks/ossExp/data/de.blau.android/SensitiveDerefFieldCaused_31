@@ -1,1 +1,0 @@
-{"methodName":"android.widget.ArrayAdapter getMemberRoleAutocompleteAdapter()","line":24,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"de.blau.android.propertyeditor.RelationMembersFragment$RelationMemberRow"}

@@ -1,1 +1,0 @@
-{"methodName":"void onZap(com.shatteredpixel.shatteredpixeldungeon.mechanics.Ballistica)","line":56,"t":"ReceiverNonNull","matcher":"void pressCell(int)","className":"com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfBlastWave"}

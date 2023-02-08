@@ -1,1 +1,0 @@
-{"methodName":"boolean test1()","line":108,"t":"ReceiverNonNull","matcher":"java.net.InetAddress getLocalAddress()","className":"com.jstun.demo.DiscoveryTest"}

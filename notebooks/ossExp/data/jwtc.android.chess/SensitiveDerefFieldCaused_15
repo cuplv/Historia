@@ -1,1 +1,0 @@
-{"methodName":"void onResume()","line":240,"t":"ReceiverNonNull","matcher":"int load(android.content.Context,int,int)","className":"jwtc.android.chess.activities.ChessBoardActivity"}

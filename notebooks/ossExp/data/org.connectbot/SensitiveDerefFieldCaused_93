@@ -1,1 +1,0 @@
-{"methodName":"void onNewIntent(android.content.Intent)","line":1091,"t":"ReceiverNonNull","matcher":"void notifyDataSetChanged()","className":"org.connectbot.ConsoleActivity"}

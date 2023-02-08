@@ -1,1 +1,0 @@
-{"methodName":"org.dmfs.rfc5545.recurrenceset.RecurrenceSetIterator iterator(java.util.TimeZone,long,long)","line":127,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"org.dmfs.rfc5545.recurrenceset.RecurrenceSet"}

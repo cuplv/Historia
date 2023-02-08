@@ -1,1 +1,0 @@
-{"methodName":"void onStop()","line":491,"t":"ReceiverNonNull","matcher":"boolean cancel(boolean)","className":"org.scoutant.blokish.UI"}

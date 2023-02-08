@@ -1,1 +1,0 @@
-{"methodName":"void handleMessage(android.os.Message)","line":22,"t":"ReceiverNonNull","matcher":"void invalidate()","className":"org.osmdroid.tileprovider.util.SimpleInvalidationHandler"}

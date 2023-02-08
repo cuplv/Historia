@@ -1,1 +1,0 @@
-{"methodName":"void addConnection(org.zoolu.sip.provider.ConnectedTransport)","line":1163,"t":"ReceiverNonNull","matcher":"java.util.Enumeration keys()","className":"org.zoolu.sip.provider.SipProvider"}

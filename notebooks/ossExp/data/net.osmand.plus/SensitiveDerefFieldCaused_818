@@ -1,1 +1,0 @@
-{"methodName":"void setMapActivity(net.osmand.plus.activities.MapActivity)","line":111,"t":"ReceiverNonNull","matcher":"void setOnClickListener(android.view.View$OnClickListener)","className":"net.osmand.plus.views.layers.MapQuickActionLayer"}

@@ -1,1 +1,0 @@
-{"methodName":"void setUserVisibleHint(boolean)","line":99,"t":"ReceiverNonNull","matcher":"void finish()","className":"org.mariotaku.twidere.fragment.filter.BaseFiltersFragment"}

@@ -1,1 +1,0 @@
-{"methodName":"void closeBlock()","line":2,"t":"ReceiverNonNull","matcher":"java.lang.String getString()","className":"org.commonmark.internal.IndentedCodeBlockParser"}

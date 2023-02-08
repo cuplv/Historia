@@ -1,1 +1,0 @@
-{"methodName":"void encode(java.io.OutputStream,boolean)","line":9,"t":"ReceiverNonNull","matcher":"int size()","className":"org.bouncycastle.openpgp.PGPPublicKey"}

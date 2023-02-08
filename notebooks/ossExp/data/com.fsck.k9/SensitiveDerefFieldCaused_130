@@ -1,1 +1,0 @@
-{"methodName":"void updateFoldedState(boolean,boolean)","line":231,"t":"ReceiverNonNull","matcher":"void setText(java.lang.CharSequence)","className":"com.fsck.k9.view.FoldableLinearLayout"}

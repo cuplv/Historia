@@ -1,1 +1,0 @@
-{"methodName":"void forstat(int)","line":-1,"t":"ReceiverNonNull","matcher":"void enterblock(org.luaj.vm2.compiler.FuncState$BlockCnt,boolean)","className":"org.luaj.vm2.compiler.LexState"}

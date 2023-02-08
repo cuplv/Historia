@@ -1,1 +1,0 @@
-{"methodName":"void cbFunc(dev.ukanth.ufirewall.service.RootCommand)","line":251,"t":"ReceiverNonNull","matcher":"void runOnUiThread(java.lang.Runnable)","className":"dev.ukanth.ufirewall.preferences.ExpPreferenceFragment$1"}

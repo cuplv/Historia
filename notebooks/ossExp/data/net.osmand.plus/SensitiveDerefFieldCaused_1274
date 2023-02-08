@@ -1,1 +1,0 @@
-{"methodName":"int getDistance()","line":275,"t":"ReceiverNonNull","matcher":"int intValue()","className":"net.osmand.data.TransportRoute"}

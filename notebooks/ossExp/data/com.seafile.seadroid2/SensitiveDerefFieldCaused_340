@@ -1,1 +1,0 @@
-{"methodName":"void paintDecoration(android.graphics.Canvas)","line":669,"t":"ReceiverNonNull","matcher":"void drawDecoration(android.graphics.Canvas,com.seafile.seadroid2.gallery.IImage,int,int,int,int)","className":"com.seafile.seadroid2.gallery.GridViewSpecial"}

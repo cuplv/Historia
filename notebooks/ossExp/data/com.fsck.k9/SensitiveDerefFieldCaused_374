@@ -1,1 +1,0 @@
-{"methodName":"void openMessage(com.fsck.k9.controller.MessageReference)","line":966,"t":"ReceiverNonNull","matcher":"com.fsck.k9.ui.messagelist.MessageListViewModel getViewModel()","className":"com.fsck.k9.activity.MessageList"}

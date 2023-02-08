@@ -1,1 +1,0 @@
-{"methodName":"void initializeLinks(java.util.Map)","line":151,"t":"ReceiverNonNull","matcher":"long get(int)","className":"net.osmand.osm.edit.Way"}

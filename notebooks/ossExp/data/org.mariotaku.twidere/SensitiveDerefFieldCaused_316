@@ -1,1 +1,0 @@
-{"methodName":"boolean animationFrame(long)","line":1120,"t":"ReceiverNonNull","matcher":"int size()","className":"com.nineoldandroids.animation.ValueAnimator"}

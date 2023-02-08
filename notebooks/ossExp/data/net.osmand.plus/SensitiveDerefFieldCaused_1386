@@ -1,1 +1,0 @@
-{"methodName":"gnu.trove.map.hash.TLongObjectHashMap getIncompleteTransportRoutes()","line":2730,"t":"ReceiverNonNull","matcher":"void popLimit(int)","className":"net.osmand.binary.BinaryMapIndexReader"}

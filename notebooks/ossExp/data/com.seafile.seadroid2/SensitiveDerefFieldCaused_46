@@ -1,1 +1,0 @@
-{"methodName":"void process(com.vladsch.flexmark.util.NodeTracker,com.vladsch.flexmark.ast.Node)","line":70,"t":"ReceiverNonNull","matcher":"java.util.regex.Matcher matcher(java.lang.CharSequence)","className":"com.vladsch.flexmark.ext.abbreviation.internal.AbbreviationNodePostProcessor"}

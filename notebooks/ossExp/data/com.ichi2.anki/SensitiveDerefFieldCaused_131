@@ -1,1 +1,0 @@
-{"methodName":"boolean resetDB(android.content.Context)","line":10,"t":"ReceiverNonNull","matcher":"void execSQL(java.lang.String)","className":"com.ichi2.anki.MetaDB"}

@@ -1,1 +1,0 @@
-{"methodName":"boolean isLanguageAvailable(java.lang.String)","line":1,"t":"ReceiverNonNull","matcher":"int isLanguageAvailable(java.util.Locale)","className":"com.ichi2.anki.ReadText"}

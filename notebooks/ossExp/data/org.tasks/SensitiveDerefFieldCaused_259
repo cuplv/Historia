@@ -1,1 +1,0 @@
-{"methodName":"void closeInfoWindow()","line":118,"t":"ReceiverNonNull","matcher":"void close()","className":"org.osmdroid.views.overlay.OverlayWithIW"}

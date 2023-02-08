@@ -1,1 +1,0 @@
-{"methodName":"void addAll(com.caverock.androidsvg.CSSParser$Ruleset)","line":243,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"com.caverock.androidsvg.CSSParser$Ruleset"}

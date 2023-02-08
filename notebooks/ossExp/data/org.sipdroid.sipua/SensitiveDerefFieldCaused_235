@@ -1,1 +1,0 @@
-{"methodName":"void onCallAccepted(org.zoolu.sip.call.Call,java.lang.String,org.zoolu.sip.message.Message)","line":662,"t":"ReceiverNonNull","matcher":"void notify(int,java.lang.String)","className":"org.sipdroid.sipua.UserAgent"}

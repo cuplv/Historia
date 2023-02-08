@@ -1,1 +1,0 @@
-{"methodName":"void onBackPressed()","line":322,"t":"ReceiverNonNull","matcher":"java.io.File getParentFile()","className":"com.nutomic.syncthingandroid.activities.FolderPickerActivity"}

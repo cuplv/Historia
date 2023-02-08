@@ -1,1 +1,0 @@
-{"methodName":"void onServiceDisconnected(android.content.ComponentName)","line":111,"t":"ReceiverNonNull","matcher":"void unregisterOnHostStatusChangedListener(org.connectbot.service.OnHostStatusChangedListener)","className":"org.connectbot.HostListActivity$1"}

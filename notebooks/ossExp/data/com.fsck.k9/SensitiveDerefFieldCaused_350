@@ -1,1 +1,0 @@
-{"methodName":"com.fsck.k9.mail.store.webdav.WebDavHttpClient getHttpClient()","line":764,"t":"ReceiverNonNull","matcher":"org.apache.http.params.HttpParams getParams()","className":"com.fsck.k9.mail.store.webdav.WebDavStore"}

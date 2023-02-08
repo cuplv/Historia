@@ -1,1 +1,0 @@
-{"methodName":"void pickRingtone()","line":448,"t":"ReceiverNonNull","matcher":"java.lang.CharSequence getText(int)","className":"org.andstatus.app.context.MySettingsFragment"}

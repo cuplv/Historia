@@ -1,1 +1,0 @@
-{"methodName":"boolean a()","line":1,"t":"ReceiverNonNull","matcher":"boolean tryAdvance(j$.util.function.Consumer)","className":"j$.util.stream.J0"}

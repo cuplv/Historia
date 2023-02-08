@@ -1,1 +1,0 @@
-{"methodName":"gnu.trove.map.hash.TIntObjectHashMap initializeStringTable(net.osmand.binary.BinaryMapTransportReaderAdapter$TransportIndex,gnu.trove.map.hash.TIntObjectHashMap)","line":508,"t":"ReceiverNonNull","matcher":"java.lang.Object put(int,java.lang.Object)","className":"net.osmand.binary.BinaryMapTransportReaderAdapter"}

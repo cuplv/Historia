@@ -1,1 +1,0 @@
-{"methodName":"void cancelAndClearLocalMessageLoader()","line":261,"t":"ReceiverNonNull","matcher":"void destroyLoader(int)","className":"com.fsck.k9.activity.MessageLoaderHelper"}

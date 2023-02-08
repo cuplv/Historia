@@ -1,1 +1,0 @@
-{"methodName":"void <init>(com.j256.ormlite.support.ConnectionSource,java.lang.Class,com.j256.ormlite.table.DatabaseTableConfig)","line":30,"t":"ReceiverNonNull","matcher":"java.lang.Object remove(java.lang.Object)","className":"com.j256.ormlite.dao.BaseDaoImpl"}

@@ -1,1 +1,0 @@
-{"methodName":"void addGroup(net.osmand.plus.download.DownloadResourceGroup)","line":230,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"net.osmand.plus.download.DownloadResourceGroup"}

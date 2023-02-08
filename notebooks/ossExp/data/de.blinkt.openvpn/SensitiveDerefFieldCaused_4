@@ -1,1 +1,0 @@
-{"methodName":"void getDirImpl(java.lang.String)","line":244,"t":"ReceiverNonNull","matcher":"boolean addAll(java.util.Collection)","className":"de.blinkt.openvpn.fragments.FileSelectionFragment"}

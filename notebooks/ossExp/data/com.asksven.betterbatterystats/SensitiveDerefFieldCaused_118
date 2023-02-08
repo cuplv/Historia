@@ -1,1 +1,0 @@
-{"methodName":"java.lang.String getItem(int)","line":93,"t":"ReceiverNonNull","matcher":"java.lang.Object get(int)","className":"com.asksven.betterbatterystats.adapters.CreditsAdapter"}

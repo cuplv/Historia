@@ -1,1 +1,0 @@
-{"methodName":"void setMapActivity(net.osmand.plus.activities.MapActivity)","line":117,"t":"ReceiverNonNull","matcher":"void setOnLongClickListener(android.view.View$OnLongClickListener)","className":"net.osmand.plus.views.layers.MapQuickActionLayer"}

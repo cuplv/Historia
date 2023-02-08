@@ -1,1 +1,0 @@
-{"methodName":"void drawBeforeAfterPath(android.graphics.Canvas,net.osmand.data.RotatedTileBox,boolean)","line":783,"t":"ReceiverNonNull","matcher":"net.osmand.plus.views.layers.geometry.GpxGeometryWay getGeometryWay()","className":"net.osmand.plus.measurementtool.MeasurementToolLayer"}

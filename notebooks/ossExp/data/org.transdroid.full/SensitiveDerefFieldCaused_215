@@ -1,1 +1,0 @@
-{"methodName":"boolean onPrepareOptionsMenu(android.view.Menu)","line":39,"t":"ReceiverNonNull","matcher":"org.transdroid.daemon.Daemon getType()","className":"org.transdroid.core.gui.TorrentsActivity"}

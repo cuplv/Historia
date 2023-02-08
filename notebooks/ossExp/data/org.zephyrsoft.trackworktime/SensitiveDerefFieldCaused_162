@@ -1,1 +1,0 @@
-{"methodName":"java.util.Locale getLocale()","line":980,"t":"ReceiverNonNull","matcher":"android.content.res.Resources getResources()","className":"org.zephyrsoft.trackworktime.Basics"}

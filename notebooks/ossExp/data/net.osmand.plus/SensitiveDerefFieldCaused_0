@@ -1,1 +1,0 @@
-{"methodName":"net.osmand.data.LatLon getDefaultLocation()","line":49,"t":"ReceiverNonNull","matcher":"net.osmand.data.LatLon getMapViewLocation()","className":"net.osmand.plus.dashboard.DashLocationFragment"}

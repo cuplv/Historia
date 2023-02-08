@@ -1,1 +1,0 @@
-{"methodName":"int getDepth()","line":563,"t":"ReceiverNonNull","matcher":"int getDepth()","className":"net.osmand.router.TransportRoutePlanner$TransportRouteSegment"}

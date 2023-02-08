@@ -1,1 +1,0 @@
-{"methodName":"void <init>(net.gaast.giggity.Giggity,java.lang.String,net.gaast.giggity.Fetcher$Source,java.lang.String)","line":116,"t":"ReceiverNonNull","matcher":"int getContentLength()","className":"net.gaast.giggity.Fetcher"}

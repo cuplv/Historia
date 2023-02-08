@@ -1,1 +1,0 @@
-{"methodName":"void updateViewVisibility()","line":2,"t":"ReceiverNonNull","matcher":"android.widget.ListAdapter getAdapter()","className":"org.transdroid.core.gui.TorrentsFragment"}

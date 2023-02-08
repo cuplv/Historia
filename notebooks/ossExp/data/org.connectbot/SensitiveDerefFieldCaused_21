@@ -1,1 +1,0 @@
-{"methodName":"void onNewIntent(android.content.Intent)","line":1092,"t":"ReceiverNonNull","matcher":"int getCount()","className":"org.connectbot.ConsoleActivity"}

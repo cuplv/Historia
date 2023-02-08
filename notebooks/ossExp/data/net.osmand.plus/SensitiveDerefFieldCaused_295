@@ -1,1 +1,0 @@
-{"methodName":"boolean hasClipboardUri()","line":1089,"t":"ReceiverNonNull","matcher":"boolean hasPrimaryClip()","className":"org.qtproject.qt5.android.QtNative"}

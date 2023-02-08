@@ -1,1 +1,0 @@
-{"methodName":"java.io.File[] listWordsFiles()","line":134,"t":"ReceiverNonNull","matcher":"java.io.File[] listFiles(java.io.FilenameFilter)","className":"com.chenlb.mmseg4j.Dictionary"}

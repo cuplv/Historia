@@ -1,1 +1,0 @@
-{"methodName":"java.lang.String getCacheStorageDirectory()","line":1,"t":"ReceiverNonNull","matcher":"java.io.File getCacheDir()","className":"com.ichi2.anki.AnkiDroidApp"}

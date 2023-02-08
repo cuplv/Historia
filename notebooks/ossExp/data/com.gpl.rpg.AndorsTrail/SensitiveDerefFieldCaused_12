@@ -1,1 +1,0 @@
-{"methodName":"void loadResourcesAsync(com.gpl.rpg.AndorsTrail.context.WorldContext,android.content.res.Resources)","line":204,"t":"ReceiverNonNull","matcher":"void prepareAllMapTiles()","className":"com.gpl.rpg.AndorsTrail.resource.ResourceLoader"}

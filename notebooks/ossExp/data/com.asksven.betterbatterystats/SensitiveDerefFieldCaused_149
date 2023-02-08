@@ -1,1 +1,0 @@
-{"methodName":"void onPostExecute(com.asksven.betterbatterystats.adapters.ServicesAdapter)","line":111,"t":"ReceiverNonNull","matcher":"void hide()","className":"com.asksven.betterbatterystats.ReceiversFragmentActivity$ReceiversListFragment$LoadStatData"}

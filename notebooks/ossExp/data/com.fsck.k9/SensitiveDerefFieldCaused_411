@@ -1,1 +1,0 @@
-{"methodName":"void showSelectAll(boolean)","line":1943,"t":"ReceiverNonNull","matcher":"android.view.MenuItem setVisible(boolean)","className":"com.fsck.k9.ui.messagelist.MessageListFragment$ActionModeCallback"}

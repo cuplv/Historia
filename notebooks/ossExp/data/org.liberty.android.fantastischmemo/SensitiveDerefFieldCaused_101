@@ -1,1 +1,0 @@
-{"methodName":"void startLoading(boolean)","line":8,"t":"ReceiverNonNull","matcher":"androidx.loader.app.LoaderManager getSupportLoaderManager()","className":"org.liberty.android.fantastischmemo.ui.loader.MultipleLoaderManager"}

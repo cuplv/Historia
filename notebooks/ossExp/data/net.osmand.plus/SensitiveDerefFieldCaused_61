@@ -1,1 +1,0 @@
-{"methodName":"boolean publish(net.osmand.search.core.SearchResult)","line":1733,"t":"ReceiverNonNull","matcher":"java.util.List getCurrentSearchResults()","className":"net.osmand.plus.search.QuickSearchDialogFragment$25"}

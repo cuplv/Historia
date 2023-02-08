@@ -1,1 +1,0 @@
-{"methodName":"void onItemSelected(com.shatteredpixel.shatteredpixeldungeon.items.Item)","line":31,"t":"ReceiverNonNull","matcher":"boolean collect(com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag)","className":"com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfTransmutation"}

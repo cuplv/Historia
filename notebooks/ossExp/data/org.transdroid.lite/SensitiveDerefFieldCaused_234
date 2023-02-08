@@ -1,1 +1,0 @@
-{"methodName":"void onItemCheckedStateChanged(android.view.ActionMode,int,long,boolean)","line":4,"t":"ReceiverNonNull","matcher":"boolean isInstance(java.lang.Object)","className":"org.transdroid.core.gui.navigation.SelectionManagerMode"}

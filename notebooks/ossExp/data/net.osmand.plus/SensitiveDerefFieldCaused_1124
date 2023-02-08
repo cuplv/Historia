@@ -1,1 +1,0 @@
-{"methodName":"void updateInstalledApp(boolean,java.util.Date)","line":146,"t":"ReceiverNonNull","matcher":"date","className":"net.osmand.plus.activities.ContributionVersionActivity"}

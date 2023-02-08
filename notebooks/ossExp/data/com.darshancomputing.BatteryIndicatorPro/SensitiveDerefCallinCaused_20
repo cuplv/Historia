@@ -1,1 +1,0 @@
-{"methodName":"void closeApp()","line":207,"t":"ReceiverNonNull","matcher":"boolean stopService(android.content.Intent)","className":"com.darshancomputing.BatteryIndicatorPro.PersistentFragment"}

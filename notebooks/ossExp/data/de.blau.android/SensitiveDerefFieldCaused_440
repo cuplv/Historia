@@ -1,1 +1,0 @@
-{"methodName":"void setSelectedValues(java.util.Map)","line":16,"t":"ReceiverNonNull","matcher":"java.lang.String getValue()","className":"de.blau.android.propertyeditor.tagform.CheckGroupDialogRow"}

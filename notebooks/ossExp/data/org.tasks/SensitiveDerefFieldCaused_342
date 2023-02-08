@@ -1,1 +1,0 @@
-{"methodName":"org.dmfs.rfc5545.DateTime swapTimeZone(java.util.TimeZone)","line":0,"t":"ReceiverNonNull","matcher":"boolean hasSameRules(java.util.TimeZone)","className":"org.dmfs.rfc5545.DateTime"}

@@ -1,1 +1,0 @@
-{"methodName":"net.osmand.osm.edit.Node getFirstNode()","line":70,"t":"ReceiverNonNull","matcher":"int size()","className":"net.osmand.osm.edit.Way"}

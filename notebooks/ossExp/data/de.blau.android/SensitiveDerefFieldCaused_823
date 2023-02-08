@@ -1,1 +1,0 @@
-{"methodName":"void replaceWith(org.mozilla.javascript.ast.Scope)","line":2,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"org.mozilla.javascript.ast.Scope"}

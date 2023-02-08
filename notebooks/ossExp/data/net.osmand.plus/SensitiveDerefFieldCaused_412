@@ -1,1 +1,0 @@
-{"methodName":"void readRouteTreeData(net.osmand.binary.BinaryMapRouteReaderAdapter$RouteSubregion,gnu.trove.list.array.TLongArrayList,gnu.trove.map.hash.TLongObjectHashMap)","line":837,"t":"ReceiverNonNull","matcher":"java.lang.Object get(int)","className":"net.osmand.binary.BinaryMapRouteReaderAdapter"}

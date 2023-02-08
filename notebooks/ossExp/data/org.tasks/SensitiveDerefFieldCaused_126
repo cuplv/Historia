@@ -1,1 +1,0 @@
-{"methodName":"void arcTo(float,float,float,boolean,boolean,float,float)","line":2963,"t":"ReceiverNonNull","matcher":"x","className":"com.caverock.androidsvg.SVGAndroidRenderer$MarkerPositionCalculator"}

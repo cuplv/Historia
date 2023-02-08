@@ -1,1 +1,0 @@
-{"methodName":"android.view.View getView(int,android.view.View,android.view.ViewGroup)","line":242,"t":"ReceiverNonNull","matcher":"android.content.res.Resources getResources()","className":"de.blinkt.openvpn.fragments.GraphFragment$ChartDataAdapter"}

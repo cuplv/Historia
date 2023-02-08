@@ -1,1 +1,0 @@
-{"methodName":"java.util.ArrayList getCpuStateList(com.asksven.betterbatterystats.data.Reference,com.asksven.betterbatterystats.data.Reference,boolean)","line":1467,"t":"ReceiverNonNull","matcher":"java.lang.String toString()","className":"com.asksven.betterbatterystats.data.StatsProvider"}

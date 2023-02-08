@@ -1,1 +1,0 @@
-{"methodName":"void onServiceConnected(android.content.ComponentName,android.os.IBinder)","line":11,"t":"ReceiverNonNull","matcher":"void h(de.blau.android.services.TrackerService$TrackerLocationListener)","className":"de.blau.android.Main"}

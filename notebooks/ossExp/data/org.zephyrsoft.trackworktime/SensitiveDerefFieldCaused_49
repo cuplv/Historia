@@ -1,1 +1,0 @@
-{"methodName":"void removeAppFromBatteryOptimization()","line":961,"t":"ReceiverNonNull","matcher":"void startActivity(android.content.Intent)","className":"org.zephyrsoft.trackworktime.Basics"}

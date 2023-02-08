@@ -1,1 +1,0 @@
-{"methodName":"void abort()","line":85,"t":"ReceiverNonNull","matcher":"void interrupt()","className":"jwtc.android.chess.engine.LocalEngine"}

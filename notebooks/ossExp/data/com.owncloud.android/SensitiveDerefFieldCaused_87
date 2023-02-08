@@ -1,1 +1,0 @@
-{"methodName":"void pause()","line":123,"t":"ReceiverNonNull","matcher":"void processPauseRequest()","className":"com.owncloud.android.media.MediaServiceBinder"}

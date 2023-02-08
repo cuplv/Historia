@@ -1,1 +1,0 @@
-{"methodName":"void skipUnknownField(int)","line":475,"t":"ReceiverNonNull","matcher":"boolean skipField(int)","className":"net.osmand.binary.BinaryMapIndexReader"}

@@ -1,1 +1,0 @@
-{"methodName":"boolean skipSpaces()","line":1,"t":"ReceiverNonNull","matcher":"char charAt(int)","className":"com.github.rjeschke.txtmark.Line"}

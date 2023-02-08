@@ -1,1 +1,0 @@
-{"methodName":"void onCollectionLoaded(com.ichi2.libanki.Collection)","line":15,"t":"ReceiverNonNull","matcher":"android.os.Bundle getBundle(java.lang.String)","className":"com.ichi2.anki.CardTemplatePreviewer"}

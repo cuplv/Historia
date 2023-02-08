@@ -1,1 +1,0 @@
-{"methodName":"net.osmand.binary.BinaryMapRouteReaderAdapter$RouteSubregion readRouteTree(net.osmand.binary.BinaryMapRouteReaderAdapter$RouteSubregion,net.osmand.binary.BinaryMapRouteReaderAdapter$RouteSubregion,int,boolean)","line":1036,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"net.osmand.binary.BinaryMapRouteReaderAdapter"}

@@ -1,1 +1,0 @@
-{"methodName":"boolean removeSipProviderListener(org.zoolu.sip.provider.Identifier)","line":692,"t":"ReceiverNonNull","matcher":"boolean containsKey(java.lang.Object)","className":"org.zoolu.sip.provider.SipProvider"}

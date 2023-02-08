@@ -1,1 +1,0 @@
-{"methodName":"void displayUserList(org.mariotaku.twidere.model.ParcelableUserList)","line":91,"t":"ReceiverNonNull","matcher":"void setTitle(int)","className":"org.mariotaku.twidere.fragment.UserListFragment"}

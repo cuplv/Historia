@@ -1,1 +1,0 @@
-{"methodName":"void removeListeners()","line":556,"t":"ReceiverNonNull","matcher":"void removeListener(jwtc.android.chess.ics.ICSListener)","className":"jwtc.android.chess.ics.ICSClient"}

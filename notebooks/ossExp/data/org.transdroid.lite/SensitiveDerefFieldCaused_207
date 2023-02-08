@@ -1,1 +1,0 @@
-{"methodName":"void refreshScreen()","line":14,"t":"ReceiverNonNull","matcher":"void setVisibility(int)","className":"org.transdroid.core.gui.rss.RssFeedsFragment"}

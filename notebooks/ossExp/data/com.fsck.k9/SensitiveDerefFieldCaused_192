@@ -1,1 +1,0 @@
-{"methodName":"void sendMessage(com.fsck.k9.mail.Message)","line":413,"t":"ReceiverNonNull","matcher":"void setSoTimeout(int)","className":"com.fsck.k9.mail.transport.smtp.SmtpTransport"}

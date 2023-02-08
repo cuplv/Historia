@@ -1,1 +1,0 @@
-{"methodName":"void changeSort(com.fsck.k9.Account$SortType,java.lang.Boolean)","line":650,"t":"ReceiverNonNull","matcher":"void setSortType(com.fsck.k9.Account$SortType)","className":"com.fsck.k9.ui.messagelist.MessageListFragment"}

@@ -1,1 +1,0 @@
-{"methodName":"void setSolidColor(boolean,com.caverock.androidsvg.SVG$SolidColor)","line":3632,"t":"ReceiverNonNull","matcher":"fill","className":"com.caverock.androidsvg.SVGAndroidRenderer"}

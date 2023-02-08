@@ -1,1 +1,0 @@
-{"methodName":"void w(android.content.Context,android.database.sqlite.SQLiteDatabase,boolean)","line":12,"t":"ReceiverNonNull","matcher":"java.lang.Object put(java.lang.Object,java.lang.Object)","className":"de.blau.android.resources.TileLayerSource"}

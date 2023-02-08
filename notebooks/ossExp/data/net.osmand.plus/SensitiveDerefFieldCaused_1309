@@ -1,1 +1,0 @@
-{"methodName":"int encodedLength()","line":-1,"t":"ReceiverNonNull","matcher":"org.bouncycastle.asn1.ASN1Primitive toASN1Primitive()","className":"org.bouncycastle.asn1.BERTaggedObject"}

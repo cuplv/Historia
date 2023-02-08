@@ -1,1 +1,0 @@
-{"methodName":"boolean appendWhereStatement(java.lang.StringBuilder,java.util.List,com.j256.ormlite.stmt.StatementBuilder$WhereOperation)","line":6,"t":"ReceiverNonNull","matcher":"clauseStackLevel","className":"com.j256.ormlite.stmt.StatementBuilder"}

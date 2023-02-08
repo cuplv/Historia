@@ -1,1 +1,0 @@
-{"methodName":"void closeCompiledStatement()","line":159,"t":"ReceiverNonNull","matcher":"void close()","className":"com.raizlabs.android.dbflow.structure.ModelAdapter"}

@@ -1,1 +1,0 @@
-{"methodName":"void collectUidStats()","line":2614,"t":"ReceiverNonNull","matcher":"java.lang.reflect.Method getMethod(java.lang.String,java.lang.Class[])","className":"com.asksven.android.common.privateapiproxies.BatteryStatsProxy"}

@@ -1,1 +1,0 @@
-{"methodName":"void writeToParcel(android.os.Parcel,int)","line":191,"t":"ReceiverNonNull","matcher":"long longValue()","className":"com.fsck.k9.activity.misc.Attachment"}

@@ -1,1 +1,0 @@
-{"methodName":"void hideProgressBar()","line":68,"t":"ReceiverNonNull","matcher":"void setVisibility(int)","className":"com.owncloud.android.ui.controller.TransferProgressController"}

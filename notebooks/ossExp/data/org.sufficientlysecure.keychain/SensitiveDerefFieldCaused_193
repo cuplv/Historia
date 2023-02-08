@@ -1,1 +1,0 @@
-{"methodName":"void registerObserver()","line":2,"t":"ReceiverNonNull","matcher":"void registerAdapterDataObserver(androidx.recyclerview.widget.RecyclerView$AdapterDataObserver)","className":"org.sufficientlysecure.keychain.ui.base.RecyclerFragment"}

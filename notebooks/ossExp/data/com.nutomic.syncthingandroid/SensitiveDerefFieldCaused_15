@@ -1,1 +1,0 @@
-{"methodName":"void onCreate(android.os.Bundle)","line":144,"t":"ReceiverNonNull","matcher":"void clearCache(boolean)","className":"com.nutomic.syncthingandroid.activities.WebGuiActivity"}

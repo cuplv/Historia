@@ -1,1 +1,0 @@
-{"methodName":"void onCreate(android.os.Bundle)","line":6,"t":"ReceiverNonNull","matcher":"void setOnPreferenceClickListener(android.preference.Preference$OnPreferenceClickListener)","className":"org.sufficientlysecure.keychain.ui.SettingsActivity$CloudSearchPrefsFragment"}

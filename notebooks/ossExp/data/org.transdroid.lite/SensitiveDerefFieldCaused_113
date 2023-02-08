@@ -1,1 +1,0 @@
-{"methodName":"void onViewChanged(org.androidannotations.api.view.HasViews)","line":33,"t":"ReceiverNonNull","matcher":"void setOnRefreshListener(androidx.swiperefreshlayout.widget.SwipeRefreshLayout$OnRefreshListener)","className":"org.transdroid.core.gui.TorrentsFragment_"}

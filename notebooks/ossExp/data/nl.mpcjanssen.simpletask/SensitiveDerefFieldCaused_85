@@ -1,1 +1,0 @@
-{"methodName":"void makeroom(int,int)","line":-1,"t":"ReceiverNonNull","matcher":"org.luaj.vm2.LuaString strvalue()","className":"org.luaj.vm2.Buffer"}

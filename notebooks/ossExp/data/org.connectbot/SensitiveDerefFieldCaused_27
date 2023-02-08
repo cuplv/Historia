@@ -1,1 +1,0 @@
-{"methodName":"com.trilead.ssh2.util.TimeoutService$TimeoutToken addTimeoutHandler(long,java.lang.Runnable)","line":126,"t":"ReceiverNonNull","matcher":"void interrupt()","className":"com.trilead.ssh2.util.TimeoutService"}

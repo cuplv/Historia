@@ -1,1 +1,0 @@
-{"methodName":"org.connectbot.service.TerminalBridge getBridgeAtPosition(int)","line":1341,"t":"ReceiverNonNull","matcher":"java.util.ArrayList getBridges()","className":"org.connectbot.ConsoleActivity$TerminalPagerAdapter"}

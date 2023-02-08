@@ -1,1 +1,0 @@
-{"methodName":"void updatePrimaryClip(android.content.ClipData)","line":1022,"t":"ReceiverNonNull","matcher":"java.lang.Object invoke(java.lang.Object,java.lang.Object[])","className":"org.qtproject.qt5.android.QtNative"}

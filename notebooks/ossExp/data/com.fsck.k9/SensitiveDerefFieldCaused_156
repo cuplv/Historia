@@ -1,1 +1,0 @@
-{"methodName":"void dismissSnackbar()","line":109,"t":"ReceiverNonNull","matcher":"void dismiss()","className":"com.fsck.k9.ui.settings.general.GeneralSettingsFragment"}

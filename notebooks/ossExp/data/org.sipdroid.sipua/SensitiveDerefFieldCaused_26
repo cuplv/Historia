@@ -1,1 +1,0 @@
-{"methodName":"org.sipdroid.sipua.UserAgentProfile getUserAgentProfile(java.lang.String)","line":85,"t":"ReceiverNonNull","matcher":"int length()","className":"org.sipdroid.sipua.SipdroidEngine"}

@@ -1,1 +1,0 @@
-{"methodName":"void bindStickyHeader(androidx.recyclerview.widget.RecyclerView$Recycler,int)","line":437,"t":"ReceiverNonNull","matcher":"android.view.ViewTreeObserver getViewTreeObserver()","className":"com.duckduckgo.mobile.android.ui.recyclerviewext.StickyHeadersLinearLayoutManager"}

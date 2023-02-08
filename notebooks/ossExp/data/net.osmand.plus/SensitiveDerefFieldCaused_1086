@@ -1,1 +1,0 @@
-{"methodName":"void setVisibleBBox31(net.osmand.core.jni.AreaI,int)","line":308,"t":"ReceiverNonNull","matcher":"boolean contains(net.osmand.core.jni.AreaI)","className":"net.osmand.core.android.MapillaryTilesProvider"}

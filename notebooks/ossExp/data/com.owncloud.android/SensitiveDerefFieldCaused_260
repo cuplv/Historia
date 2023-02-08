@@ -1,1 +1,0 @@
-{"methodName":"boolean onQueryTextChange(java.lang.String)","line":747,"t":"ReceiverNonNull","matcher":"void filterBySearch(java.lang.String)","className":"com.owncloud.android.ui.activity.ReceiveExternalFilesActivity"}

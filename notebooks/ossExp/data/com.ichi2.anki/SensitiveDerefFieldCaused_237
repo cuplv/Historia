@@ -1,1 +1,0 @@
-{"methodName":"void rebuildIfInvalid()","line":5,"t":"ReceiverNonNull","matcher":"androidx.sqlite.db.SupportSQLiteDatabase getDatabase()","className":"com.ichi2.libanki.Media"}

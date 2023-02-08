@@ -1,1 +1,0 @@
-{"methodName":"void onClick(android.content.DialogInterface,int)","line":216,"t":"ReceiverNonNull","matcher":"boolean savePortForward(org.connectbot.bean.PortForwardBean)","className":"org.connectbot.PortForwardListActivity$2$2"}

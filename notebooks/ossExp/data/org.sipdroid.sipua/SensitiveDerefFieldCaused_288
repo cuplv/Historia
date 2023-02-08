@@ -1,1 +1,0 @@
-{"methodName":"boolean addSipProviderListener(org.zoolu.sip.provider.Identifier,org.zoolu.sip.provider.SipProviderListener)","line":664,"t":"ReceiverNonNull","matcher":"java.lang.Object put(java.lang.Object,java.lang.Object)","className":"org.zoolu.sip.provider.SipProvider"}

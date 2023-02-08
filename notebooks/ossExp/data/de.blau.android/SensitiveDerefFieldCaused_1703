@@ -1,1 +1,0 @@
-{"methodName":"void U(org.xmlpull.v1.XmlSerializer)","line":2,"t":"ReceiverNonNull","matcher":"java.util.Set entrySet()","className":"de.blau.android.osm.OsmElement"}

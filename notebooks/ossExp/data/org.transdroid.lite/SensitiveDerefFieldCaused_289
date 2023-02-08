@@ -1,1 +1,0 @@
-{"methodName":"java.lang.Object getItem(int)","line":2,"t":"ReceiverNonNull","matcher":"java.lang.Object get(int)","className":"org.transdroid.core.gui.search.SearchSitesAdapter_"}

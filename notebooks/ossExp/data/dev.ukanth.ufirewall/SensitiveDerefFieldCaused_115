@@ -1,1 +1,0 @@
-{"methodName":"void stopAuth()","line":338,"t":"ReceiverNonNull","matcher":"void cancel()","className":"dev.ukanth.ufirewall.util.FingerprintUtil$FingerprintDialog$FingerprintHandler"}

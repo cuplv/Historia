@@ -1,1 +1,0 @@
-{"methodName":"org.sufficientlysecure.keychain.pgp.PgpDecryptVerifyOperation$ArmorHeaders parseArmorHeaders(java.io.InputStream,org.sufficientlysecure.keychain.operations.results.OperationResult$OperationLog,int)","line":18,"t":"ReceiverNonNull","matcher":"int intValue()","className":"org.sufficientlysecure.keychain.pgp.PgpDecryptVerifyOperation"}

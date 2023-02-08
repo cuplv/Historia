@@ -1,1 +1,0 @@
-{"methodName":"void onItemClick(android.widget.AdapterView,android.view.View,int,long)","line":9,"t":"ReceiverNonNull","matcher":"android.widget.ArrayAdapter J(java.util.List)","className":"g7.t"}

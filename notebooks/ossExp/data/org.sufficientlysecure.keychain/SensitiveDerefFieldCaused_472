@@ -1,1 +1,0 @@
-{"methodName":"void initLeading()","line":2,"t":"ReceiverNonNull","matcher":"char charAt(int)","className":"com.github.rjeschke.txtmark.Line"}

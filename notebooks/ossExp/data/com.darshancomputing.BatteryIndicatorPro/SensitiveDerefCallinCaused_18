@@ -1,1 +1,0 @@
-{"methodName":"void onCreate(android.os.Bundle)","line":103,"t":"ReceiverNonNull","matcher":"android.content.ComponentName startForegroundService(android.content.Intent)","className":"com.darshancomputing.BatteryIndicatorPro.PersistentFragment"}

@@ -1,1 +1,0 @@
-{"methodName":"android.graphics.RectF getDocumentViewBox()","line":838,"t":"ReceiverNonNull","matcher":"viewBox","className":"com.caverock.androidsvg.SVG"}

@@ -1,1 +1,0 @@
-{"methodName":"void buildActionArrows(java.util.List,int)","line":197,"t":"ReceiverNonNull","matcher":"net.osmand.core.jni.QListVectorLine getLines()","className":"net.osmand.plus.views.layers.geometry.RouteGeometryWay"}

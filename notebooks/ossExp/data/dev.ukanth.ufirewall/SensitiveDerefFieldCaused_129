@@ -1,1 +1,0 @@
-{"methodName":"void checkFingerprintDeviceSupport()","line":338,"t":"ReceiverNonNull","matcher":"java.lang.Object getSystemService(java.lang.String)","className":"dev.ukanth.ufirewall.preferences.SecPreferenceFragment"}

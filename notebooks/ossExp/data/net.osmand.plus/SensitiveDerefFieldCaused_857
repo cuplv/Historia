@@ -1,1 +1,0 @@
-{"methodName":"boolean checkCategories(net.osmand.binary.BinaryMapIndexReader$SearchRequest,net.osmand.binary.BinaryMapPoiReaderAdapter$PoiRegion)","line":890,"t":"ReceiverNonNull","matcher":"boolean accept(net.osmand.osm.PoiCategory,java.lang.String)","className":"net.osmand.binary.BinaryMapPoiReaderAdapter"}

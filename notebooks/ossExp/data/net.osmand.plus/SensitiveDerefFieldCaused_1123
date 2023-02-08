@@ -1,1 +1,0 @@
-{"methodName":"java.util.List filterKeys(java.util.List)","line":702,"t":"ReceiverNonNull","matcher":"boolean contains(java.lang.Object)","className":"net.osmand.router.network.NetworkRouteSelector$NetworkRouteSelectorFilter"}

@@ -1,1 +1,0 @@
-{"methodName":"java.util.ArrayDeque initStack()","line":-1,"t":"ReceiverNonNull","matcher":"j$.util.stream.Node getChild(int)","className":"j$.util.stream.Nodes$InternalNodeSpliterator"}

@@ -1,1 +1,0 @@
-{"methodName":"org.json.JSONObject jsonSerialize()","line":677,"t":"ReceiverNonNull","matcher":"org.json.JSONObject jsonSerialize()","className":"net.openid.appauth.AuthState"}

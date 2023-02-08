@@ -1,1 +1,0 @@
-{"methodName":"net.osmand.plus.download.DownloadResourceGroup getRegionGroup(net.osmand.map.WorldRegion)","line":147,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"net.osmand.plus.download.DownloadResourceGroup"}

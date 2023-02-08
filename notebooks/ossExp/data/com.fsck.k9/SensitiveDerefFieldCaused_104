@@ -1,1 +1,0 @@
-{"methodName":"void select(androidx.recyclerview.widget.RecyclerView$ViewHolder,int)","line":621,"t":"ReceiverNonNull","matcher":"itemView","className":"app.k9mail.ui.utils.itemtouchhelper.ItemTouchHelper"}

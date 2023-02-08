@@ -1,1 +1,0 @@
-{"methodName":"void refreshOther(com.fsck.k9.controller.MessagingListener)","line":37,"t":"ReceiverNonNull","matcher":"int ordinal()","className":"com.fsck.k9.controller.MemorizingMessagingListener"}

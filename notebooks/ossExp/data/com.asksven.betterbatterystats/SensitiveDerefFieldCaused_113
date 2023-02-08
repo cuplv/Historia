@@ -1,1 +1,0 @@
-{"methodName":"java.util.ArrayList getOtherUsageStatList(boolean,com.asksven.betterbatterystats.data.Reference,boolean,boolean,com.asksven.betterbatterystats.data.Reference)","line":1732,"t":"ReceiverNonNull","matcher":"java.lang.String toString()","className":"com.asksven.betterbatterystats.data.StatsProvider"}

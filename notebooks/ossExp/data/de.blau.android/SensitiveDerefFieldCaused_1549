@@ -1,1 +1,0 @@
-{"methodName":"void <init>(de.blau.android.osm.UndoStorage,de.blau.android.osm.OsmElement,boolean,boolean)","line":8,"t":"ReceiverNonNull","matcher":"void <init>(java.util.SortedMap)","className":"de.blau.android.osm.UndoStorage$UndoElement"}

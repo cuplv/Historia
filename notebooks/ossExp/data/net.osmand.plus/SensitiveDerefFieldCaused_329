@@ -1,1 +1,0 @@
-{"methodName":"void mapActivityPause(net.osmand.plus.activities.MapActivity)","line":874,"t":"ReceiverNonNull","matcher":"net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin$AVActionType getType()","className":"net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin"}

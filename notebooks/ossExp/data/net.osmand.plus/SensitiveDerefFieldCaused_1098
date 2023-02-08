@@ -1,1 +1,0 @@
-{"methodName":"void structureWorldRegions(java.util.List)","line":761,"t":"ReceiverNonNull","matcher":"java.lang.String getRegionId()","className":"net.osmand.map.OsmandRegions"}

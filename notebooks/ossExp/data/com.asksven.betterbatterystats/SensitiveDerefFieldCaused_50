@@ -1,1 +1,0 @@
-{"methodName":"java.lang.String getItem(int)","line":91,"t":"ReceiverNonNull","matcher":"java.lang.Object get(int)","className":"com.asksven.betterbatterystats.adapters.ChangeLogAdapter"}

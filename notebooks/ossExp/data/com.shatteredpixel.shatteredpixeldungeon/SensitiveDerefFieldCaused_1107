@@ -1,1 +1,0 @@
-{"methodName":"void gameOver()","line":27,"t":"ReceiverNonNull","matcher":"void showBanner(com.shatteredpixel.shatteredpixeldungeon.ui.Banner)","className":"com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene"}

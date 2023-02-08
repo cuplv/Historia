@@ -1,1 +1,0 @@
-{"methodName":"boolean onScroll(android.view.MotionEvent,android.view.MotionEvent,float,float)","line":9,"t":"ReceiverNonNull","matcher":"boolean isInProgress()","className":"name.boyle.chris.sgtpuzzles.GameView$1"}

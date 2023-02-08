@@ -1,1 +1,0 @@
-{"methodName":"org.zoolu.sip.provider.ConnectionIdentifier sendMessage(org.zoolu.sip.message.Message,java.lang.String,org.zoolu.net.IpAddress,int,int)","line":810,"t":"ReceiverNonNull","matcher":"boolean containsKey(java.lang.Object)","className":"org.zoolu.sip.provider.SipProvider"}

@@ -1,1 +1,0 @@
-{"methodName":"void setupInitDir(android.preference.Preference)","line":66,"t":"ReceiverNonNull","matcher":"android.content.Context getApplicationContext()","className":"dev.ukanth.ufirewall.preferences.ExpPreferenceFragment"}

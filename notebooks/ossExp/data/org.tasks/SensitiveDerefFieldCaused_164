@@ -1,1 +1,0 @@
-{"methodName":"void drawWithPath(android.graphics.Canvas,org.osmdroid.views.Projection)","line":300,"t":"ReceiverNonNull","matcher":"void setFillType(android.graphics.Path$FillType)","className":"org.osmdroid.views.overlay.PolyOverlayWithIW"}

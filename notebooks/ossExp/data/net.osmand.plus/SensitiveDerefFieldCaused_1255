@@ -1,1 +1,0 @@
-{"methodName":"void readMapIndex(net.osmand.binary.BinaryMapIndexReader$MapIndex,boolean)","line":738,"t":"ReceiverNonNull","matcher":"void popLimit(int)","className":"net.osmand.binary.BinaryMapIndexReader"}

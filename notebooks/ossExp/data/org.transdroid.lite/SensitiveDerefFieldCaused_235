@@ -1,1 +1,0 @@
-{"methodName":"void checkServerTrusted(java.security.cert.X509Certificate[],java.lang.String)","line":2,"t":"ReceiverNonNull","matcher":"java.lang.String replaceAll(java.lang.String,java.lang.String)","className":"org.transdroid.daemon.util.SelfSignedTrustManager"}

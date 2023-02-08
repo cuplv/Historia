@@ -1,1 +1,0 @@
-{"methodName":"android.os.Parcelable onSaveInstanceState()","line":257,"t":"ReceiverNonNull","matcher":"void <init>(app.k9mail.ui.utils.linearlayoutmanager.LinearLayoutManager$SavedState)","className":"app.k9mail.ui.utils.linearlayoutmanager.LinearLayoutManager"}

@@ -1,1 +1,0 @@
-{"methodName":"int getPointsLength()","line":356,"t":"ReceiverNonNull","matcher":"int getPointsLength()","className":"net.osmand.router.network.NetworkRouteContext$NetworkRouteSegment"}

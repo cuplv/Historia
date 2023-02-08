@@ -1,1 +1,0 @@
-{"methodName":"void editShare(com.owncloud.android.domain.sharing.shares.model.OCShare)","line":457,"t":"ReceiverNonNull","matcher":"void showEditPrivateShare(com.owncloud.android.domain.sharing.shares.model.OCShare)","className":"com.owncloud.android.presentation.ui.sharing.fragments.ShareFileFragment"}

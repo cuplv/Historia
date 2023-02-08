@@ -1,1 +1,0 @@
-{"methodName":"float enemySpeedModifier(com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob)","line":21,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff buff(java.lang.Class)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.buffs.AscensionChallenge"}

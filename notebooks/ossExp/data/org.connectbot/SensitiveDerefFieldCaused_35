@@ -1,1 +1,0 @@
-{"methodName":"android.view.View findCurrentView(int)","line":423,"t":"ReceiverNonNull","matcher":"org.connectbot.service.TerminalBridge getBridgeAtPosition(int)","className":"org.connectbot.ConsoleActivity"}

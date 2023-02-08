@@ -1,1 +1,0 @@
-{"methodName":"void createShowTrackItem(android.widget.LinearLayout,androidx.appcompat.widget.AppCompatImageView,java.lang.Integer,androidx.fragment.app.Fragment,boolean,java.lang.Runnable)","line":380,"t":"ReceiverNonNull","matcher":"android.app.Application getApplication()","className":"net.osmand.plus.plugins.monitoring.TripRecordingBottomSheet"}

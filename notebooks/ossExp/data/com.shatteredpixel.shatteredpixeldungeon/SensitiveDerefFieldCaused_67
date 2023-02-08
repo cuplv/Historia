@@ -1,1 +1,0 @@
-{"methodName":"boolean hasEnchant(java.lang.Class,com.shatteredpixel.shatteredpixeldungeon.actors.Char)","line":7,"t":"ReceiverNonNull","matcher":"boolean hasEnchant(java.lang.Class,com.shatteredpixel.shatteredpixeldungeon.actors.Char)","className":"com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.darts.Dart"}

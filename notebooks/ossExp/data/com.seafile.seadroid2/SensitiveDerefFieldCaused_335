@@ -1,1 +1,0 @@
-{"methodName":"boolean onKeyUp(int,android.view.KeyEvent)","line":134,"t":"ReceiverNonNull","matcher":"boolean performIdentifierAction(int,int)","className":"com.seafile.seadroid2.ui.activity.TransferActivity"}

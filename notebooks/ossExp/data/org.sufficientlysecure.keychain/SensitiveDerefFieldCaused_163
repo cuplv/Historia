@@ -1,1 +1,0 @@
-{"methodName":"java.util.Iterator getSignatures()","line":4,"t":"ReceiverNonNull","matcher":"int size()","className":"org.bouncycastle.openpgp.PGPPublicKey"}

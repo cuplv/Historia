@@ -1,1 +1,0 @@
-{"methodName":"java.util.ArrayList getSensorStats(android.content.Context,long,int)","line":1689,"t":"ReceiverNonNull","matcher":"java.lang.Object valueAt(int)","className":"com.asksven.android.common.privateapiproxies.BatteryStatsProxy"}

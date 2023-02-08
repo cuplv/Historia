@@ -1,1 +1,0 @@
-{"methodName":"void handleInnerWhiteSpace(char[],int,int,int,int)","line":550,"t":"ReceiverNonNull","matcher":"void handleInnerWhiteSpace(char[],int,int,int,int,org.attoparser.IMarkupHandler,org.attoparser.ParseStatus,boolean,boolean)","className":"org.attoparser.HtmlMarkupHandler"}

@@ -1,1 +1,0 @@
-{"methodName":"boolean canChildScrollUp()","line":35,"t":"ReceiverNonNull","matcher":"java.lang.Object invoke()","className":"com.duckduckgo.app.browser.ui.ScrollAwareRefreshLayout"}

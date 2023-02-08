@@ -1,1 +1,0 @@
-{"methodName":"void renderMarker(com.caverock.androidsvg.SVG$Marker,com.caverock.androidsvg.SVGAndroidRenderer$MarkerVector)","line":3145,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"com.caverock.androidsvg.SVGAndroidRenderer"}

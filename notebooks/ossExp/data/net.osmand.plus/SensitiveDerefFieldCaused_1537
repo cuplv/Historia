@@ -1,1 +1,0 @@
-{"methodName":"boolean lambda$onFileUploadDone$23$net-osmand-plus-measurementtool-MeasurementToolFragment(net.osmand.plus.measurementtool.GpxData,net.osmand.GPXUtilities$GPXFile)","line":2315,"t":"ReceiverNonNull","matcher":"java.lang.String getMessage()","className":"net.osmand.plus.measurementtool.MeasurementToolFragment"}

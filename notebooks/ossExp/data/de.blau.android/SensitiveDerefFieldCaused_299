@@ -1,1 +1,0 @@
-{"methodName":"de.blau.android.osm.BoundingBox b()","line":4,"t":"ReceiverNonNull","matcher":"void <init>(double,double,double,double)","className":"de.blau.android.layer.geojson.MapOverlay$BoundedFeature"}

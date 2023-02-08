@@ -1,1 +1,0 @@
-{"methodName":"java.util.List fixNewCardDuePositionOverflow(java.lang.Runnable)","line":3,"t":"ReceiverNonNull","matcher":"void execute(java.lang.String,java.lang.Object[])","className":"com.ichi2.libanki.Collection"}

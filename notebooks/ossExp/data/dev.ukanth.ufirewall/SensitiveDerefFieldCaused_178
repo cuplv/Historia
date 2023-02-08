@@ -1,1 +1,0 @@
-{"methodName":"void stopWatchdog()","line":1691,"t":"ReceiverNonNull","matcher":"java.util.List shutdownNow()","className":"eu.chainfire.libsuperuser.Shell$Interactive"}

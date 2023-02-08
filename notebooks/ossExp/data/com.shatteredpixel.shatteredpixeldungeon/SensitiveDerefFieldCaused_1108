@@ -1,1 +1,0 @@
-{"methodName":"boolean act()","line":85,"t":"ReceiverNonNull","matcher":"com.watabou.utils.Point cellToPoint(int)","className":"com.shatteredpixel.shatteredpixeldungeon.levels.rooms.special.SentryRoom$Sentry"}

@@ -1,1 +1,0 @@
-{"methodName":"java.lang.String elements()","line":377,"t":"ReceiverNonNull","matcher":"int size()","className":"com.asksven.betterbatterystats.data.Reference"}

@@ -1,1 +1,0 @@
-{"methodName":"boolean isInbox()","line":1368,"t":"ReceiverNonNull","matcher":"java.lang.Long getInboxFolderId()","className":"com.fsck.k9.ui.messagelist.MessageListFragment"}

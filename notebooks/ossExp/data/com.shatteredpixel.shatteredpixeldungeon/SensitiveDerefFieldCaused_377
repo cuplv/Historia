@@ -1,1 +1,0 @@
-{"methodName":"boolean teleportPreferringUnseen(com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero)","line":293,"t":"ReceiverNonNull","matcher":"void discover(int)","className":"com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfTeleportation"}

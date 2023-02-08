@@ -1,1 +1,0 @@
-{"methodName":"void setOptIn(boolean)","line":6,"t":"ReceiverNonNull","matcher":"com.brsanthu.googleanalytics.GoogleAnalyticsConfig getConfig()","className":"com.ichi2.anki.analytics.UsageAnalytics"}

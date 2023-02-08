@@ -1,1 +1,0 @@
-{"methodName":"void initialiseInnerViews()","line":184,"t":"ReceiverNonNull","matcher":"android.view.View findViewById(int)","className":"com.fsck.k9.view.FoldableLinearLayout"}

@@ -1,1 +1,0 @@
-{"methodName":"java.util.List getEntries()","line":4,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"org.sufficientlysecure.keychain.ui.adapter.ImportKeysAdapter"}

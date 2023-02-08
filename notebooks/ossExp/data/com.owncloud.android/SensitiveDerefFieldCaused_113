@@ -1,1 +1,0 @@
-{"methodName":"void unregisterMediaController(com.owncloud.android.media.MediaControlView)","line":158,"t":"ReceiverNonNull","matcher":"com.owncloud.android.media.MediaControlView getMediaController()","className":"com.owncloud.android.media.MediaServiceBinder"}

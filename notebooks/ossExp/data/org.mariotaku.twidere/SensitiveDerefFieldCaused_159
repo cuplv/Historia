@@ -1,1 +1,0 @@
-{"methodName":"void onMeasure(int,int)","line":2126,"t":"ReceiverNonNull","matcher":"boolean isLayoutRequested()","className":"com.mobeta.android.dslv.DragSortListView"}

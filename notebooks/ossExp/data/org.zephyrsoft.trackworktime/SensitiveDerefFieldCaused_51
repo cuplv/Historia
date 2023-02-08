@@ -1,1 +1,0 @@
-{"methodName":"void clockOutAction(int)","line":487,"t":"ReceiverNonNull","matcher":"void notifyPebble(java.lang.String)","className":"org.zephyrsoft.trackworktime.WorkTimeTrackerActivity"}

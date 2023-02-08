@@ -1,1 +1,0 @@
-{"methodName":"org.connectbot.TerminalView getCurrentTerminalView()","line":1372,"t":"ReceiverNonNull","matcher":"int getCurrentItem()","className":"org.connectbot.ConsoleActivity$TerminalPagerAdapter"}

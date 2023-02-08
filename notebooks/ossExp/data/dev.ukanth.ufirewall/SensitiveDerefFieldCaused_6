@@ -1,1 +1,0 @@
-{"methodName":"void setupDeviceSecurityCheck(android.preference.Preference)","line":122,"t":"ReceiverNonNull","matcher":"java.lang.Object getSystemService(java.lang.String)","className":"dev.ukanth.ufirewall.preferences.SecPreferenceFragment"}

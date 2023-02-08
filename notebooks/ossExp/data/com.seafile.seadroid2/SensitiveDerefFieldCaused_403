@@ -1,1 +1,0 @@
-{"methodName":"void parse(com.vladsch.flexmark.util.sequence.BasedSequence,com.vladsch.flexmark.ast.Node)","line":392,"t":"ReceiverNonNull","matcher":"java.util.Collection values()","className":"com.vladsch.flexmark.internal.InlineParserImpl"}

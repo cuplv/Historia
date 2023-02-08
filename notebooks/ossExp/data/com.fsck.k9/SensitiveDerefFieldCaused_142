@@ -1,1 +1,0 @@
-{"methodName":"void insertSpan(com.tokenautocomplete.TokenCompleteTextView$TokenImageSpan)","line":1091,"t":"ReceiverNonNull","matcher":"android.text.SpannableStringBuilder append(java.lang.CharSequence)","className":"com.tokenautocomplete.TokenCompleteTextView"}

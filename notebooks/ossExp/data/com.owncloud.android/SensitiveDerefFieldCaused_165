@@ -1,1 +1,0 @@
-{"methodName":"void observeCapabilities$lambda-6(com.owncloud.android.presentation.ui.sharing.fragments.PublicShareDialogFragment,com.owncloud.android.domain.utils.Event)","line":452,"t":"ReceiverNonNull","matcher":"void dismissLoading()","className":"com.owncloud.android.presentation.ui.sharing.fragments.PublicShareDialogFragment"}

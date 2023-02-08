@@ -1,1 +1,0 @@
-{"methodName":"void <init>(android.database.sqlite.SQLiteDatabase,de.srlabs.snoopsnitch.qdmon.Operator)","line":54,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"de.srlabs.snoopsnitch.analysis.Risk"}

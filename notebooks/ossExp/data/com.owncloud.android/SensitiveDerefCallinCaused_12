@@ -1,1 +1,0 @@
-{"methodName":"void sendLogContent(java.util.List,java.lang.String)","line":208,"t":"ReceiverNonNull","matcher":"java.io.File getExternalCacheDir()","className":"info.hannes.logcat.base.LogBaseFragment"}

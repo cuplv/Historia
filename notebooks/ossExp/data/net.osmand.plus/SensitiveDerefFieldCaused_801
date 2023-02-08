@@ -1,1 +1,0 @@
-{"methodName":"java.lang.Boolean enumNext(java.lang.Object)","line":2323,"t":"ReceiverNonNull","matcher":"org.mozilla.javascript.Scriptable getPrototype()","className":"org.mozilla.javascript.ScriptRuntime"}

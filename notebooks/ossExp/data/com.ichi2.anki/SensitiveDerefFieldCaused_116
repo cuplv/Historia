@@ -1,1 +1,0 @@
-{"methodName":"void openDBIfClosed(android.content.Context)","line":1,"t":"ReceiverNonNull","matcher":"boolean isOpen()","className":"com.ichi2.anki.MetaDB"}

@@ -1,1 +1,0 @@
-{"methodName":"void updateTorrent(org.transdroid.daemon.Torrent)","line":129,"t":"ReceiverNonNull","matcher":"sequentialDownload","className":"org.transdroid.core.gui.DetailsFragment"}

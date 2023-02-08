@@ -1,1 +1,0 @@
-{"methodName":"void onDestroyActionMode(android.view.ActionMode)","line":7,"t":"ReceiverNonNull","matcher":"void setEnabled(boolean)","className":"org.transdroid.core.gui.DetailsFragment$1"}

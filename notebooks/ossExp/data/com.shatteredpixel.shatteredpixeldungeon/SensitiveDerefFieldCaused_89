@@ -1,1 +1,0 @@
-{"methodName":"void activate(com.shatteredpixel.shatteredpixeldungeon.items.armor.ClassArmor,com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero,java.lang.Integer)","line":111,"t":"ReceiverNonNull","matcher":"boolean adjacent(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.rogue.SmokeBomb"}

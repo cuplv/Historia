@@ -1,1 +1,0 @@
-{"methodName":"void mainfunc(org.luaj.vm2.compiler.FuncState)","line":-1,"t":"ReceiverNonNull","matcher":"int newupvalue(org.luaj.vm2.LuaString,org.luaj.vm2.compiler.LexState$expdesc)","className":"org.luaj.vm2.compiler.LexState"}

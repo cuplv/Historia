@@ -1,1 +1,0 @@
-{"methodName":"java.security.cert.X509Certificate getCertificate(java.lang.String)","line":61,"t":"ReceiverNonNull","matcher":"android.database.Cursor query(java.lang.String,java.lang.String[],java.lang.String,java.lang.String[],java.lang.String,java.lang.String,java.lang.String)","className":"com.seafile.seadroid2.ssl.CertsDBHelper"}

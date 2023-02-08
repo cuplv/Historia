@@ -1,1 +1,0 @@
-{"methodName":"void addBasemapPoi(net.osmand.osm.PoiType)","line":76,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"net.osmand.osm.PoiCategory"}

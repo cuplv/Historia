@@ -1,1 +1,0 @@
-{"methodName":"android.view.View onCreateView(android.view.LayoutInflater,android.view.ViewGroup,android.os.Bundle)","line":14,"t":"ReceiverNonNull","matcher":"int intValue()","className":"org.liberty.android.fantastischmemo.ui.CardFragment"}

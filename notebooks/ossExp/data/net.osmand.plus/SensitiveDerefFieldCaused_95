@@ -1,1 +1,0 @@
-{"methodName":"java.util.List getGeometry()","line":429,"t":"ReceiverNonNull","matcher":"net.osmand.osm.edit.Node getFirstNode()","className":"net.osmand.router.TransportRoutePlanner$TransportRouteResultSegment"}

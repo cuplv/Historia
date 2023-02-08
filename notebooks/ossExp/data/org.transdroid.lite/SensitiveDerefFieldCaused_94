@@ -1,1 +1,0 @@
-{"methodName":"void updateTurtleMode(boolean)","line":1,"t":"ReceiverNonNull","matcher":"org.transdroid.daemon.DaemonSettings getSettings()","className":"org.transdroid.core.gui.TorrentsActivity"}

@@ -1,1 +1,0 @@
-{"methodName":"void analyze()","line":253,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"net.osmand.binary.BinaryMapRouteReaderAdapter$RouteTypeRule"}

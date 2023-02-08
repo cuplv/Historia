@@ -1,1 +1,0 @@
-{"methodName":"void dismissMenu()","line":2173,"t":"ReceiverNonNull","matcher":"androidx.fragment.app.FragmentManager getSupportFragmentManager()","className":"net.osmand.plus.mapcontextmenu.MapContextMenuFragment"}

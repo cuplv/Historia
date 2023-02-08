@@ -1,1 +1,0 @@
-{"methodName":"android.view.View s1(android.os.Bundle)","line":22,"t":"ReceiverNonNull","matcher":"int size()","className":"de.blau.android.photos.PhotoViewerFragment"}

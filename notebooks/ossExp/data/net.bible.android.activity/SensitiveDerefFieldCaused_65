@@ -1,1 +1,0 @@
-{"methodName":"boolean onPrepareActionMenu(android.view.ActionMode,android.view.Menu)","line":426,"t":"ReceiverNonNull","matcher":"org.crosswire.jsword.passage.VerseRange getVerseRange()","className":"net.bible.android.view.activity.page.BibleView"}

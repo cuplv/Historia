@@ -1,1 +1,0 @@
-{"methodName":"void saveEncKey(java.lang.String,java.lang.String,java.lang.String)","line":599,"t":"ReceiverNonNull","matcher":"long insert(java.lang.String,java.lang.String,android.content.ContentValues)","className":"com.seafile.seadroid2.data.DatabaseHelper"}

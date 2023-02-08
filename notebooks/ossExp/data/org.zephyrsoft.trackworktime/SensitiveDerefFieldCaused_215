@@ -1,1 +1,0 @@
-{"methodName":"void safeCheckAutomaticBackup()","line":254,"t":"ReceiverNonNull","matcher":"long getLong(java.lang.String,long)","className":"org.zephyrsoft.trackworktime.Basics"}

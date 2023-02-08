@@ -1,1 +1,0 @@
-{"methodName":"void executeNotifications(eu.davidea.flexibleadapter.Payload)","line":4,"t":"ReceiverNonNull","matcher":"void dispatchUpdatesTo(androidx.recyclerview.widget.RecyclerView$Adapter)","className":"eu.davidea.flexibleadapter.FlexibleAdapter"}

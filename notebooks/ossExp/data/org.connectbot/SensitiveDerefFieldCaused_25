@@ -1,1 +1,0 @@
-{"methodName":"void setupTabLayoutWithViewPager()","line":786,"t":"ReceiverNonNull","matcher":"int getCurrentItem()","className":"org.connectbot.ConsoleActivity"}

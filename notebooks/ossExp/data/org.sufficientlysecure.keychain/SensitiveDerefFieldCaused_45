@@ -1,1 +1,0 @@
-{"methodName":"void onLoad(java.util.List)","line":3,"t":"ReceiverNonNull","matcher":"void setData(java.util.List)","className":"org.sufficientlysecure.keychain.remote.ui.AppsListFragment"}

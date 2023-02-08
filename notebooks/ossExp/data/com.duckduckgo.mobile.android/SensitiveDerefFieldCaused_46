@@ -1,1 +1,0 @@
-{"methodName":"byte[] getBlob(int)","line":37,"t":"ReceiverNonNull","matcher":"byte[] getBlob(int,int)","className":"net.sqlcipher.AbstractWindowedCursor"}

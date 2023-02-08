@@ -1,1 +1,0 @@
-{"methodName":"void actualOnPostExecute(com.ichi2.anki.CardTemplateEditor$CardTemplateFragment,android.util.Pair)","line":5,"t":"ReceiverNonNull","matcher":"boolean isShowing()","className":"com.ichi2.anki.CardTemplateEditor$CardTemplateFragment$SaveModelAndExitHandler"}

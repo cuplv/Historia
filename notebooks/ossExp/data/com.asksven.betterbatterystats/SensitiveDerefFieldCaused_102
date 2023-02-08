@@ -1,1 +1,0 @@
-{"methodName":"java.lang.Long getScreenOnTime(long,int)","line":813,"t":"ReceiverNonNull","matcher":"java.lang.reflect.Method getMethod(java.lang.String,java.lang.Class[])","className":"com.asksven.android.common.privateapiproxies.BatteryStatsProxy"}

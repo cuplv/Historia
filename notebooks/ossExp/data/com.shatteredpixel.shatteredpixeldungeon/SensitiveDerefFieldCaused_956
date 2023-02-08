@@ -1,1 +1,0 @@
-{"methodName":"void restoreAllies(com.shatteredpixel.shatteredpixeldungeon.levels.Level,int,int)","line":18,"t":"ReceiverNonNull","matcher":"void updateFieldOfView(com.shatteredpixel.shatteredpixeldungeon.actors.Char,boolean[])","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob"}

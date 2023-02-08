@@ -1,1 +1,0 @@
-{"methodName":"void handleCryptoOperationSuccess(com.fsck.k9.mail.internet.MimeBodyPart)","line":563,"t":"ReceiverNonNull","matcher":"android.os.Parcelable getParcelableExtra(java.lang.String)","className":"com.fsck.k9.ui.crypto.MessageCryptoHelper"}

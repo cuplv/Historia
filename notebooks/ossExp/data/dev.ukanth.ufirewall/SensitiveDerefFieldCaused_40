@@ -1,1 +1,0 @@
-{"methodName":"void output(int,java.lang.String)","line":256,"t":"ReceiverNonNull","matcher":"android.os.Message obtainMessage()","className":"com.stericson.rootshell.execution.Command"}

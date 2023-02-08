@@ -1,1 +1,0 @@
-{"methodName":"void setLanguage(android.content.Context)","line":98,"t":"ReceiverNonNull","matcher":"java.lang.String getLanguage()","className":"net.osmand.plus.helpers.LocaleHelper"}

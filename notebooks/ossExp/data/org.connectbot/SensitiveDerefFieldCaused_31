@@ -1,1 +1,0 @@
-{"methodName":"void colorChanged(int)","line":309,"t":"ReceiverNonNull","matcher":"void setGlobalColor(int,int)","className":"org.connectbot.ColorsActivity"}

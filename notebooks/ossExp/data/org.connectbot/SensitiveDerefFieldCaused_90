@@ -1,1 +1,0 @@
-{"methodName":"java.lang.CharSequence getDescription()","line":215,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"org.connectbot.bean.PortForwardBean"}

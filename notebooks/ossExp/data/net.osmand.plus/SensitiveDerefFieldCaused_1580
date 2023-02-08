@@ -1,1 +1,0 @@
-{"methodName":"boolean showMenuAction(java.lang.Object)","line":1706,"t":"ReceiverNonNull","matcher":"boolean cancel(boolean)","className":"net.osmand.plus.views.layers.GPXLayer"}

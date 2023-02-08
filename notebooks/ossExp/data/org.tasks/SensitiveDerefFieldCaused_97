@@ -1,1 +1,0 @@
-{"methodName":"void appendToTextContainer(java.lang.String)","line":1024,"t":"ReceiverNonNull","matcher":"void addChild(com.caverock.androidsvg.SVG$SvgObject)","className":"com.caverock.androidsvg.SVGParser"}

@@ -1,1 +1,0 @@
-{"methodName":"void run()","line":47,"t":"ReceiverNonNull","matcher":"boolean contains(java.lang.CharSequence)","className":"org.sipdroid.sipua.ui.Checkin$1"}

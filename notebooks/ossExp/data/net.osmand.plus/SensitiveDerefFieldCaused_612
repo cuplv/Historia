@@ -1,1 +1,0 @@
-{"methodName":"net.osmand.GPXUtilities$GPXFile loadGPXFile(java.io.InputStream,net.osmand.GPXUtilities$GPXExtensionsReader)","line":2723,"t":"ReceiverNonNull","matcher":"java.lang.String toLowerCase()","className":"net.osmand.GPXUtilities"}

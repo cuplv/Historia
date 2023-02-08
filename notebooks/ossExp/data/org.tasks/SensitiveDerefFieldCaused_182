@@ -1,1 +1,0 @@
-{"methodName":"void setLocation(android.location.Location)","line":447,"t":"ReceiverNonNull","matcher":"void animateTo(org.osmdroid.api.IGeoPoint)","className":"org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay"}

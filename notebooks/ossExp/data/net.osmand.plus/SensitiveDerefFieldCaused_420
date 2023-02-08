@@ -1,1 +1,0 @@
-{"methodName":"boolean launchPrevActivityIntent()","line":624,"t":"ReceiverNonNull","matcher":"android.content.Intent addFlags(int)","className":"net.osmand.plus.activities.MapActivity"}

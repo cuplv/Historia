@@ -1,1 +1,0 @@
-{"methodName":"void onLayoutComplete(boolean)","line":716,"t":"ReceiverNonNull","matcher":"int getImageIndex(com.seafile.seadroid2.gallery.IImage)","className":"com.seafile.seadroid2.gallery.MultipleImageSelectionActivity"}

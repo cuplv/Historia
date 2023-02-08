@@ -1,1 +1,0 @@
-{"methodName":"org.mozilla.javascript.Node transformForInLoop(org.mozilla.javascript.ast.ForInLoop)","line":545,"t":"ReceiverNonNull","matcher":"void addEOL(int)","className":"org.mozilla.javascript.IRFactory"}

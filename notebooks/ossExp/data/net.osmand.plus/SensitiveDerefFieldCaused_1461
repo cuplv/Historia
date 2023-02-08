@@ -1,1 +1,0 @@
-{"methodName":"int compareToSameClass(java.lang.Object)","line":398,"t":"ReceiverNonNull","matcher":"int compareToSameClass(java.lang.Object)","className":"com.vividsolutions.jts.geom.Polygon"}

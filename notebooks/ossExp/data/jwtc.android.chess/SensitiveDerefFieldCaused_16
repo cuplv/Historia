@@ -1,1 +1,0 @@
-{"methodName":"void startPuzzle()","line":174,"t":"ReceiverNonNull","matcher":"boolean moveToPosition(int)","className":"jwtc.android.chess.puzzle.PuzzleActivity"}

@@ -1,1 +1,0 @@
-{"methodName":"org.liberty.android.fantastischmemo.dao.CardDao getCardDao()","line":3,"t":"ReceiverNonNull","matcher":"void setHelper(org.liberty.android.fantastischmemo.common.AnyMemoDBOpenHelper)","className":"org.liberty.android.fantastischmemo.common.AnyMemoDBOpenHelper"}

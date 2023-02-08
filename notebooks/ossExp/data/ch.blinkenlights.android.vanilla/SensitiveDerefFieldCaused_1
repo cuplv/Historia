@@ -1,1 +1,0 @@
-{"methodName":"boolean onTouchEvent(android.view.MotionEvent)","line":428,"t":"ReceiverNonNull","matcher":"void computeCurrentVelocity(int)","className":"ch.blinkenlights.android.vanilla.CoverView"}

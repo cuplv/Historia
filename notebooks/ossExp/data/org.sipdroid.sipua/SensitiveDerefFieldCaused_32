@@ -1,1 +1,0 @@
-{"methodName":"void setLocalIpAddress()","line":161,"t":"ReceiverNonNull","matcher":"java.net.InetAddress getPublicIP()","className":"org.zoolu.net.IpAddress"}

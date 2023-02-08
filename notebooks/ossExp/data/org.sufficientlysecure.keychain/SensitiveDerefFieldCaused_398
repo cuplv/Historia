@@ -1,1 +1,0 @@
-{"methodName":"void finishIfNecessary()","line":5,"t":"ReceiverNonNull","matcher":"java.nio.Buffer rewind()","className":"org.sufficientlysecure.keychain.util.CharsetVerifier"}

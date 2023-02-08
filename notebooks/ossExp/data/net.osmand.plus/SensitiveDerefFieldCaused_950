@@ -1,1 +1,0 @@
-{"methodName":"void addNode(net.osmand.osm.edit.Node)","line":90,"t":"ReceiverNonNull","matcher":"boolean add(long)","className":"net.osmand.osm.edit.Way"}

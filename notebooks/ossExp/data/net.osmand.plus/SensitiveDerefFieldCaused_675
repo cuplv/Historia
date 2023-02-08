@@ -1,1 +1,0 @@
-{"methodName":"void setQuickActionButtonMargin(android.widget.FrameLayout$LayoutParams,androidx.core.util.Pair,int,int)","line":196,"t":"ReceiverNonNull","matcher":"int getHeight()","className":"net.osmand.plus.views.layers.MapQuickActionLayer"}

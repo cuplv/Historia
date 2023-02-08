@@ -1,1 +1,0 @@
-{"methodName":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Ghoul searchForHost(com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Ghoul)","line":51,"t":"ReceiverNonNull","matcher":"void updateFieldOfView(com.shatteredpixel.shatteredpixeldungeon.actors.Char,boolean[])","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Ghoul$GhoulLifeLink"}

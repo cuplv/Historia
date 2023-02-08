@@ -1,1 +1,0 @@
-{"methodName":"void detachFromRecyclerView()","line":1,"t":"ReceiverNonNull","matcher":"void removeOnScrollListener(androidx.recyclerview.widget.RecyclerView$OnScrollListener)","className":"eu.davidea.flexibleadapter.helpers.StickyHeaderHelper"}

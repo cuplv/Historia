@@ -1,1 +1,0 @@
-{"methodName":"void pageHasHttpResources(java.lang.String)","line":1673,"t":"ReceiverNonNull","matcher":"void setHasHttpResources(boolean)","className":"com.duckduckgo.app.browser.BrowserTabViewModel"}

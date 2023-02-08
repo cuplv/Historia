@@ -1,1 +1,0 @@
-{"methodName":"void reset(com.shatteredpixel.shatteredpixeldungeon.items.Generator$Category)","line":7,"t":"ReceiverNonNull","matcher":"java.lang.Object clone()","className":"com.shatteredpixel.shatteredpixeldungeon.items.Generator"}

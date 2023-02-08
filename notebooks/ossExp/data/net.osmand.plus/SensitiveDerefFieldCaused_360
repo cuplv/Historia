@@ -1,1 +1,0 @@
-{"methodName":"void initTransportStopsTileProvider()","line":488,"t":"ReceiverNonNull","matcher":"void <init>(android.content.Context,net.osmand.plus.views.layers.base.OsmandMapLayer$MapLayerData,int,float)","className":"net.osmand.plus.views.layers.TransportStopsLayer"}

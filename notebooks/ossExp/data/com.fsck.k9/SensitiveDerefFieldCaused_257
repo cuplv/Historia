@@ -1,1 +1,0 @@
-{"methodName":"boolean testAuthenticationResponse(org.apache.http.HttpResponse)","line":703,"t":"ReceiverNonNull","matcher":"java.util.List getCookies()","className":"com.fsck.k9.mail.store.webdav.WebDavStore"}

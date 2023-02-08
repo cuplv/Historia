@@ -1,1 +1,0 @@
-{"methodName":"org.mozilla.javascript.Node arrayCompTransformHelper(org.mozilla.javascript.ast.ArrayComprehension,java.lang.String)","line":38,"t":"ReceiverNonNull","matcher":"void addToken(int)","className":"org.mozilla.javascript.IRFactory"}

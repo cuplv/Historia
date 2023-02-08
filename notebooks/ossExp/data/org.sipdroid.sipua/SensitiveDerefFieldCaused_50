@@ -1,1 +1,0 @@
-{"methodName":"boolean call(java.lang.String,boolean)","line":305,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"org.sipdroid.sipua.UserAgent"}

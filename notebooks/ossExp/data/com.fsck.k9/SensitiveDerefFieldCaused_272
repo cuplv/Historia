@@ -1,1 +1,0 @@
-{"methodName":"void updateAttachmentView(com.fsck.k9.activity.misc.Attachment)","line":1852,"t":"ReceiverNonNull","matcher":"long longValue()","className":"com.fsck.k9.activity.MessageCompose$13"}

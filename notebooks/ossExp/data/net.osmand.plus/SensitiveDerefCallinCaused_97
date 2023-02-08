@@ -1,1 +1,0 @@
-{"methodName":"void lambda$setupReorderButton$0$net-osmand-plus-views-mapwidgets-configure-panel-WidgetsListFragment(android.view.View)","line":158,"t":"ReceiverNonNull","matcher":"androidx.fragment.app.FragmentManager getSupportFragmentManager()","className":"net.osmand.plus.views.mapwidgets.configure.panel.WidgetsListFragment"}

@@ -1,1 +1,0 @@
-{"methodName":"java.lang.Boolean f(f7.k,java.lang.String)","line":3,"t":"ReceiverNonNull","matcher":"java.lang.String getValue()","className":"de.blau.android.propertyeditor.tagform.CheckGroupDialogRow"}

@@ -1,1 +1,0 @@
-{"methodName":"void onCreate(android.os.Bundle)","line":212,"t":"ReceiverNonNull","matcher":"boolean getBoolean(java.lang.String,boolean)","className":"org.connectbot.HostListActivity"}

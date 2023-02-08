@@ -1,1 +1,0 @@
-{"methodName":"net.osmand.binary.OsmandIndex$FileIndex getFileIndex(java.io.File,boolean)","line":200,"t":"ReceiverNonNull","matcher":"int getFileIndexCount()","className":"net.osmand.binary.CachedOsmandIndexes"}

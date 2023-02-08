@@ -1,1 +1,0 @@
-{"methodName":"void updateAccount()","line":128,"t":"ReceiverNonNull","matcher":"void setAccount(org.mariotaku.twidere.model.AccountDetails)","className":"org.mariotaku.twidere.view.ComposeEditText"}

@@ -1,1 +1,0 @@
-{"methodName":"java.math.BigInteger getRC2ParameterVersion()","line":-1,"t":"ReceiverNonNull","matcher":"java.math.BigInteger getValue()","className":"org.bouncycastle.asn1.pkcs.RC2CBCParameter"}

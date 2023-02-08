@@ -1,1 +1,0 @@
-{"methodName":"void selectReward(com.shatteredpixel.shatteredpixeldungeon.items.Item)","line":83,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.items.Heap drop(com.shatteredpixel.shatteredpixeldungeon.items.Item,int)","className":"com.shatteredpixel.shatteredpixeldungeon.windows.WndSadGhost"}

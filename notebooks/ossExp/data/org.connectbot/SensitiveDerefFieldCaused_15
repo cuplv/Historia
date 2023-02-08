@@ -1,1 +1,0 @@
-{"methodName":"void notifyDataSetChanged()","line":1353,"t":"ReceiverNonNull","matcher":"void setTabsFromPagerAdapter(androidx.viewpager.widget.PagerAdapter)","className":"org.connectbot.ConsoleActivity$TerminalPagerAdapter"}

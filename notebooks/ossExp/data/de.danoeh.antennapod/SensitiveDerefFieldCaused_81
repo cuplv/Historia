@@ -1,1 +1,0 @@
-{"methodName":"void onProgressChanged(android.widget.SeekBar,int,boolean)","line":671,"t":"ReceiverNonNull","matcher":"int getDuration()","className":"de.danoeh.antennapod.activity.VideoplayerActivity"}

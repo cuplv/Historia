@@ -1,1 +1,0 @@
-{"methodName":"void updateCertificateView(android.view.View)","line":58,"t":"ReceiverNonNull","matcher":"javax.security.auth.x500.X500Principal getIssuerX500Principal()","className":"com.owncloud.android.ui.adapter.X509CertificateViewAdapter"}

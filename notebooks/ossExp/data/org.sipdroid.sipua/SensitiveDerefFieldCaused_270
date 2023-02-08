@@ -1,1 +1,0 @@
-{"methodName":"void addUnquotedParameter(java.lang.String,java.lang.String)","line":95,"t":"ReceiverNonNull","matcher":"int indexOf(int)","className":"org.zoolu.sip.header.AuthenticationHeader"}

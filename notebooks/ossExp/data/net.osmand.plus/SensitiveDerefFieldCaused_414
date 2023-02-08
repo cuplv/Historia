@@ -1,1 +1,0 @@
-{"methodName":"java.lang.Object calcSelectValue(java.util.BitSet,net.osmand.router.GeneralRouter$ParameterContext)","line":1161,"t":"ReceiverNonNull","matcher":"java.lang.String toString()","className":"net.osmand.router.GeneralRouter$RouteAttributeEvalRule"}

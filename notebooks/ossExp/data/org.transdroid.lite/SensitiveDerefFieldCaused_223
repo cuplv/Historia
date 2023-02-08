@@ -1,1 +1,0 @@
-{"methodName":"void onViewChanged(org.androidannotations.api.view.HasViews)","line":41,"t":"ReceiverNonNull","matcher":"void <init>(android.content.Context,java.util.List)","className":"org.transdroid.core.gui.TorrentsActivity_"}

@@ -1,1 +1,0 @@
-{"methodName":"void onClick()","line":19,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob visibleEnemy(int)","className":"com.shatteredpixel.shatteredpixeldungeon.ui.DangerIndicator"}

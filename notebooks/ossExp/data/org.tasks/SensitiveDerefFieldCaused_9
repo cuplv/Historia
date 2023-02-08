@@ -1,1 +1,0 @@
-{"methodName":"org.everit.json.schema.ArraySchema$Builder addItemSchema(org.everit.json.schema.Schema)","line":55,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"org.everit.json.schema.ArraySchema$Builder"}

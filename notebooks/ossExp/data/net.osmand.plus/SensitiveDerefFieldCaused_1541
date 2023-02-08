@@ -1,1 +1,0 @@
-{"methodName":"org.mozilla.javascript.Node transformString(org.mozilla.javascript.ast.StringLiteral)","line":1053,"t":"ReceiverNonNull","matcher":"void addString(java.lang.String)","className":"org.mozilla.javascript.IRFactory"}

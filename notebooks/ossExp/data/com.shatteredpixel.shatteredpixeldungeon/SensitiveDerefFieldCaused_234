@@ -1,1 +1,0 @@
-{"methodName":"com.shatteredpixel.shatteredpixeldungeon.sprites.ItemSprite view(int,com.shatteredpixel.shatteredpixeldungeon.sprites.ItemSprite$Glowing)","line":18,"t":"ReceiverNonNull","matcher":"void killAndErase()","className":"com.shatteredpixel.shatteredpixeldungeon.sprites.ItemSprite"}

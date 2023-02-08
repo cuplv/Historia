@@ -1,1 +1,0 @@
-{"methodName":"void init(java.lang.String)","line":297,"t":"ReceiverNonNull","matcher":"int length()","className":"org.zoolu.sip.provider.SipStack"}

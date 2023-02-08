@@ -1,1 +1,0 @@
-{"methodName":"void onDismiss(android.content.DialogInterface)","line":99,"t":"ReceiverNonNull","matcher":"boolean isChangingConfigurations()","className":"net.osmand.plus.dialogs.UploadPhotoProgressBottomSheet"}

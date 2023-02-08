@@ -1,1 +1,0 @@
-{"methodName":"void writeToParcel(java.io.DataOutputStream)","line":48,"t":"ReceiverNonNull","matcher":"void writeToParcel(java.io.DataOutputStream)","className":"com.gpl.rpg.AndorsTrail.model.InterfaceData"}

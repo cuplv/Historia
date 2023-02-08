@@ -1,1 +1,0 @@
-{"methodName":"void displayDowngrade(android.graphics.Canvas,org.osmdroid.views.Projection)","line":513,"t":"ReceiverNonNull","matcher":"float[] computeDowngradePointList(int)","className":"org.osmdroid.views.overlay.PolyOverlayWithIW"}

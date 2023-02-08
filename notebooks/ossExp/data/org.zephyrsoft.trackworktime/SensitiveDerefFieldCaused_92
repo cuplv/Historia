@@ -1,1 +1,0 @@
-{"methodName":"j$.time.LocalDateTime getTimeOut()","line":77,"t":"ReceiverNonNull","matcher":"j$.time.LocalDateTime toLocalDateTime()","className":"org.zephyrsoft.trackworktime.timer.TimeCalculatorV2$DayInfo"}

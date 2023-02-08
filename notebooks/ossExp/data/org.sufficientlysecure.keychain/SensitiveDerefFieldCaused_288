@@ -1,1 +1,0 @@
-{"methodName":"void lambda$setupListenersForPresenter$2(android.view.View,int)","line":1,"t":"ReceiverNonNull","matcher":"void onKeyItemClick(int)","className":"org.sufficientlysecure.keychain.remote.ui.dialog.RemoteSelectAuthenticationKeyActivity$RemoteSelectAuthenticationKeyDialogFragment"}

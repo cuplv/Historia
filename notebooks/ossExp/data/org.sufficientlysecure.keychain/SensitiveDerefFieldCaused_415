@@ -1,1 +1,0 @@
-{"methodName":"void toggleFolded()","line":12,"t":"ReceiverNonNull","matcher":"void startAnimation(android.view.animation.Animation)","className":"org.sufficientlysecure.keychain.ui.widget.FoldableLinearLayout"}

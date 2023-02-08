@@ -1,1 +1,0 @@
-{"methodName":"android.content.ContentValues l(java.lang.String,de.blau.android.resources.TileLayerSource)","line":42,"t":"ReceiverNonNull","matcher":"boolean compress(android.graphics.Bitmap$CompressFormat,int,java.io.OutputStream)","className":"de.blau.android.resources.c"}

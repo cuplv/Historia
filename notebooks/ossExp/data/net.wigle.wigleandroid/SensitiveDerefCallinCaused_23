@@ -1,1 +1,0 @@
-{"methodName":"void run()","line":522,"t":"ReceiverNonNull","matcher":"android.content.SharedPreferences getSharedPreferences(java.lang.String,int)","className":"net.wigle.wigleandroid.MappingFragment$MapRunnable"}

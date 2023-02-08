@@ -1,1 +1,0 @@
-{"methodName":"void onNewIntent(android.content.Intent)","line":131,"t":"ReceiverNonNull","matcher":"void abortJob()","className":"info.guardianproject.pixelknot.ReceiveActivity"}

@@ -1,1 +1,0 @@
-{"methodName":"void refreshView()","line":533,"t":"ReceiverNonNull","matcher":"org.zephyrsoft.trackworktime.model.Task getCurrentTask()","className":"org.zephyrsoft.trackworktime.WorkTimeTrackerActivity"}

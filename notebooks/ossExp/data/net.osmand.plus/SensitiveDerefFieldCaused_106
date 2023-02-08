@@ -1,1 +1,0 @@
-{"methodName":"net.osmand.router.BinaryRoutePlanner$RouteSegment processIntersections(net.osmand.router.RoutingContext,java.util.PriorityQueue,gnu.trove.map.hash.TLongObjectHashMap,net.osmand.router.BinaryRoutePlanner$RouteSegment,boolean,boolean)","line":795,"t":"ReceiverNonNull","matcher":"short getSegmentStart()","className":"net.osmand.router.BinaryRoutePlanner"}

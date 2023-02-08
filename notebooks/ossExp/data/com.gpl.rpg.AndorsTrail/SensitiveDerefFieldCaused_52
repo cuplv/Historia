@@ -1,1 +1,0 @@
-{"methodName":"boolean tryWalkablePosition(int,int,int)","line":209,"t":"ReceiverNonNull","matcher":"boolean isWalkable(com.gpl.rpg.AndorsTrail.util.Coord)","className":"com.gpl.rpg.AndorsTrail.controller.MovementController"}

@@ -1,1 +1,0 @@
-{"methodName":"void clockInAction(int)","line":449,"t":"ReceiverNonNull","matcher":"void startTracking(int,org.zephyrsoft.trackworktime.model.Task,java.lang.String,org.zephyrsoft.trackworktime.timer.TimerManager$EventOrigin)","className":"org.zephyrsoft.trackworktime.WorkTimeTrackerActivity"}

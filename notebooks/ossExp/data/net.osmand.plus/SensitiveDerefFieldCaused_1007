@@ -1,1 +1,0 @@
-{"methodName":"void enterLoop(org.mozilla.javascript.ast.Loop)","line":538,"t":"ReceiverNonNull","matcher":"org.mozilla.javascript.ast.Label getFirstLabel()","className":"org.mozilla.javascript.Parser"}

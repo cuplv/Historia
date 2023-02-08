@@ -1,1 +1,0 @@
-{"methodName":"void onResume()","line":132,"t":"ReceiverNonNull","matcher":"android.content.Intent getIntent()","className":"net.osmand.plus.activities.search.SearchHistoryFragment"}

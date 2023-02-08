@@ -1,1 +1,0 @@
-{"methodName":"void runNextCommand(boolean)","line":1747,"t":"ReceiverNonNull","matcher":"void resumeGobbling()","className":"eu.chainfire.libsuperuser.Shell$Interactive"}

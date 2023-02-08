@@ -1,1 +1,0 @@
-{"methodName":"void transfromHeadline()","line":12,"t":"ReceiverNonNull","matcher":"java.lang.String substring(int,int)","className":"com.github.rjeschke.txtmark.Block"}

@@ -1,1 +1,0 @@
-{"methodName":"androidx.browser.customtabs.CustomTabsSession getSession()","line":4,"t":"ReceiverNonNull","matcher":"androidx.browser.customtabs.CustomTabsSession newSession(androidx.browser.customtabs.CustomTabsCallback)","className":"com.ichi2.compat.customtabs.CustomTabActivityHelper"}

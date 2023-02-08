@@ -1,1 +1,0 @@
-{"methodName":"void updateDirectoryList()","line":460,"t":"ReceiverNonNull","matcher":"void setNewItemVector(java.util.Vector)","className":"com.owncloud.android.ui.activity.ReceiveExternalFilesActivity"}

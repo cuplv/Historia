@@ -1,1 +1,0 @@
-{"methodName":"void initializeDocument(com.vladsch.flexmark.ast.util.Parsing,com.vladsch.flexmark.ast.Document)","line":145,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"com.vladsch.flexmark.internal.InlineParserImpl"}

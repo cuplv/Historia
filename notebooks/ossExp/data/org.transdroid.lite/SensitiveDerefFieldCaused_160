@@ -1,1 +1,0 @@
-{"methodName":"void onItemClick(android.widget.AdapterView,android.view.View,int,long)","line":2,"t":"ReceiverNonNull","matcher":"void setItemChecked(int,boolean)","className":"org.transdroid.core.gui.DetailsFragment_$3"}

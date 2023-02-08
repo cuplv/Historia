@@ -1,1 +1,0 @@
-{"methodName":"void read(byte[])","line":1,"t":"ReceiverNonNull","matcher":"int read(byte[])","className":"nl.mpcjanssen.simpletask.util.TTFAnalyzer"}

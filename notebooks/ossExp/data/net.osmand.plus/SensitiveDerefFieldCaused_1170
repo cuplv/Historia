@@ -1,1 +1,0 @@
-{"methodName":"void updateInfo(net.osmand.plus.views.layers.base.OsmandMapLayer$DrawSettings)","line":105,"t":"ReceiverNonNull","matcher":"net.osmand.router.TurnType getTurnType()","className":"net.osmand.plus.views.mapwidgets.widgets.LanesWidget"}

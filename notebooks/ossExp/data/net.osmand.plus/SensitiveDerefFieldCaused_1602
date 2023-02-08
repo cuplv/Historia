@@ -1,1 +1,0 @@
-{"methodName":"int conditionalValue(long)","line":187,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"net.osmand.binary.BinaryMapRouteReaderAdapter$RouteTypeRule"}

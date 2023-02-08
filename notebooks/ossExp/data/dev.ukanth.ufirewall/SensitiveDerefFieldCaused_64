@@ -1,1 +1,0 @@
-{"methodName":"java.util.concurrent.CompletableFuture sendrecv(java.net.InetSocketAddress,java.net.InetSocketAddress,byte[],int,java.time.Duration)","line":168,"t":"ReceiverNonNull","matcher":"int nextInt(int)","className":"org.xbill.DNS.NioUdpClient"}

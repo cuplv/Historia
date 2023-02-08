@@ -1,1 +1,0 @@
-{"methodName":"void onBindViewHolder(net.osmand.plus.measurementtool.adapter.MeasurementToolAdapter$MeasureToolItemVH,int)","line":109,"t":"ReceiverNonNull","matcher":"java.lang.String substring(int,int)","className":"net.osmand.plus.measurementtool.adapter.MeasurementToolAdapter"}

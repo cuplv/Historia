@@ -1,1 +1,0 @@
-{"methodName":"void notifyOnVideoSizeChanged(int,int,int,int)","line":101,"t":"ReceiverNonNull","matcher":"void onVideoSizeChanged(tv.danmaku.ijk.media.player.IMediaPlayer,int,int,int,int)","className":"tv.danmaku.ijk.media.player.AbstractMediaPlayer"}

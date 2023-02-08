@@ -1,1 +1,0 @@
-{"methodName":"void surfaceChanged(android.view.SurfaceHolder,int,int,int)","line":93,"t":"ReceiverNonNull","matcher":"void setParameters(android.hardware.Camera$Parameters)","className":"org.navitproject.navit.NavitCamera"}

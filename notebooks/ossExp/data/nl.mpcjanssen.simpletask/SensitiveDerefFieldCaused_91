@@ -1,1 +1,0 @@
-{"methodName":"void updateFloatView()","line":3,"t":"ReceiverNonNull","matcher":"void onDragFloatView(android.view.View,android.graphics.Point,android.graphics.Point)","className":"com.mobeta.android.dslv.DragSortListView"}

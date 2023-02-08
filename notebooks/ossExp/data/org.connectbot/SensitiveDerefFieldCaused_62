@@ -1,1 +1,0 @@
-{"methodName":"void updateDefault()","line":1131,"t":"ReceiverNonNull","matcher":"org.connectbot.TerminalView getCurrentTerminalView()","className":"org.connectbot.ConsoleActivity"}

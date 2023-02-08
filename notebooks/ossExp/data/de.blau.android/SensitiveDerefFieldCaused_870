@@ -1,1 +1,0 @@
-{"methodName":"void c(java.lang.String,java.lang.String,java.lang.String)","line":18,"t":"ReceiverNonNull","matcher":"java.lang.Class getClass()","className":"com.caverock.androidsvg.SVGParser"}

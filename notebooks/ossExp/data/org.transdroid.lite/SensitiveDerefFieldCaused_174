@@ -1,1 +1,0 @@
-{"methodName":"boolean onPrepareActionMode(android.view.ActionMode,android.view.Menu)","line":7,"t":"ReceiverNonNull","matcher":"type","className":"org.transdroid.core.gui.DetailsFragment$1"}

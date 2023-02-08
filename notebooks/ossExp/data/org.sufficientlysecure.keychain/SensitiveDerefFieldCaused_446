@@ -1,1 +1,0 @@
-{"methodName":"java.lang.String stripID()","line":7,"t":"ReceiverNonNull","matcher":"char charAt(int)","className":"com.github.rjeschke.txtmark.Line"}

@@ -1,1 +1,0 @@
-{"methodName":"boolean processTouchEvent(android.view.MotionEvent)","line":166,"t":"ReceiverNonNull","matcher":"void computeCurrentVelocity(int)","className":"com.github.chrisbanes.photoview.CustomGestureDetector"}

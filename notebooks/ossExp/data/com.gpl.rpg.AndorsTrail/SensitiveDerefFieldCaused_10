@@ -1,1 +1,0 @@
-{"methodName":"void gameCreationOver()","line":176,"t":"ReceiverNonNull","matcher":"void onGameCreationCancelled()","className":"com.gpl.rpg.AndorsTrail.activity.fragment.StartScreenActivity_NewGame"}

@@ -1,1 +1,0 @@
-{"methodName":"android.widget.RemoteViews getViewAt(int)","line":2,"t":"ReceiverNonNull","matcher":"useDarkTheme","className":"org.transdroid.core.widget.WidgetViewsFactory"}

@@ -1,1 +1,0 @@
-{"methodName":"void finalizeDocument(com.vladsch.flexmark.ast.Document)","line":171,"t":"ReceiverNonNull","matcher":"java.util.Collection values()","className":"com.vladsch.flexmark.internal.InlineParserImpl"}

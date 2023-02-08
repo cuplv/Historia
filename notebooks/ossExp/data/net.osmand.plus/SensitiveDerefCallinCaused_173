@@ -1,1 +1,0 @@
-{"methodName":"android.app.Dialog onCreateDialog(android.os.Bundle)","line":98,"t":"ReceiverNonNull","matcher":"android.content.res.Resources$Theme getTheme()","className":"net.osmand.plus.plugins.osmedit.dialogs.OpeningHoursHoursDialogFragment"}

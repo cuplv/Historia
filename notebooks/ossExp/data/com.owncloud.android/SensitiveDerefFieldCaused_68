@@ -1,1 +1,0 @@
-{"methodName":"void onSaveInstanceState(android.os.Bundle)","line":185,"t":"ReceiverNonNull","matcher":"boolean isPlaying()","className":"com.owncloud.android.ui.preview.PreviewAudioFragment"}

@@ -1,1 +1,0 @@
-{"methodName":"java.lang.String toString()","line":96,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"org.zephyrsoft.trackworktime.model.Task"}

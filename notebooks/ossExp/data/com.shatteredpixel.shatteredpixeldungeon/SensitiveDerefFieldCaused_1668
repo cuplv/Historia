@@ -1,1 +1,0 @@
-{"methodName":"boolean inside(int)","line":2,"t":"ReceiverNonNull","matcher":"com.watabou.utils.Point cellToPoint(int)","className":"com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition"}

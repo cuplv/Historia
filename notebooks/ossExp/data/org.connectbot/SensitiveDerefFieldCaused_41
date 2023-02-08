@@ -1,1 +1,0 @@
-{"methodName":"void readSessionInfo()","line":140,"t":"ReceiverNonNull","matcher":"void visitSessionInfo(org.jacoco.agent.rt.internal_28bab1d.core.data.SessionInfo)","className":"org.jacoco.agent.rt.internal_28bab1d.core.data.ExecutionDataReader"}

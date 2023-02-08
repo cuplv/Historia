@@ -1,1 +1,0 @@
-{"methodName":"void u1(android.widget.LinearLayout,d2.e)","line":1,"t":"ReceiverNonNull","matcher":"android.view.View inflate(int,android.view.ViewGroup)","className":"de.blau.android.propertyeditor.tagform.ConditionalRestrictionFragment"}

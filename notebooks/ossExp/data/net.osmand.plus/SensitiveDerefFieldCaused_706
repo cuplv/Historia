@@ -1,1 +1,0 @@
-{"methodName":"java.lang.String getDirectionString(net.osmand.data.LatLon,java.lang.Float)","line":207,"t":"ReceiverNonNull","matcher":"float bearingTo(net.osmand.Location)","className":"net.osmand.plus.plugins.accessibility.NavigationInfo"}

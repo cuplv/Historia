@@ -1,1 +1,0 @@
-{"methodName":"boolean parseInline()","line":676,"t":"ReceiverNonNull","matcher":"java.lang.Object get(java.lang.Object)","className":"com.vladsch.flexmark.internal.InlineParserImpl"}

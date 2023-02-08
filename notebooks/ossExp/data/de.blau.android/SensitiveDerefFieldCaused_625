@@ -1,1 +1,0 @@
-{"methodName":"boolean o1(de.blau.android.propertyeditor.b,android.view.MotionEvent)","line":9,"t":"ReceiverNonNull","matcher":"void setText(java.lang.CharSequence)","className":"de.blau.android.propertyeditor.b"}

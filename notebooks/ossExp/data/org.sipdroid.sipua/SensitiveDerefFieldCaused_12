@@ -1,1 +1,0 @@
-{"methodName":"void run()","line":144,"t":"ReceiverNonNull","matcher":"void onIncomingConnection(org.zoolu.net.TcpServer,org.zoolu.net.TcpSocket)","className":"org.zoolu.net.TcpServer"}

@@ -1,1 +1,0 @@
-{"methodName":"void measureCroutonView()","line":758,"t":"ReceiverNonNull","matcher":"int getMeasuredWidth()","className":"de.keyboardsurfer.android.widget.crouton.Crouton"}

@@ -1,1 +1,0 @@
-{"methodName":"java.lang.String getLogMessage()","line":439,"t":"ReceiverNonNull","matcher":"java.lang.String getMessage()","className":"com.owncloud.android.lib.common.operations.RemoteOperationResult"}

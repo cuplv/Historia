@@ -1,1 +1,0 @@
-{"methodName":"void onActionMove(float,float)","line":874,"t":"ReceiverNonNull","matcher":"void move(android.graphics.RectF,float,float,android.graphics.RectF,int,int,float,boolean,float)","className":"com.theartofdev.edmodo.cropper.CropOverlayView"}

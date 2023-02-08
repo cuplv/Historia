@@ -1,1 +1,0 @@
-{"methodName":"void setRounds(com.keepassdroid.Database,androidx.preference.Preference)","line":106,"t":"ReceiverNonNull","matcher":"long getNumRounds()","className":"com.keepassdroid.settings.DBSettingsFragement"}

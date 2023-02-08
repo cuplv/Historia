@@ -1,1 +1,0 @@
-{"methodName":"void <init>(android.content.Context)","line":50,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"com.asksven.betterbatterystats.adapters.CreditsAdapter"}

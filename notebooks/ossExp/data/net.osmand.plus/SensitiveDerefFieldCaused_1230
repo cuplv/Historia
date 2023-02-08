@@ -1,1 +1,0 @@
-{"methodName":"void showContextMenuForSelectedObjects(net.osmand.data.LatLon,java.util.Map)","line":915,"t":"ReceiverNonNull","matcher":"void show(net.osmand.data.LatLon,java.util.Map)","className":"net.osmand.plus.views.layers.ContextMenuLayer"}

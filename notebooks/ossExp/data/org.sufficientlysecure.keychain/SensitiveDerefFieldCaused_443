@@ -1,1 +1,0 @@
-{"methodName":"void emitRawLines(java.lang.StringBuilder,com.github.rjeschke.txtmark.Line)","line":15,"t":"ReceiverNonNull","matcher":"isEmpty","className":"com.github.rjeschke.txtmark.Emitter"}

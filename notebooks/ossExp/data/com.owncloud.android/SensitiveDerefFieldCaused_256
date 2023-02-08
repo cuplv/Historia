@@ -1,1 +1,0 @@
-{"methodName":"void updateDirectoryList()","line":456,"t":"ReceiverNonNull","matcher":"void <init>(android.content.Context,com.owncloud.android.datamodel.FileDataStorageManager,android.accounts.Account)","className":"com.owncloud.android.ui.activity.ReceiveExternalFilesActivity"}

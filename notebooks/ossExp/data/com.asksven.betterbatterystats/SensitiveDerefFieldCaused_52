@@ -1,1 +1,0 @@
-{"methodName":"com.stericson.RootShell.execution.Shell startCustomShell(java.lang.String,int)","line":916,"t":"ReceiverNonNull","matcher":"void <init>(java.lang.String,com.stericson.RootShell.execution.Shell$ShellType,com.stericson.RootShell.execution.Shell$ShellContext,int)","className":"com.stericson.RootShell.execution.Shell"}

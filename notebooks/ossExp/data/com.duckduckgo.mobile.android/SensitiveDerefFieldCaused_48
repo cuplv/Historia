@@ -1,1 +1,0 @@
-{"methodName":"void pageChanged(java.lang.String,java.lang.String)","line":1176,"t":"ReceiverNonNull","matcher":"java.lang.String getUrl()","className":"com.duckduckgo.app.browser.BrowserTabViewModel"}

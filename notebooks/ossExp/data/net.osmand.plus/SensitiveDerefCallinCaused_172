@@ -1,1 +1,0 @@
-{"methodName":"void onStart()","line":84,"t":"ReceiverNonNull","matcher":"android.content.res.Resources getResources()","className":"net.osmand.plus.wikivoyage.WikivoyageShowPicturesDialogFragment"}

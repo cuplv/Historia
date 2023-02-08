@@ -1,1 +1,0 @@
-{"methodName":"void a(java.util.Collection)","line":3,"t":"ReceiverNonNull","matcher":"boolean addAll(java.util.Collection)","className":"de.blau.android.osm.Result"}

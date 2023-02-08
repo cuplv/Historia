@@ -1,1 +1,0 @@
-{"methodName":"void close(boolean)","line":11,"t":"ReceiverNonNull","matcher":"void close()","className":"com.ichi2.libanki.Collection"}

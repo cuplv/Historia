@@ -1,1 +1,0 @@
-{"methodName":"void <init>(android.content.Context)","line":56,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"com.asksven.betterbatterystats.adapters.ChangeLogAdapter"}

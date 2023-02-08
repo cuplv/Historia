@@ -1,1 +1,0 @@
-{"methodName":"void measure(int,int)","line":3,"t":"ReceiverNonNull","matcher":"int intValue()","className":"com.beloo.widget.chipslayoutmanager.layouter.MeasureSupporter"}

@@ -1,1 +1,0 @@
-{"methodName":"void <init>(net.gaast.giggity.Giggity,java.lang.String,net.gaast.giggity.Fetcher$Source,java.lang.String)","line":113,"t":"ReceiverNonNull","matcher":"java.io.InputStream getInputStream()","className":"net.gaast.giggity.Fetcher"}

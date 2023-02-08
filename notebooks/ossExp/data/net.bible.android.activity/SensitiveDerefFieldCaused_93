@@ -1,1 +1,0 @@
-{"methodName":"org.crosswire.jsword.passage.VerseRange next()","line":440,"t":"ReceiverNonNull","matcher":"org.crosswire.jsword.passage.Verse getEnd()","className":"org.crosswire.jsword.passage.RangedPassage$VerseRangeIterator"}

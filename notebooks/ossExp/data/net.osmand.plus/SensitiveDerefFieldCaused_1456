@@ -1,1 +1,0 @@
-{"methodName":"void endThreadOperation(int,java.lang.Exception)","line":106,"t":"ReceiverNonNull","matcher":"void dismiss()","className":"net.osmand.plus.activities.ContributionVersionActivity"}

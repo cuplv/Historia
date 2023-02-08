@@ -1,1 +1,0 @@
-{"methodName":"void w(androidx.fragment.app.e,java.util.Collection,boolean)","line":9,"t":"ReceiverNonNull","matcher":"boolean j(de.blau.android.osm.Way,boolean)","className":"de.blau.android.Logic"}

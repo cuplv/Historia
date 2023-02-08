@@ -1,1 +1,0 @@
-{"methodName":"void clear(net.osmand.data.QuadTree$Node)","line":45,"t":"ReceiverNonNull","matcher":"void clear()","className":"net.osmand.data.QuadTree"}

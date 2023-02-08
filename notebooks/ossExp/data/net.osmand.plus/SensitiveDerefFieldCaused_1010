@@ -1,1 +1,0 @@
-{"methodName":"void trimEmptyGroups()","line":167,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"net.osmand.plus.download.DownloadResourceGroup"}

@@ -1,1 +1,0 @@
-{"methodName":"net.osmand.binary.BinaryMapDataObject readMapDataObject(net.osmand.binary.BinaryMapIndexReader$MapTree,net.osmand.binary.BinaryMapIndexReader$SearchRequest,net.osmand.binary.BinaryMapIndexReader$MapIndex)","line":1238,"t":"ReceiverNonNull","matcher":"int readRawVarint32()","className":"net.osmand.binary.BinaryMapIndexReader"}

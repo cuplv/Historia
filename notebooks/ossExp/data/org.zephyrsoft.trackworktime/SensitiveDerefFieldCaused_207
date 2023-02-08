@@ -1,1 +1,0 @@
-{"methodName":"void onSaveInstanceState(android.os.Bundle)","line":77,"t":"ReceiverNonNull","matcher":"boolean hasResults()","className":"org.zephyrsoft.trackworktime.options.TimeZonePreferenceDialogFragment"}

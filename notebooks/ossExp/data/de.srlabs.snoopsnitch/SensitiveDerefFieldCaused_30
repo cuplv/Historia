@@ -1,1 +1,0 @@
-{"methodName":"org.json.JSONObject getAnalysisResult(android.content.Context)","line":182,"t":"ReceiverNonNull","matcher":"void <init>(java.lang.String)","className":"de.srlabs.patchanalysis_module.helpers.SharedPrefsHelper"}

@@ -1,1 +1,0 @@
-{"methodName":"boolean isValidTarget(android.view.View)","line":839,"t":"ReceiverNonNull","matcher":"java.lang.Object get(int)","className":"com.transitionseverywhere.Transition"}

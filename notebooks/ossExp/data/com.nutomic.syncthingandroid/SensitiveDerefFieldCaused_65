@@ -1,1 +1,0 @@
-{"methodName":"void setTorch(boolean)","line":410,"t":"ReceiverNonNull","matcher":"void setTorch(boolean)","className":"com.journeyapps.barcodescanner.CameraPreview"}

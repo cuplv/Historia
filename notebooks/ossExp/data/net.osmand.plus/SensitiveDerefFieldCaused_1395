@@ -1,1 +1,0 @@
-{"methodName":"void stopCollectFilesTask()","line":336,"t":"ReceiverNonNull","matcher":"boolean cancel(boolean)","className":"net.osmand.plus.settings.datastorage.SharedStorageWarningFragment"}

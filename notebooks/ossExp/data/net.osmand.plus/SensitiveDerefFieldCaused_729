@@ -1,1 +1,0 @@
-{"methodName":"org.json.JSONObject toJSON()","line":328,"t":"ReceiverNonNull","matcher":"java.util.Set entrySet()","className":"net.osmand.data.MapObject"}

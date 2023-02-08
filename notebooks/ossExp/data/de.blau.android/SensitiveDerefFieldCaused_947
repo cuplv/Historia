@@ -1,1 +1,0 @@
-{"methodName":"boolean o1(de.blau.android.propertyeditor.b,android.view.MotionEvent)","line":4,"t":"ReceiverNonNull","matcher":"android.graphics.drawable.Drawable[] getCompoundDrawables()","className":"de.blau.android.propertyeditor.b"}

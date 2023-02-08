@@ -1,1 +1,0 @@
-{"methodName":"boolean dispatchTouchEvent(android.view.MotionEvent)","line":1119,"t":"ReceiverNonNull","matcher":"boolean isTouched(android.view.MotionEvent)","className":"org.osmdroid.views.MapView"}

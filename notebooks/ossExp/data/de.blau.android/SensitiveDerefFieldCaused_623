@@ -1,1 +1,0 @@
-{"methodName":"void performValidation()","line":12,"t":"ReceiverNonNull","matcher":"java.lang.CharSequence c(java.lang.CharSequence)","className":"de.blau.android.views.CustomAutoCompleteTextView"}

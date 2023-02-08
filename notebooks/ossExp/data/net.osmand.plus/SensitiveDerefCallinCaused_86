@@ -1,1 +1,0 @@
-{"methodName":"void hideKeyboard()","line":267,"t":"ReceiverNonNull","matcher":"java.lang.Object getSystemService(java.lang.String)","className":"net.osmand.plus.plugins.mapillary.MapillaryFiltersFragment"}

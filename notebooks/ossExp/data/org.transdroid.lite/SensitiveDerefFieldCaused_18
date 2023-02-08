@@ -1,1 +1,0 @@
-{"methodName":"void onDraw(android.graphics.Canvas)","line":4,"t":"ReceiverNonNull","matcher":"int ordinal()","className":"org.transdroid.core.gui.lists.TorrentFilePriorityLayout"}

@@ -1,1 +1,0 @@
-{"methodName":"void onClick(android.view.View)","line":79,"t":"ReceiverNonNull","matcher":"androidx.fragment.app.FragmentManager getSupportFragmentManager()","className":"net.osmand.plus.myplaces.ui.MoveGpxFileBottomSheet$1"}

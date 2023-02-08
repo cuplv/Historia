@@ -1,1 +1,0 @@
-{"methodName":"android.app.Dialog onCreateDialog(android.os.Bundle)","line":100,"t":"ReceiverNonNull","matcher":"java.lang.String getString(int,java.lang.Object[])","className":"com.seafile.seadroid2.ui.dialog.SslConfirmDialog"}

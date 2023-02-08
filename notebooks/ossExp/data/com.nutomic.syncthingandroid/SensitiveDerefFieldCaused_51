@@ -1,1 +1,0 @@
-{"methodName":"void updateLog()","line":103,"t":"ReceiverNonNull","matcher":"boolean cancel(boolean)","className":"com.nutomic.syncthingandroid.activities.LogActivity"}

@@ -1,1 +1,0 @@
-{"methodName":"void setSelection(int)","line":16,"t":"ReceiverNonNull","matcher":"boolean isInstance(java.lang.Object)","className":"org.transdroid.core.gui.navigation.SelectionModificationSpinner"}

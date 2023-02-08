@@ -1,1 +1,0 @@
-{"methodName":"void onEmulatedKeyClicked(android.view.View)","line":293,"t":"ReceiverNonNull","matcher":"org.connectbot.TerminalView getCurrentTerminalView()","className":"org.connectbot.ConsoleActivity"}

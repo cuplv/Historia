@@ -1,1 +1,0 @@
-{"methodName":"void reset()","line":114,"t":"ReceiverNonNull","matcher":"void setProgress(int)","className":"com.owncloud.android.ui.controller.TransferProgressController"}

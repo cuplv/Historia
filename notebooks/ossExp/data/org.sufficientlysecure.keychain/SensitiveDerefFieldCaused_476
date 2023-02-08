@@ -1,1 +1,0 @@
-{"methodName":"void removeBlockQuotePrefix()","line":3,"t":"ReceiverNonNull","matcher":"char charAt(int)","className":"com.github.rjeschke.txtmark.Block"}

@@ -1,1 +1,0 @@
-{"methodName":"double getSplitInterval()","line":2080,"t":"ReceiverNonNull","matcher":"java.lang.Object get(java.lang.Object)","className":"net.osmand.GPXUtilities$GPXFile"}

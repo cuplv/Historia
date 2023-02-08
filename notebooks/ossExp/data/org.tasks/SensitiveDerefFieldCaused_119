@@ -1,1 +1,0 @@
-{"methodName":"void addPseudo(com.caverock.androidsvg.CSSParser$PseudoClass)","line":185,"t":"ReceiverNonNull","matcher":"boolean add(java.lang.Object)","className":"com.caverock.androidsvg.CSSParser$SimpleSelector"}

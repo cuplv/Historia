@@ -1,1 +1,0 @@
-{"methodName":"void closeList()","line":305,"t":"ReceiverNonNull","matcher":"java.lang.StringBuffer append(java.lang.String)","className":"sheetrock.panda.changelog.ChangeLog"}

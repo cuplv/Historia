@@ -1,1 +1,0 @@
-{"methodName":"java.lang.String getDescription(boolean)","line":381,"t":"ReceiverNonNull","matcher":"char charAt(int)","className":"net.osmand.plus.measurementtool.SelectedPointBottomSheetDialogFragment"}

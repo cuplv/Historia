@@ -1,1 +1,0 @@
-{"methodName":"void onResume()","line":220,"t":"ReceiverNonNull","matcher":"android.view.Window getWindow()","className":"net.osmand.plus.settings.fragments.BaseSettingsFragment"}

@@ -1,1 +1,0 @@
-{"methodName":"java.util.List setPoints(net.osmand.router.RoutePlannerFrontEnd$GpxRouteApproximation,java.util.List,net.osmand.plus.settings.backend.ApplicationMode,boolean)","line":930,"t":"ReceiverNonNull","matcher":"java.lang.Object get(int)","className":"net.osmand.plus.measurementtool.MeasurementEditingContext"}

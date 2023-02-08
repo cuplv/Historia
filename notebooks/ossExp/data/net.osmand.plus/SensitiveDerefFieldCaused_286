@@ -1,1 +1,0 @@
-{"methodName":"int getColor(int)","line":176,"t":"ReceiverNonNull","matcher":"java.lang.Object get(java.lang.Object)","className":"net.osmand.GPXUtilities$GPXExtensions"}

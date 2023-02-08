@@ -1,1 +1,0 @@
-{"methodName":"void updateShouldRunDecision()","line":162,"t":"ReceiverNonNull","matcher":"void onRunConditionChanged(com.nutomic.syncthingandroid.model.RunConditionCheckResult)","className":"com.nutomic.syncthingandroid.service.RunConditionMonitor"}

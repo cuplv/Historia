@@ -1,1 +1,0 @@
-{"methodName":"void startLocationTrackerService(double,double,double,java.lang.Boolean)","line":516,"t":"ReceiverNonNull","matcher":"android.content.ComponentName startForegroundService(android.content.Intent)","className":"org.zephyrsoft.trackworktime.Basics"}

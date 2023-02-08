@@ -1,1 +1,0 @@
-{"methodName":"void clear()","line":655,"t":"ReceiverNonNull","matcher":"void reset()","className":"org.osmdroid.views.overlay.LinearRing"}

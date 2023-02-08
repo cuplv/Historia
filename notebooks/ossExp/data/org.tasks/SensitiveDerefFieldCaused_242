@@ -1,1 +1,0 @@
-{"methodName":"boolean contains(android.view.MotionEvent)","line":568,"t":"ReceiverNonNull","matcher":"boolean isEmpty()","className":"org.osmdroid.views.overlay.PolyOverlayWithIW"}

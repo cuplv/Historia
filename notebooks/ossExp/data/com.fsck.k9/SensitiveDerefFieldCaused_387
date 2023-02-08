@@ -1,1 +1,0 @@
-{"methodName":"com.fsck.k9.search.ConditionsTreeNode cloneTree()","line":134,"t":"ReceiverNonNull","matcher":"void <init>(com.fsck.k9.search.SearchSpecification$SearchCondition)","className":"com.fsck.k9.search.ConditionsTreeNode"}

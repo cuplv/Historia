@@ -1,1 +1,0 @@
-{"methodName":"void reallyDie(java.lang.Object)","line":170,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.items.Heap drop(com.shatteredpixel.shatteredpixeldungeon.items.Item,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero"}

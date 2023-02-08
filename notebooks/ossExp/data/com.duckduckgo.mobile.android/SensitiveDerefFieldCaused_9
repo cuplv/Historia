@@ -1,1 +1,0 @@
-{"methodName":"void injectAutofillCredentials(java.lang.String,com.duckduckgo.autofill.domain.app.LoginCredentials)","line":1744,"t":"ReceiverNonNull","matcher":"java.lang.String getUrl()","className":"com.duckduckgo.app.browser.BrowserTabFragment"}

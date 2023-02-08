@@ -1,1 +1,0 @@
-{"methodName":"void editNote(net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin$Recording)","line":523,"t":"ReceiverNonNull","matcher":"android.view.LayoutInflater getLayoutInflater()","className":"net.osmand.plus.plugins.audionotes.NotesFragment"}

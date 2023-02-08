@@ -1,1 +1,0 @@
-{"methodName":"java.util.List parseOsmAndGPXRoute(java.util.List,net.osmand.GPXUtilities$GPXFile,java.util.List,boolean,boolean,float,int)","line":995,"t":"ReceiverNonNull","matcher":"java.lang.String toUpperCase()","className":"net.osmand.plus.routing.RouteProvider"}

@@ -1,1 +1,0 @@
-{"methodName":"void writeWpt(org.xmlpull.v1.XmlSerializer,net.osmand.GPXUtilities$WptPt,net.osmand.IProgress)","line":2514,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"net.osmand.GPXUtilities"}

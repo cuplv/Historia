@@ -1,1 +1,0 @@
-{"methodName":"void onValidImage(android.graphics.Bitmap,java.lang.String)","line":4,"t":"ReceiverNonNull","matcher":"void setVisibility(int)","className":"com.ichi2.anki.multimediacard.fields.BasicImageFieldController"}

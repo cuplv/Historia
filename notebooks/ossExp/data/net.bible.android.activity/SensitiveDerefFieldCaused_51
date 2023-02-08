@@ -1,1 +1,0 @@
-{"methodName":"void setActiveWindow(net.bible.android.control.page.window.Window)","line":142,"t":"ReceiverNonNull","matcher":"net.bible.android.view.activity.page.BibleView getBibleView()","className":"net.bible.android.control.page.window.WindowRepository"}

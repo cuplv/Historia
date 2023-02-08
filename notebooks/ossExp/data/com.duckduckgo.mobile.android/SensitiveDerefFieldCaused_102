@@ -1,1 +1,0 @@
-{"methodName":"void processCommand(com.duckduckgo.app.browser.BrowserTabViewModel$Command)","line":923,"t":"ReceiverNonNull","matcher":"void goForward()","className":"com.duckduckgo.app.browser.BrowserTabFragment"}

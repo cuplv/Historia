@@ -1,1 +1,0 @@
-{"methodName":"void complete(dev.ukanth.ufirewall.service.RootCommand,int)","line":84,"t":"ReceiverNonNull","matcher":"void cbFunc(dev.ukanth.ufirewall.service.RootCommand)","className":"dev.ukanth.ufirewall.service.RootShellService"}

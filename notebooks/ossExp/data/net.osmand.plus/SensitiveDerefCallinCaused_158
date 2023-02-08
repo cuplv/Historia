@@ -1,1 +1,0 @@
-{"methodName":"android.view.View onCreateView(android.view.LayoutInflater,android.view.ViewGroup,android.os.Bundle)","line":81,"t":"ReceiverNonNull","matcher":"android.content.res.Resources getResources()","className":"net.osmand.plus.dialogs.HelpArticleDialogFragment"}

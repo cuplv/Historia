@@ -1,1 +1,0 @@
-{"methodName":"void onAccountChosen(com.fsck.k9.Account,com.fsck.k9.Identity)","line":920,"t":"ReceiverNonNull","matcher":"long longValue()","className":"com.fsck.k9.activity.MessageCompose"}

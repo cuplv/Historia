@@ -1,1 +1,0 @@
-{"methodName":"void loadAllObjects(java.util.List,net.osmand.router.RoutingContext,gnu.trove.map.hash.TLongObjectHashMap)","line":757,"t":"ReceiverNonNull","matcher":"road","className":"net.osmand.router.RoutingContext$RoutingSubregionTile"}

@@ -1,1 +1,0 @@
-{"methodName":"void onPostExecute(java.lang.Void)","line":4,"t":"ReceiverNonNull","matcher":"java.lang.Integer getId()","className":"org.liberty.android.fantastischmemo.ui.CardEditor$SaveCardTask"}

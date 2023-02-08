@@ -1,1 +1,0 @@
-{"methodName":"boolean onPrepareOptionsMenu(android.view.Menu)","line":967,"t":"ReceiverNonNull","matcher":"org.connectbot.TerminalView getCurrentTerminalView()","className":"org.connectbot.ConsoleActivity"}

@@ -1,1 +1,0 @@
-{"methodName":"void transfromHeadline()","line":11,"t":"ReceiverNonNull","matcher":"char charAt(int)","className":"com.github.rjeschke.txtmark.Block"}

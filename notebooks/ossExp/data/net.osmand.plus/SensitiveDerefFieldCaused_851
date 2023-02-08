@@ -1,1 +1,0 @@
-{"methodName":"void lookupAddressForPointToNavigate()","line":249,"t":"ReceiverNonNull","matcher":"net.osmand.data.LatLon getLatLon()","className":"net.osmand.plus.helpers.TargetPointsHelper"}

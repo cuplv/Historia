@@ -1,1 +1,0 @@
-{"methodName":"void onZap(com.shatteredpixel.shatteredpixeldungeon.mechanics.Ballistica)","line":256,"t":"ReceiverNonNull","matcher":"float trueDistance(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfLivingEarth"}

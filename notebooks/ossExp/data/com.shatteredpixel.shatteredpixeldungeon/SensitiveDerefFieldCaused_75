@@ -1,1 +1,0 @@
-{"methodName":"void activate(int)","line":5,"t":"ReceiverNonNull","matcher":"com.watabou.utils.Point cellToPoint(int)","className":"com.shatteredpixel.shatteredpixeldungeon.items.stones.StoneOfClairvoyance"}

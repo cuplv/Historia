@@ -1,1 +1,0 @@
-{"methodName":"boolean doAttack(com.shatteredpixel.shatteredpixeldungeon.actors.Char)","line":9,"t":"ReceiverNonNull","matcher":"boolean adjacent(int,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Elemental"}

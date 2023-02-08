@@ -1,1 +1,0 @@
-{"methodName":"void indexUids(java.util.List)","line":245,"t":"ReceiverNonNull","matcher":"java.lang.String readLine()","className":"com.fsck.k9.mail.store.pop3.Pop3Folder"}

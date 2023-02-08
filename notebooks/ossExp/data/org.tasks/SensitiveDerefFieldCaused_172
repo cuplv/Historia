@@ -1,1 +1,0 @@
-{"methodName":"void refreshDb()","line":763,"t":"ReceiverNonNull","matcher":"void close()","className":"org.osmdroid.tileprovider.modules.SqlTileWriter"}

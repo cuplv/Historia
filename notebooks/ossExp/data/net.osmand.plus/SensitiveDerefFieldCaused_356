@@ -1,1 +1,0 @@
-{"methodName":"net.osmand.plus.routing.CurrentStreetName getCurrentName(net.osmand.plus.routing.RoutingHelper,net.osmand.plus.routing.RouteCalculationResult$NextDirectionInfo)","line":45,"t":"ReceiverNonNull","matcher":"net.osmand.router.TurnType getTurnType()","className":"net.osmand.plus.routing.CurrentStreetName"}

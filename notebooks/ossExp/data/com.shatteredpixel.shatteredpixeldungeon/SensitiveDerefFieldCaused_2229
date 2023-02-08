@@ -1,1 +1,0 @@
-{"methodName":"void scanOctant(int,boolean[],boolean[],int,int,int,double,double,int,int,boolean)","line":8,"t":"ReceiverNonNull","matcher":"int width()","className":"com.shatteredpixel.shatteredpixeldungeon.mechanics.ShadowCaster"}

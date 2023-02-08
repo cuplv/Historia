@@ -1,1 +1,0 @@
-{"methodName":"void terminated(java.lang.String)","line":240,"t":"ReceiverNonNull","matcher":"boolean sendMessage(android.os.Message)","className":"com.stericson.rootshell.execution.Command"}

@@ -1,1 +1,0 @@
-{"methodName":"void computeScroll()","line":995,"t":"ReceiverNonNull","matcher":"int getCurrY()","className":"org.osmdroid.views.MapView"}

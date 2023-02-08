@@ -1,1 +1,0 @@
-{"methodName":"boolean isCA()","line":-1,"t":"ReceiverNonNull","matcher":"boolean isTrue()","className":"org.bouncycastle.asn1.x509.BasicConstraints"}

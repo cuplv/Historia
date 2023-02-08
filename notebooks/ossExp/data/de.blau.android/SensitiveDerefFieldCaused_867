@@ -1,1 +1,0 @@
-{"methodName":"boolean onOptionsItemSelected(android.view.MenuItem)","line":20,"t":"ReceiverNonNull","matcher":"void invalidate()","className":"de.blau.android.filter.PresetFilterActivity"}

@@ -1,1 +1,0 @@
-{"methodName":"void keep()","line":246,"t":"ReceiverNonNull","matcher":"boolean setLastModified(long)","className":"net.gaast.giggity.Fetcher"}

@@ -1,1 +1,0 @@
-{"methodName":"boolean hasNext()","line":459,"t":"ReceiverNonNull","matcher":"boolean containsMapData(int,int,int,int,int)","className":"net.osmand.search.core.SearchPhrase$2"}

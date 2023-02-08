@@ -1,1 +1,0 @@
-{"methodName":"java.lang.String getTransactionMethod()","line":147,"t":"ReceiverNonNull","matcher":"java.lang.String getTransactionMethod()","className":"org.zoolu.sip.transaction.Transaction"}

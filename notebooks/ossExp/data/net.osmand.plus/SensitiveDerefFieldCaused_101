@@ -1,1 +1,0 @@
-{"methodName":"void onCancelled()","line":193,"t":"ReceiverNonNull","matcher":"void dismiss()","className":"net.osmand.plus.wikipedia.WikiArticleHelper$WikiArticleSearchTask"}

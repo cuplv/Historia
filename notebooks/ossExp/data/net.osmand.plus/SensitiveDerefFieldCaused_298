@@ -1,1 +1,0 @@
-{"methodName":"void setAdditionalInfo(java.lang.String,java.lang.String)","line":186,"t":"ReceiverNonNull","matcher":"java.lang.Object put(java.lang.Object,java.lang.Object)","className":"net.osmand.data.Amenity"}

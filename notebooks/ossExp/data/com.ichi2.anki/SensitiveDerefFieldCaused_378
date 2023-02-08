@@ -1,1 +1,0 @@
-{"methodName":"void startRecording(java.lang.String)","line":5,"t":"ReceiverNonNull","matcher":"void setAudioEncodingBitRate(int)","className":"com.ichi2.anki.multimediacard.AudioRecorder"}

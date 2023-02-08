@@ -1,1 +1,0 @@
-{"methodName":"void deleteImageFile()","line":188,"t":"ReceiverNonNull","matcher":"boolean delete()","className":"com.owncloud.android.ui.helpers.FilesUploadHelper"}

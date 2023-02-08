@@ -1,1 +1,0 @@
-{"methodName":"void removeAutoUpdateInfo(com.seafile.seadroid2.monitor.AutoUpdateInfo)","line":128,"t":"ReceiverNonNull","matcher":"int delete(java.lang.String,java.lang.String,java.lang.String[])","className":"com.seafile.seadroid2.monitor.MonitorDBHelper"}

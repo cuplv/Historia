@@ -1,1 +1,0 @@
-{"methodName":"void updateFoldedState(boolean,boolean)","line":238,"t":"ReceiverNonNull","matcher":"void startAnimation(android.view.animation.Animation)","className":"com.fsck.k9.view.FoldableLinearLayout"}

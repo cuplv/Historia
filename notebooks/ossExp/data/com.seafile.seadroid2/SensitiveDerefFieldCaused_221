@@ -1,1 +1,0 @@
-{"methodName":"java.util.List getAvatarList()","line":96,"t":"ReceiverNonNull","matcher":"android.database.Cursor query(java.lang.String,java.lang.String[],java.lang.String,java.lang.String[],java.lang.String,java.lang.String,java.lang.String)","className":"com.seafile.seadroid2.avatar.AvatarDBHelper"}

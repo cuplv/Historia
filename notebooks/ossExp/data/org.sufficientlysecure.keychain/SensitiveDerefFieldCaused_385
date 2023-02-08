@@ -1,1 +1,0 @@
-{"methodName":"void writeToParcel(android.os.Parcel,int)","line":14,"t":"ReceiverNonNull","matcher":"long getTime()","className":"org.openintents.openpgp.OpenPgpSignatureResult"}

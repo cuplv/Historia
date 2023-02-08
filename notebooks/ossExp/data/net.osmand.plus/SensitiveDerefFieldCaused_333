@@ -1,1 +1,0 @@
-{"methodName":"net.osmand.GPXUtilities$GPXFile createGpxFile(java.util.List,net.osmand.router.network.NetworkRouteSelector$RouteKey)","line":653,"t":"ReceiverNonNull","matcher":"float[] calculateHeightArray()","className":"net.osmand.router.network.NetworkRouteSelector"}

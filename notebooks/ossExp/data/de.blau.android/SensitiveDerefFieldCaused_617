@@ -1,1 +1,0 @@
-{"methodName":"void performFiltering(java.lang.CharSequence,int)","line":5,"t":"ReceiverNonNull","matcher":"int a(java.lang.CharSequence,int)","className":"de.blau.android.views.CustomAutoCompleteTextView"}

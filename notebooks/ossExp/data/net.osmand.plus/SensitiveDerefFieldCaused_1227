@@ -1,1 +1,0 @@
-{"methodName":"void <init>(net.osmand.plus.activities.MapActivity,net.osmand.data.PointDescription,net.osmand.data.FavouritePoint)","line":54,"t":"ReceiverNonNull","matcher":"history","className":"net.osmand.plus.mapcontextmenu.controllers.FavouritePointMenuController"}

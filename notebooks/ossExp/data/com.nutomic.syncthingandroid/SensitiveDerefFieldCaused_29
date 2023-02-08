@@ -1,1 +1,0 @@
-{"methodName":"boolean isRunning()","line":2421,"t":"ReceiverNonNull","matcher":"int exitValue()","className":"eu.chainfire.libsuperuser.Shell$Interactive"}

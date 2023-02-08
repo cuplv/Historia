@@ -1,1 +1,0 @@
-{"methodName":"com.asksven.betterbatterystats.data.ReferenceDto toReferenceDto()","line":309,"t":"ReceiverNonNull","matcher":"java.lang.Object get(int)","className":"com.asksven.betterbatterystats.data.Reference"}

@@ -1,1 +1,0 @@
-{"methodName":"void onFilesCopyProgress(int)","line":343,"t":"ReceiverNonNull","matcher":"boolean isShowing()","className":"net.osmand.plus.settings.datastorage.StorageMigrationFragment"}

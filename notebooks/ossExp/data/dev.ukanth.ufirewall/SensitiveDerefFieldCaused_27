@@ -1,1 +1,0 @@
-{"methodName":"void selectRevert()","line":1810,"t":"ReceiverNonNull","matcher":"android.widget.ListAdapter getAdapter()","className":"dev.ukanth.ufirewall.MainActivity"}

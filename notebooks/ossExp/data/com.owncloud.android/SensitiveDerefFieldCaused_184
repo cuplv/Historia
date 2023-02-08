@@ -1,1 +1,0 @@
-{"methodName":"com.owncloud.android.lib.common.network.CertificateCombinedException getCertificateCombinedException(java.lang.Exception)","line":386,"t":"ReceiverNonNull","matcher":"java.lang.Throwable getCause()","className":"com.owncloud.android.lib.common.operations.RemoteOperationResult"}

@@ -1,1 +1,0 @@
-{"methodName":"android.app.Dialog onCreateDialog(int)","line":358,"t":"ReceiverNonNull","matcher":"void setProgress(int)","className":"org.navitproject.navit.NavitAddressSearchActivity"}

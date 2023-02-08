@@ -1,1 +1,0 @@
-{"methodName":"void toString(java.lang.StringBuffer)","line":8,"t":"ReceiverNonNull","matcher":"java.util.Iterator iterator()","className":"com.ichi2.libanki.sched.AbstractDeckTreeNode"}

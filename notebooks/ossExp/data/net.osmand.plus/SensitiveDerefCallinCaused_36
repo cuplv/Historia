@@ -1,1 +1,0 @@
-{"methodName":"void closeWizard()","line":596,"t":"ReceiverNonNull","matcher":"androidx.fragment.app.FragmentManager getSupportFragmentManager()","className":"net.osmand.plus.firstusage.FirstUsageWizardFragment"}

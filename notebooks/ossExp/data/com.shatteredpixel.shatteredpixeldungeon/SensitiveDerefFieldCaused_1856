@@ -1,1 +1,0 @@
-{"methodName":"void clearEntities(com.watabou.utils.Rect)","line":82,"t":"ReceiverNonNull","matcher":"java.util.HashSet buffs(java.lang.Class)","className":"com.shatteredpixel.shatteredpixeldungeon.levels.PrisonBossLevel"}

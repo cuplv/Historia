@@ -1,1 +1,0 @@
-{"methodName":"org.transdroid.daemon.task.DaemonTaskResult executeTask(org.transdroid.core.gui.log.Log_,org.transdroid.daemon.task.DaemonTask)","line":15,"t":"ReceiverNonNull","matcher":"java.lang.String toString()","className":"org.transdroid.daemon.adapters.rTorrent.RTorrentAdapter"}

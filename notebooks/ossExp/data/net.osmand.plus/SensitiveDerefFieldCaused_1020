@@ -1,1 +1,0 @@
-{"methodName":"net.osmand.router.BinaryRoutePlanner$RouteSegment initRouteSegment(boolean)","line":1022,"t":"ReceiverNonNull","matcher":"void <init>(net.osmand.binary.RouteDataObject,int,int)","className":"net.osmand.router.BinaryRoutePlanner$RouteSegment"}

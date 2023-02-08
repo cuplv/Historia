@@ -1,1 +1,0 @@
-{"methodName":"void assignBoss(com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob)","line":33,"t":"ReceiverNonNull","matcher":"buffs","className":"com.shatteredpixel.shatteredpixeldungeon.ui.BossHealthBar"}

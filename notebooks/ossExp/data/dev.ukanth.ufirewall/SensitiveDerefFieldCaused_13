@@ -1,1 +1,0 @@
-{"methodName":"void copyColumns(int,int)","line":2035,"t":"ReceiverNonNull","matcher":"android.widget.ListAdapter getAdapter()","className":"dev.ukanth.ufirewall.MainActivity"}

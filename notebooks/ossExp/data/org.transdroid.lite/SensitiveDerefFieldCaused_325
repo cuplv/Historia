@@ -1,1 +1,0 @@
-{"methodName":"void setMetaInfo(java.lang.String,com.j256.ormlite.field.FieldType)","line":2,"t":"ReceiverNonNull","matcher":"boolean equals(java.lang.Object)","className":"com.j256.ormlite.stmt.SelectArg"}

@@ -1,1 +1,0 @@
-{"methodName":"void startCamera(android.hardware.Camera$Size,android.view.SurfaceHolder)","line":1104,"t":"ReceiverNonNull","matcher":"void setPreviewDisplay(android.view.SurfaceHolder)","className":"net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin"}

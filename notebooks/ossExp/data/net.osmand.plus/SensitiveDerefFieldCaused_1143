@@ -1,1 +1,0 @@
-{"methodName":"net.osmand.router.RoutePlannerFrontEnd$GpxRouteApproximation prepareApproximationResult(net.osmand.router.RoutePlannerFrontEnd$GpxRouteApproximation,java.util.List,net.osmand.router.network.NetworkRouteGpxApproximator)","line":201,"t":"ReceiverNonNull","matcher":"boolean addAll(java.util.Collection)","className":"net.osmand.plus.onlinerouting.engine.GpxEngine"}

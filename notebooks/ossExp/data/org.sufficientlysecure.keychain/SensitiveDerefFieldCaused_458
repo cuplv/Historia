@@ -1,1 +1,0 @@
-{"methodName":"void onInputAdminPin(java.lang.String,java.lang.String)","line":1,"t":"ReceiverNonNull","matcher":"void operationChangePinSecurityToken(java.lang.String,java.lang.String)","className":"org.sufficientlysecure.keychain.ui.token.ManageSecurityTokenPresenter"}

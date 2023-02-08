@@ -1,1 +1,0 @@
-{"methodName":"boolean isGpxReading(java.io.File)","line":217,"t":"ReceiverNonNull","matcher":"java.io.File getGpxFile()","className":"net.osmand.plus.track.helpers.GpxDbHelper"}

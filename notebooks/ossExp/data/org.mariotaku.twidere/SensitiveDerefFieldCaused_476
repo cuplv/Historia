@@ -1,1 +1,0 @@
-{"methodName":"void draw(android.graphics.Canvas)","line":102,"t":"ReceiverNonNull","matcher":"void eraseColor(int)","className":"com.commonsware.cwac.layouts.MirroringFrameLayout"}

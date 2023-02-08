@@ -1,1 +1,0 @@
-{"methodName":"void launchPrint(java.lang.String)","line":3148,"t":"ReceiverNonNull","matcher":"android.print.PrintDocumentAdapter createPrintDocumentAdapter(java.lang.String)","className":"com.duckduckgo.app.browser.BrowserTabFragment"}

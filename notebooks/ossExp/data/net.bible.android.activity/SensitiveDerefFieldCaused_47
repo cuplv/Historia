@@ -1,1 +1,0 @@
-{"methodName":"void done()","line":276,"t":"ReceiverNonNull","matcher":"void cancel()","className":"org.crosswire.common.progress.Job"}

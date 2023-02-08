@@ -1,1 +1,0 @@
-{"methodName":"boolean lambda$onCreate$9$org-zephyrsoft-trackworktime-WorkTimeTrackerActivity(android.view.View)","line":243,"t":"ReceiverNonNull","matcher":"boolean isTracking()","className":"org.zephyrsoft.trackworktime.WorkTimeTrackerActivity"}

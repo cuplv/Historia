@@ -1,1 +1,0 @@
-{"methodName":"void initEncryptKey(boolean)","line":154,"t":"ReceiverNonNull","matcher":"java.security.Key getKey(java.lang.String,char[])","className":"com.keepassdroid.biometric.BiometricHelper"}

@@ -1,1 +1,0 @@
-{"methodName":"void onClickSetupToken()","line":1,"t":"ReceiverNonNull","matcher":"void startCreateKeyForToken(org.sufficientlysecure.keychain.securitytoken.SecurityTokenInfo)","className":"org.sufficientlysecure.keychain.ui.token.ManageSecurityTokenPresenter"}

@@ -1,1 +1,0 @@
-{"methodName":"boolean hasAvatar(com.seafile.seadroid2.account.Account)","line":75,"t":"ReceiverNonNull","matcher":"android.database.Cursor query(java.lang.String,java.lang.String[],java.lang.String,java.lang.String[],java.lang.String,java.lang.String,java.lang.String)","className":"com.seafile.seadroid2.avatar.AvatarDBHelper"}

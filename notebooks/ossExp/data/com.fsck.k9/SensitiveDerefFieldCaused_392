@@ -1,1 +1,0 @@
-{"methodName":"boolean exists(java.lang.String)","line":192,"t":"ReceiverNonNull","matcher":"java.util.List executeSimpleCommand(java.lang.String)","className":"com.fsck.k9.mail.store.imap.RealImapFolder"}

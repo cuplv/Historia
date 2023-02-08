@@ -1,1 +1,0 @@
-{"methodName":"void writeToParcel(org.mariotaku.microblog.library.twitter.model.DirectMessage,android.os.Parcel,int)","line":14,"t":"ReceiverNonNull","matcher":"long getTime()","className":"org.mariotaku.microblog.library.twitter.model.DirectMessageParcelablePlease"}

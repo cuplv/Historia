@@ -1,1 +1,0 @@
-{"methodName":"org.json.JSONObject toJSON()","line":335,"t":"ReceiverNonNull","matcher":"double getLongitude()","className":"net.osmand.data.MapObject"}

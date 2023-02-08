@@ -1,1 +1,0 @@
-{"methodName":"java.util.List makeStatsRequest(org.transdroid.core.gui.log.Log_)","line":4,"t":"ReceiverNonNull","matcher":"org.apache.http.HttpResponse execute(org.apache.http.client.methods.HttpUriRequest)","className":"org.transdroid.daemon.adapters.kTorrent.KTorrentAdapter"}

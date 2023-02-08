@@ -1,1 +1,0 @@
-{"methodName":"org.xbill.DNS.Resolver getResolver()","line":224,"t":"ReceiverNonNull","matcher":"void setTCP(boolean)","className":"org.mariotaku.twidere.util.net.TwidereDns"}

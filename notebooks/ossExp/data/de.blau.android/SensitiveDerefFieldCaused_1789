@@ -1,1 +1,0 @@
-{"methodName":"void onCreate(android.os.Bundle)","line":21,"t":"ReceiverNonNull","matcher":"android.view.View u(android.content.Context,f7.m,de.blau.android.osm.OsmElement$ElementType,f7.o,java.lang.String)","className":"de.blau.android.filter.PresetFilterActivity"}

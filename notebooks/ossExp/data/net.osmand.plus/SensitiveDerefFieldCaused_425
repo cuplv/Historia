@@ -1,1 +1,0 @@
-{"methodName":"void addObjectToAdapter(java.lang.String,java.lang.Object)","line":432,"t":"ReceiverNonNull","matcher":"boolean startsWith(java.lang.String)","className":"net.osmand.plus.activities.search.SearchByNameAbstractActivity$UIUpdateHandler"}

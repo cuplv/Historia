@@ -1,1 +1,0 @@
-{"methodName":"boolean checkHTML()","line":10,"t":"ReceiverNonNull","matcher":"java.lang.String toLowerCase()","className":"com.github.rjeschke.txtmark.Line"}

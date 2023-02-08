@@ -1,1 +1,0 @@
-{"methodName":"int saveExecuteHttpMethod(com.owncloud.android.lib.common.http.methods.HttpBaseMethod)","line":132,"t":"ReceiverNonNull","matcher":"java.lang.String getHeaderAuth()","className":"com.owncloud.android.lib.common.OwnCloudClient"}

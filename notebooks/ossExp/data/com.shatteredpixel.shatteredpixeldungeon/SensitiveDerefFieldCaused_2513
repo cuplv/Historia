@@ -1,1 +1,0 @@
-{"methodName":"void upgrade(com.shatteredpixel.shatteredpixeldungeon.items.Item,com.shatteredpixel.shatteredpixeldungeon.items.Item)","line":78,"t":"ReceiverNonNull","matcher":"com.shatteredpixel.shatteredpixeldungeon.items.Heap drop(com.shatteredpixel.shatteredpixeldungeon.items.Item,int)","className":"com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.Blacksmith"}

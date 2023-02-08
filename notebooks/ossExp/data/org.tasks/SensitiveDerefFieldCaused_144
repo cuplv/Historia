@@ -1,1 +1,0 @@
-{"methodName":"void <init>()","line":77,"t":"ReceiverNonNull","matcher":"void setPriority(int)","className":"org.osmdroid.tileprovider.modules.TileWriter"}

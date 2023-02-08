@@ -1,1 +1,0 @@
-{"methodName":"net.osmand.binary.BinaryMapIndexReader initReaderFromFileIndex(net.osmand.binary.OsmandIndex$FileIndex,java.io.RandomAccessFile,java.io.File)","line":296,"t":"ReceiverNonNull","matcher":"void <init>()","className":"net.osmand.binary.CachedOsmandIndexes"}

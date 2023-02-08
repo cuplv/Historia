@@ -1,1 +1,0 @@
-{"methodName":"boolean indexSingleFile(java.io.File)","line":1618,"t":"ReceiverNonNull","matcher":"java.lang.String getName()","className":"net.osmand.plus.plugins.audionotes.AudioVideoNotesPlugin"}

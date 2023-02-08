@@ -1,1 +1,0 @@
-{"methodName":"void addQuotedParameter(java.lang.String,java.lang.String)","line":104,"t":"ReceiverNonNull","matcher":"int indexOf(int)","className":"org.zoolu.sip.header.AuthenticationHeader"}

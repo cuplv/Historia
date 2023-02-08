@@ -1,1 +1,0 @@
-{"methodName":"int getColumnIndex(java.lang.String)","line":359,"t":"ReceiverNonNull","matcher":"java.lang.Object get(java.lang.Object)","className":"net.sqlcipher.database.SQLiteCursor"}

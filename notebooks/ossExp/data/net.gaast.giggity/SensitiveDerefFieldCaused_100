@@ -1,1 +1,0 @@
-{"methodName":"j$.time.ZonedDateTime getFirstTimeZoned()","line":316,"t":"ReceiverNonNull","matcher":"j$.time.ZonedDateTime withZoneSameInstant(j$.time.ZoneId)","className":"net.gaast.giggity.Schedule"}

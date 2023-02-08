@@ -1,1 +1,0 @@
-{"methodName":"void svg(org.xml.sax.Attributes)","line":1195,"t":"ReceiverNonNull","matcher":"void setRootElement(com.caverock.androidsvg.SVG$Svg)","className":"com.caverock.androidsvg.SVGParser"}
