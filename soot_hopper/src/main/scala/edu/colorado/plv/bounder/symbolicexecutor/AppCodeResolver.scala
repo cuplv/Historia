@@ -28,8 +28,8 @@ trait AppCodeResolver {
   def getCallbacks: Set[MethodLoc]
 
 
-  def heuristicCbFlowsToDeref[M, C](messages: Set[OAbsMsg], filter: Option[String],
-                                             abs: AbstractInterpreter[M, C]): Set[InitialQuery]
+  def heuristicCiFlowsToDeref[M, C](messages: Set[OAbsMsg], filter: Option[String],
+                                    abs: AbstractInterpreter[M, C]): Set[InitialQuery]
   // heuristic to find dereference of field in a ui callback like onClick
   def heuristicDerefNullFinish[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[InitialQuery]
   def heuristicDerefNullSynch[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[InitialQuery]
@@ -79,7 +79,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     callbacks = iGetCallbacks()
   }
 
-  override def heuristicCbFlowsToDeref[M,C](messages:Set[OAbsMsg], filter:Option[String],
+  override def heuristicCiFlowsToDeref[M,C](messages:Set[OAbsMsg], filter:Option[String],
                                             abs:AbstractInterpreter[M,C]):Set[InitialQuery] = {
 
     val swappedMessages = messages.flatMap{
@@ -137,7 +137,6 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
   }
 
   override def heuristicDerefNullSynch[M, C](filter: Option[String], abs: AbstractInterpreter[M, C]): Set[InitialQuery] = {
-    // TODO: === test me
     implicit val ch = abs.getClassHierarchy
     val syncCallbacks = List(SpecSignatures.RxJava_call_entry, SAsyncTask.postExecuteI,
       SJavaThreading.runnableI, SJavaThreading.callableI)

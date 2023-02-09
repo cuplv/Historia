@@ -449,7 +449,7 @@ object Driver {
     val executor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
     val specSet = cfg.specSet.getSpecSpace()
     val toFind = splitNullHead(hasNullHead = true, specSet.getDisallowSpecs)
-    writeInitialQuery(cfg,executor.appCodeResolver.heuristicCbFlowsToDeref(toFind, filter, executor),
+    writeInitialQuery(cfg,executor.appCodeResolver.heuristicCiFlowsToDeref(toFind, filter, executor),
       "SensitiveDerefCallinCaused", outf)
   }
 
