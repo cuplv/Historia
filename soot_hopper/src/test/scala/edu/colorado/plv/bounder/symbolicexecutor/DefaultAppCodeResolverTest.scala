@@ -4,35 +4,63 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{AppLoc, SootWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, Signature}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, SpecSpace}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{CallinReturnNonNull, Qry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{CallinReturnNonNull, Qry, Reachable}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.AnyFunSuite
 
 class DefaultAppCodeResolverTest extends AnyFunSuite {
-  val srcAct =
-    """package com.example.createdestroy;
+  def srcAct(withFinish:String)  =
+    s"""package com.example.createdestroy;
       |import android.app.Activity;
-      |import andorid.os.AsyncTask;
-      |public class MyActivity extends Activity {
+      |import android.os.AsyncTask;
+      |import android.view.View.OnClickListener;
+      |import android.widget.Button;
+      |import android.view.View;
+      |public class MyActivity extends Activity implements OnClickListener {
+      |   Object target = null;
       |   @Override
       |   public void onResume(){
+      |      target = new Object();
       |      super.onPause();
-      |
+      |      Button b = findViewById(42);
+      |      b.setOnClickListener(this);
       |   }
+      |   @Override
+      |   public void onClick(View v){
+      |     target.toString(); //query1
+      |     ${withFinish}
+      |   }
+      |   @Override
       |   public void onPause(){
       |     super.onPause();
-      |
+      |     target = null;
       |   }
       |}
       |""".stripMargin
   test("Heuristic deref null sync"){
-    val test: String => Unit = apk => {
-      assert(apk != null)
-      ???
-    }
+    List(("finish();",None),("",None)).foreach {case (finishLine, expected) =>
+      val src = srcAct(finishLine)
+      val test: String => Unit = apk => {
+        val query1Line = BounderUtil.lineForRegex(".*query1.*".r, src)
+        val specSpace = new SpecSpace(Set.empty)
+        val w = new SootWrapper(apk, Set.empty)
+        val config = ExecutorConfig(
+          stepLimit = 2000, w, specSpace,
+          component = Some(List("com.example.createdestroy.*")))
+        val interp = config.getAbstractInterpreter
 
-    makeApkWithSources(Map("MyFragment.java" -> srcAct), MkApk.RXBase, test)
+        val initialQuery = Reachable(Signature( "com.example.createdestroy.MyActivity", "void onClick(android.view.View)"),
+          query1Line)
+        val query = initialQuery.make(interp)
+        assert(query.nonEmpty)
+
+        assert(apk != null)
+        ???
+      }
+
+      makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
+    }
   }
   test("Test app code resolver can find syntactic locations of pattern misuses") {
     //TODO: this functionality is not complete

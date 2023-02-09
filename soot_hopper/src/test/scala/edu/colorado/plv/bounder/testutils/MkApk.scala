@@ -59,8 +59,11 @@ object MkApk {
 
         Process("./gradlew assembleDebug", appDir.toJava) ! ProcessLogger(v => stdout.append(v + "\n"),
           v => stderr.append(v + "\n"))
+        val errString = stderr.toString
         logger.info(s"Gradle stdout: $stdout")
-        logger.info(s"Gradle stderr: $stderr")
+        logger.info(s"Gradle stderr: $errString")
+        if(errString.contains("FAILURE: Build failed with an exception."))
+          throw new IllegalArgumentException(errString)
         val apkFile = appDir / "app" / "build" / "outputs/apk/debug/app-debug.apk"
         res = Some(applyWithApk(apkFile.toString))
       }catch{
