@@ -10,6 +10,30 @@ import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.AnyFunSuite
 
 class DefaultAppCodeResolverTest extends AnyFunSuite {
+  val srcAct =
+    """package com.example.createdestroy;
+      |import android.app.Activity;
+      |import andorid.os.AsyncTask;
+      |public class MyActivity extends Activity {
+      |   @Override
+      |   public void onResume(){
+      |      super.onPause();
+      |
+      |   }
+      |   public void onPause(){
+      |     super.onPause();
+      |
+      |   }
+      |}
+      |""".stripMargin
+  test("Heuristic deref null sync"){
+    val test: String => Unit = apk => {
+      assert(apk != null)
+      ???
+    }
+
+    makeApkWithSources(Map("MyFragment.java" -> srcAct), MkApk.RXBase, test)
+  }
   test("Test app code resolver can find syntactic locations of pattern misuses") {
     //TODO: this functionality is not complete
     val src =
