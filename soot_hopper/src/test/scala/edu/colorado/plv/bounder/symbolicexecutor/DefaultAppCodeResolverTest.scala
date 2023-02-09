@@ -144,7 +144,7 @@ class DefaultAppCodeResolverTest extends AnyFunSuite {
       assert(!contains(derefsFromFields, deref1Line))
 
       // Heuristic find deref - basic blocks that read and dereference fields that may be set to null elsewhere
-      val heuristicLocations = resolver.heuristicDerefNull(packageFilter, interpreter)
+      val heuristicLocations = resolver.heuristicDerefNull(packageFilter, interpreter, _ => true)
       assert(contains(heuristicLocations.flatMap(_.make(interpreter)), deref3Line))
       assert(contains(heuristicLocations.flatMap(_.make(interpreter)), deref4Line))
       assert(!contains(heuristicLocations.flatMap(_.make(interpreter)), deref1Line))

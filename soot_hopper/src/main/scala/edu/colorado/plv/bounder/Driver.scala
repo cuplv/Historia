@@ -9,7 +9,7 @@ import java.util.Date
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil.{MaxPathCharacterization, Proven, ResultSummary, Timeout, Unreachable, Witnessed, characterizeMaxPath}
 import edu.colorado.plv.bounder.Driver.{Default, LocResult, RunMode, modeToString}
-import edu.colorado.plv.bounder.ir.{AppLoc, Loc, SootWrapper}
+import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, InternalMethodInvoke, InternalMethodReturn, JimpleMethodLoc, Loc, MethodLoc, SerializedIRMethodLoc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSConstraint, LSSpec, OAbsMsg, Signature}
 import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSpace}
@@ -138,9 +138,11 @@ object Driver {
 
   case object MakeAllDeref extends RunMode
 
-  case object MakeSensitiveDerefFieldCaused extends RunMode
+  case object MakeSensitiveDerefFieldCausedFinish extends RunMode
+  case object MakeSensitiveDerefFieldCausedSync extends RunMode
 
   case object MakeSensitiveDerefCallinCaused extends RunMode
+  case object ExportPossibleMessages extends RunMode
 
   /**
    * Find locations of all callins used in disallow specs from config file.
@@ -178,8 +180,10 @@ object Driver {
   "expLoop" -> ExpLoop,
   "makeAllDeref" -> MakeAllDeref,
   "findCallinsPattern" -> FindCallins,
-  "nullFieldPattern" -> MakeSensitiveDerefFieldCaused,
-  "nullCallinPattern" -> MakeSensitiveDerefCallinCaused
+  "nullFieldPatternFinish" -> MakeSensitiveDerefFieldCausedFinish,
+  "nullFieldPatternSync" -> MakeSensitiveDerefFieldCausedSync,
+  "nullCallinPattern" -> MakeSensitiveDerefCallinCaused,
+    "exportPossibleMessages" -> ExportPossibleMessages
   )
   lazy val modeToString: Map[RunMode,String] = stringToMode.map{case (k,v) => v->k}
   def decodeMode(modeStr: Any): RunMode = modeStr match {
@@ -313,8 +317,10 @@ object Driver {
         findCallins(cfg, act.getApkPath, act.getOutFolder, act.filter)
       case act@Action(MakeSensitiveDerefCallinCaused, _, _, cfg, _, _, _) =>
         makeSensitiveDerefCallinCaused(cfg, act.getApkPath, act.getOutFolder, act.filter)
-      case act@Action(MakeSensitiveDerefFieldCaused, _, _, cfg, _, _, _) =>
-        makeSensitiveDerefFieldCaused(cfg, act.getApkPath, act.getOutFolder, act.filter)
+      case act@Action(MakeSensitiveDerefFieldCausedFinish, _, _, cfg, _, _, _) =>
+        makeSensitiveDerefFieldCaused(cfg, act.getApkPath, act.getOutFolder, act.filter, "finish")
+      case act@Action(MakeSensitiveDerefFieldCausedSync, _, _, cfg, _, _, _) =>
+        makeSensitiveDerefFieldCaused(cfg, act.getApkPath, act.getOutFolder, act.filter, "synch")
       case act@Action(ReadDB, _, _, _, _, _, _) =>
         readDB(File(act.getOutFolder))
       case Action(ExpLoop, _, _, _, _, _, _) =>
@@ -323,6 +329,8 @@ object Driver {
         makeAllDeref(act.getApkPath, act.filter, File(act.getOutFolder), cfg, tag)
       case Action(Info, Some(out), Some(apk), cfg, _, _, _) =>
         info(cfg, out, apk)
+      case act@Action(ExportPossibleMessages, _,_,cfg, _,_,_) =>
+        outputMessages(cfg, act.filter, act.getOutFolder, act.getApkPath)
       case v => throw new IllegalArgumentException(s"Invalid action: $v")
     }
   }
@@ -342,6 +350,30 @@ object Driver {
     stdout.exists(v => v.contains("a.a.a."))
   }
 
+  def outputMessages(cfg:RunConfig, filter:Option[String], out:String, apkPath:String):Unit = {
+    //TODO: finish at some point
+    val outFile = File(out)
+    val w = new SootWrapper(apkPath, Set())
+    val config = ExecutorConfig(
+      stepLimit = 0, w, new SpecSpace(Set()), component = None)
+    val interpreter = config.getAbstractInterpreter
+    val resolver = interpreter.appCodeResolver
+    val cfRes = interpreter.controlFlowResolver
+    val allMethods: Set[MethodLoc] = resolver.appMethods.filter{m => ???}
+    val callins:Set[Signature] = allMethods.flatMap{appMethod => cfRes.directCallsGraph(appMethod).flatMap {
+      case CallinMethodReturn(sig) => Some(sig)
+      case CallinMethodInvoke(sig) => Some(sig)
+      case GroupedCallinMethodInvoke(_, _) => throw new IllegalStateException("should not group here")
+      case GroupedCallinMethodReturn(_, _) => throw new IllegalStateException("should not group here")
+      case _ => None
+    }}
+
+    val callbacks: Set[Signature] = resolver.getCallbacks.map{cb => cb.getSignature}
+
+    val callinF = outFile / "Callins_"
+    callinF.overwrite(callins.map{sig => s"${sig.base} , ${sig.methodSignature}"}.mkString("\n"))
+
+  }
   def info(cfg: RunConfig, outBase: String, apkBase: String): Unit = {
     val apk = cfg.apkPath.replace("${baseDir}", apkBase)
     val outFile = File(cfg.outFolder.get.replace("${baseDirOut}", outBase)) / "out.db" //File(baseDirOut) / "out.db"
@@ -422,7 +454,7 @@ object Driver {
   }
 
   def makeSensitiveDerefFieldCaused(cfg: RunConfig, apkPath: String, outFolder: String,
-                                    filter: Option[String]): Unit ={
+                                    filter: Option[String], pattern:String): Unit ={
     val outf = File(outFolder)
     if (!outf.exists)
       mkdir(outf) // make dir if not exists
@@ -433,7 +465,12 @@ object Driver {
     //    val specSet = cfg.specSet.getSpecSpace()
     //    assert(specSet.getDisallowSpecs.isEmpty && specSet.getSpecs.isEmpty,
     //      "Sensitive field caused deref does not use specs")
-    val derefFieldNulls = interpreter.appCodeResolver.heuristicDerefNull(filter, interpreter)
+    val derefFieldNulls = if(pattern == "finish")
+      interpreter.appCodeResolver.heuristicDerefNullFinish(filter, interpreter)
+    else if (pattern == "synch")
+      interpreter.appCodeResolver.heuristicDerefNullSynch(filter, interpreter)
+    else
+      throw new IllegalArgumentException(s"Unsupported deref pattern: ${pattern}")
     writeInitialQuery(cfg,derefFieldNulls, "SensitiveDerefFieldCaused", outf)
   }
 
