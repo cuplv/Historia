@@ -318,9 +318,9 @@ object Driver {
       case act@Action(MakeSensitiveDerefCallinCaused, _, _, cfg, _, _, _) =>
         makeSensitiveDerefCallinCaused(cfg, act.getApkPath, act.getOutFolder, act.filter)
       case act@Action(MakeSensitiveDerefFieldCausedFinish, _, _, cfg, _, _, _) =>
-        makeSensitiveDerefFieldCaused(cfg, act.getApkPath, act.getOutFolder, act.filter, "finish")
+        makeSensitiveDerefFieldCaused(cfg, act.getApkPath, act.getOutFolder, act.filter, "Finish")
       case act@Action(MakeSensitiveDerefFieldCausedSync, _, _, cfg, _, _, _) =>
-        makeSensitiveDerefFieldCaused(cfg, act.getApkPath, act.getOutFolder, act.filter, "synch")
+        makeSensitiveDerefFieldCaused(cfg, act.getApkPath, act.getOutFolder, act.filter, "Synch")
       case act@Action(ReadDB, _, _, _, _, _, _) =>
         readDB(File(act.getOutFolder))
       case Action(ExpLoop, _, _, _, _, _, _) =>
@@ -465,13 +465,13 @@ object Driver {
     //    val specSet = cfg.specSet.getSpecSpace()
     //    assert(specSet.getDisallowSpecs.isEmpty && specSet.getSpecs.isEmpty,
     //      "Sensitive field caused deref does not use specs")
-    val derefFieldNulls = if(pattern == "finish")
+    val derefFieldNulls = if(pattern == "Finish")
       interpreter.appCodeResolver.heuristicDerefNullFinish(filter, interpreter)
-    else if (pattern == "synch")
+    else if (pattern == "Synch")
       interpreter.appCodeResolver.heuristicDerefNullSynch(filter, interpreter)
     else
       throw new IllegalArgumentException(s"Unsupported deref pattern: ${pattern}")
-    writeInitialQuery(cfg,derefFieldNulls, "SensitiveDerefFieldCaused", outf)
+    writeInitialQuery(cfg,derefFieldNulls, s"SensitiveDerefFieldCaused${pattern}", outf)
   }
 
 
