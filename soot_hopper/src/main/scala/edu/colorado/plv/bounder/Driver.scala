@@ -433,7 +433,7 @@ object Driver {
     queries.zipWithIndex.foreach{case (query, index) =>
       val f = outf / s"${qPrefix}_$index"
       println(s"writing initial query: ${f.toString}")
-      assert(!f.exists)
+      assert(!f.exists, s"File exists:${f}")
       val cfgWithInit = cfg.copy(initialQuery = List(query))
       f.overwrite(write[RunConfig](cfgWithInit))
     }
@@ -507,14 +507,14 @@ object Driver {
 
 
     disallowedCallins.zipWithIndex.foreach{case (initialQuery, index) =>
+      val fName = s"Disallow_${index}"
+      val f = outf / fName
+      assert(!f.exists, s"File $f exists")
       val qry = initialQuery._1
       val spec = PickleSpec.mk(new SpecSpace(Set.empty, Set(initialQuery._2)))
       val cCfg = cfg.copy(initialQuery = List(qry),specSet = spec)
 //      val fName = qry.fileName
-      val fName = s"Disallow_${index}"
       val contents = write(cCfg)
-      val f = outf / fName
-      assert(!f.exists)
       f.write(contents)
     }
   }
