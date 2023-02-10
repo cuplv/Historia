@@ -458,7 +458,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
           "void onCreate(android.os.Bundle)"), BounderUtil.lineForRegex(".*query1.*".r, src))
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
-        PrettyPrinting.dumpDebugInfo(result, s"alias_${expectedPrint}", truncate = false)
+        //PrettyPrinting.dumpDebugInfo(result, s"alias_${expectedPrint}", truncate = false)
 
         if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) assert(result.nonEmpty)
         BounderUtil.throwIfStackTrace(result)
@@ -2607,7 +2607,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         // prettyPrinting.dumpDebugInfo(nullUnreachRes2, s"ResumedPaused_NPE_Unreach2")
         assert(nullUnreachRes2.nonEmpty)
         BounderUtil.throwIfStackTrace(nullUnreachRes2)
-        PrettyPrinting.printWitness(nullUnreachRes2)
+        //PrettyPrinting.printWitness(nullUnreachRes2)
         f.expectUnreachable(BounderUtil.interpretResult(nullUnreachRes2, QueryFinished) )
       }
 
@@ -2806,7 +2806,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
               val nullReachRes = symbolicExecutor_reach.run(nullReach, dbMode).flatMap(a => a.terminals)
               val interpretedResult = BounderUtil.interpretResult(nullReachRes,QueryFinished)
               println(s"spec set: ${specs.size}")
-              PrettyPrinting.dumpDebugInfo(nullReachRes, s"ReachSamp_${specs.size}",truncate=false)
+              //PrettyPrinting.dumpDebugInfo(nullReachRes, s"ReachSamp_${specs.size}",truncate=false)
               f.expectReachable(interpretedResult )
             }
           }
