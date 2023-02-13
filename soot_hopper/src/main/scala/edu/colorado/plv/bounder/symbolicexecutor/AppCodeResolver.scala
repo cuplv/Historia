@@ -117,7 +117,6 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
 
   override def heuristicDerefNullFinish[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[InitialQuery] = {
     // look for finish use somewhere in the app
-    //TODO:==== test me
     val filteredAppMethods: Set[MethodLoc] = filtereAppMethods(filter)
     val cfRes = abs.controlFlowResolver
     implicit val ch = abs.getClassHierarchy
@@ -132,8 +131,9 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     }
     if (!finishExists)
       return Set.empty
-    val finishSensitiveCbs = List(ViewSpec.onClickI)
-    heuristicDerefNull(filter, abs, method => methodIsMatchingCb(finishSensitiveCbs, method))
+    val finishSensitiveCbs = List(ViewSpec.onClickI, ViewSpec.onMenuItemClickI)
+    heuristicDerefNull(filter, abs, method =>
+      methodIsMatchingCb(finishSensitiveCbs, method))
   }
 
   override def heuristicDerefNullSynch[M, C](filter: Option[String], abs: AbstractInterpreter[M, C]): Set[InitialQuery] = {
@@ -147,7 +147,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
                               acceptMethod:MethodLoc => Boolean):Set[InitialQuery] = {
     //TODO: split this into deref in onClick and other ui callbacks where finish is invoked and deref in synchronization cb like onPostExecute or Action1
 
-    val filteredAppMethods: Set[MethodLoc] = filtereAppMethods(filter).filter(acceptMethod)
+    val filteredAppMethods: Set[MethodLoc] = filtereAppMethods(filter)
 
     // find all fields set to null (and points to sets for dynamic fields)
     def findNullAssign(v:AppLoc):Option[(LVal, TypeSet)] = {
@@ -195,7 +195,8 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
       }
     }
 
-    filteredAppMethods.flatMap{m =>
+    val acceptedAppMethods: Set[MethodLoc] = filteredAppMethods.filter(acceptMethod)
+    acceptedAppMethods.flatMap{m =>
       val fieldUse = findFieldMayBeAssignedTo(m)
       val res = fieldUse.flatMap(findFirstDerefFor(m,_, ir))
       res.map{loc =>

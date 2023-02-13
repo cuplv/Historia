@@ -284,6 +284,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
 
   case class QueryData(queryId:Int, location:Loc, terminals: Set[IPathNode], runTime:Long, result : QueryResult)
 
+  var isRunning:Boolean = false
   /**
    * Run the abstract interpretation starting at a syntactic location.
    * @param initialQuery defined syntactic location
@@ -296,10 +297,12 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
    */
   def run(initialQuery: InitialQuery, outputMode:OutputMode = MemoryOutputMode,
           cfg:RunConfig = RunConfig(), stopExplorationAt : Qry => Boolean = _ => false) : Set[QueryData] = {
+    assert(!isRunning, "Abstract interpreter does not support concurrency.")
+    isRunning = true
     val qry: Set[Qry] = initialQuery.make(this)
       .map{q => q.copy(state = stateSolver.simplify(q.state.setSimplified, config.specSpace)
         .getOrElse(throw new IllegalArgumentException(s"Initial state was refuted: ${q.state}")))}
-    qry.groupBy(_.loc).map{ case(loc,qs) =>
+    val output = qry.groupBy(_.loc).map{ case(loc,qs) =>
       val startTime = Instant.now.getEpochSecond
       var id = -1
       try {
@@ -327,6 +330,8 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
           QueryData(id, loc, Set(), Instant.now.getEpochSecond - startTime, QueryInterrupted(t.getClass.toString))
       }
     }.toSet
+    isRunning = false
+    output
   }
 
   //TODO: ==== figure out if this optimization actually does anything

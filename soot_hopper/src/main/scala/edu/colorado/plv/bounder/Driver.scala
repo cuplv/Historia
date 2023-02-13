@@ -90,6 +90,10 @@ case class Action(mode:RunMode = Default,
   }
 }
 
+case class ExpTag(heuristicType:String = "", specRefinement:String = "", other:String = "")
+object ExpTag{
+  implicit val rw:RW[ExpTag] = macroRW
+}
 case class RunConfig( //Mode can also be specified in run config
                      apkPath:String = "",
                      outFolder:Option[String] = None,
@@ -98,7 +102,7 @@ case class RunConfig( //Mode can also be specified in run config
                      initialQuery: List[InitialQuery] = Nil,
                      limit:Int = -1,
                      samples:Int = 5,
-                     tag:String = "",
+                     tag:ExpTag = ExpTag(),
                      timeLimit:Int = 600, // max clock time per query
                      truncateOut:Boolean = true,
                       configPath:Option[String] = None //Note: overwritten with json path of config
@@ -326,7 +330,7 @@ object Driver {
       case Action(ExpLoop, _, _, _, _, _, _) =>
         expLoop()
       case act@Action(MakeAllDeref, _, _, cfg, _, tag, _) =>
-        makeAllDeref(act.getApkPath, act.filter, File(act.getOutFolder), cfg, tag)
+        makeAllDeref(act.getApkPath, act.filter, File(act.getOutFolder), cfg, ExpTag(other = tag.getOrElse("")))
       case Action(Info, Some(out), Some(apk), cfg, _, _, _) =>
         info(cfg, out, apk)
       case act@Action(ExportPossibleMessages, _,_,cfg, _,_,_) =>
@@ -388,7 +392,7 @@ object Driver {
   }
 
   def makeAllDeref(apkPath: String, filter: Option[String],
-                   outFolder: File, cfg: RunConfig, tag: Option[String]) = {
+                   outFolder: File, cfg: RunConfig, tag: ExpTag) = {
     val callGraph = SparkCallGraph
     val w = new SootWrapper(apkPath, Set(), callGraph)
     val config = ExecutorConfig(
@@ -401,7 +405,7 @@ object Driver {
       //TODO: should we group more classes together in a job?
       val cfgOut = cfg.outFolder.get
       val cfg2 = cfg.copy(initialQuery = List(q),
-        tag = tag.getOrElse(""), outFolder = Some(cfgOut + "/" + q.className))
+        tag = tag, outFolder = Some(cfgOut + "/" + q.className))
       val fname = outFolder / s"${q.className}.json"
       if (fname.exists()) fname.delete()
       fname.append(write(cfg2))
@@ -431,7 +435,7 @@ object Driver {
   }
   private def writeInitialQuery(cfg:RunConfig, queries:Iterable[InitialQuery], qPrefix:String, outf:File):Unit = {
     queries.zipWithIndex.foreach{case (query, index) =>
-      val f = outf / s"${qPrefix}_$index"
+      val f = outf / s"${qPrefix}_$index.json"
       println(s"writing initial query: ${f.toString}")
       assert(!f.exists, s"File exists:${f}")
       val cfgWithInit = cfg.copy(initialQuery = List(query))
@@ -449,8 +453,10 @@ object Driver {
     val executor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
     val specSet = cfg.specSet.getSpecSpace()
     val toFind = splitNullHead(hasNullHead = true, specSet.getDisallowSpecs)
-    writeInitialQuery(cfg,executor.appCodeResolver.heuristicCiFlowsToDeref(toFind, filter, executor),
-      "SensitiveDerefCallinCaused", outf)
+    val heuristicType = "SensitiveDerefCallinCaused"
+    val outCfg = cfg.copy(tag = cfg.tag.copy(heuristicType = heuristicType))
+    writeInitialQuery(outCfg,executor.appCodeResolver.heuristicCiFlowsToDeref(toFind, filter, executor),
+      heuristicType, outf)
   }
 
   def makeSensitiveDerefFieldCaused(cfg: RunConfig, apkPath: String, outFolder: String,
@@ -471,7 +477,9 @@ object Driver {
       interpreter.appCodeResolver.heuristicDerefNullSynch(filter, interpreter)
     else
       throw new IllegalArgumentException(s"Unsupported deref pattern: ${pattern}")
-    writeInitialQuery(cfg,derefFieldNulls, s"SensitiveDerefFieldCaused${pattern}", outf)
+    val heuristicType = s"SensitiveDerefFieldCaused${pattern}"
+    val outCfg = cfg.copy(tag = cfg.tag.copy(heuristicType = heuristicType))
+    writeInitialQuery(outCfg,derefFieldNulls, heuristicType, outf)
   }
 
 
@@ -495,7 +503,7 @@ object Driver {
     val locations: Set[(AppLoc, OAbsMsg)] = symbolicExecutor.appCodeResolver.findCallinsAndCallbacks(toFind, filter)
 
 
-    val disallowedCallins = locations.flatMap {
+    val disallowedCallins: Set[(DisallowedCallin, LSSpec)] = locations.flatMap {
       case (loc, msg) =>
         try {
           val spec = specSet.getDisallowSpecs.find { s => s.target == msg }.get
@@ -507,12 +515,14 @@ object Driver {
 
 
     disallowedCallins.zipWithIndex.foreach{case (initialQuery, index) =>
-      val fName = s"Disallow_${index}"
+      val disallow_ident = initialQuery._2.target.identitySignature
+      val heuristicType = s"Disallow.${disallow_ident}"
+      val fName = s"${heuristicType}_${index}.json"
       val f = outf / fName
       assert(!f.exists, s"File $f exists")
       val qry = initialQuery._1
       val spec = PickleSpec.mk(new SpecSpace(Set.empty, Set(initialQuery._2)))
-      val cCfg = cfg.copy(initialQuery = List(qry),specSet = spec)
+      val cCfg = cfg.copy(initialQuery = List(qry),specSet = spec, tag = cfg.tag.copy(heuristicType = heuristicType))
 //      val fName = qry.fileName
       val contents = write(cCfg)
       f.write(contents)
@@ -572,8 +582,8 @@ object Driver {
       val config = ExecutorConfig(
         stepLimit = stepLimit, w, new SpecSpace(specSet.getSpecSet(), specSet.getDisallowSpecSet()), component = componentFilter, outputMode = mode,
         timeLimit = cfg.timeLimit)
-      val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
       initialQueries.flatMap{ initialQuery =>
+        val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
         val results: Set[symbolicExecutor.QueryData] = symbolicExecutor.run(initialQuery, mode,cfg)
 
         val grouped = results.groupBy(v => (v.queryId,v.location)).map{case ((id,loc),groupedResults) =>
@@ -626,6 +636,41 @@ object Driver {
       case (Timeout, _) => Timeout
       case (v1,v2) if v1 == v2 => v1
     }
+  }
+
+  def groupConfigsInDirectory(maxCount:Int, dir:File):Unit = {
+    val configs = dir.glob("*.json").toList
+    assert(configs.nonEmpty, s"Found no configs in directory: ${dir}")
+    val configsRead = configs.map{config =>
+      read[RunConfig](config.contentAsString)
+    }
+    val grouped = configsRead.groupBy{_.tag}
+    grouped.foreach{
+      case (tag, configGroup) =>
+        val refConfig = configGroup.head
+        configGroup.foreach { other =>
+          val errMsg = s"All configs should have same properties besides initial " +
+            s"query. \nOther: ${other} \n Ref: ${refConfig}"
+          assert(other.apkPath == refConfig.apkPath, errMsg)
+          assert(other.outFolder == refConfig.outFolder, errMsg)
+          assert(other.specSet == refConfig.specSet, errMsg)
+          assert(other.tag == refConfig.tag, errMsg)
+          assert(other.componentFilter == refConfig.componentFilter, errMsg)
+          assert(other.tag == refConfig.tag)
+        }
+        val initialQueries = configGroup.flatMap { cfg => cfg.initialQuery }
+
+        val iqGroups = initialQueries.grouped(maxCount)
+        val cfgGroups = iqGroups.map { iqGroup => refConfig.copy(initialQuery = iqGroup) }
+        cfgGroups.zipWithIndex.foreach{
+          case (config, index) =>
+            val outF = dir / s"${refConfig.tag.heuristicType}_${refConfig.tag.specRefinement}_grouped_${index}.json"
+            assert(outF.notExists)
+            outF.overwrite(write(config))
+        }
+    }
+    configs.foreach { cfgFile => cfgFile.delete() }
+
   }
 
 }
@@ -779,7 +824,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
         BounderUtil.runCmdFileOut(cmd, baseDir)
         setEndTime(jobRow.jobId)
         println("Finished Verifier Writing Results")
-        val resDir = ResultDir(jobRow.jobId, baseDir, if(cfg.tag!="") Some(cfg.tag) else None)
+        val resDir = ResultDir(jobRow.jobId, baseDir, cfg.tag)
         val stdoutF = baseDir / "stdout.txt"
         val stdout = if(stdoutF.exists()) stdoutF.contentAsString else ""
         val stderrF = baseDir / "stderr.txt"
@@ -910,7 +955,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
   //    bounderJarHash varchar,
   //    owner varchar
   //  );
-  case class ResultDir(jobId:Int, f:File, jobTag:Option[String]){
+  case class ResultDir(jobId:Int, f:File, jobTag:ExpTag){
     def getDBResults :List[DBResult]= {
       val apk = f / "target.apk"
       val apkHash = BounderUtil.computeHash(apk.toString)
@@ -934,7 +979,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
         ).toString
         DBResult(id = 0, jobid = jobId,qry = write(rs.q), loc = write(rs.loc), result = resultRow, queryTime = rs.time
           ,resultData = resDataId, apkHash = apkHash,
-          bounderJarHash = bounderJarHash, owner = BounderUtil.systemID(), jobTag = jobTag)
+          bounderJarHash = bounderJarHash, owner = BounderUtil.systemID(), jobTag = Some(write[ExpTag](jobTag)))
       }
     }.toList
   }

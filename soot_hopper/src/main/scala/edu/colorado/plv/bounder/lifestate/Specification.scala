@@ -209,7 +209,10 @@ object ViewSpec {
 
   val anyViewCallin: OAbsMsg = AbsMsg(CIEnter, SubClassMatcher("android.view.View",".*","View_AnyExceptOther"),List(TopVal, v) )
   val onClick:SignatureMatcher = SubClassMatcher("android.view.View$OnClickListener", ".*onClick.*", "ViewOnClickListener_onClick")
+  val menuItemOnClick:SignatureMatcher = SubClassMatcher("android.view.MenuItem$OnMenuItemClickListener",
+    ".*onMenuItemClick.*","OnMenuItemClickListener_onMenuItemClick")
   val onClickI = AbsMsg(CBEnter, onClick, List(TopVal,l,v))
+  val onMenuItemClickI = AbsMsg(CBEnter, menuItemOnClick, List(TopVal,l,v))
   val setOnClickListenerI:OAbsMsg = AbsMsg(CIExit,
     SubClassMatcher("android.view.View",".*setOnClickListener.*","View_setOnClickListener"),
     List(TopVal,v,l)
