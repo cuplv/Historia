@@ -7,9 +7,9 @@ import java.sql.Timestamp
 import java.time.Instant
 import java.util.Date
 import better.files.File
-import edu.colorado.plv.bounder.BounderUtil.{MaxPathCharacterization, Proven, ResultSummary, Timeout, Unreachable, Witnessed, characterizeMaxPath}
+import edu.colorado.plv.bounder.BounderUtil.{DepthResult, Interrupted, MaxPathCharacterization, Proven, ResultSummary, Timeout, UnknownCharacterization, Unreachable, Witnessed, characterizeMaxPath}
 import edu.colorado.plv.bounder.Driver.{Default, LocResult, RunMode, modeToString}
-import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, InternalMethodInvoke, InternalMethodReturn, JimpleMethodLoc, Loc, MethodLoc, SerializedIRMethodLoc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper}
+import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, InternalMethodInvoke, InternalMethodReturn, JimpleMethodLoc, Loc, MethodLoc, SerializedIRLineLoc, SerializedIRMethodLoc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSConstraint, LSSpec, OAbsMsg, Signature}
 import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSpace}
@@ -583,45 +583,72 @@ object Driver {
         stepLimit = stepLimit, w, new SpecSpace(specSet.getSpecSet(), specSet.getDisallowSpecSet()), component = componentFilter, outputMode = mode,
         timeLimit = cfg.timeLimit)
       initialQueries.flatMap{ initialQuery =>
-        val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
-        val results: Set[symbolicExecutor.QueryData] = symbolicExecutor.run(initialQuery, mode,cfg)
+        try {
+          val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
+          val results: Set[symbolicExecutor.QueryData] = symbolicExecutor.run(initialQuery, mode, cfg)
 
-        val grouped = results.groupBy(v => (v.queryId,v.location)).map{case ((id,loc),groupedResults) =>
-          val res = groupedResults.map(res => BounderUtil.interpretResult(res.terminals, res.result))
-            .reduce(reduceResults)
-          val characterizedMaxPath: MaxPathCharacterization =
-            groupedResults.map(res => BounderUtil.characterizeMaxPath(res.terminals)(mode))
-              .reduce(BounderUtil.reduceCharacterization)
-          val finalTime = groupedResults.map(_.runTime).sum
-          // get minimum cb count and instruction count from nodes live at end
-          // also retrieve up to 3 witnesses
-          val finalLiveNodes = groupedResults.flatMap{res => res.terminals.filter{pathNode =>
-            pathNode.qry.isLive && pathNode.subsumed(mode).isEmpty}}
-          val depthChar: BounderUtil.DepthResult = BounderUtil.computeDepthOfWitOrLive(finalLiveNodes,QueryFinished)(mode)
-          //val depth = if(finalLiveNodes.nonEmpty) Some(finalLiveNodes.map{n => n.depth}.min) else None
-          //val ordDepth = if(finalLiveNodes.nonEmpty) Some(finalLiveNodes.map{_.ordDepth}.min) else None
-          val pp = PrettyPrinting
-          val live: List[List[String]] = pp.nodeToWitness(finalLiveNodes.toList, cfg.truncateOut)(mode).sortBy(_.length).take(2)
-          val witnessed = pp.nodeToWitness(groupedResults.flatMap{res => res.terminals.filter{pathNode =>
-            pathNode.qry match {
-              case Qry(_, _, WitnessedQry(_)) => true
-              case _ => false
-            }}}.toList, cfg.truncateOut)(mode).sortBy(_.length).take(2)
+          val grouped: Seq[LocResult] = results.groupBy(v => (v.queryId, v.location)).map { case ((id, loc), groupedResults) =>
+            val res = groupedResults.map(res => BounderUtil.interpretResult(res.terminals, res.result))
+              .reduce(reduceResults)
+            val characterizedMaxPath: MaxPathCharacterization =
+              groupedResults.map(res => BounderUtil.characterizeMaxPath(res.terminals)(mode))
+                .reduce(BounderUtil.reduceCharacterization)
+            val finalTime = groupedResults.map(_.runTime).sum
+            // get minimum cb count and instruction count from nodes live at end
+            // also retrieve up to 3 witnesses
+            val finalLiveNodes = groupedResults.flatMap { res =>
+              res.terminals.filter { pathNode =>
+                pathNode.qry.isLive && pathNode.subsumed(mode).isEmpty
+              }
+            }
+            val depthChar: BounderUtil.DepthResult = BounderUtil.computeDepthOfWitOrLive(finalLiveNodes, QueryFinished)(mode)
+            //val depth = if(finalLiveNodes.nonEmpty) Some(finalLiveNodes.map{n => n.depth}.min) else None
+            //val ordDepth = if(finalLiveNodes.nonEmpty) Some(finalLiveNodes.map{_.ordDepth}.min) else None
+            val pp = PrettyPrinting
+            val live: List[List[String]] = pp.nodeToWitness(finalLiveNodes.toList, cfg.truncateOut)(mode).sortBy(_.length).take(2)
+            val witnessed = pp.nodeToWitness(groupedResults.flatMap { res =>
+              res.terminals.filter { pathNode =>
+                pathNode.qry match {
+                  case Qry(_, _, WitnessedQry(_)) => true
+                  case _ => false
+                }
+              }
+            }.toList, cfg.truncateOut)(mode).sortBy(_.length).take(2)
 
-          // Only print if path mode is enabled
-          val printWit = mode match {
-            case NoOutputMode => false
-            case MemoryOutputMode => true
-            case DBOutputMode(_) => true
-          }
-          if(printWit){
-            pp.dumpDebugInfo(finalLiveNodes, "wit", outDir = outDir)
-          }
+            // Only print if path mode is enabled
+            val printWit = mode match {
+              case NoOutputMode => false
+              case MemoryOutputMode => true
+              case DBOutputMode(_) => true
+            }
+            if (printWit) {
+              pp.dumpDebugInfo(finalLiveNodes, "wit", outDir = outDir)
+            }
 
-          LocResult(initialQuery,id,loc,res,characterizedMaxPath,finalTime,
-            depthChar, witnesses = live ++ witnessed)
-        }.toList
-        grouped
+            LocResult(initialQuery, id, loc, res, characterizedMaxPath, finalTime,
+              depthChar, witnesses = live ++ witnessed)
+          }.toList
+          grouped
+        }catch {
+          case e:OutOfMemoryError =>
+            e.printStackTrace(new PrintWriter(System.err))
+            Seq(LocResult(initialQuery, 0,
+              AppLoc(SerializedIRMethodLoc("","",Nil), SerializedIRLineLoc(-1,""), true),
+              resultSummary= Interrupted("OutOfMemoryError"),
+              maxPathCharacterization = UnknownCharacterization,
+              time = (System.nanoTime() - startTime)/1000000000,
+              depthChar = DepthResult(-1,-1,-1, Interrupted("OutOfMemoryError")), witnesses = Nil
+            ))
+          case e:Throwable =>
+            e.printStackTrace(new PrintWriter(System.err))
+            Seq(LocResult(initialQuery, 0,
+              AppLoc(SerializedIRMethodLoc("", "", Nil), SerializedIRLineLoc(-1, ""), true),
+              resultSummary = Interrupted(e.toString),
+              maxPathCharacterization = UnknownCharacterization,
+              time = (System.nanoTime() - startTime) / 1000000000,
+              depthChar = DepthResult(-1, -1, -1, Interrupted(e.toString)), witnesses = Nil
+            ))
+        }
       }
     } finally {
       println(s"analysis time(ms): ${(System.nanoTime() - startTime) / 1000.0}")
