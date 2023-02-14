@@ -96,7 +96,7 @@ object BounderUtil {
         case "Timeout" => Timeout
         case "Unreachable" => Unreachable
         case "Witnessed" => Witnessed
-        case v if v.strip.startsWith("I") => //TODO: figure out why these get nested and fix it, until then this hack un-nests
+        case v if v.trim.startsWith("I") => //TODO: figure out why these get nested and fix it, until then this hack un-nests
           val inner = v.dropWhile(c => c == 'I' || c == '"' || c == '\\')
           if(inner == "timeout")
             Timeout
@@ -106,7 +106,7 @@ object BounderUtil {
             Unreachable
           else
             Interrupted(inner)
-        case v => throw new IllegalArgumentException(s"Failed to parse: ${v} starts with: ${v.startsWith("I")}")
+        case v => throw new IllegalArgumentException(s"Failed to parse: ${v} starts with is: ${v.trim.startsWith("I")}")
       }
     )
   }
