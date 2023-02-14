@@ -79,7 +79,10 @@ object BounderUtil {
 
   trait ResultSummary
   object ResultSummary{
-    def dropChar(c:Char):Boolean = c == '"' || c == '\\' || c == ' '
+    /**
+     * Drop garbage that seems to get appended to summary when in db mode
+     */
+    private def dropChar(c:Char):Boolean = c == '"' || c == '\\' || c == ' '
     implicit val rw:RW[ResultSummary] = upickle.default.readwriter[String].bimap[ResultSummary](
       {
         case Proven => "Proven"
@@ -93,10 +96,10 @@ object BounderUtil {
       }
       ,
       {
-        case "Proven" => Proven
-        case "Timeout" => Timeout
-        case "Unreachable" => Unreachable
-        case "Witnessed" => Witnessed
+        case v if v.dropWhile(dropChar).startsWith("Proven") => Proven
+        case v if v.dropWhile(dropChar).startsWith("Timeout") => Timeout
+        case v if v.dropWhile(dropChar).startsWith("Unreachable") => Unreachable
+        case v if v.dropWhile(dropChar).startsWith("Witnessed") => Witnessed
         case v if v.dropWhile(dropChar).startsWith("I") => //TODO: figure out why these get nested and fix it, until then this hack un-nests
           val inner = v.dropWhile(c => c == 'I' || dropChar(c))
           if(inner == "timeout")
