@@ -669,6 +669,10 @@ object Driver {
       case (_, Timeout) => Timeout
       case (Timeout, _) => Timeout
       case (v1,v2) if v1 == v2 => v1
+      case (i1@Interrupted(r1), Interrupted(_)) if r1.contains("Witnessed") => i1
+      case (Interrupted(_), i2@Interrupted(r2)) if r2.contains("Witnessed") => i2
+      case (int:Interrupted, _) => int
+      case (_,int:Interrupted) => int
     }
   }
 
