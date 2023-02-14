@@ -817,5 +817,112 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           test)
     }
   }
+  test("Row6: synch null free") {
+    // TODO: ===== find motivating bug for this
+    // TODO: write specs
+    List(
+      //      ("button.setEnabled(true);", Witnessed, "badDisable"), //test for boolean handling, works so commented out for exp run
+      ("button.setEnabled(false);", Proven, "disable"),
+      ("", Witnessed, "noDisable")
+    ).map { case (cancelLine, expectedResult, fileSuffix) =>
+      val src =
+        s"""
+           |package com.example.createdestroy;
+           |import android.app.Activity;
+           |import android.content.Context;
+           |import android.net.Uri;
+           |import android.os.Bundle;
+           |import android.os.AsyncTask;
+           |import android.app.ProgressDialog;
+           |
+           |import android.app.Fragment;
+           |
+           |import android.util.Log;
+           |import android.view.LayoutInflater;
+           |import android.view.View;
+           |import android.view.ViewGroup;
+           |import android.view.View.OnClickListener;
+           |
+           |
+           |
+           |public class SyncActivity extends Activity implements OnClickListener{
+           |    SomeTask remover = null;
+           |    View button = null;
+           |    @Override
+           |    public void onCreate(Bundle b){
+           |        remover = new SomeTask();
+           |        button = findViewById(3);
+           |        button.setOnClickListener(this);
+           |    }
+           |    @Override
+           |    public void onClick(View v){
+           |        remover.execute();
+           |    }
+           |    @Override
+           |    public void onPause(){
+           |        $cancelLine
+           |        button = null;
+           |    }
+           |
+           |
+           |    class SomeTask extends AsyncTask<String, Void, String> {
+           |		  @Override
+           |		  protected void onPreExecute() {
+           |		  }
+           |
+           |		  @Override
+           |		  protected String doInBackground(String... params) {
+           |			  return "";
+           |		  }
+           |
+           |		  @Override
+           |		  protected void onPostExecute(String result) {
+           |        button.toString();//query1
+           |		  }
+           |	  }
+           |}
+           |""".stripMargin
+
+      val test: String => Unit = apk => {
+        val startTime = System.nanoTime()
+        assert(apk != null)
+
+        val w = new SootWrapper(apk, row2Specs)
+        val specSpace = new SpecSpace(row2Specs, Set(SAsyncTask.disallowDoubleExecute))
+        val config = ExecutorConfig(
+          stepLimit = 200, w, specSpace,
+          component = Some(List("com.example.createdestroy.*RemoverActivity.*")))
+        implicit val om = config.outputMode
+        val symbolicExecutor = config.getAbstractInterpreter
+
+        val line = BounderUtil.lineForRegex(".*query1.*".r,src)
+        val query = ReceiverNonNull(
+          Signature("com.example.createdestroy.SyncActivity$SomeTask", "void onPostExecute(java.lang.Object)"), line)
+
+        if (runVerif) {
+          val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
+          val fname = s"Antennapod_AsyncTask_$fileSuffix"
+          prettyPrinting.dumpDebugInfo(result, fname)
+          prettyPrinting.printWitness(result)
+          assert(result.nonEmpty)
+          BounderUtil.throwIfStackTrace(result)
+          val interpretedResult = BounderUtil.interpretResult(result, QueryFinished)
+          logger.warn(s"Row 2 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
+          val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
+          logger.warn(s"Row 2 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
+          assert(interpretedResult == expectedResult)
+        } else {
+          val em = s"Row 2 skipped due to runVerif param!!!!!!!"
+          println(em)
+          logger.warn(em)
+        }
+        val messages = w.getMessages(symbolicExecutor.controlFlowResolver, specSpace,
+          symbolicExecutor.getClassHierarchy)
+        logger.warn(s"Row 2 ${fileSuffix} : ${write(messages)}")
+      }
+
+      makeApkWithSources(Map("SyncActivity.java" -> src), MkApk.RXBase, test)
+    }
+  }
 
 }
