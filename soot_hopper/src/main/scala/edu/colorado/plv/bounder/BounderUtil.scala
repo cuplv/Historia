@@ -108,7 +108,7 @@ object BounderUtil {
           else
             Interrupted(inner)
         case v => throw new IllegalArgumentException(s"Failed to parse: ${v} " +
-          s"starts with is: ${v.trim.startsWith("I")} first char is: ${v.head}")
+          s"starts with is: ${v.dropWhile(dropChar).startsWith("I")} first char is: ${v.dropWhile(dropChar).head}")
       }
     )
   }
