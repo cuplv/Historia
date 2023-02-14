@@ -90,6 +90,13 @@ case class Action(mode:RunMode = Default,
   }
 }
 
+/**
+ *
+ * @param heuristicType Tag of the heuristic that generated a given config
+ * @param specRefinement Human made label distinguishing different experiment runs
+ * @param other comma separated list of other params (TODO: break these out into fields if we rerun experiments)
+ *              0: Output mode
+ */
 case class ExpTag(heuristicType:String = "", specRefinement:String = "", other:String = "")
 object ExpTag{
   implicit val rw:RW[ExpTag] = macroRW
@@ -847,7 +854,10 @@ class ExperimentsDb(bounderJar:Option[String] = None){
           ""
         println("Starting Verifier")
         setJobStartTime(jobRow.jobId)
-        val cmd = s"java ${z3Override} -jar ${bounderJar.toString} -m verify -c ${cfgFile.toString} -u ${outF.toString}"
+        val outputFlag:String = jobRow.jobTag.flatMap(ts => read[ExpTag](ts).other.split(",").headOption)
+          .map{v => s" -o ${v}"}.getOrElse("")
+        val cmd = s"java ${z3Override} -jar ${bounderJar.toString} -m verify -c ${cfgFile.toString} " +
+          s"-u ${outF.toString} ${outputFlag}"
         BounderUtil.runCmdFileOut(cmd, baseDir)
         setEndTime(jobRow.jobId)
         println("Finished Verifier Writing Results")
