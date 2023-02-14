@@ -85,6 +85,9 @@ object BounderUtil {
         case Witnessed => "Witnessed"
         case Timeout => "Timeout"
         case Unreachable => "Unreachable"
+        case Interrupted(reason) if reason == "timeout" => "Timeout"
+        case Interrupted(reason) if reason == "Witnessed" => "Witnessed"
+        case Interrupted(reason) if reason == "Unreachable" => "Unreachable"
         case Interrupted(reason) => s"I$reason"
       }
       ,
@@ -93,7 +96,16 @@ object BounderUtil {
         case "Timeout" => Timeout
         case "Unreachable" => Unreachable
         case "Witnessed" => Witnessed
-        case v => Interrupted(v.drop(1))
+        case v if v.startsWith("I") => //TODO: figure out why these get nested and fix it, until then this hack un-nests
+          val inner = v.dropWhile(c => c == 'I')
+          if(inner == "timeout")
+            Timeout
+          else if(inner == "Witnessed")
+            Witnessed
+          else if(inner == "Unreachable" )
+            Unreachable
+          else
+            Interrupted(inner)
       }
     )
   }
