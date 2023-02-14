@@ -106,7 +106,8 @@ object BounderUtil {
             Unreachable
           else
             Interrupted(inner)
-        case v => throw new IllegalArgumentException(s"Failed to parse: ${v} starts with is: ${v.trim.startsWith("I")}")
+        case v => throw new IllegalArgumentException(s"Failed to parse: ${v} " +
+          s"starts with is: ${v.trim.startsWith("I")} first char is: ${v.head}")
       }
     )
   }
