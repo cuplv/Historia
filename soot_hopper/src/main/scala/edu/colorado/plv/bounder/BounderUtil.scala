@@ -97,7 +97,7 @@ object BounderUtil {
         case "Unreachable" => Unreachable
         case "Witnessed" => Witnessed
         case v if v.startsWith("I") => //TODO: figure out why these get nested and fix it, until then this hack un-nests
-          val inner = v.dropWhile(c => c == 'I')
+          val inner = v.dropWhile(c => c == 'I' || c == '"' || c == '\\')
           if(inner == "timeout")
             Timeout
           else if(inner == "Witnessed")
