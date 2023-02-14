@@ -575,7 +575,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
 
       //line in call cannot throw npe since s is initialized
       val query2 = ReceiverNonNull(Signature("com.example.createdestroy.MyFragment",
-        "void call(java.lang.Object)"),line)
+        "void call(java.lang.Object)"),line, Some(".*toString.*"))
       val result2 = symbolicExecutor.run(query2).flatMap(a => a.terminals)
       val interpretedResult2 = BounderUtil.interpretResult(result2,QueryFinished)
       assert(interpretedResult2 == Proven)
@@ -822,7 +822,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
     // TODO: write specs
     List(
       //      ("button.setEnabled(true);", Witnessed, "badDisable"), //test for boolean handling, works so commented out for exp run
-      ("button.setEnabled(false);", Proven, "disable"),
+      ("remover.cancel();", Proven, "disable"),
       ("", Witnessed, "noDisable")
     ).map { case (cancelLine, expectedResult, fileSuffix) =>
       val src =
@@ -897,7 +897,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
 
         val line = BounderUtil.lineForRegex(".*query1.*".r,src)
         val query = ReceiverNonNull(
-          Signature("com.example.createdestroy.SyncActivity$SomeTask", "void onPostExecute(java.lang.Object)"), line)
+          Signature("com.example.createdestroy.SyncActivity$SomeTask", "void onPostExecute(java.lang.Object)"),
+          line, Some(".*toString.*"))
 
         if (runVerif) {
           val result = symbolicExecutor.run(query).flatMap(a => a.terminals)

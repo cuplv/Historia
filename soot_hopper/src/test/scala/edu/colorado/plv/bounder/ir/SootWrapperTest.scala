@@ -219,14 +219,14 @@ class SootWrapperTest extends FixtureAnyFunSuite  {
 
       val query2 = Qry.makeReceiverNonNull(config.getAbstractInterpreter,
         Signature("com.example.createdestroy.MyActivity", "void onResume()"),
-        BounderUtil.lineForRegex(".*query2.*".r,src), Some(".*iterator.*".r))
+        BounderUtil.lineForRegex(".*query2.*".r,src), Some(".*hasNext.*".r))
       val loc2 = query2.head.loc.asInstanceOf[AppLoc]
       val targets2: UnresolvedMethodTarget = w.makeInvokeTargets(loc2)
       assert(targets2.loc.nonEmpty)
 
       val query3 = Qry.makeReceiverNonNull(config.getAbstractInterpreter,
         Signature("com.example.createdestroy.MyActivity","void onPause()"),
-        BounderUtil.lineForRegex(".*query3.*".r,src), Some(".*iterator.*".r))
+        BounderUtil.lineForRegex(".*query3.*".r,src), Some(".*run.*".r))
       val loc3 = query3.head.loc.asInstanceOf[AppLoc]
       val targets3: UnresolvedMethodTarget = w.makeInvokeTargets(loc3)
       if(f.cgSource == SparkCallGraph)
@@ -237,7 +237,7 @@ class SootWrapperTest extends FixtureAnyFunSuite  {
 
       val query4 = Qry.makeReceiverNonNull(config.getAbstractInterpreter,
         Signature("com.example.createdestroy.MyActivity", "void onResume()"),
-        BounderUtil.lineForRegex(".*query4.*".r,src), Some(".*iterator.*".r))
+        BounderUtil.lineForRegex(".*query4.*".r,src), Some(".*run.*".r))
       val loc4 = query4.head.loc.asInstanceOf[AppLoc]
       val targets4: UnresolvedMethodTarget = w.makeInvokeTargets(loc4)
       assert(targets4.loc.size > 1)
@@ -249,7 +249,7 @@ class SootWrapperTest extends FixtureAnyFunSuite  {
 
       val query5 = Qry.makeReceiverNonNull(config.getAbstractInterpreter,
         Signature("com.example.createdestroy.MyActivity", "void onResume()"),
-        BounderUtil.lineForRegex(".*query5.*".r,src), Some(".*iterator.*".r))
+        BounderUtil.lineForRegex(".*query5.*".r,src), Some(".*edit.*".r))
       val loc5 = query5.head.loc.asInstanceOf[AppLoc]
       val targets5 = w.makeInvokeTargets(loc5)
       assert(targets5.loc.nonEmpty)
@@ -263,30 +263,41 @@ class SootWrapperTest extends FixtureAnyFunSuite  {
       //TODO: does extra run edge here cause a problem?  I think probably not since the path is just refuted
       val query7 = Qry.makeReceiverNonNull(config.getAbstractInterpreter,
         Signature("com.example.createdestroy.MyActivity", "void onResume()"),
-        BounderUtil.lineForRegex(".*query7.*".r,src), Some(".*iterator.*".r))
+        BounderUtil.lineForRegex(".*query7.*".r,src), Some(".*postDelayed.*".r))
       val loc7 = query7.head.loc.asInstanceOf[AppLoc]
       val targets7 = w.makeInvokeTargets(loc7)
 
       val query8 = Qry.makeReceiverNonNull(config.getAbstractInterpreter,
         Signature("com.example.createdestroy.MyActivity", "void onResume()"),
-        BounderUtil.lineForRegex(".*query8.*".r,src), Some(".*iterator.*".r))
+        BounderUtil.lineForRegex(".*query8.*".r,src), Some(".*someMethod.*".r))
       val loc8 = query8.head.loc.asInstanceOf[AppLoc]
       val targets8 = w.makeInvokeTargets(loc8)
       assert(targets8.loc.nonEmpty)
 
       val query9 = Qry.makeReceiverNonNull(config.getAbstractInterpreter,
         Signature("com.example.createdestroy.MyActivity", "void someMethod()"),
-        BounderUtil.lineForRegex(".*query9.*".r,src), Some(".*iterator.*".r))
+        BounderUtil.lineForRegex(".*query9.*".r,src), Some(".*toString.*".r))
       val loc9 = query9.head.loc.asInstanceOf[AppLoc]
       val targets9 = w.makeInvokeTargets(loc9)
       assert(targets9.loc.nonEmpty)
 
       val query10 = Qry.makeReceiverNonNull(config.getAbstractInterpreter,
         Signature("com.example.createdestroy.MyActivity", "void onResume()"),
-        BounderUtil.lineForRegex(".*query_10.*".r,src), Some(".*iterator.*".r))
+        BounderUtil.lineForRegex(".*query_10.*".r,src), Some(".*toString.*".r))
       val loc10 = query10.head.loc.asInstanceOf[AppLoc]
       val targets10 = w.makeInvokeTargets(loc10)
       assert(targets10.loc.nonEmpty)
+      // receiver matcher should actually prevent a location from finding
+      // query10 is `toString` but below we say only find methods matching `someMethod`
+      var hasThrown = false
+      try {
+        Qry.makeReceiverNonNull(config.getAbstractInterpreter,
+          Signature("com.example.createdestroy.MyActivity", "void onResume()"),
+          BounderUtil.lineForRegex(".*query_10.*".r, src), Some(".*someMethod.*".r))
+      }catch{
+        case _:AssertionError => hasThrown = true
+      }
+      assert(hasThrown)
     }
     makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
   }

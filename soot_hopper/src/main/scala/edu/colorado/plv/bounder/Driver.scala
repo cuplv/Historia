@@ -560,7 +560,7 @@ object Driver {
       val appLoc = symbolicExecutor.appCodeResolver.sampleDeref(filter)
       val sig = appLoc.method.getSignature
       val line = appLoc.line.lineNumber
-      queries.add(ReceiverNonNull(sig, line))
+      queries.add(ReceiverNonNull(sig, line,None))
     }
     val outName = s"sample"
     val f = File(outFolder) / s"$outName.json"
