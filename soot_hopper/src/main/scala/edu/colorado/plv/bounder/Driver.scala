@@ -860,8 +860,8 @@ class ExperimentsDb(bounderJar:Option[String] = None){
         setJobStartTime(jobRow.jobId)
         val outputFlag:String = jobRow.jobTag.flatMap{
           case ts:String if ts != "" => read[ExpTag](ts).other.split(",").headOption
-          case ts => None
-        }.map{v => s" -o ${v}"}.getOrElse("")
+          case _ => None
+        }.map{v => if(v.strip() != "")s" -o ${v}" else ""}.getOrElse("")
         val cmd = s"java ${z3Override} -jar ${bounderJar.toString} -m verify -c ${cfgFile.toString} " +
           s"-u ${outF.toString} ${outputFlag}"
         BounderUtil.runCmdFileOut(cmd, baseDir)
