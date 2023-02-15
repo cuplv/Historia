@@ -880,20 +880,24 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       }.inlineConstEq().getOrElse{
         return None
       }
-      val messageTranslator = MessageTranslator(List(stateWithNulls), List(specSpace))
 
-      // Only encode types in Z3 for subsumption check due to slow-ness
+      val sat = {
+        val (reducedPtState,_) = reducePtRegions(stateWithNulls,State.topState)
+        val messageTranslator = MessageTranslator(List(reducedPtState), List(specSpace))
 
-      val ast =
-        toASTState(stateWithNulls, messageTranslator, maxWitness,
-           specSpace = specSpace, negate = false, debug = maxWitness.isDefined)
+        // Only encode types in Z3 for subsumption check due to slow-ness
 
-      if (maxWitness.isDefined) {
-        println(s"State ${System.identityHashCode(state2)} encoding: ")
-        println(ast.toString)
+        val ast =
+          toASTState(reducedPtState, messageTranslator, maxWitness,
+            specSpace = specSpace, negate = false, debug = maxWitness.isDefined)
+
+        if (maxWitness.isDefined) {
+          println(s"State ${System.identityHashCode(state2)} encoding: ")
+          println(ast.toString)
+        }
+        mkAssert(ast)
+        checkSAT(messageTranslator)
       }
-      mkAssert(ast)
-      val sat = checkSAT(messageTranslator)
       //      val simpleAst = solverSimplify(ast, stateWithNulls, messageTranslator, maxWitness.isDefined)
 
       //      if(simpleAst.isEmpty)
@@ -1590,9 +1594,9 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   def traceInAbstraction(state: State,specSpace: SpecSpace,
                          trace: Trace,
                          debug: Boolean = false)(implicit zCtx: C): Option[WitnessExplanation] = {
-    val stateClean = state.inlineConstEq().getOrElse{
+    val (stateClean, _) = reducePtRegions(state.inlineConstEq().getOrElse{
       return None
-    }
+    }, State.topState)
     try {
       zCtx.acquire()
       val messageTranslator = MessageTranslator(List(stateClean), List(specSpace))

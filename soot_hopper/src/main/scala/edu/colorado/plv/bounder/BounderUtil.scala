@@ -79,21 +79,39 @@ object BounderUtil {
 
   trait ResultSummary
   object ResultSummary{
+    /**
+     * Drop garbage that seems to get appended to summary when in db mode
+     */
+    private def dropChar(c:Char):Boolean = c == '"' || c == '\\' || c == ' '
     implicit val rw:RW[ResultSummary] = upickle.default.readwriter[String].bimap[ResultSummary](
       {
         case Proven => "Proven"
         case Witnessed => "Witnessed"
         case Timeout => "Timeout"
         case Unreachable => "Unreachable"
+        case Interrupted(reason) if reason == "timeout" => "Timeout"
+        case Interrupted(reason) if reason == "Witnessed" => "Witnessed"
+        case Interrupted(reason) if reason == "Unreachable" => "Unreachable"
         case Interrupted(reason) => s"I$reason"
       }
       ,
       {
-        case "Proven" => Proven
-        case "Timeout" => Timeout
-        case "Unreachable" => Unreachable
-        case "Witnessed" => Witnessed
-        case v => Interrupted(v.drop(1))
+        case v if v.dropWhile(dropChar).startsWith("Proven") => Proven
+        case v if v.dropWhile(dropChar).startsWith("Timeout") => Timeout
+        case v if v.dropWhile(dropChar).startsWith("Unreachable") => Unreachable
+        case v if v.dropWhile(dropChar).startsWith("Witnessed") => Witnessed
+        case v if v.dropWhile(dropChar).startsWith("I") => //TODO: figure out why these get nested and fix it, until then this hack un-nests
+          val inner = v.dropWhile(c => c == 'I' || dropChar(c))
+          if(inner.startsWith("timeout"))
+            Timeout
+          else if(inner.startsWith("Witnessed"))
+            Witnessed
+          else if(inner.startsWith("Unreachable"))
+            Unreachable
+          else
+            Interrupted(inner)
+        case v => throw new IllegalArgumentException(s"Failed to parse: ${v} " +
+          s"starts with is: ${v.dropWhile(dropChar).startsWith("I")} first char is: ${v.dropWhile(dropChar).head}")
       }
     )
   }

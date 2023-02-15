@@ -1,13 +1,27 @@
 package edu.colorado.plv.bounder.testutils
 
 import better.files._
+import edu.colorado.plv.bounder.BounderUtil
+import edu.colorado.plv.bounder.lifestate.LifeState.Signature
 import edu.colorado.plv.bounder.solver.StateSolver
+import edu.colorado.plv.bounder.symbolicexecutor.AbstractInterpreter
+import edu.colorado.plv.bounder.symbolicexecutor.state.Reachable
 import org.slf4j.LoggerFactory
 
 import sys.process._
 
 object MkApk {
-
+  def matcherToLine[M,C](matchers: Iterable[(String, String, String)],
+                         src:String, interp: AbstractInterpreter[M,C]): Iterable[Int] = {
+    matchers.map { case (matcher, clazz, method) =>
+      val query1Line = BounderUtil.lineForRegex(matcher.r, src)
+      val initialQuery = Reachable(Signature(clazz, method),
+        query1Line)
+      val query = initialQuery.make(interp)
+      assert(query.nonEmpty)
+      query1Line
+    }
+  }
   private val logger = LoggerFactory.getLogger("MkApk.scala")
   val RXBase = getClass.getResource("/CreateDestroySubscribe.zip").getPath
 
@@ -59,8 +73,11 @@ object MkApk {
 
         Process("./gradlew assembleDebug", appDir.toJava) ! ProcessLogger(v => stdout.append(v + "\n"),
           v => stderr.append(v + "\n"))
+        val errString = stderr.toString
         logger.info(s"Gradle stdout: $stdout")
-        logger.info(s"Gradle stderr: $stderr")
+        logger.info(s"Gradle stderr: $errString")
+        if(errString.contains("FAILURE: Build failed with an exception."))
+          throw new IllegalArgumentException(errString)
         val apkFile = appDir / "app" / "build" / "outputs/apk/debug/app-debug.apk"
         res = Some(applyWithApk(apkFile.toString))
       }catch{

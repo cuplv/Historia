@@ -88,6 +88,7 @@ object SpecSignatures {
 
   val RxJava_call_entry: OAbsMsg = AbsMsg(CBEnter, RxJava_call, TopVal::l::Nil)
 
+
   //TODO: check that this actually matches things
   val RxJava_create: SignatureMatcher = SubClassMatcher("rx.Single", "rx.Single create\\(rx.Single#OnSubscribe\\)", "rxJava_create")
   val RxJava_create_exit:OAbsMsg = AbsMsg(CIExit, RxJava_create, t::Nil)
@@ -208,7 +209,10 @@ object ViewSpec {
 
   val anyViewCallin: OAbsMsg = AbsMsg(CIEnter, SubClassMatcher("android.view.View",".*","View_AnyExceptOther"),List(TopVal, v) )
   val onClick:SignatureMatcher = SubClassMatcher("android.view.View$OnClickListener", ".*onClick.*", "ViewOnClickListener_onClick")
+  val menuItemOnClick:SignatureMatcher = SubClassMatcher("android.view.MenuItem$OnMenuItemClickListener",
+    ".*onMenuItemClick.*","OnMenuItemClickListener_onMenuItemClick")
   val onClickI = AbsMsg(CBEnter, onClick, List(TopVal,l,v))
+  val onMenuItemClickI = AbsMsg(CBEnter, menuItemOnClick, List(TopVal,l,v))
   val setOnClickListenerI:OAbsMsg = AbsMsg(CIExit,
     SubClassMatcher("android.view.View",".*setOnClickListener.*","View_setOnClickListener"),
     List(TopVal,v,l)
@@ -260,12 +264,26 @@ object ViewSpec {
 }
 object SAsyncTask{
   val t = NamedPureVar("t")
+  val v = NamedPureVar("v")
   val AsyncTaskC = Set("android.os.AsyncTask")
   private val executeSig = SubClassMatcher(AsyncTaskC, ".*AsyncTask execute\\(.*\\)", "AsyncTask_execute")
   private val executeI = AbsMsg(CIExit, executeSig, TopVal::t::Nil)
   private val executeIEntry =
     AbsMsg(CIEnter, executeSig, TopVal::t::Nil)
   val disallowDoubleExecute:LSSpec = LSSpec(t::Nil, Nil, executeI, executeIEntry )
+  private val postExecute = SubClassMatcher(AsyncTaskC, ".*onPostExecute\\(.*\\)", "AsyncTask_postExecute")
+  val postExecuteI: OAbsMsg = AbsMsg(CBEnter, postExecute, TopVal :: t :: v :: Nil)
+}
+
+object SJavaThreading{
+  val r = NamedPureVar("r")
+  val o = NamedPureVar("o")
+  val runnableC = Set("java.lang.Runnable")
+  private val runnable = SubClassMatcher(runnableC, ".*run\\(.*\\)", "Runnable_run")
+  val runnableI = AbsMsg(CBEnter, runnable, TopVal::r::Nil)
+  val callableC = Set("java.util.concurrent.Callable")
+  private val call = SubClassMatcher(callableC, ".*call\\(.*\\)", "Callable_call")
+  val callableI = AbsMsg(CBEnter, call, o::r::Nil)
 }
 object SDialog{
   val a = NamedPureVar("a")

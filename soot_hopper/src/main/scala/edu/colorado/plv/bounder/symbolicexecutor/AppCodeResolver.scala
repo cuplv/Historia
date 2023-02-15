@@ -5,6 +5,8 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{derefNameOf, findFirstDerefFor}
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CBExit, CIEnter, CIExit, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldReference, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, If, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, JimpleMethodLoc, LVal, LineLoc, Loc, LocalWrapper, MethodLoc, NopCmd, NullConst, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper, SpecialInvoke, StaticFieldReference, StaticInvoke, SwitchCmd, ThrowCmd, TopTypeSet, TypeSet, UnresolvedMethodTarget, VirtualInvoke}
 import edu.colorado.plv.bounder.lifestate.LifeState.{OAbsMsg, Signature}
+import edu.colorado.plv.bounder.lifestate.{LifecycleSpec, RxJavaSpec, SAsyncTask, SJavaThreading, SpecSignatures, ViewSpec}
+import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, DirectInitialQuery, FieldPtEdge, InitialQuery, NullVal, Qry, ReceiverNonNull}
 
 import scala.annotation.tailrec
@@ -26,9 +28,11 @@ trait AppCodeResolver {
   def getCallbacks: Set[MethodLoc]
 
 
-  def heuristicCbFlowsToDeref[M, C](messages: Set[OAbsMsg], filter: Option[String],
-                                             abs: AbstractInterpreter[M, C]): Set[InitialQuery]
-  def heuristicDerefNull[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[InitialQuery]
+  def heuristicCiFlowsToDeref[M, C](messages: Set[OAbsMsg], filter: Option[String],
+                                    abs: AbstractInterpreter[M, C]): Set[InitialQuery]
+  // heuristic to find dereference of field in a ui callback like onClick
+  def heuristicDerefNullFinish[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[InitialQuery]
+  def heuristicDerefNullSynch[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[InitialQuery]
   def derefFromField[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry]
   def derefFromCallin[M,C](callins: Set[OAbsMsg], filter:Option[String], abs:AbstractInterpreter[M,C]):Set[InitialQuery]
 
@@ -75,7 +79,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     callbacks = iGetCallbacks()
   }
 
-  override def heuristicCbFlowsToDeref[M,C](messages:Set[OAbsMsg], filter:Option[String],
+  override def heuristicCiFlowsToDeref[M,C](messages:Set[OAbsMsg], filter:Option[String],
                                             abs:AbstractInterpreter[M,C]):Set[InitialQuery] = {
 
     val swappedMessages = messages.flatMap{
@@ -92,12 +96,58 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
       ReceiverNonNull(loc.method.getSignature, loc.line.lineNumber, derefNameOf(loc,ir))
     }
   }
-  override def heuristicDerefNull[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[InitialQuery] = {
 
-    val filteredAppMethods: Set[MethodLoc] = appMethods.filter {
+  private def filtereAppMethods(filter: Option[String]): Set[MethodLoc] = {
+    appMethods.filter {
       methodLoc: MethodLoc => // apply package filter if it exists
         filter.forall(methodLoc.classType.startsWith)
     }
+  }
+
+  private def methodIsMatchingCb(matchers:List[OAbsMsg], method:MethodLoc)
+                                (implicit ch:ClassHierarchyConstraints):Boolean = {
+    resolveCallbackEntry(method) match {
+      case Some(CallbackMethodInvoke(sig, _)) =>
+        matchers.exists(m => m.contains(CBEnter, sig) || m.contains(CBExit,sig))
+      case Some(CallbackMethodReturn(sig, _, _)) =>
+        matchers.exists(m => m.contains(CBExit,sig) || m.contains(CBEnter,sig))
+      case None => false
+    }
+  }
+
+  override def heuristicDerefNullFinish[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[InitialQuery] = {
+    // look for finish use somewhere in the app
+    val filteredAppMethods: Set[MethodLoc] = filtereAppMethods(filter)
+    val cfRes = abs.controlFlowResolver
+    implicit val ch = abs.getClassHierarchy
+    val finishExists = filteredAppMethods.exists{ m =>
+      cfRes.directCallsGraph(m).exists {
+        case CallinMethodReturn(sig) => SpecSignatures.Activity_finish.matches(sig)
+        case CallinMethodInvoke(sig) => SpecSignatures.Activity_finish.matches(sig)
+        case GroupedCallinMethodInvoke(_, _) =>throw new IllegalStateException("should not group here")
+        case GroupedCallinMethodReturn(_, _) =>throw new IllegalStateException("should not group here")
+        case _ => false
+      }
+    }
+    if (!finishExists)
+      return Set.empty
+    val finishSensitiveCbs = List(ViewSpec.onClickI, ViewSpec.onMenuItemClickI)
+    heuristicDerefNull(filter, abs, method =>
+      methodIsMatchingCb(finishSensitiveCbs, method))
+  }
+
+  override def heuristicDerefNullSynch[M, C](filter: Option[String], abs: AbstractInterpreter[M, C]): Set[InitialQuery] = {
+    implicit val ch = abs.getClassHierarchy
+    val syncCallbacks = List(SpecSignatures.RxJava_call_entry, SAsyncTask.postExecuteI,
+      SJavaThreading.runnableI, SJavaThreading.callableI)
+    heuristicDerefNull(filter, abs, method => methodIsMatchingCb(syncCallbacks, method))
+  }
+
+  def heuristicDerefNull[M,C](filter:Option[String], abs:AbstractInterpreter[M,C],
+                              acceptMethod:MethodLoc => Boolean):Set[InitialQuery] = {
+    //TODO: split this into deref in onClick and other ui callbacks where finish is invoked and deref in synchronization cb like onPostExecute or Action1
+
+    val filteredAppMethods: Set[MethodLoc] = filtereAppMethods(filter)
 
     // find all fields set to null (and points to sets for dynamic fields)
     def findNullAssign(v:AppLoc):Option[(LVal, TypeSet)] = {
@@ -145,7 +195,8 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
       }
     }
 
-    filteredAppMethods.flatMap{m =>
+    val acceptedAppMethods: Set[MethodLoc] = filteredAppMethods.filter(acceptMethod)
+    acceptedAppMethods.flatMap{m =>
       val fieldUse = findFieldMayBeAssignedTo(m)
       val res = fieldUse.flatMap(findFirstDerefFor(m,_, ir))
       res.map{loc =>

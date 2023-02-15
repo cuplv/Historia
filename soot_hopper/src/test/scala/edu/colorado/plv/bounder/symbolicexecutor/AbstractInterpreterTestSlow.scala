@@ -88,7 +88,7 @@ class AbstractInterpreterTestSlow extends AnyFunSuite{
         val symbolicExecutor = config.getAbstractInterpreter
         val i = BounderUtil.lineForRegex(queryL, src)
         val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
-          "void onDestroy()"), i)
+          "void onDestroy()"), i, Some(".*toString.*"))
         val qs = write[InitialQuery](query)
 
 

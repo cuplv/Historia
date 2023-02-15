@@ -113,16 +113,20 @@ object Qry {
     val locs = wr.findLineInMethod(sig, line)
     val isTarget = fieldOrMethod.getOrElse("(.*)".r)
     val derefLocs = locs.filter(a => wr.cmdAtLocation(a) match {
-      case AssignCmd(_, _:VirtualInvoke, _) => true
-      case AssignCmd(_, _:SpecialInvoke, _) => true
-      case InvokeCmd(_:VirtualInvoke,_) => true
-      case InvokeCmd(_:SpecialInvoke,_) => true
-      case AssignCmd(_, FieldReference(base,_,_, isTarget(name)),_) => true
+      case AssignCmd(_, i:VirtualInvoke, _) =>
+        isTarget.matches(i.toString)
+      case AssignCmd(_, i:SpecialInvoke, _) =>
+        isTarget.matches(i.toString)
+      case InvokeCmd(i:VirtualInvoke,_) =>
+        isTarget.matches(i.toString)
+      case InvokeCmd(i:SpecialInvoke,_) =>
+        isTarget.matches(i.toString)
+      case AssignCmd(_, fr@FieldReference(base,_,_, isTarget(name)),_) => true
       case AssignCmd(_, FieldReference(base,_,_, isTarget()),_) => true
       case _ => false
     })
 
-//    assert(derefLocs.size == 1)
+    assert(derefLocs.size == 1, s"Exception: Too many locations found: \n ${derefLocs.mkString("\\n")}")
     // Get location of query
     // Find last dereference on line if not specified
     val derefLoc: AppLoc = derefLocs.toList.last
@@ -243,11 +247,12 @@ case class DirectInitialQuery(qry:Qry) extends InitialQuery{
 }
 
 case class ReceiverNonNull(sig:Signature, line:Integer,
-                           receiverMatcher:Option[String] = None) extends InitialQuery {
+                           receiverMatcher:Option[String]) extends InitialQuery {
   override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] = {
     try {
-      Qry.makeReceiverNonNull(sym, sig, line, fieldOrMethod = receiverMatcher.map(_.r))
-    }catch{
+      val matcherTrimmed = receiverMatcher.map(m => if(m.contains("(")) s".*${m.split("\\(").head}.*" else m)
+      Qry.makeReceiverNonNull(sym, sig, line, fieldOrMethod = matcherTrimmed.map(_.r))
+    } catch{
       case _:PatternSyntaxException => {
         // receiver matcher wasn't a regex, attempt to automatically convert
         val newRecMat:Option[String] = receiverMatcher.map(v => s".*${MustExecutor.parseJavaSignature(v)._2}.*")

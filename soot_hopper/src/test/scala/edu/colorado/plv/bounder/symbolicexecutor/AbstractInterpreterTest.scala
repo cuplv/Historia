@@ -46,7 +46,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       stepLimit = 8, w, new SpecSpace(specs), printAAProgress = true, approxMode = f.approxMode, outputMode = om)
     val symbolicExecutor = config.getAbstractInterpreter
     val query = ReceiverNonNull(
-      Signature("com.example.test_interproc_1.MainActivity", "java.lang.String objectString()"),21)
+      Signature("com.example.test_interproc_1.MainActivity", "java.lang.String objectString()"),21,None)
     // Call symbolic executor
     val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
 //    prettyPrinting.dumpDebugInfo(result, "test_interproc_1_derefSafe")
@@ -70,7 +70,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       outputMode = om)
     val symbolicExecutor = config.getAbstractInterpreter
     val query = ReceiverNonNull(
-      Signature("com.example.test_interproc_2.MainActivity", "void onPause()"),27)
+      Signature("com.example.test_interproc_2.MainActivity", "void onPause()"),27,None)
     val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
     // prettyPrinting.dumpDebugInfo(result, "inter-callback", truncate = false)
     BounderUtil.throwIfStackTrace(result)
@@ -152,7 +152,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode, outputMode = om)
       val symbolicExecutor = config.getAbstractInterpreter
       val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
-        "void onCreate(android.os.Bundle)"), BounderUtil.lineForRegex(".*query1.*".r,src))
+        "void onCreate(android.os.Bundle)"), BounderUtil.lineForRegex(".*query1.*".r,src), Some(".*toString.*"))
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
 //      prettyPrinting.dumpDebugInfo(result, "readLiteral")
 
@@ -223,7 +223,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
 
       // Dereference in loop should witness since we do not have a spec for the list
       val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
-        "void onResume()"), BounderUtil.lineForRegex(".*query1.*".r,src))
+        "void onResume()"), BounderUtil.lineForRegex(".*query1.*".r,src), Some(".*toString.*"))
 
       // prettyPrinting.dotMethod( query.head.loc, symbolicExecutor.controlFlowResolver, "onPauseCond.dot")
 
@@ -284,7 +284,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode, outputMode = om)
       val symbolicExecutor = config.getAbstractInterpreter
       val resSig = Signature("com.example.createdestroy.MyActivity", "void onResume()")
-      val query0 = ReceiverNonNull(resSig, BounderUtil.lineForRegex(".*query0.*".r,src))
+      val query0 = ReceiverNonNull(resSig, BounderUtil.lineForRegex(".*query0.*".r,src), None)
       val result0 = symbolicExecutor.run(query0).flatMap(a => a.terminals)
 
       //if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) assert(result0.nonEmpty)
@@ -292,7 +292,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       f.expectUnreachable(BounderUtil.interpretResult(result0,QueryFinished))
 
       // Dereference in loop should witness since we do not have a spec for the list
-      val query = ReceiverNonNull(resSig, BounderUtil.lineForRegex(".*query1.*".r, src))
+      val query = ReceiverNonNull(resSig, BounderUtil.lineForRegex(".*query1.*".r, src), Some(".*method.*"))
 
       // prettyPrinting.dotMethod( query.head.loc, symbolicExecutor.controlFlowResolver, "onPauseCond.dot")
 
@@ -373,7 +373,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode, outputMode = om)
       val symbolicExecutor = config.getAbstractInterpreter
       val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
-        "void onPause()"), BounderUtil.lineForRegex(".*query1.*".r,src))
+        "void onPause()"), BounderUtil.lineForRegex(".*query1.*".r,src), Some(".*toString.*"))
 
       // prettyPrinting.dotMethod( query.head.loc, symbolicExecutor.controlFlowResolver, "onPauseCond.dot")
 
@@ -456,7 +456,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
           component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = om)
         val symbolicExecutor = config.getAbstractInterpreter
         val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
-          "void onCreate(android.os.Bundle)"), BounderUtil.lineForRegex(".*query1.*".r, src))
+          "void onCreate(android.os.Bundle)"), BounderUtil.lineForRegex(".*query1.*".r, src), Some(".*toString.*"))
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
         //PrettyPrinting.dumpDebugInfo(result, s"alias_${expectedPrint}", truncate = false)
 
@@ -489,7 +489,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
                 |    protected void onCreate(Bundle savedInstanceState) {
                 |        super.onCreate(savedInstanceState);
                 |        setO();
-                |        Log.i("b", o.toString());
+                |        Log.i("b", o.toString()); //query1
                 |    }
                 |    protected void setO() {
                 |        this.o = new Object();
@@ -513,8 +513,9 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         stepLimit = 200, w, new SpecSpace(specs),
         component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = outputMode)
       val symbolicExecutor = config.getAbstractInterpreter
+      val line = BounderUtil.lineForRegex(".*query1.*".r, src)
       val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
-        "void onCreate(android.os.Bundle)"),20)
+        "void onCreate(android.os.Bundle)"),line, Some(".*toString.*"))
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
       // prettyPrinting.dumpDebugInfo(result,"setField")
 
@@ -592,7 +593,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val symbolicExecutor = config.getAbstractInterpreter
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
         val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
-          "void onCreate(android.os.Bundle)"), line)
+          "void onCreate(android.os.Bundle)"), line, Some(".*toString.*"))
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
         //PrettyPrinting.dumpDebugInfo(result, s"setField_${bval}_${expected}") //==========
 
@@ -630,7 +631,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
                 |        Object o1 = new Object();
                 |        o = o1;
                 |        o1 = o;
-                |        Log.i("b", o1.toString());
+                |        Log.i("b", o1.toString()); //query1
                 |    }
                 |    protected void setO() {
                 |        while (this.o == null){
@@ -655,8 +656,9 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         stepLimit = 200, w, new SpecSpace(specs),
         component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
       val symbolicExecutor = config.getAbstractInterpreter
+      val line = BounderUtil.lineForRegex(".*query1.*".r, src)
       val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
-        "void onCreate(android.os.Bundle)"),22)
+        "void onCreate(android.os.Bundle)"),line, Some(".*toString.*"))
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
       // prettyPrinting.dumpDebugInfo(result,"assignFromTest")
       if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) assert(result.nonEmpty)
@@ -722,7 +724,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       f.expectReachable(BounderUtil.interpretResult(resultEntry, QueryFinished))
       // Dereference in loop should witness since we do not have a spec for the list
       val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
-        "void onResume()"), BounderUtil.lineForRegex(".*query1.*".r,src))
+        "void onResume()"), BounderUtil.lineForRegex(".*query1.*".r,src),Some(".*toString.*"))
 
       // prettyPrinting.dotMethod( query.head.loc, symbolicExecutor.controlFlowResolver, "onPauseCond.dot")
 
@@ -869,7 +871,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val symbolicExecutor = config.getAbstractInterpreter
         val i = BounderUtil.lineForRegex(queryL, src)
         val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity.*",
-          ".*run()"), i)
+          ".*run()"), i, Some(".*toString.*"))
 
 
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
@@ -940,7 +942,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val symbolicExecutor = config.getAbstractInterpreter
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
       val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
-        "void onCreate(android.os.Bundle)"),line)
+        "void onCreate(android.os.Bundle)"),line, Some(".*toString.*"))
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
       // prettyPrinting.dumpDebugInfo(result,"DisaliasedObj")
       // prettyPrinting.dotWitTree(result, "DisaliasedObj.dot",true)
@@ -1004,7 +1006,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val symbolicExecutor = config.getAbstractInterpreter
         val line = BounderUtil.lineForRegex(".*query1.*".r,src)
         val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
-          "void onDestroy()"), line)
+          "void onDestroy()"), line, Some(".*toString.*"))
 
 //        prettyPrinting.dotMethod(query.head.loc, symbolicExecutor.controlFlowResolver, "onDestroy_if_not_drop.dot")
 
@@ -1051,7 +1053,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
                 |        }).subscribeOn(Schedulers.newThread())
                 |                .observeOn(AndroidSchedulers.mainThread())
                 |                .subscribe(a -> {
-                |                    Log.i("b", o.toString());
+                |                    Log.i("b", o.toString()); //query1
                 |                });
                 |    }
                 |
@@ -1079,8 +1081,9 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
           stepLimit = 300, w, specSpace,z3Timeout = Some(30),
           component = Some(List("com\\.example\\.createdestroy\\.*MyActivity.*")), approxMode = f.approxMode)
         val symbolicExecutor = config.getAbstractInterpreter
+        val line = BounderUtil.lineForRegex(".*query1.*".r, src)
         val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
-          "void lambda$onCreate$1$MyActivity(java.lang.Object)"), 31)
+          "void lambda$onCreate$1$MyActivity(java.lang.Object)"), line, Some(".*toString.*"))
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
         //prettyPrinting.dumpDebugInfo(result, "ProveFieldDerefWithSubscribe")
         assert(result.nonEmpty)
@@ -1148,7 +1151,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val symbolicExecutor = config.getAbstractInterpreter
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
       val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
-        "void lambda$onCreate$1$MyActivity(java.lang.Object)"),line)
+        "void lambda$onCreate$1$MyActivity(java.lang.Object)"),line, Some(".*toString.*"))
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
       // prettyPrinting.dumpDebugInfo(result,"WitnessFieldDerefWithSubscribe")
       assert(result.nonEmpty)
@@ -1233,7 +1236,8 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val symbolicExecutor = config.getAbstractInterpreter
       val query = ReceiverNonNull(
         Signature("com.example.createdestroy.MyFragment",
-        "void lambda$onActivityCreated$1$MyFragment(java.lang.Object)"),BounderUtil.lineForRegex(".*query1.*".r, src))
+        "void lambda$onActivityCreated$1$MyFragment(java.lang.Object)"),
+        BounderUtil.lineForRegex(".*query1.*".r, src), Some(".*toString.*"))
 
 
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
@@ -1719,7 +1723,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
           val query = ReceiverNonNull(
             Signature("com.example.createdestroy.RemoverActivity",
             "void onClick(android.view.View)"),
-            line)
+            line, Some(".*toString.*"))
 
           val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
           val fname = s"Button_disable_$fileSuffix"
@@ -1798,13 +1802,8 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       //line in call cannot throw npe since s is initialized
       // pre-line: -1 virtualinvoke $r1.<com.example.createdestroy.MyFragment: void lambda$onActivityCreated$0$MyFragment(rx.SingleSubscriber)>($r3)
       val query2 = ReceiverNonNull(Signature("com.example.createdestroy.MyFragment",
-        "void lambda$onActivityCreated$0$MyFragment(rx.SingleSubscriber)"),line,Some("toString"))
+        "void lambda$onActivityCreated$0$MyFragment(rx.SingleSubscriber)"),line,Some(".*toString.*"))
 
-      val allClasses = Scene.v().getClasses.asScala.filter(c =>
-        (c.getJavaPackageName.contains("rx") && c.getShortName.contains("Single")) || c.getJavaPackageName.contains("com.example") || c.getShortName.contains("CgEntryPoint___________a____b"))
-
-      val ptr = w.getAllPtRegions()
-      println(allClasses.size)
       val result2 = symbolicExecutor.run(query2).flatMap(a => a.terminals)
 
       //prettyPrinting.dumpDebugInfo(result2, "proveNospec")
@@ -1884,7 +1883,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
 
       //line in call cannot throw npe since s is initialized
       val query2 = ReceiverNonNull(Signature("com.example.createdestroy.MyFragment",
-        "void call(java.lang.Object)"),line)
+        "void call(java.lang.Object)"),line, Some(".*toString.*"))
       val result2 = symbolicExecutor.run(query2).flatMap(a => a.terminals)
       val interpretedResult2 = BounderUtil.interpretResult(result2,QueryFinished)
       f.expectUnreachable(interpretedResult2)
@@ -2077,7 +2076,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val symbolicExecutor = config.getAbstractInterpreter
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
       val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
-        "void onPause()"),line)
+        "void onPause()"),line, Some(".*toString.*"))
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
       //      prettyPrinting.dumpDebugInfo(result, "missingCb")
 
@@ -2607,7 +2606,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         // prettyPrinting.dumpDebugInfo(nullUnreachRes2, s"ResumedPaused_NPE_Unreach2")
         assert(nullUnreachRes2.nonEmpty)
         BounderUtil.throwIfStackTrace(nullUnreachRes2)
-        PrettyPrinting.printWitness(nullUnreachRes2)
+        //PrettyPrinting.printWitness(nullUnreachRes2)
         f.expectUnreachable(BounderUtil.interpretResult(nullUnreachRes2, QueryFinished) )
       }
 
@@ -2806,7 +2805,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
               val nullReachRes = symbolicExecutor_reach.run(nullReach, dbMode).flatMap(a => a.terminals)
               val interpretedResult = BounderUtil.interpretResult(nullReachRes,QueryFinished)
               println(s"spec set: ${specs.size}")
-              PrettyPrinting.dumpDebugInfo(nullReachRes, s"ReachSamp_${specs.size}",truncate=false)
+              //PrettyPrinting.dumpDebugInfo(nullReachRes, s"ReachSamp_${specs.size}",truncate=false)
               f.expectReachable(interpretedResult )
             }
           }

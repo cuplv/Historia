@@ -6,12 +6,137 @@ import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, Signature}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, SpecSpace}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{CallinReturnNonNull, Qry}
 import edu.colorado.plv.bounder.testutils.MkApk
-import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
+import edu.colorado.plv.bounder.testutils.MkApk.{makeApkWithSources, matcherToLine}
 import org.scalatest.funsuite.AnyFunSuite
 
 class DefaultAppCodeResolverTest extends AnyFunSuite {
+
+  private def contains(queries: Set[Qry], derefLine: Int): Boolean =
+    queries.exists { q => q.loc.asInstanceOf[AppLoc].line.lineNumber == derefLine }
+
+  def srcAct(withFinish:String)  =
+    s"""package com.example.createdestroy;
+      |import android.app.Activity;
+      |import android.os.AsyncTask;
+      |import android.view.View.OnClickListener;
+      |import android.widget.Button;
+      |import java.util.concurrent.Callable;
+      |import android.os.AsyncTask;
+      |import android.os.Handler;
+      |import android.view.View;
+      |public class MyActivity extends Activity implements OnClickListener, Callable<String> {
+      |   Object target = null;
+      |
+      |   @Override
+      |   public String call(){
+      |     return target.toString(); //query4
+      |   }
+      |
+      |   @Override
+      |   public void onResume(){
+      |      target = new Object();
+      |      super.onPause();
+      |      Button b = findViewById(42);
+      |      b.setOnClickListener(this);
+      |
+      |      new AsyncTask<Object, Object, Object>() {
+      |			    @Override
+      |			    protected Object doInBackground(Object... objects) {
+      |			    	return null;
+      |			    }
+      |
+      |			    @Override
+      |			    protected void onPostExecute(Object o){
+      |           target.toString(); //query2
+      |			    }
+      |		  }.execute();
+      |
+      |     Handler handler = new Handler();
+      |		  handler.post(new Runnable() {
+      |		  	@Override
+      |		  	public void run() {
+      |         target.toString(); //query3
+      |		  	}
+      |		  });
+      |   }
+      |   @Override
+      |   public void onClick(View v){
+      |     target.toString(); //query1
+      |     ${withFinish}
+      |   }
+      |   @Override
+      |   public void onPause(){
+      |     super.onPause();
+      |     target = null;
+      |   }
+      |}
+      |""".stripMargin
+
+  private val runnableClazz = "com.example.createdestroy.MyActivity$2"
+  private val runSig = "void run()"
+  private val callSig = "java.lang.String call()"
+  private val actClazz = "com.example.createdestroy.MyActivity"
+  private val exClazz = "com.example.createdestroy.MyActivity$1"
+  private val clickSig = "void onClick(android.view.View)"
+  private val postExSig = "void onPostExecute(java.lang.Object)"
+
+
+
+  test("Heuristic deref null sync") {
+    val src = srcAct("")
+    val test: String => Unit = apk => {
+      assert(apk != null)
+      val specSpace = new SpecSpace(Set.empty)
+      val w = new SootWrapper(apk, Set.empty)
+      val config = ExecutorConfig(
+        stepLimit = 2000, w, specSpace,
+        component = Some(List("com.example.createdestroy.*")))
+      val interp = config.getAbstractInterpreter
+
+      val expected = Set(
+        (".*query2.*",exClazz,postExSig),
+        (".*query3.*",runnableClazz, runSig),
+        (".*query4.*",actClazz,callSig)
+      )
+      val expectedLines = matcherToLine(expected,src,interp)
+      val rejectedLines = matcherToLine(Set((".*query1.*",actClazz,clickSig)),src,interp)
+
+      val derefs = interp.appCodeResolver.heuristicDerefNullSynch(Some("com.example"), interp)
+      expectedLines.forall { line => contains(derefs.flatMap(_.make(interp)), line) }
+      rejectedLines.forall { line => !contains(derefs.flatMap(_.make(interp)), line) }
+    }
+
+    makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
+  }
+  test("Heuristic deref null finish"){
+    List(
+      // finish     expected queries
+      ("finish();",Set((".*query1.*",actClazz, clickSig)), Set((".*query2.*",exClazz, postExSig))),
+      (""         ,Set.empty                             , Set((".*query2.*",exClazz, postExSig)))
+    ).foreach {case (finishLine, expected, rejected) =>
+      val src = srcAct(finishLine)
+      val test: String => Unit = apk => {
+        assert(apk != null)
+        val specSpace = new SpecSpace(Set.empty)
+        val w = new SootWrapper(apk, Set.empty)
+        val config = ExecutorConfig(
+          stepLimit = 2000, w, specSpace,
+          component = Some(List("com.example.createdestroy.*")))
+        val interp = config.getAbstractInterpreter
+
+
+        val expectedLines = matcherToLine(expected,src,interp)
+        val rejectedLines = matcherToLine(rejected,src,interp)
+
+        val derefs = interp.appCodeResolver.heuristicDerefNullFinish(Some("com.example"), interp)
+        expectedLines.forall{line => contains(derefs.flatMap(_.make(interp)), line)}
+        rejectedLines.forall{line => !contains(derefs.flatMap(_.make(interp)), line)}
+      }
+
+      makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
+    }
+  }
   test("Test app code resolver can find syntactic locations of pattern misuses") {
-    //TODO: this functionality is not complete
     val src =
       """
         |package com.example.createdestroy;
@@ -99,13 +224,9 @@ class DefaultAppCodeResolverTest extends AnyFunSuite {
         printAAProgress = true)
       val interpreter = config.getAbstractInterpreter
       val query1line = BounderUtil.lineForRegex(".*query1.*".r, src)
-      val query = CallinReturnNonNull(
-        Signature("com.example.createdestroy.MyFragment",
-          "void lambda$onActivityCreated$1$MyFragment(java.lang.Object)"), query1line,
-        ".*getActivity.*")
+
       val resolver = interpreter.appCodeResolver
       val packageFilter = Some("com.example.createdestroy.MyFragment")
-      val loc = query.make(interpreter).map{q => q.loc.asInstanceOf[AppLoc]}
 
       // Use Historia to find derefs
       val res = resolver.allDeref(packageFilter, interpreter)
@@ -115,9 +236,6 @@ class DefaultAppCodeResolverTest extends AnyFunSuite {
       val deref2Line = BounderUtil.lineForRegex(".*deref2.*".r,src)
       val deref3Line = BounderUtil.lineForRegex(".*deref3.*".r,src)
       val deref4Line = BounderUtil.lineForRegex(".*deref4.*".r,src)
-
-      def contains(queries:Set[Qry], derefline:Int):Boolean =
-        queries.exists{q => q.loc.asInstanceOf[AppLoc].line.lineNumber == derefline}
 
       //check that our dereferences were found
       assert(contains(res,query1line))
@@ -144,14 +262,14 @@ class DefaultAppCodeResolverTest extends AnyFunSuite {
       assert(!contains(derefsFromFields, deref1Line))
 
       // Heuristic find deref - basic blocks that read and dereference fields that may be set to null elsewhere
-      val heuristicLocations = resolver.heuristicDerefNull(packageFilter, interpreter)
+      val heuristicLocations = resolver.heuristicDerefNull(packageFilter, interpreter, _ => true)
       assert(contains(heuristicLocations.flatMap(_.make(interpreter)), deref3Line))
       assert(contains(heuristicLocations.flatMap(_.make(interpreter)), deref4Line))
       assert(!contains(heuristicLocations.flatMap(_.make(interpreter)), deref1Line))
 
       //heuristic find getAct derefs
       val heuristicGetActDerefs =
-        resolver.heuristicCbFlowsToDeref(getActNullAbsMsg, packageFilter, interpreter)
+        resolver.heuristicCiFlowsToDeref(getActNullAbsMsg, packageFilter, interpreter)
       assert(contains(heuristicGetActDerefs.flatMap(_.make(interpreter)), deref1Line))
       assert(!contains(heuristicGetActDerefs.flatMap(_.make(interpreter)), deref3Line))
       assert(!contains(heuristicGetActDerefs.flatMap(_.make(interpreter)), deref4Line))

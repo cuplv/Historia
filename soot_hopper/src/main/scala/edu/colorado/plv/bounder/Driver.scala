@@ -7,9 +7,9 @@ import java.sql.Timestamp
 import java.time.Instant
 import java.util.Date
 import better.files.File
-import edu.colorado.plv.bounder.BounderUtil.{MaxPathCharacterization, Proven, ResultSummary, Timeout, Unreachable, Witnessed, characterizeMaxPath}
+import edu.colorado.plv.bounder.BounderUtil.{DepthResult, Interrupted, MaxPathCharacterization, Proven, ResultSummary, Timeout, UnknownCharacterization, Unreachable, Witnessed, characterizeMaxPath}
 import edu.colorado.plv.bounder.Driver.{Default, LocResult, RunMode, modeToString}
-import edu.colorado.plv.bounder.ir.{AppLoc, Loc, SootWrapper}
+import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, InternalMethodInvoke, InternalMethodReturn, JimpleMethodLoc, Loc, MethodLoc, SerializedIRLineLoc, SerializedIRMethodLoc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSConstraint, LSSpec, OAbsMsg, Signature}
 import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSpace}
@@ -90,6 +90,17 @@ case class Action(mode:RunMode = Default,
   }
 }
 
+/**
+ *
+ * @param heuristicType Tag of the heuristic that generated a given config
+ * @param specRefinement Human made label distinguishing different experiment runs
+ * @param other comma separated list of other params (TODO: break these out into fields if we rerun experiments)
+ *              0: Output mode
+ */
+case class ExpTag(heuristicType:String = "", specRefinement:String = "", other:String = "")
+object ExpTag{
+  implicit val rw:RW[ExpTag] = macroRW
+}
 case class RunConfig( //Mode can also be specified in run config
                      apkPath:String = "",
                      outFolder:Option[String] = None,
@@ -98,7 +109,7 @@ case class RunConfig( //Mode can also be specified in run config
                      initialQuery: List[InitialQuery] = Nil,
                      limit:Int = -1,
                      samples:Int = 5,
-                     tag:String = "",
+                     tag:ExpTag = ExpTag(),
                      timeLimit:Int = 600, // max clock time per query
                      truncateOut:Boolean = true,
                       configPath:Option[String] = None //Note: overwritten with json path of config
@@ -138,9 +149,11 @@ object Driver {
 
   case object MakeAllDeref extends RunMode
 
-  case object MakeSensitiveDerefFieldCaused extends RunMode
+  case object MakeSensitiveDerefFieldCausedFinish extends RunMode
+  case object MakeSensitiveDerefFieldCausedSync extends RunMode
 
   case object MakeSensitiveDerefCallinCaused extends RunMode
+  case object ExportPossibleMessages extends RunMode
 
   /**
    * Find locations of all callins used in disallow specs from config file.
@@ -178,8 +191,10 @@ object Driver {
   "expLoop" -> ExpLoop,
   "makeAllDeref" -> MakeAllDeref,
   "findCallinsPattern" -> FindCallins,
-  "nullFieldPattern" -> MakeSensitiveDerefFieldCaused,
-  "nullCallinPattern" -> MakeSensitiveDerefCallinCaused
+  "nullFieldPatternFinish" -> MakeSensitiveDerefFieldCausedFinish,
+  "nullFieldPatternSync" -> MakeSensitiveDerefFieldCausedSync,
+  "nullCallinPattern" -> MakeSensitiveDerefCallinCaused,
+    "exportPossibleMessages" -> ExportPossibleMessages
   )
   lazy val modeToString: Map[RunMode,String] = stringToMode.map{case (k,v) => v->k}
   def decodeMode(modeStr: Any): RunMode = modeStr match {
@@ -313,16 +328,20 @@ object Driver {
         findCallins(cfg, act.getApkPath, act.getOutFolder, act.filter)
       case act@Action(MakeSensitiveDerefCallinCaused, _, _, cfg, _, _, _) =>
         makeSensitiveDerefCallinCaused(cfg, act.getApkPath, act.getOutFolder, act.filter)
-      case act@Action(MakeSensitiveDerefFieldCaused, _, _, cfg, _, _, _) =>
-        makeSensitiveDerefFieldCaused(cfg, act.getApkPath, act.getOutFolder, act.filter)
+      case act@Action(MakeSensitiveDerefFieldCausedFinish, _, _, cfg, _, _, _) =>
+        makeSensitiveDerefFieldCaused(cfg, act.getApkPath, act.getOutFolder, act.filter, "Finish")
+      case act@Action(MakeSensitiveDerefFieldCausedSync, _, _, cfg, _, _, _) =>
+        makeSensitiveDerefFieldCaused(cfg, act.getApkPath, act.getOutFolder, act.filter, "Synch")
       case act@Action(ReadDB, _, _, _, _, _, _) =>
         readDB(File(act.getOutFolder))
       case Action(ExpLoop, _, _, _, _, _, _) =>
         expLoop()
       case act@Action(MakeAllDeref, _, _, cfg, _, tag, _) =>
-        makeAllDeref(act.getApkPath, act.filter, File(act.getOutFolder), cfg, tag)
+        makeAllDeref(act.getApkPath, act.filter, File(act.getOutFolder), cfg, ExpTag(other = tag.getOrElse("")))
       case Action(Info, Some(out), Some(apk), cfg, _, _, _) =>
         info(cfg, out, apk)
+      case act@Action(ExportPossibleMessages, _,_,cfg, _,_,_) =>
+        outputMessages(cfg, act.filter, act.getOutFolder, act.getApkPath)
       case v => throw new IllegalArgumentException(s"Invalid action: $v")
     }
   }
@@ -342,6 +361,30 @@ object Driver {
     stdout.exists(v => v.contains("a.a.a."))
   }
 
+  def outputMessages(cfg:RunConfig, filter:Option[String], out:String, apkPath:String):Unit = {
+    //TODO: finish at some point
+    val outFile = File(out)
+    val w = new SootWrapper(apkPath, Set())
+    val config = ExecutorConfig(
+      stepLimit = 0, w, new SpecSpace(Set()), component = None)
+    val interpreter = config.getAbstractInterpreter
+    val resolver = interpreter.appCodeResolver
+    val cfRes = interpreter.controlFlowResolver
+    val allMethods: Set[MethodLoc] = resolver.appMethods.filter{m => ???}
+    val callins:Set[Signature] = allMethods.flatMap{appMethod => cfRes.directCallsGraph(appMethod).flatMap {
+      case CallinMethodReturn(sig) => Some(sig)
+      case CallinMethodInvoke(sig) => Some(sig)
+      case GroupedCallinMethodInvoke(_, _) => throw new IllegalStateException("should not group here")
+      case GroupedCallinMethodReturn(_, _) => throw new IllegalStateException("should not group here")
+      case _ => None
+    }}
+
+    val callbacks: Set[Signature] = resolver.getCallbacks.map{cb => cb.getSignature}
+
+    val callinF = outFile / "Callins_"
+    callinF.overwrite(callins.map{sig => s"${sig.base} , ${sig.methodSignature}"}.mkString("\n"))
+
+  }
   def info(cfg: RunConfig, outBase: String, apkBase: String): Unit = {
     val apk = cfg.apkPath.replace("${baseDir}", apkBase)
     val outFile = File(cfg.outFolder.get.replace("${baseDirOut}", outBase)) / "out.db" //File(baseDirOut) / "out.db"
@@ -356,7 +399,7 @@ object Driver {
   }
 
   def makeAllDeref(apkPath: String, filter: Option[String],
-                   outFolder: File, cfg: RunConfig, tag: Option[String]) = {
+                   outFolder: File, cfg: RunConfig, tag: ExpTag) = {
     val callGraph = SparkCallGraph
     val w = new SootWrapper(apkPath, Set(), callGraph)
     val config = ExecutorConfig(
@@ -369,7 +412,7 @@ object Driver {
       //TODO: should we group more classes together in a job?
       val cfgOut = cfg.outFolder.get
       val cfg2 = cfg.copy(initialQuery = List(q),
-        tag = tag.getOrElse(""), outFolder = Some(cfgOut + "/" + q.className))
+        tag = tag, outFolder = Some(cfgOut + "/" + q.className))
       val fname = outFolder / s"${q.className}.json"
       if (fname.exists()) fname.delete()
       fname.append(write(cfg2))
@@ -399,9 +442,9 @@ object Driver {
   }
   private def writeInitialQuery(cfg:RunConfig, queries:Iterable[InitialQuery], qPrefix:String, outf:File):Unit = {
     queries.zipWithIndex.foreach{case (query, index) =>
-      val f = outf / s"${qPrefix}_$index"
+      val f = outf / s"${qPrefix}_$index.json"
       println(s"writing initial query: ${f.toString}")
-      assert(!f.exists)
+      assert(!f.exists, s"File exists:${f}")
       val cfgWithInit = cfg.copy(initialQuery = List(query))
       f.overwrite(write[RunConfig](cfgWithInit))
     }
@@ -417,12 +460,14 @@ object Driver {
     val executor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
     val specSet = cfg.specSet.getSpecSpace()
     val toFind = splitNullHead(hasNullHead = true, specSet.getDisallowSpecs)
-    writeInitialQuery(cfg,executor.appCodeResolver.heuristicCbFlowsToDeref(toFind, filter, executor),
-      "SensitiveDerefCallinCaused", outf)
+    val heuristicType = "SensitiveDerefCallinCaused"
+    val outCfg = cfg.copy(tag = cfg.tag.copy(heuristicType = heuristicType))
+    writeInitialQuery(outCfg,executor.appCodeResolver.heuristicCiFlowsToDeref(toFind, filter, executor),
+      heuristicType, outf)
   }
 
   def makeSensitiveDerefFieldCaused(cfg: RunConfig, apkPath: String, outFolder: String,
-                                    filter: Option[String]): Unit ={
+                                    filter: Option[String], pattern:String): Unit ={
     val outf = File(outFolder)
     if (!outf.exists)
       mkdir(outf) // make dir if not exists
@@ -433,8 +478,15 @@ object Driver {
     //    val specSet = cfg.specSet.getSpecSpace()
     //    assert(specSet.getDisallowSpecs.isEmpty && specSet.getSpecs.isEmpty,
     //      "Sensitive field caused deref does not use specs")
-    val derefFieldNulls = interpreter.appCodeResolver.heuristicDerefNull(filter, interpreter)
-    writeInitialQuery(cfg,derefFieldNulls, "SensitiveDerefFieldCaused", outf)
+    val derefFieldNulls = if(pattern == "Finish")
+      interpreter.appCodeResolver.heuristicDerefNullFinish(filter, interpreter)
+    else if (pattern == "Synch")
+      interpreter.appCodeResolver.heuristicDerefNullSynch(filter, interpreter)
+    else
+      throw new IllegalArgumentException(s"Unsupported deref pattern: ${pattern}")
+    val heuristicType = s"SensitiveDerefFieldCaused${pattern}"
+    val outCfg = cfg.copy(tag = cfg.tag.copy(heuristicType = heuristicType))
+    writeInitialQuery(outCfg,derefFieldNulls, heuristicType, outf)
   }
 
 
@@ -458,7 +510,7 @@ object Driver {
     val locations: Set[(AppLoc, OAbsMsg)] = symbolicExecutor.appCodeResolver.findCallinsAndCallbacks(toFind, filter)
 
 
-    val disallowedCallins = locations.flatMap {
+    val disallowedCallins: Set[(DisallowedCallin, LSSpec)] = locations.flatMap {
       case (loc, msg) =>
         try {
           val spec = specSet.getDisallowSpecs.find { s => s.target == msg }.get
@@ -470,14 +522,16 @@ object Driver {
 
 
     disallowedCallins.zipWithIndex.foreach{case (initialQuery, index) =>
+      val disallow_ident = initialQuery._2.target.identitySignature
+      val heuristicType = s"Disallow.${disallow_ident}"
+      val fName = s"${heuristicType}_${index}.json"
+      val f = outf / fName
+      assert(!f.exists, s"File $f exists")
       val qry = initialQuery._1
       val spec = PickleSpec.mk(new SpecSpace(Set.empty, Set(initialQuery._2)))
-      val cCfg = cfg.copy(initialQuery = List(qry),specSet = spec)
+      val cCfg = cfg.copy(initialQuery = List(qry),specSet = spec, tag = cfg.tag.copy(heuristicType = heuristicType))
 //      val fName = qry.fileName
-      val fName = s"Disallow_${index}"
       val contents = write(cCfg)
-      val f = outf / fName
-      assert(!f.exists)
       f.write(contents)
     }
   }
@@ -506,7 +560,7 @@ object Driver {
       val appLoc = symbolicExecutor.appCodeResolver.sampleDeref(filter)
       val sig = appLoc.method.getSignature
       val line = appLoc.line.lineNumber
-      queries.add(ReceiverNonNull(sig, line))
+      queries.add(ReceiverNonNull(sig, line,None))
     }
     val outName = s"sample"
     val f = File(outFolder) / s"$outName.json"
@@ -535,46 +589,73 @@ object Driver {
       val config = ExecutorConfig(
         stepLimit = stepLimit, w, new SpecSpace(specSet.getSpecSet(), specSet.getDisallowSpecSet()), component = componentFilter, outputMode = mode,
         timeLimit = cfg.timeLimit)
-      val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
       initialQueries.flatMap{ initialQuery =>
-        val results: Set[symbolicExecutor.QueryData] = symbolicExecutor.run(initialQuery, mode,cfg)
+        try {
+          val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
+          val results: Set[symbolicExecutor.QueryData] = symbolicExecutor.run(initialQuery, mode, cfg)
 
-        val grouped = results.groupBy(v => (v.queryId,v.location)).map{case ((id,loc),groupedResults) =>
-          val res = groupedResults.map(res => BounderUtil.interpretResult(res.terminals, res.result))
-            .reduce(reduceResults)
-          val characterizedMaxPath: MaxPathCharacterization =
-            groupedResults.map(res => BounderUtil.characterizeMaxPath(res.terminals)(mode))
-              .reduce(BounderUtil.reduceCharacterization)
-          val finalTime = groupedResults.map(_.runTime).sum
-          // get minimum cb count and instruction count from nodes live at end
-          // also retrieve up to 3 witnesses
-          val finalLiveNodes = groupedResults.flatMap{res => res.terminals.filter{pathNode =>
-            pathNode.qry.isLive && pathNode.subsumed(mode).isEmpty}}
-          val depthChar: BounderUtil.DepthResult = BounderUtil.computeDepthOfWitOrLive(finalLiveNodes,QueryFinished)(mode)
-          //val depth = if(finalLiveNodes.nonEmpty) Some(finalLiveNodes.map{n => n.depth}.min) else None
-          //val ordDepth = if(finalLiveNodes.nonEmpty) Some(finalLiveNodes.map{_.ordDepth}.min) else None
-          val pp = PrettyPrinting
-          val live: List[List[String]] = pp.nodeToWitness(finalLiveNodes.toList, cfg.truncateOut)(mode).sortBy(_.length).take(2)
-          val witnessed = pp.nodeToWitness(groupedResults.flatMap{res => res.terminals.filter{pathNode =>
-            pathNode.qry match {
-              case Qry(_, _, WitnessedQry(_)) => true
-              case _ => false
-            }}}.toList, cfg.truncateOut)(mode).sortBy(_.length).take(2)
+          val grouped: Seq[LocResult] = results.groupBy(v => (v.queryId, v.location)).map { case ((id, loc), groupedResults) =>
+            val res = groupedResults.map(res => BounderUtil.interpretResult(res.terminals, res.result))
+              .reduce(reduceResults)
+            val characterizedMaxPath: MaxPathCharacterization =
+              groupedResults.map(res => BounderUtil.characterizeMaxPath(res.terminals)(mode))
+                .reduce(BounderUtil.reduceCharacterization)
+            val finalTime = groupedResults.map(_.runTime).sum
+            // get minimum cb count and instruction count from nodes live at end
+            // also retrieve up to 3 witnesses
+            val finalLiveNodes = groupedResults.flatMap { res =>
+              res.terminals.filter { pathNode =>
+                pathNode.qry.isLive && pathNode.subsumed(mode).isEmpty
+              }
+            }
+            val depthChar: BounderUtil.DepthResult = BounderUtil.computeDepthOfWitOrLive(finalLiveNodes, QueryFinished)(mode)
+            //val depth = if(finalLiveNodes.nonEmpty) Some(finalLiveNodes.map{n => n.depth}.min) else None
+            //val ordDepth = if(finalLiveNodes.nonEmpty) Some(finalLiveNodes.map{_.ordDepth}.min) else None
+            val pp = PrettyPrinting
+            val live: List[List[String]] = pp.nodeToWitness(finalLiveNodes.toList, cfg.truncateOut)(mode).sortBy(_.length).take(2)
+            val witnessed = pp.nodeToWitness(groupedResults.flatMap { res =>
+              res.terminals.filter { pathNode =>
+                pathNode.qry match {
+                  case Qry(_, _, WitnessedQry(_)) => true
+                  case _ => false
+                }
+              }
+            }.toList, cfg.truncateOut)(mode).sortBy(_.length).take(2)
 
-          // Only print if path mode is enabled
-          val printWit = mode match {
-            case NoOutputMode => false
-            case MemoryOutputMode => true
-            case DBOutputMode(_) => true
-          }
-          if(printWit){
-            pp.dumpDebugInfo(finalLiveNodes, "wit", outDir = outDir)
-          }
+            // Only print if path mode is enabled
+            val printWit = mode match {
+              case NoOutputMode => false
+              case MemoryOutputMode => true
+              case DBOutputMode(_) => true
+            }
+            if (printWit) {
+              pp.dumpDebugInfo(finalLiveNodes, "wit", outDir = outDir)
+            }
 
-          LocResult(initialQuery,id,loc,res,characterizedMaxPath,finalTime,
-            depthChar, witnesses = live ++ witnessed)
-        }.toList
-        grouped
+            LocResult(initialQuery, id, loc, res, characterizedMaxPath, finalTime,
+              depthChar, witnesses = live ++ witnessed)
+          }.toList
+          grouped
+        }catch {
+          case e:OutOfMemoryError =>
+            e.printStackTrace(new PrintWriter(System.err))
+            Seq(LocResult(initialQuery, 0,
+              AppLoc(SerializedIRMethodLoc("","",Nil), SerializedIRLineLoc(-1,""), true),
+              resultSummary= Interrupted("OutOfMemoryError"),
+              maxPathCharacterization = UnknownCharacterization,
+              time = (System.nanoTime() - startTime)/1000000000,
+              depthChar = DepthResult(-1,-1,-1, Interrupted("OutOfMemoryError")), witnesses = Nil
+            ))
+          case e:Throwable =>
+            e.printStackTrace(new PrintWriter(System.err))
+            Seq(LocResult(initialQuery, 0,
+              AppLoc(SerializedIRMethodLoc("", "", Nil), SerializedIRLineLoc(-1, ""), true),
+              resultSummary = Interrupted(e.toString),
+              maxPathCharacterization = UnknownCharacterization,
+              time = (System.nanoTime() - startTime) / 1000000000,
+              depthChar = DepthResult(-1, -1, -1, Interrupted(e.toString)), witnesses = Nil
+            ))
+        }
       }
     } finally {
       println(s"analysis time(ms): ${(System.nanoTime() - startTime) / 1000.0}")
@@ -588,7 +669,46 @@ object Driver {
       case (_, Timeout) => Timeout
       case (Timeout, _) => Timeout
       case (v1,v2) if v1 == v2 => v1
+      case (i1@Interrupted(r1), Interrupted(_)) if r1.contains("Witnessed") => i1
+      case (Interrupted(_), i2@Interrupted(r2)) if r2.contains("Witnessed") => i2
+      case (int:Interrupted, _) => int
+      case (_,int:Interrupted) => int
     }
+  }
+
+  def groupConfigsInDirectory(maxCount:Int, dir:File):Unit = {
+    val configs = dir.glob("*.json").toList
+    assert(configs.nonEmpty, s"Found no configs in directory: ${dir}")
+    val configsRead = configs.map{config =>
+      read[RunConfig](config.contentAsString)
+    }
+    val grouped = configsRead.groupBy{_.tag}
+    grouped.foreach{
+      case (tag, configGroup) =>
+        val refConfig = configGroup.head
+        configGroup.foreach { other =>
+          val errMsg = s"All configs should have same properties besides initial " +
+            s"query. \nOther: ${other} \n Ref: ${refConfig}"
+          assert(other.apkPath == refConfig.apkPath, errMsg)
+          assert(other.outFolder == refConfig.outFolder, errMsg)
+          assert(other.specSet == refConfig.specSet, errMsg)
+          assert(other.tag == refConfig.tag, errMsg)
+          assert(other.componentFilter == refConfig.componentFilter, errMsg)
+          assert(other.tag == refConfig.tag)
+        }
+        val initialQueries = configGroup.flatMap { cfg => cfg.initialQuery }
+
+        val iqGroups = initialQueries.grouped(maxCount)
+        val cfgGroups = iqGroups.map { iqGroup => refConfig.copy(initialQuery = iqGroup) }
+        cfgGroups.zipWithIndex.foreach{
+          case (config, index) =>
+            val outF = dir / s"${refConfig.tag.heuristicType}_${refConfig.tag.specRefinement}_grouped_${index}.json"
+            assert(outF.notExists)
+            outF.overwrite(write(config))
+        }
+    }
+    configs.foreach { cfgFile => cfgFile.delete() }
+
   }
 
 }
@@ -738,11 +858,16 @@ class ExperimentsDb(bounderJar:Option[String] = None){
           ""
         println("Starting Verifier")
         setJobStartTime(jobRow.jobId)
-        val cmd = s"java ${z3Override} -jar ${bounderJar.toString} -m verify -c ${cfgFile.toString} -u ${outF.toString}"
+        val outputFlag:String = jobRow.jobTag.flatMap{
+          case ts:String if ts != "" => read[ExpTag](ts).other.split(",").headOption
+          case _ => None
+        }.map{v => if(v.trim() != "")s" -o ${v}" else ""}.getOrElse("")
+        val cmd = s"java ${z3Override} -jar ${bounderJar.toString} -m verify -c ${cfgFile.toString} " +
+          s"-u ${outF.toString} ${outputFlag}"
         BounderUtil.runCmdFileOut(cmd, baseDir)
         setEndTime(jobRow.jobId)
         println("Finished Verifier Writing Results")
-        val resDir = ResultDir(jobRow.jobId, baseDir, if(cfg.tag!="") Some(cfg.tag) else None)
+        val resDir = ResultDir(jobRow.jobId, baseDir, cfg.tag)
         val stdoutF = baseDir / "stdout.txt"
         val stdout = if(stdoutF.exists()) stdoutF.contentAsString else ""
         val stderrF = baseDir / "stderr.txt"
@@ -873,7 +998,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
   //    bounderJarHash varchar,
   //    owner varchar
   //  );
-  case class ResultDir(jobId:Int, f:File, jobTag:Option[String]){
+  case class ResultDir(jobId:Int, f:File, jobTag:ExpTag){
     def getDBResults :List[DBResult]= {
       val apk = f / "target.apk"
       val apkHash = BounderUtil.computeHash(apk.toString)
@@ -897,7 +1022,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
         ).toString
         DBResult(id = 0, jobid = jobId,qry = write(rs.q), loc = write(rs.loc), result = resultRow, queryTime = rs.time
           ,resultData = resDataId, apkHash = apkHash,
-          bounderJarHash = bounderJarHash, owner = BounderUtil.systemID(), jobTag = jobTag)
+          bounderJarHash = bounderJarHash, owner = BounderUtil.systemID(), jobTag = Some(write[ExpTag](jobTag)))
       }
     }.toList
   }

@@ -1694,18 +1694,22 @@ class SootWrapper(apkPath : String,
     }
     val sootMethod = loc.asInstanceOf[JimpleMethodLoc].method
     val pt = Scene.v().getPointsToAnalysis
-    val ptSet: Option[Local] = if(local.name.contains("@parameter")) {
-      val index = local.name.split("@parameter")(1).toInt
-      val paramRef = sootMethod.getActiveBody.getParameterRefs.get(index)
-      val paramAssign = sootMethod.getActiveBody.getUnits.asScala.flatMap{
-        case j: JIdentityStmt if j.rightBox.getValue == paramRef =>
-          Some(j.leftBox.getValue.asInstanceOf[Local])
-        case _ => None
+    val ptSet: Option[Local] = {
+      if(loc.isNative())
+        return TopTypeSet
+      else if(local.name.contains("@parameter")) {
+        val index = local.name.split("@parameter")(1).toInt
+        val paramRef = sootMethod.getActiveBody.getParameterRefs.get(index)
+        val paramAssign = sootMethod.getActiveBody.getUnits.asScala.flatMap{
+          case j: JIdentityStmt if j.rightBox.getValue == paramRef =>
+            Some(j.leftBox.getValue.asInstanceOf[Local])
+          case _ => None
+        }
+        assert(paramAssign.size == 1)
+        Some(paramAssign.head)
+      } else {
+        sootMethod.getActiveBody.getLocals.asScala.find(l => l.getName == local.name)
       }
-      assert(paramAssign.size == 1)
-      Some(paramAssign.head)
-    } else {
-      sootMethod.getActiveBody.getLocals.asScala.find(l => l.getName == local.name)
     }
 
     val reaching: PointsToSet = ptSet match{
@@ -1737,6 +1741,8 @@ class SootWrapper(apkPath : String,
   override def getThisVar(methodLoc: MethodLoc): Option[LocalWrapper] = {
     methodLoc match {
       case JimpleMethodLoc(method) if method.isStatic => None
+      case JimpleMethodLoc(method) if method.isNative =>
+        Some(LocalWrapper("@this", methodLoc.classType))
       case JimpleMethodLoc(method) =>
         val l = method.getActiveBody.getThisLocal
         Some(LocalWrapper(l.getName, SootWrapper.stringNameOfType(l.getType)))
@@ -1764,6 +1770,8 @@ case class JimpleMethodLoc(method: SootMethod) extends MethodLoc {
   override def simpleName: String = {
     method.getSubSignature
   }
+
+  def isNative():Boolean = method.isNative
 
   override def bodyToString: String = if(method.hasActiveBody) method.getActiveBody.toString else ""
 
