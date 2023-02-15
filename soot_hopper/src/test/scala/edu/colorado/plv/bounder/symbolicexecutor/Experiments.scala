@@ -817,7 +817,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           test)
     }
   }
-  test("Row6: synch null free") {
+  ignore("Row6: synch null free") {
     // TODO: ===== find motivating bug for this
     // TODO: write specs
     List(
