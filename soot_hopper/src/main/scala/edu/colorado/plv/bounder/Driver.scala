@@ -861,7 +861,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
         val outputFlag:String = jobRow.jobTag.flatMap{
           case ts:String if ts != "" => read[ExpTag](ts).other.split(",").headOption
           case _ => None
-        }.map{v => if(v.strip() != "")s" -o ${v}" else ""}.getOrElse("")
+        }.map{v => if(v.trim() != "")s" -o ${v}" else ""}.getOrElse("")
         val cmd = s"java ${z3Override} -jar ${bounderJar.toString} -m verify -c ${cfgFile.toString} " +
           s"-u ${outF.toString} ${outputFlag}"
         BounderUtil.runCmdFileOut(cmd, baseDir)
