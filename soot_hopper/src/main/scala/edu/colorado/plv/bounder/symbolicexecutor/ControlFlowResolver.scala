@@ -509,11 +509,11 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     loc match {
       case InternalMethodReturn(_, _, m) =>
         relevantMethodBody(m, state).join(
-        isRelevantI(transitiveCallinMessage(m), relevantI, state))
+        isRelevantI(transitiveCallinMessage.getOrElse(m,Set.empty), relevantI, state))
       case _: CallinMethodReturn => RelevantMethod
       case CallbackMethodReturn(_, rloc, Some(retLine)) => {
         val relevantCB = isRelevantI(callbackMessage(rloc), relevantI, state)
-        val relevantCI = isRelevantI(transitiveCallinMessage(rloc), relevantI, state)
+        val relevantCI = isRelevantI(transitiveCallinMessage.getOrElse(rloc,Set.empty), relevantI, state)
         val relevantBody = relevantMethodBody(rloc, state)
         val res = relevantCB.join(relevantCI).join(relevantBody)
         res
