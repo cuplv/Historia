@@ -139,7 +139,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     internalCalls
   }
 
-  def computeAllCalls(loc: MethodLoc, includeCallin: Boolean = false): Set[MethodLoc] = {
+  def computeAllCalls___(loc: MethodLoc, includeCallin: Boolean = false): Set[MethodLoc] = {
     val empty = Set[MethodLoc]()
     val out = BounderUtil.graphFixpoint[MethodLoc, Set[MethodLoc]](Set(loc),
       empty,
@@ -151,6 +151,9 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     out.flatMap {
       case (k, v) => v
     }.toSet
+  }
+  def computeAllCalls(loc:MethodLoc, includeCallin:Boolean = false):Set[MethodLoc] = {
+     callsToRetLoc(loc, includeCallin)
   }
   def allCallsApp: MethodLoc => Set[MethodLoc] = Memo.mutableHashMapMemo(c => computeAllCalls(c))
   def computeAllCallsTransitive(loc:MethodLoc):Set[MethodLoc] = {
