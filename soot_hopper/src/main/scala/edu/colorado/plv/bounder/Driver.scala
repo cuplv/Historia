@@ -848,7 +848,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
         outF.createDirectories()
         // TODO: read results of new structure
         val specContents = specFile.contentAsString
-        val runCfg = cfg.copy(apkPath = apkPath.toString,
+        val runCfg:RunConfig = cfg.copy(apkPath = apkPath.toString,
           specSet = if(specContents.trim == "") TopSpecSet else read[PickleSpec](specContents))
         val cfgFile = (baseDir / "config.json")
         cfgFile.append(write(runCfg))
@@ -864,20 +864,30 @@ class ExperimentsDb(bounderJar:Option[String] = None){
         }.map{v => if(v.trim() != "")s" -o ${v}" else ""}.getOrElse("")
         val cmd = s"java ${z3Override} -jar ${bounderJar.toString} -m verify -c ${cfgFile.toString} " +
           s"-u ${outF.toString} ${outputFlag}"
-        BounderUtil.runCmdFileOut(cmd, baseDir)
-        setEndTime(jobRow.jobId)
-        println("Finished Verifier Writing Results")
-        val resDir = ResultDir(jobRow.jobId, baseDir, cfg.tag)
-        val stdoutF = baseDir / "stdout.txt"
-        val stdout = if(stdoutF.exists()) stdoutF.contentAsString else ""
-        val stderrF = baseDir / "stderr.txt"
-        val stderr = if(stderrF.exists())stderrF.contentAsString else ""
-        // Delete files that aren't needed working directory will be uploaded
-        val uploadStartTime = Instant.now.getEpochSecond
-        println("uploading results")
-        bounderJar.delete()
-        finishSuccess(resDir,stdout, stderr)
-        println(s"done uploading results: ${Instant.now.getEpochSecond - uploadStartTime}")
+        // Run the command for this job
+        // kill jobs that take 2x the query time limit
+        // jobs may take longer than the time limit if soot z3 or another external library gets stuck
+        BounderUtil.runCmdTimeout(cmd, baseDir, runCfg.timeLimit * 2) match {
+          case BounderUtil.RunTimeout =>
+            finishFail(jobRow.jobId, "Subprocess Timeout")
+          case BounderUtil.RunSuccess => {
+            setEndTime(jobRow.jobId)
+            println("Finished Verifier Writing Results")
+            val resDir = ResultDir(jobRow.jobId, baseDir, cfg.tag)
+            val stdoutF = baseDir / "stdout.txt"
+            val stdout = if (stdoutF.exists()) stdoutF.contentAsString else ""
+            val stderrF = baseDir / "stderr.txt"
+            val stderr = if (stderrF.exists()) stderrF.contentAsString else ""
+            // Delete files that aren't needed working directory will be uploaded
+            val uploadStartTime = Instant.now.getEpochSecond
+            println("uploading results")
+            bounderJar.delete()
+            finishSuccess(resDir, stdout, stderr)
+            println(s"done uploading results: ${Instant.now.getEpochSecond - uploadStartTime}")
+          }
+          case BounderUtil.RunFail => ???
+        }
+
       }catch{
         case t:Throwable =>
           println(s"exception ${t.toString}")
@@ -1154,7 +1164,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     )
   }
   def downloadApk(name:String, outFile:File) :Boolean= {
-    println(s"downloading apk: ${name}") //TODO:==== remove debug code
+    println(s"downloading apk: ${name}")
     val qry = for {
       row <- apkQry if row.name === name
     } yield row.img

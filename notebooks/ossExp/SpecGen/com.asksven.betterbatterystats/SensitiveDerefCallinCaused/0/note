@@ -1,0 +1,47 @@
+False alarm
+
+{this -> f * v -> a2 /\ a2 != null /\ a2 = f.getActivity(); v2=f.getActivity()->okheap()} --- P(f) /\ !P(f) 
+v = getActivity()
+
+{this -> f * v -> a2 /\ a2 != null /\ v2=f.getActivity()->okheap()}
+if(v != null){ // this one is never materialized
+	{this -> f /\ f.getActivity()->okheap()}
+	v2 = this.getActivity()
+	{v2 -> null}
+	v2.whatever() //deref
+}
+
+
+null = f.getActivity() -[]-> P(f)
+
+
+v = getActivity()
+v2 = (Activity)(v)
+{(P1 /\ v2 == null) \/ (P2 /\ v2 != null)}
+if(v2 != null){ // if P1 and P2 are same, don't materialize guard, if P1 exists but not P2 or if P1 != P2 then materialize the guard (or vis versa).
+    {P2}
+    v.whatever(); // need to materialize in case where query starts inside guard condition
+}
+{P1} //this query doesn't actually exist but perhaps detect that there is a join even though no state is coming from the other branch
+
+
+// can this same logic be used for a dynamic dispatch site?
+
+More general, I expect this branch point to have n states, if I have less than n, I need to materialize.
+
+
+// other case to consider with the merging of branches
+{this -> v /\ v from {3}}  \/ {this -> v /\ v from {1,2}}
+v.run();
+
+
+void run(){
+{this -> v* this.f -> null /\ v from {3}}
+   f.toString() // query
+}
+
+
+void run(){
+this -> v /\ v from {1,2}
+
+}
