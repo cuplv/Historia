@@ -10,7 +10,7 @@ import better.files.File
 import edu.colorado.plv.bounder.BounderUtil.{DepthResult, Interrupted, MaxPathCharacterization, Proven, ResultSummary, Timeout, UnknownCharacterization, Unreachable, Witnessed, characterizeMaxPath}
 import edu.colorado.plv.bounder.Driver.{Default, LocResult, RunMode, modeToString}
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, InternalMethodInvoke, InternalMethodReturn, JimpleMethodLoc, Loc, MethodLoc, SerializedIRLineLoc, SerializedIRMethodLoc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper}
-import edu.colorado.plv.bounder.lifestate.LifeState.{LSConstraint, LSSpec, OAbsMsg, Signature}
+import edu.colorado.plv.bounder.lifestate.LifeState.{LSConstraint, LSSpec, LSTrue, OAbsMsg, Signature}
 import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
@@ -293,7 +293,6 @@ object Driver {
     act match {
       case act@Action(Verify, _, _, cfg, _, _, mode) =>
         val componentFilter = cfg.componentFilter
-        val specSet = cfg.specSet
         val apkPath = act.getApkPath
         val outFolder: String = act.getOutFolder
         // Create output directory if not exists
@@ -317,7 +316,7 @@ object Driver {
         } else throw new IllegalArgumentException(s"Mode ${mode} is invalid, options: DB - write nodes to sqlite, MEM " +
           s"- keep nodes in memory.")
         val res: List[LocResult] =
-          runAnalysis(cfg, apkPath, componentFilter, pathMode, specSet, stepLimit, initialQuery, Some(outFolder))
+          runAnalysis(cfg, apkPath, componentFilter, pathMode, stepLimit, initialQuery, Some(outFolder))
         res.zipWithIndex.foreach { case (iq, ind) =>
           val resFile = File(outFolder) / s"result_${ind}.txt"
           resFile.overwrite(write(iq))
@@ -580,9 +579,9 @@ object Driver {
     val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
     //TODO:
   }
-  def runAnalysis(cfg:RunConfig, apkPath: String, componentFilter:Option[Seq[String]], mode:OutputMode,
-                  specSet: SpecSetOption, stepLimit:Int,
+  def runAnalysis(cfg:RunConfig, apkPath: String, componentFilter:Option[Seq[String]], mode:OutputMode, stepLimit:Int,
                   initialQueries: List[InitialQuery], outDir:Option[String]): List[LocResult] = {
+    val specSet = cfg.specSet
     val startTime = System.nanoTime()
     try {
       val w = new SootWrapper(apkPath, specSet.getSpecSet().union(specSet.getDisallowSpecSet()))
@@ -848,7 +847,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
         outF.createDirectories()
         // TODO: read results of new structure
         val specContents = specFile.contentAsString
-        val runCfg = cfg.copy(apkPath = apkPath.toString,
+        val runCfg:RunConfig = cfg.copy(apkPath = apkPath.toString,
           specSet = if(specContents.trim == "") TopSpecSet else read[PickleSpec](specContents))
         val cfgFile = (baseDir / "config.json")
         cfgFile.append(write(runCfg))
@@ -864,20 +863,30 @@ class ExperimentsDb(bounderJar:Option[String] = None){
         }.map{v => if(v.trim() != "")s" -o ${v}" else ""}.getOrElse("")
         val cmd = s"java ${z3Override} -jar ${bounderJar.toString} -m verify -c ${cfgFile.toString} " +
           s"-u ${outF.toString} ${outputFlag}"
-        BounderUtil.runCmdFileOut(cmd, baseDir)
-        setEndTime(jobRow.jobId)
-        println("Finished Verifier Writing Results")
-        val resDir = ResultDir(jobRow.jobId, baseDir, cfg.tag)
-        val stdoutF = baseDir / "stdout.txt"
-        val stdout = if(stdoutF.exists()) stdoutF.contentAsString else ""
-        val stderrF = baseDir / "stderr.txt"
-        val stderr = if(stderrF.exists())stderrF.contentAsString else ""
-        // Delete files that aren't needed working directory will be uploaded
-        val uploadStartTime = Instant.now.getEpochSecond
-        println("uploading results")
-        bounderJar.delete()
-        finishSuccess(resDir,stdout, stderr)
-        println(s"done uploading results: ${Instant.now.getEpochSecond - uploadStartTime}")
+        // Run the command for this job
+        // kill jobs that take 2x the query time limit
+        // jobs may take longer than the time limit if soot z3 or another external library gets stuck
+        BounderUtil.runCmdTimeout(cmd, baseDir, runCfg.timeLimit * 2) match {
+          case BounderUtil.RunTimeout =>
+            finishFail(jobRow.jobId, "Subprocess Timeout")
+          case BounderUtil.RunSuccess => {
+            setEndTime(jobRow.jobId)
+            println("Finished Verifier Writing Results")
+            val resDir = ResultDir(jobRow.jobId, baseDir, cfg.tag)
+            val stdoutF = baseDir / "stdout.txt"
+            val stdout = if (stdoutF.exists()) stdoutF.contentAsString else ""
+            val stderrF = baseDir / "stderr.txt"
+            val stderr = if (stderrF.exists()) stderrF.contentAsString else ""
+            // Delete files that aren't needed working directory will be uploaded
+            val uploadStartTime = Instant.now.getEpochSecond
+            println("uploading results")
+            bounderJar.delete()
+            finishSuccess(resDir, stdout, stderr)
+            println(s"done uploading results: ${Instant.now.getEpochSecond - uploadStartTime}")
+          }
+          case BounderUtil.RunFail => ???
+        }
+
       }catch{
         case t:Throwable =>
           println(s"exception ${t.toString}")
@@ -1098,10 +1107,19 @@ class ExperimentsDb(bounderJar:Option[String] = None){
       throw new IllegalStateException(s"Concurrency exception, I am $owner and found " +
         s"jobs Jobs: ${jobRows.mkString(";")} ")
 
+    // check that no results already exist
+    val existingResDataQ = for(
+      j <-resultsQry if j.jobId === d.jobId
+    ) yield (j.jobId)
+    val existingResData = Await.result(db.run(existingResDataQ.result), 30 seconds)
+    assert(existingResData.isEmpty, s"existing results data nonempty, ${d}")
+
+    // upload results
     val resData = d.getDBResults
     resData.foreach{d =>
       Await.result(db.run(resultsQry += d), 30 seconds)
     }
+    // set completed
     val q = for(
       j <- jobQry if j.jobId === d.jobId
     ) yield (j.status, j.stdout, j.stderr)
@@ -1154,7 +1172,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     )
   }
   def downloadApk(name:String, outFile:File) :Boolean= {
-    println(s"downloading apk: ${name}") //TODO:==== remove debug code
+    println(s"downloading apk: ${name}")
     val qry = for {
       row <- apkQry if row.name === name
     } yield row.img

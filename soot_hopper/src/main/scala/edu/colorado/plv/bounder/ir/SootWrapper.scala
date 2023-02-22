@@ -558,7 +558,7 @@ class SootWrapper(apkPath : String,
       val strm = m.classType
       mFilter(strm)
     }
-    val allcalls = cb.flatMap(cfResolver.computeAllCalls(_,true))
+    val allcalls = cb.flatMap(cfResolver.computeAllCalls___(_,true))
     val callins: Set[MethodLoc] = allcalls.filter(c => resolver.isFrameworkClass(c.classType))
     val callinsNoToSTR = callins.filter(c => !c.simpleName.contains("toString()"))
     val allI = spec.allI

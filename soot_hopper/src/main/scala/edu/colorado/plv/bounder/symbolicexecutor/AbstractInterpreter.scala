@@ -190,7 +190,7 @@ class LexicalStackThenTopo[M,C](w:IRWrapper[M,C]) extends OrdCount{
     case (msg1,msg2) if msg1 == msg2 => 0
     case (msg1, msg2) if msg1.isEntry.isDefined && msg2.isEntry.isDefined =>
       if(msg1.toString < msg2.toString) 1 else -1
-    case (AppLoc(m1,_,_), AppLoc(m2,_,_)) => if(m1.toString < m2.toString) 1 else -1
+    case (AppLoc(m1,_,_), AppLoc(m2,_,_)) => if(m1.toString < m2.toString) 1 else -1 //TODO: remove toString here for performance
     case (v1,v2) =>
       println(v1)
       println(v2)
@@ -220,6 +220,13 @@ class LexicalStackThenTopo[M,C](w:IRWrapper[M,C]) extends OrdCount{
         else res
       case (Nil,_) => -1
       case (_,Nil) => 1
+      case (h1 :: t1, h2 :: t2) if h1._1.isDefined && h2._1.isEmpty => 1
+      case (h1 :: t1, h2 :: t2) if h1._1.isEmpty && h2._1.isDefined => -1
+      case (h1 :: t1, h2 :: t2) if h1._1.isDefined && h2._1.isDefined =>
+        val res = compareLocAtSameStack(h1._1.get, h2._1.get)
+        if (res == 0)
+          iCompare(t1, t2)
+        else res
       case (h1::t1, h2::t2) if h1._1 != h2._1 =>
         if(h1._1.toString < h2._1.toString) 1 else -1
     }

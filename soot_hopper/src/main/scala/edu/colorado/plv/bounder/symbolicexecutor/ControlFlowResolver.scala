@@ -5,8 +5,9 @@ import edu.colorado.plv.bounder.ir.EmptyTypeSet.intersect
 import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, OAbsMsg, Signature}
-import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, FieldPtEdge, PureVar, State, StaticPtEdge}
+import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
+import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, ClassVal, FieldPtEdge, IntVal, NullVal, PureExpr, PureVar, State, StaticPtEdge, StringVal, TopVal}
 import scalaz.Memo
 import soot.Scene
 import upickle.default.{macroRW, ReadWriter => RW}
@@ -20,8 +21,7 @@ sealed trait RelevanceRelation{
   def applyPrecisionLossForSkip(state:State):State
 }
 object RelevanceRelation{
-  implicit val rw:RW[RelevanceRelation] = RW.merge(macroRW[RelevantMethod.type], macroRW[NotRelevantMethod.type],
-    DropHeapCellsMethod.rw)
+  implicit val rw:RW[RelevanceRelation] = RW.merge(macroRW[RelevantMethod.type], macroRW[NotRelevantMethod.type])
 }
 case object RelevantMethod extends RelevanceRelation {
   override def join(other: RelevanceRelation): RelevanceRelation = RelevantMethod
@@ -34,25 +34,6 @@ case object NotRelevantMethod extends RelevanceRelation {
 
   override def applyPrecisionLossForSkip(state: State): State = state
 }
-case class DropHeapCellsMethod(names:Set[String]) extends RelevanceRelation {
-  override def join(other: RelevanceRelation): RelevanceRelation = other match{
-    case DropHeapCellsMethod(otherNames) => DropHeapCellsMethod(names.union(otherNames))
-    case RelevantMethod => RelevantMethod
-    case NotRelevantMethod => this
-  }
-
-  override def applyPrecisionLossForSkip(state: State): State = state.copy(sf = state.sf.copy(
-    heapConstraints = state.heapConstraints.filter{
-      case (FieldPtEdge(_,fName),_) => !names.contains(fName)
-      case (StaticPtEdge(_,fieldName),_) => !names.contains(fieldName)
-      case (ArrayPtEdge(_,_),_) =>
-        ???
-    }
-  ))
-}
-object DropHeapCellsMethod{
-  implicit var rw:RW[DropHeapCellsMethod] = macroRW[DropHeapCellsMethod]
-}
 
 /**
  * Functions to resolve control flow edges while maintaining context sensitivity.
@@ -63,43 +44,44 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
                                component: Option[List[String]], config:ExecutorConfig[M,C]) { //TODO: remove pathMode here
   private implicit val ch = cha
   private val componentR: Option[List[Regex]] = component.map(_.map(_.r))
-  private val specSpace:SpecSpace = config.specSpace
+  private val specSpace: SpecSpace = config.specSpace
 
-  //TODO:======   mapping from pts to regions to messages function of absmsg set
+  //private val messageToCallback:Map[OAbsMsg, ]
 
   /**
    * Get a mapping from points to messages to arg number and abstract message.
+   *
    * @param msgs set of messages that may be used by the specification
    * @return the mapping
    */
-  def ptsToMsgs(msgs:Set[OAbsMsg]):Set[(OAbsMsg,List[TypeSet])] = {
-    resolver.getCallbacks.flatMap{cb =>
+  def ptsToMsgs(msgs: Set[OAbsMsg]): Set[(OAbsMsg, List[TypeSet])] = {
+    resolver.getCallbacks.flatMap { cb =>
 
       val ret = wrapper.makeMethodRetuns(cb)
       val cbSig = cb.getSignature
-      val matchedCB = msgs.filter(absMsg => List(CBEnter,CBExit).exists(absMsg.contains(_,cbSig)))
+      val matchedCB = msgs.filter(absMsg => List(CBEnter, CBExit).exists(absMsg.contains(_, cbSig)))
 
       // Get pts to regions for cb return var Empty if void
       val retPts = ret.map(r => wrapper.cmdAtLocation(r) match {
-        case ReturnCmd(Some(returnVar:LocalWrapper), loc) => wrapper.pointsToSet(cb, returnVar)
-        case ReturnCmd(None,loc) => EmptyTypeSet
+        case ReturnCmd(Some(returnVar: LocalWrapper), loc) => wrapper.pointsToSet(cb, returnVar)
+        case ReturnCmd(None, loc) => EmptyTypeSet
         case otherCmd => throw new IllegalStateException(s"Cannot have non-return cmd as return location: $otherCmd")
-      }).foldLeft(EmptyTypeSet:TypeSet){
-        case  (acc,v) => acc.union(v)
+      }).foldLeft(EmptyTypeSet: TypeSet) {
+        case (acc, v) => acc.union(v)
       }
 
       // Get pts to regions for args of cb empty if static
       val argPts = cb.getArgs.map(_.map(wrapper.pointsToSet(cb, _)).getOrElse(EmptyTypeSet))
 
-      val allMethodsCalled = allCalls(cb) + cb
+      val allMethodsCalled = allCallsApp(cb) + cb
       val callins_ = allMethodsCalled.flatMap(callinNamesAndPts)
-      val callins =  callins_.flatMap{ci =>
-        msgs.filter{absMsg =>
+      val callins = callins_.flatMap { ci =>
+        msgs.filter { absMsg =>
           absMsg.contains(CIExit, ci._1)
-        }.map(absMsg => (absMsg,ci._2))
+        }.map(absMsg => (absMsg, ci._2))
       }
 
-      val callbacks = matchedCB.map(absMsg => (absMsg, retPts::argPts))
+      val callbacks = matchedCB.map(absMsg => (absMsg, retPts :: argPts))
 
       callins ++ callbacks
     }
@@ -109,7 +91,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     case CallbackMethodReturn(_, methodLoc, _) =>
       val className = methodLoc.classType
       //componentR.forall(_.exists(r => r.matches(className)))
-      componentR match{
+      componentR match {
         case Some(rList) =>
           rList.exists(r => r.matches(className))
         case None => true
@@ -130,6 +112,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 
   /**
    * Debug function that only prints any given string once
+   *
    * @param s string to print
    */
   def printCache(s: String): Unit = {
@@ -139,15 +122,14 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     }
   }
 
-  private def callsToRetLoc(loc: MethodLoc, includeCallin:Boolean): Set[MethodLoc] = {
+  private def callsToRetLoc(loc: MethodLoc, includeCallin: Boolean): Set[MethodLoc] = {
     val directCalls = directCallsGraph(loc)
     val internalCalls = directCalls.flatMap {
       case InternalMethodReturn(_, _, oloc) =>
         // We only care about direct calls, calls through framework are considered callbacks
         if (!resolver.isFrameworkClass(oloc.classType))
           Some(oloc)
-        else
-          if(includeCallin) Some(oloc) else None
+        else if (includeCallin) Some(oloc) else None
       case CallinMethodReturn(sig) if includeCallin =>
         val res = wrapper.findMethodLoc(sig)
         res
@@ -157,21 +139,37 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     internalCalls
   }
 
-  def computeAllCalls(loc: MethodLoc, includeCallin:Boolean = false): Set[MethodLoc] = {
+  def computeAllCalls___(loc: MethodLoc, includeCallin: Boolean = false): Set[MethodLoc] = {
     val empty = Set[MethodLoc]()
     val out = BounderUtil.graphFixpoint[MethodLoc, Set[MethodLoc]](Set(loc),
       empty,
       empty,
-      next = c => callsToRetLoc(c,includeCallin),
-      comp = (_, v) => callsToRetLoc(v,includeCallin),
+      next = c => callsToRetLoc(c, includeCallin),
+      comp = (_, v) => callsToRetLoc(v, includeCallin),
       join = (a, b) => a.union(b)
     )
     out.flatMap {
       case (k, v) => v
     }.toSet
   }
+  def computeAllCalls(loc:MethodLoc, includeCallin:Boolean = false):Set[MethodLoc] = {
+     callsToRetLoc(loc, includeCallin)
+  }
+  def allCallsApp: MethodLoc => Set[MethodLoc] = Memo.mutableHashMapMemo(c => computeAllCalls(c))
+  def computeAllCallsTransitive(loc:MethodLoc):Set[MethodLoc] = {
+    val calls = mutable.Set[MethodLoc]()
+    calls.addAll(allCallsApp(loc))
+    var added = true
+    while(added){
+      val newCalls = calls.flatMap{called => allCallsApp(called)}
+      added = newCalls.exists{newCall => !calls.contains(newCall)}
+      calls.addAll(newCalls)
+    }
+    calls.toSet
+  }
 
-  def allCalls: MethodLoc => Set[MethodLoc] = Memo.mutableHashMapMemo(c => computeAllCalls(c))
+
+  def allCallsAppTransitive:MethodLoc => Set[MethodLoc] = Memo.mutableHashMapMemo(computeAllCallsTransitive)
 
   //  val memoizedallCalls: MethodLoc => Set[MethodLoc]= allCalls
   def upperBoundOfInvoke(i: Invoke): Option[String] = i match {
@@ -180,24 +178,24 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     case VirtualInvoke(LocalWrapper(_, baseType), _, _, _) => Some(baseType)
   }
 
-  private def fieldCanPt(fr: FieldReference,m:MethodLoc, state: State, tgt:Option[RVal]): Boolean = {
+  private def fieldCanPt(fr: FieldReference, m: MethodLoc, state: State, tgt: Option[RVal]): Boolean = {
     val fname = fr.name
     val baseLocal = fr.base
     state.heapConstraints.exists {
       case (FieldPtEdge(p, otherFieldName), matTgt) if fname == otherFieldName =>
-        val baseLocalPTS = wrapper.pointsToSet(m,baseLocal)
+        val baseLocalPTS = wrapper.pointsToSet(m, baseLocal)
         val existsBaseType =
-          state.typeConstraints.get(p).forall{materializedBaseTS =>
+          state.typeConstraints.get(p).forall { materializedBaseTS =>
             baseLocalPTS.intersectNonEmpty(materializedBaseTS)
           }
 
-        if(existsBaseType){
-          (tgt,matTgt) match{
-            case (Some(tgtLocal:LocalWrapper),mt:PureVar) =>
-              state.canAlias(mt,m,tgtLocal,wrapper,inCurrentStackFrame = false)
+        if (existsBaseType) {
+          (tgt, matTgt) match {
+            case (Some(tgtLocal: LocalWrapper), mt: PureVar) =>
+              state.canAlias(mt, m, tgtLocal, wrapper, inCurrentStackFrame = false)
             case _ => true
           }
-        }else false
+        } else false
       case _ => false
     }
 
@@ -206,8 +204,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   def relevantHeap(m: MethodLoc, state: State): Boolean = {
     def canModifyHeap(c: CmdWrapper): Boolean = c match {
       case AssignCmd(fr: FieldReference, tgt, _) =>
-        fieldCanPt(fr,m, state,Some(tgt))
-      case AssignCmd(src, fr: FieldReference, _) => fieldCanPt(fr,m, state,Some(src))
+        fieldCanPt(fr, m, state, Some(tgt))
+      case AssignCmd(src, fr: FieldReference, _) => fieldCanPt(fr, m, state, Some(src))
       case AssignCmd(StaticFieldReference(clazz, name, _), _, _) =>
         val out = state.heapConstraints.contains(StaticPtEdge(clazz, name))
         out //&& !manuallyExcludedStaticField(name) //TODO: remove dbg code
@@ -225,115 +223,60 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     }
 
     val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) =>
-      BounderUtil.cmdAtLocationNopIfUnknown(v,wrapper).mkPre)
+      BounderUtil.cmdAtLocationNopIfUnknown(v, wrapper).mkPre)
     BounderUtil.graphExists[CmdWrapper](start = returns,
       next = n =>
-        wrapper.commandPredecessors(n).map((v: AppLoc) => BounderUtil.cmdAtLocationNopIfUnknown(v,wrapper).mkPre).toSet,
+        wrapper.commandPredecessors(n).map((v: AppLoc) => BounderUtil.cmdAtLocationNopIfUnknown(v, wrapper).mkPre).toSet,
       exists = canModifyHeap
     )
   }
 
-//  TODO: manuallyExcluded.* methods are for debugging scalability issues
-//  val excludedCaller =
-//    List(
-//      ".*ItemDescriptionFragment.*",
-//      ".*PlaybackController.*"
-//      ".*PlaybackController.*initServiceNot.*",
-//      ".*PlaybackController.*release.*",
-//      ".*PlaybackController.*bindToService.*",
-//    ).mkString("|").r
-//
-//  val excludedCallee = List(".*PlaybackController.*").mkString("|").r
-//
-//  /**
-//   * Experiment to see if better relevance filtering would improve performance
-//   * @param caller
-//   * @param callee
-//   * @return
-//   */
-//  def manuallyExcludedCallSite(caller:MethodLoc, callee:CallinMethodReturn):Boolean = {
-//    if (excludedCaller.matches(caller.classType + ";" + caller.simpleName)){
-//      printCache(s"excluding $caller calls $callee")
-//      true
-//    }else if (excludedCallee.matches(???)){
-//      printCache(s"excluding $caller calls $callee")
-//      true
-//    }else{
-//      false
-//    }
-//  }
-//  def manuallyExcludedStaticField(fieldName:String):Boolean = {
-//    fieldName == "isRunning"
-//  }
+  //  TODO: manuallyExcluded.* methods are for debugging scalability issues
+  //  val excludedCaller =
+  //    List(
+  //      ".*ItemDescriptionFragment.*",
+  //      ".*PlaybackController.*"
+  //      ".*PlaybackController.*initServiceNot.*",
+  //      ".*PlaybackController.*release.*",
+  //      ".*PlaybackController.*bindToService.*",
+  //    ).mkString("|").r
+  //
+  //  val excludedCallee = List(".*PlaybackController.*").mkString("|").r
+  //
+  //  /**
+  //   * Experiment to see if better relevance filtering would improve performance
+  //   * @param caller
+  //   * @param callee
+  //   * @return
+  //   */
+  //  def manuallyExcludedCallSite(caller:MethodLoc, callee:CallinMethodReturn):Boolean = {
+  //    if (excludedCaller.matches(caller.classType + ";" + caller.simpleName)){
+  //      printCache(s"excluding $caller calls $callee")
+  //      true
+  //    }else if (excludedCallee.matches(???)){
+  //      printCache(s"excluding $caller calls $callee")
+  //      true
+  //    }else{
+  //      false
+  //    }
+  //  }
+  //  def manuallyExcludedStaticField(fieldName:String):Boolean = {
+  //    fieldName == "isRunning"
+  //  }
 
-//  //TODO test method: exclude after testing if itemdescriptionFrag is problem
-//  def testExclusions(relI: Set[(I, List[LSParamConstraint])], m: MethodLoc):Boolean = {
-////    val exclusions = Set("ItemDescriptionFragment", "PlaybackController")
-////    val isExcluded = exclusions.exists(v => m.toString.contains(v))
-//    if((!m.toString.contains("ExternalPlayerFragment")) && relI.nonEmpty){
-//      println(s"excluding $m reli: ${relI.map(_._1).mkString(",")}")
-//      true
-//    }else
-//      false
-//  }
+  //  //TODO test method: exclude after testing if itemdescriptionFrag is problem
+  //  def testExclusions(relI: Set[(I, List[LSParamConstraint])], m: MethodLoc):Boolean = {
+  ////    val exclusions = Set("ItemDescriptionFragment", "PlaybackController")
+  ////    val isExcluded = exclusions.exists(v => m.toString.contains(v))
+  //    if((!m.toString.contains("ExternalPlayerFragment")) && relI.nonEmpty){
+  //      println(s"excluding $m reli: ${relI.map(_._1).mkString(",")}")
+  //      true
+  //    }else
+  //      false
+  //  }
 
-  def relevantTrace(m: MethodLoc, state: State): Boolean = {
-    val calls: Set[CallinMethodReturn] = directCallsGraph(m).flatMap {
-      case v: CallinMethodReturn =>
-        Some(v)
-      case _: InternalMethodInvoke => None
-      case _: InternalMethodReturn => None
-      case v =>
-        println(v)
-        ???
-    }
-    // Find any call that matches a spec in the abstract trace
-    val relI: Set[AbsMsg] = calls.flatMap { call =>
-      Set(CIEnter, CIExit).flatMap{ cdir =>
-        state.findIFromCurrent(cdir,call.sig, specSpace)
-      }
-    }
-    //Check if method call can alias all params
 
-    def relIExistsForCmd(tgt: List[Option[RVal]],inv:Invoke)(implicit ch:ClassHierarchyConstraints):Boolean = {
-      val relIHere: Set[AbsMsg] = relI.filter{ i =>
-        i.signatures.matches(inv.targetSignature)
-      }
-//      relIHere.exists(v => v match{
-//        case (_,lsPar) =>
-//          val zipped: List[(LSParamConstraint, Option[RVal])] = lsPar zip tgt
-//          val res = zipped.forall(matchesType)
-//          res
-//      })
-      relIHere.nonEmpty //TODO: check points to set to see if alias exists ====
-    }
-
-    //TODO remove commented code for test exclusions
-    if (relI.nonEmpty) { //&& !testExclusions(relI, m)
-      val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) =>
-        BounderUtil.cmdAtLocationNopIfUnknown(v,wrapper).mkPre)
-      BounderUtil.graphExists[CmdWrapper](start = returns,
-        next = n =>
-          wrapper.commandPredecessors(n).map((v: AppLoc) =>
-            BounderUtil.cmdAtLocationNopIfUnknown(v,wrapper).mkPre).toSet,
-        exists = {
-          case ReturnCmd(returnVar, loc) => false
-          case AssignCmd(target, invCmd: Invoke, loc) =>
-            relIExistsForCmd(TransferFunctions.inVarsForCall(loc,wrapper), invCmd)
-          case AssignCmd(target, source, loc) => false
-          case InvokeCmd(method:Invoke, loc) =>
-            relIExistsForCmd(TransferFunctions.inVarsForCall(loc,wrapper), method)
-          case If(b, trueLoc, loc) => false
-          case NopCmd(loc) => false
-          case SwitchCmd(key, targets, loc) => false
-          case ThrowCmd(loc) => false
-        }
-      )
-    } else
-      false
-  }
-
-  def iHeapNamesModified(m:MethodLoc):Set[String] = {
+  def iHeapNamesModified(m: MethodLoc): Set[String] = {
     def modifiedNames(c: CmdWrapper): Option[String] = c match {
       case AssignCmd(fr: FieldReference, _, _) => Some(fr.name)
       case AssignCmd(_, fr: FieldReference, _) => Some(fr.name)
@@ -347,210 +290,241 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       case _: ThrowCmd => None
       case _: SwitchCmd => None
     }
-    val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) =>
-      BounderUtil.cmdAtLocationNopIfUnknown(v,wrapper).mkPre)
-    BounderUtil.graphFixpoint[CmdWrapper, Set[String]](start = returns,Set(),Set(),
-      next = n => wrapper.commandPredecessors(n).map((v: AppLoc) =>
-        BounderUtil.cmdAtLocationNopIfUnknown(v,wrapper).mkPre).toSet,
-      comp = (acc,v) => acc ++ modifiedNames(v),
-      join = (a,b) => a.union(b)
-    ).flatMap{ case (_,v) => v}.toSet
-  }
-  val heapNamesModified:MethodLoc => Set[String] = Memo.mutableHashMapMemo{iHeapNamesModified}
 
-  def iCallinNamesAndPts(m:MethodLoc):Set[(Signature,List[TypeSet])] = {
-    def paramToTypeSet(p:RVal):TypeSet = p match{
-      case l:LocalWrapper =>
-        wrapper.pointsToSet(m,l)
+    val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) =>
+      BounderUtil.cmdAtLocationNopIfUnknown(v, wrapper).mkPre)
+    BounderUtil.graphFixpoint[CmdWrapper, Set[String]](start = returns, Set(), Set(),
+      next = n => wrapper.commandPredecessors(n).map((v: AppLoc) =>
+        BounderUtil.cmdAtLocationNopIfUnknown(v, wrapper).mkPre).toSet,
+      comp = (acc, v) => acc ++ modifiedNames(v),
+      join = (a, b) => a.union(b)
+    ).flatMap { case (_, v) => v }.toSet
+  }
+
+  val heapNamesModified: MethodLoc => Set[String] = Memo.mutableHashMapMemo {
+    iHeapNamesModified
+  }
+
+  def iCallinNamesAndPts(m: MethodLoc): Set[(Signature, List[TypeSet])] = {
+    def paramToTypeSet(p: RVal): TypeSet = p match {
+      case l: LocalWrapper =>
+        wrapper.pointsToSet(m, l)
       case _ =>
         EmptyTypeSet
     }
-    def modifiedNames(c: CmdWrapper):Set[(Signature,List[TypeSet])] = c match {
-      case AssignCmd(x,i : Invoke, _) => Set((i.targetSignature,paramToTypeSet(x)
-        ::i.targetOptional.map(paramToTypeSet).getOrElse(EmptyTypeSet)::i.params.map(paramToTypeSet)))
+
+    def modifiedNames(c: CmdWrapper): Set[(Signature, List[TypeSet])] = c match {
+      case AssignCmd(x, i: Invoke, _) => Set((i.targetSignature, paramToTypeSet(x)
+        :: i.targetOptional.map(paramToTypeSet).getOrElse(EmptyTypeSet) :: i.params.map(paramToTypeSet)))
       case _: AssignCmd => Set.empty
       case _: ReturnCmd => Set.empty
-      case InvokeCmd(i,_) =>
-        Set((i.targetSignature,EmptyTypeSet::i.targetOptional.map(paramToTypeSet).getOrElse(EmptyTypeSet)
-          ::i.params.map(paramToTypeSet)))
+      case InvokeCmd(i, _) =>
+        Set((i.targetSignature, EmptyTypeSet :: i.targetOptional.map(paramToTypeSet).getOrElse(EmptyTypeSet)
+          :: i.params.map(paramToTypeSet)))
       case _: If => Set.empty
       case _: NopCmd => Set.empty
       case _: ThrowCmd => Set.empty
       case _: SwitchCmd => Set.empty
     }
-    val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) =>
-      BounderUtil.cmdAtLocationNopIfUnknown(v,wrapper).mkPre)
-    BounderUtil.graphFixpoint[CmdWrapper, Set[(Signature,List[TypeSet])]](start = returns,Set(),Set(),
-      next = n => wrapper.commandPredecessors(n).map((v: AppLoc) =>
-        BounderUtil.cmdAtLocationNopIfUnknown(v,wrapper).mkPre).toSet,
-      comp = (acc,v) => acc ++ modifiedNames(v),
-      join = (a,b) => a.union(b)
-    ).flatMap{ case (_,v) => v}.toSet
-  }
-  val callinNamesAndPts:MethodLoc => Set[(Signature,List[TypeSet])] = Memo.mutableHashMapMemo{iCallinNamesAndPts}
 
-  def iCallinNames(m:MethodLoc):Set[String] = {
+    val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) =>
+      BounderUtil.cmdAtLocationNopIfUnknown(v, wrapper).mkPre)
+    BounderUtil.graphFixpoint[CmdWrapper, Set[(Signature, List[TypeSet])]](start = returns, Set(), Set(),
+      next = n => wrapper.commandPredecessors(n).map((v: AppLoc) =>
+        BounderUtil.cmdAtLocationNopIfUnknown(v, wrapper).mkPre).toSet,
+      comp = (acc, v) => acc ++ modifiedNames(v),
+      join = (a, b) => a.union(b)
+    ).flatMap { case (_, v) => v }.toSet
+  }
+
+  val callinNamesAndPts: MethodLoc => Set[(Signature, List[TypeSet])] = Memo.mutableHashMapMemo {
+    iCallinNamesAndPts
+  }
+
+  def iCallinNames(m: MethodLoc): Set[String] = {
     def modifiedNames(c: CmdWrapper): Option[String] = c match {
-      case AssignCmd(_,i : Invoke, _) => Some(i.targetSignature.methodSignature)
+      case AssignCmd(_, i: Invoke, _) => Some(i.targetSignature.methodSignature)
       case _: AssignCmd => None
       case _: ReturnCmd => None
-      case InvokeCmd(i,_) => Some(i.targetSignature.methodSignature)
+      case InvokeCmd(i, _) => Some(i.targetSignature.methodSignature)
       case _: If => None
       case _: NopCmd => None
       case _: ThrowCmd => None
       case _: SwitchCmd => None
     }
-    val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) =>
-      BounderUtil.cmdAtLocationNopIfUnknown(v,wrapper).mkPre)
-    BounderUtil.graphFixpoint[CmdWrapper, Set[String]](start = returns,Set(),Set(),
-      next = n => wrapper.commandPredecessors(n).map((v: AppLoc) =>
-        BounderUtil.cmdAtLocationNopIfUnknown(v,wrapper).mkPre).toSet,
-      comp = (acc,v) => acc ++ modifiedNames(v),
-      join = (a,b) => a.union(b)
-    ).flatMap{ case (_,v) => v}.toSet
-  }
-  val callinNames:MethodLoc => Set[String] = Memo.mutableHashMapMemo{iCallinNames}
 
-  def shouldDropMethod(state:State, heapCellsInState: Set[String], callees: Iterable[MethodLoc]):RelevanceRelation = {
-    if(false){ //TODO: better lose precision condition
-//    val heapNamesModifiedByCallee =
-//      callees.foldLeft(Set[String]()){(acc,callee) => acc.union(heapNamesModified(callee))}
-//    //pure variables are sequentially instantiated, so a higher pure variable is more removed from query
-//    val smallestPvTouched = state.heapConstraints.foldLeft(Integer.MAX_VALUE){
-//      case (acc, (FieldPtEdge(PureVar(id1), name),PureVar(id2))) if heapNamesModifiedByCallee.contains(name) =>
-//        if(acc > id1 || acc > id2) List(id1,id2).min else acc
-//      case (acc, (FieldPtEdge(PureVar(id1), name),_)) if heapNamesModifiedByCallee.contains(name) =>
-//        if(acc > id1) id1 else acc
-//      case (acc, (StaticPtEdge(_,name), PureVar(pv))) if heapNamesModifiedByCallee.contains(name) =>
-//        if(acc > pv) pv else acc
-//      case (acc,_) => acc
-//    }
-//    if(smallestPvTouched > 3){ //TODO: better lose precision condition
-      val allHeapCellsThatCouldBeModified = callees.foldLeft(Set[String]()){(acc,v) =>
+    val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) =>
+      BounderUtil.cmdAtLocationNopIfUnknown(v, wrapper).mkPre)
+    BounderUtil.graphFixpoint[CmdWrapper, Set[String]](start = returns, Set(), Set(),
+      next = n => wrapper.commandPredecessors(n).map((v: AppLoc) =>
+        BounderUtil.cmdAtLocationNopIfUnknown(v, wrapper).mkPre).toSet,
+      comp = (acc, v) => acc ++ modifiedNames(v),
+      join = (a, b) => a.union(b)
+    ).flatMap { case (_, v) => v }.toSet
+  }
+
+  val callinNames: MethodLoc => Set[String] = Memo.mutableHashMapMemo {
+    iCallinNames
+  }
+
+  def shouldDropMethod(state: State, heapCellsInState: Set[String], callees: Iterable[MethodLoc]): RelevanceRelation = {
+    if (false) { //TODO: better lose precision condition
+      //    val heapNamesModifiedByCallee =
+      //      callees.foldLeft(Set[String]()){(acc,callee) => acc.union(heapNamesModified(callee))}
+      //    //pure variables are sequentially instantiated, so a higher pure variable is more removed from query
+      //    val smallestPvTouched = state.heapConstraints.foldLeft(Integer.MAX_VALUE){
+      //      case (acc, (FieldPtEdge(PureVar(id1), name),PureVar(id2))) if heapNamesModifiedByCallee.contains(name) =>
+      //        if(acc > id1 || acc > id2) List(id1,id2).min else acc
+      //      case (acc, (FieldPtEdge(PureVar(id1), name),_)) if heapNamesModifiedByCallee.contains(name) =>
+      //        if(acc > id1) id1 else acc
+      //      case (acc, (StaticPtEdge(_,name), PureVar(pv))) if heapNamesModifiedByCallee.contains(name) =>
+      //        if(acc > pv) pv else acc
+      //      case (acc,_) => acc
+      //    }
+      //    if(smallestPvTouched > 3){ //TODO: better lose precision condition
+      val allHeapCellsThatCouldBeModified = callees.foldLeft(Set[String]()) { (acc, v) =>
         val modifiedAndInState = heapNamesModified(v).intersect(heapCellsInState)
-        acc.union(modifiedAndInState)}
-      DropHeapCellsMethod(allHeapCellsThatCouldBeModified)
-    }else{
+        acc.union(modifiedAndInState)
+      }
+      //DropHeapCellsMethod(allHeapCellsThatCouldBeModified)
+      ???
+    } else {
       RelevantMethod
     }
   }
 
   def relevantMethodBody(m: MethodLoc, state: State): RelevanceRelation = {
     val fnSet: Set[String] = state.fieldNameSet()
-//    val mSet: Set[String] = state.traceMethodSet()
+    //    val mSet: Set[String] = state.traceMethodSet()
     if (resolver.isFrameworkClass(m.classType)) {
       return NotRelevantMethod // body can only be relevant to app heap or trace if method is in the app
     }
 
-    val currentCalls = allCalls(m) + m
-    //TODO: add par back in?
-    val traceRelevantCallees = currentCalls.filter{ m =>
-//      mSet.exists{ci =>
-//        val cin: Set[String] = callinNames(m)
-//        cin.contains(ci)
-//      }
-      val ciN: Set[String] = callinNames(m)
-      ciN.exists(v => state.fastIMatches(v,specSpace))
-    }
-    if (traceRelevantCallees.nonEmpty){
-      val traceExists = traceRelevantCallees.exists{callee =>
-        relevantTrace(callee,state)
-      }
-      if(traceExists) {
-//        println(s"Trace relevant method: $m state: $state")
-        return RelevantMethod
-      }
-    }
-    //TODO: add par back in?
+    val currentCalls = allCallsAppTransitive(m) + m
     val heapRelevantCallees = currentCalls.filter { callee =>
       val hn: Set[String] = heapNamesModified(callee)
       fnSet.exists { fn =>
         hn.contains(fn)
       }
     }
-    val heapExists= heapRelevantCallees.exists{ callee => relevantHeap(callee,state)}
-    if(heapExists) {
-//      println(s"Heap relevant method: $m state: $state")
+    val heapExists = heapRelevantCallees.exists { callee => relevantHeap(callee, state) }
+    if (heapExists) {
+      //      println(s"Heap relevant method: $m state: $state")
       // Method may modify a heap cell in the current state
       // We may decide to drop heap cells and skip the method to scale
       shouldDropMethod(state, fnSet, heapRelevantCallees.seq)
-    } else{
+    } else {
       NotRelevantMethod
     }
-
-
-//    callees.par.exists { c =>
-//      if (relevantHeap(c, state)) {
-////        printCache(s"method: $m calls $c - heap relevant to state: $state")
-//        true
-//      } else if (relevantTrace(c, state)) {
-////        printCache(s"method: $m calls $c trace relevant to state: $state")
-//        true
-//      } else
-//        false
-//    }
   }
 
-  def existsIAlias(locals: List[Option[RVal]], m:MethodLoc,
-                   dir: MessageType, sig: Signature, state: State): Boolean = {
-//    val aliasPos = TransferFunctions.relevantAliases(state, dir, sig)
-//    aliasPos.exists { aliasPo =>
-//      (aliasPo zip locals).forall {
-//        case (LSPure(v: PureVar), Some(local: LocalWrapper)) =>
-////          state.typeConstraints.get(v).forall(_.subtypeOfCanAlias(local.localType,cha))
-//          state.canAlias(v,m, local,wrapper)
-//        case (LSPure(v: PureVar), Some(NullConst)) => ???
-//        case (LSPure(v: PureVar), Some(i: IntConst)) => ???
-//        case (LSPure(v: PureVar), Some(i: StringConst)) => ???
-//        case _ => true
-//      }
-//    }
-    true //TODO: check points to analysis and filter out things that can't point to each other
-
+  val allCBIFromSpec = config.specSpace.allI.filter{
+    case OAbsMsg(CBEnter, signatures, lsVars) => true
+    case OAbsMsg(CBExit, signatures, lsVars) => true
+    case _=> false
+  }
+  //  matches for callback method abstract messages
+  val callbackMessage: Map[MethodLoc, Set[(OAbsMsg, List[TypeSet])]] = {
+    val callbacks = resolver.getCallbacks
+    callbacks.map{callback =>
+      val retType:TypeSet = wrapper.makeMethodRetuns(callback).map{ret =>
+        wrapper.cmdAtLocation(ret) match {
+          case ReturnCmd(Some(returnVar:LocalWrapper),_) => wrapper.pointsToSet(ret.method,returnVar)
+          case _:ReturnCmd => TopTypeSet
+          case v => throw new IllegalStateException(s"$v is not a return")
+        }}.reduceOption((a,b) =>a.union(b)).getOrElse(TopTypeSet)
+      val signature = callback.getSignature
+      (callback,
+      allCBIFromSpec.flatMap{absMsg =>
+        if(absMsg.contains(CBEnter, signature) || absMsg.contains(CBExit, signature)){
+          Some(absMsg, retType :: callback.getArgs.map{
+            case Some(local) => wrapper.pointsToSet(callback, local)
+            case None => TopTypeSet
+          })
+        }else None
+      })
+    }.toMap
   }
 
-  /**
-   * Determine if a method is relevant to a state (skip if not relevant)
-   * TODO: Currently, this method does nothing, we may have scalability issues
-   * @param loc location that may be relevant or not
-   * @param state state that would come after relevant location
-   * @return whether location is relevant, if relevant, should drop a heap cell?
-   */
-  def relevantMethod_disabled(loc: Loc, state: State): RelevanceRelation = RelevantMethod
-  /**
-  TODO: remove this relevance relation when new version works
-   */
-  def relevantMethod(loc: Loc, state: State): RelevanceRelation = loc match {
-    case InternalMethodReturn(_, _, m) =>
-      relevantMethodBody(m,state)
-    case _:CallinMethodReturn => RelevantMethod
-    case cr@CallbackMethodReturn(sig, rloc, Some(retLine)) => {
-      val retVars =
-        if (rloc.isStatic)
-          wrapper.makeMethodRetuns(rloc).map { retloc =>
-            wrapper.cmdAtLocation(retloc) match {
-              case ReturnCmd(Some(l), loc) => Some(l)
-              case _ => None
+  val allCIIFromSpec = config.specSpace.allI.filter{
+    case OAbsMsg(CIEnter, signatures, lsVars) => true
+    case OAbsMsg(CIExit, signatures, lsVars) => true
+    case _=> false
+  }
+  def ptsFromRVal(rval:RVal, method:MethodLoc):TypeSet = rval match{
+    case l:LocalWrapper => wrapper.pointsToSet(method,l)
+    case _ => TopTypeSet
+  }
+  val transitiveCallinMessage: Map[MethodLoc, Set[(OAbsMsg, List[TypeSet])]] = {
+    val appMethods = resolver.appMethods
+    val directCalls = appMethods.map{method =>
+      val absMsgs = wrapper.allMethodLocations(method).flatMap{ loc =>
+        wrapper.cmdAtLocation(loc) match {
+          case AssignCmd(assign, i:Invoke, _) =>
+            resolver.matchesCI(i,allCIIFromSpec).map{matchedMsg =>
+              val assignPts = ptsFromRVal(assign, method)
+              val recPts = i.targetOptional.map(rec => ptsFromRVal(rec,method)).getOrElse(TopTypeSet)
+              (matchedMsg, assignPts::recPts::(i.params.map(rv => ptsFromRVal(rv,method))))
             }
-          } else List(None)
-      val iExists = retVars.exists { retVar =>
-        val locals: List[Option[RVal]] = retVar :: rloc.getArgs
-        val res = existsIAlias(locals,cr.containingMethod.get, CBExit, sig, state) || //TODO: is this used in relevantMethodBody?======
-          existsIAlias(None :: locals.tail,cr.containingMethod.get, CBEnter, sig, state)
+          case InvokeCmd(i:Invoke, _) =>
+            resolver.matchesCI(i, allCIIFromSpec).map { matchedMsg =>
+              val recPts = i.targetOptional.map(rec => ptsFromRVal(rec,method)).getOrElse(TopTypeSet)
+              (matchedMsg, TopTypeSet::recPts::(i.params.map(rv => ptsFromRVal(rv, method))))
+            }
+          case _ => None
+        }
+      }
+      (method, absMsgs)
+    }.toMap
+    directCalls.map{
+      case (method, absMsgs) =>
+        val allCalls = allCallsAppTransitive(method)
+        (method,allCalls.foldLeft(absMsgs){case (acc,v) =>
+          acc ++ directCalls.getOrElse(v, Set.empty)
+        })
+    }
+  }
+
+  private def isRelevantI(fromCG: Set[(OAbsMsg, List[TypeSet])],
+                        relevantIMsg:Set[OAbsMsg], state:State):RelevanceRelation = {
+    if (fromCG.exists {
+      case (absMsg, pts) =>
+        val ex = relevantIMsg.exists{
+          case OAbsMsg(mt,sig, lsVars) if absMsg.mt == mt && absMsg.signatures == sig =>
+            lsVars.zip(pts).forall{
+              case (v:PureVar, ts) =>
+                val out = state.sf.typeConstraints.getOrElse(v,TopTypeSet).intersectNonEmpty(ts)
+                out
+              case _ => true
+            }
+          case v => false
+        }
+        ex
+    }) {
+      RelevantMethod
+    } else {
+      NotRelevantMethod
+    }
+  }
+  def relevantMethod(loc: Loc, state: State): RelevanceRelation = {
+    val relevantI = EncodingTools.rhsToPred(state.sf.traceAbstraction.rightOfArrow, config.specSpace)
+      .flatMap { a => allI(a) }
+    loc match {
+      case InternalMethodReturn(_, _, m) =>
+        relevantMethodBody(m, state).join(
+        isRelevantI(transitiveCallinMessage.getOrElse(m,Set.empty), relevantI, state))
+      case _: CallinMethodReturn => RelevantMethod
+      case CallbackMethodReturn(_, rloc, Some(retLine)) => {
+        val relevantCB = isRelevantI(callbackMessage(rloc), relevantI, state)
+        val relevantCI = isRelevantI(transitiveCallinMessage.getOrElse(rloc,Set.empty), relevantI, state)
+        val relevantBody = relevantMethodBody(rloc, state)
+        val res = relevantCB.join(relevantCI).join(relevantBody)
         res
       }
-      val relevantBody = relevantMethodBody(rloc, state) match{
-        case NotRelevantMethod => false
-        case DropHeapCellsMethod(_) => true
-        case RelevantMethod => true
-      }
-      if(iExists || relevantBody)
-        RelevantMethod
-      else
-        NotRelevantMethod
+      case _ => throw new IllegalStateException("relevantMethod only for method returns")
     }
-    case _ => throw new IllegalStateException("relevantMethod only for method returns")
   }
+
   // Callins are equivalent if they match the same set of I predicates in the abstract trace
   def mergeEquivalentCallins(callins: Set[Loc], state: State): Set[Loc] ={
     val groups: Map[Object, Set[Loc]] = callins.groupBy{
@@ -659,8 +633,6 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
             case (RelevantMethod,_) => m
             case (NotRelevantMethod, InternalMethodReturn(clazz, name, loc)) =>
               SkippedInternalMethodReturn(clazz, name,NotRelevantMethod,loc)
-            case (d:DropHeapCellsMethod, InternalMethodReturn(clazz, name, loc)) =>
-              SkippedInternalMethodReturn(clazz,name,d,loc)
             case v => throw new IllegalStateException(s"$v")
           }}
           val out = mergeEquivalentCallins(resolvedSkipIrrelevant.seq.toSet, state)
@@ -678,8 +650,6 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
               m
             case (NotRelevantMethod, InternalMethodReturn(clazz, name, loc)) =>
               SkippedInternalMethodReturn(clazz, name,NotRelevantMethod,loc)
-            case (d:DropHeapCellsMethod, InternalMethodReturn(clazz, name, loc)) =>
-              SkippedInternalMethodReturn(clazz,name,d,loc)
             case v => throw new IllegalStateException(s"$v")
           }}
           val out: Set[Loc] = mergeEquivalentCallins(resolvedSkipIrrelevant.seq.toSet, state)
@@ -712,10 +682,9 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       // filter for callbacks that may affect current state
       val res2 = componentFiltered.filter{m => relevantMethod(m,state) match{
         case RelevantMethod => true
-        case DropHeapCellsMethod(_) => true
         case NotRelevantMethod => false
       }}
-      //TODO:Currently, all callbacks are relevant, may cause performance issues
+      //TODO: check this
       res2
     case (CallbackMethodReturn(_, loc, Some(line)),_) =>
       AppLoc(loc, line, isPre = false)::Nil

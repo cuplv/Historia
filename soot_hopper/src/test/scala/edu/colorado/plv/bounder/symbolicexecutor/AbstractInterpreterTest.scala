@@ -2615,7 +2615,75 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       test)
     println(s"Test time(ms) ${(System.nanoTime() - startTime)/1000.0}")
   }
+  test("Heap relevant even if only null assign") { f =>
+    //TODO: not fully implemented
 
+    val src =
+      """package com.example.createdestroy;
+        |import androidx.appcompat.app.AppCompatActivity;
+        |import android.os.Bundle;
+        |import android.util.Log;
+        |import android.view.View;
+        |import android.os.Handler;
+        |
+        |
+        |public class MyActivity extends AppCompatActivity {
+        |    protected Handler keyRepeatHandler = new Handler();
+        |    Object o = new Object();
+        |    @Override
+        |    protected void onCreate(Bundle savedInstanceState){
+        |        o = new Object();
+        |        Runnable r = new Runnable(){
+        |            @Override
+        |            public void run(){
+        |                o.toString(); //query1
+        |            }
+        |        };
+        |        keyRepeatHandler.postDelayed(r,3000);
+        |    }
+        |    @Override
+        |    protected void onResume(){
+        |       method3();
+        |    }
+        |    void method3(){
+        |       method2();
+        |    }
+        |    void method2(){
+        |       method1();
+        |    }
+        |
+        |    void method1(){
+        |       o = null;
+        |    }
+        |
+        |    @Override
+        |    protected void onDestroy() {
+        |    }
+        |}""".stripMargin
+    val test: String => Unit = apk => {
+      assert(apk != null)
+      val specs = new SpecSpace(Set() /*LifecycleSpec.spec*/ , Set())
+      val w = new SootWrapper(apk, specs.getSpecs)
+
+      val config = ExecutorConfig(
+        stepLimit = 120, w, specs,
+        component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
+      val symbolicExecutor = config.getAbstractInterpreter
+      val line = BounderUtil.lineForRegex(".*query1.*".r, src)
+      val runMethodReachable = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity$1",
+        "void run()"), line, Some(".*toString.*"))
+
+      val resultRunMethodReachable = symbolicExecutor.run(runMethodReachable)
+        .flatMap(a => a.terminals)
+      //      prettyPrinting.dumpDebugInfo(resultRunMethodReachable, "RunnableInHandler")
+      assert(resultRunMethodReachable.nonEmpty)
+      BounderUtil.throwIfStackTrace(resultRunMethodReachable)
+      assert(BounderUtil.interpretResult(resultRunMethodReachable, QueryFinished) == Witnessed)
+
+    }
+
+    makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
+  }
   ignore("Should not invoke methods on view after activity destroyed spec ____") { f =>
     //TODO: not fully implemented
 

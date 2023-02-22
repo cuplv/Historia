@@ -15,6 +15,7 @@ import scala.util.matching.Regex
 import scala.util.Random
 
 trait AppCodeResolver {
+  def appMethods: Set[MethodLoc]
   def isFrameworkClass(packageName: String): Boolean
 
   def isAppClass(fullClassName: String): Boolean
@@ -39,6 +40,8 @@ trait AppCodeResolver {
   def allDeref[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry]
   def nullValueMayFlowTo[M,C](sources: Iterable[AppLoc],
                          cfRes: ControlFlowResolver[M, C]): Set[AppLoc]
+
+  def matchesCI(i: Invoke, cbMsg:Iterable[OAbsMsg])(implicit ch:ClassHierarchyConstraints): Set[OAbsMsg]
 }
 object FrameworkExtensions{
   private val urlPos = List("FrameworkExtensions.txt",
@@ -70,7 +73,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
 
   protected val excludedClasses = "dummyMainClass".r
 
-  var appMethods = ir.getAllMethods.filter(m => !isFrameworkClass(m.classType)).toSet
+  var appMethods: Set[MethodLoc] = ir.getAllMethods.filter(m => !isFrameworkClass(m.classType)).toSet
   private def iGetCallbacks():Set[MethodLoc] = appMethods.filter(resolveCallbackEntry(_).isDefined)
   private var callbacks:Set[MethodLoc] = iGetCallbacks()
   override def getCallbacks:Set[MethodLoc] = callbacks
@@ -365,28 +368,31 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     }.toSet
 
   }
+
+  override def matchesCI(i: Invoke, cbMsg:Iterable[OAbsMsg])(implicit ch:ClassHierarchyConstraints): Set[OAbsMsg] = {
+    val sig = i.targetSignature
+    cbMsg.filter { oMsg =>
+      List(CIEnter, CIExit).exists { mt => oMsg.contains(mt, sig) }
+    }.toSet
+  }
+
   final def findCallinsAndCallbacks(messages:Set[OAbsMsg],
                                     packageFilter:Option[String]):Set[(AppLoc,OAbsMsg)] = {
     implicit val ch = ir.getClassHierarchyConstraints
     if(messages.exists{m => m.mt == CBEnter || m.mt == CBExit})
       ??? //TODO: unimplemented, add callback and callin search
     val cbMsg = messages.filter{m => m.mt == CIExit || m.mt == CIEnter}
-    def matchesCI(i:Invoke):Option[OAbsMsg] = {
-      val sig = i.targetSignature
-      cbMsg.find{oMsg =>
-        List(CIEnter,CIExit).exists{mt => oMsg.contains(mt, sig)}
-      }
-    }
+
     val filteredAppMethods = appMethods.filter {
       case methodLoc: MethodLoc => // apply package filter if it exists
         packageFilter.forall(methodLoc.classType.startsWith)
     }
     val invokeCmds = filteredAppMethods.flatMap{m =>
       ir.allMethodLocations(m).flatMap{v => BounderUtil.cmdAtLocationNopIfUnknown(v,ir) match{
-        case AssignCmd(_, i: SpecialInvoke, _) => matchesCI(i).map((v, _))
-        case AssignCmd(_, i: VirtualInvoke, _) => matchesCI(i).map((v, _))
-        case InvokeCmd(i: SpecialInvoke, _) => matchesCI(i).map((v, _))
-        case InvokeCmd(i: VirtualInvoke, _) => matchesCI(i).map((v, _))
+        case AssignCmd(_, i: SpecialInvoke, _) => matchesCI(i,cbMsg).map((v, _))
+        case AssignCmd(_, i: VirtualInvoke, _) => matchesCI(i,cbMsg).map((v, _))
+        case InvokeCmd(i: SpecialInvoke, _) => matchesCI(i,cbMsg).map((v, _))
+        case InvokeCmd(i: VirtualInvoke, _) => matchesCI(i,cbMsg).map((v, _))
         case _ => None
       }}
     }
