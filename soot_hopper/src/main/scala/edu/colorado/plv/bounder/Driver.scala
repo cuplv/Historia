@@ -884,7 +884,12 @@ class ExperimentsDb(bounderJar:Option[String] = None){
             finishSuccess(resDir, stdout, stderr)
             println(s"done uploading results: ${Instant.now.getEpochSecond - uploadStartTime}")
           }
-          case BounderUtil.RunFail => ???
+          case BounderUtil.RunFail =>
+            val stdoutF = baseDir / "stdout.txt"
+            val stdout = if (stdoutF.exists()) stdoutF.contentAsString else ""
+            val stderrF = baseDir / "stderr.txt"
+            val stderr = if (stderrF.exists()) stderrF.contentAsString else ""
+            finishFail(jobRow.jobId, s"Non-zero exit code. StdErr: \n${stderr}\n---\n StdOut:\n${stdout}")
         }
 
       }catch{
