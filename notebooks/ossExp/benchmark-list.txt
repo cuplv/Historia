@@ -34,7 +34,6 @@
 /home/s/Documents/data/historia_generalizability/fdroid/com.darshancomputing.BatteryIndicatorPro/12.0.0/apk/com.darshancomputing.BatteryIndicatorPro_26016.apk:com.darshancomputing.BatteryIndicatorPro
 /home/s/Documents/data/historia_generalizability/fdroid/de.syss.MifareClassicTool/4.0.4/apk/de.syss.MifareClassicTool_62.apk:de.syss.MifareClassicTool
 /home/s/Documents/data/historia_generalizability/fdroid/com.knirirr.beecount/2.6.0/apk/com.knirirr.beecount_125.apk:com.knirirr.beecount
-/home/s/Documents/data/historia_generalizability/fdroid/org.transdroid.full/2.5.19/apk/org.transdroid.full_239.apk:org.transdroid.full
 /home/s/Documents/data/historia_generalizability/fdroid/org.scoutant.blokish/3.4/apk/org.scoutant.blokish_22.apk:org.scoutant.blokish
 /home/s/Documents/data/historia_generalizability/fdroid/com.yubico.yubioath/6.0.2/apk/com.yubico.yubioath_600064.apk:com.yubico.yubioath
 /home/s/Documents/data/historia_generalizability/fdroid/de.jkliemann.parkendd/1.2.8/apk/de.jkliemann.parkendd_33.apk:de.jkliemann.parkendd
