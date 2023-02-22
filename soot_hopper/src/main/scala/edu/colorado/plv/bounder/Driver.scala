@@ -861,7 +861,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
           case ts:String if ts != "" => read[ExpTag](ts).other.split(",").headOption
           case _ => None
         }.map{v => if(v.trim() != "")s" -o ${v}" else ""}.getOrElse("")
-        val cmd = s"java ${z3Override} -jar ${bounderJar.toString} -m verify -c ${cfgFile.toString} " +
+        val cmd = s"java ${z3Override} -Xmx 16g -jar ${bounderJar.toString} -m verify -c ${cfgFile.toString} " +
           s"-u ${outF.toString} ${outputFlag}"
         // Run the command for this job
         // kill jobs that take 2x the query time limit
