@@ -87,13 +87,6 @@ RUN  cd /root/android-sdk-linux/cmdline-tools/bin \
 RUN apt-get update
 RUN apt-get install -y sqlite
 
-ARG COMMITHASH=unknown
-RUN echo $COMMITHASH >/home/bounder/commithash.txt
-RUN rm -r /home/bounder 2>/dev/null
-
-RUN mkdir /home/bounder_host
-ENV BOUNDER_JAR=/home/bounder/target/scala-2.13/soot_hopper-assembly-0.1.jar
-
 # Install infer for baseline comparison
 # mkdir the man/man1 directory due to Debian bug #863199
 RUN apt-get update && \
@@ -116,6 +109,13 @@ RUN INFER_VERSION=v1.1.0; \
 
 # Install infer
 ENV PATH /infer/bin:${PATH}
+
+ARG COMMITHASH=unknown
+RUN echo $COMMITHASH >/home/bounder/commithash.txt
+RUN rm -r /home/bounder 2>/dev/null
+
+RUN mkdir /home/bounder_host
+ENV BOUNDER_JAR=/home/bounder/target/scala-2.13/soot_hopper-assembly-0.1.jar
 
 RUN touch $(date +%s) # force rebuild from here every time to grab new jar
 COPY . /home/bounder/
