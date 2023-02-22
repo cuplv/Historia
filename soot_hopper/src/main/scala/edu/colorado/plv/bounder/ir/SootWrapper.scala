@@ -665,7 +665,8 @@ class SootWrapper(apkPath : String,
         val mName = m.getName
         val mParams = m.getParameterTypes
         val mRetT = m.getReturnType
-        val mModifiers = m.getModifiers & ( ~Modifier.ABSTRACT)
+        // Note: we remove the native flag so we can override native methods like normal java code
+        val mModifiers = m.getModifiers & ( ~Modifier.ABSTRACT) & (~Modifier.NATIVE)
         val newMethod = Scene.v().makeSootMethod(mName, mParams, mRetT, mModifiers)
         dummyClass.addMethod(newMethod)
         newMethod.setPhantom(false)
@@ -676,14 +677,22 @@ class SootWrapper(apkPath : String,
       }
 
     }
-    val newMethodName: String = "<init>"
-    val paramTypes = List[Type]().asJava
-    val returnType = Scene.v().getType("void")
-    val modifiers = Modifier.PUBLIC | Modifier.CONSTRUCTOR
-    val exceptions = List[SootClass]().asJava
-    val entryMethod: SootMethod = Scene.v().makeSootMethod(newMethodName,
-      paramTypes, returnType, modifiers, exceptions)
-    dummyClass.addMethod(entryMethod)
+    // for interfaces, the overriding class needs its own constructor
+    // for abstract classes, the init may be overridden so it may already exist
+    // If init exists for some params, we make a no arg version for the app only call graph
+    val initExists:Boolean = dummyClass.getMethods.asScala.exists{m =>
+      m.getName == "<init>" && m.getParameterTypes.isEmpty
+    }
+    if(!initExists) {
+      val newMethodName: String = "<init>"
+      val paramTypes = List[Type]().asJava
+      val returnType = Scene.v().getType("void")
+      val modifiers = Modifier.PUBLIC | Modifier.CONSTRUCTOR
+      val exceptions = List[SootClass]().asJava
+      val entryMethod: SootMethod = Scene.v().makeSootMethod(newMethodName,
+        paramTypes, returnType, modifiers, exceptions)
+      dummyClass.addMethod(entryMethod)
+    }
 
 //    Scene.v().addBasicClass(pkg + "." + name,SootClass.HIERARCHY)
     Scene.v().addBasicClass(pkg + "." + name,SootClass.BODIES)
@@ -953,7 +962,9 @@ class SootWrapper(apkPath : String,
     Scene.v().getClasses.asScala.toList.foreach{v =>
       if(resolver.isFrameworkClass(SootWrapper.stringNameOfClass(v))) {
         // if framework interface with no implementors, make a dummy implementor
-        if (v.isInterface && Scene.v().getActiveHierarchy.getImplementersOf(v).size() == 0) {
+        val isInterfaceWithNoImpl = v.isInterface && Scene.v().getActiveHierarchy.getImplementersOf(v).size() == 0
+        lazy val isAbstWithNoImpl = v.isAbstract && !v.isInterface && Scene.v().getActiveHierarchy.getSubclassesOf(v).size() == 0
+        if (isInterfaceWithNoImpl || isAbstWithNoImpl) {
           val dummy = dummyClassForFrameworkClass(v)
           entryPointBody.getUnits.add(
             Jimple.v().newAssignStmt(allocLocal, Jimple.v().newNewExpr(dummy.getType))
