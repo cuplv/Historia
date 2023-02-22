@@ -665,7 +665,8 @@ class SootWrapper(apkPath : String,
         val mName = m.getName
         val mParams = m.getParameterTypes
         val mRetT = m.getReturnType
-        val mModifiers = m.getModifiers & ( ~Modifier.ABSTRACT)
+        // Note: we remove the native flag so we can override native methods like normal java code
+        val mModifiers = m.getModifiers & ( ~Modifier.ABSTRACT) & (~Modifier.NATIVE)
         val newMethod = Scene.v().makeSootMethod(mName, mParams, mRetT, mModifiers)
         dummyClass.addMethod(newMethod)
         newMethod.setPhantom(false)
