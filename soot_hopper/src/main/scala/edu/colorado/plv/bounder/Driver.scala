@@ -866,7 +866,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
         // Run the command for this job
         // kill jobs that take 2x the query time limit
         // jobs may take longer than the time limit if soot z3 or another external library gets stuck
-        BounderUtil.runCmdTimeout(cmd, baseDir, runCfg.timeLimit * 4) match {
+        BounderUtil.runCmdTimeout(cmd, baseDir, runCfg.timeLimit * 6) match {
           case BounderUtil.RunTimeout =>
             finishFail(jobRow.jobId, "Subprocess Timeout")
           case BounderUtil.RunSuccess => {
