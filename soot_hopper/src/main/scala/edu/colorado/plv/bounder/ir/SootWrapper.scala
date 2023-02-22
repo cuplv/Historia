@@ -953,7 +953,9 @@ class SootWrapper(apkPath : String,
     Scene.v().getClasses.asScala.toList.foreach{v =>
       if(resolver.isFrameworkClass(SootWrapper.stringNameOfClass(v))) {
         // if framework interface with no implementors, make a dummy implementor
-        if (v.isInterface && Scene.v().getActiveHierarchy.getImplementersOf(v).size() == 0) {
+        val isInterfaceWithNoImpl = v.isInterface && Scene.v().getActiveHierarchy.getImplementersOf(v).size() == 0
+        lazy val isAbstWithNoImpl = v.isAbstract && !v.isInterface && Scene.v().getActiveHierarchy.getSubclassesOf(v).size() == 0
+        if (isInterfaceWithNoImpl || isAbstWithNoImpl) {
           val dummy = dummyClassForFrameworkClass(v)
           entryPointBody.getUnits.add(
             Jimple.v().newAssignStmt(allocLocal, Jimple.v().newNewExpr(dummy.getType))
