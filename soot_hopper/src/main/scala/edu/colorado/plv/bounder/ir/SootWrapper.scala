@@ -676,14 +676,22 @@ class SootWrapper(apkPath : String,
       }
 
     }
-    val newMethodName: String = "<init>"
-    val paramTypes = List[Type]().asJava
-    val returnType = Scene.v().getType("void")
-    val modifiers = Modifier.PUBLIC | Modifier.CONSTRUCTOR
-    val exceptions = List[SootClass]().asJava
-    val entryMethod: SootMethod = Scene.v().makeSootMethod(newMethodName,
-      paramTypes, returnType, modifiers, exceptions)
-    dummyClass.addMethod(entryMethod)
+    // for interfaces, the overriding class needs its own constructor
+    // for abstract classes, the init may be overridden so it may already exist
+    // If init exists for some params, we make a no arg version for the app only call graph
+    val initExists:Boolean = dummyClass.getMethods.asScala.exists{m =>
+      m.getName == "<init>" && m.getParameterTypes.isEmpty
+    }
+    if(!initExists) {
+      val newMethodName: String = "<init>"
+      val paramTypes = List[Type]().asJava
+      val returnType = Scene.v().getType("void")
+      val modifiers = Modifier.PUBLIC | Modifier.CONSTRUCTOR
+      val exceptions = List[SootClass]().asJava
+      val entryMethod: SootMethod = Scene.v().makeSootMethod(newMethodName,
+        paramTypes, returnType, modifiers, exceptions)
+      dummyClass.addMethod(entryMethod)
+    }
 
 //    Scene.v().addBasicClass(pkg + "." + name,SootClass.HIERARCHY)
     Scene.v().addBasicClass(pkg + "." + name,SootClass.BODIES)
