@@ -861,12 +861,12 @@ class ExperimentsDb(bounderJar:Option[String] = None){
           case ts:String if ts != "" => read[ExpTag](ts).other.split(",").headOption
           case _ => None
         }.map{v => if(v.trim() != "")s" -o ${v}" else ""}.getOrElse("")
-        val cmd = s"java ${z3Override} -jar ${bounderJar.toString} -m verify -c ${cfgFile.toString} " +
+        val cmd = s"java ${z3Override} -Xmx16g -jar ${bounderJar.toString} -m verify -c ${cfgFile.toString} " +
           s"-u ${outF.toString} ${outputFlag}"
         // Run the command for this job
         // kill jobs that take 2x the query time limit
         // jobs may take longer than the time limit if soot z3 or another external library gets stuck
-        BounderUtil.runCmdTimeout(cmd, baseDir, runCfg.timeLimit * 2) match {
+        BounderUtil.runCmdTimeout(cmd, baseDir, runCfg.timeLimit * 6) match {
           case BounderUtil.RunTimeout =>
             finishFail(jobRow.jobId, "Subprocess Timeout")
           case BounderUtil.RunSuccess => {
@@ -884,7 +884,12 @@ class ExperimentsDb(bounderJar:Option[String] = None){
             finishSuccess(resDir, stdout, stderr)
             println(s"done uploading results: ${Instant.now.getEpochSecond - uploadStartTime}")
           }
-          case BounderUtil.RunFail => ???
+          case BounderUtil.RunFail =>
+            val stdoutF = baseDir / "stdout.txt"
+            val stdout = if (stdoutF.exists()) stdoutF.contentAsString else ""
+            val stderrF = baseDir / "stderr.txt"
+            val stderr = if (stderrF.exists()) stderrF.contentAsString else ""
+            finishFail(jobRow.jobId, s"Non-zero exit code. StdErr: \n${stderr}\n---\n StdOut:\n${stdout}")
         }
 
       }catch{
