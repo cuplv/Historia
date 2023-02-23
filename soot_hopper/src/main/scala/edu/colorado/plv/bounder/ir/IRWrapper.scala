@@ -261,7 +261,7 @@ sealed abstract class CmdWrapper(loc:AppLoc){
 }
 object CmdWrapper{
   implicit var rw:RW[CmdWrapper] = RW.merge(ThrowCmd.rw, AssignCmd.rw, ReturnCmd.rw, NopCmd.rw, InvokeCmd.rw,
-    SwitchCmd.rw, If.rw)
+    SwitchCmd.rw, Goto.rw)
 }
 
 /**
@@ -291,11 +291,11 @@ object InvokeCmd{
   implicit var rw:RW[InvokeCmd] = macroRW
 }
 
-case class If(b:RVal, trueLoc:AppLoc, loc:AppLoc) extends CmdWrapper(loc){
+case class Goto(b:RVal, trueLoc:AppLoc, loc:AppLoc) extends CmdWrapper(loc){
   override def mkPre: CmdWrapper = this.copy(loc=loc.copy(isPre = true))
 }
-object If{
-  implicit var rw:RW[If] = macroRW
+object Goto{
+  implicit var rw:RW[Goto] = macroRW
 }
 
 case class NopCmd(loc:AppLoc) extends CmdWrapper(loc){

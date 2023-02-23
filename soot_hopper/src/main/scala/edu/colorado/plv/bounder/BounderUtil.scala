@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder
 
 import java.util.Collections
 import better.files.File
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdNotImplemented, CmdWrapper, FieldReference, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, If, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, Loc, LocalWrapper, MethodLoc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SpecialInvoke, StaticFieldReference, SwitchCmd, ThrowCmd, VirtualInvoke}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdNotImplemented, CmdWrapper, FieldReference, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, Goto, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, Loc, LocalWrapper, MethodLoc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SpecialInvoke, StaticFieldReference, SwitchCmd, ThrowCmd, VirtualInvoke}
 import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, ExecutorConfig, QueryFinished, QueryInterrupted, QueryResult}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, InitialQuery, Live, NoOutputMode, OutputMode, PathNode, Qry, WitnessedQry}
 
