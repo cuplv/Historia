@@ -1,0 +1,89 @@
+General notes:
+-------------
+Header on hardware page says "SSD" but it doesn't have an actual solid state disk unless it has the field "ssd: yes".
+In the filtering page, if you select "Gpu: false" it eliminates the compute_zen3, perhaps because it doesn't have a "Gpu" field?
+I ignored nodes with GPUs and FPGAs because to my knowledge, these are not supported by anything we use.
+I have no idea if infiniband is worth it.
+
+
+Personal nodes:
+----
+* loki
+- total cores: 8
+- cpu model: AMD Ryzen 7 5800X3D
+- single threaded passmark: 3199
+- ram:128G
+
+* loaner
+- total cores: 12
+- cpu model: AMD Ryzen 9 5900X
+- single threaded passmark: 3470
+- ram: 32G
+
+Chameleon Available nodes:
+----
+*compute_zen3 c02-[5,7,9,10,12,14,15] | c03-[7,8,10,12,13,16,17,18,20]
+- total cores: 128
+- cpu model: AMD EPYC 7763 64-Core
+- single thread passmark: 2576
+- ram: 256G
+- ssd: 460G
+- has ssd: yes
+
+*compute_cascadelake_r
+- total cores: 48
+- cpu model: Xeon Gold 6240R CPU
+- single thread passmark: 2357
+- ram: 192G
+- ssd:480G
+
+*compute_cascadelake
+- total cores: 32
+- cpu model: Xeon Gold 6242 CPU
+- single thread passmark: 2196
+- ram: 192G
+- ssd: 240G
+
+*compute_skylake
+- total cores: 24
+- cpu model: Xeon Gold 6126 CPU 
+- single thread passmark: 2019
+- ram: 192G
+- ssd: 240G
+
+*storage_nvme
+- total cores: 24
+- cpu model: AMD EPYC 7352
+- single thread passmark: 1932
+- ram: 256G
+- ssd: 960G
+- has ssd: yes
+
+*compute_haswell | compute_haswell_ib
+- total cores: 24
+- cpu model: Xeon CPU E5-2670 v3
+- single thread passmark: 1694
+- ram: 128G
+- ssd:250G
+- note: ib is infiniband a fast networking standard
+
+*storage_hierarchy
+- total cores: 24
+- cpu model: CPU E5-2670 v3 
+- single thread passmark: 1694
+- ram: 512G
+- ssd: 600G
+
+*storage
+- total cores: 20
+- cpu model: Xeon CPU E5-2650 v3 
+- single thread passmark: 1637
+- ram: 64G
+- ssd: 400G
+- has ssd: yes
+
+
+
+* gpu_mi100 | compute_liqid
+- seems to be gpu centric, haven't seen any with better cpus than above
+
