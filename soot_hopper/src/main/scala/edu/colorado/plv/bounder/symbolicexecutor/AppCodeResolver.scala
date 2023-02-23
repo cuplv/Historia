@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import better.files.Resource
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{derefNameOf, findFirstDerefFor}
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CBExit, CIEnter, CIExit, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldReference, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, If, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, JimpleMethodLoc, LVal, LineLoc, Loc, LocalWrapper, MethodLoc, NopCmd, NullConst, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper, SpecialInvoke, StaticFieldReference, StaticInvoke, SwitchCmd, ThrowCmd, TopTypeSet, TypeSet, UnresolvedMethodTarget, VirtualInvoke}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CBExit, CIEnter, CIExit, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldReference, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, Goto, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, JimpleMethodLoc, LVal, LineLoc, Loc, LocalWrapper, MethodLoc, NopCmd, NullConst, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper, SpecialInvoke, StaticFieldReference, StaticInvoke, SwitchCmd, ThrowCmd, TopTypeSet, TypeSet, UnresolvedMethodTarget, VirtualInvoke}
 import edu.colorado.plv.bounder.lifestate.LifeState.{OAbsMsg, Signature}
 import edu.colorado.plv.bounder.lifestate.{LifecycleSpec, RxJavaSpec, SAsyncTask, SJavaThreading, SpecSignatures, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
@@ -313,7 +313,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
           absState.contains(mk(base))
         case InvokeCmd(VirtualInvoke(base,_,_,_),_) =>
           absState.contains(mk(base))
-        case If(b, trueLoc, loc) => false
+        case Goto(b, trueLoc, loc) => false
         case NopCmd(loc) => false
         case SwitchCmd(key, targets, loc) => false
         case ThrowCmd(loc) => false

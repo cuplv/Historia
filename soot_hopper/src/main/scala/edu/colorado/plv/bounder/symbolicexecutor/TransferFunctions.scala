@@ -818,7 +818,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     case AssignCmd(_, _: Invoke, _) =>
       if(canWeaken) Set(state) else
         ???
-    case If(b, trueLoc, l) =>
+    case Goto(b, trueLoc, l) =>
       if (state.nextCmd.toSet.size == 1) {
         val stateLocationFrom: Loc = state.nextCmd.head
         if (stateLocationFrom == trueLoc)

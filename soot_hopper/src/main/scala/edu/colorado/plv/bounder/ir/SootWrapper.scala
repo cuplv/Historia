@@ -246,7 +246,7 @@ object SootWrapper{
       }
       case cmd: JIfStmt =>
         val targetIfTrue = AppLoc(loc.method, JimpleLineLoc(cmd.getTarget, method), true)
-        If(makeVal(cmd.getCondition),targetIfTrue,loc)
+        Goto(makeVal(cmd.getCondition),targetIfTrue,loc)
       case _ : JNopStmt =>
         NopCmd(loc)
       case _: JThrowStmt =>
@@ -527,7 +527,7 @@ class SootWrapper(apkPath : String,
               case p: LocalWrapper => Some(varAndPtRegions(methodLoc, p))
               case _ => None
             }
-            case If(b, trueLoc, loc) => Set.empty
+            case Goto(b, trueLoc, loc) => Set.empty
             case NopCmd(loc) => Set.empty
             case SwitchCmd(key, targets, loc) => Set.empty
             case ThrowCmd(loc) => Set.empty
