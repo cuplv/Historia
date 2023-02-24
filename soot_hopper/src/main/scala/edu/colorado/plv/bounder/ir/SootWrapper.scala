@@ -246,7 +246,7 @@ object SootWrapper{
       }
       case cmd: JIfStmt =>
         val targetIfTrue = AppLoc(loc.method, JimpleLineLoc(cmd.getTarget, method), true)
-        If(makeVal(cmd.getCondition),targetIfTrue,loc)
+        Goto(makeVal(cmd.getCondition),targetIfTrue,loc)
       case _ : JNopStmt =>
         NopCmd(loc)
       case _: JThrowStmt =>
@@ -527,7 +527,7 @@ class SootWrapper(apkPath : String,
               case p: LocalWrapper => Some(varAndPtRegions(methodLoc, p))
               case _ => None
             }
-            case If(b, trueLoc, loc) => Set.empty
+            case Goto(b, trueLoc, loc) => Set.empty
             case NopCmd(loc) => Set.empty
             case SwitchCmd(key, targets, loc) => Set.empty
             case ThrowCmd(loc) => Set.empty
@@ -1453,7 +1453,7 @@ class SootWrapper(apkPath : String,
   def findInMethod(className:String, methodName:String, toFind: CmdWrapper => Boolean):Iterable[AppLoc] = {
     val locations = for{
       clazz <- getClassByName(className)
-      method <- clazz.getMethods().asScala if method.getName == methodName
+      method <- clazz.getMethods().asScala if method.getSubSignature == methodName
       loc <- method.getActiveBody.getUnits.asScala.map(cmd => cmdToLoc(cmd, method))
     } yield loc
     assert(locations.nonEmpty, s"Empty target locations for query.\n" +

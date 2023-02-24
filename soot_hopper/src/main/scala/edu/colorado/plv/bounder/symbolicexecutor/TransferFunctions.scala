@@ -651,6 +651,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
 //  }
 
   def cmdTransfer(cmd:CmdWrapper, state:State):Set[State] = cmd match {
+    case IfElse(condition, cmdTrue, cmdFalse, loc) => ???
     case AssignCmd(lhs: LocalWrapper, TopExpr(_), _) => Set(state.clearLVal(lhs))
     case AssignCmd(lhs@LocalWrapper(_, _), NewCommand(_), _) =>
       // x = new T
@@ -818,7 +819,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     case AssignCmd(_, _: Invoke, _) =>
       if(canWeaken) Set(state) else
         ???
-    case If(b, trueLoc, l) =>
+    case Goto(b, trueLoc, l) =>
       if (state.nextCmd.toSet.size == 1) {
         val stateLocationFrom: Loc = state.nextCmd.head
         if (stateLocationFrom == trueLoc)

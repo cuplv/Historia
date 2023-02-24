@@ -216,7 +216,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       case _: AssignCmd => false
       case _: ReturnCmd => false
       case _: InvokeCmd => false // This method only counts commands that directly modify the heap
-      case _: If => false
+      case _: Goto => false
       case _: NopCmd => false
       case _: ThrowCmd => false
       case _: SwitchCmd => false
@@ -285,7 +285,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       case _: AssignCmd => None
       case _: ReturnCmd => None
       case _: InvokeCmd => None
-      case _: If => None
+      case _: Goto => None
       case _: NopCmd => None
       case _: ThrowCmd => None
       case _: SwitchCmd => None
@@ -321,7 +321,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       case InvokeCmd(i, _) =>
         Set((i.targetSignature, EmptyTypeSet :: i.targetOptional.map(paramToTypeSet).getOrElse(EmptyTypeSet)
           :: i.params.map(paramToTypeSet)))
-      case _: If => Set.empty
+      case _: Goto => Set.empty
       case _: NopCmd => Set.empty
       case _: ThrowCmd => Set.empty
       case _: SwitchCmd => Set.empty
@@ -347,7 +347,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       case _: AssignCmd => None
       case _: ReturnCmd => None
       case InvokeCmd(i, _) => Some(i.targetSignature.methodSignature)
-      case _: If => None
+      case _: Goto => None
       case _: NopCmd => None
       case _: ThrowCmd => None
       case _: SwitchCmd => None

@@ -48,7 +48,7 @@ class TransferFunctionsTest extends AnyFunSuite {
   def testCmdTransfer(cmd:AppLoc => CmdWrapper, post:State, testIRMethod: SerializedIRMethodLoc):Set[State] = {
     val preloc = AppLoc(testIRMethod,SerializedIRLineLoc(1), isPre=true)
     val postloc = AppLoc(testIRMethod,SerializedIRLineLoc(1), isPre=false)
-    val ir = new SerializedIR(Set(CmdTransition(preloc, cmd(postloc), postloc)))
+    val ir = new SerializedIR(Map(postloc -> Set(CmdTransition(preloc, cmd(postloc)))))
     tr(ir,miniCha).transfer(post,preloc, postloc)
   }
 
@@ -61,19 +61,13 @@ class TransferFunctionsTest extends AnyFunSuite {
     val cmd = read[CmdWrapper](js("cmd"))
     val cha = read[ClassHierarchyConstraints](Resource.getAsString("TestStates/hierarchy2.json"))
 
-    val ir = new SerializedIR(Set(CmdTransition(source,cmd,target)))
-    val transfer = new TransferFunctions(ir, spec,cha,true)
-    val out = transfer.transfer(state, target, source)
-    out
+//    val ir = SerializedIR(Map(target -> Set[SerializedTransition](CmdTransition(source,cmd))))
+//    val transfer = new TransferFunctions(ir, spec,cha,true)
+//    val out = transfer.transfer(state, target, source)
+//    out
+    ???
   }
 
-  ignore("Callin return test"){
-    val spec = new SpecSpace(Set(FragmentGetActivityNullSpec.getActivityNull,
-      RxJavaSpec.call
-    ))
-    val res = transferJsonTest("TestStates/post_unsubscribe_callin.json",spec)
-    ??? //TODO:
-  }
   //Test transfer function where field is assigned and base may or may not be aliased
   // pre: this -> a^ * b^.out -> b1^ /\ b1^ == null
   // post: (this -> a^ * a^.out -> c^* d^.out -> e^) OR (this -> a^ * a^.out -> c^ AND a^=d^ AND c^=d^)
@@ -177,17 +171,27 @@ class TransferFunctionsTest extends AnyFunSuite {
     res.foreach{prestate =>
       println(s"simplified: ${prestate}")
     }
-    //TODO: fix this test,
-//    assert(res.size == 2)
-//    assert(res.exists(v => v.isEmpty)) //TODO:=================
-//    assert(res.exists{v => v.isDefined && v.get.heapConstraints.size == 2 && v.get.testGet(x) == Some(PureVar(4))}) //TODO:===========
+  }
+  ignore("transfer over deserialized IR"){
+    //TODO(Duke) finish this test
+    val fooMethod = SerializedIRMethodLoc("fooClazz", "fooMethod()",Nil)
+    val loc = (n:Int) => SerializedIRLineLoc(n,0)
+    val loc1 = AppLoc(fooMethod, loc(0), true)
+    val loc2 = AppLoc(fooMethod, loc(0), false)
+    val loc3 = AppLoc(fooMethod, loc(1), true)
+    val transitions:Map[AppLoc, Set[SerializedTransition]] = Map(
+      loc1-> Set(CmdTransition(loc1, Goto(???,???,loc2))),
+      loc2-> Set(NopTransition(loc3))
+    )
+    SerializedIR(transitions)
   }
   private val a = NamedPureVar("a")
   private val iFooA: OAbsMsg = AbsMsg(CBEnter, Set(Signature("", "foo()")), TopVal :: a :: Nil)
   ignore("Add matcher and phi abstraction when crossing callback entry") {
     val preloc = CallbackMethodInvoke(Signature("","foo()"), fooMethod) // Transition to just before foo is invoked
-    val postloc = AppLoc(fooMethod,SerializedIRLineLoc(1), isPre=true)
-    val ir = new SerializedIR(Set(MethodTransition(preloc, postloc)))
+    val postloc = AppLoc(fooMethod,SerializedIRLineLoc(1, 0), isPre=true)
+    //val ir = new SerializedIR(Set(MethodTransition(preloc, postloc)))
+    val ir = ???
 
     val lhs = AbsMsg(CBEnter, Set(Signature("", "bar()")), TopVal :: a :: Nil)
     //  I(cb a.bar()) <= I(cb a.foo())
