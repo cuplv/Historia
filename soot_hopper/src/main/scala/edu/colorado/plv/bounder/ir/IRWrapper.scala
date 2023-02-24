@@ -297,6 +297,9 @@ case class Goto(b:RVal, trueLoc:AppLoc, loc:AppLoc) extends CmdWrapper(loc){
 object Goto{
   implicit var rw:RW[Goto] = macroRW
 }
+case class IfElse(condition:RVal, cmdTrue: CmdWrapper, cmdFalse:CmdWrapper, loc: AppLoc) extends CmdWrapper(loc) {
+  override def mkPre: CmdWrapper = this.copy(loc=loc.copy(isPre = true))
+}
 
 case class NopCmd(loc:AppLoc) extends CmdWrapper(loc){
   override def mkPre: CmdWrapper = this.copy(loc=loc.copy(isPre = true))

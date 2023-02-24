@@ -7,14 +7,28 @@ import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.AppCodeResolver
 import upickle.default.{macroRW, ReadWriter => RW}
 
-import scala.collection.BitSet
+import scala.collection.{BitSet, immutable}
 
 //TODO: serialize IR and points to, This should be able to continue where other left off
-class SerializedIR(transitions: Set[TestTransition]) extends IRWrapper[String,String] {
+//TODO: datatype for SerializedIR method
+
+/**
+ *
+ * @param transitions map from post location to previous transitions
+ */
+case class SerializedIR(transitions: Map[AppLoc, Set[SerializedTransition]]) extends IRWrapper[String,CmdWrapper] {
+  private val locToCmd: Map[Loc, CmdWrapper] = transitions.flatMap{
+    case  (post, targets) => targets.flatMap{
+      case CmdTransition(loc1, cmd) =>
+        Set((loc1,cmd),(post,cmd))
+      case _:NopTransition => Set.empty
+    }
+  }
   override def findMethodLoc(sig:Signature): Iterable[MethodLoc] = ???
 
   override def findLineInMethod(sig:Signature, line: Int): Iterable[AppLoc] = ???
 
+  // TODO(Duke) implement this method
   override def commandPredecessors(cmdWrapper: CmdWrapper): List[AppLoc] = ???
 
   override def commandNext(cmdWrapper: CmdWrapper): List[AppLoc] = ???
@@ -22,11 +36,9 @@ class SerializedIR(transitions: Set[TestTransition]) extends IRWrapper[String,St
   override def isMethodEntry(cmdWrapper: CmdWrapper): Boolean = ???
 
   override def cmdAtLocation(loc: AppLoc): CmdWrapper = {
-    transitions.find( t => t match{
-      case CmdTransition(l1,_,l2) if (l2 == loc || l1 == loc) => true
-      case _ => false
-      }
-    ).map(_.asInstanceOf[CmdTransition].cmd).get
+    if(!locToCmd.contains(loc))
+      throw new IllegalStateException(s"graph does not have location ${loc}")
+    locToCmd(loc)
   }
 
   override def makeInvokeTargets(invoke: AppLoc): UnresolvedMethodTarget = ???
@@ -117,8 +129,12 @@ object SerializedIRMethodLoc{
 }
 
 
-case class SerializedIRLineLoc(line:Int, desc:String = "") extends LineLoc {
-  override def toString: String = if(desc == "") line.toString else desc
+/**
+ *
+ * @param line syntactic line in source
+ * @param column unique identifier
+ */
+case class SerializedIRLineLoc(line:Int, column:Int = 0) extends LineLoc {
 
   override def lineNumber: Int = line
 
@@ -130,8 +146,16 @@ object SerializedIRLineLoc{
   implicit val rw:RW[SerializedIRMethodLoc] = macroRW
 }
 
-sealed trait TestTransition
-case class CmdTransition(loc1: Loc, cmd:CmdWrapper , loc2:Loc) extends TestTransition
-case class MethodTransition(loc1:Loc, loc2:Loc) extends TestTransition
+sealed trait SerializedTransition{
+  /**
+   *
+   * @return pre-location of current transition
+   */
+  def loc1:Loc
+}
+case class CmdTransition(loc1: Loc, cmd:CmdWrapper) extends SerializedTransition{
+  val loc2:Loc = cmd.getLoc
+}
+case class NopTransition(loc1:Loc) extends SerializedTransition
+//TODO: handle method and callback transitions
 
-case class TestMethod(methodLoc: SerializedIRMethodLoc, cmds: List[CmdWrapper])

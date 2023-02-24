@@ -639,7 +639,7 @@ object Driver {
           case e:OutOfMemoryError =>
             e.printStackTrace(new PrintWriter(System.err))
             Seq(LocResult(initialQuery, 0,
-              AppLoc(SerializedIRMethodLoc("","",Nil), SerializedIRLineLoc(-1,""), true),
+              AppLoc(SerializedIRMethodLoc("","",Nil), SerializedIRLineLoc(-1,0), true),
               resultSummary= Interrupted("OutOfMemoryError"),
               maxPathCharacterization = UnknownCharacterization,
               time = (System.nanoTime() - startTime)/1000000000,
@@ -648,7 +648,7 @@ object Driver {
           case e:Throwable =>
             e.printStackTrace(new PrintWriter(System.err))
             Seq(LocResult(initialQuery, 0,
-              AppLoc(SerializedIRMethodLoc("", "", Nil), SerializedIRLineLoc(-1, ""), true),
+              AppLoc(SerializedIRMethodLoc("", "", Nil), SerializedIRLineLoc(-1, 0), true),
               resultSummary = Interrupted(e.toString),
               maxPathCharacterization = UnknownCharacterization,
               time = (System.nanoTime() - startTime) / 1000000000,

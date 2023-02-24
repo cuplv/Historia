@@ -81,10 +81,10 @@ trait LineLoc{
 object LineLoc{
   implicit val rw:RW[LineLoc] = upickle.default.readwriter[ujson.Value].bimap[LineLoc](
     x =>
-      ujson.Obj("id" -> System.identityHashCode(x), "str" -> x.toString),
+      ujson.Obj("id" -> x.lineNumber, "ident" ->  System.identityHashCode(x)),
     json => json match {
-      case ujson.Str(v) => SerializedIRLineLoc (v.toInt,"")
-      case ujson.Obj(v) => SerializedIRLineLoc (v("id").num.toInt, v("str").str)
+      case ujson.Str(v) => SerializedIRLineLoc (v.toInt,0)
+      case ujson.Obj(v) => SerializedIRLineLoc (v("id").num.toInt, v("ident").num.toInt)
       case v => throw new IllegalArgumentException(s"Cannot parse $v as LineLoc")
     }
   )
