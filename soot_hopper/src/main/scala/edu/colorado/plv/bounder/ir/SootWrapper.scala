@@ -1453,7 +1453,7 @@ class SootWrapper(apkPath : String,
   def findInMethod(className:String, methodName:String, toFind: CmdWrapper => Boolean):Iterable[AppLoc] = {
     val locations = for{
       clazz <- getClassByName(className)
-      method <- clazz.getMethods().asScala
+      method <- clazz.getMethods().asScala if method.getSubSignature == methodName
       loc <- method.getActiveBody.getUnits.asScala.map(cmd => cmdToLoc(cmd, method))
     } yield loc
     assert(locations.nonEmpty, s"Empty target locations for query.\n" +
