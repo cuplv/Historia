@@ -42,7 +42,8 @@ case class Action(mode:RunMode = Default,
                   config: RunConfig = RunConfig(),
                   filter:Option[String] = None, // for making allderef queries - only process classes beginning with
                   tag:Option[String] = None,
-                  outputMode: String = "NONE" // "DB" or "MEM" for writing nodes to file or keeping in memory.
+                  outputMode: String = "NONE", // "DB" or "MEM" for writing nodes to file or keeping in memory.
+                  dbg:Boolean = false
                  ){
   def runCmdFork(jarPath:String): Option[Throwable] = {
     try {
@@ -255,7 +256,10 @@ object Driver {
           .action((v, c) => c.copy(tag = Some(v))),
         opt[String]('o', "outputMode").optional()
           .text("keep intermediate path in mem (MEM), write to db (DB), or discard (NONE)")
-          .action((v, c) => c.copy(outputMode = v))
+          .action((v, c) => c.copy(outputMode = v)),
+        opt[Unit]("debug").optional()
+          .text("Override timeout and truncate output in config.")
+          .action((_,c) => c.copy(dbg = true))
       )
     }
     OParser.parse(parser, args, Action()) match {
@@ -291,7 +295,8 @@ object Driver {
   def runAction(act: Action): Unit = {
     println(s"java.library.path set to: ${System.getProperty("java.library.path")}")
     act match {
-      case act@Action(Verify, _, _, cfg, _, _, mode) =>
+      case act@Action(Verify, _, _, cfgIn, _, _, mode,dbg) =>
+        val cfg = if(dbg){cfgIn.copy(timeLimit = 9999, truncateOut = false)} else cfgIn
         val componentFilter = cfg.componentFilter
         val apkPath = act.getApkPath
         val outFolder: String = act.getOutFolder
@@ -321,25 +326,25 @@ object Driver {
           val resFile = File(outFolder) / s"result_${ind}.txt"
           resFile.overwrite(write(iq))
         }
-      case act@Action(SampleDeref, _, _, cfg, _, _, _) =>
+      case act@Action(SampleDeref, _, _, cfg, _, _, _, _ ) =>
         sampleDeref(cfg, act.getApkPath, act.getOutFolder, act.filter)
-      case act@Action(FindCallins, _, _, cfg, _, _, _) =>
+      case act@Action(FindCallins, _, _, cfg, _, _, _, _) =>
         findCallins(cfg, act.getApkPath, act.getOutFolder, act.filter)
-      case act@Action(MakeSensitiveDerefCallinCaused, _, _, cfg, _, _, _) =>
+      case act@Action(MakeSensitiveDerefCallinCaused, _, _, cfg, _, _, _, _) =>
         makeSensitiveDerefCallinCaused(cfg, act.getApkPath, act.getOutFolder, act.filter)
-      case act@Action(MakeSensitiveDerefFieldCausedFinish, _, _, cfg, _, _, _) =>
+      case act@Action(MakeSensitiveDerefFieldCausedFinish, _, _, cfg, _, _, _, _) =>
         makeSensitiveDerefFieldCaused(cfg, act.getApkPath, act.getOutFolder, act.filter, "Finish")
-      case act@Action(MakeSensitiveDerefFieldCausedSync, _, _, cfg, _, _, _) =>
+      case act@Action(MakeSensitiveDerefFieldCausedSync, _, _, cfg, _, _, _, _) =>
         makeSensitiveDerefFieldCaused(cfg, act.getApkPath, act.getOutFolder, act.filter, "Synch")
-      case act@Action(ReadDB, _, _, _, _, _, _) =>
+      case act@Action(ReadDB, _, _, _, _, _, _, _) =>
         readDB(File(act.getOutFolder))
-      case Action(ExpLoop, _, _, _, _, _, _) =>
+      case Action(ExpLoop, _, _, _, _, _, _, _) =>
         expLoop()
-      case act@Action(MakeAllDeref, _, _, cfg, _, tag, _) =>
+      case act@Action(MakeAllDeref, _, _, cfg, _, tag, _, _) =>
         makeAllDeref(act.getApkPath, act.filter, File(act.getOutFolder), cfg, ExpTag(other = tag.getOrElse("")))
-      case Action(Info, Some(out), Some(apk), cfg, _, _, _) =>
+      case Action(Info, Some(out), Some(apk), cfg, _, _, _, _) =>
         info(cfg, out, apk)
-      case act@Action(ExportPossibleMessages, _,_,cfg, _,_,_) =>
+      case act@Action(ExportPossibleMessages, _,_,cfg, _,_,_, _) =>
         outputMessages(cfg, act.filter, act.getOutFolder, act.getApkPath)
       case v => throw new IllegalArgumentException(s"Invalid action: $v")
     }
