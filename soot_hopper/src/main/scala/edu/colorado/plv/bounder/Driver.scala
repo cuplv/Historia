@@ -633,7 +633,7 @@ object Driver {
               case DBOutputMode(_) => true
             }
             if (printWit) {
-              pp.dumpDebugInfo(finalLiveNodes, "wit", outDir = outDir)
+              pp.dumpDebugInfo(groupedResults.flatMap{res => res.terminals}, "wit", outDir = outDir)
             }
 
             LocResult(initialQuery, id, loc, res, characterizedMaxPath, finalTime,
