@@ -563,7 +563,10 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
                     throw QueryInterruptedException(refutedSubsumedOrWitnessed + p2, ze.getMessage)
                 }
                 qrySet.addAll(nextQry)
-                executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed, stopExplorationAt)
+                val addIfPredEmpty = if(nextQry.isEmpty && config.outputMode != NoOutputMode)
+                  Some(p2.copyWithNewQry(p2.qry.copy(searchState = BottomQry))) else None
+                executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed ++ addIfPredEmpty,
+                  stopExplorationAt)
               case None =>
                 // approx mode indicates this state should be dropped (under approx)
                 executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed, stopExplorationAt)
