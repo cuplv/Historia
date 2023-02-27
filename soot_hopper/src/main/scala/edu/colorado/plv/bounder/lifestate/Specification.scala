@@ -68,7 +68,7 @@ object SpecSignatures {
   val Button_init: OAbsMsg = AbsMsg(CIExit, SubClassMatcher(Button, ".*<init>.*", "Button_init"), List(TopVal, v))
 
   // Fragment getActivity
-  private val Fragment = Set("android.app.Fragment","androidx.fragment.app.Fragment","android.support.v4.app.Fragment")
+  val Fragment = Set("android.app.Fragment","androidx.fragment.app.Fragment","android.support.v4.app.Fragment")
   val Fragment_getActivity: SignatureMatcher= SubClassMatcher(Fragment,
   ".*Activity getActivity\\(\\)", "Fragment_getActivity")
   val Fragment_get_activity_exit_null: OAbsMsg = AbsMsg(CIExit, Fragment_getActivity, NullVal::f::Nil)
@@ -136,7 +136,7 @@ object RxJavaSpec{
     SpecSignatures.RxJava_unsubscribe_exit)
   val call:LSSpec = LSSpec(l::Nil, s::Nil, subUnsub, SpecSignatures.RxJava_call_entry)
 //  val subscribeDoesNotReturnNull = LSSpec(LSFalse, SpecSignatures.RxJava_subscribe_exit_null)
-  private val subscribe_s_only = SpecSignatures.RxJava_subscribe_exit.copyMsg(lsVars = s::Nil)
+  val subscribe_s_only = SpecSignatures.RxJava_subscribe_exit.copyMsg(lsVars = s::Nil)
   val subscribeIsUnique:LSSpec = LSSpec(s::Nil, Nil, Not(subscribe_s_only),
     subscribe_s_only) //,Set(LSConstraint("s",NotEquals,"@null")  )
   val spec = Set(call,subscribeIsUnique)
@@ -244,16 +244,16 @@ object ViewSpec {
     AbsMsg(CBEnter, onClick, List(TopVal, l)))
 
   val setEnabled:SubClassMatcher = SubClassMatcher(Set("android.view.View"), ".*setEnabled.*", "View_setEnabled")
-  private val buttonEnabled = Or(Not(AbsMsg(CIExit, setEnabled, TopVal::v::BoolVal(false)::Nil)),
+  val buttonEnabled = Or(Not(AbsMsg(CIExit, setEnabled, TopVal::v::BoolVal(false)::Nil)),
     NS(AbsMsg(CIExit, setEnabled, TopVal::v::BoolVal(true)::Nil), AbsMsg(CIExit, setEnabled, TopVal::v::BoolVal(false)::Nil))
   )
 //  private val buttonEnabled = Not(I(CIExit, setEnabled, "_"::"v"::"@false"::Nil)) //testing version, delete later
   val clickWhileNotDisabled:LSSpec = LSSpec(l::Nil, v::Nil,
     And(setOnClickListenerI, buttonEnabled),
     AbsMsg(CBEnter, onClick, List(TopVal, l)))
-  private val fv1 = AbsMsg(CIExit, SpecSignatures.Activity_findView, v::a::Nil)
-  private val fv2 = AbsMsg(CIExit, SpecSignatures.Activity_findView, v::a2::Nil)
-  private val fv_exit = AbsMsg(CIExit, SpecSignatures.Activity_findView, v::TopVal::Nil)
+  val fv1 = AbsMsg(CIExit, SpecSignatures.Activity_findView, v::a::Nil)
+  val fv2 = AbsMsg(CIExit, SpecSignatures.Activity_findView, v::a2::Nil)
+  val fv_exit = AbsMsg(CIExit, SpecSignatures.Activity_findView, v::TopVal::Nil)
   // Ɐv,a,a2. ¬ I(ci v:= a2.findViewByID()) \/ a = a2 <= ci v:= a.findViewByID()
   val viewOnlyReturnedFromOneActivity:LSSpec =
     LSSpec(a::v::Nil, Nil, Forall(a2::Nil, Or(Not(fv2), LSConstraint(a, Equals, a2))), fv1)
@@ -266,12 +266,12 @@ object SAsyncTask{
   val t = NamedPureVar("t")
   val v = NamedPureVar("v")
   val AsyncTaskC = Set("android.os.AsyncTask")
-  private val executeSig = SubClassMatcher(AsyncTaskC, ".*AsyncTask execute\\(.*\\)", "AsyncTask_execute")
-  private val executeI = AbsMsg(CIExit, executeSig, TopVal::t::Nil)
-  private val executeIEntry =
+  val executeSig = SubClassMatcher(AsyncTaskC, ".*AsyncTask execute\\(.*\\)", "AsyncTask_execute")
+  val executeI = AbsMsg(CIExit, executeSig, TopVal::t::Nil)
+  val executeIEntry =
     AbsMsg(CIEnter, executeSig, TopVal::t::Nil)
   val disallowDoubleExecute:LSSpec = LSSpec(t::Nil, Nil, executeI, executeIEntry )
-  private val postExecute = SubClassMatcher(AsyncTaskC, ".*onPostExecute\\(.*\\)", "AsyncTask_postExecute")
+  val postExecute = SubClassMatcher(AsyncTaskC, ".*onPostExecute\\(.*\\)", "AsyncTask_postExecute")
   val postExecuteI: OAbsMsg = AbsMsg(CBEnter, postExecute, TopVal :: t :: v :: Nil)
 }
 
@@ -279,10 +279,10 @@ object SJavaThreading{
   val r = NamedPureVar("r")
   val o = NamedPureVar("o")
   val runnableC = Set("java.lang.Runnable")
-  private val runnable = SubClassMatcher(runnableC, ".*run\\(.*\\)", "Runnable_run")
+  val runnable = SubClassMatcher(runnableC, ".*run\\(.*\\)", "Runnable_run")
   val runnableI = AbsMsg(CBEnter, runnable, TopVal::r::Nil)
   val callableC = Set("java.util.concurrent.Callable")
-  private val call = SubClassMatcher(callableC, ".*call\\(.*\\)", "Callable_call")
+  val call = SubClassMatcher(callableC, ".*call\\(.*\\)", "Callable_call")
   val callableI = AbsMsg(CBEnter, call, o::r::Nil)
 }
 object SDialog{
