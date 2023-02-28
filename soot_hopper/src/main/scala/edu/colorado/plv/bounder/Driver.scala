@@ -321,7 +321,7 @@ object Driver {
         } else throw new IllegalArgumentException(s"Mode ${mode} is invalid, options: DB - write nodes to sqlite, MEM " +
           s"- keep nodes in memory.")
         val res: List[LocResult] =
-          runAnalysis(cfg, apkPath, componentFilter, pathMode, stepLimit, initialQuery, Some(outFolder))
+          runAnalysis(cfg, apkPath, componentFilter, pathMode, stepLimit, initialQuery, Some(outFolder), dbg)
         res.zipWithIndex.foreach { case (iq, ind) =>
           val resFile = File(outFolder) / s"result_${ind}.txt"
           resFile.overwrite(write(iq))
@@ -585,14 +585,14 @@ object Driver {
     //TODO:
   }
   def runAnalysis(cfg:RunConfig, apkPath: String, componentFilter:Option[Seq[String]], mode:OutputMode, stepLimit:Int,
-                  initialQueries: List[InitialQuery], outDir:Option[String]): List[LocResult] = {
+                  initialQueries: List[InitialQuery], outDir:Option[String], dbg:Boolean): List[LocResult] = {
     val specSet = cfg.specSet
     val startTime = System.nanoTime()
     try {
       val w = new SootWrapper(apkPath, specSet.getSpecSet().union(specSet.getDisallowSpecSet()))
       val config = ExecutorConfig(
         stepLimit = stepLimit, w, new SpecSpace(specSet.getSpecSet(), specSet.getDisallowSpecSet()), component = componentFilter, outputMode = mode,
-        timeLimit = cfg.timeLimit)
+        timeLimit = cfg.timeLimit, printAAProgress = dbg)
       initialQueries.flatMap{ initialQuery =>
         try {
           val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter

@@ -3,11 +3,11 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import java.time.Instant
 import com.microsoft.z3.Z3Exception
 import edu.colorado.plv.bounder.{BounderUtil, RunConfig}
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, Goto, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SwitchCmd, ThrowCmd, VirtualInvoke}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, Goto, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SwitchCmd, ThrowCmd, VirtualInvoke}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.EncodingTools.repHeapCells
 import edu.colorado.plv.bounder.solver.{EncodingTools, StateSolver, Z3StateSolver}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, BottomQry, DBOutputMode, FieldPtEdge, FrameworkLocation, HashableStateFormula, HeapPtEdge, IPathNode, InitialQuery, Live, MemoryOutputMode, NPureVar, NoOutputMode, OrdCount, OutputMode, PathNode, PureExpr, Qry, State, StaticPtEdge, SubsumableLocation, SwapLoc, WitnessedQry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, BottomQry, CallStackFrame, DBOutputMode, FieldPtEdge, FrameworkLocation, HashableStateFormula, HeapPtEdge, IPathNode, InitialQuery, Live, MemoryOutputMode, NPureVar, NoOutputMode, OrdCount, OutputMode, PathNode, PureExpr, Qry, State, StaticPtEdge, SubsumableLocation, SwapLoc, WitnessedQry}
 
 import scala.collection.parallel.immutable.ParIterable
 import scala.annotation.tailrec
@@ -85,7 +85,7 @@ case class PreciseApproxMode(canWeaken:Boolean) extends ApproxMode{
                      stateSolver: Z3StateSolver)(implicit w: IRWrapper[M, C]): Option[IPathNode] = Some(newState)
 }
 
-case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2) extends ApproxMode {
+case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2, callStackLimit:Int = 5) extends ApproxMode {
 
   override def canWeaken:Boolean = true
   override def merge[M,C](existing: () => Iterable[IPathNode], newPN:IPathNode,
@@ -122,11 +122,27 @@ case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2) extend
           EncodingTools.reduceStatePureVars(newState.copy(sf = newSF.copy(heapConstraints = rmHeap)).setSimplified())
         assert(prunedStateOpt.isDefined, "Removing a materialized heap cell should not refute state")
         val prunedState = prunedStateOpt.get
-        prunedState.setSimplified()
+
+//        // Drop calls if recursion detected
+//        val seen = mutable.Set[Loc]()
+//        val callStackUntilRec = prunedState.sf.callStack.takeWhile{
+//          case CallStackFrame(exitLoc, _, _) =>
+//            val seenYet = seen.contains(exitLoc)
+//            seen += (exitLoc)
+//            !seenYet
+//        }
+        // Drop calls if call string exceeds limit
+        // TODO: would be nice to keep callback on bottom of stack if it exists?
+        val callStackUntil = prunedState.sf.callStack.take(callStackLimit)
+
+        val trimmedStateOpt =
+          EncodingTools.reduceStatePureVars(prunedState.copy(sf = prunedState.sf.copy(callStack = callStackUntil)))
+        assert(trimmedStateOpt.isDefined, "Dropping calls should not refute state")
+        val trimmedState = trimmedStateOpt.get
         //val simp = stateSolver.simplify(prunedState, SpecSpace.top)
         //assert(simp.isDefined, "merge should not cause refutation")
         //simp.map{s => newPN.copyWithNewQry(newPN.qry.copy(state = s))}
-        Some(newPN.copyWithNewQry(newPN.qry.copy(state = prunedState)))
+        Some(newPN.copyWithNewQry(newPN.qry.copy(state = trimmedState.setSimplified())))
       case _ =>
         Some(newPN)
     }
@@ -307,13 +323,13 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
     assert(!isRunning, "Abstract interpreter does not support concurrency.")
     isRunning = true
     val qry: Set[Qry] = initialQuery.make(this)
-      .map{q => q.copy(state = stateSolver.simplify(q.state.setSimplified, config.specSpace)
+      .map{q => q.copy(state = stateSolver.simplify(q.state.setSimplified(), config.specSpace)
         .getOrElse(throw new IllegalArgumentException(s"Initial state was refuted: ${q.state}")))}
     val output = qry.groupBy(_.loc).map{ case(loc,qs) =>
       val startTime = Instant.now.getEpochSecond
       var id = -1
       try {
-        val pathNodes = qs.map(PathNode(_, Nil, None))
+        val pathNodes = qs.map(q => PathNode(q.copy(state = q.state.setSimplified()), Nil, None))
         id = outputMode.initializeQuery(loc,cfg,initialQuery)
         val queue = new GrouperQ
         queue.addAll(pathNodes)
