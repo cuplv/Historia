@@ -61,7 +61,7 @@ trait ApproxMode {
    * @return None if no new state is to be considered, Some(state) if a state is to be added
    */
   def merge[M, C](existing: () => Iterable[IPathNode], newPN: IPathNode,
-                           stateSolver: Z3StateSolver)(implicit w: IRWrapper[M, C]): Option[IPathNode]
+                           stateSolver: Z3StateSolver)(implicit w:ControlFlowResolver[M,C]): Option[IPathNode]
 
   /**
    * An over-approximate state may weaken by dropping materialized heap cells or tracking less precise constraints.
@@ -82,14 +82,15 @@ case class PreciseApproxMode(canWeaken:Boolean) extends ApproxMode{
    * @return None if no new state is to be considered, Some(state) if a state is to be added
    */
   override def merge[M,C](existing: () => Iterable[IPathNode], newState: IPathNode,
-                     stateSolver: Z3StateSolver)(implicit w: IRWrapper[M, C]): Option[IPathNode] = Some(newState)
+                     stateSolver: Z3StateSolver)(implicit w: ControlFlowResolver[M, C]): Option[IPathNode] =
+    Some(newState)
 }
 
-case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2, callStackLimit:Int = 5) extends ApproxMode {
+case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2, callStackLimit:Int = 99999) extends ApproxMode { //TODO:====
 
   override def canWeaken:Boolean = true
   override def merge[M,C](existing: () => Iterable[IPathNode], newPN:IPathNode,
-                     stateSolver: Z3StateSolver)(implicit w:IRWrapper[M,C]): Option[IPathNode] = {
+                     stateSolver: Z3StateSolver)(implicit w:ControlFlowResolver[M,C]): Option[IPathNode] = {
     newPN match{
       case SwapLoc(_) => //Only widen where back edges exist
         val newState = newPN.state
@@ -275,9 +276,9 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
   def getClassHierarchy = cha
   val transfer = new TransferFunctions[M, C](w, config.specSpace, cha, config.approxMode.canWeaken)
 
-  val appCodeResolver = new DefaultAppCodeResolver[M,C](config.w)
+  implicit val appCodeResolver = new DefaultAppCodeResolver[M,C](config.w)
   def getAppCodeResolver = appCodeResolver
-  val controlFlowResolver =
+  implicit val controlFlowResolver =
     new ControlFlowResolver[M,C](config.w,appCodeResolver, cha, config.component.map(_.toList), config)
   def writeIR():Unit = {
     val callbacks = appCodeResolver.getCallbacks
