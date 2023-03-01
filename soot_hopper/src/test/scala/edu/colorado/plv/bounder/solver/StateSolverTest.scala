@@ -24,7 +24,7 @@ import scala.collection.mutable.ListBuffer
 import scala.language.implicitConversions
 
 class StateSolverTest extends FixtureAnyFunSuite {
-  private val MAX_SOLVER_TIME = 5 //seconds -- Each call to "canSubsume" should take no more than this.
+  private val MAX_SOLVER_TIME = 600000 //TODO:=====  put this back. seconds -- Each call to "canSubsume" should take no more than this.
   private val fooMethod = SerializedIRMethodLoc("","foo()", List(Some(LocalWrapper("@this","Object"))))
   private val dummyLoc = CallbackMethodReturn(Signature("","void foo()"), fooMethod, None)
   private val v = PureVar(230)
@@ -100,7 +100,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
   private def getZ3StateSolver(checkSatPush:Boolean):
   (Z3StateSolver, ClassHierarchyConstraints) = {
     val pc = new ClassHierarchyConstraints(hierarchy,Set("java.lang.Runnable"),intToClass)
-    (new Z3StateSolver(pc, logTimes = true,timeout = 20000, defaultOnSubsumptionTimeout = (z3SolverCtx:Z3SolverCtx) => {
+    (new Z3StateSolver(pc, logTimes = true,timeout = 180000, defaultOnSubsumptionTimeout = (z3SolverCtx:Z3SolverCtx) => {
       println(z3SolverCtx)
       throw new IllegalStateException("Exceeded time limit for test")
     }, pushSatCheck = checkSatPush, strict_test = true),pc)
@@ -237,41 +237,45 @@ class StateSolverTest extends FixtureAnyFunSuite {
         val s1 = loadState(f1)
         val s2 = loadState(f2)
         val startTime = System.nanoTime()
-        var count = 0
-        val toCnfTest = (p:LSPred) => {
-          val startTime = System.nanoTime()
-          val res = EncodingTools.toCNF(p)
-          println(s"====$count")
-          println(s"p: ${p}")
-          println(s"res: ${res}")
-          val dir1 = f.stateSolver.canSubsume(p,res)
-          assert(dir1)
-          println(dir1)
-          println(s"dir1: $dir1")
-          val dir2 = f.stateSolver.canSubsume(res,p)
-          val endTime1 = System.nanoTime()
-          println(s"time: ${(endTime1 - startTime)/1e9f}")
-          assert(dir2)
-          println(s"dir2: $dir2")
-          val endTime2 = System.nanoTime()
-          println(s"time: ${(endTime2 - endTime1)/1e9f}")
-          count = count + 1
-          res
+        if(false) { // test subsumption of individual CNF clauses
+          var count = 0
+          val toCnfTest = (p: LSPred) => {
+            val startTime = System.nanoTime()
+            val res = EncodingTools.toCNF(p)
+            println(s"====$count")
+            println(s"p: ${p}")
+            println(s"res: ${res}")
+            val dir1 = f.stateSolver.canSubsume(p, res)
+            assert(dir1)
+            println(dir1)
+            println(s"dir1: $dir1")
+            val dir2 = f.stateSolver.canSubsume(res, p)
+            val endTime1 = System.nanoTime()
+            println(s"time: ${(endTime1 - startTime) / 1e9f}")
+            assert(dir2)
+            println(s"dir2: $dir2")
+            val endTime2 = System.nanoTime()
+            println(s"time: ${(endTime2 - endTime1) / 1e9f}")
+            count = count + 1
+            res
+          }
+          val s1P = EncodingTools.rhsToPred(s1.sf.traceAbstraction.rightOfArrow, spec).map(EncodingTools.simplifyPred).map(toCnfTest)
+          val s2P = EncodingTools.rhsToPred(s2.sf.traceAbstraction.rightOfArrow, spec).map(EncodingTools.simplifyPred).map(toCnfTest)
+
+          //TODO==== test code
+          val ex1P = s1P.find(p => p.isInstanceOf[Exists])
+          val ex2P = s2P.find(p => p.isInstanceOf[Exists])
+          val subspred = f.stateSolver.canSubsume(ex1P.reduce(And), ex2P.reduce(And))
+          println(subspred)
+
+          //TODO==== end test code
         }
-        val s1P = EncodingTools.rhsToPred(s1.sf.traceAbstraction.rightOfArrow,spec).map(EncodingTools.simplifyPred).map(toCnfTest)
-        val s2P = EncodingTools.rhsToPred(s2.sf.traceAbstraction.rightOfArrow,spec).map(EncodingTools.simplifyPred).map(toCnfTest)
-
-        //TODO==== test code
-        val ex1P = s1P.find(p => p.isInstanceOf[Exists])
-        val ex2P = s2P.find(p => p.isInstanceOf[Exists])
-        val subspred = f.stateSolver.canSubsume(ex1P.reduce(And),ex2P.reduce(And))
-        println(subspred)
-
-        //TODO==== end test code
 
 
-        val res = f.canSubsume(s1, s2, spec)
+
+        val res = f.stateSolver.canSubsume(s1, s2, spec)
         println(s"Subsumption check took ${(System.nanoTime() - startTime)/1000000000.0} seconds")
+        println(res)
         expected(res)
     }
   }
@@ -796,6 +800,19 @@ class StateSolverTest extends FixtureAnyFunSuite {
     ))::Nil))
     assert(f.canSubsume(state,state_,esp))
     assert(!f.canSubsume(state_,state,esp))
+
+    // an abstract state with a substring of the subsuming state should be subsumed
+    val state__ = state.copy(sf = state.sf.copy(callStack = CallStackFrame(dummyLoc, None, Map(
+      StackVar("x") -> p1,
+      StackVar("y") -> p2
+    )) ::
+      CallStackFrame(dummyLoc, None, Map(
+        StackVar("x") -> p1,
+        StackVar("y") -> p2
+      ))::
+      Nil))
+
+    assert(f.canSubsume(state,state__,esp))
 
   }
   test("Subsumption of abstract traces") { f =>

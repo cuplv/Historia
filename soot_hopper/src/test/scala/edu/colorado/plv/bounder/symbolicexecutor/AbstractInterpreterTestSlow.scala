@@ -83,7 +83,7 @@ class AbstractInterpreterTestSlow extends AnyFunSuite{
         val config = ExecutorConfig(
           stepLimit = 400, w, new SpecSpace(specs),
           component = Some(List("com.example.createdestroy.MyActivity.*")),
-          outputMode = MemoryOutputMode, approxMode = LimitMaterializationApproxMode())
+          outputMode = MemoryOutputMode, approxMode = LimitMaterializationApproxMode(), printAAProgress = true)
         //outputMode = DBOutputMode("/Users/shawnmeier/Desktop/bounder_debug_data/deref2.db"))
         val symbolicExecutor = config.getAbstractInterpreter
         val i = BounderUtil.lineForRegex(queryL, src)
