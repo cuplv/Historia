@@ -86,7 +86,7 @@ case class PreciseApproxMode(canWeaken:Boolean) extends ApproxMode{
     Some(newState)
 }
 
-case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2, callStackLimit:Int = 99999) extends ApproxMode { //TODO:====
+case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2) extends ApproxMode { //TODO:====
 
   override def canWeaken:Boolean = true
   override def merge[M,C](existing: () => Iterable[IPathNode], newPN:IPathNode,
@@ -124,17 +124,16 @@ case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2, callSt
         assert(prunedStateOpt.isDefined, "Removing a materialized heap cell should not refute state")
         val prunedState = prunedStateOpt.get
 
-//        // Drop calls if recursion detected
-//        val seen = mutable.Set[Loc]()
-//        val callStackUntilRec = prunedState.sf.callStack.takeWhile{
-//          case CallStackFrame(exitLoc, _, _) =>
-//            val seenYet = seen.contains(exitLoc)
-//            seen += (exitLoc)
-//            !seenYet
-//        }
-        // Drop calls if call string exceeds limit
-        // TODO: would be nice to keep callback on bottom of stack if it exists?
-        val callStackUntil = prunedState.sf.callStack.take(callStackLimit)
+        // Drop calls if recursion detected
+        val seen = mutable.Set[Loc]()
+        val callStackUntil = prunedState.sf.callStack.takeWhile{
+          case CallStackFrame(exitLoc, _, _) =>
+            val seenYet = seen.contains(exitLoc)
+            seen += (exitLoc)
+            !seenYet
+        }
+        //TODO: perhaps check if the callback is needed in the abstract state
+
 
         val trimmedStateOpt =
           EncodingTools.reduceStatePureVars(prunedState.copy(sf = prunedState.sf.copy(callStack = callStackUntil)))

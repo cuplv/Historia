@@ -1078,7 +1078,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
 
   protected def fastMaySubsume(s1:State, s2:State, specSpace: SpecSpace):Boolean = {
-    if (s1.callStack.size != s2.callStack.size)
+    if (s1.callStack.size > s2.callStack.size)
       return false
 
     val stackLocsMatch = (s1.callStack zip s2.callStack).forall {
@@ -1100,8 +1100,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       return false
 
     // s2 must contain all locals that s1 contains
-    val s2locals: Set[(String, Int)] = levelLocalPv(s2).map{case (local,_) => local}.toSet
-    val s1locals: Set[(String, Int)] = levelLocalPv(s1).map{case (local,_) => local}.toSet
+    val s2locals: Set[(String, Int)] = levelLocalPv(s2).toSet.map{x:((String,Int), PureExpr) => x._1}
+    val s1locals: Set[(String, Int)] = levelLocalPv(s1).toSet.map{x:((String,Int), PureExpr) => x._1}
     if(!s1locals.forall(l => s2locals.contains(l))){
       return false
     }
