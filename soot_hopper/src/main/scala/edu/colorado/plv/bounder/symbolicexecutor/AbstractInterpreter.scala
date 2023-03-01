@@ -168,7 +168,7 @@ case class ExecutorConfig[M,C](stepLimit: Int = -1,
                                        z3Timeout : Option[Int] = None,
                                        component : Option[Seq[String]] = None,
                                        outputMode : OutputMode = MemoryOutputMode,
-                                       timeLimit:Int = 1800, // Note: connectbot click finish does not seem to go any further with 2h vs 0.5hr
+                                       timeLimit:Int = 7200, // Note: connectbot click finish does not seem to go any further with 2h vs 0.5hr
                                        subsumptionMode:SubsumptionMode = SubsumptionModeIndividual, //Note: seems to be faster without batch mode subsumption
                                        approxMode:ApproxMode =  LimitMaterializationApproxMode()
                                                   //PreciseApproxMode(true) //default is to allow dropping of constraints and no widen //TODO: === make thresher version that drops things == make under approx version that drops states
@@ -565,8 +565,16 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
                 // Add to invariant map if invariant location is tracked
                 p2 match {
                   case SwapLoc(v) => {
-                    val nodeSetAtLoc = invarMap.getOrElse(v, Map.empty)
-                    invarMap.addOne(v -> (nodeSetAtLoc + (p2.state.sf.makeHashable(config.specSpace) -> p2)))
+                    val nodeSetAtLoc: Map[HashableStateFormula, IPathNode] = invarMap.getOrElse(v, Map.empty)
+                    // remove all states that may be subsumed by new state:
+                    val filtNodeSet =
+                      nodeSetAtLoc.par.filter{n => !stateSolver.canSubsume(p2.state, n._2.state, config.specSpace)}
+                        .seq.toMap
+
+                    if(config.printAAProgress) {
+                      println(s"loc: ${v}\n total at loc: ${nodeSetAtLoc.size} \n filteredAtLoc: ${filtNodeSet.size}")
+                    }
+                    invarMap.addOne(v -> (filtNodeSet + (p2.state.sf.makeHashable(config.specSpace) -> p2)))
                   }
                   case _ =>
                 }
