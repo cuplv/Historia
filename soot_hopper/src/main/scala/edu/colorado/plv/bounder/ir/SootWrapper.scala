@@ -595,6 +595,27 @@ class SootWrapper(apkPath : String,
   def getMessages(cfResolver:ControlFlowResolver[SootMethod, soot.Unit], spec:SpecSpace,
                   ch : ClassHierarchyConstraints, mFilter:String => Boolean):Messages ={
 
+    if(false) { // This is how we got the call graph count for the paper experiments, same code also added to flow.
+      val pkg = "org.zephyrsoft.trackworktime" //TODO: set this to app package to use count
+      val classes = Scene.v().getClasses().asScala
+      val callGraph: CallGraph = Scene.v().getCallGraph()
+      var cgMethodCount: Int = 0
+      var totMethodCount: Int = 0
+      for (c <- classes) {
+        val methods = c.getMethods().asScala
+        for (m <- methods) {
+          totMethodCount += 1
+          if (m.isPhantom) {
+            System.out.println("is phantom: " + m)
+          }
+          if (!(m.isPhantom) && m.getDeclaringClass.toString.contains(pkg) && callGraph.edgesInto(m).hasNext) {
+            cgMethodCount = cgMethodCount + 1
+          }
+        }
+      }
+      System.out.println("found methods in cg: " + cgMethodCount)
+      System.out.println("found total methods: " + totMethodCount)
+    }
     val cb = resolver.getCallbacks.filter{m =>
       val strm = m.classType
       mFilter(strm)
@@ -1648,7 +1669,7 @@ class SootWrapper(apkPath : String,
       edge.getName != "<clinit>"
     }
 
-    val mref = appLoc.line match {
+    val mref: SootMethodRef = appLoc.line match {
       case JimpleLineLoc(cmd: JInvokeStmt, _, _) => cmd.getInvokeExpr.getMethodRef
       case JimpleLineLoc(cmd: JAssignStmt, _, _) if cmd.getRightOp.isInstanceOf[JVirtualInvokeExpr] =>
         cmd.getRightOp.asInstanceOf[JVirtualInvokeExpr].getMethodRef
@@ -1659,7 +1680,8 @@ class SootWrapper(apkPath : String,
       case JimpleLineLoc(cmd: JAssignStmt, _, _) if cmd.getRightOp.isInstanceOf[JStaticInvokeExpr] =>
         cmd.getRightOp.asInstanceOf[JStaticInvokeExpr].getMethodRef
       case t =>
-        throw new IllegalArgumentException(s"Bad Location Type $t")
+        return UnresolvedMethodTarget("jfjdjdkdffkjdfjfdjkdfjkdfkjdfjkd","dfjkkjdfjfdfjdkjfddkjfjk", Set.empty)
+//        throw new IllegalArgumentException(s"Bad Location Type $t")
     }
     val declClass = mref.getDeclaringClass
     val clazzName = declClass.getName
