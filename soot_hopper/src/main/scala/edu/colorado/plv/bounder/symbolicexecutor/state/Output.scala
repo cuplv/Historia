@@ -534,21 +534,21 @@ trait OrdCount extends Ordering[IPathNode]{
 }
 object PathNode{
 
-  private def shouldTruncate(loc:Loc):Boolean =
-    loc match {
-      case _:CallbackMethodReturn => false
-      case _:CallbackMethodInvoke => false
-      case AppLoc(method,line,isPre) =>
-        !line.isFirstLocInMethod || !isPre
-      case _:SkippedInternalMethodInvoke => true
-      case _:SkippedInternalMethodReturn => true
-      case _:InternalMethodInvoke => false
-      case _:InternalMethodReturn => false
-      case _:CallbackMethodReturn => false
-      case _:CallbackMethodInvoke => false
-
-      case _ => true
-    }
+  private def shouldTruncate(loc:Loc):Boolean = false
+//    loc match {
+//      case _:CallbackMethodReturn => false
+//      case _:CallbackMethodInvoke => false
+//      case AppLoc(method,line,isPre) =>
+//        !line.isFirstLocInMethod || !isPre
+//      case _:SkippedInternalMethodInvoke => true
+//      case _:SkippedInternalMethodReturn => true
+//      case _:InternalMethodInvoke => false
+//      case _:InternalMethodReturn => false
+//      case _:CallbackMethodReturn => false
+//      case _:CallbackMethodInvoke => false
+//
+//      case _ => true
+//    }
 
   @tailrec
   private def nextNonTrunc(node:IPathNode)(implicit om:OutputMode):IPathNode = {

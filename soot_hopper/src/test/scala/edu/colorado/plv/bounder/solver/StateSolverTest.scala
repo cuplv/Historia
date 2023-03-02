@@ -790,7 +790,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
   test("Subsumption of stack"){ f =>
     val stateSolver = f.stateSolver
 
-    val loc = AppLoc(fooMethod, SerializedIRLineLoc(1,0), isPre = false)
+    val loc = AppLoc(fooMethod, SerializedIRLineLoc(1,"",0), isPre = false)
 
     val state = State(StateFormula(CallStackFrame(dummyLoc,None,Map(StackVar("x") -> p1))::Nil,
       Map(),Set(),Map(),AbstractTrace( Nil)),0)

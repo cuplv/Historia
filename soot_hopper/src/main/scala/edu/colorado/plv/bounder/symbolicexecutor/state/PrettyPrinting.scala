@@ -337,5 +337,15 @@ object PrettyPrinting {
     html.toString
   }
 
+  def filterForLocSeq(node:IPathNode, criteria:List[String])(implicit om:OutputMode):Boolean = criteria match{
+    case crHead::tail =>
+      if(node.qry.loc.toString.contains(crHead)){
+        node.succ.exists(n => filterForLocSeq(n, tail))
+      }else{
+        node.succ.exists(n => filterForLocSeq(n, criteria))
+      }
+    case Nil => true
+  }
+
 
 }
