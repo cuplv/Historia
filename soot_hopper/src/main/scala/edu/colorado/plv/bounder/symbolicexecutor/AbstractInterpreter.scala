@@ -134,9 +134,11 @@ case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2) extend
         }
         //TODO: perhaps check if the callback is needed in the abstract state
 
-
+        // Note, can just call setSimplified here because dropping stack frames shouldn't affect feasibility
         val trimmedStateOpt =
-          EncodingTools.reduceStatePureVars(prunedState.copy(sf = prunedState.sf.copy(callStack = callStackUntil)))
+          EncodingTools.reduceStatePureVars(
+            prunedState.copy(sf = prunedState.sf.copy(callStack = callStackUntil)).setSimplified()
+          )
         assert(trimmedStateOpt.isDefined, "Dropping calls should not refute state")
         val trimmedState = trimmedStateOpt.get
         //val simp = stateSolver.simplify(prunedState, SpecSpace.top)
@@ -573,6 +575,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
                     if(config.printAAProgress) {
                       println(s"loc: ${v}\n total at loc: ${nodeSetAtLoc.size} \n filteredAtLoc: ${filtNodeSet.size}")
                     }
+                    assert(p2.state.isSimplified, "State must be simplified before adding to invariant map.")
                     invarMap.addOne(v -> (filtNodeSet + (p2.state.sf.makeHashable(config.specSpace) -> p2)))
                   }
                   case _ =>

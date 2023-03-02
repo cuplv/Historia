@@ -296,7 +296,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val localVarOrVal: List[Option[RVal]] = rvar::mloc.getArgs
       val relAliases = relevantAliases(postState, CBExit, sig,specSpace,localVarOrVal)
       val state1 = newMsgTransfer(mloc, CBExit, sig, relAliases, pre_push)
-      state1.map(_.copy(nextCmd = List(target), alternateCmd = Nil))
+      state1.map(_.copy(nextCmd = List(target), alternateCmd = Nil, currentCallback = Some(targetLoc)))
     case (CallbackMethodReturn(_,mloc1,_), AppLoc(mloc2,_,false)) =>
       assert(mloc1 == mloc2)
       Set(postState).map(_.copy(nextCmd = List(source), alternateCmd = Nil))

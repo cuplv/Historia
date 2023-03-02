@@ -101,7 +101,9 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    * @return whether formula is satisfiable
    */
   def checkSAT(messageTranslator: MessageTranslator,
-                  axioms: Option[List[MessageTranslator => Unit] ] = None)(implicit zCtx: C): Boolean
+                  axioms: Option[List[MessageTranslator => Unit] ] = None,
+               shouldPushSat:Boolean
+              )(implicit zCtx: C): Boolean
   /**
    * Check satisfiability of fomrula in solver
    * @throws IllegalStateException if formula is undecidable or times out
@@ -896,7 +898,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
           println(ast.toString)
         }
         mkAssert(ast)
-        checkSAT(messageTranslator)
+        checkSAT(messageTranslator, None, false)
       }
       //      val simpleAst = solverSimplify(ast, stateWithNulls, messageTranslator, maxWitness.isDefined)
 
@@ -1078,6 +1080,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
 
   protected def fastMaySubsume(s1:State, s2:State, specSpace: SpecSpace):Boolean = {
+    if(s1.currentCallback != s2.currentCallback)
+      return false
     if (s1.callStack.size > s2.callStack.size)
       return false
 
@@ -1165,7 +1169,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       val s2Encode = toASTState(s2, messageTranslator,None, specSpace, negate=false)
       mkAssert(s2Encode)
       val foundCounter =
-        checkSAT(messageTranslator)
+        checkSAT(messageTranslator, None, true)
       !foundCounter
     }catch{
       case e:IllegalArgumentException if e.getLocalizedMessage.contains("timeout") =>
@@ -1235,7 +1239,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       val enc2 = encodePred(Exists(p2E.toList,pred2), msg, pvals, Map.empty, Map.empty)
 
       mkAssert(mkAnd(mkNot(enc1), enc2))
-      val isSat = checkSAT(msg, None)
+      val isSat = checkSAT(msg, None, true)
 
       !isSat
     } finally {
@@ -1471,7 +1475,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         specSpace = specSpace, negate=false, debug = maxLen.isDefined)
       mkAssert(s2Enc)
       val foundCounter =
-        checkSAT(messageTranslator)
+        checkSAT(messageTranslator, None, true)
 
       if (foundCounter && maxLen.isDefined) {
         printDbgModel(messageTranslator, Set(s1.traceAbstraction,s2.traceAbstraction))
@@ -1580,7 +1584,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       initializeZeroAxioms(messageTranslator)
       val pvMap: Map[PureVar, T] = encodeTraceContained(???, trace,
         messageTranslator = messageTranslator, specSpace = specSpace)
-      val sat = checkSAT(messageTranslator)
+      val sat = checkSAT(messageTranslator, None, false)
 
       if (sat) {
           Some(explainWitness(messageTranslator, (pvMap ++ messageTranslator.getConstMap).toMap))
@@ -1603,7 +1607,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       initializeZeroAxioms(messageTranslator)
       val pvMap: Map[PureVar, T] = encodeTraceContained(stateClean, trace,
         messageTranslator = messageTranslator, specSpace = specSpace)
-      val sat = checkSAT(messageTranslator)
+      val sat = checkSAT(messageTranslator, None, false)
       if (sat && debug) {
         println(s"model:\n ${zCtx.asInstanceOf[Z3SolverCtx].solver.toString}")
         printDbgModel(messageTranslator, Set(stateClean.traceAbstraction))
