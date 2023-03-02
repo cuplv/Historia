@@ -1,5 +1,5 @@
 #!/bin/bash
-pg_dump -h localhost -U postgres postgres -p 5433 > ~/Desktop/feb-16-2023.sql_
+pg_dump -h localhost -U postgres postgres -p 5433 > ~/Desktop/feb-28-2023_preCallStringLimit.sql
 # note: use psql dbname < infile to restore
 
 # note2: for version mismatch between pg server and client:
