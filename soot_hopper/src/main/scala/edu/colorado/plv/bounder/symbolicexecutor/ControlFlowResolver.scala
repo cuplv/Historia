@@ -710,8 +710,16 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     case (InternalMethodInvoke(_, _, _), CallStackFrame(_,Some(returnLoc:AppLoc),_)::_) => List(returnLoc)
     case (SkippedInternalMethodInvoke(_, _, _), CallStackFrame(_,Some(returnLoc:AppLoc),_)::_) => List(returnLoc)
     case (InternalMethodInvoke(_, _, loc), _) =>
+      val callsFromCurrentCB: Option[Set[MethodLoc]] = state.currentCallback.map { cb =>
+        val containingMethod = cb.loc
+        allCallsAppTransitive(containingMethod)
+      }
       val locations = wrapper.appCallSites(loc, resolver)
-        .filter(loc => !resolver.isFrameworkClass(loc.containingMethod.get.classType))
+        .filter{loc =>
+          lazy val notFwk = !resolver.isFrameworkClass(loc.containingMethod.get.classType)
+          val cbCanCall = callsFromCurrentCB.forall(_.contains(loc.method))
+          cbCanCall && notFwk
+        }
       locations.map(loc => loc.copy(isPre = true))
     case v =>
       throw new IllegalStateException(s"No predecessor locations for loc: ${v._1} with stack: ${v._2}")

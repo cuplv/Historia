@@ -1792,7 +1792,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val specs = Set[LSSpec]()
       val w = new SootWrapper(apk, specs)
       val config = ExecutorConfig(
-        stepLimit = 80, w, new SpecSpace(specs),
+        stepLimit = 180, w, new SpecSpace(specs),
         component = Some(List("com.example.createdestroy.*MyFragment.*")), approxMode = f.approxMode, outputMode = om)
 
       // line in call is reachable
@@ -2018,7 +2018,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       ) ++ RxJavaSpec.spec
       val w = new SootWrapper(apk, specs)
       val config = ExecutorConfig(
-        stepLimit = 80, w, new SpecSpace(specs),
+        stepLimit = 180, w, new SpecSpace(specs),
         component = Some(List("com.example.createdestroy.*MyFragment.*")), outputMode = om)
       val symbolicExecutor = config.getAbstractInterpreter
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)

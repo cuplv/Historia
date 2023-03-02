@@ -428,7 +428,9 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
   }
 
   override def checkSAT(messageTranslator: MessageTranslator,
-                        axioms: Option[List[MessageTranslator => Unit]] = None)(implicit zCtx: Z3SolverCtx): Boolean = {
+                        axioms: Option[List[MessageTranslator => Unit]] = None,
+                        shouldPushSat:Boolean
+                       )(implicit zCtx: Z3SolverCtx): Boolean = {
     val getAxioms = axioms.getOrElse(
       List(m => initalizeConstAxioms(m),
         m => initializeNameAxioms(m),
@@ -437,7 +439,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
         m => initializeArgTotalityAxioms(m), // note: this one adds cycle in quant alternation graph
         m => initializeOrderAxioms(m),
       ))
-    if (pushSatCheck)
+    if (shouldPushSat)
       checkSatPush(messageTranslator, getAxioms)
     else
       checkSATOne(messageTranslator, getAxioms)

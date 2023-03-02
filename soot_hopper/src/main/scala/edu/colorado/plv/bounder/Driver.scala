@@ -296,7 +296,7 @@ object Driver {
     println(s"java.library.path set to: ${System.getProperty("java.library.path")}")
     act match {
       case act@Action(Verify, _, _, cfgIn, _, _, mode,dbg) =>
-        val cfg = if(dbg){cfgIn.copy(timeLimit = 9999, truncateOut = false)} else cfgIn
+        val cfg = if(dbg){cfgIn.copy(timeLimit = 1200, truncateOut = false)} else cfgIn
         val componentFilter = cfg.componentFilter
         val apkPath = act.getApkPath
         val outFolder: String = act.getOutFolder
