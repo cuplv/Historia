@@ -1080,7 +1080,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
 
   protected def fastMaySubsume(s1:State, s2:State, specSpace: SpecSpace):Boolean = {
-    if(s1.currentCallback != s2.currentCallback)
+    if(s1.sf.callStack.nonEmpty && s2.sf.callStack.nonEmpty && s1.currentCallback != s2.currentCallback)
       return false
     if (s1.callStack.size > s2.callStack.size)
       return false
