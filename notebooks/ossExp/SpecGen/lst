@@ -1,6 +1,6 @@
-ch.blinkenlights.android.vanilla
-com.android.keepass
-com.asksven.betterbatterystats
+? cg issue ? ch.blinkenlights.android.vanilla
+TIMEOUT com.android.keepass
+? should have proved ? com.asksven.betterbatterystats
 com.byagowi.persiancalendar
 com.darshancomputing.BatteryIndicatorPro
 com.gpl.rpg.AndorsTrail
@@ -13,7 +13,6 @@ de.danoeh.antennapod
 de.jkliemann.parkendd
 dev.ukanth.ufirewall
 jwtc.android.chess
-lst
 name.boyle.chris.sgtpuzzles
 net.bible.android.activity
 net.justdave.nwsweatheralertswidget
