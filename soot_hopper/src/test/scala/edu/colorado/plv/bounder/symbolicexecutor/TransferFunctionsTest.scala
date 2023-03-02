@@ -175,7 +175,7 @@ class TransferFunctionsTest extends AnyFunSuite {
   ignore("transfer over deserialized IR"){
     //TODO(Duke) finish this test
     val fooMethod = SerializedIRMethodLoc("fooClazz", "fooMethod()",Nil)
-    val loc = (n:Int) => SerializedIRLineLoc(n,0)
+    val loc = (n:Int) => SerializedIRLineLoc(n,"",0)
     val loc1 = AppLoc(fooMethod, loc(0), true)
     val loc2 = AppLoc(fooMethod, loc(0), false)
     val loc3 = AppLoc(fooMethod, loc(1), true)
@@ -189,7 +189,7 @@ class TransferFunctionsTest extends AnyFunSuite {
   private val iFooA: OAbsMsg = AbsMsg(CBEnter, Set(Signature("", "foo()")), TopVal :: a :: Nil)
   ignore("Add matcher and phi abstraction when crossing callback entry") {
     val preloc = CallbackMethodInvoke(Signature("","foo()"), fooMethod) // Transition to just before foo is invoked
-    val postloc = AppLoc(fooMethod,SerializedIRLineLoc(1, 0), isPre=true)
+    val postloc = AppLoc(fooMethod,SerializedIRLineLoc(1, "",0), isPre=true)
     //val ir = new SerializedIR(Set(MethodTransition(preloc, postloc)))
     val ir = ???
 
