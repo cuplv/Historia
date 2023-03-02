@@ -124,22 +124,22 @@ object StateSet {
 }
 
 sealed trait SubsumableLocation
-case class CodeLocation(loc:Loc, cbCount:Int)extends SubsumableLocation
+case class CodeLocation(loc:Loc)extends SubsumableLocation
 case object FrameworkLocation extends SubsumableLocation
 object SwapLoc {
   def unapply[M,C](pathNode:IPathNode)(implicit r:ControlFlowResolver[M,C]): Option[SubsumableLocation] = pathNode.qry.loc match {
     case _: CallbackMethodInvoke =>
       Some(FrameworkLocation)
     case _: CallbackMethodReturn => None
-    case a@AppLoc(_,_,true) if r.getWrapper.isLoopHead(a) => Some(CodeLocation(a, pathNode.ordDepth))
+    case a@AppLoc(_,_,true) if r.getWrapper.isLoopHead(a) => Some(CodeLocation(a))
     case a@AppLoc(_,_,true) => {
       r.getWrapper.cmdAtLocation(a) match {
         case InvokeCmd(_, _) =>
-          //codeLocationIfRecurse(pathNode, r, a)
-          None
+          codeLocationIfRecurse(pathNode, r, a)
+          //None
         case AssignCmd(_,i:Invoke, _) =>
-          //codeLocationIfRecurse(pathNode, r, a)
-          None
+          codeLocationIfRecurse(pathNode, r, a)
+          //None
         case ReturnCmd(returnVar, loc) =>
           codeLocationIfRecurse(pathNode, r, loc)
         case AssignCmd(target, source, loc) => None
@@ -163,7 +163,7 @@ object SwapLoc {
   private def codeLocationIfRecurse[C, M](pathNode: IPathNode, r: ControlFlowResolver[M, C], a: AppLoc) = {
     val method = a.method
     if (r.mayRecurse(method)) {
-      Some(CodeLocation(a, pathNode.ordDepth))
+      Some(CodeLocation(a))
     } else None
   }
 }
