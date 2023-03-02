@@ -255,9 +255,12 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
           val newS = s.copy(sf = s.sf.copy(
             callStack = if(s.callStack.isEmpty) Nil else s.callStack.tail),
             nextCmd = List(target),
-            alternateCmd = Nil)
+            alternateCmd = Nil,
+            currentCallback = None
+          )
           (thisV,newS)
       }
+      assert(statePopped.forall{s => s._2.sf.callStack.isEmpty}, "call stack should be empty when reaching cb")
 
       // If processing the entry of <init> as a callback,
       //   add constraint that nothing in the trace before now can reference current value
@@ -296,7 +299,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val localVarOrVal: List[Option[RVal]] = rvar::mloc.getArgs
       val relAliases = relevantAliases(postState, CBExit, sig,specSpace,localVarOrVal)
       val state1 = newMsgTransfer(mloc, CBExit, sig, relAliases, pre_push)
-      state1.map(_.copy(nextCmd = List(target), alternateCmd = Nil))
+      state1.map(_.copy(nextCmd = List(target), alternateCmd = Nil, currentCallback = Some(targetLoc)))
     case (CallbackMethodReturn(_,mloc1,_), AppLoc(mloc2,_,false)) =>
       assert(mloc1 == mloc2)
       Set(postState).map(_.copy(nextCmd = List(source), alternateCmd = Nil))

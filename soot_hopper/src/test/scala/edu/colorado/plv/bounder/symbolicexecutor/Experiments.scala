@@ -772,7 +772,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
             val specSpace = new SpecSpace(row4Specs)
             val config = ExecutorConfig(
               stepLimit = 2000, w, specSpace,
-              component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode)
+              component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode,
+              printAAProgress = true)
             val symbolicExecutor = config.getAbstractInterpreter
             val line = BounderUtil.lineForRegex(".*query1.*".r, src)
 

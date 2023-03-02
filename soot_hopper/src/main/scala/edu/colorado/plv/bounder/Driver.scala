@@ -296,7 +296,7 @@ object Driver {
     println(s"java.library.path set to: ${System.getProperty("java.library.path")}")
     act match {
       case act@Action(Verify, _, _, cfgIn, _, _, mode,dbg) =>
-        val cfg = if(dbg){cfgIn.copy(timeLimit = 9999, truncateOut = false)} else cfgIn
+        val cfg = if(dbg){cfgIn.copy(timeLimit = 14400, truncateOut = false)} else cfgIn
         val componentFilter = cfg.componentFilter
         val apkPath = act.getApkPath
         val outFolder: String = act.getOutFolder
@@ -321,7 +321,7 @@ object Driver {
         } else throw new IllegalArgumentException(s"Mode ${mode} is invalid, options: DB - write nodes to sqlite, MEM " +
           s"- keep nodes in memory.")
         val res: List[LocResult] =
-          runAnalysis(cfg, apkPath, componentFilter, pathMode, stepLimit, initialQuery, Some(outFolder))
+          runAnalysis(cfg, apkPath, componentFilter, pathMode, stepLimit, initialQuery, Some(outFolder), dbg)
         res.zipWithIndex.foreach { case (iq, ind) =>
           val resFile = File(outFolder) / s"result_${ind}.txt"
           resFile.overwrite(write(iq))
@@ -585,14 +585,14 @@ object Driver {
     //TODO:
   }
   def runAnalysis(cfg:RunConfig, apkPath: String, componentFilter:Option[Seq[String]], mode:OutputMode, stepLimit:Int,
-                  initialQueries: List[InitialQuery], outDir:Option[String]): List[LocResult] = {
+                  initialQueries: List[InitialQuery], outDir:Option[String], dbg:Boolean): List[LocResult] = {
     val specSet = cfg.specSet
     val startTime = System.nanoTime()
     try {
       val w = new SootWrapper(apkPath, specSet.getSpecSet().union(specSet.getDisallowSpecSet()))
       val config = ExecutorConfig(
         stepLimit = stepLimit, w, new SpecSpace(specSet.getSpecSet(), specSet.getDisallowSpecSet()), component = componentFilter, outputMode = mode,
-        timeLimit = cfg.timeLimit)
+        timeLimit = cfg.timeLimit, printAAProgress = dbg)
       initialQueries.flatMap{ initialQuery =>
         try {
           val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
@@ -633,7 +633,7 @@ object Driver {
               case DBOutputMode(_) => true
             }
             if (printWit) {
-              pp.dumpDebugInfo(finalLiveNodes, "wit", outDir = outDir)
+              pp.dumpDebugInfo(groupedResults.flatMap{res => res.terminals}, "wit", outDir = outDir)
             }
 
             LocResult(initialQuery, id, loc, res, characterizedMaxPath, finalTime,
@@ -644,7 +644,7 @@ object Driver {
           case e:OutOfMemoryError =>
             e.printStackTrace(new PrintWriter(System.err))
             Seq(LocResult(initialQuery, 0,
-              AppLoc(SerializedIRMethodLoc("","",Nil), SerializedIRLineLoc(-1,0), true),
+              AppLoc(SerializedIRMethodLoc("","",Nil), SerializedIRLineLoc(-1,"",0), true),
               resultSummary= Interrupted("OutOfMemoryError"),
               maxPathCharacterization = UnknownCharacterization,
               time = (System.nanoTime() - startTime)/1000000000,
@@ -653,7 +653,7 @@ object Driver {
           case e:Throwable =>
             e.printStackTrace(new PrintWriter(System.err))
             Seq(LocResult(initialQuery, 0,
-              AppLoc(SerializedIRMethodLoc("", "", Nil), SerializedIRLineLoc(-1, 0), true),
+              AppLoc(SerializedIRMethodLoc("", "", Nil), SerializedIRLineLoc(-1,"", 0), true),
               resultSummary = Interrupted(e.toString),
               maxPathCharacterization = UnknownCharacterization,
               time = (System.nanoTime() - startTime) / 1000000000,

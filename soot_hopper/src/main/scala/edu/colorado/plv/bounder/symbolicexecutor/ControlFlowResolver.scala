@@ -41,10 +41,11 @@ case object NotRelevantMethod extends RelevanceRelation {
 class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
                                resolver: AppCodeResolver,
                                cha: ClassHierarchyConstraints,
-                               component: Option[List[String]], config:ExecutorConfig[M,C]) { //TODO: remove pathMode here
+                               component: Option[List[String]], config:ExecutorConfig[M,C]) {
   private implicit val ch = cha
   private val componentR: Option[List[Regex]] = component.map(_.map(_.r))
   private val specSpace: SpecSpace = config.specSpace
+  def getAppCodeResolver:AppCodeResolver = resolver
 
   //private val messageToCallback:Map[OAbsMsg, ]
 
@@ -156,6 +157,11 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
      callsToRetLoc(loc, includeCallin)
   }
   def allCallsApp: MethodLoc => Set[MethodLoc] = Memo.mutableHashMapMemo(c => computeAllCalls(c))
+
+  def mayRecurse(m:MethodLoc):Boolean = {
+    allCallsAppTransitive(m).contains(m)
+  }
+
   def computeAllCallsTransitive(loc:MethodLoc):Set[MethodLoc] = {
     val calls = mutable.Set[MethodLoc]()
     calls.addAll(allCallsApp(loc))
@@ -704,8 +710,16 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     case (InternalMethodInvoke(_, _, _), CallStackFrame(_,Some(returnLoc:AppLoc),_)::_) => List(returnLoc)
     case (SkippedInternalMethodInvoke(_, _, _), CallStackFrame(_,Some(returnLoc:AppLoc),_)::_) => List(returnLoc)
     case (InternalMethodInvoke(_, _, loc), _) =>
+      val callsFromCurrentCB: Option[Set[MethodLoc]] = state.currentCallback.map { cb =>
+        val containingMethod = cb.loc
+        allCallsAppTransitive(containingMethod)
+      }
       val locations = wrapper.appCallSites(loc, resolver)
-        .filter(loc => !resolver.isFrameworkClass(loc.containingMethod.get.classType))
+        .filter{loc =>
+          lazy val notFwk = !resolver.isFrameworkClass(loc.containingMethod.get.classType)
+          val cbCanCall = callsFromCurrentCB.forall(_.contains(loc.method))
+          cbCanCall && notFwk
+        }
       locations.map(loc => loc.copy(isPre = true))
     case v =>
       throw new IllegalStateException(s"No predecessor locations for loc: ${v._1} with stack: ${v._2}")

@@ -3,11 +3,11 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import java.time.Instant
 import com.microsoft.z3.Z3Exception
 import edu.colorado.plv.bounder.{BounderUtil, RunConfig}
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, Goto, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SwitchCmd, ThrowCmd, VirtualInvoke}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, Goto, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SwitchCmd, ThrowCmd, VirtualInvoke}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.EncodingTools.repHeapCells
 import edu.colorado.plv.bounder.solver.{EncodingTools, StateSolver, Z3StateSolver}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, BottomQry, DBOutputMode, FieldPtEdge, FrameworkLocation, HashableStateFormula, HeapPtEdge, IPathNode, InitialQuery, Live, MemoryOutputMode, NPureVar, NoOutputMode, OrdCount, OutputMode, PathNode, PureExpr, Qry, State, StaticPtEdge, SubsumableLocation, SwapLoc, WitnessedQry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, BottomQry, CallStackFrame, DBOutputMode, FieldPtEdge, FrameworkLocation, HashableStateFormula, HeapPtEdge, IPathNode, InitialQuery, Live, MemoryOutputMode, NPureVar, NoOutputMode, OrdCount, OutputMode, PathNode, PureExpr, Qry, State, StaticPtEdge, SubsumableLocation, SwapLoc, WitnessedQry}
 
 import scala.collection.parallel.immutable.ParIterable
 import scala.annotation.tailrec
@@ -61,7 +61,7 @@ trait ApproxMode {
    * @return None if no new state is to be considered, Some(state) if a state is to be added
    */
   def merge[M, C](existing: () => Iterable[IPathNode], newPN: IPathNode,
-                           stateSolver: Z3StateSolver)(implicit w: IRWrapper[M, C]): Option[IPathNode]
+                           stateSolver: Z3StateSolver)(implicit w:ControlFlowResolver[M,C]): Option[IPathNode]
 
   /**
    * An over-approximate state may weaken by dropping materialized heap cells or tracking less precise constraints.
@@ -82,14 +82,15 @@ case class PreciseApproxMode(canWeaken:Boolean) extends ApproxMode{
    * @return None if no new state is to be considered, Some(state) if a state is to be added
    */
   override def merge[M,C](existing: () => Iterable[IPathNode], newState: IPathNode,
-                     stateSolver: Z3StateSolver)(implicit w: IRWrapper[M, C]): Option[IPathNode] = Some(newState)
+                     stateSolver: Z3StateSolver)(implicit w: ControlFlowResolver[M, C]): Option[IPathNode] =
+    Some(newState)
 }
 
-case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2) extends ApproxMode {
+case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2) extends ApproxMode { //TODO:====
 
   override def canWeaken:Boolean = true
   override def merge[M,C](existing: () => Iterable[IPathNode], newPN:IPathNode,
-                     stateSolver: Z3StateSolver)(implicit w:IRWrapper[M,C]): Option[IPathNode] = {
+                     stateSolver: Z3StateSolver)(implicit w:ControlFlowResolver[M,C]): Option[IPathNode] = {
     newPN match{
       case SwapLoc(_) => //Only widen where back edges exist
         val newState = newPN.state
@@ -122,11 +123,28 @@ case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2) extend
           EncodingTools.reduceStatePureVars(newState.copy(sf = newSF.copy(heapConstraints = rmHeap)).setSimplified())
         assert(prunedStateOpt.isDefined, "Removing a materialized heap cell should not refute state")
         val prunedState = prunedStateOpt.get
-        prunedState.setSimplified()
+
+        // Drop calls if recursion detected
+        val seen = mutable.Set[Loc]()
+        val callStackUntil = prunedState.sf.callStack.takeWhile{
+          case CallStackFrame(exitLoc, _, _) =>
+            val seenYet = seen.contains(exitLoc)
+            seen += (exitLoc)
+            !seenYet
+        }
+        //TODO: perhaps check if the callback is needed in the abstract state
+
+        // Note, can just call setSimplified here because dropping stack frames shouldn't affect feasibility
+        val trimmedStateOpt =
+          EncodingTools.reduceStatePureVars(
+            prunedState.copy(sf = prunedState.sf.copy(callStack = callStackUntil)).setSimplified()
+          )
+        assert(trimmedStateOpt.isDefined, "Dropping calls should not refute state")
+        val trimmedState = trimmedStateOpt.get
         //val simp = stateSolver.simplify(prunedState, SpecSpace.top)
         //assert(simp.isDefined, "merge should not cause refutation")
         //simp.map{s => newPN.copyWithNewQry(newPN.qry.copy(state = s))}
-        Some(newPN.copyWithNewQry(newPN.qry.copy(state = prunedState)))
+        Some(newPN.copyWithNewQry(newPN.qry.copy(state = trimmedState.setSimplified())))
       case _ =>
         Some(newPN)
     }
@@ -151,7 +169,7 @@ case class ExecutorConfig[M,C](stepLimit: Int = -1,
                                        z3Timeout : Option[Int] = None,
                                        component : Option[Seq[String]] = None,
                                        outputMode : OutputMode = MemoryOutputMode,
-                                       timeLimit:Int = 1800, // Note: connectbot click finish does not seem to go any further with 2h vs 0.5hr
+                                       timeLimit:Int = 7200, // Note: connectbot click finish does not seem to go any further with 2h vs 0.5hr
                                        subsumptionMode:SubsumptionMode = SubsumptionModeIndividual, //Note: seems to be faster without batch mode subsumption
                                        approxMode:ApproxMode =  LimitMaterializationApproxMode()
                                                   //PreciseApproxMode(true) //default is to allow dropping of constraints and no widen //TODO: === make thresher version that drops things == make under approx version that drops states
@@ -259,9 +277,9 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
   def getClassHierarchy = cha
   val transfer = new TransferFunctions[M, C](w, config.specSpace, cha, config.approxMode.canWeaken)
 
-  val appCodeResolver = new DefaultAppCodeResolver[M,C](config.w)
+  implicit val appCodeResolver = new DefaultAppCodeResolver[M,C](config.w)
   def getAppCodeResolver = appCodeResolver
-  val controlFlowResolver =
+  implicit val controlFlowResolver =
     new ControlFlowResolver[M,C](config.w,appCodeResolver, cha, config.component.map(_.toList), config)
   def writeIR():Unit = {
     val callbacks = appCodeResolver.getCallbacks
@@ -307,13 +325,13 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
     assert(!isRunning, "Abstract interpreter does not support concurrency.")
     isRunning = true
     val qry: Set[Qry] = initialQuery.make(this)
-      .map{q => q.copy(state = stateSolver.simplify(q.state.setSimplified, config.specSpace)
+      .map{q => q.copy(state = stateSolver.simplify(q.state.setSimplified(), config.specSpace)
         .getOrElse(throw new IllegalArgumentException(s"Initial state was refuted: ${q.state}")))}
     val output = qry.groupBy(_.loc).map{ case(loc,qs) =>
       val startTime = Instant.now.getEpochSecond
       var id = -1
       try {
-        val pathNodes = qs.map(PathNode(_, Nil, None))
+        val pathNodes = qs.map(q => PathNode(q.copy(state = q.state.setSimplified()), Nil, None))
         id = outputMode.initializeQuery(loc,cfg,initialQuery)
         val queue = new GrouperQ
         queue.addAll(pathNodes)
@@ -548,8 +566,17 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
                 // Add to invariant map if invariant location is tracked
                 p2 match {
                   case SwapLoc(v) => {
-                    val nodeSetAtLoc = invarMap.getOrElse(v, Map.empty)
-                    invarMap.addOne(v -> (nodeSetAtLoc + (p2.state.sf.makeHashable(config.specSpace) -> p2)))
+                    val nodeSetAtLoc: Map[HashableStateFormula, IPathNode] = invarMap.getOrElse(v, Map.empty)
+                    // remove all states that may be subsumed by new state:
+                    val filtNodeSet =
+                      nodeSetAtLoc.par.filter{n => !stateSolver.canSubsume(p2.state, n._2.state, config.specSpace)}
+                        .seq.toMap
+
+                    if(config.printAAProgress) {
+                      println(s"loc: ${v}\n total at loc: ${nodeSetAtLoc.size} \n filteredAtLoc: ${filtNodeSet.size}")
+                    }
+                    assert(p2.state.isSimplified, "State must be simplified before adding to invariant map.")
+                    invarMap.addOne(v -> (filtNodeSet + (p2.state.sf.makeHashable(config.specSpace) -> p2)))
                   }
                   case _ =>
                 }
@@ -563,7 +590,10 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
                     throw QueryInterruptedException(refutedSubsumedOrWitnessed + p2, ze.getMessage)
                 }
                 qrySet.addAll(nextQry)
-                executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed, stopExplorationAt)
+                val addIfPredEmpty = if(nextQry.isEmpty && config.outputMode != NoOutputMode)
+                  Some(p2.copyWithNewQry(p2.qry.copy(searchState = BottomQry))) else None
+                executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed ++ addIfPredEmpty,
+                  stopExplorationAt)
               case None =>
                 // approx mode indicates this state should be dropped (under approx)
                 executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed, stopExplorationAt)

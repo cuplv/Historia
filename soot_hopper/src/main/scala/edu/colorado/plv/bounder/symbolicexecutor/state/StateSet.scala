@@ -1,6 +1,7 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SwitchCmd, ThrowCmd}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, Loc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SwitchCmd, ThrowCmd, VirtualInvoke}
+import edu.colorado.plv.bounder.symbolicexecutor.ControlFlowResolver
 
 
 sealed trait PVMap
@@ -123,21 +124,25 @@ object StateSet {
 }
 
 sealed trait SubsumableLocation
-case class CodeLocation(loc:Loc, cbCount:Int)extends SubsumableLocation
+case class CodeLocation(loc:Loc)extends SubsumableLocation
 case object FrameworkLocation extends SubsumableLocation
 object SwapLoc {
-  def unapply[M,C](pathNode:IPathNode)(implicit w:IRWrapper[M,C]): Option[SubsumableLocation] = pathNode.qry.loc match {
+  def unapply[M,C](pathNode:IPathNode)(implicit r:ControlFlowResolver[M,C]): Option[SubsumableLocation] = pathNode.qry.loc match {
     case _: CallbackMethodInvoke =>
       Some(FrameworkLocation)
     case _: CallbackMethodReturn => None
-    case a@AppLoc(_,_,true) if w.isLoopHead(a) => Some(CodeLocation(a, pathNode.ordDepth))
+    case a@AppLoc(_,_,true) if r.getWrapper.isLoopHead(a) => Some(CodeLocation(a))
     case a@AppLoc(_,_,true) => {
-      w.cmdAtLocation(a) match {
-//        case InvokeCmd(method:VirtualInvoke, loc) => Some(CodeLocation(a, pathNode.ordDepth))
-        case InvokeCmd(_, loc) => None
-        case ReturnCmd(returnVar, loc) => None
+      r.getWrapper.cmdAtLocation(a) match {
+        case InvokeCmd(_, _) =>
+          codeLocationIfRecurse(pathNode, r, a)
+          //None
+        case AssignCmd(_,i:Invoke, _) =>
+          codeLocationIfRecurse(pathNode, r, a)
+          //None
+        case ReturnCmd(returnVar, loc) =>
+          codeLocationIfRecurse(pathNode, r, loc)
         case AssignCmd(target, source, loc) => None
-//        case If(b, trueLoc, loc) => Some(CodeLocation(a, pathNode.ordDepth))
         case NopCmd(loc) => None
         case SwitchCmd(key, targets, loc) => None
         case ThrowCmd(loc) => None
@@ -153,5 +158,12 @@ object SwapLoc {
     case _: InternalMethodReturn => None
     case _: SkippedInternalMethodReturn => None
     case _: SkippedInternalMethodInvoke => None
+  }
+
+  private def codeLocationIfRecurse[C, M](pathNode: IPathNode, r: ControlFlowResolver[M, C], a: AppLoc) = {
+    val method = a.method
+    if (r.mayRecurse(method)) {
+      Some(CodeLocation(a))
+    } else None
   }
 }

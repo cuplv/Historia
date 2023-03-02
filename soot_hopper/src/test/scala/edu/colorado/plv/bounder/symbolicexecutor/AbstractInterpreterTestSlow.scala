@@ -6,7 +6,7 @@ import edu.colorado.plv.bounder.ir.SootWrapper
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, Signature}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.state.{DBOutputMode, IPathNode, InitialQuery, MemoryOutputMode, ReceiverNonNull}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{DBOutputMode, IPathNode, InitialQuery, MemoryOutputMode, PrettyPrinting, ReceiverNonNull}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.AnyFunSuite
@@ -83,7 +83,7 @@ class AbstractInterpreterTestSlow extends AnyFunSuite{
         val config = ExecutorConfig(
           stepLimit = 400, w, new SpecSpace(specs),
           component = Some(List("com.example.createdestroy.MyActivity.*")),
-          outputMode = MemoryOutputMode, approxMode = LimitMaterializationApproxMode())
+          outputMode = MemoryOutputMode, approxMode = LimitMaterializationApproxMode(), printAAProgress = true)
         //outputMode = DBOutputMode("/Users/shawnmeier/Desktop/bounder_debug_data/deref2.db"))
         val symbolicExecutor = config.getAbstractInterpreter
         val i = BounderUtil.lineForRegex(queryL, src)
@@ -93,7 +93,7 @@ class AbstractInterpreterTestSlow extends AnyFunSuite{
 
 
         val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
-        //        prettyPrinting.dumpDebugInfo(result, "dynamicDispatchTest2")
+                PrettyPrinting.dumpDebugInfo(result, "dynamicDispatchTest2")
         //        prettyPrinting.dotWitTree(result, "dynamicDispatchTest2", true)
         assert(result.nonEmpty)
         BounderUtil.throwIfStackTrace(result)

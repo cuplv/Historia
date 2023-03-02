@@ -134,7 +134,7 @@ object SerializedIRMethodLoc{
  * @param line syntactic line in source
  * @param column unique identifier
  */
-case class SerializedIRLineLoc(line:Int, column:Int = 0) extends LineLoc {
+case class SerializedIRLineLoc(line:Int, desc:String = "", column:Int = 0) extends LineLoc {
 
   override def lineNumber: Int = line
 

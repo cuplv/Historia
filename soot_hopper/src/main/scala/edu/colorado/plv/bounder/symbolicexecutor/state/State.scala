@@ -14,7 +14,7 @@ import scala.collection.{BitSet, View}
 object State {
 
   def topState:State =
-    State(StateFormula(Nil,Map(),Set(),Map(),AbstractTrace(Nil)),0)
+    State(StateFormula(Nil,Map(),Set(),Map(),AbstractTrace(Nil)),0, currentCallback = None)
 
   def findIAF(messageType: MessageType, signature: Signature,
               pred: LSPred)(implicit ch:ClassHierarchyConstraints):Set[AbsMsg] = pred match{
@@ -263,13 +263,15 @@ case class State(sf:StateFormula,
                  nextAddr:Int,
                  nextCmd: List[Loc] = Nil,
                  alternateCmd: List[Loc] = Nil,
-                 isSimplified:Boolean = false // should only be set by simplify method of StateSolver
+                 isSimplified:Boolean = false, // should only be set by simplify method of StateSolver
+                 currentCallback:Option[CallbackMethodReturn] = None // used to reduce state space explosion when widening call strings
                 ) {
   def copy(sf:StateFormula = sf, nextAddr:Int = nextAddr, nextCmd:List[Loc] = nextCmd,
            alternateCmd:List[Loc] = alternateCmd,
-           isSimplified:Boolean = isSimplified): State = {
+           isSimplified:Boolean = isSimplified,
+           currentCallback:Option[CallbackMethodReturn] = currentCallback): State = {
     // can only be simplified if thing copying from has same state formula
-    State(sf, nextAddr, nextCmd, alternateCmd, sf == this.sf && isSimplified)
+    State(sf, nextAddr, nextCmd, alternateCmd, sf == this.sf && isSimplified, currentCallback)
   }
 
   def pureVals(): Set[PureVal] = {
