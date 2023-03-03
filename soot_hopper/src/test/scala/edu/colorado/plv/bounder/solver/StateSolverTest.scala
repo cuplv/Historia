@@ -2099,6 +2099,8 @@ class StateSolverTest extends FixtureAnyFunSuite {
       Nil
 
 
+
+
     val enc = EncodingTools.rhsToPred(absTr, specs)
     val s = State.topState.copy(sf = State.topState.sf.copy(
       traceAbstraction = AbstractTrace(absTr)))
@@ -2106,6 +2108,16 @@ class StateSolverTest extends FixtureAnyFunSuite {
       .addPureConstraint(PureConstraint(pv3, NotEquals, pv6))
     assert(stateSolver.simplify(s, specs).isEmpty)
 
+    assert(f.canSubsume(s,s,specs))
+
+
+    val s1 = s.copy(sf = s.sf.copy(pureFormula = Set()))
+    val absTr2 =
+        OAbsMsg(CIExit, SpecSignatures.Activity_findView, pv7 :: pv9 :: Nil) ::
+        OAbsMsg(CIExit, SpecSignatures.Activity_findView, pv3 :: pv6 :: Nil) ::
+        Nil
+    val s2 = s.copy(sf = s.sf.copy(traceAbstraction = AbstractTrace(absTr2), pureFormula = Set()))
+    assert(f.canSubsume(s1,s2,specs))
   }
 
   test("Can subsume disjuncted has not temporal formula 1"){ f =>
