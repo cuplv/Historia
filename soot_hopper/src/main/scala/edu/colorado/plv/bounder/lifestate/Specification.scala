@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit}
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Forall, LSConstraint, LSFalse, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Forall, HNOE, LSConstraint, LSFalse, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, Equals, NamedPureVar, NotEquals, NullVal, PureExpr, TopVal}
 
 object SpecSignatures {
@@ -254,9 +254,12 @@ object ViewSpec {
   val fv1 = AbsMsg(CIExit, SpecSignatures.Activity_findView, v::a::Nil)
   val fv2 = AbsMsg(CIExit, SpecSignatures.Activity_findView, v::a2::Nil)
   val fv_exit = AbsMsg(CIExit, SpecSignatures.Activity_findView, v::TopVal::Nil)
+  // ¬ I(ci v:=a2.findViewByID()) /\ a != a2 ]
   // Ɐv,a,a2. ¬ I(ci v:= a2.findViewByID()) \/ a = a2 <= ci v:= a.findViewByID()
-  val viewOnlyReturnedFromOneActivity:LSSpec =
+  val viewOnlyReturnedFromOneActivity_pre_HNOE:LSSpec =
     LSSpec(a::v::Nil, Nil, Forall(a2::Nil, Or(Not(fv2), LSConstraint(a, Equals, a2))), fv1)
+  val viewOnlyReturnedFromOneActivity:LSSpec =
+    LSSpec(a::v::Nil, Nil, HNOE(a2,fv2,a), fv1)
 //  val sameIDSameView:LSSpec =
 //    LSSpec()
 

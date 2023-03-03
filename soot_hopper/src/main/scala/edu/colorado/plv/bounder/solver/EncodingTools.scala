@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.solver
 
 import edu.colorado.plv.bounder.ir.{MessageType, TMessage, TraceElement}
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, CLInit, Exists, Forall, FreshRef, LSAnyPred, LSAtom, LSBexp, LSConstraint, LSFalse, LSImplies, LSPred, LSSingle, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, SignatureMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, CLInit, Exists, Forall, FreshRef, HNOE, LSAnyPred, LSAtom, LSBexp, LSConstraint, LSFalse, LSImplies, LSPred, LSSingle, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, SignatureMatcher}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, ConcreteVal, Equals, FieldPtEdge, HeapPtEdge, NPureVar, NamedPureVar, NotEquals, PureConstraint, PureExpr, PureVal, PureVar, State, StaticPtEdge, TopVal}
 
@@ -40,6 +40,15 @@ object EncodingTools {
     case LSImplies(l1,l2) => LSImplies(updArrowPhi(i,l1), updArrowPhi(i,l2))
     case FreshRef(v) =>
       throw new IllegalStateException("RefV cannot be updated (encoding handled elsewhere)")
+    case HNOE(v,i1,extV) =>
+      if(i1.mt == i.mt && i1.signatures == i.signatures){
+        val arityOfv = i1.lsVars.indexOf(v)
+        val pairs = filterAny(i1.lsVars zip i.lsVars).zipWithIndex
+        pairs.map{
+          case (v,ind) if ind!=arityOfv =>  LSConstraint.mk(v._1,NotEquals,v._2)
+          case (v,_) => LSConstraint.mk(extV, Equals, v._2)
+        }.reduceOption(Or).getOrElse(LSTrue)
+      }else lsPred
     case Not(i1:AbsMsg) =>
       if(i1.mt == i.mt && i1.signatures == i.signatures)
         And(neqOnce(i1,i), lsPred)
@@ -220,6 +229,7 @@ object EncodingTools {
   }
 
   def simplifyPred(pred:LSPred):LSPred = pred match {
+    case h:HNOE => h
     case LSAnyPred => LSAnyPred
     case Exists(Nil, p) => simplifyPred(p)
     case Forall(Nil, p) => simplifyPred(p)
@@ -284,7 +294,8 @@ object EncodingTools {
       case Exists(vars, p) => mustI(p)
       case LSImplies(l1, l2) => Set()
       case And(l1, l2) => mustI(l1).union(mustI(l2))
-      case Not(l) => Set()
+      case Not(l:AbsMsg) => Set()
+      case _:HNOE => Set()
       case Or(l1, l2) => mustI(l1).intersect(mustI(l2))
       case LifeState.LSTrue => Set()
       case LifeState.LSFalse => Set()
@@ -302,6 +313,7 @@ object EncodingTools {
       case LSImplies(l1, l2) => Set()
       case And(l1, l2) => mayI(l1).union(mayI(l2))
       case Not(i:AbsMsg) => Set()
+      case _:HNOE => Set()
       case Not(p) => throw new IllegalStateException(s"expected normal form in pred: ${p}")
       case Or(l1, l2) => mayI(l1).union(mayI(l2))
       case LifeState.LSTrue => Set()

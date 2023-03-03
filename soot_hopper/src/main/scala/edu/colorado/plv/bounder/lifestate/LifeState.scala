@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.lifestate
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType}
 import edu.colorado.plv.bounder.lifestate.LSPredAnyOrder.depthToAny
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, CLInit, Exists, Forall, FreshRef, LSAnyPred, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, Signature}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, CLInit, Exists, Forall, FreshRef, HNOE, LSAnyPred, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, Signature}
 import edu.colorado.plv.bounder.solver.EncodingTools.Assign
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, BotVal, ClassVal, CmpOp, ConcreteVal, Equals, IntVal, NamedPureVar, NotEquals, NullVal, PureExpr, PureVal, PureVar, State, TopVal, TypeComp}
@@ -543,6 +543,34 @@ object LifeState {
     override def lsVal: Set[PureVal] = Set.empty
   }
 
+  /**
+   * Has not or equals
+   * Used to capture
+   * @param v value quantified to this statement
+   * @param m
+   * @param extV ok if message arg matching v is equal to extV
+   * @param constr
+   */
+  case class HNOE(v:PureVar, m:AbsMsg, extV:PureExpr) extends LSPred{
+    override def toTex: String = ???
+
+    override def swap(swapMap: Map[PureVar, PureExpr]): LSPred = {
+      val swappedExtv = extV match{
+        case pv:PureVar => swapMap.getOrElse(pv, pv)
+        case v => v
+      }
+
+      HNOE(v, m.swap(swapMap), swappedExtv)
+    }
+
+    override def contains(mt: MessageType, sig: Signature)(implicit ch: ClassHierarchyConstraints): Boolean =
+      m.contains(mt,sig)
+
+    override def lsVar: Set[PureVar] = m.lsVar - v
+
+    override def lsVal: Set[PureVal] = m.lsVal
+  }
+
   sealed trait LSAtom extends LSPred {
 //    def getAtomSig:String
     def identitySignature:String
@@ -881,6 +909,7 @@ object LifeState {
       case i:LSAtom => i.lsVar.forall(v => quant.contains(v))
       //case UComb(_,preds,_) => preds.forall(p => checkWF(quant,p))
       case LSAnyPred => true
+      case HNOE(v, m, otherV) => m.lsVars.count(_ == v) == 1 && v != otherV && m.lsVars.count(_==otherV) == 0
       case v =>
         throw new IllegalArgumentException(s"${v} is not a valid lspred")
     }
@@ -996,6 +1025,7 @@ object SpecSpace{
     case None => Set()
   }
   def allI(pred:LSPred):Set[OAbsMsg] = pred match{
+    case HNOE(_,m,_) => allI(m)
     case LSImplies(l1, l2) => allI(l1).union(allI(l2))
     case CLInit(_) => Set()
     case i:OAbsMsg => Set(i)
