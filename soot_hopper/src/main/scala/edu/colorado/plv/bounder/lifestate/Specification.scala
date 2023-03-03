@@ -203,6 +203,7 @@ object ViewSpec {
   val a = NamedPureVar("a")
   val a2 = NamedPureVar("a2")
   val v = NamedPureVar("v")
+  val v2 = NamedPureVar("v2")
   val l = NamedPureVar("l")
 
   implicit val convertList:List[String]=>List[PureExpr] = LSExpParser.convertList

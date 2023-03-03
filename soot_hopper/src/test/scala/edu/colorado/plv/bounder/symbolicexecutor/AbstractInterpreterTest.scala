@@ -2238,9 +2238,9 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
     val test: String => Unit = apk => {
       File.usingTemporaryDirectory() { tmpDir =>
         assert(apk != null)
-        implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString)
-        dbMode.startMeta()
-//        implicit val dbMode = MemoryOutputMode //LifecycleSpec.spec +
+        //implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString)
+        //dbMode.startMeta()
+        implicit val dbMode = MemoryOutputMode //LifecycleSpec.spec +
         val specs = new SpecSpace( Set(ViewSpec.clickWhileActive,
            ViewSpec.viewOnlyReturnedFromOneActivity))
 //        val specs = new SpecSpace(Set(ViewSpec.clickWhileActive))
@@ -2269,6 +2269,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         println("Witness Null")
         // prettyPrinting.printWitness(nullUnreachRes)
         assert(nullUnreachRes.nonEmpty)
+        PrettyPrinting.printWitness(nullUnreachRes)
         BounderUtil.throwIfStackTrace(nullUnreachRes)
         f.expectUnreachable(BounderUtil.interpretResult(nullUnreachRes, QueryFinished))
       }

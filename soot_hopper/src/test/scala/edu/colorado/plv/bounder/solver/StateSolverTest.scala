@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.solver
 import better.files.{File, Resource}
 import com.microsoft.z3._
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Forall, FreshRef, LSConstraint, LSFalse, LSPred, LSSpec, LSTrue, NS, Not, Or, Signature, SignatureMatcher, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Forall, FreshRef, LSConstraint, LSFalse, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, Signature, SignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LSExpParser, LifecycleSpec, RxJavaSpec, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs
 import edu.colorado.plv.bounder.symbolicexecutor.state._
@@ -2083,6 +2083,29 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(f.canSubsume(s_1_,s_1_,specs2))
     assert(f.canSubsume(s_2_,s_2_,specs2))
     assert(f.canSubsume(s_1_,s_2_,specs2))
+  }
+  test("Has Not Or Equals") { f =>
+    val stateSolver = f.stateSolver
+    val specs = new SpecSpace(Set(ViewSpec.viewOnlyReturnedFromOneActivity))
+    val pv3 = NPureVar(3)
+    val pv6 = NPureVar(6)
+    val pv7 = NPureVar(7)
+    val pv9 = NPureVar(9)
+    val pv10 = NPureVar(10)
+    val absTr =
+      OAbsMsg(CIExit, SpecSignatures.Activity_findView, pv3 :: pv10 :: Nil) ::
+      OAbsMsg(CIExit, SpecSignatures.Activity_findView, pv7 :: pv9 :: Nil) ::
+      OAbsMsg(CIExit, SpecSignatures.Activity_findView, pv3 :: pv6 :: Nil) ::
+      Nil
+
+
+    val enc = EncodingTools.rhsToPred(absTr, specs)
+    val s = State.topState.copy(sf = State.topState.sf.copy(
+      traceAbstraction = AbstractTrace(absTr)))
+      .addPureConstraint(PureConstraint(pv10, NotEquals, pv6))
+      .addPureConstraint(PureConstraint(pv3, NotEquals, pv6))
+    assert(stateSolver.simplify(s, specs).isEmpty)
+
   }
 
   test("Can subsume disjuncted has not temporal formula 1"){ f =>

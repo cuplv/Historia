@@ -44,10 +44,11 @@ object EncodingTools {
       if(i1.mt == i.mt && i1.signatures == i.signatures){
         val arityOfv = i1.lsVars.indexOf(v)
         val pairs = filterAny(i1.lsVars zip i.lsVars).zipWithIndex
-        pairs.map{
+        val out = pairs.map{
           case (v,ind) if ind!=arityOfv =>  LSConstraint.mk(v._1,NotEquals,v._2)
           case (v,_) => LSConstraint.mk(extV, Equals, v._2)
         }.reduceOption(Or).getOrElse(LSTrue)
+        And(out,lsPred)
       }else lsPred
     case Not(i1:AbsMsg) =>
       if(i1.mt == i.mt && i1.signatures == i.signatures)
