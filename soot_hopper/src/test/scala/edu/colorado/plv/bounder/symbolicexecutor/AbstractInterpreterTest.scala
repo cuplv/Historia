@@ -2265,11 +2265,11 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val nullUnreach = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity$1",
           "void onClick(android.view.View)"),line, Some(".*toString.*"))
         val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
-        PrettyPrinting.dumpDebugInfo(nullUnreachRes, "clickNullUnreachable")
+        //PrettyPrinting.dumpDebugInfo(nullUnreachRes, "clickNullUnreachable")
         println("Witness Null")
         // prettyPrinting.printWitness(nullUnreachRes)
         assert(nullUnreachRes.nonEmpty)
-        PrettyPrinting.printWitness(nullUnreachRes)
+        //PrettyPrinting.printWitness(nullUnreachRes)
         BounderUtil.throwIfStackTrace(nullUnreachRes)
         f.expectUnreachable(BounderUtil.interpretResult(nullUnreachRes, QueryFinished))
       }
