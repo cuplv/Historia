@@ -194,7 +194,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
         ???
     }}
   }
-  ignore("LOAD: test to debug subsumption issues by loading serialized states"){f => //TODO===== disable test later
+  ignore("LOAD: test to debug subsumption issues by loading serialized states"){f =>
     // Note: leave ignored unless debugging, this test is just deserializing states to inspect
     val stateSolver = f.stateSolver
     val spec1 = new SpecSpace(
@@ -237,7 +237,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
         val s1 = loadState(f1)
         val s2 = loadState(f2)
         val startTime = System.nanoTime()
-        if(false) { // test subsumption of individual CNF clauses
+        if(true) { // test subsumption of individual CNF clauses
           var count = 0
           val toCnfTest = (p: LSPred) => {
             val startTime = System.nanoTime()
