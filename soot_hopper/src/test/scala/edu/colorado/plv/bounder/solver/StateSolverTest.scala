@@ -118,12 +118,12 @@ class StateSolverTest extends FixtureAnyFunSuite {
         (s1, s2, spec) => {
           //val s1simp = stateSolver.simplify(s1,spec).get
           //val s2simp = stateSolver.simplify(s2,spec).get
-          println("Subsumption mode Z3")
+          //println("Subsumption mode Z3")
           val start = System.nanoTime()
           val res = stateSolver.canSubsume(s1, s2, spec)
           val end = System.nanoTime()
           val totTime = (end - start)/1.0e9
-          println(s"total time: ${totTime} seconds")
+          //println(s"total time: ${totTime} seconds")
           if(totTime < MAX_SOLVER_TIME)
             res
           else
@@ -1912,7 +1912,6 @@ class StateSolverTest extends FixtureAnyFunSuite {
       .addPureConstraint(PureConstraint(pv1, Equals, NullVal))
 
     val simplStateNull = stateSolver.simplify(stateNull,spec)
-    println(simplStateNull)
     val resIsNull = stateSolver.traceInAbstraction(
       stateNull,
       spec,

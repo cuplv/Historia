@@ -197,7 +197,7 @@ class SootWrapperTest extends FixtureAnyFunSuite  {
       val pt = Scene.v().getPointsToAnalysis
       val onResumeMethod_locals = locals.asScala.map{l => l -> pt.reachingObjects(l).possibleTypes()}.toMap
 //      val r6ContainsTwo = ro.filter(v => v._1.getName == "$r6").head._2.asScala.filter(t => t.toString.contains("MyActivity"))
-      println(onResumeMethod_locals.size)
+      //println(onResumeMethod_locals.size)
       // target of getSharedPreferences
       if(f.cgSource == SparkCallGraph) {
         // This tests some internal structure of the framework main gen so disable for CHA call graph
@@ -211,7 +211,7 @@ class SootWrapperTest extends FixtureAnyFunSuite  {
         val allocL = ep.getActiveBody.getLocals.asScala.find(l => l.toString().contains("alloc"))
         val posT = ro2(allocL.get).possibleTypes()
         val sharedPref = posT.asScala.filter(t => t.toString.contains("SharedPreferences"))
-        println(getSharedPref_localMap.size)
+        //println(getSharedPref_localMap.size)
       }
 
 

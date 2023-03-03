@@ -716,7 +716,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
 
       // Entry of oncreate should be reachable (debugging spark issue)
       val qrys = AllReceiversNonNull("com.example.createdestroy.MyActivity").make(symbolicExecutor)
-      qrys.foreach(println)
+      //qrys.foreach(println)
       val queryEntry = Reachable(Signature("com.example.createdestroy.MyActivity","void onResume()"),
         BounderUtil.lineForRegex(".*query0.*".r,src))
       val resultEntry = symbolicExecutor.run(queryEntry).flatMap(a => a.terminals)
@@ -1320,7 +1320,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val config = ExecutorConfig(
         stepLimit = 300, w, specSpace,
         component = Some(List("com.example.createdestroy.MyFragment.*")), approxMode = f.approxMode,
-        printAAProgress = true)
+        printAAProgress = false)
       val symbolicExecutor = config.getAbstractInterpreter
       val query = CallinReturnNonNull(
         Signature("com.example.createdestroy.MyFragment",
@@ -1669,7 +1669,6 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       ("", f.expectReachable, "noDisable")
     ).foreach{
       { case (cancelLine, expectedResult,fileSuffix) =>
-        println(s"test ::: $fileSuffix")
         val src =
           s"""
              |package com.example.createdestroy;
@@ -2266,7 +2265,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val nullUnreach = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity$1",
           "void onClick(android.view.View)"),line, Some(".*toString.*"))
         val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
-        // prettyPrinting.dumpDebugInfo(nullUnreachRes, "clickNullUnreachable")
+        PrettyPrinting.dumpDebugInfo(nullUnreachRes, "clickNullUnreachable")
         println("Witness Null")
         // prettyPrinting.printWitness(nullUnreachRes)
         assert(nullUnreachRes.nonEmpty)
