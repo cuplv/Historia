@@ -763,9 +763,9 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
             assert(apk != null)
             val dbFile = tmpDir / "paths.db"
             println(dbFile)
-//            implicit val dbMode = DBOutputMode(dbFile.toString)
-//            dbMode.startMeta()
-            implicit val dbMode = MemoryOutputMode
+            implicit val dbMode = DBOutputMode(dbFile.toString)
+            dbMode.startMeta()
+//            implicit val dbMode = MemoryOutputMode
 
             //            implicit val dbMode = MemoryOutputMode
             //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
@@ -773,7 +773,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
 
             val specSpace = new SpecSpace(row4Specs)
             val config = ExecutorConfig(
-              stepLimit = 2000, w, specSpace,
+              stepLimit = 5000, w, specSpace, timeLimit = 28800,
               component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode,
               printAAProgress = true)
             val symbolicExecutor = config.getAbstractInterpreter
@@ -802,7 +802,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
               if(expected == Timeout)
                 assert(depthInfo.cbDepth > 4)
               println(s"Row 4 depth: ${depthInfo}")
-              //dbFile.copyTo(File(s"/Users/shawnmeier/Desktop/Row4_${fileSuffix}.db"),true)
+              dbFile.copyTo(File(s"/home/s/Desktop/Row4_${fileSuffix}.db"),true)
               logger.warn(s"Row 4 expected: ${expected} actual: ${interpretedResult}")
               logger.warn(s"Row 4 ${expected} time(µs): ${(System.nanoTime() - startTime)/1000.0}")
             }else{

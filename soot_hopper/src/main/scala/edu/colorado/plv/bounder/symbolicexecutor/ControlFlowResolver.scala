@@ -282,6 +282,35 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   //  }
 
 
+  def iHeapNamesWritten(m: MethodLoc): Set[String] = {
+    def modifiedNames(c: CmdWrapper): Option[String] = c match {
+      case AssignCmd(fr: FieldReference, _, _) => Some(fr.name)
+      case AssignCmd(_, fr: FieldReference, _) => None
+      case AssignCmd(StaticFieldReference(_, name, _), _, _) => Some(name)
+      case AssignCmd(_, StaticFieldReference(_, name, _), _) => None
+      case _: AssignCmd => None
+      case _: ReturnCmd => None
+      case _: InvokeCmd => None
+      case _: Goto => None
+      case _: NopCmd => None
+      case _: ThrowCmd => None
+      case _: SwitchCmd => None
+    }
+
+    val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) =>
+      BounderUtil.cmdAtLocationNopIfUnknown(v, wrapper).mkPre)
+    BounderUtil.graphFixpoint[CmdWrapper, Set[String]](start = returns, Set(), Set(),
+      next = n => wrapper.commandPredecessors(n).map((v: AppLoc) =>
+        BounderUtil.cmdAtLocationNopIfUnknown(v, wrapper).mkPre).toSet,
+      comp = (acc, v) => acc ++ modifiedNames(v),
+      join = (a, b) => a.union(b)
+    ).flatMap { case (_, v) => v }.toSet
+  }
+
+  val heapNamesWritten: MethodLoc => Set[String] = Memo.mutableHashMapMemo {
+    iHeapNamesModified
+  }
+
   def iHeapNamesModified(m: MethodLoc): Set[String] = {
     def modifiedNames(c: CmdWrapper): Option[String] = c match {
       case AssignCmd(fr: FieldReference, _, _) => Some(fr.name)
@@ -408,7 +437,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 
     val currentCalls = allCallsAppTransitive(m) + m
     val heapRelevantCallees = currentCalls.filter { callee =>
-      val hn: Set[String] = heapNamesModified(callee)
+      val hn: Set[String] = heapNamesWritten(callee) //TODO:===== does this work?
       fnSet.exists { fn =>
         hn.contains(fn)
       }
