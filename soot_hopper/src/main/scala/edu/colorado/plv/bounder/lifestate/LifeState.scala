@@ -1024,6 +1024,25 @@ object SpecSpace{
     case Some(v) => allI(v)
     case None => Set()
   }
+  def allPosI(pred:LSPred):Set[OAbsMsg] = pred match {
+    case _:HNOE => Set.empty
+    case LSImplies(l1, l2) => allI(l1).union(allI(l2))
+    case CLInit(_) => Set()
+    case i: OAbsMsg => Set(i)
+    case NS(i1:OAbsMsg, _) => Set(i1)
+    case NS(i1, _) => throw new IllegalArgumentException("malformed")
+    case And(p1, p2) => allI(p1).union(allI(p2))
+    case Or(p1, p2) => allI(p1).union(allI(p2))
+    case Not(m:AbsMsg) => Set.empty
+    case Not(p) => throw new IllegalArgumentException("General negation not allowed")
+    case LSTrue => Set()
+    case LSFalse => Set()
+    case FreshRef(_) => Set()
+    case Forall(_, p) => allI(p)
+    case Exists(_, p) => allI(p)
+    case LSConstraint(_, _, _) => Set()
+    case LSAnyPred => Set()
+  }
   def allI(pred:LSPred):Set[OAbsMsg] = pred match{
     case HNOE(_,m,_) => allI(m)
     case LSImplies(l1, l2) => allI(l1).union(allI(l2))
