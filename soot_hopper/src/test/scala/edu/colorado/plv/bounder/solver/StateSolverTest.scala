@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.solver
 import better.files.{File, Resource}
 import com.microsoft.z3._
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Forall, FreshRef, LSConstraint, LSFalse, LSPred, LSSpec, LSTrue, NS, Not, Or, Signature, SignatureMatcher, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Forall, FreshRef, LSConstraint, LSFalse, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, Signature, SignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LSExpParser, LifecycleSpec, RxJavaSpec, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs
 import edu.colorado.plv.bounder.symbolicexecutor.state._
@@ -118,12 +118,12 @@ class StateSolverTest extends FixtureAnyFunSuite {
         (s1, s2, spec) => {
           //val s1simp = stateSolver.simplify(s1,spec).get
           //val s2simp = stateSolver.simplify(s2,spec).get
-          println("Subsumption mode Z3")
+          //println("Subsumption mode Z3")
           val start = System.nanoTime()
           val res = stateSolver.canSubsume(s1, s2, spec)
           val end = System.nanoTime()
           val totTime = (end - start)/1.0e9
-          println(s"total time: ${totTime} seconds")
+          //println(s"total time: ${totTime} seconds")
           if(totTime < MAX_SOLVER_TIME)
             res
           else
@@ -194,7 +194,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
         ???
     }}
   }
-  ignore("LOAD: test to debug subsumption issues by loading serialized states"){f => //TODO===== disable test later
+  ignore("LOAD: test to debug subsumption issues by loading serialized states"){f =>
     // Note: leave ignored unless debugging, this test is just deserializing states to inspect
     val stateSolver = f.stateSolver
     val spec1 = new SpecSpace(
@@ -221,9 +221,9 @@ class StateSolverTest extends FixtureAnyFunSuite {
       //            LifecycleSpec.Activity_createdOnlyFirst
     ))
     List(
-      (new SpecSpace(ExperimentSpecs.row4Specs),
-        "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/s1.json",
-        "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/s2.json",
+      (new SpecSpace(ExperimentSpecs.row2Specs),
+        "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/s1_ex.json",
+        "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/s2_ex.json",
         (v:Boolean) =>{
           ???
         }),
@@ -1912,7 +1912,6 @@ class StateSolverTest extends FixtureAnyFunSuite {
       .addPureConstraint(PureConstraint(pv1, Equals, NullVal))
 
     val simplStateNull = stateSolver.simplify(stateNull,spec)
-    println(simplStateNull)
     val resIsNull = stateSolver.traceInAbstraction(
       stateNull,
       spec,
@@ -2084,6 +2083,41 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(f.canSubsume(s_1_,s_1_,specs2))
     assert(f.canSubsume(s_2_,s_2_,specs2))
     assert(f.canSubsume(s_1_,s_2_,specs2))
+  }
+  test("Has Not Or Equals") { f =>
+    val stateSolver = f.stateSolver
+    val specs = new SpecSpace(Set(ViewSpec.viewOnlyReturnedFromOneActivity))
+    val pv3 = NPureVar(3)
+    val pv6 = NPureVar(6)
+    val pv7 = NPureVar(7)
+    val pv9 = NPureVar(9)
+    val pv10 = NPureVar(10)
+    val absTr =
+      OAbsMsg(CIExit, SpecSignatures.Activity_findView, pv3 :: pv10 :: Nil) ::
+      OAbsMsg(CIExit, SpecSignatures.Activity_findView, pv7 :: pv9 :: Nil) ::
+      OAbsMsg(CIExit, SpecSignatures.Activity_findView, pv3 :: pv6 :: Nil) ::
+      Nil
+
+
+
+
+    val enc = EncodingTools.rhsToPred(absTr, specs)
+    val s = State.topState.copy(sf = State.topState.sf.copy(
+      traceAbstraction = AbstractTrace(absTr)))
+      .addPureConstraint(PureConstraint(pv10, NotEquals, pv6))
+      .addPureConstraint(PureConstraint(pv3, NotEquals, pv6))
+    assert(stateSolver.simplify(s, specs).isEmpty)
+
+    assert(f.canSubsume(s,s,specs))
+
+
+    val s1 = s.copy(sf = s.sf.copy(pureFormula = Set()))
+    val absTr2 =
+        OAbsMsg(CIExit, SpecSignatures.Activity_findView, pv7 :: pv9 :: Nil) ::
+        OAbsMsg(CIExit, SpecSignatures.Activity_findView, pv3 :: pv6 :: Nil) ::
+        Nil
+    val s2 = s.copy(sf = s.sf.copy(traceAbstraction = AbstractTrace(absTr2), pureFormula = Set()))
+    assert(f.canSubsume(s1,s2,specs))
   }
 
   test("Can subsume disjuncted has not temporal formula 1"){ f =>

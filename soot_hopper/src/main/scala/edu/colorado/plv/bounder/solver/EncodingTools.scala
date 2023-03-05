@@ -1,9 +1,11 @@
 package edu.colorado.plv.bounder.solver
 
 import edu.colorado.plv.bounder.ir.{MessageType, TMessage, TraceElement}
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, CLInit, Exists, Forall, FreshRef, LSAnyPred, LSAtom, LSBexp, LSConstraint, LSFalse, LSImplies, LSPred, LSSingle, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, SignatureMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, CLInit, Exists, Forall, FreshRef, HNOE, LSAnyPred, LSAtom, LSBexp, LSConstraint, LSFalse, LSImplies, LSPred, LSSingle, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, SignatureMatcher}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, ConcreteVal, Equals, FieldPtEdge, HeapPtEdge, NPureVar, NamedPureVar, NotEquals, PureConstraint, PureExpr, PureVal, PureVar, State, StaticPtEdge, TopVal}
+
+import scala.collection.mutable
 
 object EncodingTools {
 
@@ -40,6 +42,16 @@ object EncodingTools {
     case LSImplies(l1,l2) => LSImplies(updArrowPhi(i,l1), updArrowPhi(i,l2))
     case FreshRef(v) =>
       throw new IllegalStateException("RefV cannot be updated (encoding handled elsewhere)")
+    case HNOE(v,i1,extV) =>
+      if(i1.mt == i.mt && i1.signatures == i.signatures){
+        val arityOfv = i1.lsVars.indexOf(v)
+        val pairs = filterAny(i1.lsVars zip i.lsVars).zipWithIndex
+        val out = pairs.map{
+          case (v,ind) if ind!=arityOfv =>  LSConstraint.mk(v._1,NotEquals,v._2)
+          case (v,_) => LSConstraint.mk(extV, Equals, v._2)
+        }.reduceOption(Or).getOrElse(LSTrue)
+        And(out,lsPred)
+      }else lsPred
     case Not(i1:AbsMsg) =>
       if(i1.mt == i.mt && i1.signatures == i.signatures)
         And(neqOnce(i1,i), lsPred)
@@ -79,18 +91,27 @@ object EncodingTools {
     case CLInit(sig2) if sig == sig2 => LSFalse
     case f:FreshRef => f
   }
-  private def instArrowPhi(target:LSSingle,specSpace: SpecSpace, includeDis:Boolean):LSPred= target match {
+  private def instArrowPhi(target:LSSingle,specSpace: SpecSpace, includeDis:Boolean,
+                           instCount:Map[LSSpec,Int]):(LSPred, Map[LSSpec,Int]) = target match {
     case i:AbsMsg =>
-      val applicableSpecs: Set[LSSpec] =
+      val applicableSpecsAll: Set[LSSpec] =
         if(includeDis) specSpace.specsByI(i).union(specSpace.disSpecsByI(i)) else specSpace.specsByI(i)
+      val (instCountUpd,applicableSpecs) = applicableSpecsAll.foldLeft((instCount, Set[LSSpec]())){
+        case ((instCount, specs), cSpec) if !instCount.contains(cSpec) =>
+          (instCount, specs + cSpec) // case where spec is disallow
+        case ((instCount, specs), cSpec) if instCount(cSpec) > 0 =>
+          (instCount + (cSpec -> (instCount(cSpec) - 1)), specs + cSpec)
+        case (acc, _) => acc
+      }
       val swappedPreds = applicableSpecs.map{s =>
         s.instantiate(i, specSpace)
       }
-      if(swappedPreds.isEmpty) LSTrue
+      val outPred = if(swappedPreds.isEmpty) LSTrue
       else if(swappedPreds.size == 1) swappedPreds.head
       else swappedPreds.reduce(And)
-    case FreshRef(_) => LSTrue
-    case CLInit(_) => LSTrue
+      (outPred, instCountUpd)
+    case FreshRef(_) => (LSTrue, instCount)
+    case CLInit(_) => (LSTrue,instCount)
   }
 
   /**
@@ -101,10 +122,12 @@ object EncodingTools {
    * @return
    */
   def rhsToPred(rhs: Seq[LSSingle], specSpace: SpecSpace, post:Set[LSPred] = Set()): Set[LSPred] = {
+    var instCount = specSpace.getSpecs.map{s =>(s,3)}.toMap //TODO: get this parameter from somewhere
     rhs.foldRight((post, true)) {
       case (v, (acc, includeDis)) =>
         val updated = acc.map(lsPred => updArrowPhi(v, lsPred))
-        val instantiated = instArrowPhi(v, specSpace, includeDis)
+        val (instantiated, instCountP) = instArrowPhi(v, specSpace, includeDis, instCount)
+        instCount = instCountP
         (updated + instantiated, false)
     }._1.filter(p => p != LSTrue)
   }
@@ -220,6 +243,7 @@ object EncodingTools {
   }
 
   def simplifyPred(pred:LSPred):LSPred = pred match {
+    case h:HNOE => h
     case LSAnyPred => LSAnyPred
     case Exists(Nil, p) => simplifyPred(p)
     case Forall(Nil, p) => simplifyPred(p)
@@ -284,7 +308,8 @@ object EncodingTools {
       case Exists(vars, p) => mustI(p)
       case LSImplies(l1, l2) => Set()
       case And(l1, l2) => mustI(l1).union(mustI(l2))
-      case Not(l) => Set()
+      case Not(l:AbsMsg) => Set()
+      case _:HNOE => Set()
       case Or(l1, l2) => mustI(l1).intersect(mustI(l2))
       case LifeState.LSTrue => Set()
       case LifeState.LSFalse => Set()
@@ -302,6 +327,7 @@ object EncodingTools {
       case LSImplies(l1, l2) => Set()
       case And(l1, l2) => mayI(l1).union(mayI(l2))
       case Not(i:AbsMsg) => Set()
+      case _:HNOE => Set()
       case Not(p) => throw new IllegalStateException(s"expected normal form in pred: ${p}")
       case Or(l1, l2) => mayI(l1).union(mayI(l2))
       case LifeState.LSTrue => Set()
@@ -520,6 +546,8 @@ object EncodingTools {
       case n:Not => (n,Nil)
       case l:LSConstraint => (l,Nil)
       case ns:NS => (ns,Nil)
+      case LSTrue => (LSTrue, Nil)
+      case LSFalse => (LSFalse, Nil)
       case v =>
         println(v)
         ???

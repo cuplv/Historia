@@ -321,30 +321,57 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val argConstraints = once.lsVars.zipWithIndex.flatMap {
       case (TopVal, _) => None
       case (msgVar:PureVar, ind) =>
-        //        val modelVar = modelVarMap(msgVar)
         val modelExpr = pvMap(msgVar)
-        val argAt: T => T = (expr:T) => mkArgConstraint(ind, msg, expr)
         val typeConstraint = lsTypeMap.get(msgVar) match {
           case Some(BitTypeSet(s)) =>
               mkTypeConstraintForAddrExpr(createTypeFun(), typeToSolverConst, pvMap(msgVar), s.toSet)
           case _ => mkBoolVal(b = true)
         }
         Some(mkAnd(
-          argAt(modelExpr),
+          mkArgConstraint(ind, msg, modelExpr),
           typeConstraint
         ))
       case (const:PureVal, ind) =>
         Some(mkArgConstraint(ind,msg,messageTranslator.getConstMap()(const)))
-//        val argAt = (expr:T) => mkArgConstraint(ind, msg, expr)
-//        Some(mkForallAddr(NamedPureVar("argOf"), (addr:T) =>
-//              mkImplies(argAt(addr), compareConstValueOf(addr, Equals, const, messageTranslator.getConstMap()))))
     }
 
-    // w[i] = cb foo(x,y)
-    // If we are asserting that a message is not at a location, the arg function cannot be negated
-    // We only negate the name function
-
       mkAnd(nameConstraint, mkAnd(argConstraints))
+  }
+
+  private def msgModelsHNOE(msg: T,
+                            hnoe:HNOE,
+                            messageTranslator: MessageTranslator,
+                            lsTypeMap: Map[PureVar, TypeSet],
+                            typeToSolverConst: Map[Int, T],
+                            pvMap: PureExpr => T)(implicit zctx: C): T = {
+    val once = hnoe.m
+    assert(once.lsVars.count(v => v == hnoe.v) == 1,
+      s"Within HNOE. Once, ${once} , must contain one instance of ${hnoe.v}")
+    val arityOfTgt: Int = once.lsVars.indexOf(hnoe.v)
+    val nameFun = messageTranslator.nameFun
+    val nameConstraint = mkNot(mkEq(mkNameConstraint(nameFun, msg), messageTranslator.enumFromI(once)))
+    val argConstraints = once.lsVars.zipWithIndex.flatMap {
+      case (TopVal, _) => None
+      case (msgVar: PureVar, ind) if ind == arityOfTgt => None
+      case (msgVar: PureVar, ind) if ind != arityOfTgt =>
+        val modelExpr = pvMap(msgVar)
+        val typeConstraint = lsTypeMap.get(msgVar) match {
+          case Some(BitTypeSet(s)) =>
+            mkTypeConstraintForAddrExpr(createTypeFun(), typeToSolverConst, pvMap(msgVar), s.toSet)
+          case _ => mkBoolVal(b = true)
+        }
+        Some(mkOr(
+          mkNot(mkArgConstraint(ind, msg, modelExpr)),
+          mkNot(typeConstraint)
+        ))
+      case (const: PureVal, ind) =>
+        Some(mkNot(mkArgConstraint(ind, msg, messageTranslator.getConstMap()(const))))
+
+    }
+
+    val targetArgEqu = mkArgConstraint(arityOfTgt, msg, pvMap(hnoe.extV))
+
+    mkOr(nameConstraint, mkOr(targetArgEqu, mkOr(argConstraints) ))
   }
 
 
@@ -387,7 +414,12 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 //        mkNot(encodePred(l, traceFn, len, messageTranslator, modelVarMap, typeToSolverConst, typeMap, constMap))
       case Not(once:AbsMsg) =>
         //mkNot(encodePred(once,messageTranslator,modelVarMap,typeToSolverConst,typeMap,constMap))
-        mkForallTraceMsg(mkTraceFn, msg => mkNot(msgModelsOnce(msg,once, messageTranslator, typeMap, typeToSolverConst, pvMap)))
+        mkForallTraceMsg(mkTraceFn, msg =>
+          mkNot(msgModelsOnce(msg,once, messageTranslator, typeMap, typeToSolverConst, pvMap)))
+      case hnoe:HNOE =>
+        mkForallTraceMsg(mkTraceFn, msg =>
+          msgModelsHNOE(msg, hnoe, messageTranslator, typeMap, typeToSolverConst, pvMap)
+        )
       case Not(p) => //throw new IllegalArgumentException(s"arbitrary negation of lspred is not supported: $p")
         mkNot(encodePred(p, messageTranslator, pvMap, typeToSolverConst, typeMap))
       case o: AbsMsg =>
@@ -830,6 +862,9 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
 
       if(stackVarCreatedInFuture)
+        return None
+
+      if(state2.sf.callStack.exists(frame => frame.locals.getOrElse(StackVar("@this"), NPureVar(-1)) == NullVal))
         return None
 
       @tailrec
@@ -1469,8 +1504,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       val messageTranslator: MessageTranslator = MessageTranslator(List(s1, s2), List(specSpace))
 
       val s1Enc = toASTState(s1, messageTranslator, maxLen,
-        specSpace = specSpace, negate=true, debug = maxLen.isDefined)
-      mkAssert(s1Enc)
+        specSpace = specSpace, negate=false, debug = maxLen.isDefined)
+      mkAssert(mkNot(s1Enc))
       val s2Enc = toASTState(s2, messageTranslator, maxLen,
         specSpace = specSpace, negate=false, debug = maxLen.isDefined)
       mkAssert(s2Enc)

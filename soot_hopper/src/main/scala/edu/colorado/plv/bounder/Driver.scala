@@ -11,7 +11,6 @@ import edu.colorado.plv.bounder.BounderUtil.{DepthResult, Interrupted, MaxPathCh
 import edu.colorado.plv.bounder.Driver.{Default, LocResult, RunMode, modeToString}
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, InternalMethodInvoke, InternalMethodReturn, JimpleMethodLoc, Loc, MethodLoc, SerializedIRLineLoc, SerializedIRMethodLoc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSConstraint, LSSpec, LSTrue, OAbsMsg, Signature}
-import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state._

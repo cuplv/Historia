@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.ir.EmptyTypeSet.intersect
 import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, OAbsMsg, Signature}
-import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
+import edu.colorado.plv.bounder.lifestate.SpecSpace.{allI, allPosI}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, ClassVal, FieldPtEdge, IntVal, NullVal, PureExpr, PureVar, State, StaticPtEdge, StringVal, TopVal}
 import scalaz.Memo
@@ -514,7 +514,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   }
   def relevantMethod(loc: Loc, state: State): RelevanceRelation = {
     val relevantI = EncodingTools.rhsToPred(state.sf.traceAbstraction.rightOfArrow, config.specSpace)
-      .flatMap { a => allI(a) }
+      .flatMap { a => allPosI(a) }
     loc match {
       case InternalMethodReturn(_, _, m) =>
         relevantMethodBody(m, state).join(
