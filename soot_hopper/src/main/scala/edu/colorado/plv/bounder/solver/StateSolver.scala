@@ -864,6 +864,9 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       if(stackVarCreatedInFuture)
         return None
 
+      if(state2.sf.callStack.exists(frame => frame.locals.getOrElse(StackVar("@this"), NPureVar(-1)) == NullVal))
+        return None
+
       @tailrec
       def equivSet( acc:Set[PureExpr]):Set[PureExpr] = {
         val eqRefPv = state2.sf.pureFormula.flatMap{
@@ -1501,8 +1504,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       val messageTranslator: MessageTranslator = MessageTranslator(List(s1, s2), List(specSpace))
 
       val s1Enc = toASTState(s1, messageTranslator, maxLen,
-        specSpace = specSpace, negate=true, debug = maxLen.isDefined)
-      mkAssert(s1Enc)
+        specSpace = specSpace, negate=false, debug = maxLen.isDefined)
+      mkAssert(mkNot(s1Enc))
       val s2Enc = toASTState(s2, messageTranslator, maxLen,
         specSpace = specSpace, negate=false, debug = maxLen.isDefined)
       mkAssert(s2Enc)

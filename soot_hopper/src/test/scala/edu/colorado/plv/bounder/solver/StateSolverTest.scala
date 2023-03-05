@@ -221,9 +221,9 @@ class StateSolverTest extends FixtureAnyFunSuite {
       //            LifecycleSpec.Activity_createdOnlyFirst
     ))
     List(
-      (new SpecSpace(ExperimentSpecs.row4Specs),
-        "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/s1.json",
-        "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/s2.json",
+      (new SpecSpace(ExperimentSpecs.row2Specs),
+        "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/s1_ex.json",
+        "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/s2_ex.json",
         (v:Boolean) =>{
           ???
         }),
@@ -237,7 +237,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
         val s1 = loadState(f1)
         val s2 = loadState(f2)
         val startTime = System.nanoTime()
-        if(true) { // test subsumption of individual CNF clauses
+        if(false) { // test subsumption of individual CNF clauses
           var count = 0
           val toCnfTest = (p: LSPred) => {
             val startTime = System.nanoTime()

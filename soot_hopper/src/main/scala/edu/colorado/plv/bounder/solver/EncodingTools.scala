@@ -5,6 +5,8 @@ import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, CLInit, Exists
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, ConcreteVal, Equals, FieldPtEdge, HeapPtEdge, NPureVar, NamedPureVar, NotEquals, PureConstraint, PureExpr, PureVal, PureVar, State, StaticPtEdge, TopVal}
 
+import scala.collection.mutable
+
 object EncodingTools {
 
   private def filterAny(s:Seq[(PureExpr,PureExpr)]):Seq[(PureExpr,PureExpr)] = s.filter{
@@ -89,18 +91,27 @@ object EncodingTools {
     case CLInit(sig2) if sig == sig2 => LSFalse
     case f:FreshRef => f
   }
-  private def instArrowPhi(target:LSSingle,specSpace: SpecSpace, includeDis:Boolean):LSPred= target match {
+  private def instArrowPhi(target:LSSingle,specSpace: SpecSpace, includeDis:Boolean,
+                           instCount:Map[LSSpec,Int]):(LSPred, Map[LSSpec,Int]) = target match {
     case i:AbsMsg =>
-      val applicableSpecs: Set[LSSpec] =
+      val applicableSpecsAll: Set[LSSpec] =
         if(includeDis) specSpace.specsByI(i).union(specSpace.disSpecsByI(i)) else specSpace.specsByI(i)
+      val (instCountUpd,applicableSpecs) = applicableSpecsAll.foldLeft((instCount, Set[LSSpec]())){
+        case ((instCount, specs), cSpec) if !instCount.contains(cSpec) =>
+          (instCount, specs + cSpec) // case where spec is disallow
+        case ((instCount, specs), cSpec) if instCount(cSpec) > 0 =>
+          (instCount + (cSpec -> (instCount(cSpec) - 1)), specs + cSpec)
+        case (acc, _) => acc
+      }
       val swappedPreds = applicableSpecs.map{s =>
         s.instantiate(i, specSpace)
       }
-      if(swappedPreds.isEmpty) LSTrue
+      val outPred = if(swappedPreds.isEmpty) LSTrue
       else if(swappedPreds.size == 1) swappedPreds.head
       else swappedPreds.reduce(And)
-    case FreshRef(_) => LSTrue
-    case CLInit(_) => LSTrue
+      (outPred, instCountUpd)
+    case FreshRef(_) => (LSTrue, instCount)
+    case CLInit(_) => (LSTrue,instCount)
   }
 
   /**
@@ -111,10 +122,12 @@ object EncodingTools {
    * @return
    */
   def rhsToPred(rhs: Seq[LSSingle], specSpace: SpecSpace, post:Set[LSPred] = Set()): Set[LSPred] = {
+    var instCount = specSpace.getSpecs.map{s =>(s,3)}.toMap //TODO: get this parameter from somewhere
     rhs.foldRight((post, true)) {
       case (v, (acc, includeDis)) =>
         val updated = acc.map(lsPred => updArrowPhi(v, lsPred))
-        val instantiated = instArrowPhi(v, specSpace, includeDis)
+        val (instantiated, instCountP) = instArrowPhi(v, specSpace, includeDis, instCount)
+        instCount = instCountP
         (updated + instantiated, false)
     }._1.filter(p => p != LSTrue)
   }
@@ -533,6 +546,8 @@ object EncodingTools {
       case n:Not => (n,Nil)
       case l:LSConstraint => (l,Nil)
       case ns:NS => (ns,Nil)
+      case LSTrue => (LSTrue, Nil)
+      case LSFalse => (LSFalse, Nil)
       case v =>
         println(v)
         ???

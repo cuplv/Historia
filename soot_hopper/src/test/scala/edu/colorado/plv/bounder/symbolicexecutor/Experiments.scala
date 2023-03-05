@@ -726,7 +726,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
              |import android.view.View.OnClickListener;
              |
              |
-             |public class MyActivity extends Activity implements Runnable {
+             |public class MyActivity extends Activity {
              |    String s = null;
              |    View v = null;
              |    @Override
@@ -738,13 +738,15 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
              |             s.toString(); // query1
              |           }
              |        });
-             |        (new Handler()).postDelayed(this, 3000);
+             |        (new Handler()).postDelayed(new Runnable(){
+             |             @Override
+             |             public void run(){
+             |               MyActivity.this.finish();
+             |               ${disableClick}
+             |             }
+             |        }, 3000);
              |    }
-             |    @Override
-             |    public void run(){
-             |      MyActivity.this.finish();
-             |      ${disableClick}
-             |    }
+             |
              |    @Override
              |    protected void onResume() {
              |        s = "";
@@ -761,8 +763,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
             assert(apk != null)
             val dbFile = tmpDir / "paths.db"
             println(dbFile)
-            // implicit val dbMode = DBOutputMode(dbFile.toString, truncate = false)
-            // dbMode.startMeta()
+//            implicit val dbMode = DBOutputMode(dbFile.toString)
+//            dbMode.startMeta()
             implicit val dbMode = MemoryOutputMode
 
             //            implicit val dbMode = MemoryOutputMode
