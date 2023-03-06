@@ -300,8 +300,8 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
   private val graphQueue = new ArrayBlockingQueue[(Int,Int)](10000)
   def flushQueues() = {
 
-    println(s"write node size ${writeNodeQueue.size()}")
-    println(s"graph queue size ${graphQueue.size()}")
+//    println(s"write node size ${writeNodeQueue.size()}")
+//    println(s"graph queue size ${graphQueue.size()}")
     val startTime = System.nanoTime()
     this.synchronized {
       if(!writeNodeQueue.isEmpty) {
@@ -323,7 +323,7 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
       }
     }
     val runtime = (System.nanoTime() - startTime)/1000.0
-    println(s"runtime(ms): $runtime")
+    //println(s"runtime(ms): $runtime")
   }
   def queueNodeWrite(v:WitTableRow, v2:Seq[(Int,Int)]) = {
     // batch together sqlite queries to reduce fsync

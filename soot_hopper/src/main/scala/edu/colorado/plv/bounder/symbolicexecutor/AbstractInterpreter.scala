@@ -382,6 +382,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
     }else {
 
     if(config.printAAProgress) {
+      println(s"executeBackwardConc qry set size: ${qrySet.size}")
       qrySet.foreach { (current: IPathNode) =>
           println("Framework location query")
           println(s"    State: ${current.qry.state}")
@@ -392,20 +393,39 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
         }
       }
 
-      def reduceTup(v1: (Set[IPathNode], InvarMap), v2: (Set[IPathNode], InvarMap)): (Set[IPathNode], InvarMap) = {
-        (v1._1 ++ v2._1, joinInvarMap(v1._2, v2._2))
+      def reduceTup(v1: (Set[QueryInterruptedException],Set[IPathNode], InvarMap),
+                    v2: (Set[QueryInterruptedException],Set[IPathNode], InvarMap)):
+                        (Set[QueryInterruptedException],Set[IPathNode], InvarMap) = {
+        val exn = v1._1 ++ v2._1
+        // don't bother joining invar map if exn occurred
+        val joinedInvarMap:InvarMap = if(exn.nonEmpty) Map.empty else joinInvarMap(v1._3, v2._3)
+        (exn, v1._2 ++ v2._2, joinedInvarMap)
       }
 
-      val (newNodes, newInvarMap) = qrySet.par.map { qry =>
+      val isExn = new AtomicBoolean(false) // Cancel parallel ops on timeout
+      val (exn, newNodes, newInvarMap) = qrySet.par.map { qry =>
         val queue = new GrouperQ
         queue.addAll(Set(qry))
-        executeBackward(queue, limit, deadline, Set.empty, stopAtCB, invarMap)
+        try {
+          if(!isExn.get()) {
+            val (live, invar) = executeBackward(queue, limit, deadline, Set.empty, stopAtCB, invarMap)
+            (Set[QueryInterruptedException](), live, invar)
+          }else{
+            (Set[QueryInterruptedException](), Set[IPathNode](), Map.empty:InvarMap)
+          }
+        }catch{
+          case e:QueryInterruptedException =>
+            isExn.set(true)
+            val exn:Set[QueryInterruptedException] = Set(e)
+            (exn, e.terminals, invarMap)
+        }
       }.reduce(reduceTup)
 
-      // alarm if witnessed
-      //val newRefutedSubsumedOrWitnessed = refutedSubsumedOrWitnessed ++ newNodes
       val noPred = mutable.Set[IPathNode]()
-      if(newNodes.exists{ n =>n.qry.isWitnessed}) {
+      if(exn.nonEmpty){
+        val extraTerm = exn.flatMap{e => e.terminals}
+        refutedSubsumedOrWitnessed ++ extraTerm ++ newNodes
+      }else if(newNodes.exists{ n =>n.qry.isWitnessed}) {
           refutedSubsumedOrWitnessed ++ newNodes
       }else {
 
@@ -472,11 +492,11 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
           val singleResult = nodes.find(p => stateSolver.canSubsume(p.state, pathNode.state, config.specSpace)).toSet
           val batchResult = stateSolver.canSubsumeSet(states.toSet, pathNode.state, config.specSpace)
           if (singleResult.nonEmpty != batchResult) {
-            println(s"current state:\n    ${pathNode.state}")
-            println("subsuming states:")
-            states.foreach(s => println(s"    ${s.toString}"))
-            val batchResult2 = stateSolver.canSubsumeSet(states.toSet, pathNode.state, config.specSpace)
-            println()
+            //println(s"current state:\n    ${pathNode.state}")
+            //println("subsuming states:")
+            //states.foreach(s => println(s"    ${s.toString}"))
+            //val batchResult2 = stateSolver.canSubsumeSet(states.toSet, pathNode.state, config.specSpace)
+            //println()
           }
           singleResult
         }
@@ -658,7 +678,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
                         .seq.toSet
 
                     if(config.printAAProgress) {
-                      println(s"loc: ${v}\n total at loc: ${nodeSetAtLoc.size} \n filteredAtLoc: ${filtNodeSet.size}")
+                      //println(s"loc: ${v}\n total at loc: ${nodeSetAtLoc.size} \n filteredAtLoc: ${filtNodeSet.size}")
                     }
                     assert(p2.state.isSimplified, "State must be simplified before adding to invariant map.")
                     invarMap + (v -> (filtNodeSet +  p2))

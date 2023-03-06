@@ -197,7 +197,7 @@ object Z3StateSolver{
  */
 class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
                     logTimes:Boolean,
-                    timeout:Int = 20000, //TODO: changed to 60 seconds
+                    timeout:Int = 40000, //TODO: changed to 60 seconds
                     randomSeed:Int=3578,
                     defaultOnSubsumptionTimeout: Z3SolverCtx=> Boolean = _ => false,
                     pushSatCheck:Boolean = true,
