@@ -8,15 +8,17 @@ import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.EncodingTools.repHeapCells
 import edu.colorado.plv.bounder.solver.{EncodingTools, StateSolver, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, BottomQry, CallStackFrame, DBOutputMode, FieldPtEdge, FrameworkLocation, HashableStateFormula, HeapPtEdge, IPathNode, InitialQuery, Live, MemoryOutputMode, NPureVar, NoOutputMode, OrdCount, OutputMode, PathNode, PureExpr, Qry, State, StaticPtEdge, SubsumableLocation, SwapLoc, WitnessedQry}
-import java.util.concurrent.atomic.AtomicBoolean
 
+import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.parallel.immutable.ParIterable
 import scala.annotation.tailrec
 import upickle.default._
 
+import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.mutable
 import scala.collection.parallel.CollectionConverters.IterableIsParallelizable
+import scala.collection.parallel.ForkJoinTaskSupport
 
 sealed trait CallGraphSource
 
@@ -372,6 +374,8 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
     case _ => false
   }
 
+  private val coreCount = Runtime.getRuntime().availableProcessors()
+  private val  forkJoinPool = new ForkJoinTaskSupport(new ForkJoinPool(coreCount/2))
   @tailrec
   final def executeBackwardConc(qrySet: Set[IPathNode], limit: Int, deadline: Long,
                           refutedSubsumedOrWitnessed: Set[IPathNode] = Set(),
@@ -403,7 +407,10 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
       }
 
       val isExn = new AtomicBoolean(false) // Cancel parallel ops on timeout
-      val (exn, newNodes, newInvarMap) = qrySet.par.map { qry =>
+      val qrySetPar = qrySet.par
+
+      qrySetPar.tasksupport = forkJoinPool
+      val (exn, newNodes, newInvarMap) = qrySetPar.map { qry =>
         val queue = new GrouperQ
         queue.addAll(Set(qry))
         try {
