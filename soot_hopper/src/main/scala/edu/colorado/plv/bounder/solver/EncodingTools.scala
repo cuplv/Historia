@@ -99,7 +99,7 @@ object EncodingTools {
       val (instCountUpd,applicableSpecs) = applicableSpecsAll.foldLeft((instCount, Set[LSSpec]())){
         case ((instCount, specs), cSpec) if !instCount.contains(cSpec) =>
           (instCount, specs + cSpec) // case where spec is disallow
-        case ((instCount, specs), cSpec) if instCount(cSpec) > 0 =>
+        case ((instCount, specs), cSpec) if instCount(cSpec) != 0 =>
           (instCount + (cSpec -> (instCount(cSpec) - 1)), specs + cSpec)
         case (acc, _) => acc
       }
@@ -122,7 +122,8 @@ object EncodingTools {
    * @return
    */
   def rhsToPred(rhs: Seq[LSSingle], specSpace: SpecSpace, post:Set[LSPred] = Set()): Set[LSPred] = {
-    var instCount = specSpace.getSpecs.map{s =>(s,3)}.toMap //TODO: get this parameter from somewhere
+    //TODO: limit currently disabled, figure out if we want to try again
+    var instCount = specSpace.getSpecs.map{s =>(s,-1)}.toMap
     rhs.foldRight((post, true)) {
       case (v, (acc, includeDis)) =>
         val updated = acc.map(lsPred => updArrowPhi(v, lsPred))
