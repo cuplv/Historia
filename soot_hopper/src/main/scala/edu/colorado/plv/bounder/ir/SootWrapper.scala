@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.BounderSetupApplication.{ApkSource, SourceType}
 
 import java.util
 import java.util.{Collections, Objects}
-import edu.colorado.plv.bounder.ir.SootWrapper.{cgEntryPointName, findUnitIndex}
+import edu.colorado.plv.bounder.ir.SootWrapper.{cgEntryPointName, findUnitFromIndex, findUnitIndex, getUnitGraph}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, LSSpec, OAbsMsg, SetSignatureMatcher, Signature, SignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
@@ -34,6 +34,7 @@ import scala.collection.immutable.Queue
 import scala.collection.{BitSet, MapView, mutable}
 import scala.jdk.CollectionConverters._
 import scala.util.matching.Regex
+import edu.colorado.plv.fixedsoot.EHNopStmt
 
 object SootWrapper{
   val cgEntryPointName:String = "CgEntryPoint___________a____b"
@@ -215,14 +216,40 @@ object SootWrapper{
   }
 
   /**
+   * Hacks to make unit patching chain indices stable.
+   *
+   * @param method
+   * @return
+   */
+  private def methodUnitsStabilized(method:SootMethod):Iterable[soot.Unit] = {
+    method.getActiveBody.getUnits.asScala.filter{
+      case _ => true //TODO: remove this at some point
+    }
+  }
+
+  protected val getUnitGraph: Body => UnitGraph = Memo.mutableHashMapMemo { b =>
+    // Method bodies are not thread safe and unit graph modifies them!!!
+    b.synchronized {
+      new EnhancedUnitGraphFixed(b)
+    }
+  }
+  /**
    * Find index of corresponding unit.
    * Note that unit equality in soot is only stable within one iteration of a given method.
    * @param method containing unit
    * @param cmd unit
    * @return index in method
    */
-  private def findUnitIndex(method: SootMethod, cmd: soot.Unit):Int = method.getActiveBody.getUnits.asScala.zipWithIndex
-    .find { case (u, _) => u == cmd }.get._2
+  private def findUnitIndex(method: SootMethod, cmd: soot.Unit):Int = {
+    getUnitGraph(method.getActiveBody)
+    val findOpt = methodUnitsStabilized(method).zipWithIndex
+      .find { case (u, _) => u == cmd }
+    findOpt.get._2
+  }
+  private def findUnitFromIndex(method:SootMethod, index:Int):soot.Unit = {
+    getUnitGraph(method.getActiveBody)
+    methodUnitsStabilized(method).zipWithIndex.find{case (_,ind) => ind == index}.get._1
+  }
 
   def makeCmd(cmd: soot.Unit, method: SootMethod,
               loc:AppLoc): CmdWrapper = {
@@ -1201,13 +1228,6 @@ class SootWrapper(apkPath : String,
     val unitInd = findUnitIndex(containingMethod, u)
     AppLoc(JimpleMethodLoc(containingMethod),JimpleLineLoc(u, unitInd,containingMethod),false)
   }
-
-  protected val getUnitGraph: Body => UnitGraph = Memo.mutableHashMapMemo {b =>
-    // Method bodies are not thread safe
-    b.synchronized {
-      new EnhancedUnitGraphFixed(b)
-    }
-  }
   protected def getAppMethods(resolver: AppCodeResolver):Set[SootMethod] = {
     if(appMethodCache.isEmpty) {
       val classes = Scene.v().getApplicationClasses
@@ -1375,11 +1395,10 @@ class SootWrapper(apkPath : String,
   private val iTopoForMethod: SootMethod => Map[(soot.Unit, Int), Int] = Memo.mutableHashMapMemo {
     (method:SootMethod) => {
       val unitGraph: UnitGraph = getUnitGraph(method.retrieveActiveBody())
-      val indToUnit = method.getActiveBody.getUnits.asScala.zipWithIndex.toMap
       val topo = new SlowPseudoTopologicalOrderer[soot.Unit]()
       val uList = topo.newList(unitGraph, false).asScala.zipWithIndex
       uList.toMap.map{
-        case (u,ord) => (u,indToUnit(u)) -> ord
+        case (u,ord) => (u,findUnitIndex(method,u)) -> ord
       }
     }
 
@@ -1398,14 +1417,12 @@ class SootWrapper(apkPath : String,
   override def commandPredecessors(cmdWrapper : CmdWrapper):List[AppLoc] =
     cmdWrapper.getLoc match{
     case AppLoc(methodWrapper @ JimpleMethodLoc(_),JimpleLineLoc(cmdP, unitInd,sootMethod), true) => {
-      val indToUnit = sootMethod.getActiveBody.getUnits.asScala.zipWithIndex.toMap
-      val unitToInd = indToUnit.map{case (u,ind) => (ind,u)}
-      val cmd = unitToInd(unitInd)
+      val cmd = findUnitFromIndex(sootMethod,unitInd)
       assert(cmd.toString() == cmdP.toString(), "Unstable unit indices detected in soot") //===== TODO: remove for speed once tested
       val unitGraph = getUnitGraph(sootMethod.retrieveActiveBody())
       val predCommands = unitGraph.getPredsOf(cmd).asScala
       predCommands.map(predCmd => AppLoc(methodWrapper,
-        JimpleLineLoc(predCmd, indToUnit(predCmd),sootMethod), isPre = false)).toList
+        JimpleLineLoc(predCmd, findUnitIndex(sootMethod,predCmd),sootMethod), isPre = false)).toList
     }
     case v =>
         throw new IllegalStateException(s"Bad argument for command predecessor ${v}")
@@ -1414,13 +1431,12 @@ class SootWrapper(apkPath : String,
     cmdWrapper.getLoc match{
       case AppLoc(method, line, true) => List(AppLoc(method,line,isPre = false))
       case AppLoc(method:JimpleMethodLoc, JimpleLineLoc(cmdP, unitInd,sootMethod), false) =>
-        val unitToInd = method.method.getActiveBody.getUnits.asScala.zipWithIndex.toMap
-        val indToUnit = unitToInd.map{case (u,ind) => (ind,u)}
-        val cmd = indToUnit(unitInd)
+        val cmd = findUnitFromIndex(method.method,unitInd)
         assert(cmd.toString() == cmdP.toString(), "Unstable unit indices detected in soot") //===== TODO: remove for speed once tested
         val unitGraph = getUnitGraph(sootMethod.retrieveActiveBody())
         val succCommands = unitGraph.getSuccsOf(cmd).asScala
-        succCommands.map(cmd => AppLoc(method,JimpleLineLoc(cmd,unitToInd(cmd),sootMethod), isPre = false)).toList
+        succCommands.map(cmd =>
+          AppLoc(method,JimpleLineLoc(cmd,findUnitIndex(method.method,cmd),sootMethod), isPre = false)).toList
       case _ =>
         throw new IllegalStateException("command after pre location doesn't exist")
     }
@@ -1654,9 +1670,9 @@ class SootWrapper(apkPath : String,
         //println(t)
       }
       if (smethod.method.hasActiveBody) {
-        smethod.method.getActiveBody.getUnits.asScala.zipWithIndex.foreach{case (u: soot.Unit, ind) => {
+        smethod.method.getActiveBody.getUnits.asScala.foreach{case (u: soot.Unit) => {
           if (u.isInstanceOf[JReturnStmt] || u.isInstanceOf[JReturnVoidStmt]) {
-            val lineloc = JimpleLineLoc(u, ind, smethod.method)
+            val lineloc = JimpleLineLoc(u, findUnitIndex(smethod.method, u), smethod.method)
             rets.addOne(AppLoc(smethod, lineloc, false))
           }
         }}
@@ -1790,16 +1806,12 @@ class SootWrapper(apkPath : String,
     }
   }
 
-  override def appCallbackMsgCount: Int = {
-    //TODO:======
-    ???
-  }
-
   override def allMethodLocations(m: MethodLoc): Set[AppLoc] = m match{
     case m:JimpleMethodLoc =>
-      if(m.method.hasActiveBody)
-        m.method.getActiveBody.getUnits.asScala.map{u => cmdToLoc(u,m.method)}.toSet
-      else Set.empty
+      if(m.method.hasActiveBody) {
+        getUnitGraph(m.method.getActiveBody) // avoid concurrent modification due to stupid unit graph
+        m.method.getActiveBody.getUnits.asScala.map { u => cmdToLoc(u, m.method) }.toSet
+      }else Set.empty
     case _ => throw new IllegalArgumentException()
   }
 }

@@ -78,8 +78,6 @@ case class SerializedIR(transitions: Map[AppLoc, Set[SerializedTransition]]) ext
 
   override def findInMethod(className: String, methodName: String, toFind: CmdWrapper => Boolean): Iterable[AppLoc] = ???
 
-  override def appCallbackMsgCount: Int = ???
-
   override def dumpDebug(classFilter: String): String = ???
 
   override def allMethodLocations(m: MethodLoc): Set[AppLoc] = ???
