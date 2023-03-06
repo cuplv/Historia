@@ -132,7 +132,7 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
     params.add("timeout", timeout)
     params.add("logic", "AUFLIA")
     //params.add("model.compact", true)
-    Global.setParameter("parallel.enable", "true") // note: parallel z3 does not seem to speed things up
+    // Global.setParameter("parallel.enable", "true") // note: parallel z3 does not seem to speed things up
     newRandomSeed.foreach { rs =>
       params.add("random-seed", rs + randomSeed)
     }
