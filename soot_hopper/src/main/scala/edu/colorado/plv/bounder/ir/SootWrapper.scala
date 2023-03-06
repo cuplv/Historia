@@ -1663,13 +1663,14 @@ class SootWrapper(apkPath : String,
     this.synchronized{
       val smethod = method.asInstanceOf[JimpleMethodLoc]
       val rets = mutable.ListBuffer[AppLoc]()
-      try{
-        smethod.method.getActiveBody()
-      }catch{
-        case t: Throwable =>
-        //println(t)
-      }
+//      try{
+//        smethod.method.getActiveBody()
+//      }catch{
+//        case t: Throwable =>
+//        //println(t)
+//      }
       if (smethod.method.hasActiveBody) {
+        getUnitGraph(smethod.method.getActiveBody)
         smethod.method.getActiveBody.getUnits.asScala.foreach{case (u: soot.Unit) => {
           if (u.isInstanceOf[JReturnStmt] || u.isInstanceOf[JReturnVoidStmt]) {
             val lineloc = JimpleLineLoc(u, findUnitIndex(smethod.method, u), smethod.method)
