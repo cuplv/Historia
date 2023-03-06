@@ -437,7 +437,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 
     val currentCalls = allCallsAppTransitive(m) + m
     val heapRelevantCallees = currentCalls.filter { callee =>
-      val hn: Set[String] = heapNamesWritten(callee) //TODO:===== does this work?
+      val hn: Set[String] = heapNamesWritten(callee)
       fnSet.exists { fn =>
         hn.contains(fn)
       }

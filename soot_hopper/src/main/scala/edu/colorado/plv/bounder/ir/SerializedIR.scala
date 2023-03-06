@@ -50,8 +50,6 @@ case class SerializedIR(transitions: Map[AppLoc, Set[SerializedTransition]]) ext
 
   override def appCallSites(method: MethodLoc, resolver: AppCodeResolver): Seq[AppLoc] = ???
 
-  override def canAlias(type1: String, type2: String): Boolean = true
-
   override def makeMethodRetuns(method: MethodLoc): List[AppLoc] = ???
 
   override def makeMethodTargets(source: MethodLoc): Set[MethodLoc] = ???
@@ -77,8 +75,6 @@ case class SerializedIR(transitions: Map[AppLoc, Set[SerializedTransition]]) ext
   override def getClassHierarchyConstraints: ClassHierarchyConstraints = ???
 
   override def findInMethod(className: String, methodName: String, toFind: CmdWrapper => Boolean): Iterable[AppLoc] = ???
-
-  override def appCallbackMsgCount: Int = ???
 
   override def dumpDebug(classFilter: String): String = ???
 

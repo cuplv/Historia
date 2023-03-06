@@ -73,8 +73,8 @@ object Qry {
     val cmds = (for {
       cl <-c
       m <- cl.getMethods.asScala
-      cmd <- if(m.isAbstract || !m.hasActiveBody) List.empty else m.getActiveBody.getUnits.asScala //abstract catches iface and abst classes
-        .map(v => SootWrapper.makeCmd(v,m, AppLoc(JimpleMethodLoc(m),JimpleLineLoc(v,m),isPre = true)))
+      cmd <- if(m.isAbstract || !m.hasActiveBody) List.empty else m.getActiveBody.getUnits.asScala.zipWithIndex //abstract catches iface and abst classes
+        .map{case (v, ind) => SootWrapper.makeCmd(v,m, AppLoc(JimpleMethodLoc(m),JimpleLineLoc(v, ind,m),isPre = true))}
     } yield cmd).toSet
 
     val qrys = cmds.map{cmd =>
