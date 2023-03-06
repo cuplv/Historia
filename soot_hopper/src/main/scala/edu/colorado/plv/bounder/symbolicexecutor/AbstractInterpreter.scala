@@ -610,8 +610,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
   def executeStep(qry:Qry):Set[Qry] = qry match{
     case Qry(state, loc, Live) =>
       val predecessorLocations = controlFlowResolver.resolvePredicessors(loc,state)
-      predecessorLocations.flatMap(l => { //TODO: re-enable par after dbg
-//      predecessorLocations.par.flatMap(l => {
+      predecessorLocations.par.flatMap(l => {
         val newStates = transfer.transfer(state,l,loc)
         newStates.map(state => stateSolver.simplify(state, config.specSpace) match {
           case Some(state) if stateSolver.witnessed(state, config.specSpace).isDefined =>
