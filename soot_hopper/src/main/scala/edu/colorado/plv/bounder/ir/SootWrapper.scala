@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.BounderSetupApplication.{ApkSource, SourceType}
 
 import java.util
 import java.util.{Collections, Objects}
-import edu.colorado.plv.bounder.ir.SootWrapper.cgEntryPointName
+import edu.colorado.plv.bounder.ir.SootWrapper.{cgEntryPointName, findUnitIndex}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, LSSpec, OAbsMsg, SetSignatureMatcher, Signature, SignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
@@ -213,8 +213,19 @@ object SootWrapper{
     }
     case a => makeRVal(a)
   }
+
+  /**
+   * Find index of corresponding unit.
+   * Note that unit equality in soot is only stable within one iteration of a given method.
+   * @param method containing unit
+   * @param cmd unit
+   * @return index in method
+   */
+  private def findUnitIndex(method: SootMethod, cmd: soot.Unit):Int = method.getActiveBody.getUnits.asScala.zipWithIndex
+    .find { case (u, _) => u == cmd }.get._2
+
   def makeCmd(cmd: soot.Unit, method: SootMethod,
-                       loc:AppLoc): CmdWrapper = {
+              loc:AppLoc): CmdWrapper = {
     cmd match{
       case cmd: AbstractDefinitionStmt if cmd.rightBox.isInstanceOf[JCaughtExceptionRef] =>
         val leftBox = makeVal(cmd.leftBox.getValue).asInstanceOf[LVal]
@@ -245,7 +256,9 @@ object SootWrapper{
         ReturnCmd(None, loc)
       }
       case cmd: JIfStmt =>
-        val targetIfTrue = AppLoc(loc.method, JimpleLineLoc(cmd.getTarget, method), true)
+        //equality should be stable between raw units within a method iteration
+        val targetUnitIndex = findUnitIndex(method, cmd.getTarget)
+        val targetIfTrue = AppLoc(loc.method, JimpleLineLoc(cmd.getTarget, targetUnitIndex, method), true)
         Goto(makeVal(cmd.getCondition),targetIfTrue,loc)
       case _ : JNopStmt =>
         NopCmd(loc)
@@ -519,7 +532,8 @@ class SootWrapper(apkPath : String,
       if(m.hasActiveBody) {
         val vars = m.getActiveBody.getUnits.asScala.flatMap { c =>
           val methodLoc = JimpleMethodLoc(m)
-          val ml = SootWrapper.makeCmd(c, m, AppLoc(methodLoc, JimpleLineLoc(c, m), true))
+          val unitInd = findUnitIndex(m,c)
+          val ml = SootWrapper.makeCmd(c, m, AppLoc(methodLoc, JimpleLineLoc(c,unitInd, m), true))
           ml match {
             case ReturnCmd(Some(returnVar: LocalWrapper), loc) => Set(varAndPtRegions(methodLoc, returnVar))
             case AssignCmd(target: LocalWrapper, source, loc) => Set(varAndPtRegions(methodLoc, target))
@@ -578,7 +592,8 @@ class SootWrapper(apkPath : String,
       case method:SootMethod => getUnitGraph(method.getActiveBody).asScala.flatMap{u =>
         if(mFilter(method.getDeclaringClass.getName) &&Scene.v().getCallGraph.edgesOutOf(u).hasNext &&
           u.toString().contains("(") && !u.toString().contains("newarray (")) {
-          val loc = AppLoc(JimpleMethodLoc(method), JimpleLineLoc(u, method), false)
+          val unitInd = findUnitIndex(method,u)
+          val loc = AppLoc(JimpleMethodLoc(method), JimpleLineLoc(u, unitInd, method), false)
           val callinSet = resolver.resolveCallLocation(makeInvokeTargets(loc)).flatMap {
             case CallinMethodReturn(sig) => Some(sig)
             case CallinMethodInvoke(sig) => Some(sig)
@@ -1183,7 +1198,8 @@ class SootWrapper(apkPath : String,
 
 
   private def cmdToLoc(u : soot.Unit, containingMethod:SootMethod): AppLoc = {
-    AppLoc(JimpleMethodLoc(containingMethod),JimpleLineLoc(u,containingMethod),false)
+    val unitInd = findUnitIndex(containingMethod, u)
+    AppLoc(JimpleMethodLoc(containingMethod),JimpleLineLoc(u, unitInd,containingMethod),false)
   }
 
   protected val getUnitGraph: Body => UnitGraph = Memo.mutableHashMapMemo {b =>
@@ -1356,21 +1372,24 @@ class SootWrapper(apkPath : String,
     }
   }
 
-  private val iTopoForMethod: SootMethod => Map[soot.Unit, Int] = Memo.mutableHashMapMemo {
+  private val iTopoForMethod: SootMethod => Map[(soot.Unit, Int), Int] = Memo.mutableHashMapMemo {
     (method:SootMethod) => {
       val unitGraph: UnitGraph = getUnitGraph(method.retrieveActiveBody())
+      val indToUnit = method.getActiveBody.getUnits.asScala.zipWithIndex.toMap
       val topo = new SlowPseudoTopologicalOrderer[soot.Unit]()
       val uList = topo.newList(unitGraph, false).asScala.zipWithIndex
-      uList.toMap
+      uList.toMap.map{
+        case (u,ord) => (u,indToUnit(u)) -> ord
+      }
     }
 
   }
   override def commandTopologicalOrder(cmdWrapper:CmdWrapper):Int = {
 
     cmdWrapper.getLoc match {
-      case AppLoc(JimpleMethodLoc(_), JimpleLineLoc(cmd, sootMethod), _) => {
+      case AppLoc(JimpleMethodLoc(_), JimpleLineLoc(cmd, unitInd, sootMethod), _) => {
         val topo = iTopoForMethod(sootMethod)
-        topo(cmd)
+        topo((cmd, unitInd))
       }
       case v =>
         throw new IllegalStateException(s"Bad argument for commandTopologicalOrder ${v}")
@@ -1378,10 +1397,15 @@ class SootWrapper(apkPath : String,
   }
   override def commandPredecessors(cmdWrapper : CmdWrapper):List[AppLoc] =
     cmdWrapper.getLoc match{
-    case AppLoc(methodWrapper @ JimpleMethodLoc(_),JimpleLineLoc(cmd,sootMethod), true) => {
+    case AppLoc(methodWrapper @ JimpleMethodLoc(_),JimpleLineLoc(cmdP, unitInd,sootMethod), true) => {
+      val indToUnit = sootMethod.getActiveBody.getUnits.asScala.zipWithIndex.toMap
+      val unitToInd = indToUnit.map{case (u,ind) => (ind,u)}
+      val cmd = unitToInd(unitInd)
+      assert(cmd.toString() == cmdP.toString(), "Unstable unit indices detected in soot") //===== TODO: remove for speed once tested
       val unitGraph = getUnitGraph(sootMethod.retrieveActiveBody())
       val predCommands = unitGraph.getPredsOf(cmd).asScala
-      predCommands.map(cmd => AppLoc(methodWrapper,JimpleLineLoc(cmd,sootMethod), isPre = false)).toList
+      predCommands.map(predCmd => AppLoc(methodWrapper,
+        JimpleLineLoc(predCmd, indToUnit(predCmd),sootMethod), isPre = false)).toList
     }
     case v =>
         throw new IllegalStateException(s"Bad argument for command predecessor ${v}")
@@ -1389,10 +1413,14 @@ class SootWrapper(apkPath : String,
   override def commandNext(cmdWrapper: CmdWrapper):List[AppLoc] =
     cmdWrapper.getLoc match{
       case AppLoc(method, line, true) => List(AppLoc(method,line,isPre = false))
-      case AppLoc(method:JimpleMethodLoc, JimpleLineLoc(cmd,sootMethod), false) =>
+      case AppLoc(method:JimpleMethodLoc, JimpleLineLoc(cmdP, unitInd,sootMethod), false) =>
+        val unitToInd = method.method.getActiveBody.getUnits.asScala.zipWithIndex.toMap
+        val indToUnit = unitToInd.map{case (u,ind) => (ind,u)}
+        val cmd = indToUnit(unitInd)
+        assert(cmd.toString() == cmdP.toString(), "Unstable unit indices detected in soot") //===== TODO: remove for speed once tested
         val unitGraph = getUnitGraph(sootMethod.retrieveActiveBody())
         val succCommands = unitGraph.getSuccsOf(cmd).asScala
-        succCommands.map(cmd => AppLoc(method,JimpleLineLoc(cmd,sootMethod), isPre = false)).toList
+        succCommands.map(cmd => AppLoc(method,JimpleLineLoc(cmd,unitToInd(cmd),sootMethod), isPre = false)).toList
       case _ =>
         throw new IllegalStateException("command after pre location doesn't exist")
     }
@@ -1430,12 +1458,13 @@ class SootWrapper(apkPath : String,
   protected def makeVal(box: Value):RVal = SootWrapper.makeVal(box)
 
   override def isMethodEntry(cmdWrapper: CmdWrapper): Boolean = cmdWrapper.getLoc match {
-    case AppLoc(_, JimpleLineLoc(cmd,method),true) => {
-      val unitBoxes = method.retrieveActiveBody().getUnits
-      if(unitBoxes.size > 0){
-        cmd.equals(unitBoxes.getFirst)
-      }else {false}
-    }
+//    case AppLoc(_, JimpleLineLoc(cmd,method),true) => {
+//      val unitBoxes = method.retrieveActiveBody().getUnits
+//      if(unitBoxes.size > 0){
+//        cmd.equals(unitBoxes.getFirst)
+//      }else {false}
+//    }
+    case AppLoc(_, JimpleLineLoc(cmd,unitInd, method),true) => unitInd == 0
     case AppLoc(_, _,false) => false // exit of command is not entry let transfer one more time
     case _ => false
   }
@@ -1444,9 +1473,9 @@ class SootWrapper(apkPath : String,
     val loc: Iterable[JimpleMethodLoc] = findMethodLoc(sig)
     loc.flatMap(loc => {
       val activeBody = loc.method.retrieveActiveBody()
-      val units: Iterable[soot.Unit] = activeBody.getUnits.asScala
-      val unitsForLine = units.filter(a => a.getJavaSourceStartLineNumber == line)
-      unitsForLine.map((a:soot.Unit) => AppLoc(loc, JimpleLineLoc(a,loc.method),isPre = true))
+      val units: Iterable[(soot.Unit, Int)] = activeBody.getUnits.asScala.zipWithIndex
+      val unitsForLine = units.filter{case (a, ind) => a.getJavaSourceStartLineNumber == line}
+      unitsForLine.map{case (a:soot.Unit, ind) => AppLoc(loc, JimpleLineLoc(a,ind,loc.method),isPre = true)}
     })
   }
 
@@ -1540,14 +1569,14 @@ class SootWrapper(apkPath : String,
     }
 
     val mref = appLoc.line match {
-      case JimpleLineLoc(cmd: JInvokeStmt, _) => cmd.getInvokeExpr.getMethodRef
-      case JimpleLineLoc(cmd: JAssignStmt, _) if cmd.getRightOp.isInstanceOf[JVirtualInvokeExpr] =>
+      case JimpleLineLoc(cmd: JInvokeStmt, _, _) => cmd.getInvokeExpr.getMethodRef
+      case JimpleLineLoc(cmd: JAssignStmt, _, _) if cmd.getRightOp.isInstanceOf[JVirtualInvokeExpr] =>
         cmd.getRightOp.asInstanceOf[JVirtualInvokeExpr].getMethodRef
-      case JimpleLineLoc(cmd: JAssignStmt, _) if cmd.getRightOp.isInstanceOf[JInterfaceInvokeExpr] =>
+      case JimpleLineLoc(cmd: JAssignStmt, _, _) if cmd.getRightOp.isInstanceOf[JInterfaceInvokeExpr] =>
         cmd.getRightOp.asInstanceOf[JInterfaceInvokeExpr].getMethodRef
-      case JimpleLineLoc(cmd: JAssignStmt, _) if cmd.getRightOp.isInstanceOf[JSpecialInvokeExpr] =>
+      case JimpleLineLoc(cmd: JAssignStmt, _, _) if cmd.getRightOp.isInstanceOf[JSpecialInvokeExpr] =>
         cmd.getRightOp.asInstanceOf[JSpecialInvokeExpr].getMethodRef
-      case JimpleLineLoc(cmd: JAssignStmt, _) if cmd.getRightOp.isInstanceOf[JStaticInvokeExpr] =>
+      case JimpleLineLoc(cmd: JAssignStmt, _, _) if cmd.getRightOp.isInstanceOf[JStaticInvokeExpr] =>
         cmd.getRightOp.asInstanceOf[JStaticInvokeExpr].getMethodRef
       case t =>
         throw new IllegalArgumentException(s"Bad Location Type $t")
@@ -1625,12 +1654,12 @@ class SootWrapper(apkPath : String,
         //println(t)
       }
       if (smethod.method.hasActiveBody) {
-        smethod.method.getActiveBody.getUnits.forEach((u: soot.Unit) => {
+        smethod.method.getActiveBody.getUnits.asScala.zipWithIndex.foreach{case (u: soot.Unit, ind) => {
           if (u.isInstanceOf[JReturnStmt] || u.isInstanceOf[JReturnVoidStmt]) {
-            val lineloc = JimpleLineLoc(u, smethod.method)
+            val lineloc = JimpleLineLoc(u, ind, smethod.method)
             rets.addOne(AppLoc(smethod, lineloc, false))
           }
-        })
+        }}
         rets.toList
       }else{
         // TODO: for some reason no active bodies for R or BuildConfig generated classes?
@@ -1811,7 +1840,7 @@ case class JimpleMethodLoc(method: SootMethod) extends MethodLoc {
 
   override def isInterface: Boolean = method.getDeclaringClass.isInterface
 }
-case class JimpleLineLoc(cmd: soot.Unit, method: SootMethod) extends LineLoc{
+case class JimpleLineLoc(cmd: soot.Unit, unitNum:Int, method: SootMethod) extends LineLoc{
   lazy val cmdString: String = cmd.toString
   lazy val columnNumber = cmd.getJavaSourceStartColumnNumber
   override def toString: String = "line: " + cmd.getJavaSourceStartLineNumber + " " + cmdString
@@ -1832,26 +1861,27 @@ case class JimpleLineLoc(cmd: soot.Unit, method: SootMethod) extends LineLoc{
   }
 
   def isCmdEq(other:JimpleLineLoc):Boolean = {
-    if (other.cmd.equals(cmd)){
-      true
-    } else if (other.cmd.getClass != cmd.getClass) {
-      false
-    }else if(cmd.isInstanceOf[JAssignStmt] && other.cmd.isInstanceOf[JAssignStmt]) {
-      val a1 = cmd.asInstanceOf[JAssignStmt]
-      val a2 = other.cmd.asInstanceOf[JAssignStmt]
-      lazy val lhsEq = opEquiv(a1.getLeftOp,a2.getLeftOp)
-      lazy val rhsEq = opEquiv(a1.getRightOp,a2.getRightOp)
-      val res = lhsEq && rhsEq
-      res
-    }else if(cmd.isInstanceOf[JInvokeStmt] && other.cmd.isInstanceOf[JInvokeStmt]){
+    other.unitNum == unitNum && other.cmd.getClass == cmd.getClass
+    //    if (other.cmd.equals(cmd)){
+//      true
+//    } else if (other.cmd.getClass != cmd.getClass) {
+//      false
+//    }else if(cmd.isInstanceOf[JAssignStmt] && other.cmd.isInstanceOf[JAssignStmt]) {
+//      val a1 = cmd.asInstanceOf[JAssignStmt]
+//      val a2 = other.cmd.asInstanceOf[JAssignStmt]
+//      lazy val lhsEq = opEquiv(a1.getLeftOp,a2.getLeftOp)
+//      lazy val rhsEq = opEquiv(a1.getRightOp,a2.getRightOp)
+//      val res = lhsEq && rhsEq
+//      res
+//    }else if(cmd.isInstanceOf[JInvokeStmt] && other.cmd.isInstanceOf[JInvokeStmt]){
 
-      val a1 = cmd.asInstanceOf[JInvokeStmt]
-      val a2 = other.cmd.asInstanceOf[JInvokeStmt]
-      val res = a1.getInvokeExpr.equivTo(a2.getInvokeExpr)
-      res
-    } else {
-      other.cmdString == cmdString
-    }
+//      val a1 = cmd.asInstanceOf[JInvokeStmt]
+//      val a2 = other.cmd.asInstanceOf[JInvokeStmt]
+//      val res = a1.getInvokeExpr.equivTo(a2.getInvokeExpr)
+//      res
+//    } else {
+//      other.cmdString == cmdString
+//    }
   }
 
   /**
