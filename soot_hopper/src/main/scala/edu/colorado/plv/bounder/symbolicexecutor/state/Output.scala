@@ -672,7 +672,7 @@ case class MemoryPathNode(qry: Qry, succV : List[IPathNode], subsumedV: Set[IPat
 
   override def hashCode(): Int = {
     // Exclude successors from hash code
-    Objects.hash(qry,depth,ordDepth)
+    Objects.hash(qry,depth,ordDepth, subsumedV, succV)
   }
 
   override def setSubsumed(v: Set[IPathNode])(implicit mode: OutputMode): IPathNode = {
