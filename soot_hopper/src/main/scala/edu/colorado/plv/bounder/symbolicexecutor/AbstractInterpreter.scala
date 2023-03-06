@@ -473,10 +473,14 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
     }.toMap
   }
   def joinNodes(nodes1:Set[IPathNode], nodes2:Set[IPathNode]): Set[IPathNode] = {
+    val nodes1Par = nodes1.par
+    nodes1Par.tasksupport = forkJoinPool
     val nodes1NonSubs =
-      nodes1.par.filter{n => !nodes2.exists{n2 => stateSolver.canSubsume(n2.state, n.state, config.specSpace)}}
+      nodes1Par.filter{n => !nodes2.exists{n2 => stateSolver.canSubsume(n2.state, n.state, config.specSpace)}}
+    val nodes2Par = nodes2.par
+    nodes2Par.tasksupport = forkJoinPool
     val nodes2NonSubs =
-      nodes2.par.filter{n => !nodes1NonSubs.exists{n2 => stateSolver.canSubsume(n.state, n2.state, config.specSpace)}}
+      nodes2Par.filter{n => !nodes1NonSubs.exists{n2 => stateSolver.canSubsume(n.state, n2.state, config.specSpace)}}
     val res = (nodes1NonSubs.toSet ++ nodes2NonSubs.toSet).seq
     res
   }
