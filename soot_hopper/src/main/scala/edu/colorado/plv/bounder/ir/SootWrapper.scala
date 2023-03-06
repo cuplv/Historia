@@ -222,8 +222,11 @@ object SootWrapper{
    * @return
    */
   private def methodUnitsStabilized(method:SootMethod):Iterable[soot.Unit] = {
-    method.getActiveBody.getUnits.asScala.filter{
-      case _ => true //TODO: remove this at some point
+    val b = method.getActiveBody
+    b.synchronized {
+      b.getUnits.asScala.filter {
+        case _ => true //TODO: remove this at some point
+      }
     }
   }
 
@@ -1604,24 +1607,6 @@ class SootWrapper(apkPath : String,
     UnresolvedMethodTarget(clazzName, name.toString,edgesWithoutClInit.map(f => JimpleMethodLoc(f)))
   }
 
-  def canAlias(type1: String, type2: String): Boolean = {
-    val oneIsPrimitive = List(type1,type2).exists{
-      case ClassHierarchyConstraints.Primitive() => true
-      case _ => false
-    }
-    if(oneIsPrimitive)
-      return false
-    if(type1 == type2) true else {
-      val hierarchy: Hierarchy = Scene.v().getActiveHierarchy
-      assert(Scene.v().containsClass(type1), s"Type: $type1 not in soot scene")
-      assert(Scene.v().containsClass(type2), s"Type: $type2 not in soot scene")
-      val type1Soot = Scene.v().getSootClass(type1)
-      val type2Soot = Scene.v().getSootClass(type2)
-      val sub1 = SootWrapper.subThingsOf(type1Soot)
-      val sub2 = SootWrapper.subThingsOf(type2Soot)
-      sub1.exists(a => sub2.contains(a))
-    }
-  }
 
   override def getOverrideChain(method: MethodLoc): Seq[MethodLoc] = {
     val m = method.asInstanceOf[JimpleMethodLoc]
@@ -1811,7 +1796,10 @@ class SootWrapper(apkPath : String,
     case m:JimpleMethodLoc =>
       if(m.method.hasActiveBody) {
         getUnitGraph(m.method.getActiveBody) // avoid concurrent modification due to stupid unit graph
-        m.method.getActiveBody.getUnits.asScala.map { u => cmdToLoc(u, m.method) }.toSet
+        val b = m.method.getActiveBody
+        b.synchronized {
+          b.getUnits.asScala.map { u => cmdToLoc(u, m.method) }.toSet
+        }
       }else Set.empty
     case _ => throw new IllegalArgumentException()
   }

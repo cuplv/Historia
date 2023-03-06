@@ -170,6 +170,8 @@ public class EnhancedUnitGraphFixed extends UnitGraph {
     }
 
     protected void handleExplicitThrowEdges() {
+        if(true) //TODO==== attempting to disable this since we ignore control flow
+            return;
         MHGDominatorTree<Unit> dom = new MHGDominatorTree<Unit>(new MHGDominatorsFinder<Unit>(this));
         MHGDominatorTree<Unit> pdom = new MHGDominatorTree<Unit>(new MHGPostDominatorsFinder<Unit>(this));
 

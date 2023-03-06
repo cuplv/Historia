@@ -55,8 +55,6 @@ trait IRWrapper[M,C]{
   def makeMethodRetuns(method: MethodLoc) : List[AppLoc]
 
   def getClassHierarchyConstraints:ClassHierarchyConstraints
-  @deprecated
-  def canAlias(type1:String, type2:String):Boolean
   def isSuperClass(type1:String, type2:String):Boolean
 //  def fwkPossibleCallbackMsgCount:Int
 //  def fwkPossibleCallinMsgCount:Int
