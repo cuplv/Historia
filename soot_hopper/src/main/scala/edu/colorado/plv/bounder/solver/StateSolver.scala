@@ -1492,7 +1492,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         existingSolver
       }else if(rngTry > 0){
         // on retry, seed RNG with try number for determinism
-        val newTimeout = 120000
+        val newTimeout = 220000
         val newTimeoutSolver = getSolverCtx(Some(newTimeout))
         val rngSeed = rngTry
         println(s"try again with new random seed: ${rngSeed} and timeout ${newTimeout}")

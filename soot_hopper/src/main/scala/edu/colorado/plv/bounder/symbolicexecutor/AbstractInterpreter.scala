@@ -19,6 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.mutable
 import scala.collection.parallel.CollectionConverters.IterableIsParallelizable
 import scala.collection.parallel.ForkJoinTaskSupport
+import scala.util.{Failure, Success, Using}
 
 sealed trait CallGraphSource
 
@@ -341,7 +342,14 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
 
         val deadline = if(config.timeLimit > -1) Instant.now.getEpochSecond + config.timeLimit else -1
         val res: Set[IPathNode] = if(stopExplorationAt.isEmpty) {
-          executeBackwardConc(pathNodes, config.stepLimit, deadline, invarMap = Map.empty)
+          val coreCount = Runtime.getRuntime().availableProcessors()
+          Using(new ForkJoinPool(coreCount / 2)) { pool =>
+            implicit val forkJoinPool = new ForkJoinTaskSupport(pool)
+            executeBackwardConc(pathNodes, config.stepLimit, deadline, invarMap = Map.empty)
+          } { pool => pool.shutdown() } match {
+            case Failure(exception) => throw exception
+            case Success(value) => value
+          }
         } else {
           val queue = new GrouperQ
           queue.addAll(pathNodes)
@@ -374,13 +382,12 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
     case _ => false
   }
 
-  private val coreCount = Runtime.getRuntime().availableProcessors()
-  private val  forkJoinPool = new ForkJoinTaskSupport(new ForkJoinPool(coreCount/2))
+
   @tailrec
   final def executeBackwardConc(qrySet: Set[IPathNode], limit: Int, deadline: Long,
                           refutedSubsumedOrWitnessed: Set[IPathNode] = Set(),
                           invarMap: InvarMap
-                         ):Set[IPathNode] = {
+                         )(implicit forkJoinPool: ForkJoinTaskSupport):Set[IPathNode] = {
     if(qrySet.isEmpty) {
       refutedSubsumedOrWitnessed
     }else {
@@ -464,7 +471,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
     }
   }
 
-  def joinInvarMap(invarMap1:InvarMap, invarMap2:InvarMap):InvarMap = {
+  def joinInvarMap(invarMap1:InvarMap, invarMap2:InvarMap)(implicit forkJoinPool: ForkJoinTaskSupport):InvarMap = {
     val allLoc: Set[SubsumableLocation] = invarMap1.keySet ++ invarMap2.keySet
     allLoc.map{loc =>
       val m1 = invarMap1.getOrElse(loc, Set.empty)
@@ -472,11 +479,16 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
       (loc -> joinNodes(m1, m2))
     }.toMap
   }
-  def joinNodes(nodes1:Set[IPathNode], nodes2:Set[IPathNode]): Set[IPathNode] = {
+  def joinNodes(nodes1:Set[IPathNode], nodes2:Set[IPathNode])
+               (implicit forkJoinPool: ForkJoinTaskSupport): Set[IPathNode] = {
+    val nodes1Par = nodes1.par
+    nodes1Par.tasksupport = forkJoinPool
     val nodes1NonSubs =
-      nodes1.par.filter{n => !nodes2.exists{n2 => stateSolver.canSubsume(n2.state, n.state, config.specSpace)}}
+      nodes1Par.filter{n => !nodes2.exists{n2 => stateSolver.canSubsume(n2.state, n.state, config.specSpace)}}
+    val nodes2Par = nodes2.par
+    nodes2Par.tasksupport = forkJoinPool
     val nodes2NonSubs =
-      nodes2.par.filter{n => !nodes1NonSubs.exists{n2 => stateSolver.canSubsume(n.state, n2.state, config.specSpace)}}
+      nodes2Par.filter{n => !nodes1NonSubs.exists{n2 => stateSolver.canSubsume(n.state, n2.state, config.specSpace)}}
     val res = (nodes1NonSubs.toSet ++ nodes2NonSubs.toSet).seq
     res
   }
@@ -722,7 +734,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
   def executeStep(qry:Qry):Set[Qry] = qry match{
     case Qry(state, loc, Live) =>
       val predecessorLocations = controlFlowResolver.resolvePredicessors(loc,state)
-      predecessorLocations.par.flatMap(l => {
+      predecessorLocations.flatMap(l => { //see if .par here makes sense
         val newStates = transfer.transfer(state,l,loc)
         newStates.map(state => stateSolver.simplify(state, config.specSpace) match {
           case Some(state) if stateSolver.witnessed(state, config.specSpace).isDefined =>
