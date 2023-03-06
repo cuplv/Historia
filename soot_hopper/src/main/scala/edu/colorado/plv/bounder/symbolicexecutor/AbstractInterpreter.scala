@@ -436,6 +436,9 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
       val (exn, newNodes, newInvarMap) =
         workItems.foldLeft((Set[QueryInterruptedException](),Set[IPathNode](), invarMap)) {
           case (acc@(exn, _, newInvarMap),qrySet) =>
+            if(config.printAAProgress) {
+              println(s"   - sub task size: ${qrySet.size}")
+            }
             val qrySetPar = qrySet.par
 
             qrySetPar.tasksupport = forkJoinPool
