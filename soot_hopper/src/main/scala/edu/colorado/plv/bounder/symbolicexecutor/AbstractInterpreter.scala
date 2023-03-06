@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import java.time.Instant
 import com.microsoft.z3.Z3Exception
 import edu.colorado.plv.bounder.{BounderUtil, RunConfig}
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, Goto, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SwitchCmd, ThrowCmd, VirtualInvoke}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, Goto, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, MethodLoc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SwitchCmd, ThrowCmd, VirtualInvoke}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.EncodingTools.repHeapCells
 import edu.colorado.plv.bounder.solver.{EncodingTools, StateSolver, Z3StateSolver}
@@ -413,27 +413,50 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
         (exn, v1._2 ++ v2._2, joinedInvarMap)
       }
 
-      val isExn = new AtomicBoolean(false) // Cancel parallel ops on timeout
-      val qrySetPar = qrySet.par
+      val qryGroups: Map[Option[MethodLoc], Set[IPathNode]] = qrySet.groupBy{ q => q.qry.loc.containingMethod}
 
-      qrySetPar.tasksupport = forkJoinPool
-      val (exn, newNodes, newInvarMap) = qrySetPar.map { qry =>
-        val queue = new GrouperQ
-        queue.addAll(Set(qry))
-        try {
-          if(!isExn.get()) {
-            val (live, invar) = executeBackward(queue, limit, deadline, Set.empty, stopAtCB, invarMap)
-            (Set[QueryInterruptedException](), live, invar)
-          }else{
-            (Set[QueryInterruptedException](), Set[IPathNode](), Map.empty:InvarMap)
+      //process one item from each method location generate invariant map and use that invariant map for the next loop
+      def mkWorkItems(qryGroups:Map[Option[MethodLoc], Set[IPathNode]]):List[Set[IPathNode]] = {
+        if(qryGroups.isEmpty)
+          List.empty
+        else {
+          val (curList, nextQryGroups) = qryGroups.foldLeft(Set[IPathNode](), Map[Option[MethodLoc],Set[IPathNode]]()) {
+            case ((curList, qryGroups), (k, nodes)) =>
+              val nextQryGroups = if (nodes.tail.nonEmpty) {
+                qryGroups + (k -> nodes.tail)
+              } else qryGroups
+              (curList ++ nodes.headOption, nextQryGroups)
           }
-        }catch{
-          case e:QueryInterruptedException =>
-            isExn.set(true)
-            val exn:Set[QueryInterruptedException] = Set(e)
-            (exn, e.terminals, invarMap)
+          curList::mkWorkItems(nextQryGroups)
         }
-      }.reduce(reduceTup)
+      }
+
+      val workItems = mkWorkItems(qryGroups)
+
+      val (exn, newNodes, newInvarMap) =
+        workItems.foldLeft((Set[QueryInterruptedException](),Set[IPathNode](), invarMap)) {
+          case (acc@(exn, _, newInvarMap),qrySet) =>
+            val qrySetPar = qrySet.par
+
+            qrySetPar.tasksupport = forkJoinPool
+            reduceTup(qrySetPar.map { qry =>
+              val queue = new GrouperQ
+              queue.addAll(Set(qry))
+              try {
+                if (exn.isEmpty) {
+                  val (live, invar) = executeBackward(queue, limit, deadline, Set.empty, stopAtCB, newInvarMap)
+                  (Set[QueryInterruptedException](), live, invar)
+                } else {
+                  //Exception from another task, don't bother continuing
+                  (Set[QueryInterruptedException](), Set[IPathNode](), Map.empty: InvarMap)
+                }
+              } catch {
+                case e: QueryInterruptedException =>
+                  val exn: Set[QueryInterruptedException] = Set(e)
+                  (exn, e.terminals, invarMap)
+              }
+            }.reduce(reduceTup), acc)
+      }
 
       val noPred = mutable.Set[IPathNode]()
       if(exn.nonEmpty){
