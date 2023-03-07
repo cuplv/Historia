@@ -2421,9 +2421,9 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
           File.usingTemporaryDirectory() { tmpDir =>
             assert(apk != null)
             val dbFile = tmpDir / "paths.db"
-            implicit val dbMode = DBOutputMode(dbFile.toString)
-            println(dbFile)
-            dbMode.startMeta()
+            //implicit val dbMode = DBOutputMode(dbFile.toString)
+            //dbMode.startMeta()
+            implicit val dbMode = MemoryOutputMode
             //            implicit val dbMode = MemoryOutputMode
             val specs = new SpecSpace(Set(
               ViewSpec.clickWhileActive,
@@ -2564,10 +2564,9 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         assert(apk != null)
         val dbFile = tmpDir / "paths.db"
         println(dbFile)
-        implicit val dbMode = DBOutputMode(dbFile.toString)
-        dbMode
-          .startMeta()
-        //            implicit val dbMode = MemoryOutputMode
+        //implicit val dbMode = DBOutputMode(dbFile.toString)
+        //dbMode.startMeta()
+        implicit val dbMode = MemoryOutputMode
         //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
         val specs = new SpecSpace(Set(
           LifecycleSpec.Activity_onResume_first_orAfter_onPause,
