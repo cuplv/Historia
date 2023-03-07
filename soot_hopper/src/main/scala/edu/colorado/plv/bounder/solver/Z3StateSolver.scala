@@ -177,7 +177,7 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
     initializedFieldFunctions.clear()
     indexInitialized = false
     uninterpretedTypes.clear()
-    if(acquireCount % 100 == 0) {
+    if(acquireCount % 10 == 0) {
       isolver.reset()
       ictx.close()
       ictx = new Context()
