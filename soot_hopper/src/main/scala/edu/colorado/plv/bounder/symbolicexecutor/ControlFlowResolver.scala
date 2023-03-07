@@ -199,7 +199,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
           (tgt, matTgt) match {
             case (Some(tgtLocal: LocalWrapper), mt: PureVar) =>
               state.canAlias(mt, m, tgtLocal, wrapper, inCurrentStackFrame = false)
-            case _ => true
+            case _ =>
+              true //TODO: handle some of the const cases
           }
         } else false
       case _ => false
@@ -211,14 +212,15 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     def canModifyHeap(c: CmdWrapper): Boolean = c match {
       case AssignCmd(fr: FieldReference, tgt, _) =>
         fieldCanPt(fr, m, state, Some(tgt))
-      case AssignCmd(src, fr: FieldReference, _) => fieldCanPt(fr, m, state, Some(src))
+      case AssignCmd(src, fr: FieldReference, _) => false // fieldCanPt(fr, m, state, Some(src))
       case AssignCmd(StaticFieldReference(clazz, name, _), _, _) =>
         val out = state.heapConstraints.contains(StaticPtEdge(clazz, name))
         out //&& !manuallyExcludedStaticField(name) //TODO: remove dbg code
 
       case AssignCmd(_, StaticFieldReference(clazz, name, _), _) =>
-        val out = state.heapConstraints.contains(StaticPtEdge(clazz, name))
-        out //&& !manuallyExcludedStaticField(name)
+        //val out = state.heapConstraints.contains(StaticPtEdge(clazz, name))
+        //out //&& !manuallyExcludedStaticField(name)
+        false
       case _: AssignCmd => false
       case _: ReturnCmd => false
       case _: InvokeCmd => false // This method only counts commands that directly modify the heap
