@@ -29,6 +29,13 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
   def getArgUsed():Set[Integer] = argsUsed.toSet
 
   private var ictx = new Context()
+
+  //TODO: find something better than finalize
+  // this seems to still be called even though depricated
+  override def finalize(): Unit = {
+    super.finalize()
+    ictx.close()
+  }
   val checkStratifiedSets = false // set to true to check EPR stratified sets (see Paxos Made EPR, Padon OOPSLA 2017)
   private var isolver:Solver = makeSolver(timeout, Some(randomSeed))
   val initializedFieldFunctions : mutable.HashSet[String] = mutable.HashSet[String]()
@@ -177,7 +184,7 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
     initializedFieldFunctions.clear()
     indexInitialized = false
     uninterpretedTypes.clear()
-    if(acquireCount % 10 == 0) {
+    if(acquireCount % 5 == 0) {
       isolver.reset()
       ictx.close()
       ictx = new Context()
