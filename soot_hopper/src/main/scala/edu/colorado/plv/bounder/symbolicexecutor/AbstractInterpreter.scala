@@ -344,7 +344,8 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
 
         val deadline = if(config.timeLimit > -1) Instant.now.getEpochSecond + config.timeLimit else -1
         val res: Set[IPathNode] = if(stopExplorationAt.isEmpty) {
-          executeBackwardConc(pathNodes, config.stepLimit, deadline, invarMap = Map.empty)
+          executeBackwardConc(pathNodes, config.stepLimit, deadline,
+            invarMap = TrieMap[SubsumableLocation, Set[IPathNode]]())
         } else {
           val queue = new GrouperQ
           queue.addAll(pathNodes)
@@ -380,7 +381,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
   @tailrec
   final def executeBackwardConc(qrySet: Set[IPathNode], limit: Int, deadline: Long,
                                 refutedSubsumedOrWitnessed: Set[IPathNode] = Set(),
-                                invarMap: InvarMap
+                                invarMap: TrieMap[SubsumableLocation, Set[IPathNode]]
                                ): Set[IPathNode] = {
     if (qrySet.isEmpty) {
       refutedSubsumedOrWitnessed
@@ -411,15 +412,15 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
       val qrySetSorted = qrySet.toList
         .sortBy(n => n.state.sf.heapConstraints.map(EncodingTools.repHeapCells).size)
 
-      val mutInvarMap = TrieMap[SubsumableLocation, Set[IPathNode]]()
-      mutInvarMap.addAll(invarMap)
+//      val mutInvarMap = TrieMap[SubsumableLocation, Set[IPathNode]]()
+//      mutInvarMap.addAll(invarMap)
 
       def processNode(qry:IPathNode) = {
         val queue = new GrouperQ
         queue.addAll(Set(qry))
         try {
           if (!isExn.get()) {
-            val live = executeBackward(queue, limit, deadline, Set.empty, stopAtCB, mutInvarMap)
+            val live = executeBackward(queue, limit, deadline, Set.empty, stopAtCB, invarMap)
             (Set[QueryInterruptedException](), live)
           } else {
             (Set[QueryInterruptedException](), Set[IPathNode]())
@@ -484,7 +485,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
         //val noPredDead = noPred.map{n => n.}
 
         executeBackwardConc(liveNodes, limit, deadline,
-          nxt, mutInvarMap.toMap)
+          nxt, invarMap)
       }
     }
   }
