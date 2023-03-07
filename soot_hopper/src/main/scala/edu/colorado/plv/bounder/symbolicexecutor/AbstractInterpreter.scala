@@ -479,7 +479,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
               throw QueryInterruptedException(refutedSubsumedOrWitnessed + p2, ze.getMessage)
           }
         }
-        val deadNodes = nodes.getOrElse(false, Set.empty)
+        val deadNodes = if (config.outputMode != NoOutputMode) nodes.getOrElse(false, Set.empty) else Set.empty
         val nxt = refutedSubsumedOrWitnessed ++ deadNodes
 
         //val noPredDead = noPred.map{n => n.}
