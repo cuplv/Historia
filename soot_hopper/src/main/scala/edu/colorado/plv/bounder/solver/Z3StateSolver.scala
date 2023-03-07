@@ -169,6 +169,7 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
 
   private var acquireCount = 0
   override def acquire(cRandomSeed:Option[Int]): Unit = {
+    acquireCount +=1
     val currentThread:Long = Thread.currentThread().getId
 
     assert(acquired.isEmpty)
@@ -177,10 +178,10 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
     indexInitialized = false
     uninterpretedTypes.clear()
     if(acquireCount % 100 == 0) {
+      isolver.reset()
       ictx.close()
       ictx = new Context()
-      isolver.reset()
-      isolver = makeSolver(timeout, cRandomSeed)
+      isolver = makeSolver(timeout, Some(randomSeed))
     }
     if(cRandomSeed.isDefined && cRandomSeed.get != randomSeed)
       isolver = makeSolver(timeout, cRandomSeed)
