@@ -28,7 +28,7 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
   def setArgUsed(i: Int) = argsUsed.add(i)
   def getArgUsed():Set[Integer] = argsUsed.toSet
 
-  private val ictx = new Context()
+  private var ictx = new Context()
   val checkStratifiedSets = false // set to true to check EPR stratified sets (see Paxos Made EPR, Padon OOPSLA 2017)
   private var isolver:Solver = makeSolver(timeout, Some(randomSeed))
   val initializedFieldFunctions : mutable.HashSet[String] = mutable.HashSet[String]()
@@ -167,6 +167,7 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
 //    Thread.sleep(100)
   }
 
+  private var acquireCount = 0
   override def acquire(cRandomSeed:Option[Int]): Unit = {
     val currentThread:Long = Thread.currentThread().getId
 
@@ -175,8 +176,12 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
     initializedFieldFunctions.clear()
     indexInitialized = false
     uninterpretedTypes.clear()
-//    ictx.close()
-//    ictx = new Context()
+    if(acquireCount % 100 == 0) {
+      ictx.close()
+      ictx = new Context()
+      isolver.reset()
+      isolver = makeSolver(timeout, cRandomSeed)
+    }
     if(cRandomSeed.isDefined && cRandomSeed.get != randomSeed)
       isolver = makeSolver(timeout, cRandomSeed)
     else
