@@ -169,8 +169,10 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
       initializedFieldFunctions.clear()
     }
 
-    isolver.reset()
-    ictx.close()
+    if(isolver!= null || ictx != null) { //note: or here is a kind of assertion to make sure these are nulled together
+      isolver.reset()
+      ictx.close()
+    }
     isolver = null
     ictx = null
 //    Thread.sleep(100)
