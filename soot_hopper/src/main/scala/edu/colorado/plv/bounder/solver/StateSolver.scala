@@ -1484,20 +1484,17 @@ trait StateSolver[T, C <: SolverCtx[T]] {
                    rngTry:Int = 0):Boolean = {
     val (s1,s2) = reducePtRegions(s1i,s2i) //TODO: does reducing pts regions help?
 //    val (s1,s2) = (s1i,s2i)
-    implicit var zCtx = getSolverCtx()
+    val newTimeout = 220000
+    implicit val zCtx = getSolverCtx(if(rngTry == 0) None else Some(newTimeout))
     try {
       val existingSolver = getSolverCtx()
-      zCtx = if(rngTry == 0) {
-        existingSolver.acquire()
-        existingSolver
+      if(rngTry == 0) {
+        zCtx.acquire()
       }else if(rngTry > 0){
         // on retry, seed RNG with try number for determinism
-        val newTimeout = 220000
-        val newTimeoutSolver = getSolverCtx(Some(newTimeout))
         val rngSeed = rngTry
+        zCtx.acquire(Some(rngSeed))
         println(s"try again with new random seed: ${rngSeed} and timeout ${newTimeout}")
-        newTimeoutSolver.acquire(Some(rngSeed))
-        newTimeoutSolver
       }else{
         throw new IllegalStateException("Timeout, exceeded rng seed attempts")
       }

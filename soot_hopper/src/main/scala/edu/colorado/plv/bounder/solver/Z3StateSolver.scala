@@ -32,10 +32,7 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
 
   //TODO: find something better than finalize
   // this seems to still be called even though depricated
-  override def finalize(): Unit = {
-    super.finalize()
-    ictx.close()
-  }
+
   val checkStratifiedSets = false // set to true to check EPR stratified sets (see Paxos Made EPR, Padon OOPSLA 2017)
   private var isolver:Solver = makeSolver(timeout, Some(randomSeed))
   val initializedFieldFunctions : mutable.HashSet[String] = mutable.HashSet[String]()
@@ -171,11 +168,18 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
       indexInitialized = false
       initializedFieldFunctions.clear()
     }
+
+    isolver.reset()
+    ictx.close()
+    isolver = null
+    ictx = null
 //    Thread.sleep(100)
   }
 
   private var acquireCount = 0
   override def acquire(cRandomSeed:Option[Int]): Unit = {
+    ictx = new Context()
+    isolver = makeSolver(timeout,cRandomSeed)
     acquireCount +=1
     val currentThread:Long = Thread.currentThread().getId
 
@@ -184,16 +188,16 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
     initializedFieldFunctions.clear()
     indexInitialized = false
     uninterpretedTypes.clear()
-    if(acquireCount % 5 == 0) {
-      isolver.reset()
-      ictx.close()
-      ictx = new Context()
-      isolver = makeSolver(timeout, Some(randomSeed))
-    }
-    if(cRandomSeed.isDefined && cRandomSeed.get != randomSeed)
-      isolver = makeSolver(timeout, cRandomSeed)
-    else
-      isolver.reset()
+//    if(acquireCount % 5 == 0) {
+//      isolver.reset()
+//      ictx.close()
+//      ictx = new Context()
+//      isolver = makeSolver(timeout, Some(randomSeed))
+//    }
+//    if(cRandomSeed.isDefined && cRandomSeed.get != randomSeed)
+//      isolver = makeSolver(timeout, cRandomSeed)
+//    else
+//      isolver.reset()
   }
 }
 object Z3StateSolver{
