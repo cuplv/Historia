@@ -4,12 +4,12 @@ import better.files.Dsl.SymbolicOperations
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{DepthResult, Proven, Timeout, Witnessed, interpretResult}
-import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, SootWrapper, MessageType}
+import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType, SootWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, Signature}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.{row1Specs, row2Specs, row4Specs, row5Specs}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{CallinReturnNonNull, DBOutputMode, DisallowedCallin, IPathNode, MemoryOutputMode, PrettyPrinting, Reachable, ReceiverNonNull}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{CallinReturnNonNull, DBOutputMode, DisallowedCallin, IPathNode, MemoryOutputMode, NoOutputMode, PrettyPrinting, Reachable, ReceiverNonNull}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.BeforeAndAfter
@@ -765,7 +765,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
             println(dbFile)
 //            implicit val dbMode = DBOutputMode(dbFile.toString)
 //            dbMode.startMeta()
-            implicit val dbMode = MemoryOutputMode
+            implicit val dbMode = NoOutputMode
 
             //            implicit val dbMode = MemoryOutputMode
             //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
@@ -773,7 +773,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
 
             val specSpace = new SpecSpace(row4Specs)
             val config = ExecutorConfig(
-              stepLimit = 9000, w, specSpace, timeLimit = 1800, //TODO: bump back to 30 after test
+              stepLimit = 90000, w, specSpace, timeLimit = (180010), //TODO: bump back to 30 after test
               component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode,
               printAAProgress = true)
             val symbolicExecutor = config.getAbstractInterpreter
