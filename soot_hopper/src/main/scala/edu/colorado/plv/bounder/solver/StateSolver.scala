@@ -8,6 +8,7 @@ import edu.colorado.plv.bounder.lifestate.LifeState._
 import edu.colorado.plv.bounder.solver.EncodingTools.repHeapCells
 import edu.colorado.plv.bounder.symbolicexecutor.SubsumptionMode
 import edu.colorado.plv.bounder.symbolicexecutor.state.{HeapPtEdge, _}
+import io.github.andrebeat.pool.Lease
 import org.slf4j.{Logger, LoggerFactory}
 import upickle.default.{read, write}
 
@@ -27,6 +28,10 @@ trait SolverCtx[T]{
   //def mkAssert(t:T):Unit
   def acquire(randomSeed:Option[Int] = None):Unit
   def release():Unit
+  def dispose():Unit
+
+  def resetTimeoutAndSeed(): Unit
+  def overrideTimeoutAndSeed(timeout:Int, seed:Int): Unit
 }
 
 sealed trait SubsumptionMethod
@@ -73,7 +78,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
                    ):SetEncoder[T,C]
   def setSeed(v:Int)(implicit zCtx: C):Unit
   // checking
-  def getSolverCtx(overrideTimeout:Option[Int] = None): C
+  def getSolverCtx(): Lease[C]
   def getLogger:Logger
   def iDefaultOnSubsumptionTimeout(implicit zCtx:C):Boolean
 
@@ -833,19 +838,16 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   }
 
   def simplify(state: State,specSpace: SpecSpace, maxWitness: Option[Int] = None): Option[State] = {
-    implicit val zCtx = getSolverCtx()
-    // val startTime = System.nanoTime()
-    // var result = "unfinished"
-    try {
-      zCtx.acquire()
-
+    getSolverCtx() { implicit zCtx =>
+      // val startTime = System.nanoTime()
+      // var result = "unfinished"
       // get rid of equal constraints in pure constraitns by inlining
       val inlinedStateOpt = state.inlineConstEq()
       if (inlinedStateOpt.isEmpty)
         return None
       val state2 = inlinedStateOpt.get
 
-      if (state.isSimplified){
+      if (state.isSimplified) {
         // state previously simplified
         // result = "sat"
         return inlinedStateOpt
@@ -856,70 +858,73 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         case FreshRef(v) => Some(v)
         case _ => None
       }
-      val stackVarCreatedInFuture = state2.callStack.exists{
-        case CallStackFrame(_,_,locals) => locals.values.exists{createdInFuture.contains}
+      val stackVarCreatedInFuture = state2.callStack.exists {
+        case CallStackFrame(_, _, locals) => locals.values.exists {
+          createdInFuture.contains
+        }
       }
 
 
-      if(stackVarCreatedInFuture)
+      if (stackVarCreatedInFuture)
         return None
 
-      if(state2.sf.callStack.exists(frame => frame.locals.getOrElse(StackVar("@this"), NPureVar(-1)) == NullVal))
+      if (state2.sf.callStack.exists(frame => frame.locals.getOrElse(StackVar("@this"), NPureVar(-1)) == NullVal))
         return None
 
       @tailrec
-      def equivSet( acc:Set[PureExpr]):Set[PureExpr] = {
-        val eqRefPv = state2.sf.pureFormula.flatMap{
-          case PureConstraint(lhs, Equals, rhs) if acc.contains(lhs) || acc.contains(rhs) => Set(lhs,rhs)
+      def equivSet(acc: Set[PureExpr]): Set[PureExpr] = {
+        val eqRefPv = state2.sf.pureFormula.flatMap {
+          case PureConstraint(lhs, Equals, rhs) if acc.contains(lhs) || acc.contains(rhs) => Set(lhs, rhs)
           case _ => Set.empty
         }
         val newAcc = acc ++ eqRefPv
-        if(newAcc == acc)
+        if (newAcc == acc)
           acc
         else
           equivSet(eqRefPv)
       }
-//      def mustNotNull(pv:PureExpr):Boolean = pv match{
-//        case NullVal => false
-//        case pv:PureVar =>
-//          state2.sf.pureFormula.forall{ // with pv reduction we eventually get to fields pointing to null directly
-//            case PureConstraint(lhs, Equals, rhs) => pv != lhs && pv != rhs
-//            case _ => true
-//          }
-//      }
-      val heapPtEdgeCreatedInFuture = state2.sf.heapConstraints.exists{
-        case (FieldPtEdge(base, _) , v) =>
+
+      //      def mustNotNull(pv:PureExpr):Boolean = pv match{
+      //        case NullVal => false
+      //        case pv:PureVar =>
+      //          state2.sf.pureFormula.forall{ // with pv reduction we eventually get to fields pointing to null directly
+      //            case PureConstraint(lhs, Equals, rhs) => pv != lhs && pv != rhs
+      //            case _ => true
+      //          }
+      //      }
+      val heapPtEdgeCreatedInFuture = state2.sf.heapConstraints.exists {
+        case (FieldPtEdge(base, _), v) =>
           val equivV = equivSet(Set(v))
           //if(!equivV.contains(NullVal) ) { //TODO: pts to null ok for val created in future?
           val equiv = equivSet(Set(base)) ++ equivV
           equiv.exists(createdInFuture.contains)
-          //} else false
-        case (_:StaticPtEdge, v) if !equivSet(Set(v)).contains(NullVal) =>
+        //} else false
+        case (_: StaticPtEdge, v) if !equivSet(Set(v)).contains(NullVal) =>
           val equiv = equivSet(Set(v))
           equiv.exists(createdInFuture.contains)
         case _ => false
       }
 
-      if(heapPtEdgeCreatedInFuture)
+      if (heapPtEdgeCreatedInFuture)
         return None
 
 
       // Drop useless constraints
-//      val state2 = state.copy(sf = state.sf.copy(pureFormula = state.pureFormula.filter {
-//        case PureConstraint(v1, Equals, v2) if v1 == v2 => false
-//        case _ => true
-//      }))
+      //      val state2 = state.copy(sf = state.sf.copy(pureFormula = state.pureFormula.filter {
+      //        case PureConstraint(v1, Equals, v2) if v1 == v2 => false
+      //        case _ => true
+      //      }))
 
       // empty points to set means value must be null
       val nullsFromPt = state2.typeConstraints.filter(a => a._2.isEmpty)
       val stateWithNulls = nullsFromPt.foldLeft(state2) {
         case (state, (v, _)) => state.addPureConstraint(PureConstraint(v, Equals, NullVal))
-      }.inlineConstEq().getOrElse{
+      }.inlineConstEq().getOrElse {
         return None
       }
 
       val sat = {
-        val (reducedPtState,_) = reducePtRegions(stateWithNulls,State.topState)
+        val (reducedPtState, _) = reducePtRegions(stateWithNulls, State.topState)
         val messageTranslator = MessageTranslator(List(reducedPtState), List(specSpace))
 
         // Only encode types in Z3 for subsumption check due to slow-ness
@@ -947,10 +952,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
           .map(EncodingTools.gcPureVars)
         reducedState.map(_.setSimplified())
       }
-    }finally{
-      zCtx.release()
-      //if(shouldLogTimes)
-      //  getLogger.warn(s"feasibility result: ${result} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
     }
   }
 
@@ -1192,47 +1193,47 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
     //TODO: two state subsumption tries to reduce pt regions, may want to do that here as well?
 
-    implicit val zCtx: C = getSolverCtx()
+    val res = getSolverCtx() { implicit zCtx =>
 
-    val res = try {
-      zCtx.acquire()
-      val messageTranslator: MessageTranslator = MessageTranslator(s1 + s2, List(specSpace))
-      s1Filtered.foreach{state =>
-        val stateEncode = toASTState(state, messageTranslator, None, specSpace, negate=true)
-        mkAssert(stateEncode)
+      try {
+        val messageTranslator: MessageTranslator = MessageTranslator(s1 + s2, List(specSpace))
+        s1Filtered.foreach { state =>
+          val stateEncode = toASTState(state, messageTranslator, None, specSpace, negate = true)
+          mkAssert(stateEncode)
+        }
+        val s2Encode = toASTState(s2, messageTranslator, None, specSpace, negate = false)
+        mkAssert(s2Encode)
+        val foundCounter =
+          checkSAT(messageTranslator, None, true)
+        !foundCounter
+      } catch {
+        case e: IllegalArgumentException if e.getLocalizedMessage.contains("timeout") =>
+          // Note: this didn't seem to help things so currently disabled
+          // sound to say state is not subsumed if we don't know
+          // false
+
+          println("subsumption timeout:")
+          println(s"timeout: ${timeout}")
+          println(s"${s1.size} states in s1.")
+          println(s"  s2: ${s2}")
+          println(s"  s2 ɸ_lhs: " +
+            s"${
+              EncodingTools.rhsToPred(s2.traceAbstraction.rightOfArrow, specSpace)
+                .map(pred => pred.toString)
+                .mkString("  &&  ")
+            }")
+          // uncomment to dump serialized timeout states
+          // val s1f = File("s1_timeout.json")
+          // val s2f = File("s2_timeout.json")
+          //        val s1str = write(s1)
+          //        val s2str = write(s2)
+          //        println(s1str)
+          //        println(s2str)
+          // s1f.write(write(s1))
+          // s2f.write(write(s2))
+          // throw e
+          iDefaultOnSubsumptionTimeout
       }
-      val s2Encode = toASTState(s2, messageTranslator,None, specSpace, negate=false)
-      mkAssert(s2Encode)
-      val foundCounter =
-        checkSAT(messageTranslator, None, true)
-      !foundCounter
-    }catch{
-      case e:IllegalArgumentException if e.getLocalizedMessage.contains("timeout") =>
-        // Note: this didn't seem to help things so currently disabled
-        // sound to say state is not subsumed if we don't know
-        // false
-
-        println("subsumption timeout:")
-        println(s"timeout: ${timeout}")
-        println(s"${s1.size} states in s1.")
-        println(s"  s2: ${s2}")
-        println(s"  s2 ɸ_lhs: " +
-          s"${EncodingTools.rhsToPred(s2.traceAbstraction.rightOfArrow,specSpace)
-            .map(pred => pred.toString)
-            .mkString("  &&  ")}")
-        // uncomment to dump serialized timeout states
-        // val s1f = File("s1_timeout.json")
-        // val s2f = File("s2_timeout.json")
-        //        val s1str = write(s1)
-        //        val s2str = write(s2)
-        //        println(s1str)
-        //        println(s2str)
-        // s1f.write(write(s1))
-        // s2f.write(write(s2))
-        // throw e
-      iDefaultOnSubsumptionTimeout
-    } finally {
-      zCtx.release()
     }
 
     if(shouldLogTimes)
@@ -1257,28 +1258,24 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   }
 
   def canSubsume(pred1:LSPred, pred2:LSPred):Boolean = {
-    implicit val zCtx: C = getSolverCtx()
-    try {
-      zCtx.acquire()
-//      if(pred1.toString.contains("NULL") || pred2.toString.contains("NULL")){
-//        //TODO: need const distinct assertion here
-//        ???
-//      }
+    getSolverCtx() { implicit zCtx =>
+      //      if(pred1.toString.contains("NULL") || pred2.toString.contains("NULL")){
+      //        //TODO: need const distinct assertion here
+      //        ???
+      //      }
       val msg = MessageTranslator(List(pred1, pred2)).copy(pureValSet = pred1.lsVal ++ pred2.lsVal +
         IntVal(0) + IntVal(1) + NullVal)
 
       val p1E = pred1.lsVar
       val p2E = pred2.lsVar
-      val pvals = msg.constMap.asInstanceOf[Map[PureExpr,T]]
-      val enc1 = encodePred(Exists(p1E.toList,pred1), msg, pvals, Map.empty, Map.empty)
-      val enc2 = encodePred(Exists(p2E.toList,pred2), msg, pvals, Map.empty, Map.empty)
+      val pvals = msg.constMap.asInstanceOf[Map[PureExpr, T]]
+      val enc1 = encodePred(Exists(p1E.toList, pred1), msg, pvals, Map.empty, Map.empty)
+      val enc2 = encodePred(Exists(p2E.toList, pred2), msg, pvals, Map.empty, Map.empty)
 
       mkAssert(mkAnd(mkNot(enc1), enc2))
       val isSat = checkSAT(msg, None, true)
 
       !isSat
-    } finally {
-      zCtx.release()
     }
   }
 
@@ -1482,79 +1479,79 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    */
   def canSubsumeZ3(s1i:State, s2i:State,specSpace:SpecSpace, maxLen:Option[Int], timeout:Option[Int],
                    rngTry:Int = 0):Boolean = {
-    val (s1,s2) = reducePtRegions(s1i,s2i) //TODO: does reducing pts regions help?
-//    val (s1,s2) = (s1i,s2i)
+    val (s1, s2) = reducePtRegions(s1i, s2i) //TODO: does reducing pts regions help?
+    //    val (s1,s2) = (s1i,s2i)
     val newTimeout = 220000
-    implicit val zCtx = getSolverCtx(if(rngTry == 0) None else Some(newTimeout))
-    try {
-      val existingSolver = getSolverCtx()
-      if(rngTry == 0) {
-        zCtx.acquire()
-      }else if(rngTry > 0){
-        // on retry, seed RNG with try number for determinism
-        val rngSeed = rngTry
-        zCtx.acquire(Some(rngSeed))
-        println(s"try again with new random seed: ${rngSeed} and timeout ${newTimeout}")
-      }else{
-        throw new IllegalStateException("Timeout, exceeded rng seed attempts")
-      }
-      val messageTranslator: MessageTranslator = MessageTranslator(List(s1, s2), List(specSpace))
-
-      val s1Enc = toASTState(s1, messageTranslator, maxLen,
-        specSpace = specSpace, negate=false, debug = maxLen.isDefined)
-      mkAssert(mkNot(s1Enc))
-      val s2Enc = toASTState(s2, messageTranslator, maxLen,
-        specSpace = specSpace, negate=false, debug = maxLen.isDefined)
-      mkAssert(s2Enc)
-      val foundCounter =
-        checkSAT(messageTranslator, None, true)
-
-      if (foundCounter && maxLen.isDefined) {
-        printDbgModel(messageTranslator, Set(s1.traceAbstraction,s2.traceAbstraction))
-      }
-      !foundCounter
-    }catch{
-      case e:IllegalArgumentException =>
-        // Note: this didn't seem to help things so currently disabled
-        // sound to say state is not subsumed if we don't know
-        // false
-
-        println("subsumption timeout, canceled or other unknown:")
-        println(s"z3 message: ${e.getLocalizedMessage}")
-        println(s"timeout: ${timeout}")
-        println(s"  s1: ${s1}")
-        println(s"  s1 ɸ_lhs: " +
-          s"${EncodingTools.rhsToPred(s1.traceAbstraction.rightOfArrow,specSpace)
-            .map(pred => pred.toString)
-            .mkString("  &&  ")}")
-        println(s"  s2: ${s2}")
-        println(s"  s2 ɸ_lhs: " +
-          s"${EncodingTools.rhsToPred(s2.traceAbstraction.rightOfArrow,specSpace)
-            .map(pred => pred.toString)
-            .mkString("  &&  ")}")
-        // uncomment to dump serialized timeout states
-        // val s1f = File("s1_timeout.json")
-        // val s2f = File("s2_timeout.json")
-        val s1str = write(s1)
-        val s2str = write(s2)
-        println(s1str)
-        println(s2str)
-        // s1f.write(write(s1))
-        // s2f.write(write(s2))
-        // throw e
-        if (STRICT_TEST)
-          throw new IllegalStateException("Timeout")
-
-        // try 3 times with different random seeds
-        if(rngTry < 2){
-          zCtx.release()
-          canSubsumeZ3(s1i,s2i,specSpace,maxLen,timeout, rngTry+1)
-        }else {
-          println("Giving up and not subsuming.")
-          iDefaultOnSubsumptionTimeout
+    getSolverCtx() { implicit zCtx =>
+      try {
+        if (rngTry > 0) {
+          val rngSeed = rngTry
+          zCtx.asInstanceOf[Z3SolverCtx].overrideTimeoutAndSeed(newTimeout, rngSeed)
+          // on retry, seed RNG with try number for determinism
+          println(s"try again with new random seed: ${rngSeed} and timeout ${newTimeout}")
+        } else if (rngTry < 0) {
+          throw new IllegalStateException("Timeout, exceeded rng seed attempts, failing to subsume due to timeouts!!!")
         }
-    } finally {
-      zCtx.release()
+        val messageTranslator: MessageTranslator = MessageTranslator(List(s1, s2), List(specSpace))
+
+        val s1Enc = toASTState(s1, messageTranslator, maxLen,
+          specSpace = specSpace, negate = false, debug = maxLen.isDefined)
+        mkAssert(mkNot(s1Enc))
+        val s2Enc = toASTState(s2, messageTranslator, maxLen,
+          specSpace = specSpace, negate = false, debug = maxLen.isDefined)
+        mkAssert(s2Enc)
+        val foundCounter =
+          checkSAT(messageTranslator, None, true)
+
+        if (foundCounter && maxLen.isDefined) {
+          printDbgModel(messageTranslator, Set(s1.traceAbstraction, s2.traceAbstraction))
+        }
+        !foundCounter
+      } catch {
+        case e: IllegalArgumentException =>
+          // Note: this didn't seem to help things so currently disabled
+          // sound to say state is not subsumed if we don't know
+          // false
+
+          println("subsumption timeout, canceled or other unknown:")
+          println(s"z3 message: ${e.getLocalizedMessage}")
+          println(s"timeout: ${timeout}")
+          println(s"  s1: ${s1}")
+          println(s"  s1 ɸ_lhs: " +
+            s"${
+              EncodingTools.rhsToPred(s1.traceAbstraction.rightOfArrow, specSpace)
+                .map(pred => pred.toString)
+                .mkString("  &&  ")
+            }")
+          println(s"  s2: ${s2}")
+          println(s"  s2 ɸ_lhs: " +
+            s"${
+              EncodingTools.rhsToPred(s2.traceAbstraction.rightOfArrow, specSpace)
+                .map(pred => pred.toString)
+                .mkString("  &&  ")
+            }")
+          // uncomment to dump serialized timeout states
+          // val s1f = File("s1_timeout.json")
+          // val s2f = File("s2_timeout.json")
+          val s1str = write(s1)
+          val s2str = write(s2)
+          println(s1str)
+          println(s2str)
+          // s1f.write(write(s1))
+          // s2f.write(write(s2))
+          // throw e
+          if (STRICT_TEST)
+            throw new IllegalStateException("Timeout")
+
+          // try 3 times with different random seeds
+          if (rngTry < 2) {
+            zCtx.release()
+            canSubsumeZ3(s1i, s2i, specSpace, maxLen, timeout, rngTry + 1)
+          } else {
+            println("Giving up and not subsuming.")
+            iDefaultOnSubsumptionTimeout
+          }
+      }
     }
   }
 
@@ -1574,9 +1571,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val startTime = System.nanoTime()
     val res:Option[WitnessExplanation] = None
     try {
-      implicit val zCtx = getSolverCtx()
-      val res = traceInAbstraction(pred, specSpace, Trace.empty)
-      res
+      getSolverCtx() { implicit zCtx =>
+        val res = traceInAbstraction(pred, specSpace, Trace.empty)
+        res
+      }
     }finally{
       //if(shouldLogTimes)
       //  getLogger.warn(s"witnessed result: ${res.isDefined} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
@@ -1595,13 +1593,14 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val startTime = System.nanoTime()
     val res:Option[WitnessExplanation] = None
     try {
-      implicit val zCtx = getSolverCtx()
-      if (state.heapConstraints.nonEmpty)
-        return None
-      if (state.callStack.nonEmpty)
-        return None
-      val res = traceInAbstraction(state, specSpace, Trace.empty, debug)
-      res
+      getSolverCtx() {implicit zCtx =>
+        if (state.heapConstraints.nonEmpty)
+          return None
+        if (state.callStack.nonEmpty)
+          return None
+        val res = traceInAbstraction(state, specSpace, Trace.empty, debug)
+        res
+      }
     }finally{
       if(shouldLogTimes)
         getLogger.warn(s"witnessed result: ${res.isDefined} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
@@ -1611,7 +1610,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     ???
     //TODO:trace in abstraction for pred only
     try {
-      zCtx.acquire()
       val messageTranslator = MessageTranslator(???, List(specSpace))
       initializeZeroAxioms(messageTranslator)
       val pvMap: Map[PureVar, T] = encodeTraceContained(???, trace,
@@ -1633,24 +1631,19 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val (stateClean, _) = reducePtRegions(state.inlineConstEq().getOrElse{
       return None
     }, State.topState)
-    try {
-      zCtx.acquire()
-      val messageTranslator = MessageTranslator(List(stateClean), List(specSpace))
-      initializeZeroAxioms(messageTranslator)
-      val pvMap: Map[PureVar, T] = encodeTraceContained(stateClean, trace,
-        messageTranslator = messageTranslator, specSpace = specSpace)
-      val sat = checkSAT(messageTranslator, None, false)
-      if (sat && debug) {
-        println(s"model:\n ${zCtx.asInstanceOf[Z3SolverCtx].solver.toString}")
-        printDbgModel(messageTranslator, Set(stateClean.traceAbstraction))
-      }
-      if (sat) {
-        Some(explainWitness(messageTranslator,(pvMap ++ messageTranslator.getConstMap).toMap))
-      } else {
-        None
-      }
-    }finally{
-      zCtx.release()
+    val messageTranslator = MessageTranslator(List(stateClean), List(specSpace))
+    initializeZeroAxioms(messageTranslator)
+    val pvMap: Map[PureVar, T] = encodeTraceContained(stateClean, trace,
+      messageTranslator = messageTranslator, specSpace = specSpace)
+    val sat = checkSAT(messageTranslator, None, false)
+    if (sat && debug) {
+      println(s"model:\n ${zCtx.asInstanceOf[Z3SolverCtx].solver.toString}")
+      printDbgModel(messageTranslator, Set(stateClean.traceAbstraction))
+    }
+    if (sat) {
+      Some(explainWitness(messageTranslator,(pvMap ++ messageTranslator.getConstMap).toMap))
+    } else {
+      None
     }
   }
 
