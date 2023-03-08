@@ -11,6 +11,7 @@ import scala.collection.mutable
 import scala.sys.process._
 import scala.util.matching.Regex
 import upickle.default.{macroRW, read, write, ReadWriter => RW}
+import scala.collection.parallel.CollectionConverters.IterableIsParallelizable
 
 import scala.jdk.CollectionConverters._
 
@@ -73,7 +74,7 @@ object BounderUtil {
     }
 
     if(result.nonEmpty){
-      (result.map(characterizePath)).reduce(reduceCharacterization)
+      (result.par.map(characterizePath)).reduce(reduceCharacterization)
     } else SingleMethod
   }
 

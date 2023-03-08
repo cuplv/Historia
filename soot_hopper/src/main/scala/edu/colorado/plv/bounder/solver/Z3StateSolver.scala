@@ -22,6 +22,8 @@ import java.io.StringReader
 import scala.collection.immutable
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
+import scala.concurrent.duration._
+import scala.language.postfixOps
 
 case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
   var acquired:Boolean = false
@@ -447,7 +449,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
 
 
   //private val threadLocalCtx = ThreadLocal.withInitial(() => Z3SolverCtx(timeout, randomSeed))
-  private val zctxPool = Pool(10, () => {
+  private val zctxPool = Pool(16, () => {  // look at other low level profiling tools - runlim
       val ctx = Z3SolverCtx(timeout,randomSeed)
       ctx.acquire()
       ctx
@@ -456,6 +458,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
       z.release()
       z.acquire()
     },
+    maxIdleTime = 30 seconds,
     dispose = (z:Z3SolverCtx) => {
       z.dispose()
     }

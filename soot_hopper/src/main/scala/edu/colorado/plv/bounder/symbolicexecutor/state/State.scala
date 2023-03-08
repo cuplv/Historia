@@ -864,7 +864,7 @@ sealed abstract class PureExpr {
   def getVars(s : Set[PureVar] = Set.empty) : Set[PureVar]
 }
 object PureExpr{
-  implicit val rw:RW[PureExpr] = RW.merge(PureVal.rw, PureVar.rw)
+  implicit val rw:RW[PureExpr] = RW.merge(PureVal.rw, PureVar.rw, ConcreteVal.rw)
 }
 
 // primitive values
@@ -889,15 +889,15 @@ sealed abstract class PureVal(v:Any) extends PureExpr with Nameable {
 }
 case object PureVal{
   implicit val rw:RW[PureVal] = RW.merge(
-    macroRW[NullVal.type], macroRW[TopVal.type],
-    macroRW[IntVal],macroRW[BoolVal],macroRW[StringVal], ClassVal.rw)
+    NullVal.rw, macroRW[TopVal.type],
+    IntVal.rw,BoolVal.rw,StringVal.rw, ClassVal.rw, ConcreteAddr.rw)
 }
 
 trait ConcreteVal extends PureVal{
   def pe:PureExpr
 }
 object ConcreteVal{
-  implicit var rw:RW[ConcreteVal] = RW.merge(macroRW[ConcreteAddr], macroRW[NullVal.type])
+  implicit var rw:RW[ConcreteVal] = RW.merge(ConcreteAddr.rw, NullVal.rw)
 }
 //case object T_ extends TVal
 case class ConcreteAddr(i:Int) extends ConcreteVal{
@@ -906,6 +906,9 @@ case class ConcreteAddr(i:Int) extends ConcreteVal{
   override def pe: PureExpr = ???
 
   override def solverName: String = ???
+}
+object ConcreteAddr{
+  implicit val rw:RW[ConcreteAddr] = macroRW
 }
 case object NullVal extends ConcreteVal {
   override def toString:String = "NULL"
@@ -921,12 +924,21 @@ case object NullVal extends ConcreteVal {
 case class IntVal(v : Int) extends PureVal(v){
   override def solverName: String = s"const_I$v"
 }
+object IntVal{
+  implicit val rw:RW[IntVal] = macroRW
+}
 //TODO: is BoolVal ever actually used?
 case class BoolVal(v : Boolean) extends PureVal(v) {
   override def solverName: String = s"const_B$v"
 }
+object BoolVal{
+  implicit val rw:RW[BoolVal] = macroRW
+}
 case class StringVal(v : String) extends PureVal(v) {
   override def solverName: String = s"const_S${v.hashCode}"
+}
+object StringVal{
+  implicit val rw:RW[StringVal] = macroRW
 }
 case class ClassVal(name:String) extends PureVal(name) {
   override def solverName: String = s"C$name"

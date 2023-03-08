@@ -9,7 +9,7 @@ import java.util.Date
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil.{DepthResult, Interrupted, MaxPathCharacterization, Proven, ResultSummary, Timeout, UnknownCharacterization, Unreachable, Witnessed, characterizeMaxPath}
 import edu.colorado.plv.bounder.Driver.{Default, LocResult, RunMode, modeToString}
-import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, InternalMethodInvoke, InternalMethodReturn, JimpleMethodLoc, Loc, MethodLoc, SerializedIRLineLoc, SerializedIRMethodLoc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper}
+import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, InternalMethodInvoke, InternalMethodReturn, JimpleMethodLoc, Loc, MethodLoc, SerializedIRLineLoc, SerializedIRMethodLoc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper, WitnessExplanation}
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSConstraint, LSSpec, LSTrue, OAbsMsg, Signature}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
@@ -285,7 +285,8 @@ object Driver {
   // [qry,id,loc, res, time]
   case class LocResult(q: InitialQuery, sqliteId: Int, loc: Loc, resultSummary: ResultSummary,
                        maxPathCharacterization: MaxPathCharacterization, time: Long,
-                       depthChar: BounderUtil.DepthResult, witnesses: List[List[String]])
+                       depthChar: BounderUtil.DepthResult, witnesses: List[List[String]],
+                       witnessExplanation: List[WitnessExplanation])
 
   object LocResult {
     implicit var rw: RW[LocResult] = macroRW
@@ -632,12 +633,18 @@ object Driver {
               case MemoryOutputMode => true
               case DBOutputMode(_) => true
             }
+            val allTerm = groupedResults.flatMap{res => res.terminals}
             if (printWit) {
-              pp.dumpDebugInfo(groupedResults.flatMap{res => res.terminals}, "wit", outDir = outDir)(mode)
+              pp.dumpDebugInfo(allTerm, "wit", outDir = outDir)(mode)
+            }
+            val traceWitnesses: Set[WitnessExplanation] = allTerm.flatMap {
+              case PathNode(Qry(_,_,WitnessedQry(explanation)), false) =>
+                explanation
+              case _ => None
             }
 
             LocResult(initialQuery, id, loc, res, characterizedMaxPath, finalTime,
-              depthChar, witnesses = live ++ witnessed)
+              depthChar, witnesses = live ++ witnessed, traceWitnesses.toList)
           }.toList
           grouped
         }catch {
@@ -648,7 +655,8 @@ object Driver {
               resultSummary= Interrupted("OutOfMemoryError"),
               maxPathCharacterization = UnknownCharacterization,
               time = (System.nanoTime() - startTime)/1000000000,
-              depthChar = DepthResult(-1,-1,-1, Interrupted("OutOfMemoryError")), witnesses = Nil
+              depthChar = DepthResult(-1,-1,-1, Interrupted("OutOfMemoryError")), witnesses = Nil,
+              witnessExplanation = Nil
             ))
           case e:Throwable =>
             e.printStackTrace(new PrintWriter(System.err))
@@ -657,12 +665,13 @@ object Driver {
               resultSummary = Interrupted(e.toString),
               maxPathCharacterization = UnknownCharacterization,
               time = (System.nanoTime() - startTime) / 1000000000,
-              depthChar = DepthResult(-1, -1, -1, Interrupted(e.toString)), witnesses = Nil
+              depthChar = DepthResult(-1, -1, -1, Interrupted(e.toString)), witnesses = Nil,
+              witnessExplanation = Nil
             ))
         }
       }
     } finally {
-      println(s"analysis time(ms): ${(System.nanoTime() - startTime) / 1000.0}")
+      println(s"analysis time(ms): ${(System.nanoTime() - startTime)}")
     }
 
   }
