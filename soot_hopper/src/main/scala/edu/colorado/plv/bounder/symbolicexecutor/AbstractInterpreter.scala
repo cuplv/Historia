@@ -9,7 +9,7 @@ import edu.colorado.plv.bounder.solver.EncodingTools.repHeapCells
 import edu.colorado.plv.bounder.solver.{EncodingTools, StateSolver, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, BottomQry, CallStackFrame, DBOutputMode, FieldPtEdge, FrameworkLocation, HashableStateFormula, HeapPtEdge, IPathNode, InitialQuery, Live, MemoryOutputMode, NPureVar, NoOutputMode, OrdCount, OutputMode, PathNode, PureExpr, Qry, State, StaticPtEdge, SubsumableLocation, SwapLoc, WitnessedQry}
 
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import scala.collection.parallel.immutable.ParIterable
 import scala.annotation.tailrec
 import upickle.default._
@@ -387,17 +387,17 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
       refutedSubsumedOrWitnessed
     } else {
 
-      if (config.printAAProgress) {
-        println(s"executeBackwardConc qry set size: ${qrySet.size}")
-        qrySet.foreach { (current: IPathNode) =>
-          println("Framework location query")
-          println(s"    State: ${current.qry.state}")
-          println(s"    Loc  : ${current.qry.loc}")
-          println(s"    depth: ${current.depth}")
-          println(s"    size of worklist: ${qrySet.size}")
-          println(s"    ord depth: ${current.ordDepth}")
-        }
-      }
+//      if (config.printAAProgress) {
+//        println(s"executeBackwardConc qry set size: ${qrySet.size}")
+//        qrySet.foreach { (current: IPathNode) =>
+//          println("Framework location query")
+//          println(s"    State: ${current.qry.state}")
+//          println(s"    Loc  : ${current.qry.loc}")
+//          println(s"    depth: ${current.depth}")
+//          println(s"    size of worklist: ${qrySet.size}")
+//          println(s"    ord depth: ${current.ordDepth}")
+//        }
+//      }
 
       def reduceTup(v1: (Set[QueryInterruptedException], Set[IPathNode]),
                     v2: (Set[QueryInterruptedException], Set[IPathNode])):
@@ -432,9 +432,16 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
             (exn, e.terminals)
         }
       }
-
+      val futureCount = new AtomicInteger(qrySet.size)
       val futures: Seq[Future[(Set[QueryInterruptedException], Set[IPathNode])]] = qrySetSorted.map{qry =>
         Future{
+          if (config.printAAProgress) {
+            println(s"remaining tasks: ${futureCount.decrementAndGet()} / ${qrySet.size}")
+            println(s"    ord depth: ${qry.ordDepth}")
+            println(s"    State: ${qry.state}")
+            println(s"    Loc  : ${qry.qry.loc}")
+            println(s"    Method  : ${qry.qry.loc.containingMethod}")
+          }
           processNode(qry)
         }
       }
