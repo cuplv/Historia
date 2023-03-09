@@ -4,12 +4,12 @@ import better.files.Dsl.SymbolicOperations
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{DepthResult, Proven, Timeout, Witnessed, interpretResult}
-import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, SootWrapper, MessageType}
+import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType, SootWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, Signature}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.{row1Specs, row2Specs, row4Specs, row5Specs}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{CallinReturnNonNull, DBOutputMode, DisallowedCallin, IPathNode, MemoryOutputMode, PrettyPrinting, Reachable, ReceiverNonNull}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{CallinReturnNonNull, DBOutputMode, DisallowedCallin, IPathNode, MemoryOutputMode, NoOutputMode, PrettyPrinting, Reachable, ReceiverNonNull}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.BeforeAndAfter
@@ -726,7 +726,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
              |import android.view.View.OnClickListener;
              |
              |
-             |public class MyActivity extends Activity implements Runnable {
+             |public class MyActivity extends Activity {
              |    String s = null;
              |    View v = null;
              |    @Override
@@ -738,13 +738,15 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
              |             s.toString(); // query1
              |           }
              |        });
-             |        (new Handler()).postDelayed(this, 3000);
+             |        (new Handler()).postDelayed(new Runnable(){
+             |             @Override
+             |             public void run(){
+             |               MyActivity.this.finish();
+             |               ${disableClick}
+             |             }
+             |        }, 3000);
              |    }
-             |    @Override
-             |    public void run(){
-             |      MyActivity.this.finish();
-             |      ${disableClick}
-             |    }
+             |
              |    @Override
              |    protected void onResume() {
              |        s = "";
@@ -761,9 +763,9 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
             assert(apk != null)
             val dbFile = tmpDir / "paths.db"
             println(dbFile)
-            // implicit val dbMode = DBOutputMode(dbFile.toString, truncate = false)
-            // dbMode.startMeta()
-            implicit val dbMode = MemoryOutputMode
+//            implicit val dbMode = DBOutputMode(dbFile.toString)
+//            dbMode.startMeta()
+            implicit val dbMode = NoOutputMode
 
             //            implicit val dbMode = MemoryOutputMode
             //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
@@ -771,7 +773,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
 
             val specSpace = new SpecSpace(row4Specs)
             val config = ExecutorConfig(
-              stepLimit = 2000, w, specSpace,
+              stepLimit = 90000, w, specSpace, timeLimit = (1800 * 2), //TODO: bump back to 30 after test
               component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode,
               printAAProgress = true)
             val symbolicExecutor = config.getAbstractInterpreter
@@ -800,7 +802,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
               if(expected == Timeout)
                 assert(depthInfo.cbDepth > 4)
               println(s"Row 4 depth: ${depthInfo}")
-              //dbFile.copyTo(File(s"/Users/shawnmeier/Desktop/Row4_${fileSuffix}.db"),true)
+              //dbFile.copyTo(File(s"/home/s/Desktop/Row4_Conc_30min_${fileSuffix}.db"),true)
               logger.warn(s"Row 4 expected: ${expected} actual: ${interpretedResult}")
               logger.warn(s"Row 4 ${expected} time(µs): ${(System.nanoTime() - startTime)/1000.0}")
             }else{

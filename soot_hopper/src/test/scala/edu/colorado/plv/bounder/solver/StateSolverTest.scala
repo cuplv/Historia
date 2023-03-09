@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.solver
 import better.files.{File, Resource}
 import com.microsoft.z3._
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Forall, FreshRef, LSConstraint, LSFalse, LSPred, LSSpec, LSTrue, NS, Not, Or, Signature, SignatureMatcher, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Forall, FreshRef, LSConstraint, LSFalse, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, Signature, SignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LSExpParser, LifecycleSpec, RxJavaSpec, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs
 import edu.colorado.plv.bounder.symbolicexecutor.state._
@@ -118,12 +118,12 @@ class StateSolverTest extends FixtureAnyFunSuite {
         (s1, s2, spec) => {
           //val s1simp = stateSolver.simplify(s1,spec).get
           //val s2simp = stateSolver.simplify(s2,spec).get
-          println("Subsumption mode Z3")
+          //println("Subsumption mode Z3")
           val start = System.nanoTime()
           val res = stateSolver.canSubsume(s1, s2, spec)
           val end = System.nanoTime()
           val totTime = (end - start)/1.0e9
-          println(s"total time: ${totTime} seconds")
+          //println(s"total time: ${totTime} seconds")
           if(totTime < MAX_SOLVER_TIME)
             res
           else
@@ -194,7 +194,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
         ???
     }}
   }
-  ignore("LOAD: test to debug subsumption issues by loading serialized states"){f => //TODO===== disable test later
+  ignore("LOAD: test to debug subsumption issues by loading serialized states"){f =>
     // Note: leave ignored unless debugging, this test is just deserializing states to inspect
     val stateSolver = f.stateSolver
     val spec1 = new SpecSpace(
@@ -221,9 +221,9 @@ class StateSolverTest extends FixtureAnyFunSuite {
       //            LifecycleSpec.Activity_createdOnlyFirst
     ))
     List(
-      (new SpecSpace(ExperimentSpecs.row4Specs),
-        "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/s1.json",
-        "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/s2.json",
+      (new SpecSpace(ExperimentSpecs.row2Specs),
+        "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/s1_ex.json",
+        "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/s2_ex.json",
         (v:Boolean) =>{
           ???
         }),
@@ -715,24 +715,25 @@ class StateSolverTest extends FixtureAnyFunSuite {
   ignore("Not I(a.foo) |> a.foo does not contain empty trace"){ f =>
     //TODO: |>
     val stateSolver = f.stateSolver
-    implicit val zctx = stateSolver.getSolverCtx()
+    stateSolver.getSolverCtx() { implicit zCtx =>
 
-    // Lifestate atoms for next few tests
-    val foo_a = AbsMsg(CBEnter, Set(("", "foo")), a :: Nil)
-    val foo_b = AbsMsg(CBEnter, Set(("", "foo")), b :: Nil)
-    val bar_a = AbsMsg(CBEnter, Set(("", "bar")), a :: Nil)
+      // Lifestate atoms for next few tests
+      val foo_a = AbsMsg(CBEnter, Set(("", "foo")), a :: Nil)
+      val foo_b = AbsMsg(CBEnter, Set(("", "foo")), b :: Nil)
+      val bar_a = AbsMsg(CBEnter, Set(("", "bar")), a :: Nil)
 
-    val niaa = AbstractTrace(Not(foo_a), foo_b::Nil, Map(a->p1, b->p2))
-    val state = State(StateFormula(Nil,Map(),Set(PureConstraint(p1, Equals, p2)),Map(), niaa),0)
-    val contains = stateSolver.traceInAbstraction(state,esp, Trace.empty )
-    assert(contains.isEmpty)
+      val niaa = AbstractTrace(Not(foo_a), foo_b :: Nil, Map(a -> p1, b -> p2))
+      val state = State(StateFormula(Nil, Map(), Set(PureConstraint(p1, Equals, p2)), Map(), niaa), 0)
+      val contains = stateSolver.traceInAbstraction(state, esp, Trace.empty)
+      assert(contains.isEmpty)
 
-    val niaa2 = AbstractTrace(Or(Not(foo_a),bar_a), foo_b::Nil, Map(a->p1))
-    val state2 = State(StateFormula(Nil,Map(),Set(),Map(), niaa2),0)
-    val simpl = stateSolver.simplify(state2,esp)
-    assert(simpl.isDefined)
-    val contains2 = stateSolver.traceInAbstraction(state2,esp, Trace.empty)
-    assert(contains2.isDefined)
+      val niaa2 = AbstractTrace(Or(Not(foo_a), bar_a), foo_b :: Nil, Map(a -> p1))
+      val state2 = State(StateFormula(Nil, Map(), Set(), Map(), niaa2), 0)
+      val simpl = stateSolver.simplify(state2, esp)
+      assert(simpl.isDefined)
+      val contains2 = stateSolver.traceInAbstraction(state2, esp, Trace.empty)
+      assert(contains2.isDefined)
+    }
   }
 
 
@@ -1690,26 +1691,25 @@ class StateSolverTest extends FixtureAnyFunSuite {
 
   test("Trace contained in abstraction") { f =>
     val stateSolver = f.stateSolver
-    implicit val zCTX: Z3SolverCtx = stateSolver.getSolverCtx()
 
     val foo = FwkMethod(Signature("foo", "()"))
     val bar = FwkMethod(Signature("bar", "()"))
 
-    val i_foo_x = AbsMsg(CIEnter, Set(("foo","\\(\\)"),("foo2","\\(\\)")), x::Nil)
-    val i_foo_y = AbsMsg(CIEnter, Set(("foo","\\(\\)"),("foo2","\\(\\)")), y::Nil)
-    val i_bar_x = AbsMsg(CIEnter, Set(("bar","\\(\\)"),("bar2","\\(\\)")), x::Nil)
-    val i_bar_y = AbsMsg(CIEnter, Set(("bar","\\(\\)"),("bar2","\\(\\)")), y::Nil)
+    val i_foo_x = AbsMsg(CIEnter, Set(("foo", "\\(\\)"), ("foo2", "\\(\\)")), x :: Nil)
+    val i_foo_y = AbsMsg(CIEnter, Set(("foo", "\\(\\)"), ("foo2", "\\(\\)")), y :: Nil)
+    val i_bar_x = AbsMsg(CIEnter, Set(("bar", "\\(\\)"), ("bar2", "\\(\\)")), x :: Nil)
+    val i_bar_y = AbsMsg(CIEnter, Set(("bar", "\\(\\)"), ("bar2", "\\(\\)")), y :: Nil)
     val trace = Trace(List(
-      TMessage(CIEnter, foo, ConcreteAddr(1)::Nil),
-      TMessage(CIEnter, bar, ConcreteAddr(1)::Nil)
+      TMessage(CIEnter, foo, ConcreteAddr(1) :: Nil),
+      TMessage(CIEnter, bar, ConcreteAddr(1) :: Nil)
     ))
 
     val ni_foo_x_bar_x = NS(i_foo_x, i_bar_x)
     val ni_bar_x_foo_x = NS(i_bar_x, i_foo_x)
-    val targetFoo_x = AbsMsg(CIExit, Set(("","targetFoo\\(\\)")), x::Nil)
-    val targetFoo_y = AbsMsg(CIExit, Set(("","targetFoo\\(\\)")), y::Nil)
+    val targetFoo_x = AbsMsg(CIExit, Set(("", "targetFoo\\(\\)")), x :: Nil)
+    val targetFoo_y = AbsMsg(CIExit, Set(("", "targetFoo\\(\\)")), y :: Nil)
     val spec = new SpecSpace(Set(
-      LSSpec(x::Nil, Nil, i_foo_x, targetFoo_x)
+      LSSpec(x :: Nil, Nil, i_foo_x, targetFoo_x)
     ))
     val pv1 = PureVar(1)
     val pv2 = PureVar(2)
@@ -1717,216 +1717,259 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val stIFooX = state.copy(
       sf = state.sf.copy(traceAbstraction = AbstractTrace(targetFoo_y :: Nil),
         pureFormula = state.pureFormula ++ mapToPure(Map(y -> pv1))))
-    assert(stateSolver.traceInAbstraction(
-      stIFooX,spec,
-      trace).isDefined)
-    //TODO: failing for some reason, possibly due to trace contained negation problem
-    //assert(!stateSolver.traceInAbstraction(stIFooX,spec,trace,negate = true, debug = true))
 
-    // I(x.foo()) ! models empty
-    assert(stateSolver.traceInAbstraction(
-      stIFooX,spec,
-      Trace.empty).isEmpty)
-    //TODO: negation issue
-    //assert(stateSolver.traceInAbstraction(stIFooX,spec,Nil, negate = true))
+    stateSolver.getSolverCtx() { implicit zCtx =>
+      assert(stateSolver.traceInAbstraction(
+        stIFooX, spec,
+        trace).isDefined)
+    }
+      //TODO: failing for some reason, possibly due to trace contained negation problem
+      //assert(!stateSolver.traceInAbstraction(stIFooX,spec,trace,negate = true, debug = true))
+
+    stateSolver.getSolverCtx() { implicit zCtx =>
+      // I(x.foo()) ! models empty
+      assert(stateSolver.traceInAbstraction(
+        stIFooX, spec,
+        Trace.empty).isEmpty)
+      //TODO: negation issue
+      //assert(stateSolver.traceInAbstraction(stIFooX,spec,Nil, negate = true))
+    }
 
     val specNotFoo = new SpecSpace(Set(
-      LSSpec(x::Nil, Nil, Not(i_foo_x), targetFoo_x)
+      LSSpec(x :: Nil, Nil, Not(i_foo_x), targetFoo_x)
     ))
-    // not I(x.foo()) models empty
-    assert(stateSolver.traceInAbstraction(
-      state = stIFooX,
-      specNotFoo,
-      trace = Trace.empty
-    ).isDefined)
+
+    stateSolver.getSolverCtx() { implicit zCtx =>
+      // not I(x.foo()) models empty
+      assert(stateSolver.traceInAbstraction(
+        state = stIFooX,
+        specNotFoo,
+        trace = Trace.empty
+      ).isDefined)
+    }
 
 
-    // not I(x.foo()) or I(x.bar()) models empty
+      // not I(x.foo()) or I(x.bar()) models empty
 
     val spec_NotFoo_OrBar = new SpecSpace(Set(
-      LSSpec(x::Nil, Nil,Or(Not(i_foo_x), i_bar_x), targetFoo_x)
+      LSSpec(x :: Nil, Nil, Or(Not(i_foo_x), i_bar_x), targetFoo_x)
     ))
-    assert(stateSolver.traceInAbstraction(
-      state = stIFooX,
-      spec_NotFoo_OrBar ,
-      trace = Trace.empty
-    ).isDefined)
 
-    val spec_NiFooBar = new SpecSpace(Set(
-      LSSpec(x::Nil, Nil, ni_foo_x_bar_x, targetFoo_x)
-    ))
-    assert(stateSolver.traceInAbstraction(
-      state = stIFooX,
-      spec_NiFooBar,
-      trace = Trace.empty
-    ).isEmpty)
-
-
-    // NI(x.foo(), x.bar()) ! models @1.foo();@1.bar()
-    assert(stateSolver.traceInAbstraction(
-      state = stIFooX,
-      spec_NiFooBar,
-      trace = trace,
-      debug=true
-    ).isEmpty)
-
-    // empty(trace) models NI(x.foo(),x.bar()) |> x.foo()
-    val res = stateSolver.traceInAbstraction(
-      st(AbstractTrace(i_foo_y::targetFoo_y::Nil), Map(y->pv1)),
-      spec_NiFooBar,
-      Trace.empty
-    )
-    assert(res.isDefined)
-
-    //@1.bar() models NI(x.foo(),x.bar()) |> x.foo()
-    assert(
-      stateSolver.traceInAbstraction(
-        st(AbstractTrace(i_foo_y::targetFoo_y::Nil),Map(y->pv1)),
-        spec_NiFooBar,
-        Trace(TMessage(CIEnter, bar, ConcreteAddr(1)::Nil)::Nil)
+    stateSolver.getSolverCtx() { implicit zCtx =>
+      assert(stateSolver.traceInAbstraction(
+        state = stIFooX,
+        spec_NotFoo_OrBar,
+        trace = Trace.empty
       ).isDefined)
+    }
 
-    // NI(x.foo(),x.bar()) |> x.foo() models @1.foo();@1.bar()
-    assert(
-      stateSolver.traceInAbstraction(
-        st(AbstractTrace(i_foo_y::targetFoo_y::Nil),Map(y->pv1)),
-        spec_NiFooBar,
-        trace
-      ).isDefined)
+      val spec_NiFooBar = new SpecSpace(Set(
+        LSSpec(x :: Nil, Nil, ni_foo_x_bar_x, targetFoo_x)
+      ))
 
-    // NI(x.foo(),x.bar()) |> x.bar() ! models empty
-    assert(
-      stateSolver.traceInAbstraction(
-        st(AbstractTrace(i_bar_y::targetFoo_y::Nil),Map(y->pv1)),
+    stateSolver.getSolverCtx() { implicit zCtx =>
+      assert(stateSolver.traceInAbstraction(
+        state = stIFooX,
         spec_NiFooBar,
-        trace
+        trace = Trace.empty
       ).isEmpty)
+    }
 
-    // Not NI(x.foo(), x.bar())  models @1.foo();@1.bar()
-    val spec_not_NiFooBar = new SpecSpace(Set(
-      LSSpec(x::Nil, Nil, Or(ni_bar_x_foo_x, Not(i_bar_x)), targetFoo_x)
-    ))
-    assert(
-      stateSolver.traceInAbstraction(
-        st(AbstractTrace(targetFoo_y::Nil),Map(y->pv1)),
-        spec_not_NiFooBar,
-        trace
-      ).isDefined)
-//    assert(
-//      stateSolver.traceInAbstraction(
-//        state.copy(sf = state.sf.copy(traceAbstraction = Set(AbstractTrace(Not(ni_foo_x_bar_x), Nil,Map())))),esp,
-//        trace
-//      ))
+
+    stateSolver.getSolverCtx() { implicit zCtx =>
+      // NI(x.foo(), x.bar()) ! models @1.foo();@1.bar()
+      assert(stateSolver.traceInAbstraction(
+        state = stIFooX,
+        spec_NiFooBar,
+        trace = trace,
+        debug = true
+      ).isEmpty)
+    }
+
+    stateSolver.getSolverCtx() { implicit zCtx =>
+      // empty(trace) models NI(x.foo(),x.bar()) |> x.foo()
+      val res = stateSolver.traceInAbstraction(
+        st(AbstractTrace(i_foo_y :: targetFoo_y :: Nil), Map(y -> pv1)),
+        spec_NiFooBar,
+        Trace.empty
+      )
+      assert(res.isDefined)
+    }
+
+    stateSolver.getSolverCtx() { implicit zCtx =>
+      //@1.bar() models NI(x.foo(),x.bar()) |> x.foo()
+      assert(
+        stateSolver.traceInAbstraction(
+          st(AbstractTrace(i_foo_y :: targetFoo_y :: Nil), Map(y -> pv1)),
+          spec_NiFooBar,
+          Trace(TMessage(CIEnter, bar, ConcreteAddr(1) :: Nil) :: Nil)
+        ).isDefined)
+    }
+
+    stateSolver.getSolverCtx() { implicit zCtx =>
+      // NI(x.foo(),x.bar()) |> x.foo() models @1.foo();@1.bar()
+      assert(
+        stateSolver.traceInAbstraction(
+          st(AbstractTrace(i_foo_y :: targetFoo_y :: Nil), Map(y -> pv1)),
+          spec_NiFooBar,
+          trace
+        ).isDefined)
+    }
+
+    stateSolver.getSolverCtx() { implicit zCtx =>
+      // NI(x.foo(),x.bar()) |> x.bar() ! models empty
+      assert(
+        stateSolver.traceInAbstraction(
+          st(AbstractTrace(i_bar_y :: targetFoo_y :: Nil), Map(y -> pv1)),
+          spec_NiFooBar,
+          trace
+        ).isEmpty)
+    }
+
+    stateSolver.getSolverCtx() { implicit zCtx =>
+      // Not NI(x.foo(), x.bar())  models @1.foo();@1.bar()
+      val spec_not_NiFooBar = new SpecSpace(Set(
+        LSSpec(x :: Nil, Nil, Or(ni_bar_x_foo_x, Not(i_bar_x)), targetFoo_x)
+      ))
+      assert(
+        stateSolver.traceInAbstraction(
+          st(AbstractTrace(targetFoo_y :: Nil), Map(y -> pv1)),
+          spec_not_NiFooBar,
+          trace
+        ).isDefined)
+    }
+    //    assert(
+    //      stateSolver.traceInAbstraction(
+    //        state.copy(sf = state.sf.copy(traceAbstraction = Set(AbstractTrace(Not(ni_foo_x_bar_x), Nil,Map())))),esp,
+    //        trace
+    //      ))
 
     // I(foo(x,y)) models foo(@1,@2)
-    val i_foo_x_y = AbsMsg(CIEnter, Set(("foo","\\(\\)"),("foo2","\\(\\)")), x::y::Nil)
-    val targetFoo_x_y = AbsMsg(CIExit, Set(("","targetFoo\\(\\)")), x::y::Nil)
-    val targetFoo_a_b = AbsMsg(CIExit, Set(("","targetFoo\\(\\)")), a::b::Nil)
+    val i_foo_x_y = AbsMsg(CIEnter, Set(("foo", "\\(\\)"), ("foo2", "\\(\\)")), x :: y :: Nil)
+    val targetFoo_x_y = AbsMsg(CIExit, Set(("", "targetFoo\\(\\)")), x :: y :: Nil)
+    val targetFoo_a_b = AbsMsg(CIExit, Set(("", "targetFoo\\(\\)")), a :: b :: Nil)
     val spec_Foo_x_y = new SpecSpace(Set(
-      LSSpec(x::y::Nil, Nil, i_foo_x_y, targetFoo_x_y)
+      LSSpec(x :: y :: Nil, Nil, i_foo_x_y, targetFoo_x_y)
     ))
-    assert(
-      stateSolver.traceInAbstraction(
-        st(AbstractTrace(targetFoo_a_b::Nil),Map(a->pv1,b->pv2)),
-        spec_Foo_x_y,
-        trace = Trace(TMessage(CIEnter, foo, ConcreteAddr(1)::ConcreteAddr(2)::Nil)::Nil)
-      ).isDefined
-    )
+
+    stateSolver.getSolverCtx() { implicit zCtx =>
+      assert(
+        stateSolver.traceInAbstraction(
+          st(AbstractTrace(targetFoo_a_b :: Nil), Map(a -> pv1, b -> pv2)),
+          spec_Foo_x_y,
+          trace = Trace(TMessage(CIEnter, foo, ConcreteAddr(1) :: ConcreteAddr(2) :: Nil) :: Nil)
+        ).isDefined
+      )
+    }
 
     // foo(@1,@2);bar(@1,@2) !models [¬I(foo(x,y))] /\ I(bar(x,y))
-    val i_bar_x_y = AbsMsg(CIEnter, Set(("bar",""),("bar2","")), x::y::Nil)
+    val i_bar_x_y = AbsMsg(CIEnter, Set(("bar", ""), ("bar2", "")), x :: y :: Nil)
     val spec_NotFoo_Bar_x_y = new SpecSpace(Set(
-      LSSpec(x::y::Nil, Nil,And(Not(i_foo_x_y), i_bar_x_y), targetFoo_x_y)
+      LSSpec(x :: y :: Nil, Nil, And(Not(i_foo_x_y), i_bar_x_y), targetFoo_x_y)
     ))
-    assert(
-      stateSolver.traceInAbstraction(
-        st(AbstractTrace(targetFoo_a_b::Nil),Map(a->pv1,b->pv2)),
-        spec_NotFoo_Bar_x_y,
-        Trace(List(
-          TMessage(CIEnter, foo, ConcreteAddr(1)::ConcreteAddr(2)::Nil),
-          TMessage(CIEnter, bar, ConcreteAddr(1)::ConcreteAddr(2)::Nil)
-        ))
-      ).isEmpty
-    )
 
-    // foo(@1,@2);bar(@1,@1) models [¬I(foo(x,y))] /\ I(bar(x,y))
-    assert(
-      stateSolver.traceInAbstraction(
-        st(AbstractTrace(targetFoo_a_b::Nil),Map(a->pv1,b->pv2)),
-        spec_NotFoo_Bar_x_y,
-        Trace(List(
-          TMessage(CIEnter, foo, ConcreteAddr(1)::ConcreteAddr(2)::Nil),
-          TMessage(CIEnter, bar, ConcreteAddr(1)::ConcreteAddr(1)::Nil)
-        ))
-      ).isDefined
-    )
+    stateSolver.getSolverCtx() { implicit zCtx =>
+      assert(
+        stateSolver.traceInAbstraction(
+          st(AbstractTrace(targetFoo_a_b :: Nil), Map(a -> pv1, b -> pv2)),
+          spec_NotFoo_Bar_x_y,
+          Trace(List(
+            TMessage(CIEnter, foo, ConcreteAddr(1) :: ConcreteAddr(2) :: Nil),
+            TMessage(CIEnter, bar, ConcreteAddr(1) :: ConcreteAddr(2) :: Nil)
+          ))
+        ).isEmpty
+      )
+    }
+
+    stateSolver.getSolverCtx() { implicit zCtx =>
+      // foo(@1,@2);bar(@1,@1) models [¬I(foo(x,y))] /\ I(bar(x,y))
+      assert(
+        stateSolver.traceInAbstraction(
+          st(AbstractTrace(targetFoo_a_b :: Nil), Map(a -> pv1, b -> pv2)),
+          spec_NotFoo_Bar_x_y,
+          Trace(List(
+            TMessage(CIEnter, foo, ConcreteAddr(1) :: ConcreteAddr(2) :: Nil),
+            TMessage(CIEnter, bar, ConcreteAddr(1) :: ConcreteAddr(1) :: Nil)
+          ))
+        ).isDefined
+      )
+    }
 
     // I(foo(y,y) !models foo(@1,@2)
-    val i_foo_y_y = AbsMsg(CIEnter, Set(("foo","\\(\\)"),("foo2","\\(\\)")), y::y::Nil)
-    val targetFoo_y_y = AbsMsg(CIExit, Set(("","targetFoo\\(\\)")), y::y::Nil)
-    val targetFoo_a_a = AbsMsg(CIExit, Set(("","targetFoo\\(\\)")), a::a::Nil)
+    val i_foo_y_y = AbsMsg(CIEnter, Set(("foo", "\\(\\)"), ("foo2", "\\(\\)")), y :: y :: Nil)
+    val targetFoo_y_y = AbsMsg(CIExit, Set(("", "targetFoo\\(\\)")), y :: y :: Nil)
+    val targetFoo_a_a = AbsMsg(CIExit, Set(("", "targetFoo\\(\\)")), a :: a :: Nil)
     val spec_Foo_y_y = new SpecSpace(Set(
-      LSSpec(x::y::Nil, Nil, i_foo_y_y, targetFoo_x_y)
+      LSSpec(x :: y :: Nil, Nil, i_foo_y_y, targetFoo_x_y)
     ))
-    assert(
-      stateSolver.traceInAbstraction(
-        st(AbstractTrace(targetFoo_a_a::Nil),Map(a -> PureVar(1))),
-        spec_Foo_y_y,
-        trace = Trace(TMessage(CIEnter, foo, ConcreteAddr(1)::ConcreteAddr(2)::Nil)::Nil),
-        debug = true
-      ).isEmpty
-    )
 
-    // I(foo(y,y) models foo(@2,@2)
-    assert(
-      stateSolver.traceInAbstraction(
-        st(AbstractTrace(targetFoo_a_b::Nil),Map(a->pv1, b->pv2)),
-        spec_Foo_y_y,
-        trace = Trace(TMessage(CIEnter, foo, ConcreteAddr(2)::ConcreteAddr(2)::Nil)::Nil)
-      ).isDefined
-    )
+    stateSolver.getSolverCtx() { implicit zCtx =>
+      assert(
+        stateSolver.traceInAbstraction(
+          st(AbstractTrace(targetFoo_a_a :: Nil), Map(a -> PureVar(1))),
+          spec_Foo_y_y,
+          trace = Trace(TMessage(CIEnter, foo, ConcreteAddr(1) :: ConcreteAddr(2) :: Nil) :: Nil),
+          debug = true
+        ).isEmpty
+      )
+    }
+
+    stateSolver.getSolverCtx() { implicit zCtx =>
+      // I(foo(y,y) models foo(@2,@2)
+      assert(
+        stateSolver.traceInAbstraction(
+          st(AbstractTrace(targetFoo_a_b :: Nil), Map(a -> pv1, b -> pv2)),
+          spec_Foo_y_y,
+          trace = Trace(TMessage(CIEnter, foo, ConcreteAddr(2) :: ConcreteAddr(2) :: Nil) :: Nil)
+        ).isDefined
+      )
+    }
   }
   test("app mem restricted trace contained"){f =>
     val stateSolver = f.stateSolver
-    implicit val zCTX: Z3SolverCtx = stateSolver.getSolverCtx()
 
     val pv1 = PureVar(1)
     val pv2 = PureVar(2)
     val foo = FwkMethod(Signature("foo", "()"))
     val bar = FwkMethod(Signature("bar", "()"))
 
-    val i_foo_x = AbsMsg(CIEnter, Set(("foo","\\(\\)"),("foo2","\\(\\)")), x::Nil)
-    val i_bar_x = AbsMsg(CIEnter, Set(("bar","\\(\\)"),("bar2","\\(\\)")), x::Nil)
-    val targetFoo_x_y = AbsMsg(CIExit, Set(("","targetFoo\\(\\)")), x::y::Nil)
-    val targetFoo_a_b = AbsMsg(CIExit, Set(("","targetFoo\\(\\)")), a::b::Nil)
+    val i_foo_x = AbsMsg(CIEnter, Set(("foo", "\\(\\)"), ("foo2", "\\(\\)")), x :: Nil)
+    val i_bar_x = AbsMsg(CIEnter, Set(("bar", "\\(\\)"), ("bar2", "\\(\\)")), x :: Nil)
+    val targetFoo_x_y = AbsMsg(CIExit, Set(("", "targetFoo\\(\\)")), x :: y :: Nil)
+    val targetFoo_a_b = AbsMsg(CIExit, Set(("", "targetFoo\\(\\)")), a :: b :: Nil)
     val trace = Trace(List(
-      TMessage(CIEnter, foo, ConcreteAddr(1)::Nil),
-      TMessage(CIEnter, bar, ConcreteAddr(1)::Nil)
+      TMessage(CIEnter, foo, ConcreteAddr(1) :: Nil),
+      TMessage(CIEnter, bar, ConcreteAddr(1) :: Nil)
     ))
     val spec = new SpecSpace(Set(
-      LSSpec(x::y::Nil, Nil, NS(i_foo_x, i_bar_x), targetFoo_x_y,
+      LSSpec(x :: y :: Nil, Nil, NS(i_foo_x, i_bar_x), targetFoo_x_y,
         Set(LSConstraint(x, Equals, NullVal))),
-      LSSpec(x::y::Nil, Nil, LSTrue, targetFoo_x_y, Set(LSConstraint(x, NotEquals, NullVal)))
+      LSSpec(x :: y :: Nil, Nil, LSTrue, targetFoo_x_y, Set(LSConstraint(x, NotEquals, NullVal)))
     ))
-    val stateNull = st(AbstractTrace(targetFoo_a_b::Nil), Map(a->pv1, b->pv2))
+    val stateNull = st(AbstractTrace(targetFoo_a_b :: Nil), Map(a -> pv1, b -> pv2))
       .addPureConstraint(PureConstraint(pv1, Equals, NullVal))
 
-    val simplStateNull = stateSolver.simplify(stateNull,spec)
-    println(simplStateNull)
-    val resIsNull = stateSolver.traceInAbstraction(
-      stateNull,
-      spec,
-      trace
-    )
-    assert(
-      resIsNull.isEmpty
-    )
-    val resNonNull = stateSolver.traceInAbstraction(
-      stateNull.copy(sf = stateNull.sf.copy(pureFormula = Set(PureConstraint(pv1, NotEquals, NullVal)))),
-      spec,
-      trace
-    )
-    assert(resNonNull.isDefined)
+    val simplStateNull = stateSolver.simplify(stateNull, spec)
+
+    stateSolver.getSolverCtx() { implicit zCtx =>
+      val resIsNull = stateSolver.traceInAbstraction(
+        stateNull,
+        spec,
+        trace
+      )
+      assert(
+        resIsNull.isEmpty
+      )
+    }
+
+    stateSolver.getSolverCtx() { implicit zCtx =>
+      val resNonNull = stateSolver.traceInAbstraction(
+        stateNull.copy(sf = stateNull.sf.copy(pureFormula = Set(PureConstraint(pv1, NotEquals, NullVal)))),
+        spec,
+        trace
+      )
+      assert(resNonNull.isDefined)
+    }
   }
 
 
@@ -2085,6 +2128,41 @@ class StateSolverTest extends FixtureAnyFunSuite {
     assert(f.canSubsume(s_2_,s_2_,specs2))
     assert(f.canSubsume(s_1_,s_2_,specs2))
   }
+  test("Has Not Or Equals") { f =>
+    val stateSolver = f.stateSolver
+    val specs = new SpecSpace(Set(ViewSpec.viewOnlyReturnedFromOneActivity))
+    val pv3 = NPureVar(3)
+    val pv6 = NPureVar(6)
+    val pv7 = NPureVar(7)
+    val pv9 = NPureVar(9)
+    val pv10 = NPureVar(10)
+    val absTr =
+      OAbsMsg(CIExit, SpecSignatures.Activity_findView, pv3 :: pv10 :: Nil) ::
+      OAbsMsg(CIExit, SpecSignatures.Activity_findView, pv7 :: pv9 :: Nil) ::
+      OAbsMsg(CIExit, SpecSignatures.Activity_findView, pv3 :: pv6 :: Nil) ::
+      Nil
+
+
+
+
+    val enc = EncodingTools.rhsToPred(absTr, specs)
+    val s = State.topState.copy(sf = State.topState.sf.copy(
+      traceAbstraction = AbstractTrace(absTr)))
+      .addPureConstraint(PureConstraint(pv10, NotEquals, pv6))
+      .addPureConstraint(PureConstraint(pv3, NotEquals, pv6))
+    assert(stateSolver.simplify(s, specs).isEmpty)
+
+    assert(f.canSubsume(s,s,specs))
+
+
+    val s1 = s.copy(sf = s.sf.copy(pureFormula = Set()))
+    val absTr2 =
+        OAbsMsg(CIExit, SpecSignatures.Activity_findView, pv7 :: pv9 :: Nil) ::
+        OAbsMsg(CIExit, SpecSignatures.Activity_findView, pv3 :: pv6 :: Nil) ::
+        Nil
+    val s2 = s.copy(sf = s.sf.copy(traceAbstraction = AbstractTrace(absTr2), pureFormula = Set()))
+    assert(f.canSubsume(s1,s2,specs))
+  }
 
   test("Can subsume disjuncted has not temporal formula 1"){ f =>
     val pa2 = NamedPureVar("p-a2")
@@ -2153,22 +2231,18 @@ class StateSolverTest extends FixtureAnyFunSuite {
          |         (not a!2)
          |         (not a!3)))
         |         """.stripMargin
-      implicit val zCtx = stateSolver.getSolverCtx()
-      try {
-        zCtx.acquire()
+      stateSolver.getSolverCtx() { implicit zCtx =>
         val expr = stateSolver.stringExprToSmtLib(busted)
         val parsedBusted = stateSolver.smtToZ3(expr)
         val pruned = stateSolver.pruneUnusedQuant(parsedBusted)
         assert(
-          parsedBusted.toString.replace("\n","") ==
-            pruned.toString.replace("\n",""))
+          parsedBusted.toString.replace("\n", "") ==
+            pruned.toString.replace("\n", ""))
 
         val expr2 = stateSolver.stringExprToSmtLib(s"(exists ((stupidAst Addr)) ${busted})")
         val parsed2 = stateSolver.smtToZ3(expr2)
         val pruned2 = stateSolver.pruneUnusedQuant(parsed2)
         assert(!pruned2.toString.contains("stupidAst"))
-      }finally{
-        zCtx.release()
       }
 
   }

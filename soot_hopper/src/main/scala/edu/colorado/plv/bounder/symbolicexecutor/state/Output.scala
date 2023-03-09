@@ -168,8 +168,8 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
   }
 
   /**
-   * This seems to get the starting nodes, todo: double check
-   * @return
+   * Get the initial queries from the database
+   * @return set of path nodes
    */
   def getNoPred():Set[DBPathNode] = {
     // TODO: there is probably a more efficient way to do this
@@ -193,6 +193,35 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
       Await.result(db.run(q.result), 30 seconds)
     }).map(rowToNode)
   }
+
+  /**
+   * Get all final nodes (earliest in execution) regardless of label
+   *
+   * @return set of path nodes
+   */
+  def getNoSucc(): Set[DBPathNode] = {
+    // TODO: there is probably a more efficient way to do this
+    // get edges
+    val qAllEdge = for {
+      n <- graphQuery
+    } yield (n.src, n.tgt)
+    val allEdge = Await.result(db.run(qAllEdge.result), 900 seconds)
+    val isTgt: Map[Int, Seq[(Int, Int)]] = allEdge.groupBy {
+      case (_, tgt) => tgt
+    }
+    val isSrc = allEdge.groupBy {
+      case (src, _) => src
+    }
+    val srcButNotTgt: Set[Int] = isSrc.keySet.removedAll(isTgt.keySet)
+
+    srcButNotTgt.flatMap((nodeId: Int) => {
+      val q = for {
+        n <- witnessQry if (n.id === nodeId)
+      } yield n
+      Await.result(db.run(q.result), 30 seconds)
+    }).map(rowToNode)
+  }
+
 
 
   /**
@@ -271,8 +300,8 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
   private val graphQueue = new ArrayBlockingQueue[(Int,Int)](10000)
   def flushQueues() = {
 
-    println(s"write node size ${writeNodeQueue.size()}")
-    println(s"graph queue size ${graphQueue.size()}")
+//    println(s"write node size ${writeNodeQueue.size()}")
+//    println(s"graph queue size ${graphQueue.size()}")
     val startTime = System.nanoTime()
     this.synchronized {
       if(!writeNodeQueue.isEmpty) {
@@ -294,7 +323,7 @@ case class DBOutputMode(dbfile:String) extends OutputMode{
       }
     }
     val runtime = (System.nanoTime() - startTime)/1000.0
-    println(s"runtime(ms): $runtime")
+    //println(s"runtime(ms): $runtime")
   }
   def queueNodeWrite(v:WitTableRow, v2:Seq[(Int,Int)]) = {
     // batch together sqlite queries to reduce fsync
@@ -643,7 +672,7 @@ case class MemoryPathNode(qry: Qry, succV : List[IPathNode], subsumedV: Set[IPat
 
   override def hashCode(): Int = {
     // Exclude successors from hash code
-    Objects.hash(qry,depth,ordDepth)
+    Objects.hash(qry,depth,ordDepth, subsumedV, succV)
   }
 
   override def setSubsumed(v: Set[IPathNode])(implicit mode: OutputMode): IPathNode = {

@@ -229,7 +229,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
 
     derefToFilter.filter { q =>
       val res = abs.run(DirectInitialQuery(q),
-        stopExplorationAt = q2 => if (q2.state.callStack.isEmpty) true else callbackEntryWithNullField(q2))
+        stopExplorationAt = Some(q2 => if (q2.state.callStack.isEmpty) true else callbackEntryWithNullField(q2)))
       val resTerminals = res.flatMap(_.terminals)
       resTerminals.exists(node => callbackEntryWithNullField(node.qry))
     }
@@ -266,7 +266,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     // stop if callback entry reached (call stack empty) or message history has obligate null value from a callin
     val outQ = derefToFilter.filter{q =>
       val res = absCallinAdded.run(DirectInitialQuery(q),
-        stopExplorationAt = q2 => if(q2.state.callStack.isEmpty) true else nullValueFrom(q2))
+        stopExplorationAt = Some(q2 => if(q2.state.callStack.isEmpty) true else nullValueFrom(q2)))
       val resTerminals = res.flatMap(_.terminals)
       resTerminals.exists(node => nullValueFrom(node.qry))
     }

@@ -8,6 +8,7 @@ import edu.colorado.plv.bounder.ir.{AppMethod, CBEnter, CBExit, CIEnter, CIExit,
 import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, CLInit, FreshRef, OAbsMsg, Signature}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, BotVal, ConcreteAddr, ConcreteVal, NamedPureVar, NullVal, OutputMode, PureExpr, PureVal, PureVar, State, TopVal}
+import io.github.andrebeat.pool.{Lease, Pool}
 import org.slf4j.{Logger, LoggerFactory}
 import smtlib.lexer.Lexer
 import smtlib.lexer.Lexer.UnexpectedCharException
@@ -21,14 +22,32 @@ import java.io.StringReader
 import scala.collection.immutable
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
+import scala.concurrent.duration._
+import scala.language.postfixOps
 
 case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
-  var acquired:Option[Long] = None
+  var acquired:Boolean = false
   private val argsUsed = mutable.HashSet[Integer]()
   def setArgUsed(i: Int) = argsUsed.add(i)
   def getArgUsed():Set[Integer] = argsUsed.toSet
+  private var overridden = false
+  def overrideTimeoutAndSeed(timeout:Int, seed:Int): Unit = {
+    overridden = true
+    isolver.reset()
+    isolver = makeSolver(timeout, Some(seed))
+  }
+  def resetTimeoutAndSeed(): Unit = {
+    if(overridden)
+      isolver = makeSolver(timeout, Some(randomSeed))
 
-  private val ictx = new Context()
+    overridden = false
+  }
+
+  private var ictx = new Context()
+
+  //TODO: find something better than finalize
+  // this seems to still be called even though depricated
+
   val checkStratifiedSets = false // set to true to check EPR stratified sets (see Paxos Made EPR, Padon OOPSLA 2017)
   private var isolver:Solver = makeSolver(timeout, Some(randomSeed))
   val initializedFieldFunctions : mutable.HashSet[String] = mutable.HashSet[String]()
@@ -43,15 +62,11 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
   }
   def isZeroInitialized:Boolean = zeroInitialized
   def ctx:Context ={
-    val currentThread:Long = Thread.currentThread().getId
-    assert(acquired.isDefined)
-    assert(acquired.get == currentThread)
+    assert(acquired)
     ictx
   }
   def solver:Solver = {
-    val currentThread:Long = Thread.currentThread().getId
-    assert(acquired.isDefined)
-    assert(acquired.get == currentThread)
+    assert(acquired)
     isolver
   }
 
@@ -83,9 +98,7 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
 
     //val t2 = pruneUnusedQuant(t)
 //    val t2 = t
-    val currentThread:Long = Thread.currentThread().getId
-    assert(acquired.isDefined)
-    assert(acquired.get == currentThread)
+    assert(acquired)
     if(checkStratifiedSets) {
       //sortEdges.addAll(getQuantAltEdges(t))
     }
@@ -132,7 +145,8 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
     params.add("timeout", timeout)
     params.add("logic", "AUFLIA")
     //params.add("model.compact", true)
-    //Global.setParameter("parallel.enable", "true") // note: parallel z3 does not seem to speed things up
+    // Global.setParameter("parallel.enable", "true") // note: parallel z3 does not seem to speed things up
+    //Global.setParameter("memory_max_size", "5000") //todo: is there a way to set mem usage per query?
     newRandomSeed.foreach { rs =>
       params.add("random-seed", rs + randomSeed)
     }
@@ -145,6 +159,17 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
     solver.setParameters(params)
     solver
   }
+
+  def dispose():Unit = this.synchronized{
+    if(isolver != null){
+      isolver.reset()
+    }
+    isolver = null;
+    if(ictx != null){
+      ictx.close()
+    }
+    ictx = null;
+  }
   def release(): Unit = this.synchronized{
     //    assert(!detectCycle(sortEdges.toSet), "Quantifier Alternation Exception") //TODO:  remove after dbg
     // sortEdges.clear()
@@ -153,10 +178,10 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
 //    if(!acquired.isDefined) {
 //      assert(acquired.isDefined)
 //    }
-    if(acquired.isDefined) {
-      val currentThread: Long = Thread.currentThread().getId
-      assert(acquired.get == currentThread)
-      acquired = None
+    if(acquired) {
+      //val currentThread: Long = Thread.currentThread().getId
+      //assert(acquired.get == currentThread)
+      acquired = false
       //      ictx.close()
       //isolver = null
       isolver.reset()
@@ -164,23 +189,36 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
       indexInitialized = false
       initializedFieldFunctions.clear()
     }
+
+//    if(isolver!= null || ictx != null) { //note: or here is a kind of assertion to make sure these are nulled together
+//      isolver.reset()
+//      ictx.close()
+//    }
+//    isolver = null
+//    ictx = null
 //    Thread.sleep(100)
   }
 
+  private var acquireCount = 0
   override def acquire(cRandomSeed:Option[Int]): Unit = {
-    val currentThread:Long = Thread.currentThread().getId
+//    ictx = new Context()
+//    isolver = makeSolver(timeout,cRandomSeed)
+    acquireCount +=1
+    //val currentThread:Long = Thread.currentThread().getId
 
-    assert(acquired.isEmpty)
-    acquired = Some(currentThread)
+    assert(!acquired)
+    acquired = true
     initializedFieldFunctions.clear()
     indexInitialized = false
     uninterpretedTypes.clear()
-//    ictx.close()
-//    ictx = new Context()
-    if(cRandomSeed.isDefined && cRandomSeed.get != randomSeed)
-      isolver = makeSolver(timeout, cRandomSeed)
-    else
+    if(acquireCount % 10 == 0) {
       isolver.reset()
+      ictx.close()
+      ictx = new Context()
+      isolver = makeSolver(timeout, Some(randomSeed))
+    } else {
+      isolver.reset()
+    }
   }
 }
 object Z3StateSolver{
@@ -197,7 +235,7 @@ object Z3StateSolver{
  */
 class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
                     logTimes:Boolean,
-                    timeout:Int = 20000, //TODO: changed to 60 seconds
+                    timeout:Int = 40000, //TODO: changed to 60 seconds
                     randomSeed:Int=3578,
                     defaultOnSubsumptionTimeout: Z3SolverCtx=> Boolean = _ => false,
                     pushSatCheck:Boolean = true,
@@ -409,17 +447,31 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
     zctx.ctx.updateParamValue("random-seed", v.toString)
   }
 
-  //private val iCtx = Z3SolverCtx(timeout, randomSeed)
 
-  private val threadLocalCtx = ThreadLocal.withInitial(() => Z3SolverCtx(timeout, randomSeed))
-
-  override def getSolverCtx(overrideTimeout:Option[Int]): Z3SolverCtx = {
-    //    iCtx
-    val ctx = threadLocalCtx.get()
-    if(overrideTimeout.isEmpty) {
+  //private val threadLocalCtx = ThreadLocal.withInitial(() => Z3SolverCtx(timeout, randomSeed))
+  private val zctxPool = Pool(16, () => {  // look at other low level profiling tools - runlim
+      val ctx = Z3SolverCtx(timeout,randomSeed)
+      ctx.acquire()
       ctx
-    }else
-      ctx.copy(timeout = overrideTimeout.get)
+    },
+    reset = (z:Z3SolverCtx) => {
+      z.release()
+      z.acquire()
+    },
+    maxIdleTime = 30 seconds,
+    dispose = (z:Z3SolverCtx) => {
+      z.dispose()
+    }
+  )
+
+  override def getSolverCtx(): Lease[Z3SolverCtx] = {
+    //val ctx = threadLocalCtx.get()
+    //if(overrideTimeout.isEmpty) {
+    //  ctx
+    //}else
+    //  ctx.copy(timeout = overrideTimeout.get)
+
+    zctxPool.acquire()
   }
 
   override def solverString(messageTranslator: MessageTranslator)(implicit zCtx: Z3SolverCtx): String = {
@@ -618,26 +670,28 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
     zCtx.ctx.mkFreshConst(mkPvName(pv), addrSort)
 
   override protected def dumpDbg[T](cont: () => T)(implicit zCtx: Z3SolverCtx): T = {
-    println(s"current thread = ${Thread.currentThread().getId}")
-    var failed = true
-    var result: Option[T] = None
-    val currentTime = (System.currentTimeMillis() / 1000).toInt
-    val f = File(s"z3Timeout_${currentTime}")
-    f.write(getSolverCtx().solver.toString)
-    try {
-      println(s"z3 dbg file written: ${f}")
-      result = Some(cont())
-      failed = false
-    } catch {
-      case t: Throwable =>
-        println("error")
-        throw t
+    getSolverCtx() { solver =>
+      println(s"current thread = ${Thread.currentThread().getId}")
+      var failed = true
+      var result: Option[T] = None
+      val currentTime = (System.currentTimeMillis() / 1000).toInt
+      val f = File(s"z3Timeout_${currentTime}")
+      f.write(solver.toString)
+      try {
+        println(s"z3 dbg file written: ${f}")
+        result = Some(cont())
+        failed = false
+      } catch {
+        case t: Throwable =>
+          println("error")
+          throw t
+      }
+      if (!failed && result.nonEmpty && result.get != null) {
+        println(s"deleting file due to success: ${f}")
+        f.delete()
+      }
+      result.getOrElse(throw new IllegalStateException("Unknown failure"))
     }
-    if (!failed && result.nonEmpty && result.get != null) {
-      println(s"deleting file due to success: ${f}")
-      f.delete()
-    }
-    result.getOrElse(throw new IllegalStateException("Unknown failure"))
   }
 
   private def interpretSolverOutput(status: Status)(implicit zCtx: Z3SolverCtx): Boolean = status match {

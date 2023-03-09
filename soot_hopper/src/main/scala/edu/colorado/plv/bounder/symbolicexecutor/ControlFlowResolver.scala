@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.ir.EmptyTypeSet.intersect
 import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, OAbsMsg, Signature}
-import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
+import edu.colorado.plv.bounder.lifestate.SpecSpace.{allI, allPosI}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, ClassVal, FieldPtEdge, IntVal, NullVal, PureExpr, PureVar, State, StaticPtEdge, StringVal, TopVal}
 import scalaz.Memo
@@ -199,7 +199,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
           (tgt, matTgt) match {
             case (Some(tgtLocal: LocalWrapper), mt: PureVar) =>
               state.canAlias(mt, m, tgtLocal, wrapper, inCurrentStackFrame = false)
-            case _ => true
+            case _ =>
+              true //TODO: handle some of the const cases
           }
         } else false
       case _ => false
@@ -281,6 +282,35 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   //      false
   //  }
 
+
+  def iHeapNamesWritten(m: MethodLoc): Set[String] = {
+    def modifiedNames(c: CmdWrapper): Option[String] = c match {
+      case AssignCmd(fr: FieldReference, _, _) => Some(fr.name)
+      case AssignCmd(_, fr: FieldReference, _) => None
+      case AssignCmd(StaticFieldReference(_, name, _), _, _) => Some(name)
+      case AssignCmd(_, StaticFieldReference(_, name, _), _) => None
+      case _: AssignCmd => None
+      case _: ReturnCmd => None
+      case _: InvokeCmd => None
+      case _: Goto => None
+      case _: NopCmd => None
+      case _: ThrowCmd => None
+      case _: SwitchCmd => None
+    }
+
+    val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) =>
+      BounderUtil.cmdAtLocationNopIfUnknown(v, wrapper).mkPre)
+    BounderUtil.graphFixpoint[CmdWrapper, Set[String]](start = returns, Set(), Set(),
+      next = n => wrapper.commandPredecessors(n).map((v: AppLoc) =>
+        BounderUtil.cmdAtLocationNopIfUnknown(v, wrapper).mkPre).toSet,
+      comp = (acc, v) => acc ++ modifiedNames(v),
+      join = (a, b) => a.union(b)
+    ).flatMap { case (_, v) => v }.toSet
+  }
+
+  val heapNamesWritten: MethodLoc => Set[String] = Memo.mutableHashMapMemo {
+    iHeapNamesModified
+  }
 
   def iHeapNamesModified(m: MethodLoc): Set[String] = {
     def modifiedNames(c: CmdWrapper): Option[String] = c match {
@@ -408,7 +438,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 
     val currentCalls = allCallsAppTransitive(m) + m
     val heapRelevantCallees = currentCalls.filter { callee =>
-      val hn: Set[String] = heapNamesModified(callee)
+      val hn: Set[String] = heapNamesWritten(callee)
       fnSet.exists { fn =>
         hn.contains(fn)
       }
@@ -514,7 +544,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   }
   def relevantMethod(loc: Loc, state: State): RelevanceRelation = {
     val relevantI = EncodingTools.rhsToPred(state.sf.traceAbstraction.rightOfArrow, config.specSpace)
-      .flatMap { a => allI(a) }
+      .flatMap { a => allPosI(a) }
     loc match {
       case InternalMethodReturn(_, _, m) =>
         relevantMethodBody(m, state).join(

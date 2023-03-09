@@ -79,7 +79,7 @@ class EncodingToolsTest extends AnyFunSuite{
     val (solver,_) = getZ3StateSolver
     assert(solver.canSubsume(pred,res))
     assert(solver.canSubsume(res,pred))
-    println(res)
+    //println(res)
   }
   test("reduce state pure vars"){
     val top = State.topState

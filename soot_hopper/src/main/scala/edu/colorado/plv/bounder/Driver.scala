@@ -9,9 +9,8 @@ import java.util.Date
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil.{DepthResult, Interrupted, MaxPathCharacterization, Proven, ResultSummary, Timeout, UnknownCharacterization, Unreachable, Witnessed, characterizeMaxPath}
 import edu.colorado.plv.bounder.Driver.{Default, LocResult, RunMode, modeToString}
-import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, InternalMethodInvoke, InternalMethodReturn, JimpleMethodLoc, Loc, MethodLoc, SerializedIRLineLoc, SerializedIRMethodLoc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper}
+import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, InternalMethodInvoke, InternalMethodReturn, JimpleMethodLoc, Loc, MethodLoc, SerializedIRLineLoc, SerializedIRMethodLoc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper, WitnessExplanation}
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSConstraint, LSSpec, LSTrue, OAbsMsg, Signature}
-import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state._
@@ -286,7 +285,8 @@ object Driver {
   // [qry,id,loc, res, time]
   case class LocResult(q: InitialQuery, sqliteId: Int, loc: Loc, resultSummary: ResultSummary,
                        maxPathCharacterization: MaxPathCharacterization, time: Long,
-                       depthChar: BounderUtil.DepthResult, witnesses: List[List[String]])
+                       depthChar: BounderUtil.DepthResult, witnesses: List[List[String]],
+                       witnessExplanation: List[WitnessExplanation])
 
   object LocResult {
     implicit var rw: RW[LocResult] = macroRW
@@ -295,8 +295,9 @@ object Driver {
   def runAction(act: Action): Unit = {
     println(s"java.library.path set to: ${System.getProperty("java.library.path")}")
     act match {
-      case act@Action(Verify, _, _, cfgIn, _, _, mode,dbg) =>
-        val cfg = if(dbg){cfgIn.copy(timeLimit = 14400, truncateOut = false)} else cfgIn
+      case act@Action(Verify, _, _, cfgIn, filter, _, mode,dbg) =>
+        val cfgWithTime = if(dbg){cfgIn.copy(timeLimit = 14400, truncateOut = false)} else cfgIn
+        val cfg = if(filter.isDefined) cfgWithTime.copy(componentFilter = Some(filter.get.split(':'))) else cfgWithTime
         val componentFilter = cfg.componentFilter
         val apkPath = act.getApkPath
         val outFolder: String = act.getOutFolder
@@ -632,12 +633,24 @@ object Driver {
               case MemoryOutputMode => true
               case DBOutputMode(_) => true
             }
-            if (printWit) {
-              pp.dumpDebugInfo(groupedResults.flatMap{res => res.terminals}, "wit", outDir = outDir)
+            val allTerm = groupedResults.flatMap { res => res.terminals }
+            val traceWitnesses = allTerm.flatMap {
+              case PathNode(Qry(state, _, WitnessedQry(Some(explanation))), false) =>
+                Some(state,explanation)
+              case _ => None
+            }
+            if (printWit && outDir.nonEmpty) {
+              pp.dumpDebugInfo(allTerm, "wit", outDir = outDir)(mode)
+              traceWitnesses.zipWithIndex.foreach{
+                case ((wit, state),ind) =>
+                  (File(outDir.get) / s"explanation_${ind}")
+                    .overwrite(s"${wit.toString} \n===========\n${state.toString}")
+              }
             }
 
+
             LocResult(initialQuery, id, loc, res, characterizedMaxPath, finalTime,
-              depthChar, witnesses = live ++ witnessed)
+              depthChar, witnesses = live ++ witnessed, traceWitnesses.map(_._2).toList)
           }.toList
           grouped
         }catch {
@@ -648,7 +661,8 @@ object Driver {
               resultSummary= Interrupted("OutOfMemoryError"),
               maxPathCharacterization = UnknownCharacterization,
               time = (System.nanoTime() - startTime)/1000000000,
-              depthChar = DepthResult(-1,-1,-1, Interrupted("OutOfMemoryError")), witnesses = Nil
+              depthChar = DepthResult(-1,-1,-1, Interrupted("OutOfMemoryError")), witnesses = Nil,
+              witnessExplanation = Nil
             ))
           case e:Throwable =>
             e.printStackTrace(new PrintWriter(System.err))
@@ -657,12 +671,13 @@ object Driver {
               resultSummary = Interrupted(e.toString),
               maxPathCharacterization = UnknownCharacterization,
               time = (System.nanoTime() - startTime) / 1000000000,
-              depthChar = DepthResult(-1, -1, -1, Interrupted(e.toString)), witnesses = Nil
+              depthChar = DepthResult(-1, -1, -1, Interrupted(e.toString)), witnesses = Nil,
+              witnessExplanation = Nil
             ))
         }
       }
     } finally {
-      println(s"analysis time(ms): ${(System.nanoTime() - startTime) / 1000.0}")
+      println(s"analysis time(ms): ${(System.nanoTime() - startTime)}")
     }
 
   }
