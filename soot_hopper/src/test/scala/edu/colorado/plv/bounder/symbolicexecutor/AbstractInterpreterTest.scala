@@ -1085,10 +1085,10 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
           "void lambda$onCreate$1$MyActivity(java.lang.Object)"), line, Some(".*toString.*"))
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
-        PrettyPrinting.dumpDebugInfo(result, "ProveFieldDerefWithSubscribe")
+        //PrettyPrinting.dumpDebugInfo(result, "ProveFieldDerefWithSubscribe")
         assert(result.nonEmpty)
         BounderUtil.throwIfStackTrace(result)
-        PrettyPrinting.printWitness(result)
+        //PrettyPrinting.printWitness(result)
         f.expectUnreachable(BounderUtil.interpretResult(result, QueryFinished))
       }
     }
@@ -1154,7 +1154,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
         "void lambda$onCreate$1$MyActivity(java.lang.Object)"),line, Some(".*toString.*"))
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
-      // prettyPrinting.dumpDebugInfo(result,"WitnessFieldDerefWithSubscribe")
+      //PrettyPrinting.dumpDebugInfo(result,"WitnessFieldDerefWithSubscribe")
       assert(result.nonEmpty)
       BounderUtil.throwIfStackTrace(result)
       f.expectReachable(BounderUtil.interpretResult(result,QueryFinished))
