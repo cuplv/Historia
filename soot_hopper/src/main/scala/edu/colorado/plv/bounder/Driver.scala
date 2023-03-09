@@ -634,22 +634,23 @@ object Driver {
               case DBOutputMode(_) => true
             }
             val allTerm = groupedResults.flatMap { res => res.terminals }
-            val traceWitnesses: Set[WitnessExplanation] = allTerm.flatMap {
-              case PathNode(Qry(_, _, WitnessedQry(explanation)), false) =>
-                explanation
+            val traceWitnesses = allTerm.flatMap {
+              case PathNode(Qry(state, _, WitnessedQry(Some(explanation))), false) =>
+                Some(state,explanation)
               case _ => None
             }
             if (printWit && outDir.nonEmpty) {
               pp.dumpDebugInfo(allTerm, "wit", outDir = outDir)(mode)
               traceWitnesses.zipWithIndex.foreach{
-                case (wit,ind) =>
-                  (File(outDir.get) / s"explanation_${ind}").overwrite(wit.toString)
+                case ((wit, state),ind) =>
+                  (File(outDir.get) / s"explanation_${ind}")
+                    .overwrite(s"${wit.toString} \n===========\n${state.toString}")
               }
             }
 
 
             LocResult(initialQuery, id, loc, res, characterizedMaxPath, finalTime,
-              depthChar, witnesses = live ++ witnessed, traceWitnesses.toList)
+              depthChar, witnesses = live ++ witnessed, traceWitnesses.map(_._2).toList)
           }.toList
           grouped
         }catch {
