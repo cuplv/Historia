@@ -633,15 +633,20 @@ object Driver {
               case MemoryOutputMode => true
               case DBOutputMode(_) => true
             }
-            val allTerm = groupedResults.flatMap{res => res.terminals}
-            if (printWit) {
-              pp.dumpDebugInfo(allTerm, "wit", outDir = outDir)(mode)
-            }
+            val allTerm = groupedResults.flatMap { res => res.terminals }
             val traceWitnesses: Set[WitnessExplanation] = allTerm.flatMap {
-              case PathNode(Qry(_,_,WitnessedQry(explanation)), false) =>
+              case PathNode(Qry(_, _, WitnessedQry(explanation)), false) =>
                 explanation
               case _ => None
             }
+            if (printWit && outDir.nonEmpty) {
+              pp.dumpDebugInfo(allTerm, "wit", outDir = outDir)(mode)
+              traceWitnesses.zipWithIndex.foreach{
+                case (wit,ind) =>
+                  (File(outDir.get) / s"explanation_${ind}").overwrite(wit.toString)
+              }
+            }
+
 
             LocResult(initialQuery, id, loc, res, characterizedMaxPath, finalTime,
               depthChar, witnesses = live ++ witnessed, traceWitnesses.toList)
