@@ -282,7 +282,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     case (CallbackMethodInvoke(tgtSig, _), targetLoc@CallbackMethodReturn(_,mloc, _)) =>
       // Cannot jump back to callback on a class that will have it's static initializer called in the future
       if(futureCLInit(postState,tgtSig.base))
-        return Set() //TODO:============
+        return Set()
       // Case where execution goes to the exit of another callback
       // TODO: nested callbacks not supported yet, assuming we can't go back to callin entry
       // TODO: note that the callback method invoke is to be ignored here.
@@ -545,13 +545,24 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
   def newMsgTransfer(appMethod:MethodLoc, mt: MessageType,
                      sig:Signature, allVar:List[Option[RVal]],
                      postState: State): Set[State] = {
-    //TODO: just append to single abst trace if sig in spec =====
-    //TODO: get rid of set of trace abstractions in abstract state
     val freshI: Option[AbsMsg] = specSpace.getIWithMergedVars(mt,sig)
     freshI match {
       case None => Set(postState)
       case Some(i) =>
-        val (newState,newI) = (allVar zip i.lsVars).foldLeft((postState, i.copyMsg(lsVars = Nil))){
+        val allVars: Seq[(Option[RVal], PureExpr)] = (allVar zip i.lsVars)
+        val (stateAfterAssign, assignTo) = allVars.headOption match {
+          case Some((_, TopVal)) => (postState,TopVal) //case where spec doesn't care about assign value
+          case Some((Some(lVal:LVal), _)) =>
+            val valOfAssign = postState.get(lVal)
+            if(mt == CIExit && nonNullCallins.exists(nnCi => nnCi.contains(CIExit, sig))){
+              return Set()
+            }
+            (postState.clearLVal(lVal),valOfAssign.getOrElse(TopVal))
+          case Some((None, _)) => (postState,TopVal) //code assigns to nothing
+          case None => (postState,TopVal)
+        }
+        val iWithRet = i.copyMsg(lsVars = assignTo::Nil)
+        val (newState,newI) = allVars.tail.foldLeft((stateAfterAssign, iWithRet)){
           case ((acc,i), (None, _)) =>
             (acc,i.copyMsg(lsVars = i.lsVars.appended(TopVal)))
           case ((acc,i), (_, TopVal)) =>

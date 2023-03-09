@@ -201,6 +201,8 @@ object LifecycleSpec {
 
 object ViewSpec {
   val a = NamedPureVar("a")
+  val b = NamedPureVar("b")
+  val b2 = NamedPureVar("b2")
   val a2 = NamedPureVar("a2")
   val v = NamedPureVar("v")
   val v2 = NamedPureVar("v2")
