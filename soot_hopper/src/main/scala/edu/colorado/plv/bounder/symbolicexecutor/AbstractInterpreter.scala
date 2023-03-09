@@ -178,7 +178,8 @@ case class ExecutorConfig[M,C](stepLimit: Int = -1,
                                        outputMode : OutputMode = MemoryOutputMode,
                                        timeLimit:Int = 7200, // Note: connectbot click finish does not seem to go any further with 2h vs 0.5hr
                                        subsumptionMode:SubsumptionMode = SubsumptionModeIndividual, //Note: seems to be faster without batch mode subsumption
-                                       approxMode:ApproxMode =  LimitMaterializationApproxMode()
+                                       approxMode:ApproxMode =  LimitMaterializationApproxMode(),
+                                       z3Workers:Int = 16
                                                   //PreciseApproxMode(true) //default is to allow dropping of constraints and no widen //TODO: === make thresher version that drops things == make under approx version that drops states
                                       ){
   def getAbstractInterpreter =
