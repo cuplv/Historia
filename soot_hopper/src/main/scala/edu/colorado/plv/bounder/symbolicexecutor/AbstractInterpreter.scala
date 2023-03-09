@@ -170,16 +170,17 @@ case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2) extend
  * @tparam C Command type (IR wrapper)
  */
 case class ExecutorConfig[M,C](stepLimit: Int = -1,
-                                       w :  IRWrapper[M,C],
-                                       specSpace:SpecSpace,
-                                       printAAProgress : Boolean = sys.env.getOrElse("DEBUG","false") == "AbstractInterpreter",
-                                       z3Timeout : Option[Int] = None,
-                                       component : Option[Seq[String]] = None,
-                                       outputMode : OutputMode = MemoryOutputMode,
-                                       timeLimit:Int = 7200, // Note: connectbot click finish does not seem to go any further with 2h vs 0.5hr
-                                       subsumptionMode:SubsumptionMode = SubsumptionModeIndividual, //Note: seems to be faster without batch mode subsumption
-                                       approxMode:ApproxMode =  LimitMaterializationApproxMode()
-                                                  //PreciseApproxMode(true) //default is to allow dropping of constraints and no widen //TODO: === make thresher version that drops things == make under approx version that drops states
+                               w :  IRWrapper[M,C],
+                               specSpace:SpecSpace,
+                               printAAProgress : Boolean = sys.env.getOrElse("DEBUG","false") == "AbstractInterpreter",
+                               z3Timeout : Option[Int] = None,
+                               component : Option[Seq[String]] = None,
+                               outputMode : OutputMode = MemoryOutputMode,
+                               timeLimit:Int = 7200, // Note: connectbot click finish does not seem to go any further with 2h vs 0.5hr
+                               subsumptionMode:SubsumptionMode = SubsumptionModeIndividual, //Note: seems to be faster without batch mode subsumption
+                               approxMode:ApproxMode =  LimitMaterializationApproxMode(),
+                               z3InstanceLimit:Int = 16
+                               //PreciseApproxMode(true) //default is to allow dropping of constraints and no widen //TODO: === make thresher version that drops things == make under approx version that drops states
                                       ){
   def getAbstractInterpreter =
     new AbstractInterpreter[M, C](this)
@@ -311,7 +312,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
     case NoOutputMode => false
     case MemoryOutputMode => true
     case DBOutputMode(dbfile) => true
-  })
+  }, z3InstanceLimit = config.z3InstanceLimit)
 
 
   case class QueryData(queryId:Int, location:Loc, terminals: Set[IPathNode], runTime:Long, result : QueryResult)
