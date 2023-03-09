@@ -554,7 +554,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
           case Some((_, TopVal)) => (postState,TopVal) //case where spec doesn't care about assign value
           case Some((Some(lVal:LVal), _)) =>
             val valOfAssign = postState.get(lVal)
-            if(mt == CIExit && nonNullCallins.exists(nnCi => nnCi.contains(CIExit, sig))){
+            if(valOfAssign.contains(NullVal)
+              && mt == CIExit && nonNullCallins.exists(nnCi => nnCi.contains(CIExit, sig))){
               return Set()
             }
             (postState.clearLVal(lVal),valOfAssign.getOrElse(TopVal))
