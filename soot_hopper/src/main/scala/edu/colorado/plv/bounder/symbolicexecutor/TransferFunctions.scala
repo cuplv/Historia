@@ -124,10 +124,10 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val frame = CallStackFrame(target, Some(source.copy(isPre = true)), Map())
       val (_, state0) = getOrDefineRVals(m,relAliases, postState2)
       val outState = newMsgTransfer(source.method, CIExit, sig, inVars, state0)
-      // if retVar is materialized and assigned, clear it from the state
       val outState1: Set[State] = inVars match{
         case Some(retVar:LocalWrapper)::_ =>
-          val outState11 = if (nonNullCallins.exists(i => i.contains(CIExit, sig)))
+          // If the current callin is in NonNullReturnCallins.txt constrain the return value to be non-null
+          if (nonNullCallins.exists(i => i.contains(CIExit, sig)))
             // if non-null return callins defines this method, assume that the materialized return value is non null
             outState.map{s =>
               if(s.containsLocal(retVar))
@@ -135,7 +135,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
               else s
             }
           else outState
-          outState11.map(s3 => s3.clearLVal(retVar))
         case _ => outState
       }
       val outState2 = outState1.map(s2 => s2.copy(sf = s2.sf.copy(callStack = frame::s2.callStack),
@@ -558,7 +557,9 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
               && mt == CIExit && nonNullCallins.exists(nnCi => nnCi.contains(CIExit, sig))){
               return Set()
             }
-            (postState.clearLVal(lVal),valOfAssign.getOrElse(TopVal))
+            // clear return value from post state if its a callin
+            val postStateHandledRetVal = if(mt == CIExit) postState.clearLVal(lVal) else postState
+            (postStateHandledRetVal,valOfAssign.getOrElse(TopVal))
           case Some((None, _)) => (postState,TopVal) //code assigns to nothing
           case None => (postState,TopVal)
         }
