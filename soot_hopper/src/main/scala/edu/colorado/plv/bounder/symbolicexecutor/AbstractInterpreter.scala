@@ -527,6 +527,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
     res
   }
 
+  private var subsFastCount = 0
   def isSubsumed(pathNode:IPathNode, checkTimeout: ()=>Unit,
                  invarMap: scala.collection.concurrent.TrieMap[SubsumableLocation, Set[IPathNode]]):Set[IPathNode] =
     pathNode match{
@@ -536,10 +537,18 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
       val states = nodes.map(_.state)
       config.subsumptionMode match {
         case SubsumptionModeIndividual =>
-          nodes.find(p => {
-            checkTimeout()
-            stateSolver.canSubsume(p.state, pathNode.state,config.specSpace)
-          }).toSet
+          val thisNodeHashable = pathNode.state.sf.makeHashable(config.specSpace)
+          val subsFast = nodes.find{n => n.qry.state.sf.makeHashable(config.specSpace) == thisNodeHashable}
+          if(subsFast.isDefined){
+            subsFastCount += 1
+            println(s"subs fast: $subsFastCount")
+            subsFast.toSet
+          }else {
+            nodes.find(p => {
+              checkTimeout()
+              stateSolver.canSubsume(p.state, pathNode.state, config.specSpace)
+            }).toSet
+          }
         case SubsumptionModeBatch =>
           if (stateSolver.canSubsumeSet(states.toSet, pathNode.state, config.specSpace))
             nodes.toSet else Set[IPathNode]()
