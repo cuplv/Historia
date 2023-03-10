@@ -1173,8 +1173,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       return false
     }
 
-    val mustIs = EncodingTools.mustISet(s1,specSpace)
-    val mayIs = EncodingTools.mayISet(s2, specSpace)
+    val mustIs = EncodingTools.mustPredSet(s1,specSpace)
+    val mayIs = EncodingTools.mayPredSet(s2, specSpace)
     if (mustIs.exists(v => !mayIs.contains(v))) {
       return false
     }

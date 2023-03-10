@@ -44,6 +44,10 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
                                component: Option[List[String]], config:ExecutorConfig[M,C]) {
   private implicit val ch = cha
   private val componentR: Option[List[Regex]] = component.map(_.map(_.r))
+//  private val (componentPos, componentNeg) = {
+//    val splitPosNeg = component.groupBy(_.startsWith("!"))
+//
+//  }
   private val specSpace: SpecSpace = config.specSpace
   def getAppCodeResolver:AppCodeResolver = resolver
 
@@ -527,7 +531,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       case (absMsg, pts) =>
         val ex = relevantIMsg.exists{
           case OAbsMsg(mt,sig, lsVars) if absMsg.mt == mt && absMsg.signatures == sig =>
-            lsVars.zip(pts).forall{
+            val zipped = lsVars.zip(pts)
+            zipped.forall{
               case (v:PureVar, ts) =>
                 val out = state.sf.typeConstraints.getOrElse(v,TopTypeSet).intersectNonEmpty(ts)
                 out
@@ -559,6 +564,13 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       }
       case _ => throw new IllegalStateException("relevantMethod only for method returns")
     }
+  }
+
+  def hardReqSatisfiable(state: State):Boolean = {
+    //val pred = EncodingTools.rhsToPred(state.sf.traceAbstraction.rightOfArrow, specSpace)
+    //TODO:=== drop states where a positive i requirement cannot be satisfied
+
+    true
   }
 
   // Callins are equivalent if they match the same set of I predicates in the abstract trace
@@ -710,18 +722,22 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       List(returnLoc)
     case (_:CallbackMethodInvoke, _) =>
       val callbacks = resolver.getCallbacks
-      val res: Seq[Loc] = callbacks.flatMap(callback => {
-        val locCb = wrapper.makeMethodRetuns(callback)
-        locCb.flatMap{case AppLoc(method,line,_) => resolver.resolveCallbackExit(method, Some(line))}
-      }).toList
-      val componentFiltered = res.filter(callbackInComponent)
-      // filter for callbacks that may affect current state
-      val res2 = componentFiltered.filter{m => relevantMethod(m,state) match{
-        case RelevantMethod => true
-        case NotRelevantMethod => false
-      }}
-      //TODO: check this
-      res2
+      if(hardReqSatisfiable(state)) {
+        val res: Seq[Loc] = callbacks.flatMap(callback => {
+          val locCb = wrapper.makeMethodRetuns(callback)
+          locCb.flatMap { case AppLoc(method, line, _) => resolver.resolveCallbackExit(method, Some(line)) }
+        }).toList
+        val componentFiltered = res.filter(callbackInComponent)
+        // filter for callbacks that may affect current state
+        val res2 = componentFiltered.filter { m =>
+          relevantMethod(m, state) match {
+            case RelevantMethod => true
+            case NotRelevantMethod => false
+          }
+        }
+        //TODO: check this
+        res2
+      }else List.empty
     case (CallbackMethodReturn(_, loc, Some(line)),_) =>
       AppLoc(loc, line, isPre = false)::Nil
     case (CallinMethodInvoke(sig),Nil) =>
