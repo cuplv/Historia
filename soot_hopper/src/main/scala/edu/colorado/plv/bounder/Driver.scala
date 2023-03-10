@@ -645,6 +645,8 @@ object Driver {
                 case ((wit, state),ind) =>
                   (File(outDir.get) / s"explanation_${ind}")
                     .overwrite(s"${wit.toString} \n===========\n${state.toString}")
+                  println(s"witness: \n ${wit.toString}")
+                  println(s"last state: \n ${state.toString.replace(';', '\n')}")
               }
             }
 
