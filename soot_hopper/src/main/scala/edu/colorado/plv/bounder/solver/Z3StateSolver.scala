@@ -240,8 +240,9 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
                     defaultOnSubsumptionTimeout: Z3SolverCtx=> Boolean = _ => false,
                     pushSatCheck:Boolean = true,
                     strict_test:Boolean = false,
-                    z3InstanceLimit:Int = 16
+                    z3InstanceLimit:Int = -1
                    ) extends StateSolver[AST,Z3SolverCtx] {
+  private val mZ3InstanceLimit = if(z3InstanceLimit > 0) z3InstanceLimit else Runtime.getRuntime.availableProcessors
   //  private val MAX_ARGS = 10
 
   override def shouldLogTimes:Boolean = this.logTimes
@@ -450,7 +451,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
 
 
   //private val threadLocalCtx = ThreadLocal.withInitial(() => Z3SolverCtx(timeout, randomSeed))
-  private val zctxPool = Pool(z3InstanceLimit, () => {  // look at other low level profiling tools - runlim
+  private val zctxPool = Pool(mZ3InstanceLimit, () => {  // look at other low level profiling tools - runlim
       val ctx = Z3SolverCtx(timeout,randomSeed)
       ctx.acquire()
       ctx
