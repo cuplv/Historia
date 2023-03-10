@@ -765,7 +765,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
             println(dbFile)
 //            implicit val dbMode = DBOutputMode(dbFile.toString)
 //            dbMode.startMeta()
-            implicit val dbMode = NoOutputMode
+            implicit val dbMode = MemoryOutputMode
 
             //            implicit val dbMode = MemoryOutputMode
             //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
