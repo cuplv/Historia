@@ -285,7 +285,7 @@ object EncodingTools {
     case atom: LSAtom =>
       atom
   }
-  private def mustISet(s1Pred: LSPred):Set[(MessageType, SignatureMatcher)] = s1Pred match {
+  def mustISet(s1Pred: LSPred):Set[OAbsMsg] = s1Pred match {
     case LSConstraint(v1, op, v2) => Set()
     case Forall(vars, p) => mustISet(p)
     case Exists(vars, p) => mustISet(p)
@@ -297,7 +297,7 @@ object EncodingTools {
     case LifeState.LSFalse => Set()
     case CLInit(sig) => Set()
     case FreshRef(v) => Set()
-    case OAbsMsg(mt, signatures, lsVars) => Set((mt,signatures))
+    case m:OAbsMsg => Set(m)
     case NS(i1, i2) => mustISet(i1)
     case _:HNOE => Set()
   }
@@ -310,8 +310,9 @@ object EncodingTools {
       case Exists(vars, p) => mustI(p)
       case LSImplies(l1, l2) => Set()
       case And(l1, l2) => mustI(l1).union(mustI(l2))
-      case Not(l:AbsMsg) => Set(s"HN_${l.identitySignature}")
-      case HNOE(_,m,_) => Set(s"HNOE_${m.identitySignature}")
+      case Not(l:AbsMsg) => Set()
+      case Not(p) => throw new IllegalStateException(s"expected normal form in pred: ${p}")
+      case HNOE(_,m,_) => Set()
       case Or(l1, l2) => mustI(l1).intersect(mustI(l2))
       case LifeState.LSTrue => Set()
       case LifeState.LSFalse => Set()
@@ -328,8 +329,8 @@ object EncodingTools {
       case Exists(_, p) => mayI(p)
       case LSImplies(l1, l2) => Set()
       case And(l1, l2) => mayI(l1).union(mayI(l2))
-      case Not(l:AbsMsg) => Set(s"HN_${l.identitySignature}")
-      case HNOE(_,m,_) => Set(s"HNOE_${m.identitySignature}")
+      case Not(l:AbsMsg) => Set()
+      case HNOE(_,m,_) => Set()
       case Not(p) => throw new IllegalStateException(s"expected normal form in pred: ${p}")
       case Or(l1, l2) => mayI(l1).union(mayI(l2))
       case LifeState.LSTrue => Set()
