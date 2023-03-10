@@ -12,6 +12,7 @@ import io.github.andrebeat.pool.Lease
 import org.slf4j.{Logger, LoggerFactory}
 import upickle.default.{read, write}
 
+import java.util.concurrent.atomic.AtomicInteger
 import scala.annotation.tailrec
 import scala.collection.concurrent.TrieMap
 import scala.collection.{immutable, mutable}
@@ -838,6 +839,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   }
 
+  private val simplifyCache = TrieMap[(SpecSpace, HashableStateFormula), Boolean]()
   def simplify(state: State,specSpace: SpecSpace, maxWitness: Option[Int] = None): Option[State] = {
     getSolverCtx() { implicit zCtx =>
       // val startTime = System.nanoTime()
@@ -923,8 +925,12 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       }.inlineConstEq().getOrElse {
         return None
       }
+      val stateHashable = stateWithNulls.sf.makeHashable(specSpace)
+      val cached = simplifyCache.get((specSpace, stateHashable))
 
-      val sat = {
+      val sat:Boolean = if(cached.isDefined){
+        cached.get
+      }else {
         val (reducedPtState, _) = reducePtRegions(stateWithNulls, State.topState)
         val messageTranslator = MessageTranslator(List(reducedPtState), List(specSpace))
 
@@ -939,7 +945,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
           println(ast.toString)
         }
         mkAssert(ast)
-        checkSAT(messageTranslator, None, false)
+        val satRes = checkSAT(messageTranslator, None, false)
+        simplifyCache.put((specSpace, stateHashable), satRes)
+
+        satRes
       }
       //      val simpleAst = solverSimplify(ast, stateWithNulls, messageTranslator, maxWitness.isDefined)
 
@@ -1281,6 +1290,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   }
 
   private val subsumeCache = TrieMap[(SpecSpace, HashableStateFormula, HashableStateFormula), Boolean]()
+  private val cacheHit = new AtomicInteger(0)
   /**
    *
    *
@@ -1297,6 +1307,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val s2Hashable = s2.sf.makeHashable(specSpace)
     val cached = subsumeCache.get((specSpace, s1Hashable,s2Hashable))
     if(cached.isDefined){
+      val current = cacheHit.getAndIncrement()
+      println(s"subsume cache hit: ${current}")
       return cached.get
     }
 
