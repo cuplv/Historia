@@ -1308,7 +1308,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val cached = subsumeCache.get((specSpace, s1Hashable,s2Hashable))
     if(cached.isDefined){
       val current = cacheHit.getAndIncrement()
-      println(s"subsume cache hit: ${current}")
+      if(current %10 == 0)
+        println(s"subsume cache hit: ${current}")
       return cached.get
     }
 
