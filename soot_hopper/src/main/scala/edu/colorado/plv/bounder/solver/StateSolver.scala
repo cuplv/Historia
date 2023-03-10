@@ -13,6 +13,7 @@ import org.slf4j.{Logger, LoggerFactory}
 import upickle.default.{read, write}
 
 import scala.annotation.tailrec
+import scala.collection.concurrent.TrieMap
 import scala.collection.{immutable, mutable}
 
 //TODO: replace all "sets of things" with SetOfEncoder
@@ -1279,6 +1280,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     }
   }
 
+  private val subsumeCache = TrieMap[(SpecSpace, HashableStateFormula, HashableStateFormula), Boolean]()
   /**
    *
    *
@@ -1291,6 +1293,12 @@ trait StateSolver[T, C <: SolverCtx[T]] {
                  timeout:Option[Int] = None,method:SubsumptionMethod = SubsZ3): Boolean = {
 //     val method = "Unify"//TODO: benchmark and see if this is actually faster: Idea run both and log times then hist
 //     val method = "Debug"
+    val s1Hashable = s1.sf.makeHashable(specSpace)
+    val s2Hashable = s2.sf.makeHashable(specSpace)
+    val cached = subsumeCache.get((specSpace, s1Hashable,s2Hashable))
+    if(cached.isDefined){
+      return cached.get
+    }
 
     // val method = "FailOver"
     val startTime = System.nanoTime()
@@ -1329,9 +1337,11 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 //      return csu
 //    }
 
-    val res = if(method == SubsZ3)
-      canSubsumeZ3(s1Simp.get,s2Simp.get,specSpace, maxLen, timeout)
-    else if(method == SubsUnify)
+    val res = if(method == SubsZ3) {
+      val toCache = canSubsumeZ3(s1Simp.get,s2Simp.get,specSpace, maxLen, timeout)
+      subsumeCache.put((specSpace, s1Hashable,s2Hashable), toCache)
+      toCache
+    } else if(method == SubsUnify)
       canSubsumeUnify(s1Simp.get,s2Simp.get,specSpace)
     else if(method == SubsFailOver){
       try{canSubsumeUnify(s1Simp.get, s2Simp.get, specSpace)} catch{
