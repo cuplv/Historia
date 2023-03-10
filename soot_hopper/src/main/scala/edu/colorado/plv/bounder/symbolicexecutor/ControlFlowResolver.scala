@@ -12,6 +12,7 @@ import scalaz.Memo
 import soot.Scene
 import upickle.default.{macroRW, ReadWriter => RW}
 
+import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
 import scala.collection.parallel.CollectionConverters.ImmutableIterableIsParallelizable
 import scala.collection.parallel.immutable.ParIterable
@@ -566,11 +567,26 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     }
   }
 
+  private val hardReqSatCount = new AtomicInteger(0)
   def hardReqSatisfiable(state: State):Boolean = {
-    //val pred = EncodingTools.rhsToPred(state.sf.traceAbstraction.rightOfArrow, specSpace)
-    //TODO:=== drop states where a positive i requirement cannot be satisfied
-
-    true
+    val mustOnceList = EncodingTools.rhsToPred(state.sf.traceAbstraction.rightOfArrow, specSpace)
+      .flatMap(EncodingTools.mustISet)
+    // drop states where any one positive i requirement cannot be satisfied by any callback
+    val out = mustOnceList.forall{
+      case m@OAbsMsg(mt, _, _) if mt == CBEnter || mt == CBExit =>
+        callbackMessage.exists{case (_,someCB) =>
+          isRelevantI(someCB,Set(m), state) == RelevantMethod
+        }
+      case m@OAbsMsg(mt, _, _) if mt == CIExit || mt == CIExit =>
+        transitiveCallinMessage.exists{case (_, someCI) =>
+          isRelevantI(someCI, Set(m),state ) == RelevantMethod
+        }
+    }
+    if(!out){
+      val rejectedCount = hardReqSatCount.getAndIncrement()
+      println(s"States rejected due to hard once requirement: ${rejectedCount}")
+    }
+    out
   }
 
   // Callins are equivalent if they match the same set of I predicates in the abstract trace
