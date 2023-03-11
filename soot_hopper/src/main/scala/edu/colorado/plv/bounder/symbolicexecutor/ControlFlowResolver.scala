@@ -738,7 +738,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       List(returnLoc)
     case (_:CallbackMethodInvoke, _) =>
       val callbacks = resolver.getCallbacks
-      if(hardReqSatisfiable(state)) {
+//      if(hardReqSatisfiable(state)) { //TODO: This seems like a good idea but seems to do nothing
         val res: Seq[Loc] = callbacks.flatMap(callback => {
           val locCb = wrapper.makeMethodRetuns(callback)
           locCb.flatMap { case AppLoc(method, line, _) => resolver.resolveCallbackExit(method, Some(line)) }
@@ -751,9 +751,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
             case NotRelevantMethod => false
           }
         }
-        //TODO: check this
         res2
-      }else List.empty
+//      }else List.empty
     case (CallbackMethodReturn(_, loc, Some(line)),_) =>
       AppLoc(loc, line, isPre = false)::Nil
     case (CallinMethodInvoke(sig),Nil) =>
