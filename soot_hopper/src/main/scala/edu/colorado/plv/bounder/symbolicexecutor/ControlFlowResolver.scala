@@ -44,11 +44,13 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
                                cha: ClassHierarchyConstraints,
                                component: Option[List[String]], config:ExecutorConfig[M,C]) {
   private implicit val ch = cha
-  private val componentR: Option[List[Regex]] = component.map(_.map(_.r))
-//  private val (componentPos, componentNeg) = {
-//    val splitPosNeg = component.groupBy(_.startsWith("!"))
-//
-//  }
+//  private val componentR: Option[List[Regex]] = component.map(_.map(_.r))
+  private val (componentPos, componentNeg) = component match{
+    case Some(filters) =>
+      val spl = filters.groupBy(_.startsWith("!"))
+      (spl.getOrElse(false, Nil).map(_.r), spl.getOrElse(true, Nil).map(_.tail).map(_.r))
+    case None => (List(".*".r), List())
+  }
   private val specSpace: SpecSpace = config.specSpace
   def getAppCodeResolver:AppCodeResolver = resolver
 
@@ -96,12 +98,16 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   def callbackInComponent(loc: Loc): Boolean = loc match {
     case CallbackMethodReturn(_, methodLoc, _) =>
       val className = methodLoc.classType
+      lazy val pos = componentPos.exists(p => p.matches(className))
+      lazy val neg = componentNeg.forall(n => !n.matches(className))
+      pos && neg
       //componentR.forall(_.exists(r => r.matches(className)))
-      componentR match {
-        case Some(rList) =>
-          rList.exists(r => r.matches(className))
-        case None => true
-      }
+//      componentR match {
+//        case Some(rList) =>
+//          rList.exists(r => r.matches(className))
+//        case None => true
+//      }
+
     case _ => throw new IllegalStateException("callbackInComponent should only be called on callback returns")
   }
 
