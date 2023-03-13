@@ -100,8 +100,6 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       val className = methodLoc.classType
       val pos = componentPos.exists(p => p.matches(className))
       val neg = componentNeg.forall(n => !n.matches(className))
-      if(!neg)
-        println()
       pos && neg
       //componentR.forall(_.exists(r => r.matches(className)))
 //      componentR match {
