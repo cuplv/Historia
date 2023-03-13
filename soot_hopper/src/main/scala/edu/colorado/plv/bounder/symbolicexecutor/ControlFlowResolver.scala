@@ -98,8 +98,10 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   def callbackInComponent(loc: Loc): Boolean = loc match {
     case CallbackMethodReturn(_, methodLoc, _) =>
       val className = methodLoc.classType
-      lazy val pos = componentPos.exists(p => p.matches(className))
-      lazy val neg = componentNeg.forall(n => !n.matches(className))
+      val pos = componentPos.exists(p => p.matches(className))
+      val neg = componentNeg.forall(n => !n.matches(className))
+      if(!neg)
+        println()
       pos && neg
       //componentR.forall(_.exists(r => r.matches(className)))
 //      componentR match {
