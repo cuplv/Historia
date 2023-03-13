@@ -242,7 +242,10 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
                     strict_test:Boolean = false,
                     z3InstanceLimit:Int = -1
                    ) extends StateSolver[AST,Z3SolverCtx] {
-  private val mZ3InstanceLimit = if(z3InstanceLimit > 0) z3InstanceLimit else Runtime.getRuntime.availableProcessors
+  private val mZ3InstanceLimit = if(z3InstanceLimit > 0) z3InstanceLimit else {
+    val proc = Runtime.getRuntime.availableProcessors
+    if(proc > 100) proc*2 else proc
+  }
   //  private val MAX_ARGS = 10
 
   override def shouldLogTimes:Boolean = this.logTimes
