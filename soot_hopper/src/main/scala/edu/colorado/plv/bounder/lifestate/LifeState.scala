@@ -895,9 +895,18 @@ object LifeState {
       out
     }
 
+    private def varNotQuantified(v:Set[PureVar]) = {
+      throw new IllegalArgumentException(s"Mismatch between quantified variables and free variables.  " +
+        s"Not quantified: ${v}")
+    }
     private def checkWF(quant:Set[PureVar], p:LSPred):Boolean = p match {
-      case LSConstraint(v1, _, v2:PureVar) => quant.contains(v1) && quant.contains(v2)
-      case LSConstraint(v1, _, v2) => quant.contains(v1)
+      case LSConstraint(v1, _, v2:PureVar) =>
+        val notContained = Set(v1,v2).diff(quant)
+        if(notContained.nonEmpty)
+          varNotQuantified(notContained)
+        true
+      case LSConstraint(v1, _, _) =>
+        if(quant.contains(v1)) true else varNotQuantified(Set(v1))
       case Forall(vars, p) => checkWF(quant ++ vars,p)
       case Exists(vars, p) => checkWF(quant ++ vars,p)
       case LSImplies(l1, l2) => checkWF(quant,l1) && checkWF(quant,l2)
@@ -906,7 +915,11 @@ object LifeState {
       case Or(l1, l2) => checkWF(quant,l1) && checkWF(quant,l2)
       case LSTrue => true
       case LSFalse => true
-      case i:LSAtom => i.lsVar.forall(v => quant.contains(v))
+      case i:LSAtom =>
+        val notContained = i.lsVar.diff(quant)
+        if(notContained.nonEmpty)
+          varNotQuantified(notContained)
+        true
       //case UComb(_,preds,_) => preds.forall(p => checkWF(quant,p))
       case LSAnyPred => true
       case HNOE(v, m, otherV) => m.lsVars.count(_ == v) == 1 && v != otherV && m.lsVars.count(_==otherV) == 0
@@ -915,8 +928,14 @@ object LifeState {
     }
     private def checkWellFormed():Unit = {
       val quantified = univQuant.toSet ++ existQuant
-      if(!(checkWF(quantified, pred) && checkWF(quantified,target)))
-        throw new IllegalArgumentException("mismatch between quantified variables and free variables")
+      try {
+        checkWF(quantified, pred)
+        checkWF(quantified, target)
+      }catch{
+        case e:IllegalArgumentException =>
+          println(this)
+          throw e
+      }
     }
     checkWellFormed()
     def instantiate(i:AbsMsg, specSpace: SpecSpace):LSPred = {
