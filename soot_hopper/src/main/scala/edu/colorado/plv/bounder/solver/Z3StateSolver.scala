@@ -235,7 +235,7 @@ object Z3StateSolver{
  */
 class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
                     logTimes:Boolean,
-                    timeout:Int = 40000, //TODO: changed to 60 seconds
+                    timeout:Int = 40000,
                     randomSeed:Int=3578,
                     defaultOnSubsumptionTimeout: Z3SolverCtx=> Boolean = _ => false,
                     pushSatCheck:Boolean = true,
@@ -243,8 +243,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
                     z3InstanceLimit:Int = -1
                    ) extends StateSolver[AST,Z3SolverCtx] {
   private val mZ3InstanceLimit = if(z3InstanceLimit > 0) z3InstanceLimit else {
-    val proc = Runtime.getRuntime.availableProcessors
-    if(proc > 100) proc*2 else proc
+    Runtime.getRuntime.availableProcessors
   }
   //  private val MAX_ARGS = 10
 
