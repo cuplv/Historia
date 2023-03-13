@@ -91,6 +91,7 @@ case class StateFormula(callStack: List[CallStackFrame], //TODO: cache z3 ast co
                         typeConstraints: Map[PureVar, TypeSet],
                         traceAbstraction: AbstractTrace,
                        ){
+  override lazy val hashCode = super.hashCode()
   def clearPure(p: PureConstraint): StateFormula = this.copy(pureFormula = pureFormula - p)
 
   private val hashableCache = TrieMap[SpecSpace, HashableStateFormula]()
