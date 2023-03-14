@@ -80,7 +80,24 @@ trait StateSolver[T, C <: SolverCtx[T]] {
                    ):SetEncoder[T,C]
   def setSeed(v:Int)(implicit zCtx: C):Unit
   // checking
-  def getSolverCtx(): Lease[C]
+
+  private val z3ack = TrieMap[Long, Boolean]()
+
+  case class LeaseEnforceOnePerThread[A <: AnyRef](lease: Lease[A]) {
+
+    def apply[B](f: A => B): B = try {
+      val tid: Long = Thread.currentThread().getId
+      assert(!z3ack.contains(tid))
+      z3ack.put(tid, true)
+      lease.apply(f)
+    } finally {
+
+      val tid: Long = Thread.currentThread().getId
+      z3ack.remove(tid)
+    }
+  }
+
+  def getSolverCtx(): LeaseEnforceOnePerThread[C]
   def getLogger:Logger
   def iDefaultOnSubsumptionTimeout:Boolean
 
