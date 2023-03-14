@@ -100,8 +100,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
   private def getZ3StateSolver(checkSatPush:Boolean):
   (Z3StateSolver, ClassHierarchyConstraints) = {
     val pc = new ClassHierarchyConstraints(hierarchy,Set("java.lang.Runnable"),intToClass)
-    (new Z3StateSolver(pc, logTimes = true,timeout = 180000, defaultOnSubsumptionTimeout = (z3SolverCtx:Z3SolverCtx) => {
-      println(z3SolverCtx)
+    (new Z3StateSolver(pc, logTimes = true,timeout = 180000, defaultOnSubsumptionTimeout = () => {
       throw new IllegalStateException("Exceeded time limit for test")
     }, pushSatCheck = checkSatPush, strict_test = true),pc)
   }

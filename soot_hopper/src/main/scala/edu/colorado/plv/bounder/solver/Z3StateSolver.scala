@@ -237,7 +237,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
                     logTimes:Boolean,
                     timeout:Int = 40000,
                     randomSeed:Int=3578,
-                    defaultOnSubsumptionTimeout: Z3SolverCtx=> Boolean = _ => false,
+                    defaultOnSubsumptionTimeout: () => Boolean = () => false,
                     pushSatCheck:Boolean = true,
                     strict_test:Boolean = false,
                     z3InstanceLimit:Int = -1
@@ -445,7 +445,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
       ???
   }
 
-  override def iDefaultOnSubsumptionTimeout(implicit zCtx: Z3SolverCtx): Boolean = this.defaultOnSubsumptionTimeout(zCtx)
+  override def iDefaultOnSubsumptionTimeout(): Boolean = this.defaultOnSubsumptionTimeout()
 
   override def setSeed(v: Int)(implicit zctx: Z3SolverCtx): Unit = {
     zctx.ctx.updateParamValue("random-seed", v.toString)
