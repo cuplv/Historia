@@ -29,13 +29,32 @@ import scala.language.postfixOps
 case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
   var acquired:Boolean = false
   private val argsUsed = mutable.HashSet[Integer]()
+  private var ictx = new Context()
+  private var isolver: Solver = makeSolver(timeout, Some(randomSeed))
+  val initializedFieldFunctions: mutable.HashSet[String] = mutable.HashSet[String]()
+  var indexInitialized: Boolean = false
+  val uninterpretedTypes: mutable.HashSet[String] = mutable.HashSet[String]()
+
+  def release(): Unit = this.synchronized {
+    if (acquired) {
+      //val currentThread: Long = Thread.currentThread().getId
+      //assert(acquired.get == currentThread)
+      acquired = false
+      argsUsed.clear()
+      isolver.reset()
+      zeroInitialized = false
+      indexInitialized = false
+      initializedFieldFunctions.clear()
+      uninterpretedTypes.clear()
+    }
+  }
   def setArgUsed(i: Int) = argsUsed.add(i)
   def getArgUsed():Set[Integer] = argsUsed.toSet
   private var overridden = false
-  def overrideTimeoutAndSeed(timeout:Int, seed:Int): Unit = {
+  def overrideTimeoutAndSeed(alternateTimeout:Int, seed:Int): Unit = {
     overridden = true
     isolver.reset()
-    isolver = makeSolver(timeout, Some(seed))
+    isolver = makeSolver(alternateTimeout, Some(seed))
   }
   def resetTimeoutAndSeed(): Unit = {
     if(overridden)
@@ -44,20 +63,9 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
     overridden = false
   }
 
-  private var ictx = new Context()
 
-  //TODO: find something better than finalize
-  // this seems to still be called even though depricated
-
-  val checkStratifiedSets = false // set to true to check EPR stratified sets (see Paxos Made EPR, Padon OOPSLA 2017)
-  private var isolver:Solver = makeSolver(timeout, Some(randomSeed))
-  val initializedFieldFunctions : mutable.HashSet[String] = mutable.HashSet[String]()
-  var indexInitialized:Boolean = false
-  val uninterpretedTypes : mutable.HashSet[String] = mutable.HashSet[String]()
   //val sortEdges = mutable.HashSet[(String,String)]()
   private var zeroInitialized:Boolean = false
-  private var isInitialCtx = true
-  private var isInitialSolver = true
   def initializeZero:Unit ={
     zeroInitialized = true
   }
@@ -71,40 +79,36 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
     isolver
   }
 
-
-  // Method for detecting cycles in function sorts or Ɐ∃ quantifications
-  private def detectCycle(edges:Set[(String,String)]):Boolean = {
-    def iCycle(n:String, visited:Set[String]):Boolean = {
-      if(visited.contains(n)) {
-        true
-      }else{
-        val nextNodes = edges.flatMap{
-          case (k,v) if k==n => Some(v)
-          case _ => None
-        }
-        nextNodes.exists(nn => iCycle(nn, visited + n))
-      }
-    }
-
-    val allNodes:Set[String] = edges.flatMap{
-      case (k,v) => Set(k,v)
-    }
-    allNodes.exists(n => iCycle(n,Set()))
-  }
-
-
-
   def mkAssert(t: AST): Unit = this.synchronized{
     //TODO: trim existential of things not used ====
 
     //val t2 = pruneUnusedQuant(t)
 //    val t2 = t
     assert(acquired)
-    if(checkStratifiedSets) {
-      //sortEdges.addAll(getQuantAltEdges(t))
-    }
     solver.add(t.asInstanceOf[BoolExpr])
   }
+
+
+  // Method for detecting cycles in function sorts or Ɐ∃ quantifications
+  private def detectCycle(edges: Set[(String, String)]): Boolean = {
+    def iCycle(n: String, visited: Set[String]): Boolean = {
+      if (visited.contains(n)) {
+        true
+      } else {
+        val nextNodes = edges.flatMap {
+          case (k, v) if k == n => Some(v)
+          case _ => None
+        }
+        nextNodes.exists(nn => iCycle(nn, visited + n))
+      }
+    }
+
+    val allNodes: Set[String] = edges.flatMap {
+      case (k, v) => Set(k, v)
+    }
+    allNodes.exists(n => iCycle(n, Set()))
+  }
+
   private def getQuantAltEdges(t: AST, forallQTypes : Set[String] = Set()): Set[(String,String)] = {
     val sorts:Set[(String,String)] = t match {
       case v:BoolExpr if v.isConst =>
@@ -162,6 +166,7 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
   }
 
   def dispose():Unit = this.synchronized{
+    argsUsed.clear()
     if(isolver != null){
       isolver.reset()
     }
@@ -170,34 +175,6 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
       ictx.close()
     }
     ictx = null;
-  }
-  def release(): Unit = this.synchronized{
-    //    assert(!detectCycle(sortEdges.toSet), "Quantifier Alternation Exception") //TODO:  remove after dbg
-    // sortEdges.clear()
-
-//    println(s"reset ctx: ${System.identityHashCode(this)}")
-//    if(!acquired.isDefined) {
-//      assert(acquired.isDefined)
-//    }
-    if(acquired) {
-      //val currentThread: Long = Thread.currentThread().getId
-      //assert(acquired.get == currentThread)
-      acquired = false
-      //      ictx.close()
-      //isolver = null
-      isolver.reset()
-      zeroInitialized = false
-      indexInitialized = false
-      initializedFieldFunctions.clear()
-    }
-
-//    if(isolver!= null || ictx != null) { //note: or here is a kind of assertion to make sure these are nulled together
-//      isolver.reset()
-//      ictx.close()
-//    }
-//    isolver = null
-//    ictx = null
-//    Thread.sleep(100)
   }
 
   private var acquireCount = 0

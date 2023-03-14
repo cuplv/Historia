@@ -2,6 +2,7 @@ package edu.colorado.plv.bounder.solver
 
 import better.files.{File, Resource}
 import com.microsoft.z3._
+import edu.colorado.plv.bounder.RunConfig
 import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Forall, FreshRef, LSConstraint, LSFalse, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, Signature, SignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LSExpParser, LifecycleSpec, RxJavaSpec, SpecSignatures, SpecSpace, ViewSpec}
@@ -220,7 +221,9 @@ class StateSolverTest extends FixtureAnyFunSuite {
       //            LifecycleSpec.Activity_createdOnlyFirst
     ))
     List(
-      (new SpecSpace(ExperimentSpecs.row2Specs),
+      (read[RunConfig](
+        File("/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/config_spec.json"
+        ).contentAsString).specSet.getSpecSpace(),
         "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/s1_ex.json",
         "/Users/shawnmeier/Documents/source/bounder/soot_hopper/src/test/resources/s2_ex.json",
         (v:Boolean) =>{
