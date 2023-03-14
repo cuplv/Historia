@@ -945,7 +945,14 @@ trait StateSolver[T, C <: SolverCtx[T]] {
           println(ast.toString)
         }
         mkAssert(ast)
-        val satRes = checkSAT(messageTranslator, None, false)
+        val satRes = try {
+          checkSAT(messageTranslator, None, false)
+        }catch{
+          case e:IllegalArgumentException if e.getLocalizedMessage.contains("status unknown, reason: timeout") =>
+            println(s"State feasibility timeout:\n   ${reducedPtState}")
+            println(write(reducedPtState))
+            true // sound to say satisfiable (but may not be precise)
+        }
         simplifyCache.put((specSpace, stateHashable), satRes)
 
         satRes
