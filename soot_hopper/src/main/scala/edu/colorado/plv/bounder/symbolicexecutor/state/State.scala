@@ -9,6 +9,7 @@ import scalaz.Memo
 import upickle.default.{macroRW, ReadWriter => RW}
 
 import scala.annotation.tailrec
+import scala.collection.concurrent.TrieMap
 import scala.collection.{BitSet, View}
 
 object State {
@@ -72,7 +73,9 @@ case class HashableStateFormula(callStack: List[CallStackFrame],
                                 pureFormula: Set[PureConstraint],
                                 typeConstraints: Map[PureVar, TypeSet],
                                 traceAbstraction: Set[LSPred],
-                               )
+                               ){
+  override lazy val hashCode = super.hashCode()
+}
 /**
  *
  * @param callStack Application only call stack abstraction, emtpy stack or callin on top means framework control.
@@ -88,11 +91,17 @@ case class StateFormula(callStack: List[CallStackFrame], //TODO: cache z3 ast co
                         typeConstraints: Map[PureVar, TypeSet],
                         traceAbstraction: AbstractTrace,
                        ){
+  override lazy val hashCode = super.hashCode()
   def clearPure(p: PureConstraint): StateFormula = this.copy(pureFormula = pureFormula - p)
 
+  private val hashableCache = TrieMap[SpecSpace, HashableStateFormula]()
   def makeHashable(specSpace: SpecSpace):HashableStateFormula = {
-    val pred = EncodingTools.rhsToPred(traceAbstraction.rightOfArrow,specSpace)
-    HashableStateFormula(callStack, heapConstraints, pureFormula, typeConstraints , pred)
+    if(!hashableCache.contains(specSpace)) {
+      val pred = EncodingTools.rhsToPred(traceAbstraction.rightOfArrow, specSpace)
+      hashableCache.addOne(specSpace,
+        HashableStateFormula(callStack, heapConstraints, pureFormula, typeConstraints, pred))
+    }
+    hashableCache(specSpace)
   }
 
 

@@ -170,16 +170,17 @@ case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2) extend
  * @tparam C Command type (IR wrapper)
  */
 case class ExecutorConfig[M,C](stepLimit: Int = -1,
-                                       w :  IRWrapper[M,C],
-                                       specSpace:SpecSpace,
-                                       printAAProgress : Boolean = sys.env.getOrElse("DEBUG","false") == "AbstractInterpreter",
-                                       z3Timeout : Option[Int] = None,
-                                       component : Option[Seq[String]] = None,
-                                       outputMode : OutputMode = MemoryOutputMode,
-                                       timeLimit:Int = 7200, // Note: connectbot click finish does not seem to go any further with 2h vs 0.5hr
-                                       subsumptionMode:SubsumptionMode = SubsumptionModeIndividual, //Note: seems to be faster without batch mode subsumption
-                                       approxMode:ApproxMode =  LimitMaterializationApproxMode()
-                                                  //PreciseApproxMode(true) //default is to allow dropping of constraints and no widen //TODO: === make thresher version that drops things == make under approx version that drops states
+                               w :  IRWrapper[M,C],
+                               specSpace:SpecSpace,
+                               printAAProgress : Boolean = sys.env.getOrElse("DEBUG","false") == "AbstractInterpreter",
+                               z3Timeout : Option[Int] = None,
+                               component : Option[Seq[String]] = None,
+                               outputMode : OutputMode = MemoryOutputMode,
+                               timeLimit:Int = 7200, // Note: connectbot click finish does not seem to go any further with 2h vs 0.5hr
+                               subsumptionMode:SubsumptionMode = SubsumptionModeIndividual, //Note: seems to be faster without batch mode subsumption
+                               approxMode:ApproxMode =  LimitMaterializationApproxMode(),
+                               z3InstanceLimit:Int = -1
+                               //PreciseApproxMode(true) //default is to allow dropping of constraints and no widen //TODO: === make thresher version that drops things == make under approx version that drops states
                                       ){
   def getAbstractInterpreter =
     new AbstractInterpreter[M, C](this)
@@ -311,7 +312,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
     case NoOutputMode => false
     case MemoryOutputMode => true
     case DBOutputMode(dbfile) => true
-  })
+  }, z3InstanceLimit = config.z3InstanceLimit)
 
 
   case class QueryData(queryId:Int, location:Loc, terminals: Set[IPathNode], runTime:Long, result : QueryResult)
@@ -405,7 +406,14 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
         val exn = v1._1 ++ v2._1
         // don't bother joining invar map if exn occurred
         //val joinedInvarMap: InvarMap = if (exn.nonEmpty) Map.empty else joinInvarMap(v1._3, v2._3)
-        (exn, v1._2 ++ v2._2)
+        val combinedSet = v1._2 ++ v2._2
+        val qryGroups = combinedSet.groupBy(n => (n.qry.loc, n.qry.state.sf.makeHashable(config.specSpace)))
+        val merged = qryGroups.map{case (_,nodes) =>
+          val rep = nodes.head
+          nodes.tail.foreach{n => n.setSubsumed(Set(rep))}
+          rep
+        }.toSet
+        (exn, merged)
       }
 
       val isExn = new AtomicBoolean(false) // Cancel parallel ops on timeout
@@ -519,6 +527,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
     res
   }
 
+  private var subsFastCount = 0
   def isSubsumed(pathNode:IPathNode, checkTimeout: ()=>Unit,
                  invarMap: scala.collection.concurrent.TrieMap[SubsumableLocation, Set[IPathNode]]):Set[IPathNode] =
     pathNode match{
@@ -528,10 +537,18 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
       val states = nodes.map(_.state)
       config.subsumptionMode match {
         case SubsumptionModeIndividual =>
-          nodes.find(p => {
-            checkTimeout()
-            stateSolver.canSubsume(p.state, pathNode.state,config.specSpace)
-          }).toSet
+          val thisNodeHashable = pathNode.state.sf.makeHashable(config.specSpace)
+          val subsFast = nodes.find{n => n.qry.state.sf.makeHashable(config.specSpace) == thisNodeHashable}
+          if(subsFast.isDefined){
+            subsFastCount += 1
+            println(s"subs fast: $subsFastCount")
+            subsFast.toSet
+          }else {
+            nodes.find(p => {
+              checkTimeout()
+              stateSolver.canSubsume(p.state, pathNode.state, config.specSpace)
+            }).toSet
+          }
         case SubsumptionModeBatch =>
           if (stateSolver.canSubsumeSet(states.toSet, pathNode.state, config.specSpace))
             nodes.toSet else Set[IPathNode]()
@@ -678,9 +695,6 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
 //      }
 //    }
     current match {
-      case p@PathNode(q@Qry(_,_,Live), false) if stopExplorationAt(q) =>
-        // input defined condition to no longer explore further on this node
-        executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p, stopExplorationAt, invarMap)
       case p@PathNode(Qry(_,_,Live), true) =>
         // current node is subsumed
         executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p, stopExplorationAt, invarMap)
@@ -732,20 +746,24 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
                   }
                   case _ =>
                 }
-                val nextQry = try {
-                  executeStep(p2.qry).map(q => PathNode(q, List(p2), None))
-                } catch {
-                  case ze: Throwable =>
-                    // Get sequence trace to error when it occurs
-                    current.setError(ze)
-                    ze.printStackTrace()
-                    throw QueryInterruptedException(refutedSubsumedOrWitnessed + p2, ze.getMessage)
+                if(stopExplorationAt(p2.qry)){
+                  executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p2, stopExplorationAt, invarMap)
+                }else {
+                  val nextQry = try {
+                    executeStep(p2.qry).map(q => PathNode(q, List(p2), None))
+                  } catch {
+                    case ze: Throwable =>
+                      // Get sequence trace to error when it occurs
+                      current.setError(ze)
+                      ze.printStackTrace()
+                      throw QueryInterruptedException(refutedSubsumedOrWitnessed + p2, ze.getMessage)
+                  }
+                  qrySet.addAll(nextQry)
+                  val addIfPredEmpty = if (nextQry.isEmpty && config.outputMode != NoOutputMode)
+                    Some(p2.copyWithNewQry(p2.qry.copy(searchState = BottomQry))) else None
+                  executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed ++ addIfPredEmpty,
+                    stopExplorationAt, invarMap)
                 }
-                qrySet.addAll(nextQry)
-                val addIfPredEmpty = if(nextQry.isEmpty && config.outputMode != NoOutputMode)
-                  Some(p2.copyWithNewQry(p2.qry.copy(searchState = BottomQry))) else None
-                executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed ++ addIfPredEmpty,
-                  stopExplorationAt, invarMap)
               case None =>
                 // approx mode indicates this state should be dropped (under approx)
                 executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed, stopExplorationAt, invarMap)

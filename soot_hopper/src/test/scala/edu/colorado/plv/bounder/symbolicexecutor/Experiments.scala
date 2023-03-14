@@ -765,7 +765,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
             println(dbFile)
 //            implicit val dbMode = DBOutputMode(dbFile.toString)
 //            dbMode.startMeta()
-            implicit val dbMode = NoOutputMode
+            implicit val dbMode = MemoryOutputMode
 
             //            implicit val dbMode = MemoryOutputMode
             //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
@@ -773,9 +773,9 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
 
             val specSpace = new SpecSpace(row4Specs)
             val config = ExecutorConfig(
-              stepLimit = 90000, w, specSpace, timeLimit = (1800 * 2), //TODO: bump back to 30 after test
+              stepLimit = 90000, w, specSpace, timeLimit = (1800),
               component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode,
-              printAAProgress = true)
+              printAAProgress = true, z3InstanceLimit = 8)
             val symbolicExecutor = config.getAbstractInterpreter
             val line = BounderUtil.lineForRegex(".*query1.*".r, src)
 

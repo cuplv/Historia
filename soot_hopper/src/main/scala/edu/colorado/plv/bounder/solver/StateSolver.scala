@@ -12,7 +12,9 @@ import io.github.andrebeat.pool.Lease
 import org.slf4j.{Logger, LoggerFactory}
 import upickle.default.{read, write}
 
+import java.util.concurrent.atomic.AtomicInteger
 import scala.annotation.tailrec
+import scala.collection.concurrent.TrieMap
 import scala.collection.{immutable, mutable}
 
 //TODO: replace all "sets of things" with SetOfEncoder
@@ -837,8 +839,13 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   }
 
-  def simplify(state: State,specSpace: SpecSpace, maxWitness: Option[Int] = None): Option[State] = {
+  private val simplifyCache = TrieMap[(SpecSpace, HashableStateFormula), Boolean]()
+  def simplify(state: State,specSpace: SpecSpace, maxWitness: Option[Int] = None, rngTry:Int = 0): Option[State] = {
     getSolverCtx() { implicit zCtx =>
+      if(rngTry > 0){
+        zCtx.asInstanceOf[Z3SolverCtx].overrideTimeoutAndSeed(220000,rngTry)
+        println(s"try again with new random seed: ${rngTry}")
+      }
       // val startTime = System.nanoTime()
       // var result = "unfinished"
       // get rid of equal constraints in pure constraitns by inlining
@@ -922,8 +929,12 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       }.inlineConstEq().getOrElse {
         return None
       }
+      val stateHashable = stateWithNulls.sf.makeHashable(specSpace)
+      val cached = simplifyCache.get((specSpace, stateHashable))
 
-      val sat = {
+      val sat:Boolean = if(cached.isDefined){
+        cached.get
+      }else {
         val (reducedPtState, _) = reducePtRegions(stateWithNulls, State.topState)
         val messageTranslator = MessageTranslator(List(reducedPtState), List(specSpace))
 
@@ -938,7 +949,23 @@ trait StateSolver[T, C <: SolverCtx[T]] {
           println(ast.toString)
         }
         mkAssert(ast)
-        checkSAT(messageTranslator, None, false)
+        val satRes = try {
+          checkSAT(messageTranslator, None, false)
+        }catch{
+          case e:IllegalArgumentException if e.getLocalizedMessage.contains("status unknown, reason: timeout") =>
+            println(s"State feasibility timeout:\n   ${reducedPtState}")
+            println(write(reducedPtState))
+            if(rngTry < 2){
+              zCtx.release()
+              return simplify(state, specSpace, maxWitness, rngTry + 1)
+            }else{
+              println("Giving up and not checking sat")
+              true // sound to say satisfiable (but may not be precise)
+            }
+        }
+        simplifyCache.put((specSpace, stateHashable), satRes)
+
+        satRes
       }
       //      val simpleAst = solverSimplify(ast, stateWithNulls, messageTranslator, maxWitness.isDefined)
 
@@ -1163,8 +1190,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       return false
     }
 
-    val mustIs = EncodingTools.mustISet(s1,specSpace)
-    val mayIs = EncodingTools.mayISet(s2, specSpace)
+    val mustIs = EncodingTools.mustPredSet(s1,specSpace)
+    val mayIs = EncodingTools.mayPredSet(s2, specSpace)
     if (mustIs.exists(v => !mayIs.contains(v))) {
       return false
     }
@@ -1279,6 +1306,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     }
   }
 
+  private val subsumeCache = TrieMap[(SpecSpace, HashableStateFormula, HashableStateFormula), Boolean]()
+  private val cacheHit = new AtomicInteger(0)
   /**
    *
    *
@@ -1291,6 +1320,15 @@ trait StateSolver[T, C <: SolverCtx[T]] {
                  timeout:Option[Int] = None,method:SubsumptionMethod = SubsZ3): Boolean = {
 //     val method = "Unify"//TODO: benchmark and see if this is actually faster: Idea run both and log times then hist
 //     val method = "Debug"
+    val s1Hashable = s1.sf.makeHashable(specSpace)
+    val s2Hashable = s2.sf.makeHashable(specSpace)
+    val cached = subsumeCache.get((specSpace, s1Hashable,s2Hashable))
+    if(cached.isDefined){
+      val current = cacheHit.getAndIncrement()
+      if(current %10 == 0)
+        println(s"subsume cache hit: ${current}")
+      return cached.get
+    }
 
     // val method = "FailOver"
     val startTime = System.nanoTime()
@@ -1329,9 +1367,11 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 //      return csu
 //    }
 
-    val res = if(method == SubsZ3)
-      canSubsumeZ3(s1Simp.get,s2Simp.get,specSpace, maxLen, timeout)
-    else if(method == SubsUnify)
+    val res = if(method == SubsZ3) {
+      val toCache = canSubsumeZ3(s1Simp.get,s2Simp.get,specSpace, maxLen, timeout)
+      subsumeCache.put((specSpace, s1Hashable,s2Hashable), toCache)
+      toCache
+    } else if(method == SubsUnify)
       canSubsumeUnify(s1Simp.get,s2Simp.get,specSpace)
     else if(method == SubsFailOver){
       try{canSubsumeUnify(s1Simp.get, s2Simp.get, specSpace)} catch{
@@ -1545,7 +1585,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
           // try 3 times with different random seeds
           if (rngTry < 2) {
-            zCtx.release()
+            zCtx.release() //TODO:====!!!!! this doesn't properly return context to object pool!!!!
             canSubsumeZ3(s1i, s2i, specSpace, maxLen, timeout, rngTry + 1)
           } else {
             println("Giving up and not subsuming.")

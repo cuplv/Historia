@@ -285,7 +285,7 @@ object EncodingTools {
     case atom: LSAtom =>
       atom
   }
-  private def mustISet(s1Pred: LSPred):Set[(MessageType, SignatureMatcher)] = s1Pred match {
+  def mustISet(s1Pred: LSPred):Set[OAbsMsg] = s1Pred match {
     case LSConstraint(v1, op, v2) => Set()
     case Forall(vars, p) => mustISet(p)
     case Exists(vars, p) => mustISet(p)
@@ -297,11 +297,12 @@ object EncodingTools {
     case LifeState.LSFalse => Set()
     case CLInit(sig) => Set()
     case FreshRef(v) => Set()
-    case OAbsMsg(mt, signatures, lsVars) => Set((mt,signatures))
+    case m:OAbsMsg => Set(m)
     case NS(i1, i2) => mustISet(i1)
+    case _:HNOE => Set()
   }
 
-  def mustISet(s:State, specSpace: SpecSpace):Set[String] = {
+  def mustPredSet(s:State, specSpace: SpecSpace):Set[String] = {
     val pred = rhsToPred(s.traceAbstraction.rightOfArrow, specSpace)
     def mustI(lsPred: LSPred):Set[String] = lsPred match {
       case LSConstraint(v1, op, v2) => Set()
@@ -309,8 +310,8 @@ object EncodingTools {
       case Exists(vars, p) => mustI(p)
       case LSImplies(l1, l2) => Set()
       case And(l1, l2) => mustI(l1).union(mustI(l2))
-      case Not(l:AbsMsg) => Set()
-      case _:HNOE => Set()
+      case Not(l:AbsMsg) => Set(s"HN_${l.identitySignature}")
+      case HNOE(_,m,_) => Set(s"HNOE_${m.identitySignature}")
       case Or(l1, l2) => mustI(l1).intersect(mustI(l2))
       case LifeState.LSTrue => Set()
       case LifeState.LSFalse => Set()
@@ -319,16 +320,16 @@ object EncodingTools {
     }
     pred.flatMap(mustI)
   }
-  def mayISet(s:State, specSpace: SpecSpace):Set[String] = {
+  def mayPredSet(s:State, specSpace: SpecSpace):Set[String] = {
     val pred = rhsToPred(s.traceAbstraction.rightOfArrow, specSpace)
     def mayI(lsPred: LSPred):Set[String] = lsPred match {
       case LSConstraint(v1, op, v2) => Set()
-      case Forall(vars, p) => mayI(p)
-      case Exists(vars, p) => mayI(p)
+      case Forall(_, p) => mayI(p)
+      case Exists(_, p) => mayI(p)
       case LSImplies(l1, l2) => Set()
       case And(l1, l2) => mayI(l1).union(mayI(l2))
-      case Not(i:AbsMsg) => Set()
-      case _:HNOE => Set()
+      case Not(l:AbsMsg) => Set(s"HN_${l.identitySignature}")
+      case HNOE(_,m,_) => Set(s"HNOE_${m.identitySignature}")
       case Not(p) => throw new IllegalStateException(s"expected normal form in pred: ${p}")
       case Or(l1, l2) => mayI(l1).union(mayI(l2))
       case LifeState.LSTrue => Set()

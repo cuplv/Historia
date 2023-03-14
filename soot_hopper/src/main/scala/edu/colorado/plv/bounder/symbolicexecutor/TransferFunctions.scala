@@ -124,10 +124,10 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val frame = CallStackFrame(target, Some(source.copy(isPre = true)), Map())
       val (_, state0) = getOrDefineRVals(m,relAliases, postState2)
       val outState = newMsgTransfer(source.method, CIExit, sig, inVars, state0)
-      // if retVar is materialized and assigned, clear it from the state
       val outState1: Set[State] = inVars match{
         case Some(retVar:LocalWrapper)::_ =>
-          val outState11 = if (nonNullCallins.exists(i => i.contains(CIExit, sig)))
+          // If the current callin is in NonNullReturnCallins.txt constrain the return value to be non-null
+          if (nonNullCallins.exists(i => i.contains(CIExit, sig)))
             // if non-null return callins defines this method, assume that the materialized return value is non null
             outState.map{s =>
               if(s.containsLocal(retVar))
@@ -135,7 +135,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
               else s
             }
           else outState
-          outState11.map(s3 => s3.clearLVal(retVar))
         case _ => outState
       }
       val outState2 = outState1.map(s2 => s2.copy(sf = s2.sf.copy(callStack = frame::s2.callStack),
@@ -282,7 +281,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     case (CallbackMethodInvoke(tgtSig, _), targetLoc@CallbackMethodReturn(_,mloc, _)) =>
       // Cannot jump back to callback on a class that will have it's static initializer called in the future
       if(futureCLInit(postState,tgtSig.base))
-        return Set() //TODO:============
+        return Set()
       // Case where execution goes to the exit of another callback
       // TODO: nested callbacks not supported yet, assuming we can't go back to callin entry
       // TODO: note that the callback method invoke is to be ignored here.
@@ -545,13 +544,27 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
   def newMsgTransfer(appMethod:MethodLoc, mt: MessageType,
                      sig:Signature, allVar:List[Option[RVal]],
                      postState: State): Set[State] = {
-    //TODO: just append to single abst trace if sig in spec =====
-    //TODO: get rid of set of trace abstractions in abstract state
     val freshI: Option[AbsMsg] = specSpace.getIWithMergedVars(mt,sig)
     freshI match {
       case None => Set(postState)
       case Some(i) =>
-        val (newState,newI) = (allVar zip i.lsVars).foldLeft((postState, i.copyMsg(lsVars = Nil))){
+        val allVars: Seq[(Option[RVal], PureExpr)] = (allVar zip i.lsVars)
+        val (stateAfterAssign, assignTo) = allVars.headOption match {
+          case Some((_, TopVal)) => (postState,TopVal) //case where spec doesn't care about assign value
+          case Some((Some(lVal:LVal), _)) =>
+            val valOfAssign = postState.get(lVal)
+            if(valOfAssign.contains(NullVal)
+              && mt == CIExit && nonNullCallins.exists(nnCi => nnCi.contains(CIExit, sig))){
+              return Set()
+            }
+            // clear return value from post state if its a callin
+            val postStateHandledRetVal = if(mt == CIExit) postState.clearLVal(lVal) else postState
+            (postStateHandledRetVal,valOfAssign.getOrElse(TopVal))
+          case Some((None, _)) => (postState,TopVal) //code assigns to nothing
+          case None => (postState,TopVal)
+        }
+        val iWithRet = i.copyMsg(lsVars = assignTo::Nil)
+        val (newState,newI) = allVars.tail.foldLeft((stateAfterAssign, iWithRet)){
           case ((acc,i), (None, _)) =>
             (acc,i.copyMsg(lsVars = i.lsVars.appended(TopVal)))
           case ((acc,i), (_, TopVal)) =>

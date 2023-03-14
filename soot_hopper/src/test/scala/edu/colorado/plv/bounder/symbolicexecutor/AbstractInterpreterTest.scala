@@ -3,14 +3,14 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{MultiCallback, Proven, ResultSummary, SingleCallbackMultiMethod, SingleMethod, Timeout, Unreachable, Witnessed, interpretResult}
-import edu.colorado.plv.bounder.ir.SootWrapper
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, LSSpec, LSTrue, NS, Not, Or, Signature}
+import edu.colorado.plv.bounder.ir.{CIExit, SootWrapper}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, LSConstraint, LSSpec, LSTrue, NS, Not, Or, Signature, SubClassMatcher}
 import edu.colorado.plv.bounder.lifestate.SpecSignatures.{Activity_onPause_entry, Activity_onResume_entry, Button_init}
-import edu.colorado.plv.bounder.lifestate.ViewSpec.{a, l, onClick, onClickI, setOnClickListener, setOnClickListenerI, setOnClickListenerINull, v}
+import edu.colorado.plv.bounder.lifestate.ViewSpec.{a, b, b2, l, onClick, onClickI, setOnClickListener, setOnClickListenerI, setOnClickListenerINull, v}
 import edu.colorado.plv.bounder.lifestate.{Dummy, FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.row4Specs
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BottomQry, CallinReturnNonNull, DBOutputMode, DisallowedCallin, FieldPtEdge, IPathNode, MemoryOutputMode, NamedPureVar, NoOutputMode, OutputMode, PrettyPrinting, Qry, Reachable, ReceiverNonNull, TopVal}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BottomQry, CallinReturnNonNull, DBOutputMode, DisallowedCallin, FieldPtEdge, IPathNode, MemoryOutputMode, NamedPureVar, NoOutputMode, NotEquals, OutputMode, PrettyPrinting, Qry, Reachable, ReceiverNonNull, TopVal}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.{AnyFunSuite, FixtureAnyFunSuite}
@@ -1085,9 +1085,10 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
           "void lambda$onCreate$1$MyActivity(java.lang.Object)"), line, Some(".*toString.*"))
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
-        //prettyPrinting.dumpDebugInfo(result, "ProveFieldDerefWithSubscribe")
+        //PrettyPrinting.dumpDebugInfo(result, "ProveFieldDerefWithSubscribe")
         assert(result.nonEmpty)
         BounderUtil.throwIfStackTrace(result)
+        //PrettyPrinting.printWitness(result)
         f.expectUnreachable(BounderUtil.interpretResult(result, QueryFinished))
       }
     }
@@ -1153,7 +1154,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
         "void lambda$onCreate$1$MyActivity(java.lang.Object)"),line, Some(".*toString.*"))
       val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
-      // prettyPrinting.dumpDebugInfo(result,"WitnessFieldDerefWithSubscribe")
+      //PrettyPrinting.dumpDebugInfo(result,"WitnessFieldDerefWithSubscribe")
       assert(result.nonEmpty)
       BounderUtil.throwIfStackTrace(result)
       f.expectReachable(BounderUtil.interpretResult(result,QueryFinished))
@@ -2614,8 +2615,76 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       test)
     println(s"Test time(ms) ${(System.nanoTime() - startTime)/1000.0}")
   }
+  test("Should treat output of method as different from input even if same variable") { f =>
+    //Had a bug where x = foo(x) materializes x as the same pure var in both input and output
+
+    val src =
+      """package com.example.createdestroy;
+        |import androidx.appcompat.app.AppCompatActivity;
+        |import android.os.Bundle;
+        |import android.view.View;
+        |import android.os.Handler;
+        |import android.app.AlertDialog;
+        |import android.content.DialogInterface;
+        |
+        |public class MyActivity extends AppCompatActivity implements DialogInterface.OnClickListener{
+        |    Object o = null;
+        |    @Override
+        |    protected void onCreate(Bundle savedInstanceState){
+        |
+        |     AlertDialog.Builder b2 = null;
+        |     // note that the problem was that setPostive was assumed to return same value as its reciever
+        |     // Test with fake spec that only lets onResume occur if setPostive was invoked with different values
+        |     // cb a.onResume() -[]-> c := b.setPositiveButton(_,a) /\ c!= b
+        |     AlertDialog.Builder b = new AlertDialog.Builder(this).setPositiveButton(0, this);
+        |     b.toString();
+        |    }
+        |    @Override
+        |    protected void onResume(){
+        |      o.toString(); //query1
+        |    }
+        |
+        |		public void onClick(DialogInterface dialog, int id) {}
+        |}""".stripMargin
+    val test: String => Unit = apk => {
+      assert(apk != null)
+
+      // cb a.onResume() -[]-> c := b.setPositiveButton(_,a) /\ c!= b
+      val AlertDialogBuilder = Set("android.app.AlertDialog$Builder")
+      val DialogBuilder_set__Button = (negPos: String) => AbsMsg(CIExit,
+        SubClassMatcher(AlertDialogBuilder,
+          "android.app.AlertDialog\\$Builder set" + negPos + "Button\\(int,android.content.DialogInterface\\$OnClickListener\\)",
+          s"DialogBuilder_set${negPos}Button"), b2 :: b :: TopVal :: l :: Nil)
+      val neqSpec = LSSpec(a::Nil, b2::b::l::Nil,
+        And(DialogBuilder_set__Button("Positive"), LSConstraint(b2,NotEquals,b)),
+        SpecSignatures.Activity_onResume_entry)
+
+      val specs = new SpecSpace(Set(neqSpec) , Set())
+      val w = new SootWrapper(apk, specs.getSpecs)
+
+      val config = ExecutorConfig(
+        stepLimit = 120, w, specs,
+        component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
+      val interpreter = config.getAbstractInterpreter
+      val line = BounderUtil.lineForRegex(".*query1.*".r, src)
+      val runMethodReachable = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+        "void onResume()"), line, Some(".*toString.*"))
+      val qry = runMethodReachable.make(interpreter)
+
+      val resultRunMethodReachable = interpreter.run(runMethodReachable)
+        .flatMap(a => a.terminals)
+      //      prettyPrinting.dumpDebugInfo(resultRunMethodReachable, "RunnableInHandler")
+      assert(resultRunMethodReachable.nonEmpty)
+      BounderUtil.throwIfStackTrace(resultRunMethodReachable)
+      assert(BounderUtil.interpretResult(resultRunMethodReachable, QueryFinished) == Witnessed)
+
+    }
+
+    makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
+  }
   test("Heap relevant even if only null assign") { f =>
     //TODO: not fully implemented
+    //TODO: figure out what this was testing for
 
     val src =
       """package com.example.createdestroy;
