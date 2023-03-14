@@ -19,6 +19,7 @@ import smtlib.trees.{Commands, CommandsResponses, Terms}
 import smtlib.trees.Terms.{Exists, Forall, FunctionApplication, Identifier, Let, QualifiedIdentifier, SList, SSymbol, SortedVar, Term, VarBinding}
 
 import java.io.StringReader
+import scala.collection.concurrent.TrieMap
 import scala.collection.immutable
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
@@ -461,6 +462,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
     reset = (z:Z3SolverCtx) => {
       z.release()
       z.acquire()
+
     },
     maxIdleTime = 30 seconds,
     dispose = (z:Z3SolverCtx) => {
@@ -468,14 +470,8 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
     }
   )
 
-  override def getSolverCtx(): Lease[Z3SolverCtx] = {
-    //val ctx = threadLocalCtx.get()
-    //if(overrideTimeout.isEmpty) {
-    //  ctx
-    //}else
-    //  ctx.copy(timeout = overrideTimeout.get)
-
-    zctxPool.acquire()
+  override def getSolverCtx(): LeaseEnforceOnePerThread[Z3SolverCtx] = {
+    LeaseEnforceOnePerThread(zctxPool.acquire())
   }
 
   override def solverString(messageTranslator: MessageTranslator)(implicit zCtx: Z3SolverCtx): String = {
