@@ -843,7 +843,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   def simplify(state: State,specSpace: SpecSpace, maxWitness: Option[Int] = None, rngTry:Int = 0): Option[State] = {
     getSolverCtx() { implicit zCtx =>
       if(rngTry > 0){
-        zCtx.asInstanceOf[Z3SolverCtx].overrideTimeoutAndSeed(30,rngTry)
+        zCtx.asInstanceOf[Z3SolverCtx].overrideTimeoutAndSeed(220000,rngTry)
         println(s"try again with new random seed: ${rngTry}")
       }
       // val startTime = System.nanoTime()
