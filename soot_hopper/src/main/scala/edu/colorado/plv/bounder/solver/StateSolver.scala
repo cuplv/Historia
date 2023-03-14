@@ -82,7 +82,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   // checking
   def getSolverCtx(): Lease[C]
   def getLogger:Logger
-  def iDefaultOnSubsumptionTimeout(implicit zCtx:C):Boolean
+  def iDefaultOnSubsumptionTimeout:Boolean
 
   // axiom initializers add interpreted properties to uninterpreted domains e.g. zero, heap cells, message order
   def initializeZeroAxioms(messageTranslator: MessageTranslator)(implicit zCtx:C):Unit
@@ -841,100 +841,100 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   private val simplifyCache = TrieMap[(SpecSpace, HashableStateFormula), Boolean]()
   def simplify(state: State,specSpace: SpecSpace, maxWitness: Option[Int] = None, rngTry:Int = 0): Option[State] = {
-    getSolverCtx() { implicit zCtx =>
-      if(rngTry > 0){
-        zCtx.asInstanceOf[Z3SolverCtx].overrideTimeoutAndSeed(220000,rngTry)
+
+    // val startTime = System.nanoTime()
+    // var result = "unfinished"
+    // get rid of equal constraints in pure constraitns by inlining
+    val inlinedStateOpt = state.inlineConstEq()
+    if (inlinedStateOpt.isEmpty)
+      return None
+    val state2 = inlinedStateOpt.get
+
+    if (state.isSimplified) {
+      // state previously simplified
+      // result = "sat"
+      return inlinedStateOpt
+    }
+
+    // if a stored value must be created in the future, state is infeasible
+    val createdInFuture = state2.sf.traceAbstraction.rightOfArrow.flatMap {
+      case FreshRef(v) => Some(v)
+      case _ => None
+    }
+    val stackVarCreatedInFuture = state2.callStack.exists {
+      case CallStackFrame(_, _, locals) => locals.values.exists {
+        createdInFuture.contains
+      }
+    }
+
+
+    if (stackVarCreatedInFuture)
+      return None
+
+    if (state2.sf.callStack.exists(frame => frame.locals.getOrElse(StackVar("@this"), NPureVar(-1)) == NullVal))
+      return None
+
+    @tailrec
+    def equivSet(acc: Set[PureExpr]): Set[PureExpr] = {
+      val eqRefPv = state2.sf.pureFormula.flatMap {
+        case PureConstraint(lhs, Equals, rhs) if acc.contains(lhs) || acc.contains(rhs) => Set(lhs, rhs)
+        case _ => Set.empty
+      }
+      val newAcc = acc ++ eqRefPv
+      if (newAcc == acc)
+        acc
+      else
+        equivSet(eqRefPv)
+    }
+
+    //      def mustNotNull(pv:PureExpr):Boolean = pv match{
+    //        case NullVal => false
+    //        case pv:PureVar =>
+    //          state2.sf.pureFormula.forall{ // with pv reduction we eventually get to fields pointing to null directly
+    //            case PureConstraint(lhs, Equals, rhs) => pv != lhs && pv != rhs
+    //            case _ => true
+    //          }
+    //      }
+    val heapPtEdgeCreatedInFuture = state2.sf.heapConstraints.exists {
+      case (FieldPtEdge(base, _), v) =>
+        val equivV = equivSet(Set(v))
+        //if(!equivV.contains(NullVal) ) { //TODO: pts to null ok for val created in future?
+        val equiv = equivSet(Set(base)) ++ equivV
+        equiv.exists(createdInFuture.contains)
+      //} else false
+      case (_: StaticPtEdge, v) if !equivSet(Set(v)).contains(NullVal) =>
+        val equiv = equivSet(Set(v))
+        equiv.exists(createdInFuture.contains)
+      case _ => false
+    }
+
+    if (heapPtEdgeCreatedInFuture)
+      return None
+
+
+    // Drop useless constraints
+    //      val state2 = state.copy(sf = state.sf.copy(pureFormula = state.pureFormula.filter {
+    //        case PureConstraint(v1, Equals, v2) if v1 == v2 => false
+    //        case _ => true
+    //      }))
+
+    // empty points to set means value must be null
+    val nullsFromPt = state2.typeConstraints.filter(a => a._2.isEmpty)
+    val stateWithNulls = nullsFromPt.foldLeft(state2) {
+      case (state, (v, _)) => state.addPureConstraint(PureConstraint(v, Equals, NullVal))
+    }.inlineConstEq().getOrElse {
+      return None
+    }
+    val satRes = getSolverCtx() { implicit zCtx =>
+      if (rngTry > 0) {
+        zCtx.asInstanceOf[Z3SolverCtx].overrideTimeoutAndSeed(220000, rngTry)
         println(s"try again with new random seed: ${rngTry}")
-      }
-      // val startTime = System.nanoTime()
-      // var result = "unfinished"
-      // get rid of equal constraints in pure constraitns by inlining
-      val inlinedStateOpt = state.inlineConstEq()
-      if (inlinedStateOpt.isEmpty)
-        return None
-      val state2 = inlinedStateOpt.get
-
-      if (state.isSimplified) {
-        // state previously simplified
-        // result = "sat"
-        return inlinedStateOpt
-      }
-
-      // if a stored value must be created in the future, state is infeasible
-      val createdInFuture = state2.sf.traceAbstraction.rightOfArrow.flatMap {
-        case FreshRef(v) => Some(v)
-        case _ => None
-      }
-      val stackVarCreatedInFuture = state2.callStack.exists {
-        case CallStackFrame(_, _, locals) => locals.values.exists {
-          createdInFuture.contains
-        }
-      }
-
-
-      if (stackVarCreatedInFuture)
-        return None
-
-      if (state2.sf.callStack.exists(frame => frame.locals.getOrElse(StackVar("@this"), NPureVar(-1)) == NullVal))
-        return None
-
-      @tailrec
-      def equivSet(acc: Set[PureExpr]): Set[PureExpr] = {
-        val eqRefPv = state2.sf.pureFormula.flatMap {
-          case PureConstraint(lhs, Equals, rhs) if acc.contains(lhs) || acc.contains(rhs) => Set(lhs, rhs)
-          case _ => Set.empty
-        }
-        val newAcc = acc ++ eqRefPv
-        if (newAcc == acc)
-          acc
-        else
-          equivSet(eqRefPv)
-      }
-
-      //      def mustNotNull(pv:PureExpr):Boolean = pv match{
-      //        case NullVal => false
-      //        case pv:PureVar =>
-      //          state2.sf.pureFormula.forall{ // with pv reduction we eventually get to fields pointing to null directly
-      //            case PureConstraint(lhs, Equals, rhs) => pv != lhs && pv != rhs
-      //            case _ => true
-      //          }
-      //      }
-      val heapPtEdgeCreatedInFuture = state2.sf.heapConstraints.exists {
-        case (FieldPtEdge(base, _), v) =>
-          val equivV = equivSet(Set(v))
-          //if(!equivV.contains(NullVal) ) { //TODO: pts to null ok for val created in future?
-          val equiv = equivSet(Set(base)) ++ equivV
-          equiv.exists(createdInFuture.contains)
-        //} else false
-        case (_: StaticPtEdge, v) if !equivSet(Set(v)).contains(NullVal) =>
-          val equiv = equivSet(Set(v))
-          equiv.exists(createdInFuture.contains)
-        case _ => false
-      }
-
-      if (heapPtEdgeCreatedInFuture)
-        return None
-
-
-      // Drop useless constraints
-      //      val state2 = state.copy(sf = state.sf.copy(pureFormula = state.pureFormula.filter {
-      //        case PureConstraint(v1, Equals, v2) if v1 == v2 => false
-      //        case _ => true
-      //      }))
-
-      // empty points to set means value must be null
-      val nullsFromPt = state2.typeConstraints.filter(a => a._2.isEmpty)
-      val stateWithNulls = nullsFromPt.foldLeft(state2) {
-        case (state, (v, _)) => state.addPureConstraint(PureConstraint(v, Equals, NullVal))
-      }.inlineConstEq().getOrElse {
-        return None
       }
       val stateHashable = stateWithNulls.sf.makeHashable(specSpace)
       val cached = simplifyCache.get((specSpace, stateHashable))
-
-      val sat:Boolean = if(cached.isDefined){
-        cached.get
-      }else {
+      if (cached.isDefined) {
+        Some(cached.get)
+      } else {
         val (reducedPtState, _) = reducePtRegions(stateWithNulls, State.topState)
         val messageTranslator = MessageTranslator(List(reducedPtState), List(specSpace))
 
@@ -949,36 +949,43 @@ trait StateSolver[T, C <: SolverCtx[T]] {
           println(ast.toString)
         }
         mkAssert(ast)
-        val satRes = try {
-          checkSAT(messageTranslator, None, false)
-        }catch{
-          case e:IllegalArgumentException if e.getLocalizedMessage.contains("status unknown, reason: timeout") =>
+        try {
+          val out = checkSAT(messageTranslator, None, false)
+          simplifyCache.put((specSpace, stateHashable), out)
+
+          Some(out)
+        } catch {
+          case e: IllegalArgumentException if e.getLocalizedMessage.contains("status unknown, reason: timeout") =>
             println(s"State feasibility timeout:\n   ${reducedPtState}")
             println(write(reducedPtState))
-            if(rngTry < 2){
-              zCtx.release()
-              return simplify(state, specSpace, maxWitness, rngTry + 1)
-            }else{
-              println("Giving up and not checking sat")
-              true // sound to say satisfiable (but may not be precise)
-            }
+            None
         }
-        simplifyCache.put((specSpace, stateHashable), satRes)
-
-        satRes
       }
-      //      val simpleAst = solverSimplify(ast, stateWithNulls, messageTranslator, maxWitness.isDefined)
+    }
+    //      val simpleAst = solverSimplify(ast, stateWithNulls, messageTranslator, maxWitness.isDefined)
 
-      //      if(simpleAst.isEmpty)
-      if (!sat) {
-        // result = "unsat"
-        None
-      } else {
-        // result = "sat"
-        val reducedState = EncodingTools.reduceStatePureVars(stateWithNulls.setSimplified())
-          .map(EncodingTools.gcPureVars)
-        reducedState.map(_.setSimplified())
-      }
+    //      if(simpleAst.isEmpty)
+    satRes match{
+      case Some(satRes) =>
+        if (!satRes) {
+          // result = "unsat"
+          None
+        } else {
+          // result = "sat"
+          val reducedState = EncodingTools.reduceStatePureVars(stateWithNulls.setSimplified())
+            .map(EncodingTools.gcPureVars)
+          reducedState.map(_.setSimplified())
+        }
+      case None =>
+        if (rngTry < 2) {
+          simplify(state, specSpace, maxWitness, rngTry + 1)
+        } else {
+          println("Giving up and not checking sat")
+          // sound to say satisfiable (but may not be precise)
+          val reducedState = EncodingTools.reduceStatePureVars(stateWithNulls.setSimplified())
+            .map(EncodingTools.gcPureVars)
+          reducedState.map(_.setSimplified())
+        }
     }
   }
 
@@ -1522,7 +1529,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val (s1, s2) = reducePtRegions(s1i, s2i) //TODO: does reducing pts regions help?
     //    val (s1,s2) = (s1i,s2i)
     val newTimeout = 220000
-    getSolverCtx() { implicit zCtx =>
+    val out = getSolverCtx() { implicit zCtx =>
       try {
         if (rngTry > 0) {
           val rngSeed = rngTry
@@ -1546,7 +1553,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         if (foundCounter && maxLen.isDefined) {
           printDbgModel(messageTranslator, Set(s1.traceAbstraction, s2.traceAbstraction))
         }
-        !foundCounter
+        Some(!foundCounter)
       } catch {
         case e: IllegalArgumentException =>
           // Note: this didn't seem to help things so currently disabled
@@ -1582,16 +1589,19 @@ trait StateSolver[T, C <: SolverCtx[T]] {
           // throw e
           if (STRICT_TEST)
             throw new IllegalStateException("Timeout")
-
-          // try 3 times with different random seeds
-          if (rngTry < 2) {
-            zCtx.release() //TODO:====!!!!! this doesn't properly return context to object pool!!!!
-            canSubsumeZ3(s1i, s2i, specSpace, maxLen, timeout, rngTry + 1)
-          } else {
-            println("Giving up and not subsuming.")
-            iDefaultOnSubsumptionTimeout
-          }
+          None
       }
+    }
+    out match {
+      case Some(value) => value
+      case None =>
+        // try 3 times with different random seeds
+        if (rngTry < 2) {
+          canSubsumeZ3(s1i, s2i, specSpace, maxLen, timeout, rngTry + 1)
+        } else {
+          println("Giving up and not subsuming.")
+          iDefaultOnSubsumptionTimeout
+        }
     }
   }
 

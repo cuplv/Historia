@@ -15,8 +15,7 @@ class EncodingToolsTest extends AnyFunSuite{
   private def getZ3StateSolver():
   (Z3StateSolver, ClassHierarchyConstraints) = {
 //    val pc = new ClassHierarchyConstraints(cha, Set("java.lang.Runnable"), intToClass)
-    (new Z3StateSolver(cha, logTimes = true, timeout = 20000, defaultOnSubsumptionTimeout = (z3SolverCtx: Z3SolverCtx) => {
-      println(z3SolverCtx)
+    (new Z3StateSolver(cha, logTimes = true, timeout = 20000, defaultOnSubsumptionTimeout = () => {
       throw new IllegalStateException("Exceeded time limit for test")
     }, pushSatCheck = true), cha)
   }
