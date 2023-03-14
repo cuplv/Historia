@@ -840,8 +840,12 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   }
 
   private val simplifyCache = TrieMap[(SpecSpace, HashableStateFormula), Boolean]()
-  def simplify(state: State,specSpace: SpecSpace, maxWitness: Option[Int] = None): Option[State] = {
+  def simplify(state: State,specSpace: SpecSpace, maxWitness: Option[Int] = None, rngTry:Int = 0): Option[State] = {
     getSolverCtx() { implicit zCtx =>
+      if(rngTry > 0){
+        zCtx.asInstanceOf[Z3SolverCtx].overrideTimeoutAndSeed(30,rngTry)
+        println(s"try again with new random seed: ${rngTry}")
+      }
       // val startTime = System.nanoTime()
       // var result = "unfinished"
       // get rid of equal constraints in pure constraitns by inlining
@@ -951,7 +955,13 @@ trait StateSolver[T, C <: SolverCtx[T]] {
           case e:IllegalArgumentException if e.getLocalizedMessage.contains("status unknown, reason: timeout") =>
             println(s"State feasibility timeout:\n   ${reducedPtState}")
             println(write(reducedPtState))
-            true // sound to say satisfiable (but may not be precise)
+            if(rngTry < 2){
+              zCtx.release()
+              return simplify(state, specSpace, maxWitness, rngTry + 1)
+            }else{
+              println("Giving up and not checking sat")
+              true // sound to say satisfiable (but may not be precise)
+            }
         }
         simplifyCache.put((specSpace, stateHashable), satRes)
 
