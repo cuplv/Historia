@@ -39,9 +39,6 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
   def release(): Unit = this.synchronized {
     if(solver != null)
       isolver.reset()
-    if(ictx != null) {
-      ictx.close()
-    }
     argsUsed.clear()
     initializedFieldFunctions.clear()
     uninterpretedTypes.clear()
