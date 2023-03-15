@@ -112,7 +112,9 @@ witnessed
     [CI Ret merge] androidx.appcompat.app.AlertDialog show()
        state: ([CI Ret] androidx.appcompat.app.AlertDialog$Builder androidx.appcompat.app.AlertDialog show() locals:       locals:          heap: p-2.f$0->p-1          pure: p-1  !=  NULL && p-2  !=  NULL         types: List(p-1:{8765,9225}, p-2:{9298})    trace: O(CIExit I_CIExit_FragmentgetActivity ( NULL,p-1 ))
     [CB Ret] com.nutomic.syncthingandroid.activities.SettingsActivity$SettingsFragment boolean onPreferenceClick(android.preference.Preference)
+
        state: ( locals:          heap: p-2.f$0->p-1          pure: p-1  !=  NULL && p-2  !=  NULL         types: List(p-1:{8765,9225}, p-2:{9298})    trace: O(CIExit I_CIExit_FragmentgetActivity ( NULL,p-1 ))
+
     [CB Inv] com.nutomic.syncthingandroid.activities.SettingsActivity$SettingsFragment$$ExternalSyntheticLambda9 void onClick(android.content.DialogInterface,int)
        state: (    heap: p-2.f$0->p-1          pure: p-1  !=  NULL && p-2  !=  NULL         types: List(p-1:{8765,9225}, p-2:{9298})    trace: O(CIExit I_CIExit_FragmentgetActivity ( NULL,p-1 ))
     pre-line: -1 r0 := @this: com.nutomic.syncthingandroid.activities.SettingsActivity$SettingsFragment$$ExternalSyntheticLambda9

@@ -3,9 +3,9 @@ com.android.keepass/Disallow.I_CIEnter_AsyncTaskexecute/0/config.json  -- proven
 com.android.keepass/Disallow.I_CIEnter_Dialogdismiss/0/config.json
 com.asksven.betterbatterystats/SensitiveDerefCallinCaused/0/config.json -- proven no spec
 com.byagowi.persiancalendar/Disallow.I_CIEnter_Dialogdismiss/0/config.json
-com.darshancomputing.BatteryIndicatorPro/SensitiveDerefCallinCaused/0/config.json
-com.gpl.rpg.AndorsTrail/SensitiveDerefCallinCaused/0/config.json
-com.nutomic.syncthingandroid/Disallow.I_CIEnter_AsyncTaskexecute/0/config.json
+com.darshancomputing.BatteryIndicatorPro/SensitiveDerefCallinCaused/0/config.json --proven with spec
+com.gpl.rpg.AndorsTrail/SensitiveDerefCallinCaused/0/config.json -- proven no spec
+com.nutomic.syncthingandroid/Disallow.I_CIEnter_AsyncTaskexecute/0/config.json -- proven no spec
 com.nutomic.syncthingandroid/SensitiveDerefCallinCaused/0/config.json
 com.owncloud.android/SensitiveDerefCallinCaused/0/config.json
 com.seafile.seadroid2/SensitiveDerefCallinCaused/0/config.json
