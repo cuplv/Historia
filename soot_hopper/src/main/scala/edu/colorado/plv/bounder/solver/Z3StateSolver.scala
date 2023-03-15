@@ -146,8 +146,14 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
     }
   }
   private def makeSolver(timeout:Int, newRandomSeed:Option[Int]) = this.synchronized {
-    if(isolver != null){
-      isolver.reset()
+    if(isolver != null ){
+      try {
+        isolver.reset()
+      }catch{
+        case e:Z3Exception if e.getMessage == "Context closed" => {
+          // ignore, reset is just to reduce mem leaks
+        }
+      }
     }
     isolver = ictx.mkSolver
 //    val solver = ctx.mkSimpleSolver()
