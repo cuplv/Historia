@@ -30,22 +30,27 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
   var acquired:Boolean = false
   private val argsUsed = mutable.HashSet[Integer]()
   private var ictx = new Context()
-  private var isolver: Solver = makeSolver(timeout, Some(randomSeed))
+  private var isolver: Solver = null
+  makeSolver(timeout, Some(randomSeed))
   val initializedFieldFunctions: mutable.HashSet[String] = mutable.HashSet[String]()
   var indexInitialized: Boolean = false
   val uninterpretedTypes: mutable.HashSet[String] = mutable.HashSet[String]()
 
   def release(): Unit = this.synchronized {
+    if(solver != null)
+      isolver.reset()
+    if(ictx != null) {
+      ictx.close()
+    }
+    argsUsed.clear()
+    initializedFieldFunctions.clear()
+    uninterpretedTypes.clear()
     if (acquired) {
       //val currentThread: Long = Thread.currentThread().getId
       //assert(acquired.get == currentThread)
       acquired = false
-      argsUsed.clear()
-      isolver.reset()
       zeroInitialized = false
       indexInitialized = false
-      initializedFieldFunctions.clear()
-      uninterpretedTypes.clear()
     }
   }
   def setArgUsed(i: Int) = argsUsed.add(i)
@@ -54,11 +59,11 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
   def overrideTimeoutAndSeed(alternateTimeout:Int, seed:Int): Unit = {
     overridden = true
     isolver.reset()
-    isolver = makeSolver(alternateTimeout, Some(seed))
+    makeSolver(alternateTimeout, Some(seed))
   }
   def resetTimeoutAndSeed(): Unit = {
     if(overridden)
-      isolver = makeSolver(timeout, Some(randomSeed))
+      makeSolver(timeout, Some(randomSeed))
 
     overridden = false
   }
@@ -143,8 +148,11 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
       case _ => true
     }
   }
-  private def makeSolver(timeout:Int, newRandomSeed:Option[Int]):Solver = this.synchronized{
-    val solver = ictx.mkSolver
+  private def makeSolver(timeout:Int, newRandomSeed:Option[Int]) = this.synchronized {
+    if(isolver != null){
+      isolver.reset()
+    }
+    isolver = ictx.mkSolver
 //    val solver = ctx.mkSimpleSolver()
     val params = ictx.mkParams()
     params.add("timeout", timeout)
@@ -161,11 +169,11 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
 
     //TODO: does this get rid of the "let" statements when printing?
     //    ctx.setPrintMode(Z3_ast_print_mode.Z3_PRINT_LOW_LEVEL)
-    solver.setParameters(params)
-    solver
+    isolver.setParameters(params)
   }
 
   def dispose():Unit = this.synchronized{
+    release()
     argsUsed.clear()
     if(isolver != null){
       isolver.reset()
@@ -189,11 +197,11 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
     initializedFieldFunctions.clear()
     indexInitialized = false
     uninterpretedTypes.clear()
-    if(acquireCount % 10 == 0) {
+    if(acquireCount % 5 == 0) {
       isolver.reset()
       ictx.close()
       ictx = new Context()
-      isolver = makeSolver(timeout, Some(randomSeed))
+      makeSolver(timeout, Some(randomSeed))
     } else {
       isolver.reset()
     }
@@ -439,9 +447,8 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
     reset = (z:Z3SolverCtx) => {
       z.release()
       z.acquire()
-
     },
-    maxIdleTime = 30 seconds,
+    maxIdleTime = 10 seconds,
     dispose = (z:Z3SolverCtx) => {
       z.dispose()
     }
