@@ -1,7 +1,7 @@
 ch.blinkenlights.android.vanilla/SensitiveDerefCallinCaused/0/config.json -- possible can't specify but correct
-com.android.keepass/Disallow.I_CIEnter_AsyncTaskexecute/0/config.json 
+com.android.keepass/Disallow.I_CIEnter_AsyncTaskexecute/0/config.json  -- proven no spec, possibly improvements
 com.android.keepass/Disallow.I_CIEnter_Dialogdismiss/0/config.json
-com.asksven.betterbatterystats/SensitiveDerefCallinCaused/0/config.json
+com.asksven.betterbatterystats/SensitiveDerefCallinCaused/0/config.json -- proven no spec
 com.byagowi.persiancalendar/Disallow.I_CIEnter_Dialogdismiss/0/config.json
 com.darshancomputing.BatteryIndicatorPro/SensitiveDerefCallinCaused/0/config.json
 com.gpl.rpg.AndorsTrail/SensitiveDerefCallinCaused/0/config.json
