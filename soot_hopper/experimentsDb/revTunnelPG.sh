@@ -1,7 +1,8 @@
 #!/bin/bash
 # allow remote workers to connect to local machine
 #HOST=shme8881@plv1.colorado.edu
-HOST=cc@129.114.109.38
+#HOST=cc@129.114.109.38
+HOST=cc@10.52.0.57
 #HOST=ubuntu@198.59.7.90
 #HOST=s@192.168.86.161
 
