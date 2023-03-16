@@ -17,6 +17,8 @@ import scala.collection.mutable
 import scala.collection.parallel.CollectionConverters.ImmutableIterableIsParallelizable
 import scala.collection.parallel.immutable.ParIterable
 import scala.util.matching.Regex
+import scala.collection.parallel.CollectionConverters.IterableIsParallelizable
+
 sealed trait RelevanceRelation{
   def join(other: RelevanceRelation):RelevanceRelation
   def applyPrecisionLossForSkip(state:State):State
@@ -178,7 +180,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     calls.addAll(allCallsApp(loc))
     var added = true
     while(added){
-      val newCalls = calls.flatMap{called => allCallsApp(called)}
+      val newCalls = calls.par.flatMap{called => allCallsApp(called)}
       added = newCalls.exists{newCall => !calls.contains(newCall)}
       calls.addAll(newCalls)
     }
