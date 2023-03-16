@@ -1,0 +1,19 @@
+refuted
+    REFUTED: InternalMethodInvoke(de.danoeh.antennapod.fragment.preferences.synchronization.-$$Lambda$SynchronizationPreferencesFragment$oWbIoEgjdg9r-IZBiWqdh1Y5w4w,boolean onPreferenceClick(androidx.preference.Preference),JimpleMethodLoc(<de.danoeh.antennapod.fragment.preferences.synchronization.'-$$Lambda$SynchronizationPreferencesFragment$oWbIoEgjdg9r-IZBiWqdh1Y5w4w': boolean onPreferenceClick(androidx.preference.Preference)>))
+       state: ( locals: @this -> p-2         heap: p-2.f$0->p-1          pure: p-1  !=  NULL && p-2  !=  NULL         types: List(p-1:{16245,21984}, p-2:{21905})    trace: O(CIExit I_CIExit_FragmentgetActivity ( NULL,p-1 ))
+    pre-line: -1 r0 := @this: de.danoeh.antennapod.fragment.preferences.synchronization.-$$Lambda$SynchronizationPreferencesFragment$oWbIoEgjdg9r-IZBiWqdh1Y5w4w
+       state: ( locals: @this -> p-2         heap: p-2.f$0->p-1          pure: p-1  !=  NULL && p-2  !=  NULL         types: List(p-1:{16245,21984}, p-2:{21905})    trace: O(CIExit I_CIExit_FragmentgetActivity ( NULL,p-1 ))
+    pre-line: -1 $r1 = r0.<de.danoeh.antennapod.fragment.preferences.synchronization.'-$$Lambda$SynchronizationPreferencesFragment$oWbIoEgjdg9r-IZBiWqdh1Y5w4w': de.danoeh.antennapod.fragment.preferences.synchronization.SynchronizationPreferencesFragment f$0>
+       state: ( locals: r0 -> p-2         heap: p-2.f$0->p-1          pure: p-1  !=  NULL         types: List(p-1:{16245,21984}, p-2:{21905})    trace: O(CIExit I_CIExit_FragmentgetActivity ( NULL,p-1 ))
+    pre-line: -1 $z0 = virtualinvoke $r1.<de.danoeh.antennapod.fragment.preferences.synchronization.SynchronizationPreferencesFragment: boolean lambda$setupScreen$1$SynchronizationPreferencesFragment(androidx.preference.Preference)>($r2)
+       state: ( locals: $r1 -> p-1         heap:           pure: p-1  !=  NULL         types: List(p-1:{16245,21984})    trace: O(CIExit I_CIExit_FragmentgetActivity ( NULL,p-1 ))
+    InternalMethodInvoke(de.danoeh.antennapod.fragment.preferences.synchronization.SynchronizationPreferencesFragment,boolean lambda$setupScreen$1$SynchronizationPreferencesFragment(androidx.preference.Preference),JimpleMethodLoc(<de.danoeh.antennapod.fragment.preferences.synchronization.SynchronizationPreferencesFragment: boolean lambda$setupScreen$1$SynchronizationPreferencesFragment(androidx.preference.Preference)>))
+       state: ( locals: @this -> p-1         heap:           pure: p-1  !=  NULL         types: List(p-1:{16245,21984})    trace: O(CIExit I_CIExit_FragmentgetActivity ( NULL,p-1 ))
+    pre-line: -1 r0 := @this: de.danoeh.antennapod.fragment.preferences.synchronization.SynchronizationPreferencesFragment
+       state: ( locals: @this -> p-1         heap:           pure: p-1  !=  NULL         types: List(p-1:{16245,21984})    trace: O(CIExit I_CIExit_FragmentgetActivity ( NULL,p-1 ))
+    pre-line: 96 $r2 = virtualinvoke r0.<de.danoeh.antennapod.fragment.preferences.synchronization.SynchronizationPreferencesFragment: androidx.fragment.app.FragmentActivity getActivity()>()
+       state: ( locals: r0 -> p-1         heap:           pure: p-1  !=  NULL         types: List(p-1:{16245,21984})    trace: O(CIExit I_CIExit_FragmentgetActivity ( NULL,p-1 ))
+    [CI Inv merge] androidx.fragment.app.FragmentActivity getActivity()
+       state: ([CI Ret] androidx.fragment.app.Fragment androidx.fragment.app.FragmentActivity getActivity() locals:       locals: r0 -> p-1         heap:           pure:          types: List(p-1:{16245,21984})    trace: O(CIExit I_CIExit_FragmentgetActivity ( NULL,p-1 ))
+    [CI Ret merge] androidx.fragment.app.FragmentActivity getActivity()
+       state: ([CI Ret] androidx.fragment.app.Fragment androidx.fragment.app.FragmentActivity getActivity() locals:       locals: r0 -> p-1         heap:           pure:          types: List(p-1:{16245,21984})    trace: O(CIExit I_CIExit_FragmentgetActivity ( NULL,p-1 ))
