@@ -1,4 +1,4 @@
-ch.blinkenlights.android.vanilla/SensitiveDerefCallinCaused/0/config.json -- possible can't specify but correct
+ch.blinkenlights.android.vanilla/SensitiveDerefCallinCaused/0/config.json -- possible real issue,  unsure how to specify if not
 com.android.keepass/Disallow.I_CIEnter_AsyncTaskexecute/0/config.json  -- proven no spec, possibly improvements
 com.android.keepass/Disallow.I_CIEnter_Dialogdismiss/0/config.json
 com.asksven.betterbatterystats/SensitiveDerefCallinCaused/0/config.json -- proven no spec
@@ -6,8 +6,8 @@ com.byagowi.persiancalendar/Disallow.I_CIEnter_Dialogdismiss/0/config.json
 com.darshancomputing.BatteryIndicatorPro/SensitiveDerefCallinCaused/0/config.json --proven with spec
 com.gpl.rpg.AndorsTrail/SensitiveDerefCallinCaused/0/config.json -- proven no spec
 com.nutomic.syncthingandroid/Disallow.I_CIEnter_AsyncTaskexecute/0/config.json -- proven no spec
-com.nutomic.syncthingandroid/SensitiveDerefCallinCaused/0/config.json
-com.owncloud.android/SensitiveDerefCallinCaused/0/config.json
+com.nutomic.syncthingandroid/SensitiveDerefCallinCaused/0/config.json -- in progress -- 
+com.owncloud.android/SensitiveDerefCallinCaused/0/config.json -- skipping cg gen timeout
 com.seafile.seadroid2/SensitiveDerefCallinCaused/0/config.json
 com.ubergeek42.WeechatAndroid/Disallow.I_CIEnter_Dialogdismiss/0/config.json
 com.yubico.yubioath/Disallow.I_CIEnter_Dialogdismiss/0/config.json
