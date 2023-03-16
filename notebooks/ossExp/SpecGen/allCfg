@@ -8,10 +8,10 @@ com.gpl.rpg.AndorsTrail/SensitiveDerefCallinCaused/0/config.json -- proven no sp
 com.nutomic.syncthingandroid/Disallow.I_CIEnter_AsyncTaskexecute/0/config.json -- proven no spec
 com.nutomic.syncthingandroid/SensitiveDerefCallinCaused/0/config.json -- in progress -- 
 com.owncloud.android/SensitiveDerefCallinCaused/0/config.json -- skipping cg gen timeout
-com.seafile.seadroid2/SensitiveDerefCallinCaused/0/config.json
-com.ubergeek42.WeechatAndroid/Disallow.I_CIEnter_Dialogdismiss/0/config.json
-com.yubico.yubioath/Disallow.I_CIEnter_Dialogdismiss/0/config.json
-de.blinkt.openvpn/SensitiveDerefCallinCaused/0/config.json
+com.seafile.seadroid2/SensitiveDerefCallinCaused/0/config.json --TODO: in progress
+com.ubergeek42.WeechatAndroid/Disallow.I_CIEnter_Dialogdismiss/0/config.json -- takes too long to run
+com.yubico.yubioath/Disallow.I_CIEnter_Dialogdismiss/0/config.json -- timeout (10 min no spec?) obfuscated? how did we miss?
+de.blinkt.openvpn/SensitiveDerefCallinCaused/0/config.json --
 de.danoeh.antennapod/SensitiveDerefCallinCaused/0/config.json
 de.jkliemann.parkendd/Disallow.I_CIEnter_AsyncTaskexecute/0/config.json
 de.srlabs.snoopsnitch/SensitiveDerefCallinCaused/0/config.json
