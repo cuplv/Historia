@@ -1,8 +1,0 @@
-(    heap:           pure: p-1  !=  NULL         types: List(p-1:{6695,9241}, p-2:{1654,2356,4932,4935,4943 ...}, p-3:{6695,9241}, p-4:{6695,9241})    trace: O(CBEnter I_CBEnter_FragmentonActivityCreated ( _T_,p-4 );O(CBEnter I_CBEnter_FragmentonCreate ( _T_,p-3 );O(CBEnter I_CBEnter_FragmentonCreateDialog ( _T_,p-1 );O(CIExit I_CIExit_FragmentgetActivity ( p-2,p-1 );O(CIExit I_CIExit_FragmentgetActivity ( NULL,p-1 )) 
-===========
-Future trace:
- CBEnter void onActivityCreated(android.os.Bundle)( _T_,@3 )
-CBEnter void onCreate(android.os.Bundle)( _T_,@3 )
-CBEnter android.app.Dialog onCreateDialog(android.os.Bundle)( _T_,@3 )
-CIExit Activity getActivity()( @2,@3 )
-CIExit Activity getActivity()( NULL,@3 )
