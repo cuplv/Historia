@@ -1,4 +1,0 @@
-(    heap:           pure: p-1  !=  NULL         types: List(p-1:{10054})    trace: O(CIExit I_CIExit_FragmentgetActivity ( NULL,p-1 )) 
-===========
-Future trace:
- CIExit Activity getActivity()( NULL,@0 )
