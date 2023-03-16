@@ -418,7 +418,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
 
       val isExn = new AtomicBoolean(false) // Cancel parallel ops on timeout
       val qrySetSorted = qrySet.toList
-        .sortBy(n => n.state.sf.heapConstraints.map(EncodingTools.repHeapCells).size).reverse
+        .sortBy(n => n.state.sf.heapConstraints.map(EncodingTools.repHeapCells).size)
 
 //      val mutInvarMap = TrieMap[SubsumableLocation, Set[IPathNode]]()
 //      mutInvarMap.addAll(invarMap)
