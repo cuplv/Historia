@@ -592,7 +592,7 @@ object Driver {
     try {
       val w = new SootWrapper(apkPath, specSet.getSpecSet().union(specSet.getDisallowSpecSet()))
       val config = ExecutorConfig(
-        stepLimit = stepLimit, w, new SpecSpace(specSet.getSpecSet(), specSet.getDisallowSpecSet()), component = componentFilter, outputMode = mode,
+        stepLimit = stepLimit, w, specSet.getSpecSpace(), component = componentFilter, outputMode = mode,
         timeLimit = cfg.timeLimit, printAAProgress = dbg)
       initialQueries.flatMap{ initialQuery =>
         try {
