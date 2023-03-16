@@ -1,0 +1,13 @@
+(    heap:           pure: p-5  !=  NULL && p-2  !=  NULL && p-4  !=  NULL && p-6  !=  NULL && p-7  !=  NULL && p-1  !=  NULL         types: List(p-1:{16632,21932}, p-4:{21496}, p-2:{21494}, p-6:{21495}, p-8:{2972,3107,16257,16305,16328 ...}, p-7:{21493}, p-5:{4721,4724,4731,4771,4772 ...})    trace: O(CIExit I_CIExit_FragmentgetActivity ( p-8,p-1 );p-7;O(CIExit I_CIExit_PreferencesetOnPreferenceClickListener ( _T_,p-5,p-7 );p-2;O(CIExit I_CIExit_PreferencesetOnPreferenceClickListener ( _T_,p-5,p-2 );p-6;O(CIExit I_CIExit_PreferencesetOnPreferenceClickListener ( _T_,p-5,p-6 );p-4;O(CIExit I_CIExit_PreferencesetOnPreferenceClickListener ( _T_,p-5,p-4 );O(CIExit I_CIExit_FragmentgetActivity ( NULL,p-1 )) 
+===========
+Future trace:
+ CIExit Activity getActivity()( @1,@10 )
+TNew(p-7,{5})
+CIExit void setOnPreferenceClickListener(androidx.preference.Preference$OnPreferenceClickListener)( _T_,@6,@8 )
+TNew(p-2,{4})
+CIExit void setOnPreferenceClickListener(androidx.preference.Preference$OnPreferenceClickListener)( _T_,@6,@3 )
+TNew(p-6,{6})
+CIExit void setOnPreferenceClickListener(androidx.preference.Preference$OnPreferenceClickListener)( _T_,@6,@4 )
+TNew(p-4,{2})
+CIExit void setOnPreferenceClickListener(androidx.preference.Preference$OnPreferenceClickListener)( _T_,@6,@2 )
+CIExit Activity getActivity()( NULL,@10 )
