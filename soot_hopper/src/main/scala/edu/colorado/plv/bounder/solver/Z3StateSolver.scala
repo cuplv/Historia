@@ -200,7 +200,10 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
     initializedFieldFunctions.clear()
     indexInitialized = false
     uninterpretedTypes.clear()
-    if(acquireCount % 5 == 0) {
+    //TODO: can we use memory probe to kill task if mem gets too high?
+//    val memProbe = ictx.mkProbe("memory")
+//    val res = ictx.gt(memProbe, ictx.constProbe(10))
+    if(acquireCount % 1 == 0) { //TODO: does this reduce mem leak?
       isolver.reset()
       ictx.close()
       ictx = new Context()

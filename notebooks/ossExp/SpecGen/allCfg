@@ -11,9 +11,9 @@ com.owncloud.android/SensitiveDerefCallinCaused/0/config.json -- skipping cg gen
 com.seafile.seadroid2/SensitiveDerefCallinCaused/0/config.json --TODO: in progress
 com.ubergeek42.WeechatAndroid/Disallow.I_CIEnter_Dialogdismiss/0/config.json -- takes too long to run
 com.yubico.yubioath/Disallow.I_CIEnter_Dialogdismiss/0/config.json -- timeout (10 min no spec?) obfuscated? how did we miss?
-de.blinkt.openvpn/SensitiveDerefCallinCaused/0/config.json --
-de.danoeh.antennapod/SensitiveDerefCallinCaused/0/config.json
-de.jkliemann.parkendd/Disallow.I_CIEnter_AsyncTaskexecute/0/config.json
+de.blinkt.openvpn/SensitiveDerefCallinCaused/0/config.json -- proven with spec
+de.danoeh.antennapod/SensitiveDerefCallinCaused/0/config.json -- 
+de.jkliemann.parkendd/Disallow.I_CIEnter_AsyncTaskexecute/0/config.json -- proven no spec
 de.srlabs.snoopsnitch/SensitiveDerefCallinCaused/0/config.json
 dev.ukanth.ufirewall/Disallow.I_CIEnter_Dialogdismiss/0/config.json
 dev.ukanth.ufirewall/SensitiveDerefCallinCaused/0/config.json
@@ -23,15 +23,15 @@ net.bible.android.activity/SensitiveDerefCallinCaused/0/config.json
 net.justdave.nwsweatheralertswidget/Disallow.I_CIEnter_Dialogdismiss/0/config.json
 net.justdave.nwsweatheralertswidget/SensitiveDerefCallinCaused/0/config.json
 net.wigle.wigleandroid/SensitiveDerefCallinCaused/0/config.json
-nitezh.ministock/Disallow.I_CIEnter_AsyncTaskexecute/0/config.json
+nitezh.ministock/Disallow.I_CIEnter_AsyncTaskexecute/0/config.json -- proven no spec
 nitezh.ministock/Disallow.I_CIEnter_Dialogdismiss/0/config.json
 org.connectbot/Disallow.I_CIEnter_Dialogdismiss/0/config.json
-org.fedorahosted.freeotp/Disallow.I_CIEnter_AsyncTaskexecute/0/config.json
+org.fedorahosted.freeotp/Disallow.I_CIEnter_AsyncTaskexecute/0/config.json -- proven no spec
 org.liberty.android.fantastischmemo/Disallow.I_CIEnter_Dialogdismiss/0/config.json
 org.mariotaku.twidere/SensitiveDerefCallinCaused/0/config.json
-org.navitproject.navit/Disallow.I_CIEnter_AsyncTaskexecute/0/config.json
+org.navitproject.navit/Disallow.I_CIEnter_AsyncTaskexecute/0/config.json -- proven no spec
 org.scoutant.blokish/Disallow.I_CIEnter_Dialogdismiss/0/config.json
 org.sipdroid.sipua/Disallow.I_CIEnter_Dialogdismiss/0/config.json
 org.sufficientlysecure.keychain/SensitiveDerefCallinCaused/0/config.json
 org.transdroid.lite/Disallow.I_CIEnter_Dialogdismiss/0/config.json
-org.zephyrsoft.trackworktime/Disallow.I_CIEnter_AsyncTaskexecute/0/config.json
+org.zephyrsoft.trackworktime/Disallow.I_CIEnter_AsyncTaskexecute/0/config.json -- proven no spec - Something is wrong with ex res? -- manually inspected definitely provable
