@@ -869,8 +869,9 @@ class ExperimentsDb(bounderJar:Option[String] = None){
         outF.createDirectories()
         // TODO: read results of new structure
         val specContents = specFile.contentAsString
-        val runCfg:RunConfig = cfg.copy(apkPath = apkPath.toString,
-          specSet = if(specContents.trim == "") TopSpecSet else read[PickleSpec](specContents))
+        val runCfg:RunConfig = cfg.copy(apkPath = apkPath.toString)
+        assert(specContents.trim == "", "Job level spec input deprecated, specify spec in config")
+          //specSet = if(specContents.trim == "") TopSpecSet else read[PickleSpec](specContents))
         val cfgFile = (baseDir / "config.json")
         cfgFile.append(write(runCfg))
         val z3Override = if(BounderUtil.mac)
@@ -888,7 +889,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
         // Run the command for this job
         // kill jobs that take 2x the query time limit
         // jobs may take longer than the time limit if soot z3 or another external library gets stuck
-        BounderUtil.runCmdTimeout(cmd, baseDir, runCfg.timeLimit * 6) match {
+        BounderUtil.runCmdTimeout(cmd, baseDir, runCfg.timeLimit * 9) match {
           case BounderUtil.RunTimeout =>
             finishFail(jobRow.jobId, "Subprocess Timeout")
           case BounderUtil.RunSuccess => {
