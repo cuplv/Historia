@@ -797,7 +797,7 @@ case object TopSpecSet extends SpecSetOption {
   override def getSpecSet(): Set[LSSpec] = Set()
   override def getDisallowSpecSet(): Set[LSSpec] = Set()
 
-  override def getSpecSpace(): SpecSpace = ???
+  override def getSpecSpace(): SpecSpace = new SpecSpace(Set())
 }
 
 class ExperimentsDb(bounderJar:Option[String] = None){
