@@ -974,6 +974,21 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     )yield j.ended
     Await.result(db.run(q.update(endTime)), 30 seconds)
   }
+
+  def acquireJob2(owner: String): Option[JobRow] = {
+    // TODO: test this impl and swap out for acquireJob later
+    val dbio = for {
+      pendingJob <- jobQry.filter(_.status === "new").take(1).forUpdate.result.headOption
+      maybeRow <-
+        pendingJob.map { row =>
+          jobQry.filter(_.jobId === row.jobId)
+            .map(j => (j.owner, j.status)).update((owner, "acquired")).map(_ => Some(row))
+        }.getOrElse(DBIO.successful(None))
+    } yield maybeRow
+    Await.result(db.run(dbio.transactionally).recover {
+      case _: java.sql.SQLException => None
+    }, 30.seconds)
+  }
   def acquireJob(owner:String): Option[JobRow] = {
     import slick.jdbc.H2Profile.api._
     val getIdQ = sqlu"""
