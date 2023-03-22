@@ -828,7 +828,8 @@ class ExperimentsDb(bounderJar:Option[String] = None){
 
   def loop() = {
     while(true) {
-      val owner: String = BounderUtil.systemID()
+      val owner: String = BounderUtil.systemID
+      println(s"identifier -- ${owner}")
       val job: Option[JobRow] = acquireJob(owner)
       if(job.isDefined) {
         println(s"--got job: ${job.get}")
@@ -974,15 +975,29 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     Await.result(db.run(q.update(endTime)), 30 seconds)
   }
   def acquireJob(owner:String): Option[JobRow] = {
-    //TODO: make sure this returns NONE if something else succeeds
+    import slick.jdbc.H2Profile.api._
+    val getIdQ = sqlu"""
+        With cte AS (
+            SELECT * from jobs WHERE status='new' ORDER BY id LIMIT 1
+            FOR UPDATE SKIP LOCKED
+            )
+        UPDATE jobs s
+        SET status='acquired',owner=${owner}
+        FROM cte
+        WHERE s.id = cte.id
+          """.transactionally
+    Await.result(db.run(getIdQ), 30 seconds)
+
     val q = for(
-      j <- jobQry if j.status === "new"
+      j <- jobQry if j.owner === owner && j.status==="acquired"
     ) yield j
     val pendingJob = Await.result(
       db.run(q.take(1).result), 30 seconds
     )
-    if(pendingJob.isEmpty){
+    if(pendingJob.isEmpty) {
       None
+    }else if(pendingJob.size > 1){
+      throw new IllegalStateException(s"got multiple pending jobs: ${pendingJob}")
     }else{
       val row = pendingJob.head
       val updQ = jobQry.filter(j => j.jobId === row.jobId && j.status === "new")
@@ -1057,7 +1072,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
         ).toString
         DBResult(id = 0, jobid = jobId,qry = write(rs.q), loc = write(rs.loc), result = resultRow, queryTime = rs.time
           ,resultData = resDataId, apkHash = apkHash,
-          bounderJarHash = bounderJarHash, owner = BounderUtil.systemID(), jobTag = Some(write[ExpTag](jobTag)))
+          bounderJarHash = bounderJarHash, owner = BounderUtil.systemID, jobTag = Some(write[ExpTag](jobTag)))
       }
     }.toList
   }
@@ -1124,7 +1139,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     }
   }
   def finishSuccess(d : ResultDir, stdout:String, stderr:String): Int = {
-    val owner: String = BounderUtil.systemID()
+    val owner: String = BounderUtil.systemID
     val iamowner = for(
       j <- jobQry if j.jobId === d.jobId
     ) yield (j.jobId, j.owner)
