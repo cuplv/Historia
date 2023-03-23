@@ -152,7 +152,7 @@ object RxJavaSpec{
   )
   val Maybe = Set("io.reactivex.Maybe")
   val Maybe_create = AbsMsg(CIExit,SubClassMatcher(Maybe,
-    "io.reactivex.Maybe create(io.reactivex.MaybeOnSubscribe)", "Maybe_create"), s::l::Nil )
+    "io.reactivex.Maybe create\\(io.reactivex.MaybeOnSubscribe\\)", "Maybe_create"), s::l::Nil )
 
 
 
