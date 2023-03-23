@@ -69,6 +69,12 @@ object SpecSignatures {
 
   // Fragment getActivity
   val Fragment = Set("android.app.Fragment","androidx.fragment.app.Fragment","android.support.v4.app.Fragment")
+
+  val Fragment_onStart_entry = AbsMsg(CBEnter,
+    SubClassMatcher(Fragment, "void onStart\\(\\)", "Fragment_onStart_entry"), TopVal::f::Nil)
+  val Fragment_onStop_exit = AbsMsg(CBExit,
+    SubClassMatcher(Fragment, "void onStop\\(\\)", "Fragment_onStop_exit"), TopVal::f::Nil
+  )
   val Fragment_getActivity: SignatureMatcher= SubClassMatcher(Fragment,
   ".*Activity getActivity\\(\\)", "Fragment_getActivity")
   val Fragment_get_activity_exit_null: OAbsMsg = AbsMsg(CIExit, Fragment_getActivity, NullVal::f::Nil)
@@ -140,6 +146,16 @@ object RxJavaSpec{
   val subscribeIsUnique:LSSpec = LSSpec(s::Nil, Nil, Not(subscribe_s_only),
     subscribe_s_only) //,Set(LSConstraint("s",NotEquals,"@null")  )
   val spec = Set(call,subscribeIsUnique)
+  val subscribeCB = AbsMsg(CBEnter,
+    SubClassMatcher("io.reactivex.MaybeOnSubscribe","void subscribe\\(io.reactivex.MaybeEmitter\\)", "subscribeCB"),
+    TopVal::l::Nil
+  )
+  val Maybe = Set("io.reactivex.Maybe")
+  val Maybe_create = AbsMsg(CIExit,SubClassMatcher(Maybe,
+    "io.reactivex.Maybe create(io.reactivex.MaybeOnSubscribe)", "Maybe_create"), s::l::Nil )
+
+
+
 }
 
 object LifecycleSpec {

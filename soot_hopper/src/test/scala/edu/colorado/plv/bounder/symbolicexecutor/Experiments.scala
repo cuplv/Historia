@@ -6,9 +6,9 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{DepthResult, Proven, Timeout, Witnessed, interpretResult}
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType, SootWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, Signature}
-import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSpace, ViewSpec}
+import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.{row1Specs, row2Specs, row4Specs, row5Specs}
+import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.{row1Specs, row2Specs, row4Specs, row5Specs, row6Specs}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{CallinReturnNonNull, DBOutputMode, DisallowedCallin, IPathNode, MemoryOutputMode, NoOutputMode, PrettyPrinting, Reachable, ReceiverNonNull}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
@@ -38,6 +38,9 @@ object ExperimentSpecs{
   )
   val row5Specs = Set[LSSpec](
     SDialog.noDupeShow
+  )
+  val row6Specs = Set[LSSpec](
+
   )
 }
 class Experiments extends AnyFunSuite with BeforeAndAfter {
@@ -820,12 +823,11 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           test)
     }
   }
-  ignore("Row6: synch null free") {
-    // TODO: ===== find motivating bug for this
-    // TODO: write specs
+  test("Row6: synch null free") {
+    //https://github.com/AntennaPod/AntennaPod/issues/4308
     List(
       //      ("button.setEnabled(true);", Witnessed, "badDisable"), //test for boolean handling, works so commented out for exp run
-      ("remover.cancel();", Proven, "disable"),
+      ("""if(disposable != null){disposable.dispose();}""", Proven, "disable"),
       ("", Witnessed, "noDisable")
     ).map { case (cancelLine, expectedResult, fileSuffix) =>
       val src =
@@ -845,44 +847,35 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
            |import android.view.View;
            |import android.view.ViewGroup;
            |import android.view.View.OnClickListener;
+           |import io.reactivex.disposables.Disposable;
+           |import io.reactivex.schedulers.Schedulers;
+           |import io.reactivex.android.schedulers.AndroidSchedulers;
+           |import io.reactivex.Maybe;
            |
            |
+           |public class ChaptersFragment extends Fragment {
+           |  private Object controller;
+           |  private Disposable disposable;
+           |  @Override
+           |  public void onStart() {
+           |    super.onStart();
+           |    controller = new Object();
            |
-           |public class SyncActivity extends Activity implements OnClickListener{
-           |    SomeTask remover = null;
-           |    View button = null;
-           |    @Override
-           |    public void onCreate(Bundle b){
-           |        remover = new SomeTask();
-           |        button = findViewById(3);
-           |        button.setOnClickListener(this);
+           |    if(disposable != null){
+           |      disposable.dispose();
            |    }
-           |    @Override
-           |    public void onClick(View v){
-           |        remover.execute();
-           |    }
-           |    @Override
-           |    public void onPause(){
-           |        $cancelLine
-           |        button = null;
-           |    }
-           |
-           |
-           |    class SomeTask extends AsyncTask<String, Void, String> {
-           |		  @Override
-           |		  protected void onPreExecute() {
-           |		  }
-           |
-           |		  @Override
-           |		  protected String doInBackground(String... params) {
-           |			  return "";
-           |		  }
-           |
-           |		  @Override
-           |		  protected void onPostExecute(String result) {
-           |        button.toString();//query1
-           |		  }
-           |	  }
+           |    disposable = Maybe.create(emitter -> {
+           |      emitter.onSuccess(controller.toString()); //query1
+           |    })
+           |    .subscribeOn(Schedulers.io())
+           |    .observeOn(AndroidSchedulers.mainThread())
+           |    .subscribe(media -> Log.i("",""),
+           |          error -> Log.e("",""));
+           |  }
+           |  public void onStop() {
+           |    ${cancelLine}
+           |    controller = null;
+           |  }
            |}
            |""".stripMargin
 
@@ -890,22 +883,34 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
         val startTime = System.nanoTime()
         assert(apk != null)
 
-        val w = new SootWrapper(apk, row2Specs)
-        val specSpace = new SpecSpace(row2Specs, Set(SAsyncTask.disallowDoubleExecute))
+        val w = new SootWrapper(apk, row6Specs)
+        val specSpace = new SpecSpace(row6Specs, Set(),
+          Set(RxJavaSpec.subscribeCB, RxJavaSpec.Maybe_create,
+            SpecSignatures.Fragment_onStart_entry, SpecSignatures.Fragment_onStop_exit))
         val config = ExecutorConfig(
           stepLimit = 200, w, specSpace,
-          component = Some(List("com.example.createdestroy.*RemoverActivity.*")))
+          component = Some(List("com.example.createdestroy.*ChaptersFragment.*")))
         implicit val om = config.outputMode
         val symbolicExecutor = config.getAbstractInterpreter
 
         val line = BounderUtil.lineForRegex(".*query1.*".r,src)
+        if(false) {
+          Scene.v().getClasses.asScala.filter(c => c.getName.contains("Chapters")).foreach { c =>
+            println(s"===== class: ${c.getName}")
+            c.getMethods.asScala.foreach { m =>
+              println(s"--method: ${m.getName}")
+              println(s"${m.getActiveBody}")
+            }
+          }
+        }
         val query = ReceiverNonNull(
-          Signature("com.example.createdestroy.SyncActivity$SomeTask", "void onPostExecute(java.lang.Object)"),
+          Signature("com.example.createdestroy.ChaptersFragment",
+            "void lambda$onStart$0$ChaptersFragment(io.reactivex.MaybeEmitter)"),
           line, Some(".*toString.*"))
 
         if (runVerif) {
           val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
-          val fname = s"Antennapod_AsyncTask_$fileSuffix"
+          val fname = s"Antennapod_Dispose_$fileSuffix"
           prettyPrinting.dumpDebugInfo(result, fname)
           prettyPrinting.printWitness(result)
           assert(result.nonEmpty)
@@ -925,7 +930,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
         logger.warn(s"Row 2 ${fileSuffix} : ${write(messages)}")
       }
 
-      makeApkWithSources(Map("SyncActivity.java" -> src), MkApk.RXBase, test)
+      makeApkWithSources(Map("ChaptersFragment.java" -> src), MkApk.RXBase2, test)
     }
   }
 

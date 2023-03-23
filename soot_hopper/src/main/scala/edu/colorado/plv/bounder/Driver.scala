@@ -977,6 +977,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
 
   def acquireJob2(owner: String): Option[JobRow] = {
     // TODO: test this impl and swap out for acquireJob later
+
     val dbio = for {
       pendingJob <- jobQry.filter(_.status === "new").take(1).forUpdate.result.headOption
       maybeRow <-
