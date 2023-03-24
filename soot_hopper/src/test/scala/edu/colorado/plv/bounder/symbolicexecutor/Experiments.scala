@@ -46,7 +46,8 @@ object ExperimentSpecs{
     RxJavaSpec.subscribeSpec,
     RxJavaSpec.Maybe_subscribeOn,
     RxJavaSpec.Maybe_observeOn,
-    LifecycleSpec.startStopAlternation
+    LifecycleSpec.startStopAlternation,
+    LifecycleSpec.stopStartAlternation
   )
 }
 class Experiments extends AnyFunSuite with BeforeAndAfter {
