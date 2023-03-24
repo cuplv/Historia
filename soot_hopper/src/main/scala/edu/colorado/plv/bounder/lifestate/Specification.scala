@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.lifestate
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Forall, HNOE, LSConstraint, LSFalse, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
-import edu.colorado.plv.bounder.lifestate.SpecSignatures.t
+import edu.colorado.plv.bounder.lifestate.SpecSignatures.{Fragment_onStop_exit, t}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, Equals, NamedPureVar, NotEquals, NullVal, PureExpr, TopVal}
 
 object SpecSignatures {
@@ -161,7 +161,7 @@ object RxJavaSpec{
     TopVal::s::Nil)
 
   def retSame(signature:String, ident:String):LSSpec =
-     LSSpec(v::t::Nil, Nil,LSConstraint(t,NotEquals,v),
+     LSSpec(v::t::Nil, Nil,LSConstraint(t,Equals,v),
        AbsMsg(CIExit, SubClassMatcher(Maybe, signature, ident), t::v::Nil))
   val Maybe_subscribeOn = retSame("io.reactivex.Maybe subscribeOn\\(io.reactivex.Scheduler\\)",
     "Maybe_subscribeOn")
