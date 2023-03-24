@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import better.files.Dsl.SymbolicOperations
 import better.files.File
-import edu.colorado.plv.bounder.BounderUtil
+import edu.colorado.plv.bounder.{BounderUtil, lifestate}
 import edu.colorado.plv.bounder.BounderUtil.{DepthResult, Proven, Timeout, Witnessed, interpretResult}
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType, SootWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, Signature}
@@ -43,7 +43,10 @@ object ExperimentSpecs{
     SpecSignatures.Fragment_onStart_entry, SpecSignatures.Fragment_onStop_exit, RxJavaSpec.Disposable_dispose)
 
   val row6Specs = Set[LSSpec](
-    RxJavaSpec.subscribeSpec
+    RxJavaSpec.subscribeSpec,
+    RxJavaSpec.Maybe_subscribeOn,
+    RxJavaSpec.Maybe_observeOn,
+    LifecycleSpec.startStopAlternation
   )
 }
 class Experiments extends AnyFunSuite with BeforeAndAfter {
@@ -830,7 +833,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
     //https://github.com/AntennaPod/AntennaPod/issues/4308
     List(
       //      ("button.setEnabled(true);", Witnessed, "badDisable"), //test for boolean handling, works so commented out for exp run
-      ("""if(disposable != null){disposable.dispose();}""", Proven, "disable"),
+      ("""disposable.dispose();""", Proven, "disable"),
       //("""disposable.dispose();""", Witnessed, "disable"), //TODO===== rm this
       ("", Witnessed, "noDisable")
     ).map { case (cancelLine, expectedResult, fileSuffix) =>
@@ -886,12 +889,12 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
         assert(apk != null)
 
         val w = new SootWrapper(apk, row6Specs)
-        val specSpace = new SpecSpace(row6Specs, Set(),
-          Set(RxJavaSpec.subscribeCB, RxJavaSpec.Maybe_create,
-            SpecSignatures.Fragment_onStart_entry, SpecSignatures.Fragment_onStop_exit, RxJavaSpec.Disposable_dispose))
+        val specSpace = new SpecSpace(row6Specs, Set())
+//          Set(RxJavaSpec.subscribeCB, RxJavaSpec.Maybe_subscribeCi, RxJavaSpec.Maybe_create,
+//            SpecSignatures.Fragment_onStart_entry, SpecSignatures.Fragment_onStop_exit, RxJavaSpec.Disposable_dispose))
         val config = ExecutorConfig(
           stepLimit = 200, w, specSpace,
-          component = Some(List("com.example.createdestroy.*ChaptersFragment.*")))
+          component = Some(List("com.example.createdestroy.*ChaptersFragment.*")), printAAProgress = true)
         implicit val om = config.outputMode
         val symbolicExecutor = config.getAbstractInterpreter
 

@@ -3,6 +3,7 @@ package edu.colorado.plv.bounder.lifestate
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Forall, HNOE, LSConstraint, LSFalse, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.SpecSignatures.t
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, Equals, NamedPureVar, NotEquals, NullVal, PureExpr, TopVal}
 
 object SpecSignatures {
@@ -133,8 +134,10 @@ object FragmentGetActivityNullSpec{
 }
 
 object RxJavaSpec{
+  import SpecSignatures.v
 
   val l = NamedPureVar("l")
+  val m = NamedPureVar("m")
   val s = NamedPureVar("s")
   //TODO: \/ I(create(l)) =======
   val subUnsub:LSPred = NS(
@@ -152,12 +155,25 @@ object RxJavaSpec{
   )
   val Maybe = Set("io.reactivex.Maybe")
   val Maybe_create = AbsMsg(CIExit,SubClassMatcher(Maybe,
-    "io.reactivex.Maybe create\\(io.reactivex.MaybeOnSubscribe\\)", "Maybe_create"), s::l::Nil )
+    "io.reactivex.Maybe create\\(io.reactivex.MaybeOnSubscribe\\)", "Maybe_create"), m::TopVal::l::Nil )
   val Disposable = Set("io.reactivex.disposables.Disposable")
   val Disposable_dispose = AbsMsg(CIExit, SubClassMatcher(Disposable,"void dispose\\(\\)","Disposable_dispose"),
     TopVal::s::Nil)
-  val subscribeSpec = LSSpec(l::Nil, s::Nil, Maybe_create, subscribeCB)
 
+  def retSame(signature:String, ident:String):LSSpec =
+     LSSpec(v::t::Nil, Nil,LSConstraint(t,NotEquals,v),
+       AbsMsg(CIExit, SubClassMatcher(Maybe, signature, ident), t::v::Nil))
+  val Maybe_subscribeOn = retSame("io.reactivex.Maybe subscribeOn\\(io.reactivex.Scheduler\\)",
+    "Maybe_subscribeOn")
+  val Maybe_observeOn = retSame("io.reactivex.Maybe observeOn\\(io.reactivex.Scheduler\\)",
+    "Maybe_observeOn")
+  val Maybe_subscribeCi = AbsMsg(CIExit,
+    SubClassMatcher(Maybe,
+      "io.reactivex.disposables.Disposable " +
+        "subscribe\\(io.reactivex.functions.Consumer,io.reactivex.functions.Consumer\\)",
+      "Maybe_subscribeCI"), s::m::Nil)
+  val subscribeSpec = LSSpec(l :: Nil, m :: s :: Nil,
+    And(Maybe_create, NS(Maybe_subscribeCi, Disposable_dispose)), subscribeCB)
 
 
 }
@@ -171,6 +187,10 @@ object LifecycleSpec {
     Not(AbsMsg(CIExit, SpecSignatures.Activity_finish, TopVal::a::Nil)),
     SpecSignatures.Activity_onResume_entry
   )
+  val startStopAlternation:LSSpec = LSSpec(f::Nil, Nil, Or(
+    And(Not(SpecSignatures.Fragment_onStart_entry), Not(SpecSignatures.Fragment_onStop_exit)),
+    NS(SpecSignatures.Fragment_onStop_exit, SpecSignatures.Fragment_onStart_entry)
+  ),SpecSignatures.Fragment_onStart_entry)
 
   val viewAttached: LSPred = SpecSignatures.Activity_findView_exit //TODO: ... or findView on other view
   val destroyed: LSPred = NS(SpecSignatures.Activity_onDestroy_exit, SpecSignatures.Activity_onCreate_entry)

@@ -32,8 +32,6 @@ org.intellij.*
 org.jsoup.*
 org.jetbrains.anko.*
 org.objenesis.*
-org.reactivestreams.*
-io.reactivex.*
 org.shredzone.*
 org.xml.sax.*
 retrofit2.*
