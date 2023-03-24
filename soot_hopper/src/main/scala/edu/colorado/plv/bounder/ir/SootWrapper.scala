@@ -619,26 +619,27 @@ class SootWrapper(apkPath : String,
     val matchedCallbackssimp = matchedCallbacks.map(c => (c._1, c._2.simpleName))
 
     val syntCallinSites = getAppMethods(resolver).flatMap {
-      case method:SootMethod => getUnitGraph(method.getActiveBody).asScala.flatMap{u =>
-        if(mFilter(method.getDeclaringClass.getName) &&Scene.v().getCallGraph.edgesOutOf(u).hasNext &&
-          u.toString().contains("(") && !u.toString().contains("newarray (")) {
-          val unitInd = findUnitIndex(method,u)
-          val loc = AppLoc(JimpleMethodLoc(method), JimpleLineLoc(u, unitInd, method), false)
-          val callinSet = resolver.resolveCallLocation(makeInvokeTargets(loc)).flatMap {
-            case CallinMethodReturn(sig) => Some(sig)
-            case CallinMethodInvoke(sig) => Some(sig)
-            case GroupedCallinMethodInvoke(targetClasses, fmwName) => ???
-            case GroupedCallinMethodReturn(targetClasses, fmwName) => ???
-            case _ => None
-          }
-          if (callinSet.nonEmpty) {
-//            val matchedBySpec = allI.filter(i => callinSet.exists(m => i.contains(CIExit, (m._1,m._2))(ch)))
-            val matchedBySpec = callinSet.filter(c => allI.exists(i => i.contains(CIExit, c)(ch)))
-            Some((method, u, matchedBySpec,callinSet))
-          } else
-            None
-        }else None
-      }
+      case method:SootMethod =>
+        getUnitGraph(method.getActiveBody).asScala.flatMap{u =>
+          if(mFilter(method.getDeclaringClass.getName) &&Scene.v().getCallGraph.edgesOutOf(u).hasNext &&
+            u.toString().contains("(") && !u.toString().contains("newarray (")) {
+            val unitInd = findUnitIndex(method,u)
+            val loc = AppLoc(JimpleMethodLoc(method), JimpleLineLoc(u, unitInd, method), false)
+            val callinSet = resolver.resolveCallLocation(makeInvokeTargets(loc)).flatMap {
+              case CallinMethodReturn(sig) => Some(sig)
+              case CallinMethodInvoke(sig) => Some(sig)
+              case GroupedCallinMethodInvoke(targetClasses, fmwName) => ???
+              case GroupedCallinMethodReturn(targetClasses, fmwName) => ???
+              case _ => None
+            }
+            if (callinSet.nonEmpty) {
+//              val matchedBySpec = allI.filter(i => callinSet.exists(m => i.contains(CIExit, (m._1,m._2))(ch)))
+              val matchedBySpec = callinSet.filter(c => allI.exists(i => i.contains(CIExit, c)(ch)))
+              Some((method, u, matchedBySpec,callinSet))
+            } else
+              None
+          }else None
+        }
       case _ => ???
     }
     val syntCallinSitesInSpec = syntCallinSites.filter(_._3.nonEmpty)

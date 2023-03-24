@@ -153,6 +153,10 @@ object RxJavaSpec{
   val Maybe = Set("io.reactivex.Maybe")
   val Maybe_create = AbsMsg(CIExit,SubClassMatcher(Maybe,
     "io.reactivex.Maybe create\\(io.reactivex.MaybeOnSubscribe\\)", "Maybe_create"), s::l::Nil )
+  val Disposable = Set("io.reactivex.disposables.Disposable")
+  val Disposable_dispose = AbsMsg(CIExit, SubClassMatcher(Disposable,"void dispose\\(\\)","Disposable_dispose"),
+    TopVal::s::Nil)
+  val subscribeSpec = LSSpec(l::Nil, s::Nil, Maybe_create, subscribeCB)
 
 
 

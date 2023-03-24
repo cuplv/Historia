@@ -39,8 +39,11 @@ object ExperimentSpecs{
   val row5Specs = Set[LSSpec](
     SDialog.noDupeShow
   )
-  val row6Specs = Set[LSSpec](
+  val _ = Set(RxJavaSpec.subscribeCB, RxJavaSpec.Maybe_create,
+    SpecSignatures.Fragment_onStart_entry, SpecSignatures.Fragment_onStop_exit, RxJavaSpec.Disposable_dispose)
 
+  val row6Specs = Set[LSSpec](
+    RxJavaSpec.subscribeSpec
   )
 }
 class Experiments extends AnyFunSuite with BeforeAndAfter {
@@ -828,6 +831,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
     List(
       //      ("button.setEnabled(true);", Witnessed, "badDisable"), //test for boolean handling, works so commented out for exp run
       ("""if(disposable != null){disposable.dispose();}""", Proven, "disable"),
+      //("""disposable.dispose();""", Witnessed, "disable"), //TODO===== rm this
       ("", Witnessed, "noDisable")
     ).map { case (cancelLine, expectedResult, fileSuffix) =>
       val src =
@@ -859,11 +863,9 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
            |  @Override
            |  public void onStart() {
            |    super.onStart();
+           |
            |    controller = new Object();
            |
-           |    if(disposable != null){
-           |      disposable.dispose();
-           |    }
            |    disposable = Maybe.create(emitter -> {
            |      emitter.onSuccess(controller.toString()); //query1
            |    })
@@ -886,7 +888,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
         val w = new SootWrapper(apk, row6Specs)
         val specSpace = new SpecSpace(row6Specs, Set(),
           Set(RxJavaSpec.subscribeCB, RxJavaSpec.Maybe_create,
-            SpecSignatures.Fragment_onStart_entry, SpecSignatures.Fragment_onStop_exit))
+            SpecSignatures.Fragment_onStart_entry, SpecSignatures.Fragment_onStop_exit, RxJavaSpec.Disposable_dispose))
         val config = ExecutorConfig(
           stepLimit = 200, w, specSpace,
           component = Some(List("com.example.createdestroy.*ChaptersFragment.*")))
@@ -897,6 +899,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
         if(false) {
           Scene.v().getClasses.asScala.filter(c => c.getName.contains("Chapters")).foreach { c =>
             println(s"===== class: ${c.getName}")
+            println(s"   super: ${c.getSuperclass}")
+            println(s"   interfaces: ${c.getInterfaces.asScala.mkString(" ")}")
             c.getMethods.asScala.foreach { m =>
               println(s"--method: ${m.getName}")
               println(s"${m.getActiveBody}")
@@ -916,18 +920,18 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           assert(result.nonEmpty)
           BounderUtil.throwIfStackTrace(result)
           val interpretedResult = BounderUtil.interpretResult(result, QueryFinished)
-          logger.warn(s"Row 2 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
+          logger.warn(s"Row 6 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
           val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
-          logger.warn(s"Row 2 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
+          logger.warn(s"Row 6 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
           assert(interpretedResult == expectedResult)
         } else {
-          val em = s"Row 2 skipped due to runVerif param!!!!!!!"
+          val em = s"Row 6 skipped due to runVerif param!!!!!!!"
           println(em)
           logger.warn(em)
         }
         val messages = w.getMessages(symbolicExecutor.controlFlowResolver, specSpace,
           symbolicExecutor.getClassHierarchy)
-        logger.warn(s"Row 2 ${fileSuffix} : ${write(messages)}")
+        logger.warn(s"Row 6 ${fileSuffix} : ${write(messages)}")
       }
 
       makeApkWithSources(Map("ChaptersFragment.java" -> src), MkApk.RXBase2, test)
