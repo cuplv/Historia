@@ -833,10 +833,10 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
     //https://github.com/AntennaPod/AntennaPod/issues/4308
     List(
       //      ("button.setEnabled(true);", Witnessed, "badDisable"), //test for boolean handling, works so commented out for exp run
+      ("", Witnessed, "noDisable"),
       ("""disposable.dispose();""", Proven, "disable"),
-      //("""disposable.dispose();""", Witnessed, "disable"), //TODO===== rm this
-      ("", Witnessed, "noDisable")
     ).map { case (cancelLine, expectedResult, fileSuffix) =>
+      println(s"====================================running: ${fileSuffix}")
       val src =
         s"""
            |package com.example.createdestroy;

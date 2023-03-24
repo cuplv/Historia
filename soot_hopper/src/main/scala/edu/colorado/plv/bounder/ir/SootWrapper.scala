@@ -619,7 +619,7 @@ class SootWrapper(apkPath : String,
     val matchedCallbackssimp = matchedCallbacks.map(c => (c._1, c._2.simpleName))
 
     val syntCallinSites = getAppMethods(resolver).flatMap {
-      case method:SootMethod =>
+      case method:SootMethod if method.hasActiveBody =>
         getUnitGraph(method.getActiveBody).asScala.flatMap{u =>
           if(mFilter(method.getDeclaringClass.getName) &&Scene.v().getCallGraph.edgesOutOf(u).hasNext &&
             u.toString().contains("(") && !u.toString().contains("newarray (")) {
@@ -640,6 +640,7 @@ class SootWrapper(apkPath : String,
               None
           }else None
         }
+      case method:SootMethod => Set.empty
       case _ => ???
     }
     val syntCallinSitesInSpec = syntCallinSites.filter(_._3.nonEmpty)
