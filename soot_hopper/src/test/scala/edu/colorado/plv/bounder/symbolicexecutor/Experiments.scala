@@ -47,7 +47,7 @@ object ExperimentSpecs{
     RxJavaSpec.Maybe_subscribeOn,
     RxJavaSpec.Maybe_observeOn,
     LifecycleSpec.startStopAlternation,
-    LifecycleSpec.stopStartAlternation,
+    //LifecycleSpec.stopStartAlternation,
     RxJavaSpec.Maybe_create_unique
   )
 }
