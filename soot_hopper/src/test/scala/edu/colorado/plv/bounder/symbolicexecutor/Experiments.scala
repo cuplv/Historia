@@ -896,8 +896,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
 //            SpecSignatures.Fragment_onStart_entry, SpecSignatures.Fragment_onStop_exit, RxJavaSpec.Disposable_dispose))
         val config = ExecutorConfig(
           stepLimit = -1, w, specSpace,
-          component = Some(List("com.example.createdestroy.*ChaptersFragment.*")), printAAProgress = true,
-          z3InstanceLimit = 3)
+          component = Some(List("com.example.createdestroy.*ChaptersFragment.*")), printAAProgress = true)
         implicit val om = config.outputMode
         val symbolicExecutor = config.getAbstractInterpreter
 
