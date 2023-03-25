@@ -159,6 +159,8 @@ object RxJavaSpec{
   val Disposable = Set("io.reactivex.disposables.Disposable")
   val Disposable_dispose = AbsMsg(CIExit, SubClassMatcher(Disposable,"void dispose\\(\\)","Disposable_dispose"),
     TopVal::s::Nil)
+  val Maybe_create_unique = LSSpec(m::Nil, Nil, Not(Maybe_create.copy(lsVars = m::Nil)),
+    Maybe_create.copy(lsVars = m::Nil))
 
   def retSame(signature:String, ident:String):LSSpec =
      LSSpec(v::t::Nil, Nil,LSConstraint(t,Equals,v),

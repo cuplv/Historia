@@ -47,7 +47,8 @@ object ExperimentSpecs{
     RxJavaSpec.Maybe_subscribeOn,
     RxJavaSpec.Maybe_observeOn,
     LifecycleSpec.startStopAlternation,
-    LifecycleSpec.stopStartAlternation
+    LifecycleSpec.stopStartAlternation,
+    RxJavaSpec.Maybe_create_unique
   )
 }
 class Experiments extends AnyFunSuite with BeforeAndAfter {
@@ -894,8 +895,9 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
 //          Set(RxJavaSpec.subscribeCB, RxJavaSpec.Maybe_subscribeCi, RxJavaSpec.Maybe_create,
 //            SpecSignatures.Fragment_onStart_entry, SpecSignatures.Fragment_onStop_exit, RxJavaSpec.Disposable_dispose))
         val config = ExecutorConfig(
-          stepLimit = 200, w, specSpace,
-          component = Some(List("com.example.createdestroy.*ChaptersFragment.*")), printAAProgress = true)
+          stepLimit = -1, w, specSpace,
+          component = Some(List("com.example.createdestroy.*ChaptersFragment.*")), printAAProgress = true,
+          z3InstanceLimit = 3)
         implicit val om = config.outputMode
         val symbolicExecutor = config.getAbstractInterpreter
 
