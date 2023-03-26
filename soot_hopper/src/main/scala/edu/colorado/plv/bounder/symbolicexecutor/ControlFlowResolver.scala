@@ -115,11 +115,12 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 
   def getWrapper = wrapper
 
-  def directCallsGraph(loc: MethodLoc): Set[Loc] = {
+  private def iDirectCallsGraph(loc:MethodLoc):Set[Loc] = {
     val unresolvedTargets = wrapper.makeMethodTargets(loc).map(callee =>
       UnresolvedMethodTarget(callee.classType, callee.simpleName, Set(callee)))
     unresolvedTargets.flatMap(target => resolver.resolveCallLocation(target))
   }
+  def directCallsGraph = Memo.mutableHashMapMemo(loc => iDirectCallsGraph(loc))
 
 
   var printCacheCache = mutable.Set[String]()
