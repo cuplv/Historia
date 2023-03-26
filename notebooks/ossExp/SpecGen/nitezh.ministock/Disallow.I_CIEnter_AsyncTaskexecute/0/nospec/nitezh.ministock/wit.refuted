@@ -1,0 +1,23 @@
+refuted
+    REFUTED: pre-line: 65 $r1 = new nitezh.ministock.activities.widget.WidgetProviderBase$GetDataTask
+       state: ( locals:          heap:           pure: p-0  !=  NULL         types: List(p-0:{3622})    trace: p-0;O(CIEnter I_CIEnter_AsyncTaskexecute ( _T_,p-0 ))
+    pre-line: 65 specialinvoke $r1.<nitezh.ministock.activities.widget.WidgetProviderBase$GetDataTask: void <init>(nitezh.ministock.activities.widget.WidgetProviderBase$1)>(null)
+       state: ( locals: $r1 -> p-0         heap:           pure: p-0  !=  NULL         types: List(p-0:{3622})    trace: O(CIEnter I_CIEnter_AsyncTaskexecute ( _T_,p-0 ))
+    SkippedInternalMethodInvoke(nitezh.ministock.activities.widget.WidgetProviderBase$GetDataTask,void <init>(nitezh.ministock.activities.widget.WidgetProviderBase$1),JimpleMethodLoc(<nitezh.ministock.activities.widget.WidgetProviderBase$GetDataTask: void <init>(nitezh.ministock.activities.widget.WidgetProviderBase$1)>))
+       state: ( locals:       locals: $r1 -> p-0         heap:           pure: p-0  !=  NULL         types: List(p-0:{3622})    trace: O(CIEnter I_CIEnter_AsyncTaskexecute ( _T_,p-0 ))
+    SkippedInternalMethodReturn(nitezh.ministock.activities.widget.WidgetProviderBase$GetDataTask,void <init>(nitezh.ministock.activities.widget.WidgetProviderBase$1),NotRelevantMethod,JimpleMethodLoc(<nitezh.ministock.activities.widget.WidgetProviderBase$GetDataTask: void <init>(nitezh.ministock.activities.widget.WidgetProviderBase$1)>))
+       state: ( locals:       locals: $r1 -> p-0         heap:           pure: p-0  !=  NULL         types: List(p-0:{3622})    trace: O(CIEnter I_CIEnter_AsyncTaskexecute ( _T_,p-0 ))
+    pre-line: 65 $r3 = staticinvoke <java.lang.Integer: java.lang.Integer valueOf(int)>($i0)
+       state: ( locals: $r1 -> p-0         heap:           pure: p-0  !=  NULL         types: List(p-0:{3622})    trace: O(CIEnter I_CIEnter_AsyncTaskexecute ( _T_,p-0 ))
+    [CI Inv merge] java.lang.Integer valueOf(int)
+       state: ([CI Ret] java.lang.Integer java.lang.Integer valueOf(int) locals:       locals: $r1 -> p-0         heap:           pure: p-0  !=  NULL         types: List(p-0:{3622})    trace: O(CIEnter I_CIEnter_AsyncTaskexecute ( _T_,p-0 ))
+    [CI Ret merge] java.lang.Integer valueOf(int)
+       state: ([CI Ret] java.lang.Integer java.lang.Integer valueOf(int) locals:       locals: $r1 -> p-0         heap:           pure: p-0  !=  NULL         types: List(p-0:{3622})    trace: O(CIEnter I_CIEnter_AsyncTaskexecute ( _T_,p-0 ))
+    pre-line: 65 $r1 = virtualinvoke $r1.<nitezh.ministock.activities.widget.WidgetProviderBase$GetDataTask: nitezh.ministock.activities.widget.WidgetProviderBase$GetDataTask build(android.content.Context,java.lang.Integer,nitezh.ministock.activities.widget.WidgetProviderBase$UpdateType)>($r2, $r3, $r0)
+       state: ( locals: $r1 -> p-0         heap:           pure: p-0  !=  NULL         types: List(p-0:{3622})    trace: O(CIEnter I_CIEnter_AsyncTaskexecute ( _T_,p-0 ))
+    InternalMethodInvoke(nitezh.ministock.activities.widget.WidgetProviderBase$GetDataTask,nitezh.ministock.activities.widget.WidgetProviderBase$GetDataTask build(android.content.Context,java.lang.Integer,nitezh.ministock.activities.widget.WidgetProviderBase$UpdateType),JimpleMethodLoc(<nitezh.ministock.activities.widget.WidgetProviderBase$GetDataTask: nitezh.ministock.activities.widget.WidgetProviderBase$GetDataTask build(android.content.Context,java.lang.Integer,nitezh.ministock.activities.widget.WidgetProviderBase$UpdateType)>))
+       state: ( locals: @this -> p-0      locals: $r1 -> p-0         heap:           pure: p-0  !=  NULL         types: List(p-0:{3622})    trace: O(CIEnter I_CIEnter_AsyncTaskexecute ( _T_,p-0 ))
+    pre-line: 218 return r0
+       state: ( locals: @this -> p-0      locals: $r1 -> p-0         heap:           pure: p-0  !=  NULL         types: List(p-0:{3622})    trace: O(CIEnter I_CIEnter_AsyncTaskexecute ( _T_,p-0 ))
+    InternalMethodReturn(nitezh.ministock.activities.widget.WidgetProviderBase$GetDataTask,nitezh.ministock.activities.widget.WidgetProviderBase$GetDataTask build(android.content.Context,java.lang.Integer,nitezh.ministock.activities.widget.WidgetProviderBase$UpdateType),JimpleMethodLoc(<nitezh.ministock.activities.widget.WidgetProviderBase$GetDataTask: nitezh.ministock.activities.widget.WidgetProviderBase$GetDataTask build(android.content.Context,java.lang.Integer,nitezh.ministock.activities.widget.WidgetProviderBase$UpdateType)>))
+       state: ( locals: @ret -> p-0,@this -> p-0      locals: $r1 -> p-0         heap:           pure: p-0  !=  NULL         types: List(p-0:{3622})    trace: O(CIEnter I_CIEnter_AsyncTaskexecute ( _T_,p-0 ))
