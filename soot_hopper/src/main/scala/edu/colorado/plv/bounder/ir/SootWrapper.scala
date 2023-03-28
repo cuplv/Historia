@@ -706,7 +706,14 @@ class SootWrapper(apkPath : String,
       dummyClass.setSuperclass(c)
     }
     dummyClass.setModifiers(Modifier.PUBLIC)
-    val methodsToImplement = c.getMethods.asScala
+    //var methodsToImplement = c.getMethods.asScala
+    //var cc = c.getInterfaces.asScala.toSet + c
+    val cc = if(!c.isInterface)Scene.v().getActiveHierarchy.getSuperclassesOf(c).asScala else List.empty
+    val ci = if(c.isInterface)Scene.v().getActiveHierarchy.getSuperinterfacesOf(c).asScala else List.empty
+    val ii = c.getInterfaces.asScala
+
+    val methodsToImplement = (cc ++ ci ++ ii ++ List(c)).flatMap{c => c.getMethods.asScala}
+
     methodsToImplement.foreach{ m =>
       if(m.isPublic) {
         val mName = m.getName
@@ -715,12 +722,16 @@ class SootWrapper(apkPath : String,
         // Note: we remove the native flag so we can override native methods like normal java code
         val mModifiers = m.getModifiers & ( ~Modifier.ABSTRACT) & (~Modifier.NATIVE)
         val newMethod = Scene.v().makeSootMethod(mName, mParams, mRetT, mModifiers)
-        dummyClass.addMethod(newMethod)
-        newMethod.setPhantom(false)
-        val body = Jimple.v().newBody(newMethod)
-        body.insertIdentityStmts(dummyClass)
-        newMethod.setActiveBody(body)
-        instrumentSootMethod(newMethod)
+        try {
+          dummyClass.addMethod(newMethod)
+          newMethod.setPhantom(false)
+          val body = Jimple.v().newBody(newMethod)
+          body.insertIdentityStmts(dummyClass)
+          newMethod.setActiveBody(body)
+          instrumentSootMethod(newMethod)
+        }catch{
+          case e:RuntimeException if e.getMessage.contains("but the class already has a method") =>
+        }
       }
 
     }
