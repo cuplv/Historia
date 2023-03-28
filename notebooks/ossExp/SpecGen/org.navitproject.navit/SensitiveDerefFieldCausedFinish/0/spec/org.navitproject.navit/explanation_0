@@ -1,5 +1,6 @@
-(    heap:           pure: p-1  !=  NULL         types: List(p-1:{2970}, p-2:{188,357,2685,2854}, p-3:{188,357,2685,2854})    trace: O(CBEnter I_CBEnter_OnMenuItemClickListeneronMenuItemClick ( _T_,p-1,p-3 );O(CBEnter I_CBEnter_OnMenuItemClickListeneronMenuItemClick ( _T_,p-1,p-2 )) 
+(    heap:           pure: p-4  !=  NULL && p-1  !=  NULL         types: List(p-1:{2957}, p-4:{188,357,2685,2854}, p-2:{188,357,2685,2854})    trace: O(CIExit I_CIExit_MenuItemsetOnMenuItemClickListener ( _T_,p-4,p-1 );O(CIExit I_CIExit_MenuItemsetOnMenuItemClickListener ( _T_,p-4,p-1 );O(CBEnter I_CBEnter_OnMenuItemClickListeneronMenuItemClick ( _T_,p-1,p-2 )) 
 ===========
 Future trace:
- CBEnter onMenuItemClick(( _T_,@4,@0 )
-CBEnter onMenuItemClick(( _T_,@4,@3 )
+ CIExit android.view.MenuItem setOnMenuItemClickListener(android.view.MenuItem$OnMenuItemClickListener)( _T_,@3,@4 )
+CIExit android.view.MenuItem setOnMenuItemClickListener(android.view.MenuItem$OnMenuItemClickListener)( _T_,@3,@4 )
+CBEnter onMenuItemClick(( _T_,@4,@0 )
