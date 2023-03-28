@@ -143,7 +143,14 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val out = outState2.map{ oState =>
         //clear assigned var from stack if exists
         val statesWithClearedReturn = inVars.head match{
-          case Some(v:LocalWrapper) => oState.clearLVal(v)
+          case Some(v:LocalWrapper) => {
+            val newStack = oState.sf.callStack match {
+              case h :: fr :: t => h :: fr.removeStackVar(StackVar(v.name)) :: t
+              case v => v
+            }
+            //oState.clearLVal(v)
+            oState.copy(sf = oState.sf.copy(callStack = newStack))
+          }
           case None => oState
           case v => throw new IllegalStateException(s"Malformed IR. Callin result assigned to non-local: $v")
         }
