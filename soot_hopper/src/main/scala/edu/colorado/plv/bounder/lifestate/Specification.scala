@@ -190,12 +190,12 @@ object LifecycleSpec {
     SpecSignatures.Activity_onResume_entry
   )
   val startStopAlternation:LSSpec = LSSpec(f::Nil, Nil, Or(
-    And(Not(SpecSignatures.Fragment_onStart_entry), Not(SpecSignatures.Fragment_onStop_exit)),
-    NS(SpecSignatures.Fragment_onStop_exit, SpecSignatures.Fragment_onStart_entry)
+    And(Not(SpecSignatures.Fragment_onStart_entry), Not(SpecSignatures.Fragment_onStop_exit.copy(mt = CBEnter))),
+    NS(SpecSignatures.Fragment_onStop_exit.copy(mt=CBEnter), SpecSignatures.Fragment_onStart_entry)
   ),SpecSignatures.Fragment_onStart_entry)
   val stopStartAlternation:LSSpec = LSSpec(f::Nil, Nil,
-    NS(Fragment_onStart_entry, Fragment_onStop_exit),
-    SpecSignatures.Fragment_onStop_exit.copy(mt = CBExit))
+    NS(Fragment_onStart_entry, Fragment_onStop_exit.copy(mt = CBEnter)),
+    SpecSignatures.Fragment_onStop_exit.copy(mt = CBEnter))
 
   val viewAttached: LSPred = SpecSignatures.Activity_findView_exit //TODO: ... or findView on other view
   val destroyed: LSPred = NS(SpecSignatures.Activity_onDestroy_exit, SpecSignatures.Activity_onCreate_entry)

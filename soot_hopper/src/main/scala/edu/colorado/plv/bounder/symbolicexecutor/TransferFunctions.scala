@@ -145,7 +145,10 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         val statesWithClearedReturn = inVars.head match{
           case Some(v:LocalWrapper) => {
             val newStack = oState.sf.callStack match {
-              case h :: fr :: t => h :: fr.removeStackVar(StackVar(v.name)) :: t
+              case h :: fr :: t =>
+                if(!inVars.tail.contains(Some(v))) {
+                  h :: fr.removeStackVar(StackVar(v.name)) :: t
+                }else h::fr::t
               case v => v
             }
             //oState.clearLVal(v)
