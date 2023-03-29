@@ -712,9 +712,27 @@ class SootWrapper(apkPath : String,
     val ci = if(c.isInterface)Scene.v().getActiveHierarchy.getSuperinterfacesOf(c).asScala else List.empty
     val ii = c.getInterfaces.asScala
 
-    val methodsToImplement = (cc ++ ci ++ ii ++ List(c)).flatMap{c => c.getMethods.asScala}
+    val allSuper = (cc ++ ci ++ ii ++ List(c))
+    val allSuperMethods:List[SootMethod] = allSuper.flatMap{c => c.getMethods.asScala}.toList
+    val methodsToImplement = allSuperMethods.filter{m =>
+      !allSuper.exists{(superC:SootClass) =>
+        superC.getMethods.asScala.exists{ (superM:SootMethod) =>
+          val namesMatch = m.getName == superM.getName
+          val mParams = m.getParameterTypes.asScala.toList
+          val superMParams = superM.getParameterTypes.asScala.toList
+          val sizesMatch = mParams.size == superMParams.size
+          val paramMatch = superMParams.zip(mParams).forall{
+            case (p1, p2) =>
+              p1 == p2
+          }
+          val returnTypesMatch = superM.getReturnType == m.getReturnType
 
-    methodsToImplement.foreach{ m =>
+          namesMatch && sizesMatch && paramMatch && returnTypesMatch && superM.hasActiveBody
+        }
+      }
+    }
+
+    methodsToImplement.foreach{ (m:SootMethod) =>
       if(m.isPublic) {
         val mName = m.getName
         val mParams = m.getParameterTypes
