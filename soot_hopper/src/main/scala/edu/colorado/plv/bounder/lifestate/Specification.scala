@@ -148,6 +148,7 @@ object RxJavaSpec{
   val subscribe_s_only = SpecSignatures.RxJava_subscribe_exit.copyMsg(lsVars = s::Nil)
   val subscribeIsUnique:LSSpec = LSSpec(s::Nil, Nil, Not(subscribe_s_only),
     subscribe_s_only) //,Set(LSConstraint("s",NotEquals,"@null")  )
+  val subscribeNonNull = LSSpec(Nil,Nil, LSFalse, SpecSignatures.RxJava_subscribe_exit.copyMsg(lsVars = NullVal::Nil))
   val spec = Set(call,subscribeIsUnique)
   val subscribeCB = AbsMsg(CBEnter,
     SubClassMatcher("io.reactivex.MaybeOnSubscribe","void subscribe\\(io.reactivex.MaybeEmitter\\)", "subscribeCB"),

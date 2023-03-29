@@ -1181,7 +1181,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
     val test: String => Unit = apk => {
       assert(apk != null)
       val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
-        FragmentGetActivityNullSpec.getActivityNonNull,
+        FragmentGetActivityNullSpec.getActivityNonNull, RxJavaSpec.subscribeNonNull
       ) ++ LifecycleSpec.spec ++ RxJavaSpec.spec
       val w = new SootWrapper(apk, specs)
       val specSpace = new SpecSpace(specs)
@@ -1514,7 +1514,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       assert(apk != null)
       val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
         FragmentGetActivityNullSpec.getActivityNonNull,
-        LifecycleSpec.Fragment_activityCreatedOnlyFirst,
+        LifecycleSpec.Fragment_activityCreatedOnlyFirst, RxJavaSpec.subscribeNonNull
       ) ++ RxJavaSpec.spec
       val w = new SootWrapper(apk, specs)
       val specSpace = new SpecSpace(specs)
