@@ -835,7 +835,7 @@ class SootWrapper(apkPath : String,
     }
 
     //read global field cast to correct type and return
-    if(method.getReturnType.toString == "void"){
+    if(method.getReturnType.toString == "void") {
       unitChain.add(Jimple.v().newReturnVoidStmt())
     } else{
       // get global static field, cast to correct type and return
@@ -1035,13 +1035,13 @@ class SootWrapper(apkPath : String,
     val allocLocal = Jimple.v().newLocal("alloc", objectClazz.getType)
     entryPointBody.getLocals.add(allocLocal)
 
-    Scene.v().getClasses.asScala.toList.foreach{v =>
-      if(resolver.isFrameworkClass(SootWrapper.stringNameOfClass(v))) {
+    Scene.v().getClasses.asScala.toList.foreach{ fwkC =>
+      if(resolver.isFrameworkClass(SootWrapper.stringNameOfClass(fwkC))) {
         // if framework interface with no implementors, make a dummy implementor
-        val isInterfaceWithNoImpl = v.isInterface && Scene.v().getActiveHierarchy.getImplementersOf(v).size() == 0
-        lazy val isAbstWithNoImpl = v.isAbstract && !v.isInterface && Scene.v().getActiveHierarchy.getSubclassesOf(v).size() == 0
+        val isInterfaceWithNoImpl = fwkC.isInterface && Scene.v().getActiveHierarchy.getImplementersOf(fwkC).size() == 0
+        lazy val isAbstWithNoImpl = fwkC.isAbstract && !fwkC.isInterface && Scene.v().getActiveHierarchy.getSubclassesOf(fwkC).size() == 0
         if (isInterfaceWithNoImpl || isAbstWithNoImpl) {
-          val dummy = dummyClassForFrameworkClass(v)
+          val dummy = dummyClassForFrameworkClass(fwkC)
           entryPointBody.getUnits.add(
             Jimple.v().newAssignStmt(allocLocal, Jimple.v().newNewExpr(dummy.getType))
           )
@@ -1054,6 +1054,19 @@ class SootWrapper(apkPath : String,
             Jimple.v().newAssignStmt(
               Jimple.v().newStaticFieldRef(globalField.makeRef()), allocLocal)
           )
+        }
+        //Static fields of fwk that are public need to be assigned by "the field"™️
+        // This makes sure that `System.out.println()` has a call target as `System.out` is a static field
+        val toAssign = Jimple.v().newLocal("toAssignStaticPubFields", globalField.getType)
+        entryPointBody.getLocals.add(toAssign)
+        entryPointBody.getUnits.add(Jimple.v().newAssignStmt(toAssign,
+          Jimple.v().newStaticFieldRef(globalField.makeRef())))
+
+        fwkC.getFields.forEach { fwkField =>
+          if (fwkField.isPublic && fwkField.isStatic) {
+            val fieldRef = Jimple.v().newStaticFieldRef(fwkField.makeRef())
+            entryPointBody.getUnits.add(Jimple.v().newAssignStmt(fieldRef, toAssign))
+          }
         }
       }
     }
@@ -1080,6 +1093,17 @@ class SootWrapper(apkPath : String,
     resolver.getCallbacks.flatMap{
       case JimpleMethodLoc(method) => Some(method)
     }.foreach { cb => addCallbackToMain(entryMethod, cb, globalField) }
+
+    // add array to main
+    val entryUnits = entryMethod.getActiveBody.getUnits
+    val newArray = Jimple.v().newNewArrayExpr(globalField.getType, IntConstant.v(4))
+    val theArray = Jimple.v().newLocal("theOneAlmightyArray", globalField.getType)
+    entryMethod.getActiveBody.getLocals.add(theArray)
+    entryUnits.add(Jimple.v().newAssignStmt(theArray, newArray))
+    val elementForArray = Jimple.v().newLocal("elementForTheArray", globalField.getType)
+    entryMethod.getActiveBody.getLocals.add(elementForArray)
+    entryUnits.add(Jimple.v().newAssignStmt(elementForArray, Jimple.v().newStaticFieldRef(globalField.makeRef())))
+    entryUnits.add(Jimple.v().newAssignStmt(Jimple.v().newArrayRef(theArray, IntConstant.v(0)), elementForArray))
 
     // return statement validate and set entry points for spark analysis
     entryPointBody.getUnits.add(Jimple.v().newReturnVoidStmt())

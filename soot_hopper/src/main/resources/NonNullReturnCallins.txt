@@ -1,9 +1,9 @@
 # rxJava
-I(ciret [_,v,_] rx.Subscription subscribe(rx.functions.Action1) v<:rx.Single)
+#I(ciret [_,v,_] rx.Subscription subscribe(rx.functions.Action1) v<:rx.Single)
 # java utils
-I(ciret [_,v] java.util.Iterator iterator() v<:java.lang.Iterable)
-I(ciret [_,v] boolean hasNext() v<:java.util.Iterator)
-I(ciret [_,v] java.lang.String getName() v<:java.io.File)
+#I(ciret [_,v] java.util.Iterator iterator() v<:java.lang.Iterable)
+#I(ciret [_,v] boolean hasNext() v<:java.util.Iterator)
+#I(ciret [_,v] java.lang.String getName() v<:java.io.File)
 # android
-I(ciret [_,v] android.content.SharedPreferences getSharedPreferences(java.lang.String,int) v<:android.content.Context)
-I(ciret [_,v] android.view.LayoutInflater getLayoutInflater() v<:android.app.Activity)
+#I(ciret [_,v] android.content.SharedPreferences getSharedPreferences(java.lang.String,int) v<:android.content.Context)
+#I(ciret [_,v] android.view.LayoutInflater getLayoutInflater() v<:android.app.Activity)

@@ -111,7 +111,118 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
     BounderUtil.throwIfStackTrace(result)
     f.expectReachable(BounderUtil.interpretResult(result,QueryFinished))
   }
+  test("Test array return from callin") { f =>
+    val src =
+      """package com.example.createdestroy;
+        |import androidx.appcompat.app.AppCompatActivity;
+        |import android.os.Bundle;
+        |import android.util.Log;
+        |import java.io.File;
+        |
+        |import rx.Single;
+        |import rx.Subscription;
+        |import rx.android.schedulers.AndroidSchedulers;
+        |import rx.schedulers.Schedulers;
+        |
+        |
+        |public class MyActivity extends AppCompatActivity {
+        |    Object o = new Object();
+        |
+        |    @Override
+        |    protected void onCreate(Bundle savedInstanceState) {
+        |        File f = new File("");
+        |        File[] files = f.listFiles();
+        |        File f2 = files[0];
+        |        o = f2.getName();
+        |        Log.i("b", o.toString()); //query1
+        |    }
+        |
+        |    @Override
+        |    protected void onDestroy() {
+        |       Object[] foo = {new Object()};
+        |    }
+        |}""".stripMargin
 
+    val test: String => Unit = apk => {
+      assert(apk != null)
+      val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+        FragmentGetActivityNullSpec.getActivityNonNull,
+      ) ++ RxJavaSpec.spec
+      val w = new SootWrapper(apk,  specs)
+      val config = ExecutorConfig(
+        stepLimit = 50, w, new SpecSpace(specs),
+        component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode, outputMode = om)
+      val symbolicExecutor = config.getAbstractInterpreter
+
+      val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+        "void onCreate(android.os.Bundle)"), BounderUtil.lineForRegex(".*query1.*".r,src), Some(".*toString.*"))
+      val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
+      PrettyPrinting.dumpDebugInfo(result, "ci_ret_array")
+
+      if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) {
+        assert(result.nonEmpty)
+      }
+      BounderUtil.throwIfStackTrace(result)
+      f.expectReachable(BounderUtil.interpretResult(result,QueryFinished))
+
+    }
+
+    makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
+  }
+  test("Test direct framework field read") { f =>
+    val src =
+      """package com.example.createdestroy;
+        |import androidx.appcompat.app.AppCompatActivity;
+        |import android.os.Bundle;
+        |import android.util.Log;
+        |
+        |import rx.Single;
+        |import rx.Subscription;
+        |import rx.android.schedulers.AndroidSchedulers;
+        |import rx.schedulers.Schedulers;
+        |
+        |
+        |public class MyActivity extends AppCompatActivity {
+        |    Object o = null;
+        |    Subscription subscription;
+        |
+        |    @Override
+        |    protected void onCreate(Bundle savedInstanceState) {
+        |        System.out.println("");  // out is a public static field, app only cg should provide something to it.
+        |        Log.i("b", o.toString()); //query1
+        |    }
+        |
+        |    @Override
+        |    protected void onDestroy() {
+        |        o = null;
+        |    }
+        |}""".stripMargin
+
+    val test: String => Unit = apk => {
+      assert(apk != null)
+      val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+        FragmentGetActivityNullSpec.getActivityNonNull,
+      ) ++ RxJavaSpec.spec
+      val w = new SootWrapper(apk, specs)
+      val config = ExecutorConfig(
+        stepLimit = 50, w, new SpecSpace(specs),
+        component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode, outputMode = om)
+      val symbolicExecutor = config.getAbstractInterpreter
+      val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+        "void onCreate(android.os.Bundle)"), BounderUtil.lineForRegex(".*query1.*".r, src), Some(".*toString.*"))
+      val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
+      //      prettyPrinting.dumpDebugInfo(result, "readLiteral")
+
+      if (om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) {
+        assert(result.nonEmpty)
+      }
+      BounderUtil.throwIfStackTrace(result)
+      f.expectReachable(BounderUtil.interpretResult(result, QueryFinished))
+
+    }
+
+    makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
+  }
   test("Test read string literal") { f =>
     val src =
       """package com.example.createdestroy;
