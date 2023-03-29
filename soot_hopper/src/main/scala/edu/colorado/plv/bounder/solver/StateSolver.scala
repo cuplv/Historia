@@ -1661,7 +1661,13 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val res:Option[WitnessExplanation] = None
     try {
       getSolverCtx() {implicit zCtx =>
-        if (state.heapConstraints.nonEmpty)
+        val nonNullHeap = state.heapConstraints.exists{
+          case (FieldPtEdge(_,_), NullVal) => false
+          case (StaticPtEdge(_,_), NullVal) => false
+          case (ArrayPtEdge(_,_),NullVal) => false
+          case _ => true
+        }
+        if (nonNullHeap)
           return None
         if (state.callStack.nonEmpty)
           return None
