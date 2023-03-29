@@ -863,7 +863,8 @@ class SootWrapper(apkPath : String,
   private val fwkInstantiatedClasses = mutable.Set[SootClass]()
 
   private val initialClasses = Set("android.app.Activity", "androidx.fragment.app.Fragment",
-    "android.app.Fragment", "android.view.View", "android.app.Application","androidx.appcompat.app.AppCompatActivity") //TODO:
+    "android.app.Fragment", "android.view.View", "android.app.Application","androidx.appcompat.app.AppCompatActivity",
+    "android.app.Service") //TODO:
   /**
    * Classes that the android framework may create on its own.
    * These are things like fragments and activities that are declared in the XML file.
@@ -1035,6 +1036,9 @@ class SootWrapper(apkPath : String,
     val allocLocal = Jimple.v().newLocal("alloc", objectClazz.getType)
     entryPointBody.getLocals.add(allocLocal)
 
+
+    val toAssign = Jimple.v().newLocal("toAssignStaticPubFields", globalField.getType)
+    entryPointBody.getLocals.add(toAssign)
     Scene.v().getClasses.asScala.toList.foreach{ fwkC =>
       if(resolver.isFrameworkClass(SootWrapper.stringNameOfClass(fwkC))) {
         // if framework interface with no implementors, make a dummy implementor
@@ -1057,8 +1061,6 @@ class SootWrapper(apkPath : String,
         }
         //Static fields of fwk that are public need to be assigned by "the field"™️
         // This makes sure that `System.out.println()` has a call target as `System.out` is a static field
-        val toAssign = Jimple.v().newLocal("toAssignStaticPubFields", globalField.getType)
-        entryPointBody.getLocals.add(toAssign)
         entryPointBody.getUnits.add(Jimple.v().newAssignStmt(toAssign,
           Jimple.v().newStaticFieldRef(globalField.makeRef())))
 
