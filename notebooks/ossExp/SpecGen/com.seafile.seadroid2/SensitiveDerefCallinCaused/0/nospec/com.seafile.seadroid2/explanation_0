@@ -1,4 +1,4 @@
-(    heap:           pure: p-1  !=  NULL         types: List(p-1:{6800,10147}, p-2:{1654,2356,4933,4944,4948 ...})    trace: O(CIExit I_CIExit_FragmentgetActivity ( p-2,p-1 );O(CIExit I_CIExit_FragmentgetActivity ( NULL,p-1 )) 
+(    heap:           pure: p-1  !=  NULL         types: List(p-1:{7218,9268}, p-2:{1654,2356,4950,4971,4988 ...})    trace: O(CIExit I_CIExit_FragmentgetActivity ( p-2,p-1 );O(CIExit I_CIExit_FragmentgetActivity ( NULL,p-1 )) 
 ===========
 Future trace:
  CIExit Activity getActivity()( @3,@4 )

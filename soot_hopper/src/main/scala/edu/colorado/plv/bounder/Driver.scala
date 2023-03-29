@@ -966,7 +966,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     val q = for(
       j <- jobQry if j.jobId === id
     ) yield j.started
-    Await.result(db.run(q.update(startTime)), 30 seconds)
+    Await.result(db.run(q.update(startTime)), 300 seconds)
   }
   def setEndTime(id:Int) = {
     val date = new Date()
@@ -974,7 +974,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     val q = for(
       j <- jobQry if j.jobId === id
     )yield j.ended
-    Await.result(db.run(q.update(endTime)), 30 seconds)
+    Await.result(db.run(q.update(endTime)), 300 seconds)
   }
 
   def acquireJob2(owner: String): Option[JobRow] = {
@@ -1004,13 +1004,13 @@ class ExperimentsDb(bounderJar:Option[String] = None){
         FROM cte
         WHERE s.id = cte.id
           """.transactionally
-    Await.result(db.run(getIdQ), 30 seconds)
+    Await.result(db.run(getIdQ), 300 seconds)
 
     val q = for(
       j <- jobQry if j.owner === owner && j.status==="acquired"
     ) yield j
     val pendingJob = Await.result(
-      db.run(q.take(1).result), 30 seconds
+      db.run(q.take(1).result), 300 seconds
     )
     if(pendingJob.isEmpty) {
       None
@@ -1024,7 +1024,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
         Some(row)
       }.recover {
         case _: java.sql.SQLException => None
-      }, 30 seconds)
+      }, 300 seconds)
     }
   }
   case class JobRow(jobId:Int, status:String, config:String,started:Option[Timestamp],
@@ -1161,7 +1161,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     val iamowner = for(
       j <- jobQry if j.jobId === d.jobId
     ) yield (j.jobId, j.owner)
-    val jobRows = Await.result(db.run(iamowner.result), 30 seconds)
+    val jobRows = Await.result(db.run(iamowner.result), 300 seconds)
     if(jobRows.size != 1 || jobRows.head._2 != owner)
       throw new IllegalStateException(s"Concurrency exception, I am $owner and found " +
         s"jobs Jobs: ${jobRows.mkString(";")} ")
@@ -1170,25 +1170,25 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     val existingResDataQ = for(
       j <-resultsQry if j.jobId === d.jobId
     ) yield (j.jobId)
-    val existingResData = Await.result(db.run(existingResDataQ.result), 30 seconds)
+    val existingResData = Await.result(db.run(existingResDataQ.result), 300 seconds)
     assert(existingResData.isEmpty, s"existing results data nonempty, ${d}")
 
     // upload results
     val resData = d.getDBResults
     resData.foreach{d =>
-      Await.result(db.run(resultsQry += d), 30 seconds)
+      Await.result(db.run(resultsQry += d), 300 seconds)
     }
     // set completed
     val q = for(
       j <- jobQry if j.jobId === d.jobId
     ) yield (j.status, j.stdout, j.stderr)
-    Await.result(db.run(q.update(("completed",Some(stdout),Some(stderr)))), 30 seconds)
+    Await.result(db.run(q.update(("completed",Some(stdout),Some(stderr)))), 300 seconds)
   }
   def finishFail(id:Int, exn:String): Int = {
     val q = for(
       j <- jobQry if j.jobId === id
     ) yield j.status
-    Await.result(db.run(q.update("failed: " + exn)), 30 seconds)
+    Await.result(db.run(q.update("failed: " + exn)), 300 seconds)
   }
   //  CREATE TABLE resultdata(
   //    id integer,
@@ -1236,7 +1236,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
       row <- apkQry if row.name === name
     } yield row.img
     val bytes: Seq[Array[Byte]] = Await.result(
-      db.run(qry.take(1).result), 300 seconds
+      db.run(qry.take(1).result), 600 seconds
     )
     if(bytes.size == 1){
       outFile.writeByteArray(bytes.head)
@@ -1281,7 +1281,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     val q1 = for {
       inp <- inputsQuery if inp.id === id
     } yield (inp.bounderjar,inp.specfile)
-    val inputFiles = Await.result(db.run(q1.result), 30 seconds)
+    val inputFiles = Await.result(db.run(q1.result), 300 seconds)
     assert(inputFiles.size == 1)
     val (bounderJarHash, specFileHash) = inputFiles.head
     downloadApk("jar_" + bounderJarHash, bounderJar)
