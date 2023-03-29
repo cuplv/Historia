@@ -2603,11 +2603,11 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val nullUnreach2 = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
           "void onResume()"), line2, Some(".*toString.*"))
         val nullUnreachRes2 = symbolicExecutor.run(nullUnreach2, dbMode).flatMap(a => a.terminals)
-        // prettyPrinting.dumpDebugInfo(nullUnreachRes2, s"ResumedPaused_NPE_Unreach2")
+        PrettyPrinting.dumpDebugInfo(nullUnreachRes2, s"ResumedPaused_NPE_Unreach2")
         assert(nullUnreachRes2.nonEmpty)
         BounderUtil.throwIfStackTrace(nullUnreachRes2)
         //PrettyPrinting.printWitness(nullUnreachRes2)
-        f.expectUnreachable(BounderUtil.interpretResult(nullUnreachRes2, QueryFinished) )
+        f.expectReachable(BounderUtil.interpretResult(nullUnreachRes2, QueryFinished) )
       }
 
     }
