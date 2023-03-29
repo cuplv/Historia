@@ -868,6 +868,9 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
            |  @Override
            |  public void onStart() {
            |    super.onStart();
+           |    if(disposable != null){
+           |      disposable.dispose();
+           |    }
            |
            |    controller = new Object();
            |
