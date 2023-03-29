@@ -1,5 +1,5 @@
 #!/bin/bash
-pg_dump -h localhost -U postgres postgres -p 5433 > ~/Desktop/mar-25-2023.sql
+pg_dump -h localhost -U postgres postgres -p 5433 > ~/Desktop/mar-28-2023_partial_tx_cc.sql
 # note: use psql dbname < infile to restore
 
 # note2: for version mismatch between pg server and client:
