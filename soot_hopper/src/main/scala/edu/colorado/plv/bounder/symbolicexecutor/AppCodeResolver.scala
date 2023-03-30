@@ -520,9 +520,11 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
 //      // <clinit> considered a callback
 //      return Some(CallbackMethodInvoke("java.lang.Object", "void <clinit>()", method))
 //    }
-    if(method.isInterface)
+    if(method.isInterface) {
       return None // Interface methods cannot be callbacks
-    val overrides = ir.getOverrideChain(method).filter(c =>
+    }
+    val chain = ir.getOverrideChain(method)
+    val overrides = chain.filter(c =>
       isFrameworkClass(
         SootWrapper.stringNameOfClass(
           c.asInstanceOf[JimpleMethodLoc].method.getDeclaringClass)))

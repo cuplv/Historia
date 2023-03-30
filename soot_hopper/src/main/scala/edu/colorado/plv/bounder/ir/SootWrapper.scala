@@ -864,7 +864,8 @@ class SootWrapper(apkPath : String,
 
   private val initialClasses = Set("android.app.Activity", "androidx.fragment.app.Fragment",
     "android.app.Fragment", "android.view.View", "android.app.Application","androidx.appcompat.app.AppCompatActivity",
-    "android.app.Service") //TODO:
+    "android.app.Service", "android.view.ViewGroup", "androidx.recyclerview.widget.RecyclerView$ViewHolder",
+    "androidx.recyclerview.widget.RecyclerView#ViewHolder") //TODO:
   /**
    * Classes that the android framework may create on its own.
    * These are things like fragments and activities that are declared in the XML file.
@@ -1670,12 +1671,19 @@ class SootWrapper(apkPath : String,
     val methodDeclClass = m.method.getDeclaringClass
     val methodSignature = m.method.getSubSignature
     val superclasses: util.List[SootClass] = Scene.v().getActiveHierarchy.getSuperclassesOf(methodDeclClass)
+    val ifacesOfSuperClasses = superclasses.asScala.flatMap{ c => Scene.v().getActiveHierarchy.getSuperinterfacesOf(c).asScala}
     val interfaces: Iterable[SootClass] = methodDeclClass.getInterfaces.asScala.flatMap{iface =>
       Scene.v().getActiveHierarchy.getSuperinterfacesOfIncluding(iface).asScala
     }
-    val methods = (superclasses.iterator.asScala ++ interfaces)
-      .filter(sootClass => sootClass.declaresMethod(methodSignature))
-      .map( sootClass=> JimpleMethodLoc(sootClass.getMethod(methodSignature)))
+    val methods = (superclasses.iterator.asScala ++ interfaces ++ ifacesOfSuperClasses)
+      .filter{sootClass =>
+        val out = sootClass.declaresMethod(methodSignature)
+//        if(out && ifacesOfSuperClasses.contains(sootClass) && !interfaces.toList.contains(sootClass) && !superclasses.asScala.toList.contains(sootClass)){
+//          println()
+//        }
+        out
+      }
+      .map{ sootClass=> JimpleMethodLoc(sootClass.getMethod(methodSignature))}
     methods.toList
   }
 
