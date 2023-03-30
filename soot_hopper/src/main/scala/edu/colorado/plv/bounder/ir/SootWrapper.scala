@@ -1671,7 +1671,11 @@ class SootWrapper(apkPath : String,
     val methodDeclClass = m.method.getDeclaringClass
     val methodSignature = m.method.getSubSignature
     val superclasses: util.List[SootClass] = Scene.v().getActiveHierarchy.getSuperclassesOf(methodDeclClass)
-    val ifacesOfSuperClasses = superclasses.asScala.flatMap{ c => Scene.v().getActiveHierarchy.getSuperinterfacesOf(c).asScala}
+    val ifacesOfSuperClasses = superclasses.asScala.flatMap{ c =>
+      c.getInterfaces.asScala.flatMap { iface =>
+        Scene.v().getActiveHierarchy.getSuperinterfacesOf(iface).asScala
+      }
+    }
     val interfaces: Iterable[SootClass] = methodDeclClass.getInterfaces.asScala.flatMap{iface =>
       Scene.v().getActiveHierarchy.getSuperinterfacesOfIncluding(iface).asScala
     }
