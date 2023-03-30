@@ -1,5 +1,7 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
+
+import scala.jdk.CollectionConverters._
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.EmptyTypeSet.intersect
 import edu.colorado.plv.bounder.ir._
