@@ -111,6 +111,62 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
     BounderUtil.throwIfStackTrace(result)
     f.expectReachable(BounderUtil.interpretResult(result,QueryFinished))
   }
+  test("Test clinit") { f =>
+    val src =
+      """package com.example.createdestroy;
+        |import androidx.appcompat.app.AppCompatActivity;
+        |import android.os.Bundle;
+        |import android.util.Log;
+        |import java.io.File;
+        |
+        |import rx.Single;
+        |import rx.Subscription;
+        |import rx.android.schedulers.AndroidSchedulers;
+        |import rx.schedulers.Schedulers;
+        |
+        |
+        |public class MyActivity extends AppCompatActivity {
+        |    Object o = null;
+        |    static Object o2 = new Object();
+        |
+        |    @Override
+        |    protected void onCreate(Bundle savedInstanceState) {
+        |        if(o2 != null){
+        |         Log.i("b", o.toString()); //query1
+        |        }
+        |    }
+        |
+        |    @Override
+        |    protected void onDestroy() {
+        |    }
+        |}""".stripMargin
+
+    val test: String => Unit = apk => {
+      assert(apk != null)
+      val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
+        FragmentGetActivityNullSpec.getActivityNonNull,
+      ) ++ RxJavaSpec.spec
+      val w = new SootWrapper(apk, specs)
+      val config = ExecutorConfig(
+        stepLimit = 50, w, new SpecSpace(specs),
+        component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode, outputMode = om)
+      val symbolicExecutor = config.getAbstractInterpreter
+
+      val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+        "void onCreate(android.os.Bundle)"), BounderUtil.lineForRegex(".*query1.*".r, src), Some(".*toString.*"))
+      val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
+      //PrettyPrinting.dumpDebugInfo(result, "clinit")
+
+      if (om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) {
+        assert(result.nonEmpty)
+      }
+      BounderUtil.throwIfStackTrace(result)
+      f.expectReachable(BounderUtil.interpretResult(result, QueryFinished))
+
+    }
+
+    makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
+  }
   test("Test array return from callin") { f =>
     val src =
       """package com.example.createdestroy;
