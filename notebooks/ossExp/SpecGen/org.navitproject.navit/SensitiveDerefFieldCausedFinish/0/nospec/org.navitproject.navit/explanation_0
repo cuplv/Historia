@@ -1,4 +1,4 @@
-(    heap:           pure:          types: List()    trace: ) 
+(    heap: p-1.mContextMenuMapViewIntent->NULL          pure: p-1  !=  NULL         types: List(p-1:{2951})    trace: ) 
 ===========
 Future trace:
  
