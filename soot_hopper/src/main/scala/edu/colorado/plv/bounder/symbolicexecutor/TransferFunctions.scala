@@ -480,7 +480,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         case _ => postState2
       }
       val stateWithFrame =
-        clearedLVal.setCallStack(newFrame :: postState2.callStack).copy(nextCmd = List(target), alternateCmd = Nil)
+        clearedLVal.setCallStack(newFrame :: clearedLVal.callStack).copy(nextCmd = List(target), alternateCmd = Nil)
       // Constraint receiver by current points to set  TODO: apply this to other method transfers ====
       if(receiverTypesFromPT.isDefined) {
         val (thisV, stateWThis) = if(materializedReceiver.isEmpty) {
