@@ -1,4 +1,4 @@
-(    heap:           pure: p-0  !=  NULL         types: List(p-0:{2713,2991}, p-1:{1325,1326,2698,2702,2705 ...}, p-2:{1325,1326,2698,2702,2705 ...})    trace: O(CBEnter I_CBEnter_FragmentonCreate ( _T_,p-0 );O(CIExit I_CIExit_FragmentgetActivity ( p-2,p-0 );O(CIExit I_CIExit_FragmentgetActivity ( p-1,p-0 )) 
+(    heap:           pure: p-0  !=  NULL         types: List(p-0:{2713,2996}, p-1:{1325,1326,2702,2703,2707 ...}, p-2:{1325,1326,2702,2703,2707 ...})    trace: O(CBEnter I_CBEnter_FragmentonCreate ( _T_,p-0 );O(CIExit I_CIExit_FragmentgetActivity ( p-2,p-0 );O(CIExit I_CIExit_FragmentgetActivity ( p-1,p-0 )) 
 ===========
 Future trace:
  CBEnter void onCreate(android.os.Bundle)( _T_,@4 )
