@@ -1,15 +1,15 @@
 witnessed
     WITNESSED: [CB Inv] org.navitproject.navit.NavitGraphics$NavitView boolean onMenuItemClick(android.view.MenuItem)
-       state: (    heap: p-1.mContextMenuMapViewIntent->NULL          pure: p-1  !=  NULL         types: List(p-1:{2951})    trace: )
+       state: (    heap: p-1.mContextMenuMapViewIntent->NULL          pure: p-1  !=  NULL         types: List(p-1:{2957})    trace: )
     pre-line: -1 r0 := @this: org.navitproject.navit.NavitGraphics$NavitView
-       state: ( locals: @this -> p-1         heap: p-1.mContextMenuMapViewIntent->NULL          pure: p-1  !=  NULL         types: List(p-1:{2951})    trace: )
+       state: ( locals: @this -> p-1         heap: p-1.mContextMenuMapViewIntent->NULL          pure: p-1  !=  NULL         types: List(p-1:{2957})    trace: )
     pre-line: 272 $i0 = interfaceinvoke $r1.<android.view.MenuItem: int getItemId()>()
-       state: ( locals: r0 -> p-1         heap: p-1.mContextMenuMapViewIntent->NULL          pure:          types: List(p-1:{2951})    trace: )
+       state: ( locals: r0 -> p-1         heap: p-1.mContextMenuMapViewIntent->NULL          pure:          types: List(p-1:{2957})    trace: )
     [CI Inv merge] int getItemId()
-       state: ([CI Ret] android.support.v4.internal.view.Dummy_______SupportMenuItem int getItemId() locals:       locals: r0 -> p-1         heap: p-1.mContextMenuMapViewIntent->NULL          pure:          types: List(p-1:{2951})    trace: )
+       state: ([CI Ret] android.support.v4.internal.view.Dummy_______SupportMenuItem int getItemId() locals:       locals: r0 -> p-1         heap: p-1.mContextMenuMapViewIntent->NULL          pure:          types: List(p-1:{2957})    trace: )
     [CI Ret merge] int getItemId()
-       state: ([CI Ret] android.support.v4.internal.view.Dummy_______SupportMenuItem int getItemId() locals:       locals: r0 -> p-1         heap: p-1.mContextMenuMapViewIntent->NULL          pure:          types: List(p-1:{2951})    trace: )
+       state: ([CI Ret] android.support.v4.internal.view.Dummy_______SupportMenuItem int getItemId() locals:       locals: r0 -> p-1         heap: p-1.mContextMenuMapViewIntent->NULL          pure:          types: List(p-1:{2957})    trace: )
     pre-line: 277 if $i0 != 2 goto r0.<org.navitproject.navit.NavitGraphics$NavitView: android.content.Intent mContextMenuMapViewIntent> = null
-       state: ( locals: r0 -> p-1,$i0 -> 2         heap: p-1.mContextMenuMapViewIntent->NULL          pure:          types: List(p-1:{2951})    trace: )
+       state: ( locals: r0 -> p-1,$i0 -> 2         heap: p-1.mContextMenuMapViewIntent->NULL          pure:          types: List(p-1:{2957})    trace: )
     pre-line: 279 $r6 = r0.<org.navitproject.navit.NavitGraphics$NavitView: android.content.Intent mContextMenuMapViewIntent>
-       state: ( locals: r0 -> p-1         heap: p-1.mContextMenuMapViewIntent->NULL          pure:          types: List(p-1:{2951})    trace: )
+       state: ( locals: r0 -> p-1         heap: p-1.mContextMenuMapViewIntent->NULL          pure:          types: List(p-1:{2957})    trace: )
