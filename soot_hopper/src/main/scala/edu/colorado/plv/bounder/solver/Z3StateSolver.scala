@@ -446,7 +446,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
 
   //private val threadLocalCtx = ThreadLocal.withInitial(() => Z3SolverCtx(timeout, randomSeed))
   private val zctxPool = Pool(mZ3InstanceLimit, () => {  // look at other low level profiling tools - runlim
-      val ctx = Z3SolverCtx(timeout,randomSeed)
+      val ctx = Z3SolverCtx(getSolverTimeout.get,randomSeed)
       ctx.acquire()
       ctx
     },
@@ -524,7 +524,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
     axioms.foreach { ax => ax(messageTranslator) }
     val useCmd = false
     if (useCmd) {
-      lazy val timeoutS = timeout.toString
+      lazy val timeoutS = getSolverTimeout.toString
       File.temporaryFile().apply { f =>
         println(s"file: $f")
         f.writeText(zCtx.solver.toString)
@@ -1487,4 +1487,16 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
   }
 
   override def STRICT_TEST: Boolean = this.strict_test
+
+  private val overrideSolver: Option[(Int, Int)] =
+    scala.util.Properties.envOrNone("OVERRIDE_SOLVER").map { v =>
+      v.split(",").toList match {
+        case (v1: String) :: (v2: String) :: Nil => (v1.toInt, v2.toInt)
+        case _ => throw new IllegalArgumentException(s"Failed to parse OVERRIDE_SOLVER env var.  Got: ${v}")
+      }
+    }
+  override def getSolverRetries: Option[Int] =
+    overrideSolver.map{_._1}
+  override def getSolverTimeout: Option[Int] =
+    Some(overrideSolver.map{_._2}.getOrElse(timeout))
 }

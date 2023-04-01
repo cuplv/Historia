@@ -59,6 +59,8 @@ case object SubsDebug extends SubsumptionMethod
 case object SubsFailOver extends SubsumptionMethod
 /** SMT solver parameterized by its AST or expression type */
 trait StateSolver[T, C <: SolverCtx[T]] {
+  def getSolverRetries:Option[Int]
+  def getSolverTimeout: Option[Int]
   def shouldLogTimes:Boolean
   def STRICT_TEST:Boolean
   def mkAssert(t:T)(implicit zCtx:C):Unit
@@ -1613,7 +1615,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       case Some(value) => value
       case None =>
         // try 3 times with different random seeds
-        if (rngTry < 2) {
+        val max = getSolverRetries.getOrElse(2)
+        if (rngTry < max) {
           canSubsumeZ3(s1i, s2i, specSpace, maxLen, timeout, rngTry + 1)
         } else {
           println("Giving up and not subsuming.")
