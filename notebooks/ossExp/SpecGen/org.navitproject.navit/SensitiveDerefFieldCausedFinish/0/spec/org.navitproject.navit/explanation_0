@@ -1,4 +1,4 @@
-(    heap:           pure: p-5  !=  NULL && p-4  !=  NULL && p-6  !=  NULL && p-1  !=  NULL         types: List(p-1:{2958}, p-4:{188,357,2685,2854}, p-2:{188,357,2685,2854}, p-6:{188,357,2685,2854}, p-5:{180,2677})    trace: O(CBEnter I_CBEnter_ViewonCreateContextMenu ( _T_,_T_,p-5 );O(CIExit I_CIExit_MenuItemadd ( p-6,p-5 );O(CIExit I_CIExit_MenuItemsetOnMenuItemClickListener ( _T_,p-6,p-1 );O(CIExit I_CIExit_MenuItemadd ( p-4,p-5 );O(CIExit I_CIExit_MenuItemsetOnMenuItemClickListener ( _T_,p-4,p-1 );O(CBEnter I_CBEnter_OnMenuItemClickListeneronMenuItemClick ( _T_,p-1,p-2 )) 
+(    heap:           pure: p-5  !=  NULL && p-4  !=  NULL && p-6  !=  NULL && p-1  !=  NULL         types: List(p-1:{2958}, p-4:{188,357,2685,2854}, p-2:{188,357,2685,2854}, p-6:{188,357,2685,2854}, p-5:{180,2677})    trace: O(CBEnter I_CBEnter_ViewonCreateContextMenu ( _T_,_T_,p-5 );O(CIExit I_CIExit_MenuItemadd ( p-6,p-5 );O(CIExit I_CIExit_MenuItemsetOnMenuItemClickListener ( _T_,p-6,p-1 );O(CIExit I_CIExit_MenuItemadd ( p-4,p-5 );O(CIExit I_CIExit_MenuItemsetOnMenuItemClickListener ( _T_,p-4,p-1 );O(CBExit I_CBExit_ViewonCreateContextMenu ( _T_,p-1 );O(CBEnter I_CBEnter_OnMenuItemClickListeneronMenuItemClick ( _T_,p-1,p-2 )) 
 ===========
 Future trace:
  CBEnter void onCreateContextMenu(android.view.ContextMenu)( _T_,_T_,@2 )
@@ -6,4 +6,5 @@ CIExit android.view.MenuItem add(int,int,int,java.lang.CharSequence)( @8,@2 )
 CIExit android.view.MenuItem setOnMenuItemClickListener(android.view.MenuItem$OnMenuItemClickListener)( _T_,@8,@6 )
 CIExit android.view.MenuItem add(int,int,int,java.lang.CharSequence)( @4,@2 )
 CIExit android.view.MenuItem setOnMenuItemClickListener(android.view.MenuItem$OnMenuItemClickListener)( _T_,@4,@6 )
+CBExit void onCreateContextMenu(android.view.ContextMenu)( _T_,@6 )
 CBEnter onMenuItemClick(( _T_,@6,@7 )
