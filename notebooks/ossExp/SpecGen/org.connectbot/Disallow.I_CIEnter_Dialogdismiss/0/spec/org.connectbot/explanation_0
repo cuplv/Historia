@@ -1,4 +1,6 @@
-(    heap:           pure:          types: List()    trace: ) 
+(    heap: p-1.listener->NULL * StaticPtEdge(org.connectbot.util.PubkeyDatabase,sInstance)->NULL          pure: p-0  !=  NULL && p-1  !=  NULL         types: List(p-0:{12005}, p-1:{8453})    trace: p-0;O(CIExit I_CIExit_Dialogshow ( _T_,_T_ );O(CIEnter I_CIEnter_Dialogdismiss ( _T_,p-0 )) 
 ===========
 Future trace:
- 
+ TNew(p-0,{1})
+CIExit show(( _T_,_T_ )
+CIEnter void dismiss()( _T_,@3 )
