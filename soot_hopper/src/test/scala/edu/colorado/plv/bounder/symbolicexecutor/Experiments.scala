@@ -69,6 +69,11 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
   after{
     println("Ending Experiments run")
   }
+  val mFilter = (strm: String) => {
+    !strm.contains("MainActivity") &&
+      !strm.contains("com.example.createdestroy.R$") &&
+      strm != ("com.example.createdestroy.R")
+  }
 
   def getSpecName(s:LSSpec):String = s.target.identitySignature match {
     case id if id.contains("onClick") =>
@@ -403,7 +408,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           logger.warn(em)
         }
         val messages = w.getMessages(symbolicExecutor.controlFlowResolver, new SpecSpace(row1Specs),
-          symbolicExecutor.getClassHierarchy)
+          symbolicExecutor.getClassHierarchy, mFilter)
         logger.warn(s"Row 1 ${fileSuffix} : ${write(messages)}")
       }
 
@@ -509,7 +514,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           logger.warn(em)
         }
         val messages = w.getMessages(symbolicExecutor.controlFlowResolver, specSpace,
-          symbolicExecutor.getClassHierarchy)
+          symbolicExecutor.getClassHierarchy, mFilter)
         logger.warn(s"Row 2 ${fileSuffix} : ${write(messages)}")
       }
 
@@ -715,7 +720,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           logger.warn(em)
         }
         val messages = w.getMessages(symbolicExecutor.controlFlowResolver, specSpace,
-          symbolicExecutor.getClassHierarchy)
+          symbolicExecutor.getClassHierarchy, mFilter)
         logger.warn(s"Row 5 ${fileSuffix} : ${write(messages)}")
       }
 
@@ -826,7 +831,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
               logger.warn(em)
             }
             val messages = w.getMessages(symbolicExecutor.controlFlowResolver, specSpace,
-              symbolicExecutor.getClassHierarchy)
+              symbolicExecutor.getClassHierarchy, mFilter)
             logger.warn(s"Row 4 ${fileSuffix} : ${write(messages)}")
           }
 
@@ -942,7 +947,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           logger.warn(em)
         }
         val messages = w.getMessages(symbolicExecutor.controlFlowResolver, specSpace,
-          symbolicExecutor.getClassHierarchy)
+          symbolicExecutor.getClassHierarchy, mFilter)
         logger.warn(s"Row 6 ${fileSuffix} : ${write(messages)}")
       }
 

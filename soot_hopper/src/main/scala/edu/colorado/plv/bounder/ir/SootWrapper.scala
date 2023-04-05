@@ -526,6 +526,13 @@ class CallGraphWrapper(cg: CallGraph) extends CallGraphProvider{
     cg.edgesOutOf(method).asScala.map(e => e.tgt()).toSet
   }
 }
+case class Messages(cbSize:Int, cbMsg:Int, matchedCb:Int, matchedCbRet:Int,
+                    ciCallGraph:Int, matchedCiCallGraph:Int,
+                    syntCi:Int, matchedSyntCi:Int)
+
+object Messages {
+  implicit val rw: RW[Messages] = macroRW
+}
 
 /**
  * Expose functionality of Soot/spark to analysis
@@ -540,9 +547,6 @@ class SootWrapper(apkPath : String,
                   callGraphSource: CallGraphSource = SparkCallGraph,
                   sourceType:SourceType = ApkSource
                             ) extends IRWrapper[SootMethod, soot.Unit] {
-  case class Messages(cbSize:Int, cbMsg:Int, matchedCb:Int, matchedCbRet:Int,
-                      ciCallGraph:Int, matchedCiCallGraph:Int,
-                      syntCi:Int, matchedSyntCi:Int)
 
   /**
    * print methods and points to regions for all classes containing the classFilter string
@@ -587,17 +591,10 @@ class SootWrapper(apkPath : String,
     })
     stringBuilder.toString()
   }
-  object Messages{
-    implicit val rw:RW[Messages] = macroRW
-  }
-  def getMessages(cfResolver:ControlFlowResolver[SootMethod, soot.Unit], spec:SpecSpace,
-                  ch : ClassHierarchyConstraints):Messages ={
 
-    val mFilter = (strm:String) => {
-      !strm.contains("MainActivity") &&
-        !strm.contains("com.example.createdestroy.R$") &&
-        strm !=("com.example.createdestroy.R")
-    }
+  def getMessages(cfResolver:ControlFlowResolver[SootMethod, soot.Unit], spec:SpecSpace,
+                  ch : ClassHierarchyConstraints, mFilter:String => Boolean):Messages ={
+
     val cb = resolver.getCallbacks.filter{m =>
       val strm = m.classType
       mFilter(strm)

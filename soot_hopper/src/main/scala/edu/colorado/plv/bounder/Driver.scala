@@ -2,6 +2,7 @@ package edu.colorado.plv.bounder
 
 import better.files.Dsl.mkdir
 
+import edu.colorado.plv.bounder.ir.Messages
 import java.io.{PrintWriter, StringWriter}
 import java.sql.Timestamp
 import java.time.Instant
@@ -400,6 +401,20 @@ object Driver {
       stepLimit = 2, w, new SpecSpace(Set()), component = None, outputMode = pathMode,
       timeLimit = cfg.timeLimit)
     val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
+    val mFilter = if(cfg.componentFilter.isDefined){
+      val filters = cfg.componentFilter.get.map{v => v.r}
+      (cname:String) => filters.exists(_.matches(cname))
+    }else{
+      (_:String) => true
+    }
+
+    val messages: Messages = w.getMessages(symbolicExecutor.controlFlowResolver, cfg.specSet.getSpecSpace(),
+      symbolicExecutor.getClassHierarchy, mFilter)
+    (outFile.parent / "messages_component.json").overwrite(write(messages))
+    val messages_noComponent = w.getMessages(symbolicExecutor.controlFlowResolver, cfg.specSet.getSpecSpace(),
+      symbolicExecutor.getClassHierarchy, (_:String) => true)
+    (outFile.parent / "messages_all.json").overwrite(write(messages_noComponent))
+
     symbolicExecutor.writeIR()
   }
 
