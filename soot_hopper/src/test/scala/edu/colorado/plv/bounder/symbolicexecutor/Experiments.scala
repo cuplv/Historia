@@ -321,19 +321,23 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
            |    Subscription sub;
            |    //Callback with irrelevant subscribe
            |    @Override
-           |    // TODO: change this to onCreated for clarity in paper
-           |    public void onViewCreated(View view, Bundle savedInstanceState) {
-           |        Single.create(subscriber -> {
-           |            subscriber.onSuccess(4);
-           |        }).subscribe(r -> {
-           |            r.toString();
-           |        });
+           |    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+           |                             Bundle savedInstanceState) {
+           |      return inflater.inflate(0, container, false);
            |    }
            |    @Override
+           |    public void onCreate(Bundle savedInstanceState){
+           |      super.onCreate(savedInstanceState);
+           |    }
+           |
+           |    @Override
            |    public void onActivityCreated(Bundle savedInstanceState){
+           |        super.onActivityCreated(savedInstanceState);
            |        sub = Single.create(subscriber -> {
            |            subscriber.onSuccess(3);
-           |        }).subscribe(this);
+           |        }).subscribeOn(Schedulers.newThread())
+           |        .observeOn(AndroidSchedulers.mainThread())
+           |        .subscribe(this);
            |    }
            |
            |    @Override
