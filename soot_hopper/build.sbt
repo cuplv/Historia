@@ -36,6 +36,7 @@ libraryDependencies += "de.learnlib.distribution" % "learnlib-distribution" % "0
 libraryDependencies += "net.automatalib.distribution" % "automata-distribution" % "0.10.0"
 libraryDependencies += "com.regblanc" %% "scala-smtlib" % "0.2.1-42-gc68dbaa"
 libraryDependencies += "io.github.andrebeat" %% "scala-pool" % "0.4.3"
+libraryDependencies += "com.github.nscala-time" %% "nscala-time" % "2.32.0"
 // libraryDependencies += "org.apache.spark" % "spark-core_2.13" % "3.3.1"
 
 

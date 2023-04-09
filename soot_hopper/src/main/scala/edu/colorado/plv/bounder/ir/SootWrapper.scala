@@ -528,7 +528,7 @@ class CallGraphWrapper(cg: CallGraph) extends CallGraphProvider{
 }
 case class Messages(cbSize:Int, cbMsg:Int, matchedCb:Int, matchedCbRet:Int,
                     ciCallGraph:Int, matchedCiCallGraph:Int,
-                    syntCi:Int, matchedSyntCi:Int)
+                    syntCi:Int, matchedSyntCi:Int, appMethods:Int = -1)
 
 object Messages {
   implicit val rw: RW[Messages] = macroRW
@@ -615,7 +615,8 @@ class SootWrapper(apkPath : String,
     val matchedCallinssimp = matchedCallins.map(c => c.simpleName)
     val matchedCallbackssimp = matchedCallbacks.map(c => (c._1, c._2.simpleName))
 
-    val syntCallinSites = getAppMethods(resolver).flatMap {
+    val gottenAppMethods = getAppMethods(resolver)
+    val syntCallinSites = gottenAppMethods.flatMap {
       case method:SootMethod if method.hasActiveBody =>
         getUnitGraph(method.getActiveBody).asScala.flatMap{u =>
           if(mFilter(method.getDeclaringClass.getName) &&Scene.v().getCallGraph.edgesOutOf(u).hasNext &&
@@ -648,7 +649,7 @@ class SootWrapper(apkPath : String,
     Messages(cb.size, cb.size*2, matchedCb = matchedCallbacks.count(_._1 == CBEnter),
         matchedCbRet = matchedCallbacks.count(_._1 == CBExit),
       ciCallGraph = callinCallGraphSize, matchedCiCallGraph = matchedCallinCallGraphSize,
-      syntCi = syntCallinSites.size, matchedSyntCi = syntCallinSitesInSpec.size)
+      syntCi = syntCallinSites.size, matchedSyntCi = syntCallinSitesInSpec.size, appMethods = gottenAppMethods.size)
   }
 
 
