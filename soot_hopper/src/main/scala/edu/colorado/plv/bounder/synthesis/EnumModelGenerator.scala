@@ -5,13 +5,14 @@ import edu.colorado.plv.bounder.ir.{ApproxDir, CNode, ConcGraph, Exact, OverAppr
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Forall, LSAnyPred, LSAtom, LSBinOp, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, LSUnOp, NS, Not, OAbsMsg, Or}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecAssignment, SpecSpace, SpecSpaceAnyOrder}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools, Z3StateSolver}
-import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, QueryFinished, ExecutorConfig}
+import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, ExecutorConfig, QueryFinished}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, IPathNode, InitialQuery, MemoryOutputMode, NullVal, OutputMode, PureVar, State, TopVal}
 import edu.colorado.plv.bounder.synthesis.EnumModelGenerator.{NoStep, StepResult, StepSuccessM, StepSuccessP, isTerminal}
 
 import scala.collection.{View, immutable, mutable}
 import scala.collection.immutable.Queue
 import scala.collection.mutable.ListBuffer
+import scala.collection.parallel.CollectionConverters.ImmutableIterableIsParallelizable
 
 sealed trait LearnResult
 
@@ -303,29 +304,19 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
   }
 
   def run():LearnResult = {
-    // TODO: multiple holes which one is filled first - exploring down in the lattice - want to explore most complete spec first
-    // if you consider the alarms - intuition is that we want to consider messages in both alarms for reach/unreach
-    // "conflict clause" - used in sat solvers - conjunction that says "don't go there" - ask solver sequence of queries
-    //   to ask what holes to fill - key contribution guide search 1) data dependency and 2) conflict clause between reach/unreach
-    //   conflict between the reach and unreach that
-    //   under approx abstract interp -- somehow minimize materialized footprint in depth first search
-    //      - thresher - backwards in concrete and backwards in the abstract
-    //      - explicit state model checking backwards - backwards in concrete
-    //      - explicit state model checking tries to compile transition system up front to handle unboundedness, loses orig prog
-    //      - what we care about is when we include initial (w/ comp) we know we include initial
-    // oopsla apr or popl jul
-    //   confusion about correctness/incorrectness sound over sound under...  need to precisely define terms.
-    //   component thinking - what do you think with respect to the framework/application
-    //   what we care about at the end of the day is the classification of the data points and how the over/under approx affects
+
     //TODO: remove test set thing here
     val queue = mutable.PriorityQueue[SpecSpace]()(SpecSpaceAnyOrder)
     queue.addOne(initialSpec)
+    var specsTested = 0
     while(queue.nonEmpty) {
+      specsTested +=1
       val cSpec = queue.dequeue()
       println(s"---\nTesting spec:${cSpec}")
+      println(s"\n spec number: ${specsTested}")
 
       // false if no expansion of this spec can succeed at making all reach locations reachable
-      val reachNotRefuted:Boolean = reachable.forall(qry => {
+      val reachNotRefuted:Boolean = reachable.par.forall(qry => {
         val res = mkApproxResForQry(qry,cSpec, OverApprox)
         BounderUtil.interpretResult(res, QueryFinished) match{
           case Witnessed =>
@@ -366,7 +357,6 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
           queue.addAll(filtered)
         }
       }
-
     }
 
     LearnFailure //no more spec expansions to try

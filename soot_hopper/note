@@ -1,0 +1,15 @@
+    // TODO: multiple holes which one is filled first - exploring down in the lattice - want to explore most complete spec first
+    // if you consider the alarms - intuition is that we want to consider messages in both alarms for reach/unreach
+    // "conflict clause" - used in sat solvers - conjunction that says "don't go there" - ask solver sequence of queries
+    //   to ask what holes to fill - key contribution guide search 1) data dependency and 2) conflict clause between reach/unreach
+    //   conflict between the reach and unreach that
+    //   under approx abstract interp -- somehow minimize materialized footprint in depth first search
+    //      - thresher - backwards in concrete and backwards in the abstract
+    //      - explicit state model checking backwards - backwards in concrete
+    //      - explicit state model checking tries to compile transition system up front to handle unboundedness, loses orig prog
+    //      - what we care about is when we include initial (w/ comp) we know we include initial
+    // oopsla apr or popl jul
+    //   confusion about correctness/incorrectness sound over sound under...  need to precisely define terms.
+    //   component thinking - what do you think with respect to the framework/application
+    //   what we care about at the end of the day is the classification of the data points and how the over/under approx affects
+

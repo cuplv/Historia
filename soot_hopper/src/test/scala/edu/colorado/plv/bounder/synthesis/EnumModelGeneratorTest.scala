@@ -76,79 +76,142 @@ class EnumModelGeneratorTest extends AnyFunSuite {
     assert(LSPredAnyOrder.compare(p2,p1) > 0)
     assert(LSPredAnyOrder.compare(p1,p1) == 0)
   }
-  //TODO: re-enable while working on synth, works but very slow
+
+  val srcUnreach =
+    s"""package com.example.createdestroy;
+       |import android.app.Activity;
+       |import android.os.Bundle;
+       |import android.util.Log;
+       |import android.view.View;
+       |import android.widget.Button;
+       |import android.os.Handler;
+       |import android.view.View.OnClickListener;
+       |
+       |
+       |public class MyActivity extends Activity {
+       |    String s = null;
+       |    View v = null;
+       |    @Override
+       |    protected void onResume(){
+       |        s = "";
+       |        //v = findViewById(3);
+       |        v = new Button(this);
+       |        v.setOnClickListener(new OnClickListener(){
+       |           @Override
+       |           public void onClick(View v){
+       |             s.toString(); // query1 null unreachable
+       |             MyActivity.this.finish();
+       |           }
+       |        });
+       |    }
+       |
+       |    @Override
+       |    protected void onPause() {
+       |        s = null;
+       |        v.setOnClickListener(null);
+       |    }
+       |}""".stripMargin
+  val srcReach =
+    s"""package com.example.createdestroy;
+       |import android.app.Activity;
+       |import android.os.Bundle;
+       |import android.util.Log;
+       |import android.view.View;
+       |import android.widget.Button;
+       |import android.os.Handler;
+       |import android.view.View.OnClickListener;
+       |
+       |
+       |public class OtherActivity extends Activity implements OnClickListener{
+       |    String s = "";
+       |    View button = null;
+       |    Object createResumedHappened = null;
+       |    @Override
+       |    protected void onCreate(Bundle b){
+       |        button = new Button(this);
+       |        button.setOnClickListener(this);
+       |
+       |    }
+       |    @Override
+       |    protected void onResume(){
+       |      if(createResumedHappened == null){
+       |         s.toString(); //query4 reachable
+       |      }
+       |      createResumedHappened = new Object();
+       |    }
+       |    @Override
+       |    public void onClick(View v){
+       |      s.toString(); // query2 reachable
+       |      OtherActivity.this.finish();
+       |      if(v == button){
+       |        s.toString(); //query3 reachable
+       |      }
+       |    }
+       |
+       |    @Override
+       |    protected void onPause() {
+       |        s = null;
+       |        createResumedHappened = new Object();
+       |    }
+       |}""".stripMargin
+  test("Specification enumeration"){
+    val hi = LSSpec(l::v:: Nil, Nil, LSAnyPred, onClickI)
+    val startingSpec = Set(hi)
+    val iSet = Set(onClickI, setOnClickListenerI, setOnClickListenerINull,
+      Activity_onResume_entry, Activity_onPause_exit)
+
+    val specSpace = new SpecSpace(startingSpec, matcherSpace = iSet)
+    val test: String => Unit = apk => {
+      val w = new SootWrapper(apk, toOverride = startingSpec ++ iSet)
+
+      implicit val dbMode = MemoryOutputMode
+      val config = ExecutorConfig(
+        stepLimit = 2000, w, specSpace,
+        component = Some(List("com.example.createdestroy.(MyActivity|OtherActivity)")),
+        outputMode = dbMode, timeLimit = 30)
+
+      val line = BounderUtil.lineForRegex(".*query1.*".r, srcUnreach)
+      val clickSignature = Signature("com.example.createdestroy.MyActivity$1",
+        "void onClick(android.view.View)")
+      val nullUnreach = ReceiverNonNull(clickSignature, line, Some(".*toString.*"))
+
+      //val firstClickCbReach = Reachable(clickSignature, line)
+
+
+      val onClickReach = Signature("com.example.createdestroy.OtherActivity",
+        "void onClick(android.view.View)")
+      val line_reach = BounderUtil.lineForRegex(".*query2.*".r, srcReach)
+      val nullReach = ReceiverNonNull(onClickReach, line_reach, Some(".*toString.*"))
+
+      val button_eq_reach = BounderUtil.lineForRegex(".*query3.*".r, srcReach)
+      val buttonEqReach = Reachable(onClickReach, button_eq_reach)
+
+      val onResumeFirst_reach = BounderUtil.lineForRegex(".*query4.*".r, srcReach)
+      val onResumeFirstReach =
+        Reachable(onClickReach.copy(methodSignature = "void onResume()"), onResumeFirst_reach)
+
+      val gen = new EnumModelGenerator(nullUnreach, Set(nullReach, buttonEqReach, onResumeFirstReach /*firstClickCbReach*/), specSpace, config)
+      var i = 0
+      while(i < 10){
+        //gen.step(hi, )
+        //TODO:
+      }
+    }
+    makeApkWithSources(Map("MyActivity.java" -> srcUnreach, "OtherActivity.java" -> srcReach), MkApk.RXBase,
+      test)
+
+
+  }
   test("Synthesis example - simplification of Connect bot click/finish") {
     //TODO==== Non-determinism seems less, but now gives wrong spec, probably need to include traces or something
 
     //Or(NS(SpecSignatures.Activity_onPause_exit, SpecSignatures.Activity_onResume_entry),
     //          Not(SpecSignatures.Activity_onResume_entry))
-    val specs = Set[LSSpec](
+    val startingSpec = Set[LSSpec](
       LSSpec(a :: Nil, Nil, LSAnyPred, SpecSignatures.Activity_onResume_entry),
       LSSpec(l::v:: Nil, Nil, LSAnyPred, onClickI)
     )
 
-    val srcUnreach =
-      s"""package com.example.createdestroy;
-         |import android.app.Activity;
-         |import android.os.Bundle;
-         |import android.util.Log;
-         |import android.view.View;
-         |import android.widget.Button;
-         |import android.os.Handler;
-         |import android.view.View.OnClickListener;
-         |
-         |
-         |public class MyActivity extends Activity {
-         |    String s = null;
-         |    View v = null;
-         |    @Override
-         |    protected void onResume(){
-         |        s = "";
-         |        //v = findViewById(3);
-         |        v = new Button(this);
-         |        v.setOnClickListener(new OnClickListener(){
-         |           @Override
-         |           public void onClick(View v){
-         |             s.toString(); // query1 null unreachable
-         |             MyActivity.this.finish();
-         |           }
-         |        });
-         |    }
-         |
-         |    @Override
-         |    protected void onPause() {
-         |        s = null;
-         |        v.setOnClickListener(null);
-         |    }
-         |}""".stripMargin
-    val srcReach =
-      s"""package com.example.createdestroy;
-         |import android.app.Activity;
-         |import android.os.Bundle;
-         |import android.util.Log;
-         |import android.view.View;
-         |import android.widget.Button;
-         |import android.os.Handler;
-         |import android.view.View.OnClickListener;
-         |
-         |
-         |public class OtherActivity extends Activity implements OnClickListener{
-         |    String s = "";
-         |    @Override
-         |    protected void onCreate(Bundle b){
-         |        (new Button(this)).setOnClickListener(this);
-         |    }
-         |    @Override
-         |    public void onClick(View v){
-         |      s.toString(); // query2 reachable
-         |      OtherActivity.this.finish();
-         |    }
-         |
-         |    @Override
-         |    protected void onPause() {
-         |        s = null;
-         |    }
-         |}""".stripMargin
     val test: String => Unit = apk => {
       File.usingTemporaryDirectory() { tmpDir =>
         assert(apk != null)
@@ -161,10 +224,10 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         val iSet = Set(onClickI, setOnClickListenerI, setOnClickListenerINull,
           Activity_onResume_entry, Activity_onPause_exit)
 
-        val w = new SootWrapper(apk, toOverride = specs ++ iSet)
+        val w = new SootWrapper(apk, toOverride = startingSpec ++ iSet)
         //val dbg = w.dumpDebug("com.example")
 
-        val specSpace = new SpecSpace(specs, matcherSpace = iSet)
+        val specSpace = new SpecSpace(startingSpec, matcherSpace = iSet)
         val config = ExecutorConfig(
           stepLimit = 2000, w, specSpace,
           component = Some(List("com.example.createdestroy.(MyActivity|OtherActivity)")),
@@ -178,11 +241,19 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         //val firstClickCbReach = Reachable(clickSignature, line)
 
 
+        val onClickReach = Signature("com.example.createdestroy.OtherActivity",
+          "void onClick(android.view.View)")
         val line_reach = BounderUtil.lineForRegex(".*query2.*".r, srcReach)
-        val nullReach = ReceiverNonNull(Signature("com.example.createdestroy.OtherActivity",
-          "void onClick(android.view.View)"), line_reach, Some(".*toString.*"))
+        val nullReach = ReceiverNonNull(onClickReach, line_reach, Some(".*toString.*"))
 
-        val gen = new EnumModelGenerator(nullUnreach,Set(nullReach/*, firstClickCbReach*/), specSpace, config)
+        val button_eq_reach = BounderUtil.lineForRegex(".*query3.*".r, srcReach)
+        val buttonEqReach = Reachable(onClickReach, button_eq_reach)
+
+        val onResumeFirst_reach = BounderUtil.lineForRegex(".*query4.*".r, srcReach)
+        val onResumeFirstReach =
+          Reachable(onClickReach.copy(methodSignature = "void onResume()"), onResumeFirst_reach)
+
+        val gen = new EnumModelGenerator(nullUnreach,Set(nullReach, buttonEqReach, onResumeFirstReach /*firstClickCbReach*/), specSpace, config)
         val res = gen.run()
         res match {
           case LearnSuccess(space) =>
@@ -198,6 +269,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
               PrettyPrinting.dumpSpec(space, "cbSpec")
             assert(interpretResult(nullReachWit) == Witnessed)
             if(DUMP_DBG) {
+              PrettyPrinting.printWitness(nullReachWit)
               PrettyPrinting.dumpDebugInfo(nullReachWit, "cbNullReachSynth")
             }
             //val firstClickCbReachWit = ex.run(firstClickCbReach).flatMap(_.terminals)

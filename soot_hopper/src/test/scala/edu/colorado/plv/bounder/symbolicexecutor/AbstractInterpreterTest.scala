@@ -4,7 +4,7 @@ import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{MultiCallback, Proven, ResultSummary, SingleCallbackMultiMethod, SingleMethod, Timeout, Unreachable, Witnessed, interpretResult}
 import edu.colorado.plv.bounder.ir.{CIExit, SootWrapper}
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, LSConstraint, LSSpec, LSTrue, NS, Not, Or, Signature, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, LSConstraint, LSSpec, LSTrue, NS, Not, Or, Signature, SubClassMatcher}
 import edu.colorado.plv.bounder.lifestate.SpecSignatures.{Activity_onPause_entry, Activity_onResume_entry, Button_init}
 import edu.colorado.plv.bounder.lifestate.ViewSpec.{a, b, b2, l, onClick, onClickI, setOnClickListener, setOnClickListenerI, setOnClickListenerINull, v}
 import edu.colorado.plv.bounder.lifestate.{Dummy, FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSignatures, SpecSpace, ViewSpec}
@@ -2918,6 +2918,120 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
     }
 
     makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
+  }
+
+  ignore("Test corner case from synthesis") { f =>
+    //TODO: this is just for testing out weird corner cases the synth finds, leave ignored
+
+    val srcUnreach =
+      s"""package com.example.createdestroy;
+         |import android.app.Activity;
+         |import android.os.Bundle;
+         |import android.util.Log;
+         |import android.view.View;
+         |import android.widget.Button;
+         |import android.os.Handler;
+         |import android.view.View.OnClickListener;
+         |
+         |
+         |public class MyActivity extends Activity {
+         |    String s = null;
+         |    View v = null;
+         |    @Override
+         |    protected void onResume(){
+         |        s = "";
+         |        //v = findViewById(3);
+         |        v = new Button(this);
+         |        v.setOnClickListener(new OnClickListener(){
+         |           @Override
+         |           public void onClick(View v){
+         |             s.toString(); // query1 null unreachable
+         |             MyActivity.this.finish();
+         |           }
+         |        });
+         |    }
+         |
+         |    @Override
+         |    protected void onPause() {
+         |        s = null;
+         |        v.setOnClickListener(null);
+         |    }
+         |}""".stripMargin
+    val srcReach =
+      s"""package com.example.createdestroy;
+         |import android.app.Activity;
+         |import android.os.Bundle;
+         |import android.util.Log;
+         |import android.view.View;
+         |import android.widget.Button;
+         |import android.os.Handler;
+         |import android.view.View.OnClickListener;
+         |
+         |
+         |public class OtherActivity extends Activity implements OnClickListener{
+         |    String s = "";
+         |    View button = null;
+         |    @Override
+         |    protected void onCreate(Bundle b){
+         |        button = new Button(this);
+         |        button.setOnClickListener(this);
+         |    }
+         |    @Override
+         |    public void onClick(View v){
+         |      s.toString(); // query2 reachable
+         |      OtherActivity.this.finish();
+         |      if(v == button){
+         |        s.toString(); //query3 reachable
+         |      }
+         |    }
+         |
+         |    @Override
+         |    protected void onPause() {
+         |        s = null;
+         |    }
+         |}""".stripMargin
+
+
+    val test: String => Unit = apk => {
+      assert(apk != null)
+
+      val s = NamedPureVar("s")
+      val l1 = NamedPureVar("l1")
+      val a_onPause = SpecSignatures.Activity_onPause_exit.copy(lsVars = TopVal::a::Nil)
+      val a_onResume = SpecSignatures.Activity_onResume_entry.copy(lsVars = TopVal::a::Nil)
+      val v_setOnClick = setOnClickListenerI.copy(lsVars = TopVal::v::l1::Nil)
+
+      val s1 = LSSpec(a::Nil,Nil, NS(a_onPause, a_onResume), a_onResume)
+//      val s1 = LSSpec(a::Nil,Nil, a_onPause, a_onResume)
+//      val s2 = LSSpec(l:: v::Nil, Nil, Exists(l1::Nil, v_setOnClick), onClickI)
+      val s2 = LSSpec(l:: v::Nil, l1::Nil, v_setOnClick, onClickI)
+      val specs = new SpecSpace(Set(
+        s1,
+//        s2,
+      ) /*LifecycleSpec.spec*/ , Set(), Set(v_setOnClick))// Set(onClickI)) //, v_setOnClick))
+      val w = new SootWrapper(apk, specs.getSpecs)
+
+      val config = ExecutorConfig(
+        stepLimit = 120, w, specs,
+        component = None, approxMode = f.approxMode)
+      val symbolicExecutor = config.getAbstractInterpreter
+
+      val line = BounderUtil.lineForRegex(".*query1.*".r, srcUnreach)
+      val clickSignature = Signature("com.example.createdestroy.MyActivity$1",
+        "void onClick(android.view.View)")
+      val nullUnreach = ReceiverNonNull(clickSignature, line, Some(".*toString.*"))
+
+
+      val resultRunMethodReachable = symbolicExecutor.run(nullUnreach)
+        .flatMap(a => a.terminals)
+      PrettyPrinting.dumpDebugInfo(resultRunMethodReachable, "synthCorner")
+      assert(resultRunMethodReachable.nonEmpty)
+      BounderUtil.throwIfStackTrace(resultRunMethodReachable)
+      assert(BounderUtil.interpretResult(resultRunMethodReachable, QueryFinished) == Witnessed)
+
+    }
+
+    makeApkWithSources(Map("MyActivity.java" -> srcUnreach, "OtherActivity.java" -> srcReach), MkApk.RXBase, test)
   }
   ignore("Should not invoke methods on view after activity destroyed spec ____") { f =>
     //TODO: not fully implemented
