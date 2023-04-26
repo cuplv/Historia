@@ -1,12 +1,12 @@
 package edu.colorado.plv.bounder.synthesis
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{Proven, ResultSummary, Witnessed}
-import edu.colorado.plv.bounder.ir.{ApproxDir, CNode, ConcGraph, Exact, OverApprox, TMessage, TopTypeSet, TypeSet, UnderApprox}
+import edu.colorado.plv.bounder.ir.{ApproxDir, CNode, ConcGraph, EmptyTypeSet, Exact, OverApprox, TMessage, TopTypeSet, TypeSet, UnderApprox}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Forall, LSAnyPred, LSAtom, LSBinOp, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, LSUnOp, NS, Not, OAbsMsg, Or}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecAssignment, SpecSpace, SpecSpaceAnyOrder}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, ExecutorConfig, QueryFinished}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, IPathNode, InitialQuery, MemoryOutputMode, NullVal, OutputMode, PureVar, State, TopVal}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, IPathNode, InitialQuery, MemoryOutputMode, NullVal, OutputMode, PureExpr, PureVar, State, TopVal}
 import edu.colorado.plv.bounder.synthesis.EnumModelGenerator.{NoStep, StepResult, StepSuccessM, StepSuccessP, isTerminal}
 
 import scala.collection.{View, immutable, mutable}
@@ -148,10 +148,33 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     mergeOne(pred1Construct, other, scope)
   }
 
+  def mkRel(scope:Map[PureVar,TypeSet]):Set[OAbsMsg] = {
+    val scope2  = scope.map{case (k,v) => k.asInstanceOf[PureExpr]-> v}
+    val scopeVals: Map[PureExpr,TypeSet] = scope2 + (TopVal -> TopTypeSet)
+    ptsMsg.flatMap{ case (msgFromCg, argPts) =>
+      // find all possible aliasing intersection between points to set from call graphs
+      val positionalOptions: Seq[List[PureExpr]] = msgFromCg.lsVars.zip(argPts).map{
+        case (pv:PureVar, ts) =>
+          scope.filter{case (_, ts2) => ts.intersectNonEmpty(ts2)}
+        case (v, _) => Map(v -> TopTypeSet)
+      }.map{_.keys.toList}
+
+      val combinations = BounderUtil.repeatingPerm(positionalOptions, msgFromCg.lsVars.size)
+      // filter for things that don't have one part of scope
+      val reasonableCombinations = combinations.filter{comb => comb.exists{
+        case pureVar: PureVar => scope.contains(pureVar)
+        case _ => false
+      }}
+
+      // TODO: substitute and return abstract messages
+      val out = reasonableCombinations.map{comb => msgFromCg.copy(lsVars = comb)}
+      out
+    }
+  }
   def mkRel(pv:PureVar, ts:TypeSet, avoid:Set[PureVar]):Set[OAbsMsg] = {
     ptsMsg.flatMap{
       case (msg,argPoints) =>
-        val argSwaps = argPoints.map{
+        val argSwaps = argPoints.map{ // preserve index of None locations
           case argPt if argPt.intersectNonEmpty(ts) => Some(pv)
           case _ => None
         }
@@ -180,7 +203,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
   }
   def step(pred:LSPred, scope:Map[PureVar,TypeSet]):StepResult = pred match{
     case LifeState.LSAnyPred =>{
-      val relMsg: immutable.Iterable[OAbsMsg] = scope.flatMap{case(pv,ts) => mkRel(pv,ts, scope.keySet)}
+      val relMsg: immutable.Iterable[OAbsMsg] = mkRel(scope)//scope.flatMap{case(pv,ts) => mkRel(pv,ts, scope.keySet)}
 
       val relNS = relMsg.flatMap{m =>
         absMsgToNs(m,scope).map(ns =>
@@ -238,20 +261,25 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
    * @param state
    * @return
    */
-  def mkScope(rule:LSSpec, state:State):Map[PureVar,TypeSet] = {
-    val tr = state.sf.traceAbstraction.rightOfArrow
+  def mkScope(rule:LSSpec, witnesses:Set[IPathNode]):Map[PureVar,TypeSet] = {
+    val tr = witnesses.flatMap{w => w.state.sf.traceAbstraction.rightOfArrow}.toSeq
+    def unionTC(pv:PureVar):TypeSet = {
+      val allTs = witnesses.map{node => node.state.sf.typeConstraints.getOrElse(pv, EmptyTypeSet)}
+      allTs.reduceOption((tc1, tc2) => tc1.union(tc2)).getOrElse(EmptyTypeSet)
+    }
+
     val directM:Map[PureVar,TypeSet] = tr.flatMap{m =>
       if(rule.target.identitySignature == m.identitySignature){
         rule.target.lsVars.zip(m.lsVars).flatMap{
           case (pv1:PureVar, pv2:PureVar) =>
-            Map(pv1 -> state.sf.typeConstraints.getOrElse(pv2,TopTypeSet))
+            Map(pv1 -> unionTC(pv2) )//state.sf.typeConstraints.getOrElse(pv2,TopTypeSet))
           case _ => Map.empty
         }
       }else None}.toMap
     val enc = EncodingTools.rhsToPred(tr, new SpecSpace(Set(rule))).flatMap(SpecSpace.allI)
 
     val lsVars = enc.flatMap{m => m.lsVar}
-    lsVars.map{v => (v -> state.sf.typeConstraints.getOrElse(v,TopTypeSet))}.foldLeft(directM){
+    lsVars.map{v => (v -> unionTC(v))/*state.sf.typeConstraints.getOrElse(v,TopTypeSet))*/}.foldLeft(directM){
       case (acc,(k,v)) if acc.contains(k) => acc + (k -> acc(k).intersect(v))
       case (acc, (k,v)) => acc + (k -> v)
     }
@@ -290,12 +318,12 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
    * @param spec spec to expand an AST hole
    * @return next spec, whether spec was stepped
    */
-  def step(specSpace:SpecSpace, state:State):(Set[SpecSpace],Boolean) = {
+  def step(specSpace:SpecSpace, witnesses:Set[IPathNode]):(Set[SpecSpace],Boolean) = {
     val specToStep = specSpace.sortedEnableSpecs.collectFirst{case (s,_) => s}
     if(specToStep.isEmpty)
       return (Set(specSpace),false)
     val (next:List[LSSpec],changed) =
-      step(specToStep.get,mkScope(specToStep.get, state))
+      step(specToStep.get,mkScope(specToStep.get, witnesses))
     if(!changed) {
       //assert(false) //TODO: probably figure out why this happens...
     }
@@ -349,9 +377,9 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       }else if(reachNotRefuted && unreachCanProve) {
         // Get alarm for current spec and target
         val overApproxAlarm: Set[IPathNode] = mkApproxResForQry(target, cSpec, OverApprox)
-        val someAlarm = overApproxAlarm.find(pn => pn.qry.isWitnessed)
+        val someAlarm:Set[IPathNode] = overApproxAlarm.filter(pn => pn.qry.isWitnessed)
         if (!someAlarm.isEmpty) {
-          val nextSpecs = step(cSpec, someAlarm.get.state)
+          val nextSpecs = step(cSpec, someAlarm)
           //println(s"next specs\n===========\n${nextSpecs._1.mkString("\n---\n")}")
           val filtered = nextSpecs._1.filter { spec => !hasExplored(spec) }
           queue.addAll(filtered)
