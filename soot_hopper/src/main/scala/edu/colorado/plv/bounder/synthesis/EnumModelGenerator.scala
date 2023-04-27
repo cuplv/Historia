@@ -324,16 +324,13 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       return (Set(specSpace),false)
     val (next:List[LSSpec],changed) =
       step(specToStep.get,mkScope(specToStep.get, witnesses))
-    if(!changed) {
-      //assert(false) //TODO: probably figure out why this happens...
-    }
+
     val base: Set[LSSpec] = specSpace.getSpecs.filter { s => s != specToStep.get }
     (next.map { n => new SpecSpace(base + n) }.toSet, true)
   }
 
   def run():LearnResult = {
 
-    //TODO: remove test set thing here
     val queue = mutable.PriorityQueue[SpecSpace]()(SpecSpaceAnyOrder)
     queue.addOne(initialSpec)
     var specsTested = 0
@@ -359,7 +356,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
         }})
 
       // false if no expansion of this spec can prove the target location
-      val unreachCanProve = {
+      lazy val unreachCanProve = {
         val tgtRes = mkApproxResForQry(target, cSpec, UnderApprox)
         BounderUtil.interpretResult(tgtRes, QueryFinished) match {
           case Proven =>

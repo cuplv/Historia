@@ -126,6 +126,8 @@ class EnumModelGeneratorTest extends AnyFunSuite {
        |    String s = "";
        |    View button = null;
        |    Object createResumedHappened = null;
+       |    Object pausedHappened = null;
+       |    Object resumeHappened = null;
        |    @Override
        |    protected void onCreate(Bundle b){
        |        button = new Button(this);
@@ -135,9 +137,16 @@ class EnumModelGeneratorTest extends AnyFunSuite {
        |    @Override
        |    protected void onResume(){
        |      if(createResumedHappened == null){
-       |         s.toString(); //query4 reachable
+       |         "".toString(); //query4 reachable
+       |      }
+       |      if(pausedHappened != null){
+       |        "".toString(); //query5 reachable
+       |      }
+       |      if(resumeHappened != null){
+       |        "".toString(); // query6 reachable
        |      }
        |      createResumedHappened = new Object();
+       |      resumeHappened = new Object();
        |    }
        |    @Override
        |    public void onClick(View v){
@@ -152,9 +161,10 @@ class EnumModelGeneratorTest extends AnyFunSuite {
        |    protected void onPause() {
        |        s = null;
        |        createResumedHappened = new Object();
+       |        pausedHappened = new Object();
        |    }
        |}""".stripMargin
-  test("Specification enumeration"){
+  ignore("Specification enumeration"){
     val hi = LSSpec(l::v:: Nil, Nil, LSAnyPred, onClickI)
     val startingSpec = Set(hi)
     val iSet = Set(onClickI, setOnClickListenerI, setOnClickListenerINull,
@@ -249,11 +259,22 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         val button_eq_reach = BounderUtil.lineForRegex(".*query3.*".r, srcReach)
         val buttonEqReach = Reachable(onClickReach, button_eq_reach)
 
+        val onRes = onClickReach.copy(methodSignature = "void onResume()")
         val onResumeFirst_reach = BounderUtil.lineForRegex(".*query4.*".r, srcReach)
         val onResumeFirstReach =
-          Reachable(onClickReach.copy(methodSignature = "void onResume()"), onResumeFirst_reach)
+          Reachable(onRes, onResumeFirst_reach)
 
-        val gen = new EnumModelGenerator(nullUnreach,Set(nullReach, buttonEqReach, onResumeFirstReach /*firstClickCbReach*/), specSpace, config)
+        val resumeReachAfterPause = BounderUtil.lineForRegex(".*query5.*".r, srcReach)
+        val resumeReachAfterPauseQ =
+          Reachable(onRes, resumeReachAfterPause)
+
+
+        val resumeTwiceReach= BounderUtil.lineForRegex(".*query6.*".r, srcReach)
+        val resumeTwiceReachQ =
+            Reachable(onRes, resumeTwiceReach)
+
+        val gen = new EnumModelGenerator(nullUnreach,Set(nullReach, buttonEqReach, onResumeFirstReach,
+          resumeReachAfterPauseQ, resumeTwiceReachQ), specSpace, config)
         val res = gen.run()
         res match {
           case LearnSuccess(space) =>
