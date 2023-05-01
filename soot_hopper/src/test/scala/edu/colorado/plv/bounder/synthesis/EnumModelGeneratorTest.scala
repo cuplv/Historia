@@ -11,11 +11,102 @@ import edu.colorado.plv.bounder.lifestate.{LSPredAnyOrder, SpecSignatures, SpecS
 import edu.colorado.plv.bounder.solver.Z3StateSolver
 import edu.colorado.plv.bounder.symbolicexecutor.{ExecutorConfig, QueryFinished}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{MemoryOutputMode, NamedPureVar, PrettyPrinting, Reachable, ReceiverNonNull, TopVal}
+import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{srcReach, srcUnreach}
 import edu.colorado.plv.bounder.synthesis.SynthTestUtil.{cha, targetIze, toConcGraph, witTreeFromMsgList}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.AnyFunSuite
 
+object EnumModelGeneratorTest{
+  val srcUnreach = (disableClick: String) =>
+    s"""package com.example.createdestroy;
+       |import android.app.Activity;
+       |import android.os.Bundle;
+       |import android.util.Log;
+       |import android.view.View;
+       |import android.widget.Button;
+       |import android.os.Handler;
+       |import android.view.View.OnClickListener;
+       |
+       |
+       |public class MyActivity extends Activity {
+       |    String s = null;
+       |    View v = null;
+       |    @Override
+       |    protected void onResume(){
+       |        s = "";
+       |        //v = findViewById(3);
+       |        v = new Button(this);
+       |        v.setOnClickListener(new OnClickListener(){
+       |           @Override
+       |           public void onClick(View v){
+       |             s.toString(); // query1 null unreachable
+       |             MyActivity.this.finish();
+       |           }
+       |        });
+       |    }
+       |
+       |    @Override
+       |    protected void onPause() {
+       |        s = null;
+       |        ${disableClick}
+       |        //v.setOnClickListener(null);
+       |    }
+       |}""".stripMargin
+  val srcReach =
+    s"""package com.example.createdestroy;
+       |import android.app.Activity;
+       |import android.os.Bundle;
+       |import android.util.Log;
+       |import android.view.View;
+       |import android.widget.Button;
+       |import android.os.Handler;
+       |import android.view.View.OnClickListener;
+       |
+       |
+       |public class OtherActivity extends Activity implements OnClickListener{
+       |    String s = "";
+       |    View button = null;
+       |    Object createResumedHappened = null;
+       |    Object pausedHappened = null;
+       |    Object resumeHappened = null;
+       |    @Override
+       |    protected void onCreate(Bundle b){
+       |        button = new Button(this);
+       |        button.setOnClickListener(this);
+       |
+       |    }
+       |    @Override
+       |    protected void onResume(){
+       |      if(createResumedHappened == null){
+       |         "".toString(); //query4 reachable
+       |      }
+       |      if(pausedHappened != null){
+       |        "".toString(); //query5 reachable
+       |      }
+       |      if(resumeHappened != null){
+       |        "".toString(); // query6 reachable
+       |      }
+       |      createResumedHappened = new Object();
+       |      resumeHappened = new Object();
+       |    }
+       |    @Override
+       |    public void onClick(View v){
+       |      s.toString(); // query2 reachable
+       |      OtherActivity.this.finish();
+       |      if(v == button){
+       |        s.toString(); //query3 reachable
+       |      }
+       |    }
+       |
+       |    @Override
+       |    protected void onPause() {
+       |        s = null;
+       |        createResumedHappened = new Object();
+       |        pausedHappened = new Object();
+       |    }
+       |}""".stripMargin
+}
 class EnumModelGeneratorTest extends AnyFunSuite {
   val DUMP_DBG = true //Uncomment to skip writing out paths from historia
 
@@ -77,95 +168,9 @@ class EnumModelGeneratorTest extends AnyFunSuite {
     assert(LSPredAnyOrder.compare(p1,p1) == 0)
   }
 
-  val srcUnreach =
-    s"""package com.example.createdestroy;
-       |import android.app.Activity;
-       |import android.os.Bundle;
-       |import android.util.Log;
-       |import android.view.View;
-       |import android.widget.Button;
-       |import android.os.Handler;
-       |import android.view.View.OnClickListener;
-       |
-       |
-       |public class MyActivity extends Activity {
-       |    String s = null;
-       |    View v = null;
-       |    @Override
-       |    protected void onResume(){
-       |        s = "";
-       |        //v = findViewById(3);
-       |        v = new Button(this);
-       |        v.setOnClickListener(new OnClickListener(){
-       |           @Override
-       |           public void onClick(View v){
-       |             s.toString(); // query1 null unreachable
-       |             MyActivity.this.finish();
-       |           }
-       |        });
-       |    }
-       |
-       |    @Override
-       |    protected void onPause() {
-       |        s = null;
-       |        v.setOnClickListener(null);
-       |    }
-       |}""".stripMargin
-  val srcReach =
-    s"""package com.example.createdestroy;
-       |import android.app.Activity;
-       |import android.os.Bundle;
-       |import android.util.Log;
-       |import android.view.View;
-       |import android.widget.Button;
-       |import android.os.Handler;
-       |import android.view.View.OnClickListener;
-       |
-       |
-       |public class OtherActivity extends Activity implements OnClickListener{
-       |    String s = "";
-       |    View button = null;
-       |    Object createResumedHappened = null;
-       |    Object pausedHappened = null;
-       |    Object resumeHappened = null;
-       |    @Override
-       |    protected void onCreate(Bundle b){
-       |        button = new Button(this);
-       |        button.setOnClickListener(this);
-       |
-       |    }
-       |    @Override
-       |    protected void onResume(){
-       |      if(createResumedHappened == null){
-       |         "".toString(); //query4 reachable
-       |      }
-       |      if(pausedHappened != null){
-       |        "".toString(); //query5 reachable
-       |      }
-       |      if(resumeHappened != null){
-       |        "".toString(); // query6 reachable
-       |      }
-       |      createResumedHappened = new Object();
-       |      resumeHappened = new Object();
-       |    }
-       |    @Override
-       |    public void onClick(View v){
-       |      s.toString(); // query2 reachable
-       |      OtherActivity.this.finish();
-       |      if(v == button){
-       |        s.toString(); //query3 reachable
-       |      }
-       |    }
-       |
-       |    @Override
-       |    protected void onPause() {
-       |        s = null;
-       |        createResumedHappened = new Object();
-       |        pausedHappened = new Object();
-       |    }
-       |}""".stripMargin
+
   ignore("Specification enumeration"){
-    val hi = LSSpec(l::v:: Nil, Nil, LSAnyPred, onClickI)
+    val hi:LSSpec = LSSpec(l::v:: Nil, Nil, LSAnyPred, onClickI)
     val startingSpec = Set(hi)
     val iSet = Set(onClickI, setOnClickListenerI, setOnClickListenerINull,
       Activity_onResume_entry, Activity_onPause_exit)
@@ -180,7 +185,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         component = Some(List("com.example.createdestroy.(MyActivity|OtherActivity)")),
         outputMode = dbMode, timeLimit = 30)
 
-      val line = BounderUtil.lineForRegex(".*query1.*".r, srcUnreach)
+      val line = BounderUtil.lineForRegex(".*query1.*".r, srcUnreach("v.setOnClickListener(null);"))
       val clickSignature = Signature("com.example.createdestroy.MyActivity$1",
         "void onClick(android.view.View)")
       val nullUnreach = ReceiverNonNull(clickSignature, line, Some(".*toString.*"))
@@ -202,12 +207,15 @@ class EnumModelGeneratorTest extends AnyFunSuite {
 
       val gen = new EnumModelGenerator(nullUnreach, Set(nullReach, buttonEqReach, onResumeFirstReach /*firstClickCbReach*/), specSpace, config)
       var i = 0
+      var c = List(hi)
       while(i < 10){
-        //gen.step(hi, )
+        c = gen.stepSpec(c.head, Map())._1
+        println(c)
         //TODO:
       }
     }
-    makeApkWithSources(Map("MyActivity.java" -> srcUnreach, "OtherActivity.java" -> srcReach), MkApk.RXBase,
+    makeApkWithSources(Map("MyActivity.java" -> srcUnreach("v.setOnClickListener(null);"),
+      "OtherActivity.java" -> srcReach), MkApk.RXBase,
       test)
 
 
@@ -243,7 +251,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
           component = Some(List("com.example.createdestroy.(MyActivity|OtherActivity)")),
           outputMode = dbMode, timeLimit = 30)
 
-        val line = BounderUtil.lineForRegex(".*query1.*".r, srcUnreach)
+        val line = BounderUtil.lineForRegex(".*query1.*".r, srcUnreach("v.setOnClickListener(null);"))
         val clickSignature = Signature("com.example.createdestroy.MyActivity$1",
           "void onClick(android.view.View)")
         val nullUnreach = ReceiverNonNull(clickSignature, line, Some(".*toString.*"))
@@ -306,7 +314,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         }
       }
     }
-    makeApkWithSources(Map("MyActivity.java" -> srcUnreach, "OtherActivity.java" -> srcReach), MkApk.RXBase,
+    makeApkWithSources(Map("MyActivity.java" -> srcUnreach("v.setOnClickListener(null);"), "OtherActivity.java" -> srcReach), MkApk.RXBase,
       test)
   }
 

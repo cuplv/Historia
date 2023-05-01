@@ -3,12 +3,13 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{Proven, ResultSummary, Witnessed}
 import edu.colorado.plv.bounder.ir.{ApproxDir, CNode, ConcGraph, EmptyTypeSet, Exact, OverApprox, TMessage, TopTypeSet, TypeSet, UnderApprox}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Forall, LSAnyPred, LSAtom, LSBinOp, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, LSUnOp, NS, Not, OAbsMsg, Or}
-import edu.colorado.plv.bounder.lifestate.{LifeState, SpecAssignment, SpecSpace, SpecSpaceAnyOrder}
+import edu.colorado.plv.bounder.lifestate.{LSPredAnyOrder, LifeState, SpecAssignment, SpecSpace, SpecSpaceAnyOrder}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, ExecutorConfig, QueryFinished}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, IPathNode, InitialQuery, MemoryOutputMode, NullVal, OutputMode, PureExpr, PureVar, State, TopVal}
 import edu.colorado.plv.bounder.synthesis.EnumModelGenerator.{NoStep, StepResult, StepSuccessM, StepSuccessP, isTerminal}
 
+import scala.collection.concurrent.TrieMap
 import scala.collection.{View, immutable, mutable}
 import scala.collection.immutable.Queue
 import scala.collection.mutable.ListBuffer
@@ -61,13 +62,21 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     new ControlFlowResolver[M,C](cfg.w, new DefaultAppCodeResolver(cfg.w), cha, cfg.component.map(_.toList),cfg)
   private val ptsMsg = controlFlowResolver.ptsToMsgs(initialSpec.allI)
 
+  private val approxResMemo = TrieMap[(InitialQuery, SpecSpace, ApproxDir), Set[IPathNode]]()
   def mkApproxResForQry(qry:InitialQuery, spec:SpecSpace, approxDir: ApproxDir):Set[IPathNode] = {
-    //TODO:=== do something smarter than recomputing full query each time, doing this for testing right now
-    // note: this is just a matter of changing the labels on individual nodes in wit tree
-    val approxOfSpec = approxSpec(spec,approxDir)
-    val tConfig = cfg.copy(specSpace = approxOfSpec)
-    val ex = tConfig.getAbstractInterpreter
-    ex.run(qry,MemoryOutputMode).flatMap(_.terminals)
+    val approxOfSpec = approxSpec(spec, approxDir)
+    val key = (qry,approxOfSpec, approxDir)
+    if(!approxResMemo.contains(key)) {
+      //TODO: do something smarter than recomputing full query each time, doing this for testing right now
+      // note: this is just a matter of changing the labels on individual nodes in wit tree?
+      val tConfig = cfg.copy(specSpace = approxOfSpec)
+      val ex = tConfig.getAbstractInterpreter
+      val res = ex.run(qry, MemoryOutputMode).flatMap(_.terminals)
+      approxResMemo.addOne(key -> res)
+      res
+    }else {
+      approxResMemo(key)
+    }
   }
 
   private val exploredSpecs = mutable.HashSet[SpecSpace]()
@@ -138,6 +147,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     }
   }
   def mergeTwo(predConstruct:(LSPred,LSPred) => LSPred, p1:LSPred, p2:LSPred, scope:Map[PureVar, TypeSet]):StepResult ={
+    //TODO: this function doesn't work, predConstruct does not step!!!!!===============================
     type T = LSPred
     val (pred1Construct, other):(T=>LSPred,T) = if(!isTerminal(p1))
       ((p:T) => predConstruct(p1,p),p2)
@@ -201,7 +211,33 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     }
     res
   }
-  def step(pred:LSPred, scope:Map[PureVar,TypeSet]):StepResult = pred match{
+
+  def stepBinop(l1: LSPred, l2: LSPred, op:(LSPred,LSPred) => LSPred,
+                scope:Map[PureVar, TypeSet], hasAnd:Boolean): StepResult = {
+    val l1_step = if (LSPredAnyOrder.depthToAny(l1) < LSPredAnyOrder.depthToAny(l2)) {
+      step(l1, scope, hasAnd)
+    } else NoStep
+    l1_step match {
+      case NoStep =>
+        step(l2, scope, hasAnd) match {
+          case StepSuccessP(preds) => StepSuccessP(preds.map(p => (op(l1, p._1), p._2 ++ scope.keySet)))
+          case StepSuccessM(msg) => ???
+          case NoStep => NoStep
+        }
+      case StepSuccessP(preds) => StepSuccessP(preds.map(p => (op(p._1, l2), p._2 ++ scope.keySet)))
+    }
+  }
+
+  /**
+   * Expands LSAnyPred into candidate formula.
+   * Note that hasAnd enforces Conjunctive Normal Form and is set to true if and occurs higher in the AST.
+   *
+   * @param pred
+   * @param scope
+   * @param hasAnd
+   * @return
+   */
+  def step(pred:LSPred, scope:Map[PureVar,TypeSet], hasAnd:Boolean = false):StepResult = pred match{
     case LifeState.LSAnyPred =>{
       val relMsg: immutable.Iterable[OAbsMsg] = mkRel(scope)//scope.flatMap{case(pv,ts) => mkRel(pv,ts, scope.keySet)}
 
@@ -219,24 +255,28 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
         case _ => TopVal
       })), Set[PureVar]())})
 
-      List(Or,And).foreach { op =>
+      val binOps = if(hasAnd) List(Or) else List(Or,And)
+      binOps.foreach { op =>
         mutList.addOne((op(LSAnyPred, LSAnyPred), Set[PureVar]()))
       }
       StepSuccessP(mutList.toList)
     }
 //    case AnyAbsMsg =>
 //      StepSuccessM(???) //TODO: remove AnyAbsMsg or change prev case
-    case Or(l1, l2) => mergeTwo(Or, l1, l2, scope)
-    case And(l1, l2) => mergeTwo(And, l1,l2, scope)
+    case Or(l1, l2) =>
+      stepBinop(l1,l2,Or, scope, hasAnd)
+    case And(l1, l2) =>
+      stepBinop(l1,l2,And, scope, hasAnd = true)
     case Forall(x, s) => mergeOne(v => Forall(x,v), s, scope ++ x.map(_ -> TopTypeSet))
     case Exists(x, p) => mergeOne(Exists(x,_), p, scope ++ x.map(_ -> TopTypeSet))
-    case n:NS => NoStep
+    case _:NS => NoStep
 //    case NS(m1, m2) => mergeTwo((a:AbsMsg,b:AbsMsg) => NS(b,a),m2,m1,scope)
     case _:OAbsMsg => NoStep
-    case Not(p) => mergeOne(Not,p,scope)
+    case Not(_:OAbsMsg) => NoStep
+    case Not(p) => throw new IllegalArgumentException(s"bad step: ${Not(p)}")
     case _:LSImplies =>
       throw new IllegalArgumentException("Shouldn't be using implies in synthesis")
-    case v => NoStep
+    case _ => NoStep
   }
 
   private def mkQuant(v:Iterable[PureVar],pred:LSPred):LSPred = {
@@ -247,10 +287,11 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
    * @param rule to fill a hole
    * @return next spec, whether spec was stepped
    */
-  def step(rule:LSSpec, scope:Map[PureVar,TypeSet]):(List[LSSpec],Boolean) = rule match{
+  def stepSpec(rule:LSSpec, scope:Map[PureVar,TypeSet]):(List[LSSpec],Boolean) = rule match{
     case s@LSSpec(_,_,pred,_,_) =>
       step(pred,scope) match {
-        case StepSuccessP(preds) => (preds.map{case (p,quant) => s.copy(pred = mkQuant(quant,p))},true)
+        case StepSuccessP(preds) =>
+          (preds.map{case (p,quant) => s.copy(pred = mkQuant((quant -- rule.target.lsVar), p))},true)
         case NoStep => (List(s),false)
       }
   }
@@ -306,7 +347,8 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
   }
 
 
-  def approxSpec(lsSpec: LSSpec, approxDir: ApproxDir):LSSpec = lsSpec.copy(pred = approxPred(lsSpec.pred, approxDir))
+  def approxSpec(lsSpec: LSSpec, approxDir: ApproxDir):LSSpec =
+    lsSpec.copy(pred = EncodingTools.simplifyPred(approxPred(lsSpec.pred, approxDir)))
 
   def approxSpec(spec:SpecSpace, approxDir: ApproxDir):SpecSpace = {
     val specs = spec.getSpecs.map(approxSpec(_,approxDir))
@@ -319,11 +361,12 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
    * @return next spec, whether spec was stepped
    */
   def step(specSpace:SpecSpace, witnesses:Set[IPathNode]):(Set[SpecSpace],Boolean) = {
-    val specToStep = specSpace.sortedEnableSpecs.collectFirst{case (s,_) => s}
+    val specToStep = specSpace.sortedEnableSpecs.map(a => (a._1, LSPredAnyOrder.depthToAny(a._1.pred)))
+      .sortBy(a => a._2).headOption.map(_._1)
     if(specToStep.isEmpty)
       return (Set(specSpace),false)
     val (next:List[LSSpec],changed) =
-      step(specToStep.get,mkScope(specToStep.get, witnesses))
+      stepSpec(specToStep.get,mkScope(specToStep.get, witnesses))
 
     val base: Set[LSSpec] = specSpace.getSpecs.filter { s => s != specToStep.get }
     (next.map { n => new SpecSpace(base + n) }.toSet, true)
@@ -341,7 +384,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       println(s"\n spec number: ${specsTested}")
 
       // false if no expansion of this spec can succeed at making all reach locations reachable
-      val reachNotRefuted:Boolean = reachable.par.forall(qry => {
+      lazy val reachNotRefuted:Boolean = reachable.par.forall(qry => {
         val res = mkApproxResForQry(qry,cSpec, OverApprox)
         BounderUtil.interpretResult(res, QueryFinished) match{
           case Witnessed =>
@@ -356,7 +399,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
         }})
 
       // false if no expansion of this spec can prove the target location
-      lazy val unreachCanProve = {
+      val unreachCanProve = {
         val tgtRes = mkApproxResForQry(target, cSpec, UnderApprox)
         BounderUtil.interpretResult(tgtRes, QueryFinished) match {
           case Proven =>
@@ -369,7 +412,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
         }
       }
 
-      if (reachNotRefuted && unreachCanProve && isTerminal(cSpec)) {
+      if (unreachCanProve && reachNotRefuted && isTerminal(cSpec)) {
         return LearnSuccess(cSpec)
       }else if(reachNotRefuted && unreachCanProve) {
         // Get alarm for current spec and target

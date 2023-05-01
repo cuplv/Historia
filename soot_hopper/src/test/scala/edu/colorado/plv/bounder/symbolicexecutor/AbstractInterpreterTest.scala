@@ -11,6 +11,7 @@ import edu.colorado.plv.bounder.lifestate.{Dummy, FragmentGetActivityNullSpec, L
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.row4Specs
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BottomQry, CallinReturnNonNull, DBOutputMode, DisallowedCallin, FieldPtEdge, IPathNode, MemoryOutputMode, NamedPureVar, NoOutputMode, NotEquals, OutputMode, PrettyPrinting, Qry, Reachable, ReceiverNonNull, TopVal}
+import edu.colorado.plv.bounder.synthesis.{EnumModelGenerator, EnumModelGeneratorTest}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.{AnyFunSuite, FixtureAnyFunSuite}
@@ -3096,7 +3097,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
     makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
   }
   test("Synthesis example - simplification of Connect bot click/finish") { f =>
-
+    //TODO: test reachable locations from EnumModelGenerator ===
     val specs0 = Set[LSSpec](
     )
     val specs1 = Set[LSSpec](
@@ -3112,68 +3113,68 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       ("v.setOnClickListener(null);", f.expectUnreachable, specs1),
     ).foreach {
       case (disableClick, expected, specs) =>
-        val srcUnreach =
-          s"""package com.example.createdestroy;
-             |import android.app.Activity;
-             |import android.os.Bundle;
-             |import android.util.Log;
-             |import android.view.View;
-             |import android.widget.Button;
-             |import android.os.Handler;
-             |import android.view.View.OnClickListener;
-             |
-             |
-             |public class MyActivity extends Activity {
-             |    String s = null;
-             |    View v = null;
-             |    @Override
-             |    protected void onResume(){
-             |        s = "";
-             |        //v = findViewById(3);
-             |        v = new Button(this);
-             |        v.setOnClickListener(new OnClickListener(){
-             |           @Override
-             |           public void onClick(View v){
-             |             s.toString(); // query1 unreachable
-             |             MyActivity.this.finish();
-             |           }
-             |        });
-             |    }
-             |
-             |    @Override
-             |    protected void onPause() {
-             |        s = null;
-             |        ${disableClick}
-             |    }
-             |}""".stripMargin
-        val srcReach =
-          s"""package com.example.createdestroy;
-             |import android.app.Activity;
-             |import android.os.Bundle;
-             |import android.util.Log;
-             |import android.view.View;
-             |import android.widget.Button;
-             |import android.os.Handler;
-             |import android.view.View.OnClickListener;
-             |
-             |
-             |public class OtherActivity extends Activity implements OnClickListener{
-             |    String s = "";
-             |    @Override
-             |    protected void onCreate(Bundle b){
-             |        (new Button(this)).setOnClickListener(this);
-             |    }
-             |    @Override
-             |    public void onClick(View v){
-             |      s.toString(); // query2 reachable
-             |      OtherActivity.this.finish();
-             |    }
-             |
-             |    @Override
-             |    protected void onPause() {
-             |        s = null;
-             |    }
-             |}""".stripMargin
+//        val srcUnreach =
+//          s"""package com.example.createdestroy;
+//             |import android.app.Activity;
+//             |import android.os.Bundle;
+//             |import android.util.Log;
+//             |import android.view.View;
+//             |import android.widget.Button;
+//             |import android.os.Handler;
+//             |import android.view.View.OnClickListener;
+//             |
+//             |
+//             |public class MyActivity extends Activity {
+//             |    String s = null;
+//             |    View v = null;
+//             |    @Override
+//             |    protected void onResume(){
+//             |        s = "";
+//             |        //v = findViewById(3);
+//             |        v = new Button(this);
+//             |        v.setOnClickListener(new OnClickListener(){
+//             |           @Override
+//             |           public void onClick(View v){
+//             |             s.toString(); // query1 unreachable
+//             |             MyActivity.this.finish();
+//             |           }
+//             |        });
+//             |    }
+//             |
+//             |    @Override
+//             |    protected void onPause() {
+//             |        s = null;
+//             |        ${disableClick}
+//             |    }
+//             |}""".stripMargin
+//        val srcReach =
+//          s"""package com.example.createdestroy;
+//             |import android.app.Activity;
+//             |import android.os.Bundle;
+//             |import android.util.Log;
+//             |import android.view.View;
+//             |import android.widget.Button;
+//             |import android.os.Handler;
+//             |import android.view.View.OnClickListener;
+//             |
+//             |
+//             |public class OtherActivity extends Activity implements OnClickListener{
+//             |    String s = "";
+//             |    @Override
+//             |    protected void onCreate(Bundle b){
+//             |        (new Button(this)).setOnClickListener(this);
+//             |    }
+//             |    @Override
+//             |    public void onClick(View v){
+//             |      s.toString(); // query2 reachable
+//             |      OtherActivity.this.finish();
+//             |    }
+//             |
+//             |    @Override
+//             |    protected void onPause() {
+//             |        s = null;
+//             |    }
+//             |}""".stripMargin
         val test: String => Unit = apk => {
           File.usingTemporaryDirectory() { tmpDir =>
             assert(apk != null)
@@ -3196,7 +3197,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
             //Unreach Location
             {
               val symbolicExecutor = config.getAbstractInterpreter
-              val line = BounderUtil.lineForRegex(".*query1.*".r, srcUnreach)
+              val line = BounderUtil.lineForRegex(".*query1.*".r, EnumModelGeneratorTest.srcUnreach(disableClick))
               val nullUnreach = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity$1",
                 "void onClick(android.view.View)"), line, Some(".*toString.*"))
               val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
@@ -3216,7 +3217,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
             //Reach Location
             {
               val symbolicExecutor_reach = config.getAbstractInterpreter
-              val line_reach = BounderUtil.lineForRegex(".*query2.*".r, srcReach)
+              val line_reach = BounderUtil.lineForRegex(".*query2.*".r, EnumModelGeneratorTest.srcReach)
               val nullReach = ReceiverNonNull(Signature("com.example.createdestroy.OtherActivity",
                 "void onClick(android.view.View)"), line_reach, Some(".*toString.*"))
               val nullReachRes = symbolicExecutor_reach.run(nullReach, dbMode).flatMap(a => a.terminals)
@@ -3228,7 +3229,8 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
           }
 
         }
-        makeApkWithSources(Map("MyActivity.java" -> srcUnreach, "OtherActivity.java"->srcReach), MkApk.RXBase,
+        makeApkWithSources(Map("MyActivity.java" ->EnumModelGeneratorTest.srcUnreach(disableClick),
+          "OtherActivity.java"->EnumModelGeneratorTest.srcReach), MkApk.RXBase,
           test)
     }
   }
