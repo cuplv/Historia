@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType}
-import edu.colorado.plv.bounder.lifestate.LSPredAnyOrder.{predDepth, rankPred}
+import edu.colorado.plv.bounder.lifestate.LSPredAnyOrder.{countAny, predDepth, rankPred, rankSpecSpace}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, CLInit, Exists, Forall, FreshRef, HNOE, LSAnyPred, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, Signature}
 import edu.colorado.plv.bounder.solver.EncodingTools.Assign
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools}
@@ -1088,11 +1088,8 @@ object SpecSpace{
   }
 }
 
-object LSSPecAnyOrder extends Ordering[LSSpec]{
-  override def compare(x: LSSpec, y: LSSpec): Int =
-    LSPredAnyOrder.compare(x.pred,y.pred)
-}
-object LSPredAnyOrder extends Ordering[LSPred]{
+
+object LSPredAnyOrder{
 //  private def comb(p1:LSPred, p2:LSPred):Option[Int] ={
 //    (depthToAny(p1),depthToAny(p2)) match{
 //      case (Some(v1), Some(v2)) => Some(Math.min(v1,v2))
@@ -1100,63 +1097,88 @@ object LSPredAnyOrder extends Ordering[LSPred]{
 //      case (_,o)  => o
 //    }
 //  }
-  private def comb(p1:LSPred, p2:LSPred, op:(Int,Int) => Int):Int = op(rankPred(p1) , rankPred(p2))
   private def directCompare(pred1: LifeState.LSPred, pred2: LifeState.LSPred):Int =
     pred1.toString.compareTo(pred2.toString) // ensure deterministic order, probably don't care what order it is.
 
   def depthToAny(p:LSPred):Int = p match {
     case LSAnyPred => 0
-    case Or(p1, p2) => comb(p1, p2, Math.min) + 1
-    case And(p1, p2) => comb(p1, p2, Math.min) + 1
-    case Not(p) => rankPred(p) + 1
-    case Forall(vars, p) => rankPred(p) + 1
-    case Exists(vars, p) => rankPred(p) + 1
+    case Or(p1, p2) => Math.min(depthToAny(p1), depthToAny(p2))
+    case And(p1, p2) => Math.min(depthToAny(p1), depthToAny(p2))
+    case Not(p) => 999
+    case Forall(vars, p) => depthToAny(p) + 1
+    case Exists(vars, p) => depthToAny(p) + 1
     //TODO: find something better here, just needs to be bigger than everything without causing an overflow
     case _: LifeState.LSAtom => 999
   }
-  def rankPred(p:LSPred):Int = p match {
-    case LSAnyPred => 999
-    case Or(p1, p2) => comb(p1,p2, _+_) + 1
-    case And(p1, p2) => comb(p1,p2, _+_) + 1
-    case Not(p) => rankPred(p) + 1
-    case Forall(vars, p) => rankPred(p) + 1
-    case Exists(vars, p) => rankPred(p) + 1
-    case _:NS => 2
-    case _: LifeState.LSAtom => 1
+  def rankPred(p:LSPred):Int = {
+    def comb(p1:LSPred, p2:LSPred, op:(Int,Int) => Int):Int = op(rankPred(p1) , rankPred(p2))
+    p match {
+      case LSAnyPred => 999
+      case Or(p1, p2) => comb(p1,p2, _+_) + 1
+      case And(p1, p2) => comb(p1,p2, _+_) + 1
+      case Not(p) => rankPred(p) + 1
+      case Forall(vars, p) => rankPred(p) + 1
+      case Exists(vars, p) => rankPred(p) + 1
+      case _:NS => 2
+      case _: LifeState.LSAtom => 1
+    }
   }
   def predDepth(p:LSPred):Int = p match {
     case LSAnyPred => 1
-    case Or(p1, p2) => comb(p1, p2, _ + _) + 1
-    case And(p1, p2) => comb(p1, p2, _ + _) + 1
-    case Not(p:OAbsMsg) => rankPred(p)
-    case Forall(vars, p) => rankPred(p) + 1
-    case Exists(vars, p) => rankPred(p) + 1
-    case _: NS => 1
+    case Or(p1, p2) => predDepth(p1) + predDepth(p2) + 1
+    case And(p1, p2) => predDepth(p1) + predDepth(p2) + 1
+    case Not(p:OAbsMsg) => 1
+    case Forall(vars, p) => predDepth(p)
+    case Exists(vars, p) => predDepth(p)
     case _: LifeState.LSAtom => 1
   }
-  override def compare(x: LSPred, y: LSPred): Int = {
-    val dx = rankPred(x)
-    val dy = rankPred(y)
-    if (dx != dy)
-      dy - dx
-    else
-      directCompare(x, y)
+  def predAnyCount(p:LSPred):Int = p match {
+    case LSAnyPred => 1
+    case Or(p1, p2) => predAnyCount(p1) + predAnyCount(p2)
+    case And(p1, p2) => predAnyCount(p1) + predAnyCount(p2)
+    case Not(p: OAbsMsg) => 0
+    case Forall(_, p) => predAnyCount(p)
+    case Exists(_, p) => predAnyCount(p)
+    case _: LifeState.LSAtom => 0
   }
+
+  def hasAny(p: LSPred): Boolean = p match {
+    case LSAnyPred => true
+    case Or(p1, p2) => hasAny(p1) || hasAny(p2)
+    case And(p1, p2) => hasAny(p1) || hasAny(p2)
+    case Not(p: OAbsMsg) => hasAny(p)
+    case Forall(_, p) => hasAny(p)
+    case Exists(_, p) => hasAny(p)
+    case _: LifeState.LSAtom => false
+  }
+
+  def rankSpecSpace(x: SpecSpace): Int =
+    x.getSpecs.map { s => predDepth(s.pred) }.sum
+  def countAny(p:SpecSpace):Int = {
+    p.getSpecs.map { s => predAnyCount(s.pred) }.sum
+  }
+
+  val SpecSpaceAnyOrder = Ordering.by{(v:SpecSpace) =>
+    (countAny(v), rankSpecSpace(v), v.hashCode())
+  }.reverse //Note priority queue does highest first
+
+  val SpecStepOrder = Ordering.by{(sp:LSSpec) =>
+    (if(hasAny(sp.pred)) 0 else 1, depthToAny(sp.pred), sp.hashCode())}
 }
-object SpecSpaceAnyOrder extends Ordering[SpecSpace]{
-  def rankSpecSpace(x:SpecSpace):Int =
-    x.getSpecs.map{s => predDepth(s.pred)}.sum
-  override def compare(x:SpecSpace, y:SpecSpace):Int = {
-    rankSpecSpace(y) - rankSpecSpace(x)
-  }
-//  override def compare(x: SpecSpace, y: SpecSpace): Int = {
-//    val res = x.sortedEnableSpecs.view.zip(y.sortedEnableSpecs).map{
-//      case ((s1,d1),(s2,d2)) =>
-//        d2 - d1
-//    }.sum
-//    res
+
+//object SpecSpaceAnyOrder extends Ordering[SpecSpace]{
+//
+//  override def compare(x:SpecSpace, y:SpecSpace):Int = {
+//    rankSpecSpace(y) - rankSpecSpace(x)
 //  }
-}
+////  override def compare(x: SpecSpace, y: SpecSpace): Int = {
+////    val res = x.sortedEnableSpecs.view.zip(y.sortedEnableSpecs).map{
+////      case ((s1,d1),(s2,d2)) =>
+////        d2 - d1
+////    }.sum
+////    res
+////  }
+//}
 
 /**
  * Representation of a set of possible lifestate specs
@@ -1165,7 +1187,8 @@ object SpecSpaceAnyOrder extends Ordering[SpecSpace]{
  * @matcherSpace additional matchers that may be used for synthesis (added to allI)
  **/
 class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(), matcherSpace:Set[OAbsMsg] = Set()) {
-  lazy val sortedEnableSpecs:List[(LSSpec,Int)] = enableSpecs.map{s =>
+  lazy val sortedEnableSpecs:List[(LSSpec,Int)] =
+    enableSpecs.map{s =>
     val depth = rankPred(s.pred)
     (s,depth)
   }.toList.sortBy(_._2)

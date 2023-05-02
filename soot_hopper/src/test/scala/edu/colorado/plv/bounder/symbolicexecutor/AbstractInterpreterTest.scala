@@ -11,6 +11,7 @@ import edu.colorado.plv.bounder.lifestate.{Dummy, FragmentGetActivityNullSpec, L
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.row4Specs
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BottomQry, CallinReturnNonNull, DBOutputMode, DisallowedCallin, FieldPtEdge, IPathNode, MemoryOutputMode, NamedPureVar, NoOutputMode, NotEquals, OutputMode, PrettyPrinting, Qry, Reachable, ReceiverNonNull, TopVal}
+import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.srcReach
 import edu.colorado.plv.bounder.synthesis.{EnumModelGenerator, EnumModelGeneratorTest}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
@@ -3213,10 +3214,10 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
             }
 
 
+            val symbolicExecutor_reach = config.getAbstractInterpreter
 
-            //Reach Location
+            //Reach Location 2
             {
-              val symbolicExecutor_reach = config.getAbstractInterpreter
               val line_reach = BounderUtil.lineForRegex(".*query2.*".r, EnumModelGeneratorTest.srcReach)
               val nullReach = ReceiverNonNull(Signature("com.example.createdestroy.OtherActivity",
                 "void onClick(android.view.View)"), line_reach, Some(".*toString.*"))
@@ -3226,6 +3227,59 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
               //PrettyPrinting.dumpDebugInfo(nullReachRes, s"ReachSamp_${specs.size}",truncate=false)
               f.expectReachable(interpretedResult )
             }
+
+            val onClickReach = Signature("com.example.createdestroy.OtherActivity",
+              "void onClick(android.view.View)")
+
+            //Reach Location 3
+            {
+              val button_eq_reach = BounderUtil.lineForRegex(".*query3.*".r, srcReach)
+              val buttonEqReach = Reachable(onClickReach, button_eq_reach)
+              val reachRes = symbolicExecutor_reach.run(buttonEqReach, dbMode).flatMap(a => a.terminals)
+              val interpretedResult = BounderUtil.interpretResult(reachRes, QueryFinished)
+              println(s"spec set: ${specs.size}")
+              //PrettyPrinting.dumpDebugInfo(nullReachRes, s"ReachSamp_${specs.size}",truncate=false)
+              f.expectReachable(interpretedResult)
+            }
+
+            val onRes = onClickReach.copy(methodSignature = "void onResume()")
+
+            //Reach Location 4
+            {
+              val onResumeFirst_reach = BounderUtil.lineForRegex(".*query4.*".r, srcReach)
+              val onResumeFirstReach =
+                Reachable(onRes, onResumeFirst_reach)
+              val reachRes = symbolicExecutor_reach.run(onResumeFirstReach, dbMode).flatMap(a => a.terminals)
+              val interpretedResult = BounderUtil.interpretResult(reachRes, QueryFinished)
+              println(s"spec set: ${specs.size}")
+              //PrettyPrinting.dumpDebugInfo(nullReachRes, s"ReachSamp_${specs.size}",truncate=false)
+              f.expectReachable(interpretedResult)
+            }
+
+            //Reach Location 5
+            {
+              val resumeReachAfterPause = BounderUtil.lineForRegex(".*query5.*".r, srcReach)
+              val resumeReachAfterPauseQ =
+                Reachable(onRes, resumeReachAfterPause)
+              val reachRes = symbolicExecutor_reach.run(resumeReachAfterPauseQ, dbMode).flatMap(a => a.terminals)
+              val interpretedResult = BounderUtil.interpretResult(reachRes, QueryFinished)
+              println(s"spec set: ${specs.size}")
+              //PrettyPrinting.dumpDebugInfo(nullReachRes, s"ReachSamp_${specs.size}",truncate=false)
+              f.expectReachable(interpretedResult)
+            }
+
+            //Reach Location 6
+            {
+              val resumeTwiceReach = BounderUtil.lineForRegex(".*query6.*".r, srcReach)
+              val resumeTwiceReachQ =
+                Reachable(onRes, resumeTwiceReach)
+              val reachRes = symbolicExecutor_reach.run(resumeTwiceReachQ, dbMode).flatMap(a => a.terminals)
+              val interpretedResult = BounderUtil.interpretResult(reachRes, QueryFinished)
+              println(s"spec set: ${specs.size}")
+              //PrettyPrinting.dumpDebugInfo(nullReachRes, s"ReachSamp_${specs.size}",truncate=false)
+              f.expectReachable(interpretedResult)
+            }
+
           }
 
         }

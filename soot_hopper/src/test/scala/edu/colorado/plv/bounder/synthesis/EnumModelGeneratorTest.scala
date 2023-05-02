@@ -160,13 +160,6 @@ class EnumModelGeneratorTest extends AnyFunSuite {
 
   }
 
-  test("Specification comparitor should order specifications with holes"){
-    val p1 = onClickI
-    val p2 = And(LSAnyPred, LSAnyPred)
-    assert(LSPredAnyOrder.compare(p1,p2) < 0)
-    assert(LSPredAnyOrder.compare(p2,p1) > 0)
-    assert(LSPredAnyOrder.compare(p1,p1) == 0)
-  }
 
 
   ignore("Specification enumeration"){

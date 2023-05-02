@@ -541,7 +541,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
           val subsFast = nodes.find{n => n.qry.state.sf.makeHashable(config.specSpace) == thisNodeHashable}
           if(subsFast.isDefined){
             subsFastCount += 1
-            println(s"subs fast: $subsFastCount")
+//            println(s"subs fast: $subsFastCount")
             subsFast.toSet
           }else {
             nodes.find(p => {

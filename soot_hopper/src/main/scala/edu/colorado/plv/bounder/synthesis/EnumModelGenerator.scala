@@ -2,8 +2,9 @@ package edu.colorado.plv.bounder.synthesis
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{Proven, ResultSummary, Witnessed}
 import edu.colorado.plv.bounder.ir.{ApproxDir, CNode, ConcGraph, EmptyTypeSet, Exact, OverApprox, TMessage, TopTypeSet, TypeSet, UnderApprox}
+import edu.colorado.plv.bounder.lifestate.LSPredAnyOrder.SpecSpaceAnyOrder
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Forall, LSAnyPred, LSAtom, LSBinOp, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, LSUnOp, NS, Not, OAbsMsg, Or}
-import edu.colorado.plv.bounder.lifestate.{LSPredAnyOrder, LifeState, SpecAssignment, SpecSpace, SpecSpaceAnyOrder}
+import edu.colorado.plv.bounder.lifestate.{LSPredAnyOrder, LifeState, SpecAssignment, SpecSpace}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, ExecutorConfig, QueryFinished}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, IPathNode, InitialQuery, MemoryOutputMode, NullVal, OutputMode, PureExpr, PureVar, State, TopVal}
@@ -69,7 +70,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     if(!approxResMemo.contains(key)) {
       //TODO: do something smarter than recomputing full query each time, doing this for testing right now
       // note: this is just a matter of changing the labels on individual nodes in wit tree?
-      val tConfig = cfg.copy(specSpace = approxOfSpec)
+      val tConfig = cfg.copy(specSpace = approxOfSpec) //TODO: move state solver memo out of instance
       val ex = tConfig.getAbstractInterpreter
       val res = ex.run(qry, MemoryOutputMode).flatMap(_.terminals)
       approxResMemo.addOne(key -> res)
@@ -245,6 +246,11 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
         absMsgToNs(m,scope).map(ns =>
           (ns:LSPred, ns.lsVar.filter(v => !scope.contains(v))))
       }
+
+      //TODO:==== remove
+      if(relNS.exists{v => v.toString() == "NS( O(CBExit I_CBExit_ActivityonPause ( _T_,p-1 ) , O(CBExit I_CBExit_ActivityonPause ( _T_,p-1 ) )"}) {
+        println()
+      }
       val relMsgToAdd = relMsg.map{m => (m.asInstanceOf[LSPred], m.lsVar.filter(!scope.contains(_)))}
 
       val mutList = new ListBuffer[(LSPred, Set[PureVar])]()
@@ -360,9 +366,11 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
    * @param spec spec to expand an AST hole
    * @return next spec, whether spec was stepped
    */
-  def step(specSpace:SpecSpace, witnesses:Set[IPathNode]):(Set[SpecSpace],Boolean) = {
-    val specToStep = specSpace.sortedEnableSpecs.map(a => (a._1, LSPredAnyOrder.depthToAny(a._1.pred)))
-      .sortBy(a => a._2).headOption.map(_._1)
+  def step(specSpace:SpecSpace, witnesses:Set[IPathNode]):(Set[SpecSpace],Boolean) = { //TODO: figure out why I did this boolean thing and not just empty set
+    val specToStep = specSpace.getSpecs.filter(s => LSPredAnyOrder.hasAny(s.pred))
+      .toList.sorted(LSPredAnyOrder.SpecStepOrder).headOption
+//      .sortedEnableSpecs.map(a => (a._1, LSPredAnyOrder.depthToAny(a._1.pred)))
+//      .sortBy(a => a._2).headOption.map(_._1)
     if(specToStep.isEmpty)
       return (Set(specSpace),false)
     val (next:List[LSSpec],changed) =
