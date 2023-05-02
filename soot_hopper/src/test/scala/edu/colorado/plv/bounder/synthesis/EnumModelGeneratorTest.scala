@@ -87,6 +87,9 @@ object EnumModelGeneratorTest{
        |      if(resumeHappened != null){
        |        "".toString(); // query6 reachable
        |      }
+       |      if(pausedHappened == null){
+       |       "".toString(); //query7 reachable
+       |      }
        |      createResumedHappened = new Object();
        |      resumeHappened = new Object();
        |    }
@@ -274,8 +277,11 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         val resumeTwiceReachQ =
             Reachable(onRes, resumeTwiceReach)
 
+        val resumeFirst = BounderUtil.lineForRegex(".*query7.*".r, srcReach)
+        val resumeFirstQ = Reachable(onRes, resumeFirst)
+
         val gen = new EnumModelGenerator(nullUnreach,Set(nullReach, buttonEqReach, onResumeFirstReach,
-          resumeReachAfterPauseQ, resumeTwiceReachQ), specSpace, config)
+          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ), specSpace, config)
         val res = gen.run()
         res match {
           case LearnSuccess(space) =>

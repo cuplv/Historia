@@ -6,7 +6,7 @@ import edu.colorado.plv.bounder.lifestate.LSPredAnyOrder.SpecSpaceAnyOrder
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Forall, LSAnyPred, LSAtom, LSBinOp, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, LSUnOp, NS, Not, OAbsMsg, Or}
 import edu.colorado.plv.bounder.lifestate.{LSPredAnyOrder, LifeState, SpecAssignment, SpecSpace}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools, Z3StateSolver}
-import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, ExecutorConfig, QueryFinished}
+import edu.colorado.plv.bounder.symbolicexecutor.{ApproxMode, ControlFlowResolver, DefaultAppCodeResolver, ExecutorConfig, LimitMaterializationApproxMode, PreciseApproxMode, QueryFinished}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, IPathNode, InitialQuery, MemoryOutputMode, NullVal, OutputMode, PureExpr, PureVar, State, TopVal}
 import edu.colorado.plv.bounder.synthesis.EnumModelGenerator.{NoStep, StepResult, StepSuccessM, StepSuccessP, isTerminal}
 
@@ -63,14 +63,19 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     new ControlFlowResolver[M,C](cfg.w, new DefaultAppCodeResolver(cfg.w), cha, cfg.component.map(_.toList),cfg)
   private val ptsMsg = controlFlowResolver.ptsToMsgs(initialSpec.allI)
 
-  private val approxResMemo = TrieMap[(InitialQuery, SpecSpace, ApproxDir), Set[IPathNode]]()
+  private val approxResMemo = TrieMap[(InitialQuery, SpecSpace, ApproxMode), Set[IPathNode]]()
   def mkApproxResForQry(qry:InitialQuery, spec:SpecSpace, approxDir: ApproxDir):Set[IPathNode] = {
+    val approxMode = approxDir match {
+      case OverApprox => LimitMaterializationApproxMode()
+      case UnderApprox => PreciseApproxMode(canWeaken = false)
+      case Exact => ???
+    }
     val approxOfSpec = approxSpec(spec, approxDir)
-    val key = (qry,approxOfSpec, approxDir)
+    val key = (qry,approxOfSpec, approxMode)
     if(!approxResMemo.contains(key)) {
       //TODO: do something smarter than recomputing full query each time, doing this for testing right now
       // note: this is just a matter of changing the labels on individual nodes in wit tree?
-      val tConfig = cfg.copy(specSpace = approxOfSpec) //TODO: move state solver memo out of instance
+      val tConfig = cfg.copy(specSpace = approxOfSpec, approxMode = approxMode) //TODO: move state solver memo out of instance
       val ex = tConfig.getAbstractInterpreter
       val res = ex.run(qry, MemoryOutputMode).flatMap(_.terminals)
       approxResMemo.addOne(key -> res)

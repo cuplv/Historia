@@ -1166,7 +1166,9 @@ object LSPredAnyOrder{
     (if(hasAny(sp.pred)) 0 else 1, depthToAny(sp.pred), sp.hashCode())}
 }
 
-//object SpecSpaceAnyOrder extends Ordering[SpecSpace]{
+object SpecSpaceBogoOrder extends Ordering[SpecSpace]{
+  override def compare(x: SpecSpace, y: SpecSpace): Int = ???
+}
 //
 //  override def compare(x:SpecSpace, y:SpecSpace):Int = {
 //    rankSpecSpace(y) - rankSpecSpace(x)

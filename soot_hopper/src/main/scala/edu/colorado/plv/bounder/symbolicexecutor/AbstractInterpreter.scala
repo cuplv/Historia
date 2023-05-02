@@ -93,7 +93,7 @@ case class PreciseApproxMode(canWeaken:Boolean) extends ApproxMode{
     Some(newState)
 }
 
-case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2) extends ApproxMode { //TODO:====
+case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2) extends ApproxMode {
 
   override def canWeaken:Boolean = true
   override def merge[M,C](existing: () => Iterable[IPathNode], newPN:IPathNode,
