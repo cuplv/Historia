@@ -250,12 +250,13 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       val relNS = relMsg.flatMap{m =>
         absMsgToNs(m,scope).map(ns =>
           (ns:LSPred, ns.lsVar.filter(v => !scope.contains(v))))
+      }.filter{
+        case (NS(m1,m2), _) =>
+          val m1Var = m1.lsVar
+          m2.lsVar.forall(v => m1Var.contains(v))
       }
 
-      //TODO:==== remove
-      if(relNS.exists{v => v.toString() == "NS( O(CBExit I_CBExit_ActivityonPause ( _T_,p-1 ) , O(CBExit I_CBExit_ActivityonPause ( _T_,p-1 ) )"}) {
-        println()
-      }
+
       val relMsgToAdd = relMsg.map{m => (m.asInstanceOf[LSPred], m.lsVar.filter(!scope.contains(_)))}
 
       val mutList = new ListBuffer[(LSPred, Set[PureVar])]()
@@ -302,7 +303,8 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     case s@LSSpec(_,_,pred,_,_) =>
       step(pred,scope) match {
         case StepSuccessP(preds) =>
-          (preds.map{case (p,quant) => s.copy(pred = mkQuant((quant -- rule.target.lsVar), p))},true)
+          (preds.map{case (p,quant) => s.copy(pred =
+            EncodingTools.simplifyPred(mkQuant((quant -- rule.target.lsVar), p)))},true)
         case NoStep => (List(s),false)
       }
   }

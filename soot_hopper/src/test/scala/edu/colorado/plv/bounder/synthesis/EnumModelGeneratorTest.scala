@@ -217,7 +217,6 @@ class EnumModelGeneratorTest extends AnyFunSuite {
 
   }
   test("Synthesis example - simplification of Connect bot click/finish") {
-    //TODO==== Non-determinism seems less, but now gives wrong spec, probably need to include traces or something
 
     //Or(NS(SpecSignatures.Activity_onPause_exit, SpecSignatures.Activity_onResume_entry),
     //          Not(SpecSignatures.Activity_onResume_entry))

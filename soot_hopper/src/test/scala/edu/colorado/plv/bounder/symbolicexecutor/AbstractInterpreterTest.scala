@@ -3097,6 +3097,69 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
 
     makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
   }
+  ignore("Synthesis reachable 7 rejected by bad spec") { f =>
+    //TODO: test reachable locations from EnumModelGenerator ===
+    val specs0 = Set[LSSpec](
+    )
+    val specs1 = Set[LSSpec](
+      LSSpec(a :: Nil, Nil,
+        Or(NS(SpecSignatures.Activity_onPause_exit, SpecSignatures.Activity_onResume_entry),
+          Not(SpecSignatures.Activity_onResume_entry)),
+        SpecSignatures.Activity_onResume_entry),
+      LSSpec(l :: v :: Nil, Nil, NS(setOnClickListenerI, setOnClickListenerINull), onClickI)
+    )
+    List(
+      ("v.setOnClickListener(null);", f.expectUnreachable, specs1),
+    ).foreach {
+      case (disableClick, expected, specs) =>
+        ??? //TODO: update for reach 7 and under approx
+
+        val test: String => Unit = apk => {
+          File.usingTemporaryDirectory() { tmpDir =>
+            assert(apk != null)
+            val dbFile = tmpDir / "paths.db"
+            println(dbFile)
+            // implicit val dbMode = DBOutputMode(dbFile.toString, truncate = false)
+            // dbMode.startMeta()
+            implicit val dbMode = MemoryOutputMode
+
+            val iSet = Set(onClickI, setOnClickListenerI, setOnClickListenerINull,
+              Activity_onResume_entry, Activity_onPause_entry, Button_init)
+
+            val w = new SootWrapper(apk, specs)
+
+            val specSpace = new SpecSpace(specs, matcherSpace = iSet)
+            val config = ExecutorConfig(
+              stepLimit = 2000, w, specSpace,
+              component = Some(List("com.example.createdestroy.*")), outputMode = dbMode, approxMode = f.approxMode)
+
+            val onClickReach = Signature("com.example.createdestroy.OtherActivity",
+              "void onClick(android.view.View)")
+
+            val onRes = onClickReach.copy(methodSignature = "void onResume()")
+
+            val symbolicExecutor_reach = config.getAbstractInterpreter
+
+            //Reach Location 7
+            {
+              val resumeTwiceReach = BounderUtil.lineForRegex(".*query7.*".r, srcReach)
+              val resumeTwiceReachQ =
+                Reachable(onRes, resumeTwiceReach)
+              val reachRes = symbolicExecutor_reach.run(resumeTwiceReachQ, dbMode).flatMap(a => a.terminals)
+              val interpretedResult = BounderUtil.interpretResult(reachRes, QueryFinished)
+              println(s"spec set: ${specs.size}")
+              //PrettyPrinting.dumpDebugInfo(nullReachRes, s"ReachSamp_${specs.size}",truncate=false)
+              f.expectReachable(interpretedResult)
+            }
+
+          }
+
+        }
+        makeApkWithSources(Map("MyActivity.java" -> EnumModelGeneratorTest.srcUnreach(disableClick),
+          "OtherActivity.java" -> EnumModelGeneratorTest.srcReach), MkApk.RXBase,
+          test)
+    }
+  }
   test("Synthesis example - simplification of Connect bot click/finish") { f =>
     //TODO: test reachable locations from EnumModelGenerator ===
     val specs0 = Set[LSSpec](
@@ -3114,68 +3177,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       ("v.setOnClickListener(null);", f.expectUnreachable, specs1),
     ).foreach {
       case (disableClick, expected, specs) =>
-//        val srcUnreach =
-//          s"""package com.example.createdestroy;
-//             |import android.app.Activity;
-//             |import android.os.Bundle;
-//             |import android.util.Log;
-//             |import android.view.View;
-//             |import android.widget.Button;
-//             |import android.os.Handler;
-//             |import android.view.View.OnClickListener;
-//             |
-//             |
-//             |public class MyActivity extends Activity {
-//             |    String s = null;
-//             |    View v = null;
-//             |    @Override
-//             |    protected void onResume(){
-//             |        s = "";
-//             |        //v = findViewById(3);
-//             |        v = new Button(this);
-//             |        v.setOnClickListener(new OnClickListener(){
-//             |           @Override
-//             |           public void onClick(View v){
-//             |             s.toString(); // query1 unreachable
-//             |             MyActivity.this.finish();
-//             |           }
-//             |        });
-//             |    }
-//             |
-//             |    @Override
-//             |    protected void onPause() {
-//             |        s = null;
-//             |        ${disableClick}
-//             |    }
-//             |}""".stripMargin
-//        val srcReach =
-//          s"""package com.example.createdestroy;
-//             |import android.app.Activity;
-//             |import android.os.Bundle;
-//             |import android.util.Log;
-//             |import android.view.View;
-//             |import android.widget.Button;
-//             |import android.os.Handler;
-//             |import android.view.View.OnClickListener;
-//             |
-//             |
-//             |public class OtherActivity extends Activity implements OnClickListener{
-//             |    String s = "";
-//             |    @Override
-//             |    protected void onCreate(Bundle b){
-//             |        (new Button(this)).setOnClickListener(this);
-//             |    }
-//             |    @Override
-//             |    public void onClick(View v){
-//             |      s.toString(); // query2 reachable
-//             |      OtherActivity.this.finish();
-//             |    }
-//             |
-//             |    @Override
-//             |    protected void onPause() {
-//             |        s = null;
-//             |    }
-//             |}""".stripMargin
+
         val test: String => Unit = apk => {
           File.usingTemporaryDirectory() { tmpDir =>
             assert(apk != null)

@@ -250,9 +250,19 @@ object EncodingTools {
     case Forall(Nil, p) => simplifyPred(p)
     case c:LSConstraint => c
     case Forall(vars, p) =>
-      Forall(vars, simplifyPred(p))
+      val freeVars = p.lsVar
+      val newVars = vars.filter { v => freeVars.contains(v) }
+      if (newVars.nonEmpty)
+        Forall(newVars, simplifyPred(p))
+      else
+        simplifyPred((p))
     case Exists(vars, p) =>
-      Exists(vars, simplifyPred(p))
+      val freeVars = p.lsVar
+      val newVars = vars.filter{v => freeVars.contains(v)}
+      if(newVars.nonEmpty)
+        Exists(newVars, simplifyPred(p))
+      else
+        simplifyPred((p))
     case LSImplies(_,LSTrue) =>
       LSTrue
     case LSImplies(LSTrue, l2) =>
