@@ -250,11 +250,13 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       val relNS = relMsg.flatMap{m =>
         absMsgToNs(m,scope).map(ns =>
           (ns:LSPred, ns.lsVar.filter(v => !scope.contains(v))))
-      }.filter{
-        case (NS(m1,m2), _) =>
-          val m1Var = m1.lsVar
-          m2.lsVar.forall(v => m1Var.contains(v))
       }
+//        .filter{
+//        case (NS(m1,m2), _) =>
+//          val m1Var = m1.lsVar
+//          m1Var.exists(v => scope.contains(v)) &&
+//            m2.lsVar.forall(v => m1Var.contains(v))
+//      }
 
 
       val relMsgToAdd = relMsg.map{m => (m.asInstanceOf[LSPred], m.lsVar.filter(!scope.contains(_)))}
@@ -294,6 +296,52 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
   private def mkQuant(v:Iterable[PureVar],pred:LSPred):LSPred = {
     if(v.isEmpty) pred else Exists(v.toList, pred)
   }
+
+  //  def connectedPred(pred:LSPred, bound:Set[PureVar]):Boolean = pred match {
+  //    case LifeState.LSAnyPred => true // vacuously holds for any, true false
+  //    case LSTrue => true
+  //    case LSFalse => true
+  //    case And(l1,l2) => connectedPred(l1, bound) && connectedPred(l2,bound)
+  //    case Or(l1,l2) => connectedPred(l1, bound) && connectedPred(l2,bound)
+  //    case Forall(vars, p) =>
+  //      p.lsVar.exists(v => bound.contains(v)) && connectedPred(p, bound ++ vars)
+  //    case Exists(vars, p) =>
+  //      p.lsVar.exists(v => bound.contains(v)) && connectedPred(p, bound ++ vars)
+  //    case LifeState.HNOE(v, m, extV:PureVar) => bound.contains(extV) && m.lsVars.contains(v)
+  //    case m:OAbsMsg => m.lsVar.exists(v => bound.contains(v))
+  //    case NS(m1, m2) =>
+  //      val m1var = m1.lsVar
+  //      m1var.exists(v => bound.contains(v)) && m2.lsVar.forall(v => m1var.contains(v))
+  //    case Not(msg: OAbsMsg) => msg.lsVar.forall(v => bound.contains(v))
+  //  }
+  def pathExists(boundVars:Set[PureVar], msg:OAbsMsg, allMsg:Set[OAbsMsg]):Boolean = {
+    // Note: this relies on formula being in prenix normal form, it will break on things like (∃x.P(x)) /\ (∃x.Q(x))
+    //TODO: optimize by making this one pass if it slows things down
+    // models are small enough it probably doesn't matter
+    val expandedVars = mutable.HashSet[PureVar]()
+    expandedVars.addAll(boundVars)
+    var size:Int = -1
+
+    while(size != expandedVars.size) {
+      size = expandedVars.size
+      if(msg.lsVar.exists(boundVars.contains))
+        return true
+      allMsg.foreach{otherMsg =>
+        val otherMsgVars = otherMsg.lsVar
+        if(otherMsgVars.exists(boundVars.contains)){
+          expandedVars.addAll(otherMsgVars)
+        }
+      }
+    }
+    false
+  }
+  def connectedSpec(rule:LSSpec):Boolean = rule match {
+    case LSSpec(univQuant, existQuant, pred, target, _) =>
+      val boundVars = univQuant.toSet ++ existQuant
+      val allMsg = pred.allMsg
+      //      connectedPred(pred, boundVars)
+      allMsg.forall{msg => pathExists(boundVars, msg, allMsg) }
+  }
   /**
    *
    * @param rule to fill a hole
@@ -303,8 +351,11 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     case s@LSSpec(_,_,pred,_,_) =>
       step(pred,scope) match {
         case StepSuccessP(preds) =>
-          (preds.map{case (p,quant) => s.copy(pred =
-            EncodingTools.simplifyPred(mkQuant((quant -- rule.target.lsVar), p)))},true)
+          val simpPreds = preds.map { case (p, quant) =>
+            EncodingTools.simplifyPred(mkQuant((quant -- rule.target.lsVar), p))}
+          val outS = simpPreds.map{pred => s.copy(pred = pred)}
+          val filteredConnected = outS.filter{p => connectedSpec(p)}
+          (filteredConnected,true)
         case NoStep => (List(s),false)
       }
   }

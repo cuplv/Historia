@@ -289,6 +289,9 @@ class EnumModelGeneratorTest extends AnyFunSuite {
             val spaceStr = space.toString
             println(spaceStr)
             println("dumping debug info")
+            assert(space.getSpecs.forall{spec => //TODO:dbg code ====
+              gen.connectedSpec(spec)
+            })
             val newConfig = config.copy(specSpace = space)
             val ex = newConfig.getAbstractInterpreter
             val nullReachWit = ex.run(nullReach).flatMap(_.terminals)

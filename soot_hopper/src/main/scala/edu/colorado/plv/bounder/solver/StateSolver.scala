@@ -6,6 +6,7 @@ import edu.colorado.plv.bounder.ir.{AppMethod, BitTypeSet, EmptyTypeSet, Message
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.LifeState._
 import edu.colorado.plv.bounder.solver.EncodingTools.repHeapCells
+import edu.colorado.plv.bounder.solver.StateSolver.{simplifyCache, subsumeCache}
 import edu.colorado.plv.bounder.symbolicexecutor.SubsumptionMode
 import edu.colorado.plv.bounder.symbolicexecutor.state.{HeapPtEdge, _}
 import io.github.andrebeat.pool.Lease
@@ -57,6 +58,10 @@ case object SubsDebug extends SubsumptionMethod
  * Try using Unify and if that fails use Z3
  */
 case object SubsFailOver extends SubsumptionMethod
+object StateSolver{
+  private val simplifyCache = TrieMap[(HashableStateFormula), Boolean]()
+  private val subsumeCache = TrieMap[(HashableStateFormula, HashableStateFormula), Boolean]()
+}
 /** SMT solver parameterized by its AST or expression type */
 trait StateSolver[T, C <: SolverCtx[T]] {
   def getSolverRetries:Option[Int]
@@ -858,7 +863,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   }
 
-  private val simplifyCache = TrieMap[(SpecSpace, HashableStateFormula), Boolean]()
   def simplify(state: State,specSpace: SpecSpace, maxWitness: Option[Int] = None, rngTry:Int = 0): Option[State] = {
 
     // val startTime = System.nanoTime()
@@ -950,7 +954,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         println(s"try again with new random seed: ${rngTry}")
       }
       val stateHashable = stateWithNulls.sf.makeHashable(specSpace)
-      val cached = simplifyCache.get((specSpace, stateHashable))
+      val cached = simplifyCache.get((stateHashable))
       if (cached.isDefined) {
         Some(cached.get)
       } else {
@@ -970,7 +974,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         mkAssert(ast)
         try {
           val out = checkSAT(messageTranslator, None, false)
-          simplifyCache.put((specSpace, stateHashable), out)
+          simplifyCache.put((stateHashable), out)
 
           Some(out)
         } catch {
@@ -1332,7 +1336,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     }
   }
 
-  private val subsumeCache = TrieMap[(SpecSpace, HashableStateFormula, HashableStateFormula), Boolean]()
   private val cacheHit = new AtomicInteger(0)
   /**
    *
@@ -1348,7 +1351,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 //     val method = "Debug"
     val s1Hashable = s1.sf.makeHashable(specSpace)
     val s2Hashable = s2.sf.makeHashable(specSpace)
-    val cached = subsumeCache.get((specSpace, s1Hashable,s2Hashable))
+    val cached = subsumeCache.get((s1Hashable,s2Hashable))
     if(cached.isDefined){
       val current = cacheHit.getAndIncrement()
       if(current %10 == 0)
@@ -1395,7 +1398,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
     val res = if(method == SubsZ3) {
       val toCache = canSubsumeZ3(s1Simp.get,s2Simp.get,specSpace, maxLen, timeout)
-      subsumeCache.put((specSpace, s1Hashable,s2Hashable), toCache)
+      subsumeCache.put((s1Hashable,s2Hashable), toCache)
       toCache
     } else if(method == SubsUnify)
       canSubsumeUnify(s1Simp.get,s2Simp.get,specSpace)

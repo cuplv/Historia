@@ -246,6 +246,8 @@ object LifeState {
       case pureVal: PureVal => Set(pureVal)
       case _ => Set.empty
     }
+
+    override def allMsg: Set[OAbsMsg] = Set.empty
   }
   object LSConstraint{
     def mk(v1:PureExpr, op:CmpOp, v2:PureExpr):LSPred =
@@ -275,6 +277,7 @@ object LifeState {
     def toTex:String
 
     def swap(swapMap: Map[PureVar, PureExpr]):LSPred
+    def allMsg:Set[OAbsMsg]
 
     def contains(mt:MessageType,sig: Signature)(implicit ch:ClassHierarchyConstraints):Boolean
 
@@ -298,6 +301,8 @@ object LifeState {
     override def lsVar: Set[PureVar] = Set.empty
 
     override def lsVal: Set[PureVal] = Set.empty
+
+    override def allMsg: Set[OAbsMsg] = Set.empty
   }
   sealed trait LSBexp extends LSPred{
 
@@ -333,6 +338,8 @@ object LifeState {
         p.toString
 
     override def lsVal: Set[PureVal] = p.lsVal
+
+    override def allMsg: Set[OAbsMsg] = p.allMsg
   }
 
   case class Exists(vars:List[PureVar], p:LSPred) extends LSPred  with LSUnOp {
@@ -356,6 +363,8 @@ object LifeState {
     override def toTex: String = ???
 
     override def lsVal: Set[PureVal] = p.lsVal
+
+    override def allMsg: Set[OAbsMsg] = p.allMsg
   }
 
   case class CLInit(sig:String) extends LSSingle {
@@ -374,6 +383,8 @@ object LifeState {
     override def toTex: String = ???
 
     override def lsVal: Set[PureVal] = Set.empty
+
+    override def allMsg: Set[OAbsMsg] = Set.empty
   }
   object CLInit{
     implicit var rw:RW[CLInit] = macroRW
@@ -408,6 +419,8 @@ object LifeState {
     override def toTex: String = ???
 
     override def lsVal: Set[PureVal] = Set.empty
+
+    override def allMsg: Set[OAbsMsg] = ???
   }
   object FreshRef{
     private def oneCont(a1:LSPred, a2:LSPred):Option[FreshRef] = {
@@ -450,6 +463,8 @@ object LifeState {
     override def toTex: String = ???
 
     override def lsVal: Set[PureVal] = l1.lsVal ++ l2.lsVal
+
+    override def allMsg: Set[OAbsMsg] = l1.allMsg ++ l2.allMsg
   }
 
   case class And(l1 : LSPred, l2 : LSPred) extends LSBexp with LSBinOp {
@@ -473,6 +488,8 @@ object LifeState {
     override def toTex: String = s"${l1.toTex} \\wedge ${l2.toTex}"
 
     override def lsVal: Set[PureVal] = l1.lsVal ++ l2.lsVal
+
+    override def allMsg: Set[OAbsMsg] = l1.allMsg ++ l2.allMsg
   }
   case class Not(p: LSPred) extends LSAtom with LSUnOp {
     //assert(p.isInstanceOf[OAbsMsg], "not only applicable to once")
@@ -497,6 +514,8 @@ object LifeState {
     }
 
     override def lsVal: Set[PureVal] = p.lsVal
+
+    override def allMsg: Set[OAbsMsg] = p.allMsg
   }
   case class Or(l1:LSPred, l2:LSPred) extends LSBexp with LSBinOp {
 
@@ -517,6 +536,8 @@ object LifeState {
     override def toTex: String = s"${l1.toTex} \\vee ${l2.toTex}"
 
     override def lsVal: Set[PureVal] = l1.lsVal ++ l2.lsVal
+
+    override def allMsg: Set[OAbsMsg] = l1.allMsg ++ l2.allMsg
   }
   case object LSTrue extends LSBexp {
     override def lsVar: Set[PureVar] = Set.empty
@@ -529,6 +550,8 @@ object LifeState {
     override def toTex: String = "\\enkwTrue"
 
     override def lsVal: Set[PureVal] = Set.empty
+
+    override def allMsg: Set[OAbsMsg] = Set.empty
   }
   case object LSFalse extends LSBexp {
     override def lsVar: Set[PureVar] = Set.empty
@@ -541,6 +564,8 @@ object LifeState {
     override def toTex: String = "\\enkwFalse"
 
     override def lsVal: Set[PureVal] = Set.empty
+
+    override def allMsg: Set[OAbsMsg] = Set.empty
   }
 
   /**
@@ -569,6 +594,8 @@ object LifeState {
     override def lsVar: Set[PureVar] = m.lsVar - v
 
     override def lsVal: Set[PureVal] = m.lsVal
+
+    override def allMsg: Set[OAbsMsg] = Set(m.asInstanceOf[OAbsMsg])
   }
 
   sealed trait LSAtom extends LSPred {
@@ -843,6 +870,8 @@ object LifeState {
       case v:PureVal => Some(v)
       case _ => None
     }.toSet
+
+    override def allMsg: Set[OAbsMsg] = Set(this)
   }
   object OAbsMsg{
     implicit val rw:RW[OAbsMsg] = macroRW
@@ -866,6 +895,8 @@ object LifeState {
     override def toTex: String = s"\\niDir{${i2.mToTex}}{${i1.mToTex}}"
 
     override def lsVal: Set[PureVal] = i1.lsVal ++ i2.lsVal
+
+    override def allMsg: Set[OAbsMsg] = i1.allMsg ++ i2.allMsg
   }
   object NS{
     implicit val rw:RW[NS] = macroRW
