@@ -3155,7 +3155,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
           }
 
         }
-        makeApkWithSources(Map("MyActivity.java" -> EnumModelGeneratorTest.srcUnreach(disableClick),
+        makeApkWithSources(Map("MyActivity.java" -> EnumModelGeneratorTest.row4(disableClick),
           "OtherActivity.java" -> EnumModelGeneratorTest.srcReach), MkApk.RXBase,
           test)
     }
@@ -3200,7 +3200,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
             //Unreach Location
             {
               val symbolicExecutor = config.getAbstractInterpreter
-              val line = BounderUtil.lineForRegex(".*query1.*".r, EnumModelGeneratorTest.srcUnreach(disableClick))
+              val line = BounderUtil.lineForRegex(".*query1.*".r, EnumModelGeneratorTest.row4(disableClick))
               val nullUnreach = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity$1",
                 "void onClick(android.view.View)"), line, Some(".*toString.*"))
               val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
@@ -3285,7 +3285,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
           }
 
         }
-        makeApkWithSources(Map("MyActivity.java" ->EnumModelGeneratorTest.srcUnreach(disableClick),
+        makeApkWithSources(Map("MyActivity.java" ->EnumModelGeneratorTest.row4(disableClick),
           "OtherActivity.java"->EnumModelGeneratorTest.srcReach), MkApk.RXBase,
           test)
     }
