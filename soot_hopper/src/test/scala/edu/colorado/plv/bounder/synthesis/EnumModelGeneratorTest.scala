@@ -111,41 +111,66 @@ object EnumModelGeneratorTest{
        |    }
        |}""".stripMargin
   val srcReachFrag =
-    s"""package com.example.createdestroy;
+    s"""
+       |package com.example.createdestroy;
        |import android.app.Activity;
+       |import android.content.Context;
+       |import android.net.Uri;
        |import android.os.Bundle;
+       |
+       |import androidx.fragment.app.Fragment;
+       |
        |import android.util.Log;
+       |import android.view.LayoutInflater;
        |import android.view.View;
-       |import android.widget.Button;
-       |import android.os.Handler;
-       |import android.view.View.OnClickListener;
+       |import android.view.ViewGroup;
+       |
+       |import rx.Single;
+       |import rx.Subscription;
+       |import rx.android.schedulers.AndroidSchedulers;
+       |import rx.schedulers.Schedulers;
+       |import rx.functions.Action1;
        |
        |
-       |public class MyActivityReach extends Activity {
-       |    String s = null;
-       |    View v = null;
+       |public class PlayerFragmentReach extends Fragment implements Action1<Object>{
+       |    Subscription sub;
+       |    //Callback with irrelevant subscribe
        |    @Override
-       |    protected void onResume(){
-       |        s = "";
-       |        //v = findViewById(3);
-       |        v = new Button(this);
-       |        v.setOnClickListener(new OnClickListener(){
-       |           @Override
-       |           public void onClick(View v){
-       |             s.toString(); // queryReachFrag null unreachable
-       |             MyActivity.this.finish();
-       |           }
-       |        });
+       |    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+       |                             Bundle savedInstanceState) {
+       |      return inflater.inflate(0, container, false);
+       |    }
+       |    @Override
+       |    public void onCreate(Bundle savedInstanceState){
+       |      super.onCreate(savedInstanceState);
        |    }
        |
        |    @Override
-       |    protected void onPause() {
-       |        s = null;
+       |    public void onActivityCreated(Bundle savedInstanceState){
+       |        super.onActivityCreated(savedInstanceState);
+       |        sub = Single.create(subscriber -> {
+       |            subscriber.onSuccess(3);
+       |        }).subscribeOn(Schedulers.newThread())
+       |        .observeOn(AndroidSchedulers.mainThread())
+       |        .subscribe(this);
        |    }
-       |}""".stripMargin
+       |
+       |    @Override
+       |    public void call(Object o){
+       |         Activity act = getActivity(); //queryReachFrag : act != null
+       |         act.toString();
+       |    }
+       |
+       |    @Override
+       |    public void onDestroy(){
+       |    }
+       |}
+       |""".stripMargin
 
 
-  val row1BugReach_line = BounderUtil.lineForRegex(".*query1.*".r, srcReachFrag)
+
+
+  val row1BugReach_line = BounderUtil.lineForRegex(".*queryReachFrag.*".r, srcReachFrag)
   val row1BugReach = CallinReturnNonNull(
     Signature("com.example.createdestroy.PlayerFragment",
       "void call(java.lang.Object)"), row1BugReach_line ,
@@ -161,7 +186,7 @@ object EnumModelGeneratorTest{
        |import android.view.View.OnClickListener;
        |
        |
-       |public class OtherActivity extends Activity implements OnClickListener implements Action1<Object>{
+       |public class OtherActivity extends Activity implements OnClickListener {
        |    String s = "";
        |    View button = null;
        |    Object createResumedHappened = null;
@@ -420,7 +445,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
       }
     }
     makeApkWithSources(Map("PlayerFragment.java" -> row1Src, "OtherActivity.java" -> srcReach,
-      "MyActivityReach" -> srcReachFrag), MkApk.RXBase,
+      "PlayerFragmentReach.java" -> srcReachFrag), MkApk.RXBase,
       test)
   }
   //TODO: other rows from small exp historia
