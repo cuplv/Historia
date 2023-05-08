@@ -11,7 +11,7 @@ import edu.colorado.plv.bounder.lifestate.{LSPredAnyOrder, SpecSignatures, SpecS
 import edu.colorado.plv.bounder.solver.Z3StateSolver
 import edu.colorado.plv.bounder.symbolicexecutor.{ExecutorConfig, QueryFinished}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{CallinReturnNonNull, MemoryOutputMode, NamedPureVar, NullVal, PrettyPrinting, Reachable, ReceiverNonNull, TopVal}
-import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{buttonEqReach, nullReach, onResumeFirstReach, resumeFirstQ, resumeReachAfterPauseQ, resumeTwiceReachQ, row1, row4, srcReach}
+import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{buttonEqReach, nullReach, onResumeFirstReach, resumeFirstQ, resumeReachAfterPauseQ, resumeTwiceReachQ, row1, row1BugReach, row4, srcReach, srcReachFrag}
 import edu.colorado.plv.bounder.synthesis.SynthTestUtil.{cha, targetIze, toConcGraph, witTreeFromMsgList}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
@@ -110,6 +110,46 @@ object EnumModelGeneratorTest{
        |        //v.setOnClickListener(null);
        |    }
        |}""".stripMargin
+  val srcReachFrag =
+    s"""package com.example.createdestroy;
+       |import android.app.Activity;
+       |import android.os.Bundle;
+       |import android.util.Log;
+       |import android.view.View;
+       |import android.widget.Button;
+       |import android.os.Handler;
+       |import android.view.View.OnClickListener;
+       |
+       |
+       |public class MyActivityReach extends Activity {
+       |    String s = null;
+       |    View v = null;
+       |    @Override
+       |    protected void onResume(){
+       |        s = "";
+       |        //v = findViewById(3);
+       |        v = new Button(this);
+       |        v.setOnClickListener(new OnClickListener(){
+       |           @Override
+       |           public void onClick(View v){
+       |             s.toString(); // queryReachFrag null unreachable
+       |             MyActivity.this.finish();
+       |           }
+       |        });
+       |    }
+       |
+       |    @Override
+       |    protected void onPause() {
+       |        s = null;
+       |    }
+       |}""".stripMargin
+
+
+  val row1BugReach_line = BounderUtil.lineForRegex(".*query1.*".r, srcReachFrag)
+  val row1BugReach = CallinReturnNonNull(
+    Signature("com.example.createdestroy.PlayerFragment",
+      "void call(java.lang.Object)"), row1BugReach_line ,
+    ".*getActivity.*")
   val srcReach =
     s"""package com.example.createdestroy;
        |import android.app.Activity;
@@ -121,7 +161,7 @@ object EnumModelGeneratorTest{
        |import android.view.View.OnClickListener;
        |
        |
-       |public class OtherActivity extends Activity implements OnClickListener{
+       |public class OtherActivity extends Activity implements OnClickListener implements Action1<Object>{
        |    String s = "";
        |    View button = null;
        |    Object createResumedHappened = null;
@@ -351,7 +391,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         //Set(nullReach, buttonEqReach, onResumeFirstReach,
         //          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ)
 
-        val gen = new EnumModelGenerator(query, Set.empty, specSpace, config)
+        val gen = new EnumModelGenerator(query, Set(row1BugReach), specSpace, config)
         val res = gen.run()
         res match {
           case LearnSuccess(space) =>
@@ -379,7 +419,8 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         }
       }
     }
-    makeApkWithSources(Map("PlayerFragment.java" -> row1Src, "OtherActivity.java" -> srcReach), MkApk.RXBase,
+    makeApkWithSources(Map("PlayerFragment.java" -> row1Src, "OtherActivity.java" -> srcReach,
+      "MyActivityReach" -> srcReachFrag), MkApk.RXBase,
       test)
   }
   //TODO: other rows from small exp historia
