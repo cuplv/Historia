@@ -3,15 +3,16 @@ package edu.colorado.plv.bounder.synthesis
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed, interpretResult}
-import edu.colorado.plv.bounder.ir.SootWrapper
-import edu.colorado.plv.bounder.lifestate.LifeState.{And, LSAnyPred, LSSpec, NS, Not, Or, Signature}
+import edu.colorado.plv.bounder.ir.{CIExit, SootWrapper}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, LSAnyPred, LSSpec, NS, Not, Or, Signature}
+import edu.colorado.plv.bounder.lifestate.SAsyncTask.executeI
 import edu.colorado.plv.bounder.lifestate.SpecSignatures.{Activity_onPause_entry, Activity_onPause_exit, Activity_onResume_entry, Button_init}
-import edu.colorado.plv.bounder.lifestate.ViewSpec.{onClickI, setOnClickListenerI, setOnClickListenerINull}
-import edu.colorado.plv.bounder.lifestate.{LSPredAnyOrder, SpecSignatures, SpecSpace}
+import edu.colorado.plv.bounder.lifestate.ViewSpec.{buttonEnabled, onClickI, setEnabled, setOnClickListenerI, setOnClickListenerINull}
+import edu.colorado.plv.bounder.lifestate.{LSPredAnyOrder, LifecycleSpec, SAsyncTask, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.Z3StateSolver
 import edu.colorado.plv.bounder.symbolicexecutor.{ExecutorConfig, QueryFinished}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{CallinReturnNonNull, MemoryOutputMode, NamedPureVar, NullVal, PrettyPrinting, Reachable, ReceiverNonNull, TopVal}
-import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{buttonEqReach, nullReach, onResumeFirstReach, resumeFirstQ, resumeReachAfterPauseQ, resumeTwiceReachQ, row1, row1BugReach, row4, srcReach, srcReachFrag}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CallinReturnNonNull, DisallowedCallin, MemoryOutputMode, NamedPureVar, NullVal, PrettyPrinting, Reachable, ReceiverNonNull, TopVal}
+import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{buttonEqReach, nullReach, onResumeFirstReach, resumeFirstQ, resumeReachAfterPauseQ, resumeTwiceReachQ, row1, row1BugReach, row2, row4, srcReach, srcReachFrag}
 import edu.colorado.plv.bounder.synthesis.SynthTestUtil.{cha, targetIze, toConcGraph, witTreeFromMsgList}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
@@ -75,6 +76,61 @@ object EnumModelGeneratorTest{
        |    }
        |}
        |""".stripMargin
+
+  val row2 = (cancelLine:String) =>
+    s"""
+       |package com.example.createdestroy;
+       |import android.app.Activity;
+       |import android.content.Context;
+       |import android.net.Uri;
+       |import android.os.Bundle;
+       |import android.os.AsyncTask;
+       |import android.app.ProgressDialog;
+       |
+       |import android.app.Fragment;
+       |
+       |import android.util.Log;
+       |import android.view.LayoutInflater;
+       |import android.view.View;
+       |import android.view.ViewGroup;
+       |import android.view.View.OnClickListener;
+       |
+       |
+       |
+       |public class RemoverActivity extends Activity implements OnClickListener{
+       |    FeedRemover remover = null;
+       |    View button = null;
+       |    @Override
+       |    public void onCreate(Bundle b){
+       |        remover = new FeedRemover();
+       |        button = findViewById(3);
+       |        button.setOnClickListener(this);
+       |    }
+       |    @Override
+       |    public void onClick(View v){
+       |        remover.execute();
+       |        $cancelLine
+       |    }
+       |
+       |
+       |    class FeedRemover extends AsyncTask<String, Void, String> {
+       |		  @Override
+       |		  protected void onPreExecute() {
+       |		  }
+       |
+       |		  @Override
+       |		  protected String doInBackground(String... params) {
+       |			  return "";
+       |		  }
+       |
+       |		  @Override
+       |		  protected void onPostExecute(String result) {
+       |        RemoverActivity.this.finish();
+       |		  }
+       |	  }
+       |}
+       |""".stripMargin
+
   val row4 = (disableClick: String) =>
     s"""package com.example.createdestroy;
        |import android.app.Activity;
@@ -448,11 +504,97 @@ class EnumModelGeneratorTest extends AnyFunSuite {
       "PlayerFragmentReach.java" -> srcReachFrag), MkApk.RXBase,
       test)
   }
+  test("Synthesis Row 2: Antennapod execute") {
+
+    val row2Src = row2("button.setEnabled(false);")
+    val startingSpec = Set[LSSpec](
+      ViewSpec.clickWhileNotDisabled.copy(pred = LSAnyPred),
+      LifecycleSpec.Activity_createdOnlyFirst.copy(pred=LSAnyPred)
+    )
+
+    val test: String => Unit = apk => {
+      File.usingTemporaryDirectory() { tmpDir =>
+        assert(apk != null)
+        // val dbFile = tmpDir / "paths.db"
+        // println(dbFile)
+        // implicit val dbMode = DBOutputMode(dbFile.toString, truncate = false)
+        // dbMode.startMeta()
+        implicit val dbMode = MemoryOutputMode
+
+        val iSet = Set(
+          setOnClickListenerI,
+          AbsMsg(CIExit, setEnabled, TopVal::v::BoolVal(false)::Nil),
+          AbsMsg(CIExit, setEnabled, TopVal::v::BoolVal(true)::Nil),
+          SpecSignatures.Activity_onCreate_entry,
+          executeI
+        )
+
+        val w = new SootWrapper(apk, toOverride = startingSpec ++ iSet)
+        //val dbg = w.dumpDebug("com.example")
+
+        val specSpace = new SpecSpace(startingSpec, Set(SAsyncTask.disallowDoubleExecute), matcherSpace = iSet)
+        val config = ExecutorConfig(
+          stepLimit = 2000, w, specSpace,
+          component = Some(List("com.example.createdestroy.*RemoverActivity.*")),
+          outputMode = dbMode, timeLimit = 30)
+
+//        val line = BounderUtil.lineForRegex(".*query1.*".r, row2Src)
+//
+//
+//        val query = CallinReturnNonNull(
+//          Signature("com.example.createdestroy.PlayerFragment",
+//            "void call(java.lang.Object)"), line,
+//          ".*getActivity.*")
+
+
+        //TODO:==== add reachable back in one at a time
+        //Set(nullReach, buttonEqReach, onResumeFirstReach,
+        //          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ)
+
+
+        val query = DisallowedCallin(
+          "com.example.createdestroy.RemoverActivity",
+          "void onClick(android.view.View)",
+          SAsyncTask.disallowDoubleExecute)
+
+        val gen = new EnumModelGenerator(query, Set(nullReach), specSpace, config)
+        val res = gen.run()
+        res match {
+          case LearnSuccess(space) =>
+            println("final specification")
+            println("-------------------")
+            val spaceStr = space.toString
+            println(spaceStr)
+            println("dumping debug info")
+            val newConfig = config.copy(specSpace = space)
+            val ex = newConfig.getAbstractInterpreter
+            val nullReachWit = ex.run(nullReach).flatMap(_.terminals)
+            if (DUMP_DBG)
+              PrettyPrinting.dumpSpec(space, "cbSpec")
+            assert(interpretResult(nullReachWit) == Witnessed)
+            if (DUMP_DBG) {
+              PrettyPrinting.printWitness(nullReachWit)
+              PrettyPrinting.dumpDebugInfo(nullReachWit, "cbNullReachSynth")
+            }
+
+            val nullUnreachWit = ex.run(query).flatMap(_.terminals)
+            assert(interpretResult(nullUnreachWit) == Proven)
+            if (DUMP_DBG)
+              PrettyPrinting.dumpDebugInfo(nullUnreachWit, "cbNullUnreachSynth")
+          case LearnFailure => throw new IllegalStateException("failed to learn a sufficient spec")
+        }
+      }
+    }
+    makeApkWithSources(Map("RemoverActivity.java" -> row2Src, "OtherActivity.java" -> srcReach,
+      "PlayerFragmentReach.java" -> srcReachFrag), MkApk.RXBase,
+      test)
+  }
   //TODO: other rows from small exp historia
   test("Synthesis Row 4: simplification of Connect bot click/finish") {
 
     //Or(NS(SpecSignatures.Activity_onPause_exit, SpecSignatures.Activity_onResume_entry),
     //          Not(SpecSignatures.Activity_onResume_entry))
+    //TODO: try replacing v in template for _
     val startingSpec = Set[LSSpec](
       LSSpec(a :: Nil, Nil, LSAnyPred, SpecSignatures.Activity_onResume_entry),
       LSSpec(l::v:: Nil, Nil, LSAnyPred, onClickI)

@@ -5,12 +5,13 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{MultiCallback, Proven, ResultSummary, SingleCallbackMultiMethod, SingleMethod, Timeout, Unreachable, Witnessed, interpretResult}
 import edu.colorado.plv.bounder.ir.{CIExit, SootWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, LSConstraint, LSSpec, LSTrue, NS, Not, Or, Signature, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.SAsyncTask.executeI
 import edu.colorado.plv.bounder.lifestate.SpecSignatures.{Activity_onPause_entry, Activity_onResume_entry, Button_init}
-import edu.colorado.plv.bounder.lifestate.ViewSpec.{a, b, b2, l, onClick, onClickI, setOnClickListener, setOnClickListenerI, setOnClickListenerINull, v}
+import edu.colorado.plv.bounder.lifestate.ViewSpec.{a, b, b2, l, onClick, onClickI, setEnabled, setOnClickListener, setOnClickListenerI, setOnClickListenerINull, v}
 import edu.colorado.plv.bounder.lifestate.{Dummy, FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.row4Specs
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BottomQry, CallinReturnNonNull, DBOutputMode, DisallowedCallin, FieldPtEdge, IPathNode, MemoryOutputMode, NamedPureVar, NoOutputMode, NotEquals, OutputMode, PrettyPrinting, Qry, Reachable, ReceiverNonNull, TopVal}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BoolVal, BottomQry, CallinReturnNonNull, DBOutputMode, DisallowedCallin, FieldPtEdge, IPathNode, MemoryOutputMode, NamedPureVar, NoOutputMode, NotEquals, OutputMode, PrettyPrinting, Qry, Reachable, ReceiverNonNull, TopVal}
 import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.srcReach
 import edu.colorado.plv.bounder.synthesis.{EnumModelGenerator, EnumModelGeneratorTest}
 import edu.colorado.plv.bounder.testutils.MkApk
@@ -3290,4 +3291,111 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
           test)
     }
   }
+  test("Row2: Antennapod execute should alarm with insufficient spec") { f =>
+    List(
+      ("button.setEnabled(false);", Witnessed, "disable"),
+    ).map { case (cancelLine, expectedResult, fileSuffix) =>
+      val src =
+        s"""
+           |package com.example.createdestroy;
+           |import android.app.Activity;
+           |import android.content.Context;
+           |import android.net.Uri;
+           |import android.os.Bundle;
+           |import android.os.AsyncTask;
+           |import android.app.ProgressDialog;
+           |
+           |import android.app.Fragment;
+           |
+           |import android.util.Log;
+           |import android.view.LayoutInflater;
+           |import android.view.View;
+           |import android.view.ViewGroup;
+           |import android.view.View.OnClickListener;
+           |
+           |
+           |
+           |public class RemoverActivity extends Activity implements OnClickListener{
+           |    FeedRemover remover = null;
+           |    View button = null;
+           |    @Override
+           |    public void onCreate(Bundle b){
+           |        remover = new FeedRemover();
+           |        button = findViewById(3);
+           |        button.setOnClickListener(this);
+           |    }
+           |    @Override
+           |    public void onClick(View v){
+           |        remover.execute();
+           |        $cancelLine
+           |    }
+           |
+           |
+           |    class FeedRemover extends AsyncTask<String, Void, String> {
+           |		  @Override
+           |		  protected void onPreExecute() {
+           |		  }
+           |
+           |		  @Override
+           |		  protected String doInBackground(String... params) {
+           |			  return "";
+           |		  }
+           |
+           |		  @Override
+           |		  protected void onPostExecute(String result) {
+           |        RemoverActivity.this.finish();
+           |		  }
+           |	  }
+           |}
+           |""".stripMargin
+
+      val test: String => Unit = apk => {
+        val startTime = System.nanoTime()
+        assert(apk != null)
+
+        val row2Specs = Set[LSSpec](
+          ViewSpec.clickWhileNotDisabled.copy(pred = LSTrue),
+          LifecycleSpec.Activity_createdOnlyFirst.copy(pred = LSTrue)
+        )
+        val w = new SootWrapper(apk, row2Specs)
+
+        val iSet = Set(
+          setOnClickListenerI,
+          AbsMsg(CIExit, setEnabled, TopVal :: v :: BoolVal(false) :: Nil),
+          AbsMsg(CIExit, setEnabled, TopVal :: v :: BoolVal(true) :: Nil),
+          SpecSignatures.Activity_onCreate_entry,
+          executeI
+        )
+        val specSpace = new SpecSpace(row2Specs, Set(SAsyncTask.disallowDoubleExecute), iSet)
+        val config = ExecutorConfig(
+          stepLimit = 200, w, specSpace,
+          component = Some(List("com.example.createdestroy.*RemoverActivity.*")))
+        implicit val om = config.outputMode
+        val symbolicExecutor = config.getAbstractInterpreter
+
+        val query = DisallowedCallin(
+          "com.example.createdestroy.RemoverActivity",
+          "void onClick(android.view.View)",
+          SAsyncTask.disallowDoubleExecute)
+
+        val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
+        //val fname = s"Antennapod_AsyncTask_$fileSuffix"
+        //prettyPrinting.dumpDebugInfo(result, fname)
+        //prettyPrinting.printWitness(result)
+        assert(result.nonEmpty)
+        BounderUtil.throwIfStackTrace(result)
+        val interpretedResult = BounderUtil.interpretResult(result, QueryFinished)
+        val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
+        assert(interpretedResult == expectedResult)
+      }
+
+      makeApkWithSources(Map("RemoverActivity.java" -> src), MkApk.RXBase, test)
+    }
+  }
+  //TODO: figure out why this fails with row 1
+//  LSSpec(List(p - l), List(p - s), (Not O (CIExit I_CIExit_FragmentgetActivity(_T_, p - l)), O(CBEnter I_CBEnter_rxJavacall(_T_, p - l), Set())
+//    LSSpec(List(p - f), List(), ∃ p -s.NS(O(CBEnter I_CBEnter_FragmentonActivityCreated(_T_, p - f), O(CIExit I_CIExit_RxJavasubscribe(p - s, _T_, p - f)), O(CIExit I_CIExit_FragmentgetActivity(NULL, p - f), Set())
+//    LSSpec(List(p - f), List(), ∃ p -s1.∃ p -s.[NS(O(CIExit I_CIExit_RxJavasubscribe(p - s, _T_, p - f), O(CIExit I_CIExit_RxJavasubscribe(p - s1, _T_, p - f)) && NS(O(CBExit I_CBExit_FragmentonDestroy(_T_, p - f), O(CIExit I_CIExit_RxJavasubscribe(p - s, _T_, p - f))
+//  ], O(CBEnter I_CBEnter_FragmentonActivityCreated(_T_, p - f), Set())
+
 }
