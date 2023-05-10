@@ -97,20 +97,22 @@ object EnumModelGeneratorTest{
        |
        |
        |
-       |public class RemoverActivity extends Activity implements OnClickListener{
+       |public class RemoverActivity extends Activity{
        |    FeedRemover remover = null;
        |    View button = null;
        |    @Override
        |    public void onCreate(Bundle b){
        |        remover = new FeedRemover();
        |        button = findViewById(3);
-       |        button.setOnClickListener(this);
+       |        button.setOnClickListener(new OnClickListener(){
+       |            @Override
+       |            public void onClick(View v){
+       |                remover.execute();
+       |                $cancelLine
+       |            }
+       |        });
        |    }
-       |    @Override
-       |    public void onClick(View v){
-       |        remover.execute();
-       |        $cancelLine
-       |    }
+       |
        |
        |
        |    class FeedRemover extends AsyncTask<String, Void, String> {
@@ -553,7 +555,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
 
 
         val query = DisallowedCallin(
-          "com.example.createdestroy.RemoverActivity",
+          "com.example.createdestroy.RemoverActivity$1",
           "void onClick(android.view.View)",
           SAsyncTask.disallowDoubleExecute)
 
