@@ -41,7 +41,7 @@ object EnumModelGeneratorTest{
        |import rx.functions.Action1;
        |
        |
-       |public class PlayerFragment extends Fragment implements Action1<Object>{
+       |public class PlayerFragment extends Fragment {
        |    Subscription sub;
        |    //Callback with irrelevant subscribe
        |    @Override
@@ -61,13 +61,13 @@ object EnumModelGeneratorTest{
        |            subscriber.onSuccess(3);
        |        }).subscribeOn(Schedulers.newThread())
        |        .observeOn(AndroidSchedulers.mainThread())
-       |        .subscribe(this);
-       |    }
-       |
-       |    @Override
-       |    public void call(Object o){
-       |         Activity act = getActivity(); //query1 : act != null
-       |         act.toString();
+       |        .subscribe(new Action1<Object>(){
+       |           @Override
+       |           public void call(Object o){
+       |             Activity act = getActivity(); //query1 : act != null
+       |             act.toString();
+       |           }
+       |       });
        |    }
        |
        |    @Override
@@ -190,7 +190,7 @@ object EnumModelGeneratorTest{
        |import rx.functions.Action1;
        |
        |
-       |public class PlayerFragmentReach extends Fragment implements Action1<Object>{
+       |public class PlayerFragmentReach extends Fragment {
        |    Subscription sub;
        |    //Callback with irrelevant subscribe
        |    @Override
@@ -210,13 +210,13 @@ object EnumModelGeneratorTest{
        |            subscriber.onSuccess(3);
        |        }).subscribeOn(Schedulers.newThread())
        |        .observeOn(AndroidSchedulers.mainThread())
-       |        .subscribe(this);
-       |    }
-       |
-       |    @Override
-       |    public void call(Object o){
-       |         Activity act = getActivity(); //queryReachFrag : act != null
-       |         act.toString();
+       |        .subscribe(new Action1<Object>(){
+       |            @Override
+       |            public void call(Object o){
+       |              Activity act = getActivity(); //queryReachFrag : act != null
+       |              act.toString();
+       |            }
+       |        });
        |    }
        |
        |    @Override
@@ -230,7 +230,7 @@ object EnumModelGeneratorTest{
 
   val row1BugReach_line = BounderUtil.lineForRegex(".*queryReachFrag.*".r, srcReachFrag)
   val row1BugReach = CallinReturnNonNull(
-    Signature("com.example.createdestroy.PlayerFragment",
+    Signature("com.example.createdestroy.PlayerFragment$1",
       "void call(java.lang.Object)"), row1BugReach_line ,
     ".*getActivity.*")
   val srcReach =
@@ -465,7 +465,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
 
 
         val query = CallinReturnNonNull(
-          Signature("com.example.createdestroy.PlayerFragment",
+          Signature("com.example.createdestroy.PlayerFragment$1",
             "void call(java.lang.Object)"), line,
           ".*getActivity.*")
 
