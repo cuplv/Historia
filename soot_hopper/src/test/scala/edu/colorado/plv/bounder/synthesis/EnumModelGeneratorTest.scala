@@ -471,10 +471,10 @@ class EnumModelGeneratorTest extends AnyFunSuite {
 
 
         //TODO:==== add reachable back in one at a time
-        //Set(nullReach, buttonEqReach, onResumeFirstReach,
-        //          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ)
+        //Set
 
-        val gen = new EnumModelGenerator(query, Set(row1BugReach), specSpace, config)
+        val gen = new EnumModelGenerator(query, Set(nullReach, buttonEqReach, onResumeFirstReach,
+          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ), specSpace, config)
         val res = gen.run()
         res match {
           case LearnSuccess(space) =>
