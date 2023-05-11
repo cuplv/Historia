@@ -290,30 +290,30 @@ object EnumModelGeneratorTest{
        |    }
        |}""".stripMargin
 
-    val onClickReach = Signature("com.example.createdestroy.OtherActivity",
-      "void onClick(android.view.View)")
-    val line_reach = BounderUtil.lineForRegex(".*query2.*".r, srcReach)
-    val nullReach = ReceiverNonNull(onClickReach, line_reach, Some(".*toString.*"))
+  val onClickReach = Signature("com.example.createdestroy.OtherActivity",
+    "void onClick(android.view.View)")
+  val line_reach = BounderUtil.lineForRegex(".*query2.*".r, srcReach)
+  val nullReach = ReceiverNonNull(onClickReach, line_reach, Some(".*toString.*"))
 
-    val button_eq_reach = BounderUtil.lineForRegex(".*query3.*".r, srcReach)
-    val buttonEqReach = Reachable(onClickReach, button_eq_reach)
+  val button_eq_reach = BounderUtil.lineForRegex(".*query3.*".r, srcReach)
+  val buttonEqReach = Reachable(onClickReach, button_eq_reach)
 
-    val onRes = onClickReach.copy(methodSignature = "void onResume()")
-    val onResumeFirst_reach = BounderUtil.lineForRegex(".*query4.*".r, srcReach)
-    val onResumeFirstReach =
-      Reachable(onRes, onResumeFirst_reach)
+  val onRes = onClickReach.copy(methodSignature = "void onResume()")
+  val onResumeFirst_reach = BounderUtil.lineForRegex(".*query4.*".r, srcReach)
+  val onResumeFirstReach =
+    Reachable(onRes, onResumeFirst_reach)
 
-    val resumeReachAfterPause = BounderUtil.lineForRegex(".*query5.*".r, srcReach)
-    val resumeReachAfterPauseQ =
-      Reachable(onRes, resumeReachAfterPause)
+  val resumeReachAfterPause = BounderUtil.lineForRegex(".*query5.*".r, srcReach)
+  val resumeReachAfterPauseQ =
+    Reachable(onRes, resumeReachAfterPause)
 
 
-    val resumeTwiceReach = BounderUtil.lineForRegex(".*query6.*".r, srcReach)
-    val resumeTwiceReachQ =
-      Reachable(onRes, resumeTwiceReach)
+  val resumeTwiceReach = BounderUtil.lineForRegex(".*query6.*".r, srcReach)
+  val resumeTwiceReachQ =
+    Reachable(onRes, resumeTwiceReach)
 
-    val resumeFirst = BounderUtil.lineForRegex(".*query7.*".r, srcReach)
-    val resumeFirstQ = Reachable(onRes, resumeFirst)
+  val resumeFirst = BounderUtil.lineForRegex(".*query7.*".r, srcReach)
+  val resumeFirstQ = Reachable(onRes, resumeFirst)
 }
 class EnumModelGeneratorTest extends AnyFunSuite {
   val DUMP_DBG = true //Uncomment to skip writing out paths from historia
@@ -458,7 +458,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         val specSpace = new SpecSpace(startingSpec, matcherSpace = iSet)
         val config = ExecutorConfig(
           stepLimit = 2000, w, specSpace,
-          component = Some(List("com.example.createdestroy.PlayerFragment")),
+          component = Some(List("com.example.createdestroy.*")),
           outputMode = dbMode, timeLimit = 30)
 
         val line = BounderUtil.lineForRegex(".*query1.*".r, row1Src)
@@ -537,7 +537,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         val specSpace = new SpecSpace(startingSpec, Set(SAsyncTask.disallowDoubleExecute), matcherSpace = iSet)
         val config = ExecutorConfig(
           stepLimit = 2000, w, specSpace,
-          component = Some(List("com.example.createdestroy.*RemoverActivity.*")),
+          component = Some(List("com.example.createdestroy.*")),
           outputMode = dbMode, timeLimit = 30, z3InstanceLimit = 3)
 
 //        val line = BounderUtil.lineForRegex(".*query1.*".r, row2Src)

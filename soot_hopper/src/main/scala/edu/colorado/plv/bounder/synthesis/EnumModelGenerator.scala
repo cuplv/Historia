@@ -7,7 +7,7 @@ import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Forall
 import edu.colorado.plv.bounder.lifestate.{LSPredAnyOrder, LifeState, SpecAssignment, SpecSpace}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.{ApproxMode, ControlFlowResolver, DefaultAppCodeResolver, ExecutorConfig, LimitMaterializationApproxMode, PreciseApproxMode, QueryFinished}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, IPathNode, InitialQuery, MemoryOutputMode, NullVal, OutputMode, PureExpr, PureVar, State, TopVal}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, AllReceiversNonNull, CallinReturnNonNull, DirectInitialQuery, DisallowedCallin, IPathNode, InitialQuery, MemoryOutputMode, NullVal, OutputMode, PureExpr, PureVar, Reachable, ReceiverNonNull, State, TopVal}
 import edu.colorado.plv.bounder.synthesis.EnumModelGenerator.{NoStep, StepResult, StepSuccessM, StepSuccessP, isTerminal}
 
 import scala.collection.concurrent.TrieMap
@@ -56,7 +56,7 @@ object EnumModelGenerator{
 
 }
 class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], initialSpec:SpecSpace
-                              ,cfg:ExecutorConfig[M,C])
+                              ,cfg:ExecutorConfig[M,C], dbg:Boolean = false)
   extends ModelGenerator(cfg.w.getClassHierarchyConstraints) {
   private val cha = cfg.w.getClassHierarchyConstraints
   private val controlFlowResolver =
@@ -153,7 +153,8 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     }
   }
   def mergeTwo(predConstruct:(LSPred,LSPred) => LSPred, p1:LSPred, p2:LSPred, scope:Map[PureVar, TypeSet]):StepResult ={
-    //TODO: this function doesn't work, predConstruct does not step!!!!!===============================
+    //TODO: this function doesn't work, predConstruct does not step!!!!!
+    ???
     type T = LSPred
     val (pred1Construct, other):(T=>LSPred,T) = if(!isTerminal(p1))
       ((p:T) => predConstruct(p1,p),p2)
@@ -456,12 +457,13 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
           case Witnessed =>
             //println(" reach refuted: false")
             true
-          case Proven =>
+          case _ => //proven/timeout
             //println(" reach refuted: true")
+            if(dbg){
+              println(s"qry:${qry} ")
+              println(s"spec:\n  ${cSpec}")
+            }
             false
-          case otherRes =>
-            //throw new IllegalStateException(s"Failed to finish reachable query. Result: $otherRes Query:$qry")
-            false // dump spec on timeout
         }})
 
       // false if no expansion of this spec can prove the target location

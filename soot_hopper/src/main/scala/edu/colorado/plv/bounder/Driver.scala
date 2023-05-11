@@ -296,17 +296,16 @@ object Driver {
   }
 
   def loopSolver():Unit = {
+    //TODO: implement stdio for solver part to avoid segfault and oom
 //    val solver = new Z3StateSolver()
 //    while(true){
 
 //    }
-    ???
   }
   def runAction(act: Action): Unit = {
     println(s"java.library.path set to: ${System.getProperty("java.library.path")}")
     act match {
-      case act@Action(SolverServer, _,_,_,_,_, _, _) =>
-        //TODO:===== you were here implementing stdio solver
+      case Action(SolverServer, _,_,_,_,_, _, _) =>
           loopSolver()
       case act@Action(Verify, _, _, cfgIn, filter, _, mode,dbg) =>
         val cfgWithTime = if(dbg){cfgIn.copy(timeLimit = 14400*2, truncateOut = false)} else cfgIn

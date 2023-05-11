@@ -12,7 +12,7 @@ import edu.colorado.plv.bounder.lifestate.{Dummy, FragmentGetActivityNullSpec, L
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.row4Specs
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BoolVal, BottomQry, CallinReturnNonNull, DBOutputMode, DisallowedCallin, FieldPtEdge, IPathNode, MemoryOutputMode, NamedPureVar, NoOutputMode, NotEquals, OutputMode, PrettyPrinting, Qry, Reachable, ReceiverNonNull, TopVal}
-import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.srcReach
+import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{onClickReach, srcReach}
 import edu.colorado.plv.bounder.synthesis.{EnumModelGenerator, EnumModelGeneratorTest}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
@@ -3348,7 +3348,64 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
            |	  }
            |}
            |""".stripMargin
-
+      val src2 =
+        s"""package com.example.createdestroy;
+           |import android.app.Activity;
+           |import android.os.Bundle;
+           |import android.util.Log;
+           |import android.view.View;
+           |import android.widget.Button;
+           |import android.os.Handler;
+           |import android.view.View.OnClickListener;
+           |
+           |
+           |public class OtherActivity extends Activity implements OnClickListener {
+           |    String s = "";
+           |    View button = null;
+           |    Object createResumedHappened = null;
+           |    Object pausedHappened = null;
+           |    Object resumeHappened = null;
+           |    @Override
+           |    protected void onCreate(Bundle b){
+           |        button = new Button(this);
+           |        button.setOnClickListener(this);
+           |
+           |    }
+           |    @Override
+           |    protected void onResume(){
+           |      if(createResumedHappened == null){
+           |         "".toString(); //query4 reachable
+           |      }
+           |      if(pausedHappened != null){
+           |        "".toString(); //query5 reachable
+           |      }
+           |      if(resumeHappened != null){
+           |        "".toString(); // query6 reachable
+           |      }
+           |      if(pausedHappened == null){
+           |       "".toString(); //query7 reachable
+           |      }
+           |      createResumedHappened = new Object();
+           |      resumeHappened = new Object();
+           |    }
+           |    @Override
+           |    public void onClick(View v){
+           |      s.toString(); // query2 reachable
+           |      OtherActivity.this.finish();
+           |      if(v == button){
+           |        s.toString(); //query3 reachable
+           |      }
+           |    }
+           |
+           |    @Override
+           |    protected void onPause() {
+           |        s = null;
+           |        createResumedHappened = new Object();
+           |        pausedHappened = new Object();
+           |    }
+           |}""".stripMargin
+           //TODO:
+      //qry:Reachable(Signature(com.example.createdestroy.OtherActivity,void onClick(android.view.View)),45)
       val test: String => Unit = apk => {
         val startTime = System.nanoTime()
         assert(apk != null)
@@ -3369,9 +3426,16 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         val specSpace = new SpecSpace(row2Specs, Set(SAsyncTask.disallowDoubleExecute), iSet)
         val config = ExecutorConfig(
           stepLimit = 200, w, specSpace,
-          component = Some(List("com.example.createdestroy.*RemoverActivity.*")))
+          component = Some(List("com.example.createdestroy.*")))
         implicit val om = config.outputMode
         val symbolicExecutor = config.getAbstractInterpreter
+        val button_eq_reach = BounderUtil.lineForRegex(".*query3.*".r, src2)
+        val buttonEqReach = Reachable(onClickReach, button_eq_reach)
+
+        val result2 = symbolicExecutor.run(buttonEqReach).flatMap(_.terminals)
+        val interpretedResult2 = BounderUtil.interpretResult(result2, QueryFinished)
+        PrettyPrinting.dumpDebugInfo(result2, "s")
+        assert(interpretedResult2 == Witnessed)
 
         val query = DisallowedCallin(
           "com.example.createdestroy.RemoverActivity",
@@ -3389,7 +3453,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         assert(interpretedResult == expectedResult)
       }
 
-      makeApkWithSources(Map("RemoverActivity.java" -> src), MkApk.RXBase, test)
+      makeApkWithSources(Map("RemoverActivity.java" -> src, "OtherActivity.java" -> src2 ), MkApk.RXBase, test)
     }
   }
   //TODO: figure out why this fails with row 1
