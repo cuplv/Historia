@@ -1,8 +1,8 @@
 package edu.colorado.plv.bounder
 
 import better.files.Dsl.mkdir
-
 import edu.colorado.plv.bounder.ir.Messages
+
 import java.io.{PrintWriter, StringWriter}
 import java.sql.Timestamp
 import java.time.Instant
@@ -13,7 +13,7 @@ import edu.colorado.plv.bounder.Driver.{Default, LocResult, RunMode, modeToStrin
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, InternalMethodInvoke, InternalMethodReturn, JimpleMethodLoc, Loc, MethodLoc, SerializedIRLineLoc, SerializedIRMethodLoc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper, WitnessExplanation}
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSConstraint, LSSpec, LSTrue, OAbsMsg, Signature}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSpace}
-import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
+import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, ExecutorConfig, QueryFinished, SparkCallGraph, TransferFunctions}
 import org.slf4j.LoggerFactory
@@ -135,6 +135,7 @@ object Driver {
   }
 
   sealed trait RunMode
+  case object SolverServer extends RunMode
 
   case object Verify extends RunMode
 
@@ -185,16 +186,17 @@ object Driver {
   }
 
   val stringToMode:Map[String,RunMode] = Map(
-  "verify" -> Verify,
-  "info" -> Info,
-  "sampleDeref" -> SampleDeref,
-  "readDB" -> ReadDB,
-  "expLoop" -> ExpLoop,
-  "makeAllDeref" -> MakeAllDeref,
-  "findCallinsPattern" -> FindCallins,
-  "nullFieldPatternFinish" -> MakeSensitiveDerefFieldCausedFinish,
-  "nullFieldPatternSync" -> MakeSensitiveDerefFieldCausedSync,
-  "nullCallinPattern" -> MakeSensitiveDerefCallinCaused,
+    "solverServer" -> SolverServer,
+    "verify" -> Verify,
+    "info" -> Info,
+    "sampleDeref" -> SampleDeref,
+    "readDB" -> ReadDB,
+    "expLoop" -> ExpLoop,
+    "makeAllDeref" -> MakeAllDeref,
+    "findCallinsPattern" -> FindCallins,
+    "nullFieldPatternFinish" -> MakeSensitiveDerefFieldCausedFinish,
+    "nullFieldPatternSync" -> MakeSensitiveDerefFieldCausedSync,
+    "nullCallinPattern" -> MakeSensitiveDerefCallinCaused,
     "exportPossibleMessages" -> ExportPossibleMessages
   )
   lazy val modeToString: Map[RunMode,String] = stringToMode.map{case (k,v) => v->k}
@@ -293,9 +295,19 @@ object Driver {
     implicit var rw: RW[LocResult] = macroRW
   }
 
+  def loopSolver():Unit = {
+//    val solver = new Z3StateSolver()
+//    while(true){
+
+//    }
+    ???
+  }
   def runAction(act: Action): Unit = {
     println(s"java.library.path set to: ${System.getProperty("java.library.path")}")
     act match {
+      case act@Action(SolverServer, _,_,_,_,_, _, _) =>
+        //TODO:===== you were here implementing stdio solver
+          loopSolver()
       case act@Action(Verify, _, _, cfgIn, filter, _, mode,dbg) =>
         val cfgWithTime = if(dbg){cfgIn.copy(timeLimit = 14400*2, truncateOut = false)} else cfgIn
         val cfg = if(filter.isDefined) cfgWithTime.copy(componentFilter = Some(filter.get.split(':'))) else cfgWithTime

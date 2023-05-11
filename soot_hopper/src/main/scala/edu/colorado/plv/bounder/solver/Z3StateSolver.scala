@@ -156,13 +156,13 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
       }
     }
     isolver = ictx.mkSolver
-//    val solver = ctx.mkSimpleSolver()
+    //    val solver = ctx.mkSimpleSolver()
     val params = ictx.mkParams()
     params.add("timeout", timeout)
     params.add("logic", "AUFLIA")
     //params.add("model.compact", true)
     // Global.setParameter("parallel.enable", "true") // note: parallel z3 does not seem to speed things up
-    Global.setParameter("memory_max_size", "5000") //todo: is there a way to set mem usage per query?
+    //    Global.setParameter("memory_max_size", "5000") //todo: is there a way to set mem usage per query?
     newRandomSeed.foreach { rs =>
       params.add("random-seed", rs + randomSeed)
     }

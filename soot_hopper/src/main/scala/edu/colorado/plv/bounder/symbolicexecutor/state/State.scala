@@ -259,7 +259,7 @@ case class StateFormula(callStack: List[CallStackFrame], //TODO: cache z3 ast co
   }
 }
 object StateFormula{
-  implicit var rw:RW[StateFormula] = macroRW
+  implicit val rw:RW[StateFormula] = macroRW
   def initialState:StateFormula = StateFormula(Nil, Map.empty, Set(), Map.empty, AbstractTrace(Nil))
 }
 

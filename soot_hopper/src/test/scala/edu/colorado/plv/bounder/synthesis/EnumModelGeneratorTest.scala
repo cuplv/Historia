@@ -538,7 +538,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         val config = ExecutorConfig(
           stepLimit = 2000, w, specSpace,
           component = Some(List("com.example.createdestroy.*RemoverActivity.*")),
-          outputMode = dbMode, timeLimit = 30)
+          outputMode = dbMode, timeLimit = 30, z3InstanceLimit = 3)
 
 //        val line = BounderUtil.lineForRegex(".*query1.*".r, row2Src)
 //
@@ -559,7 +559,8 @@ class EnumModelGeneratorTest extends AnyFunSuite {
           "void onClick(android.view.View)",
           SAsyncTask.disallowDoubleExecute)
 
-        val gen = new EnumModelGenerator(query, Set(nullReach), specSpace, config)
+        val gen = new EnumModelGenerator(query, Set(nullReach, buttonEqReach, onResumeFirstReach,
+          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ), specSpace, config)
         val res = gen.run()
         res match {
           case LearnSuccess(space) =>
