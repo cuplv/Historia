@@ -251,13 +251,12 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       val relNS = relMsg.flatMap{m =>
         absMsgToNs(m,scope).map(ns =>
           (ns:LSPred, ns.lsVar.filter(v => !scope.contains(v))))
+      }.filter{
+        case (NS(m1,m2), _) =>
+          val m1Var = m1.lsVar
+          m1Var.exists(v => scope.contains(v)) &&
+            m2.lsVar.forall(v => m1Var.contains(v))
       }
-//        .filter{
-//        case (NS(m1,m2), _) =>
-//          val m1Var = m1.lsVar
-//          m1Var.exists(v => scope.contains(v)) &&
-//            m2.lsVar.forall(v => m1Var.contains(v))
-//      }
 
 
       val relMsgToAdd = relMsg.map{m => (m.asInstanceOf[LSPred], m.lsVar.filter(!scope.contains(_)))}

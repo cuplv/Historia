@@ -8,11 +8,11 @@ import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, LSAnyPred, LSS
 import edu.colorado.plv.bounder.lifestate.SAsyncTask.executeI
 import edu.colorado.plv.bounder.lifestate.SpecSignatures.{Activity_onPause_entry, Activity_onPause_exit, Activity_onResume_entry, Button_init}
 import edu.colorado.plv.bounder.lifestate.ViewSpec.{buttonEnabled, onClickI, setEnabled, setOnClickListenerI, setOnClickListenerINull}
-import edu.colorado.plv.bounder.lifestate.{LSPredAnyOrder, LifecycleSpec, SAsyncTask, SpecSignatures, SpecSpace, ViewSpec}
+import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LSPredAnyOrder, LifecycleSpec, SAsyncTask, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.Z3StateSolver
 import edu.colorado.plv.bounder.symbolicexecutor.{ExecutorConfig, QueryFinished}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CallinReturnNonNull, DisallowedCallin, MemoryOutputMode, NamedPureVar, NullVal, PrettyPrinting, Reachable, ReceiverNonNull, TopVal}
-import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{buttonEqReach, nullReach, onResumeFirstReach, resumeFirstQ, resumeReachAfterPauseQ, resumeTwiceReachQ, row1, row1BugReach, row2, row4, srcReach, srcReachFrag}
+import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{buttonEqReach, nullReach, onResumeFirstReach, resumeFirstQ, resumeReachAfterPauseQ, resumeTwiceReachQ, row1, row1ActCreatedFirst, row1BugReach, row2, row4, srcReach, srcReachFrag}
 import edu.colorado.plv.bounder.synthesis.SynthTestUtil.{cha, targetIze, toConcGraph, witTreeFromMsgList}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
@@ -192,6 +192,7 @@ object EnumModelGeneratorTest{
        |
        |public class PlayerFragmentReach extends Fragment {
        |    Subscription sub;
+       |    Object createOrDestroyHappened=null;
        |    //Callback with irrelevant subscribe
        |    @Override
        |    public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -205,6 +206,10 @@ object EnumModelGeneratorTest{
        |
        |    @Override
        |    public void onActivityCreated(Bundle savedInstanceState){
+       |        if(createOrDestroyHappened == null){
+       |            "".toString(); //queryActCreatedFirst
+       |        }
+       |        createOrDestroyHappened = new Object();
        |        super.onActivityCreated(savedInstanceState);
        |        sub = Single.create(subscriber -> {
        |            subscriber.onSuccess(3);
@@ -221,12 +226,16 @@ object EnumModelGeneratorTest{
        |
        |    @Override
        |    public void onDestroy(){
+       |        createOrDestroyHappened = new Object();
        |    }
        |}
        |""".stripMargin
 
 
 
+  val row1ActCreatedFirst_line = BounderUtil.lineForRegex(".*queryActCreatedFirst.*".r, srcReachFrag)
+  val row1ActCreatedFirst = Reachable(Signature("com.example.createdestroy.PlayerFragmentReach",
+    "void onActivityCreated(android.os.Bundle)"), row1ActCreatedFirst_line)
 
   val row1BugReach_line = BounderUtil.lineForRegex(".*queryReachFrag.*".r, srcReachFrag)
   val row1BugReach = CallinReturnNonNull(
@@ -425,13 +434,11 @@ class EnumModelGeneratorTest extends AnyFunSuite {
     //Or(NS(SpecSignatures.Activity_onPause_exit, SpecSignatures.Activity_onResume_entry),
     //          Not(SpecSignatures.Activity_onResume_entry))
     val startingSpec = Set[LSSpec](
-      LSSpec(l::Nil, s::Nil, LSAnyPred, SpecSignatures.RxJava_call_entry),
+      LSSpec(l::Nil, Nil, LSAnyPred, SpecSignatures.RxJava_call_entry),
       LSSpec(f :: Nil, Nil,
         LSAnyPred,
         SpecSignatures.Fragment_onActivityCreated_entry),
-      LSSpec(f :: Nil, Nil,
-        LSAnyPred, SpecSignatures.Fragment_get_activity_exit.copy(lsVars = NullVal::f::Nil),
-        Set.empty)
+      FragmentGetActivityNullSpec.getActivityNull
     )
 
     val test: String => Unit = apk => {
@@ -446,7 +453,6 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         val iSet = Set(
           SpecSignatures.Fragment_onDestroy_exit,
           SpecSignatures.Fragment_onActivityCreated_entry,
-          SpecSignatures.Fragment_get_activity_exit,
           SpecSignatures.RxJava_call_entry,
           SpecSignatures.RxJava_unsubscribe_exit,
           SpecSignatures.RxJava_subscribe_exit,
@@ -474,7 +480,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         //Set
 
         val gen = new EnumModelGenerator(query, Set(nullReach, buttonEqReach, onResumeFirstReach,
-          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ), specSpace, config)
+          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ, row1ActCreatedFirst), specSpace, config)
         val res = gen.run()
         res match {
           case LearnSuccess(space) =>
