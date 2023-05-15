@@ -10,15 +10,32 @@ import edu.colorado.plv.bounder.lifestate.SpecSignatures.{Activity_onPause_entry
 import edu.colorado.plv.bounder.lifestate.ViewSpec.{buttonEnabled, onClickI, setEnabled, setOnClickListenerI, setOnClickListenerINull}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LSPredAnyOrder, LifecycleSpec, SAsyncTask, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.Z3StateSolver
-import edu.colorado.plv.bounder.symbolicexecutor.{ExecutorConfig, QueryFinished}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CallinReturnNonNull, DisallowedCallin, MemoryOutputMode, NamedPureVar, NullVal, PrettyPrinting, Reachable, ReceiverNonNull, TopVal}
-import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{buttonEqReach, nullReach, onResumeFirstReach, resumeFirstQ, resumeReachAfterPauseQ, resumeTwiceReachQ, row1, row1ActCreatedFirst, row1BugReach, row2, row4, srcReach, srcReachFrag}
+import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.row1Specs
+import edu.colorado.plv.bounder.symbolicexecutor.{ExecutorConfig, LimitMaterializationApproxMode, PreciseApproxMode, QueryFinished}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CallinReturnNonNull, DisallowedCallin, InitialQuery, MemoryOutputMode, NamedPureVar, NullVal, PrettyPrinting, Reachable, ReceiverNonNull, TopVal}
+import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{buttonEqReach, nullReach, onResumeFirstReach, queryOnActivityCreatedBeforeCall, queryOnClickAfterOnCreate, resumeFirstQ, resumeReachAfterPauseQ, resumeTwiceReachQ, row1, row1ActCreatedFirst, row1BugReach, row2, row4, srcReach, srcReachFrag}
 import edu.colorado.plv.bounder.synthesis.SynthTestUtil.{cha, targetIze, toConcGraph, witTreeFromMsgList}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.funsuite.AnyFunSuite
 
 object EnumModelGeneratorTest{
+  /*
+  Need to be careful about the contribution we claim.
+  If we say this cuts down the search space, synthetic apps undercuts the argument that this works.
+  First priority is still micro benchmarks
+  Target: one "real" benchmark - just do as much "hacky" get it to work stuff as possible
+
+  We set up a new problem where you only specify reachable and unreachable locations.
+  We only want to synthesize the specs required for some given assertion.
+  We develop a technique for this.
+
+  Key technical idea: track the data dependency. = we should formalize this.
+
+  High level idea: we can synthesize specs for reachable and unreachable.
+  In comparison to related work: not just frequency patterns driving this, its the behavior of the analysis on the code.
+  Can we synthesize something that is sound with respect to input.
+   */
   val row1 = (destroyLine: String) =>
     s"""
        |package com.example.createdestroy;
@@ -146,7 +163,7 @@ object EnumModelGeneratorTest{
        |
        |public class MyActivity extends Activity {
        |    String s = null;
-       |    View v = null;
+       |    View v = null; //TODO: move new button here and say similar to findview
        |    @Override
        |    protected void onResume(){
        |        s = "";
@@ -193,6 +210,7 @@ object EnumModelGeneratorTest{
        |public class PlayerFragmentReach extends Fragment {
        |    Subscription sub;
        |    Object createOrDestroyHappened=null;
+       |    Object onActivityCreatedHappened=null;
        |    //Callback with irrelevant subscribe
        |    @Override
        |    public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -206,6 +224,7 @@ object EnumModelGeneratorTest{
        |
        |    @Override
        |    public void onActivityCreated(Bundle savedInstanceState){
+       |        onActivityCreatedHappened=new Object();
        |        if(createOrDestroyHappened == null){
        |            "".toString(); //queryActCreatedFirst
        |        }
@@ -218,6 +237,9 @@ object EnumModelGeneratorTest{
        |        .subscribe(new Action1<Object>(){
        |            @Override
        |            public void call(Object o){
+       |              if(onActivityCreatedHappened!=null){
+       |                "".toString(); //queryOnActivityCreatedBeforeCall
+       |              }
        |              Activity act = getActivity(); //queryReachFrag : act != null
        |              act.toString();
        |            }
@@ -232,6 +254,10 @@ object EnumModelGeneratorTest{
        |""".stripMargin
 
 
+
+  val queryOnActivityCreatedBeforeCall_line = BounderUtil.lineForRegex(".*queryOnActivityCreatedBeforeCall.*".r, srcReachFrag)
+  val queryOnActivityCreatedBeforeCall = Reachable(Signature("com.example.createdestroy.PlayerFragmentReach$1",
+    "void call(java.lang.Object)"),queryOnActivityCreatedBeforeCall_line)
 
   val row1ActCreatedFirst_line = BounderUtil.lineForRegex(".*queryActCreatedFirst.*".r, srcReachFrag)
   val row1ActCreatedFirst = Reachable(Signature("com.example.createdestroy.PlayerFragmentReach",
@@ -259,8 +285,10 @@ object EnumModelGeneratorTest{
        |    Object createResumedHappened = null;
        |    Object pausedHappened = null;
        |    Object resumeHappened = null;
+       |    Object onCreateHappened = null;
        |    @Override
        |    protected void onCreate(Bundle b){
+       |        onCreateHappened = new Object();
        |        button = new Button(this);
        |        button.setOnClickListener(this);
        |
@@ -284,6 +312,9 @@ object EnumModelGeneratorTest{
        |    }
        |    @Override
        |    public void onClick(View v){
+       |      if(onCreateHappened != null){
+       |        "".toString(); // queryOnClickAfterOnCreate
+       |      }
        |      s.toString(); // query2 reachable
        |      OtherActivity.this.finish();
        |      if(v == button){
@@ -303,6 +334,9 @@ object EnumModelGeneratorTest{
     "void onClick(android.view.View)")
   val line_reach = BounderUtil.lineForRegex(".*query2.*".r, srcReach)
   val nullReach = ReceiverNonNull(onClickReach, line_reach, Some(".*toString.*"))
+
+  val queryOnClickAfterOnCreate_line = BounderUtil.lineForRegex(".*queryOnClickAfterOnCreate.*".r, srcReach)
+  val queryOnClickAfterOnCreate = Reachable(onClickReach, queryOnClickAfterOnCreate_line)
 
   val button_eq_reach = BounderUtil.lineForRegex(".*query3.*".r, srcReach)
   val buttonEqReach = Reachable(onClickReach, button_eq_reach)
@@ -475,12 +509,36 @@ class EnumModelGeneratorTest extends AnyFunSuite {
             "void call(java.lang.Object)"), line,
           ".*getActivity.*")
 
+        val queryLocReach = Reachable(query.sig, query.line)
 
-        //TODO:==== add reachable back in one at a time
-        //Set
 
-        val gen = new EnumModelGenerator(query, Set(nullReach, buttonEqReach, onResumeFirstReach,
-          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ, row1ActCreatedFirst), specSpace, config)
+        val reachLoc = Set[InitialQuery](queryLocReach, nullReach, buttonEqReach, onResumeFirstReach,
+          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ, row1ActCreatedFirst, queryOnActivityCreatedBeforeCall)
+
+        //Note: these seem to work, uncomment if you suspect issues again
+//        //TODO: test that each of these behaves itself for normal verif
+
+//        // reference test reachable locations
+//        reachLoc.forall{l =>
+//          val aa = config.copy(approxMode = PreciseApproxMode(canWeaken = false), specSpace = new SpecSpace(row1Specs, matcherSpace = iSet)).getAbstractInterpreter
+//          val res = aa.run(l).flatMap(_.terminals)
+//          val interpRes = BounderUtil.interpretResult(res, QueryFinished)
+//          assert(interpRes == Witnessed)
+//          interpRes == Witnessed
+//        }
+//        //check that target location can be proven.
+
+//        {
+//          val aa = config.copy(approxMode = LimitMaterializationApproxMode(2), specSpace = new SpecSpace(row1Specs, matcherSpace = iSet)).getAbstractInterpreter
+//          val res = aa.run(query).flatMap(_.terminals)
+//          val interpRes = BounderUtil.interpretResult(res)
+//          assert(interpRes == Proven)
+//        }
+
+        //TODO:
+
+
+        val gen = new EnumModelGenerator(query, reachLoc, specSpace, config)
         val res = gen.run()
         res match {
           case LearnSuccess(space) =>
@@ -638,7 +696,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
 
 
         val gen = new EnumModelGenerator(nullUnreach,Set(nullReach, buttonEqReach, onResumeFirstReach,
-          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ), specSpace, config)
+          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ, queryOnClickAfterOnCreate ), specSpace, config)
         val res = gen.run()
         res match {
           case LearnSuccess(space) =>

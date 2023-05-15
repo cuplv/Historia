@@ -805,25 +805,30 @@ object LifeState {
       OAbsMsg(mt, signatures, lsVars)
   }
 
-//  case object AnyAbsMsg extends AbsMsg {
-//    override def mt: MessageType = ???
-//
-//    override def signatures: SignatureMatcher = ???
-//
-//    override def lsVars: List[PureExpr] = ???
-//
-//    override def swap(swapMap: Map[PureVar, PureVar]): AbsMsg = ???
-//
-//    override def mToTex: String = ???
-//
-//    override def identitySignature: String = ???
-//
-//    override def toTex: String = ???
-//
-//    override def contains(mt: MessageType, sig: Signature)(implicit ch: ClassHierarchyConstraints): Boolean = ???
-//
-//    override def lsVar: Set[PureVar] = ???
-//  }
+  case object AnyAbsMsg extends AbsMsg {
+    override def mt: MessageType = ???
+
+    override def signatures: SignatureMatcher = ???
+
+    override def lsVars: List[PureExpr] = ???
+
+
+    override def mToTex: String = ???
+
+    override def identitySignature: String = ???
+
+    override def toTex: String = ???
+
+    override def contains(mt: MessageType, sig: Signature)(implicit ch: ClassHierarchyConstraints): Boolean = ???
+
+    override def lsVar: Set[PureVar] = ???
+
+    override def swap(swapMap: Map[PureVar, PureExpr]): AbsMsg = ???
+
+    override def allMsg: Set[OAbsMsg] = ???
+
+    override def lsVal: Set[PureVal] = ???
+  }
 
 
   case class OAbsMsg(mt: MessageType, signatures: SignatureMatcher, lsVars : List[PureExpr]) extends AbsMsg {

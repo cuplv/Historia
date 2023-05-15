@@ -104,10 +104,6 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     }
   }
 
-  def isProgress(from:SpecSpace, to:SpecSpace): Boolean ={
-    val specs: Set[(LSSpec, LSSpec)] = from.zip(to)
-    specs.forall{ pair => isProgress(pair._1.pred, pair._2.pred) }
-  }
 
 
   val simpleTestSet = mutable.HashSet[String]()
@@ -167,12 +163,15 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
 
   def mkRel(scope:Map[PureVar,TypeSet]):Set[OAbsMsg] = {
     val scope2  = scope.map{case (k,v) => k.asInstanceOf[PureExpr]-> v}
-    val scopeVals: Map[PureExpr,TypeSet] = scope2 + (TopVal -> TopTypeSet)
+    val scopeVals: Map[PureExpr,TypeSet] = scope2 + (TopVal -> TopTypeSet) // TODO:
     ptsMsg.flatMap{ case (msgFromCg, argPts) =>
       // find all possible aliasing intersection between points to set from call graphs
       val positionalOptions: Seq[List[PureExpr]] = msgFromCg.lsVars.zip(argPts).map{
         case (pv:PureVar, ts) =>
-          scope.filter{case (_, ts2) => ts.intersectNonEmpty(ts2)}
+          val out = scopeVals.filter{
+            case (_, ts2) => ts.intersectNonEmpty(ts2)
+          }
+          out //TODO: added topVal as positional option, make sure this doesn't break anythign?
         case (v, _) => Map(v -> TopTypeSet)
       }.map{_.keys.toList}
 
@@ -349,7 +348,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
    */
   def stepSpec(rule:LSSpec, scope:Map[PureVar,TypeSet]):(List[LSSpec],Boolean) = rule match{
     case s@LSSpec(_,_,pred,_,_) =>
-      step(pred,scope) match {
+      val stepped = step(pred,scope) match {
         case StepSuccessP(preds) =>
           val simpPreds = preds.map { case (p, quant) =>
             EncodingTools.simplifyPred(mkQuant((quant -- rule.target.lsVar), p))}
@@ -358,6 +357,8 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
           (filteredConnected,true)
         case NoStep => (List(s),false)
       }
+      //TODO: this isn't enough for the call call problem, seems to be a problem with reachable
+      (stepped._1.filter(v => v.pred != v.target), stepped._2) // Note that `x.foo() -[]-> O x.foo()` spec is nonsense
   }
 
   /**
@@ -487,7 +488,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
         val someAlarm:Set[IPathNode] = overApproxAlarm.filter(pn => pn.qry.isWitnessed)
         if (!someAlarm.isEmpty) {
           val nextSpecs = step(cSpec, someAlarm)
-          //println(s"next specs\n===========\n${nextSpecs._1.mkString("\n---\n")}")
+//          println(s"next specs\n===========\n${nextSpecs._1.mkString("\n---\n")}")
           val filtered = nextSpecs._1.filter { spec => !hasExplored(spec) }
           queue.addAll(filtered)
         }
