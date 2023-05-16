@@ -542,7 +542,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         val res = gen.run()
         res match {
           case LearnSuccess(space) =>
-            println("final specification")
+            println("final specification Row 1")
             println("-------------------")
             val spaceStr = space.toString
             println(spaceStr)
@@ -628,7 +628,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         val res = gen.run()
         res match {
           case LearnSuccess(space) =>
-            println("final specification")
+            println("final specification Row 2")
             println("-------------------")
             val spaceStr = space.toString
             println(spaceStr)
@@ -700,7 +700,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         val res = gen.run()
         res match {
           case LearnSuccess(space) =>
-            println("final specification")
+            println("final specification Row 4")
             println("-------------------")
             val spaceStr = space.toString
             println(spaceStr)

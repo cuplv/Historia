@@ -1137,6 +1137,7 @@ object LSPredAnyOrder{
     pred1.toString.compareTo(pred2.toString) // ensure deterministic order, probably don't care what order it is.
 
   def depthToAny(p:LSPred):Int = p match {
+    case NS(_, AnyAbsMsg) => 0
     case LSAnyPred => 0
     case Or(p1, p2) => Math.min(depthToAny(p1), depthToAny(p2))
     case And(p1, p2) => Math.min(depthToAny(p1), depthToAny(p2))
