@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.lifestate
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType}
 import edu.colorado.plv.bounder.lifestate.LSPredAnyOrder.{countAny, predDepth, rankPred, rankSpecSpace}
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, CLInit, Exists, Forall, FreshRef, HNOE, LSAnyPred, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, Signature}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, AnyAbsMsg, CLInit, Exists, Forall, FreshRef, HNOE, LSAnyPred, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, Signature}
 import edu.colorado.plv.bounder.solver.EncodingTools.Assign
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, BotVal, ClassVal, CmpOp, ConcreteVal, Equals, IntVal, NamedPureVar, NotEquals, NullVal, PureExpr, PureVal, PureVar, State, TopVal, TypeComp}
@@ -810,22 +810,22 @@ object LifeState {
 
     override def signatures: SignatureMatcher = ???
 
-    override def lsVars: List[PureExpr] = ???
+    override def lsVars: List[PureExpr] = Nil
 
 
     override def mToTex: String = ???
 
-    override def identitySignature: String = ???
+    override def identitySignature: String = "AnyAbsMsg_______"
 
     override def toTex: String = ???
 
     override def contains(mt: MessageType, sig: Signature)(implicit ch: ClassHierarchyConstraints): Boolean = ???
 
-    override def lsVar: Set[PureVar] = ???
+    override def lsVar: Set[PureVar] = Set.empty
 
-    override def swap(swapMap: Map[PureVar, PureExpr]): AbsMsg = ???
+    override def swap(swapMap: Map[PureVar, PureExpr]): AbsMsg = this
 
-    override def allMsg: Set[OAbsMsg] = ???
+    override def allMsg: Set[OAbsMsg] = Set.empty
 
     override def lsVal: Set[PureVal] = ???
   }
@@ -1170,6 +1170,7 @@ object LSPredAnyOrder{
   }
   def predAnyCount(p:LSPred):Int = p match {
     case LSAnyPred => 1
+    case NS(_,AnyAbsMsg) => 1
     case Or(p1, p2) => predAnyCount(p1) + predAnyCount(p2)
     case And(p1, p2) => predAnyCount(p1) + predAnyCount(p2)
     case Not(p: OAbsMsg) => 0
@@ -1180,6 +1181,8 @@ object LSPredAnyOrder{
 
   def hasAny(p: LSPred): Boolean = p match {
     case LSAnyPred => true
+    case NS(_,AnyAbsMsg) => true
+
     case Or(p1, p2) => hasAny(p1) || hasAny(p2)
     case And(p1, p2) => hasAny(p1) || hasAny(p2)
     case Not(p: OAbsMsg) => hasAny(p)

@@ -696,7 +696,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
 
 
         val gen = new EnumModelGenerator(nullUnreach,Set(nullReach, buttonEqReach, onResumeFirstReach,
-          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ, queryOnClickAfterOnCreate ), specSpace, config)
+          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ , queryOnClickAfterOnCreate), specSpace, config) //
         val res = gen.run()
         res match {
           case LearnSuccess(space) =>

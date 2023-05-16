@@ -3,7 +3,7 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{Proven, ResultSummary, Witnessed}
 import edu.colorado.plv.bounder.ir.{ApproxDir, CNode, ConcGraph, EmptyTypeSet, Exact, OverApprox, TMessage, TopTypeSet, TypeSet, UnderApprox}
 import edu.colorado.plv.bounder.lifestate.LSPredAnyOrder.SpecSpaceAnyOrder
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Forall, LSAnyPred, LSAtom, LSBinOp, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, LSUnOp, NS, Not, OAbsMsg, Or}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, AnyAbsMsg, Exists, Forall, LSAnyPred, LSAtom, LSBinOp, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, LSUnOp, NS, Not, OAbsMsg, Or}
 import edu.colorado.plv.bounder.lifestate.{LSPredAnyOrder, LifeState, SpecAssignment, SpecSpace}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.{ApproxMode, ControlFlowResolver, DefaultAppCodeResolver, ExecutorConfig, LimitMaterializationApproxMode, PreciseApproxMode, QueryFinished}
@@ -25,6 +25,8 @@ case object LearnFailure extends LearnResult
 
 object EnumModelGenerator{
   def isTerminal(pred:LSPred):Boolean = pred match {
+    case NS(_,AnyAbsMsg) => false
+    case NS(AnyAbsMsg, _) => ???
     case LifeState.LSAnyPred => false
     case Or(l1, l2) => isTerminal(l1) && isTerminal(l2)
     case And(l1, l2) => isTerminal(l1) && isTerminal(l2)
@@ -35,8 +37,6 @@ object EnumModelGenerator{
     case Exists(_, p) => isTerminal(p)
     case _:LSImplies =>
       throw new IllegalArgumentException("Shouldn't be using implies in synthesis")
-//    case NS(AnyAbsMsg, _) => false
-//    case NS(_,AnyAbsMsg) => false
     case _:NS => true
     case _:OAbsMsg => true
 //    case AnyAbsMsg => false
@@ -247,14 +247,17 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     case LifeState.LSAnyPred =>{
       val relMsg: immutable.Iterable[OAbsMsg] = mkRel(scope)//scope.flatMap{case(pv,ts) => mkRel(pv,ts, scope.keySet)}
 
-      val relNS = relMsg.flatMap{m =>
-        absMsgToNs(m,scope).map(ns =>
-          (ns:LSPred, ns.lsVar.filter(v => !scope.contains(v))))
-      }.filter{
-        case (NS(m1,m2), _) =>
-          val m1Var = m1.lsVar
-          m1Var.exists(v => scope.contains(v)) &&
-            m2.lsVar.forall(v => m1Var.contains(v))
+//      val relNS = relMsg.flatMap{m =>
+//        absMsgToNs(m,scope).map(ns =>
+//          (ns:LSPred, ns.lsVar.filter(v => !scope.contains(v))))
+//      }.filter{
+//        case (NS(m1,m2), _) =>
+//          val m1Var = m1.lsVar
+//          m1Var.exists(v => scope.contains(v)) &&
+//            m2.lsVar.forall(v => m1Var.contains(v))
+//      }
+      val relNS = relMsg.map{m =>
+        (NS(m, AnyAbsMsg), m.lsVar)
       }
 
 
@@ -274,8 +277,18 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       }
       StepSuccessP(mutList.toList)
     }
-//    case AnyAbsMsg =>
-//      StepSuccessM(???) //TODO: remove AnyAbsMsg or change prev case
+    case NS(m, AnyAbsMsg) =>
+      val relMsg: immutable.Iterable[OAbsMsg] = mkRel(scope)
+      val stepNS = relMsg.map(m2 => NS(m,m2))
+      val out = stepNS.filter {
+          case NS(m1,m2) =>
+            val m1Var = m1.lsVar
+            m1Var.exists(v => scope.contains(v)) &&
+              m2.lsVar.forall(v => m1Var.contains(v))
+      }.map{
+        case ns@NS(_,m2) => (ns, scope.keySet ++ m2.lsVar)
+      }
+      StepSuccessP(out.toList)
     case Or(l1, l2) =>
       stepBinop(l1,l2,Or, scope, hasAnd)
     case And(l1, l2) =>
@@ -399,6 +412,8 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
         ???
     }
     lsPred match {
+      case NS(m, AnyAbsMsg) if approxDir == OverApprox => m
+      case NS(m, AnyAbsMsg) if approxDir != OverApprox => LSFalse
       case LSAnyPred => replaceAnyWith
       case Or(l1,l2) => Or(approxPred(l1,approxDir), approxPred(l2,approxDir))
       case And(l1,l2) => And(approxPred(l1,approxDir), approxPred(l2,approxDir))
