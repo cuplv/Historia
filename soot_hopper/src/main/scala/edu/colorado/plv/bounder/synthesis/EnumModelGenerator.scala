@@ -191,7 +191,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
         case (aliasedVar, aliasedIndex) =>
           //TODO: this should do enumeration of all non alias
           val positionalOptions: Seq[List[PureExpr]] = msgFromCg.lsVars.zip(argPts).zipWithIndex.map {
-            case ((pv:PureVar, _), ind) if aliasedIndex == ind => List(pv)
+            case ((pv:PureVar, _), ind) if aliasedIndex == ind => List(aliasedVar)
             case ((pv: PureVar, ts), _) =>
               val out = scopeVals
               //  .filter {
