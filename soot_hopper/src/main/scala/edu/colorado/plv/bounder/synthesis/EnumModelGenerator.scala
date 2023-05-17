@@ -186,36 +186,46 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
           }
         case (v, _) => None
       }
-      // apply aliasing to each possible aliased arg
-      val outOpts = intersectNonEmpty.flatMap{
-        case (aliasedVar, aliasedIndex) =>
-          //TODO: this should do enumeration of all non alias
-          val positionalOptions: Seq[List[PureExpr]] = msgFromCg.lsVars.zip(argPts).zipWithIndex.map {
-            case ((pv:PureVar, _), ind) if aliasedIndex == ind => List(aliasedVar)
-            case ((pv: PureVar, ts), _) =>
-              val out = scopeVals
-              //  .filter {
-              //  case (_, ts2) =>
-              //    ts.intersectNonEmpty(ts2)
-              //}
-              out.keys.toList //TODO: added topVal as positional option, make sure this doesn't break anythign?
-            case ((v, _), ind) => List(v)
-          }
-
-          val combinations = BounderUtil.repeatingPerm(positionalOptions, msgFromCg.lsVars.size)
-          // filter for things that don't have one part of scope
-          val reasonableCombinations = combinations.filter { comb =>
-            comb.exists {
-              case pureVar: PureVar => scope.contains(pureVar)
-              case _ => false
+      if(intersectNonEmpty.exists{
+        case (_:PureVar, _) => true // exists to ignore Top value
+        case _ => false
+      }) { // case some pv aliases
+        // apply aliasing to each possible aliased arg
+        val outOpts = intersectNonEmpty.flatMap {
+          case (aliasedVar, aliasedIndex) =>
+            //TODO: this should do enumeration of all non alias
+            val positionalOptions: Seq[List[PureExpr]] = msgFromCg.lsVars.zip(argPts).zipWithIndex.map {
+              case ((pv: PureVar, _), ind) if aliasedIndex == ind =>
+                List(aliasedVar)
+              case ((pv: PureVar, ts), ind) if aliasedIndex != ind =>
+                val out = scopeVals
+                //  .filter {
+                //  case (_, ts2) =>
+                //    ts.intersectNonEmpty(ts2)
+                //}
+                out.keys.toList //TODO: added topVal as positional option, make sure this doesn't break anythign?
+              case ((v, _), ind) if aliasedIndex != ind => List(v)
+              case ((_, _), ind) if aliasedIndex == ind =>
+                List()
             }
-          }
 
-          // TODO: substitute and return abstract messages
-          val out = reasonableCombinations.map { comb => msgFromCg.copy(lsVars = comb) }
-          out
+            val combinations = BounderUtil.repeatingPerm(positionalOptions, msgFromCg.lsVars.size)
+            // filter for things that don't have one part of scope
+            val reasonableCombinations = combinations.filter { comb =>
+              comb.exists {
+                case pureVar: PureVar => scope.contains(pureVar)
+                case _ => false
+              }
+            }
+
+            // TODO: substitute and return abstract messages
+            val out = reasonableCombinations.map { comb => msgFromCg.copy(lsVars = comb) }
+            out
+        }
+        outOpts
+      }else{ // case no single pv aliases
+        Set.empty
       }
-      outOpts
     }
   }
 //  def mkRel(pv:PureVar, ts:TypeSet, avoid:Set[PureVar]):Set[OAbsMsg] = {
