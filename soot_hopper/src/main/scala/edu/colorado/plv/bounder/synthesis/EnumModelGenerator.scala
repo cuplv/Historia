@@ -163,60 +163,91 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
 
   def mkRel(scope:Map[PureVar,TypeSet]):Set[OAbsMsg] = {
     val scope2  = scope.map{case (k,v) => k.asInstanceOf[PureExpr]-> v}
-    val scopeVals: Map[PureExpr,TypeSet] = scope2 + (TopVal -> TopTypeSet) // TODO:
+    val scopeVals: Map[PureExpr,TypeSet] = scope2 + (TopVal -> TopTypeSet)
     ptsMsg.flatMap{ case (msgFromCg, argPts) =>
       // find all possible aliasing intersection between points to set from call graphs
-      val positionalOptions: Seq[List[PureExpr]] = msgFromCg.lsVars.zip(argPts).map{
-        case (pv:PureVar, ts) =>
-          val out = scopeVals.filter{
-            case (_, ts2) => ts.intersectNonEmpty(ts2)
+      //TODO:==== dbg code clean up later
+//      if(msgFromCg.identitySignature == "I_CIExit_RxJavasubscribe") {
+//        println()
+//      }
+
+      //TODO:=== dbg code
+
+      // TODO: positional options should consider each case where at least one alias exists then enumerate other positional options
+      val zipped = msgFromCg.lsVars.zip(argPts).zipWithIndex
+      val intersectNonEmpty = zipped.flatMap {
+        case ((pv: PureVar, tsFromCg), ind) =>
+          scopeVals.flatMap {
+            case (varName, ts2) =>
+              if(tsFromCg.intersectNonEmpty(ts2)){
+                Some(varName, ind)
+              }else
+                None
           }
-          out //TODO: added topVal as positional option, make sure this doesn't break anythign?
-        case (v, _) => Map(v -> TopTypeSet)
-      }.map{_.keys.toList}
-
-      val combinations = BounderUtil.repeatingPerm(positionalOptions, msgFromCg.lsVars.size)
-      // filter for things that don't have one part of scope
-      val reasonableCombinations = combinations.filter{comb => comb.exists{
-        case pureVar: PureVar => scope.contains(pureVar)
-        case _ => false
-      }}
-
-      // TODO: substitute and return abstract messages
-      val out = reasonableCombinations.map{comb => msgFromCg.copy(lsVars = comb)}
-      out
-    }
-  }
-  def mkRel(pv:PureVar, ts:TypeSet, avoid:Set[PureVar]):Set[OAbsMsg] = {
-    ptsMsg.flatMap{
-      case (msg,argPoints) =>
-        val argSwaps = argPoints.map{ // preserve index of None locations
-          case argPt if argPt.intersectNonEmpty(ts) => Some(pv)
-          case _ => None
-        }
-        argSwaps.zipWithIndex.flatMap{
-          case (Some(v), ind) => Some(msg.cloneWithVar(v,ind,avoid))
-          case _ => None
-        }.toSet
-    }
-  }
-  def absMsgToNs(m:OAbsMsg,scope:Map[PureVar,TypeSet]):Set[NS] ={
-    val res = m.lsVar.flatMap{
-      case v if scope.contains(v) => mkRel(v, scope(v), scope.keySet).flatMap{om =>
-        Set(NS(m, om)) ++ (if(om.lsVars.size > 2){
-          Set(NS(m,om.copyMsg(om.lsVars.zipWithIndex.map{
-            case (k,v) if v == 2 =>
-              NullVal
-            case (k,v) => k
-          })))
-        }else {
-          Set.empty
-        })
+        case (v, _) => None
       }
-      case _ => None
+      // apply aliasing to each possible aliased arg
+      val outOpts = intersectNonEmpty.flatMap{
+        case (aliasedVar, aliasedIndex) =>
+          //TODO: this should do enumeration of all non alias
+          val positionalOptions: Seq[List[PureExpr]] = msgFromCg.lsVars.zip(argPts).zipWithIndex.map {
+            case ((pv:PureVar, _), ind) if aliasedIndex == ind => List(pv)
+            case ((pv: PureVar, ts), _) =>
+              val out = scopeVals
+              //  .filter {
+              //  case (_, ts2) =>
+              //    ts.intersectNonEmpty(ts2)
+              //}
+              out.keys.toList //TODO: added topVal as positional option, make sure this doesn't break anythign?
+            case ((v, _), ind) => List(v)
+          }
+
+          val combinations = BounderUtil.repeatingPerm(positionalOptions, msgFromCg.lsVars.size)
+          // filter for things that don't have one part of scope
+          val reasonableCombinations = combinations.filter { comb =>
+            comb.exists {
+              case pureVar: PureVar => scope.contains(pureVar)
+              case _ => false
+            }
+          }
+
+          // TODO: substitute and return abstract messages
+          val out = reasonableCombinations.map { comb => msgFromCg.copy(lsVars = comb) }
+          out
+      }
+      outOpts
     }
-    res
   }
+//  def mkRel(pv:PureVar, ts:TypeSet, avoid:Set[PureVar]):Set[OAbsMsg] = {
+//    ptsMsg.flatMap{
+//      case (msg,argPoints) =>
+//        val argSwaps = argPoints.map{ // preserve index of None locations
+//          case argPt if argPt.intersectNonEmpty(ts) => Some(pv)
+//          case _ => None
+//        }
+//        argSwaps.zipWithIndex.flatMap{
+//          case (Some(v), ind) => Some(msg.cloneWithVar(v,ind,avoid))
+//          case _ => None
+//        }.toSet
+//    }
+//  }
+//  def absMsgToNs(m:OAbsMsg,scope:Map[PureVar,TypeSet]):Set[NS] ={
+//    val res = m.lsVar.flatMap{
+//      case v if scope.contains(v) => mkRel(v, scope(v), scope.keySet).flatMap{om =>
+//        Set(NS(m, om)) ++ (if(om.lsVars.size > 2){
+//          Set(NS(m,om.copyMsg(om.lsVars.zipWithIndex.map{
+//            case (k,v) if v == 2 =>
+//              NullVal
+//            case (k,v) => k
+//          })))
+//        }else {
+//          Set.empty
+//        })
+//      }
+//      case _ => None
+//    }
+//    res
+//  }
 
   def stepBinop(l1: LSPred, l2: LSPred, op:(LSPred,LSPred) => LSPred,
                 scope:Map[PureVar, TypeSet], hasAnd:Boolean): StepResult = {
@@ -241,7 +272,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
    * @param pred
    * @param scope
    * @param hasAnd
-   * @return
+   * @return stepped specification with new logic variables to be quantified
    */
   def step(pred:LSPred, scope:Map[PureVar,TypeSet], hasAnd:Boolean = false):StepResult = pred match{
     case LifeState.LSAnyPred =>{
@@ -361,7 +392,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
    */
   def stepSpec(rule:LSSpec, scope:Map[PureVar,TypeSet]):(List[LSSpec],Boolean) = rule match{
     case s@LSSpec(_,_,pred,_,_) =>
-      val stepped = step(pred,scope) match {
+      val stepped: (List[LSSpec], Boolean) = step(pred,scope) match {
         case StepSuccessP(preds) =>
           val simpPreds = preds.map { case (p, quant) =>
             EncodingTools.simplifyPred(mkQuant((quant -- rule.target.lsVar), p))}

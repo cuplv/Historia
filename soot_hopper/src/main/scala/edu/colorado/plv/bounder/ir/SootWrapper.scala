@@ -534,6 +534,7 @@ object Messages {
   implicit val rw: RW[Messages] = macroRW
 }
 
+case class AllocSiteInfo(allocType:String)
 /**
  * Expose functionality of Soot/spark to analysis
  * //TODO: make this fully contain soot functionality
@@ -542,6 +543,7 @@ object Messages {
  * @param toOverride set of LSSpec or abstract messages to override
  *                   callbacks that may be missing (e.g. onResume so that onPause may be executed)
  */
+
 class SootWrapper(apkPath : String,
                   toOverride:Set[_<:Any], //TODO: use more precise type
                   callGraphSource: CallGraphSource = SparkCallGraph,
@@ -1860,7 +1862,14 @@ class SootWrapper(apkPath : String,
     }
     reaching match{
       case d:DoublePointsToSet =>
-        BitTypeSet(jimpleGetBitSet(d))
+        val bitSetInfo = () => {
+          val info = mutable.HashMap[Int, AllocSiteInfo]()
+          d.forall(v => {
+            info.addOne(v.getNumber -> AllocSiteInfo(v.getType.toString))
+          })
+          info.toMap
+        }
+        BitTypeSet(jimpleGetBitSet(d), bitSetInfo)
       case e:EmptyPointsToSet =>
         EmptyTypeSet
       case _:FullObjectSet =>

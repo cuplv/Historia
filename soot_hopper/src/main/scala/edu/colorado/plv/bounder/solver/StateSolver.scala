@@ -354,7 +354,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       case (msgVar:PureVar, ind) =>
         val modelExpr = pvMap(msgVar)
         val typeConstraint = lsTypeMap.get(msgVar) match {
-          case Some(BitTypeSet(s)) =>
+          case Some(BitTypeSet(s, _)) =>
               mkTypeConstraintForAddrExpr(createTypeFun(), typeToSolverConst, pvMap(msgVar), s.toSet)
           case _ => mkBoolVal(b = true)
         }
@@ -387,7 +387,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       case (msgVar: PureVar, ind) if ind != arityOfTgt =>
         val modelExpr = pvMap(msgVar)
         val typeConstraint = lsTypeMap.get(msgVar) match {
-          case Some(BitTypeSet(s)) =>
+          case Some(BitTypeSet(s, _)) =>
             mkTypeConstraintForAddrExpr(createTypeFun(), typeToSolverConst, pvMap(msgVar), s.toSet)
           case _ => mkBoolVal(b = true)
         }
