@@ -494,10 +494,8 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
                 (absMsgFromRule.lsVars zip msg.lsVars).flatMap{
                   case (ruleVar:PureVar, stateVar:PureVar) =>
                     Some(ruleVar -> cState.sf.typeConstraints.getOrElse(stateVar, TopTypeSet))
-                  case (ruleE, stateE) if ruleE == stateE =>
+                  case _ =>
                     None
-                  case v =>
-                    throw new IllegalStateException(s"malformed expressions $v")
                 }
               }.toMap else acc
             }
