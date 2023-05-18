@@ -396,6 +396,31 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       //      connectedPred(pred, boundVars)
       allMsg.forall{msg => pathExists(boundVars, msg, allMsg) }
   }
+
+
+  /**
+   * Ignore candidate rules that existentially quantify a variable that can only be in a negative position.
+   * @param rule
+   * @return
+   */
+  def hasNegOnly(rule:LSSpec):Boolean = {
+    def getNegOnly(pred:LSPred):Set[PureVar] = pred match {
+      case LifeState.LSAnyPred => ???
+      case bexp: LifeState.LSBexp => ???
+      case op: LSBinOp => ???
+      case op: LSUnOp => ???
+      case Forall(vars, p) => ???
+      case Exists(vars, p) => ???
+      case LSImplies(l1, l2) => ???
+      case LifeState.HNOE(v, m, extV) => ???
+      case atom: LSAtom => ???
+    }
+    rule match{
+      case s@LSSpec(un,ex,pred,tgt,_) =>
+        ???
+    }
+  }
+
   /**
    *
    * @param rule to fill a hole
@@ -430,26 +455,58 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
    * @return
    */
   def mkScope(rule:LSSpec, witnesses:Set[IPathNode]):Map[PureVar,TypeSet] = {
-    val tr = witnesses.flatMap{w => w.state.sf.traceAbstraction.rightOfArrow}.toSeq
-    def unionTC(pv:PureVar):TypeSet = {
-      val allTs = witnesses.map{node => node.state.sf.typeConstraints.getOrElse(pv, EmptyTypeSet)}
-      allTs.reduceOption((tc1, tc2) => tc1.union(tc2)).getOrElse(EmptyTypeSet)
-    }
+    //    val tr = witnesses.flatMap{w => w.state.sf.traceAbstraction.rightOfArrow}.toSeq
+    //    def unionTC(pv:PureVar):TypeSet = {
+    //      val allTs = witnesses.map{node => node.state.sf.typeConstraints.getOrElse(pv, EmptyTypeSet)}
+    //      allTs.reduceOption((tc1, tc2) => tc1.union(tc2)).getOrElse(EmptyTypeSet)
+    //    }
+    //
+    //    //TODO: use this for everything in rule
+    //    val directM:Map[PureVar,TypeSet] = tr.flatMap{m =>
+    //      if(rule.target.identitySignature == m.identitySignature){
+    //        rule.target.lsVars.zip(m.lsVars).flatMap{
+    //          case (pv1:PureVar, pv2:PureVar) =>
+    //            Map(pv1 -> unionTC(pv2) )//state.sf.typeConstraints.getOrElse(pv2,TopTypeSet))
+    //          case _ => Map.empty
+    //        }
+    //      }else None}.toMap
+    //    val enc = EncodingTools.rhsToPred(tr, new SpecSpace(Set(rule)))
+    //    val iEnc = enc.flatMap(SpecSpace.allI)
+    //
+    //    val lsVars = iEnc.flatMap{m => m.lsVar}
+    //    lsVars.map{v => (v -> unionTC(v))/*state.sf.typeConstraints.getOrElse(v,TopTypeSet))*/}.foldLeft(directM){
+    //      case (acc,(k,v)) if acc.contains(k) => acc + (k -> acc(k).intersect(v))
+    //      case (acc, (k,v)) => acc + (k -> v)
+    //    }
+    //    directM
+    val allAbsMsg:Set[OAbsMsg] = SpecSpace.allI(rule.pred) + rule.target
+    val allVars = allAbsMsg.flatMap{m => m.lsVar}
 
-    val directM:Map[PureVar,TypeSet] = tr.flatMap{m =>
-      if(rule.target.identitySignature == m.identitySignature){
-        rule.target.lsVars.zip(m.lsVars).flatMap{
-          case (pv1:PureVar, pv2:PureVar) =>
-            Map(pv1 -> unionTC(pv2) )//state.sf.typeConstraints.getOrElse(pv2,TopTypeSet))
-          case _ => Map.empty
+    witnesses.foldLeft(allVars.map{v => v->EmptyTypeSet}.toMap: Map[PureVar,TypeSet]){
+      case (acc,wit) =>
+        val cState = wit.state
+        cState.sf.traceAbstraction.rightOfArrow.foldLeft(acc){
+          case (acc, msg) =>
+            val individualMaps:Set[Map[PureVar,TypeSet]] = allAbsMsg.map{ absMsgFromRule =>
+              if(absMsgFromRule.identitySignature == msg.identitySignature){
+                assert(absMsgFromRule.lsVars.size == msg.lsVars.size,
+                  s"msg arity must be the same.\n rule msg: $absMsgFromRule \n state msg: $msg")
+                (absMsgFromRule.lsVars zip msg.lsVars).flatMap{
+                  case (ruleVar:PureVar, stateVar:PureVar) =>
+                    Some(ruleVar -> cState.sf.typeConstraints.getOrElse(stateVar, TopTypeSet))
+                  case (ruleE, stateE) if ruleE == stateE =>
+                    None
+                  case v =>
+                    throw new IllegalStateException(s"malformed expressions $v")
+                }
+              }.toMap else acc
+            }
+            individualMaps.reduce{ // merge all individual maps unioning ts
+              (map1, map2) =>
+                  (map1.keySet ++ map2.keySet)
+                    .map { key => key -> map1.getOrElse(key, EmptyTypeSet).union(map2.getOrElse(key, EmptyTypeSet)) }.toMap
+              }
         }
-      }else None}.toMap
-    val enc = EncodingTools.rhsToPred(tr, new SpecSpace(Set(rule))).flatMap(SpecSpace.allI)
-
-    val lsVars = enc.flatMap{m => m.lsVar}
-    lsVars.map{v => (v -> unionTC(v))/*state.sf.typeConstraints.getOrElse(v,TopTypeSet))*/}.foldLeft(directM){
-      case (acc,(k,v)) if acc.contains(k) => acc + (k -> acc(k).intersect(v))
-      case (acc, (k,v)) => acc + (k -> v)
     }
   }
 
@@ -489,7 +546,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
    * @param spec spec to expand an AST hole
    * @return next spec, whether spec was stepped
    */
-  def step(specSpace:SpecSpace, witnesses:Set[IPathNode]):(Set[SpecSpace],Boolean) = { //TODO: figure out why I did this boolean thing and not just empty set
+  def stepSpecSpace(specSpace:SpecSpace, witnesses:Set[IPathNode]):(Set[SpecSpace],Boolean) = { //TODO: figure out why I did this boolean thing and not just empty set
     val specToStep = specSpace.getSpecs.filter(s => LSPredAnyOrder.hasAny(s.pred))
       .toList.sorted(LSPredAnyOrder.SpecStepOrder).headOption
 //      .sortedEnableSpecs.map(a => (a._1, LSPredAnyOrder.depthToAny(a._1.pred)))
@@ -550,8 +607,8 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
         // Get alarm for current spec and target
         val overApproxAlarm: Set[IPathNode] = mkApproxResForQry(target, cSpec, OverApprox)
         val someAlarm:Set[IPathNode] = overApproxAlarm.filter(pn => pn.qry.isWitnessed)
-        if (!someAlarm.isEmpty) {
-          val nextSpecs = step(cSpec, someAlarm)
+        if (someAlarm.nonEmpty) {
+          val nextSpecs = stepSpecSpace(cSpec, someAlarm)
 //          println(s"next specs\n===========\n${nextSpecs._1.mkString("\n---\n")}")
           val filtered = nextSpecs._1.filter { spec => !hasExplored(spec) }
           queue.addAll(filtered)

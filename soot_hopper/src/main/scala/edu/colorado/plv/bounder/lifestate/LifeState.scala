@@ -1147,8 +1147,12 @@ object LSPredAnyOrder{
     //TODO: find something better here, just needs to be bigger than everything without causing an overflow
     case _: LifeState.LSAtom => 999
   }
-  def rankPred(p:LSPred):Int = {
-    def comb(p1:LSPred, p2:LSPred, op:(Int,Int) => Int):Int = op(rankPred(p1) , rankPred(p2))
+  def msgRank(m:AbsMsg): Double = m match{
+    case OAbsMsg(mt, sig, vars) => 1 - (0.01 * vars.count(v => v.isInstanceOf[PureVar]))
+    case AnyAbsMsg => 1 - 0.10
+  }
+  def rankPred(p:LSPred):Double = {
+    def comb(p1:LSPred, p2:LSPred, op:(Double,Double) => Double):Double = op(rankPred(p1) , rankPred(p2))
     p match {
       case LSAnyPred => 999
       case Or(p1, p2) => comb(p1,p2, _+_) + 1
@@ -1156,7 +1160,9 @@ object LSPredAnyOrder{
       case Not(p) => rankPred(p) + 1
       case Forall(vars, p) => rankPred(p) + 1
       case Exists(vars, p) => rankPred(p) + 1
-      case _:NS => 2
+      case NS(m1,m2) => msgRank(m1) + msgRank(m2)
+      case m:AbsMsg => msgRank(m)
+//      case _:NS => 2
       case _: LifeState.LSAtom => 1
     }
   }
@@ -1229,11 +1235,6 @@ object SpecSpaceBogoOrder extends Ordering[SpecSpace]{
  * @matcherSpace additional matchers that may be used for synthesis (added to allI)
  **/
 class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(), matcherSpace:Set[OAbsMsg] = Set()) {
-  lazy val sortedEnableSpecs:List[(LSSpec,Int)] =
-    enableSpecs.map{s =>
-    val depth = rankPred(s.pred)
-    (s,depth)
-  }.toList.sortBy(_._2)
 
   override def toString: String = {
     val builder = new StringBuilder()
