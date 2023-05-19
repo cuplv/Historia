@@ -602,7 +602,18 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       if (unreachCanProve && reachNotRefuted && isTerminal(cSpec)) {
         return LearnSuccess(cSpec)
       }else if(reachNotRefuted && unreachCanProve) {
+        // TODO: ========================== should call excludes initial on all witnesses for candidate before adding it to the queue to go throught the loop again
+        // take full advantage of past alarms on assertion
+        // can we utilize the past results of reachable locations?
+
+        // if we have a candidate spec that includes a past alarm for a reach, we don't need to rerun
+        //
         // Get alarm for current spec and target
+        // standard approach: I have some function, synthesize something that satisfies property.  We are a little different, not function?
+        // ingredients: reachable locations, utilizing message history witness cex, utilizing points to analysis, we have a universe of objects to consider
+        // initial universe of objects is materialized abstract state, can existentially quantify one more per step
+        // perhaps synthesis for datastructures may be related?
+        // "data structure specification synthesis" - synthesizing relation on data structures - internal representation that does not involve quantifiers
         val overApproxAlarm: Set[IPathNode] = mkApproxResForQry(target, cSpec, OverApprox)
         val someAlarm:Set[IPathNode] = overApproxAlarm.filter(pn => pn.qry.isWitnessed)
         if (someAlarm.nonEmpty) {

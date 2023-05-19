@@ -465,13 +465,12 @@ class EnumModelGeneratorTest extends AnyFunSuite {
   test("Synthesis Row 1: Antennapod getActivity returns null") {
 
     val row1Src = row1("sub.unsubscribe();")
-    //Or(NS(SpecSignatures.Activity_onPause_exit, SpecSignatures.Activity_onResume_entry),
-    //          Not(SpecSignatures.Activity_onResume_entry))
     val startingSpec = Set[LSSpec](
       LSSpec(l::Nil, Nil, LSAnyPred, SpecSignatures.RxJava_call_entry),
-      LSSpec(f :: Nil, Nil,
-        LSAnyPred,
-        SpecSignatures.Fragment_onActivityCreated_entry),
+      LifecycleSpec.Fragment_activityCreatedOnlyFirst,
+//      LSSpec(f :: Nil, Nil,
+//        LSAnyPred,
+//        SpecSignatures.Fragment_onActivityCreated_entry),
       FragmentGetActivityNullSpec.getActivityNull
     )
 
