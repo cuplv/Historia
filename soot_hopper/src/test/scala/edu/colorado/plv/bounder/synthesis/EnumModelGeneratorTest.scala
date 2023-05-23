@@ -467,10 +467,10 @@ class EnumModelGeneratorTest extends AnyFunSuite {
     val row1Src = row1("sub.unsubscribe();")
     val startingSpec = Set[LSSpec](
       LSSpec(l::Nil, Nil, LSAnyPred, SpecSignatures.RxJava_call_entry),
-      LifecycleSpec.Fragment_activityCreatedOnlyFirst,
-//      LSSpec(f :: Nil, Nil,
-//        LSAnyPred,
-//        SpecSignatures.Fragment_onActivityCreated_entry),
+//      LifecycleSpec.Fragment_activityCreatedOnlyFirst,
+      LSSpec(f :: Nil, Nil,
+        LSAnyPred,
+        SpecSignatures.Fragment_onActivityCreated_entry),
       FragmentGetActivityNullSpec.getActivityNull
     )
 

@@ -7,7 +7,7 @@ import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, AnyAbsMsg, Exi
 import edu.colorado.plv.bounder.lifestate.{LSPredAnyOrder, LifeState, SpecAssignment, SpecSpace}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.{ApproxMode, ControlFlowResolver, DefaultAppCodeResolver, ExecutorConfig, LimitMaterializationApproxMode, PreciseApproxMode, QueryFinished}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, AllReceiversNonNull, CallinReturnNonNull, DirectInitialQuery, DisallowedCallin, IPathNode, InitialQuery, MemoryOutputMode, NPureVar, NullVal, OutputMode, PureExpr, PureVar, Reachable, ReceiverNonNull, State, TopVal}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, AllReceiversNonNull, CallinReturnNonNull, DirectInitialQuery, DisallowedCallin, IPathNode, InitialQuery, MemoryOutputMode, NPureVar, NamedPureVar, NullVal, OutputMode, PureExpr, PureVar, Reachable, ReceiverNonNull, State, TopVal}
 import edu.colorado.plv.bounder.synthesis.EnumModelGenerator.{NoStep, StepResult, StepSuccessM, StepSuccessP, isTerminal}
 
 import scala.collection.concurrent.TrieMap
@@ -63,19 +63,29 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     new ControlFlowResolver[M,C](cfg.w, new DefaultAppCodeResolver(cfg.w), cha, cfg.component.map(_.toList),cfg)
   private val ptsMsg = controlFlowResolver.ptsToMsgs(initialSpec.allI)
 
-  private val approxResMemo = TrieMap[(InitialQuery, SpecSpace, ApproxMode), Set[IPathNode]]()
-  def mkApproxResForQry(qry:InitialQuery, spec:SpecSpace, approxDir: ApproxDir):Set[IPathNode] = {
-    val approxMode = approxDir match {
-      case OverApprox => LimitMaterializationApproxMode()
-      case UnderApprox => PreciseApproxMode(canWeaken = false)
-      case Exact => ???
-    }
-    val approxOfSpec = approxSpec(spec, approxDir)
-    val key = (qry,approxOfSpec, approxMode)
+  private val approxResMemo = TrieMap[(InitialQuery, SpecSpace, ApproxDir, ApproxMode), Set[IPathNode]]()
+  //TODO: separate over/under of spec and analysis
+
+  /**
+   *
+   * @param qry
+   * @param spec
+   * @param specApprox
+   * @return
+   */
+  def mkApproxResForQry(qry:InitialQuery, spec:SpecSpace, specApprox: ApproxDir,
+                        analysisApprox:ApproxMode):Set[IPathNode] = {
+//    val approxMode = specApprox match {
+//      case OverApprox => LimitMaterializationApproxMode()
+//      case UnderApprox => PreciseApproxMode(canWeaken = false)
+//      case Exact => ???
+//    }
+    val approxOfSpec = approxSpec(spec, specApprox)
+    val key = (qry,approxOfSpec, specApprox, analysisApprox)
     if(!approxResMemo.contains(key)) {
       //TODO: do something smarter than recomputing full query each time, doing this for testing right now
       // note: this is just a matter of changing the labels on individual nodes in wit tree?
-      val tConfig = cfg.copy(specSpace = approxOfSpec, approxMode = approxMode) //TODO: move state solver memo out of instance
+      val tConfig = cfg.copy(specSpace = approxOfSpec, approxMode = analysisApprox) //TODO: move state solver memo out of instance
       val ex = tConfig.getAbstractInterpreter
       val res = ex.run(qry, MemoryOutputMode).flatMap(_.terminals)
       approxResMemo.addOne(key -> res)
@@ -175,8 +185,8 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       //TODO:=== dbg code
 
       // TODO: positional options should consider each case where at least one alias exists then enumerate other positional options
-      val zipped = msgFromCg.lsVars.zip(argPts).zipWithIndex
-      val intersectNonEmpty = zipped.flatMap {
+      val zippedCgPtsArgs = msgFromCg.lsVars.zip(argPts).zipWithIndex
+      val intersectNonEmpty: Seq[(PureExpr, Int)] = zippedCgPtsArgs.flatMap {
         case ((pv: PureVar, tsFromCg), ind) =>
           scopeVals.flatMap {
             case (varName, ts2) =>
@@ -193,7 +203,9 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       }) { // case some pv aliases
         // apply aliasing to each possible aliased arg
         val outOpts = intersectNonEmpty.flatMap {
-          case (aliasedVar, aliasedIndex) =>
+          case (TopVal, _) =>
+            Set.empty // ignore aliasing of non-pv
+          case (aliasedVar:PureVar, aliasedIndex) =>
             //TODO: this should do enumeration of all non alias
             val positionalOptions: Seq[List[PureExpr]] = msgFromCg.lsVars.zip(argPts).zipWithIndex.map {
               case ((pv: PureVar, _), ind) if aliasedIndex == ind =>
@@ -205,7 +217,8 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
                 //    ts.intersectNonEmpty(ts2)
                 //}
                 (out.keys ++ freshOpt).toList //TODO: added topVal as positional option, make sure this doesn't break anythign?
-              case ((v, _), ind) if aliasedIndex != ind => List(v)
+              case ((v, _), ind) if aliasedIndex != ind =>
+                List(v)
               case ((_, _), ind) if aliasedIndex == ind =>
                 List()
             }
@@ -347,9 +360,6 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     case _ => NoStep
   }
 
-  private def mkQuant(v:Iterable[PureVar],pred:LSPred):LSPred = {
-    if(v.isEmpty) pred else Exists(v.toList, pred)
-  }
 
   //  def connectedPred(pred:LSPred, bound:Set[PureVar]):Boolean = pred match {
   //    case LifeState.LSAnyPred => true // vacuously holds for any, true false
@@ -431,15 +441,19 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     case s@LSSpec(un,ex,pred,tgt,_) =>
       val allFv: Set[PureVar] = un.toSet ++ ex.toSet ++ pred.lsVar ++ tgt.lsVar
       var fv = 0
-      while(allFv.contains(NPureVar(fv))){
+      while(allFv.contains(NamedPureVar(s"synth_${fv}"))){
         fv = fv + 1
       }
-      val freshOpt:Set[PureVar] = Set(NPureVar(fv))
+      val freshOpt:Set[PureVar] = Set(NamedPureVar(s"synth_${fv}"))
       val stepped: (List[LSSpec], Boolean) = step(pred, scope, freshOpt) match {
         case StepSuccessP(preds) =>
-          val simpPreds = preds.map { case (p, quant) =>
-            EncodingTools.simplifyPred(mkQuant((quant -- rule.target.lsVar), p))}
-          val outS = simpPreds.map{pred => s.copy(pred = pred)}
+          val simplifiedPreds = preds.map { case (p, quant) =>
+            EncodingTools.simplifyPred( p)}
+          val outS = simplifiedPreds.map{pred =>
+            val freeVars: Set[PureVar] = pred.lsVar
+            val newQuant = freeVars.removedAll(un).removedAll(ex)
+            s.copy(pred = pred, existQuant = ex.appendedAll(newQuant).distinct)
+          }
           val filteredConnected = outS.filter{p => connectedSpec(p)}
           (filteredConnected,true)
         case NoStep => (List(s),false)
@@ -570,8 +584,9 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       println(s"\n spec number: ${specsTested}")
 
       // false if no expansion of this spec can succeed at making all reach locations reachable
-      lazy val reachNotRefuted:Boolean = reachable.par.forall(qry => {
-        val res = mkApproxResForQry(qry,cSpec, OverApprox)
+      //TODO==================== make lazy again
+       val reachNotRefuted:Boolean = reachable.par.forall(qry => {
+        val res = mkApproxResForQry(qry,cSpec, OverApprox, PreciseApproxMode(false))
         BounderUtil.interpretResult(res, QueryFinished) match{
           case Witnessed =>
             //println(" reach refuted: false")
@@ -587,7 +602,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
 
       // false if no expansion of this spec can prove the target location
       val unreachCanProve = {
-        val tgtRes = mkApproxResForQry(target, cSpec, UnderApprox)
+        val tgtRes = mkApproxResForQry(target, cSpec, UnderApprox, LimitMaterializationApproxMode(2))
         BounderUtil.interpretResult(tgtRes, QueryFinished) match {
           case Proven =>
             true
@@ -614,7 +629,8 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
         // initial universe of objects is materialized abstract state, can existentially quantify one more per step
         // perhaps synthesis for datastructures may be related?
         // "data structure specification synthesis" - synthesizing relation on data structures - internal representation that does not involve quantifiers
-        val overApproxAlarm: Set[IPathNode] = mkApproxResForQry(target, cSpec, OverApprox)
+        val overApproxAlarm: Set[IPathNode] = mkApproxResForQry(target, cSpec, OverApprox,
+          LimitMaterializationApproxMode(2))
         val someAlarm:Set[IPathNode] = overApproxAlarm.filter(pn => pn.qry.isWitnessed)
         if (someAlarm.nonEmpty) {
           val nextSpecs = stepSpecSpace(cSpec, someAlarm)
