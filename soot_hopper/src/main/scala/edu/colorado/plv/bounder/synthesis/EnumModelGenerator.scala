@@ -212,11 +212,11 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
                 List(aliasedVar)
               case ((pv: PureVar, ts), ind) if aliasedIndex != ind =>
                 val out = scopeVals
-                //  .filter {
-                //  case (_, ts2) =>
-                //    ts.intersectNonEmpty(ts2)
-                //}
-                (out.keys ++ freshOpt).toList //TODO: added topVal as positional option, make sure this doesn't break anythign?
+                  .filter {
+                  case (_, ts2) =>
+                    ts.intersectNonEmpty(ts2)
+                }
+                (out.keys ++ freshOpt).toList
               case ((v, _), ind) if aliasedIndex != ind =>
                 List(v)
               case ((_, _), ind) if aliasedIndex == ind =>
