@@ -13,7 +13,7 @@ import edu.colorado.plv.bounder.solver.Z3StateSolver
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.row1Specs
 import edu.colorado.plv.bounder.symbolicexecutor.{ExecutorConfig, LimitMaterializationApproxMode, PreciseApproxMode, QueryFinished}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CallinReturnNonNull, DisallowedCallin, InitialQuery, MemoryOutputMode, NamedPureVar, NullVal, PrettyPrinting, Reachable, ReceiverNonNull, TopVal}
-import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{allReach, buttonEqReach, nullReach, onClickCanHappenTwice, onClickReachableNoSetEnable, onResumeFirstReach, queryOnActivityCreatedBeforeCall, queryOnClickAfterOnCreate, queryOnClickAfterOnResume, resumeFirstQ, resumeReachAfterPauseQ, resumeTwiceReachQ, row1, row1ActCreatedFirst, row1BugReach, row2, row4, srcReach, srcReachFrag}
+import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{allReach, buttonEqReach, nullReach, onClickAfterOnCreateAndOnClick, onClickCanHappenTwice, onClickReachableNoSetEnable, onResumeFirstReach, queryOnActivityCreatedBeforeCall, queryOnClickAfterOnCreate, queryOnClickAfterOnResume, resumeFirstQ, resumeReachAfterPauseQ, resumeTwiceReachQ, row1, row1ActCreatedFirst, row1BugReach, row2, row4, srcReach, srcReachFrag}
 import edu.colorado.plv.bounder.synthesis.SynthTestUtil.{cha, targetIze, toConcGraph, witTreeFromMsgList}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
@@ -323,6 +323,9 @@ object EnumModelGeneratorTest{
        |    }
        |    @Override
        |    public void onClick(View v){
+       |      if(onCreateHappened != null && onClickHappened != null) {
+       |        "".toString(); // onClickAfterOnCreateAndOnClick
+       |      }
        |      if(onCreateHappened != null){
        |        "".toString(); // queryOnClickAfterOnCreate
        |      }
@@ -362,6 +365,9 @@ object EnumModelGeneratorTest{
 
   val queryOnClickAfterOnCreate_line = BounderUtil.lineForRegex(".*queryOnClickAfterOnCreate.*".r, srcReach)
   val queryOnClickAfterOnCreate = Reachable(onClickReach, queryOnClickAfterOnCreate_line)
+
+  val onClickAfterOnCreateAndOnClick_line = BounderUtil.lineForRegex(".*queryOnClickAfterOnCreate.*".r, srcReach)
+  val onClickAfterOnCreateAndOnClick = Reachable(onClickReach, onClickAfterOnCreateAndOnClick_line)
 
   val queryOnClickAfterOnResume_line = BounderUtil.lineForRegex(".*queryOnClickAfterOnResume.*".r, srcReach)
   val queryOnClickAfterOnResume = Reachable(onClickReach, queryOnClickAfterOnResume_line)
@@ -592,8 +598,8 @@ class EnumModelGeneratorTest extends AnyFunSuite {
 
     val row2Src = row2("button.setEnabled(false);")
     val startingSpec = Set[LSSpec](
-      ViewSpec.clickWhileNotDisabled.copy(pred = LSAnyPred),
-      LifecycleSpec.Activity_createdOnlyFirst.copy(pred=LSAnyPred)
+      ViewSpec.clickWhileNotDisabled.copy(pred = LSAnyPred, existQuant = Nil),
+      LifecycleSpec.Activity_createdOnlyFirst //.copy(pred=LSAnyPred) //TODO======
     )
 
     val test: String => Unit = apk => {
@@ -648,7 +654,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         //
         val gen = new EnumModelGenerator(query, Set(nullReach, buttonEqReach, onResumeFirstReach,
           resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ, queryOnClickAfterOnCreate,
-          onClickCanHappenTwice, onClickReachableNoSetEnable), specSpace, config)
+          onClickCanHappenTwice, onClickReachableNoSetEnable, onClickAfterOnCreateAndOnClick), specSpace, config)
 
         //Unused: queryOnClickAfterOnCreate
         val res = gen.run()
