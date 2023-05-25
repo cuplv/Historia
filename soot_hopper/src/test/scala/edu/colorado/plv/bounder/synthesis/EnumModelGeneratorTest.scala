@@ -13,7 +13,7 @@ import edu.colorado.plv.bounder.solver.Z3StateSolver
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.row1Specs
 import edu.colorado.plv.bounder.symbolicexecutor.{ExecutorConfig, LimitMaterializationApproxMode, PreciseApproxMode, QueryFinished}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CallinReturnNonNull, DisallowedCallin, InitialQuery, MemoryOutputMode, NamedPureVar, NullVal, PrettyPrinting, Reachable, ReceiverNonNull, TopVal}
-import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{buttonEqReach, nullReach, onResumeFirstReach, queryOnActivityCreatedBeforeCall, queryOnClickAfterOnCreate, queryOnClickAfterOnResume, resumeFirstQ, resumeReachAfterPauseQ, resumeTwiceReachQ, row1, row1ActCreatedFirst, row1BugReach, row2, row4, srcReach, srcReachFrag}
+import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{allReach, buttonEqReach, nullReach, onClickCanHappenTwice, onClickReachableNoSetEnable, onResumeFirstReach, queryOnActivityCreatedBeforeCall, queryOnClickAfterOnCreate, queryOnClickAfterOnResume, resumeFirstQ, resumeReachAfterPauseQ, resumeTwiceReachQ, row1, row1ActCreatedFirst, row1BugReach, row2, row4, srcReach, srcReachFrag}
 import edu.colorado.plv.bounder.synthesis.SynthTestUtil.{cha, targetIze, toConcGraph, witTreeFromMsgList}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
@@ -286,11 +286,22 @@ object EnumModelGeneratorTest{
        |    Object pausedHappened = null;
        |    Object resumeHappened = null;
        |    Object onCreateHappened = null;
+       |    Object onClickHappened = null;
        |    @Override
        |    protected void onCreate(Bundle b){
        |        onCreateHappened = new Object();
        |        button = new Button(this);
        |        button.setOnClickListener(this);
+       |        button.setEnabled(false);
+       |        button.setEnabled(true);
+       |
+       |        Button button2 = new Button(this);
+       |        button2.setOnClickListener(new OnClickListener(){
+       |          @Override
+       |          public void onClick(View v){
+       |             "".toString(); // onClickReachableNoSetEnable
+       |          }
+       |        });
        |
        |    }
        |    @Override
@@ -323,6 +334,10 @@ object EnumModelGeneratorTest{
        |      if(v == button){
        |        s.toString(); //query3 reachable
        |      }
+       |      if(onClickHappened != null){
+       |       "".toString(); // onClickCanHappenTwice
+       |      }
+       |      onClickHappened = new Object();
        |    }
        |
        |    @Override
@@ -337,6 +352,13 @@ object EnumModelGeneratorTest{
     "void onClick(android.view.View)")
   val line_reach = BounderUtil.lineForRegex(".*query2.*".r, srcReach)
   val nullReach = ReceiverNonNull(onClickReach, line_reach, Some(".*toString.*"))
+
+  val onClickReachableNoSetEnable_line = BounderUtil.lineForRegex(".*onClickReachableNoSetEnable.*".r, srcReach)
+  val onClickReachableNoSetEnable = Reachable(onClickReach.copy(base = onClickReach.base +"$1"),
+    onClickReachableNoSetEnable_line)
+
+  val onClickCanHappenTwice_line = BounderUtil.lineForRegex(".*onClickCanHappenTwice.*".r, srcReach)
+  val onClickCanHappenTwice = Reachable(onClickReach, onClickCanHappenTwice_line)
 
   val queryOnClickAfterOnCreate_line = BounderUtil.lineForRegex(".*queryOnClickAfterOnCreate.*".r, srcReach)
   val queryOnClickAfterOnCreate = Reachable(onClickReach, queryOnClickAfterOnCreate_line)
@@ -363,6 +385,19 @@ object EnumModelGeneratorTest{
 
   val resumeFirst = BounderUtil.lineForRegex(".*query7.*".r, srcReach)
   val resumeFirstQ = Reachable(onRes, resumeFirst)
+
+  val allReach = Set[InitialQuery](
+    buttonEqReach,
+    nullReach,
+    onResumeFirstReach,
+    queryOnActivityCreatedBeforeCall,
+    queryOnClickAfterOnCreate,
+    resumeFirstQ,
+    resumeReachAfterPauseQ,
+    resumeTwiceReachQ,
+    row1ActCreatedFirst,
+    onClickCanHappenTwice
+  )
 }
 class EnumModelGeneratorTest extends AnyFunSuite {
   val DUMP_DBG = true //Uncomment to skip writing out paths from historia
@@ -609,9 +644,11 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         //TODO: ==== queryOnClickAfterOnCreate should prevent this stupid spec?
         //LSSpec(List(p-a),List(),(Not O(CBEnter I_CBEnter_ActivityonCreate ( _T_,p-a )),O(CBEnter I_CBEnter_ActivityonCreate ( _T_,p-a ),Set())
         //LSSpec(List(p-l),List(p-v),(Not O(CBEnter I_CBEnter_ViewOnClickListeneronClick ( _T_,p-l )),O(CBEnter I_CBEnter_ViewOnClickListeneronClick ( _T_,p-l ),Set())
+        //  // old version
         //
         val gen = new EnumModelGenerator(query, Set(nullReach, buttonEqReach, onResumeFirstReach,
-          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ, queryOnClickAfterOnCreate), specSpace, config)
+          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ, queryOnClickAfterOnCreate,
+          onClickCanHappenTwice, onClickReachableNoSetEnable), specSpace, config)
 
         //Unused: queryOnClickAfterOnCreate
         val res = gen.run()
