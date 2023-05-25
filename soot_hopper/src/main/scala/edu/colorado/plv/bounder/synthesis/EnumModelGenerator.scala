@@ -177,12 +177,6 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     val scopeVals: Map[PureExpr,TypeSet] = scope2 + (TopVal -> TopTypeSet)
     ptsMsg.flatMap{ case (msgFromCg, argPts) =>
       // find all possible aliasing intersection between points to set from call graphs
-      //TODO:==== dbg code clean up later
-//      if(msgFromCg.identitySignature == "I_CIExit_RxJavasubscribe") {
-//        println()
-//      }
-
-      //TODO:=== dbg code
 
       // TODO: positional options should consider each case where at least one alias exists then enumerate other positional options
       val zippedCgPtsArgs = msgFromCg.lsVars.zip(argPts).zipWithIndex
@@ -242,36 +236,6 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       }
     }
   }
-//  def mkRel(pv:PureVar, ts:TypeSet, avoid:Set[PureVar]):Set[OAbsMsg] = {
-//    ptsMsg.flatMap{
-//      case (msg,argPoints) =>
-//        val argSwaps = argPoints.map{ // preserve index of None locations
-//          case argPt if argPt.intersectNonEmpty(ts) => Some(pv)
-//          case _ => None
-//        }
-//        argSwaps.zipWithIndex.flatMap{
-//          case (Some(v), ind) => Some(msg.cloneWithVar(v,ind,avoid))
-//          case _ => None
-//        }.toSet
-//    }
-//  }
-//  def absMsgToNs(m:OAbsMsg,scope:Map[PureVar,TypeSet]):Set[NS] ={
-//    val res = m.lsVar.flatMap{
-//      case v if scope.contains(v) => mkRel(v, scope(v), scope.keySet).flatMap{om =>
-//        Set(NS(m, om)) ++ (if(om.lsVars.size > 2){
-//          Set(NS(m,om.copyMsg(om.lsVars.zipWithIndex.map{
-//            case (k,v) if v == 2 =>
-//              NullVal
-//            case (k,v) => k
-//          })))
-//        }else {
-//          Set.empty
-//        })
-//      }
-//      case _ => None
-//    }
-//    res
-//  }
 
   def stepBinop(l1: LSPred, l2: LSPred, op:(LSPred,LSPred) => LSPred,
                 scope:Map[PureVar, TypeSet], freshOpt:Set[PureVar], hasAnd:Boolean): StepResult = {
@@ -361,23 +325,6 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
   }
 
 
-  //  def connectedPred(pred:LSPred, bound:Set[PureVar]):Boolean = pred match {
-  //    case LifeState.LSAnyPred => true // vacuously holds for any, true false
-  //    case LSTrue => true
-  //    case LSFalse => true
-  //    case And(l1,l2) => connectedPred(l1, bound) && connectedPred(l2,bound)
-  //    case Or(l1,l2) => connectedPred(l1, bound) && connectedPred(l2,bound)
-  //    case Forall(vars, p) =>
-  //      p.lsVar.exists(v => bound.contains(v)) && connectedPred(p, bound ++ vars)
-  //    case Exists(vars, p) =>
-  //      p.lsVar.exists(v => bound.contains(v)) && connectedPred(p, bound ++ vars)
-  //    case LifeState.HNOE(v, m, extV:PureVar) => bound.contains(extV) && m.lsVars.contains(v)
-  //    case m:OAbsMsg => m.lsVar.exists(v => bound.contains(v))
-  //    case NS(m1, m2) =>
-  //      val m1var = m1.lsVar
-  //      m1var.exists(v => bound.contains(v)) && m2.lsVar.forall(v => m1var.contains(v))
-  //    case Not(msg: OAbsMsg) => msg.lsVar.forall(v => bound.contains(v))
-  //  }
   def pathExists(boundVars:Set[PureVar], msg:OAbsMsg, allMsg:Set[OAbsMsg]):Boolean = {
     // Note: this relies on formula being in prenix normal form, it will break on things like (∃x.P(x)) /\ (∃x.Q(x))
     //TODO: optimize by making this one pass if it slows things down
@@ -413,7 +360,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
    * @param rule
    * @return
    */
-  def hasNegOnly(rule:LSSpec):Boolean = {
+  def hasNegOnly(rule:LSSpec):Boolean = { //TODO: finish this
     def getNegOnly(pred:LSPred):Set[PureVar] = pred match {
       case LifeState.LSAnyPred => ???
       case bexp: LifeState.LSBexp => ???
@@ -469,30 +416,6 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
    * @return
    */
   def mkScope(rule:LSSpec, witnesses:Set[IPathNode]):Map[PureVar,TypeSet] = {
-    //    val tr = witnesses.flatMap{w => w.state.sf.traceAbstraction.rightOfArrow}.toSeq
-    //    def unionTC(pv:PureVar):TypeSet = {
-    //      val allTs = witnesses.map{node => node.state.sf.typeConstraints.getOrElse(pv, EmptyTypeSet)}
-    //      allTs.reduceOption((tc1, tc2) => tc1.union(tc2)).getOrElse(EmptyTypeSet)
-    //    }
-    //
-    //    //TODO: use this for everything in rule
-    //    val directM:Map[PureVar,TypeSet] = tr.flatMap{m =>
-    //      if(rule.target.identitySignature == m.identitySignature){
-    //        rule.target.lsVars.zip(m.lsVars).flatMap{
-    //          case (pv1:PureVar, pv2:PureVar) =>
-    //            Map(pv1 -> unionTC(pv2) )//state.sf.typeConstraints.getOrElse(pv2,TopTypeSet))
-    //          case _ => Map.empty
-    //        }
-    //      }else None}.toMap
-    //    val enc = EncodingTools.rhsToPred(tr, new SpecSpace(Set(rule)))
-    //    val iEnc = enc.flatMap(SpecSpace.allI)
-    //
-    //    val lsVars = iEnc.flatMap{m => m.lsVar}
-    //    lsVars.map{v => (v -> unionTC(v))/*state.sf.typeConstraints.getOrElse(v,TopTypeSet))*/}.foldLeft(directM){
-    //      case (acc,(k,v)) if acc.contains(k) => acc + (k -> acc(k).intersect(v))
-    //      case (acc, (k,v)) => acc + (k -> v)
-    //    }
-    //    directM
     val allAbsMsg:Set[OAbsMsg] = SpecSpace.allI(rule.pred) + rule.target
     val allVars = allAbsMsg.flatMap{m => m.lsVar}
 
@@ -569,7 +492,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       stepSpec(specToStep.get,mkScope(specToStep.get, witnesses))
 
     val base: Set[LSSpec] = specSpace.getSpecs.filter { s => s != specToStep.get }
-    (next.map { n => new SpecSpace(base + n) }.toSet, true)
+    (next.map { n => new SpecSpace(base + n, disallowSpecs = specSpace.getDisallowSpecs) }.toSet, true)
   }
 
   def run():LearnResult = {
@@ -584,8 +507,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       println(s"\n spec number: ${specsTested}")
 
       // false if no expansion of this spec can succeed at making all reach locations reachable
-      //TODO==================== make lazy again
-       val reachNotRefuted:Boolean = reachable.par.forall(qry => {
+      lazy val reachNotRefuted:Boolean = reachable.par.forall(qry => {
         val res = mkApproxResForQry(qry,cSpec, OverApprox, PreciseApproxMode(false))
         BounderUtil.interpretResult(res, QueryFinished) match{
           case Witnessed =>
