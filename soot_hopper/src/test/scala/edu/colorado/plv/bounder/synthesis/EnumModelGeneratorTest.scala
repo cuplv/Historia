@@ -13,7 +13,7 @@ import edu.colorado.plv.bounder.solver.Z3StateSolver
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.row1Specs
 import edu.colorado.plv.bounder.symbolicexecutor.{ExecutorConfig, LimitMaterializationApproxMode, PreciseApproxMode, QueryFinished}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CallinReturnNonNull, DisallowedCallin, InitialQuery, MemoryOutputMode, NamedPureVar, NullVal, PrettyPrinting, Reachable, ReceiverNonNull, TopVal}
-import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{buttonEqReach, nullReach, onResumeFirstReach, queryOnActivityCreatedBeforeCall, queryOnClickAfterOnCreate, resumeFirstQ, resumeReachAfterPauseQ, resumeTwiceReachQ, row1, row1ActCreatedFirst, row1BugReach, row2, row4, srcReach, srcReachFrag}
+import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{buttonEqReach, nullReach, onResumeFirstReach, queryOnActivityCreatedBeforeCall, queryOnClickAfterOnCreate, queryOnClickAfterOnResume, resumeFirstQ, resumeReachAfterPauseQ, resumeTwiceReachQ, row1, row1ActCreatedFirst, row1BugReach, row2, row4, srcReach, srcReachFrag}
 import edu.colorado.plv.bounder.synthesis.SynthTestUtil.{cha, targetIze, toConcGraph, witTreeFromMsgList}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
@@ -315,6 +315,9 @@ object EnumModelGeneratorTest{
        |      if(onCreateHappened != null){
        |        "".toString(); // queryOnClickAfterOnCreate
        |      }
+       |      if(resumeHappened != null){
+       |        "".toString(); // queryOnClickAfterOnResume
+       |      }
        |      s.toString(); // query2 reachable
        |      OtherActivity.this.finish();
        |      if(v == button){
@@ -337,6 +340,9 @@ object EnumModelGeneratorTest{
 
   val queryOnClickAfterOnCreate_line = BounderUtil.lineForRegex(".*queryOnClickAfterOnCreate.*".r, srcReach)
   val queryOnClickAfterOnCreate = Reachable(onClickReach, queryOnClickAfterOnCreate_line)
+
+  val queryOnClickAfterOnResume_line = BounderUtil.lineForRegex(".*queryOnClickAfterOnResume.*".r, srcReach)
+  val queryOnClickAfterOnResume = Reachable(onClickReach, queryOnClickAfterOnResume_line)
 
   val button_eq_reach = BounderUtil.lineForRegex(".*query3.*".r, srcReach)
   val buttonEqReach = Reachable(onClickReach, button_eq_reach)
@@ -514,28 +520,6 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         val reachLoc = Set[InitialQuery](queryLocReach, nullReach, buttonEqReach, onResumeFirstReach,
           resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ, row1ActCreatedFirst, queryOnActivityCreatedBeforeCall)
 
-        //Note: these seem to work, uncomment if you suspect issues again
-//        //TODO: test that each of these behaves itself for normal verif
-
-//        // reference test reachable locations
-//        reachLoc.forall{l =>
-//          val aa = config.copy(approxMode = PreciseApproxMode(canWeaken = false), specSpace = new SpecSpace(row1Specs, matcherSpace = iSet)).getAbstractInterpreter
-//          val res = aa.run(l).flatMap(_.terminals)
-//          val interpRes = BounderUtil.interpretResult(res, QueryFinished)
-//          assert(interpRes == Witnessed)
-//          interpRes == Witnessed
-//        }
-//        //check that target location can be proven.
-
-//        {
-//          val aa = config.copy(approxMode = LimitMaterializationApproxMode(2), specSpace = new SpecSpace(row1Specs, matcherSpace = iSet)).getAbstractInterpreter
-//          val res = aa.run(query).flatMap(_.terminals)
-//          val interpRes = BounderUtil.interpretResult(res)
-//          assert(interpRes == Proven)
-//        }
-
-        //TODO:
-
 
         val gen = new EnumModelGenerator(query, reachLoc, specSpace, config)
         val res = gen.run()
@@ -622,8 +606,14 @@ class EnumModelGeneratorTest extends AnyFunSuite {
           "void onClick(android.view.View)",
           SAsyncTask.disallowDoubleExecute)
 
+        //TODO: ==== queryOnClickAfterOnCreate should prevent this stupid spec?
+        //LSSpec(List(p-a),List(),(Not O(CBEnter I_CBEnter_ActivityonCreate ( _T_,p-a )),O(CBEnter I_CBEnter_ActivityonCreate ( _T_,p-a ),Set())
+        //LSSpec(List(p-l),List(p-v),(Not O(CBEnter I_CBEnter_ViewOnClickListeneronClick ( _T_,p-l )),O(CBEnter I_CBEnter_ViewOnClickListeneronClick ( _T_,p-l ),Set())
+        //
         val gen = new EnumModelGenerator(query, Set(nullReach, buttonEqReach, onResumeFirstReach,
-          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ), specSpace, config)
+          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ, queryOnClickAfterOnCreate), specSpace, config)
+
+        //Unused: queryOnClickAfterOnCreate
         val res = gen.run()
         res match {
           case LearnSuccess(space) =>
