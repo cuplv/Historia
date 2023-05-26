@@ -604,7 +604,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
     makeApkWithSources(Map("MyFragment.java" -> src), MkApk.RXBase, test)
   }
 
-  test("row 5: Yamba dismiss") {
+  test("row 5: Antennapod dismiss") {
+    // note: same bug as yamba
     // Yamba https://github.com/learning-android/Yamba/pull/1/commits/90c1fe3e5e58fb87c3c59b1a271c6e43c9422eb6
     List(
       ("if(resumed) {","}", Proven, "withCheck"),

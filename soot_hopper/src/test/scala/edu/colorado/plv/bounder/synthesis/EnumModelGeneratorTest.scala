@@ -3,17 +3,18 @@ package edu.colorado.plv.bounder.synthesis
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed, interpretResult}
-import edu.colorado.plv.bounder.ir.{CIExit, SootWrapper}
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, LSAnyPred, LSSpec, NS, Not, Or, Signature}
+import edu.colorado.plv.bounder.ir.{CIEnter, CIExit, SootWrapper}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, LSAnyPred, LSSpec, NS, Not, OAbsMsg, Or, Signature}
 import edu.colorado.plv.bounder.lifestate.SAsyncTask.executeI
+import edu.colorado.plv.bounder.lifestate.SDialog.dismissSignature
 import edu.colorado.plv.bounder.lifestate.SpecSignatures.{Activity_onPause_entry, Activity_onPause_exit, Activity_onResume_entry, Button_init}
 import edu.colorado.plv.bounder.lifestate.ViewSpec.{buttonEnabled, onClickI, setEnabled, setOnClickListenerI, setOnClickListenerINull}
-import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LSPredAnyOrder, LifecycleSpec, SAsyncTask, SpecSignatures, SpecSpace, ViewSpec}
+import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LSPredAnyOrder, LifecycleSpec, SAsyncTask, SDialog, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.Z3StateSolver
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.row1Specs
 import edu.colorado.plv.bounder.symbolicexecutor.{ExecutorConfig, LimitMaterializationApproxMode, PreciseApproxMode, QueryFinished}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CallinReturnNonNull, DisallowedCallin, InitialQuery, MemoryOutputMode, NamedPureVar, NullVal, PrettyPrinting, Reachable, ReceiverNonNull, TopVal}
-import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{allReach, buttonEqReach, nullReach, onClickAfterOnCreateAndOnClick, onClickCanHappenTwice, onClickReachableNoSetEnable, onResumeFirstReach, queryOnActivityCreatedBeforeCall, queryOnClickAfterOnCreate, queryOnClickAfterOnResume, resumeFirstQ, resumeReachAfterPauseQ, resumeTwiceReachQ, row1, row1ActCreatedFirst, row1BugReach, row2, row4, srcReach, srcReachFrag}
+import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{allReach, buttonEqReach, nullReach, onClickAfterOnCreateAndOnClick, onClickCanHappenTwice, onClickReachableNoSetEnable, onResumeFirstReach, queryOnActivityCreatedBeforeCall, queryOnClickAfterOnCreate, queryOnClickAfterOnResume, resumeFirstQ, resumeReachAfterPauseQ, resumeTwiceReachQ, row1, row1ActCreatedFirst, row1BugReach, row2, row4, row5, srcReach, srcReachFrag}
 import edu.colorado.plv.bounder.synthesis.SynthTestUtil.{cha, targetIze, toConcGraph, witTreeFromMsgList}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
@@ -149,6 +150,67 @@ object EnumModelGeneratorTest{
        |	  }
        |}
        |""".stripMargin
+  val row5 =
+    s"""
+       |package com.example.createdestroy;
+       |import android.app.Activity;
+       |import android.content.Context;
+       |import android.net.Uri;
+       |import android.os.Bundle;
+       |import android.os.AsyncTask;
+       |import android.app.ProgressDialog;
+       |
+       |import android.util.Log;
+       |import android.view.LayoutInflater;
+       |import android.view.View;
+       |import android.view.ViewGroup;
+       |
+       |import rx.Single;
+       |import rx.Subscription;
+       |import rx.android.schedulers.AndroidSchedulers;
+       |import rx.schedulers.Schedulers;
+       |import rx.functions.Action1;
+       |
+       |
+       |public class StatusActivity extends Activity{
+       |    boolean resumed = false;
+       |    @Override
+       |    public void onResume(){
+       |      PostTask p = new PostTask();
+       |      p.execute();
+       |      resumed = true;
+       |    }
+       |
+       |
+       |    @Override
+       |    public void onPause(){
+       |      resumed = false;
+       |    }
+       |    class PostTask extends AsyncTask<String, Void, String> {
+       |		  private ProgressDialog progress;
+       |
+       |		  @Override
+       |		  protected void onPreExecute() {
+       |			  progress = ProgressDialog.show(StatusActivity.this, "Posting",
+       |					"Please wait...");
+       |			  progress.setCancelable(true);
+       |		  }
+       |
+       |		  // Executes on a non-UI thread
+       |		  @Override
+       |		  protected String doInBackground(String... params) {
+       |			  return "Successfully posted";
+       |		  }
+       |
+       |		  @Override
+       |		  protected void onPostExecute(String result) {
+       |			  if(resumed){
+       |				  progress.dismiss(); //query1
+       |        }
+       |		  }
+       |	  }
+       |}
+       |""".stripMargin
 
   val row4 = (disableClick: String) =>
     s"""package com.example.createdestroy;
@@ -185,6 +247,57 @@ object EnumModelGeneratorTest{
        |        //v.setOnClickListener(null);
        |    }
        |}""".stripMargin
+
+
+  val row6 =
+    s"""
+       |package com.example.createdestroy;
+       |import android.app.Activity;
+       |import android.content.Context;
+       |import android.net.Uri;
+       |import android.os.Bundle;
+       |import android.os.AsyncTask;
+       |import android.app.ProgressDialog;
+       |
+       |import android.app.Fragment;
+       |
+       |import android.util.Log;
+       |import android.view.LayoutInflater;
+       |import android.view.View;
+       |import android.view.ViewGroup;
+       |import android.view.View.OnClickListener;
+       |import io.reactivex.disposables.Disposable;
+       |import io.reactivex.schedulers.Schedulers;
+       |import io.reactivex.android.schedulers.AndroidSchedulers;
+       |import io.reactivex.Maybe;
+       |
+       |
+       |public class ChaptersFragment extends Fragment {
+       |  private Object controller;
+       |  private Disposable disposable;
+       |  @Override
+       |  public void onStart() {
+       |    super.onStart();
+       |    if(disposable != null){
+       |      disposable.dispose();
+       |    }
+       |
+       |    controller = new Object();
+       |
+       |    disposable = Maybe.create(emitter -> {
+       |      emitter.onSuccess(controller.toString()); //query1
+       |    })
+       |    .subscribeOn(Schedulers.io())
+       |    .observeOn(AndroidSchedulers.mainThread())
+       |    .subscribe(media -> Log.i("",""),
+       |          error -> Log.e("",""));
+       |  }
+       |  public void onStop() {
+       |    disposable.dispose();
+       |    controller = null;
+       |  }
+       |}
+       |""".stripMargin
   val srcReachFrag =
     s"""
        |package com.example.createdestroy;
@@ -402,7 +515,8 @@ object EnumModelGeneratorTest{
     resumeReachAfterPauseQ,
     resumeTwiceReachQ,
     row1ActCreatedFirst,
-    onClickCanHappenTwice
+    onClickCanHappenTwice,
+    onClickAfterOnCreateAndOnClick
   )
 }
 class EnumModelGeneratorTest extends AnyFunSuite {
@@ -628,30 +742,12 @@ class EnumModelGeneratorTest extends AnyFunSuite {
           component = Some(List("com.example.createdestroy.*")),
           outputMode = dbMode, timeLimit = 30, z3InstanceLimit = 3)
 
-//        val line = BounderUtil.lineForRegex(".*query1.*".r, row2Src)
-//
-//
-//        val query = CallinReturnNonNull(
-//          Signature("com.example.createdestroy.PlayerFragment",
-//            "void call(java.lang.Object)"), line,
-//          ".*getActivity.*")
-
-
-        //TODO:==== add reachable back in one at a time
-        //Set(nullReach, buttonEqReach, onResumeFirstReach,
-        //          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ)
-
-
         val query = DisallowedCallin(
           "com.example.createdestroy.RemoverActivity$1",
           "void onClick(android.view.View)",
           SAsyncTask.disallowDoubleExecute)
 
-        //TODO: ==== queryOnClickAfterOnCreate should prevent this stupid spec?
-        //LSSpec(List(p-a),List(),(Not O(CBEnter I_CBEnter_ActivityonCreate ( _T_,p-a )),O(CBEnter I_CBEnter_ActivityonCreate ( _T_,p-a ),Set())
-        //LSSpec(List(p-l),List(p-v),(Not O(CBEnter I_CBEnter_ViewOnClickListeneronClick ( _T_,p-l )),O(CBEnter I_CBEnter_ViewOnClickListeneronClick ( _T_,p-l ),Set())
-        //  // old version
-        //
+        //TODO: remove one at a time and figure out smallest set needed for the evaluation
         val gen = new EnumModelGenerator(query, Set(nullReach, buttonEqReach, onResumeFirstReach,
           resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ, queryOnClickAfterOnCreate,
           onClickCanHappenTwice, onClickReachableNoSetEnable, onClickAfterOnCreateAndOnClick), specSpace, config)
@@ -685,6 +781,82 @@ class EnumModelGeneratorTest extends AnyFunSuite {
       }
     }
     makeApkWithSources(Map("RemoverActivity.java" -> row2Src, "OtherActivity.java" -> srcReach,
+      "PlayerFragmentReach.java" -> srcReachFrag), MkApk.RXBase,
+      test)
+  }
+
+  test("Synthesis Row 5: Antennapod dismiss") {
+    val startingSpec = Set[LSSpec](
+      SDialog.noDupeShow.copy(pred = LSAnyPred)
+    )
+
+    val test: String => Unit = apk => {
+      File.usingTemporaryDirectory() { tmpDir =>
+        assert(apk != null)
+        // val dbFile = tmpDir / "paths.db"
+        // println(dbFile)
+        // implicit val dbMode = DBOutputMode(dbFile.toString, truncate = false)
+        // dbMode.startMeta()
+        implicit val dbMode = MemoryOutputMode
+
+        val d = NamedPureVar("d")
+        val iSet = Set[OAbsMsg](
+          SDialog.showI2,
+          AbsMsg(CIEnter, dismissSignature, TopVal::d::Nil),
+          SpecSignatures.Activity_onResume_entry,
+          SpecSignatures.Activity_onPause_exit
+        )
+
+        val w = new SootWrapper(apk, toOverride = startingSpec ++ iSet)
+        //val dbg = w.dumpDebug("com.example")
+
+        val specSpace = new SpecSpace(startingSpec, Set(SDialog.disallowDismiss), matcherSpace = iSet)
+        val config = ExecutorConfig(
+          stepLimit = 2000, w, specSpace,
+          component = Some(List("com.example.createdestroy.*")),
+          outputMode = dbMode, timeLimit = 60, z3InstanceLimit = 3)
+
+
+        val query = DisallowedCallin(
+          "com.example.createdestroy.StatusActivity$PostTask",
+          "void onPostExecute(java.lang.String)",
+          SDialog.disallowDismiss)
+
+        // TODO: Set(nullReach, buttonEqReach, onResumeFirstReach,
+        //          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ, queryOnClickAfterOnCreate,
+        //          onClickCanHappenTwice, onClickReachableNoSetEnable, onClickAfterOnCreateAndOnClick)
+        //TODO: remove one at a time and figure out smallest set needed for the evaluation
+        val gen = new EnumModelGenerator(query, Set.empty, specSpace, config)
+
+        //Unused: queryOnClickAfterOnCreate
+        val res = gen.run()
+        res match {
+          case LearnSuccess(space) =>
+            println("final specification Row 2")
+            println("-------------------")
+            val spaceStr = space.toString
+            println(spaceStr)
+            println("dumping debug info")
+            val newConfig = config.copy(specSpace = space)
+            val ex = newConfig.getAbstractInterpreter
+            val nullReachWit = ex.run(nullReach).flatMap(_.terminals)
+            if (DUMP_DBG)
+              PrettyPrinting.dumpSpec(space, "cbSpec")
+            assert(interpretResult(nullReachWit) == Witnessed)
+            if (DUMP_DBG) {
+              PrettyPrinting.printWitness(nullReachWit)
+              PrettyPrinting.dumpDebugInfo(nullReachWit, "cbNullReachSynth")
+            }
+
+            val nullUnreachWit = ex.run(query).flatMap(_.terminals)
+            assert(interpretResult(nullUnreachWit) == Proven)
+            if (DUMP_DBG)
+              PrettyPrinting.dumpDebugInfo(nullUnreachWit, "cbNullUnreachSynth")
+          case LearnFailure => throw new IllegalStateException("failed to learn a sufficient spec")
+        }
+      }
+    }
+    makeApkWithSources(Map("StatusActivity.java" -> row5, "OtherActivity.java" -> srcReach,
       "PlayerFragmentReach.java" -> srcReachFrag), MkApk.RXBase,
       test)
   }

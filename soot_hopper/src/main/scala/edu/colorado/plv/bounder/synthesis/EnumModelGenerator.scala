@@ -7,7 +7,7 @@ import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, AnyAbsMsg, Exi
 import edu.colorado.plv.bounder.lifestate.{LSPredAnyOrder, LifeState, SpecAssignment, SpecSpace}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.{ApproxMode, ControlFlowResolver, DefaultAppCodeResolver, ExecutorConfig, LimitMaterializationApproxMode, PreciseApproxMode, QueryFinished}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, AllReceiversNonNull, CallinReturnNonNull, DirectInitialQuery, DisallowedCallin, IPathNode, InitialQuery, MemoryOutputMode, NPureVar, NamedPureVar, NullVal, OutputMode, PureExpr, PureVar, Reachable, ReceiverNonNull, State, TopVal}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, AllReceiversNonNull, CallinReturnNonNull, DirectInitialQuery, DisallowedCallin, IPathNode, InitialQuery, MemoryOutputMode, NPureVar, NamedPureVar, NullVal, OutputMode, PrettyPrinting, PureExpr, PureVar, Reachable, ReceiverNonNull, State, TopVal}
 import edu.colorado.plv.bounder.synthesis.EnumModelGenerator.{NoStep, StepResult, StepSuccessM, StepSuccessP, isTerminal}
 
 import scala.collection.concurrent.TrieMap
@@ -531,8 +531,8 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
           case Witnessed =>
             false
           case otherRes =>
-            //throw new IllegalStateException(s"Failure to generate abstract witness or prove target: ${otherRes}")
-            false // dump spec on timeout
+            //false // dump spec on timeout
+            !isTerminal(cSpec) // keep spec if it contains holes and timed out
         }
       }
 
