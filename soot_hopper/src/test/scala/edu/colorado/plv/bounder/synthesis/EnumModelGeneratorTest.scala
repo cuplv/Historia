@@ -9,12 +9,12 @@ import edu.colorado.plv.bounder.lifestate.SAsyncTask.executeI
 import edu.colorado.plv.bounder.lifestate.SDialog.dismissSignature
 import edu.colorado.plv.bounder.lifestate.SpecSignatures.{Activity_onPause_entry, Activity_onPause_exit, Activity_onResume_entry, Button_init}
 import edu.colorado.plv.bounder.lifestate.ViewSpec.{buttonEnabled, onClickI, setEnabled, setOnClickListenerI, setOnClickListenerINull}
-import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LSPredAnyOrder, LifecycleSpec, SAsyncTask, SDialog, SpecSignatures, SpecSpace, ViewSpec}
+import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LSPredAnyOrder, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.Z3StateSolver
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.row1Specs
 import edu.colorado.plv.bounder.symbolicexecutor.{ExecutorConfig, LimitMaterializationApproxMode, PreciseApproxMode, QueryFinished}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CallinReturnNonNull, DisallowedCallin, InitialQuery, MemoryOutputMode, NamedPureVar, NullVal, PrettyPrinting, Reachable, ReceiverNonNull, TopVal}
-import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{allReach, buttonEqReach, nullReach, onClickAfterOnCreateAndOnClick, onClickCanHappenTwice, onClickReachableNoSetEnable, onResumeFirstReach, queryOnActivityCreatedBeforeCall, queryOnClickAfterOnCreate, queryOnClickAfterOnResume, resumeFirstQ, resumeReachAfterPauseQ, resumeTwiceReachQ, row1, row1ActCreatedFirst, row1BugReach, row2, row4, row5, srcReach, srcReachFrag}
+import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{allReach, buttonEqReach, nullReach, onClickAfterOnCreateAndOnClick, onClickCanHappenTwice, onClickReachableNoSetEnable, onResumeFirstReach, queryOnActivityCreatedBeforeCall, queryOnClickAfterOnCreate, queryOnClickAfterOnResume, resumeFirstQ, resumeReachAfterPauseQ, resumeTwiceReachQ, row1, row1ActCreatedFirst, row1BugReach, row2, row4, row5, row6, srcReach, srcReachFrag}
 import edu.colorado.plv.bounder.synthesis.SynthTestUtil.{cha, targetIze, toConcGraph, witTreeFromMsgList}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
@@ -814,7 +814,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         val config = ExecutorConfig(
           stepLimit = 2000, w, specSpace,
           component = Some(List("com.example.createdestroy.*")),
-          outputMode = dbMode, timeLimit = 60, z3InstanceLimit = 3)
+          outputMode = dbMode, timeLimit = 1800, z3InstanceLimit = 3)
 
 
         val query = DisallowedCallin(
@@ -936,6 +936,82 @@ class EnumModelGeneratorTest extends AnyFunSuite {
       }
     }
     makeApkWithSources(Map("MyActivity.java" -> row4("v.setOnClickListener(null);"), "OtherActivity.java" -> srcReach), MkApk.RXBase,
+      test)
+  }
+  test("Synthesis Row 6: synch null free") {
+    val startingSpec = Set[LSSpec](
+      RxJavaSpec.subscribeSpec.copy(pred = LSAnyPred),
+      RxJavaSpec.Maybe_subscribeOn.copy(pred=LSAnyPred),
+      RxJavaSpec.Maybe_observeOn.copy(pred=LSAnyPred),
+      LifecycleSpec.startStopAlternation.copy(pred=LSAnyPred),
+      //LifecycleSpec.stopStartAlternation,
+      RxJavaSpec.Maybe_create_unique.copy(pred=LSAnyPred)
+    )
+
+    val test: String => Unit = apk => {
+      File.usingTemporaryDirectory() { tmpDir =>
+        assert(apk != null)
+        // val dbFile = tmpDir / "paths.db"
+        // println(dbFile)
+        // implicit val dbMode = DBOutputMode(dbFile.toString, truncate = false)
+        // dbMode.startMeta()
+        implicit val dbMode = MemoryOutputMode
+
+        val iSet = startingSpec.flatMap{r =>r.pred.allMsg }
+
+        val w = new SootWrapper(apk, toOverride = startingSpec ++ iSet)
+        //val dbg = w.dumpDebug("com.example")
+
+        val specSpace = new SpecSpace(startingSpec, Set(SDialog.disallowDismiss), matcherSpace = iSet)
+        val config = ExecutorConfig(
+          stepLimit = 2000, w, specSpace,
+          component = Some(List("com.example.createdestroy.*")),
+          outputMode = dbMode, timeLimit = 60, z3InstanceLimit = 3)
+
+
+        val line = BounderUtil.lineForRegex(".*query1.*".r,row6)
+
+        val query = ReceiverNonNull(
+          Signature("com.example.createdestroy.ChaptersFragment",
+            "void lambda$onStart$0$ChaptersFragment(io.reactivex.MaybeEmitter)"),
+          line, Some(".*toString.*"))
+
+        // TODO: Set(nullReach, buttonEqReach, onResumeFirstReach,
+        //          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ, queryOnClickAfterOnCreate,
+        //          onClickCanHappenTwice, onClickReachableNoSetEnable, onClickAfterOnCreateAndOnClick)
+        //TODO: remove one at a time and figure out smallest set needed for the evaluation
+        val gen = new EnumModelGenerator(query, Set.empty, specSpace, config)
+
+        //Unused: queryOnClickAfterOnCreate
+        val res = gen.run()
+        res match {
+          case LearnSuccess(space) =>
+            println("final specification Row 2")
+            println("-------------------")
+            val spaceStr = space.toString
+            println(spaceStr)
+            println("dumping debug info")
+            val newConfig = config.copy(specSpace = space)
+            val ex = newConfig.getAbstractInterpreter
+            val nullReachWit = ex.run(nullReach).flatMap(_.terminals)
+            if (DUMP_DBG)
+              PrettyPrinting.dumpSpec(space, "cbSpec")
+            assert(interpretResult(nullReachWit) == Witnessed)
+            if (DUMP_DBG) {
+              PrettyPrinting.printWitness(nullReachWit)
+              PrettyPrinting.dumpDebugInfo(nullReachWit, "cbNullReachSynth")
+            }
+
+            val nullUnreachWit = ex.run(query).flatMap(_.terminals)
+            assert(interpretResult(nullUnreachWit) == Proven)
+            if (DUMP_DBG)
+              PrettyPrinting.dumpDebugInfo(nullUnreachWit, "cbNullUnreachSynth")
+          case LearnFailure => throw new IllegalStateException("failed to learn a sufficient spec")
+        }
+      }
+    }
+    makeApkWithSources(Map("ChaptersFragment.java" -> row6, "OtherActivity.java" -> srcReach,
+      "PlayerFragmentReach.java" -> srcReachFrag), MkApk.RXBoth,
       test)
   }
 

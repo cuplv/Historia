@@ -5,7 +5,7 @@ import better.files.File
 import edu.colorado.plv.bounder.{BounderUtil, lifestate}
 import edu.colorado.plv.bounder.BounderUtil.{DepthResult, Proven, Timeout, Witnessed, interpretResult}
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType, SootWrapper}
-import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, Signature}
+import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, LSTrue, Signature}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.{row1Specs, row2Specs, row4Specs, row5Specs, row6Specs}
@@ -37,7 +37,7 @@ object ExperimentSpecs{
     LifecycleSpec.Activity_createdOnlyFirst
   )
   val row5Specs = Set[LSSpec](
-    SDialog.noDupeShow
+    SDialog.noDupeShow.copy(pred = LSTrue)
   )
   val _ = Set(RxJavaSpec.subscribeCB, RxJavaSpec.Maybe_create,
     SpecSignatures.Fragment_onStart_entry, SpecSignatures.Fragment_onStop_exit, RxJavaSpec.Disposable_dispose)

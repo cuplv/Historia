@@ -25,6 +25,7 @@ object MkApk {
   private val logger = LoggerFactory.getLogger("MkApk.scala")
   val RXBase = getClass.getResource("/CreateDestroySubscribe.zip").getPath
   val RXBase2 = getClass.getResource("/ReactiveX.zip").getPath
+  val RXBoth =  getClass.getResource("/RxAndRxJav.zip").getPath
 
   /**
    *

@@ -553,7 +553,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
         // "data structure specification synthesis" - synthesizing relation on data structures - internal representation that does not involve quantifiers
         val overApproxAlarm: Set[IPathNode] = mkApproxResForQry(target, cSpec, OverApprox,
           LimitMaterializationApproxMode(2))
-        val someAlarm:Set[IPathNode] = overApproxAlarm.filter(pn => pn.qry.isWitnessed)
+        val someAlarm:Set[IPathNode] = overApproxAlarm.filter(pn => pn.qry.isWitnessed || pn.qry.isLive)
         if (someAlarm.nonEmpty) {
           val nextSpecs = stepSpecSpace(cSpec, someAlarm)
 //          println(s"next specs\n===========\n${nextSpecs._1.mkString("\n---\n")}")
