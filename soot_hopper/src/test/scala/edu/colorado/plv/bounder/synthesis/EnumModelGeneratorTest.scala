@@ -971,16 +971,18 @@ class EnumModelGeneratorTest extends AnyFunSuite {
 
         val line = BounderUtil.lineForRegex(".*query1.*".r,row6)
 
+        val querySig = Signature("com.example.createdestroy.ChaptersFragment",
+          "void lambda$onStart$0$ChaptersFragment(io.reactivex.MaybeEmitter)")
         val query = ReceiverNonNull(
-          Signature("com.example.createdestroy.ChaptersFragment",
-            "void lambda$onStart$0$ChaptersFragment(io.reactivex.MaybeEmitter)"),
+          querySig,
           line, Some(".*toString.*"))
+        val queryReach = Reachable(querySig, line)
 
         // TODO: Set(nullReach, buttonEqReach, onResumeFirstReach,
         //          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ, queryOnClickAfterOnCreate,
         //          onClickCanHappenTwice, onClickReachableNoSetEnable, onClickAfterOnCreateAndOnClick)
         //TODO: remove one at a time and figure out smallest set needed for the evaluation
-        val gen = new EnumModelGenerator(query, Set.empty, specSpace, config)
+        val gen = new EnumModelGenerator(query, Set(queryReach), specSpace, config)
 
         //Unused: queryOnClickAfterOnCreate
         val res = gen.run()
