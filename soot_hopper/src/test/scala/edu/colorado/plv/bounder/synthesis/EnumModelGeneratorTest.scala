@@ -14,7 +14,7 @@ import edu.colorado.plv.bounder.solver.Z3StateSolver
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.row1Specs
 import edu.colorado.plv.bounder.symbolicexecutor.{ExecutorConfig, LimitMaterializationApproxMode, PreciseApproxMode, QueryFinished}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, CallinReturnNonNull, DisallowedCallin, InitialQuery, MemoryOutputMode, NamedPureVar, NullVal, PrettyPrinting, Reachable, ReceiverNonNull, TopVal}
-import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{allReach, buttonEqReach, nullReach, onClickAfterOnCreateAndOnClick, onClickCanHappenTwice, onClickReachableNoSetEnable, onResumeFirstReach, queryOnActivityCreatedBeforeCall, queryOnClickAfterOnCreate, queryOnClickAfterOnResume, resumeFirstQ, resumeReachAfterPauseQ, resumeTwiceReachQ, row1, row1ActCreatedFirst, row1BugReach, row2, row4, row5, row6, srcReach, srcReachFrag}
+import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{allReach, buttonEqReach, nullReach, onClickAfterOnCreateAndOnClick, onClickCanHappenTwice, onClickReachableNoSetEnable, onResumeFirstReach, queryOnActivityCreatedBeforeCall, queryOnClickAfterOnCreate, queryOnClickAfterOnResume, resumeFirstQ, resumeReachAfterPauseQ, resumeTwiceReachQ, row1, row1ActCreatedFirst, row1BugReach, row2, row4, row5, row6, row6Reach, srcReach, srcReachFrag}
 import edu.colorado.plv.bounder.synthesis.SynthTestUtil.{cha, targetIze, toConcGraph, witTreeFromMsgList}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
@@ -275,6 +275,56 @@ object EnumModelGeneratorTest{
        |public class ChaptersFragment extends Fragment {
        |  private Object controller;
        |  private Disposable disposable;
+       |  @Override
+       |  public void onStart() {
+       |    super.onStart();
+       |    if(disposable != null){
+       |      disposable.dispose();
+       |    }
+       |
+       |    controller = new Object();
+       |
+       |    disposable = Maybe.create(emitter -> {
+       |      emitter.onSuccess(controller.toString()); //query1
+       |    })
+       |    .subscribeOn(Schedulers.io())
+       |    .observeOn(AndroidSchedulers.mainThread())
+       |    .subscribe(media -> Log.i("",""),
+       |          error -> Log.e("",""));
+       |  }
+       |  public void onStop() {
+       |    disposable.dispose();
+       |    controller = null;
+       |  }
+       |}
+       |""".stripMargin
+  val row6Reach =
+    s"""
+       |package com.example.createdestroy;
+       |import android.app.Activity;
+       |import android.content.Context;
+       |import android.net.Uri;
+       |import android.os.Bundle;
+       |import android.os.AsyncTask;
+       |import android.app.ProgressDialog;
+       |
+       |import android.app.Fragment;
+       |
+       |import android.util.Log;
+       |import android.view.LayoutInflater;
+       |import android.view.View;
+       |import android.view.ViewGroup;
+       |import android.view.View.OnClickListener;
+       |import io.reactivex.disposables.Disposable;
+       |import io.reactivex.schedulers.Schedulers;
+       |import io.reactivex.android.schedulers.AndroidSchedulers;
+       |import io.reactivex.Maybe;
+       |
+       |
+       |public class ChaptersFragmentReach extends Fragment {
+       |  private Object controller;
+       |  private Disposable disposable;
+       |  Object subscribeCbCalled = null;
        |  @Override
        |  public void onStart() {
        |    super.onStart();
@@ -1013,7 +1063,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
       }
     }
     makeApkWithSources(Map("ChaptersFragment.java" -> row6, "OtherActivity.java" -> srcReach,
-      "PlayerFragmentReach.java" -> srcReachFrag), MkApk.RXBoth,
+      "PlayerFragmentReach.java" -> srcReachFrag, "ChaptersFragmentReach.java" -> row6Reach), MkApk.RXBoth,
       test)
   }
 
