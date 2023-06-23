@@ -1212,22 +1212,6 @@ object LSPredAnyOrder{
     (if(hasAny(sp.pred)) 0 else 1, depthToAny(sp.pred), sp.hashCode())}
 }
 
-object SpecSpaceBogoOrder extends Ordering[SpecSpace]{
-  override def compare(x: SpecSpace, y: SpecSpace): Int = ???
-}
-//
-//  override def compare(x:SpecSpace, y:SpecSpace):Int = {
-//    rankSpecSpace(y) - rankSpecSpace(x)
-//  }
-////  override def compare(x: SpecSpace, y: SpecSpace): Int = {
-////    val res = x.sortedEnableSpecs.view.zip(y.sortedEnableSpecs).map{
-////      case ((s1,d1),(s2,d2)) =>
-////        d2 - d1
-////    }.sum
-////    res
-////  }
-//}
-
 /**
  * Representation of a set of possible lifestate specs
  * disallowSpecs are conditions that a method should not be invoked under (e.g. throwing an exception)
