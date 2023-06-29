@@ -19,6 +19,7 @@ import smtlib.trees.{Commands, CommandsResponses, Terms}
 import smtlib.trees.Terms.{Exists, Forall, FunctionApplication, Identifier, Let, QualifiedIdentifier, SList, SSymbol, SortedVar, Term, VarBinding}
 
 import java.io.StringReader
+import scala.collection.concurrent.TrieMap
 import scala.collection.immutable
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
@@ -28,35 +29,45 @@ import scala.language.postfixOps
 case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
   var acquired:Boolean = false
   private val argsUsed = mutable.HashSet[Integer]()
+  private var ictx = new Context()
+  private var isolver: Solver = null
+  makeSolver(timeout, Some(randomSeed))
+  val initializedFieldFunctions: mutable.HashSet[String] = mutable.HashSet[String]()
+  var indexInitialized: Boolean = false
+  val uninterpretedTypes: mutable.HashSet[String] = mutable.HashSet[String]()
+
+  def release(): Unit = this.synchronized {
+    if(solver != null)
+      isolver.reset()
+    argsUsed.clear()
+    initializedFieldFunctions.clear()
+    uninterpretedTypes.clear()
+    if (acquired) {
+      //val currentThread: Long = Thread.currentThread().getId
+      //assert(acquired.get == currentThread)
+      acquired = false
+      zeroInitialized = false
+      indexInitialized = false
+    }
+  }
   def setArgUsed(i: Int) = argsUsed.add(i)
   def getArgUsed():Set[Integer] = argsUsed.toSet
   private var overridden = false
-  def overrideTimeoutAndSeed(timeout:Int, seed:Int): Unit = {
+  def overrideTimeoutAndSeed(alternateTimeout:Int, seed:Int): Unit = {
     overridden = true
     isolver.reset()
-    isolver = makeSolver(timeout, Some(seed))
+    makeSolver(alternateTimeout, Some(seed))
   }
   def resetTimeoutAndSeed(): Unit = {
     if(overridden)
-      isolver = makeSolver(timeout, Some(randomSeed))
+      makeSolver(timeout, Some(randomSeed))
 
     overridden = false
   }
 
-  private var ictx = new Context()
 
-  //TODO: find something better than finalize
-  // this seems to still be called even though depricated
-
-  val checkStratifiedSets = false // set to true to check EPR stratified sets (see Paxos Made EPR, Padon OOPSLA 2017)
-  private var isolver:Solver = makeSolver(timeout, Some(randomSeed))
-  val initializedFieldFunctions : mutable.HashSet[String] = mutable.HashSet[String]()
-  var indexInitialized:Boolean = false
-  val uninterpretedTypes : mutable.HashSet[String] = mutable.HashSet[String]()
   //val sortEdges = mutable.HashSet[(String,String)]()
   private var zeroInitialized:Boolean = false
-  private var isInitialCtx = true
-  private var isInitialSolver = true
   def initializeZero:Unit ={
     zeroInitialized = true
   }
@@ -70,40 +81,36 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
     isolver
   }
 
-
-  // Method for detecting cycles in function sorts or Ɐ∃ quantifications
-  private def detectCycle(edges:Set[(String,String)]):Boolean = {
-    def iCycle(n:String, visited:Set[String]):Boolean = {
-      if(visited.contains(n)) {
-        true
-      }else{
-        val nextNodes = edges.flatMap{
-          case (k,v) if k==n => Some(v)
-          case _ => None
-        }
-        nextNodes.exists(nn => iCycle(nn, visited + n))
-      }
-    }
-
-    val allNodes:Set[String] = edges.flatMap{
-      case (k,v) => Set(k,v)
-    }
-    allNodes.exists(n => iCycle(n,Set()))
-  }
-
-
-
   def mkAssert(t: AST): Unit = this.synchronized{
     //TODO: trim existential of things not used ====
 
     //val t2 = pruneUnusedQuant(t)
 //    val t2 = t
     assert(acquired)
-    if(checkStratifiedSets) {
-      //sortEdges.addAll(getQuantAltEdges(t))
-    }
     solver.add(t.asInstanceOf[BoolExpr])
   }
+
+
+  // Method for detecting cycles in function sorts or Ɐ∃ quantifications
+  private def detectCycle(edges: Set[(String, String)]): Boolean = {
+    def iCycle(n: String, visited: Set[String]): Boolean = {
+      if (visited.contains(n)) {
+        true
+      } else {
+        val nextNodes = edges.flatMap {
+          case (k, v) if k == n => Some(v)
+          case _ => None
+        }
+        nextNodes.exists(nn => iCycle(nn, visited + n))
+      }
+    }
+
+    val allNodes: Set[String] = edges.flatMap {
+      case (k, v) => Set(k, v)
+    }
+    allNodes.exists(n => iCycle(n, Set()))
+  }
+
   private def getQuantAltEdges(t: AST, forallQTypes : Set[String] = Set()): Set[(String,String)] = {
     val sorts:Set[(String,String)] = t match {
       case v:BoolExpr if v.isConst =>
@@ -138,15 +145,24 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
       case _ => true
     }
   }
-  private def makeSolver(timeout:Int, newRandomSeed:Option[Int]):Solver = this.synchronized{
-    val solver = ictx.mkSolver
-//    val solver = ctx.mkSimpleSolver()
+  private def makeSolver(timeout:Int, newRandomSeed:Option[Int]) = this.synchronized {
+    if(isolver != null ){
+      try {
+        isolver.reset()
+      }catch{
+        case e:Z3Exception if e.getMessage == "Context closed" => {
+          // ignore, reset is just to reduce mem leaks
+        }
+      }
+    }
+    isolver = ictx.mkSolver
+    //    val solver = ctx.mkSimpleSolver()
     val params = ictx.mkParams()
     params.add("timeout", timeout)
     params.add("logic", "AUFLIA")
     //params.add("model.compact", true)
     // Global.setParameter("parallel.enable", "true") // note: parallel z3 does not seem to speed things up
-    //Global.setParameter("memory_max_size", "5000") //todo: is there a way to set mem usage per query?
+    //    Global.setParameter("memory_max_size", "5000") //todo: is there a way to set mem usage per query?
     newRandomSeed.foreach { rs =>
       params.add("random-seed", rs + randomSeed)
     }
@@ -156,11 +172,12 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
 
     //TODO: does this get rid of the "let" statements when printing?
     //    ctx.setPrintMode(Z3_ast_print_mode.Z3_PRINT_LOW_LEVEL)
-    solver.setParameters(params)
-    solver
+    isolver.setParameters(params)
   }
 
   def dispose():Unit = this.synchronized{
+    release()
+    argsUsed.clear()
     if(isolver != null){
       isolver.reset()
     }
@@ -169,34 +186,6 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
       ictx.close()
     }
     ictx = null;
-  }
-  def release(): Unit = this.synchronized{
-    //    assert(!detectCycle(sortEdges.toSet), "Quantifier Alternation Exception") //TODO:  remove after dbg
-    // sortEdges.clear()
-
-//    println(s"reset ctx: ${System.identityHashCode(this)}")
-//    if(!acquired.isDefined) {
-//      assert(acquired.isDefined)
-//    }
-    if(acquired) {
-      //val currentThread: Long = Thread.currentThread().getId
-      //assert(acquired.get == currentThread)
-      acquired = false
-      //      ictx.close()
-      //isolver = null
-      isolver.reset()
-      zeroInitialized = false
-      indexInitialized = false
-      initializedFieldFunctions.clear()
-    }
-
-//    if(isolver!= null || ictx != null) { //note: or here is a kind of assertion to make sure these are nulled together
-//      isolver.reset()
-//      ictx.close()
-//    }
-//    isolver = null
-//    ictx = null
-//    Thread.sleep(100)
   }
 
   private var acquireCount = 0
@@ -211,11 +200,14 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
     initializedFieldFunctions.clear()
     indexInitialized = false
     uninterpretedTypes.clear()
-    if(acquireCount % 10 == 0) {
+    //TODO: can we use memory probe to kill task if mem gets too high?
+//    val memProbe = ictx.mkProbe("memory")
+//    val res = ictx.gt(memProbe, ictx.constProbe(10))
+    if(acquireCount % 1 == 0) { //TODO: does this reduce mem leak?
       isolver.reset()
       ictx.close()
       ictx = new Context()
-      isolver = makeSolver(timeout, Some(randomSeed))
+      makeSolver(timeout, Some(randomSeed))
     } else {
       isolver.reset()
     }
@@ -237,7 +229,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
                     logTimes:Boolean,
                     timeout:Int = 40000,
                     randomSeed:Int=3578,
-                    defaultOnSubsumptionTimeout: Z3SolverCtx=> Boolean = _ => false,
+                    defaultOnSubsumptionTimeout: () => Boolean = () => false,
                     pushSatCheck:Boolean = true,
                     strict_test:Boolean = false,
                     z3InstanceLimit:Int = -1
@@ -445,7 +437,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
       ???
   }
 
-  override def iDefaultOnSubsumptionTimeout(implicit zCtx: Z3SolverCtx): Boolean = this.defaultOnSubsumptionTimeout(zCtx)
+  override def iDefaultOnSubsumptionTimeout(): Boolean = this.defaultOnSubsumptionTimeout()
 
   override def setSeed(v: Int)(implicit zctx: Z3SolverCtx): Unit = {
     zctx.ctx.updateParamValue("random-seed", v.toString)
@@ -454,7 +446,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
 
   //private val threadLocalCtx = ThreadLocal.withInitial(() => Z3SolverCtx(timeout, randomSeed))
   private val zctxPool = Pool(mZ3InstanceLimit, () => {  // look at other low level profiling tools - runlim
-      val ctx = Z3SolverCtx(timeout,randomSeed)
+      val ctx = Z3SolverCtx(getSolverTimeout.get,randomSeed)
       ctx.acquire()
       ctx
     },
@@ -462,20 +454,14 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
       z.release()
       z.acquire()
     },
-    maxIdleTime = 30 seconds,
+    maxIdleTime = 10 seconds,
     dispose = (z:Z3SolverCtx) => {
       z.dispose()
     }
   )
 
-  override def getSolverCtx(): Lease[Z3SolverCtx] = {
-    //val ctx = threadLocalCtx.get()
-    //if(overrideTimeout.isEmpty) {
-    //  ctx
-    //}else
-    //  ctx.copy(timeout = overrideTimeout.get)
-
-    zctxPool.acquire()
+  override def getSolverCtx(): LeaseEnforceOnePerThread[Z3SolverCtx] = {
+    LeaseEnforceOnePerThread(zctxPool.acquire())
   }
 
   override def solverString(messageTranslator: MessageTranslator)(implicit zCtx: Z3SolverCtx): String = {
@@ -538,7 +524,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
     axioms.foreach { ax => ax(messageTranslator) }
     val useCmd = false
     if (useCmd) {
-      lazy val timeoutS = timeout.toString
+      lazy val timeoutS = getSolverTimeout.toString
       File.temporaryFile().apply { f =>
         println(s"file: $f")
         f.writeText(zCtx.solver.toString)
@@ -1501,4 +1487,16 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
   }
 
   override def STRICT_TEST: Boolean = this.strict_test
+
+  private val overrideSolver: Option[(Int, Int)] =
+    scala.util.Properties.envOrNone("OVERRIDE_SOLVER").map { v =>
+      v.split(",").toList match {
+        case (v1: String) :: (v2: String) :: Nil => (v1.toInt, v2.toInt)
+        case _ => throw new IllegalArgumentException(s"Failed to parse OVERRIDE_SOLVER env var.  Got: ${v}")
+      }
+    }
+  override def getSolverRetries: Option[Int] =
+    overrideSolver.map{_._1}
+  override def getSolverTimeout: Option[Int] =
+    Some(overrideSolver.map{_._2}.getOrElse(timeout))
 }

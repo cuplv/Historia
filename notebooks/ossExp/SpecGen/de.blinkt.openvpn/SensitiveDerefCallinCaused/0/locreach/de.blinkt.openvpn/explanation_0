@@ -1,0 +1,6 @@
+(    heap:           pure: p-2  !=  NULL         types: List(p-0:{10100}, p-1:{10100}, p-2:{10100})    trace: O(CBEnter I_CBEnter_FragmentonCreate ( _T_,p-2 );O(CBEnter I_CBEnter_FragmentonActivityCreated ( _T_,p-1 );O(CBEnter I_CBEnter_FragmentonCreateOptionsMenu ( _T_,p-0 )) 
+===========
+Future trace:
+ CBEnter void onCreate(android.os.Bundle)( _T_,@1 )
+CBEnter void onActivityCreated(android.os.Bundle)( _T_,@1 )
+CBEnter void onCreateOptionsMenu(android.view.Menu,android.view.MenuInflater)( _T_,@1 )

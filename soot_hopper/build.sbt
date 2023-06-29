@@ -27,6 +27,7 @@ libraryDependencies += "org.scalaz" %% "scalaz-core" % "7.3.3" %"compile"
 //libraryDependencies += "com.lihaoyi" %% "upickle" % "0.9.5"
 libraryDependencies += "com.lihaoyi" % "upickle_2.13" % "1.3.0"
 libraryDependencies += "com.github.pathikrit" % "better-files_2.13" % "3.9.1"
+// note: another lib that does file i/o but also does processes: https://github.com/com-lihaoyi/os-lib
 libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2"
 libraryDependencies += "com.typesafe.slick" % "slick_2.13" % "3.3.3"
 libraryDependencies += "org.xerial" % "sqlite-jdbc" % "3.34.0"
@@ -35,6 +36,7 @@ libraryDependencies += "de.learnlib.distribution" % "learnlib-distribution" % "0
 libraryDependencies += "net.automatalib.distribution" % "automata-distribution" % "0.10.0"
 libraryDependencies += "com.regblanc" %% "scala-smtlib" % "0.2.1-42-gc68dbaa"
 libraryDependencies += "io.github.andrebeat" %% "scala-pool" % "0.4.3"
+libraryDependencies += "com.github.nscala-time" %% "nscala-time" % "2.32.0"
 // libraryDependencies += "org.apache.spark" % "spark-core_2.13" % "3.3.1"
 
 

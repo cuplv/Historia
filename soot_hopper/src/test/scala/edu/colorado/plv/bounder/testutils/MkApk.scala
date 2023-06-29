@@ -24,6 +24,8 @@ object MkApk {
   }
   private val logger = LoggerFactory.getLogger("MkApk.scala")
   val RXBase = getClass.getResource("/CreateDestroySubscribe.zip").getPath
+  val RXBase2 = getClass.getResource("/ReactiveX.zip").getPath
+  val RXBoth =  getClass.getResource("/RxAndRxJav.zip").getPath
 
   /**
    *
@@ -38,7 +40,10 @@ object MkApk {
       val baseFile = File(targetProject)
 //      val copiedBase = baseFile.copyToDirectory(dir)
       val unZip = Dsl.unzip(baseFile)(dir)
-      val appDir: File = dir / "CreateDestroySubscribe"
+      val appName = dir.glob("*").toList
+      assert(appName.size == 1, s"Tmp folder should only have extracted project. Found: ${appName.mkString(" ")}")
+      val appNameGotten = appName.head.name
+      val appDir: File = dir / appNameGotten
       val srcDir =
         appDir / "app" / "src" / "main" / "java" / "com" / "example" / "createdestroy"
 

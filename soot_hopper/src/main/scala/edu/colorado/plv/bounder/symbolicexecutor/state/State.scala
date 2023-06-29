@@ -97,7 +97,7 @@ case class StateFormula(callStack: List[CallStackFrame], //TODO: cache z3 ast co
   private val hashableCache = TrieMap[SpecSpace, HashableStateFormula]()
   def makeHashable(specSpace: SpecSpace):HashableStateFormula = {
     if(!hashableCache.contains(specSpace)) {
-      val pred = EncodingTools.rhsToPred(traceAbstraction.rightOfArrow, specSpace)
+      val pred = EncodingTools.rhsToPred(traceAbstraction.rightOfArrow, specSpace).map{EncodingTools.simplifyPred}
       hashableCache.addOne(specSpace,
         HashableStateFormula(callStack, heapConstraints, pureFormula, typeConstraints, pred))
     }
@@ -259,7 +259,7 @@ case class StateFormula(callStack: List[CallStackFrame], //TODO: cache z3 ast co
   }
 }
 object StateFormula{
-  implicit var rw:RW[StateFormula] = macroRW
+  implicit val rw:RW[StateFormula] = macroRW
   def initialState:StateFormula = StateFormula(Nil, Map.empty, Set(), Map.empty, AbstractTrace(Nil))
 }
 

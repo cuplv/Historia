@@ -1,5 +1,7 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
+
+import scala.jdk.CollectionConverters._
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.EmptyTypeSet.intersect
 import edu.colorado.plv.bounder.ir._
@@ -17,6 +19,9 @@ import scala.collection.mutable
 import scala.collection.parallel.CollectionConverters.ImmutableIterableIsParallelizable
 import scala.collection.parallel.immutable.ParIterable
 import scala.util.matching.Regex
+import scala.collection.parallel.CollectionConverters.IterableIsParallelizable
+import edu.colorado.plv.bounder.symbolicexecutor.state.PrettyPrinting
+
 sealed trait RelevanceRelation{
   def join(other: RelevanceRelation):RelevanceRelation
   def applyPrecisionLossForSkip(state:State):State
@@ -113,11 +118,12 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 
   def getWrapper = wrapper
 
-  def directCallsGraph(loc: MethodLoc): Set[Loc] = {
+  private def iDirectCallsGraph(loc:MethodLoc):Set[Loc] = {
     val unresolvedTargets = wrapper.makeMethodTargets(loc).map(callee =>
       UnresolvedMethodTarget(callee.classType, callee.simpleName, Set(callee)))
     unresolvedTargets.flatMap(target => resolver.resolveCallLocation(target))
   }
+  def directCallsGraph = Memo.mutableHashMapMemo(loc => iDirectCallsGraph(loc))
 
 
   var printCacheCache = mutable.Set[String]()
@@ -178,7 +184,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     calls.addAll(allCallsApp(loc))
     var added = true
     while(added){
-      val newCalls = calls.flatMap{called => allCallsApp(called)}
+      val newCalls = calls.par.flatMap{called => allCallsApp(called)}
       added = newCalls.exists{newCall => !calls.contains(newCall)}
       calls.addAll(newCalls)
     }
@@ -479,7 +485,12 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
           case ReturnCmd(Some(returnVar:LocalWrapper),_) => wrapper.pointsToSet(ret.method,returnVar)
           case _:ReturnCmd => TopTypeSet
           case v => throw new IllegalStateException(s"$v is not a return")
-        }}.reduceOption((a,b) =>a.union(b)).getOrElse(TopTypeSet)
+        }}.reduceOption{ (a,b) => (a,b) match {
+        case (a: PrimTypeSet, _: PrimTypeSet) => a // some cases different primitives can be returned from a method
+        case (_: PrimTypeSet, b: BitTypeSet) => b // just ignore jvm weirdness here, same method returns mix of prim/non prim
+        case (a: BitTypeSet, _: PrimTypeSet) => a
+        case (a: TypeSet, b: TypeSet) => a.union(b)
+      }}.getOrElse(TopTypeSet)
       val signature = callback.getSignature
       (callback,
       allCBIFromSpec.flatMap{absMsg =>

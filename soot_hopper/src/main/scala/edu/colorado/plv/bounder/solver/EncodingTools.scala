@@ -1,7 +1,7 @@
 package edu.colorado.plv.bounder.solver
 
 import edu.colorado.plv.bounder.ir.{MessageType, TMessage, TraceElement}
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, CLInit, Exists, Forall, FreshRef, HNOE, LSAnyPred, LSAtom, LSBexp, LSConstraint, LSFalse, LSImplies, LSPred, LSSingle, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, SignatureMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, AnyAbsMsg, CLInit, Exists, Forall, FreshRef, HNOE, LSAnyPred, LSAtom, LSBexp, LSConstraint, LSFalse, LSImplies, LSPred, LSSingle, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, SignatureMatcher}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, ConcreteVal, Equals, FieldPtEdge, HeapPtEdge, NPureVar, NamedPureVar, NotEquals, PureConstraint, PureExpr, PureVal, PureVar, State, StaticPtEdge, TopVal}
 
@@ -31,6 +31,8 @@ object EncodingTools {
     }
   }
   private def updArrowPhi(i:AbsMsg, lsPred:LSPred):LSPred = lsPred match {
+    case NS(i1, AnyAbsMsg) =>
+      updArrowPhi(i, i1)
     case LSAnyPred => LSAnyPred
     case Forall(v,p) => Forall(v,updArrowPhi(i:AbsMsg, p:LSPred))
     case Exists(v,p) => Exists(v,updArrowPhi(i:AbsMsg, p:LSPred))
@@ -250,9 +252,19 @@ object EncodingTools {
     case Forall(Nil, p) => simplifyPred(p)
     case c:LSConstraint => c
     case Forall(vars, p) =>
-      Forall(vars, simplifyPred(p))
+      val freeVars = p.lsVar
+      val newVars = vars.filter { v => freeVars.contains(v) }
+      if (newVars.nonEmpty)
+        Forall(newVars, simplifyPred(p))
+      else
+        simplifyPred((p))
     case Exists(vars, p) =>
-      Exists(vars, simplifyPred(p))
+      val freeVars = p.lsVar
+      val newVars = vars.filter{v => freeVars.contains(v)}
+      if(newVars.nonEmpty)
+        Exists(newVars, simplifyPred(p))
+      else
+        simplifyPred((p))
     case LSImplies(_,LSTrue) =>
       LSTrue
     case LSImplies(LSTrue, l2) =>

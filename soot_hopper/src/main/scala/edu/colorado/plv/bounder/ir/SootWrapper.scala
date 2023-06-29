@@ -526,7 +526,15 @@ class CallGraphWrapper(cg: CallGraph) extends CallGraphProvider{
     cg.edgesOutOf(method).asScala.map(e => e.tgt()).toSet
   }
 }
+case class Messages(cbSize:Int, cbMsg:Int, matchedCb:Int, matchedCbRet:Int,
+                    ciCallGraph:Int, matchedCiCallGraph:Int,
+                    syntCi:Int, matchedSyntCi:Int, appMethods:Int = -1)
 
+object Messages {
+  implicit val rw: RW[Messages] = macroRW
+}
+
+case class AllocSiteInfo(allocType:String)
 /**
  * Expose functionality of Soot/spark to analysis
  * //TODO: make this fully contain soot functionality
@@ -535,14 +543,12 @@ class CallGraphWrapper(cg: CallGraph) extends CallGraphProvider{
  * @param toOverride set of LSSpec or abstract messages to override
  *                   callbacks that may be missing (e.g. onResume so that onPause may be executed)
  */
+
 class SootWrapper(apkPath : String,
                   toOverride:Set[_<:Any], //TODO: use more precise type
                   callGraphSource: CallGraphSource = SparkCallGraph,
                   sourceType:SourceType = ApkSource
                             ) extends IRWrapper[SootMethod, soot.Unit] {
-  case class Messages(cbSize:Int, cbMsg:Int, matchedCb:Int, matchedCbRet:Int,
-                      ciCallGraph:Int, matchedCiCallGraph:Int,
-                      syntCi:Int, matchedSyntCi:Int)
 
   /**
    * print methods and points to regions for all classes containing the classFilter string
@@ -587,16 +593,30 @@ class SootWrapper(apkPath : String,
     })
     stringBuilder.toString()
   }
-  object Messages{
-    implicit val rw:RW[Messages] = macroRW
-  }
-  def getMessages(cfResolver:ControlFlowResolver[SootMethod, soot.Unit], spec:SpecSpace,
-                  ch : ClassHierarchyConstraints):Messages ={
 
-    val mFilter = (strm:String) => {
-      !strm.contains("MainActivity") &&
-        !strm.contains("com.example.createdestroy.R$") &&
-        strm !=("com.example.createdestroy.R")
+  def getMessages(cfResolver:ControlFlowResolver[SootMethod, soot.Unit], spec:SpecSpace,
+                  ch : ClassHierarchyConstraints, mFilter:String => Boolean):Messages ={
+
+    if(false) { // This is how we got the call graph count for the paper experiments, same code also added to flow.
+      val pkg = "org.zephyrsoft.trackworktime" //TODO: set this to app package to use count
+      val classes = Scene.v().getClasses().asScala
+      val callGraph: CallGraph = Scene.v().getCallGraph()
+      var cgMethodCount: Int = 0
+      var totMethodCount: Int = 0
+      for (c <- classes) {
+        val methods = c.getMethods().asScala
+        for (m <- methods) {
+          totMethodCount += 1
+          if (m.isPhantom) {
+            System.out.println("is phantom: " + m)
+          }
+          if (!(m.isPhantom) && m.getDeclaringClass.toString.contains(pkg) && callGraph.edgesInto(m).hasNext) {
+            cgMethodCount = cgMethodCount + 1
+          }
+        }
+      }
+      System.out.println("found methods in cg: " + cgMethodCount)
+      System.out.println("found total methods: " + totMethodCount)
     }
     val cb = resolver.getCallbacks.filter{m =>
       val strm = m.classType
@@ -618,27 +638,30 @@ class SootWrapper(apkPath : String,
     val matchedCallinssimp = matchedCallins.map(c => c.simpleName)
     val matchedCallbackssimp = matchedCallbacks.map(c => (c._1, c._2.simpleName))
 
-    val syntCallinSites = getAppMethods(resolver).flatMap {
-      case method:SootMethod => getUnitGraph(method.getActiveBody).asScala.flatMap{u =>
-        if(mFilter(method.getDeclaringClass.getName) &&Scene.v().getCallGraph.edgesOutOf(u).hasNext &&
-          u.toString().contains("(") && !u.toString().contains("newarray (")) {
-          val unitInd = findUnitIndex(method,u)
-          val loc = AppLoc(JimpleMethodLoc(method), JimpleLineLoc(u, unitInd, method), false)
-          val callinSet = resolver.resolveCallLocation(makeInvokeTargets(loc)).flatMap {
-            case CallinMethodReturn(sig) => Some(sig)
-            case CallinMethodInvoke(sig) => Some(sig)
-            case GroupedCallinMethodInvoke(targetClasses, fmwName) => ???
-            case GroupedCallinMethodReturn(targetClasses, fmwName) => ???
-            case _ => None
-          }
-          if (callinSet.nonEmpty) {
-//            val matchedBySpec = allI.filter(i => callinSet.exists(m => i.contains(CIExit, (m._1,m._2))(ch)))
-            val matchedBySpec = callinSet.filter(c => allI.exists(i => i.contains(CIExit, c)(ch)))
-            Some((method, u, matchedBySpec,callinSet))
-          } else
-            None
-        }else None
-      }
+    val gottenAppMethods = getAppMethods(resolver)
+    val syntCallinSites = gottenAppMethods.flatMap {
+      case method:SootMethod if method.hasActiveBody =>
+        getUnitGraph(method.getActiveBody).asScala.flatMap{u =>
+          if(mFilter(method.getDeclaringClass.getName) &&Scene.v().getCallGraph.edgesOutOf(u).hasNext &&
+            u.toString().contains("(") && !u.toString().contains("newarray (")) {
+            val unitInd = findUnitIndex(method,u)
+            val loc = AppLoc(JimpleMethodLoc(method), JimpleLineLoc(u, unitInd, method), false)
+            val callinSet = resolver.resolveCallLocation(makeInvokeTargets(loc)).flatMap {
+              case CallinMethodReturn(sig) => Some(sig)
+              case CallinMethodInvoke(sig) => Some(sig)
+              case GroupedCallinMethodInvoke(targetClasses, fmwName) => ???
+              case GroupedCallinMethodReturn(targetClasses, fmwName) => ???
+              case _ => None
+            }
+            if (callinSet.nonEmpty) {
+//              val matchedBySpec = allI.filter(i => callinSet.exists(m => i.contains(CIExit, (m._1,m._2))(ch)))
+              val matchedBySpec = callinSet.filter(c => allI.exists(i => i.contains(CIExit, c)(ch)))
+              Some((method, u, matchedBySpec,callinSet))
+            } else
+              None
+          }else None
+        }
+      case method:SootMethod => Set.empty
       case _ => ???
     }
     val syntCallinSitesInSpec = syntCallinSites.filter(_._3.nonEmpty)
@@ -649,7 +672,7 @@ class SootWrapper(apkPath : String,
     Messages(cb.size, cb.size*2, matchedCb = matchedCallbacks.count(_._1 == CBEnter),
         matchedCbRet = matchedCallbacks.count(_._1 == CBExit),
       ciCallGraph = callinCallGraphSize, matchedCiCallGraph = matchedCallinCallGraphSize,
-      syntCi = syntCallinSites.size, matchedSyntCi = syntCallinSitesInSpec.size)
+      syntCi = syntCallinSites.size, matchedSyntCi = syntCallinSitesInSpec.size, appMethods = gottenAppMethods.size)
   }
 
 
@@ -704,8 +727,33 @@ class SootWrapper(apkPath : String,
       dummyClass.setSuperclass(c)
     }
     dummyClass.setModifiers(Modifier.PUBLIC)
-    val methodsToImplement = c.getMethods.asScala
-    methodsToImplement.foreach{ m =>
+    //var methodsToImplement = c.getMethods.asScala
+    //var cc = c.getInterfaces.asScala.toSet + c
+    val cc = if(!c.isInterface)Scene.v().getActiveHierarchy.getSuperclassesOf(c).asScala else List.empty
+    val ci = if(c.isInterface)Scene.v().getActiveHierarchy.getSuperinterfacesOf(c).asScala else List.empty
+    val ii = c.getInterfaces.asScala
+
+    val allSuper = (cc ++ ci ++ ii ++ List(c))
+    val allSuperMethods:List[SootMethod] = allSuper.flatMap{c => c.getMethods.asScala}.toList
+    val methodsToImplement = allSuperMethods.filter{m =>
+      !allSuper.exists{(superC:SootClass) =>
+        superC.getMethods.asScala.exists{ (superM:SootMethod) =>
+          val namesMatch = m.getName == superM.getName
+          val mParams = m.getParameterTypes.asScala.toList
+          val superMParams = superM.getParameterTypes.asScala.toList
+          val sizesMatch = mParams.size == superMParams.size
+          val paramMatch = superMParams.zip(mParams).forall{
+            case (p1, p2) =>
+              p1 == p2
+          }
+          val returnTypesMatch = superM.getReturnType == m.getReturnType
+
+          namesMatch && sizesMatch && paramMatch && returnTypesMatch && superM.hasActiveBody
+        }
+      }
+    }
+
+    methodsToImplement.foreach{ (m:SootMethod) =>
       if(m.isPublic) {
         val mName = m.getName
         val mParams = m.getParameterTypes
@@ -713,12 +761,16 @@ class SootWrapper(apkPath : String,
         // Note: we remove the native flag so we can override native methods like normal java code
         val mModifiers = m.getModifiers & ( ~Modifier.ABSTRACT) & (~Modifier.NATIVE)
         val newMethod = Scene.v().makeSootMethod(mName, mParams, mRetT, mModifiers)
-        dummyClass.addMethod(newMethod)
-        newMethod.setPhantom(false)
-        val body = Jimple.v().newBody(newMethod)
-        body.insertIdentityStmts(dummyClass)
-        newMethod.setActiveBody(body)
-        instrumentSootMethod(newMethod)
+        try {
+          dummyClass.addMethod(newMethod)
+          newMethod.setPhantom(false)
+          val body = Jimple.v().newBody(newMethod)
+          body.insertIdentityStmts(dummyClass)
+          newMethod.setActiveBody(body)
+          instrumentSootMethod(newMethod)
+        }catch{
+          case e:RuntimeException if e.getMessage.contains("but the class already has a method") =>
+        }
       }
 
     }
@@ -804,7 +856,7 @@ class SootWrapper(apkPath : String,
     }
 
     //read global field cast to correct type and return
-    if(method.getReturnType.toString == "void"){
+    if(method.getReturnType.toString == "void") {
       unitChain.add(Jimple.v().newReturnVoidStmt())
     } else{
       // get global static field, cast to correct type and return
@@ -832,7 +884,11 @@ class SootWrapper(apkPath : String,
   private val fwkInstantiatedClasses = mutable.Set[SootClass]()
 
   private val initialClasses = Set("android.app.Activity", "androidx.fragment.app.Fragment",
-    "android.app.Fragment", "android.view.View", "android.app.Application","androidx.appcompat.app.AppCompatActivity") //TODO:
+    "android.app.Fragment", "android.view.View", "android.app.Application","androidx.appcompat.app.AppCompatActivity",
+    "android.app.Service", "android.view.ViewGroup", "androidx.recyclerview.widget.RecyclerView$ViewHolder",
+    "androidx.recyclerview.widget.RecyclerView#ViewHolder", "androidx.recyclerview.widget.RecyclerView$Adapter",
+    "androidx.recyclerview.widget.RecyclerView$Adapter"
+  ) //TODO:
   /**
    * Classes that the android framework may create on its own.
    * These are things like fragments and activities that are declared in the XML file.
@@ -1004,13 +1060,16 @@ class SootWrapper(apkPath : String,
     val allocLocal = Jimple.v().newLocal("alloc", objectClazz.getType)
     entryPointBody.getLocals.add(allocLocal)
 
-    Scene.v().getClasses.asScala.toList.foreach{v =>
-      if(resolver.isFrameworkClass(SootWrapper.stringNameOfClass(v))) {
+
+    val toAssign = Jimple.v().newLocal("toAssignStaticPubFields", globalField.getType)
+    entryPointBody.getLocals.add(toAssign)
+    Scene.v().getClasses.asScala.toList.foreach{ fwkC =>
+      if(resolver.isFrameworkClass(SootWrapper.stringNameOfClass(fwkC))) {
         // if framework interface with no implementors, make a dummy implementor
-        val isInterfaceWithNoImpl = v.isInterface && Scene.v().getActiveHierarchy.getImplementersOf(v).size() == 0
-        lazy val isAbstWithNoImpl = v.isAbstract && !v.isInterface && Scene.v().getActiveHierarchy.getSubclassesOf(v).size() == 0
+        val isInterfaceWithNoImpl = fwkC.isInterface && Scene.v().getActiveHierarchy.getImplementersOf(fwkC).size() == 0
+        lazy val isAbstWithNoImpl = fwkC.isAbstract && !fwkC.isInterface && Scene.v().getActiveHierarchy.getSubclassesOf(fwkC).size() == 0
         if (isInterfaceWithNoImpl || isAbstWithNoImpl) {
-          val dummy = dummyClassForFrameworkClass(v)
+          val dummy = dummyClassForFrameworkClass(fwkC)
           entryPointBody.getUnits.add(
             Jimple.v().newAssignStmt(allocLocal, Jimple.v().newNewExpr(dummy.getType))
           )
@@ -1024,12 +1083,26 @@ class SootWrapper(apkPath : String,
               Jimple.v().newStaticFieldRef(globalField.makeRef()), allocLocal)
           )
         }
+        //Static fields of fwk that are public need to be assigned by "the field"™️
+        // This makes sure that `System.out.println()` has a call target as `System.out` is a static field
+        entryPointBody.getUnits.add(Jimple.v().newAssignStmt(toAssign,
+          Jimple.v().newStaticFieldRef(globalField.makeRef())))
+
+        fwkC.getFields.forEach { fwkField =>
+          if (fwkField.isPublic && fwkField.isStatic) {
+            val fieldRef = Jimple.v().newStaticFieldRef(fwkField.makeRef())
+            entryPointBody.getUnits.add(Jimple.v().newAssignStmt(fieldRef, toAssign))
+          }
+        }
       }
     }
     // create new instance of each framework type and assign to allocLocal
     Scene.v().getClasses.asScala.toList.foreach{ v =>
       if(resolver.isFrameworkClass(SootWrapper.stringNameOfClass(v)) && !v.isInterface){
         v.setApplicationClass()
+        if (v.isAbstract){
+          v.setModifiers(v.getModifiers & (~Modifier.ABSTRACT))
+        }
         entryPointBody.getUnits.add(
           Jimple.v().newAssignStmt(allocLocal, Jimple.v().newNewExpr(v.getType))
         )
@@ -1049,6 +1122,17 @@ class SootWrapper(apkPath : String,
     resolver.getCallbacks.flatMap{
       case JimpleMethodLoc(method) => Some(method)
     }.foreach { cb => addCallbackToMain(entryMethod, cb, globalField) }
+
+    // add array to main
+    val entryUnits = entryMethod.getActiveBody.getUnits
+    val newArray = Jimple.v().newNewArrayExpr(globalField.getType, IntConstant.v(4))
+    val theArray = Jimple.v().newLocal("theOneAlmightyArray", globalField.getType)
+    entryMethod.getActiveBody.getLocals.add(theArray)
+    entryUnits.add(Jimple.v().newAssignStmt(theArray, newArray))
+    val elementForArray = Jimple.v().newLocal("elementForTheArray", globalField.getType)
+    entryMethod.getActiveBody.getLocals.add(elementForArray)
+    entryUnits.add(Jimple.v().newAssignStmt(elementForArray, Jimple.v().newStaticFieldRef(globalField.makeRef())))
+    entryUnits.add(Jimple.v().newAssignStmt(Jimple.v().newArrayRef(theArray, IntConstant.v(0)), elementForArray))
 
     // return statement validate and set entry points for spark analysis
     entryPointBody.getUnits.add(Jimple.v().newReturnVoidStmt())
@@ -1587,7 +1671,7 @@ class SootWrapper(apkPath : String,
       edge.getName != "<clinit>"
     }
 
-    val mref = appLoc.line match {
+    val mref: SootMethodRef = appLoc.line match {
       case JimpleLineLoc(cmd: JInvokeStmt, _, _) => cmd.getInvokeExpr.getMethodRef
       case JimpleLineLoc(cmd: JAssignStmt, _, _) if cmd.getRightOp.isInstanceOf[JVirtualInvokeExpr] =>
         cmd.getRightOp.asInstanceOf[JVirtualInvokeExpr].getMethodRef
@@ -1598,7 +1682,8 @@ class SootWrapper(apkPath : String,
       case JimpleLineLoc(cmd: JAssignStmt, _, _) if cmd.getRightOp.isInstanceOf[JStaticInvokeExpr] =>
         cmd.getRightOp.asInstanceOf[JStaticInvokeExpr].getMethodRef
       case t =>
-        throw new IllegalArgumentException(s"Bad Location Type $t")
+        return UnresolvedMethodTarget("jfjdjdkdffkjdfjfdjkdfjkdfkjdfjkd","dfjkkjdfjfdfjdkjfddkjfjk", Set.empty)
+//        throw new IllegalArgumentException(s"Bad Location Type $t")
     }
     val declClass = mref.getDeclaringClass
     val clazzName = declClass.getName
@@ -1613,12 +1698,20 @@ class SootWrapper(apkPath : String,
     val methodDeclClass = m.method.getDeclaringClass
     val methodSignature = m.method.getSubSignature
     val superclasses: util.List[SootClass] = Scene.v().getActiveHierarchy.getSuperclassesOf(methodDeclClass)
+    val ifacesOfSuperClasses = superclasses.asScala.flatMap{ c =>
+      c.getInterfaces.asScala.flatMap { iface =>
+        Scene.v().getActiveHierarchy.getSuperinterfacesOf(iface).asScala
+      }
+    }
     val interfaces: Iterable[SootClass] = methodDeclClass.getInterfaces.asScala.flatMap{iface =>
       Scene.v().getActiveHierarchy.getSuperinterfacesOfIncluding(iface).asScala
     }
-    val methods = (superclasses.iterator.asScala ++ interfaces)
-      .filter(sootClass => sootClass.declaresMethod(methodSignature))
-      .map( sootClass=> JimpleMethodLoc(sootClass.getMethod(methodSignature)))
+    val methods = (superclasses.iterator.asScala ++ interfaces ++ ifacesOfSuperClasses)
+      .filter{sootClass =>
+        val out = sootClass.declaresMethod(methodSignature)
+        out
+      }
+      .map{ sootClass=> JimpleMethodLoc(sootClass.getMethod(methodSignature))}
     methods.toList
   }
 
@@ -1769,7 +1862,14 @@ class SootWrapper(apkPath : String,
     }
     reaching match{
       case d:DoublePointsToSet =>
-        BitTypeSet(jimpleGetBitSet(d))
+        val bitSetInfo = () => {
+          val info = mutable.HashMap[Int, AllocSiteInfo]()
+          d.forall(v => {
+            info.addOne(v.getNumber -> AllocSiteInfo(v.getType.toString))
+          })
+          info.toMap
+        }
+        BitTypeSet(jimpleGetBitSet(d), bitSetInfo)
       case e:EmptyPointsToSet =>
         EmptyTypeSet
       case _:FullObjectSet =>

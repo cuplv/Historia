@@ -1,0 +1,12 @@
+(    heap:           pure: p-5  !=  NULL && p-2  !=  NULL && p-4  !=  NULL && p-3  !=  NULL && p-1  !=  NULL         types: List(p-0:{3846}, p-1:{3847}, p-3:{3846}, p-4:{880,1220,1526,1527,1597 ...}, p-2:{958,3732,3750,3757,3809 ...}, p-5:{3455})    trace: O(CBEnter I_CBEnter_FragmentonCreate ( _T_,p-5 );O(CIExit I_CIExit_FragmentgetActivity ( p-4,p-5 );p-2;O(CIExit I_CIExit_DialogBuilderinit ( _T_,p-2,p-4 );p-3;O(CIExit I_CIExit_DialogBuildersetPositiveButton ( _T_,p-2,_T_,p-3 );p-1;O(CIExit I_CIExit_DialogBuildersetNegativeButton ( _T_,p-2,_T_,p-1 );O(CBEnter I_CBEnter_DialogOnClickonClick ( _T_,p-0 )) 
+===========
+Future trace:
+ CBEnter void onCreate(android.os.Bundle)( _T_,@4 )
+CIExit Activity getActivity()( @3,@4 )
+TNew(p-2,{4})
+CIExit void <init>(android.content.Context)( _T_,@1,@3 )
+TNew(p-3,{0})
+CIExit android.app.AlertDialog$Builder setPositiveButton(int,android.content.DialogInterface$OnClickListener)( _T_,@1,_T_,@8 )
+TNew(p-1,{1})
+CIExit android.app.AlertDialog$Builder setNegativeButton(int,android.content.DialogInterface$OnClickListener)( _T_,@1,_T_,@6 )
+CBEnter void onClick(android.content.DialogInterface,int)( _T_,@8 )

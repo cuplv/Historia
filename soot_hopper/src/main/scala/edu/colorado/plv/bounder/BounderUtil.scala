@@ -1,8 +1,8 @@
 package edu.colorado.plv.bounder
 
-import java.util.Collections
+import java.util.{Collections, UUID}
 import better.files.File
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdNotImplemented, CmdWrapper, FieldReference, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, Goto, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, Loc, LocalWrapper, MethodLoc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SpecialInvoke, StaticFieldReference, SwitchCmd, ThrowCmd, VirtualInvoke}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdNotImplemented, CmdWrapper, FieldReference, Goto, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, Loc, LocalWrapper, MethodLoc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SpecialInvoke, StaticFieldReference, SwitchCmd, ThrowCmd, VirtualInvoke}
 import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, ExecutorConfig, QueryFinished, QueryInterrupted, QueryResult}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, InitialQuery, Live, NoOutputMode, OutputMode, PathNode, Qry, WitnessedQry}
 
@@ -11,17 +11,16 @@ import scala.collection.mutable
 import scala.sys.process._
 import scala.util.matching.Regex
 import upickle.default.{macroRW, read, write, ReadWriter => RW}
-import scala.collection.parallel.CollectionConverters.IterableIsParallelizable
 
+import scala.collection.parallel.CollectionConverters.IterableIsParallelizable
 import scala.jdk.CollectionConverters._
 
 object BounderUtil {
-  private var sidCache:Option[String] = None
-  def systemID(): String = {
-    if(sidCache.isEmpty)
-      sidCache = Some(runCmdStdout("uname -a").trim)
-
-    sidCache.get
+  lazy val systemID: String = {
+    val hostname = runCmdStdout("hostname")
+    val uname = runCmdStdout("uname -a").trim
+    val uuid = UUID.randomUUID
+    s"$uname hostname: $hostname uuid: $uuid"
   }
   def isMac():Boolean = {
     runCmdStdout("uname").trim == "Darwin" //TODO: add other uname results for other mac variants

@@ -6,6 +6,7 @@ import edu.colorado.plv.bounder.ir.{AppMethod, BitTypeSet, EmptyTypeSet, Message
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.LifeState._
 import edu.colorado.plv.bounder.solver.EncodingTools.repHeapCells
+import edu.colorado.plv.bounder.solver.StateSolver.{simplifyCache, subsumeCache}
 import edu.colorado.plv.bounder.symbolicexecutor.SubsumptionMode
 import edu.colorado.plv.bounder.symbolicexecutor.state.{HeapPtEdge, _}
 import io.github.andrebeat.pool.Lease
@@ -57,8 +58,14 @@ case object SubsDebug extends SubsumptionMethod
  * Try using Unify and if that fails use Z3
  */
 case object SubsFailOver extends SubsumptionMethod
+object StateSolver{
+  private val simplifyCache = TrieMap[(HashableStateFormula), Boolean]()
+  private val subsumeCache = TrieMap[(HashableStateFormula, HashableStateFormula), Boolean]()
+}
 /** SMT solver parameterized by its AST or expression type */
 trait StateSolver[T, C <: SolverCtx[T]] {
+  def getSolverRetries:Option[Int]
+  def getSolverTimeout: Option[Int]
   def shouldLogTimes:Boolean
   def STRICT_TEST:Boolean
   def mkAssert(t:T)(implicit zCtx:C):Unit
@@ -80,9 +87,26 @@ trait StateSolver[T, C <: SolverCtx[T]] {
                    ):SetEncoder[T,C]
   def setSeed(v:Int)(implicit zCtx: C):Unit
   // checking
-  def getSolverCtx(): Lease[C]
+
+  private val z3ack = TrieMap[Long, Boolean]()
+
+  case class LeaseEnforceOnePerThread[A <: AnyRef](lease: Lease[A]) {
+
+    def apply[B](f: A => B): B = try {
+      val tid: Long = Thread.currentThread().getId
+      assert(!z3ack.contains(tid))
+      z3ack.put(tid, true)
+      lease.apply(f)
+    } finally {
+
+      val tid: Long = Thread.currentThread().getId
+      z3ack.remove(tid)
+    }
+  }
+
+  def getSolverCtx(): LeaseEnforceOnePerThread[C]
   def getLogger:Logger
-  def iDefaultOnSubsumptionTimeout(implicit zCtx:C):Boolean
+  def iDefaultOnSubsumptionTimeout:Boolean
 
   // axiom initializers add interpreted properties to uninterpreted domains e.g. zero, heap cells, message order
   def initializeZeroAxioms(messageTranslator: MessageTranslator)(implicit zCtx:C):Unit
@@ -330,7 +354,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       case (msgVar:PureVar, ind) =>
         val modelExpr = pvMap(msgVar)
         val typeConstraint = lsTypeMap.get(msgVar) match {
-          case Some(BitTypeSet(s)) =>
+          case Some(BitTypeSet(s, _)) =>
               mkTypeConstraintForAddrExpr(createTypeFun(), typeToSolverConst, pvMap(msgVar), s.toSet)
           case _ => mkBoolVal(b = true)
         }
@@ -363,7 +387,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       case (msgVar: PureVar, ind) if ind != arityOfTgt =>
         val modelExpr = pvMap(msgVar)
         val typeConstraint = lsTypeMap.get(msgVar) match {
-          case Some(BitTypeSet(s)) =>
+          case Some(BitTypeSet(s, _)) =>
             mkTypeConstraintForAddrExpr(createTypeFun(), typeToSolverConst, pvMap(msgVar), s.toSet)
           case _ => mkBoolVal(b = true)
         }
@@ -839,102 +863,101 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   }
 
-  private val simplifyCache = TrieMap[(SpecSpace, HashableStateFormula), Boolean]()
   def simplify(state: State,specSpace: SpecSpace, maxWitness: Option[Int] = None, rngTry:Int = 0): Option[State] = {
-    getSolverCtx() { implicit zCtx =>
-      if(rngTry > 0){
-        zCtx.asInstanceOf[Z3SolverCtx].overrideTimeoutAndSeed(220000,rngTry)
+
+    // val startTime = System.nanoTime()
+    // var result = "unfinished"
+    // get rid of equal constraints in pure constraitns by inlining
+    val inlinedStateOpt = state.inlineConstEq()
+    if (inlinedStateOpt.isEmpty)
+      return None
+    val state2 = inlinedStateOpt.get
+
+    if (state.isSimplified) {
+      // state previously simplified
+      // result = "sat"
+      return inlinedStateOpt
+    }
+
+    // if a stored value must be created in the future, state is infeasible
+    val createdInFuture = state2.sf.traceAbstraction.rightOfArrow.flatMap {
+      case FreshRef(v) => Some(v)
+      case _ => None
+    }
+    val stackVarCreatedInFuture = state2.callStack.exists {
+      case CallStackFrame(_, _, locals) => locals.values.exists {
+        createdInFuture.contains
+      }
+    }
+
+
+    if (stackVarCreatedInFuture)
+      return None
+
+    if (state2.sf.callStack.exists(frame => frame.locals.getOrElse(StackVar("@this"), NPureVar(-1)) == NullVal))
+      return None
+
+    @tailrec
+    def equivSet(acc: Set[PureExpr]): Set[PureExpr] = {
+      val eqRefPv = state2.sf.pureFormula.flatMap {
+        case PureConstraint(lhs, Equals, rhs) if acc.contains(lhs) || acc.contains(rhs) => Set(lhs, rhs)
+        case _ => Set.empty
+      }
+      val newAcc = acc ++ eqRefPv
+      if (newAcc == acc)
+        acc
+      else
+        equivSet(eqRefPv)
+    }
+
+    //      def mustNotNull(pv:PureExpr):Boolean = pv match{
+    //        case NullVal => false
+    //        case pv:PureVar =>
+    //          state2.sf.pureFormula.forall{ // with pv reduction we eventually get to fields pointing to null directly
+    //            case PureConstraint(lhs, Equals, rhs) => pv != lhs && pv != rhs
+    //            case _ => true
+    //          }
+    //      }
+    val heapPtEdgeCreatedInFuture = state2.sf.heapConstraints.exists {
+      case (FieldPtEdge(base, _), v) =>
+        val equivV = equivSet(Set(v))
+        //if(!equivV.contains(NullVal) ) { //TODO: pts to null ok for val created in future?
+        val equiv = equivSet(Set(base)) ++ equivV
+        equiv.exists(createdInFuture.contains)
+      //} else false
+      case (_: StaticPtEdge, v) if !equivSet(Set(v)).contains(NullVal) =>
+        val equiv = equivSet(Set(v))
+        equiv.exists(createdInFuture.contains)
+      case _ => false
+    }
+
+    if (heapPtEdgeCreatedInFuture)
+      return None
+
+
+    // Drop useless constraints
+    //      val state2 = state.copy(sf = state.sf.copy(pureFormula = state.pureFormula.filter {
+    //        case PureConstraint(v1, Equals, v2) if v1 == v2 => false
+    //        case _ => true
+    //      }))
+
+    // empty points to set means value must be null
+    val nullsFromPt = state2.typeConstraints.filter(a => a._2.isEmpty)
+    val stateWithNulls = nullsFromPt.foldLeft(state2) {
+      case (state, (v, _)) => state.addPureConstraint(PureConstraint(v, Equals, NullVal))
+    }.inlineConstEq().getOrElse {
+      return None
+    }
+    val satRes = getSolverCtx() { implicit zCtx =>
+      if (rngTry > 0) {
+        zCtx.asInstanceOf[Z3SolverCtx].overrideTimeoutAndSeed(220000, rngTry)
         println(s"try again with new random seed: ${rngTry}")
       }
-      // val startTime = System.nanoTime()
-      // var result = "unfinished"
-      // get rid of equal constraints in pure constraitns by inlining
-      val inlinedStateOpt = state.inlineConstEq()
-      if (inlinedStateOpt.isEmpty)
-        return None
-      val state2 = inlinedStateOpt.get
-
-      if (state.isSimplified) {
-        // state previously simplified
-        // result = "sat"
-        return inlinedStateOpt
-      }
-
-      // if a stored value must be created in the future, state is infeasible
-      val createdInFuture = state2.sf.traceAbstraction.rightOfArrow.flatMap {
-        case FreshRef(v) => Some(v)
-        case _ => None
-      }
-      val stackVarCreatedInFuture = state2.callStack.exists {
-        case CallStackFrame(_, _, locals) => locals.values.exists {
-          createdInFuture.contains
-        }
-      }
-
-
-      if (stackVarCreatedInFuture)
-        return None
-
-      if (state2.sf.callStack.exists(frame => frame.locals.getOrElse(StackVar("@this"), NPureVar(-1)) == NullVal))
-        return None
-
-      @tailrec
-      def equivSet(acc: Set[PureExpr]): Set[PureExpr] = {
-        val eqRefPv = state2.sf.pureFormula.flatMap {
-          case PureConstraint(lhs, Equals, rhs) if acc.contains(lhs) || acc.contains(rhs) => Set(lhs, rhs)
-          case _ => Set.empty
-        }
-        val newAcc = acc ++ eqRefPv
-        if (newAcc == acc)
-          acc
-        else
-          equivSet(eqRefPv)
-      }
-
-      //      def mustNotNull(pv:PureExpr):Boolean = pv match{
-      //        case NullVal => false
-      //        case pv:PureVar =>
-      //          state2.sf.pureFormula.forall{ // with pv reduction we eventually get to fields pointing to null directly
-      //            case PureConstraint(lhs, Equals, rhs) => pv != lhs && pv != rhs
-      //            case _ => true
-      //          }
-      //      }
-      val heapPtEdgeCreatedInFuture = state2.sf.heapConstraints.exists {
-        case (FieldPtEdge(base, _), v) =>
-          val equivV = equivSet(Set(v))
-          //if(!equivV.contains(NullVal) ) { //TODO: pts to null ok for val created in future?
-          val equiv = equivSet(Set(base)) ++ equivV
-          equiv.exists(createdInFuture.contains)
-        //} else false
-        case (_: StaticPtEdge, v) if !equivSet(Set(v)).contains(NullVal) =>
-          val equiv = equivSet(Set(v))
-          equiv.exists(createdInFuture.contains)
-        case _ => false
-      }
-
-      if (heapPtEdgeCreatedInFuture)
-        return None
-
-
-      // Drop useless constraints
-      //      val state2 = state.copy(sf = state.sf.copy(pureFormula = state.pureFormula.filter {
-      //        case PureConstraint(v1, Equals, v2) if v1 == v2 => false
-      //        case _ => true
-      //      }))
-
-      // empty points to set means value must be null
-      val nullsFromPt = state2.typeConstraints.filter(a => a._2.isEmpty)
-      val stateWithNulls = nullsFromPt.foldLeft(state2) {
-        case (state, (v, _)) => state.addPureConstraint(PureConstraint(v, Equals, NullVal))
-      }.inlineConstEq().getOrElse {
-        return None
-      }
       val stateHashable = stateWithNulls.sf.makeHashable(specSpace)
-      val cached = simplifyCache.get((specSpace, stateHashable))
-
-      val sat:Boolean = if(cached.isDefined){
-        cached.get
-      }else {
+      val cached = simplifyCache.get((stateHashable))
+      if (cached.isDefined) {
+        Some(cached.get)
+      } else {
         val (reducedPtState, _) = reducePtRegions(stateWithNulls, State.topState)
         val messageTranslator = MessageTranslator(List(reducedPtState), List(specSpace))
 
@@ -949,36 +972,43 @@ trait StateSolver[T, C <: SolverCtx[T]] {
           println(ast.toString)
         }
         mkAssert(ast)
-        val satRes = try {
-          checkSAT(messageTranslator, None, false)
-        }catch{
-          case e:IllegalArgumentException if e.getLocalizedMessage.contains("status unknown, reason: timeout") =>
+        try {
+          val out = checkSAT(messageTranslator, None, false)
+          simplifyCache.put((stateHashable), out)
+
+          Some(out)
+        } catch {
+          case e: IllegalArgumentException if e.getLocalizedMessage.contains("status unknown, reason: timeout") =>
             println(s"State feasibility timeout:\n   ${reducedPtState}")
             println(write(reducedPtState))
-            if(rngTry < 2){
-              zCtx.release()
-              return simplify(state, specSpace, maxWitness, rngTry + 1)
-            }else{
-              println("Giving up and not checking sat")
-              true // sound to say satisfiable (but may not be precise)
-            }
+            None
         }
-        simplifyCache.put((specSpace, stateHashable), satRes)
-
-        satRes
       }
-      //      val simpleAst = solverSimplify(ast, stateWithNulls, messageTranslator, maxWitness.isDefined)
+    }
+    //      val simpleAst = solverSimplify(ast, stateWithNulls, messageTranslator, maxWitness.isDefined)
 
-      //      if(simpleAst.isEmpty)
-      if (!sat) {
-        // result = "unsat"
-        None
-      } else {
-        // result = "sat"
-        val reducedState = EncodingTools.reduceStatePureVars(stateWithNulls.setSimplified())
-          .map(EncodingTools.gcPureVars)
-        reducedState.map(_.setSimplified())
-      }
+    //      if(simpleAst.isEmpty)
+    satRes match{
+      case Some(satRes) =>
+        if (!satRes) {
+          // result = "unsat"
+          None
+        } else {
+          // result = "sat"
+          val reducedState = EncodingTools.reduceStatePureVars(stateWithNulls.setSimplified())
+            .map(EncodingTools.gcPureVars)
+          reducedState.map(_.setSimplified())
+        }
+      case None =>
+        if (rngTry < 2) {
+          simplify(state, specSpace, maxWitness, rngTry + 1)
+        } else {
+          println("Giving up and not checking sat")
+          // sound to say satisfiable (but may not be precise)
+          val reducedState = EncodingTools.reduceStatePureVars(stateWithNulls.setSimplified())
+            .map(EncodingTools.gcPureVars)
+          reducedState.map(_.setSimplified())
+        }
     }
   }
 
@@ -1306,7 +1336,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     }
   }
 
-  private val subsumeCache = TrieMap[(SpecSpace, HashableStateFormula, HashableStateFormula), Boolean]()
   private val cacheHit = new AtomicInteger(0)
   /**
    *
@@ -1322,7 +1351,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 //     val method = "Debug"
     val s1Hashable = s1.sf.makeHashable(specSpace)
     val s2Hashable = s2.sf.makeHashable(specSpace)
-    val cached = subsumeCache.get((specSpace, s1Hashable,s2Hashable))
+    val cached = subsumeCache.get((s1Hashable,s2Hashable))
     if(cached.isDefined){
       val current = cacheHit.getAndIncrement()
       if(current %10 == 0)
@@ -1369,7 +1398,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
     val res = if(method == SubsZ3) {
       val toCache = canSubsumeZ3(s1Simp.get,s2Simp.get,specSpace, maxLen, timeout)
-      subsumeCache.put((specSpace, s1Hashable,s2Hashable), toCache)
+      subsumeCache.put((s1Hashable,s2Hashable), toCache)
       toCache
     } else if(method == SubsUnify)
       canSubsumeUnify(s1Simp.get,s2Simp.get,specSpace)
@@ -1522,7 +1551,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val (s1, s2) = reducePtRegions(s1i, s2i) //TODO: does reducing pts regions help?
     //    val (s1,s2) = (s1i,s2i)
     val newTimeout = 220000
-    getSolverCtx() { implicit zCtx =>
+    val out = getSolverCtx() { implicit zCtx =>
       try {
         if (rngTry > 0) {
           val rngSeed = rngTry
@@ -1546,7 +1575,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         if (foundCounter && maxLen.isDefined) {
           printDbgModel(messageTranslator, Set(s1.traceAbstraction, s2.traceAbstraction))
         }
-        !foundCounter
+        Some(!foundCounter)
       } catch {
         case e: IllegalArgumentException =>
           // Note: this didn't seem to help things so currently disabled
@@ -1582,16 +1611,20 @@ trait StateSolver[T, C <: SolverCtx[T]] {
           // throw e
           if (STRICT_TEST)
             throw new IllegalStateException("Timeout")
-
-          // try 3 times with different random seeds
-          if (rngTry < 2) {
-            zCtx.release() //TODO:====!!!!! this doesn't properly return context to object pool!!!!
-            canSubsumeZ3(s1i, s2i, specSpace, maxLen, timeout, rngTry + 1)
-          } else {
-            println("Giving up and not subsuming.")
-            iDefaultOnSubsumptionTimeout
-          }
+          None
       }
+    }
+    out match {
+      case Some(value) => value
+      case None =>
+        // try 3 times with different random seeds
+        val max = getSolverRetries.getOrElse(2)
+        if (rngTry < max) {
+          canSubsumeZ3(s1i, s2i, specSpace, maxLen, timeout, rngTry + 1)
+        } else {
+          println("Giving up and not subsuming.")
+          iDefaultOnSubsumptionTimeout
+        }
     }
   }
 
@@ -1634,7 +1667,13 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val res:Option[WitnessExplanation] = None
     try {
       getSolverCtx() {implicit zCtx =>
-        if (state.heapConstraints.nonEmpty)
+        val nonNullHeap = state.heapConstraints.exists{
+          case (FieldPtEdge(_,_), NullVal) => false
+          case (StaticPtEdge(_,_), NullVal) => false
+          case (ArrayPtEdge(_,_),NullVal) => false
+          case _ => true
+        }
+        if (nonNullHeap)
           return None
         if (state.callStack.nonEmpty)
           return None

@@ -3,6 +3,7 @@ package edu.colorado.plv.bounder.lifestate
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Forall, HNOE, LSConstraint, LSFalse, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.SpecSignatures.{Fragment_onStart_entry, Fragment_onStop_exit, t}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, Equals, NamedPureVar, NotEquals, NullVal, PureExpr, TopVal}
 
 object SpecSignatures {
@@ -69,6 +70,12 @@ object SpecSignatures {
 
   // Fragment getActivity
   val Fragment = Set("android.app.Fragment","androidx.fragment.app.Fragment","android.support.v4.app.Fragment")
+
+  val Fragment_onStart_entry = AbsMsg(CBEnter,
+    SubClassMatcher(Fragment, "void onStart\\(\\)", "Fragment_onStart_entry"), TopVal::f::Nil)
+  val Fragment_onStop_exit = AbsMsg(CBExit,
+    SubClassMatcher(Fragment, "void onStop\\(\\)", "Fragment_onStop_exit"), TopVal::f::Nil
+  )
   val Fragment_getActivity: SignatureMatcher= SubClassMatcher(Fragment,
   ".*Activity getActivity\\(\\)", "Fragment_getActivity")
   val Fragment_get_activity_exit_null: OAbsMsg = AbsMsg(CIExit, Fragment_getActivity, NullVal::f::Nil)
@@ -127,8 +134,10 @@ object FragmentGetActivityNullSpec{
 }
 
 object RxJavaSpec{
+  import SpecSignatures.v
 
   val l = NamedPureVar("l")
+  val m = NamedPureVar("m")
   val s = NamedPureVar("s")
   //TODO: \/ I(create(l)) =======
   val subUnsub:LSPred = NS(
@@ -139,7 +148,37 @@ object RxJavaSpec{
   val subscribe_s_only = SpecSignatures.RxJava_subscribe_exit.copyMsg(lsVars = s::Nil)
   val subscribeIsUnique:LSSpec = LSSpec(s::Nil, Nil, Not(subscribe_s_only),
     subscribe_s_only) //,Set(LSConstraint("s",NotEquals,"@null")  )
+  val subscribeNonNull = LSSpec(Nil,Nil, LSFalse, SpecSignatures.RxJava_subscribe_exit.copyMsg(lsVars = NullVal::Nil))
   val spec = Set(call,subscribeIsUnique)
+  val subscribeCB = AbsMsg(CBEnter,
+    SubClassMatcher("io.reactivex.MaybeOnSubscribe","void subscribe\\(io.reactivex.MaybeEmitter\\)", "subscribeCB"),
+    TopVal::l::Nil
+  )
+  val Maybe = Set("io.reactivex.Maybe")
+  val Maybe_create = AbsMsg(CIExit,SubClassMatcher(Maybe,
+    "io.reactivex.Maybe create\\(io.reactivex.MaybeOnSubscribe\\)", "Maybe_create"), m::TopVal::l::Nil )
+  val Disposable = Set("io.reactivex.disposables.Disposable")
+  val Disposable_dispose = AbsMsg(CIExit, SubClassMatcher(Disposable,"void dispose\\(\\)","Disposable_dispose"),
+    TopVal::s::Nil)
+  val Maybe_create_unique = LSSpec(m::Nil, Nil, Not(Maybe_create.copy(lsVars = m::Nil)),
+    Maybe_create.copy(lsVars = m::Nil))
+
+  def retSame(signature:String, ident:String):LSSpec =
+     LSSpec(v::t::Nil, Nil,LSConstraint(t,Equals,v),
+       AbsMsg(CIExit, SubClassMatcher(Maybe, signature, ident), t::v::Nil))
+  val Maybe_subscribeOn = retSame("io.reactivex.Maybe subscribeOn\\(io.reactivex.Scheduler\\)",
+    "Maybe_subscribeOn")
+  val Maybe_observeOn = retSame("io.reactivex.Maybe observeOn\\(io.reactivex.Scheduler\\)",
+    "Maybe_observeOn")
+  val Maybe_subscribeCi = AbsMsg(CIExit,
+    SubClassMatcher(Maybe,
+      "io.reactivex.disposables.Disposable " +
+        "subscribe\\(io.reactivex.functions.Consumer,io.reactivex.functions.Consumer\\)",
+      "Maybe_subscribeCI"), s::m::Nil)
+  val subscribeSpec = LSSpec(l :: Nil, m :: s :: Nil,
+    And(Maybe_create, NS(Maybe_subscribeCi, Disposable_dispose)), subscribeCB)
+
+
 }
 
 object LifecycleSpec {
@@ -151,6 +190,13 @@ object LifecycleSpec {
     Not(AbsMsg(CIExit, SpecSignatures.Activity_finish, TopVal::a::Nil)),
     SpecSignatures.Activity_onResume_entry
   )
+  val startStopAlternation:LSSpec = LSSpec(f::Nil, Nil, Or(
+    And(Not(SpecSignatures.Fragment_onStart_entry), Not(SpecSignatures.Fragment_onStop_exit.copy(mt = CBEnter))),
+    NS(SpecSignatures.Fragment_onStop_exit.copy(mt=CBEnter), SpecSignatures.Fragment_onStart_entry)
+  ),SpecSignatures.Fragment_onStart_entry)
+  val stopStartAlternation:LSSpec = LSSpec(f::Nil, Nil,
+    NS(Fragment_onStart_entry, Fragment_onStop_exit.copy(mt = CBEnter)),
+    SpecSignatures.Fragment_onStop_exit.copy(mt = CBEnter))
 
   val viewAttached: LSPred = SpecSignatures.Activity_findView_exit //TODO: ... or findView on other view
   val destroyed: LSPred = NS(SpecSignatures.Activity_onDestroy_exit, SpecSignatures.Activity_onCreate_entry)
@@ -305,7 +351,7 @@ object SDialog{
   val disallowDismiss:LSSpec = LSSpec(d::Nil, a::Nil,
     And(showI, LifecycleSpec.paused),
     AbsMsg(CIEnter, dismissSignature, TopVal::d::Nil))
-  val showI2 = AbsMsg(CIExit, showSignature, d::TopVal::Nil)
+  val showI2 = AbsMsg(CIExit, showSignature, d::TopVal::TopVal::Nil)
   val noDupeShow:LSSpec = LSSpec(d::Nil, Nil, Not(showI2), showI2)
 }
 

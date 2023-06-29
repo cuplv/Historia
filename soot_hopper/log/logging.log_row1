@@ -1,0 +1,380 @@
+2023-04-03 12:04:57 WARN  Experiments:58 - Starting experiments run
+2023-04-03 12:04:57 INFO  scala:56 - Chmod output: 
+2023-04-03 12:05:00 INFO  scala:81 - Gradle stdout: > Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:checkDebugManifest
+> Task :app:generateDebugBuildConfig
+> Task :app:mainApkListPersistenceDebug
+> Task :app:generateDebugResValues
+> Task :app:javaPreCompileDebug
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders
+> Task :app:compileDebugAidl NO-SOURCE
+> Task :app:compileDebugRenderscript NO-SOURCE
+> Task :app:generateDebugResources
+> Task :app:processDebugManifest
+> Task :app:generateDebugAssets
+> Task :app:mergeDebugAssets
+> Task :app:processDebugJavaRes NO-SOURCE
+> Task :app:checkDebugDuplicateClasses
+> Task :app:mergeDebugResources
+> Task :app:processDebugResources
+> Task :app:compileDebugJavaWithJavac
+> Task :app:compileDebugSources
+> Task :app:transformClassesWithDexBuilderForDebug
+> Task :app:validateSigningDebug
+> Task :app:desugarDebugFileDependencies
+> Task :app:signingConfigWriterDebug
+> Task :app:mergeDebugJavaResource
+> Task :app:mergeDebugJniLibFolders
+> Task :app:mergeDebugNativeLibs
+> Task :app:stripDebugDebugSymbols
+> Task :app:mergeExtDexDebug
+> Task :app:mergeDexDebug
+> Task :app:packageDebug
+> Task :app:assembleDebug
+
+BUILD SUCCESSFUL in 2s
+25 actionable tasks: 25 executed
+
+2023-04-03 12:05:00 INFO  scala:82 - Gradle stderr: Warning: Mapping new ns http://schemas.android.com/repository/android/common/02 to old ns http://schemas.android.com/repository/android/common/01
+Warning: Mapping new ns http://schemas.android.com/repository/android/generic/02 to old ns http://schemas.android.com/repository/android/generic/01
+Warning: Mapping new ns http://schemas.android.com/sdk/android/repo/addon2/02 to old ns http://schemas.android.com/sdk/android/repo/addon2/01
+Warning: Mapping new ns http://schemas.android.com/sdk/android/repo/repository2/02 to old ns http://schemas.android.com/sdk/android/repo/repository2/01
+Warning: Mapping new ns http://schemas.android.com/sdk/android/repo/sys-img2/02 to old ns http://schemas.android.com/sdk/android/repo/sys-img2/01
+
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 4224.167
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 5875.444
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1741.28
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 3511.099
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 3018.809
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2863.788
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1622.625
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 3352.517
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1762.082
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 3297.243
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2610.204
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2807.542
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1518.214
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1495.224
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2588.246
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 28635.016
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1451.495
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1449.896
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1753.475
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1520.775
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1561.456
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 3044.723
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1426.778
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1487.751
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1542.054
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2170.298
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2661.76
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1491.909
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1411.218
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1524.062
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1405.184
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1517.823
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1455.601
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1440.829
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1979.198
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2566.231
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2888.357
+2023-04-03 12:05:13 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2003.446
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1713.249
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1528.264
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2580.271
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 3330.688
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1463.792
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1710.761
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1972.053
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1351.811
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1341.288
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1516.067
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1486.341
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1722.462
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1659.808
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1564.177
+2023-04-03 12:05:14 WARN  Z3StateSolver:1432 - subsumption result:false time(µs): 72631.515
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1594.677
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1369.18
+2023-04-03 12:05:14 WARN  Z3StateSolver:1432 - subsumption result:false time(µs): 40379.747
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1561.978
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1501.429
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1341.8
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1377.577
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1588.649
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1518.725
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1467.831
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1824.599
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1434.338
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2738.152
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2660.025
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1648.716
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2346.786
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1853.908
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1887.75
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 26617.502
+2023-04-03 12:05:14 WARN  Z3StateSolver:1432 - subsumption result:true time(µs): 26131.815
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1408.843
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1455.412
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1410.107
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2978.119
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1391.039
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2747.51
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1532.208
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1566.787
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1634.697
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1379.984
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1494.726
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1461.612
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 3078.622
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2315.37
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1633.038
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1461.915
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1329.602
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1436.11
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1370.29
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1513.551
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1504.479
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1349.968
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1428.983
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1405.913
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1367.27
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1393.392
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1638.861
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1493.132
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1579.489
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1436.52
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1359.327
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1350.487
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2007.669
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1497.909
+2023-04-03 12:05:14 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1360.719
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1527.797
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1772.709
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1505.622
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1348.57
+2023-04-03 12:05:15 WARN  Z3StateSolver:1432 - subsumption result:false time(µs): 61265.916
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1504.074
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1453.222
+2023-04-03 12:05:15 WARN  Z3StateSolver:1432 - subsumption result:true time(µs): 29605.156
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2831.359
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1376.289
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1352.747
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1391.061
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1341.611
+2023-04-03 12:05:15 WARN  Z3StateSolver:1432 - subsumption result:false time(µs): 97900.072
+2023-04-03 12:05:15 WARN  Z3StateSolver:1432 - subsumption result:true time(µs): 29808.96
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1481.162
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1476.855
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1355.509
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1357.334
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1519.14
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1545.872
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1674.799
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1750.389
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1458.65
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1396.92
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1337.252
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1377.575
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1456.647
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1456.18
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1374.02
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1417.405
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1595.031
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1458.514
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1381.212
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1367.275
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1511.805
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1390.702
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1425.777
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1369.663
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1360.556
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1408.417
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1309.754
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1292.937
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1405.473
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1395.712
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1317.841
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1497.157
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1388.733
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1401.743
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1373.431
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1402.285
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1364.709
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1321.843
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1380.149
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1530.885
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1381.78
+2023-04-03 12:05:15 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1551.152
+2023-04-03 12:05:16 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 25921.446
+2023-04-03 12:05:16 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1488.329
+2023-04-03 12:05:16 WARN  Z3StateSolver:1432 - subsumption result:true time(µs): 26156.159
+2023-04-03 12:05:16 WARN  Z3StateSolver:1432 - subsumption result:false time(µs): 103069.2
+2023-04-03 12:05:16 WARN  Z3StateSolver:1432 - subsumption result:true time(µs): 30835.334
+2023-04-03 12:05:16 WARN  Experiments:397 - Row 1 withUnsub time(µs): 1.5656093216E7
+2023-04-03 12:05:16 WARN  Experiments:399 - Row 1 withUnsub : {"depth":60,"ordDepth":5,"cbDepth":3,"status":"Proven"} 
+2023-04-03 12:05:16 WARN  Experiments:407 - Row 1 withUnsub : {"cbSize":9,"cbMsg":18,"matchedCb":3,"matchedCbRet":1,"ciCallGraph":71,"matchedCiCallGraph":46,"syntCi":16,"matchedSyntCi":3}
+2023-04-03 12:05:16 INFO  scala:56 - Chmod output: 
+2023-04-03 12:05:19 INFO  scala:81 - Gradle stdout: > Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:checkDebugManifest
+> Task :app:generateDebugBuildConfig
+> Task :app:mainApkListPersistenceDebug
+> Task :app:generateDebugResValues
+> Task :app:javaPreCompileDebug
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders
+> Task :app:compileDebugAidl NO-SOURCE
+> Task :app:compileDebugRenderscript NO-SOURCE
+> Task :app:generateDebugResources
+> Task :app:processDebugManifest
+> Task :app:generateDebugAssets
+> Task :app:mergeDebugAssets
+> Task :app:processDebugJavaRes NO-SOURCE
+> Task :app:checkDebugDuplicateClasses
+> Task :app:mergeDebugResources
+> Task :app:processDebugResources
+> Task :app:compileDebugJavaWithJavac
+> Task :app:compileDebugSources
+> Task :app:transformClassesWithDexBuilderForDebug
+> Task :app:validateSigningDebug
+> Task :app:desugarDebugFileDependencies
+> Task :app:signingConfigWriterDebug
+> Task :app:mergeDebugJavaResource
+> Task :app:mergeDebugJniLibFolders
+> Task :app:mergeDebugNativeLibs
+> Task :app:stripDebugDebugSymbols
+> Task :app:mergeExtDexDebug
+> Task :app:mergeDexDebug
+> Task :app:packageDebug
+> Task :app:assembleDebug
+
+BUILD SUCCESSFUL in 2s
+25 actionable tasks: 25 executed
+
+2023-04-03 12:05:19 INFO  scala:82 - Gradle stderr: Warning: Mapping new ns http://schemas.android.com/repository/android/common/02 to old ns http://schemas.android.com/repository/android/common/01
+Warning: Mapping new ns http://schemas.android.com/repository/android/generic/02 to old ns http://schemas.android.com/repository/android/generic/01
+Warning: Mapping new ns http://schemas.android.com/sdk/android/repo/addon2/02 to old ns http://schemas.android.com/sdk/android/repo/addon2/01
+Warning: Mapping new ns http://schemas.android.com/sdk/android/repo/repository2/02 to old ns http://schemas.android.com/sdk/android/repo/repository2/01
+Warning: Mapping new ns http://schemas.android.com/sdk/android/repo/sys-img2/02 to old ns http://schemas.android.com/sdk/android/repo/sys-img2/01
+
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 3962.888
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 3998.796
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 3043.806
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 3569.283
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2816.248
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 3009.765
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2001.735
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2872.237
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 3395.291
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2756.423
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2617.676
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2606.238
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2509.221
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2720.122
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1675.984
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 23078.707
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1416.178
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1433.269
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1492.375
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1384.394
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1311.37
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2833.57
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1950.4
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2263.274
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1704.3
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 24291.806
+2023-04-03 12:05:27 WARN  Z3StateSolver:1432 - subsumption result:false time(µs): 59342.083
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1769.051
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1346.082
+2023-04-03 12:05:27 WARN  Z3StateSolver:1432 - subsumption result:true time(µs): 29043.104
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1381.399
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1286.348
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2472.561
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2563.592
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1393.757
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1657.921
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1353.935
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1561.691
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1449.103
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1342.064
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1458.837
+2023-04-03 12:05:27 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1461.965
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1373.322
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1331.847
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1394.687
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1393.215
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1365.601
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1421.551
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1358.899
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1289.383
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1391.947
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1476.876
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1552.578
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1395.475
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1397.394
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1323.01
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1335.255
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1406.631
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1383.662
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1581.069
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1371.766
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1343.58
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1526.632
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1425.253
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1356.991
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 24714.958
+2023-04-03 12:05:28 WARN  Z3StateSolver:1432 - subsumption result:true time(µs): 27401.943
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1398.066
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1519.072
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1526.678
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1993.9
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2276.468
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2274.67
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2433.004
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2835.829
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1426.44
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1352.456
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1204.332
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 26798.482
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1404.589
+2023-04-03 12:05:28 WARN  Z3StateSolver:1432 - subsumption result:true time(µs): 26817.687
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 2599.702
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1563.81
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1373.516
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1424.064
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1340.781
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1538.216
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1501.21
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1378.684
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1556.928
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 3773.165
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1496.593
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1419.237
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1564.576
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1535.407
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1396.469
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1758.822
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1502.876
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1400.359
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1453.294
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1387.326
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1405.342
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1346.865
+2023-04-03 12:05:28 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1329.336
+2023-04-03 12:05:29 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1436.446
+2023-04-03 12:05:29 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1473.203
+2023-04-03 12:05:29 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1436.503
+2023-04-03 12:05:29 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1349.345
+2023-04-03 12:05:29 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1346.31
+2023-04-03 12:05:29 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1335.678
+2023-04-03 12:05:29 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 1326.751
+2023-04-03 12:05:29 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 37512.071
+2023-04-03 12:05:29 WARN  Z3StateSolver:1682 - witnessed result: false time(µs): 32292.221
+2023-04-03 12:05:29 WARN  Experiments:397 - Row 1 noUnsub time(µs): 9833604.502
+2023-04-03 12:05:29 WARN  Experiments:399 - Row 1 noUnsub : {"depth":54,"ordDepth":5,"cbDepth":3,"status":"Witnessed"} 
+2023-04-03 12:05:29 WARN  Experiments:407 - Row 1 noUnsub : {"cbSize":9,"cbMsg":18,"matchedCb":3,"matchedCbRet":1,"ciCallGraph":27,"matchedCiCallGraph":2,"syntCi":15,"matchedSyntCi":2}

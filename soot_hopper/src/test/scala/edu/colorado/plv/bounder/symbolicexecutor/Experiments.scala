@@ -2,13 +2,13 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import better.files.Dsl.SymbolicOperations
 import better.files.File
-import edu.colorado.plv.bounder.BounderUtil
+import edu.colorado.plv.bounder.{BounderUtil, lifestate}
 import edu.colorado.plv.bounder.BounderUtil.{DepthResult, Proven, Timeout, Witnessed, interpretResult}
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType, SootWrapper}
-import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, Signature}
-import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSpace, ViewSpec}
+import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, LSTrue, Signature}
+import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.{row1Specs, row2Specs, row4Specs, row5Specs}
+import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.{row1Specs, row2Specs, row4Specs, row5Specs, row6Specs}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{CallinReturnNonNull, DBOutputMode, DisallowedCallin, IPathNode, MemoryOutputMode, NoOutputMode, PrettyPrinting, Reachable, ReceiverNonNull}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
@@ -37,7 +37,18 @@ object ExperimentSpecs{
     LifecycleSpec.Activity_createdOnlyFirst
   )
   val row5Specs = Set[LSSpec](
-    SDialog.noDupeShow
+    SDialog.noDupeShow.copy(pred = LSTrue)
+  )
+  val _ = Set(RxJavaSpec.subscribeCB, RxJavaSpec.Maybe_create,
+    SpecSignatures.Fragment_onStart_entry, SpecSignatures.Fragment_onStop_exit, RxJavaSpec.Disposable_dispose)
+
+  val row6Specs = Set[LSSpec](
+    RxJavaSpec.subscribeSpec,
+    RxJavaSpec.Maybe_subscribeOn,
+    RxJavaSpec.Maybe_observeOn,
+    LifecycleSpec.startStopAlternation,
+    //LifecycleSpec.stopStartAlternation,
+    RxJavaSpec.Maybe_create_unique
   )
 }
 class Experiments extends AnyFunSuite with BeforeAndAfter {
@@ -57,6 +68,11 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
   }
   after{
     println("Ending Experiments run")
+  }
+  val mFilter = (strm: String) => {
+    !strm.contains("MainActivity") &&
+      !strm.contains("com.example.createdestroy.R$") &&
+      strm != ("com.example.createdestroy.R")
   }
 
   def getSpecName(s:LSSpec):String = s.target.identitySignature match {
@@ -310,19 +326,23 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
            |    Subscription sub;
            |    //Callback with irrelevant subscribe
            |    @Override
-           |    // TODO: change this to onCreated for clarity in paper
-           |    public void onViewCreated(View view, Bundle savedInstanceState) {
-           |        Single.create(subscriber -> {
-           |            subscriber.onSuccess(4);
-           |        }).subscribe(r -> {
-           |            r.toString();
-           |        });
+           |    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+           |                             Bundle savedInstanceState) {
+           |      return inflater.inflate(0, container, false);
            |    }
            |    @Override
+           |    public void onCreate(Bundle savedInstanceState){
+           |      super.onCreate(savedInstanceState);
+           |    }
+           |
+           |    @Override
            |    public void onActivityCreated(Bundle savedInstanceState){
+           |        super.onActivityCreated(savedInstanceState);
            |        sub = Single.create(subscriber -> {
            |            subscriber.onSuccess(3);
-           |        }).subscribe(this);
+           |        }).subscribeOn(Schedulers.newThread())
+           |        .observeOn(AndroidSchedulers.mainThread())
+           |        .subscribe(this);
            |    }
            |
            |    @Override
@@ -388,7 +408,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           logger.warn(em)
         }
         val messages = w.getMessages(symbolicExecutor.controlFlowResolver, new SpecSpace(row1Specs),
-          symbolicExecutor.getClassHierarchy)
+          symbolicExecutor.getClassHierarchy, mFilter)
         logger.warn(s"Row 1 ${fileSuffix} : ${write(messages)}")
       }
 
@@ -494,7 +514,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           logger.warn(em)
         }
         val messages = w.getMessages(symbolicExecutor.controlFlowResolver, specSpace,
-          symbolicExecutor.getClassHierarchy)
+          symbolicExecutor.getClassHierarchy, mFilter)
         logger.warn(s"Row 2 ${fileSuffix} : ${write(messages)}")
       }
 
@@ -584,7 +604,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
     makeApkWithSources(Map("MyFragment.java" -> src), MkApk.RXBase, test)
   }
 
-  test("row 5: Yamba dismiss") {
+  test("row 5: Antennapod dismiss") {
+    // note: same bug as yamba
     // Yamba https://github.com/learning-android/Yamba/pull/1/commits/90c1fe3e5e58fb87c3c59b1a271c6e43c9422eb6
     List(
       ("if(resumed) {","}", Proven, "withCheck"),
@@ -700,7 +721,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           logger.warn(em)
         }
         val messages = w.getMessages(symbolicExecutor.controlFlowResolver, specSpace,
-          symbolicExecutor.getClassHierarchy)
+          symbolicExecutor.getClassHierarchy, mFilter)
         logger.warn(s"Row 5 ${fileSuffix} : ${write(messages)}")
       }
 
@@ -811,7 +832,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
               logger.warn(em)
             }
             val messages = w.getMessages(symbolicExecutor.controlFlowResolver, specSpace,
-              symbolicExecutor.getClassHierarchy)
+              symbolicExecutor.getClassHierarchy, mFilter)
             logger.warn(s"Row 4 ${fileSuffix} : ${write(messages)}")
           }
 
@@ -820,14 +841,14 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           test)
     }
   }
-  ignore("Row6: synch null free") {
-    // TODO: ===== find motivating bug for this
-    // TODO: write specs
+  test("Row6: synch null free") {
+    //https://github.com/AntennaPod/AntennaPod/issues/4308
     List(
       //      ("button.setEnabled(true);", Witnessed, "badDisable"), //test for boolean handling, works so commented out for exp run
-      ("remover.cancel();", Proven, "disable"),
-      ("", Witnessed, "noDisable")
+      ("", Witnessed, "noDisable"),
+      ("""disposable.dispose();""", Proven, "disable"),
     ).map { case (cancelLine, expectedResult, fileSuffix) =>
+      println(s"====================================running: ${fileSuffix}")
       val src =
         s"""
            |package com.example.createdestroy;
@@ -845,44 +866,36 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
            |import android.view.View;
            |import android.view.ViewGroup;
            |import android.view.View.OnClickListener;
+           |import io.reactivex.disposables.Disposable;
+           |import io.reactivex.schedulers.Schedulers;
+           |import io.reactivex.android.schedulers.AndroidSchedulers;
+           |import io.reactivex.Maybe;
            |
            |
-           |
-           |public class SyncActivity extends Activity implements OnClickListener{
-           |    SomeTask remover = null;
-           |    View button = null;
-           |    @Override
-           |    public void onCreate(Bundle b){
-           |        remover = new SomeTask();
-           |        button = findViewById(3);
-           |        button.setOnClickListener(this);
-           |    }
-           |    @Override
-           |    public void onClick(View v){
-           |        remover.execute();
-           |    }
-           |    @Override
-           |    public void onPause(){
-           |        $cancelLine
-           |        button = null;
+           |public class ChaptersFragment extends Fragment {
+           |  private Object controller;
+           |  private Disposable disposable;
+           |  @Override
+           |  public void onStart() {
+           |    super.onStart();
+           |    if(disposable != null){
+           |      disposable.dispose();
            |    }
            |
+           |    controller = new Object();
            |
-           |    class SomeTask extends AsyncTask<String, Void, String> {
-           |		  @Override
-           |		  protected void onPreExecute() {
-           |		  }
-           |
-           |		  @Override
-           |		  protected String doInBackground(String... params) {
-           |			  return "";
-           |		  }
-           |
-           |		  @Override
-           |		  protected void onPostExecute(String result) {
-           |        button.toString();//query1
-           |		  }
-           |	  }
+           |    disposable = Maybe.create(emitter -> {
+           |      emitter.onSuccess(controller.toString()); //query1
+           |    })
+           |    .subscribeOn(Schedulers.io())
+           |    .observeOn(AndroidSchedulers.mainThread())
+           |    .subscribe(media -> Log.i("",""),
+           |          error -> Log.e("",""));
+           |  }
+           |  public void onStop() {
+           |    ${cancelLine}
+           |    controller = null;
+           |  }
            |}
            |""".stripMargin
 
@@ -890,43 +903,60 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
         val startTime = System.nanoTime()
         assert(apk != null)
 
-        val w = new SootWrapper(apk, row2Specs)
-        val specSpace = new SpecSpace(row2Specs, Set(SAsyncTask.disallowDoubleExecute))
+        val w = new SootWrapper(apk, row6Specs)
+        val specSpace = new SpecSpace(row6Specs, Set())
+//          Set(RxJavaSpec.subscribeCB, RxJavaSpec.Maybe_subscribeCi, RxJavaSpec.Maybe_create,
+//            SpecSignatures.Fragment_onStart_entry, SpecSignatures.Fragment_onStop_exit, RxJavaSpec.Disposable_dispose))
         val config = ExecutorConfig(
-          stepLimit = 200, w, specSpace,
-          component = Some(List("com.example.createdestroy.*RemoverActivity.*")))
+          stepLimit = -1, w, specSpace,
+          component = Some(List("com.example.createdestroy.*ChaptersFragment.*")), printAAProgress = true)
         implicit val om = config.outputMode
         val symbolicExecutor = config.getAbstractInterpreter
 
         val line = BounderUtil.lineForRegex(".*query1.*".r,src)
+        if(false) {
+          Scene.v().getClasses.asScala.filter(c => c.getName.contains("Chapters")).foreach { c =>
+            println(s"===== class: ${c.getName}")
+            println(s"   super: ${c.getSuperclass}")
+            println(s"   interfaces: ${c.getInterfaces.asScala.mkString(" ")}")
+            c.getMethods.asScala.foreach { m =>
+              println(s"--method: ${m.getName}")
+              println(s"${m.getActiveBody}")
+            }
+          }
+        }
         val query = ReceiverNonNull(
-          Signature("com.example.createdestroy.SyncActivity$SomeTask", "void onPostExecute(java.lang.Object)"),
+          Signature("com.example.createdestroy.ChaptersFragment",
+            "void lambda$onStart$0$ChaptersFragment(io.reactivex.MaybeEmitter)"),
           line, Some(".*toString.*"))
 
         if (runVerif) {
           val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
-          val fname = s"Antennapod_AsyncTask_$fileSuffix"
+          val fname = s"Antennapod_Dispose_$fileSuffix"
           prettyPrinting.dumpDebugInfo(result, fname)
           prettyPrinting.printWitness(result)
           assert(result.nonEmpty)
           BounderUtil.throwIfStackTrace(result)
           val interpretedResult = BounderUtil.interpretResult(result, QueryFinished)
-          logger.warn(s"Row 2 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
+          logger.warn(s"Row 6 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
           val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
-          logger.warn(s"Row 2 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
+          logger.warn(s"Row 6 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
           assert(interpretedResult == expectedResult)
         } else {
-          val em = s"Row 2 skipped due to runVerif param!!!!!!!"
+          val em = s"Row 6 skipped due to runVerif param!!!!!!!"
           println(em)
           logger.warn(em)
         }
         val messages = w.getMessages(symbolicExecutor.controlFlowResolver, specSpace,
-          symbolicExecutor.getClassHierarchy)
-        logger.warn(s"Row 2 ${fileSuffix} : ${write(messages)}")
+          symbolicExecutor.getClassHierarchy, mFilter)
+        logger.warn(s"Row 6 ${fileSuffix} : ${write(messages)}")
       }
 
-      makeApkWithSources(Map("SyncActivity.java" -> src), MkApk.RXBase, test)
+      makeApkWithSources(Map("ChaptersFragment.java" -> src), MkApk.RXBase2, test)
     }
   }
 
 }
+
+// issues to look at later:
+// https://github.com/connectbot/connectbot/issues/1229  cb run set null

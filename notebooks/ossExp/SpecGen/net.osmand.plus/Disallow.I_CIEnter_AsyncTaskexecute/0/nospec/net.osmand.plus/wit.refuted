@@ -1,0 +1,3 @@
+refuted
+    REFUTED: pre-line: -1 r0 := @this: net.osmand.plus.OsmAndTaskManager$InternalTaskExecutor
+       state: ( locals: @this -> p-0         heap:           pure: p-0  !=  NULL         types: List(p-0:EmptyTypeSet)    trace: O(CIEnter I_CIEnter_AsyncTaskexecute ( _T_,p-0 ))

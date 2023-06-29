@@ -1,6 +1,7 @@
 package edu.colorado.plv.bounder
 
 import better.files.Dsl.mkdir
+import edu.colorado.plv.bounder.ir.Messages
 
 import java.io.{PrintWriter, StringWriter}
 import java.sql.Timestamp
@@ -12,7 +13,7 @@ import edu.colorado.plv.bounder.Driver.{Default, LocResult, RunMode, modeToStrin
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, InternalMethodInvoke, InternalMethodReturn, JimpleMethodLoc, Loc, MethodLoc, SerializedIRLineLoc, SerializedIRMethodLoc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper, WitnessExplanation}
 import edu.colorado.plv.bounder.lifestate.LifeState.{LSConstraint, LSSpec, LSTrue, OAbsMsg, Signature}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSpace}
-import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
+import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, ExecutorConfig, QueryFinished, SparkCallGraph, TransferFunctions}
 import org.slf4j.LoggerFactory
@@ -134,6 +135,7 @@ object Driver {
   }
 
   sealed trait RunMode
+  case object SolverServer extends RunMode
 
   case object Verify extends RunMode
 
@@ -184,16 +186,17 @@ object Driver {
   }
 
   val stringToMode:Map[String,RunMode] = Map(
-  "verify" -> Verify,
-  "info" -> Info,
-  "sampleDeref" -> SampleDeref,
-  "readDB" -> ReadDB,
-  "expLoop" -> ExpLoop,
-  "makeAllDeref" -> MakeAllDeref,
-  "findCallinsPattern" -> FindCallins,
-  "nullFieldPatternFinish" -> MakeSensitiveDerefFieldCausedFinish,
-  "nullFieldPatternSync" -> MakeSensitiveDerefFieldCausedSync,
-  "nullCallinPattern" -> MakeSensitiveDerefCallinCaused,
+    "solverServer" -> SolverServer,
+    "verify" -> Verify,
+    "info" -> Info,
+    "sampleDeref" -> SampleDeref,
+    "readDB" -> ReadDB,
+    "expLoop" -> ExpLoop,
+    "makeAllDeref" -> MakeAllDeref,
+    "findCallinsPattern" -> FindCallins,
+    "nullFieldPatternFinish" -> MakeSensitiveDerefFieldCausedFinish,
+    "nullFieldPatternSync" -> MakeSensitiveDerefFieldCausedSync,
+    "nullCallinPattern" -> MakeSensitiveDerefCallinCaused,
     "exportPossibleMessages" -> ExportPossibleMessages
   )
   lazy val modeToString: Map[RunMode,String] = stringToMode.map{case (k,v) => v->k}
@@ -292,11 +295,20 @@ object Driver {
     implicit var rw: RW[LocResult] = macroRW
   }
 
+  def loopSolver():Unit = {
+    //TODO: implement stdio for solver part to avoid segfault and oom
+//    val solver = new Z3StateSolver()
+//    while(true){
+
+//    }
+  }
   def runAction(act: Action): Unit = {
     println(s"java.library.path set to: ${System.getProperty("java.library.path")}")
     act match {
+      case Action(SolverServer, _,_,_,_,_, _, _) =>
+          loopSolver()
       case act@Action(Verify, _, _, cfgIn, filter, _, mode,dbg) =>
-        val cfgWithTime = if(dbg){cfgIn.copy(timeLimit = 14400, truncateOut = false)} else cfgIn
+        val cfgWithTime = if(dbg){cfgIn.copy(timeLimit = 14400*2, truncateOut = false)} else cfgIn
         val cfg = if(filter.isDefined) cfgWithTime.copy(componentFilter = Some(filter.get.split(':'))) else cfgWithTime
         val componentFilter = cfg.componentFilter
         val apkPath = act.getApkPath
@@ -400,6 +412,20 @@ object Driver {
       stepLimit = 2, w, new SpecSpace(Set()), component = None, outputMode = pathMode,
       timeLimit = cfg.timeLimit)
     val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
+    val mFilter = if(cfg.componentFilter.isDefined){
+      val filters = cfg.componentFilter.get.map{v => v.r}
+      (cname:String) => filters.exists(_.matches(cname))
+    }else{
+      (_:String) => true
+    }
+
+    val messages: Messages = w.getMessages(symbolicExecutor.controlFlowResolver, cfg.specSet.getSpecSpace(),
+      symbolicExecutor.getClassHierarchy, mFilter)
+    (outFile.parent / "messages_component.json").overwrite(write(messages))
+    val messages_noComponent = w.getMessages(symbolicExecutor.controlFlowResolver, cfg.specSet.getSpecSpace(),
+      symbolicExecutor.getClassHierarchy, (_:String) => true)
+    (outFile.parent / "messages_all.json").overwrite(write(messages_noComponent))
+
     symbolicExecutor.writeIR()
   }
 
@@ -592,7 +618,7 @@ object Driver {
     try {
       val w = new SootWrapper(apkPath, specSet.getSpecSet().union(specSet.getDisallowSpecSet()))
       val config = ExecutorConfig(
-        stepLimit = stepLimit, w, new SpecSpace(specSet.getSpecSet(), specSet.getDisallowSpecSet()), component = componentFilter, outputMode = mode,
+        stepLimit = stepLimit, w, specSet.getSpecSpace(), component = componentFilter, outputMode = mode,
         timeLimit = cfg.timeLimit, printAAProgress = dbg)
       initialQueries.flatMap{ initialQuery =>
         try {
@@ -645,6 +671,8 @@ object Driver {
                 case ((wit, state),ind) =>
                   (File(outDir.get) / s"explanation_${ind}")
                     .overwrite(s"${wit.toString} \n===========\n${state.toString}")
+                  println(s"witness: \n ${wit.toString}")
+                  println(s"last state: \n ${state.toString.replace(';', '\n')}")
               }
             }
 
@@ -797,7 +825,7 @@ case object TopSpecSet extends SpecSetOption {
   override def getSpecSet(): Set[LSSpec] = Set()
   override def getDisallowSpecSet(): Set[LSSpec] = Set()
 
-  override def getSpecSpace(): SpecSpace = ???
+  override def getSpecSpace(): SpecSpace = new SpecSpace(Set())
 }
 
 class ExperimentsDb(bounderJar:Option[String] = None){
@@ -828,7 +856,8 @@ class ExperimentsDb(bounderJar:Option[String] = None){
 
   def loop() = {
     while(true) {
-      val owner: String = BounderUtil.systemID()
+      val owner: String = BounderUtil.systemID
+      println(s"identifier -- ${owner}")
       val job: Option[JobRow] = acquireJob(owner)
       if(job.isDefined) {
         println(s"--got job: ${job.get}")
@@ -867,8 +896,9 @@ class ExperimentsDb(bounderJar:Option[String] = None){
         outF.createDirectories()
         // TODO: read results of new structure
         val specContents = specFile.contentAsString
-        val runCfg:RunConfig = cfg.copy(apkPath = apkPath.toString,
-          specSet = if(specContents.trim == "") TopSpecSet else read[PickleSpec](specContents))
+        val runCfg:RunConfig = cfg.copy(apkPath = apkPath.toString)
+        assert(specContents.trim == "", "Job level spec input deprecated, specify spec in config")
+          //specSet = if(specContents.trim == "") TopSpecSet else read[PickleSpec](specContents))
         val cfgFile = (baseDir / "config.json")
         cfgFile.append(write(runCfg))
         val z3Override = if(BounderUtil.mac)
@@ -886,7 +916,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
         // Run the command for this job
         // kill jobs that take 2x the query time limit
         // jobs may take longer than the time limit if soot z3 or another external library gets stuck
-        BounderUtil.runCmdTimeout(cmd, baseDir, runCfg.timeLimit * 6) match {
+        BounderUtil.runCmdTimeout(cmd, baseDir, runCfg.timeLimit * 9) match {
           case BounderUtil.RunTimeout =>
             finishFail(jobRow.jobId, "Subprocess Timeout")
           case BounderUtil.RunSuccess => {
@@ -962,7 +992,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     val q = for(
       j <- jobQry if j.jobId === id
     ) yield j.started
-    Await.result(db.run(q.update(startTime)), 30 seconds)
+    Await.result(db.run(q.update(startTime)), 300 seconds)
   }
   def setEndTime(id:Int) = {
     val date = new Date()
@@ -970,18 +1000,48 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     val q = for(
       j <- jobQry if j.jobId === id
     )yield j.ended
-    Await.result(db.run(q.update(endTime)), 30 seconds)
+    Await.result(db.run(q.update(endTime)), 300 seconds)
+  }
+
+  def acquireJob2(owner: String): Option[JobRow] = {
+    // TODO: test this impl and swap out for acquireJob later
+
+    val dbio = for {
+      pendingJob <- jobQry.filter(_.status === "new").take(1).forUpdate.result.headOption
+      maybeRow <-
+        pendingJob.map { row =>
+          jobQry.filter(_.jobId === row.jobId)
+            .map(j => (j.owner, j.status)).update((owner, "acquired")).map(_ => Some(row))
+        }.getOrElse(DBIO.successful(None))
+    } yield maybeRow
+    Await.result(db.run(dbio.transactionally).recover {
+      case _: java.sql.SQLException => None
+    }, 30.seconds)
   }
   def acquireJob(owner:String): Option[JobRow] = {
-    //TODO: make sure this returns NONE if something else succeeds
+    import slick.jdbc.H2Profile.api._
+    val getIdQ = sqlu"""
+        With cte AS (
+            SELECT * from jobs WHERE status='new' ORDER BY id LIMIT 1
+            FOR UPDATE SKIP LOCKED
+            )
+        UPDATE jobs s
+        SET status='acquired',owner=${owner}
+        FROM cte
+        WHERE s.id = cte.id
+          """.transactionally
+    Await.result(db.run(getIdQ), 300 seconds)
+
     val q = for(
-      j <- jobQry if j.status === "new"
+      j <- jobQry if j.owner === owner && j.status==="acquired"
     ) yield j
     val pendingJob = Await.result(
-      db.run(q.take(1).result), 30 seconds
+      db.run(q.take(1).result), 300 seconds
     )
-    if(pendingJob.isEmpty){
+    if(pendingJob.isEmpty) {
       None
+    }else if(pendingJob.size > 1){
+      throw new IllegalStateException(s"got multiple pending jobs: ${pendingJob}")
     }else{
       val row = pendingJob.head
       val updQ = jobQry.filter(j => j.jobId === row.jobId && j.status === "new")
@@ -990,7 +1050,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
         Some(row)
       }.recover {
         case _: java.sql.SQLException => None
-      }, 30 seconds)
+      }, 300 seconds)
     }
   }
   case class JobRow(jobId:Int, status:String, config:String,started:Option[Timestamp],
@@ -1056,7 +1116,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
         ).toString
         DBResult(id = 0, jobid = jobId,qry = write(rs.q), loc = write(rs.loc), result = resultRow, queryTime = rs.time
           ,resultData = resDataId, apkHash = apkHash,
-          bounderJarHash = bounderJarHash, owner = BounderUtil.systemID(), jobTag = Some(write[ExpTag](jobTag)))
+          bounderJarHash = bounderJarHash, owner = BounderUtil.systemID, jobTag = Some(write[ExpTag](jobTag)))
       }
     }.toList
   }
@@ -1123,11 +1183,11 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     }
   }
   def finishSuccess(d : ResultDir, stdout:String, stderr:String): Int = {
-    val owner: String = BounderUtil.systemID()
+    val owner: String = BounderUtil.systemID
     val iamowner = for(
       j <- jobQry if j.jobId === d.jobId
     ) yield (j.jobId, j.owner)
-    val jobRows = Await.result(db.run(iamowner.result), 30 seconds)
+    val jobRows = Await.result(db.run(iamowner.result), 300 seconds)
     if(jobRows.size != 1 || jobRows.head._2 != owner)
       throw new IllegalStateException(s"Concurrency exception, I am $owner and found " +
         s"jobs Jobs: ${jobRows.mkString(";")} ")
@@ -1136,25 +1196,25 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     val existingResDataQ = for(
       j <-resultsQry if j.jobId === d.jobId
     ) yield (j.jobId)
-    val existingResData = Await.result(db.run(existingResDataQ.result), 30 seconds)
+    val existingResData = Await.result(db.run(existingResDataQ.result), 300 seconds)
     assert(existingResData.isEmpty, s"existing results data nonempty, ${d}")
 
     // upload results
     val resData = d.getDBResults
     resData.foreach{d =>
-      Await.result(db.run(resultsQry += d), 30 seconds)
+      Await.result(db.run(resultsQry += d), 300 seconds)
     }
     // set completed
     val q = for(
       j <- jobQry if j.jobId === d.jobId
     ) yield (j.status, j.stdout, j.stderr)
-    Await.result(db.run(q.update(("completed",Some(stdout),Some(stderr)))), 30 seconds)
+    Await.result(db.run(q.update(("completed",Some(stdout),Some(stderr)))), 300 seconds)
   }
   def finishFail(id:Int, exn:String): Int = {
     val q = for(
       j <- jobQry if j.jobId === id
     ) yield j.status
-    Await.result(db.run(q.update("failed: " + exn)), 30 seconds)
+    Await.result(db.run(q.update("failed: " + exn)), 300 seconds)
   }
   //  CREATE TABLE resultdata(
   //    id integer,
@@ -1202,7 +1262,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
       row <- apkQry if row.name === name
     } yield row.img
     val bytes: Seq[Array[Byte]] = Await.result(
-      db.run(qry.take(1).result), 300 seconds
+      db.run(qry.take(1).result), 600 seconds
     )
     if(bytes.size == 1){
       outFile.writeByteArray(bytes.head)
@@ -1247,7 +1307,7 @@ class ExperimentsDb(bounderJar:Option[String] = None){
     val q1 = for {
       inp <- inputsQuery if inp.id === id
     } yield (inp.bounderjar,inp.specfile)
-    val inputFiles = Await.result(db.run(q1.result), 30 seconds)
+    val inputFiles = Await.result(db.run(q1.result), 300 seconds)
     assert(inputFiles.size == 1)
     val (bounderJarHash, specFileHash) = inputFiles.head
     downloadApk("jar_" + bounderJarHash, bounderJar)
