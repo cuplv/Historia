@@ -1,0 +1,103 @@
+\documentclass{acmart} %\settopmatter{printfolios=true,printccs=false,printacmref=false} % full template
+
+%%%%%% optimizations for build speed and review
+
+
+
+%%%%%%
+%%To turn off red line numbers, use documentclass without "review"
+%\documentclass[acmsmall,anonymous]{acmart}\settopmatter{printfolios=true,printccs=false,printacmref=false}
+
+%%% Packages
+\usepackage[nosubfig,nographicx,nonatbib,noxcolor,nohyperref,notheoremenvs]{bec}
+\SetSymbolFont{stmry}{bold}{U}{stmry}{m}{n} %supress asmmath font warning
+\setboolean{showjedi}{false}
+\setboolean{showcomments}{true} % turn off todo comments too
+\usepackage{tikz} 
+\usetikzlibrary{automata, positioning,arrows,arrows.meta,fit}
+\usepackage{multirow}
+\usepackage{setspace} % for "\setstretch" macro used by specbox
+\usepackage{empheq}
+\usepackage[clock]{ifsym}
+
+% booleans to turn off individual sections
+\newcommand{\inputsection}[1]{\ifthenelse{\boolean{#1}}{\input{#1}}{\TODO{====== temp exclusion section #1 for build =======}}}
+
+
+
+%%
+%% \BibTeX command to typeset BibTeX logo in the docs
+%\AtBeginDocument{%
+%  \providecommand\BibTeX{{%
+%    \normalfont B\kern-0.5em{\scshape i\kern-0.25em b}\kern-0.8em\TeX}}}
+
+%% Rights management information.  This information is sent to you
+%% when you complete the rights form.  These commands have SAMPLE
+%% values in them; it is your responsibility as an author to replace
+%% the commands and values with those provided to you when you
+%% complete the rights form.
+%%
+%% These commands are for a JOURNAL article.
+%\renewcommand{\reftxt}[2]{\hyperref[#2]{#1~\ref*{#2}}}
+%\renewcommand{\lineref}[1]{\reftxt{line}{line:#1}} 
+%\newcommand{\refprog}[1]{\reftxt{location}{#1}}
+%\newcommand{\refhistimp}[1]{\reftxt{History Implication}{#1}}
+
+% hyperref options
+\def\sectionautorefname{Section}
+\def\subsectionautorefname{Section}
+\def\subsubsectionautorefname{Section}
+
+\bibliographystyle{ACM-Reference-Format}
+%\citestyle{acmauthoryear}
+
+%%%%double spacing for hand review
+%%% also comment out 3200 through 3204 in acmart.cls (enforces no messing with line spacing)
+%\usepackage{setspace}
+%\doublespacing % put after document
+%%%%%%%%%
+
+
+\begin{document}
+
+\input{macros}
+%\newcommand{\plusmini}{\scalebox{0.8}{$+$}}
+%\newcommand{\minusmini}{\scalebox{0.8}{$-$}}
+%\newcommand{\expos}{\ensuremath{\SetName{Ex}^{\plusmini}}}
+%\newcommand{\exneg}{\ensuremath{\SetName{Ex}^{\minusmini}}}
+%\newcommand{\newls}{CBCFTL\xspace}
+%\newcommand{\ignore}[1]{}
+%
+\title{Artifact - Historia: Refuting Callback Reachability with Message-History Logics}
+
+\begin{abstract}
+TODO
+\end{abstract}
+
+
+\maketitle
+%\input{generated/specMacros}
+\section{Introduction}
+TODO
+
+
+
+
+
+
+
+%======================
+
+
+\bibliography{conference.short,main.short,bec.short}
+
+%\ifTR
+%\clearpage
+%\appendix
+%\inputsection{appendix}
+%\fi
+
+\end{document}
+
+%%%%old sections
+%\input{decision-procedure}

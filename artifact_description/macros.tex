@@ -1,0 +1,681 @@
+% -*-latex-*-
+\makeatletter
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Tikz Stuff
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\tikzstyle{lastate}=[state,accepting,scale=0.3]
+\tikzstyle{lainitial}=[initial,initial text={}, initial where=above]
+\tikzstyle{lalabel}=[scale=1]
+
+\tikzstyle{pfsainitial}=[initial,initial text={$I(x_1):1$}, initial where=above]
+\tikzstyle{pfsainitialabove}=[initial,initial text={$I_\mathcal{A}:1$}, initial where=above]
+\tikzstyle{pfsainitialleft}=[initial,initial text={$I_\mathcal{A}:1$}, initial where=left]
+\tikzstyle{pfsainitialright}=[initial,initial text={$I_\mathcal{A}:1$}, initial where=right]
+\tikzstyle{pfsafinal}=[hmmstate,accepting]
+\tikzstyle{observation}=[shape=rectangle,draw=orange!50,fill=orange!20]
+\tikzstyle{lightedge}=[<-,dotted]
+\tikzstyle{mainstate}=[state,thick]
+\tikzstyle{mainedge}=[<-,thick]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Listing Stuff
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\toolname}{\textsc{Historia}\xspace} %%%TODO: come up with a better name
+%\newcommand{\toolinfer}{\textit{Infer}\xspace}
+\newcommand{\toolinfer}{Infer\xspace}
+\newcommand{\toolflowdroid}{Flowdroid\xspace}
+%\theoremstyle{definition}
+\newtheorem{specDef}{History Implication}
+%\newcommand{\specbox}[1]{\parbox[t]{0.75\textwidth}{%
+%    \setstretch{1.33}\raggedright$\displaystyle \hspace{-0.3cm}#1$}}
+\newcommand{\specbox}[1]{\par\noindent\parbox{\linewidth}{\centering\vspace{\abovedisplayskip}\parbox{0.9\linewidth}{%
+\raggedright$\displaystyle #1$}}}
+%%% Syntax
+\lstdefinelanguage{Enable}{
+  morekeywords={in,if,then,else,new,bind,invoke,skip,assume,enable,disable,allow,disallow,true,false,me,app,fwk,event,callback,callin,force,assert,null,reach, unreach},
+  literate={pskip}{{$\bullet$}}1
+}
+
+\newcommand{\cbstyle}{\colordullx{0}}
+\newcommand{\cistyle}{\colordullx{4}}
+\newcommand{\fwktystyle}{\colordullx{1}\relsize{-1}}
+%\newcommand{\evtstyle}{\normalfont\ttfamily\scshape}
+\lstdefinelanguage{exthighlighting}[]{highlighting}{%
+  moredelim=**[is][\cbstyle]{|cb:}{|},
+  moredelim=**[is][\cistyle]{|ci:}{|},
+  moredelim=**[is][\fwktystyle]{|fwkty:}{|},
+  moredelim=*[is][\evtstyle]{|evt:}{|},
+  morekeywords={assert,var},
+}
+
+\lstset{
+  breaklines=true,
+  emphstyle=\cbstyle,
+  emph={onStop,lambda,onActivityCreated,onCreate,subs,run,getActionBar,onStart,onResume,onPause,onDestroy,oD,oAC,onClick,onPrepared,onError,doInBackground,onPostExecute,init,call},
+  emphstyle={[2]\cistyle},
+  emph={[2]setOnClickListener,dispose,subscribeOn,observeOn,show,dismiss,setOnClickList,return_onResume,setOnPreparedListener,reset,start,setEnabled,enable,disable,setDataSource,prepareAsync,execute,cancel, unsubscribe,<init>,getResources,getWidth,finish,setResult,findViewById,setEnable,getActivity,getAct, create, subscribe, with, load, showFragment},
+  emphstyle={[3]\fwktystyle},
+  emph={[3]Activity,Bundle,Button,AsyncTask,Handler,OnClickListener,View,Fragment,Maybe, Single,Glide,Subscription,Subscriber,Action1,Dialog,Runnable}
+}
+
+\newcommand{\codex}[2]{\ensuremath{\text{\lstinline[#1]~#2~}}}
+\newcommand{\codej}[1]{\codex{language=Java,alsolanguage=exthighlighting,breaklines=true}{#1}}
+\newcommand{\coden}[1]{\codex{language=Enable,alsolanguage=exthighlighting}{#1}}
+\newcommand{\enmkkw}[2]{\savebox{#1}{\coden{#2}}}
+
+\newcommand{\codejmk}[3][\relax]{\sbox#2{#1\codej{#3}}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Concrete Model
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\subst}[2]{\ensuremath{[#1/#2]}}
+
+% Maps
+\newcommand{\map}[1]{\ensuremath{[#1]}}
+\newcommand{\maplet}[2]{\ensuremath{#1 \mathbin{\mapsto} #2}}
+%\newcommand{\empmap}{\ensuremath{\map{\,}}}
+\newcommand{\empmap}{\ensuremath{\circ}}
+\newcommand{\extmap}[2]{\ensuremath{[\maplet{#1}{#2}]}}
+\newcommand{\maplookup}[2]{\ensuremath{#1(#2)}}
+%\newcommand{\mapupdate}[3]{\ensuremath{#1(#2 \gets #3)}}
+\newcommand{\MapST}[2]{\ensuremath{\left[\,#1 \SuchThat{#1}{#2} #2\,\right]}}
+
+%%% Meta Variables
+\newcommand{\app}{\ensuremath{\mathit{app}}}
+\newcommand{\cb}{\ensuremath{\mathit{cb}}}
+\newcommand{\term}{\ensuremath{t}}
+\newcommand{\expr}{\ensuremath{e}}
+\newcommand{\ExprSet}{\SetName{Expr}}
+\newcommand{\var}{\ensuremath{x}}
+\newcommand{\VarSet}{\SetName{Var}}
+\newcommand{\fld}{\ensuremath{f}}
+\newcommand{\FldSet}{\SetName{Field}}
+\newcommand{\cont}{\ensuremath{c}}
+\newcommand{\ContSet}{\SetName{Cont}}
+\newcommand{\val}{\ensuremath{v}}
+\newcommand{\ValSet}{\SetName{Val}}
+\newcommand{\addr}{\ensuremath{a}}
+\newcommand{\AddrSet}{\SetName{Addr}}
+\newcommand{\stack}{\ensuremath{\kappa}}
+\newcommand{\ThunkSet}{\SetName{Thunk}}
+\newcommand{\handle}{\ensuremath{h}}
+\newcommand{\HandleSet}{\SetName{Handle}}
+\newcommand{\msg}{\ensuremath{m}}
+\newcommand{\MsgSet}{\SetName{Msg}}
+\newcommand{\pkg}{\ensuremath{g}}
+%\newcommand{\trans}{\ensuremath{\tau}}
+\newcommand{\transset}{\ensuremath{T}}
+\newcommand{\TransSet}{\SetName{Trans}}
+\newcommand{\absTransSet}{\absofset{\TransSet}}
+\newcommand{\observe}{\ensuremath{o}}
+\newcommand{\ObserveSet}{\SetName{Observable}}
+\newcommand{\obsty}{\MVar{oknd}}
+\newcommand{\statepath}{\ensuremath{\pi}}
+\newcommand{\lpath}{pth}
+\newcommand{\statepathset}{\ensuremath{\Pi}}
+\newcommand{\PathSet}{\SetName{Path}}
+\newcommand{\trace}{\ensuremath{\varpi}}
+\newcommand{\abstrace}{\ensuremath{\absof{\omega}}}
+%\newcommand{\abstracebase}{\ensuremath{\bigcirc}}
+\newcommand{\abstracebase}{\fmtlogicconst{okhist}}
+\newcommand{\abstracecons}[2]{\ensuremath{#2 \twoheadrightarrow #1}} % right-implication
+%\newcommand{\traceset}{\ensuremath{\varPi}}
+\newcommand{\abstraceset}{\ensuremath{\varPi}}
+\newcommand{\TraceSet}{\SetName{Trace}}
+\newcommand{\absTransSeqSet}{\ensuremath{\seqof{\absofset{\TransSet}}}}
+\newcommand{\obstrace}{\ensuremath{\theta}}
+\newcommand{\obstraceset}{\ensuremath{\Theta}}
+\newcommand{\ObsTraceSet}{\SetName{Observ}}
+\newcommand{\weight}{\ensuremath{w}}
+\newcommand{\tytag}{\ensuremath{T}}
+\newcommand{\TytagSet}{\SetName{Tag}}
+
+%% distilled syntax
+\newcommand{\fmtmvar}[1]{\ensuremath{\mathit{#1}}}
+\newcommand{\fmttxtsub}[1]{\ensuremath{\textrm{#1}}}
+\newcommand{\trans}{\fmtmvar{t}}
+\newcommand{\btrans}{\fmtmvar{b}}
+\newcommand{\msgid}{\fmtmvar{md}}
+\newcommand{\msgcall}[2]{\ensuremath{#1(#2)}}
+\newcommand{\msgcallret}[3]{\ensuremath{#1\,\msgcall{#2}{#3}}}
+\newcommand{\msgcb}[2]{\ensuremath{\enkwCb\,\msgcall{#1}{#2}}}
+\newcommand{\msgci}[3]{\ensuremath{\enkwCi\,\msgcallret{#1}{#2}{#3}}}
+\newcommand{\msgcbret}[3]{\ensuremath{\enkwCb\enkwRet\,\msgcallret{#1}{#2}{#3}}}
+% \newcommand{\msgcbret}[3]{\ensuremath{\enkwCb\enkwRet\,\msgcallret{}{#2}{#3}}} % remove call return for now, wasn't needed for examples
+\newcommand{\cbretcmd}[1]{\ensuremath{\enkwCb\enkwRet\,#1}}
+\newcommand{\fmtseq}[1]{\ensuremath{\overline{#1}}}
+\newcommand{\valseq}{\fmtseq{\val}}
+\newcommand{\varseq}{\fmtseq{\var}}
+\newcommand{\loc}{\fmtmvar{loc}}
+\newcommand{\apploc}{\fmtmvar{\ell}}
+\newcommand{\prog}{\fmtmvar{p}}
+\newcommand{\progemp}{\circ}
+\newcommand{\progcons}[2]{\ensuremath{#1, #2}}
+\newcommand{\histfolmodel}{\omega_{\mathtt{FOL}}}
+\newcommand{\hist}{\omega}
+\newcommand{\histemp}{\varepsilon}
+\newcommand{\histcons}[2]{\ensuremath{#1; #2}}
+\newcommand{\msgstack}{\kappa}
+\newcommand{\msgstackframe}{\fmtmvar{k}}
+\newcommand{\msgstackemp}{\circ}
+\newcommand{\msgstackcons}[2]{\ensuremath{#1; #2}}
+\newcommand{\appstore}{\rho}
+\newcommand{\inittxtsub}{\fmttxtsub{init}}
+\newcommand{\initappstore}{\appstore_\inittxtsub}
+\newcommand{\appstate}{\varsigma}
+\newcommand{\mem}{\mu}
+\newcommand{\mkmem}[3]{#1 \cdot #3 \cdot #2}
+\newcommand{\pstate}{\sigma}
+\newcommand{\initpstate}{\pstate_\inittxtsub}
+\newcommand{\mkappstate}[2]{#2\colon #1}
+\newcommand{\mkpstate}[4]{#4\colon \mkmem{#1}{#2}{#3}}
+\newcommand{\mkpstatemem}[2]{#2\colon #1}
+\newcommand{\mklocstate}[2]{#2\colon #1}
+\newcommand{\appval}{\fmtmvar{a}}
+\newcommand{\fwkval}{\fmtmvar{f}}
+
+\newcommand{\preop}{\operatorname{pre}}
+\newcommand{\postop}{\operatorname{post}}
+\newcommand{\preof}[1]{\preop(#1)}
+\newcommand{\postof}[1]{\postop(#1)}
+
+\newcommand{\SpecSet}{\ensuremath{S}}
+
+\newcommand{\spec}{\ensuremath{s}}
+\newcommand{\spectrue}{\ensuremath{\text{true}}}
+\newcommand{\specOnly}[2]{#1 \ensuremath{\boxright} #2}
+\newcommand{\iDir}[1]{\ensuremath{\mathbf{O}~#1}}
+\newcommand{\notiDir}[1]{\ensuremath{\mathbf{HN}~#1}}
+\newcommand{\niDir}[2]{\ensuremath{#1~\mathbf{NS}~#2}}
+
+\newcommand{\env}{\ensuremath{\eta}}
+\newcommand{\EnvSet}{\SetName{Env}}
+\newcommand{\store}{\ensuremath{\rho}}
+\newcommand{\StoreSet}{\SetName{Store}}
+\newcommand{\eventmap}{\ensuremath{\mu}}
+\newcommand{\EventmapSet}{\SetName{Enabled}}
+\newcommand{\callinmap}{\ensuremath{\nu}}
+\newcommand{\CallinmapSet}{\SetName{Allowed}}
+
+\newcommand{\fmtevt}[1]{\ensuremath{\text{\evtstyle #1}}}
+\newcommand{\evtcb}[2]{\enFrame{\fmtevt{#1}}{#2}}
+
+\newcommand{\refstate}[1]{\ensuremath{\quies_{#1}}}
+\newcommand{\refapploc}[1]{\ensuremath{\ensuremath{\mathtt{point}\text{-}#1}}}
+\newcommand{\LabelSet}{\SetName{Label}}
+
+%\newsavebox{\@enkwErr}\enmkkw{\@enkwErr}{exn}
+%\newcommand{\enkwErr}{\usebox{\@enkwErr}}
+%\newsavebox{\@enkwNew}\enmkkw{\@enkwNew}{new}
+%\newcommand{\enkwNew}{\usebox{\@enkwNew}}
+%\newsavebox{\@enkwNull}\enmkkw{\@enkwNull}{null}
+%\newcommand{\enkwNull}{\usebox{\@enkwNull}}
+%\newsavebox{\@enkwInvoke}\enmkkw{\@enkwInvoke}{invoke}
+%\newcommand{\enkwInvoke}{\usebox{\@enkwInvoke}}
+%\newsavebox{\@enkwSkip}\enmkkw{\@enkwSkip}{skip}
+%\newcommand{\enkwSkip}{\usebox{\@enkwSkip}}
+%\newsavebox{\@enkwAssume}\enmkkw{\@enkwAssume}{assume}
+%\newcommand{\enkwAssume}{\usebox{\@enkwAssume}}
+%\newsavebox{\@enkwEnable}\enmkkw{\@enkwEnable}{enable}
+%\newcommand{\enkwEnable}{\usebox{\@enkwEnable}}
+%\newsavebox{\@enkwAssert}\enmkkw{\@enkwAssert}{assert}
+%\newcommand{\enkwAssert}{\usebox{\@enkwAssert}}
+%\newsavebox{\@enkwDisable}\enmkkw{\@enkwDisable}{disable}
+%\newcommand{\enkwDisable}{\usebox{\@enkwDisable}}
+%\newsavebox{\@enkwAllow}\enmkkw{\@enkwAllow}{allow}
+%\newcommand{\enkwAllow}{\usebox{\@enkwAllow}}
+%\newsavebox{\@enkwDisallow}\enmkkw{\@enkwDisallow}{disallow}
+%\newcommand{\enkwDisallow}{\usebox{\@enkwDisallow}}
+%\newsavebox{\@enkwForce}\enmkkw{\@enkwForce}{force}
+%\newcommand{\enkwForce}{\usebox{\@enkwForce}}
+%\newsavebox{\@enkwTrue}\enmkkw{\@enkwTrue}{true}
+%\newcommand{\enkwTrue}{\usebox{\@enkwTrue}}
+%\newsavebox{\@enkwFalse}\enmkkw{\@enkwFalse}{false}
+%\newcommand{\enkwFalse}{\usebox{\@enkwFalse}}
+%\newsavebox{\@enkwMe}\enmkkw{\@enkwMe}{me}
+%\newcommand{\enkwMe}{\usebox{\@enkwMe}}
+%\newsavebox{\@enkwApp}\enmkkw{\@enkwApp}{app}
+%\newcommand{\enkwApp}{\usebox{\@enkwApp}}
+%\newsavebox{\@enkwFwk}\enmkkw{\@enkwFwk}{fwk}
+%\newcommand{\enkwFwk}{\usebox{\@enkwFwk}}
+%\newsavebox{\@enkwEvent}\enmkkw{\@enkwEvent}{event}
+%\newcommand{\enkwEvent}{\usebox{\@enkwEvent}}
+%\newsavebox{\@enkwCallback}\enmkkw{\@enkwCallback}{callback}
+%\newcommand{\enkwCallback}{\usebox{\@enkwCallback}}
+%\newsavebox{\@enkwCallin}\enmkkw{\@enkwCallin}{callin}
+%\newcommand{\enkwCallin}{\usebox{\@enkwCallin}}
+%\newcommand{\enkwIndent}{\hspace{2em}}
+%
+%\newcommand{\fmtstate}[1]{\ensuremath{\mathsf{#1}}}
+%\newcommand{\enkwDisallowed}{\fmtstate{disallowed}}
+%\newcommand{\enkwInitial}{\fmtstate{initial}}
+%
+%\newcommand{\enLet}[3]{\ensuremath{\enkwLet\;#1\;\pcode{=}\;#2\;\enkwIn\;#3}}
+%\newcommand{\enGetf}[2]{\ensuremath{#1\pcode{.}#2}}
+%\newcommand{\enPutf}[3]{\ensuremath{#1\pcode{.}#2\;\pcode{=}\;#3}}
+%\newcommand{\enNew}{\enkwNew}
+%\newcommand{\enSkipK}{\ensuremath{\bullet}}
+%\newcommand{\enSkip}{\ensuremath{()}}
+%\newcommand{\enSeq}[2]{\ensuremath{#1\pcode{;}\,#2}}
+%\newcommand{\enIf}[3]{\ensuremath{\enkwIf\;#1\;\enkwThen\;#2\;\enkwElse\;#3}}
+%\newcommand{\enBind}[3][]{\ensuremath{\enkwBind_{#1}\;#2\;#3}}
+%\newcommand{\enInvoke}[2]{\ensuremath{\enkwInvoke\;#1\;#2}}
+%\newcommand{\enEnable}[1]{\ensuremath{\enkwEnable\;#1}}
+%\newcommand{\enDisable}[1]{\ensuremath{\enkwDisable\;#1}}
+%\newcommand{\enAllow}[1]{\ensuremath{\enkwAllow\;#1}}
+%\newcommand{\enDisallow}[1]{\ensuremath{\enkwDisallow\;#1}}
+%\newcommand{\enFun}[3][\pkg]{\ensuremath{#2\Rightarrow_{#1}#3}}
+%\newcommand{\enForce}[1]{\ensuremath{\enkwForce\;#1}}
+%\newcommand{\enTrue}{\enkwTrue}
+%\newcommand{\enFalse}{\enkwFalse}
+%\newcommand{\enMe}{\enkwMe}
+%\newcommand{\enApp}{\enkwApp}
+%\newcommand{\enAppSub}{\ensuremath{\mathbf{app}}}
+%\newcommand{\enFwk}{\enkwFwk}
+%\newcommand{\enFwkSub}{\ensuremath{\mathbf{fwk}}}
+%%\newcommand{\enEvent}[1]{\ensuremath{\enkwEvent\;#1}}
+%%\newcommand{\enCallback}[1]{\ensuremath{\enkwCallback\;#1}}
+%%\newcommand{\enCallin}[1]{\ensuremath{\enkwCallin\;#1}}
+%\newcommand{\enEvent}{\enkwEvent}
+%\newcommand{\enCallin}{\enkwCallin}
+%\newcommand{\enInitial}{\enkwInitial}
+%\newcommand{\enDisallowed}{\enkwDisallowed}
+%\newcommand{\enCallback}{\enkwCallback}
+%\newcommand{\enAddr}{\ensuremath{addr}}
+%
+%%\newcommand{\enClosure}[2]{\ensuremath{#1[#2]}}
+%\newcommand{\enClosure}[2]{\ensuremath{#1}}
+%\newcommand{\enMsg}[2]{\ensuremath{(#1,#2)}}
+%\newcommand{\extMsg}[2]{\ensuremath{[\enMsg{#1}{#2}]}}
+%%\newcommand{\ext}[1]{\ensuremath{[#1]}}
+%\newcommand{\ext}[1]{\ensuremath{, #1}}
+%%\newcommand{\enMsg}[2]{\ensuremath{#1 #2}}
+%\newcommand{\enThunk}[2]{\ensuremath{#1[#2]}}
+%\newcommand{\frameop}{\mathord{\gg}}
+%\newcommand{\enFrame}[2]{\ensuremath{#1\frameop#2}}
+%
+%\newcommand{\enLetK}[3]{\ensuremath{\enkwLet\;#1\;\pcode{=}\;#2\;\enkwIn\;#3}}
+%
+%\newcommand{\@enState}{}
+%%\long\def\@enState[#1][#2][#3][#4][#5][#6]{\ensuremath{\tuple{#1, #2, #3, #4, #5, #6}}}
+%\long\def\@enState[#1][#2][#3][#4][#5][#6]{\ensuremath{\tuple{#1, #3, #4, #5, #6}}}
+%\newcommand{\enState}{\optparams{\@enState}{[\expr][\env][\store][\eventmap][\callinmap][\cont]}}
+%
+%\newcommand{\@enSigState}{}
+%\long\def\@enSigState[#1][#2][#3]{\ensuremath{\tuple{#1, #2, #3}}}
+%\newcommand{\enSigState}{\optparams{\@enSigState}{[\absof{\trace}][\absof{\eventmap}][\absof{\callinmap}]}}
+%
+%
+\newcommand{\Package}{\operatorname{pkg}}
+\newcommand{\Msg}{\operatorname{msg}}
+%
+\newcommand{\fmttrans}[1]{\ensuremath{\mathsf{#1}}}
+\newcommand{\enkwInit}{\fmttrans{init}}
+\newcommand{\enkwEvt}{\fmttrans{evt}}
+\newcommand{\enkwCb}{\fmttrans{cb}}
+\newcommand{\enkwCi}{\fmttrans{ci}}
+\newcommand{\enkwDis}{\fmttrans{dis}}
+\newcommand{\enkwRet}{\fmttrans{ret}}
+\newcommand{\enkwFin}{\fmttrans{fin}}
+\newcommand{\enObs}[2]{\ensuremath{#1\;#2}}
+\newcommand{\enInit}{\fmttrans{init}}
+\newcommand{\enEvt}[1]{\ensuremath{\enkwEvt\;#1}}
+\newcommand{\enCb}[1]{\ensuremath{\enkwCb\;#1}}
+\newcommand{\enCi}[1]{\ensuremath{\enkwCi\;#1}}
+\newcommand{\enDis}[1]{\ensuremath{\enkwDis\;#1}}
+\newcommand{\enRet}[1]{\ensuremath{\enkwRet\;#1}}
+\newcommand{\enFin}[1]{\ensuremath{\enkwFin\;#1}}
+\newcommand{\silentTrans}{\ensuremath{\varepsilon}}
+
+%\newcommand{\@displaydiamond}{\scalebox{1.17}[0.87]{$\displaystyle\Diamond$}}
+%\newcommand{\@textdiamond}{\scalebox{1.17}[0.87]{$\textstyle\Diamond$}}
+%\newcommand{\@scriptdiamond}{\scalebox{1.15}[0.87]{$\scriptstyle\Diamond$}}
+%\newcommand{\@scriptscriptdiamond}{\scalebox{1.11}[0.87]{$\scriptscriptstyle\Diamond$}}
+%
+%\newcommand{\diamondplus}{\mathbin{\mathchoice%
+%{\ooalign{\@displaydiamond\cr\hidewidth$\displaystyle+$}}%
+%{\ooalign{\@textdiamond\cr\hidewidth$\textstyle+$}}%
+%{\ooalign{\@scriptdiamond\cr\hidewidth$\scriptstyle+$}}%
+%{\ooalign{\@scriptscriptdiamond\cr\hidewidth$\scriptscriptstyle+$}}%
+%}}
+%\newcommand{\diamondminus}{\mathbin{\mathchoice%
+%{\ooalign{\@displaydiamond\cr\hidewidth$\displaystyle-$}}%
+%{\ooalign{\@textdiamond\cr\hidewidth$\textstyle-$}}%
+%{\ooalign{\@scriptdiamond\cr\hidewidth$\scriptstyle-$}}%
+%{\ooalign{\@scriptscriptdiamond\cr\hidewidth$\scriptscriptstyle-$}}%
+%}}
+
+%\newcommand{\specArrow}{\mathord{\shortrightarrow}}
+\newcommand{\specArrow}{\mathord{\rightarrow}}
+\newcommand{\nspecArrow}{\mathord{\nrightarrow}}
+%\newcommand{\specEnableOp}{\mathop{\diamondplus}}
+\newcommand{\specEnableOp}{\mathop{\text{\relsize{-1}\enkwEvt}}}
+%\newcommand{\specDisableOp}{\mathop{\diamondminus}}
+\newcommand{\specDisableOp}{\mathop{\text{\relsize{-1}\enkwEvt}}}
+%\newcommand{\specAllowOp}{\mathop{\boxplus}}
+\newcommand{\specAllowOp}{\mathop{\text{\relsize{-1}\enkwCi}}}
+%\newcommand{\specDisallowOp}{\mathop{\boxminus}}
+\newcommand{\specDisallowOp}{\mathop{\text{\relsize{-1}\enkwCi}}}
+
+\newcommand{\specEnable}[3][]{\ensuremath{#2 \specArrow_{#1} \specEnableOp #3}}
+\newcommand{\specDisable}[3][]{\ensuremath{#2 \nspecArrow_{#1} \specDisableOp #3}}
+\newcommand{\specAllow}[3][]{\ensuremath{#2 \specArrow_{#1} \specAllowOp #3}}
+\newcommand{\specDisallow}[3][]{\ensuremath{#2 \nspecArrow_{#1} \specDisallowOp #3}}
+
+\newcommand{\allSpecs}[4]{\ensuremath{{#3}_{\joinrel{#1}{#2}}(#4)}}
+\newcommand{\allEnables}[1]{\allSpecs{\specArrow}{\specEnableOp}{}{#1}}
+\newcommand{\allDisables}[1]{\allSpecs{\nspecArrow}{\specDisableOp}{}{#1}}
+\newcommand{\allAllows}[1]{\allSpecs{\specArrow}{\specAllowOp}{}{#1}}
+\newcommand{\allDisallows}[1]{\allSpecs{\nspecArrow}{\specDisallowOp}{}{#1}}
+\newcommand{\allRules}[1]{\allSpecs{\dashrightarrow}{}{}{#1}}
+
+\newcommand{\specPermit}[3][]{\ensuremath{#2 \specArrow_{#1} #3}}
+\newcommand{\specForbid}[3][]{\ensuremath{#2 \nspecArrow_{#1} #3}}
+
+
+\newcommand{\Trace}{\operatorname{tr}}
+\newcommand{\Observe}{\operatorname{obs}}
+\newcommand{\Args}{\operatorname{args}}
+\newcommand{\EvtArgs}{\operatorname{xargs}}
+\newcommand{\Partition}{\operatorname{parti}}
+\newcommand{\Callbacks}{\operatorname{evtcbs}}
+\newcommand{\Elimci}{\operatorname{elimci}}
+
+\newcommand{\slicectx}{\ensuremath{\Delta}}
+\newcommand{\traceslice}[3][\slicectx]{\ensuremath{#2 \upharpoonright_{#3}^{#1}}}
+
+%%% Judgments
+\newcommand{\feasible}[2][\SpecSet]{\ensuremath{\entail[#1]{#2}{\bot}}}
+\newcommand{\alarm}[2][\SpecSet]{\ensuremath{ \vdash^\epsilon_{#1} #2}} %%% should be deleted when we've fully converted to \notinit
+\newcommand{\notinit}[2][\SpecSet]{\ensuremath{\vdash_{#1} #2\;\mathsf{excludesinit}}}
+\newcommand{\entail}[3][\SpecSet]{ #2\vdash_{#1} #3 }
+\newcommand{\empth}{\ensuremath{\mathtt{emp}}}
+\newcommand{\quies}{\ensuremath{\texttt{fwk}}}
+\newcommand{\applocterm}{\ensuremath{\texttt{app}}}
+\newcommand{\errst}{\ensuremath{\mathtt{err}}}
+
+\newcommand{\unifysubst}{\vartheta}
+\newcommand{\ideq}[2]{\ensuremath{#1 \simeq_{\unifysubst} #2}}
+%\newcommand{\idneq}[2]{\ensuremath{ \neg\ideq{#1}{#2}}}
+\newcommand{\idneq}[2]{\ensuremath{#1 \not\simeq #2}}
+
+% matcher used for right hand side unrestricted
+\newcommand{\directive}{\widetilde{\hist}}
+\newcommand{\temporal}{\directive}
+\newcommand{\temporaltrue}{\text{true}} %%% using this one for now because macro is not used consistently
+\newcommand{\temporalfalse}{\text{false}} %%% using this one for now because macro is not used consistently
+
+%Internal phi used in decision procedure
+\newcommand{\phidec}{\ensuremath{\phi^{\mathtt{D}}}}
+
+%negate only phi - syntactic restriction on possible 
+\newcommand{\phineg}{\ensuremath{\directive^{\mathtt{U}}}}
+
+\newcommand{\baks}[1]{\llbracket #1 \rrbracket_{\text{bk}}}
+\newcommand{\baksover}[1]{\llbracket #1 \rrbracket_{\text{bk}}^{\#over}}
+\newcommand{\baksunder}[1]{\llbracket #1 \rrbracket_{\text{bk}}^{\#under}}
+\newcommand{\fwds}[1]{\llbracket #1 \rrbracket_{\text{fw}}}
+\newcommand{\baksp}[1]{\baks{#1}^\text{a}}
+\newcommand{\baksf}[1]{\baks{#1}^\text{f}} % trace abst filtered backward collecting semantics
+\newcommand{\baksm}[1]{\llbracket #1 \rrbracket_{\text{b}}^m}
+\newcommand{\jstep}[3][]{\ensuremath{#2 \rightarrow_{#1} #3}}
+\newcommand{\jstepstar}[3][]{\ensuremath{#2 \rightarrow_{#1}^{\ast} #3}}
+\newcommand{\jstepins}[3]{\ensuremath{#1 \stackrel{\text{\normalsize$\longrightarrow$}}{\text{\scriptsize$#2$}} #3}}
+\newcommand{\jstepinsstar}[3]{\ensuremath{#1 \stackrel{\text{\normalsize$\longrightarrow \ast$}}{\text{\scriptsize$#2$}} #3}}
+\newcommand{\cbedge}[2]{[\enkwCb~#1]\hspace{-0.5em}\rightarrow #2}
+\newcommand{\cfedgelefttail}{\mathord{-}\mkern-4mu\mathord{[}}
+\newcommand{\cfedgerightarrow}{\mathord{]}\mkern-4mu\mathord{\shortrightarrow}}
+\newcommand{\cfedge}[3]{#1\,\cfedgelefttail #2 \cfedgerightarrow\,#3}
+\newcommand{\retedge}[2]{#1-\hspace{-0.6em} -\hspace{-0.22em} [#2]}
+\newcommand{\rmstep}[3]{\ensuremath{ \langle #1 \rangle \stackrel{\text{\normalsize$\longrightarrow$}}{\text{\scriptsize$#2$}} \langle #3 \rangle }}
+\newcommand{\rstep}[3][]{
+ \ensuremath{ \langle #2 \rangle \longrightarrow_{#1} \langle #3 \rangle}
+}
+\newcommand{\rstepbad}[1]{
+ \ensuremath{\langle #1 \rangle \longrightarrow \textbf{bad}}
+}
+
+\newcommand{\jcaption}[1]{\hfill\fbox{\normalsize$#1$}}
+\newcommand{\wedgeover}[1]{\scalebox{1}{$\bigwedge$}_{#1}}
+
+\newcommand{\wfhist}{\ensuremath{\mathcal{H}}}
+\newcommand{\wfhistjudge}[1]{\ensuremath{#1 \in \wfhist}}
+
+%% distilled semantics
+\newcommand{\jeval}[3]{\ensuremath{\tuple{#1, #2} \Downarrow #3}}
+\newcommand{\jseen}[2]{\ensuremath{#1 \vdash #2\;\mathsf{seen}}}
+\newcommand{\jrealhist}[2][\wfhist]{\ensuremath{#1 \vdash #2}}
+\newcommand{\jhoare}[3]{\ensuremath{\vdash \{ #1 \}\;#2\;\{ #3 \}}}
+\newcommand{\jtransok}[3][]{\ensuremath{#2 \vdash_{#1} #3}}
+\newcommand{\jmaywitness}[4][]{\ensuremath{#2 \vdash^{#1}_{\SpecSet} #4}}
+\newcommand{\jrefute}[3][]{\ensuremath{\vdash^{#1}_{\SpecSet} #3\;\mathsf{unreach}}}
+\newcommand{\semincluded}[2]{#1 \models #2}
+
+\newcommand{\barmsg}{\bar{\msg}}
+%%% Abstraction
+\newcommand{\absmsg}{\absof{\msg}}
+\newcommand{\absforce}{\absof{\imath}}
+\newcommand{\initforce}{\mathsf{init}}
+
+\newcommand{\abselem}{\ensuremath{\AIabselementfn}}
+\newcommand{\absconc}{\ensuremath{\absof{\AIconcfn}}}
+\newcommand{\conc}{\ensuremath{\AIconcfn}}
+%% Caution: the following hardwires in \SpecSet
+\newcommand{\inconc}[2]{\ensuremath{#1 \models_{\SpecSet} #2}}
+\newcommand{\notinconc}[2]{\ensuremath{#1 \not\models_{\SpecSet} #2}}
+
+\newcommand{\fmtlogicconst}[1]{\ensuremath{\mbox{\relscale{0.9}{$\mathsf{#1}$}}}}
+\newcommand{\absappstore}{\absof{\appstore}}
+\newcommand{\absappstate}{\absof{\appstate}}
+\newcommand{\absmem}{\absof{\mem}}
+\newcommand{\absmemFalse}{\bot}
+\newcommand{\absmemOr}[2]{#1 \lor #2}
+\newcommand{\mkabsmem}[4]{\mkmem{#1}{#2}{#3}}
+\newcommand{\mkshortabsmem}[3]{\ensuremath{\{\,#1\colon #2 \cdot #3\,\}}}
+\newcommand{\mkshorterabsmem}[2]{\ensuremath{\{\,#1\colon #2\,\}}}
+\newcommand{\mkshortabsmemnostore}[2]{\ensuremath{\{\,#1\colon #2\,\}}}
+\newcommand{\initabsappstate}{\absappstate_\inittxtsub}
+\newcommand{\abspstate}{\absof{\pstate}}
+\newcommand{\initabspstate}{\abspstate_\inittxtsub}
+\newcommand{\invpstate}{\absof{\Sigma}}
+\newcommand{\invemp}{\circ}
+\newcommand{\invcons}[3]{#1, #3}
+\newcommand{\absmsgstack}{\absof{\msgstack}}
+\newcommand{\absmsgstackframe}{\absof{\msgstackframe}}
+\newcommand{\absmsgstackemp}{\ltop}
+\newcommand{\absmsgstackcons}[2]{#1 \mathbin{\bullet} #2}
+\newcommand{\symval}{\hat{\var}}
+\newcommand{\symvalseq}{\fmtseq{\symval}}
+\newcommand{\puretrue}{\top}
+\newcommand{\pureand}[2]{#1 \land #2}
+\newcommand{\pureandseq}[2]{#1 \land \mathop{\mbox{\relscale{1.3}{$\land$}}}\fmtseq{#2}}
+\newcommand{\pureseen}[1]{\fmtlogicconst{seen}(#1)}
+\newcommand{\mkabsappstate}[3]{\mkappstate{#1}{#2}}
+\newcommand{\mkabspstate}[5]{\mkpstate{#1}{#2}{#3}{#4}}
+\newcommand{\absappstoreTrue}{\ltop}
+\newcommand{\absappstoreAnd}[2]{#1 \lsep #2}
+\newcommand{\absappstorePtsto}[2]{#1 \ptsto #2}
+\newcommand{\absappstoreSeq}[1]{\mathop{\Lsep}\fmtseq{#1}}
+\newcommand{\absappstoreAndSeq}[2]{#1 \lsep \absappstoreSeq{#2}}
+
+\newcommand{\valua}{\ensuremath{\theta}} 
+\newcommand{\valuaemp}{\circ}
+\newcommand{\valuaext}[3]{#1\extmap{#2}{#3}}
+\newcommand{\withvalua}[2][\valua]{#2 \cdot #1}
+\newcommand{\withvaluaind}[3][\valua]{#2 \cdot #1 \cdot #3}
+
+\newcommand{\appop}{\operatorname{app}}
+\newcommand{\appof}[1]{\appop(#1)}
+
+\newcommand{\locop}{\operatorname{loc}}
+\newcommand{\locof}[1]{\locop(#1)}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Decision procedure
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\toFOL}[1]{\ensuremath{\text{ToFoL(}#1\text{)}}}
+\newcommand{\unsat}[1]{\ensuremath{\text{Unsat(}#1\text{)}}}
+\newcommand{\sat}[1]{\ensuremath{\text{Sat(}#1\text{)}}}
+\newcommand{\msgset}{\ensuremath{\SetName{Msg}}}
+\newcommand{\addrset}{\ensuremath{\valset}}
+\newcommand{\argset}{\ensuremath{\SetName{ArgIdx}}}
+\newcommand{\nameset}{\ensuremath{\SetName{MsgName}}}
+\newcommand{\valset}{\ensuremath{\SetName{Val}}}
+
+%uninterpreted indices in first order logic
+\newcommand{\foli}{\ensuremath{\mathit{idx}}}
+\newcommand{\folj}{\ensuremath{\mathit{u}_2}}
+\newcommand{\folk}{\ensuremath{\mathit{u}_3}}
+
+\newcommand{\encodeRel}[3]{\ensuremath{\vdash_{#2} #1 \equiv #3}}
+\newcommand{\toFOLRel}[2]{\ensuremath{\vdash #1 \equiv #2}}
+\newcommand{\msgAtFolRel}[3]{\ensuremath{\vdash \text{MsgAtInd}(#1,#2) \equiv #3}}
+\newcommand{\fol}{\ensuremath{\psi}}
+%\stackrel{\text{\normalsize$\leadsto$}}{\text{\scriptsize#2}}
+\newcommand{\dirEntailBot}[1]{#1\vdash \bot}
+\newcommand{\empNotEntailDir}[1]{\notinit[]{#1}}
+\newcommand{\dirEntailDir}[2]{#1 \vdash #2}
+\newcommand{\histAxiomsFol}{\ensuremath{\fol_{\textrm{ax}}}}
+\newcommand{\folEntailBot}[1]{\ensuremath{ \unsat{\histAxiomsFol \wedge #1}}}
+\newcommand{\empNotEntailFol}[1]{\ensuremath{\unsat{\histAxiomsFol \wedge \fol \wedge \folLen = 0}}}
+\newcommand{\folEntailFol}[2]{\ensuremath{\unsat{\histAxiomsFol \wedge #1 \wedge \forall \fv{#2}.~\neg #2}}}
+
+
+\newcommand{\updRel}[3]{\ensuremath{\vdash #1 \equiv #2 \fatsemi #3}}
+\newcommand{\instRel}[3]{\ensuremath{#2, #1 \vdash #3}}
+
+
+\newcommand{\msgequiv}[2]{\ensuremath{\text{Match(}#1,#2\text{)}}}
+\newcommand{\folmsgequiv}[2]{\ensuremath{\text{EquivFoL(}#1,#2\text{)}}}
+\newcommand{\folmsgnotequiv}[2]{\ensuremath{\neg\text{EquivFoL(}#1,#2\text{)}}}
+\newcommand{\msgnotequiv}[2]{\ensuremath{\text{NotMatch(}#1,#2\text{)}}}
+\newcommand{\tracefn}{\ensuremath{\fmtlogicconst{hist}}}
+\newcommand{\namefn}{\ensuremath{\fmtlogicconst{msgname}}}
+\newcommand{\argfn}{\ensuremath{\fmtlogicconst{msgargs}}}
+\newcommand{\unatset}{\ensuremath{\SetName{HistIdx}}}
+\newcommand{\boolset}{\ensuremath{\SetName{Bool}}}
+\newcommand{\folLen}{\mathtt{len}}
+\newcommand{\modDir}[2]{#1 \models #2}
+\newcommand{\notModDir}[2]{#1 \not\models #2}
+\newcommand{\modSpec}[2]{#1 \models #2}
+\newcommand{\notModSpec}[2]{#1 \models #2}
+
+\newcommand{\modeltriple}[3]{\ensuremath{#1\cdot#2\cdot#3}} % expect trace, assignment, position
+\newcommand{\modeldouble}[2]{\ensuremath{#1\cdot#2}} % expect trace, assignment
+\newcommand{\wellformed}[1]{\ensuremath{\text{Wf(}#1\text{)}}}
+\newcommand{\wellformedU}[1]{\ensuremath{\text{Wf}^{\forall}\text{(}#1\text{)}}}
+
+%highlight the fix in the overview example
+\newcommand{\hlfix}{\footnotesize{\textit{ +fix}}}
+\newcommand{\jmsgwithret}[4]{#1 = \jmsg{#2}{#3}{#4}}
+\newcommand{\jmsg}[3]{#1\text{.}\codej{#2}\codej{(}#3\codej{)}}
+\newcommand{\specci}[3]{\ensuremath{\enkwCi~#1\codej{.#2(}#3\codej{)}}}
+\newcommand{\specciwithret}[4]{\ensuremath{\enkwCi~\ensuremath{#1}=\ensuremath{#2}\codej{.#3(}\ensuremath{#4}\codej{)}}}
+\newcommand{\specstaticciwithret}[3]{\ensuremath{\enkwCi~\ensuremath{#1}=\codej{#2(}\ensuremath{#3}\codej{)}}}
+\newcommand{\speccb}[3]{\ensuremath{\enkwCb\ #1 \codej{.}\codej{#2}\codej{(} #3 \codej{)}}}
+
+\newcommand{\unsubmsgwidth}{0.22\linewidth}
+\newsavebox{\SBoxUnsubMsgOne}
+\begin{lrbox}{\SBoxUnsubMsgOne}
+  \specci{\codej{s}}{unsubscribe}{} \hlfix
+\end{lrbox}
+\newsavebox{\SBoxUnsubMsg}
+\begin{lrbox}{\SBoxUnsubMsg}
+\lststopn\begin{lstdiffplus}[language=java,alsolanguage=exthighlighting,style=number,linewidth=\unsubmsgwidth,escapechar=|]
+|\usebox{\SBoxUnsubMsgOne}|
+\end{lstdiffplus}\lststartn
+\end{lrbox}
+\newcommand{\unsubmsghl}{\usebox{\SBoxUnsubMsg}}
+
+
+\newsavebox{\SBoxPlayerFragmentTrace}
+\begin{lrbox}{\SBoxPlayerFragmentTrace}\small
+\begin{tabular}{l}
+	\enkwCb\ \codej{@1.onCreate()}\\
+	\enkwCi\ \codej{@2 = create(...)}\\
+	\enkwCi\ \codej{@3 = @2.subscribe(@1)}\\
+	\enkwCb\enkwRet\ \codej{@1.onCreate()}\\
+	\enkwCb\ \codej{@1.onDestroy()}\\
+	\enkwCi\ \codej{@3.unsubscribe()} ++\ \text{fix} \label{msg:fix}\\
+	\enkwCb\enkwRet\ \codej{@1.onDestroy()}\\
+	\enkwCb\ \codej{@1.call(...)} \text{assertion failure}\\
+\end{tabular}
+%\end{lstlisting}
+\end{lrbox}
+\newcommand{\ThePlayerFragmentTrace}{\scalebox{1}{\usebox{\SBoxPlayerFragmentTrace}}}
+\newsavebox{\cfarrowbox}
+\savebox{\cfarrowbox}{
+\begin{tikzpicture}[node distance=0.5cm]
+	\node(a)[draw=none]{};
+	\node(b)[draw=none, right of=a]{};
+	\path[-)] (a) edge (b);
+\end{tikzpicture}
+}
+\newcommand{\cfarrow}{\hspace{-0.3cm}\usebox{\cfarrowbox}\hspace{-0.2cm}}
+\newsavebox{\callarrowbox}
+\savebox{\callarrowbox}{
+\begin{tikzpicture}[node distance=0.5cm]
+	\node(a)[draw=none]{};
+	\node(b)[draw=none, right of=a]{};
+	\path[{Straight Barb[left]}-{Straight Barb[left]}] (a) edge (b);
+\end{tikzpicture}
+}
+\newcommand{\callarrow}{\hspace{-0.3cm}\usebox{\callarrowbox}\hspace{-0.2cm}}
+
+%macros for overview abstract states
+\newcommand{\ronepre}{\abstracecons{}{\speccb{\codej{f}}{call}{\codej{m}}}}
+\newcommand{\rtwopre}{\abstracecons{}{\specci{\codej{s}}{unsubscribe}{}}}
+\newcommand{\rthreepre}[3]{\abstracecons{}{\abstracecons{\specciwithret{#1}{#3}{subscribe}{#2}}{\speccb{#2}{onCreate}{}}}}
+\newcommand{\lsvar}[1]{\codej{#1}}
+
+% CBCFTL commands for syntax and semantic
+\newcommand{\histlen}[1]{\ensuremath{\text{len}({#1})}}  % length of a message history
+\newcommand{\lvar}[1]{\ensuremath{#1}}  % variable of the logic
+\newcommand{\lvars}[1]{\ensuremath{\bar{#1}}} % Vector of variables in the logic
+\newcommand{\lval}[1]{\ensuremath{#1}}  % variable of the logic
+\newcommand{\lvals}[1]{\ensuremath{\bar{#1}}} % Vector of variables in the logic
+\newcommand{\ldomain}{\ensuremath{\SetName{Val}}} % domain of the logic variables (values? to explain)
+\newcommand{\assignment}{\ensuremath{\valua}}  % assignment
+\newcommand{\fv}[1]{\ensuremath{\operatorname{fv}(#1)}} % Free variables for a formula
+
+\newcommand{\ltmsg}{\ensuremath{\widetilde{\msg}}}
+\newcommand{\ltrule}{\ensuremath{s}}
+\newcommand{\ltpar}{\mathit{par}}
+
+% Evaluation section macros
+
+\newcommand{\benchmark}[2]{#1}
+\newcommand{\apGa}{%
+\benchmark{%
+$\codej{getAct}^{[\reftr{spec:getActivityNull}]}$
+}{1.4cm}%
+}
+\newcommand{\apEx}{%
+\benchmark{%
+$\codej{execute}^{[\reftr{spec:execute}]}$
+}{1.6cm}%
+}
+\newcommand{\ymDi}{%
+\benchmark{%
+$\codej{dismiss}^{[\reftr{spec:dismiss}]}$
+}{1.3cm}%
+}
+\newcommand{\cbFi}{%
+\benchmark{%
+$\codej{finish}^{\enkwNull}$
+}{1.4cm}%
+}
+\newcommand{\synch}{%
+  \benchmark{
+  $\codej{subs}^{\enkwNull}$
+  }{1.4cm}
+}
+\newcommand{\req}[1]{
+  \textbf{RQ#1}
+}
+
+\newcommand{\thou}[1]{#1K}
+\makeatother
