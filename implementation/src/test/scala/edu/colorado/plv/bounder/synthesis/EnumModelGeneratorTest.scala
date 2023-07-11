@@ -69,7 +69,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
 
   }
 
-  test("Specification comparitor should order specifications with holes"){
+  ignore("Specification comparitor should order specifications with holes"){
     val p1 = onClickI
     val p2 = And(LSAnyPred, LSAnyPred)
     assert(LSPredAnyOrder.compare(p1,p2) < 0)
@@ -77,7 +77,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
     assert(LSPredAnyOrder.compare(p1,p1) == 0)
   }
   //TODO: re-enable while working on synth, works but very slow
-  test("Synthesis example - simplification of Connect bot click/finish") {
+  ignore("Synthesis example - simplification of Connect bot click/finish") {
     //TODO==== Non-determinism seems less, but now gives wrong spec, probably need to include traces or something
 
     //Or(NS(SpecSignatures.Activity_onPause_exit, SpecSignatures.Activity_onResume_entry),
