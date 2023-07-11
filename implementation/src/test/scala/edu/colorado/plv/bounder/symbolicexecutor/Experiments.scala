@@ -521,90 +521,9 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
       makeApkWithSources(Map("RemoverActivity.java" -> src), MkApk.RXBase, test)
     }
   }
-  ignore("Row3: fragment start/stop can cycle"){
-    // https://github.com/AntennaPod/AntennaPod/issues/3112
-    //TODO:===== not implemented yet
-    ???
-    val src =
-      s"""
-         |package com.example.createdestroy;
-         |import android.app.Activity;
-         |import android.content.Context;
-         |import android.net.Uri;
-         |import android.os.Bundle;
-         |
-         |import android.app.Fragment;
-         |
-         |import android.util.Log;
-         |import android.view.LayoutInflater;
-         |import android.view.View;
-         |import android.view.ViewGroup;
-         |
-         |import rx.Single;
-         |import rx.Subscription;
-         |import rx.android.schedulers.AndroidSchedulers;
-         |import rx.schedulers.Schedulers;
-         |import rx.functions.Action1;
-         |
-         |
-         |public class MyFragment extends Fragment implements Action1<Object>{
-         |    Subscription sub;
-         |    String s = null;
-         |    @Override
-         |    public void onActivityCreated(Bundle savedInstanceState){
-         |        sub = Single.create(subscriber -> {
-         |            subscriber.onSuccess(3);
-         |        }).subscribe(this);
-         |        s = "";
-         |    }
-         |
-         |    @Override
-         |    public void call(Object o){
-         |         s.toString(); //query1 : reachable
-         |    }
-         |
-         |}
-         |""".stripMargin
-    ??? // TODO: ==== implement
 
-    val test: String => Unit = apk => {
-      assert(apk != null)
-      val specs = Set(FragmentGetActivityNullSpec.getActivityNull,
-        FragmentGetActivityNullSpec.getActivityNonNull,
-        LifecycleSpec.Fragment_activityCreatedOnlyFirst
-      ) ++ RxJavaSpec.spec
-      val w = new SootWrapper(apk, specs)
-      val config = ExecutorConfig(
-        stepLimit = 80, w,new SpecSpace(specs),
-        component = Some(List("com.example.createdestroy.*MyFragment.*")) )
-      implicit val om = config.outputMode
-
-      // line in call is reachable
-      val symbolicExecutor = config.getAbstractInterpreter
-      val line = BounderUtil.lineForRegex(".*query1.*".r, src)
-      val query = Reachable(Signature("com.example.createdestroy.MyFragment",
-        "void call(java.lang.Object)"),line)
-      val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
-      val fname = s"UnreachableLocation"
-      // prettyPrinting.dumpDebugInfo(result, fname)
-      //      prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
-      assert(result.nonEmpty)
-      BounderUtil.throwIfStackTrace(result)
-      val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
-      assert(interpretedResult == Witnessed)
-
-      //line in call cannot throw npe since s is initialized
-      val query2 = ReceiverNonNull(Signature("com.example.createdestroy.MyFragment",
-        "void call(java.lang.Object)"),line, Some(".*toString.*"))
-      val result2 = symbolicExecutor.run(query2).flatMap(a => a.terminals)
-      val interpretedResult2 = BounderUtil.interpretResult(result2,QueryFinished)
-      assert(interpretedResult2 == Proven)
-    }
-
-    makeApkWithSources(Map("MyFragment.java" -> src), MkApk.RXBase, test)
-  }
-
-  test("row 5: Yamba dismiss") {
+  test("row 3: Antennapod dismiss") {
+    // Antennapod https://github.com/AntennaPod/AntennaPod/issues/2148
     // Yamba https://github.com/learning-android/Yamba/pull/1/commits/90c1fe3e5e58fb87c3c59b1a271c6e43c9422eb6
     List(
       ("if(resumed) {","}", Proven, "withCheck"),
@@ -703,25 +622,25 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
 
         if(runVerif) {
           val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
-          val fname = s"Yamba_$fileSuffix"
+          val fname = s"Antennapod_$fileSuffix"
           // prettyPrinting.dumpDebugInfo(result, fname)
           prettyPrinting.printWitness(result)
           //        prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
           assert(result.nonEmpty)
           BounderUtil.throwIfStackTrace(result)
           val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
-          logger.warn(s"Row 5 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime)/1000.0}")
+          logger.warn(s"Row 3 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime)/1000.0}")
           val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
-          logger.warn(s"Row 5 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
+          logger.warn(s"Row 3 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
           assert(interpretedResult == expectedResult)
         }else{
-          val em = s"Row 5 skipped due to runVerif param!!!!!!!"
+          val em = s"Row 3 skipped due to runVerif param!!!!!!!"
           println(em)
           logger.warn(em)
         }
         val messages = w.getMessages(symbolicExecutor.controlFlowResolver, specSpace,
           symbolicExecutor.getClassHierarchy, mFilter)
-        logger.warn(s"Row 5 ${fileSuffix} : ${write(messages)}")
+        logger.warn(s"Row 3 ${fileSuffix} : ${write(messages)}")
       }
 
       makeApkWithSources(Map("StatusActivity.java" -> src), MkApk.RXBase, test)
@@ -840,7 +759,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           test)
     }
   }
-  test("Row6: synch null free") {
+  test("Row5: synch null free") {
     //https://github.com/AntennaPod/AntennaPod/issues/4308
     List(
       //      ("button.setEnabled(true);", Witnessed, "badDisable"), //test for boolean handling, works so commented out for exp run
@@ -937,18 +856,18 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           assert(result.nonEmpty)
           BounderUtil.throwIfStackTrace(result)
           val interpretedResult = BounderUtil.interpretResult(result, QueryFinished)
-          logger.warn(s"Row 6 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
+          logger.warn(s"Row 5 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
           val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
-          logger.warn(s"Row 6 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
+          logger.warn(s"Row 5 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
           assert(interpretedResult == expectedResult)
         } else {
-          val em = s"Row 6 skipped due to runVerif param!!!!!!!"
+          val em = s"Row 5 skipped due to runVerif param!!!!!!!"
           println(em)
           logger.warn(em)
         }
         val messages = w.getMessages(symbolicExecutor.controlFlowResolver, specSpace,
           symbolicExecutor.getClassHierarchy, mFilter)
-        logger.warn(s"Row 6 ${fileSuffix} : ${write(messages)}")
+        logger.warn(s"Row 5 ${fileSuffix} : ${write(messages)}")
       }
 
       makeApkWithSources(Map("ChaptersFragment.java" -> src), MkApk.RXBase2, test)
