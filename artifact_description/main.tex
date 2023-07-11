@@ -71,25 +71,49 @@
 \title{Artifact - Historia: Refuting Callback Reachability with Message-History Logics}
 
 \begin{abstract}
-TODO
 \end{abstract}
 
 
 \maketitle
 %\input{generated/specMacros}
 \section{Introduction}
-TODO
+This document explains the artifact for the Historia paper \cite{conf/oopsla/Meier23}.
+The goal of this document is to first give a set of instructions for reproducing the experimental results and then give a technical explanation of how the implementation connects to the technical contributions.
+
+\section{Prerequisites - Running the Historia Docker Container}
+
+We have configured the experiments to be run within a Docker container provided with this artifact.
+This Docker file may be found in the root directory of this archive and is labeled \codej{historia.docker}.  Please follow the instructions to install docker from \url{https://docs.docker.com/engine/install/}.
+
+Importing the docker container can be done with the following command.
+
+\begin{lstlisting}[language=bash]
+  docker import historia.docker
+\end{lstlisting}
+
+The docker container may be run with the following command. \TODO{expose web port and swap with jupyter command}
+\begin{lstlisting}[language=bash]
+  docker run --memory=8G --memory-swap="16G" --rm -it historia bash
+\end{lstlisting}
+
+All subsequent steps may be done through the web interface at  \url{http://localhost:8080}.
+
+\section{Reproducing the Historia Results}
+
+In this section, we explain how to generate the tables shown in the evaluation section.
+\TODO{system cfg and slowness adding to timeouts}
+
+\subsection{Running \req{1}}
 
 
 
-
-
+\subsection{Running \req{2}}
 
 
 %======================
 
 
-\bibliography{conference.short,main.short,bec.short}
+\bibliography{conference.short,bec.short}% main.short,
 
 %\ifTR
 %\clearpage
