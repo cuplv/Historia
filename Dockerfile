@@ -125,7 +125,7 @@ ENV LD_LIBRARY_PATH=/usr/lib/
 
 RUN pip install jupyterlab
 
-ENV SBT_OPTS="-Xmx6000M"
+ENV SBT_OPTS="-Xmx8000M"
 
 
 
