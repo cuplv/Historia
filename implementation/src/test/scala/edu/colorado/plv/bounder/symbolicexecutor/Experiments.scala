@@ -297,8 +297,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
     // Experiments row 1
     // Antennapod https://github.com/AntennaPod/AntennaPod/pull/2856
     List(
-      ("sub.unsubscribe();", Proven, "withUnsub"),
-      ("", Witnessed, "noUnsub")
+      ("sub.unsubscribe();", Proven, "fix"),
+      ("", Witnessed, "bug")
     ).map { case (destroyLine, expectedResult,fileSuffix) =>
       val src =
         s"""
@@ -399,7 +399,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           //          println("--- end witness ---")
           //        }
           //        assert(onViewCreatedInTree.isEmpty)
-          logger.error(s"Row 1 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
+          logger.error(s"Row 1 ${fileSuffix} time(s): ${(System.nanoTime() - startTime) / 1000000000.0}")
           val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
           logger.error(s"Row 1 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
         }else{
@@ -504,7 +504,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           assert(result.nonEmpty)
           BounderUtil.throwIfStackTrace(result)
           val interpretedResult = BounderUtil.interpretResult(result, QueryFinished)
-          logger.error(s"Row 2 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
+          logger.error(s"Row 2 ${fileSuffix} time(s): ${(System.nanoTime() - startTime) / 1000000000.0}")
           val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
           logger.error(s"Row 2 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
           assert(interpretedResult == expectedResult)
@@ -630,7 +630,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           assert(result.nonEmpty)
           BounderUtil.throwIfStackTrace(result)
           val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
-          logger.error(s"Row 3 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime)/1000.0}")
+          logger.error(s"Row 3 ${fileSuffix} time(s): ${(System.nanoTime() - startTime)/1000000000.0}")
           val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
           logger.error(s"Row 3 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
           assert(interpretedResult == expectedResult)
