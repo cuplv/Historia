@@ -399,6 +399,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           //          println("--- end witness ---")
           //        }
           //        assert(onViewCreatedInTree.isEmpty)
+          logger.error(s"Row 1 expected: ${expectedResult} actual: ${interpretedResult}")
           logger.error(s"Row 1 ${fileSuffix} time(s): ${(System.nanoTime() - startTime) / 1000000000.0}")
           val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
           logger.error(s"Row 1 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
@@ -504,6 +505,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           assert(result.nonEmpty)
           BounderUtil.throwIfStackTrace(result)
           val interpretedResult = BounderUtil.interpretResult(result, QueryFinished)
+          logger.error(s"Row 2 expected: ${expectedResult} actual: ${interpretedResult}")
           logger.error(s"Row 2 ${fileSuffix} time(s): ${(System.nanoTime() - startTime) / 1000000000.0}")
           val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
           logger.error(s"Row 2 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
@@ -630,6 +632,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           assert(result.nonEmpty)
           BounderUtil.throwIfStackTrace(result)
           val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
+          logger.error(s"Row 3 expected: ${expectedResult} actual: ${interpretedResult}")
           logger.error(s"Row 3 ${fileSuffix} time(s): ${(System.nanoTime() - startTime)/1000000000.0}")
           val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
           logger.error(s"Row 3 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
@@ -662,11 +665,11 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           }
         }
         if (memKb < 120000000 && fileSuffix == "fix") {
-          assert(false, "Refusing to run experiment Row 4 fix on system with less than 120G of RAM.")
-        }
-        //Click attached to different activity
-        //TODO: probably need to write specification for null preventing click
-        val src =
+          println("Refusing to run experiment Row 4 fix on system with less than 120G of RAM.")
+        }else {
+          //Click attached to different activity
+          //TODO: probably need to write specification for null preventing click
+          val src =
           s"""package com.example.createdestroy;
              |import android.app.Activity;
              |import android.os.Bundle;
@@ -707,67 +710,68 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
              |        s = null;
              |    }
              |}""".stripMargin
-        val test: String => Unit = apk => {
-          File.usingTemporaryDirectory() { tmpDir =>
-            val startTime = System.nanoTime()
-            assert(apk != null)
-            val dbFile = tmpDir / "paths.db"
-            println(dbFile)
-//            implicit val dbMode = DBOutputMode(dbFile.toString)
-//            dbMode.startMeta()
-            implicit val dbMode = MemoryOutputMode
+          val test: String => Unit = apk => {
+            File.usingTemporaryDirectory() { tmpDir =>
+              val startTime = System.nanoTime()
+              assert(apk != null)
+              val dbFile = tmpDir / "paths.db"
+              println(dbFile)
+              //            implicit val dbMode = DBOutputMode(dbFile.toString)
+              //            dbMode.startMeta()
+              implicit val dbMode = MemoryOutputMode
 
-            //            implicit val dbMode = MemoryOutputMode
-            //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
-            val w = new SootWrapper(apk, row4Specs)
+              //            implicit val dbMode = MemoryOutputMode
+              //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
+              val w = new SootWrapper(apk, row4Specs)
 
-            val specSpace = new SpecSpace(row4Specs)
-            val config = ExecutorConfig(
-              stepLimit = 90000, w, specSpace, timeLimit = (1800),
-              component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode,
-              printAAProgress = true, z3InstanceLimit = 8)
-            val symbolicExecutor = config.getAbstractInterpreter
-            val line = BounderUtil.lineForRegex(".*query1.*".r, src)
+              val specSpace = new SpecSpace(row4Specs)
+              val config = ExecutorConfig(
+                stepLimit = 90000, w, specSpace, timeLimit = (1800),
+                component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode,
+                printAAProgress = true, z3InstanceLimit = 8)
+              val symbolicExecutor = config.getAbstractInterpreter
+              val line = BounderUtil.lineForRegex(".*query1.*".r, src)
 
-            val nullUnreach = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity$1",
-              "void onClick(android.view.View)"), line, Some(".*toString.*"))
+              val nullUnreach = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity$1",
+                "void onClick(android.view.View)"), line, Some(".*toString.*"))
 
-            if(runVerif){
-              val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
-              // prettyPrinting.dumpDebugInfo(nullUnreachRes, s"ConnectBotRow4_${expected}")
-              assert(nullUnreachRes.nonEmpty)
-              BounderUtil.throwIfStackTrace(nullUnreachRes)
-              prettyPrinting.printWitness(nullUnreachRes)
-              val interpretedResult: BounderUtil.ResultSummary = BounderUtil.interpretResult(nullUnreachRes, QueryFinished)
-//              interpretedResult match {
-//                case Timeout =>
-//                  val live = nullUnreachRes.filter( a => a.qry.isLive && a.subsumed.isEmpty)
-//                  val provedTo = live.map(_.ordDepth).min
-//                  logger.error(s"Row 4 ${expected} proved to ${provedTo}")
-//
-//              }
-              val depthInfo = BounderUtil.computeDepthOfWitOrLive(nullUnreachRes, QueryFinished)
-              logger.error(s"Row 4 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
-              assert(interpretedResult == expected)
-              if(expected == Timeout)
-                assert(depthInfo.cbDepth > 4)
-              println(s"Row 4 depth: ${depthInfo}")
-              //dbFile.copyTo(File(s"/home/s/Desktop/Row4_Conc_30min_${fileSuffix}.db"),true)
-              logger.error(s"Row 4 expected: ${expected} actual: ${interpretedResult}")
-              logger.error(s"Row 4 ${expected} time(s): ${(System.nanoTime() - startTime)/1000000000.0}")
-            }else{
-              val em = s"Row 4 skipped due to runVerif param!!!!!!!"
-              println(em)
-              logger.error(em)
+              if (runVerif) {
+                val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
+                // prettyPrinting.dumpDebugInfo(nullUnreachRes, s"ConnectBotRow4_${expected}")
+                assert(nullUnreachRes.nonEmpty)
+                BounderUtil.throwIfStackTrace(nullUnreachRes)
+                prettyPrinting.printWitness(nullUnreachRes)
+                val interpretedResult: BounderUtil.ResultSummary = BounderUtil.interpretResult(nullUnreachRes, QueryFinished)
+                //              interpretedResult match {
+                //                case Timeout =>
+                //                  val live = nullUnreachRes.filter( a => a.qry.isLive && a.subsumed.isEmpty)
+                //                  val provedTo = live.map(_.ordDepth).min
+                //                  logger.error(s"Row 4 ${expected} proved to ${provedTo}")
+                //
+                //              }
+                val depthInfo = BounderUtil.computeDepthOfWitOrLive(nullUnreachRes, QueryFinished)
+                logger.error(s"Row 4 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
+                assert(interpretedResult == expected)
+                if (expected == Timeout)
+                  assert(depthInfo.cbDepth > 4)
+                println(s"Row 4 depth: ${depthInfo}")
+                //dbFile.copyTo(File(s"/home/s/Desktop/Row4_Conc_30min_${fileSuffix}.db"),true)
+                logger.error(s"Row 4 expected: ${expected} actual: ${interpretedResult}")
+                logger.error(s"Row 4 ${expected} time(s): ${(System.nanoTime() - startTime) / 1000000000.0}")
+              } else {
+                val em = s"Row 4 skipped due to runVerif param!!!!!!!"
+                println(em)
+                logger.error(em)
+              }
+              val messages = w.getMessages(symbolicExecutor.controlFlowResolver, specSpace,
+                symbolicExecutor.getClassHierarchy, mFilter)
+              logger.error(s"Row 4 ${fileSuffix} : ${write(messages)}")
             }
-            val messages = w.getMessages(symbolicExecutor.controlFlowResolver, specSpace,
-              symbolicExecutor.getClassHierarchy, mFilter)
-            logger.error(s"Row 4 ${fileSuffix} : ${write(messages)}")
-          }
 
+          }
+          makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase,
+            test)
         }
-        makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase,
-          test)
     }
   }
   test("Row5: synch null free") {
@@ -867,7 +871,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           assert(result.nonEmpty)
           BounderUtil.throwIfStackTrace(result)
           val interpretedResult = BounderUtil.interpretResult(result, QueryFinished)
-          logger.error(s"Row 5 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
+          logger.error(s"Row 5 expected: ${expectedResult} actual: ${interpretedResult}")
+          logger.error(s"Row 5 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime) / 1000000000.0}")
           val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
           logger.error(s"Row 5 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
           assert(interpretedResult == expectedResult)

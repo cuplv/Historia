@@ -87,43 +87,33 @@ Outputs are either ``safe'' or ``alarm'' in which case an abstract message histo
 We have configured the experiments to be run within a Docker container provided with this artifact.
 This Docker file may be found in the root directory of this archive and is labeled \codej{historia.docker}.  Please follow the instructions to install docker from \url{https://docs.docker.com/engine/install/}.
 
-\paragraph{System Requirements} 
-
-\TODO{min ram, reasonably modern cpu}
-
 Importing the docker container can be done with the following command.
 
 \begin{lstlisting}[language=bash]
   docker import historia.docker
 \end{lstlisting}
 
-The docker container may be run with the following command.  \TODO{Is this enough res?} \TODO{expose web port and swap with jupyter command}
+The docker container may be run with the following command. \TODO{expose web port and swap with jupyter command}
 \begin{lstlisting}[language=bash]
-  docker run --memory="16G" --memory-swap="32G" --rm -it historia bash
+  docker run --memory="8G" --memory-swap="8G" --rm -it historia bash
 \end{lstlisting}
-
-\TODO{keeps getting killed even with 64G???}
 
 All subsequent steps may be done through the web interface at a URL printed by the terminal window the docker command was run. This URL should start with \url{http://localhost:8080} and contain an encoded security token.  Opening this URL should show a Jupyter notebook.
 \TODO{screenshot of jupyter notebook}
 
+
+\paragraph{System Requirements} 
+We have split the instructions so that a subset of the experiments may be run on a reasonable laptop and included full instructions if access to a server is available.
+The instructions labeled "minimal resources" may be run on a reasonably modern laptop that has 8GB of ram in addition to ram used by other processes. 
+
+Instructions labeled with "full resources" can be run on more powerful systems.  In order to utilize the full instructions, remove the following two arguments from the \codej{docker run} command: \codej{--memory="8G" --memory-swap="8G"}.  We used a server with a AMD EPYC 7763 64-Core Processor and 256GB of ram.  Running the full instructions on lower end systems will result in timeouts and out of memory errors.  Please note that sometimes the process will be killed with no memory related error message if not enough ram is available, this is simply a JVM/JNI limitation.
+
+
 \section{Reproducing the Historia Results}
 
-In this section, we explain how to generate the tables shown in the evaluation section.
-Since the full experiments require substantial system resources, we strongly suggest reproducing a subset of the experiments.  However, all data and scripts are available to run the full experiment if desired.
+Each subsection here corresponds to a table in the evaluation section.  We have labeled the subsections first with the research question (\req{1} or \req{2}), the table number (Table 1, Table 2, Table 3), and finally, the resource requirements as described earlier (minimal resources or full resources).
 
-Due to the required system resource requirements, the experiments were run on one of three available machines:
-\begin{enumerate}
-    \item AMD Ryzen 7 5800X3D 8-Core Processor with 128GB of ram.
-    \item AMD EPYC 7763 64-Core Processor with 256GB of ram.
-    \item Xeon Gold 6240R CPU 48-Core Processor with 192 GB of ram.
-\end{enumerate}
-The number of timeouts and runtime required will depend on the available resources.
-\TODO{we have curated a subset of the experiments that may be run on 8GB of ram}
-
-
-
-\subsection{Running \req{1} (minimal resources)}
+\subsection{\req{1} - Table 1 - minimal resources}
 
 \TODO{just disable one that OOMs and have some instructions to re-enable}
 
@@ -133,17 +123,22 @@ To run the experiments for the first table, open the terminal in the Jupyter not
     bash runExperiments.sh
 \end{lstlisting}
 
-The output will be located in the file \codej{home/bounder/log/logging.log}.  Each row of Table 1 may be found labeled by ``Row'' followed by the row number and version (i.e. ``bug'' or ``fix'').  For example, the buggy version of \apGa is ``Row 1 bug'' and the fixed version is ``Row 1 fix''.  There will be several rows of text displaying the data from the table.  The output is labeled with ``actual:'' and may say ``Witnessed'', ``Timeout'', or \TODO{safe}.
+The output will be printed to the screen in a log format.  Each row of Table 1 may be found labeled by ``Row'' followed by the row number and version (i.e. ``bug'' or ``fix'').  For example, the buggy version of \apGa is ``Row 1 bug'' and the fixed version is ``Row 1 fix''.  There will be several rows of text displaying the data from the table.  The output is labeled with ``actual:'' and may say ``Witnessed'', ``Timeout'', or ``Proven''.
 
 \TODO{explain message counts etc}
 
 \TODO{SM: explain how to compare flowdroid and infer}
 
+
+\subsection{\req{2} - Table 2 - minimal resources}
+
+\subsection{\req{2} - Table 3 - minimal resources}
+
+\TODO{--Full resources}
+
 \subsection{Running \req{1} (full)}
 
 \TODO{}
-
-\subsection{Running \req{2} (minimal resources)}
 
 \subsection{Running \req{2} (full)}
 
