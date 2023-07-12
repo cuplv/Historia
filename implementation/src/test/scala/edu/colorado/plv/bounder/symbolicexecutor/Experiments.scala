@@ -55,19 +55,19 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
   private val runVerif = true//use this to get cb/ci counts without running verifier
   private val generateTex = false //TODO: flip to generate tex files
   private val logger = LoggerFactory.getLogger("Experiments")
-  logger.warn("Starting experiments run")
+  logger.error("Starting experiments run")
   private val prettyPrinting = PrettyPrinting
 
   {
     val logF = File("log/logging.log")
     if(logF.exists() && logF.contentAsString.split("\\n").size > 5) {
-//      throw new IllegalStateException("Please delete log file before run")
-      logF.delete() //TODO: switch to exception when running exp to avoid deleting results
+//      throw new IllegalStateException("Please delete log file log/logging.log* before run")
+      //logF.delete() //TODO: switch to exception when running exp to avoid deleting results
     }
 
   }
   after{
-    println("Ending Experiments run")
+    logger.error("Ending Experiments run")
   }
   val mFilter = (strm: String) => {
     !strm.contains("MainActivity") &&
@@ -399,17 +399,17 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           //          println("--- end witness ---")
           //        }
           //        assert(onViewCreatedInTree.isEmpty)
-          logger.warn(s"Row 1 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
+          logger.error(s"Row 1 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
           val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
-          logger.warn(s"Row 1 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
+          logger.error(s"Row 1 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
         }else{
           val em = s"Row 1 skipped due to runVerif param!!!!!!!"
           println(em)
-          logger.warn(em)
+          logger.error(em)
         }
         val messages = w.getMessages(symbolicExecutor.controlFlowResolver, new SpecSpace(row1Specs),
           symbolicExecutor.getClassHierarchy, mFilter)
-        logger.warn(s"Row 1 ${fileSuffix} : ${write(messages)}")
+        logger.error(s"Row 1 ${fileSuffix} : ${write(messages)}")
       }
 
       makeApkWithSources(Map("PlayerFragment.java" -> src), MkApk.RXBase, test)
@@ -422,8 +422,8 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
     // Simplified version of Experiments row 2 (ecoop 19 meier motivating example)
     List(
 //      ("button.setEnabled(true);", Witnessed, "badDisable"), //test for boolean handling, works so commented out for exp run
-      ("button.setEnabled(false);", Proven, "disable"),
-      ("", Witnessed, "noDisable")
+      ("button.setEnabled(false);", Proven, "fix"),
+      ("", Witnessed, "bug")
     ).map { case (cancelLine, expectedResult,fileSuffix) =>
       val src =
         s"""
@@ -504,18 +504,18 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           assert(result.nonEmpty)
           BounderUtil.throwIfStackTrace(result)
           val interpretedResult = BounderUtil.interpretResult(result, QueryFinished)
-          logger.warn(s"Row 2 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
+          logger.error(s"Row 2 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
           val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
-          logger.warn(s"Row 2 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
+          logger.error(s"Row 2 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
           assert(interpretedResult == expectedResult)
         }else{
           val em = s"Row 2 skipped due to runVerif param!!!!!!!"
           println(em)
-          logger.warn(em)
+          logger.error(em)
         }
         val messages = w.getMessages(symbolicExecutor.controlFlowResolver, specSpace,
           symbolicExecutor.getClassHierarchy, mFilter)
-        logger.warn(s"Row 2 ${fileSuffix} : ${write(messages)}")
+        logger.error(s"Row 2 ${fileSuffix} : ${write(messages)}")
       }
 
       makeApkWithSources(Map("RemoverActivity.java" -> src), MkApk.RXBase, test)
@@ -524,10 +524,11 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
 
   test("row 3: Antennapod dismiss") {
     // Antennapod https://github.com/AntennaPod/AntennaPod/issues/2148
+    // another similar bug:
     // Yamba https://github.com/learning-android/Yamba/pull/1/commits/90c1fe3e5e58fb87c3c59b1a271c6e43c9422eb6
     List(
-      ("if(resumed) {","}", Proven, "withCheck"),
-      ("","", Witnessed, "noCheck")
+      ("if(resumed) {","}", Proven, "fix"),
+      ("","", Witnessed, "bug")
     ).map { case (line1, line2, expectedResult,fileSuffix) =>
       val src =
         s"""
@@ -629,18 +630,18 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           assert(result.nonEmpty)
           BounderUtil.throwIfStackTrace(result)
           val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
-          logger.warn(s"Row 3 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime)/1000.0}")
+          logger.error(s"Row 3 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime)/1000.0}")
           val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
-          logger.warn(s"Row 3 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
+          logger.error(s"Row 3 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
           assert(interpretedResult == expectedResult)
         }else{
           val em = s"Row 3 skipped due to runVerif param!!!!!!!"
           println(em)
-          logger.warn(em)
+          logger.error(em)
         }
         val messages = w.getMessages(symbolicExecutor.controlFlowResolver, specSpace,
           symbolicExecutor.getClassHierarchy, mFilter)
-        logger.warn(s"Row 3 ${fileSuffix} : ${write(messages)}")
+        logger.error(s"Row 3 ${fileSuffix} : ${write(messages)}")
       }
 
       makeApkWithSources(Map("StatusActivity.java" -> src), MkApk.RXBase, test)
@@ -732,26 +733,26 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
 //                case Timeout =>
 //                  val live = nullUnreachRes.filter( a => a.qry.isLive && a.subsumed.isEmpty)
 //                  val provedTo = live.map(_.ordDepth).min
-//                  logger.warn(s"Row 4 ${expected} proved to ${provedTo}")
+//                  logger.error(s"Row 4 ${expected} proved to ${provedTo}")
 //
 //              }
               val depthInfo = BounderUtil.computeDepthOfWitOrLive(nullUnreachRes, QueryFinished)
-              logger.warn(s"Row 4 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
+              logger.error(s"Row 4 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
               assert(interpretedResult == expected)
               if(expected == Timeout)
                 assert(depthInfo.cbDepth > 4)
               println(s"Row 4 depth: ${depthInfo}")
               //dbFile.copyTo(File(s"/home/s/Desktop/Row4_Conc_30min_${fileSuffix}.db"),true)
-              logger.warn(s"Row 4 expected: ${expected} actual: ${interpretedResult}")
-              logger.warn(s"Row 4 ${expected} time(µs): ${(System.nanoTime() - startTime)/1000.0}")
+              logger.error(s"Row 4 expected: ${expected} actual: ${interpretedResult}")
+              logger.error(s"Row 4 ${expected} time(µs): ${(System.nanoTime() - startTime)/1000.0}")
             }else{
               val em = s"Row 4 skipped due to runVerif param!!!!!!!"
               println(em)
-              logger.warn(em)
+              logger.error(em)
             }
             val messages = w.getMessages(symbolicExecutor.controlFlowResolver, specSpace,
               symbolicExecutor.getClassHierarchy, mFilter)
-            logger.warn(s"Row 4 ${fileSuffix} : ${write(messages)}")
+            logger.error(s"Row 4 ${fileSuffix} : ${write(messages)}")
           }
 
         }
@@ -762,9 +763,9 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
   test("Row5: synch null free") {
     //https://github.com/AntennaPod/AntennaPod/issues/4308
     List(
-      //      ("button.setEnabled(true);", Witnessed, "badDisable"), //test for boolean handling, works so commented out for exp run
-      ("", Witnessed, "noDisable"),
-      ("""disposable.dispose();""", Proven, "disable"),
+      //("button.setEnabled(true);", Witnessed, "badDisable"), //test for boolean handling, works so commented out for exp run
+      ("", Witnessed, "bug"),
+      ("""disposable.dispose();""", Proven, "fix"),
     ).map { case (cancelLine, expectedResult, fileSuffix) =>
       println(s"====================================running: ${fileSuffix}")
       val src =
@@ -856,18 +857,18 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           assert(result.nonEmpty)
           BounderUtil.throwIfStackTrace(result)
           val interpretedResult = BounderUtil.interpretResult(result, QueryFinished)
-          logger.warn(s"Row 5 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
+          logger.error(s"Row 5 ${fileSuffix} time(µs): ${(System.nanoTime() - startTime) / 1000.0}")
           val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
-          logger.warn(s"Row 5 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
+          logger.error(s"Row 5 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
           assert(interpretedResult == expectedResult)
         } else {
           val em = s"Row 5 skipped due to runVerif param!!!!!!!"
           println(em)
-          logger.warn(em)
+          logger.error(em)
         }
         val messages = w.getMessages(symbolicExecutor.controlFlowResolver, specSpace,
           symbolicExecutor.getClassHierarchy, mFilter)
-        logger.warn(s"Row 5 ${fileSuffix} : ${write(messages)}")
+        logger.error(s"Row 5 ${fileSuffix} : ${write(messages)}")
       }
 
       makeApkWithSources(Map("ChaptersFragment.java" -> src), MkApk.RXBase2, test)

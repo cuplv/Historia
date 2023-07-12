@@ -2,7 +2,7 @@
 FROM ubuntu:20.04 
 RUN apt-get update
 RUN apt-get install -y gcc make sudo cmake apt-transport-https software-properties-common binutils g++ curl
-RUN apt-get install -y wget apt-transport-https gnupg python python3 python3-pip
+RUN apt-get install -y wget apt-transport-https gnupg python
 RUN wget -qO - https://adoptopenjdk.jfrog.io/adoptopenjdk/api/gpg/key/public | sudo apt-key add -
 RUN echo "deb https://adoptopenjdk.jfrog.io/adoptopenjdk/deb bionic main" | sudo tee /etc/apt/sources.list.d/adoptopenjdk.list 
 RUN apt-get update
@@ -45,6 +45,8 @@ RUN apt-get update -qq -y \
 RUN apt-get update
 RUN apt-get install -y zip unzip
 
+# install python 3 after z3
+RUN apt-get install -y  python3 python3-pip
 ## Android SDK
 # Set up environment variables
 ENV ANDROID_HOME="/root/android-sdk-linux" \
