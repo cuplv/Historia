@@ -47,7 +47,6 @@ object ExperimentSpecs{
     RxJavaSpec.Maybe_subscribeOn,
     RxJavaSpec.Maybe_observeOn,
     LifecycleSpec.startStopAlternation,
-    //LifecycleSpec.stopStartAlternation,
     RxJavaSpec.Maybe_create_unique
   )
 }
@@ -400,6 +399,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           //        }
           //        assert(onViewCreatedInTree.isEmpty)
           logger.error(s"Row 1 expected: ${expectedResult} actual: ${interpretedResult}")
+          logger.error(s"Row 1 spec count: ${row1Specs.size}")
           logger.error(s"Row 1 ${fileSuffix} time(s): ${(System.nanoTime() - startTime) / 1000000000.0}")
           val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
           logger.error(s"Row 1 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
@@ -506,6 +506,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           BounderUtil.throwIfStackTrace(result)
           val interpretedResult = BounderUtil.interpretResult(result, QueryFinished)
           logger.error(s"Row 2 expected: ${expectedResult} actual: ${interpretedResult}")
+          logger.error(s"Row 2 spec count: ${specSpace.getSpecs.size + specSpace.getDisallowSpecs.size}")
           logger.error(s"Row 2 ${fileSuffix} time(s): ${(System.nanoTime() - startTime) / 1000000000.0}")
           val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
           logger.error(s"Row 2 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
@@ -633,6 +634,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           BounderUtil.throwIfStackTrace(result)
           val interpretedResult = BounderUtil.interpretResult(result,QueryFinished)
           logger.error(s"Row 3 expected: ${expectedResult} actual: ${interpretedResult}")
+          logger.error(s"Row 3 spec count: ${specSpace.getSpecs.size + specSpace.getDisallowSpecs.size}")
           logger.error(s"Row 3 ${fileSuffix} time(s): ${(System.nanoTime() - startTime)/1000000000.0}")
           val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
           logger.error(s"Row 3 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
@@ -757,6 +759,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
                 println(s"Row 4 depth: ${depthInfo}")
                 //dbFile.copyTo(File(s"/home/s/Desktop/Row4_Conc_30min_${fileSuffix}.db"),true)
                 logger.error(s"Row 4 expected: ${expected} actual: ${interpretedResult}")
+                logger.error(s"Row 4 spec count: ${specSpace.getSpecs.size + specSpace.getDisallowSpecs.size}")
                 logger.error(s"Row 4 ${expected} time(s): ${(System.nanoTime() - startTime) / 1000000000.0}")
               } else {
                 val em = s"Row 4 skipped due to runVerif param!!!!!!!"

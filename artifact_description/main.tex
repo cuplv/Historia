@@ -106,7 +106,7 @@ All subsequent steps may be done through the web interface at a URL printed by t
 We have split the instructions so that a subset of the experiments may be run on a reasonable laptop and included full instructions if access to a server is available.
 The instructions labeled "minimal resources" may be run on a reasonably modern laptop that has 8GB of ram in addition to ram used by other processes. 
 
-Instructions labeled with "full resources" can be run on more powerful systems.  In order to utilize the full instructions, remove the following two arguments from the \codej{docker run} command: \codej{--memory="8G" --memory-swap="8G"}.  We used a server with a AMD EPYC 7763 64-Core Processor and 256GB of ram.  Running the full instructions on lower end systems will result in timeouts and out of memory errors.  Please note that sometimes the process will be killed with no memory related error message if not enough ram is available, this is simply a JVM/JNI limitation.
+Instructions labeled with "full resources" can be run on more powerful systems.  We used a server with a AMD EPYC 7763 64-Core Processor and 256GB of ram.  Running the full instructions on lower end systems will result in timeouts and out of memory errors.  Please note that sometimes the process will be killed with no memory related error message if not enough ram is available, this is simply a JVM/JNI limitation.
 
 
 \section{Reproducing the Historia Results}
@@ -115,7 +115,15 @@ Each subsection here corresponds to a table in the evaluation section.  We have 
 
 \subsection{\req{1} - Table 1 - minimal resources}
 
-\TODO{just disable one that OOMs and have some instructions to re-enable}
+The experiments in Table 1 are run as a Scala unit tests defined in the file: 
+
+\codej{src/test/scala/edu/colorado/plv/bounder/symbolicexecutor/Experiments.scala}.  
+
+Each benchmark is labeled by \codej{test([description])} where [description] has a row number and short english description.
+The source code for each benchmark is a string stored in a variable named \codej{src}.
+This source code is compiled into the APK automatically when running the unit test.
+
+The set of \newls specifications for each row are defined by row in the \codej{ExperimentSpecs} object within \codej{Experiments.scala}.  These specifications may be found in \codej{src/main/scala/edu/colorado/plv/bounder/lifestate/Specification.scala}.
 
 To run the experiments for the first table, open the terminal in the Jupyter notebook listed earlier and run the following commands:
 \begin{lstlisting}[language=bash]
@@ -123,7 +131,56 @@ To run the experiments for the first table, open the terminal in the Jupyter not
     bash runExperiments.sh
 \end{lstlisting}
 
-The output will be printed to the screen in a log format.  Each row of Table 1 may be found labeled by ``Row'' followed by the row number and version (i.e. ``bug'' or ``fix'').  For example, the buggy version of \apGa is ``Row 1 bug'' and the fixed version is ``Row 1 fix''.  There will be several rows of text displaying the data from the table.  The output is labeled with ``actual:'' and may say ``Witnessed'', ``Timeout'', or ``Proven''.
+The output will be printed to the screen in a log format.  Each row of Table 1 may be found labeled by ``Row'' followed by the row number and version (i.e. ``bug'' or ``fix'').  For example, the buggy version of \apGa is ``Row 1 bug'' and the fixed version is ``Row 1 fix''.  
+
+\newcommand{\cTimeout}{\showclock{0}{45}}
+\newsavebox{\cSafeBox}
+\savebox{\cSafeBox}{
+\hspace{-.15cm}\scalebox{0.7}{
+\tikz[baseline=-0.7ex]{
+\node (a) [circle,draw=black] {
+};
+\node (b) [draw=none] {\scalebox{1}{\checkmark}};
+}}\hspace{-.1cm}
+}
+\newcommand{\cSafe}{
+\usebox{\cSafeBox}
+}
+
+\newsavebox{\cSafeToFiveBox}
+\savebox{\cSafeToFiveBox}{
+\hspace{-.15cm}\scalebox{0.7}{
+\tikz[baseline=-0.7ex]{
+\node (a) [circle,draw=black] {
+};
+\node (b) [draw=none] {\scalebox{1}{5}};
+}}\hspace{-.1cm}
+}
+\newcommand{\cSafeToFive}{
+\usebox{\cSafeToFiveBox}
+}
+
+\newsavebox{\cAlarmBox}
+\savebox{\cAlarmBox}{
+\hspace{-.1cm}\scalebox{0.7}{
+\tikz[baseline=-0.7ex]{
+\node (a) [circle,draw=black] {
+};
+\node (b) [draw=none] {\scalebox{1}{!}};
+}}\hspace{-.0cm}
+}
+\newcommand{\cAlarm}{\usebox{\cAlarmBox}}
+%
+
+Below is an explanation of each column in the table:
+\begin{enumerate}
+    \item Pattern cb,ret - The number of callbacks and returns in the bug pattern: Integer labeled ``cbSize''.
+    \item Pattern ci - the number of callins in the bug pattern: Integer labeled ``syntCi''.
+    \item Historia specs - number of specs written for the benchmark.  Integer labeled ``spec count''. The specific specs may be found in \codej{Experiments.scala} and \codej{Specification.scala} as described earlier.
+    \item Historia res - The result of the analysis: There will be several rows of text displaying the data from the table.  The result of verification labeled with ``actual:'' and may say ``Witnessed'' (\cAlarm), ``Timeout'' (\cTimeout), or ``Proven'' (\cSafe).  
+\end{enumerate}
+
+For reference, it also prints the expected result after ``expected:''.  For the rest of the columns in Table 1 in order:
 
 \TODO{explain message counts etc}
 
@@ -133,6 +190,8 @@ The output will be printed to the screen in a log format.  Each row of Table 1 m
 \subsection{\req{2} - Table 2 - minimal resources}
 
 \subsection{\req{2} - Table 3 - minimal resources}
+
+\subsection{\req{1} - Table 1 - full resources}
 
 \TODO{--Full resources}
 
