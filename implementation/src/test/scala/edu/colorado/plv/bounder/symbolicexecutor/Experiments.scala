@@ -654,6 +654,16 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
       ("v.setOnClickListener(null);", Timeout, "fix"),
     ).foreach {
       case (disableClick, expected, fileSuffix) =>
+        val memKb = {
+          try {
+            BounderUtil.runCmdStdout("""bash -c g"rep MemTotal /proc/meminfo | awk '{print $2}'" """).toInt
+          } catch {
+            case _: Throwable => Integer.MAX_VALUE
+          }
+        }
+        if (memKb < 120000000 && fileSuffix == "fix") {
+          assert(false, "Refusing to run experiment Row 4 fix on system with less than 120G of RAM.")
+        }
         //Click attached to different activity
         //TODO: probably need to write specification for null preventing click
         val src =
@@ -744,7 +754,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
               println(s"Row 4 depth: ${depthInfo}")
               //dbFile.copyTo(File(s"/home/s/Desktop/Row4_Conc_30min_${fileSuffix}.db"),true)
               logger.error(s"Row 4 expected: ${expected} actual: ${interpretedResult}")
-              logger.error(s"Row 4 ${expected} time(µs): ${(System.nanoTime() - startTime)/1000.0}")
+              logger.error(s"Row 4 ${expected} time(s): ${(System.nanoTime() - startTime)/1000000000.0}")
             }else{
               val em = s"Row 4 skipped due to runVerif param!!!!!!!"
               println(em)
