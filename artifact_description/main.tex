@@ -65,7 +65,7 @@
 %\newcommand{\minusmini}{\scalebox{0.8}{$-$}}
 %\newcommand{\expos}{\ensuremath{\SetName{Ex}^{\plusmini}}}
 %\newcommand{\exneg}{\ensuremath{\SetName{Ex}^{\minusmini}}}
-%\newcommand{\newls}{CBCFTL\xspace}
+\newcommand{\newls}{CBCFTL\xspace}
 %\newcommand{\ignore}[1]{}
 %
 \title{Artifact - Historia: Refuting Callback Reachability with Message-History Logics}
@@ -79,11 +79,17 @@
 \section{Introduction}
 This document explains the artifact for the Historia paper \cite{conf/oopsla/Meier23}.
 The goal of this document is to first give a set of instructions for reproducing the experimental results and then give a technical explanation of how the implementation connects to the technical contributions.
+For inputs, this artifact takes a compiled Android application in the form of an \codej{APK} file, a location in the application for the assertion, and a \newls specification of realizable message histories.
+Outputs are either ``safe'' or ``alarm'' in which case an abstract message history witnessing the alarm will be available.
 
 \section{Prerequisites - Running the Historia Docker Container}
 
 We have configured the experiments to be run within a Docker container provided with this artifact.
 This Docker file may be found in the root directory of this archive and is labeled \codej{historia.docker}.  Please follow the instructions to install docker from \url{https://docs.docker.com/engine/install/}.
+
+\paragraph{System Requirements} 
+
+\TODO{min ram, reasonably modern cpu}
 
 Importing the docker container can be done with the following command.
 
@@ -91,12 +97,15 @@ Importing the docker container can be done with the following command.
   docker import historia.docker
 \end{lstlisting}
 
-The docker container may be run with the following command. \TODO{expose web port and swap with jupyter command}
+The docker container may be run with the following command.  \TODO{Is this enough res?} \TODO{expose web port and swap with jupyter command}
 \begin{lstlisting}[language=bash]
-  docker run --memory=8G --memory-swap="16G" --rm -it historia bash
+  docker run --memory="16G" --memory-swap="32G" --rm -it historia bash
 \end{lstlisting}
 
-All subsequent steps may be done through the web interface at  \url{http://localhost:8080}.
+\TODO{keeps getting killed even with 64G???}
+
+All subsequent steps may be done through the web interface at a URL printed by the terminal window the docker command was run. This URL should start with \url{http://localhost:8080} and contain an encoded security token.  Opening this URL should show a Jupyter notebook.
+\TODO{screenshot of jupyter notebook}
 
 \section{Reproducing the Historia Results}
 
@@ -113,18 +122,80 @@ The number of timeouts and runtime required will depend on the available resourc
 \TODO{we have curated a subset of the experiments that may be run on 8GB of ram}
 
 
-\subsection{Running \req{1}}
+
+\subsection{Running \req{1} (minimal resources)}
+
+\TODO{just disable one that OOMs and have some instructions to re-enable}
+
+To run the experiments for the first table, open the terminal in the Jupyter notebook listed earlier and run the following commands:
+\begin{lstlisting}[language=bash]
+    cd home/bounder
+    bash runExperiments.sh
+\end{lstlisting}
+
+The output will be located in the file \codej{home/bounder/log/logging.log}.  Each row of Table 1 may be found labeled by ``Row'' followed by the row number and version (i.e. ``bug'' or ``fix'').  For example, the buggy version of \apGa is ``Row 1 bug'' and the fixed version is ``Row 1 fix''.  There will be several rows of text displaying the data from the table.  The output is labeled with ``actual:'' and may say ``Witnessed'', ``Timeout'', or \TODO{safe}.
+
+\TODO{explain message counts etc}
+
+\TODO{SM: explain how to compare flowdroid and infer}
+
+\subsection{Running \req{1} (full)}
 
 \TODO{}
 
-\subsection{Running \req{2}}
+\subsection{Running \req{2} (minimal resources)}
+
+\subsection{Running \req{2} (full)}
 
 \TODO{}
+
+
+\TODO{third priority is comparison with infer/flow}
+
+\section{Running and Interpreting \toolname on Custom Inputs}
+\TODO{second priority}
+
+Historia may be run on arbitrary Android applications as long as an APK can be compiled in debug mode.  This is usually accomplished using the command \codej{./gradlew assembleDebug} but will vary from application to application. A location and safety property must be chosen ahead of time.  However, we recommend only writing \newls specifications as needed.
+
+\paragraph{Running \toolname Through Jupyter}
+The recommended way to run \toolname is using a Jupyter notebook.  This allows the inputs to the tool to be defined using the Scala data structures for input rather than JSON.
+
+\TODO{give sample app to walk through this process}
+
+\TODO{explain this process completely}
+
+\TODO{explain counter examples}
+
+
+\section{Developing for \toolname}
+\TODO{fourth priority}
+
+In this section, we explain the implementation of each technical contribution in \toolname.
 
 \subsection{Running Unit Tests}
 
+\TODO{this may need to go in later connecting formalism section}
+
+
+\subsection{Application-Only Control-Flow Graph}
+
 \TODO{}
 
+\subsection{Message-History Program Logic (MHPL)}
+
+\TODO{}
+
+\subsection{Callback Control-Flow Temporal Logic (CBCFTL)}
+
+\TODO{}
+
+\subsection{Combining Abstract Message Histories with Callback Control Flow}
+
+\TODO{}
+
+\subsection{Optimizations}
+
+\TODO{}
 
 %======================
 
