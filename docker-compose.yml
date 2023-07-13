@@ -1,0 +1,6 @@
+services:
+  host:
+    image: "historia"
+    ports:
+      - "9999:9999"
+    command: "/home/notebooks/jupyterStart.sh"
