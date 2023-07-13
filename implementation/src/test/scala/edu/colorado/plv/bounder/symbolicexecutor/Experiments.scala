@@ -661,7 +661,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
       case (disableClick, expected, fileSuffix) =>
         val memKb = {
           try {
-            BounderUtil.runCmdStdout("""bash -c g"rep MemTotal /proc/meminfo | awk '{print $2}'" """).toInt
+            BounderUtil.runCmdStdout("""bash -c "grep MemTotal /proc/meminfo | awk '{print $2}'" """).toInt
           } catch {
             case _: Throwable => Integer.MAX_VALUE
           }
