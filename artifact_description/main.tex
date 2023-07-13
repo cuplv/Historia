@@ -94,8 +94,9 @@ Importing the docker container can be done with the following command.
 \end{lstlisting}
 
 The docker container may be run with the following command. \TODO{expose web port and swap with jupyter command}
+%docker run --memory="8G" --memory-swap="8G" --rm -it historia bash
 \begin{lstlisting}[language=bash]
-  docker run --memory="8G" --memory-swap="8G" --rm -it historia bash
+    docker compose up
 \end{lstlisting}
 
 All subsequent steps may be done through the web interface at a URL printed by the terminal window the docker command was run. This URL should start with \url{http://localhost:8888} and contain an encoded security token.  Opening this URL should show a Jupyter notebook.
@@ -125,10 +126,9 @@ This source code is compiled into the APK automatically when running the unit te
 
 The set of \newls specifications for each row are defined by row in the \codej{ExperimentSpecs} object within \codej{Experiments.scala}.  These specifications may be found in \codej{src/main/scala/edu/colorado/plv/bounder/lifestate/Specification.scala}.
 
-To run the experiments for the first table, open the terminal in the Jupyter notebook listed earlier and run the following commands:
+To run the experiments for the first table, open the terminal in the Jupyter notebook listed earlier and run the following command:
 \begin{lstlisting}[language=bash]
-    cd home/bounder
-    bash runExperiments.sh
+    ./runExperiments.sh
 \end{lstlisting}
 
 The output will be printed to the screen in a log format.  Each row of Table 1 may be found labeled by ``Row'' followed by the row number and version (i.e. ``bug'' or ``fix'').  For example, the buggy version of \apGa is ``Row 1 bug'' and the fixed version is ``Row 1 fix''.  

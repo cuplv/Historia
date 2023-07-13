@@ -1,4 +1,5 @@
 #FROM ubuntu:18.04 # note: trying 20.04 because of glibc 2.29 req for infer
+
 FROM ubuntu:20.04 
 RUN apt-get update
 RUN apt-get install -y gcc make sudo cmake apt-transport-https software-properties-common binutils g++ curl
@@ -37,7 +38,7 @@ RUN apt-get update -qq -y \
  && wget -qO- https://github.com/Z3Prover/z3/archive/z3-${Z3_VERSION}.tar.gz | tar xz --strip-components=1 \
  && python scripts/mk_make.py --java \
  && cd build \
- && make -j \
+ && make  \
  && sudo make install \
  && cd / \
  && rm -rf "$Z3_DIR"
