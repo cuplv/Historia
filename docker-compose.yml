@@ -29,6 +29,6 @@ services:
     networks:
       - expnet
     depends_on:
-      -db
+      - db
 networks:
   expnet:
