@@ -14,6 +14,9 @@ services:
       - expnet
     volumes:
       - ${PWD}/notebooks:/home/notebooks
+      - ${PWD}/historia_generalizability:/home/historia_generalizability
+    depends_on:
+      - db
     deploy:
       resources:
         limits:
@@ -25,5 +28,7 @@ services:
     command: bash -c "socat tcp-l:5432,fork,reuseaddr tcp:db:5432 & java -jar /home/bounder/target/scala-2.13/soot_hopper-assembly-0.1.jar --mode expLoop"
     networks:
       - expnet
+    depends_on:
+      -db
 networks:
   expnet:
