@@ -141,4 +141,15 @@ COPY pgpass /root/.pgpass
 EXPOSE 9999
 WORKDIR /home/notebooks
 
+#### install almond
+RUN curl -Lo ./coursier https://git.io/coursier-cli && \
+    chmod +x ./coursier
+
+#ONBUILD RUN mkdir -p .ivy2/local/
+#ONBUILD COPY --chown=1000:100 ivy-local/ .ivy2/local/
+
+#RUN ./coursier launch --fork almond 0.10 --scala 2.13
+#RUN ./almond --install
+RUN bash -c "./coursier launch --fork almond:0.10.0 --scala 2.13 -- --install"
+
 CMD ["/home/notebooks/jupyterStart.sh"]
