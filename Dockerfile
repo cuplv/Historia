@@ -113,8 +113,6 @@ RUN INFER_VERSION=v1.1.0; \
 # Install infer
 ENV PATH /infer/bin:${PATH}
 
-ARG COMMITHASH=unknown
-RUN echo $COMMITHASH >/home/bounder/commithash.txt
 RUN rm -r /home/bounder 2>/dev/null
 
 RUN mkdir /home/bounder_host
@@ -152,6 +150,10 @@ COPY notebooks/jupyterStart.sh /home/jupyterStart.sh
 ENV LD_LIBRARY_PATH=/usr/lib/
 RUN cd /home/bounder/; sbt assembly
 
+RUN apt-get install -y postgresql-client-12
+
+ARG COMMITHASH=unknown
+RUN echo $COMMITHASH >/home/bounder/commithash.txt
 
 
 CMD ["/home/notebooks/jupyterStart.sh"]

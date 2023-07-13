@@ -3,6 +3,8 @@ services:
     image: "historia_postgres"
     networks:
       - expnet
+    ports:
+      - 5433:5432
     environment:
       POSTGRES_PASSWORD: heykxbgdgsvbiq
   host:
@@ -15,6 +17,7 @@ services:
     volumes:
       - ${PWD}/notebooks:/home/notebooks
       - ${PWD}/historia_generalizability:/home/historia_generalizability
+      - ${PWD}/table2results:/home/table2results
     depends_on:
       - db
     deploy:
