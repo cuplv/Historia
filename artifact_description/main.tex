@@ -84,16 +84,19 @@ Outputs are either ``safe'' or ``alarm'' in which case an abstract message histo
 
 \section{Prerequisites - Running the Historia Docker Container}
 
-We have configured the experiments to be run within a Docker container provided with this artifact.
-This Docker file may be found in the root directory of this archive and is labeled \codej{historia.docker}.  Please follow the instructions to install docker from \url{https://docs.docker.com/engine/install/}.
+We have configured the experiments to be run within two Docker containers provided with this artifact.
+These Docker files may be found in the root directory of this archive and is labeled \codej{historia.docker}.  Please follow the instructions to install docker from \url{https://docs.docker.com/engine/install/}.
 
-Importing the docker container can be done with the following command.
+Importing the docker containers can be done with the following command.
 
 \begin{lstlisting}[language=bash]
   docker import historia.docker
+  docker import experimentdb.docker
 \end{lstlisting}
+\TODO{double check import works after container creation}
 
-The docker container may be run with the following command. \TODO{expose web port and swap with jupyter command}
+In order to start the docker containers, run the following command in the root directory.  This will start 3 docker containers.
+
 %docker run --memory="8G" --memory-swap="8G" --rm -it historia bash
 \begin{lstlisting}[language=bash]
     docker compose up
