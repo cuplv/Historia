@@ -652,136 +652,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
       makeApkWithSources(Map("StatusActivity.java" -> src), MkApk.RXBase, test)
     }
   }
-  test("Row4: Connect bot click/finish") {
-    val startTime = System.nanoTime()
-    List(
-      ("", Witnessed, "bug"),
-      ("v.setOnClickListener(null);", Timeout, "fix"),
-    ).foreach {
-      case (disableClick, expected, fileSuffix) =>
-        val memKb = {
-          try {
-            BounderUtil.runCmdStdout("""bash -c "grep MemTotal /proc/meminfo | awk '{print $2}'" """).toInt
-          } catch {
-            case t: Throwable =>
-              println("Failed to get mem")
-              println(t.toString)
-              println(t.getMessage)
-              t.printStackTrace()
-              Integer.MAX_VALUE
-          }
-        }
-        if (memKb < 120000000 && fileSuffix == "fix") {
-          println("Refusing to run experiment Row 4 fix on system with less than 120G of RAM.")
-        }else {
-          //Click attached to different activity
-          //TODO: probably need to write specification for null preventing click
-          val src =
-          s"""package com.example.createdestroy;
-             |import android.app.Activity;
-             |import android.os.Bundle;
-             |import android.util.Log;
-             |import android.view.View;
-             |import android.os.Handler;
-             |import android.view.View.OnClickListener;
-             |
-             |
-             |public class MyActivity extends Activity {
-             |    String s = null;
-             |    View v = null;
-             |    @Override
-             |    protected void onCreate(Bundle b){
-             |        v = findViewById(3);
-             |        v.setOnClickListener(new OnClickListener(){
-             |           @Override
-             |           public void onClick(View v){
-             |             s.toString(); // query1
-             |           }
-             |        });
-             |        (new Handler()).postDelayed(new Runnable(){
-             |             @Override
-             |             public void run(){
-             |               MyActivity.this.finish();
-             |               ${disableClick}
-             |             }
-             |        }, 3000);
-             |    }
-             |
-             |    @Override
-             |    protected void onResume() {
-             |        s = "";
-             |    }
-             |
-             |    @Override
-             |    protected void onPause() {
-             |        s = null;
-             |    }
-             |}""".stripMargin
-          val test: String => Unit = apk => {
-            File.usingTemporaryDirectory() { tmpDir =>
-              val startTime = System.nanoTime()
-              assert(apk != null)
-              val dbFile = tmpDir / "paths.db"
-              println(dbFile)
-              //            implicit val dbMode = DBOutputMode(dbFile.toString)
-              //            dbMode.startMeta()
-              implicit val dbMode = MemoryOutputMode
 
-              //            implicit val dbMode = MemoryOutputMode
-              //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
-              val w = new SootWrapper(apk, row4Specs)
-
-              val specSpace = new SpecSpace(row4Specs)
-              val config = ExecutorConfig(
-                stepLimit = 90000, w, specSpace, timeLimit = (1800),
-                component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode,
-                printAAProgress = true, z3InstanceLimit = 8)
-              val symbolicExecutor = config.getAbstractInterpreter
-              val line = BounderUtil.lineForRegex(".*query1.*".r, src)
-
-              val nullUnreach = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity$1",
-                "void onClick(android.view.View)"), line, Some(".*toString.*"))
-
-              if (runVerif) {
-                val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
-                // prettyPrinting.dumpDebugInfo(nullUnreachRes, s"ConnectBotRow4_${expected}")
-                assert(nullUnreachRes.nonEmpty)
-                BounderUtil.throwIfStackTrace(nullUnreachRes)
-                prettyPrinting.printWitness(nullUnreachRes)
-                val interpretedResult: BounderUtil.ResultSummary = BounderUtil.interpretResult(nullUnreachRes, QueryFinished)
-                //              interpretedResult match {
-                //                case Timeout =>
-                //                  val live = nullUnreachRes.filter( a => a.qry.isLive && a.subsumed.isEmpty)
-                //                  val provedTo = live.map(_.ordDepth).min
-                //                  logger.error(s"Row 4 ${expected} proved to ${provedTo}")
-                //
-                //              }
-                val depthInfo = BounderUtil.computeDepthOfWitOrLive(nullUnreachRes, QueryFinished)
-                logger.error(s"Row 4 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
-                assert(interpretedResult == expected)
-                if (expected == Timeout)
-                  assert(depthInfo.cbDepth > 4)
-                println(s"Row 4 depth: ${depthInfo}")
-                //dbFile.copyTo(File(s"/home/s/Desktop/Row4_Conc_30min_${fileSuffix}.db"),true)
-                logger.error(s"Row 4 ${fileSuffix} expected: ${expected} actual: ${interpretedResult}")
-                logger.error(s"Row 4 ${fileSuffix} spec count: ${specSpace.getSpecs.size + specSpace.getDisallowSpecs.size}")
-                logger.error(s"Row 4 ${expected} time(s): ${(System.nanoTime() - startTime) / 1000000000.0}")
-              } else {
-                val em = s"Row 4 skipped due to runVerif param!!!!!!!"
-                println(em)
-                logger.error(em)
-              }
-              val messages = w.getMessages(symbolicExecutor.controlFlowResolver, specSpace,
-                symbolicExecutor.getClassHierarchy, mFilter)
-              logger.error(s"Row 4 ${fileSuffix} : ${write(messages)}")
-            }
-
-          }
-          makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase,
-            test)
-        }
-    }
-  }
   test("Row5: synch null free") {
     //https://github.com/AntennaPod/AntennaPod/issues/4308
     List(
@@ -896,6 +767,137 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
       }
 
       makeApkWithSources(Map("ChaptersFragment.java" -> src), MkApk.RXBase2, test)
+    }
+  }
+
+  test("Row4: Connect bot click/finish") {
+    val startTime = System.nanoTime()
+    List(
+      ("", Witnessed, "bug"),
+      ("v.setOnClickListener(null);", Timeout, "fix"),
+    ).foreach {
+      case (disableClick, expected, fileSuffix) =>
+        val memKb = {
+          try {
+            BounderUtil.runCmdStdout("""bash -c "grep MemTotal /proc/meminfo | awk '{print $2}'" """).toInt
+          } catch {
+            case t: Throwable =>
+              println("Failed to get mem")
+              println(t.toString)
+              println(t.getMessage)
+              t.printStackTrace()
+              Integer.MAX_VALUE
+          }
+        }
+        if (memKb < 120000000 && fileSuffix == "fix") {
+          println("Refusing to run experiment Row 4 fix on system with less than 120G of RAM.")
+        } else {
+          //Click attached to different activity
+          //TODO: probably need to write specification for null preventing click
+          val src =
+          s"""package com.example.createdestroy;
+             |import android.app.Activity;
+             |import android.os.Bundle;
+             |import android.util.Log;
+             |import android.view.View;
+             |import android.os.Handler;
+             |import android.view.View.OnClickListener;
+             |
+             |
+             |public class MyActivity extends Activity {
+             |    String s = null;
+             |    View v = null;
+             |    @Override
+             |    protected void onCreate(Bundle b){
+             |        v = findViewById(3);
+             |        v.setOnClickListener(new OnClickListener(){
+             |           @Override
+             |           public void onClick(View v){
+             |             s.toString(); // query1
+             |           }
+             |        });
+             |        (new Handler()).postDelayed(new Runnable(){
+             |             @Override
+             |             public void run(){
+             |               MyActivity.this.finish();
+             |               ${disableClick}
+             |             }
+             |        }, 3000);
+             |    }
+             |
+             |    @Override
+             |    protected void onResume() {
+             |        s = "";
+             |    }
+             |
+             |    @Override
+             |    protected void onPause() {
+             |        s = null;
+             |    }
+             |}""".stripMargin
+          val test: String => Unit = apk => {
+            File.usingTemporaryDirectory() { tmpDir =>
+              val startTime = System.nanoTime()
+              assert(apk != null)
+              val dbFile = tmpDir / "paths.db"
+              println(dbFile)
+              //            implicit val dbMode = DBOutputMode(dbFile.toString)
+              //            dbMode.startMeta()
+              implicit val dbMode = MemoryOutputMode
+
+              //            implicit val dbMode = MemoryOutputMode
+              //        val specs = new SpecSpace(LifecycleSpec.spec + ViewSpec.clickWhileActive)
+              val w = new SootWrapper(apk, row4Specs)
+
+              val specSpace = new SpecSpace(row4Specs)
+              val config = ExecutorConfig(
+                stepLimit = 90000, w, specSpace, timeLimit = (1800),
+                component = Some(List("com.example.createdestroy.MyActivity.*")), outputMode = dbMode,
+                printAAProgress = true, z3InstanceLimit = 8)
+              val symbolicExecutor = config.getAbstractInterpreter
+              val line = BounderUtil.lineForRegex(".*query1.*".r, src)
+
+              val nullUnreach = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity$1",
+                "void onClick(android.view.View)"), line, Some(".*toString.*"))
+
+              if (runVerif) {
+                val nullUnreachRes = symbolicExecutor.run(nullUnreach, dbMode).flatMap(a => a.terminals)
+                // prettyPrinting.dumpDebugInfo(nullUnreachRes, s"ConnectBotRow4_${expected}")
+                assert(nullUnreachRes.nonEmpty)
+                BounderUtil.throwIfStackTrace(nullUnreachRes)
+                prettyPrinting.printWitness(nullUnreachRes)
+                val interpretedResult: BounderUtil.ResultSummary = BounderUtil.interpretResult(nullUnreachRes, QueryFinished)
+                //              interpretedResult match {
+                //                case Timeout =>
+                //                  val live = nullUnreachRes.filter( a => a.qry.isLive && a.subsumed.isEmpty)
+                //                  val provedTo = live.map(_.ordDepth).min
+                //                  logger.error(s"Row 4 ${expected} proved to ${provedTo}")
+                //
+                //              }
+                val depthInfo = BounderUtil.computeDepthOfWitOrLive(nullUnreachRes, QueryFinished)
+                logger.error(s"Row 4 ${fileSuffix} : ${write[DepthResult](depthInfo)} ")
+                assert(interpretedResult == expected)
+                if (expected == Timeout)
+                  assert(depthInfo.cbDepth > 4)
+                println(s"Row 4 depth: ${depthInfo}")
+                //dbFile.copyTo(File(s"/home/s/Desktop/Row4_Conc_30min_${fileSuffix}.db"),true)
+                logger.error(s"Row 4 ${fileSuffix} expected: ${expected} actual: ${interpretedResult}")
+                logger.error(s"Row 4 ${fileSuffix} spec count: ${specSpace.getSpecs.size + specSpace.getDisallowSpecs.size}")
+                logger.error(s"Row 4 ${expected} time(s): ${(System.nanoTime() - startTime) / 1000000000.0}")
+              } else {
+                val em = s"Row 4 skipped due to runVerif param!!!!!!!"
+                println(em)
+                logger.error(em)
+              }
+              val messages = w.getMessages(symbolicExecutor.controlFlowResolver, specSpace,
+                symbolicExecutor.getClassHierarchy, mFilter)
+              logger.error(s"Row 4 ${fileSuffix} : ${write(messages)}")
+            }
+
+          }
+          makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase,
+            test)
+        }
     }
   }
 
