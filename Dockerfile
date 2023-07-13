@@ -120,12 +120,6 @@ RUN rm -r /home/bounder 2>/dev/null
 RUN mkdir /home/bounder_host
 ENV BOUNDER_JAR=/home/bounder/target/scala-2.13/soot_hopper-assembly-0.1.jar
 
-RUN touch $(date +%s) # force rebuild from here every time to grab new jar
-COPY implementation /home/bounder
-COPY notebooks /home/notebooks
-ENV LD_LIBRARY_PATH=/usr/lib/
-RUN cd /home/bounder/; sbt assembly
-
 RUN pip install jupyterlab pandas matplotlib
 RUN pip3 install psycopg2-binary
 RUN pip3 install sql
@@ -151,5 +145,13 @@ RUN curl -Lo ./coursier https://git.io/coursier-cli && \
 #RUN ./coursier launch --fork almond 0.10 --scala 2.13
 #RUN ./almond --install
 RUN bash -c "./coursier launch --fork almond:0.10.0 --scala 2.13 -- --install"
+
+COPY implementation /home/bounder
+#COPY notebooks /home/notebooks
+COPY notebooks/jupyterStart.sh /home/jupyterStart.sh
+ENV LD_LIBRARY_PATH=/usr/lib/
+RUN cd /home/bounder/; sbt assembly
+
+
 
 CMD ["/home/notebooks/jupyterStart.sh"]

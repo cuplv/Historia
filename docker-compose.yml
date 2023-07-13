@@ -9,9 +9,11 @@ services:
     image: "historia"
     ports:
       - "8888:8888"
-    command: bash -c "socat tcp-l:5432,fork,reuseaddr tcp:db:5432 & /home/notebooks/jupyterStart.sh"
+    command: bash -c "socat tcp-l:5432,fork,reuseaddr tcp:db:5432 & /home/jupyterStart.sh"
     networks:
       - expnet
+    volumes:
+      - ${PWD}/notebooks:/home/notebooks
     deploy:
       resources:
         limits:
