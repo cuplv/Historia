@@ -98,7 +98,7 @@ The docker container may be run with the following command. \TODO{expose web por
   docker run --memory="8G" --memory-swap="8G" --rm -it historia bash
 \end{lstlisting}
 
-All subsequent steps may be done through the web interface at a URL printed by the terminal window the docker command was run. This URL should start with \url{http://localhost:8080} and contain an encoded security token.  Opening this URL should show a Jupyter notebook.
+All subsequent steps may be done through the web interface at a URL printed by the terminal window the docker command was run. This URL should start with \url{http://localhost:8888} and contain an encoded security token.  Opening this URL should show a Jupyter notebook.
 \TODO{screenshot of jupyter notebook}
 
 
@@ -177,10 +177,12 @@ Below is an explanation of each column in the table:
     \item Pattern cb,ret - The number of callbacks and returns in the bug pattern: Integer labeled ``cbSize''.
     \item Pattern ci - the number of callins in the bug pattern: Integer labeled ``syntCi''.
     \item Historia specs - number of specs written for the benchmark.  Integer labeled ``spec count''. The specific specs may be found in \codej{Experiments.scala} and \codej{Specification.scala} as described earlier.
-    \item Historia res - The result of the analysis: There will be several rows of text displaying the data from the table.  The result of verification labeled with ``actual:'' and may say ``Witnessed'' (\cAlarm), ``Timeout'' (\cTimeout), or ``Proven'' (\cSafe).  
+    \item Historia cb - number of callbacks that may be matched by the \newls spec: Integer labeled ``matchedCb''.
+    \item Historia cbret - number of callback returns that may be matched by the \newls spec: Integer labeled ``matchedCbRet''.
+    \item Historia ci - number of callins matched by the spec: Integer labeled ``matchedSyntCi''.
+    \item Historia time - runtime: 
+    \item Historia res - The result of the analysis: There will be several rows of text displaying the data from the table.  The result of verification labeled with ``actual:'' and may say ``Witnessed'' (\cAlarm), ``Timeout'' (\cTimeout), or ``Proven'' (\cSafe).  For reference, it also prints the expected result after ``expected:''.  If the actual and expected results differ, the unit test fails.
 \end{enumerate}
-
-For reference, it also prints the expected result after ``expected:''.  For the rest of the columns in Table 1 in order:
 
 \TODO{explain message counts etc}
 
@@ -192,6 +194,10 @@ For reference, it also prints the expected result after ``expected:''.  For the 
 \subsection{\req{2} - Table 3 - minimal resources}
 
 \subsection{\req{1} - Table 1 - full resources}
+
+In order to run the full version of Table 1, a system with at least 120G of ram must be used. To run, restart the docker container removing the following two arguments from the \codej{docker run} command: \codej{--memory="8G" --memory-swap="8G"} and repeat the instructions from the ``minimal resources'' section.  This should take about an hour to run on a comparable system.
+
+If this completes successfully, the output should be the same as earlier but will include ``Row 4 fix''.  
 
 \TODO{--Full resources}
 
