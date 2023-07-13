@@ -663,7 +663,12 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
           try {
             BounderUtil.runCmdStdout("""bash -c "grep MemTotal /proc/meminfo | awk '{print $2}'" """).toInt
           } catch {
-            case _: Throwable => Integer.MAX_VALUE
+            case t: Throwable =>
+              println("Failed to get mem")
+              println(t.toString)
+              println(t.getMessage)
+              t.printStackTrace()
+              Integer.MAX_VALUE
           }
         }
         if (memKb < 120000000 && fileSuffix == "fix") {
