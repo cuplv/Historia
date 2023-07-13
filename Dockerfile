@@ -129,6 +129,7 @@ RUN pip install jupyterlab
 
 ENV SBT_OPTS="-Xmx8000M"
 
+EXPOSE 9999
+WORKDIR /home/notebooks
 
-
-CMD ["/bin/bash"]
+CMD ["/home/notebooks/jupyterStart.sh"]

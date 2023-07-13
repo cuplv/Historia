@@ -4,9 +4,3 @@ services:
     ports:
       - "8888:8888"
     command: "/home/notebooks/jupyterStart.sh"
-    deploy:
-      resources:
-        limits:
-          memory: 8G
-        reservations:
-          memory: 8G
