@@ -79,7 +79,9 @@
 \section{Introduction}
 This document explains the artifact for the Historia paper \cite{conf/oopsla/Meier23}.
 The goal of this document is to first give a set of instructions for reproducing the experimental results and then give a technical explanation of how the implementation connects to the technical contributions.
-For inputs, this artifact takes a compiled Android application in the form of an \codej{APK} file, a location in the application for the assertion, and a \newls specification of realizable message histories.
+We have automated the steps to reproduce the results with scripts explained below.
+
+When using \toolname on its own, the input is a compiled Android application in the form of an APK file, a \newls specification defined in a JSON format, and an assertion at a location defined by a JSON data structure.
 Outputs are either ``safe'' or ``alarm'' in which case an abstract message history witnessing the alarm will be available.
 
 \section{Prerequisites - Running the Historia Docker Container}
@@ -99,12 +101,21 @@ In order to start the docker containers, run the following command in the root d
 
 %docker run --memory="8G" --memory-swap="8G" --rm -it historia bash
 \begin{lstlisting}[language=bash]
-    docker compose up
+ docker compose -f docker-compose.yml up
 \end{lstlisting}
 
-All subsequent steps may be done through the web interface at a URL printed by the terminal window the docker command was run. This URL should start with \url{http://localhost:8888} and contain an encoded security token.  Opening this URL should show a Jupyter notebook.
+All subsequent steps may be done through the web interface at \url{http://localhost:8888}.  Opening this URL should show a Jupyter notebook.  
+
+
 \TODO{screenshot of jupyter notebook}
 
+When finished, the following commands will close down the containers and remove them.
+
+\begin{lstlisting}[language=bash]
+    docker compose down
+    docker compose rm
+\end{lstlisting}
+% ctrl-c will close down the docker containers and ``\codej{docker compose rm}'' will clean up the images.
 
 \paragraph{System Requirements} 
 We have split the instructions so that a subset of the experiments may be run on a reasonable laptop and included full instructions if access to a server is available.
@@ -119,6 +130,11 @@ Each subsection here corresponds to a table in the evaluation section.  We have 
 
 \subsection{\req{1} - Table 1 - minimal resources}
 
+To run the experiments for the first table, open the terminal in the Jupyter notebook listed earlier and run the following command:
+\begin{lstlisting}[language=bash]
+    ./runExperiments.sh
+\end{lstlisting}
+
 The experiments in Table 1 are run as a Scala unit tests defined in the file: 
 
 \codej{src/test/scala/edu/colorado/plv/bounder/symbolicexecutor/Experiments.scala}.  
@@ -128,11 +144,6 @@ The source code for each benchmark is a string stored in a variable named \codej
 This source code is compiled into the APK automatically when running the unit test.
 
 The set of \newls specifications for each row are defined by row in the \codej{ExperimentSpecs} object within \codej{Experiments.scala}.  These specifications may be found in \codej{src/main/scala/edu/colorado/plv/bounder/lifestate/Specification.scala}.
-
-To run the experiments for the first table, open the terminal in the Jupyter notebook listed earlier and run the following command:
-\begin{lstlisting}[language=bash]
-    ./runExperiments.sh
-\end{lstlisting}
 
 The output will be printed to the screen in a log format.  Each row of Table 1 may be found labeled by ``Row'' followed by the row number and version (i.e. ``bug'' or ``fix'').  For example, the buggy version of \apGa is ``Row 1 bug'' and the fixed version is ``Row 1 fix''.  
 
@@ -187,7 +198,6 @@ Below is an explanation of each column in the table:
     \item Historia res - The result of the analysis: There will be several rows of text displaying the data from the table.  The result of verification labeled with ``actual:'' and may say ``Witnessed'' (\cAlarm), ``Timeout'' (\cTimeout), or ``Proven'' (\cSafe).  For reference, it also prints the expected result after ``expected:''.  If the actual and expected results differ, the unit test fails.
 \end{enumerate}
 
-\TODO{explain message counts etc}
 
 \TODO{SM: explain how to compare flowdroid and infer}
 
@@ -197,6 +207,8 @@ Below is an explanation of each column in the table:
 \subsection{\req{2} - Table 3 - minimal resources}
 
 \subsection{\req{1} - Table 1 - full resources}
+
+\TODO{explain full docker compose running}
 
 In order to run the full version of Table 1, a system with at least 120G of ram must be used. To run, restart the docker container removing the following two arguments from the \codej{docker run} command: \codej{--memory="8G" --memory-swap="8G"} and repeat the instructions from the ``minimal resources'' section.  This should take about an hour to run on a comparable system.
 
@@ -229,6 +241,12 @@ The recommended way to run \toolname is using a Jupyter notebook.  This allows t
 
 \TODO{explain counter examples}
 
+
+\section{Debugging issues}
+
+\subsection{Docker desktop}
+\textbf{Problem:} The tests exit prematurely and no output is printed to the screen.
+\textbf{Solution:} Check that docker desktop is configured with enough ram.  In the docker desktop dashboard, under settings->resources, ensure the memory slider is set to at least 8GB.
 
 \section{Developing for \toolname}
 \TODO{fourth priority}

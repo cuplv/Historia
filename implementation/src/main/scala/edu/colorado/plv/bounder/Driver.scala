@@ -1,8 +1,8 @@
 package edu.colorado.plv.bounder
 
 import better.files.Dsl.mkdir
-
 import edu.colorado.plv.bounder.ir.Messages
+
 import java.io.{PrintWriter, StringWriter}
 import java.sql.Timestamp
 import java.time.Instant
@@ -33,6 +33,7 @@ import scala.collection.immutable.{AbstractSet, SortedSet}
 import scala.concurrent.duration._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.Properties
 import scala.util.matching.Regex
 
 //TODO: dboutput mode is failing in truncate mode.  Cannot run non truncate for perf reasons.
@@ -941,7 +942,8 @@ class ExperimentsDb(bounderJar:Option[String] = None){
           finishFail(jobRow.jobId, t.toString + "\n" + exn)
 
     }
-    if(File("/dev/shm").exists()){
+    val useShm = Properties.envOrElse("USESHM", "false").toBoolean
+    if(useShm && File("/dev/shm").exists()){
       //If on linux system, use ramdisk
       val outDir = File("/dev/shm/bounder_out_tmp")
       try{
