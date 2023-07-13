@@ -86,4 +86,5 @@ mainClass in assembly := Some("edu.colorado.plv.bounder.Driver")
 
 //mappings in assembly += (file("src/main/resources/filename.json"),"path/to/resource/in/onejar")
 
+logLevel in compile := Level.Error
 //notes: use "sbt assembly" to create fat jar
