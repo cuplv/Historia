@@ -9,7 +9,7 @@ services:
     image: "historia"
     ports:
       - "8888:8888"
-    command: "/home/notebooks/jupyterStart.sh"
+    command: bash -c "socat tcp-l:5432,fork,reuseaddr tcp:db:5432 & /home/notebooks/jupyterStart.sh"
     networks:
       - expnet
     deploy:
@@ -20,7 +20,7 @@ services:
           memory: 8G
   worker:
     image: "historia"
-    command: "java -jar /home/bounder/target/scala-2.13/soot_hopper-assembly-0.1.jar --mode expLoop"
+    command: bash -c "socat tcp-l:5432,fork,reuseaddr tcp:db:5432 & java -jar /home/bounder/target/scala-2.13/soot_hopper-assembly-0.1.jar --mode expLoop"
     networks:
       - expnet
 networks:

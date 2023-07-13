@@ -126,7 +126,14 @@ COPY notebooks /home/notebooks
 ENV LD_LIBRARY_PATH=/usr/lib/
 RUN cd /home/bounder/; sbt assembly
 
-RUN pip install jupyterlab
+RUN pip install jupyterlab pandas matplotlib
+RUN pip3 install psycopg2-binary
+RUN pip3 install sql
+RUN pip3 install sqlalchemy
+RUN pip install ipython-sql
+RUN apt-get update
+RUN apt-get install -y socat
+
 
 ENV SBT_OPTS="-Xmx8000M"
 
