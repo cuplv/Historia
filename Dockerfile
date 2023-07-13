@@ -130,6 +130,7 @@ RUN pip install jupyterlab
 
 ENV SBT_OPTS="-Xmx8000M"
 
+COPY pgpass /root/.pgpass
 EXPOSE 9999
 WORKDIR /home/notebooks
 

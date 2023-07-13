@@ -1,12 +1,29 @@
 services:
+  db:
+    image: "historia_postgres"
+    ports:
+      - "5433:5432"
+    networks:
+      - expnet
+    environment:
+      POSTGRES_PASSWORD: heykxbgdgsvbiq
   host:
     image: "historia"
     ports:
       - "8888:8888"
     command: "/home/notebooks/jupyterStart.sh"
+    networks:
+      - expnet
     deploy:
       resources:
         limits:
           memory: 8G
         reservations:
           memory: 8G
+  worker:
+    image: "historia"
+    command: "java -jar /home/bounder/target/scala-2.13/soot_hopper-assembly-0.1.jar --mode expLoop"
+    networks:
+      - expnet
+networks:
+  expnet:
