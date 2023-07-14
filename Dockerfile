@@ -155,5 +155,23 @@ RUN apt-get install -y postgresql-client-12 cloc
 ARG COMMITHASH=unknown
 RUN echo $COMMITHASH >/home/bounder/commithash.txt
 
+COPY homedirstuff/root/.android /root/.android
+COPY homedirstuff/root/.cache /root/.cache
+COPY homedirstuff/root/.gnupg /root/.gnupg
+COPY homedirstuff/root/.gradle /root/.gradle
+COPY homedirstuff/root/gradle /root/gradle
+COPY homedirstuff/root/.ipython /root/.ipython
+COPY homedirstuff/root/.jupyter /root/.jupyter
+COPY homedirstuff/root/.local /root/.local
+COPY homedirstuff/root/.profile /root/.profile
+COPY homedirstuff/root/.sbt /root/.sbt
+
+
+
+
+
+
+
+
 
 CMD ["/home/notebooks/jupyterStart.sh"]
