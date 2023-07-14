@@ -150,7 +150,7 @@ COPY notebooks/jupyterStart.sh /home/jupyterStart.sh
 ENV LD_LIBRARY_PATH=/usr/lib/
 RUN cd /home/bounder/; sbt assembly
 
-RUN apt-get install -y postgresql-client-12
+RUN apt-get install -y postgresql-client-12 cloc
 
 ARG COMMITHASH=unknown
 RUN echo $COMMITHASH >/home/bounder/commithash.txt
