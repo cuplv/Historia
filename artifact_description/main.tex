@@ -97,7 +97,7 @@ Importing the docker containers can be done with the following command.
 \end{lstlisting}
 \TODO{double check import works after container creation}
 
-In order to start the docker containers, run the following command in the root directory.  This will start 3 docker containers.
+In order to start the Docker containers, run the following command in the root directory.  This will start two Docker containers.
 
 %docker run --memory="8G" --memory-swap="8G" --rm -it historia bash
 \begin{lstlisting}[language=bash]
@@ -125,7 +125,7 @@ When finished, the following commands will close down the containers and remove 
 We have split the instructions so that a subset of the experiments may be run on a reasonable laptop and included full instructions if access to a server is available.
 The instructions labeled "minimal resources" may be run on a reasonably modern laptop that has 8GB of ram in addition to ram used by other processes. 
 
-Instructions labeled with "full resources" can be run on more powerful systems.  We used a server with a AMD EPYC 7763 64-Core Processor and 256GB of ram.  Running the full instructions on lower end systems will result in timeouts, out of memory errors, and will not complete in a reasonable period of time.
+Instructions labeled with "full resources" can be run on more powerful systems.  We used multiple servers with an AMD EPYC 7763 64-Core Processor and 256GB of ram.  Usage of these resources was granted to our project by Chameleon Cloud \cite{keahey2020lessons}.
 
 
 \section{Reproducing the Historia Results}
@@ -205,12 +205,12 @@ Below is an explanation of each column in the table:
 
 \TODO{SM: explain how to compare flowdroid and infer}
 
-\subsection{\req{2} - Viewing results}
+\subsection{\req{2} - Table 2 and Table 3 - Viewing results}
 
-We suggest first viewing the output of our run before attempting to run the \toolname experiments from scratch.
-We use a Postgres database to store each pattern as a job and then workers asynchronously run the verification and store the results in the database.
-
-To view the pre-computed results, open a terminal in the Jupyter notebook and run the following script to load the final database:
+% We suggest first viewing the output of our run before attempting to run the \toolname experiments from scratch.
+Since the full experiments take a long time to run, start by viewing our results in the Jupyter interface.
+During the experiments, jobs and results are stored in a database in the \codej{historia_postgres} docker container started by \codej{docker compose}.
+To load the pre-computed results, open a terminal in the Jupyter notebook and run the following script to load the final database:
 
 \begin{lstlisting}[language=bash]
     ./loadPreRunTable2.sh
@@ -223,43 +223,48 @@ Sizes for the call graphs were computed by setting a breakpoint after call graph
 
 \subsection{\req{2} - Table 2 - minimal resources}
 
-\newcommand{\numsubset}{\TODO{20}}
-The full set of 1090 locations can take an extremely long time to run (over 15 days of CPU time).  Therefore, we recommend running a subset.  The notebook \codej{RunTable2-Minimal-Resources.ipynb} will run this subset by clearing the database and uploading the locations in the \codej{dataSubset} directory.  The worker container will then process them one at a time.  
+\newcommand{\numsubset}{10}
+The full set of 1090 locations can take an extremely long time to run (over 15 days of CPU time).  Therefore, we recommend running a subset.
 
 
-We chose a set of \numsubset locations that don't use too much ram and don't time out.  Locations are stored in the ``dataSubset'' directory as ``.json'' files.
+The notebook \codej{RunTable2-Minimal-Resources.ipynb} will run by clearing the database and uploading the locations in the ``dataSubset'' directory.  The worker container will then process them one at a time.  
+The directory ``dataSubset'' contains \numsubset~locations that don't use too much ram and don't time out.  Locations are stored as ``.json'' files.
+Running should take around 20 minutes depending on the system.
 
 Progress can be tracked through the \codej{MonitorTable2Run.ipynb} notebook.  All cells in this notebook may be run repeatedly with ``shift-enter'' to track the status and outputs.
 When the \codej{completed\_jobs} row under the ``Track Total Jobs'' heading reaches \numsubset, the subset of locations is completed running.
 
-\TODO{how to actually compare subset to paper?}
+Once completed, the last cell of the notebook \codej{ShowTable2and3.ipynb} can compare the results just generated against our results.  It will print out the path to the config file, the result from the most recent run, and finally, the result from the run used for the paper.  Please note that some jobs may not complete depending on the system specs.
 
-\paragraph{Distributing the Verification}
-More worker containers may be run in parallel if computing resources are available.  Each worker requires a network connection with port \codej{5432} to the \codej{historia_postgres} container started by \codej{docker-compose.yml}.
+\paragraph{Changing the subset} The subset of apps may be changed to a random selection by deleting the contents of the ``dataSubset'' directory and re-running the last cell of \codej{ShowTable2and3.ipynb}.  Please note that many locations will not complete on the 8 GB of ram configured by the docker compose file (see the later instructions to remove this restriction).  
 
 
-\subsection{\req{2} - Table 3}
+\subsection{\req{2} - Table 3 - minimal resources}
+
+\TODO{notebook and description for table 3 rerun}
+
 
 \subsection{\req{1} - Table 1 - full resources}
 
-\TODO{explain full docker compose running}
+In order to run the full version of Table 1, a system with at least 120G of ram must be used. To run, restart the Docker container using the following command:
 
-In order to run the full version of Table 1, a system with at least 120G of ram must be used. To run, restart the docker container removing the following two arguments from the \codej{docker run} command: \codej{--memory="8G" --memory-swap="8G"} and repeat the instructions from the ``minimal resources'' section.  This should take about an hour to run on a comparable system.
+\begin{lstlisting}[language=bash]
+  docker compose -f docker-compose-full-resources.yml up
+\end{lstlisting}
+
+Then, repeat the instructions from the ``minimal resources'' section.  This should take about an hour to run on a comparable system.
 
 If this completes successfully, the output should be the same as earlier but will include ``Row 4 fix''.  
 
-\TODO{--Full resources}
+\subsection{\req{2} - Table 2 - full resources}
 
-\subsection{Running \req{1} (full)}
+In order to run the full version of Table 2, we strongly suggest using multiple servers.
+You can use the \codej{MonitorTable2Run.ipynb} notebook to estimate the expected remaining runtime after a few jobs have completed (See the ``Estimate Time Until Completion of All Jobs'' cell).
 
-\TODO{}
-
-\subsection{Running \req{2} (full)}
-
-\TODO{}
+The Docker compose file \codej{docker-compose-full-resources.yml} shows how to start and connect worker containers.  Scaling to multiple systems can be done with Docker swarm \url{https://docs.docker.com/engine/swarm/} or simple SSH tunnels connecting port 5432 from the workers to the postgres database container. Once the workers and server are configured, the full experiments may be run through the \codej{RunTable2-Full-Resources.ipynb} notebook.  The results may be viewed the same as was explained in the ``minimal resources'' section earlier.
 
 
-\TODO{third priority is comparison with infer/flow}
+\subsection{\req{2} - Table 3 - minimal resources}
 
 \section{Running and Interpreting \toolname on Custom Inputs}
 \TODO{second priority}
@@ -276,11 +281,11 @@ The recommended way to run \toolname is using a Jupyter notebook.  This allows t
 \TODO{explain counter examples}
 
 
-\section{Debugging issues}
+% \section{Debugging issues}
 
-\subsection{Docker desktop}
-\textbf{Problem:} The tests exit prematurely and no output is printed to the screen.
-\textbf{Solution:} Check that docker desktop is configured with enough ram.  In the docker desktop dashboard, under settings->resources, ensure the memory slider is set to at least 8GB.
+% \subsection{Docker desktop}
+% \textbf{Problem:} The tests exit prematurely and no output is printed to the screen.
+% \textbf{Solution:} Check that docker desktop is configured with enough ram.  In the docker desktop dashboard, under settings->resources, ensure the memory slider is set to at least 8GB.
 
 \section{Developing for \toolname}
 \TODO{fourth priority}
