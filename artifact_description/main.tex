@@ -121,7 +121,7 @@ When finished, the following commands will close down the containers and remove 
 We have split the instructions so that a subset of the experiments may be run on a reasonable laptop and included full instructions if access to a server is available.
 The instructions labeled "minimal resources" may be run on a reasonably modern laptop that has 8GB of ram in addition to ram used by other processes. 
 
-Instructions labeled with "full resources" can be run on more powerful systems.  We used a server with a AMD EPYC 7763 64-Core Processor and 256GB of ram.  Running the full instructions on lower end systems will result in timeouts and out of memory errors.  Please note that sometimes the process will be killed with no memory related error message if not enough ram is available, this is simply a JVM/JNI limitation.
+Instructions labeled with "full resources" can be run on more powerful systems.  We used a server with a AMD EPYC 7763 64-Core Processor and 256GB of ram.  Running the full instructions on lower end systems will result in timeouts, out of memory errors, and will not complete in a reasonable period of time.  Please note that sometimes the process will be killed with no memory related error message if not enough ram is available, this is a JVM/JNI limitation.
 
 
 \section{Reproducing the Historia Results}
@@ -201,10 +201,25 @@ Below is an explanation of each column in the table:
 
 \TODO{SM: explain how to compare flowdroid and infer}
 
+\subsection{\req{2} - Viewing results}
+
+We suggest first viewing the output of our run before attempting to run the \toolname experiments from scratch.
+We use a Postgres database to store each pattern as a job and then workers asynchronously run the verification and store the results in the database.
+
+To view the pre-computed results, open a terminal in the Jupyter notebook and run the following script to load the final database:
+
+\begin{lstlisting}[language=bash]
+    ./loadPreRunTable2.sh
+\end{lstlisting}
+
+The results can be viewed by opening the notebook \codej{ShowTable2and3.ipynb} shown on the left.  After opening, select ``Kernel'' -> ``Restart Kernel and Run All Cells''.
+This notebook reads the results from the database and displays the Historia results for Table 2 and Table 3 (Shown under heading titles ``Table 1'' and ``Table 2''). Additional statistics about the run may be viewed in this notebook as well. Statistics about the overall runtime may be found toward the end of the notebook \codej{MonitorTable2Run.ipynb}.
 
 \subsection{\req{2} - Table 2 - minimal resources}
 
-\subsection{\req{2} - Table 3 - minimal resources}
+The full set of 1090 locations can take an extremely long time to run (over 15 days of CPU time).  Therefore, we recommend running a subset.
+
+\subsection{\req{2} - Table 3}
 
 \subsection{\req{1} - Table 1 - full resources}
 
