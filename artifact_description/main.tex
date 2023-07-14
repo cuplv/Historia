@@ -104,10 +104,14 @@ In order to start the docker containers, run the following command in the root d
  docker compose -f docker-compose.yml up
 \end{lstlisting}
 
-All subsequent steps may be done through the web interface at \url{http://localhost:8888}.  Opening this URL should show a Jupyter notebook.  
+All subsequent steps may be done through the web interface at \url{http://localhost:8888}.  Opening this URL should show a Jupyter notebook as shown by Figure \ref{fig:jupyter}.  
 
 
-\TODO{screenshot of jupyter notebook}
+\begin{figure}[H]
+    \includegraphics*[scale=0.35]{jupyter.png}
+    \caption{Your web browser should look like this if the Docker images started correctly.}
+    \label{fig:jupyter}
+\end{figure}
 
 When finished, the following commands will close down the containers and remove them.
 
@@ -121,7 +125,7 @@ When finished, the following commands will close down the containers and remove 
 We have split the instructions so that a subset of the experiments may be run on a reasonable laptop and included full instructions if access to a server is available.
 The instructions labeled "minimal resources" may be run on a reasonably modern laptop that has 8GB of ram in addition to ram used by other processes. 
 
-Instructions labeled with "full resources" can be run on more powerful systems.  We used a server with a AMD EPYC 7763 64-Core Processor and 256GB of ram.  Running the full instructions on lower end systems will result in timeouts, out of memory errors, and will not complete in a reasonable period of time.  Please note that sometimes the process will be killed with no memory related error message if not enough ram is available, this is a JVM/JNI limitation.
+Instructions labeled with "full resources" can be run on more powerful systems.  We used a server with a AMD EPYC 7763 64-Core Processor and 256GB of ram.  Running the full instructions on lower end systems will result in timeouts, out of memory errors, and will not complete in a reasonable period of time.
 
 
 \section{Reproducing the Historia Results}
@@ -214,6 +218,8 @@ To view the pre-computed results, open a terminal in the Jupyter notebook and ru
 
 The results can be viewed by opening the notebook \codej{ShowTable2and3.ipynb} shown on the left.  After opening, select ``Kernel'' -> ``Restart Kernel and Run All Cells''.
 This notebook reads the results from the database and displays the Historia results for Table 2 and Table 3 (Shown under heading titles ``Table 1'' and ``Table 2''). Additional statistics about the run may be viewed in this notebook as well. Statistics about the overall runtime may be found toward the end of the notebook \codej{MonitorTable2Run.ipynb}.
+
+Sizes for the call graphs were computed by setting a breakpoint after call graph generation in both Flowdroid and \toolname.  The call graph was then filtered for methods under the package declared by the application's manifest.  We recorded these call graph sizes in the file \codej{callgraphCount.csv}.
 
 \subsection{\req{2} - Table 2 - minimal resources}
 
