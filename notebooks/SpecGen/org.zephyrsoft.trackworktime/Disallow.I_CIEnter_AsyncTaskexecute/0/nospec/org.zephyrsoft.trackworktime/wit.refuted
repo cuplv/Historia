@@ -1,9 +1,0 @@
-refuted
-    REFUTED: pre-line: 1134 $r1 = new org.zephyrsoft.trackworktime.WorkTimeTrackerActivity$RestoreAsyncTask
-       state: ( locals:          heap:           pure: p-0  !=  NULL         types: List(p-0:{14661})    trace: p-0;O(CIEnter I_CIEnter_AsyncTaskexecute ( _T_,p-0 ))
-    pre-line: 1134 specialinvoke $r1.<org.zephyrsoft.trackworktime.WorkTimeTrackerActivity$RestoreAsyncTask: void <init>(org.zephyrsoft.trackworktime.backup.BackupFileInfo,org.zephyrsoft.trackworktime.WorkTimeTrackerActivity)>($r2, r0)
-       state: ( locals: $r1 -> p-0         heap:           pure: p-0  !=  NULL         types: List(p-0:{14661})    trace: O(CIEnter I_CIEnter_AsyncTaskexecute ( _T_,p-0 ))
-    SkippedInternalMethodInvoke(org.zephyrsoft.trackworktime.WorkTimeTrackerActivity$RestoreAsyncTask,void <init>(org.zephyrsoft.trackworktime.backup.BackupFileInfo,org.zephyrsoft.trackworktime.WorkTimeTrackerActivity),JimpleMethodLoc(<org.zephyrsoft.trackworktime.WorkTimeTrackerActivity$RestoreAsyncTask: void <init>(org.zephyrsoft.trackworktime.backup.BackupFileInfo,org.zephyrsoft.trackworktime.WorkTimeTrackerActivity)>))
-       state: ( locals:       locals: $r1 -> p-0         heap:           pure:          types: List(p-0:{14661})    trace: O(CIEnter I_CIEnter_AsyncTaskexecute ( _T_,p-0 ))
-    SkippedInternalMethodReturn(org.zephyrsoft.trackworktime.WorkTimeTrackerActivity$RestoreAsyncTask,void <init>(org.zephyrsoft.trackworktime.backup.BackupFileInfo,org.zephyrsoft.trackworktime.WorkTimeTrackerActivity),NotRelevantMethod,JimpleMethodLoc(<org.zephyrsoft.trackworktime.WorkTimeTrackerActivity$RestoreAsyncTask: void <init>(org.zephyrsoft.trackworktime.backup.BackupFileInfo,org.zephyrsoft.trackworktime.WorkTimeTrackerActivity)>))
-       state: ( locals:       locals: $r1 -> p-0         heap:           pure:          types: List(p-0:{14661})    trace: O(CIEnter I_CIEnter_AsyncTaskexecute ( _T_,p-0 ))
