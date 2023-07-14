@@ -141,7 +141,7 @@ To run the experiments for the first table, open the terminal in the Jupyter not
 
 The experiments in Table 1 are run as a Scala unit tests defined in the file: 
 
-\codej{src/test/scala/edu/colorado/plv/bounder/symbolicexecutor/Experiments.scala}.  
+\codej{implementation/src/test/scala/edu/colorado/plv/bounder/symbolicexecutor/Experiments.scala}.  
 
 Each benchmark is labeled by \codej{test([description])} where [description] has a row number and short english description.
 The source code for each benchmark is a string stored in a variable named \codej{src}.
@@ -223,7 +223,20 @@ Sizes for the call graphs were computed by setting a breakpoint after call graph
 
 \subsection{\req{2} - Table 2 - minimal resources}
 
-The full set of 1090 locations can take an extremely long time to run (over 15 days of CPU time).  Therefore, we recommend running a subset.
+\newcommand{\numsubset}{\TODO{20}}
+The full set of 1090 locations can take an extremely long time to run (over 15 days of CPU time).  Therefore, we recommend running a subset.  The notebook \codej{RunTable2-Minimal-Resources.ipynb} will run this subset by clearing the database and uploading the locations in the \codej{dataSubset} directory.  The worker container will then process them one at a time.  
+
+
+We chose a set of \numsubset locations that don't use too much ram and don't time out.  Locations are stored in the ``dataSubset'' directory as ``.json'' files.
+
+Progress can be tracked through the \codej{MonitorTable2Run.ipynb} notebook.  All cells in this notebook may be run repeatedly with ``shift-enter'' to track the status and outputs.
+When the \codej{completed\_jobs} row under the ``Track Total Jobs'' heading reaches \numsubset, the subset of locations is completed running.
+
+\TODO{how to actually compare subset to paper?}
+
+\paragraph{Distributing the Verification}
+More worker containers may be run in parallel if computing resources are available.  Each worker requires a network connection with port \codej{5432} to the \codej{historia_postgres} container started by \codej{docker-compose.yml}.
+
 
 \subsection{\req{2} - Table 3}
 
