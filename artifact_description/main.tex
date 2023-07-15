@@ -84,6 +84,9 @@ We have automated the steps to reproduce the results with scripts explained belo
 When using \toolname on its own, the input is a compiled Android application in the form of an APK file, a \newls specification defined in a JSON format, and an assertion at a location defined by a JSON data structure.
 Outputs are either ``safe'' or ``alarm'' in which case an abstract message history witnessing the alarm will be available.
 
+A full tutorial on using \toolname may be found in the notebook \codej{HistoriaExampleAndExplanation.ipynb} after running the Docker container.  
+This document will focus on reproducing the results, but we encourage referencing of the descriptions in the tutorial notebook as needed.
+
 \section{Prerequisites - Running the Historia Docker Container}
 
 We have configured the experiments to be run within two Docker containers provided with this artifact.
@@ -277,9 +280,6 @@ Afterwards, running the cell will take slightly longer than before  and produce 
 \begin{lstlisting} 
     Result Summary: Proven
 \end{lstlisting}
-
-
-\TODO{notebook and description for table 3 rerun}
 
 
 \subsection{\req{1} - Table 1 - full resources}
