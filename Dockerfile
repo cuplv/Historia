@@ -151,6 +151,7 @@ ENV LD_LIBRARY_PATH=/usr/lib/
 RUN cd /home/bounder/; sbt assembly
 
 RUN apt-get install -y postgresql-client-12 cloc
+RUN apt-get install -y maven
 
 ARG COMMITHASH=unknown
 RUN echo $COMMITHASH >/home/bounder/commithash.txt
