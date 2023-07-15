@@ -18,6 +18,7 @@ services:
       - ${PWD}/notebooks:/home/notebooks
       - ${PWD}/historia_generalizability:/home/historia_generalizability
       - ${PWD}/table2results:/home/table2results
+      - ${PWD}/FlowDroid:/home/FlowDroid
     depends_on:
       - db
     deploy:
