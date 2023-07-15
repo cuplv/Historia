@@ -100,11 +100,11 @@ Importing the docker containers can be done with the following command.
 \end{lstlisting}
 \TODO{double check import works after container creation}
 
-In order to start the Docker containers, run the following command in the root directory.  This will start two Docker containers.
+In order to start the Docker containers, run the following command in the root directory.  This will start at least two docker containers.%  Eight gigabytes of free memory is required at a minimum to run with 0 workers (this means 12 or 16 total).  Each additional worker needs another 8GB of ram.
 
 %docker run --memory="8G" --memory-swap="8G" --rm -it historia bash
 \begin{lstlisting}[language=bash]
- docker compose -f docker-compose.yml up
+ docker compose -f docker-compose.yml up --scale worker=0
 \end{lstlisting}
 
 All subsequent steps may be done through the web interface at \url{http://localhost:8888}.  Opening this URL should show a Jupyter notebook as shown by Figure \ref{fig:jupyter}.  
@@ -126,7 +126,7 @@ When finished, the following commands will close down the containers and remove 
 
 \paragraph{System Requirements} 
 We have split the instructions so that a subset of the experiments may be run on a reasonable laptop and included full instructions if access to a server is available.
-The instructions labeled "minimal resources" may be run on a reasonably modern laptop that has 8GB of ram in addition to ram used by other processes. 
+The instructions labeled "minimal resources" may be run on a reasonably modern laptop that has 8GB of ram in addition to ram used by other processes. If you are running on a system with more than 16 GB of ram, you may want to add additional workers by increasing the \codej{--scale worker=} parameter. Each worker takes an additional 8GB of ram.
 
 Instructions labeled with "full resources" can be run on more powerful systems.  We used multiple servers with an AMD EPYC 7763 64-Core Processor and 256GB of ram.  Usage of these resources was granted to our project by Chameleon Cloud \cite{keahey2020lessons}.
 
