@@ -203,7 +203,7 @@ Below is an explanation of each column in the table:
 \end{enumerate}
 
 
-\TODO{SM: explain how to compare flowdroid and infer}
+% \TODO{SM: explain how to compare flowdroid and infer}
 
 \subsection{\req{2} - Table 2 and Table 3 - Viewing results}
 
@@ -227,19 +227,57 @@ Sizes for the call graphs were computed by setting a breakpoint after call graph
 The full set of 1090 locations can take an extremely long time to run (over 15 days of CPU time).  Therefore, we recommend running a subset.
 
 
-The notebook \codej{RunTable2-Minimal-Resources.ipynb} will run by clearing the database and uploading the locations in the ``dataSubset'' directory.  The worker container will then process them one at a time.  
+The notebook \codej{RunTable2-Minimal-Resources.ipynb} will run by clearing the database and uploading the locations in the ``dataSubset'' directory.  These locations will be processed by the Historia worker.  
 The directory ``dataSubset'' contains \numsubset~locations that don't use too much ram and don't time out.  Locations are stored as ``.json'' files.
 Running should take around 20 minutes depending on the system.
 
-Progress can be tracked through the \codej{MonitorTable2Run.ipynb} notebook.  All cells in this notebook may be run repeatedly with ``shift-enter'' to track the status and outputs.
+Progress can be tracked through the \codej{MonitorTable2Run.ipynb} notebook.  
+Each time a cell in this notebook is run using ``shift-enter'', the output will be updated.
+% All cells in this notebook may be run repeatedly with ``shift-enter'' to track the status and outputs.
 When the \codej{completed\_jobs} row under the ``Track Total Jobs'' heading reaches \numsubset, the subset of locations is completed running.
 
-Once completed, the last cell of the notebook \codej{ShowTable2and3.ipynb} can compare the results just generated against our results.  It will print out the path to the config file, the result from the most recent run, and finally, the result from the run used for the paper.  Please note that some jobs may not complete depending on the system specs.
+Once completed, the last cell of the notebook \codej{ShowTable2and3.ipynb} can compare the results just generated against our results.  It will print out the path to the config file, the result from the most recent run, and finally, the result from the run used for the paper.  Please note that memory errors often appear as the process simply being killed and generally do not show an error message.
 
 \paragraph{Changing the subset} The subset of apps may be changed to a random selection by deleting the contents of the ``dataSubset'' directory and re-running the last cell of \codej{ShowTable2and3.ipynb}.  Please note that many locations will not complete on the 8 GB of ram configured by the docker compose file (see the later instructions to remove this restriction).  
 
 
 \subsection{\req{2} - Table 3 - minimal resources}
+
+The rows in Table 3 may be run using the \codej{ShowTable2and3.ipynb} notebook.
+Under the heading ``Table 3 Data - Write Specifications For Individual Samples'' each cell (e.g. marked by ``Specify\_0'') corresponds to one row in Table 3.
+
+The output of the cell will contain the name of the app in the row. The configuration file used as input, and the directory where results are written.  For example:
+
+\begin{lstlisting}
+    home/notebooks/SpecGen/com.darshancomputing.BatteryIndicatorPro/SensitiveDerefCallinCaused/0/config.json
+    App Name: BatteryBot
+    out directory: /home/notebooks/SpecGen/com.darshancomputing.BatteryIndicatorPro/SensitiveDerefCallinCaused/0
+    apk path: /fdroid/com.darshancomputing.BatteryIndicatorPro/12.0.0/apk/com.darshancomputing.BatteryIndicatorPro\_26016.apk
+\end{lstlisting}
+
+Since we set the timeout to one hour, we recommend only running the rows that are shown to complete in the table.  These rows can be run by uncommenting the call to \codej{runHistoriaWithSpec()} at the bottom of the cell.  For example, the // can be removed from the second two lines of BatteryBot:
+
+\begin{lstlisting}
+    //Uncomment the following two lines to run Historia on this sample from Table 3
+    // val result = Specify_1.runHistoriaWithSpec()
+    // println(s"Result Summary: ...")
+\end{lstlisting}
+
+Making it look like: 
+
+\begin{lstlisting}
+    //Uncomment the following two lines to run Historia on this sample from Table 3
+    val result = Specify_1.runHistoriaWithSpec()
+    println(s"Result Summary: ...")
+\end{lstlisting}
+
+
+Afterwards, running the cell will take slightly longer than before  and produce the ``res'' column of Table 3.  For example, the output may look like:
+
+\begin{lstlisting} 
+    Result Summary: Proven
+\end{lstlisting}
+
 
 \TODO{notebook and description for table 3 rerun}
 
@@ -261,11 +299,16 @@ If this completes successfully, the output should be the same as earlier but wil
 In order to run the full version of Table 2, we strongly suggest using multiple servers.
 You can use the \codej{MonitorTable2Run.ipynb} notebook to estimate the expected remaining runtime after a few jobs have completed (See the ``Estimate Time Until Completion of All Jobs'' cell).
 
-The Docker compose file \codej{docker-compose-full-resources.yml} shows how to start and connect worker containers.  Scaling to multiple systems can be done with Docker swarm \url{https://docs.docker.com/engine/swarm/} or simple SSH tunnels connecting port 5432 from the workers to the postgres database container. Once the workers and server are configured, the full experiments may be run through the \codej{RunTable2-Full-Resources.ipynb} notebook.  The results may be viewed the same as was explained in the ``minimal resources'' section earlier.
+The Docker compose file \codej{docker-compose-full-resources.yml} shows how to start and connect worker containers.  Scaling to multiple systems can be done with Docker swarm \url{https://docs.docker.com/engine/swarm/} or simple SSH tunnels connecting port 5432 from the workers to the Postgres database container. Once the workers and server are configured, the full experiments may be run through the \codej{RunTable2-Full-Resources.ipynb} notebook.  To add more workers on a single system, the \codej{--scale worker=n} flag may be added to the docker command.
+
+The results may be viewed the same as was explained in the ``minimal resources'' section earlier.
 
 
-\subsection{\req{2} - Table 3 - minimal resources}
+\subsection{\req{2} - Table 3 - full resources}
 
+The instructions for Table 3 may also be run under the full resources version of the docker containers, but the results are similar.
+
+\iffalse
 \section{Running and Interpreting \toolname on Custom Inputs}
 \TODO{second priority}
 
@@ -317,6 +360,7 @@ In this section, we explain the implementation of each technical contribution in
 
 \TODO{}
 
+\fi
 %======================
 
 
