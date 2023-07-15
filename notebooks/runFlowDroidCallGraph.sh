@@ -1,0 +1,1 @@
+java -jar /home/FlowDroid/soot-infoflow-cmd/target/soot-infoflow-cmd-jar-with-dependencies.jar -a /home/historia_generalizability/fdroid/de.markusfisch.android.wavelines/1.13.2/apk/de.markusfisch.android.wavelines_22.apk -p /root/android-sdk-linux/platforms -s /home/FlowDroid/soot-infoflow-android/SourcesAndSinks.txt -d
