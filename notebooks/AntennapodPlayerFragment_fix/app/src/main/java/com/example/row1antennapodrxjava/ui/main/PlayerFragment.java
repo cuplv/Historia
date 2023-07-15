@@ -65,6 +65,6 @@ public class PlayerFragment extends Fragment implements Action1<Object> {
     @Override
     public void onDestroy() {
         super.onDestroy();
-	sub.unsubscribe();
+        sub.unsubscribe();
     }
 }
