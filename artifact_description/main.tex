@@ -95,10 +95,9 @@ These Docker files may be found in the root directory of this archive and is lab
 Importing the docker containers can be done with the following command.
 
 \begin{lstlisting}[language=bash]
-  docker import historia.docker
-  docker import experimentdb.docker
+  docker load < historia.docker
+  docker load < experimentdb.docker
 \end{lstlisting}
-\TODO{double check import works after container creation}
 
 In order to start the Docker containers, run the following command in the root directory.  This will start at least two docker containers.%  Eight gigabytes of free memory is required at a minimum to run with 0 workers (this means 12 or 16 total).  Each additional worker needs another 8GB of ram.
 
@@ -108,7 +107,6 @@ In order to start the Docker containers, run the following command in the root d
 \end{lstlisting}
 
 All subsequent steps may be done through the web interface at \url{http://localhost:8888}.  Opening this URL should show a Jupyter notebook as shown by Figure \ref{fig:jupyter}.  
-
 
 \begin{figure}[H]
     \includegraphics*[scale=0.35]{jupyter.png}
@@ -125,13 +123,13 @@ When finished, the following commands will close down the containers and remove 
 % ctrl-c will close down the docker containers and ``\codej{docker compose rm}'' will clean up the images.
 
 \paragraph{System Requirements} 
-We have split the instructions so that a subset of the experiments may be run on a reasonable laptop and included full instructions if access to a server is available.
+We have split the instructions so that a subset of the experiments may be run on a reasonable laptop and included instructions to run the full experiments if access to a server is available.
 The instructions labeled "minimal resources" may be run on a reasonably modern laptop that has 8GB of ram in addition to ram used by other processes. If you are running on a system with more than 16 GB of ram, you may want to add additional workers by increasing the \codej{--scale worker=} parameter. Each worker takes an additional 8GB of ram.
 
 Instructions labeled with "full resources" can be run on more powerful systems.  We used multiple servers with an AMD EPYC 7763 64-Core Processor and 256GB of ram.  Usage of these resources was granted to our project by Chameleon Cloud \cite{keahey2020lessons}.
 
 
-\section{Reproducing the Historia Results}
+\section{Reproducing the \toolname Results}
 
 Each subsection here corresponds to a table in the evaluation section.  We have labeled the subsections first with the research question (\req{1} or \req{2}), the table number (Table 1, Table 2, Table 3), and finally, the resource requirements as described earlier (minimal resources or full resources).
 
@@ -222,7 +220,6 @@ To load the pre-computed results, open a terminal in the Jupyter notebook and ru
 The results can be viewed by opening the notebook \codej{ShowTable2and3.ipynb} shown on the left.  After opening, select ``Kernel'' -> ``Restart Kernel and Run All Cells''.
 This notebook reads the results from the database and displays the Historia results for Table 2 and Table 3 (Shown under heading titles ``Table 1'' and ``Table 2''). Additional statistics about the run may be viewed in this notebook as well. Statistics about the overall runtime may be found toward the end of the notebook \codej{MonitorTable2Run.ipynb}.
 
-Sizes for the call graphs were computed by setting a breakpoint after call graph generation in both Flowdroid and \toolname.  The call graph was then filtered for methods under the package declared by the application's manifest.  We recorded these call graph sizes in the file \codej{callgraphCount.csv}.
 
 \subsection{\req{2} - Table 2 - minimal resources}
 
@@ -243,6 +240,11 @@ Once completed, the last cell of the notebook \codej{ShowTable2and3.ipynb} can c
 
 \paragraph{Changing the subset} The subset of apps may be changed to a random selection by deleting the contents of the ``dataSubset'' directory and re-running the last cell of \codej{ShowTable2and3.ipynb}.  Please note that many locations will not complete on the 8 GB of ram configured by the docker compose file (see the later instructions to remove this restriction).  
 
+
+
+\paragraph{Call Graph Sizes} Sizes for the call graphs were computed by adding some code to count app methods after graph generation in both Flowdroid (line 1473 in \codej{SetupApplication.java}) and \toolname.  The call graph was then filtered for methods under the package declared by the application's manifest.  We recorded these call graph sizes in the file \codej{callgraphCount.csv}.
+
+The version of Flowdroid we used for this comparison may be found in \codej{/home/FlowDroid}.  Unfortunately, we were unable to get Flowdroid to run inside the docker container. However, the command we used is recorded in \codej{/home/notebooks/runFlowDroidCallGraph.sh}.  This command works when running via the Intellij IDE which is where we performed this experiment.
 
 \subsection{\req{2} - Table 3 - minimal resources}
 
