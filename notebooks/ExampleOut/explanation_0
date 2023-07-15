@@ -1,0 +1,11 @@
+(    heap:           pure: p-2  !=  NULL && p-4  !=  NULL && p-3  !=  NULL && p-1  !=  NULL         types: List(p-1:{8107,8119}, p-3:{759,6271,6272,6274,6287 ...}, p-4:{8107,8119}, p-2:{8107,8119}, p-5:{759,6271,6272,6274,6287 ...})    trace: O(CBEnter I_CBEnter_FragmentonActivityCreated ( _T_,p-4 );O(CIExit I_CIExit_RxJavasubscribe ( p-5,_T_,p-4 );O(CBEnter I_CBEnter_FragmentonActivityCreated ( _T_,p-2 );O(CIExit I_CIExit_RxJavasubscribe ( p-3,_T_,p-2 );O(CIExit I_CIExit_rxJavaunsubscribe ( _T_,p-3 );O(CBExit I_CBExit_FragmentonDestroy ( _T_,p-2 );O(CBEnter I_CBEnter_rxJavacall ( _T_,p-1 );O(CIExit I_CIExit_FragmentgetActivity ( NULL,p-1 )) 
+===========
+Future trace:
+ CBEnter void onActivityCreated(android.os.Bundle)( _T_,@3 )
+CIExit rx.Subscription subscribe(rx.functions.Action1)( @0,_T_,@3 )
+CBEnter void onActivityCreated(android.os.Bundle)( _T_,@3 )
+CIExit rx.Subscription subscribe(rx.functions.Action1)( @4,_T_,@3 )
+CIExit void unsubscribe()( _T_,@4 )
+CBExit void onDestroy()( _T_,@3 )
+CBEnter void call(java.lang.Object)( _T_,@3 )
+CIExit Activity getActivity()( NULL,@3 )

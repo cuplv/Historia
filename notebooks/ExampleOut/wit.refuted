@@ -1,0 +1,11 @@
+refuted
+    REFUTED: InternalMethodInvoke(com.example.row1antennapodrxjava.ui.main.PlayerFragment,void call(java.lang.Object),JimpleMethodLoc(<com.example.row1antennapodrxjava.ui.main.PlayerFragment: void call(java.lang.Object)>))
+       state: ( locals: @this -> p-1         heap:           pure: p-1  !=  NULL         types: List(p-1:{8107,8119})    trace: O(CIExit I_CIExit_FragmentgetActivity ( NULL,p-1 ))
+    pre-line: -1 r0 := @this: com.example.row1antennapodrxjava.ui.main.PlayerFragment
+       state: ( locals: @this -> p-1         heap:           pure: p-1  !=  NULL         types: List(p-1:{8107,8119})    trace: O(CIExit I_CIExit_FragmentgetActivity ( NULL,p-1 ))
+    pre-line: 62 $r2 = virtualinvoke r0.<com.example.row1antennapodrxjava.ui.main.PlayerFragment: androidx.fragment.app.FragmentActivity getActivity()>()
+       state: ( locals: r0 -> p-1         heap:           pure: p-1  !=  NULL         types: List(p-1:{8107,8119})    trace: O(CIExit I_CIExit_FragmentgetActivity ( NULL,p-1 ))
+    [CI Inv merge] androidx.fragment.app.FragmentActivity getActivity()
+       state: ([CI Ret] androidx.fragment.app.Fragment androidx.fragment.app.FragmentActivity getActivity() locals:       locals: r0 -> p-1         heap:           pure:          types: List(p-1:{8107,8119})    trace: O(CIExit I_CIExit_FragmentgetActivity ( NULL,p-1 ))
+    [CI Ret merge] androidx.fragment.app.FragmentActivity getActivity()
+       state: ([CI Ret] androidx.fragment.app.Fragment androidx.fragment.app.FragmentActivity getActivity() locals:       locals: r0 -> p-1         heap:           pure:          types: List(p-1:{8107,8119})    trace: O(CIExit I_CIExit_FragmentgetActivity ( NULL,p-1 ))
