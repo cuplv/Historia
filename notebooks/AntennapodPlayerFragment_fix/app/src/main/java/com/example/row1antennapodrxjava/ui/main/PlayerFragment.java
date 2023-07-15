@@ -24,7 +24,6 @@ import rx.schedulers.Schedulers;
 
 public class PlayerFragment extends Fragment implements Action1<Object> {
 
-//    private MainViewModel mViewModel;
     private Subscription sub;
 
     public static PlayerFragment newInstance() {
@@ -46,10 +45,8 @@ public class PlayerFragment extends Fragment implements Action1<Object> {
     @Override
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
-        Log.i("PlayerFragment", "onActCreate");
         sub = Single.create(a -> {
-            //Log.i("PlayerFragment","background");  // uncomment to cause delay while running, useful for causing crash
-            //try {
+            //try {  // uncomment to cause delay while running, useful for causing crash
             //    Thread.sleep(10000);
             //} catch (InterruptedException e) {
             //    e.printStackTrace();
@@ -62,7 +59,6 @@ public class PlayerFragment extends Fragment implements Action1<Object> {
 
     @Override
     public void call(Object o) {
-        Log.i("PlayerFragment","call");
         Activity act = getActivity();
         act.toString();
     }
