@@ -60,7 +60,7 @@ public class PlayerFragment extends Fragment implements Action1<Object> {
     @Override
     public void call(Object o) {
         Activity act = getActivity();
-        act.toString();
+        act.toString(); // Can this location crash?
     }
     @Override
     public void onDestroy() {
