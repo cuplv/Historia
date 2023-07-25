@@ -92,11 +92,13 @@ This document will focus on reproducing the results, but we encourage referencin
 We have configured the experiments to be run within two Docker containers provided with this artifact.
 These Docker files may be found in the root directory of this archive and is labeled \codej{historia.docker}.  Please follow the instructions to install docker from \url{https://docs.docker.com/engine/install/}.
 
-Importing the docker containers can be done with the following command.
+Importing the docker containers can be done with the following command. Please note that the exported docker container files \codej{historia.docker} and \codej{historia_postgres.docker} are contained in the root directory of the archive.
 
 \begin{lstlisting}[language=bash]
+  tar -xvf Historia.tgz
+  cd Historia
   docker load < historia.docker
-  docker load < experimentdb.docker
+  docker load < historia_postgres.docker
 \end{lstlisting}
 
 In order to start the Docker containers, run the following command in the root directory.  This will start at least two docker containers.%  Eight gigabytes of free memory is required at a minimum to run with 0 workers (this means 12 or 16 total).  Each additional worker needs another 8GB of ram.
