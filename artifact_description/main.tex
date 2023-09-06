@@ -77,9 +77,10 @@
 \maketitle
 %\input{generated/specMacros}
 \section{Introduction}
-This document explains the artifact for the Historia paper \cite{conf/oopsla/Meier23}.
+This document explains the scripts in the artifact to reproduce the results in the Historia paper \cite{conf/oopsla/Meier23}.
+In order to reproduce the subset listed later, an x86 Linux machine with 16GB of ram is needed (8GB in addition to the ram for the OS and other processes).
 The goal of this document is to first give a set of instructions for reproducing the experimental results and then give a technical explanation of how the implementation connects to the technical contributions.
-We have automated the steps to reproduce the results with scripts explained below.
+% We have automated the steps to reproduce the results with scripts explained below.
 
 When using \toolname on its own, the input is a compiled Android application in the form of an APK file, a \newls specification defined in a JSON format, and an assertion at a location defined by a JSON data structure.
 Outputs are either ``safe'' or ``alarm'' in which case an abstract message history witnessing the alarm will be available.
@@ -246,8 +247,7 @@ Once completed, the last cell of the notebook \codej{ShowTable2and3.ipynb} can c
 
 
 \paragraph{Call Graph Sizes} Sizes for the call graphs were computed by adding some code to count app methods after graph generation in both Flowdroid (line 1473 in \codej{SetupApplication.java}) and \toolname.  The call graph was then filtered for methods under the package declared by the application's manifest.  We recorded these call graph sizes in the file \codej{callgraphCount.csv}.
-
-The version of Flowdroid we used for this comparison may be found in \codej{/home/FlowDroid}.  Unfortunately, we were unable to get Flowdroid to run inside the docker container. However, the command we used is recorded in \codej{/home/notebooks/runFlowDroidCallGraph.sh}.  This command works when running via the Intellij IDE which is where we performed this experiment.
+The version of Flowdroid we used for this comparison may be found in \codej{/home/FlowDroid}.  
 
 \subsection{\req{2} - Table 3 - minimal resources}
 
