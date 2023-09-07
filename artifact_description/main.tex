@@ -1,4 +1,4 @@
-\documentclass{acmart} %\settopmatter{printfolios=true,printccs=false,printacmref=false} % full template
+\documentclass{article} %\settopmatter{printfolios=true,printccs=false,printacmref=false} % full template
 
 %%%%%% optimizations for build speed and review
 
@@ -9,7 +9,7 @@
 %\documentclass[acmsmall,anonymous]{acmart}\settopmatter{printfolios=true,printccs=false,printacmref=false}
 
 %%% Packages
-\usepackage[nosubfig,nographicx,nonatbib,noxcolor,nohyperref,notheoremenvs]{bec}
+\usepackage{bec}%[nosubfig,nographicx,nonatbib,noxcolor,nohyperref,notheoremenvs]
 \SetSymbolFont{stmry}{bold}{U}{stmry}{m}{n} %supress asmmath font warning
 \setboolean{showjedi}{false}
 \setboolean{showcomments}{true} % turn off todo comments too
@@ -19,6 +19,7 @@
 \usepackage{setspace} % for "\setstretch" macro used by specbox
 \usepackage{empheq}
 \usepackage[clock]{ifsym}
+\usepackage{bbding}
 
 % booleans to turn off individual sections
 \newcommand{\inputsection}[1]{\ifthenelse{\boolean{#1}}{\input{#1}}{\TODO{====== temp exclusion section #1 for build =======}}}
@@ -57,8 +58,17 @@
 %\doublespacing % put after document
 %%%%%%%%%
 
+\usepackage[english]{babel}
+\usepackage{blindtext}
+
+\usepackage{etoolbox}
+\usepackage[margin=0.75in]{geometry}
+\makeatletter
+\patchcmd{\maketitle}{\@copyrightspace}{}{}{}
+\makeatother
 
 \begin{document}
+
 
 \input{macros}
 %\newcommand{\plusmini}{\scalebox{0.8}{$+$}}
@@ -70,11 +80,14 @@
 %
 \title{Artifact - Historia: Refuting Callback Reachability with Message-History Logics}
 
-\begin{abstract}
-\end{abstract}
 
+% \begin{abstract}
+% \end{abstract}
 
 \maketitle
+
+
+
 %\input{generated/specMacros}
 \section{Introduction}
 This document explains the scripts in the artifact to reproduce the results in the Historia paper \cite{conf/oopsla/Meier23}.
@@ -111,7 +124,7 @@ In order to start the Docker containers, run the following command in the root d
 
 All subsequent steps may be done through the web interface at \url{http://localhost:8888}.  Opening this URL should show a Jupyter notebook as shown by Figure \ref{fig:jupyter}.  
 
-\begin{figure}[H]
+\begin{figure}[h]
     \includegraphics*[scale=0.35]{jupyter.png}
     \caption{Your web browser should look like this if the Docker images started correctly.}
     \label{fig:jupyter}
@@ -152,7 +165,11 @@ Each benchmark is labeled by \codej{test([description])} where [description] has
 The source code for each benchmark is a string stored in a variable named \codej{src}.
 This source code is compiled into the APK automatically when running the unit test.
 
-The set of \newls specifications for each row are defined by row in the \codej{ExperimentSpecs} object within \codej{Experiments.scala}.  These specifications may be found in \codej{src/main/scala/edu/colorado/plv/bounder/lifestate/Specification.scala}.
+The set of \newls specifications for each row are defined by row in the \codej{ExperimentSpecs} object within \codej{Experiments.scala}.  These specifications may be found in:
+
+\begin{center}
+\codej{src/main/scala/edu/colorado/plv/bounder/lifestate/Specification.scala}.
+\end{center}
 
 The output will be printed to the screen in a log format.  Each row of Table 1 may be found labeled by ``Row'' followed by the row number and version (i.e. ``bug'' or ``fix'').  For example, the buggy version of \apGa is ``Row 1 bug'' and the fixed version is ``Row 1 fix''.  
 
@@ -163,7 +180,7 @@ The output will be printed to the screen in a log format.  Each row of Table 1 m
 \tikz[baseline=-0.7ex]{
 \node (a) [circle,draw=black] {
 };
-\node (b) [draw=none] {\scalebox{1}{\checkmark}};
+\node (b) [draw=none] {\scalebox{1}{\Checkmark}};
 }}\hspace{-.1cm}
 }
 \newcommand{\cSafe}{
