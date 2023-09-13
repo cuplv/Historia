@@ -2,8 +2,8 @@ package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType}
-import edu.colorado.plv.bounder.lifestate.LSPredAnyOrder.depthToAny
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, CLInit, Exists, Forall, FreshRef, HNOE, LSAnyPred, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, Signature}
+import edu.colorado.plv.bounder.lifestate.LSPredAnyOrder.{countAny, predDepth, rankPred, rankSpecSpace}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, AnyAbsMsg, CLInit, Exists, Forall, FreshRef, HNOE, LSAnyPred, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, Signature}
 import edu.colorado.plv.bounder.solver.EncodingTools.Assign
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, BotVal, ClassVal, CmpOp, ConcreteVal, Equals, IntVal, NamedPureVar, NotEquals, NullVal, PureExpr, PureVal, PureVar, State, TopVal, TypeComp}
@@ -246,6 +246,8 @@ object LifeState {
       case pureVal: PureVal => Set(pureVal)
       case _ => Set.empty
     }
+
+    override def allMsg: Set[OAbsMsg] = Set.empty
   }
   object LSConstraint{
     def mk(v1:PureExpr, op:CmpOp, v2:PureExpr):LSPred =
@@ -275,6 +277,7 @@ object LifeState {
     def toTex:String
 
     def swap(swapMap: Map[PureVar, PureExpr]):LSPred
+    def allMsg:Set[OAbsMsg]
 
     def contains(mt:MessageType,sig: Signature)(implicit ch:ClassHierarchyConstraints):Boolean
 
@@ -298,6 +301,8 @@ object LifeState {
     override def lsVar: Set[PureVar] = Set.empty
 
     override def lsVal: Set[PureVal] = Set.empty
+
+    override def allMsg: Set[OAbsMsg] = Set.empty
   }
   sealed trait LSBexp extends LSPred{
 
@@ -333,6 +338,8 @@ object LifeState {
         p.toString
 
     override def lsVal: Set[PureVal] = p.lsVal
+
+    override def allMsg: Set[OAbsMsg] = p.allMsg
   }
 
   case class Exists(vars:List[PureVar], p:LSPred) extends LSPred  with LSUnOp {
@@ -356,6 +363,8 @@ object LifeState {
     override def toTex: String = ???
 
     override def lsVal: Set[PureVal] = p.lsVal
+
+    override def allMsg: Set[OAbsMsg] = p.allMsg
   }
 
   case class CLInit(sig:String) extends LSSingle {
@@ -374,6 +383,8 @@ object LifeState {
     override def toTex: String = ???
 
     override def lsVal: Set[PureVal] = Set.empty
+
+    override def allMsg: Set[OAbsMsg] = Set.empty
   }
   object CLInit{
     implicit var rw:RW[CLInit] = macroRW
@@ -408,6 +419,8 @@ object LifeState {
     override def toTex: String = ???
 
     override def lsVal: Set[PureVal] = Set.empty
+
+    override def allMsg: Set[OAbsMsg] = ???
   }
   object FreshRef{
     private def oneCont(a1:LSPred, a2:LSPred):Option[FreshRef] = {
@@ -450,6 +463,8 @@ object LifeState {
     override def toTex: String = ???
 
     override def lsVal: Set[PureVal] = l1.lsVal ++ l2.lsVal
+
+    override def allMsg: Set[OAbsMsg] = l1.allMsg ++ l2.allMsg
   }
 
   case class And(l1 : LSPred, l2 : LSPred) extends LSBexp with LSBinOp {
@@ -473,6 +488,8 @@ object LifeState {
     override def toTex: String = s"${l1.toTex} \\wedge ${l2.toTex}"
 
     override def lsVal: Set[PureVal] = l1.lsVal ++ l2.lsVal
+
+    override def allMsg: Set[OAbsMsg] = l1.allMsg ++ l2.allMsg
   }
   case class Not(p: LSPred) extends LSAtom with LSUnOp {
     //assert(p.isInstanceOf[OAbsMsg], "not only applicable to once")
@@ -497,6 +514,8 @@ object LifeState {
     }
 
     override def lsVal: Set[PureVal] = p.lsVal
+
+    override def allMsg: Set[OAbsMsg] = p.allMsg
   }
   case class Or(l1:LSPred, l2:LSPred) extends LSBexp with LSBinOp {
 
@@ -517,6 +536,8 @@ object LifeState {
     override def toTex: String = s"${l1.toTex} \\vee ${l2.toTex}"
 
     override def lsVal: Set[PureVal] = l1.lsVal ++ l2.lsVal
+
+    override def allMsg: Set[OAbsMsg] = l1.allMsg ++ l2.allMsg
   }
   case object LSTrue extends LSBexp {
     override def lsVar: Set[PureVar] = Set.empty
@@ -529,6 +550,8 @@ object LifeState {
     override def toTex: String = "\\enkwTrue"
 
     override def lsVal: Set[PureVal] = Set.empty
+
+    override def allMsg: Set[OAbsMsg] = Set.empty
   }
   case object LSFalse extends LSBexp {
     override def lsVar: Set[PureVar] = Set.empty
@@ -541,6 +564,8 @@ object LifeState {
     override def toTex: String = "\\enkwFalse"
 
     override def lsVal: Set[PureVal] = Set.empty
+
+    override def allMsg: Set[OAbsMsg] = Set.empty
   }
 
   /**
@@ -569,6 +594,8 @@ object LifeState {
     override def lsVar: Set[PureVar] = m.lsVar - v
 
     override def lsVal: Set[PureVal] = m.lsVal
+
+    override def allMsg: Set[OAbsMsg] = Set(m.asInstanceOf[OAbsMsg])
   }
 
   sealed trait LSAtom extends LSPred {
@@ -778,25 +805,30 @@ object LifeState {
       OAbsMsg(mt, signatures, lsVars)
   }
 
-//  case object AnyAbsMsg extends AbsMsg {
-//    override def mt: MessageType = ???
-//
-//    override def signatures: SignatureMatcher = ???
-//
-//    override def lsVars: List[PureExpr] = ???
-//
-//    override def swap(swapMap: Map[PureVar, PureVar]): AbsMsg = ???
-//
-//    override def mToTex: String = ???
-//
-//    override def identitySignature: String = ???
-//
-//    override def toTex: String = ???
-//
-//    override def contains(mt: MessageType, sig: Signature)(implicit ch: ClassHierarchyConstraints): Boolean = ???
-//
-//    override def lsVar: Set[PureVar] = ???
-//  }
+  case object AnyAbsMsg extends AbsMsg {
+    override def mt: MessageType = ???
+
+    override def signatures: SignatureMatcher = ???
+
+    override def lsVars: List[PureExpr] = Nil
+
+
+    override def mToTex: String = ???
+
+    override def identitySignature: String = "AnyAbsMsg_______"
+
+    override def toTex: String = ???
+
+    override def contains(mt: MessageType, sig: Signature)(implicit ch: ClassHierarchyConstraints): Boolean = ???
+
+    override def lsVar: Set[PureVar] = Set.empty
+
+    override def swap(swapMap: Map[PureVar, PureExpr]): AbsMsg = this
+
+    override def allMsg: Set[OAbsMsg] = Set.empty
+
+    override def lsVal: Set[PureVal] = ???
+  }
 
 
   case class OAbsMsg(mt: MessageType, signatures: SignatureMatcher, lsVars : List[PureExpr]) extends AbsMsg {
@@ -843,6 +875,8 @@ object LifeState {
       case v:PureVal => Some(v)
       case _ => None
     }.toSet
+
+    override def allMsg: Set[OAbsMsg] = Set(this)
   }
   object OAbsMsg{
     implicit val rw:RW[OAbsMsg] = macroRW
@@ -866,6 +900,8 @@ object LifeState {
     override def toTex: String = s"\\niDir{${i2.mToTex}}{${i1.mToTex}}"
 
     override def lsVal: Set[PureVal] = i1.lsVal ++ i2.lsVal
+
+    override def allMsg: Set[OAbsMsg] = i1.allMsg ++ i2.allMsg
   }
   object NS{
     implicit val rw:RW[NS] = macroRW
@@ -1088,11 +1124,8 @@ object SpecSpace{
   }
 }
 
-object LSSPecAnyOrder extends Ordering[LSSpec]{
-  override def compare(x: LSSpec, y: LSSpec): Int =
-    LSPredAnyOrder.compare(x.pred,y.pred)
-}
-object LSPredAnyOrder extends Ordering[LSPred]{
+
+object LSPredAnyOrder{
 //  private def comb(p1:LSPred, p2:LSPred):Option[Int] ={
 //    (depthToAny(p1),depthToAny(p2)) match{
 //      case (Some(v1), Some(v2)) => Some(Math.min(v1,v2))
@@ -1100,35 +1133,83 @@ object LSPredAnyOrder extends Ordering[LSPred]{
 //      case (_,o)  => o
 //    }
 //  }
-  private def comb(p1:LSPred, p2:LSPred):Int = Math.max(depthToAny(p1), depthToAny(p2))
   private def directCompare(pred1: LifeState.LSPred, pred2: LifeState.LSPred):Int =
     pred1.toString.compareTo(pred2.toString) // ensure deterministic order, probably don't care what order it is.
+
   def depthToAny(p:LSPred):Int = p match {
+    case NS(_, AnyAbsMsg) => 0
     case LSAnyPred => 0
-    case Or(p1, p2) => comb(p1,p2) + 1
-    case And(p1, p2) => comb(p1,p2) + 1
-    case Not(p) => depthToAny(p) + 1
+    case Or(p1, p2) => Math.min(depthToAny(p1), depthToAny(p2))
+    case And(p1, p2) => Math.min(depthToAny(p1), depthToAny(p2))
+    case Not(p) => 999
     case Forall(vars, p) => depthToAny(p) + 1
     case Exists(vars, p) => depthToAny(p) + 1
+    //TODO: find something better here, just needs to be bigger than everything without causing an overflow
+    case _: LifeState.LSAtom => 999
+  }
+  def msgRank(m:AbsMsg): Double = m match{
+    case OAbsMsg(mt, sig, vars) => 1 - (0.01 * vars.count(v => v.isInstanceOf[PureVar]))
+    case AnyAbsMsg => 1 - 0.10
+  }
+  def rankPred(p:LSPred):Double = {
+    def comb(p1:LSPred, p2:LSPred, op:(Double,Double) => Double):Double = op(rankPred(p1) , rankPred(p2))
+    p match {
+      case LSAnyPred => 999
+      case Or(p1, p2) => comb(p1,p2, _+_) + 1
+      case And(p1, p2) => comb(p1,p2, _+_) + 1
+      case Not(p) => rankPred(p) + 1
+      case Forall(vars, p) => rankPred(p) + 1
+      case Exists(vars, p) => rankPred(p) + 1
+      case NS(m1,m2) => msgRank(m1) + msgRank(m2)
+      case m:AbsMsg => msgRank(m)
+//      case _:NS => 2
+      case _: LifeState.LSAtom => 1
+    }
+  }
+  def predDepth(p:LSPred):Int = p match {
+    case LSAnyPred => 1
+    case Or(p1, p2) => predDepth(p1) + predDepth(p2) + 1
+    case And(p1, p2) => predDepth(p1) + predDepth(p2) + 1
+    case Not(p:OAbsMsg) => 1
+    case Forall(vars, p) => predDepth(p)
+    case Exists(vars, p) => predDepth(p)
     case _: LifeState.LSAtom => 1
   }
-  override def compare(x: LSPred, y: LSPred): Int = {
-    val dx = depthToAny(x)
-    val dy = depthToAny(y)
-    if(dx != dy)
-      dy - dx
-    else
-      directCompare(x,y)
+  def predAnyCount(p:LSPred):Int = p match {
+    case LSAnyPred => 1
+    case NS(_,AnyAbsMsg) => 1
+    case Or(p1, p2) => predAnyCount(p1) + predAnyCount(p2)
+    case And(p1, p2) => predAnyCount(p1) + predAnyCount(p2)
+    case Not(p: OAbsMsg) => 0
+    case Forall(_, p) => predAnyCount(p)
+    case Exists(_, p) => predAnyCount(p)
+    case _: LifeState.LSAtom => 0
   }
-}
-object SpecSpaceAnyOrder extends Ordering[SpecSpace]{
-  override def compare(x: SpecSpace, y: SpecSpace): Int = {
-    val res = x.sortedEnableSpecs.view.zip(y.sortedEnableSpecs).collectFirst{
-      case ((s1,d1),(s2,d2)) =>
-        d2 - d1
-    }.getOrElse(0)
-    res
+
+  def hasAny(p: LSPred): Boolean = p match {
+    case LSAnyPred => true
+    case NS(_,AnyAbsMsg) => true
+
+    case Or(p1, p2) => hasAny(p1) || hasAny(p2)
+    case And(p1, p2) => hasAny(p1) || hasAny(p2)
+    case Not(p: OAbsMsg) => hasAny(p)
+    case Forall(_, p) => hasAny(p)
+    case Exists(_, p) => hasAny(p)
+    case _: LifeState.LSAtom => false
   }
+
+  def rankSpecSpace(x: SpecSpace): Int =
+    x.getSpecs.map { s => predDepth(s.pred) }.sum
+  def countAny(p:SpecSpace):Int = {
+    p.getSpecs.map { s => predAnyCount(s.pred) }.sum
+  }
+
+  val SpecSpaceAnyOrder = Ordering.by{(v:SpecSpace) =>
+    (countAny(v), rankSpecSpace(v), v.hashCode())
+  }.reverse //Note priority queue does highest first
+
+  val SpecStepOrder = Ordering.by{(sp:LSSpec) =>
+    (if(hasAny(sp.pred)) 0 else 1, depthToAny(sp.pred), sp.hashCode())}
 }
 
 /**
@@ -1138,10 +1219,6 @@ object SpecSpaceAnyOrder extends Ordering[SpecSpace]{
  * @matcherSpace additional matchers that may be used for synthesis (added to allI)
  **/
 class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(), matcherSpace:Set[OAbsMsg] = Set()) {
-  lazy val sortedEnableSpecs:List[(LSSpec,Int)] = enableSpecs.map{s =>
-    val depth = depthToAny(s.pred)
-    (s,depth)
-  }.toList.sortBy(_._2)
 
   override def toString: String = {
     val builder = new StringBuilder()

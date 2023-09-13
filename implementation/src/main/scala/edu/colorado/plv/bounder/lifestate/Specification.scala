@@ -351,7 +351,7 @@ object SDialog{
   val disallowDismiss:LSSpec = LSSpec(d::Nil, a::Nil,
     And(showI, LifecycleSpec.paused),
     AbsMsg(CIEnter, dismissSignature, TopVal::d::Nil))
-  val showI2 = AbsMsg(CIExit, showSignature, d::TopVal::Nil)
+  val showI2 = AbsMsg(CIExit, showSignature, d::TopVal::TopVal::Nil)
   val noDupeShow:LSSpec = LSSpec(d::Nil, Nil, Not(showI2), showI2)
 }
 

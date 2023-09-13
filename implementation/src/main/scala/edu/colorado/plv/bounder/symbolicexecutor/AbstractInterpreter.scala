@@ -93,7 +93,7 @@ case class PreciseApproxMode(canWeaken:Boolean) extends ApproxMode{
     Some(newState)
 }
 
-case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2) extends ApproxMode { //TODO:====
+case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2) extends ApproxMode {
 
   override def canWeaken:Boolean = true
   override def merge[M,C](existing: () => Iterable[IPathNode], newPN:IPathNode,
@@ -541,7 +541,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
           val subsFast = nodes.find{n => n.qry.state.sf.makeHashable(config.specSpace) == thisNodeHashable}
           if(subsFast.isDefined){
             subsFastCount += 1
-            println(s"subs fast: $subsFastCount")
+//            println(s"subs fast: $subsFastCount")
             subsFast.toSet
           }else {
             nodes.find(p => {

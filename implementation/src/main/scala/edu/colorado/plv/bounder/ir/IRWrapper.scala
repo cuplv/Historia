@@ -4,6 +4,7 @@ import better.files.File
 import edu.colorado.plv.bounder.lifestate.LifeState.Signature
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.AppCodeResolver
+import soot.Scene
 import upickle.default.{macroRW, ReadWriter => RW}
 
 import scala.collection.BitSet
@@ -97,8 +98,8 @@ object TypeSet{
       case TopTypeSet => "TopTypeSet"
       case EmptyTypeSet => "EmptyTypeSet"
       case PrimTypeSet(name) => s"PrimTypeSet:${name}"
-      case BitTypeSet(s) if s.isEmpty => "EmptyTypeSet"
-      case BitTypeSet(s) =>
+      case BitTypeSet(s, _) if s.isEmpty => "EmptyTypeSet"
+      case BitTypeSet(s, _) =>
         s"BitTypeSet:${s.mkString(",")}"
     }
     ,
@@ -189,7 +190,7 @@ case class PrimTypeSet(name:String) extends TypeSet {
 object BitTypeSet{
   implicit var rw:RW[BitTypeSet] = upickle.default.readwriter[String].bimap[BitTypeSet](
     {
-      case BitTypeSet(s) => ??? //s.mkString(",")
+      case BitTypeSet(s, _) => ??? //s.mkString(",")
     }
     ,
     {
@@ -197,12 +198,12 @@ object BitTypeSet{
     }
   )
 }
-case class BitTypeSet(s:BitSet) extends TypeSet {
+case class BitTypeSet(s:BitSet, optInfo: () => Map[Int, AllocSiteInfo] = () => Map.empty) extends TypeSet {
   override def toString: String = s"{${s.take(5).mkString(",")}${if(s.size > 5) " ..." else ""}}"
   def stringRep(ch:ClassHierarchyConstraints):String =
     "{" + s.take(3).map(ch.intToString).mkString(",") + "}"
   override def intersect(other: TypeSet): TypeSet = other match{
-    case BitTypeSet(otherS) => BitTypeSet(s.intersect(otherS))
+    case BitTypeSet(otherS, _) => BitTypeSet(s.intersect(otherS))
     case TopTypeSet => this
     case PrimTypeSet(_) => EmptyTypeSet
     case EmptyTypeSet => EmptyTypeSet
@@ -219,7 +220,7 @@ case class BitTypeSet(s:BitSet) extends TypeSet {
     case EmptyTypeSet => true
     case PrimTypeSet(_) => false
     case TopTypeSet => false
-    case BitTypeSet(otherS) => otherS.subsetOf(s)
+    case BitTypeSet(otherS, _) => otherS.subsetOf(s)
   }
 
   override def filterSubTypeOf(types: Set[String])(implicit ch:ClassHierarchyConstraints): TypeSet = {
@@ -241,7 +242,11 @@ case class BitTypeSet(s:BitSet) extends TypeSet {
     case TopTypeSet => TopTypeSet
     case EmptyTypeSet => this
     case p:PrimTypeSet => throw new IllegalArgumentException(s"Cannot union with primitive type set: ${this} + ${p}")
-    case BitTypeSet(otherS) => BitTypeSet(s.union(otherS))
+    case BitTypeSet(otherS, _) => BitTypeSet(s.union(otherS), other match {
+      case BitTypeSet(s, otherOptInfo) => () => (optInfo() ++ otherOptInfo())
+      case _ => optInfo
+    }
+    )
   }
 }
 
