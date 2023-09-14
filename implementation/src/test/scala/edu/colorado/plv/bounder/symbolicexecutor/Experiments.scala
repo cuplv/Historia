@@ -779,7 +779,14 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
       case (disableClick, expected, fileSuffix) =>
         val memKb = {
           try {
-            BounderUtil.runCmdStdout("""bash -c "grep MemTotal /proc/meminfo | awk '{print $2}'" """).toInt
+            if(BounderUtil.isMac()) {
+              val strMem = BounderUtil.runCmdStdout("""bash -c "sysctl hw.memsize | awk '{print $2}'" """).trim
+              strMem.toDouble * 1000
+            }else{
+              val strMem =
+                BounderUtil.runCmdStdout("""bash -c "grep MemTotal /proc/meminfo | awk '{print $2}'" """)
+              strMem.trim.toDouble
+            }
           } catch {
             case t: Throwable =>
               println("Failed to get mem")
