@@ -876,7 +876,9 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         //          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ, queryOnClickAfterOnCreate,
         //          onClickCanHappenTwice, onClickReachableNoSetEnable, onClickAfterOnCreateAndOnClick)
         //TODO: remove one at a time and figure out smallest set needed for the evaluation
-        val gen = new EnumModelGenerator(query, Set.empty, specSpace, config)
+        val gen = new EnumModelGenerator(query, Set(nullReach, buttonEqReach, onResumeFirstReach,
+                  resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ, queryOnClickAfterOnCreate,
+                  onClickCanHappenTwice, onClickReachableNoSetEnable, onClickAfterOnCreateAndOnClick), specSpace, config)
 
         //Unused: queryOnClickAfterOnCreate
         val res = gen.run()
