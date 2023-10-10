@@ -539,7 +539,8 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       if (unreachCanProve && reachNotRefuted && isTerminal(cSpec)) {
         return LearnSuccess(cSpec)
       }else if(reachNotRefuted && unreachCanProve) {
-        // TODO: ========================== should call excludes initial on all witnesses for candidate before adding it to the queue to go throught the loop again
+        //TODO: figure out what I was talking about with next comment
+        // TODO: should call excludes initial on all witnesses for candidate before adding it to the queue to go throught the loop again
         // take full advantage of past alarms on assertion
         // can we utilize the past results of reachable locations?
 

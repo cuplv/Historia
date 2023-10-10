@@ -3,8 +3,8 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{MultiCallback, Proven, ResultSummary, SingleCallbackMultiMethod, SingleMethod, Timeout, Unreachable, Witnessed, interpretResult}
-import edu.colorado.plv.bounder.ir.{CIExit, SootWrapper}
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, LSConstraint, LSSpec, LSTrue, NS, Not, Or, Signature, SubClassMatcher}
+import edu.colorado.plv.bounder.ir.{CBEnter, CIExit, SootWrapper}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, LSAnyPred, LSConstraint, LSSpec, LSTrue, NS, Not, Or, Signature, SubClassMatcher}
 import edu.colorado.plv.bounder.lifestate.SAsyncTask.executeI
 import edu.colorado.plv.bounder.lifestate.SpecSignatures.{Activity_onPause_entry, Activity_onResume_entry, Button_init}
 import edu.colorado.plv.bounder.lifestate.ViewSpec.{a, b, b2, l, onClick, onClickI, setEnabled, setOnClickListener, setOnClickListenerI, setOnClickListenerINull, v}
@@ -12,7 +12,7 @@ import edu.colorado.plv.bounder.lifestate.{Dummy, FragmentGetActivityNullSpec, L
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.row4Specs
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BoolVal, BottomQry, CallinReturnNonNull, DBOutputMode, DisallowedCallin, FieldPtEdge, IPathNode, MemoryOutputMode, NamedPureVar, NoOutputMode, NotEquals, OutputMode, PrettyPrinting, Qry, Reachable, ReceiverNonNull, TopVal}
-import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{onClickReach, srcReach}
+import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{onClickCanHappenNoPrev, onClickCanHappenWithPrev, onClickReach, queryOnClickTwiceAfterReg, srcReach}
 import edu.colorado.plv.bounder.synthesis.{EnumModelGenerator, EnumModelGeneratorTest}
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
@@ -3161,6 +3161,64 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
           test)
     }
   }
+//  test("Synthesis example - reachableDbg") { f =>
+//    //TODO: this should be unreachble, it appears to be, why does synth accept?
+//
+//    val startingSpec = Set[LSSpec](
+//      ViewSpec.clickWhileNotDisabled.copy(existQuant = NamedPureVar("p-synth_0")::Nil,
+//        pred = Or(NS(setOnClickListenerI.copy(lsVars = List(TopVal, NamedPureVar("p-synth_0"), l)),
+//        AbsMsg(CBEnter,onClick,List(TopVal,l))),
+//        Not(AbsMsg(CBEnter,onClick,List(TopVal,l))))),
+//      LifecycleSpec.Activity_createdOnlyFirst //.copy(pred=LSAnyPred) //TODO======
+//    )
+//    List(
+////      ("v.setOnClickListener(null);", f.expectReachable, specs0),
+////      ("", f.expectReachable, specs1),
+//      ("v.setOnClickListener(null);", f.expectUnreachable, startingSpec),
+//    ).foreach {
+//      case (disableClick, expected, specs) =>
+//
+//        val test: String => Unit = apk => {
+//          File.usingTemporaryDirectory() { tmpDir =>
+//            assert(apk != null)
+//            val dbFile = tmpDir / "paths.db"
+//            println(dbFile)
+//            // implicit val dbMode = DBOutputMode(dbFile.toString, truncate = false)
+//            // dbMode.startMeta()
+//            implicit val dbMode = MemoryOutputMode
+//
+////            val iSet = Set(onClickI, setOnClickListenerI, setOnClickListenerINull,
+////              Activity_onResume_entry, Activity_onPause_entry, Button_init)
+//            val iSet = startingSpec.flatMap{s => s.pred.allMsg + s.target }
+//
+//            val w = new SootWrapper(apk, specs)
+//
+//            val specSpace = new SpecSpace(specs, matcherSpace = iSet)
+//            val config = ExecutorConfig(
+//              stepLimit = 2000, w, specSpace,
+//              component = Some(List(".*")), outputMode = dbMode,
+//              approxMode = PreciseApproxMode(false))
+//
+//            {
+//              val symbolicExecutor = config.getAbstractInterpreter
+//              val nullUnreachRes = symbolicExecutor.run(queryOnClickTwiceAfterReg, dbMode).flatMap(a => a.terminals)
+//              PrettyPrinting.dumpDebugInfo(nullUnreachRes, s"reach__", truncate = false)
+//              assert(nullUnreachRes.nonEmpty)
+//              BounderUtil.throwIfStackTrace(nullUnreachRes)
+//              PrettyPrinting.printWitness(nullUnreachRes)
+//              val interpretedResult: BounderUtil.ResultSummary =
+//                BounderUtil.interpretResult(nullUnreachRes, QueryFinished)
+//              println(s"expected: $expected")
+//              println(s"actual: $interpretedResult")
+////              expected(interpretedResult)
+//            }
+//          }
+//        }
+//        makeApkWithSources(Map("MyActivity.java" -> EnumModelGeneratorTest.row4(disableClick),
+//          "OtherActivity.java" -> EnumModelGeneratorTest.srcReach), MkApk.RXBase,
+//          test)
+//    }
+//  }
   test("Synthesis example - simplification of Connect bot click/finish") { f =>
     //TODO: test reachable locations from EnumModelGenerator ===
     val specs0 = Set[LSSpec](
