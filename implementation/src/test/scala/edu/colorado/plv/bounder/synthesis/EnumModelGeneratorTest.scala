@@ -4,7 +4,7 @@ import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed, interpretResult}
 import edu.colorado.plv.bounder.ir.{CBEnter, CIEnter, CIExit, SootWrapper}
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, LSAnyPred, LSSpec, NS, Not, OAbsMsg, Or, Signature}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, AnyAbsMsg, LSAnyPred, LSSpec, NS, Not, OAbsMsg, Or, Signature}
 import edu.colorado.plv.bounder.lifestate.SAsyncTask.executeI
 import edu.colorado.plv.bounder.lifestate.SDialog.dismissSignature
 import edu.colorado.plv.bounder.lifestate.SpecSignatures.{Activity_onPause_entry, Activity_onPause_exit, Activity_onResume_entry, Button_init}
@@ -460,13 +460,15 @@ object EnumModelGeneratorTest{
        |        button.setEnabled(true);
        |
        |        Button button2 = new Button(this);
-       |        button2.setOnClickListener(new OnClickListener(){
+       |        OnClickListener listener = new OnClickListener(){
        |          @Override
        |          public void onClick(View v){
-       |             "".toString(); // onClickReachableNoSetEnable
+       |            "".toString(); // onClickReachableNoSetEnable
        |          }
-       |        });
-       |
+       |        };
+       |        button2.setOnClickListener(listener);
+       |        button.setEnabled(true);
+       |        button2.setOnClickListener(listener);
        |    }
        |    @Override
        |    protected void onResume(){
@@ -582,7 +584,7 @@ object EnumModelGeneratorTest{
   val resumeFirst = BounderUtil.lineForRegex(".*query7.*".r, srcReach)
   val resumeFirstQ = Reachable(onRes, resumeFirst)
 
-  val allReach = Set[InitialQuery](
+  val allReach = List[InitialQuery](
     buttonEqReach,
     nullReach,
     onResumeFirstReach,
@@ -593,7 +595,10 @@ object EnumModelGeneratorTest{
     resumeTwiceReachQ,
     row1ActCreatedFirst,
     onClickCanHappenTwice,
-    onClickAfterOnCreateAndOnClick
+    onClickAfterOnCreateAndOnClick,
+    queryOnClickTwiceAfterReg,
+    onClickCanHappenWithPrev,
+    onClickCanHappenNoPrev
   )
 }
 class EnumModelGeneratorTest extends AnyFunSuite {
@@ -788,13 +793,15 @@ class EnumModelGeneratorTest extends AnyFunSuite {
   test("Synthesis Row 2: Antennapod execute") {
 
     val row2Src = row2("button.setEnabled(false);")
-    val startingSpec = Set[LSSpec]( //TODO==== update pred to be any
-      ViewSpec.clickWhileNotDisabled.copy(pred =
-        And(setOnClickListenerI.copy(lsVars = List(TopVal, NamedPureVar("p-synth_0"), l)),LSAnyPred ),
-        existQuant = NamedPureVar("p-synth_0")::Nil),
-//      ViewSpec.clickWhileNotDisabled.copy(pred = Or(Not(AbsMsg(CBEnter, onClick, List(TopVal, l))),
-//        Not(setOnClickListenerI.copy(lsVars = List(TopVal, TopVal, l)))),
-//        existQuant = Nil),
+    val startingSpec = Set[LSSpec]( //TODO==== partially filled out, perhaps back off when we figure out what is wrong
+      ViewSpec.clickWhileNotDisabled.copy(
+        pred = And(setOnClickListenerI, LSAnyPred), existQuant = v::Nil),
+//          Not(AbsMsg(CIExit, setEnabled, TopVal::v::BoolVal(false)::Nil)),
+//          NS(AbsMsg(CIExit, setEnabled, TopVal::v::BoolVal(true)::Nil), AnyAbsMsg))), existQuant= v::Nil),
+//      ViewSpec.clickWhileNotDisabled.copy(pred = LSAnyPred,existQuant = Nil),
+//        And(setOnClickListenerI.copy(lsVars = List(TopVal, v, l)),
+//          Or(Not(AbsMsg(CIExit, setEnabled, TopVal::v::BoolVal(false)::Nil)),LSAnyPred) ),
+//        existQuant = v::Nil),
       LifecycleSpec.Activity_createdOnlyFirst //.copy(pred=LSAnyPred) //TODO======
     )
 
@@ -822,7 +829,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         val config = ExecutorConfig(
           stepLimit = 2000, w, specSpace,
           component = Some(List("com.example.createdestroy.*")),
-          outputMode = dbMode, timeLimit = 30, z3InstanceLimit = 3)
+          outputMode = dbMode, timeLimit = 60, z3InstanceLimit = 3)
 
         val query = DisallowedCallin(
           "com.example.createdestroy.RemoverActivity$1",

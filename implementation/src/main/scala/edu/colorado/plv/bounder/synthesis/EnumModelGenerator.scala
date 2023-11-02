@@ -56,7 +56,7 @@ object EnumModelGenerator{
 
 }
 class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], initialSpec:SpecSpace
-                              ,cfg:ExecutorConfig[M,C], dbg:Boolean = false)
+                              ,cfg:ExecutorConfig[M,C], dbg:Boolean = false, nonConnected:Boolean = false)
   extends ModelGenerator(cfg.w.getClassHierarchyConstraints) {
   private val cha = cfg.w.getClassHierarchyConstraints
   private val controlFlowResolver =
@@ -401,7 +401,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
             val newQuant = freeVars.removedAll(un).removedAll(ex)
             s.copy(pred = pred, existQuant = ex.appendedAll(newQuant).distinct)
           }
-          val filteredConnected = outS.filter{p => connectedSpec(p)}
+          val filteredConnected = outS.filter{p => connectedSpec(p) || nonConnected}
           (filteredConnected,true)
         case NoStep => (List(s),false)
       }
@@ -484,8 +484,6 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
   def stepSpecSpace(specSpace:SpecSpace, witnesses:Set[IPathNode]):(Set[SpecSpace],Boolean) = { //TODO: figure out why I did this boolean thing and not just empty set
     val specToStep = specSpace.getSpecs.filter(s => LSPredAnyOrder.hasAny(s.pred))
       .toList.sorted(LSPredAnyOrder.SpecStepOrder).headOption
-//      .sortedEnableSpecs.map(a => (a._1, LSPredAnyOrder.depthToAny(a._1.pred)))
-//      .sortBy(a => a._2).headOption.map(_._1)
     if(specToStep.isEmpty)
       return (Set(specSpace),false)
     val (next:List[LSSpec],changed) =
@@ -554,9 +552,9 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
         // "data structure specification synthesis" - synthesizing relation on data structures - internal representation that does not involve quantifiers
         val overApproxAlarm: Set[IPathNode] = mkApproxResForQry(target, cSpec, OverApprox,
           LimitMaterializationApproxMode(2))
-        val someAlarm:Set[IPathNode] = overApproxAlarm.filter(pn => pn.qry.isWitnessed || pn.qry.isLive)
-        if (someAlarm.nonEmpty) {
-          val nextSpecs = stepSpecSpace(cSpec, someAlarm)
+        val liveAndWit:Set[IPathNode] = overApproxAlarm.filter(pn => pn.qry.isWitnessed || pn.qry.isLive)
+        if (liveAndWit.nonEmpty) {
+          val nextSpecs = stepSpecSpace(cSpec, liveAndWit)
 //          println(s"next specs\n===========\n${nextSpecs._1.mkString("\n---\n")}")
           val filtered = nextSpecs._1.filter { spec => !hasExplored(spec) }
           queue.addAll(filtered)
@@ -567,20 +565,5 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     LearnFailure //no more spec expansions to try
   }
 
-
-  /**
-   *
-   * @param posExamples set of traces representing reachable points (List in reverse execution order)
-   * @param negExamples
-   * @param rulesFor    learn rules restricting the back messages in this set
-   * @return an automata represented by transition tuples (source state, transition symbol, target state)
-   */
-  override def learnRulesFromExamples(target: Set[IPathNode],
-                                      reachable: Set[IPathNode],
-                                      space: SpecSpace)(implicit outputMode: OutputMode): Option[SpecAssignment] = {
-    val targetTraces = target.flatMap(makeTraces(_,space) )
-    val reachTraces = target.flatMap(makeTraces(_,space) )
-    ???
-  }
 
 }

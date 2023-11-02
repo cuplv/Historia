@@ -136,16 +136,4 @@ abstract class ModelGenerator(cha:ClassHierarchyConstraints) {
     iTracesToN(StateFormula.initialState, leaf).map(Trace(_))
   }
 
-
-  /**
-   *
-   * @param posExamples set of traces representing reachable points (List in reverse execution order)
-   * @param negExamples
-   * @param rulesFor    learn rules restricting the back messages in this set
-   * @return an automata represented by transition tuples (source state, transition symbol, target state)
-   */
-  def learnRulesFromExamples(target: Set[IPathNode],
-                             reachable: Set[IPathNode],
-                             space:SpecSpace)(implicit outputMode: OutputMode): Option[SpecAssignment]
-
 }
