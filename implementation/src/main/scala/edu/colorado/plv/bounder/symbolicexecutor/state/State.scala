@@ -275,6 +275,11 @@ case class State(sf:StateFormula,
                  isSimplified:Boolean = false, // should only be set by simplify method of StateSolver
                  currentCallback:Option[CallbackMethodReturn] = None // used to reduce state space explosion when widening call strings
                 ) {
+  def mayBeNull(pv: PureVar): Boolean = {
+    !sf.pureFormula.contains(PureConstraint(pv,NotEquals,NullVal))
+  }
+
+
   def copy(sf:StateFormula = sf, nextAddr:Int = nextAddr, nextCmd:List[Loc] = nextCmd,
            alternateCmd:List[Loc] = alternateCmd,
            isSimplified:Boolean = isSimplified,

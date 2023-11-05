@@ -7,8 +7,8 @@ import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, AnyAbsMsg, Exi
 import edu.colorado.plv.bounder.lifestate.{LSPredAnyOrder, LifeState, SpecAssignment, SpecSpace}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.{ApproxMode, ControlFlowResolver, DefaultAppCodeResolver, ExecutorConfig, LimitMaterializationApproxMode, PreciseApproxMode, QueryFinished}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, AllReceiversNonNull, CallinReturnNonNull, DirectInitialQuery, DisallowedCallin, IPathNode, InitialQuery, MemoryOutputMode, NPureVar, NamedPureVar, NullVal, OutputMode, PrettyPrinting, PureExpr, PureVar, Reachable, ReceiverNonNull, State, TopVal}
-import edu.colorado.plv.bounder.synthesis.EnumModelGenerator.{NoStep, StepResult, StepSuccessM, StepSuccessP, isTerminal}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, AllReceiversNonNull, BoolVal, CallinReturnNonNull, DirectInitialQuery, DisallowedCallin, IPathNode, InitialQuery, IntVal, MemoryOutputMode, NPureVar, NamedPureVar, NullVal, OutputMode, PrettyPrinting, PureExpr, PureVal, PureVar, Reachable, ReceiverNonNull, State, TopVal}
+import edu.colorado.plv.bounder.synthesis.EnumModelGenerator.{NoStep, StepResult, StepSuccessM, StepSuccessP, approxSpec, isTerminal}
 
 import scala.collection.concurrent.TrieMap
 import scala.collection.{View, immutable, mutable}
@@ -24,6 +24,36 @@ case class LearnSuccess(space: SpecSpace) extends LearnResult
 case object LearnFailure extends LearnResult
 
 object EnumModelGenerator{
+  def approxPred(lsPred: LSPred, approxDir: ApproxDir): LSPred = {
+    val replaceAnyWith = approxDir match {
+      case OverApprox => LSTrue
+      case UnderApprox => LSFalse
+      case Exact =>
+        ???
+    }
+    lsPred match {
+      case NS(m, AnyAbsMsg) if approxDir == OverApprox => m
+      case NS(m, AnyAbsMsg) if approxDir != OverApprox => LSFalse
+      case LSAnyPred => replaceAnyWith
+      case Or(l1, l2) => Or(approxPred(l1, approxDir), approxPred(l2, approxDir))
+      case And(l1, l2) => And(approxPred(l1, approxDir), approxPred(l2, approxDir))
+      case Forall(vars, p) => Forall(vars, approxPred(p, approxDir))
+      case Exists(vars, p) => Exists(vars, approxPred(p, approxDir))
+      case atom: LSAtom => atom
+      case v =>
+        println(v)
+        ???
+    }
+  }
+
+
+  def approxSpec(lsSpec: LSSpec, approxDir: ApproxDir): LSSpec =
+    lsSpec.copy(pred = EncodingTools.simplifyPred(approxPred(lsSpec.pred, approxDir)))
+
+  def approxSpec(spec: SpecSpace, approxDir: ApproxDir): SpecSpace = {
+    val specs = spec.getSpecs.map(approxSpec(_, approxDir))
+    spec.copy(enableSpecs = specs)
+  }
   def isTerminal(pred:LSPred):Boolean = pred match {
     case NS(_,AnyAbsMsg) => false
     case NS(AnyAbsMsg, _) => ???
@@ -152,8 +182,8 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
 
 
   def mergeOne(predConstruct:LSPred => LSPred, sub:LSPred, scope:Map[PureVar,TypeSet],
-               freshOpt:Set[PureVar]):StepResult = {
-    step(sub, scope, freshOpt) match{
+               freshOpt:Set[PureVar], witnesses:Set[IPathNode]):StepResult = {
+    step(sub, scope, freshOpt, witnesses) match{
       case StepSuccessP(preds) => StepSuccessP(preds.map{case (p,tq) => (predConstruct(p),tq)})
       case StepSuccessM(preds) => StepSuccessP(preds.map{case (p,tq) => (predConstruct(p),tq)})
       case NoStep => NoStep
@@ -238,19 +268,49 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
   }
 
   def stepBinop(l1: LSPred, l2: LSPred, op:(LSPred,LSPred) => LSPred,
-                scope:Map[PureVar, TypeSet], freshOpt:Set[PureVar], hasAnd:Boolean): StepResult = {
+                scope:Map[PureVar, TypeSet], freshOpt:Set[PureVar], hasAnd:Boolean, witnesses:Set[IPathNode]): StepResult = {
     val l1_step = if (LSPredAnyOrder.depthToAny(l1) < LSPredAnyOrder.depthToAny(l2)) {
-      step(l1, scope, freshOpt, hasAnd)
+      step(l1, scope, freshOpt, witnesses, hasAnd)
     } else NoStep
     l1_step match {
       case NoStep =>
-        step(l2, scope,freshOpt, hasAnd) match {
+        step(l2, scope,freshOpt, witnesses, hasAnd) match {
           case StepSuccessP(preds) => StepSuccessP(preds.map(p => (op(l1, p._1), p._2 ++ scope.keySet)))
           case StepSuccessM(msg) => ???
           case NoStep => NoStep
         }
       case StepSuccessP(preds) => StepSuccessP(preds.map(p => (op(p._1, l2), p._2 ++ scope.keySet)))
     }
+  }
+
+  def scopedMsgExistsInWit(witness:IPathNode, scope:Map[PureVar,TypeSet], absMsg: AbsMsg):Boolean = {
+    assert(witness.qry.isWitnessed || witness.qry.isLive, "witness must be live/timeout or include initial state")
+    val alarmState = witness.qry.state
+    val out = alarmState.sf.traceAbstraction.rightOfArrow.exists{msgFromWit =>
+      (msgFromWit.identitySignature == absMsg.identitySignature) && // msg matches id
+        msgFromWit.lsVars.zip(absMsg.lsVars).forall{ // all args must match scoped vars
+          case (v1:PureVar,v2:PureVar) =>
+            val ruleTs = scope.getOrElse(v2,TopTypeSet)
+            val absStateTs = alarmState.typeConstraints.getOrElse(v1, TopTypeSet)
+            ruleTs.intersectNonEmpty(absStateTs)
+          case (TopVal,_)  => true
+          case (_, TopVal) => true
+          case (v1:PureVal, v2:PureVal) => v1 == v2
+          case (IntVal(0), BoolVal(false)) => true
+          case (BoolVal(false),IntVal(0)) => true
+          case (IntVal(v), BoolVal(true)) if v!= 0 => true
+          case (BoolVal(true),IntVal(v)) if v!= 0 => true
+          case (_:IntVal, _:BoolVal) => false
+          case (_:BoolVal,_:IntVal) => false
+          case (v1:PureVar, NullVal) => alarmState.mayBeNull(v1)
+          case (NullVal, _) => true
+          case (v1,v2) =>
+            println(v1) // const vals, should they match?
+            println(v2) // const vals, should they match?
+            ???
+        }
+    }
+    out
   }
 
   /**
@@ -262,7 +322,8 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
    * @param hasAnd
    * @return stepped specification with new logic variables to be quantified
    */
-  def step(pred:LSPred, scope:Map[PureVar,TypeSet], freshOpt:Set[PureVar], hasAnd:Boolean = false):StepResult = pred match{
+  def step(pred:LSPred, scope:Map[PureVar,TypeSet], freshOpt:Set[PureVar], witnesses:Set[IPathNode],
+           hasAnd:Boolean = false):StepResult = pred match{
     case LifeState.LSAnyPred =>{
       val relMsg: immutable.Iterable[OAbsMsg] = mkRel(scope, freshOpt)//scope.flatMap{case(pv,ts) => mkRel(pv,ts, scope.keySet)}
 
@@ -285,10 +346,22 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       val mutList = new ListBuffer[(LSPred, Set[PureVar])]()
       mutList.addAll(relNS)
       mutList.addAll(relMsgToAdd)
-      mutList.addAll(relMsg.map{ m => (Not(m.copyMsg(m.lsVars.map{
-        case v:PureVar if scope.contains(v) => v
-        case _ => TopVal
-      })), Set[PureVar]())})
+//      val TODORM_oldNotList = relMsg.flatMap { m =>  //TODO: remove at some point
+//          Some(Not(m.copyMsg(m.lsVars.map {
+//            case v: PureVar if scope.contains(v) => v
+//            case _ => TopVal
+//          })), Set[PureVar]())
+//      }
+
+      mutList.addAll(relMsg.flatMap{ m =>
+        if(witnesses.exists{w => scopedMsgExistsInWit(w, scope, m)}) { //no reason to have not if no instance in hist
+          Some(Not(m.copyMsg(m.lsVars.map {
+            case v: PureVar if scope.contains(v) => v
+            case _ => TopVal
+          })), Set[PureVar]())
+        }else
+          None
+      })
 
       val binOps = if(hasAnd) List(Or) else List(Or,And)
       binOps.foreach { op =>
@@ -302,18 +375,19 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       val out = stepNS.filter {
           case NS(m1,m2) =>
             val m1Var = m1.lsVar
-            m1Var.exists(v => scope.contains(v)) &&
+            witnesses.exists{w => scopedMsgExistsInWit(w, scope, m2)} && //no reason to have not if no instance in hist
+              m1Var.exists(v => scope.contains(v)) &&
               m2.lsVar.forall(v => m1Var.contains(v))
       }.map{
         case ns@NS(_,m2) => (ns, scope.keySet ++ m2.lsVar)
       }
       StepSuccessP(out.toList)
     case Or(l1, l2) =>
-      stepBinop(l1,l2,Or, scope,freshOpt, hasAnd)
+      stepBinop(l1,l2,Or, scope,freshOpt, hasAnd, witnesses)
     case And(l1, l2) =>
-      stepBinop(l1,l2,And, scope,freshOpt, hasAnd = true)
-    case Forall(x, s) => mergeOne(v => Forall(x,v), s, scope ++ x.map(_ -> TopTypeSet), freshOpt)
-    case Exists(x, p) => mergeOne(Exists(x,_), p, scope ++ x.map(_ -> TopTypeSet), freshOpt)
+      stepBinop(l1,l2,And, scope,freshOpt, hasAnd = true, witnesses)
+    case Forall(x, s) => mergeOne(v => Forall(x,v), s, scope ++ x.map(_ -> TopTypeSet), freshOpt, witnesses)
+    case Exists(x, p) => mergeOne(Exists(x,_), p, scope ++ x.map(_ -> TopTypeSet), freshOpt, witnesses)
     case _:NS => NoStep
 //    case NS(m1, m2) => mergeTwo((a:AbsMsg,b:AbsMsg) => NS(b,a),m2,m1,scope)
     case _:OAbsMsg => NoStep
@@ -384,7 +458,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
    * @param scope all variables that have been instantiated in the verification task and associated points to
    * @return next spec, whether spec was stepped
    */
-  def stepSpec(rule:LSSpec, scope:Map[PureVar,TypeSet]):(List[LSSpec],Boolean) = rule match{
+  def stepSpec(rule:LSSpec, scope:Map[PureVar,TypeSet], witnesses:Set[IPathNode]):(List[LSSpec],Boolean) = rule match{
     case s@LSSpec(un,ex,pred,tgt,_) =>
       val allFv: Set[PureVar] = un.toSet ++ ex.toSet ++ pred.lsVar ++ tgt.lsVar
       var fv = 0
@@ -392,7 +466,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
         fv = fv + 1
       }
       val freshOpt:Set[PureVar] = Set(NamedPureVar(s"synth_${fv}"))
-      val stepped: (List[LSSpec], Boolean) = step(pred, scope, freshOpt) match {
+      val stepped: (List[LSSpec], Boolean) = step(pred, scope, freshOpt, witnesses) match {
         case StepSuccessP(preds) =>
           val simplifiedPreds = preds.map { case (p, quant) =>
             EncodingTools.simplifyPred( p)}
@@ -406,7 +480,11 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
         case NoStep => (List(s),false)
       }
       //TODO: this isn't enough for the call call problem, seems to be a problem with reachable
-      (stepped._1.filter(v => v.pred != v.target), stepped._2) // Note that `x.foo() -[]-> O x.foo()` spec is nonsense
+      (stepped._1.filter{
+//        v => v.pred != v.target
+        case LSSpec(_,_,pred:OAbsMsg,tgt:OAbsMsg,_) => pred.identitySignature != tgt.identitySignature
+        case _ => true
+      }, stepped._2) // Note that `x.foo() -[]-> O x.foo()` spec can never match finite history
   }
 
   /**
@@ -445,36 +523,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     }
   }
 
-  def approxPred(lsPred: LSPred, approxDir: ApproxDir):LSPred = {
-    val replaceAnyWith = approxDir match {
-      case OverApprox => LSTrue
-      case UnderApprox => LSFalse
-      case Exact =>
-        ???
-    }
-    lsPred match {
-      case NS(m, AnyAbsMsg) if approxDir == OverApprox => m
-      case NS(m, AnyAbsMsg) if approxDir != OverApprox => LSFalse
-      case LSAnyPred => replaceAnyWith
-      case Or(l1,l2) => Or(approxPred(l1,approxDir), approxPred(l2,approxDir))
-      case And(l1,l2) => And(approxPred(l1,approxDir), approxPred(l2,approxDir))
-      case Forall(vars, p) => Forall(vars, approxPred(p,approxDir))
-      case Exists(vars, p) => Exists(vars,approxPred(p,approxDir))
-      case atom: LSAtom => atom
-      case v =>
-        println(v)
-        ???
-    }
-  }
 
-
-  def approxSpec(lsSpec: LSSpec, approxDir: ApproxDir):LSSpec =
-    lsSpec.copy(pred = EncodingTools.simplifyPred(approxPred(lsSpec.pred, approxDir)))
-
-  def approxSpec(spec:SpecSpace, approxDir: ApproxDir):SpecSpace = {
-    val specs = spec.getSpecs.map(approxSpec(_,approxDir))
-    spec.copy(enableSpecs = specs)
-  }
 
   /**
    *
@@ -487,10 +536,11 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     if(specToStep.isEmpty)
       return (Set(specSpace),false)
     val (next:List[LSSpec],changed) =
-      stepSpec(specToStep.get,mkScope(specToStep.get, witnesses))
+      stepSpec(specToStep.get,mkScope(specToStep.get, witnesses), witnesses)
 
     val base: Set[LSSpec] = specSpace.getSpecs.filter { s => s != specToStep.get }
-    (next.map { n => new SpecSpace(base + n, disallowSpecs = specSpace.getDisallowSpecs) }.toSet, true)
+    (next.map { n => new SpecSpace(base + n, disallowSpecs = specSpace.getDisallowSpecs,
+      matcherSpace = specSpace.getMatcherSpace) }.toSet, true)
   }
 
   def run():LearnResult = {

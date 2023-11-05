@@ -3,8 +3,8 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{MultiCallback, Proven, ResultSummary, SingleCallbackMultiMethod, SingleMethod, Timeout, Unreachable, Witnessed, interpretResult}
-import edu.colorado.plv.bounder.ir.{CBEnter, CIExit, SootWrapper}
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, LSAnyPred, LSConstraint, LSSpec, LSTrue, NS, Not, Or, Signature, SubClassMatcher}
+import edu.colorado.plv.bounder.ir.{CBEnter, CIExit, OverApprox, SootWrapper}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, AnyAbsMsg, Exists, LSAnyPred, LSConstraint, LSSpec, LSTrue, NS, Not, Or, Signature, SubClassMatcher}
 import edu.colorado.plv.bounder.lifestate.SAsyncTask.executeI
 import edu.colorado.plv.bounder.lifestate.SpecSignatures.{Activity_onPause_entry, Activity_onResume_entry, Button_init}
 import edu.colorado.plv.bounder.lifestate.ViewSpec.{a, b, b2, l, onClick, onClickI, setEnabled, setOnClickListener, setOnClickListenerI, setOnClickListenerINull, v}
@@ -3514,6 +3514,56 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       makeApkWithSources(Map("RemoverActivity.java" -> src, "OtherActivity.java" -> src2 ), MkApk.RXBase, test)
     }
   }
+
+//  test("Row1: Antennapod getAct should have unsub in alarm") { f =>
+//      val src = EnumModelGeneratorTest.row1("sub.unsubscribe();")
+//      val test: String => Unit = apk => {
+//        assert(apk != null)
+//
+//        val specs = Set[LSSpec](
+//          LifecycleSpec.Fragment_activityCreatedOnlyFirst,
+//          RxJavaSpec.call.copy(pred = NS(
+//            SpecSignatures.RxJava_subscribe_exit,
+//            AnyAbsMsg)),
+//          FragmentGetActivityNullSpec.getActivityNull
+//        )
+//
+//        val w = new SootWrapper(apk, specs)
+//
+//
+//
+//        val iSet = Set(
+//          SpecSignatures.Fragment_onDestroy_exit,
+//          SpecSignatures.Fragment_onActivityCreated_entry,
+//          SpecSignatures.RxJava_call_entry,
+//          SpecSignatures.RxJava_unsubscribe_exit,
+//          SpecSignatures.RxJava_subscribe_exit,
+//        )
+//
+//        val specSpace = EnumModelGenerator.approxSpec(
+//          new SpecSpace(specs, Set(SAsyncTask.disallowDoubleExecute), iSet), OverApprox)
+//        val config = ExecutorConfig(
+//          stepLimit = 200, w, specSpace,
+//          component = Some(List("com.example.createdestroy.*")))
+//        implicit val om = config.outputMode
+//        val symbolicExecutor = config.getAbstractInterpreter
+//        val line = BounderUtil.lineForRegex(".*query1.*".r, src)
+//        val reachWithSpec = CallinReturnNonNull(
+//          Signature("com.example.createdestroy.PlayerFragment$1",
+//            "void call(java.lang.Object)"), line,
+//          ".*getActivity.*")
+//
+//        val result2 = symbolicExecutor.run(reachWithSpec).flatMap(_.terminals)
+//        val interpretedResult2 = BounderUtil.interpretResult(result2, QueryFinished)
+//        PrettyPrinting.dumpDebugInfo(result2, "s")
+//        val wit = result2.filter{res => res.qry.isWitnessed}
+//        assert(interpretedResult2 == Witnessed) //TODO: ==== witness contains unsub here why not in synth?
+//
+//      }
+//
+//      makeApkWithSources(Map("PlayerFragment.java" -> src), MkApk.RXBase, test)
+//  }
+
   //TODO: figure out why this fails with row 1
 //  LSSpec(List(p - l), List(p - s), (Not O (CIExit I_CIExit_FragmentgetActivity(_T_, p - l)), O(CBEnter I_CBEnter_rxJavacall(_T_, p - l), Set())
 //    LSSpec(List(p - f), List(), ∃ p -s.NS(O(CBEnter I_CBEnter_FragmentonActivityCreated(_T_, p - f), O(CIExit I_CIExit_RxJavasubscribe(p - s, _T_, p - f)), O(CIExit I_CIExit_FragmentgetActivity(NULL, p - f), Set())

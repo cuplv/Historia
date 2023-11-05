@@ -1199,13 +1199,16 @@ object LSPredAnyOrder{
   }
 
   def rankSpecSpace(x: SpecSpace): Int =
-    x.getSpecs.map { s => predDepth(s.pred) }.sum
+    x.getSpecs.toList.map { s => predDepth(s.pred) }.sum
   def countAny(p:SpecSpace):Int = {
-    p.getSpecs.map { s => predAnyCount(s.pred) }.sum
+    p.getSpecs.toList.map { s =>
+      predAnyCount(s.pred)
+    }.sum
   }
 
   val SpecSpaceAnyOrder = Ordering.by{(v:SpecSpace) =>
-    (countAny(v), rankSpecSpace(v), v.hashCode())
+//    (countAny(v), rankSpecSpace(v), v.hashCode())
+    (rankSpecSpace(v), hashCode()) //TODO:=== is this better?
   }.reverse //Note priority queue does highest first
 
   val SpecStepOrder = Ordering.by{(sp:LSSpec) =>

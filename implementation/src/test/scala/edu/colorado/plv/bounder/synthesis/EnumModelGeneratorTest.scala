@@ -647,7 +647,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
     val spec = new SpecSpace(Set(
       LSSpec(a::Nil,Nil,  LSAnyPred , a_call)
     ), matcherSpace = Set())
-    val res = gen.learnRulesFromExamples(unreachSeq, reachSeq, spec)
+//    val res = gen.learnRulesFromExamples(unreachSeq, reachSeq, spec)
     ???
 
 
@@ -693,7 +693,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
       var i = 0
       var c = List(hi)
       while(i < 10){
-        c = gen.stepSpec(c.head, Map())._1
+        c = gen.stepSpec(c.head, Map(), ???)._1
         println(c)
         //TODO:
       }
@@ -709,8 +709,12 @@ class EnumModelGeneratorTest extends AnyFunSuite {
 
     val row1Src = row1("sub.unsubscribe();")
     val startingSpec = Set[LSSpec](
+//      LifecycleSpec.Fragment_activityCreatedOnlyFirst.copy(pred=LSAnyPred),
+//      RxJavaSpec.call.copy(pred = NS(
+//        SpecSignatures.RxJava_subscribe_exit,
+//        AnyAbsMsg)),
+//      FragmentGetActivityNullSpec.getActivityNull
       LSSpec(l::Nil, Nil, LSAnyPred, SpecSignatures.RxJava_call_entry),
-//      LifecycleSpec.Fragment_activityCreatedOnlyFirst,
       LSSpec(f :: Nil, Nil,
         LSAnyPred,
         SpecSignatures.Fragment_onActivityCreated_entry),
