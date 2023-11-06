@@ -819,11 +819,11 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         implicit val dbMode = MemoryOutputMode
 
         val iSet = Set(
-          setOnClickListenerI,
+//          setOnClickListenerI,
           AbsMsg(CIExit, setEnabled, TopVal::v::BoolVal(false)::Nil),
           AbsMsg(CIExit, setEnabled, TopVal::v::BoolVal(true)::Nil),
-          SpecSignatures.Activity_onCreate_entry,
-          executeI
+//          SpecSignatures.Activity_onCreate_entry,
+//          executeI
         )
 
         val w = new SootWrapper(apk, toOverride = startingSpec ++ iSet)
@@ -871,7 +871,8 @@ class EnumModelGeneratorTest extends AnyFunSuite {
             assert(interpretResult(nullUnreachWit) == Proven)
             if (DUMP_DBG)
               PrettyPrinting.dumpDebugInfo(nullUnreachWit, "cbNullUnreachSynth")
-            assert(false) //TODO: check synthesized spec ===
+            assert(false) //TODO: check synthesized spec === not working yet last I checked
+          //TODO: should implement auto check for synth specs
           case LearnFailure => throw new IllegalStateException("failed to learn a sufficient spec")
         }
       }
@@ -881,11 +882,12 @@ class EnumModelGeneratorTest extends AnyFunSuite {
       test)
   }
 
-  test("Synthesis Row 5: Antennapod dismiss") {
+  test("Synthesis Row 3: Antennapod dismiss") {
     val startingSpec = Set[LSSpec](
       SDialog.noDupeShow.copy(pred = LSAnyPred)
     )
-
+    //TODO:==== broken? seems to get stuck with final spec now or just takes too long?   How is this different from Experiments.scala?
+//    ???
     val test: String => Unit = apk => {
       File.usingTemporaryDirectory() { tmpDir =>
         assert(apk != null)
@@ -958,7 +960,6 @@ class EnumModelGeneratorTest extends AnyFunSuite {
       "PlayerFragmentReach.java" -> srcReachFrag), MkApk.RXBase,
       test)
   }
-  //TODO: other rows from small exp historia
   test("Synthesis Row 4: simplification of Connect bot click/finish") {
 
     //Or(NS(SpecSignatures.Activity_onPause_exit, SpecSignatures.Activity_onResume_entry),

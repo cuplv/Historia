@@ -91,7 +91,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
   private val cha = cfg.w.getClassHierarchyConstraints
   private val controlFlowResolver =
     new ControlFlowResolver[M,C](cfg.w, new DefaultAppCodeResolver(cfg.w), cha, cfg.component.map(_.toList),cfg)
-  private val ptsMsg = controlFlowResolver.ptsToMsgs(initialSpec.allI)
+  private val ptsMsg = controlFlowResolver.ptsToMsgs(initialSpec.getMatcherSpace)
 
   private val approxResMemo = TrieMap[(InitialQuery, SpecSpace, ApproxDir, ApproxMode), Set[IPathNode]]()
   //TODO: separate over/under of spec and analysis

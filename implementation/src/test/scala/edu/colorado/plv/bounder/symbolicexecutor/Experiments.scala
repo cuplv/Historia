@@ -5,11 +5,13 @@ import better.files.File
 import edu.colorado.plv.bounder.{BounderUtil, lifestate}
 import edu.colorado.plv.bounder.BounderUtil.{DepthResult, Proven, Timeout, Witnessed, interpretResult}
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType, SootWrapper}
-import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, LSTrue, Signature}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, LSSpec, LSTrue, Signature}
+import edu.colorado.plv.bounder.lifestate.SDialog.{d, dismissSignature}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.{row1Specs, row2Specs, row4Specs, row5Specs, row6Specs}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{CallinReturnNonNull, DBOutputMode, DisallowedCallin, IPathNode, MemoryOutputMode, NoOutputMode, PrettyPrinting, Reachable, ReceiverNonNull}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{CallinReturnNonNull, DBOutputMode, DisallowedCallin, IPathNode, MemoryOutputMode, NoOutputMode, PrettyPrinting, Reachable, ReceiverNonNull, TopVal}
+import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
 import org.scalatest.BeforeAndAfter
@@ -608,7 +610,12 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
 //        implicit val dbMode = DBOutputMode(dbFile.toString, truncate = false)
 //        dbMode.startMeta()
         implicit val dbMode = MemoryOutputMode
-        val specSpace = new SpecSpace(row5Specs, row5Disallow)
+        val specSpace = new SpecSpace(row5Specs, row5Disallow,Set(
+          SDialog.showI2,
+          AbsMsg(CIEnter, dismissSignature, TopVal :: d :: Nil),
+          SpecSignatures.Activity_onResume_entry,
+          SpecSignatures.Activity_onPause_exit
+        ))
         val config = ExecutorConfig(
           stepLimit = 2000, w, specSpace,
           component = Some(List("com.example.createdestroy.*StatusActivity.*")), outputMode = dbMode  )
