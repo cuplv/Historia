@@ -796,6 +796,8 @@ class EnumModelGeneratorTest extends AnyFunSuite {
   }
   test("Synthesis Row 2: Antennapod execute") {
 
+    val msgSetEnabledFalse = AbsMsg(CIExit, setEnabled, TopVal :: v :: BoolVal(false) :: Nil)
+    val msgSetEnabledTrue = AbsMsg(CIExit, setEnabled, TopVal :: v :: BoolVal(true) :: Nil)
     val row2Src = row2("button.setEnabled(false);")
     val startingSpec = Set[LSSpec]( //TODO==== partially filled out, perhaps back off when we figure out what is wrong
       ViewSpec.clickWhileNotDisabled.copy(
@@ -820,8 +822,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
 
         val iSet = Set(
 //          setOnClickListenerI,
-          AbsMsg(CIExit, setEnabled, TopVal::v::BoolVal(false)::Nil),
-          AbsMsg(CIExit, setEnabled, TopVal::v::BoolVal(true)::Nil),
+          msgSetEnabledTrue, msgSetEnabledFalse
 //          SpecSignatures.Activity_onCreate_entry,
 //          executeI
         )
@@ -871,7 +872,6 @@ class EnumModelGeneratorTest extends AnyFunSuite {
             assert(interpretResult(nullUnreachWit) == Proven)
             if (DUMP_DBG)
               PrettyPrinting.dumpDebugInfo(nullUnreachWit, "cbNullUnreachSynth")
-            assert(false) //TODO: check synthesized spec === not working yet last I checked
           //TODO: should implement auto check for synth specs
           case LearnFailure => throw new IllegalStateException("failed to learn a sufficient spec")
         }

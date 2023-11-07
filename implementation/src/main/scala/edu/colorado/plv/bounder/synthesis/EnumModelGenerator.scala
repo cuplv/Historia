@@ -287,28 +287,36 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     assert(witness.qry.isWitnessed || witness.qry.isLive, "witness must be live/timeout or include initial state")
     val alarmState = witness.qry.state
     val out = alarmState.sf.traceAbstraction.rightOfArrow.exists{msgFromWit =>
-      (msgFromWit.identitySignature == absMsg.identitySignature) && // msg matches id
-        msgFromWit.lsVars.zip(absMsg.lsVars).forall{ // all args must match scoped vars
-          case (v1:PureVar,v2:PureVar) =>
-            val ruleTs = scope.getOrElse(v2,TopTypeSet)
+      if(msgFromWit.identitySignature != absMsg.identitySignature){
+        false
+      }else {
+        val zippedArgs = msgFromWit.lsVars.zip(absMsg.lsVars)
+        val res = zippedArgs.find { a => !(a match { // all args must match scoped vars
+          case (v1: PureVar, v2: PureVar) =>
+            val ruleTs = scope.getOrElse(v2, TopTypeSet)
             val absStateTs = alarmState.typeConstraints.getOrElse(v1, TopTypeSet)
             ruleTs.intersectNonEmpty(absStateTs)
-          case (TopVal,_)  => true
+          case (TopVal, _) => true
           case (_, TopVal) => true
-          case (v1:PureVal, v2:PureVal) => v1 == v2
           case (IntVal(0), BoolVal(false)) => true
-          case (BoolVal(false),IntVal(0)) => true
-          case (IntVal(v), BoolVal(true)) if v!= 0 => true
-          case (BoolVal(true),IntVal(v)) if v!= 0 => true
-          case (_:IntVal, _:BoolVal) => false
-          case (_:BoolVal,_:IntVal) => false
-          case (v1:PureVar, NullVal) => alarmState.mayBeNull(v1)
+          case (BoolVal(false), IntVal(0)) => true
+          case (IntVal(v), BoolVal(true)) if v != 0 => true
+          case (BoolVal(true), IntVal(v)) if v != 0 => true
+          case (v1: PureVal, v2: PureVal) => v1 == v2
+          case (_: IntVal, _: BoolVal) =>
+            false
+          case (_: BoolVal, _: IntVal) =>
+            false
+          case (v1: PureVar, NullVal) =>
+            alarmState.mayBeNull(v1)
           case (NullVal, _) => true
-          case (v1,v2) =>
+          case (v1, v2) =>
             println(v1) // const vals, should they match?
             println(v2) // const vals, should they match?
             ???
-        }
+        })}
+        res.isEmpty
+      }
     }
     out
   }
@@ -356,6 +364,8 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       mutList.addAll(relMsg.flatMap{ m =>
         if(witnesses.exists{w => scopedMsgExistsInWit(w, scope, m)}) { //no reason to have not if no instance in hist
           Some(Not(m.copyMsg(m.lsVars.map {
+            case v:PureVal =>
+              v
             case v: PureVar if scope.contains(v) => v
             case _ => TopVal
           })), Set[PureVar]())
