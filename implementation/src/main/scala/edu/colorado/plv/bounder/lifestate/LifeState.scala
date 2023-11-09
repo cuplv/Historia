@@ -1174,6 +1174,7 @@ object LSPredAnyOrder{
     case Forall(vars, p) => predDepth(p)
     case Exists(vars, p) => predDepth(p)
     case _: LifeState.LSAtom => 1
+    case _:LSConstraint => 1
   }
   def predAnyCount(p:LSPred):Int = p match {
     case LSAnyPred => 1
@@ -1196,6 +1197,7 @@ object LSPredAnyOrder{
     case Forall(_, p) => hasAny(p)
     case Exists(_, p) => hasAny(p)
     case _: LifeState.LSAtom => false
+    case _:LSConstraint => false
   }
 
   def rankSpecSpace(x: SpecSpace): Int =

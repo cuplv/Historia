@@ -5,6 +5,7 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{Proven, Witnessed, interpretResult}
 import edu.colorado.plv.bounder.ir.{CBEnter, CIEnter, CIExit, SootWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, AnyAbsMsg, LSAnyPred, LSSpec, NS, Not, OAbsMsg, Or, Signature}
+import edu.colorado.plv.bounder.lifestate.RxJavaSpec.{Disposable_dispose, Maybe_create, Maybe_subscribeCi}
 import edu.colorado.plv.bounder.lifestate.SAsyncTask.executeI
 import edu.colorado.plv.bounder.lifestate.SDialog.dismissSignature
 import edu.colorado.plv.bounder.lifestate.SpecSignatures.{Activity_onPause_entry, Activity_onPause_exit, Activity_onResume_entry, Button_init}
@@ -300,7 +301,7 @@ object EnumModelGeneratorTest{
        |""".stripMargin
   val row6Reach =
     s"""
-       |package com.example.createdestroy;
+       |package com.example.reach;
        |import android.app.Activity;
        |import android.content.Context;
        |import android.net.Uri;
@@ -319,12 +320,14 @@ object EnumModelGeneratorTest{
        |import io.reactivex.schedulers.Schedulers;
        |import io.reactivex.android.schedulers.AndroidSchedulers;
        |import io.reactivex.Maybe;
+       |import io.reactivex.MaybeEmitter;
+       |import io.reactivex.MaybeOnSubscribe;
        |
        |
        |public class ChaptersFragmentReach extends Fragment {
        |  private Object controller;
        |  private Disposable disposable;
-       |  Object subscribeCbCalled = null;
+       |  MaybeOnSubscribe listener = null;
        |  @Override
        |  public void onStart() {
        |    super.onStart();
@@ -333,10 +336,15 @@ object EnumModelGeneratorTest{
        |    }
        |
        |    controller = new Object();
-       |
-       |    disposable = Maybe.create(emitter -> {
-       |      emitter.onSuccess(controller.toString()); //query1
-       |    })
+       |    listener = new MaybeOnSubscribe(){
+       |       public void subscribe(MaybeEmitter emitter){
+       |           if(listener==this){
+       |              "".toString(); // reachable_with_last_create_registering
+       |           }
+       |           emitter.onSuccess(controller.toString()); //query1 37
+       |       }
+       |    };
+       |    disposable = Maybe.create(listener)
        |    .subscribeOn(Schedulers.io())
        |    .observeOn(AndroidSchedulers.mainThread())
        |    .subscribe(media -> Log.i("",""),
@@ -1038,13 +1046,14 @@ class EnumModelGeneratorTest extends AnyFunSuite {
       test)
   }
   test("Synthesis Row 6: synch null free") {
-    val startingSpec = Set[LSSpec](
+    val startingSpec = Set[LSSpec]( //TODO====== revert to spec w/ hole
       RxJavaSpec.subscribeSpec.copy(pred = LSAnyPred),
-      RxJavaSpec.Maybe_subscribeOn.copy(pred=LSAnyPred),
-      RxJavaSpec.Maybe_observeOn.copy(pred=LSAnyPred),
-      LifecycleSpec.startStopAlternation.copy(pred=LSAnyPred),
+//      RxJavaSpec.subscribeSpec.copy(pred= And(NS(Maybe_subscribeCi, Disposable_dispose), LSAnyPred)),
+      RxJavaSpec.Maybe_subscribeOn,
+      RxJavaSpec.Maybe_observeOn,
+      LifecycleSpec.startStopAlternation,
       //LifecycleSpec.stopStartAlternation,
-      RxJavaSpec.Maybe_create_unique.copy(pred=LSAnyPred)
+      RxJavaSpec.Maybe_create_unique
     )
 
     val test: String => Unit = apk => {
@@ -1056,7 +1065,8 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         // dbMode.startMeta()
         implicit val dbMode = MemoryOutputMode
 
-        val iSet = startingSpec.flatMap{r =>r.pred.allMsg }
+//        val iSet = startingSpec.flatMap{r =>r.pred.allMsg ++ }
+        val iSet = Set(Maybe_subscribeCi, Disposable_dispose, Maybe_create)
 
         val w = new SootWrapper(apk, toOverride = startingSpec ++ iSet)
         //val dbg = w.dumpDebug("com.example")
@@ -1065,7 +1075,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         val config = ExecutorConfig(
           stepLimit = 2000, w, specSpace,
           component = Some(List("com.example.createdestroy.*")),
-          outputMode = dbMode, timeLimit = 60, z3InstanceLimit = 3)
+          outputMode = dbMode, timeLimit = 200, z3InstanceLimit = 3)
 
 
         val line = BounderUtil.lineForRegex(".*query1.*".r,row6)
@@ -1075,13 +1085,26 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         val query = ReceiverNonNull(
           querySig,
           line, Some(".*toString.*"))
-        val queryReach = Reachable(querySig, line)
+
+        val lineReach = BounderUtil.lineForRegex(".*query1.*".r,row6Reach)
+        val querySigReach = Signature("com.example.reach.ChaptersFragmentReach$1",
+          "void subscribe(io.reactivex.MaybeEmitter)")
+        val queryReach = Reachable(querySigReach, lineReach)
+
+        val lineReachReg = BounderUtil.lineForRegex(".*reachable_with_last_create_registering.*".r, row6Reach)
+        val queryReachReg = Reachable(querySigReach,lineReachReg)
+
 
         // TODO: Set(nullReach, buttonEqReach, onResumeFirstReach,
         //          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ, queryOnClickAfterOnCreate,
         //          onClickCanHappenTwice, onClickReachableNoSetEnable, onClickAfterOnCreateAndOnClick)
         //TODO: remove one at a time and figure out smallest set needed for the evaluation
-        val gen = new EnumModelGenerator(query, Set(queryReach), specSpace, config)
+        val gen = new EnumModelGenerator(query,
+          reachable = Set(
+//            queryReach, //TODO: uncomment if needed
+            queryReachReg),
+          specSpace, config,reachPkgFilter = List(".*com.example.reach.*"),
+          unreachPkgFilter = List(".*com.example.createdestroy.*"))
 
         //Unused: queryOnClickAfterOnCreate
         val res = gen.run()

@@ -40,6 +40,7 @@ object EnumModelGenerator{
       case Forall(vars, p) => Forall(vars, approxPred(p, approxDir))
       case Exists(vars, p) => Exists(vars, approxPred(p, approxDir))
       case atom: LSAtom => atom
+      case v:LSConstraint => v
       case v =>
         println(v)
         ???
@@ -86,36 +87,40 @@ object EnumModelGenerator{
 
 }
 class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], initialSpec:SpecSpace
-                              ,cfg:ExecutorConfig[M,C], dbg:Boolean = false, nonConnected:Boolean = false)
+                              ,cfg:ExecutorConfig[M,C], dbg:Boolean = false, nonConnected:Boolean = false,
+                              reachPkgFilter:List[String] = ".*"::Nil, unreachPkgFilter:List[String] = ".*"::Nil)
   extends ModelGenerator(cfg.w.getClassHierarchyConstraints) {
   private val cha = cfg.w.getClassHierarchyConstraints
   private val controlFlowResolver =
     new ControlFlowResolver[M,C](cfg.w, new DefaultAppCodeResolver(cfg.w), cha, cfg.component.map(_.toList),cfg)
   private val ptsMsg = controlFlowResolver.ptsToMsgs(initialSpec.getMatcherSpace)
 
-  private val approxResMemo = TrieMap[(InitialQuery, SpecSpace, ApproxDir, ApproxMode), Set[IPathNode]]()
+  private val approxResMemo = TrieMap[(InitialQuery, SpecSpace, ApproxDir, ApproxMode, List[String]), Set[IPathNode]]()
   //TODO: separate over/under of spec and analysis
 
   /**
    *
-   * @param qry
-   * @param spec
-   * @param specApprox
+   * @param qry initial query in the application
+   * @param spec specification of framework behavior
+   * @param specApprox over or under approximate specification
+   * @param analysisApprox over or under approximate app behavior
+   * @param pkgFilter packages to include in analysis
    * @return
    */
   def mkApproxResForQry(qry:InitialQuery, spec:SpecSpace, specApprox: ApproxDir,
-                        analysisApprox:ApproxMode):Set[IPathNode] = {
+                        analysisApprox:ApproxMode, pkgFilter:List[String]):Set[IPathNode] = {
 //    val approxMode = specApprox match {
 //      case OverApprox => LimitMaterializationApproxMode()
 //      case UnderApprox => PreciseApproxMode(canWeaken = false)
 //      case Exact => ???
 //    }
     val approxOfSpec = approxSpec(spec, specApprox)
-    val key = (qry,approxOfSpec, specApprox, analysisApprox)
+    val key = (qry,approxOfSpec, specApprox, analysisApprox, pkgFilter)
     if(!approxResMemo.contains(key)) {
       //TODO: do something smarter than recomputing full query each time, doing this for testing right now
       // note: this is just a matter of changing the labels on individual nodes in wit tree?
-      val tConfig = cfg.copy(specSpace = approxOfSpec, approxMode = analysisApprox) //TODO: move state solver memo out of instance
+      val tConfig = cfg.copy(specSpace = approxOfSpec, approxMode = analysisApprox,
+        component = Some(pkgFilter))
       val ex = tConfig.getAbstractInterpreter
       val res = ex.run(qry, MemoryOutputMode).flatMap(_.terminals)
       approxResMemo.addOne(key -> res)
@@ -566,7 +571,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
 
       // false if no expansion of this spec can succeed at making all reach locations reachable
       lazy val reachNotRefuted:Boolean = reachable.par.forall(qry => {
-        val res = mkApproxResForQry(qry,cSpec, OverApprox, PreciseApproxMode(false))
+        val res = mkApproxResForQry(qry,cSpec, OverApprox, PreciseApproxMode(false), pkgFilter = reachPkgFilter)
         BounderUtil.interpretResult(res, QueryFinished) match{
           case Witnessed =>
             //println(" reach refuted: false")
@@ -582,7 +587,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
 
       // false if no expansion of this spec can prove the target location
       val unreachCanProve = {
-        val tgtRes = mkApproxResForQry(target, cSpec, UnderApprox, LimitMaterializationApproxMode(2))
+        val tgtRes = mkApproxResForQry(target, cSpec, UnderApprox, LimitMaterializationApproxMode(2), unreachPkgFilter)
         BounderUtil.interpretResult(tgtRes, QueryFinished) match {
           case Proven =>
             true
@@ -590,6 +595,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
             false
           case otherRes =>
             //false // dump spec on timeout
+            println(s"Attempt to prove unreach resulted in: ${otherRes}")
             !isTerminal(cSpec) // keep spec if it contains holes and timed out
         }
       }
@@ -611,7 +617,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
         // perhaps synthesis for datastructures may be related?
         // "data structure specification synthesis" - synthesizing relation on data structures - internal representation that does not involve quantifiers
         val overApproxAlarm: Set[IPathNode] = mkApproxResForQry(target, cSpec, OverApprox,
-          LimitMaterializationApproxMode(2))
+          LimitMaterializationApproxMode(2), pkgFilter = unreachPkgFilter)
         val liveAndWit:Set[IPathNode] = overApproxAlarm.filter(pn => pn.qry.isWitnessed || pn.qry.isLive)
         if (liveAndWit.nonEmpty) {
           val nextSpecs = stepSpecSpace(cSpec, liveAndWit)

@@ -333,6 +333,9 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
           cfg:RunConfig = RunConfig(), stopExplorationAt : Option[Qry => Boolean] = None) : Set[QueryData] = {
     assert(!isRunning, "Abstract interpreter does not support concurrency.")
     isRunning = true
+    //TODO: trying this to see if synthesis random slowness can be resolved
+    //TODO: hypothesis: z3 cache gets cluttered run to run
+    //stateSolver.resetZ3Caches()
     val qry: Set[Qry] = initialQuery.make(this)
       .map{q => q.copy(state = stateSolver.simplify(q.state.setSimplified(), config.specSpace)
         .getOrElse(throw new IllegalArgumentException(s"Initial state was refuted: ${q.state}")))}

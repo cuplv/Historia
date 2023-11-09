@@ -64,6 +64,7 @@ object StateSolver{
 }
 /** SMT solver parameterized by its AST or expression type */
 trait StateSolver[T, C <: SolverCtx[T]] {
+  def resetZ3Caches():Unit
   def getSolverRetries:Option[Int]
   def getSolverTimeout: Option[Int]
   def shouldLogTimes:Boolean

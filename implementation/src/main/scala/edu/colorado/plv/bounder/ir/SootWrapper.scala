@@ -1574,12 +1574,23 @@ class SootWrapper(apkPath : String,
 
   override def findLineInMethod(sig:Signature, line: Int): Iterable[AppLoc] = {
     val loc: Iterable[JimpleMethodLoc] = findMethodLoc(sig)
-    loc.flatMap(loc => {
+    if (loc.isEmpty) {
+      println(s"No location found for method: ${sig}")
+    }
+    val res = loc.flatMap(loc => {
       val activeBody = loc.method.retrieveActiveBody()
       val units: Iterable[(soot.Unit, Int)] = activeBody.getUnits.asScala.zipWithIndex
       val unitsForLine = units.filter{case (a, ind) => a.getJavaSourceStartLineNumber == line}
+      if(unitsForLine.isEmpty) {
+        println(s"line ${line} not found in method ${sig} units corrospond to lines:")
+        units.foreach{u =>
+          println(s"${u._1.getJavaSourceStartLineNumber} : ${u._1.toString()}")
+        }
+      }
+
       unitsForLine.map{case (a:soot.Unit, ind) => AppLoc(loc, JimpleLineLoc(a,ind,loc.method),isPre = true)}
     })
+    res
   }
 
   def findInMethod(className:String, methodName:String, toFind: CmdWrapper => Boolean):Iterable[AppLoc] = {

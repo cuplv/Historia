@@ -1499,4 +1499,9 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
     overrideSolver.map{_._1}
   override def getSolverTimeout: Option[Int] =
     Some(overrideSolver.map{_._2}.getOrElse(timeout))
+
+  override def resetZ3Caches(): Unit ={
+    zctxPool.drain()
+  }
+
 }
