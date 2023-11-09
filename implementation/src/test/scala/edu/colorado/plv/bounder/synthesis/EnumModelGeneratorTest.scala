@@ -1046,9 +1046,10 @@ class EnumModelGeneratorTest extends AnyFunSuite {
       test)
   }
   test("Synthesis Row 6: synch null free") {
-    val startingSpec = Set[LSSpec]( //TODO====== revert to spec w/ hole
-      RxJavaSpec.subscribeSpec.copy(pred = LSAnyPred),
-//      RxJavaSpec.subscribeSpec.copy(pred= And(NS(Maybe_subscribeCi, Disposable_dispose), LSAnyPred)),
+    val startingSpec = Set[LSSpec](
+//      RxJavaSpec.subscribeSpec.copy(pred = LSAnyPred),
+      // start from knowing registration method then figure out subscribe/dispose
+      RxJavaSpec.subscribeSpec.copy(pred= And(Maybe_create, LSAnyPred)),
       RxJavaSpec.Maybe_subscribeOn,
       RxJavaSpec.Maybe_observeOn,
       LifecycleSpec.startStopAlternation,
