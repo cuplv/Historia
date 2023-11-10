@@ -1151,6 +1151,21 @@ object LSPredAnyOrder{
     case OAbsMsg(mt, sig, vars) => 1 - (0.01 * vars.count(v => v.isInstanceOf[PureVar]))
     case AnyAbsMsg => 1 - 0.10
   }
+
+  def predMsgCount(p: LSPred): Int = p match {
+      case LSAnyPred => 0
+      case Or(p1, p2) => predMsgCount(p1) + predMsgCount(p2)
+      case And(p1, p2) => predMsgCount(p1) + predMsgCount(p2)
+      case Not(p) => predMsgCount(p)
+      case Forall(vars, p) => predMsgCount(p)
+      case Exists(vars, p) => predMsgCount(p)
+      case NS(AnyAbsMsg, AnyAbsMsg) => 0
+      case NS(m1, m2:OAbsMsg) => 2
+      case NS(m1, AnyAbsMsg) => 1
+      case m: AbsMsg => 1
+      case _: LifeState.LSAtom => 1
+      case LSConstraint(_,_,_) => 0
+    }
   def rankPred(p:LSPred):Double = {
     def comb(p1:LSPred, p2:LSPred, op:(Double,Double) => Double):Double = op(rankPred(p1) , rankPred(p2))
     p match {
@@ -1224,6 +1239,15 @@ object LSPredAnyOrder{
  * @matcherSpace additional matchers that may be used for synthesis (added to allI)
  **/
 class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(), matcherSpace:Set[OAbsMsg] = Set()) {
+  def stats(): Map[String,AnyVal] = {
+    val allSpecs = enableSpecs.toList ++ disallowSpecs.toList
+    val specMessages = allSpecs.map{s => LSPredAnyOrder.predMsgCount(s.pred)}
+    Map(
+      "total messages" ->
+        specMessages.sum,
+      "messagesPerSpec" -> specMessages.sum.toDouble / allSpecs.size.toDouble
+    )
+  }
 
   override def toString: String = {
     val builder = new StringBuilder()

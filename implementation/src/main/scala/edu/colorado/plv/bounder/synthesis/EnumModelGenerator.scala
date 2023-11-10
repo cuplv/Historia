@@ -90,6 +90,26 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
                               ,cfg:ExecutorConfig[M,C], dbg:Boolean = false, nonConnected:Boolean = false,
                               reachPkgFilter:List[String] = ".*"::Nil, unreachPkgFilter:List[String] = ".*"::Nil)
   extends ModelGenerator(cfg.w.getClassHierarchyConstraints) {
+  private val historiaOverApproxTimes = mutable.ArrayBuffer[Double]()
+  private val historiaUnderApproxTimes = mutable.ArrayBuffer[Double]()
+  private var lastRuntime:Double = -1
+
+  def clearStats(): Unit = {
+    historiaUnderApproxTimes.clear()
+    historiaOverApproxTimes.clear()
+    lastRuntime = -1
+  }
+
+  def getStats():Map[String,AnyVal] = {
+    Map(
+      "historia under approx avg time(s)" -> (historiaUnderApproxTimes.sum/historiaUnderApproxTimes.size) / 1e9,
+      "historia under approx tot time(s)" -> historiaUnderApproxTimes.sum / 1e9,
+      "historia over approx avg time(s)" -> (historiaOverApproxTimes.sum/historiaOverApproxTimes.size) / 1e9,
+      "historia over approx tot time(s)" -> historiaOverApproxTimes.sum / 1e9,
+      "runtime(s)" -> lastRuntime / 1e9
+    )
+  }
+
   private val cha = cfg.w.getClassHierarchyConstraints
   private val controlFlowResolver =
     new ControlFlowResolver[M,C](cfg.w, new DefaultAppCodeResolver(cfg.w), cha, cfg.component.map(_.toList),cfg)
@@ -114,6 +134,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
 //      case UnderApprox => PreciseApproxMode(canWeaken = false)
 //      case Exact => ???
 //    }
+    val startTime = System.nanoTime()
     val approxOfSpec = approxSpec(spec, specApprox)
     val key = (qry,approxOfSpec, specApprox, analysisApprox, pkgFilter)
     if(!approxResMemo.contains(key)) {
@@ -124,6 +145,17 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       val ex = tConfig.getAbstractInterpreter
       val res = ex.run(qry, MemoryOutputMode).flatMap(_.terminals)
       approxResMemo.addOne(key -> res)
+      val totalTime = System.nanoTime() - startTime
+
+      // log analysis time
+      analysisApprox match {
+        case LimitMaterializationApproxMode(_) =>
+          historiaOverApproxTimes.addOne(totalTime)
+        case PreciseApproxMode(_) =>
+          historiaUnderApproxTimes.addOne(totalTime)
+        case _ => ???
+      }
+
       res
     }else {
       approxResMemo(key)
@@ -559,6 +591,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
   }
 
   def run():LearnResult = {
+    val startTime = System.nanoTime()
 
     val queue = mutable.PriorityQueue[SpecSpace]()(SpecSpaceAnyOrder)
     queue.addOne(initialSpec)
@@ -601,6 +634,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       }
 
       if (unreachCanProve && reachNotRefuted && isTerminal(cSpec)) {
+        lastRuntime = System.nanoTime() - startTime
         return LearnSuccess(cSpec)
       }else if(reachNotRefuted && unreachCanProve) {
         //TODO: figure out what I was talking about with next comment
@@ -628,6 +662,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       }
     }
 
+    lastRuntime = System.nanoTime() - startTime
     LearnFailure //no more spec expansions to try
   }
 

@@ -713,7 +713,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
 
   }
 
-  test("Synthesis Row 1: Antennapod getActivity returns null") {
+  test("Synthesis Row 1: Antennapod getActivity returns null fix") {
 
     val row1Src = row1("sub.unsubscribe();")
     val startingSpec = Set[LSSpec](
@@ -723,6 +723,106 @@ class EnumModelGeneratorTest extends AnyFunSuite {
 //        AnyAbsMsg)),
 //      FragmentGetActivityNullSpec.getActivityNull
       LSSpec(l::Nil, Nil, LSAnyPred, SpecSignatures.RxJava_call_entry),
+      LSSpec(f :: Nil, Nil,
+        LSAnyPred,
+        SpecSignatures.Fragment_onActivityCreated_entry),
+      FragmentGetActivityNullSpec.getActivityNull
+    )
+
+    val test: String => Unit = apk => {
+      File.usingTemporaryDirectory() { tmpDir =>
+        assert(apk != null)
+        // val dbFile = tmpDir / "paths.db"
+        // println(dbFile)
+        // implicit val dbMode = DBOutputMode(dbFile.toString, truncate = false)
+        // dbMode.startMeta()
+        implicit val dbMode = MemoryOutputMode
+
+        val iSet = Set(
+          SpecSignatures.Fragment_onDestroy_exit,
+          SpecSignatures.Fragment_onActivityCreated_entry,
+          SpecSignatures.RxJava_call_entry,
+          SpecSignatures.RxJava_unsubscribe_exit,
+          SpecSignatures.RxJava_subscribe_exit,
+        )
+
+        val w = new SootWrapper(apk, toOverride = startingSpec ++ iSet)
+        //val dbg = w.dumpDebug("com.example")
+
+        val specSpace = new SpecSpace(startingSpec, matcherSpace = iSet)
+        val config = ExecutorConfig(
+          stepLimit = 2000, w, specSpace,
+          component = Some(List("com.example.createdestroy.*")),
+          outputMode = dbMode, timeLimit = 30)
+
+        val line = BounderUtil.lineForRegex(".*query1.*".r, row1Src)
+
+
+        val query = CallinReturnNonNull(
+          Signature("com.example.createdestroy.PlayerFragment$1",
+            "void call(java.lang.Object)"), line,
+          ".*getActivity.*")
+
+        val queryLocReach = Reachable(query.sig, query.line)
+
+
+        val reachLoc = Set[InitialQuery](queryLocReach, nullReach, buttonEqReach, onResumeFirstReach,
+          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ, row1ActCreatedFirst, queryOnActivityCreatedBeforeCall)
+
+
+        val gen = new EnumModelGenerator(query, reachLoc, specSpace, config)
+        val res = gen.run()
+        res match {
+          case LearnSuccess(space) =>
+            println("final specification Row 1")
+            println("=====================")
+            val spaceStr = space.toString
+            println(spaceStr)
+            println("dumping debug info")
+            val newConfig = config.copy(specSpace = space)
+            val ex = newConfig.getAbstractInterpreter
+            val nullReachWit = ex.run(nullReach).flatMap(_.terminals)
+            if (DUMP_DBG)
+              PrettyPrinting.dumpSpec(space, "cbSpec")
+            assert(interpretResult(nullReachWit) == Witnessed)
+            if (DUMP_DBG) {
+              PrettyPrinting.printWitness(nullReachWit)
+              PrettyPrinting.dumpDebugInfo(nullReachWit, "cbNullReachSynth")
+            }
+
+            val nullUnreachWit = ex.run(query).flatMap(_.terminals)
+            assert(interpretResult(nullUnreachWit) == Proven)
+            if (DUMP_DBG)
+              PrettyPrinting.dumpDebugInfo(nullUnreachWit, "cbNullUnreachSynth")
+            println("\nstats for starting spec row 1")
+            println("---------------------")
+            println(specSpace.stats().map{r => s"${r._1} : ${r._2}\n"})
+            println("\nstats for final spec row 1")
+            println("---------------------")
+            println(space.stats().map{r => s"${r._1} : ${r._2}\n"})
+            println("\nruntime stats")
+            println("---------------------")
+            println(gen.getStats().map{r => s"${r._1} : ${r._2}\n"})
+
+          case LearnFailure => throw new IllegalStateException("failed to learn a sufficient spec")
+        }
+      }
+    }
+    makeApkWithSources(Map("PlayerFragment.java" -> row1Src, "OtherActivity.java" -> srcReach,
+      "PlayerFragmentReach.java" -> srcReachFrag), MkApk.RXBase,
+      test)
+  }
+  //TODO: === would be nice to show bugs time out or reach contradicton
+  ignore("Synthesis Row 1: Antennapod getActivity returns null bug") {
+
+    val row1Src = row1("")
+    val startingSpec = Set[LSSpec](
+      //      LifecycleSpec.Fragment_activityCreatedOnlyFirst.copy(pred=LSAnyPred),
+      //      RxJavaSpec.call.copy(pred = NS(
+      //        SpecSignatures.RxJava_subscribe_exit,
+      //        AnyAbsMsg)),
+      //      FragmentGetActivityNullSpec.getActivityNull
+      LSSpec(l :: Nil, Nil, LSAnyPred, SpecSignatures.RxJava_call_entry),
       LSSpec(f :: Nil, Nil,
         LSAnyPred,
         SpecSignatures.Fragment_onActivityCreated_entry),
@@ -880,6 +980,16 @@ class EnumModelGeneratorTest extends AnyFunSuite {
             assert(interpretResult(nullUnreachWit) == Proven)
             if (DUMP_DBG)
               PrettyPrinting.dumpDebugInfo(nullUnreachWit, "cbNullUnreachSynth")
+
+            println("\nstats for starting spec row 2")
+            println("---------------------")
+            println(specSpace.stats().map { r => s"${r._1} : ${r._2}\n" })
+            println("\nstats for final spec row 2")
+            println("---------------------")
+            println(space.stats().map { r => s"${r._1} : ${r._2}\n" })
+            println("\nruntime stats")
+            println("---------------------")
+            println(gen.getStats().map { r => s"${r._1} : ${r._2}\n" })
           //TODO: should implement auto check for synth specs
           case LearnFailure => throw new IllegalStateException("failed to learn a sufficient spec")
         }
@@ -942,7 +1052,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         val res = gen.run()
         res match {
           case LearnSuccess(space) =>
-            println("final specification Row 2")
+            println("final specification Row 3")
             println("-------------------")
             val spaceStr = space.toString
             println(spaceStr)
@@ -962,6 +1072,16 @@ class EnumModelGeneratorTest extends AnyFunSuite {
             assert(interpretResult(nullUnreachWit) == Proven)
             if (DUMP_DBG)
               PrettyPrinting.dumpDebugInfo(nullUnreachWit, "cbNullUnreachSynth")
+
+            println("\nstats for starting spec row 3")
+            println("---------------------")
+            println(specSpace.stats().map { r => s"${r._1} : ${r._2}\n" })
+            println("\nstats for final spec row 3")
+            println("---------------------")
+            println(space.stats().map { r => s"${r._1} : ${r._2}\n" })
+            println("\nruntime stats")
+            println("---------------------")
+            println(gen.getStats().map { r => s"${r._1} : ${r._2}\n" })
           case LearnFailure => throw new IllegalStateException("failed to learn a sufficient spec")
         }
       }
@@ -1040,6 +1160,16 @@ class EnumModelGeneratorTest extends AnyFunSuite {
             assert(interpretResult(nullUnreachWit) == Proven)
             if(DUMP_DBG)
               PrettyPrinting.dumpDebugInfo(nullUnreachWit, "cbNullUnreachSynth")
+
+            println("\nstats for starting spec row 4")
+            println("---------------------")
+            println(specSpace.stats().map { r => s"${r._1} : ${r._2}\n" })
+            println("\nstats for final spec row 4")
+            println("---------------------")
+            println(space.stats().map { r => s"${r._1} : ${r._2}\n" })
+            println("\nruntime stats")
+            println("---------------------")
+            println(gen.getStats().map { r => s"${r._1} : ${r._2}\n" })
           case LearnFailure => throw new IllegalStateException("failed to learn a sufficient spec")
         }
       }
@@ -1047,7 +1177,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
     makeApkWithSources(Map("MyActivity.java" -> row4("v.setOnClickListener(null);"), "OtherActivity.java" -> srcReach), MkApk.RXBase,
       test)
   }
-  test("Synthesis Row 6: synch null free") {
+  test("Synthesis Row 5: synch null free") {
     val startingSpec = Set[LSSpec](
 //      RxJavaSpec.subscribeSpec.copy(pred = LSAnyPred),
       // start from knowing registration method then figure out subscribe/dispose
@@ -1104,7 +1234,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         //TODO: remove one at a time and figure out smallest set needed for the evaluation
         val gen = new EnumModelGenerator(query,
           reachable = Set(
-//            queryReach, //TODO: uncomment if needed
+            queryReach,
             queryReachReg),
           specSpace, config,reachPkgFilter = List(".*com.example.reach.*"),
           unreachPkgFilter = List(".*com.example.createdestroy.*"))
@@ -1113,7 +1243,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         val res = gen.run()
         res match {
           case LearnSuccess(space) =>
-            println("final specification Row 2")
+            println("final specification Row 5")
             println("-------------------")
             val spaceStr = space.toString
             println(spaceStr)
@@ -1133,6 +1263,16 @@ class EnumModelGeneratorTest extends AnyFunSuite {
             assert(interpretResult(nullUnreachWit) == Proven)
             if (DUMP_DBG)
               PrettyPrinting.dumpDebugInfo(nullUnreachWit, "cbNullUnreachSynth")
+
+            println("\nstats for starting spec row 5")
+            println("---------------------")
+            println(specSpace.stats().map { r => s"${r._1} : ${r._2}\n" })
+            println("\nstats for final spec row 5")
+            println("---------------------")
+            println(space.stats().map { r => s"${r._1} : ${r._2}\n" })
+            println("\nruntime stats")
+            println("---------------------")
+            println(gen.getStats().map { r => s"${r._1} : ${r._2}\n" })
           case LearnFailure => throw new IllegalStateException("failed to learn a sufficient spec")
         }
       }
