@@ -610,7 +610,7 @@ object EnumModelGeneratorTest{
   )
 }
 class EnumModelGeneratorTest extends AnyFunSuite {
-  val DUMP_DBG = true //Uncomment to skip writing out paths from historia
+  val DUMP_DBG = false //Uncomment to skip writing out paths from historia
 
   val a = NamedPureVar("a")
   val f = NamedPureVar("f")
