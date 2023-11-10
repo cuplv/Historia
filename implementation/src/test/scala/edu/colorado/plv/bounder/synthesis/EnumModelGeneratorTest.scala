@@ -358,7 +358,7 @@ object EnumModelGeneratorTest{
        |""".stripMargin
   val srcReachFrag =
     s"""
-       |package com.example.createdestroy;
+       |package com.example.reach;
        |import android.app.Activity;
        |import android.content.Context;
        |import android.net.Uri;
@@ -427,20 +427,20 @@ object EnumModelGeneratorTest{
 
 
   val queryOnActivityCreatedBeforeCall_line = BounderUtil.lineForRegex(".*queryOnActivityCreatedBeforeCall.*".r, srcReachFrag)
-  val queryOnActivityCreatedBeforeCall = Reachable(Signature("com.example.createdestroy.PlayerFragmentReach$1",
+  val queryOnActivityCreatedBeforeCall = Reachable(Signature("com.example.reach.PlayerFragmentReach$1",
     "void call(java.lang.Object)"),queryOnActivityCreatedBeforeCall_line)
 
   val row1ActCreatedFirst_line = BounderUtil.lineForRegex(".*queryActCreatedFirst.*".r, srcReachFrag)
-  val row1ActCreatedFirst = Reachable(Signature("com.example.createdestroy.PlayerFragmentReach",
+  val row1ActCreatedFirst = Reachable(Signature("com.example.reach.PlayerFragmentReach",
     "void onActivityCreated(android.os.Bundle)"), row1ActCreatedFirst_line)
 
   val row1BugReach_line = BounderUtil.lineForRegex(".*queryReachFrag.*".r, srcReachFrag)
   val row1BugReach = CallinReturnNonNull(
-    Signature("com.example.createdestroy.PlayerFragment$1",
+    Signature("com.example.reach.PlayerFragment$1",
       "void call(java.lang.Object)"), row1BugReach_line ,
     ".*getActivity.*")
   val srcReach =
-    s"""package com.example.createdestroy;
+    s"""package com.example.reach;
        |import android.app.Activity;
        |import android.os.Bundle;
        |import android.util.Log;
@@ -541,7 +541,7 @@ object EnumModelGeneratorTest{
        |    }
        |}""".stripMargin
 
-  val onClickReach = Signature("com.example.createdestroy.OtherActivity",
+  val onClickReach = Signature("com.example.reach.OtherActivity",
     "void onClick(android.view.View)")
   val line_reach = BounderUtil.lineForRegex(".*query2.*".r, srcReach)
   val nullReach = ReceiverNonNull(onClickReach, line_reach, Some(".*toString.*"))
@@ -932,9 +932,11 @@ class EnumModelGeneratorTest extends AnyFunSuite {
         //          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ, queryOnClickAfterOnCreate,
         //          onClickCanHappenTwice, onClickReachableNoSetEnable, onClickAfterOnCreateAndOnClick)
         //TODO: remove one at a time and figure out smallest set needed for the evaluation
-        val gen = new EnumModelGenerator(query, Set(nullReach, buttonEqReach, onResumeFirstReach,
-                  resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ, queryOnClickAfterOnCreate,
-                  onClickCanHappenTwice, onClickReachableNoSetEnable, onClickAfterOnCreateAndOnClick), specSpace, config)
+        val reachSet = Set[InitialQuery](nullReach, buttonEqReach, onResumeFirstReach,
+          resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ, queryOnClickAfterOnCreate,
+          onClickCanHappenTwice, onClickReachableNoSetEnable, onClickAfterOnCreateAndOnClick)
+        val gen = new EnumModelGenerator(query, reachSet, specSpace, config,
+          reachPkgFilter = List("com.example.reach.*"), unreachPkgFilter = List("com.example.createdestroy.*") )
 
         //Unused: queryOnClickAfterOnCreate
         val res = gen.run()
