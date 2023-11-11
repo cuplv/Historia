@@ -714,6 +714,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
   }
 
   test("Synthesis Row 1: Antennapod getActivity returns null fix") {
+    println("starting Row 1")
 
     val row1Src = row1("sub.unsubscribe();")
     val startingSpec = Set[LSSpec](
@@ -903,6 +904,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
       test)
   }
   test("Synthesis Row 2: Antennapod execute") {
+    println("starting Row 2")
 
     val msgSetEnabledFalse = AbsMsg(CIExit, setEnabled, TopVal :: v :: BoolVal(false) :: Nil)
     val msgSetEnabledTrue = AbsMsg(CIExit, setEnabled, TopVal :: v :: BoolVal(true) :: Nil)
@@ -1001,6 +1003,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
   }
 
   test("Synthesis Row 3: Antennapod dismiss") {
+    println("starting Row 3")
     val startingSpec = Set[LSSpec](
       SDialog.noDupeShow.copy(pred = LSAnyPred)
     )
@@ -1091,6 +1094,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
       test)
   }
   test("Synthesis Row 4: simplification of Connect bot click/finish") {
+    println("starting Row 4")
 
     //Or(NS(SpecSignatures.Activity_onPause_exit, SpecSignatures.Activity_onResume_entry),
     //          Not(SpecSignatures.Activity_onResume_entry))
@@ -1178,6 +1182,8 @@ class EnumModelGeneratorTest extends AnyFunSuite {
       test)
   }
   test("Synthesis Row 5: synch null free") {
+
+    println("starting Row 5")
     val startingSpec = Set[LSSpec](
 //      RxJavaSpec.subscribeSpec.copy(pred = LSAnyPred),
       // start from knowing registration method then figure out subscribe/dispose
