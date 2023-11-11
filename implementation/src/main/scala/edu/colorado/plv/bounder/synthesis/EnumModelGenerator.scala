@@ -667,7 +667,6 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
         lastRuntime = System.nanoTime() - startTime
         return LearnSuccess(cSpec)
       }else if( unreachCanProveAndReachNotRefuted ) {
-        val synthesisStepStartTime = System.nanoTime()
         //TODO: figure out what I was talking about with next comment
         // TODO: should call excludes initial on all witnesses for candidate before adding it to the queue to go throught the loop again
         // take full advantage of past alarms on assertion
@@ -681,8 +680,12 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
         // initial universe of objects is materialized abstract state, can existentially quantify one more per step
         // perhaps synthesis for datastructures may be related?
         // "data structure specification synthesis" - synthesizing relation on data structures - internal representation that does not involve quantifiers
+        val historiaOverApprox2StartTime = System.nanoTime()
         val overApproxAlarm: Set[IPathNode] = mkApproxResForQry(target, cSpec, OverApprox,
           LimitMaterializationApproxMode(2), pkgFilter = unreachPkgFilter)
+        historiaOverApproxTotalTime += (System.nanoTime() - historiaOverApprox2StartTime)
+
+        val synthesisStepStartTime = System.nanoTime()
         val liveAndWit:Set[IPathNode] = overApproxAlarm.filter(pn => pn.qry.isWitnessed || pn.qry.isLive)
         if (liveAndWit.nonEmpty) {
           val nextSpecs = stepSpecSpace(cSpec, liveAndWit)
