@@ -93,19 +93,37 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
   private val historiaOverApproxTimes = mutable.ArrayBuffer[Double]()
   private val historiaUnderApproxTimes = mutable.ArrayBuffer[Double]()
   private var lastRuntime:Double = -1
+  private var synthesisTotalTime:Double = 0
+  private var historiaOverApproxTotalTime:Double = 0
+  private var historiaUnderApproxTotalTime:Double = 0
+
+  def addOverApproxTime(time:Double):Unit = synchronized {
+    historiaOverApproxTimes.addOne(time)
+  }
+
+  def addUnderApproxTime(time: Double): Unit = synchronized {
+    historiaUnderApproxTimes.addOne(time)
+
+  }
 
   def clearStats(): Unit = {
     historiaUnderApproxTimes.clear()
     historiaOverApproxTimes.clear()
     lastRuntime = -1
+    historiaOverApproxTotalTime = 0
+    historiaUnderApproxTotalTime = 0
+    synthesisTotalTime = 0
   }
 
-  def getStats():Map[String,AnyVal] = {
+  def getStats():Map[String,Double] = {
     Map(
       "historia under approx avg time(s)" -> (historiaUnderApproxTimes.sum/historiaUnderApproxTimes.size) / 1e9,
-      "historia under approx tot time(s)" -> historiaUnderApproxTimes.sum / 1e9,
+      "historia under approx thread tot time(s)" -> historiaUnderApproxTimes.sum / 1e9,
       "historia over approx avg time(s)" -> (historiaOverApproxTimes.sum/historiaOverApproxTimes.size) / 1e9,
-      "historia over approx tot time(s)" -> historiaOverApproxTimes.sum / 1e9,
+      "historia over approx thread tot time(s)" -> historiaOverApproxTimes.sum / 1e9,
+      "historia over approx program tot time(s)" -> historiaOverApproxTotalTime / 1e9,
+      "historia under approx program tot time(s)" -> historiaUnderApproxTotalTime / 1e9,
+      "synthesis program tot time(s)" -> synthesisTotalTime / 1e9,
       "runtime(s)" -> lastRuntime / 1e9
     )
   }
@@ -150,9 +168,9 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       // log analysis time
       analysisApprox match {
         case LimitMaterializationApproxMode(_) =>
-          historiaOverApproxTimes.addOne(totalTime)
+          addOverApproxTime(totalTime)
         case PreciseApproxMode(_) =>
-          historiaUnderApproxTimes.addOne(totalTime)
+          addUnderApproxTime(totalTime)
         case _ => ???
       }
 
@@ -603,7 +621,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       println(s"\n spec number: ${specsTested}")
 
       // false if no expansion of this spec can succeed at making all reach locations reachable
-      lazy val reachNotRefuted:Boolean = reachable.par.forall(qry => {
+      val reachNotRefuted:() => Boolean = () => reachable.par.forall(qry => {
         val res = mkApproxResForQry(qry,cSpec, OverApprox, PreciseApproxMode(false), pkgFilter = reachPkgFilter)
         BounderUtil.interpretResult(res, QueryFinished) match{
           case Witnessed =>
@@ -619,6 +637,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
         }})
 
       // false if no expansion of this spec can prove the target location
+      val historiaOverApproxStartTime = System.nanoTime()
       val unreachCanProve = {
         val tgtRes = mkApproxResForQry(target, cSpec, UnderApprox, LimitMaterializationApproxMode(2), unreachPkgFilter)
         BounderUtil.interpretResult(tgtRes, QueryFinished) match {
@@ -632,11 +651,21 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
             !isTerminal(cSpec) // keep spec if it contains holes and timed out
         }
       }
+      historiaOverApproxTotalTime += (System.nanoTime() - historiaOverApproxStartTime)
 
-      if (unreachCanProve && reachNotRefuted && isTerminal(cSpec)) {
+      // maintain lazy and while recording time of second operand
+      val unreachCanProveAndReachNotRefuted = if(!unreachCanProve) false else {
+        val historiaUnderApproxStartTime = System.nanoTime()
+        val out = reachNotRefuted()
+        historiaUnderApproxTotalTime += (System.nanoTime() - historiaUnderApproxStartTime)
+        out
+      }
+
+      if (unreachCanProveAndReachNotRefuted && isTerminal(cSpec)) {
         lastRuntime = System.nanoTime() - startTime
         return LearnSuccess(cSpec)
-      }else if(reachNotRefuted && unreachCanProve) {
+      }else if( unreachCanProveAndReachNotRefuted ) {
+        val synthesisStepStartTime = System.nanoTime()
         //TODO: figure out what I was talking about with next comment
         // TODO: should call excludes initial on all witnesses for candidate before adding it to the queue to go throught the loop again
         // take full advantage of past alarms on assertion
@@ -659,6 +688,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
           val filtered = nextSpecs._1.filter { spec => !hasExplored(spec) }
           queue.addAll(filtered)
         }
+        synthesisTotalTime += (System.nanoTime() - synthesisStepStartTime)
       }
     }
 

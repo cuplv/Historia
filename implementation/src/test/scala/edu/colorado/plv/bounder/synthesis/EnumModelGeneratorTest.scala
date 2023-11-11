@@ -801,7 +801,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
             println("\nstats for final spec row 1")
             println("---------------------")
             println(space.stats().map{r => s"${r._1} : ${r._2}\n"})
-            println("\nruntime stats")
+            println("\nruntime stats row 1")
             println("---------------------")
             println(gen.getStats().map{r => s"${r._1} : ${r._2}\n"})
 
@@ -989,7 +989,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
             println("\nstats for final spec row 2")
             println("---------------------")
             println(space.stats().map { r => s"${r._1} : ${r._2}\n" })
-            println("\nruntime stats")
+            println("\nruntime stats row 2")
             println("---------------------")
             println(gen.getStats().map { r => s"${r._1} : ${r._2}\n" })
           //TODO: should implement auto check for synth specs
@@ -1082,7 +1082,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
             println("\nstats for final spec row 3")
             println("---------------------")
             println(space.stats().map { r => s"${r._1} : ${r._2}\n" })
-            println("\nruntime stats")
+            println("\nruntime stats row 3")
             println("---------------------")
             println(gen.getStats().map { r => s"${r._1} : ${r._2}\n" })
           case LearnFailure => throw new IllegalStateException("failed to learn a sufficient spec")
