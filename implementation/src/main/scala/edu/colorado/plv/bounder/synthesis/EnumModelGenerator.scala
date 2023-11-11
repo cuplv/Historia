@@ -118,9 +118,11 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
   def getStats():Map[String,Double] = {
     Map(
       "historia under approx avg time(s)" -> (historiaUnderApproxTimes.sum/historiaUnderApproxTimes.size) / 1e9,
+      "historia under approx call count (n)" -> historiaUnderApproxTimes.size,
       "historia under approx thread tot time(s)" -> historiaUnderApproxTimes.sum / 1e9,
       "historia over approx avg time(s)" -> (historiaOverApproxTimes.sum/historiaOverApproxTimes.size) / 1e9,
       "historia over approx thread tot time(s)" -> historiaOverApproxTimes.sum / 1e9,
+      "historia over approx call count (n)" -> historiaOverApproxTimes.size,
       "historia over approx program tot time(s)" -> historiaOverApproxTotalTime / 1e9,
       "historia under approx program tot time(s)" -> historiaUnderApproxTotalTime / 1e9,
       "synthesis program tot time(s)" -> synthesisTotalTime / 1e9,
