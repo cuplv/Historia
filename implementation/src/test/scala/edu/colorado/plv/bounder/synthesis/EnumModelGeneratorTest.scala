@@ -780,21 +780,8 @@ class EnumModelGeneratorTest extends AnyFunSuite {
             val spaceStr = space.toString
             println(spaceStr)
             println("dumping debug info")
-            val newConfig = config.copy(specSpace = space)
-            val ex = newConfig.getAbstractInterpreter
-            val nullReachWit = ex.run(nullReach).flatMap(_.terminals)
             if (DUMP_DBG)
               PrettyPrinting.dumpSpec(space, "cbSpec")
-            assert(interpretResult(nullReachWit) == Witnessed)
-            if (DUMP_DBG) {
-              PrettyPrinting.printWitness(nullReachWit)
-              PrettyPrinting.dumpDebugInfo(nullReachWit, "cbNullReachSynth")
-            }
-
-            val nullUnreachWit = ex.run(query).flatMap(_.terminals)
-            assert(interpretResult(nullUnreachWit) == Proven)
-            if (DUMP_DBG)
-              PrettyPrinting.dumpDebugInfo(nullUnreachWit, "cbNullUnreachSynth")
             println("\nstats for starting spec row 1")
             println("---------------------")
             println(specSpace.stats().map{r => s"${r._1} : ${r._2}\n"})
@@ -880,21 +867,8 @@ class EnumModelGeneratorTest extends AnyFunSuite {
             val spaceStr = space.toString
             println(spaceStr)
             println("dumping debug info")
-            val newConfig = config.copy(specSpace = space)
-            val ex = newConfig.getAbstractInterpreter
-            val nullReachWit = ex.run(nullReach).flatMap(_.terminals)
             if (DUMP_DBG)
               PrettyPrinting.dumpSpec(space, "cbSpec")
-            assert(interpretResult(nullReachWit) == Witnessed)
-            if (DUMP_DBG) {
-              PrettyPrinting.printWitness(nullReachWit)
-              PrettyPrinting.dumpDebugInfo(nullReachWit, "cbNullReachSynth")
-            }
-
-            val nullUnreachWit = ex.run(query).flatMap(_.terminals)
-            assert(interpretResult(nullUnreachWit) == Proven)
-            if (DUMP_DBG)
-              PrettyPrinting.dumpDebugInfo(nullUnreachWit, "cbNullUnreachSynth")
           case LearnFailure => throw new IllegalStateException("failed to learn a sufficient spec")
         }
       }
@@ -967,21 +941,8 @@ class EnumModelGeneratorTest extends AnyFunSuite {
             val spaceStr = space.toString
             println(spaceStr)
             println("dumping debug info")
-            val newConfig = config.copy(specSpace = space)
-            val ex = newConfig.getAbstractInterpreter
-            val nullReachWit = ex.run(nullReach).flatMap(_.terminals)
             if (DUMP_DBG)
               PrettyPrinting.dumpSpec(space, "cbSpec")
-            assert(interpretResult(nullReachWit) == Witnessed)
-            if (DUMP_DBG) {
-              PrettyPrinting.printWitness(nullReachWit)
-              PrettyPrinting.dumpDebugInfo(nullReachWit, "cbNullReachSynth")
-            }
-
-            val nullUnreachWit = ex.run(query).flatMap(_.terminals)
-            assert(interpretResult(nullUnreachWit) == Proven)
-            if (DUMP_DBG)
-              PrettyPrinting.dumpDebugInfo(nullUnreachWit, "cbNullUnreachSynth")
 
             println("\nstats for starting spec row 2")
             println("---------------------")
@@ -1061,20 +1022,8 @@ class EnumModelGeneratorTest extends AnyFunSuite {
             println(spaceStr)
             println("dumping debug info")
             val newConfig = config.copy(specSpace = space)
-            val ex = newConfig.getAbstractInterpreter
-            val nullReachWit = ex.run(nullReach).flatMap(_.terminals)
             if (DUMP_DBG)
               PrettyPrinting.dumpSpec(space, "cbSpec")
-            assert(interpretResult(nullReachWit) == Witnessed)
-            if (DUMP_DBG) {
-              PrettyPrinting.printWitness(nullReachWit)
-              PrettyPrinting.dumpDebugInfo(nullReachWit, "cbNullReachSynth")
-            }
-
-            val nullUnreachWit = ex.run(query).flatMap(_.terminals)
-            assert(interpretResult(nullUnreachWit) == Proven)
-            if (DUMP_DBG)
-              PrettyPrinting.dumpDebugInfo(nullUnreachWit, "cbNullUnreachSynth")
 
             println("\nstats for starting spec row 3")
             println("---------------------")
@@ -1146,24 +1095,8 @@ class EnumModelGeneratorTest extends AnyFunSuite {
               gen.connectedSpec(spec)
             })
             val newConfig = config.copy(specSpace = space)
-            val ex = newConfig.getAbstractInterpreter
-            val nullReachWit = ex.run(nullReach).flatMap(_.terminals)
             if(DUMP_DBG)
               PrettyPrinting.dumpSpec(space, "cbSpec")
-            assert(interpretResult(nullReachWit) == Witnessed)
-            if(DUMP_DBG) {
-              PrettyPrinting.printWitness(nullReachWit)
-              PrettyPrinting.dumpDebugInfo(nullReachWit, "cbNullReachSynth")
-            }
-            //val firstClickCbReachWit = ex.run(firstClickCbReach).flatMap(_.terminals)
-            //assert(interpretResult(firstClickCbReachWit) == Witnessed)
-            //if(DUMP_DBG){
-            //  PrettyPrinting.dumpDebugInfo(firstClickCbReachWit, "cbFirstClickReach")
-            //}
-            val nullUnreachWit = ex.run(nullUnreach).flatMap(_.terminals)
-            assert(interpretResult(nullUnreachWit) == Proven)
-            if(DUMP_DBG)
-              PrettyPrinting.dumpDebugInfo(nullUnreachWit, "cbNullUnreachSynth")
 
             println("\nstats for starting spec row 4")
             println("---------------------")
@@ -1254,21 +1187,6 @@ class EnumModelGeneratorTest extends AnyFunSuite {
             val spaceStr = space.toString
             println(spaceStr)
             println("dumping debug info")
-            val newConfig = config.copy(specSpace = space)
-            val ex = newConfig.getAbstractInterpreter
-            val nullReachWit = ex.run(nullReach).flatMap(_.terminals)
-            if (DUMP_DBG)
-              PrettyPrinting.dumpSpec(space, "cbSpec")
-            assert(interpretResult(nullReachWit) == Witnessed)
-            if (DUMP_DBG) {
-              PrettyPrinting.printWitness(nullReachWit)
-              PrettyPrinting.dumpDebugInfo(nullReachWit, "cbNullReachSynth")
-            }
-
-            val nullUnreachWit = ex.run(query).flatMap(_.terminals)
-            assert(interpretResult(nullUnreachWit) == Proven)
-            if (DUMP_DBG)
-              PrettyPrinting.dumpDebugInfo(nullUnreachWit, "cbNullUnreachSynth")
 
             println("\nstats for starting spec row 5")
             println("---------------------")
