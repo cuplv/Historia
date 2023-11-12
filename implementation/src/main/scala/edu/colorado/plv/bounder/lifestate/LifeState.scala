@@ -909,6 +909,35 @@ object LifeState {
   }
   case class LSSpec(univQuant:List[PureVar], existQuant:List[PureVar],
                     pred:LSPred, target: OAbsMsg, rhsConstraints: Set[LSConstraint] = Set()){
+
+    def connectionCount(): Int = {
+      def fact(n: Int): Int = {
+        if (n < 1) 1 else fact(n - 1) * n
+      }
+      val msgs: List[OAbsMsg] = target :: EncodingTools.msgList(pred)
+      val msgIndVar = msgs.flatMap{
+        case m@OAbsMsg(_,_,args) => args.zipWithIndex.flatMap{
+          case (v:PureVar,index) => Some((v,index,m))
+          case _ => None
+        }
+      }
+      val varUseGroups = msgIndVar.groupBy(v => v._1)
+      varUseGroups.map{case (_, positions) =>
+        if(positions.size > 1)
+          fact(positions.size)
+        else
+          0 // if only one message mentions var then it is not "connected" to anything
+      }.sum
+    }
+
+
+
+    def objCount(): Integer ={
+      (LSPredAnyOrder.objectCount(target) ++ LSPredAnyOrder.objectCount(pred)).size
+    }
+
+
+
     override def hashCode(): Int = {
       univQuant.## + existQuant.## + pred.## + target.##
     }
@@ -1140,6 +1169,25 @@ object LSPredAnyOrder{
   private def directCompare(pred1: LifeState.LSPred, pred2: LifeState.LSPred):Int =
     pred1.toString.compareTo(pred2.toString) // ensure deterministic order, probably don't care what order it is.
 
+  def objectCount(p:LSPred):Set[PureVar] = p match {
+    case OAbsMsg(_,_,lsVars) => lsVars.flatMap{
+      case v:PureVar => Some(v)
+      case _ => None
+    }.toSet
+    case NS(m1,m2) => objectCount(m1) ++ objectCount(m2)
+    case Or(m1,m2) => objectCount(m1) ++ objectCount(m2)
+    case And(m1,m2) => objectCount(m1) ++ objectCount(m2)
+    case Not(m) => objectCount(m)
+    case AnyAbsMsg => Set()
+    case LSAnyPred => Set()
+    case LSConstraint(v1,_,v2) => Set(v1,v2).flatMap {
+      case v: PureVar => Some(v)
+      case _ => None
+    }
+    case Forall(_, p) => objectCount(p)
+    case Exists(_, p) => objectCount(p)
+  }
+
   def depthToAny(p:LSPred):Int = p match {
     case NS(_, AnyAbsMsg) => 0
     case LSAnyPred => 0
@@ -1246,13 +1294,19 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(), mat
   override def hashCode(): Int = {
     (enableSpecs.map{s => s.hashCode()} ++ disallowSpecs.map{s => s.hashCode()}).hashCode()
   }
-  def stats(): Map[String,AnyVal] = {
+  def stats(): Map[String,Double] = {
     val allSpecs = enableSpecs.toList ++ disallowSpecs.toList
-    val specMessages = allSpecs.map{s => LSPredAnyOrder.predMsgCount(s.pred)}
+    val specMessageCount = allSpecs.map{s => LSPredAnyOrder.predMsgCount(s.pred)}
+    val objectCount:Integer = allSpecs.map{s => s.objCount()}.foldLeft(0){
+      case (acc,v) => acc + v
+    }
+    val connectionCount = allSpecs.map{s => s.connectionCount()}.sum
     Map(
       "total messages" ->
-        specMessages.sum,
-      "messagesPerSpec" -> specMessages.sum.toDouble / allSpecs.size.toDouble
+        specMessageCount.sum,
+      "messagesPerSpec" -> specMessageCount.sum.toDouble / allSpecs.size.toDouble,
+      "object count" -> objectCount.toDouble,
+      "connection count" -> connectionCount
     )
   }
 

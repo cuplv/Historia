@@ -297,6 +297,20 @@ object EncodingTools {
     case atom: LSAtom =>
       atom
   }
+  def msgList(p:LSPred):List[OAbsMsg] = p match{
+    case LSAnyPred => Nil
+    case AnyAbsMsg => Nil
+    case LSConstraint(v1, op, v2) => List[OAbsMsg]()
+    case Forall(vars, p) => msgList(p)
+    case Exists(vars, p) => msgList(p)
+    case And(l1, l2) => msgList(l1) ++ msgList(l2)
+    case Not(l) => msgList(l)
+    case Or(l1, l2) => msgList(l1) ++ msgList(l2)
+    case LifeState.LSTrue => Nil
+    case LifeState.LSFalse => Nil
+    case m: OAbsMsg => m::Nil
+    case NS(i1, i2) => msgList(i1) ++ msgList(i2)
+  }
   def mustISet(s1Pred: LSPred):Set[OAbsMsg] = s1Pred match {
     case LSConstraint(v1, op, v2) => Set()
     case Forall(vars, p) => mustISet(p)
