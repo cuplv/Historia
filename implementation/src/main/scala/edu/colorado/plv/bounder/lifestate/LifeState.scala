@@ -11,6 +11,7 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, BotVal, ClassVa
 import scala.util.parsing.combinator._
 import upickle.default.{macroRW, ReadWriter => RW}
 
+import java.util.Objects
 import scala.collection.mutable
 import scala.util.matching.Regex
 
@@ -908,6 +909,9 @@ object LifeState {
   }
   case class LSSpec(univQuant:List[PureVar], existQuant:List[PureVar],
                     pred:LSPred, target: OAbsMsg, rhsConstraints: Set[LSConstraint] = Set()){
+    override def hashCode(): Int = {
+      univQuant.## + existQuant.## + pred.## + target.##
+    }
     def toTex():String = {
       // in paper language, universal quantification of target vars is implicit
       val dispUnivQuant = univQuant.toSet -- target.lsVar
@@ -1225,7 +1229,7 @@ object LSPredAnyOrder{
 
   val SpecSpaceAnyOrder = Ordering.by{(v:SpecSpace) =>
 //    (countAny(v), rankSpecSpace(v), v.hashCode())
-    (rankSpecSpace(v), hashCode()) //TODO:=== is this better?
+    (rankSpecSpace(v), v.hashCode()) //TODO:=== is this better?
   }.reverse //Note priority queue does highest first
 
   val SpecStepOrder = Ordering.by{(sp:LSSpec) =>
@@ -1239,6 +1243,9 @@ object LSPredAnyOrder{
  * @matcherSpace additional matchers that may be used for synthesis (added to allI)
  **/
 class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(), matcherSpace:Set[OAbsMsg] = Set()) {
+  override def hashCode(): Int = {
+    (enableSpecs.map{s => s.hashCode()} ++ disallowSpecs.map{s => s.hashCode()}).hashCode()
+  }
   def stats(): Map[String,AnyVal] = {
     val allSpecs = enableSpecs.toList ++ disallowSpecs.toList
     val specMessages = allSpecs.map{s => LSPredAnyOrder.predMsgCount(s.pred)}
