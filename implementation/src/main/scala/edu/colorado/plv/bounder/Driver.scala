@@ -16,6 +16,7 @@ import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeStat
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, ExecutorConfig, QueryFinished, SparkCallGraph, TransferFunctions}
+import edu.colorado.plv.bounder.synthesis.{EnumModelGenerator, LearnFailure, LearnSuccess}
 import org.slf4j.LoggerFactory
 import org.slf4j.impl.Log4jLoggerAdapter
 import scopt.OParser
@@ -139,6 +140,7 @@ object Driver {
   case object SolverServer extends RunMode
 
   case object Verify extends RunMode
+  case object Synthesize extends RunMode
 
   case object Info extends RunMode
 
@@ -189,6 +191,7 @@ object Driver {
   val stringToMode:Map[String,RunMode] = Map(
     "solverServer" -> SolverServer,
     "verify" -> Verify,
+    "synthesize" -> Synthesize,
     "info" -> Info,
     "sampleDeref" -> SampleDeref,
     "readDB" -> ReadDB,
@@ -308,38 +311,10 @@ object Driver {
     act match {
       case Action(SolverServer, _,_,_,_,_, _, _) =>
           loopSolver()
+      case act@Action(Synthesize, _,_,cfgIn, filter, _, mode, dbg) =>
+        verifSynthAction(act, cfgIn, filter, mode, dbg)
       case act@Action(Verify, _, _, cfgIn, filter, _, mode,dbg) =>
-        val cfgWithTime = if(dbg){cfgIn.copy(timeLimit = 14400*2, truncateOut = false)} else cfgIn
-        val cfg = if(filter.isDefined) cfgWithTime.copy(componentFilter = Some(filter.get.split(':'))) else cfgWithTime
-        val componentFilter = cfg.componentFilter
-        val apkPath = act.getApkPath
-        val outFolder: String = act.getOutFolder
-        // Create output directory if not exists
-        // TODO: move db creation code to better location
-        File(outFolder).createIfNotExists(asDirectory = true)
-        val initialQuery = cfg.initialQuery
-        if (initialQuery.isEmpty)
-          throw new IllegalArgumentException("Initial query must be defined for verify")
-        val stepLimit = cfg.limit
-        val outFile = (File(outFolder) / "paths.db")
-        if (outFile.exists) {
-          implicit val opt = File.CopyOptions(overwrite = true)
-          outFile.moveTo(File(outFolder) / "paths.db1")
-        }
-        val pathMode = if (mode == "DB") {
-          DBOutputMode(outFile.canonicalPath)
-        } else if (mode == "MEM") {
-          MemoryOutputMode
-        } else if (mode == "NONE") {
-          NoOutputMode
-        } else throw new IllegalArgumentException(s"Mode ${mode} is invalid, options: DB - write nodes to sqlite, MEM " +
-          s"- keep nodes in memory.")
-        val res: List[LocResult] =
-          runAnalysis(cfg, apkPath, componentFilter, pathMode, stepLimit, initialQuery, Some(outFolder), dbg)
-        res.zipWithIndex.foreach { case (iq, ind) =>
-          val resFile = File(outFolder) / s"result_${ind}.txt"
-          resFile.overwrite(write(iq))
-        }
+        verifSynthAction(act, cfgIn, filter, mode, dbg)
       case act@Action(SampleDeref, _, _, cfg, _, _, _, _ ) =>
         sampleDeref(cfg, act.getApkPath, act.getOutFolder, act.filter)
       case act@Action(FindCallins, _, _, cfg, _, _, _, _) =>
@@ -362,6 +337,94 @@ object Driver {
         outputMessages(cfg, act.filter, act.getOutFolder, act.getApkPath)
       case v => throw new IllegalArgumentException(s"Invalid action: $v")
     }
+  }
+
+  private def verifSynthAction(act: Action, cfgIn: RunConfig, filter: Option[String], mode: String, dbg: Boolean): Unit = {
+    val cfgWithTime = if (dbg) {
+      cfgIn.copy(timeLimit = 14400 * 2, truncateOut = false)
+    } else cfgIn
+    val cfg = if (filter.isDefined) cfgWithTime.copy(componentFilter = Some(filter.get.split(':'))) else cfgWithTime
+    val componentFilter = cfg.componentFilter
+    val apkPath = act.getApkPath
+    val outFolder: String = act.getOutFolder
+    // Create output directory if not exists
+    // TODO: move db creation code to better location
+    File(outFolder).createIfNotExists(asDirectory = true)
+    val initialQuery = cfg.initialQuery
+    if (initialQuery.isEmpty)
+      throw new IllegalArgumentException("Initial query must be defined for verify")
+    val stepLimit = cfg.limit
+    val outFile = (File(outFolder) / "paths.db")
+    if (outFile.exists) {
+      implicit val opt = File.CopyOptions(overwrite = true)
+      outFile.moveTo(File(outFolder) / "paths.db1")
+    }
+    val pathMode = if (mode == "DB") {
+      DBOutputMode(outFile.canonicalPath)
+    } else if (mode == "MEM") {
+      MemoryOutputMode
+    } else if (mode == "NONE") {
+      NoOutputMode
+    } else throw new IllegalArgumentException(s"Mode ${mode} is invalid, options: DB - write nodes to sqlite, MEM " +
+      s"- keep nodes in memory.")
+    act.mode match {
+      case Verify => {
+        val res: List[LocResult] =
+          runAnalysis(cfg, apkPath, componentFilter, pathMode, stepLimit, initialQuery, Some(outFolder), dbg)
+        res.zipWithIndex.foreach { case (iq, ind) =>
+          val resFile = File(outFolder) / s"result_${ind}.txt"
+          resFile.overwrite(write(iq))
+        }
+      }
+      case Synthesize => {
+        val specSet = cfg.specSet
+        val specSpace = specSet.getSpecSpace()
+
+        val w = new SootWrapper(apkPath, specSet.getSpecSet().flatMap{s => s.pred.allMsg + s.target}.union(specSet.getDisallowSpecSet().flatMap{s => s.pred.allMsg + s.target}).union(specSpace.getMatcherSpace))
+        assert(initialQuery.size == 1, "must have exactly one initial query for synthesis")
+        val initialQueryS = initialQuery.head
+        val reachable:Set[InitialQuery] = Set() //TODO: get this out of config somehow
+        val config = ExecutorConfig(
+          stepLimit = stepLimit, w, specSet.getSpecSpace(), component = componentFilter, outputMode = pathMode,
+          timeLimit = cfg.timeLimit, printAAProgress = dbg)
+        val gen = new EnumModelGenerator(
+          initialQueryS,
+          reachable,
+          specSpace,
+          config //TODO: may want to add pkg filters if things get slow
+        )
+        val res = gen.run()
+        val resTxt = res match {
+          case LearnSuccess(space) =>
+            val builder = new StringBuilder()
+            builder.append("final specification Row 5")
+            builder.append("-------------------")
+            val spaceStr = space.toString
+            builder.append(spaceStr)
+            builder.append("dumping debug info")
+
+            builder.append("\nstats for starting spec row 5")
+            builder.append("---------------------")
+            builder.append(specSpace.stats().map { r => s"${r._1} : ${r._2}\n" })
+            builder.append("\nstats for final spec row 5")
+            builder.append("---------------------")
+            builder.append(space.stats().map { r => s"${r._1} : ${r._2}\n" })
+            builder.append("\nruntime stats")
+            builder.append("---------------------")
+            builder.append(gen.getStats().map { r => s"${r._1} : ${r._2}\n" })
+            val outf = File(outFolder) / s"result_synthesis_human.txt"
+            val outString = builder.toString
+            outf.overwrite(outString)
+            val specOut = File(outFolder) / s"result_synthesis_spec.json"
+            specOut.overwrite(write[PickleSpec](PickleSpec.mk(space)))
+            outString
+          case LearnFailure => "failed to learn a sufficient spec"
+        }
+        println(resTxt)
+      }
+      case mode => throw new IllegalArgumentException(s"method does not work for ${mode}")
+    }
+
   }
 
   def detectProguard(apkPath: String): Boolean = {

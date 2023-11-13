@@ -1306,7 +1306,9 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(), mat
         specMessageCount.sum,
       "messagesPerSpec" -> specMessageCount.sum.toDouble / allSpecs.size.toDouble,
       "object count" -> objectCount.toDouble,
-      "connection count" -> connectionCount
+      "connection count" -> connectionCount,
+      "spec count" -> (enableSpecs.size + disallowSpecs.size).toDouble,
+      "matcher space" -> matcherSpace.size.toDouble
     )
   }
 

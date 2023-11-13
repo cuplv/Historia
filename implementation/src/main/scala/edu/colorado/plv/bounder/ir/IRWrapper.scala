@@ -331,12 +331,16 @@ object ThrowCmd{
 
 case class Cast(castT:String, local: RVal) extends RVal {
   override def isConst: Boolean = false
+
+  override def primName: Option[String] = None
 }
 object Cast{
   implicit var rw:RW[Cast] = macroRW
 }
 case class Binop(v1:RVal, op: BinaryOperator, v2:RVal) extends RVal {
   override def isConst: Boolean = false
+
+  override def primName: Option[String] = None
 }
 object Binop{
   implicit var rw:RW[Binop] = macroRW
@@ -361,6 +365,7 @@ case object Ge extends BinaryOperator
 // Things that can be used as expressions
 trait RVal{
   def isConst:Boolean
+  def primName:Option[String]
 }
 object RVal{
   implicit val rw:RW[RVal] = RW.merge(
@@ -377,38 +382,60 @@ object RVal{
  */
 case class TopExpr(str:String) extends RVal {
   override def isConst: Boolean = false
+
+  override def primName: Option[String] = None
 }
 // New only has type, constructor parameters go to the <init> method
 case class NewCommand(className: String) extends RVal {
   override def isConst: Boolean = false
+
+  override def primName: Option[String] = None
 }
 case object NullConst extends RVal {
   override def isConst: Boolean = true
+
+  override def primName: Option[String] = None
 }
 case class ConstVal(v:String) extends RVal {
   override def isConst: Boolean = true
+
+  override def primName: Option[String] = None
 }
 case class IntConst(v:Int) extends RVal {
   override def isConst: Boolean = true
+
+  override def primName: Option[String] = Some("int")
 }
 case class StringConst(v:String) extends RVal {
   override def isConst: Boolean = true
+
+  override def primName: Option[String] = None
 }
 case class BoolConst(v:Boolean) extends RVal {
   override def isConst: Boolean = true
+
+  override def primName: Option[String] = Some("bool")
 }
 case class InstanceOf(clazz:String, target: LocalWrapper) extends RVal {
   override def isConst: Boolean = false
+
+  override def primName: Option[String] = None
 }
 case class ClassConst(clazz:String) extends RVal {
   override def isConst: Boolean = true
+
+  override def primName: Option[String] = None
 }
 case class CaughtException(n:String) extends RVal {
   override def isConst: Boolean = false
+
+  override def primName: Option[String] = None
 }
 
 case class ArrayLength(l:LocalWrapper) extends RVal {
   override def isConst: Boolean = false
+
+  override def primName: Option[String] = None
 }
 
 sealed trait Invoke extends RVal {
@@ -428,6 +455,8 @@ case class VirtualInvoke(target:LocalWrapper,
   override def targetOptional: Option[LocalWrapper] = Some(target)
 
   override def isConst: Boolean = false
+
+  override def primName: Option[String] = None
 }
 /*SpecialInvoke is used when the exact class target is known*/
 case class SpecialInvoke(target:LocalWrapper,
@@ -438,6 +467,8 @@ case class SpecialInvoke(target:LocalWrapper,
   override def targetOptional: Option[LocalWrapper] = Some(target)
 
   override def isConst: Boolean = false
+
+  override def primName: Option[String] = None
 }
 case class StaticInvoke(targetClass:String,
                         targetMethod:String,
@@ -446,6 +477,8 @@ case class StaticInvoke(targetClass:String,
   override def targetOptional: Option[LocalWrapper] = None
 
   override def isConst: Boolean = false
+
+  override def primName: Option[String] = None
 }
 
 // Things that can be assigned to or used as expressins
@@ -457,6 +490,8 @@ object LVal{
 
 case class ArrayReference(base:RVal, index:RVal) extends LVal {
   override def isConst: Boolean = false
+
+  override def primName: Option[String] = None
 }
 object ArrayReference{
   implicit val rw:RW[ArrayReference] = macroRW
@@ -474,6 +509,8 @@ case class LocalWrapper(name:String, localType:String) extends LVal {
     case _ => false
   }
   override def hashCode(): Int = name.hashCode
+
+  override def primName: Option[String] = None
 }
 object LocalWrapper{
   implicit val rw:RW[LocalWrapper] = macroRW
@@ -481,6 +518,8 @@ object LocalWrapper{
 
 case class ParamWrapper(name:String) extends LVal {
   override def isConst: Boolean = false
+
+  override def primName: Option[String] = None
 }
 object ParamWrapper{
   implicit val rw:RW[ParamWrapper] = macroRW
@@ -489,6 +528,8 @@ object ParamWrapper{
 //case class FieldWrapper(name:String) extends LVal
 case class ThisWrapper(className:String) extends LVal {
   override def isConst: Boolean = false
+
+  override def primName: Option[String] = None
 }
 
 object ThisWrapper{
@@ -499,6 +540,8 @@ case class FieldReference(base:LocalWrapper, containsType:String, declType:Strin
   override def toString: String = s"${base}.${name}"
 
   override def isConst: Boolean = false
+
+  override def primName: Option[String] = None
 }
 object FieldReference{
   implicit val rw:RW[FieldReference] = macroRW
@@ -507,6 +550,8 @@ object FieldReference{
 case class StaticFieldReference(declaringClass: String,
                                 fieldName: String, containedType:String) extends LVal {
   override def isConst: Boolean = false
+
+  override def primName: Option[String] = None
 }
 object StaticFieldReference{
   implicit val rw:RW[StaticFieldReference] = macroRW

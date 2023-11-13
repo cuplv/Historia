@@ -77,8 +77,10 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       // Get pts to regions for cb return var Empty if void
       val retPts = ret.map(r => wrapper.cmdAtLocation(r) match {
         case ReturnCmd(Some(returnVar: LocalWrapper), loc) => wrapper.pointsToSet(cb, returnVar)
+        case ReturnCmd(Some(const:RVal), loc) => PrimTypeSet(const.primName.get)
         case ReturnCmd(None, loc) => EmptyTypeSet
-        case otherCmd => throw new IllegalStateException(s"Cannot have non-return cmd as return location: $otherCmd")
+        case otherCmd =>
+          throw new IllegalStateException(s"Cannot have non-return cmd as return location: $otherCmd")
       }).foldLeft(EmptyTypeSet: TypeSet) {
         case (acc, v) => acc.union(v)
       }
