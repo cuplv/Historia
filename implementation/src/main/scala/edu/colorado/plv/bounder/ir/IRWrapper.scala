@@ -159,7 +159,9 @@ case class PrimTypeSet(name:String) extends TypeSet {
     case TopTypeSet => TopTypeSet
     case EmptyTypeSet => this
     case PrimTypeSet(otherName) if otherName == name => this
-    case ts => throw new IllegalArgumentException(s"cannot union primitive type set with: ${ts}")
+    case PrimTypeSet(otherName) if otherName == "int" && name == "boolean" => this // ints and bool are interchangeable
+    case PrimTypeSet(otherName) if otherName == "boolean" && name == "int" => this
+    case ts => throw new IllegalArgumentException(s"cannot union primitive type set ${name} with other type set: ${ts}")
   }
 
   override def isEmpty: Boolean = false
