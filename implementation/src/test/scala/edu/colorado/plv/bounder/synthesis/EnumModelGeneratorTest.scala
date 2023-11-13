@@ -925,11 +925,10 @@ class EnumModelGeneratorTest extends AnyFunSuite {
           "void onClick(android.view.View)",
           SAsyncTask.disallowDoubleExecute)
 
-        val reachablelocs :Set[InitialQuery] = Set( //TODO: see if works without this
+        val reachablelocs :Set[InitialQuery] = Set(
 //          nullReach, buttonEqReach, onResumeFirstReach, onClickCanHappenNoPrev, resumeReachAfterPauseQ, resumeTwiceReachQ, resumeFirstQ, queryOnClickAfterOnCreate,
           onClickCanHappenTwice, onClickReachableNoSetEnable, onClickAfterOnCreateAndOnClick, onClickCanHappenWithPrev,
           queryOnClickTwiceAfterReg)
-        //TODO: remove one at a time and figure out smallest set needed for the evaluation
         val gen = new EnumModelGenerator(query, reachablelocs, specSpace, config)
 
         //Unused: queryOnClickAfterOnCreate
