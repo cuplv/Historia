@@ -89,6 +89,9 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       val argPts = cb.getArgs.map(_.map(wrapper.pointsToSet(cb, _)).getOrElse(EmptyTypeSet))
 
       val allMethodsCalled = allCallsApp(cb) + cb
+//      val allMethodsCalledFilt = allMethodsCalled.filter{ci => // only compute pts for callins in abs msg set
+//        msgs.exists{absMsg => absMsg.contains(CIExit, ci.getSignature)}
+//      }
       val callins_ = allMethodsCalled.flatMap(callinNamesAndPts)
       val callins = callins_.flatMap { ci =>
         msgs.filter { absMsg =>
@@ -382,6 +385,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       case _: SwitchCmd => Set.empty
     }
 
+    //TODO: this is painfully slow, need to memoize tgt app methods?
     val returns = wrapper.makeMethodRetuns(m).toSet.map((v: AppLoc) =>
       BounderUtil.cmdAtLocationNopIfUnknown(v, wrapper).mkPre)
     BounderUtil.graphFixpoint[CmdWrapper, Set[(Signature, List[TypeSet])]](start = returns, Set(), Set(),

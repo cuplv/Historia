@@ -129,6 +129,7 @@ case object TopTypeSet extends TypeSet {
   override def union(other: TypeSet): TypeSet = TopTypeSet
 }
 case object EmptyTypeSet extends TypeSet{
+  override def hashCode(): Int = -2
   override def intersect(other: TypeSet): TypeSet = EmptyTypeSet
 
   override def isEmpty: Boolean = true
@@ -216,6 +217,8 @@ case class BitTypeSet(s:BitSet, optInfo: () => Map[Int, AllocSiteInfo] = () => M
   override def getValues: Option[Set[Int]] = {
     Some(s.toSet)
   }
+
+  override def hashCode(): Int = 1 + s.hashCode()
 
 
   override def contains(other: TypeSet): Boolean = other match{

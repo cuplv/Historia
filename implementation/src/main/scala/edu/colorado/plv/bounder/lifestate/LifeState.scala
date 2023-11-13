@@ -650,6 +650,13 @@ object LifeState {
   }
 
   case class Signature(base:String, methodSignature:String){
+    private var hashMem:Option[Int] = None
+    override def hashCode(): Int = {
+      if(hashMem.isEmpty){
+        hashMem = Some(base.hashCode + methodSignature.hashCode)
+      }
+      hashMem.get
+    }
     assert(!base.contains("("))
     assert(methodSignature.contains("("))
   }

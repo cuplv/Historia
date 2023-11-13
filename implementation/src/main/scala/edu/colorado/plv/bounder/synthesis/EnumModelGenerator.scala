@@ -96,6 +96,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
   private var synthesisTotalTime:Double = 0
   private var historiaOverApproxTotalTime:Double = 0
   private var historiaUnderApproxTotalTime:Double = 0
+  private var msgGraphTime:Double = 0
 
   def addOverApproxTime(time:Double):Unit = synchronized {
     historiaOverApproxTimes.addOne(time)
@@ -113,6 +114,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     historiaOverApproxTotalTime = 0
     historiaUnderApproxTotalTime = 0
     synthesisTotalTime = 0
+    msgGraphTime = 0
   }
 
   def getStats():Map[String,Double] = {
@@ -126,13 +128,19 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       "historia over approx program tot time(s)" -> historiaOverApproxTotalTime / 1e9,
       "historia under approx program tot time(s)" -> historiaUnderApproxTotalTime / 1e9,
       "synthesis program tot time(s)" -> synthesisTotalTime / 1e9,
-      "runtime(s)" -> lastRuntime / 1e9
+      "runtime(s)" -> lastRuntime / 1e9,
+      "message graph time(s)" -> msgGraphTime / 1e9
     )
   }
 
   private val cha = cfg.w.getClassHierarchyConstraints
-  private val controlFlowResolver =
-    new ControlFlowResolver[M,C](cfg.w, new DefaultAppCodeResolver(cfg.w), cha, cfg.component.map(_.toList),cfg)
+  private val controlFlowResolver = {
+    val msgGraphStartTime = System.nanoTime()
+    val out = new ControlFlowResolver[M,C](cfg.w, new DefaultAppCodeResolver(cfg.w), cha,
+      Some(reachPkgFilter ++ unreachPkgFilter),cfg)
+    msgGraphTime = System.nanoTime() - msgGraphStartTime
+    out
+  }
   private val ptsMsg = controlFlowResolver.ptsToMsgs(initialSpec.getMatcherSpace)
 
   private val approxResMemo = TrieMap[(InitialQuery, SpecSpace, ApproxDir, ApproxMode, List[String]), Set[IPathNode]]()
