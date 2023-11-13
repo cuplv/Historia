@@ -97,6 +97,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
   private var historiaOverApproxTotalTime:Double = 0
   private var historiaUnderApproxTotalTime:Double = 0
   private var msgGraphTime:Double = 0
+  val initialSpecWithStats:SpecSpace = initialSpec.setSearchSteps(0).setProbOpt(1).setProbNaive(1)
 
   def addOverApproxTime(time:Double):Unit = synchronized {
     historiaOverApproxTimes.addOne(time)
@@ -267,6 +268,44 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
 //    mergeOne(pred1Construct, other, scope)
 //  }
 
+  def mkMsgComb(scope:Map[PureVar,TypeSet], freshOpt:Set[PureVar]):Set[OAbsMsg] = {
+    val scope2  = scope.map{case (k,v) => k.asInstanceOf[PureExpr]-> v}
+    val scopeVals: Map[PureExpr,TypeSet] = scope2 + (TopVal -> TopTypeSet)
+
+    ptsMsg.flatMap { case (msgFromCg, argPts) =>
+      val zippedCgPtsArgs = msgFromCg.lsVars.zip(argPts).zipWithIndex
+      val intersectNonEmpty: Seq[(PureExpr, Int)] = zippedCgPtsArgs.flatMap {
+        case ((pv: PureVar, tsFromCg), ind) =>
+          scopeVals.flatMap {
+            case (varName, ts2) =>
+              Some(varName, ind)
+          }
+        case (v, _) => None
+      }
+
+      val outOpts = intersectNonEmpty.flatMap {
+        case (TopVal, _) =>
+          Set.empty // ignore aliasing of non-pv
+        case (aliasedVar: PureVar, aliasedIndex) =>
+          val positionalOptions: Seq[List[PureExpr]] = msgFromCg.lsVars.zip(argPts).zipWithIndex.map {
+            case ((pv: PureVar, _), ind) if aliasedIndex == ind =>
+              List(aliasedVar)
+            case ((pv: PureVar, ts), ind) if aliasedIndex != ind =>
+              (scopeVals.keys ++ freshOpt).toList
+            case ((v, _), ind) if aliasedIndex != ind =>
+              List(v)
+            case ((_, _), ind) if aliasedIndex == ind =>
+              List()
+          }
+
+          val combinations = BounderUtil.repeatingPerm(positionalOptions, msgFromCg.lsVars.size)
+          val out = combinations.map { comb => msgFromCg.copy(lsVars = comb) }
+          out
+      }
+      outOpts
+    }
+
+  }
   def mkRel(scope:Map[PureVar,TypeSet], freshOpt:Set[PureVar]):Set[OAbsMsg] = {
     val scope2  = scope.map{case (k,v) => k.asInstanceOf[PureExpr]-> v}
     val scopeVals: Map[PureExpr,TypeSet] = scope2 + (TopVal -> TopTypeSet)
@@ -396,9 +435,12 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
    * @return stepped specification with new logic variables to be quantified
    */
   def step(pred:LSPred, scope:Map[PureVar,TypeSet], freshOpt:Set[PureVar], witnesses:Set[IPathNode],
-           hasAnd:Boolean = false):StepResult = pred match{
+           hasAnd:Boolean = false, enableOptimizations:Boolean = true):StepResult = pred match{
     case LifeState.LSAnyPred =>{
-      val relMsg: immutable.Iterable[OAbsMsg] = mkRel(scope, freshOpt)//scope.flatMap{case(pv,ts) => mkRel(pv,ts, scope.keySet)}
+      val relMsg: immutable.Iterable[OAbsMsg] = if (enableOptimizations)
+        mkRel(scope, freshOpt)//scope.flatMap{case(pv,ts) => mkRel(pv,ts, scope.keySet)}
+      else
+        mkMsgComb(scope,freshOpt)
 
 //      val relNS = relMsg.flatMap{m =>
 //        absMsgToNs(m,scope).map(ns =>
@@ -414,7 +456,8 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       }
 
 
-      val relMsgToAdd = relMsg.map{m => (m.asInstanceOf[LSPred], m.lsVar.filter(!scope.contains(_)))}
+      val relMsgToAdd = relMsg.map{m =>
+        (m.asInstanceOf[LSPred], m.lsVar.filter(!scope.contains(_) || !enableOptimizations))}
 
       val mutList = new ListBuffer[(LSPred, Set[PureVar])]()
       mutList.addAll(relNS)
@@ -445,14 +488,18 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       StepSuccessP(mutList.toList)
     }
     case NS(m, AnyAbsMsg) =>
-      val relMsg: immutable.Iterable[OAbsMsg] = mkRel(scope, freshOpt)
+//      val relMsg: immutable.Iterable[OAbsMsg] = mkRel(scope, freshOpt)
+      val relMsg: immutable.Iterable[OAbsMsg] = if (enableOptimizations)
+        mkRel(scope, freshOpt) //scope.flatMap{case(pv,ts) => mkRel(pv,ts, scope.keySet)}
+      else
+        mkMsgComb(scope, freshOpt)
       val stepNS = relMsg.map(m2 => NS(m,m2))
       val out = stepNS.filter {
           case NS(m1,m2) =>
             val m1Var = m1.lsVar
-            witnesses.exists{w => scopedMsgExistsInWit(w, scope, m2)} && //no reason to have not if no instance in hist
+            (witnesses.exists{w => scopedMsgExistsInWit(w, scope, m2)} && //no reason to have not if no instance in hist
               m1Var.exists(v => scope.contains(v)) &&
-              m2.lsVar.forall(v => m1Var.contains(v))
+              m2.lsVar.forall(v => m1Var.contains(v))) || !enableOptimizations
       }.map{
         case ns@NS(_,m2) => (ns, scope.keySet ++ m2.lsVar)
       }
@@ -533,7 +580,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
    * @param scope all variables that have been instantiated in the verification task and associated points to
    * @return next spec, whether spec was stepped
    */
-  def stepSpec(rule:LSSpec, scope:Map[PureVar,TypeSet], witnesses:Set[IPathNode]):(List[LSSpec],Boolean) = rule match{
+  def stepSpec(rule:LSSpec, scope:Map[PureVar,TypeSet], witnesses:Set[IPathNode], enableOptimizations:Boolean):(List[LSSpec],Boolean) = rule match{
     case s@LSSpec(un,ex,pred,tgt,_) =>
       val allFv: Set[PureVar] = un.toSet ++ ex.toSet ++ pred.lsVar ++ tgt.lsVar
       var fv = 0
@@ -541,7 +588,8 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
         fv = fv + 1
       }
       val freshOpt:Set[PureVar] = Set(NamedPureVar(s"synth_${fv}"))
-      val stepped: (List[LSSpec], Boolean) = step(pred, scope, freshOpt, witnesses) match {
+      val stepped: (List[LSSpec], Boolean) = step(pred, scope, freshOpt, witnesses,
+        enableOptimizations = enableOptimizations) match {
         case StepSuccessP(preds) =>
           val simplifiedPreds = preds.map { case (p, quant) =>
             EncodingTools.simplifyPred( p)}
@@ -550,7 +598,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
             val newQuant = freeVars.removedAll(un).removedAll(ex)
             s.copy(pred = pred, existQuant = ex.appendedAll(newQuant).distinct)
           }
-          val filteredConnected = outS.filter{p => connectedSpec(p) || nonConnected}
+          val filteredConnected = outS.filter{p => connectedSpec(p) || !enableOptimizations}
           (filteredConnected,true)
         case NoStep => (List(s),false)
       }
@@ -611,18 +659,23 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
     if(specToStep.isEmpty)
       return (Set(specSpace),false)
     val (next:List[LSSpec],changed) =
-      stepSpec(specToStep.get,mkScope(specToStep.get, witnesses), witnesses)
-
+      stepSpec(specToStep.get,mkScope(specToStep.get, witnesses), witnesses, enableOptimizations = true)
+    val (nextIfUnoptimized:List[LSSpec], _) =
+      stepSpec(specToStep.get,mkScope(specToStep.get, witnesses), witnesses, enableOptimizations = false)
+    //TODO: count next and multiply against optimized probability -- make unoptimized step spec
     val base: Set[LSSpec] = specSpace.getSpecs.filter { s => s != specToStep.get }
-    (next.map { n => new SpecSpace(base + n, disallowSpecs = specSpace.getDisallowSpecs,
-      matcherSpace = specSpace.getMatcherSpace) }.toSet, true)
+    val out = (next.map { n => new SpecSpace(base + n, disallowSpecs = specSpace.getDisallowSpecs,
+      matcherSpace = specSpace.getMatcherSpace, searchProbOpt = Some(specSpace.getSearchProbOpt * next.size),
+      searchProbNaive = Some(specSpace.getSearchProbNaive * nextIfUnoptimized.size),
+      searchSteps = Some(specSpace.getSearchSteps + 1)) }.toSet, true)
+    out
   }
 
   def run():LearnResult = {
     val startTime = System.nanoTime()
 
     val queue = mutable.PriorityQueue[SpecSpace]()(SpecSpaceAnyOrder)
-    queue.addOne(initialSpec)
+    queue.addOne(initialSpecWithStats)
     var specsTested = 0
     while(queue.nonEmpty) {
       specsTested +=1

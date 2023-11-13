@@ -1297,7 +1297,40 @@ object LSPredAnyOrder{
  * enableSpecs are conditions required for a callback or callin return
  * @matcherSpace additional matchers that may be used for synthesis (added to allI)
  **/
-class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(), matcherSpace:Set[OAbsMsg] = Set()) {
+class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(),
+                matcherSpace:Set[OAbsMsg] = Set(),
+                searchProbOpt:Option[BigInt] = None, // always take one of n paths so only keep denominator of rational
+                searchProbNaive:Option[BigInt]= None,
+                searchSteps:Option[BigInt] = None
+               ) {
+
+  def getSearchSteps:BigInt = {
+    assert(searchSteps.isDefined, "search steps must be defined")
+    searchSteps.get
+  }
+  /**
+   * Only call if known to be defined
+   * @return
+   */
+  def getSearchProbOpt:BigInt = {
+    assert(searchProbOpt.isDefined, "probability must be defined to be gotten")
+    searchProbOpt.get
+  }
+
+  def getSearchProbNaive: BigInt = {
+    assert(searchProbNaive.isDefined, "probability must be defined to be gotten")
+    searchProbNaive.get
+  }
+
+  def setProbNaive(i: BigInt): SpecSpace =
+    new SpecSpace(enableSpecs, disallowSpecs, matcherSpace, searchProbOpt, searchProbNaive=Some(i), searchSteps)
+
+  def setProbOpt(i: BigInt) =
+    new SpecSpace(enableSpecs, disallowSpecs, matcherSpace, searchProbOpt = Some(i), searchProbNaive, searchSteps)
+
+  def setSearchSteps(i: BigInt) =
+    new SpecSpace(enableSpecs, disallowSpecs, matcherSpace, searchProbOpt, searchProbNaive, searchSteps = Some(i))
+
   override def hashCode(): Int = {
     (enableSpecs.map{s => s.hashCode()} ++ disallowSpecs.map{s => s.hashCode()}).hashCode()
   }
@@ -1315,7 +1348,10 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(), mat
       "object count" -> objectCount.toDouble,
       "connection count" -> connectionCount,
       "spec count" -> (enableSpecs.size + disallowSpecs.size).toDouble,
-      "matcher space" -> matcherSpace.size.toDouble
+      "matcher space" -> matcherSpace.size.toDouble,
+      "search steps" -> getSearchSteps.toDouble,
+      "probability optimized" -> getSearchProbOpt.toDouble,
+      "probability naive" -> getSearchProbNaive.toDouble
     )
   }
 
@@ -1353,8 +1389,8 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(), mat
   def copy(enableSpecs:Set[LSSpec] = this.enableSpecs,
            disallowSpecs:Set[LSSpec] = this.disallowSpecs,
            matcherSpace:Set[OAbsMsg] = this.matcherSpace
-          ):SpecSpace = new SpecSpace(enableSpecs, disallowSpecs, matcherSpace)
-
+          ):SpecSpace = new SpecSpace(enableSpecs, disallowSpecs, matcherSpace,
+    searchProbOpt = searchProbOpt, searchProbNaive = searchProbNaive, searchSteps = searchSteps)
   def findIFromCurrent(dir: MessageType, signature: Signature)(implicit cha:ClassHierarchyConstraints):Set[OAbsMsg] = {
     allI.filter(i => i.mt == dir && i.signatures.matches(signature))
   }

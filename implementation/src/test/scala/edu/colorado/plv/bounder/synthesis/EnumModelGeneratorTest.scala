@@ -701,7 +701,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
       var i = 0
       var c = List(hi)
       while(i < 10){
-        c = gen.stepSpec(c.head, Map(), ???)._1
+        c = gen.stepSpec(c.head, Map(), ???, enableOptimizations = true)._1
         println(c)
         //TODO:
       }
@@ -784,7 +784,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
               PrettyPrinting.dumpSpec(space, "cbSpec")
             println("\nstats for starting spec row 1")
             println("---------------------")
-            println(specSpace.stats().map{r => s"${r._1} : ${r._2}\n"})
+            println(gen.initialSpecWithStats.stats().map{r => s"${r._1} : ${r._2}\n"})
             println("\nstats for final spec row 1")
             println("---------------------")
             println(space.stats().map{r => s"${r._1} : ${r._2}\n"})
@@ -945,7 +945,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
 
             println("\nstats for starting spec row 2")
             println("---------------------")
-            println(specSpace.stats().map { r => s"${r._1} : ${r._2}\n" })
+            println(gen.initialSpecWithStats.stats().map { r => s"${r._1} : ${r._2}\n" })
             println("\nstats for final spec row 2")
             println("---------------------")
             println(space.stats().map { r => s"${r._1} : ${r._2}\n" })
@@ -1026,7 +1026,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
 
             println("\nstats for starting spec row 3")
             println("---------------------")
-            println(specSpace.stats().map { r => s"${r._1} : ${r._2}\n" })
+            println(gen.initialSpecWithStats.stats().map { r => s"${r._1} : ${r._2}\n" })
             println("\nstats for final spec row 3")
             println("---------------------")
             println(space.stats().map { r => s"${r._1} : ${r._2}\n" })
@@ -1093,13 +1093,12 @@ class EnumModelGeneratorTest extends AnyFunSuite {
             assert(space.getSpecs.forall{spec => //TODO:dbg code ====
               gen.connectedSpec(spec)
             })
-            val newConfig = config.copy(specSpace = space)
             if(DUMP_DBG)
               PrettyPrinting.dumpSpec(space, "cbSpec")
 
             println("\nstats for starting spec row 4")
             println("---------------------")
-            println(specSpace.stats().map { r => s"${r._1} : ${r._2}\n" })
+            println(gen.initialSpecWithStats.stats().map { r => s"${r._1} : ${r._2}\n" })
             println("\nstats for final spec row 4")
             println("---------------------")
             println(space.stats().map { r => s"${r._1} : ${r._2}\n" })
@@ -1189,7 +1188,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
 
             println("\nstats for starting spec row 5")
             println("---------------------")
-            println(specSpace.stats().map { r => s"${r._1} : ${r._2}\n" })
+            println(gen.initialSpecWithStats.stats().map { r => s"${r._1} : ${r._2}\n" })
             println("\nstats for final spec row 5")
             println("---------------------")
             println(space.stats().map { r => s"${r._1} : ${r._2}\n" })
