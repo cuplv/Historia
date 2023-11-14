@@ -372,13 +372,14 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
   }
 
   def stepBinop(l1: LSPred, l2: LSPred, op:(LSPred,LSPred) => LSPred,
-                scope:Map[PureVar, TypeSet], freshOpt:Set[PureVar], hasAnd:Boolean, witnesses:Set[IPathNode]): StepResult = {
+                scope:Map[PureVar, TypeSet], freshOpt:Set[PureVar], hasAnd:Boolean, witnesses:Set[IPathNode],
+              enableOptimizations:Boolean): StepResult = {
     val l1_step = if (LSPredAnyOrder.depthToAny(l1) < LSPredAnyOrder.depthToAny(l2)) {
-      step(l1, scope, freshOpt, witnesses, hasAnd)
+      step(l1, scope, freshOpt, witnesses, hasAnd, enableOptimizations = enableOptimizations)
     } else NoStep
     l1_step match {
       case NoStep =>
-        step(l2, scope,freshOpt, witnesses, hasAnd) match {
+        step(l2, scope,freshOpt, witnesses, hasAnd, enableOptimizations = enableOptimizations) match {
           case StepSuccessP(preds) => StepSuccessP(preds.map(p => (op(l1, p._1), p._2 ++ scope.keySet)))
           case StepSuccessM(msg) => ???
           case NoStep => NoStep
@@ -505,9 +506,9 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       }
       StepSuccessP(out.toList)
     case Or(l1, l2) =>
-      stepBinop(l1,l2,Or, scope,freshOpt, hasAnd, witnesses)
+      stepBinop(l1,l2,Or, scope,freshOpt, hasAnd, witnesses, enableOptimizations)
     case And(l1, l2) =>
-      stepBinop(l1,l2,And, scope,freshOpt, hasAnd = true, witnesses)
+      stepBinop(l1,l2,And, scope,freshOpt, hasAnd = true, witnesses, enableOptimizations)
     case Forall(x, s) => mergeOne(v => Forall(x,v), s, scope ++ x.map(_ -> TopTypeSet), freshOpt, witnesses)
     case Exists(x, p) => mergeOne(Exists(x,_), p, scope ++ x.map(_ -> TopTypeSet), freshOpt, witnesses)
     case _:NS => NoStep
@@ -658,11 +659,12 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       .toList.sorted(LSPredAnyOrder.SpecStepOrder).headOption
     if(specToStep.isEmpty)
       return (Set(specSpace),false)
-    val (next:List[LSSpec],changed) =
+    val (next:List[LSSpec],_) =
       stepSpec(specToStep.get,mkScope(specToStep.get, witnesses), witnesses, enableOptimizations = true)
     val (nextIfUnoptimized:List[LSSpec], _) =
       stepSpec(specToStep.get,mkScope(specToStep.get, witnesses), witnesses, enableOptimizations = false)
     //TODO: count next and multiply against optimized probability -- make unoptimized step spec
+    // remove spec being stepped and replace with stepped version
     val base: Set[LSSpec] = specSpace.getSpecs.filter { s => s != specToStep.get }
     val out = (next.map { n => new SpecSpace(base + n, disallowSpecs = specSpace.getDisallowSpecs,
       matcherSpace = specSpace.getMatcherSpace, searchProbOpt = Some(specSpace.getSearchProbOpt * next.size),
