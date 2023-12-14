@@ -834,9 +834,12 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         case Some(v) =>
           val src = Set(state.getOrDefine2(source, l.method))
           src.map {
+            case (NullVal, s2) =>
+              s2.addPureConstraint(PureConstraint(v, Equals, NullVal))
+                .clearLVal(target)
             case (pexp, s2) =>
               s2.addPureConstraint(PureConstraint(v, Equals, pexp))
-                .addPureConstraint(PureConstraint(v,NotEquals,NullVal))
+                .addPureConstraint(PureConstraint(v,NotEquals,NullVal)) // non-null if non-null const
                 .clearLVal(target)
           }
         case None => Set(state)
