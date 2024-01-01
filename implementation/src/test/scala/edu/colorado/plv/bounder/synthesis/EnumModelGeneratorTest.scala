@@ -217,37 +217,78 @@ object EnumModelGeneratorTest{
     s"""package com.example.createdestroy;
        |import android.app.Activity;
        |import android.os.Bundle;
+       |import android.widget.Button;
        |import android.util.Log;
        |import android.view.View;
-       |import android.widget.Button;
        |import android.os.Handler;
        |import android.view.View.OnClickListener;
        |
        |
        |public class MyActivity extends Activity {
        |    String s = null;
-       |    View v = null; //TODO: move new button here and say similar to findview
+       |    View v = null;
        |    @Override
-       |    protected void onResume(){
-       |        s = "";
-       |        //v = findViewById(3);
+       |    protected void onCreate(Bundle b){
        |        v = new Button(this);
        |        v.setOnClickListener(new OnClickListener(){
        |           @Override
        |           public void onClick(View v){
-       |             s.toString(); // query1 null unreachable
-       |             MyActivity.this.finish();
+       |             s.toString(); // query1
        |           }
        |        });
+       |        (new Handler()).postDelayed(new Runnable(){
+       |             @Override
+       |             public void run(){
+       |               MyActivity.this.finish();
+       |               ${disableClick}
+       |             }
+       |        }, 3000);
+       |    }
+       |
+       |    @Override
+       |    protected void onResume() {
+       |        s = "";
        |    }
        |
        |    @Override
        |    protected void onPause() {
        |        s = null;
-       |        ${disableClick}
-       |        //v.setOnClickListener(null);
        |    }
        |}""".stripMargin
+//    s"""package com.example.createdestroy;
+//       |import android.app.Activity;
+//       |import android.os.Bundle;
+//       |import android.util.Log;
+//       |import android.view.View;
+//       |import android.widget.Button;
+//       |import android.os.Handler;
+//       |import android.view.View.OnClickListener;
+//       |
+//       |
+//       |public class MyActivity extends Activity {
+//       |    String s = null;
+//       |    View v = null; //TODO: move new button here and say similar to findview
+//       |    @Override
+//       |    protected void onResume(){
+//       |        s = "";
+//       |        //v = findViewById(3);
+//       |        v = new Button(this);
+//       |        v.setOnClickListener(new OnClickListener(){
+//       |           @Override
+//       |           public void onClick(View v){
+//       |             s.toString(); // query1 null unreachable
+//       |             MyActivity.this.finish();
+//       |           }
+//       |        });
+//       |    }
+//       |
+//       |    @Override
+//       |    protected void onPause() {
+//       |        s = null;
+//       |        ${???; disableClick} //TODO: make this closer to the original, over simplified now
+//       |        //v.setOnClickListener(null);
+//       |    }
+//       |}""".stripMargin
 
 
   val row6 =
@@ -1043,7 +1084,7 @@ class EnumModelGeneratorTest extends AnyFunSuite {
   }
   test("Synthesis Row 4: simplification of Connect bot click/finish") {
     println("starting Row 4")
-
+    //TODO:==== accidentally swapped out with simplified version, get working on full version
     //Or(NS(SpecSignatures.Activity_onPause_exit, SpecSignatures.Activity_onResume_entry),
     //          Not(SpecSignatures.Activity_onResume_entry))
     //TODO: try replacing v in template for _

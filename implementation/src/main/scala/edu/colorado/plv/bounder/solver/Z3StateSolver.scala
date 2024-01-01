@@ -214,6 +214,7 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
   }
 }
 object Z3StateSolver{
+  val defaultTimeout = 40000
 }
 
 /**
@@ -227,12 +228,13 @@ object Z3StateSolver{
  */
 class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
                     logTimes:Boolean,
-                    timeout:Int = 40000,
+                    timeout:Int = Z3StateSolver.defaultTimeout,
                     randomSeed:Int=3578,
                     defaultOnSubsumptionTimeout: () => Boolean = () => false,
                     pushSatCheck:Boolean = true,
                     strict_test:Boolean = false,
-                    z3InstanceLimit:Int = -1
+                    z3InstanceLimit:Int = -1,
+                    z3ShouldRetryOnTimeout:Boolean = true
                    ) extends StateSolver[AST,Z3SolverCtx] {
   private val mZ3InstanceLimit = if(z3InstanceLimit > 0) z3InstanceLimit else {
     Runtime.getRuntime.availableProcessors
@@ -1499,6 +1501,8 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
     overrideSolver.map{_._1}
   override def getSolverTimeout: Option[Int] =
     Some(overrideSolver.map{_._2}.getOrElse(timeout))
+
+  override def getz3ShouldRetryOnTimeout:Boolean = z3ShouldRetryOnTimeout
 
   override def resetZ3Caches(): Unit ={
     zctxPool.drain()

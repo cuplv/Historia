@@ -179,7 +179,8 @@ case class ExecutorConfig[M,C](stepLimit: Int = -1,
                                timeLimit:Int = 7200, // Note: connectbot click finish does not seem to go any further with 2h vs 0.5hr
                                subsumptionMode:SubsumptionMode = SubsumptionModeIndividual, //Note: seems to be faster without batch mode subsumption
                                approxMode:ApproxMode =  LimitMaterializationApproxMode(),
-                               z3InstanceLimit:Int = -1
+                               z3InstanceLimit:Int = -1,
+                               z3ShouldRetryOnTimeout:Boolean = true
                                //PreciseApproxMode(true) //default is to allow dropping of constraints and no widen //TODO: === make thresher version that drops things == make under approx version that drops states
                                       ){
   def getAbstractInterpreter =
@@ -312,7 +313,9 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
     case NoOutputMode => false
     case MemoryOutputMode => true
     case DBOutputMode(dbfile) => true
-  }, z3InstanceLimit = config.z3InstanceLimit)
+  }, z3InstanceLimit = config.z3InstanceLimit,
+    timeout = config.z3Timeout.getOrElse(Z3StateSolver.defaultTimeout),
+    z3ShouldRetryOnTimeout = config.z3ShouldRetryOnTimeout)
 
 
   case class QueryData(queryId:Int, location:Loc, terminals: Set[IPathNode], runTime:Long, result : QueryResult)

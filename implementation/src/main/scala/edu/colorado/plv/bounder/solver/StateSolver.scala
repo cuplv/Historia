@@ -67,6 +67,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   def resetZ3Caches():Unit
   def getSolverRetries:Option[Int]
   def getSolverTimeout: Option[Int]
+  def getz3ShouldRetryOnTimeout:Boolean
   def shouldLogTimes:Boolean
   def STRICT_TEST:Boolean
   def mkAssert(t:T)(implicit zCtx:C):Unit
@@ -1347,7 +1348,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    * @return
    */
   def canSubsume(s1: State, s2: State, specSpace: SpecSpace, maxLen: Option[Int] = None,
-                 timeout:Option[Int] = None,method:SubsumptionMethod = SubsZ3): Boolean = {
+                 method:SubsumptionMethod = SubsZ3): Boolean = {
 //     val method = "Unify"//TODO: benchmark and see if this is actually faster: Idea run both and log times then hist
 //     val method = "Debug"
     val s1Hashable = s1.sf.makeHashable(specSpace)
@@ -1398,7 +1399,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 //    }
 
     val res = if(method == SubsZ3) {
-      val toCache = canSubsumeZ3(s1Simp.get,s2Simp.get,specSpace, maxLen, timeout)
+      val toCache = canSubsumeZ3(s1Simp.get,s2Simp.get,specSpace, maxLen, getSolverTimeout)
       subsumeCache.put((s1Hashable,s2Hashable), toCache)
       toCache
     } else if(method == SubsUnify)
@@ -1406,10 +1407,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     else if(method == SubsFailOver){
       try{canSubsumeUnify(s1Simp.get, s2Simp.get, specSpace)} catch{
         case _:IllegalStateException =>
-          canSubsumeZ3(s1Simp.get, s2Simp.get, specSpace, maxLen, timeout)
+          canSubsumeZ3(s1Simp.get, s2Simp.get, specSpace, maxLen, getSolverTimeout)
       }
     } else if(method == SubsDebug) {
-      val z3res = canSubsumeZ3(s1Simp.get, s2Simp.get, specSpace, maxLen, timeout)
+      val z3res = canSubsumeZ3(s1Simp.get, s2Simp.get, specSpace, maxLen, getSolverTimeout)
       val unifyRes = canSubsumeUnify(s1Simp.get,s2Simp.get,specSpace)
       if(z3res != unifyRes) {
         val s1Ser = write(s1)
@@ -1422,8 +1423,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         val s2Deser = read[State](s2Ser)
         println(s1Deser)
         println(s2Deser)
-        val z3res2 = canSubsumeZ3(s1Simp.get, s2Simp.get, specSpace,maxLen, timeout)
-        val unifres2 = canSubsumeUnify(s1Simp.get, s2Simp.get, specSpace)
+//        val z3res2 = canSubsumeZ3(s1Simp.get, s2Simp.get, specSpace,maxLen, getSolverTimeout)
+//        val unifres2 = canSubsumeUnify(s1Simp.get, s2Simp.get, specSpace)
         //throw new IllegalStateException("different results")
       }
       z3res
@@ -1620,7 +1621,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       case None =>
         // try 3 times with different random seeds
         val max = getSolverRetries.getOrElse(2)
-        if (rngTry < max) {
+        if (getz3ShouldRetryOnTimeout && rngTry < max) {
           canSubsumeZ3(s1i, s2i, specSpace, maxLen, timeout, rngTry + 1)
         } else {
           println("Giving up and not subsuming.")
