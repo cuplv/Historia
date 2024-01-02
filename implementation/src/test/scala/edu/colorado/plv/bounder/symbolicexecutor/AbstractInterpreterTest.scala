@@ -3597,24 +3597,32 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
            |    public class Node{
            |      Node next = null;
            |    }
+           |    private Node list = null;
            |
            |    @Override
            |    protected void onCreate(Bundle savedInstanceState) {
            |        super.onCreate(savedInstanceState);
            |
-           |        Node list = null;
-           |
-           |        //while(this.getCallingActivity() !=null){ // using gca as havoc (w/o framework model no way to know)
-           |        //  Node tmp = new Node();
-           |        //  tmp.next = list;
-           |        //  list = tmp;
-           |        //}
-           |
-           |        while(null != list){
-           |           list = list.next;
+           |        subscription = Single.create(subscriber -> {
+           |            try {
+           |                Thread.sleep(2000);
+           |            } catch (InterruptedException e) {
+           |                e.printStackTrace();
+           |            }
+           |            subscriber.onSuccess(3);
+           |        }).subscribeOn(Schedulers.newThread())
+           |                .observeOn(AndroidSchedulers.mainThread())
+           |                .subscribe(a -> {
+           |                    while(null != list){
+           |                       list = list.next;
+           |                    }
+           |                    Log.i("b", o.toString()); //query1
+           |                });
+           |        while(this.getCallingActivity() !=null){ // using gca as havoc (w/o framework model no way to know)
+           |          Node tmp = new Node();
+           |          tmp.next = list;
+           |          list = tmp;
            |        }
-           |
-           |        o.toString(); //query1
            |    }
            |}""".stripMargin
 
@@ -3627,21 +3635,28 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
 
         //TODO: set to under approx ===
         val config = ExecutorConfig(
-          stepLimit = 200, w, new SpecSpace(specs),
+          stepLimit = 200, w, new SpecSpace(specs, matcherSpace = Set(Activity_onResume_entry)),
           component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
         val symbolicExecutor = config.getAbstractInterpreter
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
-        val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
-          "void onCreate(android.os.Bundle)"), line, Some(".*toString.*"))
+//        val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+//          "void onCreate(android.os.Bundle)"), line, Some(".*toString.*"))
 
-        //val i = BounderUtil.lineForRegex(".*initializeabc.*".r, src)
-        //Dump dot of while method
-        //val query2 = Qry.makeReach(symbolicExecutor,
-        //  Signature("com.example.createdestroy.MyActivity", "void setO()"),i )
-        // prettyPrinting.dotMethod(query2.head.loc,symbolicExecutor.controlFlowResolver, "setO.dot")
+        val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+          "void lambda$onCreate$1$MyActivity(java.lang.Object)"), line, Some(".*toString.*"))
 
         val result = symbolicExecutor.run(query).flatMap(a => a.terminals)
+
+        //TODO: rm debug code
+//        val relClasses = Scene.v().getClasses.asScala.filter{c =>
+//          val name = c.getName
+//          name.contains("com.example.createdestroy")
+//        }
+
+//        println()
+        //TODO:
         PrettyPrinting.dumpDebugInfo(result, "whileTest", truncate = false)
+        PrettyPrinting.printWitness(result)
 
         if (om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) assert(result.nonEmpty)
         BounderUtil.throwIfStackTrace(result)
