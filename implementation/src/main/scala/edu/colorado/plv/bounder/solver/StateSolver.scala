@@ -547,7 +547,6 @@ trait StateSolver[T, C <: SolverCtx[T]] {
         val currentConstr: Set[LSConstraint] = previous.map{ other =>
             LSConstraint(other, NotEquals, v)
         }
-        // TODO: constrain all args prior to not be equal to ref ======
 
         val c = currentConstr.reduceOption(And)
         val n = encodeRefV(t,previous)
