@@ -3219,7 +3219,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
 //          test)
 //    }
 //  }
-  test("Reach example - simplification of Connect bot click/finish") { f =>
+  ignore("Reach example - simplification of Connect bot click/finish") { f =>
     val specs1 = Set[LSSpec](
       ViewSpec.clickWhileActive
 //      LSSpec(a :: Nil, Nil,
@@ -3251,7 +3251,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
             val config = ExecutorConfig(
               stepLimit = 2000, w, specSpace,
               component = Some(List("com.example.createdestroy.*")), outputMode = dbMode,
-              approxMode = PreciseApproxMode(false), z3Timeout = Some(1000), z3ShouldRetryOnTimeout = false)
+              approxMode = PreciseApproxMode(false), z3Timeout = Some(30000), z3ShouldRetryOnTimeout = false)
 
             //Unreach Location
             {

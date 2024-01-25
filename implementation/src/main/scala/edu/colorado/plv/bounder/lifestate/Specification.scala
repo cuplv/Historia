@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.lifestate
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Forall, HNOE, LSConstraint, LSFalse, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
-import edu.colorado.plv.bounder.lifestate.SpecSignatures.{Fragment_onStart_entry, Fragment_onStop_exit, t}
+import edu.colorado.plv.bounder.lifestate.SpecSignatures.{Fragment_onStart_entry, Fragment_onStop_exit, a, t, v}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, Equals, NamedPureVar, NotEquals, NullVal, PureExpr, TopVal}
 
 object SpecSignatures {
@@ -199,6 +199,7 @@ object LifecycleSpec {
     SpecSignatures.Fragment_onStop_exit.copy(mt = CBEnter))
 
   val viewAttached: LSPred = SpecSignatures.Activity_findView_exit //TODO: ... or findView on other view
+  val viewAttached2: LSPred = Or(SpecSignatures.Activity_findView_exit, SpecSignatures.Button_init.copy(lsVars = List(v,a))) //TODO: ... or findView on other view
   val destroyed: LSPred = NS(SpecSignatures.Activity_onDestroy_exit, SpecSignatures.Activity_onCreate_entry)
   val created: LSPred = NS(SpecSignatures.Activity_onCreate_entry, SpecSignatures.Activity_onDestroy_exit)
   val resumed: LSPred =
