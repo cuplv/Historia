@@ -441,10 +441,13 @@ object BounderUtil {
       RunFail
     }
   }
-  def runCmdStdout(cmd:String):String = {
+  def runCmdStdout(cmd:String, z3path:Option[String] = None):String = {
     val stdout = new StringBuilder
     val stderr = new StringBuilder
-    val p = Process(cmd)
+    val p = if(z3path.isDefined)
+      Process(cmd,cwd = new java.io.File(System.getProperty("user.dir")), extraEnv = ("DYLD_LIBRARY_PATH", z3path.get))
+    else
+      Process(cmd)
     val res = p ! ProcessLogger(v => stdout.append(v + "\n"),v => stderr.append(v + "\n"))
     if(res != 0)
       throw new RuntimeException(s"runnint cmd: ${cmd} failed\n error: ${stderr.toString}")

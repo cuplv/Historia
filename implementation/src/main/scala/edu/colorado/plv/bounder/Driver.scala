@@ -265,7 +265,12 @@ object Driver {
           .action((v, c) => c.copy(outputMode = v)),
         opt[Unit]("debug").optional()
           .text("Override timeout and truncate output in config.")
-          .action((_,c) => c.copy(dbg = true))
+          .action((_,c) => c.copy(dbg = true)),
+        opt[String]("z3path").optional()
+          .text("Force set z3 path for stupid macos dyld problem")
+          .action((path,action) => {
+            setZ3Path(path)
+            action})
       )
     }
     OParser.parse(parser, args, Action()) match {
