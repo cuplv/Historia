@@ -1,0 +1,17 @@
+2024-01-31 16:56:57.605 13409-13409 traceinst               com.example.row1antennapodrxjava     W  cb 46690328 PlayerFragment.onActivityCreated
+2024-01-31 16:56:57.616 13409-13409 traceinst               com.example.row1antennapodrxjava     W  202324593 = ci Single.create 
+2024-01-31 16:56:57.629 13409-13409 traceinst               com.example.row1antennapodrxjava     W  ci 202324593 subscribeOn 235670701
+2024-01-31 16:56:57.629 13409-13409 traceinst               com.example.row1antennapodrxjava     W  ci 202324593 observeOn 30165986
+2024-01-31 16:56:57.652 13409-13409 traceinst               com.example.row1antennapodrxjava     W  31933486 = ci 265436111 subscribe 46690328
+2024-01-31 16:56:57.652 13409-13409 traceinst               com.example.row1antennapodrxjava     W  cbret 46690328 PlayerFragment.onActivityCreated
+2024-01-31 16:56:58.858 13409-13409 traceinst               com.example.row1antennapodrxjava     W  cb 46690328 PlayerFragment.onDestroy
+2024-01-31 16:56:58.858 13409-13409 traceinst               com.example.row1antennapodrxjava     W  cbret 46690328 PlayerFragment.onDestroy
+2024-01-31 16:56:58.909 13409-13409 traceinst               com.example.row1antennapodrxjava     W  cb 147260913 PlayerFragment.onActivityCreated
+2024-01-31 16:56:58.909 13409-13409 traceinst               com.example.row1antennapodrxjava     W  166929878 = ci Single.create 
+2024-01-31 16:56:58.909 13409-13409 traceinst               com.example.row1antennapodrxjava     W  ci 166929878 subscribeOn 235670701
+2024-01-31 16:56:58.909 13409-13409 traceinst               com.example.row1antennapodrxjava     W  ci 166929878 observeOn 30165986
+2024-01-31 16:56:58.911 13409-13409 traceinst               com.example.row1antennapodrxjava     W  180705092 = ci 154472493 subscribe 147260913
+2024-01-31 16:56:58.912 13409-13409 traceinst               com.example.row1antennapodrxjava     W  cbret 147260913 PlayerFragment.onActivityCreated
+2024-01-31 16:57:07.655 13409-13462 traceinst               com.example.row1antennapodrxjava     W  ci 60835737 onSuccess
+2024-01-31 16:57:07.656 13409-13409 traceinst               com.example.row1antennapodrxjava     W  cb 46690328 PlayerFragment.call
+2024-01-31 16:57:07.656 13409-13409 traceinst               com.example.row1antennapodrxjava     W  0 = ci 46690328 getActivity
