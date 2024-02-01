@@ -1,6 +1,7 @@
 package edu.colorado.plv.bounder.solver
 
 import com.microsoft.z3.{Context, Status}
+import edu.colorado.plv.bounder.symbolicexecutor.Z3TimeoutBehavior
 import edu.colorado.plv.bounder.symbolicexecutor.state.{ClassType, SubclassOf, SuperclassOf}
 import org.scalatest.funsuite.AnyFunSuite
 
@@ -16,7 +17,8 @@ class ClassHierarchyConstraintsTest extends AnyFunSuite {
   test("Subtype"){
 
 
-    val stateSolver:StateSolver[com.microsoft.z3.AST, Z3SolverCtx] = new Z3StateSolver(ch,true)
+    val stateSolver:StateSolver[com.microsoft.z3.AST, Z3SolverCtx] =
+      new Z3StateSolver(ch,true, timeout = Z3TimeoutBehavior())
     implicit val zctx = stateSolver.getSolverCtx()
 
     //TODO: test type function etc

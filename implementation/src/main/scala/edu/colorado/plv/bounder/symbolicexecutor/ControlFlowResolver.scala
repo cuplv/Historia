@@ -478,8 +478,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   }
 
   val allCBIFromSpec = config.specSpace.allI.filter{
-    case OAbsMsg(CBEnter, signatures, lsVars) => true
-    case OAbsMsg(CBExit, signatures, lsVars) => true
+    case OAbsMsg(CBEnter, _, _,_) => true
+    case OAbsMsg(CBExit, _, _,_) => true
     case _=> false
   }
   //  matches for callback method abstract messages
@@ -511,8 +511,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
   }
 
   val allCIIFromSpec = config.specSpace.allI.filter{
-    case OAbsMsg(CIEnter, signatures, lsVars) => true
-    case OAbsMsg(CIExit, signatures, lsVars) => true
+    case OAbsMsg(CIEnter, _, _,_) => true
+    case OAbsMsg(CIExit, _, _, _) => true
     case _=> false
   }
   def ptsFromRVal(rval:RVal, method:MethodLoc):TypeSet = rval match{
@@ -554,7 +554,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     if (fromCG.exists {
       case (absMsg, pts) =>
         val ex = relevantIMsg.exists{
-          case OAbsMsg(mt,sig, lsVars) if absMsg.mt == mt && absMsg.signatures == sig =>
+          case OAbsMsg(mt,sig, lsVars,_) if absMsg.mt == mt && absMsg.signatures == sig =>
             val zipped = lsVars.zip(pts)
             zipped.forall{
               case (v:PureVar, ts) =>
@@ -596,11 +596,11 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       .flatMap(EncodingTools.mustISet)
     // drop states where any one positive i requirement cannot be satisfied by any callback
     val out = mustOnceList.forall{
-      case m@OAbsMsg(mt, _, _) if mt == CBEnter || mt == CBExit =>
+      case m@OAbsMsg(mt, _, _,_) if mt == CBEnter || mt == CBExit =>
         callbackMessage.exists{case (_,someCB) =>
           isRelevantI(someCB,Set(m), state) == RelevantMethod
         }
-      case m@OAbsMsg(mt, _, _) if mt == CIExit || mt == CIExit =>
+      case m@OAbsMsg(mt, _, _,_) if mt == CIExit || mt == CIExit =>
         transitiveCallinMessage.exists{case (_, someCI) =>
           isRelevantI(someCI, Set(m),state ) == RelevantMethod
         }

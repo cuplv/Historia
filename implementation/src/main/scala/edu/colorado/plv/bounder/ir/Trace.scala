@@ -68,7 +68,7 @@ case class ConcGraph(tgt:CNode,init:Set[CNode], edges:Map[CNode,Set[CNode]]){
       case TNew(v, types) => ???
       case msg:TMessage =>
         val matchedMsgs = space.allI.filter(m => m.contains(msg.mType,msg.fwkSig)).map{
-          case OAbsMsg(mt, signatures, lsVars) =>
+          case OAbsMsg(mt, signatures, lsVars, _) =>
             // swap params in abstract messages with values from the under approx
             if(lsVars.size != msg.args.size)
               ??? //TODO: may want to handle this case by masking or something

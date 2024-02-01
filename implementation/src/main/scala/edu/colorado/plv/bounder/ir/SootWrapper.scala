@@ -1304,8 +1304,8 @@ class SootWrapper(apkPath : String,
       case v => throw new IllegalArgumentException(s"I don't know how to override methods matching $v")
     }
     iSet.foreach {
-      case OAbsMsg(CBExit, sig, _) => overrideAllCBForI(sig)
-      case OAbsMsg(CBEnter, sig, _) => overrideAllCBForI(sig)
+      case OAbsMsg(CBExit, sig, _, _) => overrideAllCBForI(sig)
+      case OAbsMsg(CBEnter, sig, _, _) => overrideAllCBForI(sig)
       case _ => ()
     }
   }

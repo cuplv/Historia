@@ -2,6 +2,7 @@ package edu.colorado.plv.bounder.solver
 
 import edu.colorado.plv.bounder.ir.{CBEnter, CallbackMethodReturn, FwkMethod, TMessage}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Forall, LSConstraint, Not, Or, Signature, SubClassMatcher}
+import edu.colorado.plv.bounder.symbolicexecutor.Z3TimeoutBehavior
 import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, ConcreteAddr, ConcreteVal, Equals, NPureVar, NamedPureVar, NotEquals, PureConstraint, PureExpr, PureVal, PureVar, StackVar, State, StateFormula}
 import edu.colorado.plv.bounder.synthesis.SynthTestUtil.{dummyLoc, dummyMethod, intToClass}
 import org.scalatest.Outcome
@@ -15,9 +16,9 @@ class EncodingToolsTest extends AnyFunSuite{
   private def getZ3StateSolver():
   (Z3StateSolver, ClassHierarchyConstraints) = {
 //    val pc = new ClassHierarchyConstraints(cha, Set("java.lang.Runnable"), intToClass)
-    (new Z3StateSolver(cha, logTimes = true, timeout = 20000, defaultOnSubsumptionTimeout = () => {
+    (new Z3StateSolver(cha, logTimes = true, defaultOnSubsumptionTimeout = () => {
       throw new IllegalStateException("Exceeded time limit for test")
-    }, pushSatCheck = true), cha)
+    }, pushSatCheck = true, timeout = Z3TimeoutBehavior()), cha)
   }
 
   def bodgePv(v:Any):PureExpr = v match{

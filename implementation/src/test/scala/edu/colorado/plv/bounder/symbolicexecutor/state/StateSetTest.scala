@@ -5,6 +5,7 @@ import edu.colorado.plv.bounder.ir.{AppLoc, BitTypeSet, CallbackMethodReturn, Lo
 import edu.colorado.plv.bounder.lifestate.LifeState.Signature
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, SolverTypeSolving, Z3StateSolver}
+import edu.colorado.plv.bounder.symbolicexecutor.Z3TimeoutBehavior
 import org.scalatest.funsuite.AnyFunSuite
 
 import scala.collection.BitSet
@@ -29,7 +30,7 @@ class StateSetTest extends AnyFunSuite {
   }
 
   val ch = new ClassHierarchyConstraints(hierarchy,Set("Runnable"),intToClass)
-  val stateSolver = new Z3StateSolver(ch, logTimes = true)
+  val stateSolver = new Z3StateSolver(ch, logTimes = true, Z3TimeoutBehavior())
 
   private val fooMethod = SerializedIRMethodLoc("","foo", List(Some(LocalWrapper("@this","Object"))))
   private val barMethod = SerializedIRMethodLoc("","bar", List(Some(LocalWrapper("@this","Object"))))

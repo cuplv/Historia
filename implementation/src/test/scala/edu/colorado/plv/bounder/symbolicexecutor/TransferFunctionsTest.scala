@@ -38,7 +38,7 @@ class TransferFunctionsTest extends AnyFunSuite {
   val miniCha = new ClassHierarchyConstraints(hierarchy,Set("java.lang.Runnable"),
     intToClass)
   private def getStateSolver():(Z3StateSolver, ClassHierarchyConstraints) = {
-    (new Z3StateSolver(miniCha, logTimes = true),miniCha)
+    (new Z3StateSolver(miniCha, logTimes = true, timeout = Z3TimeoutBehavior()),miniCha)
   }
 
   implicit def set2SigMat(s:Set[Signature]):SignatureMatcher = SetSignatureMatcher(s)

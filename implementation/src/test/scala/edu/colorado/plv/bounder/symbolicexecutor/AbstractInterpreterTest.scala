@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.BounderUtil.{MultiCallback, Proven, ResultSummary, SingleCallbackMultiMethod, SingleMethod, Timeout, Unreachable, Witnessed, interpretResult}
+import edu.colorado.plv.bounder.BounderUtil.{DepthResult, MultiCallback, Proven, ResultSummary, SingleCallbackMultiMethod, SingleMethod, Timeout, Unreachable, Witnessed, interpretResult}
 import edu.colorado.plv.bounder.ir.{CBEnter, CIExit, OverApprox, SootWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, AnyAbsMsg, Exists, LSAnyPred, LSConstraint, LSSpec, LSTrue, NS, Not, Or, Signature, SubClassMatcher}
 import edu.colorado.plv.bounder.lifestate.SAsyncTask.executeI
@@ -10,7 +10,7 @@ import edu.colorado.plv.bounder.lifestate.SpecSignatures.{Activity_onPause_entry
 import edu.colorado.plv.bounder.lifestate.ViewSpec.{a, b, b2, l, onClick, onClickI, setEnabled, setOnClickListener, setOnClickListenerI, setOnClickListenerINull, v}
 import edu.colorado.plv.bounder.lifestate.{Dummy, FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.row4Specs
+import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.{row1Specs, row4Specs}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BoolVal, BottomQry, CallinReturnNonNull, DBOutputMode, DisallowedCallin, FieldPtEdge, IPathNode, MemoryOutputMode, NamedPureVar, NoOutputMode, NotEquals, OutputMode, PrettyPrinting, Qry, Reachable, ReceiverNonNull, TopVal}
 import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{onClickCanHappenNoPrev, onClickCanHappenWithPrev, onClickReach, queryOnClickTwiceAfterReg, srcReach}
 import edu.colorado.plv.bounder.synthesis.{EnumModelGenerator, EnumModelGeneratorTest}
@@ -68,7 +68,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
     val w = new SootWrapper(test_interproc_1, LifecycleSpec.spec)
 
     val config = ExecutorConfig(
-      stepLimit = 200, w,new SpecSpace(LifecycleSpec.spec),  z3Timeout = Some(30),
+      stepLimit = 200, w,new SpecSpace(LifecycleSpec.spec),
       component = Some(List("com\\.example\\.test_interproc_2\\.MainActivity.*")), approxMode = f.approxMode,
       outputMode = om)
     val symbolicExecutor = config.getAbstractInterpreter
@@ -86,7 +86,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
     assert(test_interproc_1 != null)
     val w = new SootWrapper(test_interproc_1, LifecycleSpec.spec)
     val config = ExecutorConfig(
-      stepLimit = 50, w,new SpecSpace(LifecycleSpec.spec),  z3Timeout = Some(30),
+      stepLimit = 50, w,new SpecSpace(LifecycleSpec.spec),
       component = Some(List("com\\.example\\.test_interproc_2\\.MainActivity.*")), approxMode = f.approxMode,
       outputMode = om)
     //      component = Some(List("com\\.example\\.test_interproc_2\\.*"))
@@ -104,7 +104,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
     assert(test_interproc_1 != null)
     val w = new SootWrapper(test_interproc_1,  LifecycleSpec.spec)
     val config = ExecutorConfig(
-      stepLimit = 50, w,new SpecSpace(LifecycleSpec.spec),  z3Timeout = Some(30), approxMode = f.approxMode,
+      stepLimit = 50, w,new SpecSpace(LifecycleSpec.spec), approxMode = f.approxMode,
       outputMode = om)
     val symbolicExecutor = config.getAbstractInterpreter
     val query = Reachable(
@@ -1248,7 +1248,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       File.usingTemporaryDirectory() { tmpDir =>
         implicit val dbMode = DBOutputMode((tmpDir / "paths.db").toString)
         val config = ExecutorConfig(
-          stepLimit = 300, w, specSpace,z3Timeout = Some(30),
+          stepLimit = 300, w, specSpace,
           component = Some(List("com\\.example\\.createdestroy\\.*MyActivity.*")), approxMode = f.approxMode)
         val symbolicExecutor = config.getAbstractInterpreter
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
@@ -3251,7 +3251,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
             val config = ExecutorConfig(
               stepLimit = 2000, w, specSpace,
               component = Some(List("com.example.createdestroy.*")), outputMode = dbMode,
-              approxMode = PreciseApproxMode(false), z3Timeout = Some(30000), z3ShouldRetryOnTimeout = false)
+              approxMode = PreciseApproxMode(false), z3ShouldRetryOnTimeout = false)
 
             //Unreach Location
             {
@@ -3572,6 +3572,123 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       }
 
       makeApkWithSources(Map("RemoverActivity.java" -> src, "OtherActivity.java" -> src2 ), MkApk.RXBase, test)
+    }
+  }
+
+  //*** under approx tests ***
+
+  test("Row1 Reach:Antennapod getActivity returns null") { _=>
+    // Experiments row 1
+    // Antennapod https://github.com/AntennaPod/AntennaPod/pull/2856
+    List(
+//      ("sub.unsubscribe();", Proven, "fix"),
+      ("", Witnessed, "bug")
+    ).map { case (destroyLine, expectedResult,fileSuffix) =>
+      val src =
+        s"""
+           |package com.example.createdestroy;
+           |import android.app.Activity;
+           |import android.content.Context;
+           |import android.net.Uri;
+           |import android.os.Bundle;
+           |
+           |import androidx.fragment.app.Fragment;
+           |
+           |import android.util.Log;
+           |import android.view.LayoutInflater;
+           |import android.view.View;
+           |import android.view.ViewGroup;
+           |
+           |import rx.Single;
+           |import rx.Subscription;
+           |import rx.android.schedulers.AndroidSchedulers;
+           |import rx.schedulers.Schedulers;
+           |import rx.functions.Action1;
+           |
+           |
+           |public class PlayerFragment extends Fragment implements Action1<Object>{
+           |    Subscription sub;
+           |    //Callback with irrelevant subscribe
+           |    @Override
+           |    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+           |                             Bundle savedInstanceState) {
+           |      return inflater.inflate(0, container, false);
+           |    }
+           |    @Override
+           |    public void onCreate(Bundle savedInstanceState){
+           |      super.onCreate(savedInstanceState);
+           |    }
+           |
+           |    @Override
+           |    public void onActivityCreated(Bundle savedInstanceState){
+           |        super.onActivityCreated(savedInstanceState);
+           |        sub = Single.create(subscriber -> {
+           |            subscriber.onSuccess(3);
+           |        }).subscribeOn(Schedulers.newThread())
+           |        .observeOn(AndroidSchedulers.mainThread())
+           |        .subscribe(this);
+           |    }
+           |
+           |    @Override
+           |    public void call(Object o){
+           |         Activity act = getActivity(); //query1 : act != null
+           |         act.toString();
+           |    }
+           |
+           |    @Override
+           |    public void onDestroy(){
+           |        $destroyLine
+           |    }
+           |}
+           |""".stripMargin
+
+      val test: String => Unit = apk => {
+        val startTime = System.nanoTime()
+        assert(apk != null)
+        //Note: subscribeIsUnique rule ommitted from this test to check state relevant to callback
+        // TODO: relevance could probably be refined so this isn't necessary
+        val w = new SootWrapper(apk, row1Specs)
+        val config = ExecutorConfig(
+          stepLimit = 200, w, new SpecSpace(row1Specs, createMissingI = fileSuffix == "bug"),
+          component = Some(List("com.example.createdestroy.*PlayerFragment.*")), approxMode = PreciseApproxMode(false))
+        implicit val om = config.outputMode
+        val symbolicExecutor = config.getAbstractInterpreter
+        val line = BounderUtil.lineForRegex(".*query1.*".r, src)
+        val query = CallinReturnNonNull(
+          Signature("com.example.createdestroy.PlayerFragment",
+            "void call(java.lang.Object)"), line,
+          ".*getActivity.*")
+
+          val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
+          val fname = s"Motiv_$fileSuffix"
+          // prettyPrinting.dumpDebugInfo(result, fname)
+          //        prettyPrinting.dotWitTree(result,s"$fname.dot",includeSubsEdges = true, skipCmd = true)
+          assert(result.nonEmpty)
+          BounderUtil.throwIfStackTrace(result)
+          val interpretedResult = BounderUtil.interpretResult(result, QueryFinished)
+          if(fileSuffix == "bug"){
+            PrettyPrinting.printWitness(result)
+          }
+
+          assert(interpretedResult == expectedResult)
+          //        val onViewCreatedInTree: Set[List[IPathNode]] = result.flatMap{node =>
+          //            findInWitnessTree(node, (p: IPathNode) =>
+          //              p.qry.loc.msgSig.exists(m => m.contains("onViewCreated(")))
+          //        }
+          //        if(onViewCreatedInTree.nonEmpty) {
+          //          println("--- witness ---")
+          //          onViewCreatedInTree.head.foreach{v =>
+          //            println(v.qry.loc)
+          //            println(v.qry.getState)
+          //            println()
+          //          }
+          //          println("--- end witness ---")
+          //        }
+          //        assert(onViewCreatedInTree.isEmpty)
+          val depthInfo = BounderUtil.computeDepthOfWitOrLive(result, QueryFinished)
+      }
+
+      makeApkWithSources(Map("PlayerFragment.java" -> src), MkApk.RXBase, test)
     }
   }
 

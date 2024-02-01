@@ -160,6 +160,17 @@ case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2) extend
 }
 
 /**
+ * Configure how z3 behaves for timeouts in various circumstances
+ * @param subsumeTryTimeLimit length of list is number of tries, each entry is the time limit for that try.
+ * @param excludesInitTimeout how long should we wait for excludes initial check (usually doesn't timeout)
+ * @param z3InstanceLimit number of simultaneous z3 instances to run (default is number of processors)
+ */
+case class Z3TimeoutBehavior(subsumeTryTimeLimit:List[Int] = List(40000, 220000), excludesInitTimeout:Int = 4000,
+                             z3InstanceLimit:Int = Runtime.getRuntime.availableProcessors){
+  assert(subsumeTryTimeLimit.size > 0, s"Invalid subumeTryTimeLimit: ${subsumeTryTimeLimit}, " +
+    s"must have length of at least 1.")
+}
+/**
  * @param stepLimit Number of back steps to take from assertion before timeout (-1 for no limit)
  * @param w  IR representation defined by IRWrapper interface
  * @param specSpace CFTL specifications
@@ -173,7 +184,7 @@ case class ExecutorConfig[M,C](stepLimit: Int = -1,
                                w :  IRWrapper[M,C],
                                specSpace:SpecSpace,
                                printAAProgress : Boolean = sys.env.getOrElse("DEBUG","false") == "AbstractInterpreter",
-                               z3Timeout : Option[Int] = None,
+                               z3Timeout : Z3TimeoutBehavior = Z3TimeoutBehavior(),
                                component : Option[Seq[String]] = None,
                                outputMode : OutputMode = MemoryOutputMode,
                                timeLimit:Int = 7200, // Note: connectbot click finish does not seem to go any further with 2h vs 0.5hr
@@ -313,9 +324,8 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
     case NoOutputMode => false
     case MemoryOutputMode => true
     case DBOutputMode(dbfile) => true
-  }, z3InstanceLimit = config.z3InstanceLimit,
-    timeout = config.z3Timeout.getOrElse(Z3StateSolver.defaultTimeout),
-    z3ShouldRetryOnTimeout = config.z3ShouldRetryOnTimeout)
+  },
+    timeout = config.z3Timeout)
 
 
   case class QueryData(queryId:Int, location:Loc, terminals: Set[IPathNode], runTime:Long, result : QueryResult)

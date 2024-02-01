@@ -7,6 +7,7 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{AppMethod, CBEnter, CBExit, CIEnter, CIExit, FwkMethod, TCLInit, TMessage, TNew, TraceElement, WitnessExplanation}
 import edu.colorado.plv.bounder.lifestate.LifeState
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, CLInit, FreshRef, OAbsMsg, Signature}
+import edu.colorado.plv.bounder.symbolicexecutor.Z3TimeoutBehavior
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, BotVal, ConcreteAddr, ConcreteVal, NamedPureVar, NullVal, OutputMode, PureExpr, PureVal, PureVar, State, TopVal}
 import io.github.andrebeat.pool.{Lease, Pool}
 import org.slf4j.{Logger, LoggerFactory}
@@ -26,12 +27,16 @@ import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
+case class Z3SolverCtx(randomSeed:Int) extends SolverCtx[AST] {
+  var currentTimeout:Option[Int] = None
+  def timeout =
+    currentTimeout.get
+
   var acquired:Boolean = false
   private val argsUsed = mutable.HashSet[Integer]()
   private var ictx = new Context()
   private var isolver: Solver = null
-  makeSolver(timeout, Some(randomSeed))
+  //makeSolver(timeout, Some(randomSeed))
   val initializedFieldFunctions: mutable.HashSet[String] = mutable.HashSet[String]()
   var indexInitialized: Boolean = false
   val uninterpretedTypes: mutable.HashSet[String] = mutable.HashSet[String]()
@@ -52,17 +57,14 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
   }
   def setArgUsed(i: Int) = argsUsed.add(i)
   def getArgUsed():Set[Integer] = argsUsed.toSet
-  private var overridden = false
   def overrideTimeoutAndSeed(alternateTimeout:Int, seed:Int): Unit = {
-    overridden = true
-    isolver.reset()
-    makeSolver(alternateTimeout, Some(seed))
-  }
-  def resetTimeoutAndSeed(): Unit = {
-    if(overridden)
-      makeSolver(timeout, Some(randomSeed))
-
-    overridden = false
+    if(currentTimeout.isEmpty || currentTimeout.get != alternateTimeout) {
+      currentTimeout = Some(alternateTimeout)
+      if(isolver != null) {
+        isolver.reset()
+      }
+      makeSolver(alternateTimeout, Some(seed))
+    }
   }
 
 
@@ -203,19 +205,19 @@ case class Z3SolverCtx(timeout:Int, randomSeed:Int) extends SolverCtx[AST] {
     //TODO: can we use memory probe to kill task if mem gets too high?
 //    val memProbe = ictx.mkProbe("memory")
 //    val res = ictx.gt(memProbe, ictx.constProbe(10))
-    if(acquireCount % 1 == 0) { //TODO: does this reduce mem leak?
-      isolver.reset()
-      ictx.close()
-      ictx = new Context()
-      makeSolver(timeout, Some(randomSeed))
-    } else {
-      isolver.reset()
+    if(isolver != null) {
+      if (acquireCount % 1 == 0) { //TODO: does this reduce mem leak?
+        isolver.reset()
+        ictx.close()
+        ictx = new Context()
+        makeSolver(timeout, Some(randomSeed))
+      } else {
+        isolver.reset()
+      }
     }
   }
 }
-object Z3StateSolver{
-  val defaultTimeout = 40000
-}
+object Z3StateSolver
 
 /**
  *
@@ -228,17 +230,13 @@ object Z3StateSolver{
  */
 class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
                     logTimes:Boolean,
-                    timeout:Int = Z3StateSolver.defaultTimeout,
+                    timeout:Z3TimeoutBehavior,
                     randomSeed:Int=3578,
                     defaultOnSubsumptionTimeout: () => Boolean = () => false,
                     pushSatCheck:Boolean = true,
-                    strict_test:Boolean = false,
-                    z3InstanceLimit:Int = -1,
-                    z3ShouldRetryOnTimeout:Boolean = true
+                    strict_test:Boolean = false
                    ) extends StateSolver[AST,Z3SolverCtx] {
-  private val mZ3InstanceLimit = if(z3InstanceLimit > 0) z3InstanceLimit else {
-    Runtime.getRuntime.availableProcessors
-  }
+
   //  private val MAX_ARGS = 10
 
   override def shouldLogTimes:Boolean = this.logTimes
@@ -447,8 +445,8 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
 
 
   //private val threadLocalCtx = ThreadLocal.withInitial(() => Z3SolverCtx(timeout, randomSeed))
-  private val zctxPool = Pool(mZ3InstanceLimit, () => {  // look at other low level profiling tools - runlim
-      val ctx = Z3SolverCtx(getSolverTimeout.get,randomSeed)
+  private val zctxPool = Pool(timeout.z3InstanceLimit, () => {  // look at other low level profiling tools - runlim
+      val ctx = Z3SolverCtx(randomSeed)
       ctx.acquire()
       ctx
     },
@@ -526,7 +524,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
     axioms.foreach { ax => ax(messageTranslator) }
     val useCmd = false
     if (useCmd) {
-      lazy val timeoutS = getSolverTimeout.toString
+      lazy val timeoutS = zCtx.timeout
       File.temporaryFile().apply { f =>
         println(s"file: $f")
         f.writeText(zCtx.solver.toString)
@@ -749,13 +747,13 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
       case CLInit(sig) => TCLInit(sig)
       case FreshRef(v) =>
         TNew(v, state.sf.typeConstraints(v))
-      case OAbsMsg(CBEnter, sig, vars) =>
+      case OAbsMsg(CBEnter, sig, vars,_) =>
         TMessage(CBEnter, AppMethod(sig.example(), None), vars.map(v => pmv(v)))
-      case OAbsMsg(CBExit, sig, vars) =>
+      case OAbsMsg(CBExit, sig, vars,_) =>
         TMessage(CBExit, AppMethod(sig.example(), None), vars.map(v => pmv(v)))
-      case OAbsMsg(CIEnter, sig, vars) =>
+      case OAbsMsg(CIEnter, sig, vars,_) =>
         TMessage(CIEnter, FwkMethod(sig.example()), vars.map(v => pmv(v)))
-      case OAbsMsg(CIExit, sig, vars) =>
+      case OAbsMsg(CIExit, sig, vars,_) =>
         TMessage(CIExit, FwkMethod(sig.example()), vars.map(v => pmv(v)))
       //      case AnyAbsMsg => ??? //TODO: how to explain any?
     }
@@ -1490,22 +1488,21 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
 
   override def STRICT_TEST: Boolean = this.strict_test
 
-  private val overrideSolver: Option[(Int, Int)] =
-    scala.util.Properties.envOrNone("OVERRIDE_SOLVER").map { v =>
-      v.split(",").toList match {
-        case (v1: String) :: (v2: String) :: Nil => (v1.toInt, v2.toInt)
-        case _ => throw new IllegalArgumentException(s"Failed to parse OVERRIDE_SOLVER env var.  Got: ${v}")
-      }
-    }
-  override def getSolverRetries: Option[Int] =
-    overrideSolver.map{_._1}
-  override def getSolverTimeout: Option[Int] =
-    Some(overrideSolver.map{_._2}.getOrElse(timeout))
-
-  override def getz3ShouldRetryOnTimeout:Boolean = z3ShouldRetryOnTimeout
+//  private val overrideSolver: Option[(Int, Int)] =
+//    scala.util.Properties.envOrNone("OVERRIDE_SOLVER").map { v =>
+//      v.split(",").toList match {
+//        case (v1: String) :: (v2: String) :: Nil => (v1.toInt, v2.toInt)
+//        case _ => throw new IllegalArgumentException(s"Failed to parse OVERRIDE_SOLVER env var.  Got: ${v}")
+//      }
+//    }
+  override def getSolverRetries: Int = timeout.subsumeTryTimeLimit.size
+//    overrideSolver.map{_._1}
+  override def getSolverTimeout: List[Int] = timeout.subsumeTryTimeLimit
+//    Some(overrideSolver.map{_._2}.getOrElse(timeout))
 
   override def resetZ3Caches(): Unit ={
     zctxPool.drain()
   }
 
+  override def getSolverExcludesInitTimeout: Int = timeout.excludesInitTimeout
 }

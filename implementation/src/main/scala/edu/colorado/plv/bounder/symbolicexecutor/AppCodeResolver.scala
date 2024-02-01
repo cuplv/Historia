@@ -86,7 +86,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
                                             abs:AbstractInterpreter[M,C]):Set[InitialQuery] = {
 
     val swappedMessages = messages.flatMap{
-      case OAbsMsg(CIExit, signatures, lsVars) => Some(OAbsMsg(CIEnter, signatures, lsVars))
+      case OAbsMsg(CIExit, signatures, lsVars,_) => Some(OAbsMsg(CIEnter, signatures, lsVars))
       case _ => None
     }
     val callinTargets = findCallinsAndCallbacks(swappedMessages,filter)
@@ -253,7 +253,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
       // test if we have reached a message in our signature set that needs to return null
       q.state.inlineConstEq().exists { reducedState =>
        reducedState.sf.traceAbstraction.rightOfArrow.headOption.exists {
-         case OAbsMsg(CIExit, sig, NullVal::_) =>
+         case OAbsMsg(CIExit, sig, NullVal::_,_) =>
            signatures.contains(sig)
          case _ => false
        }

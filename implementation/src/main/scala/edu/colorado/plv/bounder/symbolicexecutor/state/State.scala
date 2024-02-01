@@ -19,7 +19,7 @@ object State {
 
   def findIAF(messageType: MessageType, signature: Signature,
               pred: LSPred)(implicit ch:ClassHierarchyConstraints):Set[AbsMsg] = pred match{
-    case i@OAbsMsg(mt, sigs, _) if mt == messageType && sigs.matches(signature) => Set(i)
+    case i@OAbsMsg(mt, sigs, _,_) if mt == messageType && sigs.matches(signature) => Set(i)
     case NS(i1,i2) => Set(i1,i2).flatMap(findIAF(messageType, signature, _))
     case And(l1,l2) => findIAF(messageType,signature,l1).union(findIAF(messageType,signature,l2))
     case Or(l1,l2) => findIAF(messageType,signature,l1).union(findIAF(messageType,signature,l2))
@@ -877,6 +877,25 @@ sealed abstract class PureExpr {
   def isDoubleExpr : Boolean = false
   def getVars(s : Set[PureVar] = Set.empty) : Set[PureVar]
 }
+
+/**
+ * used in abstract message when we want to know what a value is but don't want it to bind to a purevar
+ */
+case object RelevantNotDefined extends PureExpr{
+
+  /**
+   * Make expression where variables do not collide with v
+   *
+   * @param v variable to not collide with
+   * @return a non colliding expression (does not change for non-var)
+   */
+  override def noCollide(v: PureVar): PureExpr = ???
+
+  override def substitute(toSub: PureExpr, subFor: PureVar): PureExpr = ???
+
+  override def getVars(s: Set[PureVar]): Set[PureVar] = ???
+}
+
 object PureExpr{
   implicit val rw:RW[PureExpr] = RW.merge(PureVal.rw, PureVar.rw, ConcreteVal.rw)
 }

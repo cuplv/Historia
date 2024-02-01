@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NS, Signature}
 import edu.colorado.plv.bounder.lifestate.{SpecSignatures, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state._
-import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, ControlFlowResolver, DefaultAppCodeResolver, SparkCallGraph, ExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, ControlFlowResolver, DefaultAppCodeResolver, ExecutorConfig, SparkCallGraph, TransferFunctions, Z3TimeoutBehavior}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
 
@@ -81,7 +81,7 @@ class SootUtilsTest extends AnyFunSuite {
     val testSpec = LSSpec(a::Nil, Nil, NS(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
       SpecSignatures.Activity_onPause_entry)
     val config: ExecutorConfig[SootMethod, soot.Unit] = ExecutorConfig(
-      stepLimit = 50, w, new SpecSpace(Set(testSpec)), printAAProgress = true, z3Timeout = Some(30))
+      stepLimit = 50, w, new SpecSpace(Set(testSpec)), printAAProgress = true, z3Timeout = Z3TimeoutBehavior().copy(subsumeTryTimeLimit = List(50)))
     val symbolicExecutor = config.getAbstractInterpreter
     val query = Qry.makeReceiverNonNull(symbolicExecutor,
       Signature("com.example.test_interproc_2.MainActivity", "void onPause()"), 27)
@@ -115,7 +115,7 @@ class SootUtilsTest extends AnyFunSuite {
     val testSpec = LSSpec(a::Nil, Nil, NS(SpecSignatures.Activity_onResume_entry, SpecSignatures.Activity_onPause_exit),
       SpecSignatures.Activity_onPause_entry) // TODO: fill in spec details for test
     val config: ExecutorConfig[SootMethod, soot.Unit] = ExecutorConfig(
-      stepLimit = 50, w, new SpecSpace(Set(testSpec)), printAAProgress = true, z3Timeout = Some(30))
+      stepLimit = 50, w, new SpecSpace(Set(testSpec)), printAAProgress = true, z3Timeout = Z3TimeoutBehavior().copy(subsumeTryTimeLimit = List(50)))
     val symbolicExecutor = config.getAbstractInterpreter
     val query = Qry.makeReach(symbolicExecutor,
       Signature("com.example.test_interproc_2.MainActivity", "void onCreate(android.os.Bundle)"), 16)

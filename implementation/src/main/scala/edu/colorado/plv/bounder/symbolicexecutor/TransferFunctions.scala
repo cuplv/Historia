@@ -44,7 +44,7 @@ object TransferFunctions{
                       specSpace: SpecSpace,
                       lst : List[Option[RVal]])(implicit ch:ClassHierarchyConstraints):List[Option[RVal]] = {
     //TODO: should use pre to determine which vars should be materialized
-    val relevantI = specSpace.findIFromCurrent(dir,signature)
+    val relevantI = specSpace.findIFromCurrent(dir,signature,Some(lst))
     lst.zipWithIndex.map{ case (rval,ind) =>
       val existsNAtInd = relevantI.exists{i =>
         val vars: Seq[PureExpr] = i.lsVars
@@ -554,7 +554,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
   def newMsgTransfer(appMethod:MethodLoc, mt: MessageType,
                      sig:Signature, allVar:List[Option[RVal]],
                      postState: State): Set[State] = {
-    val freshI: Option[AbsMsg] = specSpace.getIWithMergedVars(mt,sig)
+    val freshI: Option[AbsMsg] = specSpace.getIWithMergedVars(mt,sig, Some(allVar))
     freshI match {
       case None => Set(postState)
       case Some(i) =>

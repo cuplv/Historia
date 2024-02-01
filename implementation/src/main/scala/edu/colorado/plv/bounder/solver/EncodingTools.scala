@@ -86,9 +86,9 @@ object EncodingTools {
     case Or(l1, l2) => Or(clInitRefToFalse(l1,sig), clInitRefToFalse(l2, sig))
     case LifeState.LSTrue => LifeState.LSTrue
     case LifeState.LSFalse => LifeState.LSFalse
-    case OAbsMsg(_,mSig, _) if mSig.matchesClass(sig) => LSFalse
+    case OAbsMsg(_,mSig, _,_) if mSig.matchesClass(sig) => LSFalse
     case i:AbsMsg => i
-    case NS(OAbsMsg(_,mSig, _),_) if mSig.matchesClass(sig) => LSFalse
+    case NS(OAbsMsg(_,mSig, _, _),_) if mSig.matchesClass(sig) => LSFalse
     case ni:NS => ni
     case CLInit(sig2) if sig == sig2 => LSFalse
     case f:FreshRef => f
@@ -123,10 +123,12 @@ object EncodingTools {
    * @param post preds to update in addition to current encode
    * @return
    */
-  def rhsToPred(rhs: Seq[LSSingle], specSpace: SpecSpace, post:Set[LSPred] = Set()): Set[LSPred] = {
+  def rhsToPred(rhs: Seq[LSSingle], specSpace: SpecSpace, post:Set[LSPred] = Set(),
+                includeSynth:Boolean = false): Set[LSPred] = {
     //TODO: limit currently disabled, figure out if we want to try again
     var instCount = specSpace.getSpecs.map{s =>(s,-1)}.toMap
     rhs.foldRight((post, true)) {
+      case (OAbsMsg(_,_,_,true), (acc,includeDis)) if !includeSynth => (acc,includeDis) // normally skip synth msg
       case (v, (acc, includeDis)) =>
         val updated = acc.map(lsPred => updArrowPhi(v, lsPred))
         val (instantiated, instCountP) = instArrowPhi(v, specSpace, includeDis, instCount)

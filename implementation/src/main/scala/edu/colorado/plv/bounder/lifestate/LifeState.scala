@@ -1,12 +1,11 @@
 package edu.colorado.plv.bounder.lifestate
 
 import edu.colorado.plv.bounder.BounderUtil
-import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType}
+import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit, MessageType, RVal}
 import edu.colorado.plv.bounder.lifestate.LSPredAnyOrder.{countAny, predDepth, rankPred, rankSpecSpace}
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, AnyAbsMsg, CLInit, Exists, Forall, FreshRef, HNOE, LSAnyPred, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, Signature}
-import edu.colorado.plv.bounder.solver.EncodingTools.Assign
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, AnyAbsMsg, CLInit, Exists, Forall, FreshRef, HNOE, LSAnyPred, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, Signature, SubClassMatcher}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, BotVal, ClassVal, CmpOp, ConcreteVal, Equals, IntVal, NamedPureVar, NotEquals, NullVal, PureExpr, PureVal, PureVar, State, TopVal, TypeComp}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, BotVal, CmpOp, Equals, IntVal, NPureVar, NamedPureVar, NotEquals, NullVal, PureExpr, PureVal, PureVar, RelevantNotDefined, State, TopVal, TypeComp}
 
 import scala.util.parsing.combinator._
 import upickle.default.{macroRW, ReadWriter => RW}
@@ -56,7 +55,6 @@ object LSExpParser {
 }
 
 object LifeState {
-
     object LifeStateParser extends RegexParsers {
     //Note: this parser is only used for the "NonNullReturnCallins.txt"
     // specification are written in scala in the Specifications.scala source file
@@ -799,7 +797,7 @@ object LifeState {
     def signatures:SignatureMatcher
     def lsVars:List[PureExpr]
     def copyMsg(lsVars: List[PureExpr]) :OAbsMsg = this match {
-      case OAbsMsg(mt, signatures, _) => OAbsMsg(mt, signatures, lsVars)
+      case OAbsMsg(mt, signatures, _, isSynth) => OAbsMsg(mt, signatures, lsVars, isSynth)
     }
 
     override def swap(swapMap: Map[PureVar, PureExpr]): AbsMsg
@@ -809,8 +807,8 @@ object LifeState {
   object AbsMsg{
     implicit val rw:RW[AbsMsg] = RW.merge(OAbsMsg.rw)
 
-    def apply(mt:MessageType, signatures:SignatureMatcher, lsVars:List[PureExpr]):OAbsMsg =
-      OAbsMsg(mt, signatures, lsVars)
+    def apply(mt:MessageType, signatures:SignatureMatcher, lsVars:List[PureExpr], isSynth:Boolean = false):OAbsMsg =
+      OAbsMsg(mt, signatures, lsVars, isSynth)
   }
 
   case object AnyAbsMsg extends AbsMsg {
@@ -839,7 +837,7 @@ object LifeState {
   }
 
 
-  case class OAbsMsg(mt: MessageType, signatures: SignatureMatcher, lsVars : List[PureExpr]) extends AbsMsg {
+  case class OAbsMsg(mt: MessageType, signatures: SignatureMatcher, lsVars : List[PureExpr], isSynth:Boolean = false) extends AbsMsg {
     def cloneWithVar(v: PureVar, ind: Int, avoid:Set[PureVar]): OAbsMsg =
       this.copy(lsVars = lsVars.zipWithIndex.map{
         case (cpv, cInd) if cInd == ind => v
@@ -923,7 +921,7 @@ object LifeState {
       }
       val msgs: List[OAbsMsg] = target :: EncodingTools.msgList(pred)
       val msgIndVar = msgs.flatMap{
-        case m@OAbsMsg(_,_,args) => args.zipWithIndex.flatMap{
+        case m@OAbsMsg(_,_,args, _) => args.zipWithIndex.flatMap{
           case (v:PureVar,index) => Some((v,index,m))
           case _ => None
         }
@@ -1177,7 +1175,7 @@ object LSPredAnyOrder{
     pred1.toString.compareTo(pred2.toString) // ensure deterministic order, probably don't care what order it is.
 
   def objectCount(p:LSPred):Set[PureVar] = p match {
-    case OAbsMsg(_,_,lsVars) => lsVars.flatMap{
+    case OAbsMsg(_,_,lsVars, _) => lsVars.flatMap{
       case v:PureVar => Some(v)
       case _ => None
     }.toSet
@@ -1207,7 +1205,7 @@ object LSPredAnyOrder{
     case _: LifeState.LSAtom => 999
   }
   def msgRank(m:AbsMsg): Double = m match{
-    case OAbsMsg(mt, sig, vars) => 1 - (0.01 * vars.count(v => v.isInstanceOf[PureVar]))
+    case OAbsMsg(mt, sig, vars,_) => 1 - (0.01 * vars.count(v => v.isInstanceOf[PureVar]))
     case AnyAbsMsg => 1 - 0.10
   }
 
@@ -1301,7 +1299,8 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(),
                 matcherSpace:Set[OAbsMsg] = Set(),
                 searchProbOpt:Option[BigInt] = None, // always take one of n paths so only keep denominator of rational
                 searchProbNaive:Option[BigInt]= None,
-                searchSteps:Option[BigInt] = None
+                searchSteps:Option[BigInt] = None,
+                createMissingI:Boolean = false
                ) {
 
   def getSearchSteps:BigInt = {
@@ -1391,8 +1390,19 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(),
            matcherSpace:Set[OAbsMsg] = this.matcherSpace
           ):SpecSpace = new SpecSpace(enableSpecs, disallowSpecs, matcherSpace,
     searchProbOpt = searchProbOpt, searchProbNaive = searchProbNaive, searchSteps = searchSteps)
-  def findIFromCurrent(dir: MessageType, signature: Signature)(implicit cha:ClassHierarchyConstraints):Set[OAbsMsg] = {
-    allI.filter(i => i.mt == dir && i.signatures.matches(signature))
+
+  def findIFromCurrent(dir: MessageType, signature: Signature,  lst : Option[List[Option[RVal]]] = None)(implicit cha:ClassHierarchyConstraints):Set[OAbsMsg] = {
+    val found = allI.filter(i => i.mt == dir && i.signatures.matches(signature))
+
+    if(dir == CIEnter && found.isEmpty){ // Don't bother with ci enter for artificial msg
+      return found
+    }
+
+    if(!createMissingI || found.nonEmpty || lst.isEmpty) found else {
+      val matcher = SubClassMatcher(signature.base, signature.methodSignature.replace("(", "\\("),
+        s"synth_${signature.base}${signature.methodSignature}")
+      Set(AbsMsg(dir, matcher ,lst.get.zipWithIndex.map{case ( _,ind) => RelevantNotDefined}, isSynth = true))
+    }
   }
 
   def specsByI(i: AbsMsg) = {
@@ -1427,7 +1437,7 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(),
    * @param sig class name and method signature (e.g. void foo(java.lang.Object))
    * @return Some(I) if I exists, None otherwise.
    */
-  def getIWithMergedVars(mt: MessageType, sig: Signature)
+  def getIWithMergedVars(mt: MessageType, sig: Signature, lst : Option[List[Option[RVal]]] = None)
                         (implicit ch : ClassHierarchyConstraints):Option[AbsMsg] = {
     //    iset.get(mt,sig).map{i =>
     //      i.copy(lsVars = i.lsVars.map(a => if(a != "_") nextFreshLSVar() else "_"))
@@ -1437,7 +1447,7 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(),
       case (v,_) => v
     }
     var solverSig:Option[String] = None
-    val out: Set[OAbsMsg] = allI.filter{ i =>
+    val normFiltered: Set[OAbsMsg] = allI.filter{ i =>
       if(i.signatures.matches(sig) && i.mt == mt) {
         if (solverSig.isDefined) {
           assert(i.identitySignature == solverSig.get,
@@ -1449,12 +1459,13 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(),
       } else
         false
     }
+    val out = if(normFiltered.nonEmpty) normFiltered else findIFromCurrent(mt, sig, lst)
     if(out.isEmpty)
       return None
 
     // Compute intersection of defined variables
     val parList = out.foldLeft(List():List[PureExpr]){
-      case (acc,OAbsMsg(_,_,vars)) =>
+      case (acc,OAbsMsg(_,_,vars, _)) =>
         acc.zipAll(vars,TopVal,TopVal).map(merge)
     }
 

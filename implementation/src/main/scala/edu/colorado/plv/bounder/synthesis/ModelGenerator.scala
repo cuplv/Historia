@@ -4,7 +4,7 @@ import edu.colorado.plv.bounder.ir.{Loc, TMessage, Trace}
 import edu.colorado.plv.bounder.lifestate.LifeState.LSAtom
 import edu.colorado.plv.bounder.lifestate.{SpecAssignment, SpecSpace}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, Z3StateSolver}
-import edu.colorado.plv.bounder.symbolicexecutor.MustExecutor
+import edu.colorado.plv.bounder.symbolicexecutor.{MustExecutor, Z3TimeoutBehavior}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{IPathNode, OutputMode, PureVar, State, StateFormula}
 
 import scala.annotation.tailrec
@@ -19,7 +19,8 @@ abstract class ModelGenerator(cha:ClassHierarchyConstraints) {
   case object Unreachable extends Classification
   case object Unset extends Classification
 
-  implicit val stateSolver = new Z3StateSolver(cha, logTimes = false, timeout = 30000, randomSeed = 3578,
+  implicit val stateSolver = new Z3StateSolver(cha, logTimes = false,
+    timeout = Z3TimeoutBehavior().copy(subsumeTryTimeLimit = List(30000)), randomSeed = 3578,
     defaultOnSubsumptionTimeout = ()=>false, pushSatCheck = true)
   /**
    * A normalized path unifies the logic variables between abstract states at execution locations.

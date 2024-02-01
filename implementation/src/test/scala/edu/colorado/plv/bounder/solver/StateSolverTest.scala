@@ -6,7 +6,7 @@ import edu.colorado.plv.bounder.RunConfig
 import edu.colorado.plv.bounder.ir._
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Forall, FreshRef, LSConstraint, LSFalse, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, Signature, SignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LSExpParser, LifecycleSpec, RxJavaSpec, SpecSignatures, SpecSpace, ViewSpec}
-import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs
+import edu.colorado.plv.bounder.symbolicexecutor.{ExperimentSpecs, Z3TimeoutBehavior}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
 import edu.colorado.plv.bounder.testutils.MkApk.getClass
 import org.scalatest.{Exceptional, Failed, Outcome, Pending, Succeeded}
@@ -101,7 +101,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
   private def getZ3StateSolver(checkSatPush:Boolean):
   (Z3StateSolver, ClassHierarchyConstraints) = {
     val pc = new ClassHierarchyConstraints(hierarchy,Set("java.lang.Runnable"),intToClass)
-    (new Z3StateSolver(pc, logTimes = true,timeout = 180000, defaultOnSubsumptionTimeout = () => {
+    (new Z3StateSolver(pc, logTimes = true,timeout = Z3TimeoutBehavior(), defaultOnSubsumptionTimeout = () => {
       throw new IllegalStateException("Exceeded time limit for test")
     }, pushSatCheck = checkSatPush, strict_test = true),pc)
   }

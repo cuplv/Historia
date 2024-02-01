@@ -28,12 +28,12 @@ trait SetEncoder[T, C <: SolverCtx[T]]{
 }
 
 trait SolverCtx[T]{
+  def timeout:Int
   //def mkAssert(t:T):Unit
   def acquire(randomSeed:Option[Int] = None):Unit
   def release():Unit
   def dispose():Unit
 
-  def resetTimeoutAndSeed(): Unit
   def overrideTimeoutAndSeed(timeout:Int, seed:Int): Unit
 }
 
@@ -65,9 +65,9 @@ object StateSolver{
 /** SMT solver parameterized by its AST or expression type */
 trait StateSolver[T, C <: SolverCtx[T]] {
   def resetZ3Caches():Unit
-  def getSolverRetries:Option[Int]
-  def getSolverTimeout: Option[Int]
-  def getz3ShouldRetryOnTimeout:Boolean
+  def getSolverRetries:Int
+  def getSolverTimeout: List[Int]
+  def getSolverExcludesInitTimeout:Int
   def shouldLogTimes:Boolean
   def STRICT_TEST:Boolean
   def mkAssert(t:T)(implicit zCtx:C):Unit
@@ -532,14 +532,14 @@ trait StateSolver[T, C <: SolverCtx[T]] {
                              specSpace: SpecSpace,
                              shouldEncodeRef:Boolean = true,
                              definedPvMap:Map[PureVar, T],
-                             debug: Boolean = false)(implicit zCtx: C): TraceAndSuffixEnc = {
+                             debug: Boolean = false, includeSynth:Boolean = false)(implicit zCtx: C): TraceAndSuffixEnc = {
     val typeToSolverConst = messageTranslator.getTypeToSolverConst
     val rhs: Seq[LSSingle] = abs.rightOfArrow
     val pvMap:Map[PureExpr,T] = (definedPvMap ++ messageTranslator.constMap).toMap
 
     // Instantiate and update specifications for each ▷m̂
     // only include the disallow if it is the last one in the chain
-    val rulePreds: Set[LSPred] = EncodingTools.rhsToPred(rhs, specSpace).map(EncodingTools.simplifyPred)
+    val rulePreds: Set[LSPred] = EncodingTools.rhsToPred(rhs, specSpace, includeSynth=includeSynth).map(EncodingTools.simplifyPred)
 
     //Encode that each preceding |> constraint cannot be equal to an allocation
     def encodeRefV(rhs: Seq[LSSingle], previous:Set[PureVar] = Set()):Option[(LSPred, Set[FreshRef])] = rhs match {
@@ -642,8 +642,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
                        maxWitness: Option[Int] = None,
                        specSpace: SpecSpace,
                        negate:Boolean,
-                       debug:Boolean = false)(implicit zctx: C): T =
-    toASTStateWithPv(state,messageTranslator, maxWitness, specSpace,negate, debug, false)._1
+                       debug:Boolean = false, includeSynth:Boolean = false)(implicit zctx: C): T =
+    toASTStateWithPv(state,messageTranslator, maxWitness, specSpace,negate, debug, false, includeSynth)._1
 
   def toASTStateWithPv(state: State,
                        messageTranslator: MessageTranslator,
@@ -651,7 +651,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
                        specSpace: SpecSpace,
                        negate:Boolean,
                        debug:Boolean = false,
-                       exposePv:Boolean)(implicit zCtx: C): (T, Map[PureVar,T]) = {
+                       exposePv:Boolean,includeSynth:Boolean = false)(implicit zCtx: C): (T, Map[PureVar,T]) = {
 
     if(debug){
       println(s"encoding state: ${state}")
@@ -661,7 +661,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       val combMap:Map[PureExpr,T] = (pvMap ++ messageTranslator.getConstMap()).toMap
       val traceAbs = state.traceAbstraction
       val traceEnc: TraceAndSuffixEnc = encodeTraceAbs(traceAbs, messageTranslator,
-        specSpace = specSpace, debug = debug, definedPvMap = pvMap)
+        specSpace = specSpace, debug = debug, definedPvMap = pvMap, includeSynth = includeSynth)
 
       // typeFun is a function from addresses to concrete types in the program
       val typeFun = createTypeFun()
@@ -808,7 +808,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
     // Maximum arity of arguments in encoding
     lazy val maxArgs:Int = alli.foldLeft(1){
-      case (acc,OAbsMsg(_, _, lsVars)) if lsVars.size>acc => lsVars.size
+      case (acc,OAbsMsg(_, _, lsVars,_)) if lsVars.size>acc => lsVars.size
       case (acc,_) => acc
     }
 
@@ -950,8 +950,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       return None
     }
     val satRes = getSolverCtx() { implicit zCtx =>
+      zCtx.overrideTimeoutAndSeed(getSolverExcludesInitTimeout, rngTry)
       if (rngTry > 0) {
-        zCtx.asInstanceOf[Z3SolverCtx].overrideTimeoutAndSeed(220000, rngTry)
         println(s"try again with new random seed: ${rngTry}")
       }
       val stateHashable = stateWithNulls.sf.makeHashable(specSpace)
@@ -1398,7 +1398,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 //    }
 
     val res = if(method == SubsZ3) {
-      val toCache = canSubsumeZ3(s1Simp.get,s2Simp.get,specSpace, maxLen, getSolverTimeout)
+      val toCache = canSubsumeZ3(s1Simp.get,s2Simp.get,specSpace, maxLen)
       subsumeCache.put((s1Hashable,s2Hashable), toCache)
       toCache
     } else if(method == SubsUnify)
@@ -1406,10 +1406,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     else if(method == SubsFailOver){
       try{canSubsumeUnify(s1Simp.get, s2Simp.get, specSpace)} catch{
         case _:IllegalStateException =>
-          canSubsumeZ3(s1Simp.get, s2Simp.get, specSpace, maxLen, getSolverTimeout)
+          canSubsumeZ3(s1Simp.get, s2Simp.get, specSpace, maxLen)
       }
     } else if(method == SubsDebug) {
-      val z3res = canSubsumeZ3(s1Simp.get, s2Simp.get, specSpace, maxLen, getSolverTimeout)
+      val z3res = canSubsumeZ3(s1Simp.get, s2Simp.get, specSpace, maxLen)
       val unifyRes = canSubsumeUnify(s1Simp.get,s2Simp.get,specSpace)
       if(z3res != unifyRes) {
         val s1Ser = write(s1)
@@ -1440,8 +1440,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
   // s2 state being subsumed
   // TODO: May want to handle alpha renaming, but see if this works first
   private def suffixSame(s1Suffix: List[LSSingle], s2Suffix:List[LSSingle]):Boolean = (s1Suffix, s2Suffix) match{
-    case (OAbsMsg(mt1,sig1,v)::t1, OAbsMsg(mt2,sig2,_)::t2) if mt1 != mt2 || sig1 != sig2 => suffixSame(AbsMsg(mt1,sig1,v)::t1, t2)
-    case (OAbsMsg(mt1,sig1,_)::t1, OAbsMsg(mt2,sig2,_)::t2) if mt1 == mt2 && sig1 == sig2 => suffixSame(t1,t2)
+    case (OAbsMsg(mt1,sig1,v,_)::t1, OAbsMsg(mt2,sig2,_,_)::t2) if mt1 != mt2 || sig1 != sig2 => suffixSame(AbsMsg(mt1,sig1,v)::t1, t2)
+    case (OAbsMsg(mt1,sig1,_,_)::t1, OAbsMsg(mt2,sig2,_,_)::t2) if mt1 == mt2 && sig1 == sig2 => suffixSame(t1,t2)
     case (FreshRef(_)::t1, s2Suffix) => suffixSame(t1,s2Suffix)
     case (CLInit(_)::t1, s2Suffix) => suffixSame(t1,s2Suffix)
     case (s1Suffix, FreshRef(_)::t2) => suffixSame(s1Suffix,t2)
@@ -1453,7 +1453,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     state.sf.traceAbstraction.rightOfArrow.map {
       case c@CLInit(_) => c.toString
       case FreshRef(_) => "FreshRef"
-      case OAbsMsg(mt, signatures, _) => s"I(${mt}, ${signatures.identifier})"
+      case OAbsMsg(mt, signatures, _,_) => s"I(${mt}, ${signatures.identifier})"
     }
   }
 
@@ -1547,18 +1547,17 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    * @param rngTry number of attempts with different prng seeds
    * @return true if s1i can subsume s2i otherwise false
    */
-  def canSubsumeZ3(s1i:State, s2i:State,specSpace:SpecSpace, maxLen:Option[Int], timeout:Option[Int],
+  def canSubsumeZ3(s1i:State, s2i:State,specSpace:SpecSpace, maxLen:Option[Int],
                    rngTry:Int = 0):Boolean = {
     val (s1, s2) = reducePtRegions(s1i, s2i) //TODO: does reducing pts regions help?
     //    val (s1,s2) = (s1i,s2i)
-    val newTimeout = 220000
+    val newTimeout = getSolverTimeout(rngTry)
     val out = getSolverCtx() { implicit zCtx =>
       try {
+        zCtx.asInstanceOf[Z3SolverCtx].overrideTimeoutAndSeed(newTimeout, rngTry)
         if (rngTry > 0) {
-          val rngSeed = rngTry
-          zCtx.asInstanceOf[Z3SolverCtx].overrideTimeoutAndSeed(newTimeout, rngSeed)
           // on retry, seed RNG with try number for determinism
-          println(s"try again with new random seed: ${rngSeed} and timeout ${newTimeout}")
+          println(s"try again with new random seed: ${rngTry} and timeout ${newTimeout}")
         } else if (rngTry < 0) {
           throw new IllegalStateException("Timeout, exceeded rng seed attempts, failing to subsume due to timeouts!!!")
         }
@@ -1585,7 +1584,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
           println("subsumption timeout, canceled or other unknown:")
           println(s"z3 message: ${e.getLocalizedMessage}")
-          println(s"timeout: ${timeout}")
+          println(s"timeout: ${zCtx.timeout}")
           println(s"  s1: ${s1}")
           println(s"  s1 ɸ_lhs: " +
             s"${
@@ -1619,9 +1618,9 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       case Some(value) => value
       case None =>
         // try 3 times with different random seeds
-        val max = getSolverRetries.getOrElse(2)
-        if (getz3ShouldRetryOnTimeout && rngTry < max) {
-          canSubsumeZ3(s1i, s2i, specSpace, maxLen, timeout, rngTry + 1)
+        val max = getSolverRetries
+        if (rngTry < max) {
+          canSubsumeZ3(s1i, s2i, specSpace, maxLen, rngTry + 1)
         } else {
           println("Giving up and not subsuming.")
           iDefaultOnSubsumptionTimeout
@@ -1646,6 +1645,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val res:Option[WitnessExplanation] = None
     try {
       getSolverCtx() { implicit zCtx =>
+        zCtx.overrideTimeoutAndSeed(getSolverExcludesInitTimeout, 0)
         val res = traceInAbstraction(pred, specSpace, Trace.empty)
         res
       }
@@ -1668,6 +1668,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val res:Option[WitnessExplanation] = None
     try {
       getSolverCtx() {implicit zCtx =>
+        zCtx.overrideTimeoutAndSeed(getSolverExcludesInitTimeout, 0)
         val nonNullHeap = state.heapConstraints.exists{
           case (FieldPtEdge(_,_), NullVal) => false
           case (StaticPtEdge(_,_), NullVal) => false
@@ -1751,7 +1752,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val assertDistinct = mkDistinctT(distinctAddr.keySet.map(distinctAddr(_)))
     mkAssert(assertDistinct)
     val (encodedState,pvMap) = toASTStateWithPv(state, messageTranslator, None,
-      specSpace = specSpace, negate=false,exposePv = true)
+      specSpace = specSpace, negate=false,exposePv = true, includeSynth = true)
     val encodedTrace = encodeTrace(trace, messageTranslator, distinctAddr)
 
     mkAssert(encodedState)

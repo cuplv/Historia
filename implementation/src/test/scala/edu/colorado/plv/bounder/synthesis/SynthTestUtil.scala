@@ -38,13 +38,13 @@ object SynthTestUtil {
   def onceToTestLoc(o:LSSingle):Loc = o match {
     case LifeState.CLInit(sig) => ???
     case LifeState.FreshRef(v) => ???
-    case OAbsMsg(CBEnter, signatures, lsVars) => //TODO: may want to gen args at some point
+    case OAbsMsg(CBEnter, signatures, _,_) => //TODO: may want to gen args at some point
       val sig = signatures.example()
       CallbackMethodInvoke( sig, SerializedIRMethodLoc(sig.base,sig.methodSignature,Nil))
-    case OAbsMsg(CBExit, signatures, lsVars) =>
+    case OAbsMsg(CBExit, signatures, _,_) =>
       val sig = signatures.example()
       CallinMethodReturn(sig)
-    case OAbsMsg(CIEnter, signatures, lsVars) =>
+    case OAbsMsg(CIEnter, signatures, _,_) =>
       val sig = signatures.example()
       CallinMethodInvoke(sig)
   }
@@ -84,7 +84,7 @@ object SynthTestUtil {
     val tMessages = history.map {
       case LifeState.CLInit(sig) => ???
       case LifeState.FreshRef(v) => ???
-      case OAbsMsg(mt, signatures, lsVars) =>
+      case OAbsMsg(mt, signatures, lsVars,_) =>
         val m = methodFromSig(mt,signatures)
         new CNode(TMessage(mt,m, lsVars.map{
           case p:PureVar => pvs(p)
@@ -111,7 +111,7 @@ object SynthTestUtil {
     history.map {
       case LifeState.CLInit(sig) => ???
       case LifeState.FreshRef(v) => ???
-      case OAbsMsg(mt, signatures, lsVars) => AbsMsg(mt, signatures, lsVars.map(vTargetIze))
+      case OAbsMsg(mt, signatures, lsVars,_) => AbsMsg(mt, signatures, lsVars.map(vTargetIze))
     }
   }
 }
