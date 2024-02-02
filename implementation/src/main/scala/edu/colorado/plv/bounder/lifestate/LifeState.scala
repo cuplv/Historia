@@ -1399,9 +1399,9 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(),
     }
 
     if(!createMissingI || found.nonEmpty || lst.isEmpty) found else {
-      val matcher = SubClassMatcher(signature.base, signature.methodSignature.replace("(", "\\("),
+      val matcher = SubClassMatcher(signature.base, signature.methodSignature.replace("(", "\\(").replace(")","\\)"),
         s"synth_${signature.base}${signature.methodSignature}")
-      Set(AbsMsg(dir, matcher ,lst.get.zipWithIndex.map{case ( _,ind) => RelevantNotDefined}, isSynth = true))
+      Set(AbsMsg(dir, matcher ,lst.get.zipWithIndex.map{case ( _,ind) => if (ind == 1) RelevantNotDefined else BotVal}, isSynth = true))
     }
   }
 

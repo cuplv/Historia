@@ -979,11 +979,11 @@ case class ClassVal(name:String) extends PureVal(name) {
 object ClassVal{
   implicit val rw:RW[ClassVal] = macroRW
 }
-case object TopVal extends PureVal(null) {
+case object TopVal extends PureVal("Bot") {
   override def solverName:String = "const_T_"
   override def toString:String = "_T_"
 }
-case object BotVal extends PureVal(null) {
+case object BotVal extends PureVal("Bot") {
   override def solverName:String = "const_Bot_"
 }
 

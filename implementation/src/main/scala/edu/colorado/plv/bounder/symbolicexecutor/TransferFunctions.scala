@@ -775,7 +775,10 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
             case _:PureVal => Set.empty
           }
         }
-        case None => Set(state)
+        case None => if(canWeaken) Set(state) else {
+          val (yPointsTo, stateWithMaterializedY) = state.getOrDefine(base,Some(l.method))
+          Set(stateWithMaterializedY.addPureConstraint(PureConstraint(yPointsTo, NotEquals, NullVal)))
+        }
       }
     case AssignCmd(FieldReference(base, fieldType, _, fieldName), rhs, l) =>
       // x.f = y
@@ -824,11 +827,16 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
           println(v)
           ???
       }.toSet
-      val caseWithNoAlias = state2.copy(sf = state2.sf.copy(pureFormula = state2.pureFormula ++ possibleHeapCells.flatMap {
-        case (FieldPtEdge(pv, _), _) => Some(PureConstraint(basev, NotEquals, pv))
-        case _ => None
-      }))
-      casesWithHeapCellAlias + caseWithNoAlias
+      val caseWithNoAlias =
+        if(possibleHeapCells.nonEmpty || !canWeaken) { //must always materialize x for under approx
+          state2.copy(sf = state2.sf.copy(pureFormula = state2.pureFormula ++ possibleHeapCells.flatMap {
+            case (FieldPtEdge(pv, _), _) => Some(PureConstraint(basev, NotEquals, pv))
+            case _ => None
+          }))
+        }else {state} // if nothing can alias heap cell and over-approx mode then don't materialize
+
+      val caseWithNoAliasPosUnder = if(canWeaken) caseWithNoAlias else caseWithNoAlias.addPureConstraint(PureConstraint(basev, NotEquals, NullVal))
+      casesWithHeapCellAlias + caseWithNoAliasPosUnder
     case AssignCmd(target: LocalWrapper, source, l) if source.isConst =>
       state.get(target) match {
         case Some(v) =>

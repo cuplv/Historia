@@ -1,3 +1,4 @@
+recorded at runtime:
 2024-01-31 16:56:57.605 13409-13409 traceinst               com.example.row1antennapodrxjava     W  cb 46690328 PlayerFragment.onActivityCreated
 2024-01-31 16:56:57.616 13409-13409 traceinst               com.example.row1antennapodrxjava     W  202324593 = ci Single.create 
 2024-01-31 16:56:57.629 13409-13409 traceinst               com.example.row1antennapodrxjava     W  ci 202324593 subscribeOn 235670701
@@ -15,3 +16,14 @@
 2024-01-31 16:57:07.655 13409-13462 traceinst               com.example.row1antennapodrxjava     W  ci 60835737 onSuccess
 2024-01-31 16:57:07.656 13409-13409 traceinst               com.example.row1antennapodrxjava     W  cb 46690328 PlayerFragment.call
 2024-01-31 16:57:07.656 13409-13409 traceinst               com.example.row1antennapodrxjava     W  0 = ci 46690328 getActivity
+
+found:
+
+Witness
+Some(Future trace:
+ CBEnter void onActivityCreated(android.os.Bundle)( _T_,@2 )
+CIExit rx.Subscription subscribe(rx.functions.Action1)( @3,_T_,@2 )
+CBExit void onDestroy()( _T_,@2 )
+CBEnter void call(java.lang.Object)( _T_,@2 )
+CIExit Activity getActivity()( NULL,@2 )
+)

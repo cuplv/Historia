@@ -1619,7 +1619,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       case None =>
         // try 3 times with different random seeds
         val max = getSolverRetries
-        if (rngTry < max) {
+        if (rngTry + 1 < max) {
           canSubsumeZ3(s1i, s2i, specSpace, maxLen, rngTry + 1)
         } else {
           println("Giving up and not subsuming.")

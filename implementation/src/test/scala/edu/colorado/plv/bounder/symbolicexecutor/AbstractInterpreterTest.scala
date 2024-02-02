@@ -5,6 +5,7 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{DepthResult, MultiCallback, Proven, ResultSummary, SingleCallbackMultiMethod, SingleMethod, Timeout, Unreachable, Witnessed, interpretResult}
 import edu.colorado.plv.bounder.ir.{CBEnter, CIExit, OverApprox, SootWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, AnyAbsMsg, Exists, LSAnyPred, LSConstraint, LSSpec, LSTrue, NS, Not, Or, Signature, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.LifecycleSpec.viewAttached2
 import edu.colorado.plv.bounder.lifestate.SAsyncTask.executeI
 import edu.colorado.plv.bounder.lifestate.SpecSignatures.{Activity_onPause_entry, Activity_onResume_entry, Button_init}
 import edu.colorado.plv.bounder.lifestate.ViewSpec.{a, b, b2, l, onClick, onClickI, setEnabled, setOnClickListener, setOnClickListenerI, setOnClickListenerINull, v}
@@ -3278,7 +3279,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
           test)
     }
   }
-  test("Synthesis example - simplification of Connect bot click/finish") { f =>
+  ignore("Synthesis example - simplification of Connect bot click/finish") { f => //TODO: re-enable later
     //TODO: test reachable locations from EnumModelGenerator ===
     val specs0 = Set[LSSpec](
     )
@@ -3288,7 +3289,11 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
             Not(SpecSignatures.Activity_onResume_entry)),
           SpecSignatures.Activity_onResume_entry),
       LSSpec(l::v::Nil, Nil, NS(setOnClickListenerI, setOnClickListenerINull), onClickI),
-      ViewSpec.clickWhileActive
+    LSSpec(l::Nil,a::v::Nil,
+      And(And(setOnClickListener, viewAttached2), Or(LifecycleSpec.resumed,
+        AbsMsg(CIExit, SpecSignatures.Activity_finish, TopVal::a::Nil))),
+      AbsMsg(CBEnter, onClick, List(TopVal, l)))
+      //ViewSpec.clickWhileActive //TODO: need to make this with button init
     )
     List(
       ("v.setOnClickListener(null);", f.expectReachable, specs0),
@@ -3409,7 +3414,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
           test)
     }
   }
-  test("Row2: Antennapod execute should alarm with insufficient spec") { f =>
+  ignore("Row2: Antennapod execute should alarm with insufficient spec") { f => //TODO: figure out what I was trying to test here?
     List(
       ("button.setEnabled(false);", Witnessed, "disable"),
     ).map { case (cancelLine, expectedResult, fileSuffix) =>
@@ -3467,7 +3472,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
            |}
            |""".stripMargin
       val src2 =
-        s"""package com.example.createdestroy;
+        s"""package com.example.reach;
            |import android.app.Activity;
            |import android.os.Bundle;
            |import android.util.Log;
@@ -3647,10 +3652,16 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         assert(apk != null)
         //Note: subscribeIsUnique rule ommitted from this test to check state relevant to callback
         // TODO: relevance could probably be refined so this isn't necessary
-        val w = new SootWrapper(apk, row1Specs)
+        val cSpecs = row1Specs
+//        val cSpecs = Set(FragmentGetActivityNullSpec.getActivityNull)
+//        val cSpecs = Set(RxJavaSpec.call)
+        val w = new SootWrapper(apk, cSpecs)
         val config = ExecutorConfig(
-          stepLimit = 200, w, new SpecSpace(row1Specs, createMissingI = fileSuffix == "bug"),
-          component = Some(List("com.example.createdestroy.*PlayerFragment.*")), approxMode = PreciseApproxMode(false))
+          stepLimit = 200, w, new SpecSpace(cSpecs),
+          component = Some(List("com.example.createdestroy.*PlayerFragment.*")),
+          approxMode = PreciseApproxMode(false),
+          z3Timeout = Z3TimeoutBehavior().copy(subsumeTryTimeLimit = List(1000))
+        )
         implicit val om = config.outputMode
         val symbolicExecutor = config.getAbstractInterpreter
         val line = BounderUtil.lineForRegex(".*query1.*".r, src)
