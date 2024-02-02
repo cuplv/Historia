@@ -1721,6 +1721,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
         pureFormula = state.pureFormula ++ mapToPure(Map(y -> pv1))))
 
     stateSolver.getSolverCtx() { implicit zCtx =>
+      zCtx.overrideTimeoutAndSeed(20000, 0)
       assert(stateSolver.traceInAbstraction(
         stIFooX, spec,
         trace).isDefined)

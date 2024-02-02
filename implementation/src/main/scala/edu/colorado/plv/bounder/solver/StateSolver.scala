@@ -1317,6 +1317,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   def canSubsume(pred1:LSPred, pred2:LSPred):Boolean = {
     getSolverCtx() { implicit zCtx =>
+      zCtx.overrideTimeoutAndSeed(getSolverExcludesInitTimeout, 0)
       //      if(pred1.toString.contains("NULL") || pred2.toString.contains("NULL")){
       //        //TODO: need const distinct assertion here
       //        ???
