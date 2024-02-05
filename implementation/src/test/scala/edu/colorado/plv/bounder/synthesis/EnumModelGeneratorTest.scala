@@ -1008,7 +1008,6 @@ class EnumModelGeneratorTest extends AnyFunSuite {
     val startingSpec = Set[LSSpec](
       SDialog.noDupeShow.copy(pred = LSAnyPred)
     )
-    //TODO:==== broken? seems to get stuck with final spec now or just takes too long?   How is this different from Experiments.scala?
 //    ???
     val test: String => Unit = apk => {
       File.usingTemporaryDirectory() { tmpDir =>
