@@ -34,44 +34,12 @@ RUN1 - crash
                                                                                                     	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:492)
                                                                                                     	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:930)
                                                                                                         
-RUN2 - no crash
-2024-02-05 14:44:14.506  8590-8590  traceinst               com.example.row2antennapodexecute    W  cb 30022025 RemoverActivity.onClick 268331931
-2024-02-05 14:44:14.506  8590-8590  traceinst               com.example.row2antennapodexecute    W  cb 94528426 FeedRemover.onPreExecute 
-2024-02-05 14:44:14.506  8590-8590  traceinst               com.example.row2antennapodexecute    W  cbret 94528426 FeedRemover.onPreExecute 
-2024-02-05 14:44:14.506  8590-8590  traceinst               com.example.row2antennapodexecute    W  ci 94528426 execute
-2024-02-05 14:44:14.506  8590-8590  traceinst               com.example.row2antennapodexecute    W  cbret 30022025 RemoverActivity.onClick 268331931
-2024-02-05 14:44:14.507  8590-8641  traceinst               com.example.row2antennapodexecute    W  cb 94528426 FeedRemover.doInBackground 
-2024-02-05 14:44:16.520  8590-8641  traceinst               com.example.row2antennapodexecute    W  cbret 94528426 FeedRemover.doInBackground 
-2024-02-05 14:44:16.521  8590-8590  traceinst               com.example.row2antennapodexecute    W  cb 94528426 FeedRemover.onPostExecute 
-2024-02-05 14:44:16.521  8590-8590  traceinst               com.example.row2antennapodexecute    W  ci 30022025 finish 
-2024-02-05 14:44:16.524  8590-8590  traceinst               com.example.row2antennapodexecute    W  cbret 94528426 FeedRemover.onPostExecute 
-
-RUN3 - no crash
-2024-02-05 14:45:38.220  8802-8802  traceinst               com.example.row2antennapodexecute    W  cb 30022025 RemoverActivity.onClick 268331931
-2024-02-05 14:45:38.220  8802-8802  traceinst               com.example.row2antennapodexecute    W  cb 94528426 FeedRemover.onPreExecute 
-2024-02-05 14:45:38.220  8802-8802  traceinst               com.example.row2antennapodexecute    W  cbret 94528426 FeedRemover.onPreExecute 
-2024-02-05 14:45:38.220  8802-8802  traceinst               com.example.row2antennapodexecute    W  ci 94528426 execute
-2024-02-05 14:45:38.220  8802-8802  traceinst               com.example.row2antennapodexecute    W  cbret 30022025 RemoverActivity.onClick 268331931
-2024-02-05 14:45:38.221  8802-8842  traceinst               com.example.row2antennapodexecute    W  cb 94528426 FeedRemover.doInBackground 
-2024-02-05 14:45:38.725  8802-8842  traceinst               com.example.row2antennapodexecute    W  cbret 94528426 FeedRemover.doInBackground 
-2024-02-05 14:45:38.727  8802-8802  traceinst               com.example.row2antennapodexecute    W  cb 94528426 FeedRemover.onPostExecute 
-2024-02-05 14:45:38.727  8802-8802  traceinst               com.example.row2antennapodexecute    W  ci 30022025 finish 
-2024-02-05 14:45:38.730  8802-8802  traceinst               com.example.row2antennapodexecute    W  cbret 94528426 FeedRemover.onPostExecute 
-
-
-RUN4 - no crash
-2024-02-05 14:46:04.364  8879-8879  traceinst               com.example.row2antennapodexecute    W  cb 30022025 RemoverActivity.onClick 268331931
-2024-02-05 14:46:04.368  8879-8879  traceinst               com.example.row2antennapodexecute    W  cb 94528426 FeedRemover.onPreExecute 
-2024-02-05 14:46:04.368  8879-8879  traceinst               com.example.row2antennapodexecute    W  cbret 94528426 FeedRemover.onPreExecute 
-2024-02-05 14:46:04.368  8879-8879  traceinst               com.example.row2antennapodexecute    W  ci 94528426 execute
-2024-02-05 14:46:04.369  8879-8879  traceinst               com.example.row2antennapodexecute    W  cbret 30022025 RemoverActivity.onClick 268331931
-2024-02-05 14:46:04.371  8879-8919  traceinst               com.example.row2antennapodexecute    W  cb 94528426 FeedRemover.doInBackground 
-2024-02-05 14:46:04.881  8879-8919  traceinst               com.example.row2antennapodexecute    W  cbret 94528426 FeedRemover.doInBackground 
-2024-02-05 14:46:04.882  8879-8879  traceinst               com.example.row2antennapodexecute    W  cb 94528426 FeedRemover.onPostExecute 
-2024-02-05 14:46:04.882  8879-8879  traceinst               com.example.row2antennapodexecute    W  ci 30022025 finish 
-2024-02-05 14:46:04.886  8879-8879  traceinst               com.example.row2antennapodexecute    W  cbret 94528426 FeedRemover.onPostExecute 
-
-RUN5 - crash
+RUN2 - crash cb ci 
+2024-02-06 10:20:04.262  5929-5929  traceinst               com.example.row2antennapodexecute    W  cb 131664272 RemoverActivity.onCreate 0
+2024-02-06 10:20:04.311  5929-5929  traceinst               com.example.row2antennapodexecute    W  new  FeedRemover 101277589
+2024-02-06 10:20:04.311  5929-5929  traceinst               com.example.row2antennapodexecute    W  ci 257640618 findViewById 2131230808
+2024-02-06 10:20:04.311  5929-5929  traceinst               com.example.row2antennapodexecute    W  ci 257640618 setOnClickListener 131664272
+2024-02-06 10:20:04.311  5929-5929  traceinst               com.example.row2antennapodexecute    W  cbret 131664272 RemoverActivity.onCreate 0
 2024-02-06 10:20:06.251  5929-5929  traceinst               com.example.row2antennapodexecute    W  cb 131664272 RemoverActivity.onClick 257640618
 2024-02-06 10:20:06.251  5929-5929  traceinst               com.example.row2antennapodexecute    W  cb 101277589 FeedRemover.onPreExecute 
 2024-02-06 10:20:06.251  5929-5929  traceinst               com.example.row2antennapodexecute    W  cbret 101277589 FeedRemover.onPreExecute 
@@ -98,4 +66,65 @@ RUN5 - crash
                                                                                                     	at java.lang.reflect.Method.invoke(Native Method)
                                                                                                     	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:492)
                                                                                                     	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:930)
+
+
+
+
+RUN3 - no crash
+2024-02-06 11:10:29.941  6390-6390  traceinst               com.example.row2antennapodexecute    W  cb 131664272 RemoverActivity.onCreate 0
+2024-02-06 11:10:29.980  6390-6390  traceinst               com.example.row2antennapodexecute    W  new  FeedRemover 101277589
+2024-02-06 11:10:29.980  6390-6390  traceinst               com.example.row2antennapodexecute    W  ci 257640618 findViewById 2131230808
+2024-02-06 11:10:29.980  6390-6390  traceinst               com.example.row2antennapodexecute    W  ci 257640618 setOnClickListener 131664272
+2024-02-06 11:10:29.980  6390-6390  traceinst               com.example.row2antennapodexecute    W  cbret 131664272 RemoverActivity.onCreate 0
+2024-02-06 11:10:31.230  6390-6390  traceinst               com.example.row2antennapodexecute    W  cb 131664272 RemoverActivity.onClick 257640618
+2024-02-06 11:10:31.230  6390-6390  traceinst               com.example.row2antennapodexecute    W  cb 101277589 FeedRemover.onPreExecute 
+2024-02-06 11:10:31.230  6390-6390  traceinst               com.example.row2antennapodexecute    W  cbret 101277589 FeedRemover.onPreExecute 
+2024-02-06 11:10:31.230  6390-6390  traceinst               com.example.row2antennapodexecute    W  ci 101277589 execute
+2024-02-06 11:10:31.230  6390-6390  traceinst               com.example.row2antennapodexecute    W  cbret 131664272 RemoverActivity.onClick 257640618
+2024-02-06 11:10:31.230  6390-6438  traceinst               com.example.row2antennapodexecute    W  cb 101277589 FeedRemover.doInBackground 
+2024-02-06 11:10:31.736  6390-6438  traceinst               com.example.row2antennapodexecute    W  cbret 101277589 FeedRemover.doInBackground 
+2024-02-06 11:10:31.737  6390-6390  traceinst               com.example.row2antennapodexecute    W  cb 101277589 FeedRemover.onPostExecute 
+2024-02-06 11:10:31.737  6390-6390  traceinst               com.example.row2antennapodexecute    W  ci 131664272 finish 
+2024-02-06 11:10:31.741  6390-6390  traceinst               com.example.row2antennapodexecute    W  cbret 101277589 FeedRemover.onPostExecute 
+
+RUN4 - crash
+2024-02-06 11:12:23.313  7073-7073  traceinst               com.example.row2antennapodexecute    W  cb 131664272 RemoverActivity.onCreate 0
+2024-02-06 11:12:23.354  7073-7073  traceinst               com.example.row2antennapodexecute    W  new  FeedRemover 101277589
+2024-02-06 11:12:23.354  7073-7073  traceinst               com.example.row2antennapodexecute    W  ci 257640618 findViewById 2131230808
+2024-02-06 11:12:23.354  7073-7073  traceinst               com.example.row2antennapodexecute    W  ci 257640618 setOnClickListener 131664272
+2024-02-06 11:12:23.354  7073-7073  traceinst               com.example.row2antennapodexecute    W  cbret 131664272 RemoverActivity.onCreate 0
+2024-02-06 11:12:25.328  7073-7073  traceinst               com.example.row2antennapodexecute    W  cb 169634919 RemoverActivity.onCreate 97237524
+2024-02-06 11:12:25.343  7073-7073  traceinst               com.example.row2antennapodexecute    W  new  FeedRemover 176636688
+2024-02-06 11:12:25.343  7073-7073  traceinst               com.example.row2antennapodexecute    W  ci 6725129 findViewById 2131230808
+2024-02-06 11:12:25.343  7073-7073  traceinst               com.example.row2antennapodexecute    W  ci 6725129 setOnClickListener 169634919
+2024-02-06 11:12:25.343  7073-7073  traceinst               com.example.row2antennapodexecute    W  cbret 169634919 RemoverActivity.onCreate 97237524
+2024-02-06 11:12:28.071  7073-7073  traceinst               com.example.row2antennapodexecute    W  cb 113733740 RemoverActivity.onCreate 112457269
+2024-02-06 11:12:28.090  7073-7073  traceinst               com.example.row2antennapodexecute    W  new  FeedRemover 200338339
+2024-02-06 11:12:28.090  7073-7073  traceinst               com.example.row2antennapodexecute    W  ci 7483040 findViewById 2131230808
+2024-02-06 11:12:28.090  7073-7073  traceinst               com.example.row2antennapodexecute    W  ci 7483040 setOnClickListener 113733740
+2024-02-06 11:12:28.091  7073-7073  traceinst               com.example.row2antennapodexecute    W  cbret 113733740 RemoverActivity.onCreate 112457269
+2024-02-06 11:12:34.318  7073-7073  traceinst               com.example.row2antennapodexecute    W  cb 113733740 RemoverActivity.onClick 7483040
+2024-02-06 11:12:34.318  7073-7073  traceinst               com.example.row2antennapodexecute    W  cb 200338339 FeedRemover.onPreExecute 
+2024-02-06 11:12:34.318  7073-7073  traceinst               com.example.row2antennapodexecute    W  cbret 200338339 FeedRemover.onPreExecute 
+2024-02-06 11:12:34.318  7073-7073  traceinst               com.example.row2antennapodexecute    W  ci 200338339 execute
+2024-02-06 11:12:34.318  7073-7073  traceinst               com.example.row2antennapodexecute    W  cbret 113733740 RemoverActivity.onClick 7483040
+2024-02-06 11:12:34.339  7073-7129  traceinst               com.example.row2antennapodexecute    W  cb 200338339 FeedRemover.doInBackground 
+2024-02-06 11:12:34.404  7073-7073  traceinst               com.example.row2antennapodexecute    W  cb 113733740 RemoverActivity.onClick 7483040
+
+RUN5 - no crash 
+2024-02-06 11:13:59.822  7184-7184  traceinst               com.example.row2antennapodexecute    W  cb 131664272 RemoverActivity.onCreate 0
+2024-02-06 11:13:59.860  7184-7184  traceinst               com.example.row2antennapodexecute    W  new  FeedRemover 101277589
+2024-02-06 11:13:59.860  7184-7184  traceinst               com.example.row2antennapodexecute    W  ci 257640618 findViewById 2131230808
+2024-02-06 11:13:59.860  7184-7184  traceinst               com.example.row2antennapodexecute    W  ci 257640618 setOnClickListener 131664272
+2024-02-06 11:13:59.860  7184-7184  traceinst               com.example.row2antennapodexecute    W  cbret 131664272 RemoverActivity.onCreate 0
+2024-02-06 11:14:02.473  7184-7184  traceinst               com.example.row2antennapodexecute    W  cb 131664272 RemoverActivity.onClick 257640618
+2024-02-06 11:14:02.473  7184-7184  traceinst               com.example.row2antennapodexecute    W  cb 101277589 FeedRemover.onPreExecute 
+2024-02-06 11:14:02.473  7184-7184  traceinst               com.example.row2antennapodexecute    W  cbret 101277589 FeedRemover.onPreExecute 
+2024-02-06 11:14:02.473  7184-7184  traceinst               com.example.row2antennapodexecute    W  ci 101277589 execute
+2024-02-06 11:14:02.473  7184-7184  traceinst               com.example.row2antennapodexecute    W  cbret 131664272 RemoverActivity.onClick 257640618
+2024-02-06 11:14:02.474  7184-7224  traceinst               com.example.row2antennapodexecute    W  cb 101277589 FeedRemover.doInBackground 
+2024-02-06 11:14:03.013  7184-7224  traceinst               com.example.row2antennapodexecute    W  cbret 101277589 FeedRemover.doInBackground 
+2024-02-06 11:14:03.014  7184-7184  traceinst               com.example.row2antennapodexecute    W  cb 101277589 FeedRemover.onPostExecute 
+2024-02-06 11:14:03.014  7184-7184  traceinst               com.example.row2antennapodexecute    W  ci 131664272 finish 
+2024-02-06 11:14:03.020  7184-7184  traceinst               com.example.row2antennapodexecute    W  cbret 101277589 FeedRemover.onPostExecute 
 
