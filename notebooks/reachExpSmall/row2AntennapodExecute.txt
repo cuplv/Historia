@@ -1,6 +1,6 @@
-RUN1 - crash
+RUN1 - crash cb:6 ci:6 tot:13
 2024-02-05 12:08:39.743  7603-7603  traceinst               com.example.row2antennapodexecute    W  cb 246988052 RemoverActivity.onCreate 264030653
-2024-02-05 12:08:39.809  7603-7603  traceinst               com.example.row2antennapodexecute    W  new  FeedRemover 35362057
+2024-02-05 12:08:39.809  7603-7603  traceinst               com.example.row2antennapodexecute    W  new  FeedRemover 35362057 //note counting as ci 
 2024-02-05 12:08:39.809  7603-7603  traceinst               com.example.row2antennapodexecute    W  ci 186475278 findViewById 2131230808
 2024-02-05 12:08:39.810  7603-7603  traceinst               com.example.row2antennapodexecute    W  ci 186475278 setOnClickListener 246988052
 2024-02-05 12:08:39.810  7603-7603  traceinst               com.example.row2antennapodexecute    W  cbret 246988052 RemoverActivity.onCreate 264030653
@@ -34,9 +34,9 @@ RUN1 - crash
                                                                                                     	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:492)
                                                                                                     	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:930)
                                                                                                         
-RUN2 - crash cb ci 
+RUN2 - crash cb:4 ci:4 tot:9
 2024-02-06 10:20:04.262  5929-5929  traceinst               com.example.row2antennapodexecute    W  cb 131664272 RemoverActivity.onCreate 0
-2024-02-06 10:20:04.311  5929-5929  traceinst               com.example.row2antennapodexecute    W  new  FeedRemover 101277589
+2024-02-06 10:20:04.311  5929-5929  traceinst               com.example.row2antennapodexecute    W  new  FeedRemover 101277589 //note counting as ci 
 2024-02-06 10:20:04.311  5929-5929  traceinst               com.example.row2antennapodexecute    W  ci 257640618 findViewById 2131230808
 2024-02-06 10:20:04.311  5929-5929  traceinst               com.example.row2antennapodexecute    W  ci 257640618 setOnClickListener 131664272
 2024-02-06 10:20:04.311  5929-5929  traceinst               com.example.row2antennapodexecute    W  cbret 131664272 RemoverActivity.onCreate 0
@@ -72,7 +72,7 @@ RUN2 - crash cb ci
 
 RUN3 - no crash
 2024-02-06 11:10:29.941  6390-6390  traceinst               com.example.row2antennapodexecute    W  cb 131664272 RemoverActivity.onCreate 0
-2024-02-06 11:10:29.980  6390-6390  traceinst               com.example.row2antennapodexecute    W  new  FeedRemover 101277589
+2024-02-06 11:10:29.980  6390-6390  traceinst               com.example.row2antennapodexecute    W  new  FeedRemover 101277589 //note counting as ci 
 2024-02-06 11:10:29.980  6390-6390  traceinst               com.example.row2antennapodexecute    W  ci 257640618 findViewById 2131230808
 2024-02-06 11:10:29.980  6390-6390  traceinst               com.example.row2antennapodexecute    W  ci 257640618 setOnClickListener 131664272
 2024-02-06 11:10:29.980  6390-6390  traceinst               com.example.row2antennapodexecute    W  cbret 131664272 RemoverActivity.onCreate 0
@@ -87,9 +87,9 @@ RUN3 - no crash
 2024-02-06 11:10:31.737  6390-6390  traceinst               com.example.row2antennapodexecute    W  ci 131664272 finish 
 2024-02-06 11:10:31.741  6390-6390  traceinst               com.example.row2antennapodexecute    W  cbret 101277589 FeedRemover.onPostExecute 
 
-RUN4 - crash
+RUN4 - crash cb:7 ci:8 tot: 16
 2024-02-06 11:12:23.313  7073-7073  traceinst               com.example.row2antennapodexecute    W  cb 131664272 RemoverActivity.onCreate 0
-2024-02-06 11:12:23.354  7073-7073  traceinst               com.example.row2antennapodexecute    W  new  FeedRemover 101277589
+2024-02-06 11:12:23.354  7073-7073  traceinst               com.example.row2antennapodexecute    W  new  FeedRemover 101277589 //note counting as ci 
 2024-02-06 11:12:23.354  7073-7073  traceinst               com.example.row2antennapodexecute    W  ci 257640618 findViewById 2131230808
 2024-02-06 11:12:23.354  7073-7073  traceinst               com.example.row2antennapodexecute    W  ci 257640618 setOnClickListener 131664272
 2024-02-06 11:12:23.354  7073-7073  traceinst               com.example.row2antennapodexecute    W  cbret 131664272 RemoverActivity.onCreate 0
@@ -113,7 +113,7 @@ RUN4 - crash
 
 RUN5 - no crash 
 2024-02-06 11:13:59.822  7184-7184  traceinst               com.example.row2antennapodexecute    W  cb 131664272 RemoverActivity.onCreate 0
-2024-02-06 11:13:59.860  7184-7184  traceinst               com.example.row2antennapodexecute    W  new  FeedRemover 101277589
+2024-02-06 11:13:59.860  7184-7184  traceinst               com.example.row2antennapodexecute    W  new  FeedRemover 101277589 //note counting as ci 
 2024-02-06 11:13:59.860  7184-7184  traceinst               com.example.row2antennapodexecute    W  ci 257640618 findViewById 2131230808
 2024-02-06 11:13:59.860  7184-7184  traceinst               com.example.row2antennapodexecute    W  ci 257640618 setOnClickListener 131664272
 2024-02-06 11:13:59.860  7184-7184  traceinst               com.example.row2antennapodexecute    W  cbret 131664272 RemoverActivity.onCreate 0
