@@ -1,4 +1,4 @@
-WITSTORIA
+WITSTORIA cb:3 ci:4 tot:8
  CBEnter void onCreate(android.os.Bundle)( _T_,@3 )
 TNew(p-0,{2})
 CIExit findViewById(( @1,@3 )

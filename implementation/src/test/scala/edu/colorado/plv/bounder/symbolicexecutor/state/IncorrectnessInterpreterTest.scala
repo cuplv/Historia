@@ -1,6 +1,7 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
-import edu.colorado.plv.bounder.BounderUtil
+import better.files.File
+import edu.colorado.plv.bounder.{BounderUtil, PickleSpec, RunConfig}
 import edu.colorado.plv.bounder.BounderUtil.{Proven, ResultSummary, Unreachable, Witnessed}
 import edu.colorado.plv.bounder.ir.{CIExit, SootWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, LSSpec, Not, Signature}
@@ -226,6 +227,18 @@ class IncorrectnessInterpreterTest extends FixtureAnyFunSuite{
 
       makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
     }
+  }
+  test("config write"){ f =>
+    import upickle.default.{macroRW, read, write, ReadWriter => RW}
+    val cfg = RunConfig(apkPath = "inputapk",
+      outFolder = Some("outputdir"),
+      initialQuery = List(), truncateOut = false,
+      specSet = PickleSpec(Set(), Set(SAsyncTask.disallowDoubleExecute)),
+      approxMode = PreciseApproxMode(true)
+    )
+
+    val cfgPath = File("cfg.json")
+    cfgPath.overwrite(write(cfg))
   }
 
 }

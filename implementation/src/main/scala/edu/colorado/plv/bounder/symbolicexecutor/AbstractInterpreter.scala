@@ -1,13 +1,13 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
 import java.time.Instant
-import com.microsoft.z3.Z3Exception
+import upickle.default.{macroRW, read, write, ReadWriter => RW}
 import edu.colorado.plv.bounder.{BounderUtil, RunConfig}
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, Goto, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, MethodLoc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SwitchCmd, ThrowCmd, VirtualInvoke}
+import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, Goto, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, MethodLoc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SwitchCmd, ThrowCmd, VirtualInvoke}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.EncodingTools.repHeapCells
-import edu.colorado.plv.bounder.solver.{EncodingTools, StateSolver, Z3StateSolver}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, BottomQry, CallStackFrame, DBOutputMode, FieldPtEdge, FrameworkLocation, HashableStateFormula, HeapPtEdge, IPathNode, InitialQuery, Live, MemoryOutputMode, NPureVar, NoOutputMode, OrdCount, OutputMode, PathNode, PureExpr, Qry, State, StaticPtEdge, SubsumableLocation, SwapLoc, WitnessedQry}
+import edu.colorado.plv.bounder.solver.{EncodingTools, Z3StateSolver}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, CallStackFrame, DBOutputMode, FieldPtEdge, FrameworkLocation, HashableStateFormula, HeapPtEdge, IPathNode, InitialQuery, Live, MemoryOutputMode, NPureVar, NoOutputMode, OrdCount, OutputMode, PathNode, PureExpr, Qry, State, StaticPtEdge, SubsumableLocation, SwapLoc, WitnessedQry}
 
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import scala.collection.parallel.immutable.ParIterable
@@ -58,7 +58,7 @@ case object SubsumptionModeBatch extends SubsumptionMode
  */
 case object SubsumptionModeTest extends SubsumptionMode
 
-trait ApproxMode {
+sealed trait ApproxMode {
   /**
    * Called at loop heads to widen or discard states depending on over or under approx.
    * Widening is applied for over approx.
@@ -77,6 +77,12 @@ trait ApproxMode {
   def canWeaken:Boolean
 }
 
+
+
+object ApproxMode{
+  implicit val rw:RW[ApproxMode] = RW.merge(PreciseApproxMode.rw, LimitMaterializationApproxMode.rw)
+}
+
 /**
  * Materialize everything within reason.
  * @param canWeaken  true if its OK for the transfer functions to drop constraints, false if not
@@ -92,6 +98,11 @@ case class PreciseApproxMode(canWeaken:Boolean) extends ApproxMode{
                      stateSolver: Z3StateSolver)(implicit w: ControlFlowResolver[M, C]): Option[IPathNode] =
     Some(newState)
 }
+
+object PreciseApproxMode {
+  implicit val rw:RW[PreciseApproxMode] = macroRW
+}
+
 
 case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2) extends ApproxMode {
 
@@ -157,6 +168,10 @@ case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2) extend
     }
 
   }
+}
+
+object LimitMaterializationApproxMode {
+  implicit val rw:RW[LimitMaterializationApproxMode] = macroRW
 }
 
 /**

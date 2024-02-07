@@ -15,7 +15,7 @@ import edu.colorado.plv.bounder.lifestate.LifeState.{LSConstraint, LSSpec, LSTru
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SpecSpace}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, Z3StateSolver}
 import edu.colorado.plv.bounder.symbolicexecutor.state._
-import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, ExecutorConfig, QueryFinished, SparkCallGraph, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, ApproxMode, ExecutorConfig, LimitMaterializationApproxMode, QueryFinished, SparkCallGraph, TransferFunctions}
 import edu.colorado.plv.bounder.synthesis.{EnumModelGenerator, LearnFailure, LearnSuccess}
 import org.slf4j.LoggerFactory
 import org.slf4j.impl.Log4jLoggerAdapter
@@ -115,7 +115,8 @@ case class RunConfig( //Mode can also be specified in run config
                      tag:ExpTag = ExpTag(),
                      timeLimit:Int = 600, // max clock time per query
                      truncateOut:Boolean = true,
-                      configPath:Option[String] = None //Note: overwritten with json path of config
+                      configPath:Option[String] = None, //Note: overwritten with json path of config
+                    approxMode: ApproxMode = LimitMaterializationApproxMode()
                     ){
 }
 
@@ -688,7 +689,7 @@ object Driver {
       val w = new SootWrapper(apkPath, specSet.getSpecSet().union(specSet.getDisallowSpecSet()))
       val config = ExecutorConfig(
         stepLimit = stepLimit, w, specSet.getSpecSpace(), component = componentFilter, outputMode = mode,
-        timeLimit = cfg.timeLimit, printAAProgress = dbg)
+        timeLimit = cfg.timeLimit, printAAProgress = dbg, approxMode = cfg.approxMode)
       initialQueries.flatMap{ initialQuery =>
         try {
           val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
