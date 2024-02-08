@@ -4,10 +4,15 @@ FROM ubuntu:20.04
 RUN apt-get update
 RUN apt-get install -y gcc make sudo cmake apt-transport-https software-properties-common binutils g++ curl
 RUN apt-get install -y wget apt-transport-https gnupg python
-RUN wget -qO - https://adoptopenjdk.jfrog.io/adoptopenjdk/api/gpg/key/public | sudo apt-key add -
-RUN echo "deb https://adoptopenjdk.jfrog.io/adoptopenjdk/deb bionic main" | sudo tee /etc/apt/sources.list.d/adoptopenjdk.list 
+#RUN wget -qO - https://adoptopenjdk.jfrog.io/adoptopenjdk/api/gpg/key/public | sudo apt-key add -
+#RUN echo "deb https://adoptopenjdk.jfrog.io/adoptopenjdk/deb bionic main" | sudo tee /etc/apt/sources.list.d/adoptopenjdk.list 
 RUN apt-get update
-RUN apt-get -y install adoptopenjdk-11-hotspot
+#RUN apt-get -y install adoptopenjdk-11-hotspot
+# Install OpenJDK-11
+RUN apt-get update && \
+    apt-get install -y openjdk-11-jdk && \
+    apt-get clean;
+ENV JAVA_HOME "/usr/lib/jvm/java-11-openjdk-amd64/"
 RUN mkdir /home/bounder
 
 ## 3. sbt
@@ -156,16 +161,16 @@ RUN apt-get install -y maven
 ARG COMMITHASH=unknown
 RUN echo $COMMITHASH >/home/bounder/commithash.txt
 
-COPY homedirstuff/root/.android /root/.android
-COPY homedirstuff/root/.cache /root/.cache
-COPY homedirstuff/root/.gnupg /root/.gnupg
-COPY homedirstuff/root/.gradle /root/.gradle
-COPY homedirstuff/root/gradle /root/gradle
-COPY homedirstuff/root/.ipython /root/.ipython
-COPY homedirstuff/root/.jupyter /root/.jupyter
-COPY homedirstuff/root/.local /root/.local
-COPY homedirstuff/root/.profile /root/.profile
-COPY homedirstuff/root/.sbt /root/.sbt
+#COPY homedirstuff/root/.android /root/.android
+#COPY homedirstuff/root/.cache /root/.cache
+#COPY homedirstuff/root/.gnupg /root/.gnupg
+#COPY homedirstuff/root/.gradle /root/.gradle
+#COPY homedirstuff/root/gradle /root/gradle
+#COPY homedirstuff/root/.ipython /root/.ipython
+#COPY homedirstuff/root/.jupyter /root/.jupyter
+#COPY homedirstuff/root/.local /root/.local
+#COPY homedirstuff/root/.profile /root/.profile
+#COPY homedirstuff/root/.sbt /root/.sbt
 
 
 
