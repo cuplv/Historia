@@ -149,17 +149,18 @@ RUN curl -Lo ./coursier https://git.io/coursier-cli && \
 #RUN ./almond --install
 RUN bash -c "./coursier launch --fork almond:0.10.0 --scala 2.13 -- --install"
 
-COPY implementation /home/bounder
+#COPY implementation /home/bounder
 #COPY notebooks /home/notebooks
 COPY notebooks/jupyterStart.sh /home/jupyterStart.sh
 ENV LD_LIBRARY_PATH=/usr/lib/
-RUN cd /home/bounder/; sbt assembly
+#RUN cd /home/bounder/; sbt assembly
 
 RUN apt-get install -y postgresql-client-12 cloc
 RUN apt-get install -y maven
 
-ARG COMMITHASH=unknown
-RUN echo $COMMITHASH >/home/bounder/commithash.txt
+#ARG COMMITHASH=unknown
+#RUN echo $COMMITHASH >/home/bounder/commithash.txt
+RUN apt-get install -y tmux
 
 #COPY homedirstuff/root/.android /root/.android
 #COPY homedirstuff/root/.cache /root/.cache

@@ -15,10 +15,12 @@ services:
     networks:
       - expnet
     volumes:
+      - ${PWD}/implementation:/home/bounder
       - ${PWD}/notebooks:/home/notebooks
       - ${PWD}/historia_generalizability:/home/historia_generalizability
       - ${PWD}/table2results:/home/table2results
       - ${PWD}/FlowDroid:/home/FlowDroid
+      - ${DATA_DIR}/reach_24_data:/home/reach_24_data #must set DATA_DIR
     depends_on:
       - db
 #deploy:
