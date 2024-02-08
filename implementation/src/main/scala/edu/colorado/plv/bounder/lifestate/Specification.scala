@@ -59,6 +59,10 @@ object AllMatchers {
       }
     }.toSet
   }
+  val iByIdent = allI.groupBy(_.identitySignature)
+  def iContaining(substring:String):Set[OAbsMsg] = {
+    allI.filter{o => o.identitySignature.contains(substring)}
+  }
 }
 object SpecSignatures {
 
