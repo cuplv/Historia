@@ -139,4 +139,10 @@ class SpecTest extends AnyFunSuite {
     println(s"=== clazz: $classContains === name: $nameContains")
     filtered.foreach(sig => println(s"""("${sig._1}","${sig._2}"),"""))
   }
+
+  test("Get full list of abstract messages"){
+    val allMatchers = AllMatchers.allI
+    val identSigs = allMatchers.map{m => m.identitySignature}
+    assert(allMatchers.size === identSigs.size)
+  }
 }

@@ -308,15 +308,23 @@ case class DisallowedCallin(className:String, methodName:String, s:LSSpec) exten
     assert(locations.nonEmpty, s"Empty target locations matching disallow: $s")
 //    val containingMethodPos =
 //      locations.flatMap(location => BounderUtil.resolveMethodReturnForAppLoc(sym.getAppCodeResolver, location))
+    assert(sym.getConfig.specSpace.getDisallowSpecs.contains(s), "Spec space must contain disallow")
     locations.map { location =>
       val cmd = sym.w.cmdAtLocation(location)
       val retLoc = BounderUtil.resolveMethodReturnForAppLoc(sym.getAppCodeResolver, location)
       val sf = CallStackFrame(retLoc.head, None, Map())
       val state = State.topState.copy(sf = State.topState.sf.copy(callStack = sf :: Nil))
       val allVar = TransferFunctions.inVarsForCall(location,sym.w)
-      val stateWithDisallow = sym.transfer.newDisallowTransfer(location.method,
-        CIEnter, getMatchingCallin(cmd).get, allVar, state,Some(s))
+      val stateWithDisallow = sym.transfer.newMsgTransfer(location.method,
+        CIEnter, getMatchingCallin(cmd).get, allVar, state)
       assert(stateWithDisallow.size == 1)
+      if(stateWithDisallow.head.sf.traceAbstraction.rightOfArrow.isEmpty){
+        val msg = s"Failed to match disallowed callin ${s.target} " +
+          s"in method ${location.method.classType} ${location.method.simpleName}\n" +
+           "method body: \n" + location.method.bodyToString
+        println(msg)
+        throw new IllegalArgumentException(msg)
+      }
       Qry(stateWithDisallow.head, location.copy(isPre = true), Live)
     }
   }

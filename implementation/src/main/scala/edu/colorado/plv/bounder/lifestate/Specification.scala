@@ -4,9 +4,64 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir.{CBEnter, CBExit, CIEnter, CIExit}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Forall, HNOE, LSConstraint, LSFalse, LSPred, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, SetSignatureMatcher, SignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.lifestate.SpecSignatures.{Fragment_onStart_entry, Fragment_onStop_exit, a, t, v}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, Equals, NamedPureVar, NotEquals, NullVal, PureExpr, TopVal}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, Equals, NamedPureVar, NotEquals, NullVal, PureExpr, PureVar, TopVal}
 
+import scala.reflect.runtime.universe._
+
+object AllMatchers {
+  val allSpecCategories = Set(SpecSignatures, FragmentGetActivityNullSpec,
+    LifecycleSpec,RxJavaSpec,SAsyncTask,SDialog,SJavaThreading,SpecSignatures,ViewSpec)
+
+  def extract(v:Any):Iterable[OAbsMsg] = v match{
+    case l:LSSpec => l.target :: l.pred.allMsg.toList
+    case o:OAbsMsg => o::Nil
+    case p:LSPred => p.allMsg
+    case i:Iterable[_] => i.flatMap(extract)
+    case _:PureExpr => Nil
+    case _:SubClassMatcher => Nil
+    case _:String => Nil
+    case a if a.getClass.getName.contains("$Lambda$") => Nil
+    case a => println(a);???
+  }
+  val everyI:Set[OAbsMsg] = allSpecCategories.flatMap { a =>
+    val rm = scala.reflect.runtime.currentMirror
+    val accessors = rm.classSymbol(a.getClass).toType.members.collect {
+      case m: MethodSymbol if m.isGetter && m.isPublic => m
+    }
+    val instanceMirror = rm.reflect(a)
+    //      println(s"$a: ${instanceMirror.reflectMethod(acc).apply()}")
+    val everyI = accessors.flatMap{acc =>
+      val out = instanceMirror.reflectMethod(acc).apply()
+      extract(out)
+    }
+    everyI
+  }
+  val allI = {
+    // make versions where top or unique var and no collisions in ident sig
+    // also dump unique vars in each spot
+    def combineMsgs(m1: OAbsMsg, m2: OAbsMsg): OAbsMsg = (m1, m2) match {
+      case (OAbsMsg(mt1, sig1, lsVar1, _), OAbsMsg(mt2, sig2, lsVar2, _)) => {
+        assert(mt1 == mt2 && sig1 == sig2)
+        val zipped = lsVar1.zipAll(lsVar2, TopVal, TopVal)
+        OAbsMsg(mt1, sig1, zipped.zipWithIndex.map {
+          case ((TopVal, TopVal), _) => TopVal
+          case ((_, _), ind) => NamedPureVar(s"arg_${ind}")
+        })
+      }
+    }
+
+    val groups = everyI.groupBy { i =>
+      i.identitySignature
+    }
+    groups.map {
+      case (_, msgs: Set[OAbsMsg]) => msgs.reduceRight {
+        combineMsgs
+      }
+    }.toSet
+  }
+}
 object SpecSignatures {
+
   val a = NamedPureVar("a")
   val s = NamedPureVar("s")
   val f = NamedPureVar("f")

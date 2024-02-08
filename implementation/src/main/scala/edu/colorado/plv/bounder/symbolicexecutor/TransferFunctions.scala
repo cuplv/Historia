@@ -595,12 +595,6 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         Set(newState.copy(sf = newState.sf.copy(traceAbstraction = newAbs)))
     }
   }
-  def newDisallowTransfer(appMethod:MethodLoc, mt: MessageType,
-                     sig:Signature, allVar:List[Option[RVal]],
-                     postState: State, disallow:Option[LSSpec] = None): Set[State] = {
-    // TODO: get rid of this method, this is now handled by the StateSolver
-    newMsgTransfer(appMethod, mt, sig, allVar, postState)
-  }
 
   /**
    * Get input and output vars of executing part of the app responsible for an observed message
