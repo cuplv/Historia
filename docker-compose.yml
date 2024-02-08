@@ -11,7 +11,7 @@ services:
     image: "historia"
     ports:
       - "8888:8888"
-    command: bash -c "socat tcp-l:5432,fork,reuseaddr tcp:db:5432 & /home/jupyterStart.sh &  java -jar /home/bounder/target/scala-2.13/soot_hopper-assembly-0.1.jar --mode expLoop"
+    command: bash -c "socat tcp-l:5432,fork,reuseaddr tcp:db:5432 & /home/jupyterStart.sh" #&  java -jar /home/bounder/target/scala-2.13/soot_hopper-assembly-0.1.jar --mode expLoop" #TODO: uncomment for workers
     networks:
       - expnet
     volumes:
@@ -21,25 +21,25 @@ services:
       - ${PWD}/FlowDroid:/home/FlowDroid
     depends_on:
       - db
-    deploy:
-      resources:
-        limits:
-          memory: 8G
-        reservations:
-          memory: 8G
-  worker: # can create additional workers
-    image: "historia"
-    command: bash -c "socat tcp-l:5432,fork,reuseaddr tcp:db:5432 & java -jar /home/bounder/target/scala-2.13/soot_hopper-assembly-0.1.jar --mode expLoop"
-    networks:
-      - expnet
-    depends_on:
-      - db
-    deploy:
-     resources:
-       limits:
-         memory: 8G
-       reservations:
-         memory: 8G
+#deploy:
+#resources:
+#limits: #TODO: uncomment for resource limits
+#  memory: 8G
+#reservations:
+#  memory: 8G
+    # worker: # can create additional workers #TODO: uncomment for workers
+    #   image: "historia"
+    #   command: bash -c "socat tcp-l:5432,fork,reuseaddr tcp:db:5432 & java -jar /home/bounder/target/scala-2.13/soot_hopper-assembly-0.1.jar --mode expLoop"
+    #   networks:
+    #     - expnet
+    #   depends_on:
+    #     - db
+    #   deploy:
+    #    resources:
+    #      limits:
+    #        memory: 8G
+    #      reservations:
+    #        memory: 8G
 
 networks:
   expnet:
