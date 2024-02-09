@@ -316,6 +316,12 @@ object ViewSpec {
 
   implicit val convertList:List[String]=>List[PureExpr] = LSExpParser.convertList
 
+  val onTouchEvent = AbsMsg(CBEnter, SubClassMatcher("android.view.View","boolean onTouchEvent(android.view.MotionEvent","View_onTouchEvent"),TopVal::v::Nil)
+
+  val onTouchWhileActive: LSSpec = LSSpec(v :: Nil, a :: Nil,
+    And( LifecycleSpec.viewAttached, Or(LifecycleSpec.resumed,
+      AbsMsg(CIExit, SpecSignatures.Activity_finish, TopVal :: a :: Nil))),
+    onTouchEvent)
   val anyViewCallin: OAbsMsg = AbsMsg(CIEnter, SubClassMatcher("android.view.View",".*","View_AnyExceptOther"),List(TopVal, v) )
   val onClick:SignatureMatcher = SubClassMatcher("android.view.View$OnClickListener", ".*onClick.*", "ViewOnClickListener_onClick")
   val menuItemOnClick:SignatureMatcher = SubClassMatcher("android.view.MenuItem$OnMenuItemClickListener",
