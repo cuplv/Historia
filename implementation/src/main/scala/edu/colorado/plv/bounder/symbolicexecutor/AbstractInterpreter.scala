@@ -185,6 +185,10 @@ case class Z3TimeoutBehavior(subsumeTryTimeLimit:List[Int] = List(40000, 220000)
   assert(subsumeTryTimeLimit.size > 0, s"Invalid subumeTryTimeLimit: ${subsumeTryTimeLimit}, " +
     s"must have length of at least 1.")
 }
+object Z3TimeoutBehavior{
+  implicit val rw:RW[Z3TimeoutBehavior] = macroRW
+}
+
 /**
  * @param stepLimit Number of back steps to take from assertion before timeout (-1 for no limit)
  * @param w  IR representation defined by IRWrapper interface
