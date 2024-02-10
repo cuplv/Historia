@@ -180,7 +180,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
       analysisApprox match {
         case LimitMaterializationApproxMode(_) =>
           addOverApproxTime(totalTime)
-        case PreciseApproxMode(_) =>
+        case PreciseApproxMode(_,_) =>
           addUnderApproxTime(totalTime)
         case _ => ???
       }

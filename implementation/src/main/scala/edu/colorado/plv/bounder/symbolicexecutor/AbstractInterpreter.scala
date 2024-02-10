@@ -59,6 +59,7 @@ case object SubsumptionModeBatch extends SubsumptionMode
 case object SubsumptionModeTest extends SubsumptionMode
 
 sealed trait ApproxMode {
+  def shouldDropState(state:State):Boolean
   /**
    * Called at loop heads to widen or discard states depending on over or under approx.
    * Widening is applied for over approx.
@@ -83,11 +84,31 @@ object ApproxMode{
   implicit val rw:RW[ApproxMode] = RW.merge(PreciseApproxMode.rw, LimitMaterializationApproxMode.rw)
 }
 
+sealed trait DropStatePolicy{
+  def shouldDrop(state:State) : Boolean
+}
+object DropStatePolicy{
+  implicit var rw:RW[DropStatePolicy] = RW.merge(LimitMsgCountDropStatePolicy.rw)
+}
+
+case class LimitMsgCountDropStatePolicy(count:Int) extends DropStatePolicy{
+
+  def shouldDrop(state:State) : Boolean = {
+    state.sf.traceAbstraction.rightOfArrow.groupBy(_.identitySignature).exists{
+      case (_, msgs) => msgs.size > count
+    }
+  }
+}
+object  LimitMsgCountDropStatePolicy{
+  implicit val rw:RW[LimitMsgCountDropStatePolicy] = macroRW
+}
+
 /**
  * Materialize everything within reason.
  * @param canWeaken  true if its OK for the transfer functions to drop constraints, false if not
  */
-case class PreciseApproxMode(canWeaken:Boolean) extends ApproxMode{
+case class PreciseApproxMode(canWeaken:Boolean, dropStatePolicy:List[DropStatePolicy] = List()) extends ApproxMode{
+
   /**
    *
    * @param existing states at the program location to widen
@@ -97,6 +118,8 @@ case class PreciseApproxMode(canWeaken:Boolean) extends ApproxMode{
   override def merge[M,C](existing: () => Iterable[IPathNode], newState: IPathNode,
                      stateSolver: Z3StateSolver)(implicit w: ControlFlowResolver[M, C]): Option[IPathNode] =
     Some(newState)
+
+  override def shouldDropState(state: State): Boolean = dropStatePolicy.exists{_.shouldDrop(state)}
 }
 
 object PreciseApproxMode {
@@ -168,6 +191,8 @@ case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2) extend
     }
 
   }
+
+  override def shouldDropState(state: State): Boolean = false
 }
 
 object LimitMaterializationApproxMode {
@@ -784,7 +809,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
                 if(stopExplorationAt(p2.qry)){
                   executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed + p2, stopExplorationAt, invarMap)
                 }else {
-                  val nextQry = try {
+                  val nextQryPreFilt = try {
                     executeStep(p2.qry).map(q => PathNode(q, List(p2), None))
                   } catch {
                     case ze: Throwable =>
@@ -793,6 +818,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
                       ze.printStackTrace()
                       throw QueryInterruptedException(refutedSubsumedOrWitnessed + p2, ze.getMessage)
                   }
+                  val nextQry = nextQryPreFilt.filter{qry => config.approxMode.shouldDropState(qry.state)}
                   qrySet.addAll(nextQry)
                   val addIfPredEmpty = if (nextQry.isEmpty && config.outputMode != NoOutputMode)
                     Some(p2.copyWithNewQry(p2.qry.copy(searchState = BottomQry))) else None
