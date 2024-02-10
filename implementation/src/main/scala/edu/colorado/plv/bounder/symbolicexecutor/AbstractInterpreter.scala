@@ -3,7 +3,8 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import java.time.Instant
 import upickle.default.{macroRW, read, write, ReadWriter => RW}
 import edu.colorado.plv.bounder.{BounderUtil, RunConfig}
-import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, Goto, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, MethodLoc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SwitchCmd, ThrowCmd, VirtualInvoke}
+import edu.colorado.plv.bounder.ir.{AppLoc, CBEnter, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, Goto, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, MethodLoc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SwitchCmd, ThrowCmd, VirtualInvoke}
+import edu.colorado.plv.bounder.lifestate.LifeState.OAbsMsg
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.EncodingTools.repHeapCells
 import edu.colorado.plv.bounder.solver.{EncodingTools, Z3StateSolver}
@@ -94,7 +95,11 @@ object DropStatePolicy{
 case class LimitMsgCountDropStatePolicy(count:Int) extends DropStatePolicy{
 
   def shouldDrop(state:State) : Boolean = {
-    val shouldDrop = state.sf.traceAbstraction.rightOfArrow.groupBy(_.identitySignature).exists{
+    val shouldDrop = state.sf.traceAbstraction.rightOfArrow.filter{
+        case OAbsMsg(CBEnter, _,_,_) => true
+        case _ => false
+      }
+      .groupBy(_.identitySignature).exists{
       case (_, msgs) => msgs.size > count
     }
     if(shouldDrop) println(s"dropping state : ${state.sf.traceAbstraction.rightOfArrow}")
