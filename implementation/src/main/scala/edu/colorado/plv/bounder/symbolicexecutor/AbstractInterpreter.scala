@@ -820,7 +820,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
                       ze.printStackTrace()
                       throw QueryInterruptedException(refutedSubsumedOrWitnessed + p2, ze.getMessage)
                   }
-                  val nextQry = nextQryPreFilt.filter{qry => config.approxMode.shouldDropState(qry.state)}
+                  val nextQry = nextQryPreFilt.filter{qry => !config.approxMode.shouldDropState(qry.state)}
                   qrySet.addAll(nextQry)
                   val addIfPredEmpty = if (nextQry.isEmpty && config.outputMode != NoOutputMode)
                     Some(p2.copyWithNewQry(p2.qry.copy(searchState = BottomQry))) else None
