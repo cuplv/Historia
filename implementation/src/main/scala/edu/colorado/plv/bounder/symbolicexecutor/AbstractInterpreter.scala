@@ -94,9 +94,11 @@ object DropStatePolicy{
 case class LimitMsgCountDropStatePolicy(count:Int) extends DropStatePolicy{
 
   def shouldDrop(state:State) : Boolean = {
-    state.sf.traceAbstraction.rightOfArrow.groupBy(_.identitySignature).exists{
+    val shouldDrop = state.sf.traceAbstraction.rightOfArrow.groupBy(_.identitySignature).exists{
       case (_, msgs) => msgs.size > count
     }
+    if(shouldDrop) println(s"dropping state : ${state.sf.traceAbstraction.rightOfArrow}")
+    shouldDrop
   }
 }
 object  LimitMsgCountDropStatePolicy{
