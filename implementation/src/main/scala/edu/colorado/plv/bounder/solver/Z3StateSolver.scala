@@ -160,7 +160,8 @@ case class Z3SolverCtx(randomSeed:Int) extends SolverCtx[AST] {
     isolver = ictx.mkSolver
     //    val solver = ctx.mkSimpleSolver()
     val params = ictx.mkParams()
-    params.add("timeout", timeout)
+//    params.add("timeout", timeout)
+    params.add("rlimit", timeout)
     params.add("logic", "AUFLIA")
     //params.add("model.compact", true)
     // Global.setParameter("parallel.enable", "true") // note: parallel z3 does not seem to speed things up
