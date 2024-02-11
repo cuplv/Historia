@@ -952,6 +952,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val satRes = getSolverCtx() { implicit zCtx =>
       zCtx.overrideTimeoutAndSeed(getSolverExcludesInitTimeout, rngTry)
       if (rngTry > 0) {
+        zCtx.overrideTimeoutAndSeed(getSolverExcludesInitTimeout*2, rngTry)
         println(s"try again with new random seed: ${rngTry}")
       }
       val stateHashable = stateWithNulls.sf.makeHashable(specSpace)

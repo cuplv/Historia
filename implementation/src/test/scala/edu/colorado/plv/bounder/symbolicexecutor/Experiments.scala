@@ -781,7 +781,7 @@ class Experiments extends AnyFunSuite with BeforeAndAfter {
     val startTime = System.nanoTime()
     List(
       ("", Witnessed, "bug"),
-//      ("v.setOnClickListener(null);", Timeout, "fix"), // disabled because slow and uninteresting
+      ("v.setOnClickListener(null);", Timeout, "fix"), // disabled because slow and uninteresting
     ).foreach {
       case (disableClick, expected, fileSuffix) =>
         val memKb = {

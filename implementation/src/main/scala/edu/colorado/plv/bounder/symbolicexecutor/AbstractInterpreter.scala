@@ -212,7 +212,7 @@ object LimitMaterializationApproxMode {
  * @param excludesInitTimeout how long should we wait for excludes initial check (usually doesn't timeout)
  * @param z3InstanceLimit number of simultaneous z3 instances to run (default is number of processors)
  */
-case class Z3TimeoutBehavior(subsumeTryTimeLimit:List[Int] = List(40000, 220000), excludesInitTimeout:Int = 40000,
+case class Z3TimeoutBehavior(subsumeTryTimeLimit:List[Int] = List(2000000, 220000*2), excludesInitTimeout:Int = 10000000,
                              z3InstanceLimit:Int = Runtime.getRuntime.availableProcessors){
   assert(subsumeTryTimeLimit.size > 0, s"Invalid subumeTryTimeLimit: ${subsumeTryTimeLimit}, " +
     s"must have length of at least 1.")
