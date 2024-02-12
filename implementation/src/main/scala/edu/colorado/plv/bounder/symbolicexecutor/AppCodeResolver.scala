@@ -471,13 +471,12 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     }
   }
 
-  def internalIsFrameworkClass(fullClassName:String):Boolean = fullClassName match{
+  def isFrameworkClass(fullClassName:String):Boolean = fullClassName match{
     case FrameworkExtensions.extensionRegex() =>
       true
     case _ =>
       false
   }
-  def isFrameworkClass(fullClassName:String):Boolean = Memo.mutableHashMapMemo(internalIsFrameworkClass)
 
   def isAppClass(fullClassName:String):Boolean = {
     if(isFrameworkClass(fullClassName))
