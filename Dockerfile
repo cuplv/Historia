@@ -30,7 +30,7 @@ RUN sudo apt-get update
 RUN sudo apt-get install -y sbt
 
 ## Microsoft z3
-ENV Z3_VERSION "4.12.1"
+ENV Z3_VERSION "4.12.5"
 # install debian packages
 RUN apt-get update -qq -y \
  && apt-get install binutils g++ make ant -y \
