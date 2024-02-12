@@ -3,11 +3,12 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import better.files.Resource
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{derefNameOf, findFirstDerefFor}
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CBExit, CIEnter, CIExit, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldReference, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, Goto, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, JimpleMethodLoc, LVal, LineLoc, Loc, LocalWrapper, MethodLoc, NopCmd, NullConst, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper, SpecialInvoke, StaticFieldReference, StaticInvoke, SwitchCmd, ThrowCmd, TopTypeSet, TypeSet, UnresolvedMethodTarget, VirtualInvoke}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CBExit, CIEnter, CIExit, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldReference, Goto, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, JimpleMethodLoc, LVal, LineLoc, Loc, LocalWrapper, MethodLoc, NopCmd, NullConst, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper, SpecialInvoke, StaticFieldReference, StaticInvoke, SwitchCmd, ThrowCmd, TopTypeSet, TypeSet, UnresolvedMethodTarget, VirtualInvoke}
 import edu.colorado.plv.bounder.lifestate.LifeState.{OAbsMsg, Signature}
 import edu.colorado.plv.bounder.lifestate.{LifecycleSpec, RxJavaSpec, SAsyncTask, SJavaThreading, SpecSignatures, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, DirectInitialQuery, FieldPtEdge, InitialQuery, NullVal, Qry, ReceiverNonNull}
+import scalaz.Memo
 
 import scala.annotation.tailrec
 import scala.collection.parallel.CollectionConverters.ImmutableIterableIsParallelizable
@@ -470,12 +471,13 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     }
   }
 
-  def isFrameworkClass(fullClassName:String):Boolean = fullClassName match{
+  def internalIsFrameworkClass(fullClassName:String):Boolean = fullClassName match{
     case FrameworkExtensions.extensionRegex() =>
       true
     case _ =>
       false
   }
+  def isFrameworkClass(fullClassName:String):Boolean = Memo.mutableHashMapMemo(internalIsFrameworkClass)
 
   def isAppClass(fullClassName:String):Boolean = {
     if(isFrameworkClass(fullClassName))
