@@ -11,6 +11,7 @@ import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, Dir
 import scalaz.Memo
 
 import scala.annotation.tailrec
+import scala.collection.mutable
 import scala.collection.parallel.CollectionConverters.ImmutableIterableIsParallelizable
 import scala.util.matching.Regex
 import scala.util.Random
@@ -471,11 +472,21 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     }
   }
 
-  def isFrameworkClass(fullClassName:String):Boolean = fullClassName match{
-    case FrameworkExtensions.extensionRegex() =>
-      true
-    case _ =>
-      false
+  var isFwkMemo:mutable.Map[String,Boolean] = null
+  def isFrameworkClass(fullClassName:String):Boolean = {
+    if(isFwkMemo == null){ // initialize here because constructor isn't executed nicely
+      isFwkMemo = mutable.Map[String,Boolean]()
+    }
+    isFwkMemo.getOrElse(fullClassName, {
+      val computed = fullClassName match {
+        case FrameworkExtensions.extensionRegex() =>
+          true
+        case _ =>
+          false
+      }
+      isFwkMemo.put(fullClassName, computed)
+      computed
+    })
   }
 
   def isAppClass(fullClassName:String):Boolean = {
