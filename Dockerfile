@@ -161,6 +161,8 @@ RUN apt-get install -y maven
 #ARG COMMITHASH=unknown
 #RUN echo $COMMITHASH >/home/bounder/commithash.txt
 RUN apt-get install -y tmux vim
+RUN pip install ipywidgets
+RUN pip install jupyter-dash 
 
 #COPY homedirstuff/root/.android /root/.android
 #COPY homedirstuff/root/.cache /root/.cache
