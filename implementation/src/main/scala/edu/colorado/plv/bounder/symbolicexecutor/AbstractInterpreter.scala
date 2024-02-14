@@ -513,6 +513,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
           if (config.printAAProgress) {
             println(s"remaining tasks: ${futureCount.decrementAndGet()} / ${qrySet.size}")
             println(s"    ord depth: ${qry.ordDepth}")
+            println(s"    depth: ${qry.depth}")
             println(s"    State: ${qry.state}")
             println(s"    Loc  : ${qry.qry.loc}")
             println(s"    Method  : ${qry.qry.loc.containingMethod}")

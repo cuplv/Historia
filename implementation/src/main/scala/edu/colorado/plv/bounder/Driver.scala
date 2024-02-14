@@ -110,7 +110,7 @@ case class RunConfig( //Mode can also be specified in run config
                      componentFilter:Option[Seq[String]] = None,
                      specSet: SpecSetOption = TopSpecSet,
                      initialQuery: List[InitialQuery] = Nil,
-                     limit:Int = -1,
+                     limit:Int = -1, // step limit
                      samples:Int = 5,
                      tag:ExpTag = ExpTag(),
                      timeLimit:Int = 600, // max clock time per query
