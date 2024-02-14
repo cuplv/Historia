@@ -778,7 +778,8 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
         refutedSubsumedOrWitnessed.union(qrySet.toSet) + p
       case p: IPathNode if limit > 0 && p.depth > limit =>
         // max steps reached
-        refutedSubsumedOrWitnessed.union(qrySet.toSet) + p
+        val newTerm = refutedSubsumedOrWitnessed.union(qrySet.toSet) + p
+        throw QueryInterruptedException(newTerm, "step limit exceeded")
       case pLive@PathNode(qry@Qry(_,_,Live), false) =>
 
         // live path node

@@ -23,14 +23,14 @@ public class StatusActivity extends AppCompatActivity {
 
     @Override
     protected void onResume(){
-        Log.w("traceinst","cb " + System.identityHashCode(this) + " StatusActivity.onResume " + System.identityHashCode(savedInstanceState) );
+        Log.w("traceinst","cb " + System.identityHashCode(this) + " StatusActivity.onResume " );
         super.onResume();
         postTask = new PostTask();
         Log.w("traceinst","new " + " PostTask " + System.identityHashCode(postTask));
         postTask.execute();
         Log.w("traceinst","ci " + System.identityHashCode(postTask) + " execute");
 
-        Log.w("traceinst","cbret " + System.identityHashCode(this) + " StatusActivity.onResume " + System.identityHashCode(savedInstanceState) );
+        Log.w("traceinst","cbret " + System.identityHashCode(this) + " StatusActivity.onResume " );
     }
 
 
