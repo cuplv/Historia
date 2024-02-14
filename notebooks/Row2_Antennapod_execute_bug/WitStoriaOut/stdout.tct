@@ -1,0 +1,2 @@
+java.library.path set to: /usr/lib/:/usr/java/packages/lib:/usr/lib/x86_64-linux-gnu/jni:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/usr/lib/jni:/lib:/usr/lib
+analysis time(ms): 232666479
