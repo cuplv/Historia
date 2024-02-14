@@ -6,10 +6,11 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.app.ProgressDialog;
 
-public class StatusActivity extends AppCompatActivity implements View.OnClickListener {
+public class StatusActivity extends AppCompatActivity {
 
-    private FeedRemover remover = null;
+    private PostTask postTask = null;
     View button = null;
 
     @Override
@@ -17,50 +18,53 @@ public class StatusActivity extends AppCompatActivity implements View.OnClickLis
         Log.w("traceinst","cb " + System.identityHashCode(this) + " StatusActivity.onCreate " + System.identityHashCode(savedInstanceState) );
         setContentView(R.layout.main_activity);
         super.onCreate(savedInstanceState);
-        remover = new FeedRemover();
-        Log.w("traceinst","new " + " FeedRemover " + System.identityHashCode(remover));
-        button = findViewById(R.id.button);
-        Log.w("traceinst","ci " + System.identityHashCode(button) + " findViewById " + R.id.button);
-        button.setOnClickListener(this);
-        Log.w("traceinst","ci " + System.identityHashCode(button) + " setOnClickListener " + System.identityHashCode(this));
         Log.w("traceinst","cbret " + System.identityHashCode(this) + " StatusActivity.onCreate " + System.identityHashCode(savedInstanceState) );
     }
 
-
-
     @Override
-    public void onClick(View view) {
-        Log.w("traceinst","cb " + System.identityHashCode(this) + " StatusActivity.onClick " + System.identityHashCode(view) );
-        remover.execute();
-        Log.w("traceinst","ci " + System.identityHashCode(remover) + " execute");
-        Log.w("traceinst","cbret " + System.identityHashCode(this) + " StatusActivity.onClick " + System.identityHashCode(view) );
+    protected void onResume(){
+        Log.w("traceinst","cb " + System.identityHashCode(this) + " StatusActivity.onResume " + System.identityHashCode(savedInstanceState) );
+        super.onResume();
+        postTask = new PostTask();
+        Log.w("traceinst","new " + " PostTask " + System.identityHashCode(postTask));
+        postTask.execute();
+        Log.w("traceinst","ci " + System.identityHashCode(postTask) + " execute");
+
+        Log.w("traceinst","cbret " + System.identityHashCode(this) + " StatusActivity.onResume " + System.identityHashCode(savedInstanceState) );
     }
 
-    class FeedRemover extends AsyncTask<String, Void, String> {
+
+    class PostTask extends AsyncTask<String, Void, String> {
+        private ProgressDialog progress;
         @Override
         protected void onPreExecute() {
-            Log.w("traceinst","cb " + System.identityHashCode(this) + " FeedRemover.onPreExecute " );
-            Log.w("traceinst","cbret " + System.identityHashCode(this) + " FeedRemover.onPreExecute " );
+            Log.w("traceinst","cb " + System.identityHashCode(this) + " PostTask.onPreExecute " );
+
+            progress = ProgressDialog.show(StatusActivity.this, "Posting",
+                  	"Please wait...");
+            Log.w("traceinst",System.identityHashcode(progress) + " = ci " + " ProgressDialog.show "+ System.identityHashCode(StatusActivity.this)  );
+            progress.setCancelable(true);
+            Log.w("traceinst","cbret " + System.identityHashCode(this) + " PostTask.onPreExecute " );
         }
 
         @Override
         protected String doInBackground(String... params) {
-            Log.w("traceinst","cb " + System.identityHashCode(this) + " FeedRemover.doInBackground " );
+            Log.w("traceinst","cb " + System.identityHashCode(this) + " PostTask.doInBackground " );
             try {
-                Thread.sleep(2000);
+                Thread.sleep(500);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            Log.w("traceinst","cbret " + System.identityHashCode(this) + " FeedRemover.doInBackground " );
+            Log.w("traceinst","cbret " + System.identityHashCode(this) + " PostTask.doInBackground " );
             return "";
         }
 
         @Override
         protected void onPostExecute(String result) {
-            Log.w("traceinst","cb " + System.identityHashCode(this) + " FeedRemover.onPostExecute " );
-            Log.w("traceinst","ci " + System.identityHashCode(StatusActivity.this) + " finish " );
-            StatusActivity.this.finish();
-            Log.w("traceinst","cbret " + System.identityHashCode(this) + " FeedRemover.onPostExecute " );
+            Log.w("traceinst","cb " + System.identityHashCode(this) + " PostTask.onPostExecute " );
+            progress.dismiss();
+            Log.w("traceinst","ci " + System.identityHashCode(progress) + " dismiss" );
+            Log.w("traceinst","cbret " + System.identityHashCode(this) + " PostTask.onPostExecute " );
         }
     }
 }
