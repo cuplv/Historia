@@ -159,7 +159,7 @@ object SpecSignatures {
 
 
   //TODO: check that this actually matches things
-  val RxJava_create: SignatureMatcher = SubClassMatcher("rx.Single", "rx.Single create\\(rx.Single#OnSubscribe\\)", "rxJava_create")
+  val RxJava_create: SignatureMatcher = SubClassMatcher("rx.Single", "rx.Single create\\(rx.Single.*\\)", "rxJava_create")
   val RxJava_create_exit:OAbsMsg = AbsMsg(CIExit, RxJava_create, t::Nil)
 
   val Subscriber = Set("rx.Subscriber","rx.SingleSubscriber","rx.Subscription",
