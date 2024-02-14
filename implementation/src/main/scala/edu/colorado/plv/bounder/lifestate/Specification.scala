@@ -78,12 +78,16 @@ object SpecSignatures {
 
   //SetSignatureMatcher(activityTypeSet.map((_, "void onCreate(android.os.Bundle)")))
 
+  // Fragment subclasses
+  val Fragment = Set("android.app.Fragment","androidx.fragment.app.Fragment","android.support.v4.app.Fragment")
   // Activity lifecycle
   val Activity = Set("android.app.Activity", "androidx.fragment.app.FragmentActivity")
   val Button = Set("android.widget.Button")
 
   val Activity_onResume: SignatureMatcher =
     SubClassMatcher(Activity, "void onResume\\(\\)", "Activity_onResume")
+  val Fragment_onCreate:SignatureMatcher = SubClassMatcher(Fragment, "void onCreate\\(android.os.Bundle\\)",
+    "Fragment_onCreate")
   val Activity_onCreate: SignatureMatcher =
     SubClassMatcher(Activity, "void onCreate\\(android.os.Bundle\\)",
     "Activity_onCreate")
@@ -98,6 +102,8 @@ object SpecSignatures {
 
   val Activity_onCreate_entry: OAbsMsg =
     AbsMsg(CBEnter, Activity_onCreate, List(TopVal, a))
+  val Fragment_onCreate_entry:OAbsMsg =
+    AbsMsg(CBEnter, Fragment_onCreate, List(TopVal,f))
 
   val Activity_onPause: SignatureMatcher =
     SubClassMatcher(Activity,"void onPause\\(\\)", "Activity_onPause")
@@ -126,9 +132,6 @@ object SpecSignatures {
 //  val Activity_getLayoutInflater_nonNull = LSSpec(a::Nil, Nil, LSFalse, Activity_getLayoutInflater)
 
   val Button_init: OAbsMsg = AbsMsg(CIExit, SubClassMatcher(Button, ".*<init>.*", "Button_init"), List(TopVal, v))
-
-  // Fragment getActivity
-  val Fragment = Set("android.app.Fragment","androidx.fragment.app.Fragment","android.support.v4.app.Fragment")
 
   val Fragment_onStart_entry = AbsMsg(CBEnter,
     SubClassMatcher(Fragment, "void onStart\\(\\)", "Fragment_onStart_entry"), TopVal::f::Nil)
