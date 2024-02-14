@@ -27,7 +27,7 @@ object EncodingTools {
       LSTrue
     else {
       val pairs = filterAny(i1.lsVars zip i2.lsVars)
-      pairs.map(v => LSConstraint.mk(v._1,NotEquals,v._2)).reduceOption(Or).getOrElse(LSTrue)
+      pairs.map(v => LSConstraint.mk(v._1,NotEquals,v._2)).reduceOption(Or).getOrElse(LSFalse)
     }
   }
   private def updArrowPhi(i:AbsMsg, lsPred:LSPred):LSPred = lsPred match {

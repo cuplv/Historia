@@ -42,7 +42,7 @@ public class StatusActivity extends AppCompatActivity {
 
             progress = ProgressDialog.show(StatusActivity.this, "Posting",
                   	"Please wait...");
-            Log.w("traceinst",System.identityHashcode(progress) + " = ci " + " ProgressDialog.show "+ System.identityHashCode(StatusActivity.this)  );
+            Log.w("traceinst","" + System.identityHashCode(progress) + " = ci " + " ProgressDialog.show "+ System.identityHashCode(StatusActivity.this)  );
             progress.setCancelable(true);
             Log.w("traceinst","cbret " + System.identityHashCode(this) + " PostTask.onPreExecute " );
         }

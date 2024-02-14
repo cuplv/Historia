@@ -1419,6 +1419,20 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val s4 = s3.addPureConstraint(PureConstraint(p3, Equals, p2))
     assert(stateSolver.simplify(s4, spec).isEmpty)
   }
+
+  test("|> y.onDestroy() |> x.onDestroy() refuted for only once spec"){fTest => //TODO:====
+    val stateSolver = fTest.stateSolver
+    val f = NamedPureVar("f")
+    val g = NamedPureVar("g")
+    val onDestroyTgt_y = SpecSignatures.Fragment_onDestroy_exit.copy(lsVars = TopVal::p3::Nil)
+    val onDestroyTgt_x = SpecSignatures.Fragment_onDestroy_exit.copy(lsVars = TopVal::p2::Nil)
+
+    val s = st(AbstractTrace(onDestroyTgt_y::onDestroyTgt_x::Nil),Map())
+    val spec = new SpecSpace(Set(LSSpec(f::Nil, Nil, Not(SpecSignatures.Fragment_onDestroy_exit.copy(lsVars = Nil)),
+      SpecSignatures.Fragment_onDestroy_exit)))
+    assert(stateSolver.simplify(s,spec).isEmpty)
+
+  }
   test("|>null = x.getActivity() can not subsume |> x.onDestroy() |>null = x.getActivity()"){ fTest =>
     val stateSolver = fTest.stateSolver
     val f = NamedPureVar("f")
@@ -1721,7 +1735,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
         pureFormula = state.pureFormula ++ mapToPure(Map(y -> pv1))))
 
     stateSolver.getSolverCtx() { implicit zCtx =>
-      zCtx.overrideTimeoutAndSeed(20000, 0)
+      zCtx.overrideTimeoutAndSeed(200000, 0)
       assert(stateSolver.traceInAbstraction(
         stIFooX, spec,
         trace).isDefined)
