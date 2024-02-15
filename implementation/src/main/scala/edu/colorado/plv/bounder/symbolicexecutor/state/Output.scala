@@ -706,7 +706,11 @@ case class MemoryPathNode(qry: Qry, succV : List[IPathNode], subsumedV: Set[IPat
       k -> (v + map1.getOrElse(k, 0))
     }
   }
-  private lazy val iLocCount = (Map[Loc,Int]()::succV.map{_.locCount}).reduce(combineMaps)
+  private lazy val iLocCount = {
+    val old = (Map[Loc,Int]()::succV.map{_.locCount}).reduce(combineMaps)
+    val thisLocCount = old.getOrElse(qry.loc, 0) + 1
+    old + (qry.loc -> thisLocCount)
+  }
   override def locCount: Map[Loc, Int] = iLocCount
 }
 
