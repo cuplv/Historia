@@ -89,7 +89,7 @@ sealed trait DropQryPolicy{
   def shouldDrop(qry:IPathNode) : Boolean
 }
 object DropQryPolicy{
-  implicit var rw:RW[DropQryPolicy] = RW.merge(LimitMsgCountDropStatePolicy.rw)
+  implicit var rw:RW[DropQryPolicy] = RW.merge(LimitMsgCountDropStatePolicy.rw, LimitLocationVisitDropStatePolicy.rw)
 }
 
 case class LimitMsgCountDropStatePolicy(count:Int) extends DropQryPolicy{
