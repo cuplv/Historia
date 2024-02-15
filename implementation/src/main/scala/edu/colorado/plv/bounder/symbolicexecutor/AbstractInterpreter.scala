@@ -60,7 +60,7 @@ case object SubsumptionModeBatch extends SubsumptionMode
 case object SubsumptionModeTest extends SubsumptionMode
 
 sealed trait ApproxMode {
-  def shouldDropState(state:State):Boolean
+  def shouldDropState(qry:IPathNode):Boolean
   /**
    * Called at loop heads to widen or discard states depending on over or under approx.
    * Widening is applied for over approx.
@@ -85,24 +85,24 @@ object ApproxMode{
   implicit val rw:RW[ApproxMode] = RW.merge(PreciseApproxMode.rw, LimitMaterializationApproxMode.rw)
 }
 
-sealed trait DropStatePolicy{
-  def shouldDrop(state:State) : Boolean
+sealed trait DropQryPolicy{
+  def shouldDrop(qry:IPathNode) : Boolean
 }
-object DropStatePolicy{
-  implicit var rw:RW[DropStatePolicy] = RW.merge(LimitMsgCountDropStatePolicy.rw)
+object DropQryPolicy{
+  implicit var rw:RW[DropQryPolicy] = RW.merge(LimitMsgCountDropStatePolicy.rw)
 }
 
-case class LimitMsgCountDropStatePolicy(count:Int) extends DropStatePolicy{
+case class LimitMsgCountDropStatePolicy(count:Int) extends DropQryPolicy{
 
-  def shouldDrop(state:State) : Boolean = {
-    val shouldDrop = state.sf.traceAbstraction.rightOfArrow.filter{
+  def shouldDrop(qry:IPathNode) : Boolean = {
+    val shouldDrop = qry.state.sf.traceAbstraction.rightOfArrow.filter{
         case OAbsMsg(CBEnter, _,_,_) => true
         case _ => false
       }
       .groupBy(_.identitySignature).exists{
       case (_, msgs) => msgs.size > count
     }
-    if(shouldDrop) println(s"dropping state : ${state.sf.traceAbstraction.rightOfArrow}")
+    if(shouldDrop) println(s"LimitMsgCountDropStatePolicy -- dropping state : ${qry.state.sf.traceAbstraction.rightOfArrow}")
     shouldDrop
   }
 }
@@ -110,11 +110,24 @@ object  LimitMsgCountDropStatePolicy{
   implicit val rw:RW[LimitMsgCountDropStatePolicy] = macroRW
 }
 
+case class LimitLocationVisitDropStatePolicy(limit:Int) extends DropQryPolicy{
+  def shouldDrop(qry:IPathNode):Boolean = {
+    val currentLoc = qry.qry.loc
+    val count = qry.locCount.getOrElse(currentLoc,0)
+    val shouldDrop = count > limit
+    if(shouldDrop) println(s"LimitLocationVisitDropStatePolicy -- dropping state : ${qry.state.sf.traceAbstraction.rightOfArrow}")
+    shouldDrop
+  }
+}
+object LimitLocationVisitDropStatePolicy {
+  implicit val rw:RW[LimitLocationVisitDropStatePolicy] = macroRW
+}
+
 /**
  * Materialize everything within reason.
  * @param canWeaken  true if its OK for the transfer functions to drop constraints, false if not
  */
-case class PreciseApproxMode(canWeaken:Boolean, dropStatePolicy:List[DropStatePolicy] = List()) extends ApproxMode{
+case class PreciseApproxMode(canWeaken:Boolean, dropStatePolicy:List[DropQryPolicy] = List()) extends ApproxMode{
 
   /**
    *
@@ -126,7 +139,7 @@ case class PreciseApproxMode(canWeaken:Boolean, dropStatePolicy:List[DropStatePo
                      stateSolver: Z3StateSolver)(implicit w: ControlFlowResolver[M, C]): Option[IPathNode] =
     Some(newState)
 
-  override def shouldDropState(state: State): Boolean = dropStatePolicy.exists{_.shouldDrop(state)}
+  override def shouldDropState(qry: IPathNode): Boolean = dropStatePolicy.exists{_.shouldDrop(qry)}
 }
 
 object PreciseApproxMode {
@@ -199,7 +212,7 @@ case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2) extend
 
   }
 
-  override def shouldDropState(state: State): Boolean = false
+  override def shouldDropState(state: IPathNode): Boolean = false
 }
 
 object LimitMaterializationApproxMode {
@@ -827,7 +840,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
                       ze.printStackTrace()
                       throw QueryInterruptedException(refutedSubsumedOrWitnessed + p2, ze.getMessage)
                   }
-                  val nextQry = nextQryPreFilt.filter{qry => !config.approxMode.shouldDropState(qry.state)}
+                  val nextQry = nextQryPreFilt.filter{qry => !config.approxMode.shouldDropState(qry)}
                   qrySet.addAll(nextQry)
                   val addIfPredEmpty = if (nextQry.isEmpty && config.outputMode != NoOutputMode)
                     Some(p2.copyWithNewQry(p2.qry.copy(searchState = BottomQry))) else None

@@ -620,6 +620,7 @@ object PathNode{
 }
 
 sealed trait IPathNode {
+  def locCount:Map[Loc,Int]
 
   /**
    * Get state if you know it is defined
@@ -699,6 +700,14 @@ case class MemoryPathNode(qry: Qry, succV : List[IPathNode], subsumedV: Set[IPat
     error = Some(ze)
   }
   override def getError: Option[Throwable] = error
+
+  private def combineMaps(map1:Map[Loc,Int], map2:Map[Loc,Int]):Map[Loc,Int] = {
+    map1 ++ map2.map { case (k, v) =>
+      k -> (v + map1.getOrElse(k, 0))
+    }
+  }
+  private lazy val iLocCount = (Map[Loc,Int]()::succV.map{_.locCount}).reduce(combineMaps)
+  override def locCount: Map[Loc, Int] = iLocCount
 }
 
 case class DBPathNode(qry:Qry, thisID:Int,
@@ -737,6 +746,8 @@ case class DBPathNode(qry:Qry, thisID:Int,
     error = Some(ze)
   }
   override def getError: Option[Throwable] = error
+
+  override def locCount: Map[Loc, Int] = ???
 }
 object DBPathNode{
   implicit val rw:RW[DBPathNode] = macroRW
