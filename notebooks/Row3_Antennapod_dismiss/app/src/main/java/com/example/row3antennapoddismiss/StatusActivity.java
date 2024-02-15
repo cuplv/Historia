@@ -12,6 +12,7 @@ public class StatusActivity extends AppCompatActivity {
 
     private PostTask postTask = null;
     View button = null;
+    protected ProgressDialog progress;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,6 +29,11 @@ public class StatusActivity extends AppCompatActivity {
         postTask = new PostTask();
         Log.w("traceinst","new " + " PostTask " + System.identityHashCode(postTask));
         postTask.execute();
+        progress = ProgressDialog.show(StatusActivity.this, "Posting",
+              	"Please wait...");
+        Log.w("traceinst","" + System.identityHashCode(progress) + " = ci " + " ProgressDialog.show "+ System.identityHashCode(StatusActivity.this)  );
+        progress.setCancelable(true);
+
         Log.w("traceinst","ci " + System.identityHashCode(postTask) + " execute");
 
         Log.w("traceinst","cbret " + System.identityHashCode(this) + " StatusActivity.onResume " );
@@ -35,17 +41,6 @@ public class StatusActivity extends AppCompatActivity {
 
 
     class PostTask extends AsyncTask<String, Void, String> {
-        private ProgressDialog progress;
-        @Override
-        protected void onPreExecute() {
-            Log.w("traceinst","cb " + System.identityHashCode(this) + " PostTask.onPreExecute " );
-
-            progress = ProgressDialog.show(StatusActivity.this, "Posting",
-                  	"Please wait...");
-            Log.w("traceinst","" + System.identityHashCode(progress) + " = ci " + " ProgressDialog.show "+ System.identityHashCode(StatusActivity.this)  );
-            progress.setCancelable(true);
-            Log.w("traceinst","cbret " + System.identityHashCode(this) + " PostTask.onPreExecute " );
-        }
 
         @Override
         protected String doInBackground(String... params) {
@@ -62,7 +57,7 @@ public class StatusActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(String result) {
             Log.w("traceinst","cb " + System.identityHashCode(this) + " PostTask.onPostExecute " );
-            progress.dismiss();
+            StatusActivity.this.progress.dismiss();
             Log.w("traceinst","ci " + System.identityHashCode(progress) + " dismiss" );
             Log.w("traceinst","cbret " + System.identityHashCode(this) + " PostTask.onPostExecute " );
         }
