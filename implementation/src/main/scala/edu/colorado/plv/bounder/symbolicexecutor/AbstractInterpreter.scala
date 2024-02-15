@@ -60,7 +60,7 @@ case object SubsumptionModeBatch extends SubsumptionMode
 case object SubsumptionModeTest extends SubsumptionMode
 
 sealed trait ApproxMode {
-  def shouldDropState(qry:IPathNode):Boolean
+  def shouldDropState(qry:IPathNode)(implicit db:OutputMode):Boolean
   /**
    * Called at loop heads to widen or discard states depending on over or under approx.
    * Widening is applied for over approx.
@@ -86,7 +86,7 @@ object ApproxMode{
 }
 
 sealed trait DropQryPolicy{
-  def shouldDrop(qry:IPathNode) : Boolean
+  def shouldDrop(qry:IPathNode)(implicit db:OutputMode) : Boolean
 }
 object DropQryPolicy{
   implicit var rw:RW[DropQryPolicy] = RW.merge(LimitMsgCountDropStatePolicy.rw, LimitLocationVisitDropStatePolicy.rw)
@@ -94,7 +94,7 @@ object DropQryPolicy{
 
 case class LimitMsgCountDropStatePolicy(count:Int) extends DropQryPolicy{
 
-  def shouldDrop(qry:IPathNode) : Boolean = {
+  def shouldDrop(qry:IPathNode)(implicit db:OutputMode) : Boolean = {
     val shouldDrop = qry.state.sf.traceAbstraction.rightOfArrow.filter{
         case OAbsMsg(CBEnter, _,_,_) => true
         case _ => false
@@ -111,7 +111,7 @@ object  LimitMsgCountDropStatePolicy{
 }
 
 case class LimitLocationVisitDropStatePolicy(limit:Int) extends DropQryPolicy{
-  def shouldDrop(qry:IPathNode):Boolean = {
+  def shouldDrop(qry:IPathNode)(implicit db:OutputMode):Boolean = {
     val currentLoc = qry.qry.loc
     val count = qry.locCount.getOrElse(currentLoc,0)
     val shouldDrop = count > limit
@@ -139,7 +139,8 @@ case class PreciseApproxMode(canWeaken:Boolean, dropStatePolicy:List[DropQryPoli
                      stateSolver: Z3StateSolver)(implicit w: ControlFlowResolver[M, C]): Option[IPathNode] =
     Some(newState)
 
-  override def shouldDropState(qry: IPathNode): Boolean = dropStatePolicy.exists{_.shouldDrop(qry)}
+  override def shouldDropState(qry: IPathNode)(implicit db:OutputMode): Boolean =
+    dropStatePolicy.exists{_.shouldDrop(qry)}
 }
 
 object PreciseApproxMode {
@@ -212,7 +213,7 @@ case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2) extend
 
   }
 
-  override def shouldDropState(state: IPathNode): Boolean = false
+  override def shouldDropState(state: IPathNode)(implicit db:OutputMode): Boolean = false
 }
 
 object LimitMaterializationApproxMode {

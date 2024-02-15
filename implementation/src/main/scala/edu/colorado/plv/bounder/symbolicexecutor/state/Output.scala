@@ -605,13 +605,7 @@ object PathNode{
         val succNotSkipped = succ.map(nextNonTrunc)
         val succID = succNotSkipped.map(n => n.asInstanceOf[DBPathNode].thisID)
         val subsumedID = subsumed.map(n => n.asInstanceOf[DBPathNode].thisID)
-        val iLocCount = {
-          val old = (Map[Loc,Int]()::succ.map{_.locCount}).reduce(BounderUtil.combineMaps[Loc])
-          val thisLocCount = old.getOrElse(qry.loc, 0) + 1
-          old + (qry.loc -> thisLocCount)
-        }
         val thisNode = DBPathNode(qry, id, succID, subsumedID.toSet,depth,ordDepth)
-        thisNode.setLocCount(iLocCount)
         if(!shouldTruncate(qry.loc) || succ.isEmpty) {
           m.writeNode(thisNode)
         }
@@ -626,7 +620,7 @@ object PathNode{
 }
 
 sealed trait IPathNode {
-  def locCount:Map[Loc,Int]
+  def locCount(implicit db:OutputMode):Map[Loc,Int]
 
   /**
    * Get state if you know it is defined
@@ -709,11 +703,12 @@ case class MemoryPathNode(qry: Qry, succV : List[IPathNode], subsumedV: Set[IPat
 
 
   private lazy val iLocCount = {
+    implicit val outputMode = MemoryOutputMode
     val old = (Map[Loc,Int]()::succV.map{_.locCount}).reduce(BounderUtil.combineMaps[Loc])
     val thisLocCount = old.getOrElse(qry.loc, 0) + 1
     old + (qry.loc -> thisLocCount)
   }
-  override def locCount: Map[Loc, Int] = iLocCount
+  override def locCount(implicit db:OutputMode): Map[Loc, Int] = iLocCount
 }
 
 case class DBPathNode(qry:Qry, thisID:Int,
@@ -754,11 +749,19 @@ case class DBPathNode(qry:Qry, thisID:Int,
   override def getError: Option[Throwable] = error
 
   private var iLocCount:Option[Map[Loc,Int]] = None
-  override def locCount: Map[Loc, Int] = iLocCount.get
-
-  def setLocCount(newLocCount: Map[Loc, Int]) = {
-    iLocCount = Some(newLocCount)
+  override def locCount(implicit db:OutputMode): Map[Loc, Int] = iLocCount match {
+    case Some(count) => count
+    case None =>
+      val old = (Map[Loc,Int]()::succ.map{_.locCount}).reduce(BounderUtil.combineMaps[Loc])
+      val thisLocCount = old.getOrElse(qry.loc, 0) + 1
+      val res = old + (qry.loc -> thisLocCount)
+      iLocCount = Some(res)
+      res
   }
+
+//  def setLocCount(newLocCount: Map[Loc, Int]) = {
+//    iLocCount = Some(newLocCount)
+//  }
 }
 object DBPathNode{
   implicit val rw:RW[DBPathNode] = macroRW
