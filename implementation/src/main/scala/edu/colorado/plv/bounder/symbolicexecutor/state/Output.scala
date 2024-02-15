@@ -748,14 +748,13 @@ case class DBPathNode(qry:Qry, thisID:Int,
   }
   override def getError: Option[Throwable] = error
 
-  private var iLocCount:Option[Map[Loc,Int]] = None
-  override def locCount(implicit db:OutputMode): Map[Loc, Int] = iLocCount match {
+  override def locCount(implicit db:OutputMode): Map[Loc, Int] = DBPathNode.iLocCount.get(thisID) match {
     case Some(count) => count
     case None =>
       val old = (Map[Loc,Int]()::succ.map{_.locCount}).reduce(BounderUtil.combineMaps[Loc])
       val thisLocCount = old.getOrElse(qry.loc, 0) + 1
       val res = old + (qry.loc -> thisLocCount)
-      iLocCount = Some(res)
+      DBPathNode.iLocCount.addOne(thisID, res)  //.put(iLocCount = Some(res))
       res
   }
 
@@ -764,5 +763,6 @@ case class DBPathNode(qry:Qry, thisID:Int,
 //  }
 }
 object DBPathNode{
+  var iLocCount = mutable.Map[Int,Map[Loc,Int]]()
   implicit val rw:RW[DBPathNode] = macroRW
 }
