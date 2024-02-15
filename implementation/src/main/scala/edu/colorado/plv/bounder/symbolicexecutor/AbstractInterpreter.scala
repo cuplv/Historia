@@ -564,7 +564,12 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
 
         val liveNodes = nodes.getOrElse(true, Set.empty).flatMap { p2 =>
           try {
-            val res = executeStep(p2.qry).map(q => PathNode(q, List(p2), None))
+            val resPreFilt = executeStep(p2.qry).map(q => PathNode(q, List(p2), None))
+            val res = resPreFilt.filter{qry =>
+              val drop = !config.approxMode.shouldDropState(qry)
+              if(drop) qry.setSubsumed(Set())
+              drop
+            }
             if (res.isEmpty)
               noPred.addOne(p2)
             res
