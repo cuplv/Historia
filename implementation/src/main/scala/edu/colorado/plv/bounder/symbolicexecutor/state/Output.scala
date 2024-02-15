@@ -751,7 +751,14 @@ case class DBPathNode(qry:Qry, thisID:Int,
   override def locCount(implicit db:OutputMode): Map[Loc, Int] = DBPathNode.iLocCount.get(thisID) match {
     case Some(count) => count
     case None =>
-      val old = (Map[Loc,Int]()::succ.map{_.locCount}).reduce(BounderUtil.combineMaps[Loc])
+      val prevLocCounts:List[Map[Loc,Int]] = succID.map{id =>
+        DBPathNode.iLocCount.getOrElse(id, db match {
+          case db:DBOutputMode =>
+            println(s"cache miss for node ${id}")
+            db.readNode(id).locCount(db)
+        } )
+      }
+      val old = (Map[Loc,Int]()::prevLocCounts).reduce(BounderUtil.combineMaps[Loc])
       val thisLocCount = old.getOrElse(qry.loc, 0) + 1
       val res = old + (qry.loc -> thisLocCount)
       DBPathNode.iLocCount.addOne(thisID, res)  //.put(iLocCount = Some(res))
