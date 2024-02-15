@@ -677,7 +677,7 @@ case class MemoryPathNode(qry: Qry, succV : List[IPathNode], subsumedV: Set[IPat
   }
 
   override def setSubsumed(v: Set[IPathNode])(implicit mode: OutputMode): IPathNode = {
-    assert(v.nonEmpty, "Value must not be empty for subsuming")
+    //assert(v.nonEmpty, "Value must not be empty for subsuming") // empty subsume used for dropped
     this.copy(subsumedV = v, qry = qry.copy(state = qry.state.copy(isSimplified = qry.state.isSimplified)))
   }
 
