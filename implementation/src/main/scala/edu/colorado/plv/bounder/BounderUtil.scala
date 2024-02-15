@@ -16,6 +16,14 @@ import scala.collection.parallel.CollectionConverters.IterableIsParallelizable
 import scala.jdk.CollectionConverters._
 
 object BounderUtil {
+  /**
+   * Combine maps adding same keys together
+   */
+  def combineMaps[T](map1:Map[T,Int], map2:Map[T,Int]):Map[T,Int] = {
+    map1 ++ map2.map { case (k, v) =>
+      k -> (v + map1.getOrElse(k, 0))
+    }
+  }
   lazy val systemID: String = {
     val hostname = runCmdStdout("hostname")
     val uname = runCmdStdout("uname -a").trim

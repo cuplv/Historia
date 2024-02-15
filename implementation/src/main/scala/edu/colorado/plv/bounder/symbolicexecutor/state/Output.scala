@@ -14,7 +14,7 @@ import scala.language.postfixOps
 import better.files.File
 import com.microsoft.z3.Z3Exception
 import edu.colorado.plv.bounder.BounderUtil.{MaxPathCharacterization, ResultSummary}
-import edu.colorado.plv.bounder.RunConfig
+import edu.colorado.plv.bounder.{BounderUtil, RunConfig}
 import edu.colorado.plv.bounder.symbolicexecutor.state.DBOutputMode.nextId
 import slick.jdbc
 import slick.jdbc.SQLiteProfile
@@ -605,7 +605,13 @@ object PathNode{
         val succNotSkipped = succ.map(nextNonTrunc)
         val succID = succNotSkipped.map(n => n.asInstanceOf[DBPathNode].thisID)
         val subsumedID = subsumed.map(n => n.asInstanceOf[DBPathNode].thisID)
+        val iLocCount = {
+          val old = (Map[Loc,Int]()::succ.map{_.locCount}).reduce(BounderUtil.combineMaps[Loc])
+          val thisLocCount = old.getOrElse(qry.loc, 0) + 1
+          old + (qry.loc -> thisLocCount)
+        }
         val thisNode = DBPathNode(qry, id, succID, subsumedID.toSet,depth,ordDepth)
+        thisNode.setLocCount(iLocCount)
         if(!shouldTruncate(qry.loc) || succ.isEmpty) {
           m.writeNode(thisNode)
         }
@@ -701,13 +707,9 @@ case class MemoryPathNode(qry: Qry, succV : List[IPathNode], subsumedV: Set[IPat
   }
   override def getError: Option[Throwable] = error
 
-  private def combineMaps(map1:Map[Loc,Int], map2:Map[Loc,Int]):Map[Loc,Int] = {
-    map1 ++ map2.map { case (k, v) =>
-      k -> (v + map1.getOrElse(k, 0))
-    }
-  }
+
   private lazy val iLocCount = {
-    val old = (Map[Loc,Int]()::succV.map{_.locCount}).reduce(combineMaps)
+    val old = (Map[Loc,Int]()::succV.map{_.locCount}).reduce(BounderUtil.combineMaps[Loc])
     val thisLocCount = old.getOrElse(qry.loc, 0) + 1
     old + (qry.loc -> thisLocCount)
   }
@@ -751,7 +753,12 @@ case class DBPathNode(qry:Qry, thisID:Int,
   }
   override def getError: Option[Throwable] = error
 
-  override def locCount: Map[Loc, Int] = ???
+  private var iLocCount:Option[Map[Loc,Int]] = None
+  override def locCount: Map[Loc, Int] = iLocCount.get
+
+  def setLocCount(newLocCount: Map[Loc, Int]) = {
+    iLocCount = Some(newLocCount)
+  }
 }
 object DBPathNode{
   implicit val rw:RW[DBPathNode] = macroRW

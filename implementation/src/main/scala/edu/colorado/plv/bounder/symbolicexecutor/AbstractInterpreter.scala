@@ -102,7 +102,7 @@ case class LimitMsgCountDropStatePolicy(count:Int) extends DropQryPolicy{
       .groupBy(_.identitySignature).exists{
       case (_, msgs) => msgs.size > count
     }
-    if(shouldDrop) println(s"LimitMsgCountDropStatePolicy -- dropping state : ${qry.state.sf.traceAbstraction.rightOfArrow}")
+    if(shouldDrop) println(s"LimitMsgCountDropStatePolicy -- dropping state : ${qry.state} at location ${qry.qry.loc}")
     shouldDrop
   }
 }
@@ -115,7 +115,7 @@ case class LimitLocationVisitDropStatePolicy(limit:Int) extends DropQryPolicy{
     val currentLoc = qry.qry.loc
     val count = qry.locCount.getOrElse(currentLoc,0)
     val shouldDrop = count > limit
-    if(shouldDrop) println(s"LimitLocationVisitDropStatePolicy -- dropping state : ${qry.state.sf.traceAbstraction.rightOfArrow}")
+    if(shouldDrop) println(s"LimitLocationVisitDropStatePolicy -- dropping state : ${qry.state} at location ${qry.qry.loc}")
     shouldDrop
   }
 }
@@ -840,7 +840,11 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
                       ze.printStackTrace()
                       throw QueryInterruptedException(refutedSubsumedOrWitnessed + p2, ze.getMessage)
                   }
-                  val nextQry = nextQryPreFilt.filter{qry => !config.approxMode.shouldDropState(qry)}
+                  val nextQry = nextQryPreFilt.filter{qry =>
+                    val drop = !config.approxMode.shouldDropState(qry)
+                    if(drop) qry.setSubsumed(Set())
+                    drop
+                  }
                   qrySet.addAll(nextQry)
                   val addIfPredEmpty = if (nextQry.isEmpty && config.outputMode != NoOutputMode)
                     Some(p2.copyWithNewQry(p2.qry.copy(searchState = BottomQry))) else None
