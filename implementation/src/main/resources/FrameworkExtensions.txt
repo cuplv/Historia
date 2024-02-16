@@ -32,6 +32,7 @@ org.hamcrest.*
 org.intellij.*
 org.jsoup.*
 org.jetbrains.anko.*
+org.jacoco.*
 org.objenesis.*
 org.shredzone.*
 org.xml.sax.*
