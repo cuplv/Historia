@@ -49,3 +49,4 @@ com.airbnb.*
 dagger.android.*
 com.mikepenz.*
 de.mud.terminal.*
+com.trilead.ssh2.*
