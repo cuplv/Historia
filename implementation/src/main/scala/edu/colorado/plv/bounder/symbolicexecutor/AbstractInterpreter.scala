@@ -82,7 +82,8 @@ sealed trait ApproxMode {
 
 
 object ApproxMode{
-  implicit val rw:RW[ApproxMode] = RW.merge(PreciseApproxMode.rw, LimitMaterializationApproxMode.rw)
+  implicit val rw:RW[ApproxMode] = RW.merge(PreciseApproxMode.rw, LimitMaterializationApproxMode.rw,
+    LimitCallStringDropStatePolicy.rw)
 }
 
 sealed trait DropQryPolicy{
@@ -108,6 +109,15 @@ case class LimitMsgCountDropStatePolicy(count:Int) extends DropQryPolicy{
 }
 object  LimitMsgCountDropStatePolicy{
   implicit val rw:RW[LimitMsgCountDropStatePolicy] = macroRW
+}
+
+case class LimitCallStringDropStatePolicy(calls:Int) extends DropQryPolicy{
+
+  override def shouldDrop(qry: IPathNode)(implicit db: OutputMode): Boolean = qry.state.sf.callStack.size > calls
+}
+
+object LimitCallStringDropStatePolicy{
+  implicit val rw:RW[LimitCallStringDropStatePolicy] = macroRW
 }
 
 case class LimitLocationVisitDropStatePolicy(limit:Int) extends DropQryPolicy{
