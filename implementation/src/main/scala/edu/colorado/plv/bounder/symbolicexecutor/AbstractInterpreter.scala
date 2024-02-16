@@ -113,10 +113,23 @@ object  LimitMsgCountDropStatePolicy{
 case class LimitLocationVisitDropStatePolicy(limit:Int) extends DropQryPolicy{
   def shouldDrop(qry:IPathNode)(implicit db:OutputMode):Boolean = {
     val currentLoc = qry.qry.loc
-    val count = qry.locCount.getOrElse(currentLoc,0)
-    val shouldDrop = count > limit
-    if(shouldDrop) println(s"LimitLocationVisitDropStatePolicy -- dropping state : ${qry.state} at location ${qry.qry.loc}")
-    shouldDrop
+    currentLoc match {
+      case AppLoc(method, line, isPre) =>
+        val count = qry.locCount.getOrElse(currentLoc,0)
+        val shouldDrop = count > limit
+        if(shouldDrop) println(s"LimitLocationVisitDropStatePolicy -- dropping state : ${qry.state} at location ${qry.qry.loc}")
+        shouldDrop
+      case CallinMethodReturn(sig) => false
+      case CallinMethodInvoke(sig) => false
+      case GroupedCallinMethodInvoke(targetClasses, fmwName) => false
+      case GroupedCallinMethodReturn(targetClasses, fmwName) => false
+      case CallbackMethodInvoke(sig, loc) => false
+      case CallbackMethodReturn(sig, loc, line) => false
+      case InternalMethodInvoke(clazz, name, loc) => false
+      case InternalMethodReturn(clazz, name, loc) => false
+      case SkippedInternalMethodInvoke(clazz, name, loc) => false
+      case SkippedInternalMethodReturn(clazz, name, rel, loc) => false
+    }
   }
 }
 object LimitLocationVisitDropStatePolicy {

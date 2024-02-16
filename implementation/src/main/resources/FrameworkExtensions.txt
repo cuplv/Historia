@@ -26,6 +26,7 @@ okhttp3.*
 okio.*
 org.apache.*
 org.awaitility.*
+org.conscrypt.*
 org.eclipse.*
 org.hamcrest.*
 org.intellij.*

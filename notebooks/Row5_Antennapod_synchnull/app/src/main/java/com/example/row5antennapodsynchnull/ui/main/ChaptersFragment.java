@@ -59,7 +59,7 @@ public class ChaptersFragment extends Fragment implements Action1<Object> {
     }
     
     @Override
-    public void onStop() {
+    public void onStop() {super.onStop();
       controller = null;
     }
 
