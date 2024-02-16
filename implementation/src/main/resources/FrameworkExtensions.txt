@@ -48,3 +48,4 @@ io.reactivex.*
 com.airbnb.*
 dagger.android.*
 com.mikepenz.*
+de.mud.terminal.*
