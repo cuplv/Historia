@@ -589,7 +589,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
           try {
             val resPreFilt = executeStep(p2.qry).map(q => PathNode(q, List(p2), None))
             val res = resPreFilt.filter{qry =>
-              val drop = !config.approxMode.shouldDropState(qry)
+              val drop = !config.approxMode.shouldDropState(qry) && controlFlowResolver.allFieldsMayBeWritten(qry.state)
               if(drop) qry.setSubsumed(Set())
               drop
             }
@@ -870,7 +870,8 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
                       throw QueryInterruptedException(refutedSubsumedOrWitnessed + p2, ze.getMessage)
                   }
                   val nextQry = nextQryPreFilt.filter{qry =>
-                    val drop = !config.approxMode.shouldDropState(qry)
+                    val drop = !config.approxMode.shouldDropState(qry) &&
+                      controlFlowResolver.allFieldsMayBeWritten(qry.state)
                     if(drop) qry.setSubsumed(Set())
                     drop
                   }

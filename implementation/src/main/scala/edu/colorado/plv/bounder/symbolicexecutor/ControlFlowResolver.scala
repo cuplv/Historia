@@ -693,6 +693,55 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       println(other)
       ???
   }
+
+  case class FieldsLookup(staticFields:Map[(String,String), TypeSet], dynamicFields:Map[String,Set[(TypeSet,TypeSet)]])
+  lazy val fieldsLookup:FieldsLookup = {
+    val staticFields = mutable.Map[(String,String), TypeSet]()
+    val dynamicFields = mutable.Map[String, Set[(TypeSet,TypeSet)]]()
+    resolver.appMethods.foreach{appMethod =>
+      wrapper.findInMethod(appMethod.classType, appMethod.simpleName, {
+        case AssignCmd(StaticFieldReference(declaringClass, fieldName, _), source, loc) =>
+          val sourcePts = wrapper.pointsToSet(appMethod, source)
+          val staticFieldsKey = (declaringClass, fieldName)
+          val oldStaticFieldsPt = staticFields.getOrElse(staticFieldsKey, EmptyTypeSet)
+          val newStaticFieldsPt = oldStaticFieldsPt.union(sourcePts)
+          staticFields.put(staticFieldsKey, newStaticFieldsPt)
+          false
+        case AssignCmd(FieldReference(base, _,_,name), tgt, _) =>
+          val basePts = wrapper.pointsToSet(appMethod, base)
+          val tgtPts = wrapper.pointsToSet(appMethod,tgt)
+          val oldFieldPtsList:Set[(TypeSet,TypeSet)] = dynamicFields.getOrElse(name, Set.empty)
+          if(!oldFieldPtsList.exists{case (pt1, pt2) => pt1.contains(basePts) && pt2.contains(tgtPts)}){
+            val toAdd:(TypeSet,TypeSet) = (basePts, tgtPts)
+            dynamicFields.put(name,oldFieldPtsList + toAdd)
+          }
+          false
+        case _ => false
+      }, emptyOk = true)
+    }
+    FieldsLookup(staticFields.toMap, dynamicFields.toMap)
+  }
+  def allFieldsMayBeWritten(state:State):Boolean = {
+    // find heap cells that cannot be allocated anywhere
+    val res = state.sf.heapConstraints.find{
+      case (FieldPtEdge(base,fieldName), tgt:PureVar) =>
+        val baseTypeSet = state.sf.typeConstraints.getOrElse(base,TopTypeSet)
+        val tgtTypeSet = state.sf.typeConstraints.getOrElse(tgt,TopTypeSet)
+        !fieldsLookup.dynamicFields(fieldName).exists{case (otherBase, otherTgt) =>
+          baseTypeSet.intersectNonEmpty(otherBase) && tgtTypeSet.intersectNonEmpty(otherTgt)
+        }
+      case (StaticPtEdge(clazz,name), tgt:PureVar) =>
+        val tgtTypes = state.sf.typeConstraints.getOrElse(tgt, TopTypeSet)
+        val intersected = fieldsLookup.staticFields.getOrElse((clazz, name), TopTypeSet).intersect(tgtTypes)
+        intersected.isEmpty
+      case _ => false
+    }
+    if(res.nonEmpty){
+      println(s"Field ${res.head} cannot be written anywhere, dropping containing state ${state}")
+    }
+
+    res.isEmpty
+  }
   def resolvePredicessors(loc:Loc, state: State):Iterable[Loc] = (loc,state.callStack) match{
     case (l@AppLoc(_,_,true),_) => {
       val cmd: CmdWrapper = wrapper.cmdAtLocation(l)

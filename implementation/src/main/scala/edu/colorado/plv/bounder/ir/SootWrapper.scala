@@ -1593,16 +1593,16 @@ class SootWrapper(apkPath : String,
     res
   }
 
-  def findInMethod(className:String, methodName:String, toFind: CmdWrapper => Boolean):Iterable[AppLoc] = {
+  def findInMethod(className:String, methodName:String, toFind: CmdWrapper => Boolean, emptyOk:Boolean = false):Iterable[AppLoc] = {
     val locations = for{
       clazz <- getClassByName(className)
-      method <- clazz.getMethods().asScala if method.getSubSignature == methodName
+      method <- clazz.getMethods().asScala if method.hasActiveBody && method.getSubSignature == methodName
       loc <- method.getActiveBody.getUnits.asScala.map(cmd => cmdToLoc(cmd, method))
     } yield loc
-    assert(locations.nonEmpty, s"Empty target locations for query.\n" +
+    assert(emptyOk || locations.nonEmpty, s"Empty target locations for query.\n" +
       s"Searching for class: ${className}, method: ${methodName}")
     val out = locations.filter(al => toFind(cmdAtLocation(al)))
-    if(out.isEmpty)
+    if(out.isEmpty && !emptyOk)
       println(s"Class: ${className} and method: ${methodName} found, but no commands match search criteria.\n " +
         s"Commands found: ${locations.map(l => s"   $l").mkString("\n")}")
     out
@@ -1834,7 +1834,15 @@ class SootWrapper(apkPath : String,
     out
   }
 
-  override def pointsToSet(loc: MethodLoc, local: LocalWrapper): TypeSet = {
+  override def pointsToSet(loc:MethodLoc, rval:RVal):TypeSet = rval match{
+    case local:LocalWrapper => pointsToSetForLocal(loc, local)
+    case NullConst => TopTypeSet
+    case v if v.primName.nonEmpty => PrimTypeSet(v.primName.get)
+    case other =>
+      println(other)
+      ???
+  }
+  def pointsToSetForLocal(loc: MethodLoc, local: LocalWrapper): TypeSet = {
     if (ClassHierarchyConstraints.Primitive.matches(local.localType)){
       return PrimTypeSet(local.localType)
     }

@@ -66,7 +66,7 @@ case class SerializedIR(transitions: Map[AppLoc, Set[SerializedTransition]]) ext
 
   override def commandTopologicalOrder(cmdWrapper: CmdWrapper): Int = ???
 
-  override def pointsToSet(loc: MethodLoc, local: LocalWrapper): TypeSet = TopTypeSet
+  override def pointsToSet(loc: MethodLoc, local: RVal): TypeSet = TopTypeSet
 
   override def getThisVar(methodLoc: Loc): Option[LocalWrapper] = None
 
@@ -74,7 +74,7 @@ case class SerializedIR(transitions: Map[AppLoc, Set[SerializedTransition]]) ext
 
   override def getClassHierarchyConstraints: ClassHierarchyConstraints = ???
 
-  override def findInMethod(className: String, methodName: String, toFind: CmdWrapper => Boolean): Iterable[AppLoc] = ???
+  override def findInMethod(className: String, methodName: String, toFind: CmdWrapper => Boolean, emptyOk:Boolean): Iterable[AppLoc] = ???
 
   override def dumpDebug(classFilter: String): String = ???
 

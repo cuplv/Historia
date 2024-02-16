@@ -28,7 +28,7 @@ trait IRWrapper[M,C]{
   def getOverrideChain( method : MethodLoc) : Seq[MethodLoc]
   def findMethodLoc(sig:Signature):Iterable[MethodLoc]
   def findLineInMethod(sig:Signature, line:Int):Iterable[AppLoc]
-  def findInMethod(className:String, methodName:String, toFind: CmdWrapper => Boolean):Iterable[AppLoc]
+  def findInMethod(className:String, methodName:String, toFind: CmdWrapper => Boolean, emptyOk:Boolean = false):Iterable[AppLoc]
 
   /**
    * @param source a method in the application
@@ -40,7 +40,7 @@ trait IRWrapper[M,C]{
   def isLoopHead(cmd:AppLoc):Boolean
 
   // points to analysis
-  def pointsToSet(loc:MethodLoc, local: LocalWrapper):TypeSet
+  def pointsToSet(loc:MethodLoc, local: RVal):TypeSet
 
   def commandTopologicalOrder(cmdWrapper:CmdWrapper):Int
   def commandPredecessors(cmdWrapper:CmdWrapper): List[AppLoc]
@@ -178,6 +178,8 @@ case class PrimTypeSet(name:String) extends TypeSet {
   }
   override def contains(other: TypeSet): Boolean = other match{
     case PrimTypeSet(otherName) if name == otherName => true
+    case PrimTypeSet(otherName) if Set(name,otherName) == Set("boolean", "int") =>
+      true  // integer and boolean can be interchanged at runtime
     case EmptyTypeSet => true
     case _ => false
   }
