@@ -1836,7 +1836,7 @@ class SootWrapper(apkPath : String,
 
 
   override def explainPointsToSet(pts:TypeSet):String = pts match{
-    case BitTypeSet(s, optInfo) => optInfo.toString
+    case BitTypeSet(s, optInfo) => optInfo().toString
     case ts => ts.toString
   }
 
