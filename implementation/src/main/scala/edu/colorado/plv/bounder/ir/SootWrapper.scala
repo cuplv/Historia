@@ -1841,6 +1841,7 @@ class SootWrapper(apkPath : String,
     case StringConst(_) => TopTypeSet
     case IntConst(_) => TopTypeSet
     case BoolConst(_) => TopTypeSet
+    case ConstVal(_) => TopTypeSet
     case other =>
       println(other)
       ???
