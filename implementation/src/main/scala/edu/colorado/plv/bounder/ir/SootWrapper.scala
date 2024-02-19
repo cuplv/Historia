@@ -1852,6 +1852,9 @@ class SootWrapper(apkPath : String,
       println(other)
       ???
   }
+  def alertEmptyLocalTypeSet(loc:MethodLoc, local:LocalWrapper): Unit = {
+    println(s"Empty type set for method ${loc} and local ${local}")
+  }
   def pointsToSetForLocal(loc: MethodLoc, local: LocalWrapper): TypeSet = {
     if (ClassHierarchyConstraints.Primitive.matches(local.localType)){
       return PrimTypeSet(local.localType)
@@ -1898,8 +1901,12 @@ class SootWrapper(apkPath : String,
           })
           info.toMap
         }
-        BitTypeSet(jimpleGetBitSet(d), bitSetInfo)
+        val bits = jimpleGetBitSet(d)
+        if(bits.isEmpty)
+          alertEmptyLocalTypeSet(loc,local)
+        BitTypeSet(bits, bitSetInfo)
       case e:EmptyPointsToSet =>
+        alertEmptyLocalTypeSet(loc,local)
         EmptyTypeSet
       case _:FullObjectSet =>
         TopTypeSet
