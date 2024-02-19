@@ -1838,6 +1838,9 @@ class SootWrapper(apkPath : String,
     case local:LocalWrapper => pointsToSetForLocal(loc, local)
     case NullConst => TopTypeSet
     case v if v.primName.nonEmpty => PrimTypeSet(v.primName.get)
+    case StringConst(_) => TopTypeSet
+    case IntConst(_) => TopTypeSet
+    case BoolConst(_) => TopTypeSet
     case other =>
       println(other)
       ???
