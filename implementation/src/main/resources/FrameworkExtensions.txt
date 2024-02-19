@@ -50,3 +50,4 @@ dagger.android.*
 com.mikepenz.*
 de.mud.terminal.*
 com.trilead.ssh2.*
+com.jcraft.*
