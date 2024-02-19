@@ -51,3 +51,5 @@ com.mikepenz.*
 de.mud.terminal.*
 com.trilead.ssh2.*
 com.jcraft.*
+org.mindrot.*
+org.keyczar.*
