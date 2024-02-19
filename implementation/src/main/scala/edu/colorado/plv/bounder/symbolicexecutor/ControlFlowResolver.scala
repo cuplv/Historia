@@ -737,7 +737,18 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       case _ => false
     }
     if(res.nonEmpty){
-      println(s"Field ${res.head} cannot be written anywhere, dropping containing state ${state}")
+      println(s"Field ${res.head} cannot be written anywhere, dropping containing state ${state}.")
+      res.head._2 match {
+        case pts: PureVar =>
+          println(s"Pointed to value points to set: ${wrapper.explainPointsToSet(state.sf.typeConstraints.getOrElse(pts, TopTypeSet))}")
+        case _ =>
+      }
+      res.head._1 match {
+        case FieldPtEdge(p, fieldName) =>
+          println(s"class value points to set: ${wrapper.explainPointsToSet(state.sf.typeConstraints.getOrElse(p, TopTypeSet))}")
+        case StaticPtEdge(clazz, fieldName) => ???
+        case ArrayPtEdge(base, index) => ???
+      }
     }
 
     res.isEmpty

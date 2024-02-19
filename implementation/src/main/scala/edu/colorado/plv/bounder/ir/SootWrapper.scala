@@ -1834,6 +1834,12 @@ class SootWrapper(apkPath : String,
     out
   }
 
+
+  override def explainPointsToSet(pts:TypeSet):String = pts match{
+    case BitTypeSet(s, optInfo) => optInfo.toString
+    case ts => ts.toString
+  }
+
   override def pointsToSet(loc:MethodLoc, rval:RVal):TypeSet = rval match{
     case local:LocalWrapper => pointsToSetForLocal(loc, local)
     case NullConst => TopTypeSet

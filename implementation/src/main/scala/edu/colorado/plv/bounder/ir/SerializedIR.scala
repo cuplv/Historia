@@ -68,6 +68,8 @@ case class SerializedIR(transitions: Map[AppLoc, Set[SerializedTransition]]) ext
 
   override def pointsToSet(loc: MethodLoc, local: RVal): TypeSet = TopTypeSet
 
+  def explainPointsToSet(pts:TypeSet):String = ???
+
   override def getThisVar(methodLoc: Loc): Option[LocalWrapper] = None
 
   override def getThisVar(methodLoc: MethodLoc): Option[LocalWrapper] = ???

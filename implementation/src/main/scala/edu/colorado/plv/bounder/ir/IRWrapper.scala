@@ -41,6 +41,7 @@ trait IRWrapper[M,C]{
 
   // points to analysis
   def pointsToSet(loc:MethodLoc, local: RVal):TypeSet
+  def explainPointsToSet(pts:TypeSet):String
 
   def commandTopologicalOrder(cmdWrapper:CmdWrapper):Int
   def commandPredecessors(cmdWrapper:CmdWrapper): List[AppLoc]
