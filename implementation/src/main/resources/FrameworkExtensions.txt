@@ -53,3 +53,4 @@ com.trilead.ssh2.*
 com.jcraft.*
 org.mindrot.*
 org.keyczar.*
+de.mud.telnet.*
