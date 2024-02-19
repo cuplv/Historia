@@ -727,7 +727,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       case (FieldPtEdge(base,fieldName), tgt:PureVar) =>
         val baseTypeSet = state.sf.typeConstraints.getOrElse(base,TopTypeSet)
         val tgtTypeSet = state.sf.typeConstraints.getOrElse(tgt,TopTypeSet)
-        !fieldsLookup.dynamicFields(fieldName).exists{case (otherBase, otherTgt) =>
+        !fieldsLookup.dynamicFields.getOrElse(fieldName, Set()).exists{case (otherBase, otherTgt) =>
           baseTypeSet.intersectNonEmpty(otherBase) && tgtTypeSet.intersectNonEmpty(otherTgt)
         }
       case (StaticPtEdge(clazz,name), tgt:PureVar) =>
