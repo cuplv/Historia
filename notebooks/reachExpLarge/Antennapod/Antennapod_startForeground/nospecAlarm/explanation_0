@@ -1,0 +1,4 @@
+(    heap: p-0.mediaPlayer->NULL * p-0.mediaSession->NULL          pure: p-0  !=  NULL         types: List(p-0:{20970})    trace: O(CIEnter I_CIEnter_ServicestartForeground ( _T_,p-0 )) 
+===========
+Future trace:
+ CIEnter void startForeground(( _T_,@1 )
