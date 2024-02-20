@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import java.time.Instant
 import upickle.default.{macroRW, read, write, ReadWriter => RW}
 import edu.colorado.plv.bounder.{BounderUtil, RunConfig}
-import edu.colorado.plv.bounder.ir.{AppLoc, CBEnter, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, Goto, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, MethodLoc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SwitchCmd, ThrowCmd, VirtualInvoke}
+import edu.colorado.plv.bounder.ir.{AppLoc, CBEnter, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, Goto, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, MethodLoc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SwitchCmd, ThrowCmd, TopTypeSet, VirtualInvoke}
 import edu.colorado.plv.bounder.lifestate.LifeState.OAbsMsg
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.EncodingTools.repHeapCells
@@ -90,7 +90,7 @@ sealed trait DropQryPolicy{
 }
 object DropQryPolicy{
   implicit var rw:RW[DropQryPolicy] = RW.merge(LimitMsgCountDropStatePolicy.rw, LimitLocationVisitDropStatePolicy.rw,
-    LimitCallStringDropStatePolicy.rw)
+    LimitCallStringDropStatePolicy.rw, LimitMaterializedFieldsDropStatePolicy.rw)
 }
 
 case class LimitMsgCountDropStatePolicy(count:Int) extends DropQryPolicy{
@@ -109,6 +109,24 @@ case class LimitMsgCountDropStatePolicy(count:Int) extends DropQryPolicy{
 }
 object  LimitMsgCountDropStatePolicy{
   implicit val rw:RW[LimitMsgCountDropStatePolicy] = macroRW
+}
+
+case class LimitMaterializedFieldsDropStatePolicy(nameCount:Map[String,Int]) extends DropQryPolicy{
+
+  override def shouldDrop(qry: IPathNode)(implicit db: OutputMode): Boolean = {
+    val sf = qry.state.sf
+    val ptGroups = sf.heapConstraints.toList.flatMap{
+      case(FieldPtEdge(p, fieldName), t) => Some((fieldName,sf.typeConstraints.getOrElse(p,TopTypeSet)))
+    }
+    ptGroups.groupBy(v => v).exists{
+      case ((name,pt), materialized) if nameCount.contains(name) => nameCount(name) <= materialized.size
+      case _ => false
+    }
+  }
+}
+
+object LimitMaterializedFieldsDropStatePolicy{
+  implicit val rw:RW[LimitMaterializedFieldsDropStatePolicy] = macroRW
 }
 
 case class LimitCallStringDropStatePolicy(calls:Int) extends DropQryPolicy{
