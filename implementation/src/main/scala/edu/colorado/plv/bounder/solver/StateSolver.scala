@@ -895,8 +895,12 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     if (stackVarCreatedInFuture)
       return None
 
-    if (state2.sf.callStack.exists(frame => frame.locals.getOrElse(StackVar("@this"), NPureVar(-1)) == NullVal))
+    if (state2.sf.callStack.exists{
+      case MaterializedCallStackFrame(_,_,locals) =>
+        locals.getOrElse(StackVar("@this"), NPureVar(-1)) == NullVal
+    }) {
       return None
+    }
 
     @tailrec
     def equivSet(acc: Set[PureExpr]): Set[PureExpr] = {
@@ -1179,8 +1183,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       return false
     if (s1.callStack.size > s2.callStack.size)
       return false
-
-    val stackLocsMatch = (s1.callStack zip s2.callStack).forall {
+    val fm: List[CallStackFrame] => List[MaterializedCallStackFrame] = BounderUtil.filterMatierializedCallStack
+    val stackLocsMatch = (fm(s1.callStack) zip fm(s2.callStack)).forall {
       case (fr1, fr2) => fr1.exitLoc == fr2.exitLoc
     }
     if (!stackLocsMatch)

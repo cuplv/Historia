@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, NS, Signature}
 import edu.colorado.plv.bounder.lifestate.{SpecSignatures, SpecSpace}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.state._
-import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, ControlFlowResolver, DefaultAppCodeResolver, ExecutorConfig, SparkCallGraph, TransferFunctions, Z3TimeoutBehavior}
+import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, ControlFlowResolver, DefaultAppCodeResolver, ExecutorConfig, SparkCallGraph, TransferFunctions, Z3TimeoutBehavior, state}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.SootMethod
 
@@ -86,7 +86,7 @@ class SootUtilsTest extends AnyFunSuite {
     val query = Qry.makeReceiverNonNull(symbolicExecutor,
       Signature("com.example.test_interproc_2.MainActivity", "void onPause()"), 27)
     val l = query.find {
-      case Qry(s, _,Live) if s.callStack.head.exitLoc.isInstanceOf[CallbackMethodReturn] => true
+      case Qry(s, _,Live) if s.callStack.head.asInstanceOf[state.MaterializedCallStackFrame].exitLoc.isInstanceOf[CallbackMethodReturn] => true
       case _ => false
     }.get.loc
 
@@ -121,7 +121,7 @@ class SootUtilsTest extends AnyFunSuite {
       Signature("com.example.test_interproc_2.MainActivity", "void onCreate(android.os.Bundle)"), 16)
 
     val l = query.find {
-      case Qry(s, _,Live) if s.callStack.head.exitLoc.isInstanceOf[CallbackMethodReturn] => true
+      case Qry(s, _,Live) if s.callStack.head.asInstanceOf[state.MaterializedCallStackFrame].exitLoc.isInstanceOf[CallbackMethodReturn] => true
       case _ => false
     }.get.loc
 

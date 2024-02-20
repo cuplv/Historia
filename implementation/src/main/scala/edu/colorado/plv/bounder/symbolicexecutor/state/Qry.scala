@@ -209,8 +209,17 @@ object InitialQuery{
           "s" -> write[LSSpec](s)
         ).map(vToJ)
         ujson.Obj.from(m)
+      case InitialQueryWithStackTrace(trace,qry) =>
+        val m = Map(
+          "t" -> "InitialQueryWithStackTrace",
+          "trace" -> trace,
+          "internalQry" -> write[InitialQuery](qry)(InitialQuery.rw)
+        ).map(vToJ)
+        ujson.Obj.from(m)
     },
     json => json.obj("t").str match{
+      case "InitialQueryWithStackTrace" =>
+        InitialQueryWithStackTrace(json.obj("trace").str, read[InitialQuery](json.obj("initialQuery").str)(InitialQuery.rw))
       case "Reachable" =>
         Reachable(Signature(json.obj("className").str, json.obj("methodName").str),json.obj("line").num.toInt)
       case "ReceiverNonNull" =>
@@ -226,6 +235,15 @@ object InitialQuery{
         DisallowedCallin(json.obj("className").str, json.obj("methodName").str, read[LSSpec](json.obj("s").str))
     }
   )
+}
+case class InitialQueryWithStackTrace(trace:String, qry:InitialQuery) extends InitialQuery  {
+  override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] = {
+    val internalQueries = qry.make(sym)
+    ???
+  }
+
+  override def fileName: String = ???
+
 }
 case class Reachable(sig:Signature, line:Integer) extends InitialQuery {
   override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] =

@@ -621,7 +621,7 @@ object LifeState {
     def identifier:String
   }
   object SignatureMatcher{
-    implicit val rw:RW[SignatureMatcher] = RW.merge(SetSignatureMatcher.rw, SubClassMatcher.rw)
+    implicit val rw:RW[SignatureMatcher] = RW.merge(SetSignatureMatcher.rw, SubClassMatcher.rw, ExactClassMatcher.rw)
   }
   @Deprecated
   case class SetSignatureMatcher(sigSet : Set[Signature]) extends SignatureMatcher {
@@ -754,31 +754,43 @@ object LifeState {
      * @param r some regular expression
      * @return a string that matches r if you are lucky (otherwise an exception)
      */
-    private def exampleStringFromRegex(r:Regex):String = {
-      val str = r.toString.replaceAll("\\.\\*","")
-        .replaceAll("""\\""", "")
-        .replaceAll("""\\""", "")
-      val str3 = if(str.contains("(")){
-        str
-      } else str + "(" // needed for passing well formed check in signature
-      if(r.matches(str3)){
-        str3
-      }else{
-        throw new IllegalArgumentException(s"Failed to make string matching regex:${r.toString} -- attempt: ${str}")
-      }
-
-    }
     /**
      * Testing method
      *
      * @return an example of a signature that this would match
      */
-    override def example(): Signature = Signature(baseSubtypeOf.head, exampleStringFromRegex(sigR))
+    override def example(): Signature = Signature(baseSubtypeOf.head, BounderUtil.exampleStringFromRegex(sigR))
   }
   object SubClassMatcher{
     def apply(baseSubtypeOf:String, signatureMatcher: String, ident:String):SubClassMatcher =
       SubClassMatcher(Set(baseSubtypeOf), signatureMatcher, ident)
     implicit val rw:RW[SubClassMatcher] = macroRW
+  }
+
+  case class ExactClassMatcher(baseMatcher:String, signatureMatcher:String, ident:String) extends SignatureMatcher{
+    lazy val baseMatcherr = baseMatcher.r
+    lazy val signatureMatcherr = signatureMatcher.r
+
+    /**
+     * Testing method
+     *
+     * @return an example of a signature that this would match
+     */
+    override def example(): Signature = Signature(BounderUtil.exampleStringFromRegex(baseMatcherr),
+      BounderUtil.exampleStringFromRegex(signatureMatcherr))
+
+    override def toTex(args: List[PureExpr]): String = ???
+
+    override def matchesClass(sig: String): Boolean = baseMatcherr.matches(sig)
+
+    override def matchesSubSig(subsig: String): Boolean = signatureMatcherr.matches(subsig)
+    override def matches(sig: Signature)(implicit ch:ClassHierarchyConstraints): Boolean = {
+      matchesSubSig(sig.methodSignature) && matchesClass(sig.base)
+    }
+    override def identifier: String = ident
+  }
+  object ExactClassMatcher{
+    implicit val rw:RW[ExactClassMatcher] = macroRW
   }
   // A method with a signature in "signatures" has been invoed
   // lsVars: element 0 is return value, element 1 is reciever, rest of the elements are arguemnts

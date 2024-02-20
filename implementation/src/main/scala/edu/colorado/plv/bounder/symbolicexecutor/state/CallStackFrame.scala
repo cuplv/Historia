@@ -1,13 +1,33 @@
 package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, InternalMethodInvoke, InternalMethodReturn, Loc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn}
+import edu.colorado.plv.bounder.lifestate.LifeState.SignatureMatcher
 import upickle.default.{macroRW, ReadWriter => RW}
+
+import scala.util.matching.Regex
 
 
 //TODO: state should probably define all locals as pointing to pv, pv can then be constrained by pure expr
-sealed case class CallStackFrame(exitLoc : Loc,
+sealed trait CallStackFrame
+object CallStackFrame{
+  def apply(exitLoc : Loc,
+            retLoc: Option[AppLoc],
+            locals: Map[StackVar, PureExpr]) = MaterializedCallStackFrame(exitLoc, retLoc, locals)
+  def unapply(frame:CallStackFrame):Option[(Loc, Option[AppLoc], Map[StackVar,PureExpr])] = frame match {
+    case MaterializedCallStackFrame(exitLoc, retLoc, locals) => Some((exitLoc, retLoc, locals))
+    case _ => ???
+  }
+  implicit val rw:RW[CallStackFrame] = RW.merge(MaterializedCallStackFrame.rw)
+}
+object MaterializedCallStackFrame{
+  implicit val rw:RW[MaterializedCallStackFrame] = macroRW
+}
+case class FuzzyAppMethodStackFrame(signatureMatcher: SignatureMatcher) extends CallStackFrame{
+
+}
+case class MaterializedCallStackFrame(exitLoc : Loc,
                                  retLoc: Option[AppLoc],
-                                 locals: Map[StackVar, PureExpr]){
+                                 locals: Map[StackVar, PureExpr]) extends CallStackFrame{
   assert(retLoc.forall {
     case AppLoc(method, line, true) => true
     case _ => false
@@ -26,8 +46,6 @@ sealed case class CallStackFrame(exitLoc : Loc,
   override def toString:String = {
     "[" + exitLoc.toString + " locals: " + locals.map(k => k._1.toString + ":" + k._2.toString).mkString(",") + "]"
   }
-  def removeStackVar(v: StackVar):CallStackFrame = CallStackFrame(exitLoc, retLoc, locals.-(v))
-}
-object CallStackFrame{
-  implicit val rw:RW[CallStackFrame] = macroRW
+
+  def removeStackVar(v: StackVar): MaterializedCallStackFrame = CallStackFrame(exitLoc, retLoc, locals.-(v))
 }

@@ -145,8 +145,9 @@ class TransferFunctionsTest extends AnyFunSuite {
     assert(prestate.size == 1)
     val formula = prestate.head.pureFormula
     assert(formula.contains(PureConstraint(nullPv,Equals, NullVal)))
-    assert(prestate.head.callStack.head.locals.contains(StackVar("baz")))
-    assert(!prestate.head.callStack.head.locals.contains(StackVar("bar")))
+    val csHead = prestate.head.callStack.head.asInstanceOf[MaterializedCallStackFrame]
+    assert(csHead.locals.contains(StackVar("baz")))
+    assert(!csHead.locals.contains(StackVar("bar")))
   }
   test("Transfer assign from materialized heap cell") {
     implicit val (stSolver, cha) = getStateSolver()

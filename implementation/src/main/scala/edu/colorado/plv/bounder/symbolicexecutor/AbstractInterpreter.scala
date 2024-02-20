@@ -8,7 +8,7 @@ import edu.colorado.plv.bounder.lifestate.LifeState.OAbsMsg
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.EncodingTools.repHeapCells
 import edu.colorado.plv.bounder.solver.{EncodingTools, Z3StateSolver}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, CallStackFrame, DBOutputMode, FieldPtEdge, FrameworkLocation, HashableStateFormula, HeapPtEdge, IPathNode, InitialQuery, Live, MemoryOutputMode, NPureVar, NoOutputMode, OrdCount, OutputMode, PathNode, PureExpr, Qry, State, StaticPtEdge, SubsumableLocation, SwapLoc, WitnessedQry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, CallStackFrame, DBOutputMode, FieldPtEdge, FrameworkLocation, HashableStateFormula, HeapPtEdge, IPathNode, InitialQuery, Live, MaterializedCallStackFrame, MemoryOutputMode, NPureVar, NoOutputMode, OrdCount, OutputMode, PathNode, PureExpr, Qry, State, StaticPtEdge, SubsumableLocation, SwapLoc, WitnessedQry}
 
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import scala.collection.parallel.immutable.ParIterable
@@ -376,9 +376,10 @@ class LexicalStackThenTopo[M,C](w:IRWrapper[M,C]) extends OrdCount{
       return p2.ordDepth - p1.ordDepth
     }
 
+    val fm: List[CallStackFrame] => List[MaterializedCallStackFrame] = BounderUtil.filterMatierializedCallStack
     // comparing things from the base of the stack up, reversing for convenience
-    val stack1 = ((None,Some(p1.qry.loc)):: p1.state.callStack.map(sf => (Some(sf.exitLoc),sf.retLoc))).reverse
-    val stack2 = ((None,Some(p2.qry.loc)):: p2.state.callStack.map(sf => (Some(sf.exitLoc),sf.retLoc))).reverse
+    val stack1 = ((None,Some(p1.qry.loc)):: fm(p1.state.callStack).map(sf => (Some(sf.exitLoc),sf.retLoc))).reverse
+    val stack2 = ((None,Some(p2.qry.loc)):: fm(p2.state.callStack).map(sf => (Some(sf.exitLoc),sf.retLoc))).reverse
 
     @tailrec
     def iCompare(s1: List[(Option[Loc], Option[Loc])], s2:List[(Option[Loc], Option[Loc])]):Int = (s1,s2) match{
@@ -737,7 +738,8 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
   case class InvokeGroup(loc:Option[Loc]) extends GroupType
 
   private def nodeGroup(pn:IPathNode):Option[(GroupType, List[(Loc, Option[Loc])], Int)] = {
-    val stack = pn.state.callStack
+    val fm: List[CallStackFrame] => List[MaterializedCallStackFrame] = BounderUtil.filterMatierializedCallStack
+    val stack = fm(pn.state.callStack)
     val groupStack = stack.map(sf => (sf.exitLoc, sf.retLoc))
     lazy val retLoc = InvokeGroup(stack.head.retLoc)
     pn.qry.loc match {

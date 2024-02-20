@@ -4,7 +4,7 @@ import java.util.{Collections, UUID}
 import better.files.File
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdNotImplemented, CmdWrapper, FieldReference, Goto, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, Loc, LocalWrapper, MethodLoc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SpecialInvoke, StaticFieldReference, SwitchCmd, ThrowCmd, VirtualInvoke}
 import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, ExecutorConfig, QueryFinished, QueryInterrupted, QueryResult}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, IPathNode, InitialQuery, Live, NoOutputMode, OutputMode, PathNode, Qry, WitnessedQry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, CallStackFrame, IPathNode, InitialQuery, Live, MaterializedCallStackFrame, NoOutputMode, OutputMode, PathNode, Qry, WitnessedQry}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -39,6 +39,32 @@ object BounderUtil {
   case object MultiCallback extends MaxPathCharacterization
 
   case object UnknownCharacterization extends MaxPathCharacterization
+
+
+  /**
+   * Mostly incomplete way to get example strings from regular expressions.  Works for simple cases.
+   * @param r regular expression.
+   * @return a string that should match r
+   */
+  def exampleStringFromRegex(r:Regex):String = {
+    val str = r.toString.replaceAll("\\.\\*","")
+      .replaceAll("""\\""", "")
+      .replaceAll("""\\""", "")
+    val str3 = if(str.contains("(")){
+      str
+    } else str + "(" // needed for passing well formed check in signature
+    if(r.matches(str3)){
+      str3
+    }else{
+      throw new IllegalArgumentException(s"Failed to make string matching regex:${r.toString} -- attempt: ${str}")
+    }
+
+  }
+  def filterMatierializedCallStack(stack:List[CallStackFrame]) :List[MaterializedCallStackFrame] =
+    stack.flatMap{
+      case f:MaterializedCallStackFrame => Some(f)
+      case _ => None
+    }
   object MaxPathCharacterization{
     implicit val rw:RW[MaxPathCharacterization] = upickle.default.readwriter[String].bimap[MaxPathCharacterization](
       {

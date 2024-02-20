@@ -823,8 +823,9 @@ class StateSolverTest extends FixtureAnyFunSuite {
 
     val state = State(StateFormula(CallStackFrame(dummyLoc,None,Map(StackVar("x") -> p1))::Nil,
       Map(),Set(),Map(),AbstractTrace( Nil)),0)
+    val csHead = state.callStack.head.asInstanceOf[MaterializedCallStackFrame]
     val state2 = state.copy(sf = state.sf.copy(callStack =
-      state.callStack.head.copy(locals=Map(StackVar("x") -> p1, StackVar("y")->p2))::Nil))
+      csHead.copy(locals=Map(StackVar("x") -> p1, StackVar("y")->p2))::Nil))
     assert(f.canSubsume(state,state,esp))
     assert(f.canSubsume(state,state2,esp))
     assert(!f.canSubsume(state2,state,esp))

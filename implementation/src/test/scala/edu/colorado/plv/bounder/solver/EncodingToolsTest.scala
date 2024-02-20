@@ -2,8 +2,8 @@ package edu.colorado.plv.bounder.solver
 
 import edu.colorado.plv.bounder.ir.{CBEnter, CallbackMethodReturn, FwkMethod, TMessage}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, Exists, Forall, LSConstraint, Not, Or, Signature, SubClassMatcher}
-import edu.colorado.plv.bounder.symbolicexecutor.Z3TimeoutBehavior
-import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, ConcreteAddr, ConcreteVal, Equals, NPureVar, NamedPureVar, NotEquals, PureConstraint, PureExpr, PureVal, PureVar, StackVar, State, StateFormula}
+import edu.colorado.plv.bounder.symbolicexecutor.{Z3TimeoutBehavior, state}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{CallStackFrame, ConcreteAddr, ConcreteVal, Equals, MaterializedCallStackFrame, NPureVar, NamedPureVar, NotEquals, PureConstraint, PureExpr, PureVal, PureVar, StackVar, State, StateFormula}
 import edu.colorado.plv.bounder.synthesis.SynthTestUtil.{dummyLoc, dummyMethod, intToClass}
 import org.scalatest.Outcome
 import org.scalatest.funsuite.AnyFunSuite
@@ -94,7 +94,7 @@ class EncodingToolsTest extends AnyFunSuite{
       .setSimplified()
 
     def withLocal(state: State, name: String, tgt: PureExpr): State = {
-      val stackHead = state.sf.callStack.head
+      val stackHead = state.sf.callStack.head.asInstanceOf[MaterializedCallStackFrame]
       val newCallStack = stackHead.copy(locals = stackHead.locals + (StackVar(name) -> tgt))
       state.copy(sf = state.sf.copy(newCallStack::state.sf.callStack.tail))
     }

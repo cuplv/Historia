@@ -145,7 +145,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         val statesWithClearedReturn = inVars.head match{
           case Some(v:LocalWrapper) => {
             val newStack = oState.sf.callStack match {
-              case h :: fr :: t =>
+              case h :: (fr:MaterializedCallStackFrame) :: t =>
                 if(!inVars.tail.contains(Some(v))) {
                   h :: fr.removeStackVar(StackVar(v.name)) :: t
                 }else h::fr::t
@@ -642,11 +642,13 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       exprContainsV(value,base) || exprContainsV(value,index) || exprContainsV(value,ptVal)
   }
   private def localReferencesV(pureVar: PureVar, state: State): Boolean ={
-    state.callStack.exists{sf =>
-      sf.locals.exists{
-        case (_,v) =>
-          v == pureVar
-      }
+    state.callStack.exists{
+      case MaterializedCallStackFrame(_,_,locals) =>
+        locals.exists{
+          case (_,v) =>
+            v == pureVar
+        }
+      case _ => false
     }
   }
 //  private def encodeExistingNotEqualTo(pureVar:PureVar, state:State):State = {

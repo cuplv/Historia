@@ -130,7 +130,10 @@ case class StateFormula(callStack: List[CallStackFrame], //TODO: cache z3 ast co
       this
     else {
       this.copy( //TODO: change to option - none means swap is infeasible
-        callStack = callStack.map(f => stackSwapPv(oldPv, newPv, f)),
+        callStack = callStack.map{
+          case f:MaterializedCallStackFrame => stackSwapPv(oldPv, newPv, f)
+          case f => f
+        },
         heapConstraints = heapConstraints.map(hc => heapSwapPv(oldPv, newPv, hc)),
         pureFormula = pureFormula.map(pf => pureSwapPv(oldPv, newPv, pf)),
         traceAbstraction = traceSwapPv(oldPv, newPv, traceAbstraction),
@@ -158,9 +161,10 @@ case class StateFormula(callStack: List[CallStackFrame], //TODO: cache z3 ast co
     case pv: PureVal =>
       pv.asInstanceOf[T]
   }
-  private def stackSwapPv(oldPv : PureVar, newPv : PureExpr, frame: CallStackFrame): CallStackFrame =
-    frame.copy(locals = frame.locals.map{
-      case (k,v) => (k->pureExprSwap(oldPv, newPv, v))
+
+  private def stackSwapPv(oldPv: PureVar, newPv: PureExpr, frame: MaterializedCallStackFrame): MaterializedCallStackFrame =
+    frame.copy(locals = frame.locals.map {
+      case (k, v) => (k -> pureExprSwap(oldPv, newPv, v))
     })
 
   private def heapSwapPv(oldPv : PureVar, newPv : PureExpr, hv: (HeapPtEdge, PureExpr)):(HeapPtEdge, PureExpr) = hv match{
@@ -493,10 +497,14 @@ case class State(sf:StateFormula,
       case Some(pvPt) =>
         val pt = w.pointsToSet(method, lw)
         if(inCurrentStackFrame && containsLocal(lw)){
-          assert(sf.callStack.headOption.forall(s => s.exitLoc.containingMethod.get == method),
+          val headFrame: Option[MaterializedCallStackFrame] = sf.callStack.headOption.flatMap {
+            case m: MaterializedCallStackFrame => Some(m)
+            case f => throw new IllegalStateException(s"unsupported head call stack frame for canAlias: ${f}")
+          }
+          assert(headFrame.forall(s => s.exitLoc.containingMethod.get == method),
             "Error, call string and variable name must match if inCurrentStackFrame is set to true." +
               s"Otherwise pts to sets for variable are incomparable. " +
-              s"Stack frame method: ${sf.callStack.headOption.map(_.exitLoc)}.  " +
+              s"Stack frame method: ${headFrame.map(_.exitLoc)}.  " +
               s"Local: $lw . " +
               s"Method containing local: $method")
           val lv = get(lw).get
@@ -585,11 +593,12 @@ case class State(sf:StateFormula,
 
   override def toString:String = {
     def sfString(sfl:List[CallStackFrame], frames: Int):String = (sfl,frames) match{
-      case (sf::t, fr) if fr > 0 =>
+      case ((sf:MaterializedCallStackFrame)::t, fr) if fr > 0 =>
         val locals: Map[StackVar, PureExpr] = sf.locals
         s"${sf.exitLoc.msgSig.getOrElse("")} " +
           s"locals: " + locals.map(k => k._1.toString + " -> " + k._2.toString).mkString(",") + "     " +
           sfString(t, fr-1)
+      case (sf::t,fr) => s"other frame: $sf"
       case (Nil,_) => ""
       case (_::_,_) => "..."
     }
@@ -603,7 +612,11 @@ case class State(sf:StateFormula,
   }
   def containsLocal(localWrapper: LocalWrapper):Boolean = {
     val sVar = StackVar(localWrapper.name)
-    sf.callStack.headOption.exists(f => f.locals.contains(sVar))
+    val headFrame = sf.callStack.headOption.flatMap{
+      case m:MaterializedCallStackFrame => Some(m)
+      case _ => None
+    }
+    headFrame.exists(f => f.locals.contains(sVar))
   }
 
   // helper functions to find pure variable
@@ -691,8 +704,10 @@ case class State(sf:StateFormula,
   //TODO: refactor so local always points to pv
   def defineAs[M,C](l : RVal, pureExpr: PureExpr)
                    (implicit ch:ClassHierarchyConstraints, w:IRWrapper[M,C]): State = {
-    val cshead: CallStackFrame = sf.callStack.headOption.getOrElse{
-      throw new IllegalStateException("Expected non-empty stack")
+    val cshead: MaterializedCallStackFrame = sf.callStack.headOption match {
+      case Some(value: MaterializedCallStackFrame) => value
+      case None =>
+          throw new IllegalStateException(s"Expected non-empty stack, got ${sf.callStack}")
     }
     val l2 = cshead.exitLoc.containingMethod match{
       case Some(v) if w.getThisVar(v).contains(l) =>
@@ -746,7 +761,10 @@ case class State(sf:StateFormula,
   def getOrDefine[M,C](l : RVal, method:Option[MethodLoc])
                       (implicit ch: ClassHierarchyConstraints, w:IRWrapper[M,C]): (PureExpr,State) = l match{
     case lw@LocalWrapper(name,localType) =>
-      val cshead = sf.callStack.headOption.getOrElse(???) //TODO: add new stack frame if empty?
+      val cshead = sf.callStack.headOption match {
+        case Some(value:MaterializedCallStackFrame) => value
+        case None => ???
+      }
       val thisVar:Option[LocalWrapper] = w.getThisVar(cshead.exitLoc)
       val ts: Option[TypeSet] = method.map(w.pointsToSet(_, LocalWrapper(name,localType)))
       //TODO: constrain types based on points to set
@@ -804,9 +822,10 @@ case class State(sf:StateFormula,
    * @return new state
    */
   def clearLVal(l : LVal): State = (l,sf.callStack) match {
-    case (LocalWrapper(name,_), cshead::cstail) =>
+    case (LocalWrapper(name,_), (cshead:MaterializedCallStackFrame)::cstail) =>
       val newCsHead = cshead.removeStackVar(StackVar(name))
       this.copy(sf = sf.copy(callStack = newCsHead::cstail))
+    case (LocalWrapper(name,_), cshead::cstail) => this
     case _ =>
       ???
   }

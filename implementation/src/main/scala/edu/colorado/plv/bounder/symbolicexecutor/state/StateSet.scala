@@ -29,15 +29,21 @@ object StateSet {
   private case class StackEdge(v:CallStackFrame) extends Edge{
     def subsetOf(other:Edge):Boolean = other match {
       case HeapEdge(_) => false
-      case StackEdge(CallStackFrame(exitLoc, retLoc, locals)) => {
-        val exitComp = exitLoc == v.exitLoc
-        val retLocComp = (v.retLoc,retLoc) match{
-          case (Some(_), None) => true // no return location defined is more abstract than some defined location
-          case (None,Some(_)) => false
-          case (vr,or) => vr == or //Some or none must match (including contained value)
-        }
-        val localsComp = locals.forall{ case (stackVar, _) => v.locals.contains(stackVar)}
-        exitComp && retLocComp && localsComp
+      case StackEdge(MaterializedCallStackFrame(exitLoc, retLoc, locals)) => {
+        if(v.isInstanceOf[MaterializedCallStackFrame]) {
+          val v2 = v.asInstanceOf[MaterializedCallStackFrame]
+          val exitComp = exitLoc == v2.exitLoc
+          val retLocComp = (v2.retLoc, retLoc) match {
+            case (Some(_), None) => true // no return location defined is more abstract than some defined location
+            case (None, Some(_)) => false
+            case (vr, or) => vr == or //Some or none must match (including contained value)
+          }
+          val localsComp = locals.forall { case (stackVar, _) => v2.locals.contains(stackVar) }
+          exitComp && retLocComp && localsComp
+        }else false
+      }
+      case StackEdge(frame) => {
+        v == frame
       }
     }
   }
