@@ -54,3 +54,5 @@ com.jcraft.*
 org.mindrot.*
 org.keyczar.*
 de.mud.telnet.*
+com.skydoves.*
+com.annimon.*
