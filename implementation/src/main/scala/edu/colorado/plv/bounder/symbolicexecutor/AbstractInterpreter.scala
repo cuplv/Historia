@@ -115,13 +115,22 @@ case class LimitMaterializedFieldsDropStatePolicy(nameCount:Map[String,Int]) ext
 
   override def shouldDrop(qry: IPathNode)(implicit db: OutputMode): Boolean = {
     val sf = qry.state.sf
-    val ptGroups = sf.heapConstraints.toList.flatMap{
-      case(FieldPtEdge(p, fieldName), t) => Some((fieldName,sf.typeConstraints.getOrElse(p,TopTypeSet)))
+    val fieldGroups = sf.heapConstraints.toList.groupBy{
+      case (FieldPtEdge(p, fieldName),v) => fieldName
+      case _ => ""
     }
-    ptGroups.groupBy(v => v).exists{
-      case ((name,pt), materialized) if nameCount.contains(name) => nameCount(name) <= materialized.size
+    fieldGroups.exists{
+      case (f,v) if nameCount.contains(f) => nameCount(f) < v.size
       case _ => false
     }
+
+//      .flatMap{
+//      case(FieldPtEdge(p, fieldName), t) => Some((fieldName,sf.typeConstraints.getOrElse(p,TopTypeSet)))
+//    }
+//    ptGroups.groupBy(v => v).exists{
+//      case ((name,pt), materialized) if nameCount.contains(name) => nameCount(name) <= materialized.size
+//      case _ => false
+//    }
   }
 }
 
