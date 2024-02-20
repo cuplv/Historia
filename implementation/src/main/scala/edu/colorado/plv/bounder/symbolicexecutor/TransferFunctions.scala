@@ -482,7 +482,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val stateWithFrame =
         clearedLVal.setCallStack(newFrame :: clearedLVal.callStack).copy(nextCmd = List(target), alternateCmd = Nil)
       // Constraint receiver by current points to set  TODO: apply this to other method transfers ====
-      if(receiverTypesFromPT.isDefined) {
+      val outStates = if(receiverTypesFromPT.isDefined) {
         val (thisV, stateWThis) = if(materializedReceiver.isEmpty) {
           stateWithFrame.getOrDefine(LocalWrapper("@this", "_"),Some(mRet.loc))
         } else {
@@ -496,11 +496,12 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
             Set(stateWThis.addTypeConstraint(thisV, pts))
           }
           case NullVal =>
-            Set.empty
+            Set[State]()
         }
       } else {
         Set(stateWithFrame)
       }
+      outStates
     case (retLoc@AppLoc(mloc, line, false), mRet@SkippedInternalMethodReturn(_, _, rel, _)) =>
       // Create call stack frame with return value
       val newFrame = CallStackFrame(mRet, Some(AppLoc(mloc,line,true)), Map())
@@ -870,13 +871,17 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       }
       cmdTransfer(AssignCmd(l,local,cmdloc),state1)
     case AssignCmd(l:LocalWrapper, StaticFieldReference(declaringClass, fname, containedType), _) =>
-      if(state.containsLocal(l)){
-        val v = state.get(l).get
-        val state1 = state.clearLVal(l)
-        Set(state1.copy(sf =
-          state1.sf.copy(heapConstraints = state1.heapConstraints + (StaticPtEdge(declaringClass,fname) -> v),
-        )).constrainUpperType(v,containedType,ch))
-      }else Set(state)
+      if(fname.contains("R$id")){
+        Set(state.clearLVal(l)) // Don't care about this always just set to integer
+      }else {
+        if (state.containsLocal(l)) {
+          val v = state.get(l).get
+          val state1 = state.clearLVal(l)
+          Set(state1.copy(sf =
+            state1.sf.copy(heapConstraints = state1.heapConstraints + (StaticPtEdge(declaringClass, fname) -> v),
+            )).constrainUpperType(v, containedType, ch))
+        } else Set(state)
+      }
     case AssignCmd(StaticFieldReference(declaringClass,fieldName,_), l,_) =>
       val edge = StaticPtEdge(declaringClass, fieldName)
       if(state.heapConstraints.contains(edge)){

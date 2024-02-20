@@ -983,6 +983,11 @@ class SootWrapper(apkPath : String,
       localForPrim(entryMethod,v, DoubleConstant.v(0.0), globalField)
     case v:LongType =>
       localForPrim(entryMethod,v,LongConstant.v(0.0.toLong), globalField)
+    case v:ArrayType =>
+      val units = entryMethod.getActiveBody.getUnits
+      val freshV = freshSootVar(entryMethod, t, entryMethod.getActiveBody.getLocals)
+      units.add(Jimple.v().newAssignStmt(freshV,Jimple.v().newNewArrayExpr(v,IntConstant.v(10))))
+      freshV
     case v =>
       localForPrim(entryMethod,v, NullConstant.v(),globalField)
   }
@@ -1853,8 +1858,12 @@ class SootWrapper(apkPath : String,
       ???
   }
   def alertEmptyLocalTypeSet(loc:MethodLoc, local:LocalWrapper): Unit = {
-    println(s"Empty type set for method ${loc} and local ${local}")
+    val edgesInto = Scene.v.getCallGraph.edgesInto(loc.asInstanceOf[JimpleMethodLoc].method)
+    if(edgesInto.hasNext) {
+      println(s"Empty type set for method ${loc} and local ${local}")
+    }
   }
+
   def pointsToSetForLocal(loc: MethodLoc, local: LocalWrapper): TypeSet = {
     if (ClassHierarchyConstraints.Primitive.matches(local.localType)){
       return PrimTypeSet(local.localType)
@@ -1906,8 +1915,12 @@ class SootWrapper(apkPath : String,
           alertEmptyLocalTypeSet(loc,local)
         BitTypeSet(bits, bitSetInfo)
       case e:EmptyPointsToSet =>
-        alertEmptyLocalTypeSet(loc,local)
-        EmptyTypeSet
+        if(local.localType.contains("[]")){
+          PrimTypeSet(local.localType)
+        }else {
+          alertEmptyLocalTypeSet(loc,local)
+          EmptyTypeSet
+        }
       case _:FullObjectSet =>
         TopTypeSet
     }

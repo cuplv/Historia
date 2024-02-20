@@ -576,7 +576,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       .flatMap { a => allPosI(a) }
     loc match {
       case InternalMethodReturn(_,name, _) if name.contains("$jacocoInit") =>
-        println(s"Skipping synthetic jacoco state: ${state}")
+        //println(s"Skipping synthetic jacoco state: ${state}")
         NotRelevantMethod
       case InternalMethodReturn(_, _, m) =>
         relevantMethodBody(m, state).join(
