@@ -119,10 +119,13 @@ case class LimitMaterializedFieldsDropStatePolicy(nameCount:Map[String,Int]) ext
       case (FieldPtEdge(p, fieldName),v) => fieldName
       case _ => ""
     }
-    fieldGroups.exists{
+    val shouldDrop = fieldGroups.exists{
       case (f,v) if nameCount.contains(f) => nameCount(f) < v.size
       case _ => false
     }
+    if(shouldDrop)
+      println(s"LimitMaterializedFieldsDropStatePolicy -- dropping state : ${qry.state} at location ${qry.qry.loc}")
+    shouldDrop
 
 //      .flatMap{
 //      case(FieldPtEdge(p, fieldName), t) => Some((fieldName,sf.typeConstraints.getOrElse(p,TopTypeSet)))
