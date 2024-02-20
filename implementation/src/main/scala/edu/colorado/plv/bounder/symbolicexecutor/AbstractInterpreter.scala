@@ -112,28 +112,40 @@ object  LimitMsgCountDropStatePolicy{
 }
 
 case class LimitMaterializedFieldsDropStatePolicy(nameCount:Map[String,Int]) extends DropQryPolicy{
-
-  override def shouldDrop(qry: IPathNode)(implicit db: OutputMode): Boolean = {
+  val byAny = nameCount.get("*")
+  def shouldDropByName(qry: IPathNode)(implicit db: OutputMode) = {
     val sf = qry.state.sf
-    val fieldGroups = sf.heapConstraints.toList.groupBy{
-      case (FieldPtEdge(p, fieldName),v) => fieldName
-      case _ => ""
+    val fieldGroups = sf.heapConstraints.toList.groupBy {
+      case (FieldPtEdge(p, fieldName), v) => Some((fieldName, sf.typeConstraints.getOrElse(p, TopTypeSet)))
+      case _ => None
     }
-    val shouldDrop = fieldGroups.exists{
-      case (f,v) if nameCount.contains(f) => nameCount(f) < v.size
+    val shouldDrop = fieldGroups.exists {
+      case (Some((f, tc)), v) if nameCount.contains(f) => nameCount(f) < v.size
       case _ => false
     }
-    if(shouldDrop)
-      println(s"LimitMaterializedFieldsDropStatePolicy -- dropping state : ${qry.state} at location ${qry.qry.loc}")
+    if (shouldDrop)
+      println(s"LimitMaterializedFieldsDropStatePolicy -- name -- dropping state : ${qry.state} at location ${qry.qry.loc}")
     shouldDrop
+  }
 
-//      .flatMap{
-//      case(FieldPtEdge(p, fieldName), t) => Some((fieldName,sf.typeConstraints.getOrElse(p,TopTypeSet)))
-//    }
-//    ptGroups.groupBy(v => v).exists{
-//      case ((name,pt), materialized) if nameCount.contains(name) => nameCount(name) <= materialized.size
-//      case _ => false
-//    }
+  def shouldDropByAny(qry: IPathNode, limit:Int)(implicit db: OutputMode) = {
+    val sf = qry.state.sf
+    val fieldGroups = sf.heapConstraints.toList.groupBy {
+      case (FieldPtEdge(p, fieldName), v) => Some((fieldName, sf.typeConstraints.getOrElse(p, TopTypeSet)))
+      case _ => None
+    }
+    val shouldDrop = fieldGroups.exists {
+      case (Some((f, tc)), v) => limit < v.size
+      case _ => false
+    }
+    if (shouldDrop)
+      println(s"LimitMaterializedFieldsDropStatePolicy -- any -- dropping state : ${qry.state} at location ${qry.qry.loc}")
+    shouldDrop
+  }
+
+  override def shouldDrop(qry: IPathNode)(implicit db: OutputMode): Boolean = byAny match {
+    case Some(limit) => shouldDropByAny(qry,limit)
+    case None => shouldDropByName(qry)
   }
 }
 
