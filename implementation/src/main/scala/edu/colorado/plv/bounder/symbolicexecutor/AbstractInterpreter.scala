@@ -111,6 +111,10 @@ object  LimitMsgCountDropStatePolicy{
   implicit val rw:RW[LimitMsgCountDropStatePolicy] = macroRW
 }
 
+/**
+ * Drop states that have more than a given number of fields.
+ * @param nameCount mapping from field to limit.  Use "*" to limit instances of all fields.
+ */
 case class LimitMaterializedFieldsDropStatePolicy(nameCount:Map[String,Int]) extends DropQryPolicy{
   val byAny = nameCount.get("*")
   def shouldDropByName(qry: IPathNode)(implicit db: OutputMode) = {
