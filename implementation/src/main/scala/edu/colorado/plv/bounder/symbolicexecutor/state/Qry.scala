@@ -268,7 +268,7 @@ object InitialQueryWithStackTrace{
   def fromStackTrace(stackTrace:String, internalQuery:InitialQuery):InitialQueryWithStackTrace = {
     val classAndMethod = parseStackTrace(stackTrace)
     val matcherFrames = classAndMethod.map{
-      case (clazz,method) => ExactClassMatcher(clazz.replace(".", "\\."), s"${method}\\(.*" ,
+      case (clazz,method) => ExactClassMatcher(clazz.replace(".", "\\."), s".* ${method}\\(.*" ,
         s"FromTrace_${clazz}_${method}")
     }
     InitialQueryWithStackTrace(matcherFrames.toList, internalQuery)

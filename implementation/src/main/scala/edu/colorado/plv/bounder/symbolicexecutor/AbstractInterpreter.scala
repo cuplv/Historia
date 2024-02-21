@@ -968,6 +968,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
                 retMethod.asInstanceOf[MaterializedCallStackFrame].exitLoc.containingMethod.get.getSignature
               val shouldMatch = fuzzy.head
               val out = if(shouldMatch.signatureMatcher.matches(signatureOfRetM)(cha)) {
+                println(s"Found match for fuzzy frame ${fuzzy.head}")
                 Some(s.addFuzzyFrames(fuzzy.tail))
               } else {
                 None
