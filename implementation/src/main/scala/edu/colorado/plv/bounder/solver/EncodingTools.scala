@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.solver
 import edu.colorado.plv.bounder.ir.{MessageType, TMessage, TraceElement}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, AnyAbsMsg, CLInit, Exists, Forall, FreshRef, HNOE, LSAnyPred, LSAtom, LSBexp, LSConstraint, LSFalse, LSImplies, LSPred, LSSingle, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, SignatureMatcher}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, ConcreteVal, Equals, FieldPtEdge, HeapPtEdge, NPureVar, NamedPureVar, NotEquals, PureConstraint, PureExpr, PureVal, PureVar, State, StaticPtEdge, TopVal}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, ConcreteVal, Equals, FieldPtEdge, HeapPtEdge, MaterializedCallStackFrame, NPureVar, NamedPureVar, NotEquals, PureConstraint, PureExpr, PureVal, PureVar, State, StaticPtEdge, TopVal}
 
 import scala.collection.mutable
 
@@ -492,7 +492,8 @@ object EncodingTools {
 
     // marked pure vars
     val localPVs = state.callStack.flatMap{
-      case CallStackFrame(_, _, locals) => locals.collect{case (_,pv:PureVar) => pv}
+      case MaterializedCallStackFrame(_, _, locals) => locals.collect{case (_,pv:PureVar) => pv}
+      case _ => Set.empty
     }.toSet
     val heapPVs = state.heapConstraints.flatMap{
       case (FieldPtEdge(pv1, _), pv2) => Set(pv1,pv2)

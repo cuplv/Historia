@@ -937,6 +937,11 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
     }
   }
 
+  def frameChanged(sf1:CallStackFrame, sf2:CallStackFrame):Boolean = (sf1,sf2) match {
+    case (MaterializedCallStackFrame(exitLoc1, retLoc1, _), MaterializedCallStackFrame(exitLoc2, retLoc2, _)) =>
+      exitLoc1 != exitLoc2 || retLoc1 != retLoc2
+    case _ => ???
+  }
   /**
    * Call methods to choose where to go with symbolic execution and apply transfer functions
    * @param qry location and state combination
@@ -945,8 +950,37 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
   def executeStep(qry:Qry):Set[Qry] = qry match{
     case Qry(state, loc, Live) =>
       val predecessorLocations = controlFlowResolver.resolvePredicessors(loc,state)
+
       predecessorLocations.flatMap(l => { //see if .par here makes sense
-        val newStates = transfer.transfer(state,l,loc)
+        // filter based on fuzzy frames
+        val noFuzzState = state.getStateWithoutFuzzyFrames
+        val fuzzy = state.getFuzzyFrames
+
+        val newStatesNoFuzz = transfer.transfer(noFuzzState,l,loc)
+
+        // fuzzy frame filtering applies when transfer pops off a call sgring of size one and adds something new below
+        val newStates =  if(noFuzzState.sf.callStack.size == 1 && fuzzy.nonEmpty) {
+          newStatesNoFuzz.flatMap { s =>
+            if(s.sf.callStack.size == 1 && frameChanged(s.sf.callStack.head, noFuzzState.sf.callStack.head) ) {
+              // return to app loc
+              val retMethod = s.sf.callStack.head
+              val signatureOfRetM =
+                retMethod.asInstanceOf[MaterializedCallStackFrame].exitLoc.containingMethod.get.getSignature
+              val shouldMatch = fuzzy.head
+              val out = if(shouldMatch.signatureMatcher.matches(signatureOfRetM)(cha)) {
+                Some(s.addFuzzyFrames(fuzzy.tail))
+              } else {
+                None
+              }
+              out
+            }else if(s.sf.callStack.size == 0){
+              // return to fwk loc
+              None //TODO: double check if this case is ever reached for cb entry
+            }else Some(s.addFuzzyFrames(fuzzy))
+          }
+        }else newStatesNoFuzz
+
+        // simplify and weed out unsatisfiable states
         newStates.map(state => stateSolver.simplify(state, config.specSpace) match {
           case Some(state) if stateSolver.witnessed(state, config.specSpace).isDefined =>
             Qry(state, l, WitnessedQry(stateSolver.witnessed(state, config.specSpace)))

@@ -4,7 +4,7 @@ import better.files.File
 import edu.colorado.plv.bounder.{BounderUtil, PickleSpec, RunConfig}
 import edu.colorado.plv.bounder.BounderUtil.{Proven, ResultSummary, Unreachable, Witnessed}
 import edu.colorado.plv.bounder.ir.{CIExit, SootWrapper}
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, LSSpec, Not, Signature}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, ExactClassMatcher, LSSpec, Not, Signature}
 import edu.colorado.plv.bounder.lifestate.SpecSignatures.{Activity_onResume_entry, Button_init}
 import edu.colorado.plv.bounder.lifestate.ViewSpec.setOnClickListenerI
 import edu.colorado.plv.bounder.lifestate.{FragmentGetActivityNullSpec, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSignatures, SpecSpace, ViewSpec}
@@ -13,6 +13,9 @@ import edu.colorado.plv.bounder.symbolicexecutor.{ApproxMode, ExecutorConfig, Pr
 import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.onClickReach
 import edu.colorado.plv.bounder.testutils.MkApk
 import edu.colorado.plv.bounder.testutils.MkApk.makeApkWithSources
+import soot.Scene
+
+import scala.jdk.CollectionConverters.CollectionHasAsScala
 
 class IncorrectnessInterpreterTest extends FixtureAnyFunSuite{
 
@@ -27,6 +30,115 @@ class IncorrectnessInterpreterTest extends FixtureAnyFunSuite{
     )
   }
 
+  test("Test initial query stack trace guided") { f =>
+    val src =
+      """package com.example.createdestroy;
+        |import androidx.appcompat.app.AppCompatActivity;
+        |import android.os.Bundle;
+        |import android.util.Log;
+        |import java.lang.Runnable;
+        |
+        |import rx.Single;
+        |import rx.Subscription;
+        |import rx.android.schedulers.AndroidSchedulers;
+        |import rx.schedulers.Schedulers;
+        |import java.util.Random;
+        |
+        |
+        |public class MyActivity extends AppCompatActivity {
+        |    Random rand = new Random();
+        |    Object o = null;
+        |    Subscription subscription;
+        |    Runnable target = null;
+        |    static void irrelevant(){
+        |      Log.i("irrelevant","app method call");
+        |    }
+        |
+        |    protected void doThing(){
+        |       Log.i("b", o.toString()); //query1
+        |    }
+        |
+        |    public class Run1 implements Runnable{
+        |       @Override
+        |       public void run(){
+        |         MyActivity.this.doThing();
+        |       }
+        |    }
+        |
+        |    public class Run2 implements Runnable{
+        |       @Override
+        |       public void run(){
+        |         MyActivity.this.doThing();
+        |       }
+        |    }
+        |
+        |
+        |    @Override
+        |    protected void onResume() {
+        |       if(rand.nextInt(10)<5){ // source of non-determinism
+        |         target = new Run2();
+        |       }else{
+        |         target = new Run1();
+        |       }
+        |    }
+        |
+        |    @Override
+        |    protected void onPause() {
+        |       irrelevant();
+        |       if(rand.nextInt(10)<5){ // source of non-determinism
+        |         o.toString(); // query2
+        |       }else{
+        |         target.run();
+        |       }
+        |    }
+        |}""".stripMargin
+
+    val test: String => Unit = apk => {
+      assert(apk != null)
+      val specs = Set[LSSpec]()
+      val w = new SootWrapper(apk, specs)
+      val config = ExecutorConfig(
+        stepLimit = 200, w, new SpecSpace(specs),
+        component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
+      val symbolicExecutor = config.getAbstractInterpreter
+      val iquery = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+        "void doThing()"), BounderUtil.lineForRegex(".*query1.*".r, src), Some(".*toString.*"))
+
+      val query = InitialQueryWithStackTrace(
+        List(
+          ExactClassMatcher(".*",".*", "BogoAny"),
+          ExactClassMatcher(".*MyActivity\\$Run1", "void run.*", "Bogo1Run"),
+          ExactClassMatcher(".*MyActivity", "void onPause.*", "BogoPause")
+        )
+        ,iquery)
+      val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
+
+//      val appClasses = Scene.v().getClasses.asScala.filter{c =>
+//        c.getName.contains("com.example.createdestroy")
+//      }
+
+//      PrettyPrinting.dumpDebugInfo(result, "reachStackTrace")
+
+      assert(result.count { qry => qry.qry.isWitnessed } == 1)
+
+      BounderUtil.throwIfStackTrace(result)
+      f.expectReachable(BounderUtil.interpretResult(result, QueryFinished))
+
+      val iquery2 = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+        "void onPause()"), BounderUtil.lineForRegex(".*query2.*".r, src), Some(".*toString.*"))
+      val query2 = InitialQueryWithStackTrace(
+        List(ExactClassMatcher(".*MyActivity", "void onPause.*", "BogoPause")),
+        iquery2
+      )
+
+      val result2: Set[IPathNode] = symbolicExecutor.run(query2).flatMap(a => a.terminals)
+
+      assert(result2.count { qry => qry.qry.isWitnessed } == 1)
+
+    }
+
+    makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
+  }
   test("Antennapod execute reach paper motiv (Row2 Historia modified)") { f =>
     val row2Specs = Set[LSSpec](
       ViewSpec.clickWhileNotDisabled,

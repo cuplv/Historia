@@ -17,13 +17,14 @@ object CallStackFrame{
     case MaterializedCallStackFrame(exitLoc, retLoc, locals) => Some((exitLoc, retLoc, locals))
     case _ => ???
   }
-  implicit val rw:RW[CallStackFrame] = RW.merge(MaterializedCallStackFrame.rw)
+  implicit val rw:RW[CallStackFrame] = RW.merge(MaterializedCallStackFrame.rw, FuzzyAppMethodStackFrame.rw)
 }
 object MaterializedCallStackFrame{
   implicit val rw:RW[MaterializedCallStackFrame] = macroRW
 }
-case class FuzzyAppMethodStackFrame(signatureMatcher: SignatureMatcher) extends CallStackFrame{
-
+case class FuzzyAppMethodStackFrame(signatureMatcher: SignatureMatcher) extends CallStackFrame
+object FuzzyAppMethodStackFrame{
+  implicit val rw:RW[FuzzyAppMethodStackFrame] = macroRW
 }
 case class MaterializedCallStackFrame(exitLoc : Loc,
                                  retLoc: Option[AppLoc],

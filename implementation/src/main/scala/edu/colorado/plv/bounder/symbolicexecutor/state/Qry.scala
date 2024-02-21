@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, Signature}
+import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, Signature, SignatureMatcher}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, MustExecutor, TransferFunctions}
 import ujson.Value
@@ -212,14 +212,14 @@ object InitialQuery{
       case InitialQueryWithStackTrace(trace,qry) =>
         val m = Map(
           "t" -> "InitialQueryWithStackTrace",
-          "trace" -> trace,
+          "trace" -> write[List[SignatureMatcher]](trace),
           "internalQry" -> write[InitialQuery](qry)(InitialQuery.rw)
         ).map(vToJ)
         ujson.Obj.from(m)
     },
     json => json.obj("t").str match{
       case "InitialQueryWithStackTrace" =>
-        InitialQueryWithStackTrace(json.obj("trace").str, read[InitialQuery](json.obj("initialQuery").str)(InitialQuery.rw))
+        InitialQueryWithStackTrace(read[List[SignatureMatcher]](json.obj("trace").str), read[InitialQuery](json.obj("initialQuery").str)(InitialQuery.rw))
       case "Reachable" =>
         Reachable(Signature(json.obj("className").str, json.obj("methodName").str),json.obj("line").num.toInt)
       case "ReceiverNonNull" =>
@@ -236,14 +236,35 @@ object InitialQuery{
     }
   )
 }
-case class InitialQueryWithStackTrace(trace:String, qry:InitialQuery) extends InitialQuery  {
+case class InitialQueryWithStackTrace(trace:List[SignatureMatcher], qry:InitialQuery) extends InitialQuery  {
   override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] = {
     val internalQueries = qry.make(sym)
-    ???
+    if(trace.nonEmpty) {
+      // ignore all queries not matching stack
+      val queriesMatchingHead = internalQueries.filter { qry =>
+        qry.state.sf.callStack.head match {
+          case FuzzyAppMethodStackFrame(signatureMatcher) =>
+            throw new IllegalStateException("should not get fuzzy frame here")
+          case MaterializedCallStackFrame(exitLoc, retLoc, locals) =>
+            val shouldMatch = trace.head
+            val containingMethod = exitLoc.containingMethod.get.getSignature
+            shouldMatch.matches(containingMethod)(sym.getClassHierarchy)
+        }
+      }
+      val stackBase = trace.tail.map{m => FuzzyAppMethodStackFrame(m)}
+      // add fuzzy stack frames to each matching query
+      queriesMatchingHead.map{qry => qry.copy(state = qry.state.copy(
+        sf = qry.state.sf.copy(callStack =  qry.state.sf.callStack ++ stackBase)))}
+    }else{
+      internalQueries  // empty trace means no constraints
+    }
   }
 
   override def fileName: String = ???
 
+}
+object InitialQueryWithStackTrace{
+  def fromStackTrace(stackTrace:String):InitialQueryWithStackTrace = ???
 }
 case class Reachable(sig:Signature, line:Integer) extends InitialQuery {
   override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] =

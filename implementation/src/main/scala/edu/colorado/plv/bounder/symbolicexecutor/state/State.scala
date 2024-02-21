@@ -91,6 +91,14 @@ case class StateFormula(callStack: List[CallStackFrame], //TODO: cache z3 ast co
                         typeConstraints: Map[PureVar, TypeSet],
                         traceAbstraction: AbstractTrace,
                        ){
+  def fuzzyStack():List[FuzzyAppMethodStackFrame] = callStack.flatMap{
+    case f:FuzzyAppMethodStackFrame => Some(f)
+    case _ => None
+  }
+  def materializedStack():List[MaterializedCallStackFrame] = callStack.flatMap{
+    case f:MaterializedCallStackFrame => Some(f)
+    case _ => None
+  }
   override lazy val hashCode = super.hashCode()
   def clearPure(p: PureConstraint): StateFormula = this.copy(pureFormula = pureFormula - p)
 
@@ -279,6 +287,8 @@ case class State(sf:StateFormula,
                  isSimplified:Boolean = false, // should only be set by simplify method of StateSolver
                  currentCallback:Option[CallbackMethodReturn] = None // used to reduce state space explosion when widening call strings
                 ) {
+  def getStateWithoutFuzzyFrames:State = this.copy(sf = sf.copy(callStack = sf.materializedStack()))
+  def getFuzzyFrames:List[FuzzyAppMethodStackFrame] = sf.fuzzyStack()
   def mayBeNull(pv: PureVar): Boolean = {
     !sf.pureFormula.contains(PureConstraint(pv,NotEquals,NullVal))
   }
@@ -299,7 +309,8 @@ case class State(sf:StateFormula,
     }
 
     sf.callStack.flatMap{
-      case CallStackFrame(_,_,locals) => pVals(locals.values)
+      case MaterializedCallStackFrame(_,_,locals) => pVals(locals.values)
+      case _ => Set.empty
     }.toSet ++
       sf.heapConstraints.flatMap{
         case (FieldPtEdge(_,_),v) => pVals(Some(v))
@@ -706,6 +717,9 @@ case class State(sf:StateFormula,
                    (implicit ch:ClassHierarchyConstraints, w:IRWrapper[M,C]): State = {
     val cshead: MaterializedCallStackFrame = sf.callStack.headOption match {
       case Some(value: MaterializedCallStackFrame) => value
+      case Some(value) =>
+        println(value)
+        throw new IllegalStateException("Cannot define rval on fuzzy stack")
       case None =>
           throw new IllegalStateException(s"Expected non-empty stack, got ${sf.callStack}")
     }
@@ -845,6 +859,9 @@ case class State(sf:StateFormula,
   def isNull(pv:PureVar):Boolean = {
     sf.pureFormula.contains(PureConstraint(pv,Equals,NullVal))
   }
+
+  def addFuzzyFrames(fuzzy: List[FuzzyAppMethodStackFrame]): State =
+    this.copy(sf = sf.copy(callStack = sf.callStack ++ fuzzy))
 }
 
 sealed trait Var

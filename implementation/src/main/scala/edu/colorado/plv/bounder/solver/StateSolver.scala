@@ -886,9 +886,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       case _ => None
     }
     val stackVarCreatedInFuture = state2.callStack.exists {
-      case CallStackFrame(_, _, locals) => locals.values.exists {
+      case MaterializedCallStackFrame(_, _, locals) => locals.values.exists {
         createdInFuture.contains
       }
+      case _ => false
     }
 
 
@@ -898,6 +899,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     if (state2.sf.callStack.exists{
       case MaterializedCallStackFrame(_,_,locals) =>
         locals.getOrElse(StackVar("@this"), NPureVar(-1)) == NullVal
+      case _ => false
     }) {
       return None
     }
@@ -1641,8 +1643,9 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    */
   def levelLocalPv(s:State):Map[(String,Int), PureVar] = {
     s.callStack.zipWithIndex.flatMap{
-      case (CallStackFrame(_,_,locals), level) =>
+      case (MaterializedCallStackFrame(_,_,locals), level) =>
         locals.collect{case (StackVar(name),pValue:PureVar) => ((name,level),pValue)}
+      case _ => Map.empty
     }.toMap
   }
 
