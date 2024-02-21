@@ -159,7 +159,12 @@ object LimitMaterializedFieldsDropStatePolicy{
 
 case class LimitCallStringDropStatePolicy(calls:Int) extends DropQryPolicy{
 
-  override def shouldDrop(qry: IPathNode)(implicit db: OutputMode): Boolean = qry.state.sf.callStack.size > calls
+  override def shouldDrop(qry: IPathNode)(implicit db: OutputMode): Boolean = {
+    val shouldDrop = qry.state.sf.callStack.size > calls
+    if(shouldDrop)
+      println(s"LimitLocationVisitDropStatePolicy -- dropping state : ${qry.state} at location ${qry.qry.loc}")
+    shouldDrop
+  }
 }
 
 object LimitCallStringDropStatePolicy{
