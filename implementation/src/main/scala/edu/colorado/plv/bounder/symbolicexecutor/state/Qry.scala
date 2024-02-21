@@ -219,7 +219,7 @@ object InitialQuery{
     },
     json => json.obj("t").str match{
       case "InitialQueryWithStackTrace" =>
-        InitialQueryWithStackTrace(read[List[SignatureMatcher]](json.obj("trace").str), read[InitialQuery](json.obj("initialQuery").str)(InitialQuery.rw))
+        InitialQueryWithStackTrace(read[List[SignatureMatcher]](json.obj("trace").str), read[InitialQuery](json.obj("internalQry").str)(InitialQuery.rw))
       case "Reachable" =>
         Reachable(Signature(json.obj("className").str, json.obj("methodName").str),json.obj("line").num.toInt)
       case "ReceiverNonNull" =>
