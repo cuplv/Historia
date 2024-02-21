@@ -1356,6 +1356,10 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    */
   def canSubsume(s1: State, s2: State, specSpace: SpecSpace, maxLen: Option[Int] = None,
                  method:SubsumptionMethod = SubsZ3): Boolean = {
+    val s1Fuzz = s1.getFuzzyFrames
+    val s2Fuzz = s2.getFuzzyFrames
+    if(s1Fuzz != s2Fuzz)
+      return false
 //     val method = "Unify"//TODO: benchmark and see if this is actually faster: Idea run both and log times then hist
 //     val method = "Debug"
     val s1Hashable = s1.sf.makeHashable(specSpace)
@@ -1672,6 +1676,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
    * @return
    */
   def witnessed(state: State, specSpace: SpecSpace, debug:Boolean = false): Option[WitnessExplanation] = {
+    if(state.getFuzzyFrames.nonEmpty)
+      return None
 
     val startTime = System.nanoTime()
     val res:Option[WitnessExplanation] = None
