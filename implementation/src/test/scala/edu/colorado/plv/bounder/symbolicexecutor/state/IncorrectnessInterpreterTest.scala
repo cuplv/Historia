@@ -46,15 +46,22 @@ class IncorrectnessInterpreterTest extends FixtureAnyFunSuite{
         |
         |
         |public class MyActivity extends AppCompatActivity {
-        |    Random rand = new Random();
+        |    static Random rand = new Random();
         |    Object o = null;
         |    Subscription subscription;
         |    Runnable target = null;
         |    static void irrelevant(){
         |      Log.i("irrelevant","app method call");
         |    }
+        |    void relevant(){
+        |      if(rand.nextInt(10)<5){
+        |        o = new Object();
+        |      }
+        |    }
         |
         |    protected void doThing(){
+        |       relevant();
+        |       irrelevant();
         |       Log.i("b", o.toString()); //query1
         |    }
         |
@@ -118,6 +125,17 @@ class IncorrectnessInterpreterTest extends FixtureAnyFunSuite{
 //      }
 
 //      PrettyPrinting.dumpDebugInfo(result, "reachStackTrace")
+
+//      val witnessedQry = result.filter { qry => qry.qry.isWitnessed }.zipWithIndex
+//
+//      witnessedQry.foreach{
+//        case (node, i) =>
+//          println(s"Witness number: ${i}")
+//          println("-----")
+//          PrettyPrinting.witnessToTrace(List(node), false).foreach{tr =>
+//            println(s"  ${tr}")
+//          }
+//      }
 
       assert(result.count { qry => qry.qry.isWitnessed } == 1)
 

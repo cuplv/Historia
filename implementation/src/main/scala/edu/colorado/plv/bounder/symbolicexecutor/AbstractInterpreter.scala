@@ -976,6 +976,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
                 println(s"Found match for fuzzy frame ${fuzzy.head}")
                 Some(s.addFuzzyFrames(fuzzy.tail))
               } else {
+                println(s"Dropping location ${l} \n  state ${s}\n  No match for fuzzy frame ${shouldMatch} ")
                 None
               }
               out
@@ -984,7 +985,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
               None //TODO: double check if this case is ever reached for cb entry
             }else Some(s.addFuzzyFrames(fuzzy))
           }
-        }else newStatesNoFuzz
+        }else newStatesNoFuzz.map{s => s.addFuzzyFrames(fuzzy)}
 
         // simplify and weed out unsatisfiable states
         newStates.map(state => stateSolver.simplify(state, config.specSpace) match {
