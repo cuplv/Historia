@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.lifestate.LifeState.{LSSpec, Signature, SignatureMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{ExactClassMatcher, LSSpec, Signature, SignatureMatcher}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, MustExecutor, TransferFunctions}
 import ujson.Value
@@ -264,7 +264,28 @@ case class InitialQueryWithStackTrace(trace:List[SignatureMatcher], qry:InitialQ
 
 }
 object InitialQueryWithStackTrace{
-  def fromStackTrace(stackTrace:String):InitialQueryWithStackTrace = ???
+//  ExceptionUtils
+  def fromStackTrace(stackTrace:String, internalQuery:InitialQuery):InitialQueryWithStackTrace = {
+    val classAndMethod = parseStackTrace(stackTrace)
+    val matcherFrames = classAndMethod.map{
+      case (clazz,method) => ExactClassMatcher(clazz.replace(".", "\\."), s"${method}\\(.*" ,
+        s"FromTrace_${clazz}_${method}")
+    }
+    InitialQueryWithStackTrace(matcherFrames.toList, internalQuery)
+  }
+
+  def parseStackTrace(stackTrace: String): Seq[(String, String)] = {
+    // Regex pattern to match class and method names
+    val pattern = """at (\S+)\.([A-Za-z0-9$_]+)\(.*""".r
+
+    // Extract class and method names
+    stackTrace.split("\n").map{s => s.trim}.flatMap {
+      case pattern(className, methodName) =>
+        Some((className, methodName))
+      case _ =>
+        None
+    }
+  }
 }
 case class Reachable(sig:Signature, line:Integer) extends InitialQuery {
   override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] =

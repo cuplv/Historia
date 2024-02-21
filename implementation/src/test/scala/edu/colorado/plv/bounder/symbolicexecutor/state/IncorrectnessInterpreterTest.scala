@@ -139,6 +139,27 @@ class IncorrectnessInterpreterTest extends FixtureAnyFunSuite{
 
     makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
   }
+  test("convert stack to query with stack trace"){ f =>
+    val trace = """	at de.danoeh.antennapod.core.service.playback.PlaybackServiceStateManager.startForeground(SourceFile:21)
+                  |	at de.danoeh.antennapod.core.service.playback.PlaybackService$3.statusChanged(SourceFile:795)
+                  |	at de.danoeh.antennapod.playback.base.PlaybackServiceMediaPlayer.setPlayerStatus(SourceFile:323)
+                  |	at de.danoeh.antennapod.playback.base.PlaybackServiceMediaPlayer.setPlayerStatus(SourceFile:335)
+                  |	at de.danoeh.antennapod.core.service.playback.LocalPSMP.resumeSync(SourceFile:343)
+                  |	at de.danoeh.antennapod.core.service.playback.LocalPSMP.lambda$resume$3(SourceFile:318)
+                  |	at de.danoeh.antennapod.core.service.playback.LocalPSMP.lambda$resume$3$LocalPSMP(Unknown Source:0)
+                  |	at de.danoeh.antennapod.core.service.playback.-$$Lambda$LocalPSMP$J90tbi0_tjXUyTTozVsfBv3Gynw.run(Unknown Source:2)
+                  |	at de.danoeh.antennapod.core.service.playback.LocalPSMP$PlayerExecutor.submit(SourceFile:95)
+                  |	at de.danoeh.antennapod.core.service.playback.LocalPSMP.resume(SourceFile:316)
+                  |	at de.danoeh.antennapod.core.service.playback.PlaybackService.resume(SourceFile:1523)
+                  |	at de.danoeh.antennapod.core.service.playback.PlaybackService$9.onPlay(SourceFile:1680)
+                  |""".stripMargin
+
+    val iquery2 = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+      "void onPause()"), 2, Some(".*toString.*"))
+    val initial = InitialQueryWithStackTrace.fromStackTrace(trace, iquery2)
+    println(initial)
+  }
+
   test("Antennapod execute reach paper motiv (Row2 Historia modified)") { f =>
     val row2Specs = Set[LSSpec](
       ViewSpec.clickWhileNotDisabled,
