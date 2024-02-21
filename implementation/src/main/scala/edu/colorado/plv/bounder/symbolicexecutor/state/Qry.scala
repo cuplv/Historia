@@ -252,6 +252,11 @@ case class InitialQueryWithStackTrace(trace:List[SignatureMatcher], qry:InitialQ
         }
       }
       val stackBase = trace.tail.map{m => FuzzyAppMethodStackFrame(m)}
+
+      if(queriesMatchingHead.isEmpty){
+        println(s"!!!Warning!!! All queries inconsistent with required stack trace: \n " +
+          s"${trace.map{m => m.toString}.mkString("\n")}")
+      }
       // add fuzzy stack frames to each matching query
       queriesMatchingHead.map{qry => qry.copy(state = qry.state.copy(
         sf = qry.state.sf.copy(callStack =  qry.state.sf.callStack ++ stackBase)))}
