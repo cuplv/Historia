@@ -983,7 +983,9 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
             }else if(s.sf.callStack.size == 0){
               // return to fwk loc
               None //TODO: double check if this case is ever reached for cb entry
-            }else Some(s.addFuzzyFrames(fuzzy))
+            }else {
+              Some(s.addFuzzyFrames(fuzzy))
+            }
           }
         }else newStatesNoFuzz.map{s => s.addFuzzyFrames(fuzzy)}
 
