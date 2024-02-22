@@ -8,7 +8,7 @@ import edu.colorado.plv.bounder.lifestate.LifeState.OAbsMsg
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.EncodingTools.repHeapCells
 import edu.colorado.plv.bounder.solver.{EncodingTools, Z3StateSolver}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, CallStackFrame, DBOutputMode, FieldPtEdge, FrameworkLocation, HashableStateFormula, HeapPtEdge, IPathNode, InitialQuery, Live, MaterializedCallStackFrame, MemoryOutputMode, NPureVar, NoOutputMode, OrdCount, OutputMode, PathNode, PureExpr, Qry, State, StaticPtEdge, SubsumableLocation, SwapLoc, WitnessedQry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, CallStackFrame, DBOutputMode, FieldPtEdge, FrameworkLocation, FuzzyAppMethodStackFrame, HashableStateFormula, HeapPtEdge, IPathNode, InitialQuery, Live, MaterializedCallStackFrame, MemoryOutputMode, NPureVar, NoOutputMode, OrdCount, OutputMode, PathNode, PureExpr, Qry, State, StaticPtEdge, SubsumableLocation, SwapLoc, WitnessedQry}
 
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import scala.collection.parallel.immutable.ParIterable
@@ -90,7 +90,7 @@ sealed trait DropQryPolicy{
 }
 object DropQryPolicy{
   implicit var rw:RW[DropQryPolicy] = RW.merge(LimitMsgCountDropStatePolicy.rw, LimitLocationVisitDropStatePolicy.rw,
-    LimitCallStringDropStatePolicy.rw, LimitMaterializedFieldsDropStatePolicy.rw)
+    LimitCallStringDropStatePolicy.rw, LimitMaterializedFieldsDropStatePolicy.rw, LimitAppRecursionDropStatePolicy.rw)
 }
 
 case class LimitMsgCountDropStatePolicy(count:Int) extends DropQryPolicy{
@@ -155,6 +155,26 @@ case class LimitMaterializedFieldsDropStatePolicy(nameCount:Map[String,Int]) ext
 
 object LimitMaterializedFieldsDropStatePolicy{
   implicit val rw:RW[LimitMaterializedFieldsDropStatePolicy] = macroRW
+}
+
+case class LimitAppRecursionDropStatePolicy(calls:Int) extends DropQryPolicy{
+
+  override def shouldDrop(qry: IPathNode)(implicit db: OutputMode): Boolean = {
+    val stack = qry.state.sf.callStack.flatMap{
+      case m:MaterializedCallStackFrame => Some(m)
+      case _ => None
+    }.groupBy{
+        case MaterializedCallStackFrame(exitLoc, _, _) => exitLoc
+      }
+    val shouldDrop = stack.exists{case (loc, frames) => frames.size > calls}
+    if(shouldDrop)
+      println(s"LimitAppRecursionDropStatePolicy -- dropping state : ${qry.state} at location ${qry.qry.loc}")
+    shouldDrop
+  }
+}
+
+object LimitAppRecursionDropStatePolicy{
+  implicit val rw:RW[LimitAppRecursionDropStatePolicy] = macroRW
 }
 
 case class LimitCallStringDropStatePolicy(calls:Int) extends DropQryPolicy{
