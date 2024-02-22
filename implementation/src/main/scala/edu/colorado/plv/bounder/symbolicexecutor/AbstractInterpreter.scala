@@ -110,6 +110,22 @@ case class DumpTraceAtLocationPolicy(appMethod:Option[SignatureMatcher], findLin
           traceFile.append(s"\n=== ${inv} ====\n")
           traceFile.append(trace.mkString("\n"))
         }
+      case inv@CallbackMethodInvoke(sig, loc) if appMethod.isDefined && findLine.isEmpty =>
+        val matcher = appMethod.get
+        if(matcher.matches(sig)(null)){
+          val trace: Seq[String] = PrettyPrinting.witnessToTrace(List(qry),false)
+          val traceFile = (outputFolderF / "dbg_appmethod_traces.txt")
+          traceFile.append(s"\n=== ${inv} ====\n")
+          traceFile.append(trace.mkString("\n"))
+        }
+      case inv@CallbackMethodReturn(sig, loc, line) if appMethod.isDefined && findLine.isEmpty =>
+        val matcher = appMethod.get
+        if(matcher.matches(sig)(null)){
+          val trace: Seq[String] = PrettyPrinting.witnessToTrace(List(qry),false)
+          val traceFile = (outputFolderF / "dbg_appmethod_traces.txt")
+          traceFile.append(s"\n=== ${inv} ====\n")
+          traceFile.append(trace.mkString("\n"))
+        }
       case al@AppLoc(method, line, isPre) if findLine.nonEmpty =>
         val matcher = appMethod.getOrElse(ExactClassMatcher.anyMethod)
         if(line.lineNumber == findLine.get && matcher.matches(method.getSignature)(null)){
