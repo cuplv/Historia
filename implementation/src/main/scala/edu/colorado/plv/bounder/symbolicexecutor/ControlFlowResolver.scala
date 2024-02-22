@@ -795,9 +795,13 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
             case (_, InternalMethodReturn(clazz, name, loc)) if m.containingMethod.exists(_.isNative()) =>
               SkippedInternalMethodReturn(clazz, name, NotRelevantMethod, loc)
             case (RelevantMethod,_) => m
-            case (NotRelevantMethod, InternalMethodReturn(_, _, _)) if state.containsLocal(tgt) =>
-              // don't skip method if return value is materialized
-              m
+            case (NotRelevantMethod, InternalMethodReturn(clazz, name, loc)) if state.containsLocal(tgt) =>
+              // don't skip method if return value is materialized unless synthetic
+              if(m.containingMethod.exists{_.isSynthetic}){
+                SkippedInternalMethodReturn(clazz,name,NotRelevantMethod,loc)
+              }else {
+                m
+              }
             case (NotRelevantMethod, InternalMethodReturn(clazz, name, loc)) =>
               SkippedInternalMethodReturn(clazz, name,NotRelevantMethod,loc)
             case v => throw new IllegalStateException(s"$v")

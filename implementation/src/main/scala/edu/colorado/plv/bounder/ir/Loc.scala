@@ -50,6 +50,7 @@ trait MethodLoc {
   def getArgs : List[Option[LocalWrapper]]
   def isStatic:Boolean
   def isInterface:Boolean
+  def isSynthetic:Boolean
 }
 object MethodLoc {
   private val rmQuotes: Regex = "^\"(.*)\"$".r

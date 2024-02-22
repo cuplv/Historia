@@ -1989,6 +1989,8 @@ case class JimpleMethodLoc(method: SootMethod) extends MethodLoc {
   override def isStatic: Boolean = method.isStatic
 
   override def isInterface: Boolean = method.getDeclaringClass.isInterface
+
+  override def isSynthetic: Boolean = (method.getModifiers & Modifier.SYNTHETIC) != 0
 }
 case class JimpleLineLoc(cmd: soot.Unit, unitNum:Int, method: SootMethod) extends LineLoc{
   lazy val cmdString: String = cmd.toString

@@ -115,6 +115,8 @@ case class SerializedIRMethodLoc(clazz:String, name:String, args:List[Option[Loc
   override def bodyToString: String = ???
 
   override def isNative(): Boolean = ???
+
+  override def isSynthetic: Boolean = ???
 }
 
 object SerializedIRMethodLoc{
