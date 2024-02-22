@@ -3,7 +3,9 @@ package edu.colorado.plv.bounder
 import java.util.{Collections, UUID}
 import better.files.File
 import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdNotImplemented, CmdWrapper, FieldReference, Goto, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, Loc, LocalWrapper, MethodLoc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SpecialInvoke, StaticFieldReference, SwitchCmd, ThrowCmd, VirtualInvoke}
-import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, ExecutorConfig, QueryFinished, QueryInterrupted, QueryResult}
+import edu.colorado.plv.bounder.lifestate.LifeState.SignatureMatcher
+import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
+import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, ControlFlowResolver, ExecutorConfig, QueryFinished, QueryInterrupted, QueryResult}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, CallStackFrame, IPathNode, InitialQuery, Live, MaterializedCallStackFrame, NoOutputMode, OutputMode, PathNode, Qry, WitnessedQry}
 
 import scala.annotation.tailrec
@@ -16,6 +18,32 @@ import scala.collection.parallel.CollectionConverters.IterableIsParallelizable
 import scala.jdk.CollectionConverters._
 
 object BounderUtil {
+
+  /**
+   *
+   * @param trace
+   * @return
+   */
+  def validateWithCallGraph[M,C](trace:List[SignatureMatcher], cha:ClassHierarchyConstraints,
+                            resolver:ControlFlowResolver[M,C]):Boolean = trace match{
+    case callee::caller::t =>
+      val calleePossibilities: Set[MethodLoc] = resolver.getAppCodeResolver.appMethods.filter{ mloc => callee.matches(mloc.getSignature)(cha)}
+      val callerPossibilities: Set[MethodLoc] = resolver.getAppCodeResolver.appMethods.filter{ mloc => caller.matches(mloc.getSignature)(cha)}
+      val currentCallMayExist = callerPossibilities.exists{(m:MethodLoc) =>
+        val methods = resolver.callsToRetLoc(m,false)
+        methods.exists{call => calleePossibilities.contains(call)}
+      }
+      if(!currentCallMayExist) {
+        println(s"Call from ${callee} to ${caller} does not exist in call graph")
+        false
+      }else{
+        validateWithCallGraph(caller::t,cha,resolver)
+      }
+    case h::Nil =>
+      val callbackPossibilities = resolver.getAppCodeResolver.getCallbacks.find(cb => h.matches(cb.getSignature)(cha))
+      callbackPossibilities.nonEmpty
+    case Nil => true
+  }
   /**
    * Combine maps adding same keys together
    */

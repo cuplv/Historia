@@ -238,6 +238,7 @@ object InitialQuery{
 }
 case class InitialQueryWithStackTrace(trace:List[SignatureMatcher], qry:InitialQuery) extends InitialQuery  {
   override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] = {
+    assert(BounderUtil.validateWithCallGraph(trace, sym.getClassHierarchy, sym.controlFlowResolver))
     val internalQueries = qry.make(sym)
     if(trace.nonEmpty) {
       // ignore all queries not matching stack

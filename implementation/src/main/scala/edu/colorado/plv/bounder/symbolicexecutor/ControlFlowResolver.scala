@@ -145,7 +145,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     }
   }
 
-  private def callsToRetLoc(loc: MethodLoc, includeCallin: Boolean): Set[MethodLoc] = {
+  def callsToRetLoc(loc: MethodLoc, includeCallin: Boolean): Set[MethodLoc] = {
     val directCalls = directCallsGraph(loc)
     val internalCalls = directCalls.flatMap {
       case InternalMethodReturn(_, _, oloc) =>
