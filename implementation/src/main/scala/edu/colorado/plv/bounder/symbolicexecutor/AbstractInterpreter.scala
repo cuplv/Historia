@@ -974,6 +974,11 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
    */
   def executeStep(qry:Qry):Set[Qry] = qry match{
     case Qry(state, loc, Live) =>
+      loc match {
+        case AppLoc(method, line, isPre) if config.printAAProgress && line.lineNumber > 0 =>
+          println(s"got location: ${line.lineNumber} of ${line.containingMethod}")
+        case _ =>
+      }
       val predecessorLocations = controlFlowResolver.resolvePredicessors(loc,state)
 
       predecessorLocations.flatMap(l => { //see if .par here makes sense
