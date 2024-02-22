@@ -392,7 +392,7 @@ class IncorrectnessInterpreterTest extends FixtureAnyFunSuite{
     val cfgPath = File("cfg.json")
     cfgPath.overwrite(write(cfg))
   }
-  test("Test switch") {
+  test("Test switch") { f =>
     List(
       (".*query1.*".r,Witnessed),
     ).map { case (queryL, expectedResult) =>
@@ -413,10 +413,21 @@ class IncorrectnessInterpreterTest extends FixtureAnyFunSuite{
            |public class MyActivity extends AppCompatActivity {
            |    String o = null;
            |    Subscription subscription;
-           |    Integer stupid = 0;
            |    interface SomethingAble{
            |      void run();
            |    }
+           |    public enum StupidEnum{
+           |      DUMB(10),
+           |      ALSODUMB(20);
+           |
+           |      private static final StupidEnum[] fromOrdinalLookup;
+           |      static {
+           |         fromOrdinalLookup = StupidEnum.values();
+           |      }
+           |      private final int statusValue;
+           |      StupidEnum(int i){statusValue = i;}
+           |    }
+           |    StupidEnum stupid = StupidEnum.DUMB;
            |    SomethingAble r = null;
            |
            |    @Override
@@ -425,7 +436,7 @@ class IncorrectnessInterpreterTest extends FixtureAnyFunSuite{
            |        r = new SomethingAble(){
            |          @Override
            |          public void run(){
-           |            MyActivity.this.stupid = 1;
+           |            MyActivity.this.stupid = StupidEnum.ALSODUMB;
            |            o = null;
            |          }
            |        };
@@ -435,12 +446,15 @@ class IncorrectnessInterpreterTest extends FixtureAnyFunSuite{
            |    protected void onDestroy() {
            |        super.onDestroy();
            |        r.run();
+           |        stupid = StupidEnum.ALSODUMB;
+           |        if(stupid == StupidEnum.ALSODUMB){
            |        switch (stupid){
-           |          case 0:
+           |          case DUMB:
            |            break;
-           |          case 1:
+           |          case ALSODUMB:
            |            o.toString(); //query1 no NPE
            |            break;
+           |        }
            |        }
            |    }
            |}""".stripMargin
@@ -460,6 +474,10 @@ class IncorrectnessInterpreterTest extends FixtureAnyFunSuite{
           "void onDestroy()"), i, Some(".*toString.*"))
         val qs = write[InitialQuery](query)
 
+        val relClasses = Scene.v().getClasses.asScala.filter{c =>
+          val name = c.getName
+          name.contains("com.example.createdestroy")
+        }
 
         val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
         PrettyPrinting.dumpDebugInfo(result, "dynamicDispatchTest2")

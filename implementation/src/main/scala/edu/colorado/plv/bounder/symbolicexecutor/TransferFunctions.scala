@@ -935,9 +935,20 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     }
   }
 
+  def isEnum(v:RVal, method:MethodLoc):Boolean = v match {
+    case LocalWrapper(name, t) =>
+      method.getLocals().exists{
+        case (lname,ltype) if lname == name =>
+          val superC = classHierarchyConstraints.getSupertypesOf(ltype)
+          superC.contains("java.lang.Enum")
+        case _ => false
+      }
+    case _ => false // enums seem to always be in locals?
+  }
   def assumeInState(method:MethodLoc, bExp:RVal, state:State, negate: Boolean): Option[State] = bExp match{
     case BoolConst(b) if b != negate => Some(state)
     case BoolConst(b) if b == negate => None
+    case Binop(v1, _, v2) if isEnum(v1,method) || isEnum(v2,method) => Some(state) //TODO: ignoring enum for now
     case Binop(v1, op, v2) =>
       val (v1Val, state0) = state.getOrDefine2(v1, method)
       val (v2Val, state1) = state0.getOrDefine2(v2, method)

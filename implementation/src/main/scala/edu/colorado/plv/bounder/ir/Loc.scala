@@ -34,6 +34,7 @@ object Loc{
  * A method definition overridden by the IR wrapper implementation
  */
 trait MethodLoc {
+  def getLocals():Set[(String,String)]
   def isNative():Boolean
 
   def getSignature:Signature = Signature(classType,simpleName)
