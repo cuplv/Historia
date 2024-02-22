@@ -1,14 +1,16 @@
 package edu.colorado.plv.bounder.symbolicexecutor
 
+import better.files.File
+
 import java.time.Instant
 import upickle.default.{macroRW, read, write, ReadWriter => RW}
 import edu.colorado.plv.bounder.{BounderUtil, RunConfig}
 import edu.colorado.plv.bounder.ir.{AppLoc, CBEnter, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, Goto, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, InvokeCmd, Loc, MethodLoc, NopCmd, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SwitchCmd, ThrowCmd, TopTypeSet, VirtualInvoke}
-import edu.colorado.plv.bounder.lifestate.LifeState.OAbsMsg
+import edu.colorado.plv.bounder.lifestate.LifeState.{ExactClassMatcher, OAbsMsg, SignatureMatcher}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.EncodingTools.repHeapCells
 import edu.colorado.plv.bounder.solver.{EncodingTools, Z3StateSolver}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, CallStackFrame, DBOutputMode, FieldPtEdge, FrameworkLocation, FuzzyAppMethodStackFrame, HashableStateFormula, HeapPtEdge, IPathNode, InitialQuery, Live, MaterializedCallStackFrame, MemoryOutputMode, NPureVar, NoOutputMode, OrdCount, OutputMode, PathNode, PureExpr, Qry, State, StaticPtEdge, SubsumableLocation, SwapLoc, WitnessedQry}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, CallStackFrame, DBOutputMode, FieldPtEdge, FrameworkLocation, FuzzyAppMethodStackFrame, HashableStateFormula, HeapPtEdge, IPathNode, InitialQuery, Live, MaterializedCallStackFrame, MemoryOutputMode, NPureVar, NoOutputMode, OrdCount, OutputMode, PathNode, PrettyPrinting, PureExpr, Qry, State, StaticPtEdge, SubsumableLocation, SwapLoc, WitnessedQry}
 
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import scala.collection.parallel.immutable.ParIterable
@@ -90,7 +92,39 @@ sealed trait DropQryPolicy{
 }
 object DropQryPolicy{
   implicit var rw:RW[DropQryPolicy] = RW.merge(LimitMsgCountDropStatePolicy.rw, LimitLocationVisitDropStatePolicy.rw,
-    LimitCallStringDropStatePolicy.rw, LimitMaterializedFieldsDropStatePolicy.rw, LimitAppRecursionDropStatePolicy.rw)
+    LimitCallStringDropStatePolicy.rw, LimitMaterializedFieldsDropStatePolicy.rw, LimitAppRecursionDropStatePolicy.rw,
+    DumpTraceAtLocationPolicy.rw)
+}
+
+case class DumpTraceAtLocationPolicy(appMethod:Option[SignatureMatcher], findLine:Option[Int],
+                                     outputFolder:String) extends DropQryPolicy{
+  val outputFolderF = File(outputFolder)
+
+  override def shouldDrop(qry: IPathNode)(implicit db: OutputMode): Boolean = {
+    qry.qry.loc match {
+      case inv@InternalMethodInvoke(clazz, name, loc) if appMethod.isDefined && findLine.isEmpty =>
+        val matcher = appMethod.get
+        if(matcher.matchesClass(clazz) && matcher.matchesSubSig(name)){
+          val trace: Seq[String] = PrettyPrinting.witnessToTrace(List(qry),false)
+          val traceFile = (outputFolderF / "dbg_appmethod_traces.txt")
+          traceFile.append(s"\n=== ${inv} ====\n")
+          traceFile.append(trace.mkString("\n"))
+        }
+      case al@AppLoc(method, line, isPre) if findLine.nonEmpty =>
+        val matcher = appMethod.getOrElse(ExactClassMatcher.anyMethod)
+        if(line.lineNumber == findLine.get && matcher.matches(method.getSignature)(null)){
+          val traceFile = (outputFolderF / "dbg_appmethod_traces.txt")
+          val trace: Seq[String] = PrettyPrinting.witnessToTrace(List(qry),false)
+          traceFile.append(s"\n=== ${al} ====\n")
+          traceFile.append(trace.mkString("\n"))
+        }
+      case _ =>
+    } //.containingMethod.exists(m => matcher.matches(m.getSignature)(null))
+    false
+  }
+}
+object DumpTraceAtLocationPolicy{
+  implicit val rw:RW[DumpTraceAtLocationPolicy] = macroRW
 }
 
 case class LimitMsgCountDropStatePolicy(count:Int) extends DropQryPolicy{

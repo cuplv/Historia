@@ -791,6 +791,8 @@ object LifeState {
   }
   object ExactClassMatcher{
     implicit val rw:RW[ExactClassMatcher] = macroRW
+
+    val anyMethod = ExactClassMatcher(".*", ".*", "AnyMethod")
   }
   // A method with a signature in "signatures" has been invoed
   // lsVars: element 0 is return value, element 1 is reciever, rest of the elements are arguemnts
