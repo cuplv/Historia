@@ -386,49 +386,72 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         case s:SpecialInvoke => Some(s.target)
         case _:StaticInvoke => None
       }
+      val out = if(resolver.resolveCallLocation(irWrapper.makeInvokeTargets(al.copy(isPre=false))).size > 1) {
+        // receiver must be non-null for invoke to be possible
+        val postState2 = if (receiverOption.exists {
+          postState.containsLocal
+        }) {
+          val localV = postState.get(receiverOption.get).get
+          //        postState.copy(pureFormula = postState.pureFormula + PureConstraint(localV, NotEquals, NullVal))
+          postState.addPureConstraint(PureConstraint(localV, NotEquals, NullVal))
+        } else postState
 
-      // receiver must be non-null for invoke to be possible
-      val postState2 = if(receiverOption.exists{postState.containsLocal}) {
-        val localV = postState.get(receiverOption.get).get
-//        postState.copy(pureFormula = postState.pureFormula + PureConstraint(localV, NotEquals, NullVal))
-        postState.addPureConstraint(PureConstraint(localV, NotEquals, NullVal))
-      } else postState
+        val argOptions: List[Option[RVal]] = cmd.params.map(Some(_))
+        val state0 = postState2.setNextCmd(List(source))
 
-      val argOptions: List[Option[RVal]] = cmd.params.map(Some(_))
-      val state0 = postState2.setNextCmd(List(source))
+        // Always define receiver if non-static method to reduce dynamic dispatch imprecision
+        val (receiverValue, stateWithRecTypeCst) = if (receiverOption.isDefined) {
+          val (receiverValue, stateWithRec) = state0.getOrDefine(LocalWrapper("@this", invokeType),
+            source.containingMethod)
+          (Some(receiverValue), stateWithRec.addPureConstraint(PureConstraint(receiverValue, NotEquals, NullVal))
+            .constrainUpperType(receiverValue, invokeType, ch))
+        } else
+          (None, state0)
 
-      // Always define receiver if non-static method to reduce dynamic dispatch imprecision
-      val (receiverValue,stateWithRecTypeCst) = if(receiverOption.isDefined){
-        val (receiverValue, stateWithRec) = state0.getOrDefine(LocalWrapper("@this", invokeType),
-          source.containingMethod)
-        (Some(receiverValue),stateWithRec.addPureConstraint(PureConstraint(receiverValue, NotEquals, NullVal))
-          .constrainUpperType(receiverValue, invokeType, ch))
-      }else
-        (None,state0)
+        // Get values associated with arguments in state
+        val frameArgVals: List[Option[PureExpr]] =
+          cmd.params.indices.map(i => stateWithRecTypeCst.get(LocalWrapper(s"@parameter$i", "_"))).toList
 
-      // Get values associated with arguments in state
-      val frameArgVals: List[Option[PureExpr]] =
-        cmd.params.indices.map(i => stateWithRecTypeCst.get(LocalWrapper(s"@parameter$i", "_"))).toList
+        // Combine args and params into list of tuples
+        val allArgs = receiverOption :: argOptions
+        val allParams: Seq[Option[PureExpr]] = (receiverValue :: frameArgVals)
+        val argsAndVals: List[(Option[RVal], Option[PureExpr])] = allArgs zip allParams
 
-      // Combine args and params into list of tuples
-      val allArgs = receiverOption :: argOptions
-      val allParams: Seq[Option[PureExpr]] = (receiverValue::frameArgVals)
-      val argsAndVals: List[(Option[RVal], Option[PureExpr])] = allArgs zip allParams
-
-      // Possible stack frames for source of call being a callback or internal method call
-      val out = if (stateWithRecTypeCst.callStack.size == 1) {
-        val newStackFrames: List[CallStackFrame] =
-          BounderUtil.resolveMethodReturnForAppLoc(resolver, al).map(mr => CallStackFrame(mr, None, Map()))
-        val newStacks = newStackFrames.map{frame =>
-          frame :: (if (stateWithRecTypeCst.callStack.isEmpty) Nil else stateWithRecTypeCst.callStack.tail)}
-        val nextStates = newStacks.map(newStack => stateWithRecTypeCst.setCallStack(newStack))
-        nextStates.map(nextState => defineVarsAs(nextState, argsAndVals)).toSet
-      }else if (stateWithRecTypeCst.callStack.size > 1){
-        val state1 = stateWithRecTypeCst.setCallStack(stateWithRecTypeCst.callStack.tail)
-        Set(defineVarsAs(state1, argsAndVals))
+        // Possible stack frames for source of call being a callback or internal method call
+        if (stateWithRecTypeCst.callStack.size == 1) {
+          val newStackFrames: List[CallStackFrame] =
+            BounderUtil.resolveMethodReturnForAppLoc(resolver, al).map(mr => CallStackFrame(mr, None, Map()))
+          val newStacks = newStackFrames.map { frame =>
+            frame :: (if (stateWithRecTypeCst.callStack.isEmpty) Nil else stateWithRecTypeCst.callStack.tail)
+          }
+          val nextStates = newStacks.map(newStack => stateWithRecTypeCst.setCallStack(newStack))
+          nextStates.map(nextState => defineVarsAs(nextState, argsAndVals)).toSet
+        } else if (stateWithRecTypeCst.callStack.size > 1) {
+          val state1 = stateWithRecTypeCst.setCallStack(stateWithRecTypeCst.callStack.tail)
+          Set(defineVarsAs(state1, argsAndVals))
+        } else {
+          throw new IllegalStateException("Abstract state should always have a " +
+            "stack when returning from internal method.")
+        }
       }else{
-        throw new IllegalStateException("Abstract state should always have a " +
-          "stack when returning from internal method.")
+        // don't materialize receiver if monomorphic call site
+        // Possible stack frames for source of call being a callback or internal method call
+        if (postState.callStack.size == 1) {
+          val newStackFrames: List[CallStackFrame] =
+            BounderUtil.resolveMethodReturnForAppLoc(resolver, al).map(mr => CallStackFrame(mr, None, Map()))
+          val newStacks = newStackFrames.map { frame =>
+            frame :: (if (postState.callStack.isEmpty) Nil else postState.callStack.tail)
+          }
+          val nextStates = newStacks.map(newStack => postState.setCallStack(newStack))
+//          nextStates.map(nextState => defineVarsAs(nextState, argsAndVals)).toSet
+          nextStates.toSet
+        } else if (postState.callStack.size > 1) {
+          val state1 = postState.setCallStack(postState.callStack.tail)
+          Set(state1)
+        } else {
+          throw new IllegalStateException("Abstract state should always have a " +
+            "stack when returning from internal method.")
+        }
       }
       out.map(_.copy(nextCmd = List(target), alternateCmd = Nil))
     case (retloc@AppLoc(mloc, line, false), mRet: InternalMethodReturn) =>
