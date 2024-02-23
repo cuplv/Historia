@@ -3,11 +3,11 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import better.files.Resource
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{derefNameOf, findFirstDerefFor}
-import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CBExit, CIEnter, CIExit, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, FieldReference, Goto, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, JimpleMethodLoc, LVal, LineLoc, Loc, LocalWrapper, MethodLoc, NopCmd, NullConst, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper, SpecialInvoke, StaticFieldReference, StaticInvoke, SwitchCmd, ThrowCmd, TopTypeSet, TypeSet, UnresolvedMethodTarget, VirtualInvoke}
+import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CBExit, CIEnter, CIExit, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, EmptyTypeSet, FieldReference, Goto, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, Invoke, InvokeCmd, JimpleMethodLoc, LVal, LineLoc, Loc, LocalWrapper, MethodLoc, NopCmd, NullConst, ReturnCmd, SkippedInternalMethodInvoke, SkippedInternalMethodReturn, SootWrapper, SpecialInvoke, StaticFieldReference, StaticInvoke, SwitchCmd, ThrowCmd, TopTypeSet, TypeSet, UnresolvedMethodTarget, VirtualInvoke}
 import edu.colorado.plv.bounder.lifestate.LifeState.{OAbsMsg, Signature}
 import edu.colorado.plv.bounder.lifestate.{LifecycleSpec, RxJavaSpec, SAsyncTask, SJavaThreading, SpecSignatures, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, DirectInitialQuery, FieldPtEdge, HeapPtEdge, InitialQuery, NullVal, Qry, ReceiverNonNull}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, DirectInitialQuery, FieldPtEdge, HeapPtEdge, InitialQuery, NullVal, PureExpr, PureVar, Qry, ReceiverNonNull, State, StaticPtEdge}
 import scalaz.Memo
 
 import scala.annotation.tailrec
@@ -27,6 +27,10 @@ trait AppCodeResolver {
   def resolveCallbackExit(method: MethodLoc, retCmdLoc: Option[LineLoc]): Option[Loc]
 
   def resolveCallbackEntry(method: MethodLoc): Option[Loc]
+
+
+  def cellMayBeWritten(edge: HeapPtEdge, state:State):Boolean
+  def fieldMayBeWritten(field: (HeapPtEdge, PureExpr), state:State):Boolean
 
   def getCallbacks: Set[MethodLoc]
 
@@ -77,11 +81,18 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
 
   var appMethods: Set[MethodLoc] = ir.getAllMethods.filter(m => !isFrameworkClass(m.classType)).toSet
   private def iGetCallbacks():Set[MethodLoc] = appMethods.filter(resolveCallbackEntry(_).isDefined)
-  private var callbacks:Set[MethodLoc] = iGetCallbacks()
-  override def getCallbacks:Set[MethodLoc] = callbacks
+  private var callbacks:Set[MethodLoc] = null
+  override def getCallbacks:Set[MethodLoc] = {
+    iGetCallbacks() // Some kind of race condition here prevents finding all the callbacks, call twice in the hopes that its better
+    if(callbacks == null) {
+      callbacks = iGetCallbacks()
+    }
+    callbacks
+  }
+
   def invalidateCallbacks() = {
     appMethods = ir.getAllMethods.filter(m => !isFrameworkClass(m.classType)).toSet
-    callbacks = iGetCallbacks()
+    callbacks = null //iGetCallbacks()
   }
 
   override def heuristicCiFlowsToDeref[M,C](messages:Set[OAbsMsg], filter:Option[String],
@@ -549,5 +560,61 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
 //      Some(CallbackMethodInvoke(leastPrecise.classType, leastPrecise.simpleName, method))
       Some(CallbackMethodInvoke(Signature(method.classType, leastPrecise.simpleName), method))
     } else None
+  }
+
+
+  case class FieldsLookup(staticFields:Map[(String,String), TypeSet], dynamicFields:Map[String,Set[(TypeSet,TypeSet)]])
+  lazy val fieldsLookup:FieldsLookup = {
+    val staticFields = mutable.Map[(String,String), TypeSet]()
+    val dynamicFields = mutable.Map[String, Set[(TypeSet,TypeSet)]]()
+    appMethods.foreach{appMethod =>
+      if(ir.appCallSites(appMethod, this).nonEmpty || getCallbacks(appMethod)) { //TODO: should ensure method can be called
+        ir.findInMethod(appMethod.classType, appMethod.simpleName, {
+          case AssignCmd(StaticFieldReference(declaringClass, fieldName, _), source, loc) =>
+            val sourcePts = ir.pointsToSet(appMethod, source)
+            val staticFieldsKey = (declaringClass, fieldName)
+            val oldStaticFieldsPt = staticFields.getOrElse(staticFieldsKey, EmptyTypeSet)
+            val newStaticFieldsPt = oldStaticFieldsPt.union(sourcePts)
+            staticFields.put(staticFieldsKey, newStaticFieldsPt)
+            false
+          case AssignCmd(FieldReference(base, _, _, name), tgt, _) =>
+            //if(name == "media" || name == "callback"){
+              //println()
+            //}
+            val basePts = ir.pointsToSet(appMethod, base)
+            val tgtPts = ir.pointsToSet(appMethod, tgt)
+            val oldFieldPtsList: Set[(TypeSet, TypeSet)] = dynamicFields.getOrElse(name, Set.empty)
+            if (!oldFieldPtsList.exists { case (pt1, pt2) => pt1.contains(basePts) && pt2.contains(tgtPts) }) {
+              val toAdd: (TypeSet, TypeSet) = (basePts, tgtPts)
+              dynamicFields.put(name, oldFieldPtsList + toAdd)
+            }
+            false
+          case _ => false
+        }, emptyOk = true)
+      }
+    }
+    FieldsLookup(staticFields.toMap, dynamicFields.toMap)
+  }
+  def cellMayBeWritten(edge: HeapPtEdge, state:State):Boolean = edge match{
+    case FieldPtEdge(base, fieldName) =>
+      val baseTypeSet = state.sf.typeConstraints.getOrElse(base, TopTypeSet)
+      fieldsLookup.dynamicFields.get(fieldName).exists{writes =>
+        writes.exists{case (ts1, _) => baseTypeSet.intersectNonEmpty(ts1)}}
+    case StaticPtEdge(clazz, name) =>
+      fieldsLookup.staticFields.contains((clazz,name))
+  }
+
+  def fieldMayBeWritten(field: (HeapPtEdge, PureExpr), state:State):Boolean = field match {
+    case (FieldPtEdge(base, fieldName), tgt: PureVar) =>
+      val baseTypeSet = state.sf.typeConstraints.getOrElse(base, TopTypeSet)
+      val tgtTypeSet = state.sf.typeConstraints.getOrElse(tgt, TopTypeSet)
+      !fieldsLookup.dynamicFields.getOrElse(fieldName, Set()).exists { case (otherBase, otherTgt) =>
+        baseTypeSet.intersectNonEmpty(otherBase) && tgtTypeSet.intersectNonEmpty(otherTgt)
+      }
+    case (StaticPtEdge(clazz, name), tgt: PureVar) =>
+      val tgtTypes = state.sf.typeConstraints.getOrElse(tgt, TopTypeSet)
+      val intersected = fieldsLookup.staticFields.getOrElse((clazz, name), TopTypeSet).intersect(tgtTypes)
+      intersected.isEmpty
+    case _ => false
   }
 }

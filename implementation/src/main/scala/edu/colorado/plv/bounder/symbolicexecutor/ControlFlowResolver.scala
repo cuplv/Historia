@@ -9,7 +9,7 @@ import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, OAbsMsg, Signature}
 import edu.colorado.plv.bounder.lifestate.SpecSpace.{allI, allPosI}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, ClassVal, FieldPtEdge, IntVal, NullVal, PureExpr, PureVar, State, StaticPtEdge, StringVal, TopVal}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, ClassVal, FieldPtEdge, HeapPtEdge, IntVal, NullVal, PrettyPrinting, PureExpr, PureVar, State, StaticPtEdge, StringVal, TopVal}
 import scalaz.Memo
 import soot.Scene
 import upickle.default.{macroRW, ReadWriter => RW}
@@ -20,7 +20,6 @@ import scala.collection.parallel.CollectionConverters.ImmutableIterableIsParalle
 import scala.collection.parallel.immutable.ParIterable
 import scala.util.matching.Regex
 import scala.collection.parallel.CollectionConverters.IterableIsParallelizable
-import edu.colorado.plv.bounder.symbolicexecutor.state.PrettyPrinting
 
 sealed trait RelevanceRelation{
   def join(other: RelevanceRelation):RelevanceRelation
@@ -145,6 +144,12 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     }
   }
 
+  /**
+   *
+   * @param loc calling method
+   * @param includeCallin should result include callins
+   * @return methods that may be called by loc
+   */
   def callsToRetLoc(loc: MethodLoc, includeCallin: Boolean): Set[MethodLoc] = {
     val directCalls = directCallsGraph(loc)
     val internalCalls = directCalls.flatMap {
@@ -697,48 +702,9 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       ???
   }
 
-  case class FieldsLookup(staticFields:Map[(String,String), TypeSet], dynamicFields:Map[String,Set[(TypeSet,TypeSet)]])
-  lazy val fieldsLookup:FieldsLookup = {
-    val staticFields = mutable.Map[(String,String), TypeSet]()
-    val dynamicFields = mutable.Map[String, Set[(TypeSet,TypeSet)]]()
-    resolver.appMethods.foreach{appMethod =>
-      wrapper.findInMethod(appMethod.classType, appMethod.simpleName, {
-        case AssignCmd(StaticFieldReference(declaringClass, fieldName, _), source, loc) =>
-          val sourcePts = wrapper.pointsToSet(appMethod, source)
-          val staticFieldsKey = (declaringClass, fieldName)
-          val oldStaticFieldsPt = staticFields.getOrElse(staticFieldsKey, EmptyTypeSet)
-          val newStaticFieldsPt = oldStaticFieldsPt.union(sourcePts)
-          staticFields.put(staticFieldsKey, newStaticFieldsPt)
-          false
-        case AssignCmd(FieldReference(base, _,_,name), tgt, _) =>
-          val basePts = wrapper.pointsToSet(appMethod, base)
-          val tgtPts = wrapper.pointsToSet(appMethod,tgt)
-          val oldFieldPtsList:Set[(TypeSet,TypeSet)] = dynamicFields.getOrElse(name, Set.empty)
-          if(!oldFieldPtsList.exists{case (pt1, pt2) => pt1.contains(basePts) && pt2.contains(tgtPts)}){
-            val toAdd:(TypeSet,TypeSet) = (basePts, tgtPts)
-            dynamicFields.put(name,oldFieldPtsList + toAdd)
-          }
-          false
-        case _ => false
-      }, emptyOk = true)
-    }
-    FieldsLookup(staticFields.toMap, dynamicFields.toMap)
-  }
   def allFieldsMayBeWritten(state:State):Boolean = {
     // find heap cells that cannot be allocated anywhere
-    val res = state.sf.heapConstraints.find{
-      case (FieldPtEdge(base,fieldName), tgt:PureVar) =>
-        val baseTypeSet = state.sf.typeConstraints.getOrElse(base,TopTypeSet)
-        val tgtTypeSet = state.sf.typeConstraints.getOrElse(tgt,TopTypeSet)
-        !fieldsLookup.dynamicFields.getOrElse(fieldName, Set()).exists{case (otherBase, otherTgt) =>
-          baseTypeSet.intersectNonEmpty(otherBase) && tgtTypeSet.intersectNonEmpty(otherTgt)
-        }
-      case (StaticPtEdge(clazz,name), tgt:PureVar) =>
-        val tgtTypes = state.sf.typeConstraints.getOrElse(tgt, TopTypeSet)
-        val intersected = fieldsLookup.staticFields.getOrElse((clazz, name), TopTypeSet).intersect(tgtTypes)
-        intersected.isEmpty
-      case _ => false
-    }
+    val res = state.sf.heapConstraints.find{f => resolver.fieldMayBeWritten(f, state)}
     if(res.nonEmpty){
       println(s"Field ${res.head} cannot be written anywhere, dropping containing state ${state}.")
       res.head._2 match {

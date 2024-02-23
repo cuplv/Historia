@@ -691,54 +691,62 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
     case ReturnCmd(None, _) => Set(state)
     case AssignCmd(lhs: LocalWrapper, FieldReference(base, fieldType, _, fieldName), l) =>
       // x = y.f
-      state.get(lhs) match { //TODO: some kind of imprecision here or in the simplification shown by "Test dynamic dispatch 2"
-        case Some(lhsV) => {
-          val (basev, state1) = state.getOrDefine(base,Some(l.method))
-          // get all heap cells with correct field name that can alias
-          val possibleHeapCells = state1.heapConstraints.filter {
-            case (FieldPtEdge(pv, heapFieldName), materializedTgt) =>
-              val fieldEq = fieldName == heapFieldName
-              //TODO: === check that contianing method works here
-              lazy val canAlias = state1.canAlias(pv,l.containingMethod.get, base,w,inCurrentStackFrame = true)
-              lazy val tgtCanAlias = state1.canAliasEE(lhsV, materializedTgt)
-              fieldEq && canAlias && tgtCanAlias //TODO: is target ok here?
-            case _ =>
-              false
-          }
-          val statesWhereBaseAliasesExisting: Set[State] = possibleHeapCells.map {
-            case (FieldPtEdge(p, _), heapV) =>
-              state1.addPureConstraint(PureConstraint(basev, Equals, p))
-                .addPureConstraint(PureConstraint(lhsV, Equals, heapV))
-            case _ => throw new IllegalStateException()
-          }.toSet
-
-          basev match{
-            case basev:PureVar => {
-              val heapCell = FieldPtEdge(basev, fieldName)
-
-              val pfFromExisting = if (state1.sf.heapConstraints.contains(heapCell)) {
-                val oldV = state1.sf.heapConstraints(heapCell)
-                Some(PureConstraint(oldV, Equals, lhsV))
-              } else {
-                None
-              }
-              val stateWhereNoHeapCellIsAliased = state1.copy(sf = state1.sf.copy(
-                heapConstraints = state1.heapConstraints + (heapCell -> lhsV),
-                pureFormula = state1.pureFormula ++ pfFromExisting ++ possibleHeapCells.map {
-                  case (FieldPtEdge(p, _), _) => PureConstraint(p, NotEquals, basev)
-                  case _ => throw new IllegalStateException()
-                }
-              ))
-              val res = statesWhereBaseAliasesExisting + stateWhereNoHeapCellIsAliased
-              res.map(s => s.clearLVal(lhs))
+      val (yval, stateWithY) = state.getOrDefine(base,Some(l.method))
+      val mayWrite =
+        resolver.cellMayBeWritten(FieldPtEdge(yval.asInstanceOf[PureVar],fieldName), stateWithY)
+      if(mayWrite) {
+        state.get(lhs) match { //TODO: some kind of imprecision here or in the simplification shown by "Test dynamic dispatch 2"
+          case Some(lhsV) => {
+            val (basev, state1) = state.getOrDefine(base, Some(l.method))
+            // get all heap cells with correct field name that can alias
+            val possibleHeapCells = state1.heapConstraints.filter {
+              case (FieldPtEdge(pv, heapFieldName), materializedTgt) =>
+                val fieldEq = fieldName == heapFieldName
+                //TODO: === check that contianing method works here
+                lazy val canAlias = state1.canAlias(pv, l.containingMethod.get, base, w, inCurrentStackFrame = true)
+                lazy val tgtCanAlias = state1.canAliasEE(lhsV, materializedTgt)
+                fieldEq && canAlias && tgtCanAlias //TODO: is target ok here?
+              case _ =>
+                false
             }
-            case _:PureVal => Set.empty
+            val statesWhereBaseAliasesExisting: Set[State] = possibleHeapCells.map {
+              case (FieldPtEdge(p, _), heapV) =>
+                state1.addPureConstraint(PureConstraint(basev, Equals, p))
+                  .addPureConstraint(PureConstraint(lhsV, Equals, heapV))
+              case _ => throw new IllegalStateException()
+            }.toSet
+
+            basev match {
+              case basev: PureVar => {
+                val heapCell = FieldPtEdge(basev, fieldName)
+
+                val pfFromExisting = if (state1.sf.heapConstraints.contains(heapCell)) {
+                  val oldV = state1.sf.heapConstraints(heapCell)
+                  Some(PureConstraint(oldV, Equals, lhsV))
+                } else {
+                  None
+                }
+                val stateWhereNoHeapCellIsAliased = state1.copy(sf = state1.sf.copy(
+                  heapConstraints = state1.heapConstraints + (heapCell -> lhsV),
+                  pureFormula = state1.pureFormula ++ pfFromExisting ++ possibleHeapCells.map {
+                    case (FieldPtEdge(p, _), _) => PureConstraint(p, NotEquals, basev)
+                    case _ => throw new IllegalStateException()
+                  }
+                ))
+                val res = statesWhereBaseAliasesExisting + stateWhereNoHeapCellIsAliased
+                res.map(s => s.clearLVal(lhs))
+              }
+              case _: PureVal => Set.empty
+            }
+          }
+          case None => if (canWeaken) Set(state) else {
+            val (yPointsTo, stateWithMaterializedY) = state.getOrDefine(base, Some(l.method))
+            Set(stateWithMaterializedY.addPureConstraint(PureConstraint(yPointsTo, NotEquals, NullVal)))
           }
         }
-        case None => if(canWeaken) Set(state) else {
-          val (yPointsTo, stateWithMaterializedY) = state.getOrDefine(base,Some(l.method))
-          Set(stateWithMaterializedY.addPureConstraint(PureConstraint(yPointsTo, NotEquals, NullVal)))
-        }
+      }else {
+        println(s"not materializing dynamic field ${fieldName} because it cannot be written. Method: ${state.sf.callStack.headOption}")
+        Set(state.clearLVal(lhs))
       }
     case AssignCmd(FieldReference(base, fieldType, _, fieldName), rhs, l) =>
       // x.f = y
@@ -835,17 +843,22 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         case None => state
       }
       cmdTransfer(AssignCmd(l,local,cmdloc),state1)
-    case AssignCmd(l:LocalWrapper, StaticFieldReference(declaringClass, fname, containedType), _) =>
-      if(fname.contains("R$id")){
-        Set(state.clearLVal(l)) // Don't care about this always just set to integer
-      }else {
-        if (state.containsLocal(l)) {
-          val v = state.get(l).get
-          val state1 = state.clearLVal(l)
-          Set(state1.copy(sf =
-            state1.sf.copy(heapConstraints = state1.heapConstraints + (StaticPtEdge(declaringClass, fname) -> v),
-            )).constrainUpperType(v, containedType, ch))
-        } else Set(state)
+    case AssignCmd(l:LocalWrapper, ref@StaticFieldReference(declaringClass, fname, containedType), _) =>
+      if(resolver.cellMayBeWritten(StaticPtEdge(declaringClass,fname), state)) {
+        if (fname.contains("R$id")) {
+          Set(state.clearLVal(l)) // Don't care about this always just set to integer
+        } else {
+          if (state.containsLocal(l)) {
+            val v = state.get(l).get
+            val state1 = state.clearLVal(l)
+            Set(state1.copy(sf =
+              state1.sf.copy(heapConstraints = state1.heapConstraints + (StaticPtEdge(declaringClass, fname) -> v),
+              )).constrainUpperType(v, containedType, ch))
+          } else Set(state)
+        }
+      }else{
+        println(s"not materializing static field ${declaringClass} ${fname} because it cannot be written. Method: ${state.sf.callStack.headOption}")
+        Set(state.clearLVal(l))
       }
     case AssignCmd(StaticFieldReference(declaringClass,fieldName,_), l,_) =>
       val edge = StaticPtEdge(declaringClass, fieldName)
