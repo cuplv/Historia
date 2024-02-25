@@ -325,10 +325,10 @@ trait CallGraphProvider{
  * see Application-only Call Graph Construction, Karim Ali
  * @param cg
  */
-class AppOnlyCallGraph(cg: CallGraph,
+class AppOnlyCallGraph[M,C](cg: CallGraph,
                        callbacks: Set[SootMethod],
                        wrapper: SootWrapper,
-                       resolver: AppCodeResolver) extends CallGraphProvider {
+                       resolver: AppCodeResolver[M,C]) extends CallGraphProvider {
   sealed trait PointLoc
   case class FieldPoint(clazz: SootClass, fname: String) extends PointLoc
   case class LocalPoint(method: SootMethod, locName:String) extends PointLoc
@@ -684,7 +684,8 @@ class SootWrapper(apkPath : String,
 
   private val appMethodCache : scala.collection.mutable.Set[SootMethod] = scala.collection.mutable.Set()
 
-  val resolver = new DefaultAppCodeResolver[SootMethod, soot.Unit](this)
+  val resolver = new AppCodeResolver[SootMethod, soot.Unit](this)
+  override def getAppCodeResolver = resolver
 
 
   // ** Instrument framework methods to generate app only call graph **
@@ -1320,7 +1321,7 @@ class SootWrapper(apkPath : String,
     val unitInd = findUnitIndex(containingMethod, u)
     AppLoc(JimpleMethodLoc(containingMethod),JimpleLineLoc(u, unitInd,containingMethod),false)
   }
-  protected def getAppMethods(resolver: AppCodeResolver):Set[SootMethod] = {
+  protected def getAppMethods(resolver: AppCodeResolver[SootMethod, soot.Unit]):Set[SootMethod] = {
     if(appMethodCache.isEmpty) {
       val classes = Scene.v().getApplicationClasses
       classes.forEach(c =>
@@ -1733,7 +1734,7 @@ class SootWrapper(apkPath : String,
 
   //TODO: check that this function covers all cases
   private val callSiteCache = mutable.HashMap[MethodLoc, Seq[AppLoc]]()
-  override def appCallSites(method_in: MethodLoc, resolver:AppCodeResolver): Seq[AppLoc] = {
+  override def appCallSites(method_in: MethodLoc): Seq[AppLoc] = {
     if(method_in.simpleName == "void <clinit>()")
       return List()
     val method = method_in.asInstanceOf[JimpleMethodLoc]

@@ -397,7 +397,7 @@ object BounderUtil {
     iGraphExists(start, Set())
   }
 
-  def resolveMethodEntryForAppLoc(resolver : AppCodeResolver, appLoc: AppLoc) :List[Loc]= {
+  def resolveMethodEntryForAppLoc[M,C](resolver : AppCodeResolver[M,C], appLoc: AppLoc) :List[Loc]= {
     resolver.resolveCallbackEntry(appLoc.method) match {
       case Some(CallbackMethodInvoke(sig, loc)) =>
         CallbackMethodInvoke(sig, loc)::
@@ -409,7 +409,7 @@ object BounderUtil {
         throw new IllegalArgumentException
     }
   }
-  def resolveMethodReturnForAppLoc(resolver : AppCodeResolver, appLoc: AppLoc) :List[Loc]= {
+  def resolveMethodReturnForAppLoc[M,C](resolver : AppCodeResolver[M,C], appLoc: AppLoc) :List[Loc]= {
     resolver.resolveCallbackEntry(appLoc.method) match {
       case Some(CallbackMethodInvoke(sig, loc)) =>
         CallbackMethodReturn(sig, loc, None)::

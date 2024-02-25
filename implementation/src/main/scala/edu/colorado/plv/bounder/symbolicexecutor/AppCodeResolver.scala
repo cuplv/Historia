@@ -16,39 +16,41 @@ import scala.collection.parallel.CollectionConverters.ImmutableIterableIsParalle
 import scala.util.matching.Regex
 import scala.util.Random
 
-trait AppCodeResolver {
-  def appMethods: Set[MethodLoc]
-  def isFrameworkClass(packageName: String): Boolean
-
-  def isAppClass(fullClassName: String): Boolean
-
-  def resolveCallLocation(tgt: UnresolvedMethodTarget): Set[Loc]
-
-  def resolveCallbackExit(method: MethodLoc, retCmdLoc: Option[LineLoc]): Option[Loc]
-
-  def resolveCallbackEntry(method: MethodLoc): Option[Loc]
-
-
-  def cellMayBeWritten(edge: HeapPtEdge, state:State):Boolean
-  def fieldMayBeWritten(field: (HeapPtEdge, PureExpr), state:State):Boolean
-
-  def getCallbacks: Set[MethodLoc]
-
-
-  def heuristicCiFlowsToDeref[M, C](messages: Set[OAbsMsg], filter: Option[String],
-                                    abs: AbstractInterpreter[M, C]): Set[InitialQuery]
-  // heuristic to find dereference of field in a ui callback like onClick
-  def heuristicDerefNullFinish[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[InitialQuery]
-  def heuristicDerefNullSynch[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[InitialQuery]
-  def derefFromField[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry]
-  def derefFromCallin[M,C](callins: Set[OAbsMsg], filter:Option[String], abs:AbstractInterpreter[M,C]):Set[InitialQuery]
-
-  def allDeref[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry]
-  def nullValueMayFlowTo[M,C](sources: Iterable[AppLoc],
-                         cfRes: ControlFlowResolver[M, C]): Set[AppLoc]
-
-  def matchesCI(i: Invoke, cbMsg:Iterable[OAbsMsg])(implicit ch:ClassHierarchyConstraints): Set[OAbsMsg]
-}
+//trait AppCodeResolver {
+//  def sampleDeref(packageFilter:Option[String]):AppLoc
+//  def callbackInComponent(loc: Loc): Boolean
+//  def appMethods: Set[MethodLoc]
+//  def isFrameworkClass(packageName: String): Boolean
+//
+//  def isAppClass(fullClassName: String): Boolean
+//
+//  def resolveCallLocation(tgt: UnresolvedMethodTarget): Set[Loc]
+//
+//  def resolveCallbackExit(method: MethodLoc, retCmdLoc: Option[LineLoc]): Option[Loc]
+//
+//  def resolveCallbackEntry(method: MethodLoc): Option[Loc]
+//
+//
+//  def cellMayBeWritten(edge: HeapPtEdge, state:State):Boolean
+//  def fieldMayBeWritten(field: (HeapPtEdge, PureExpr), state:State):Boolean
+//
+//  def getCallbacks: Set[MethodLoc]
+//
+//
+//  def heuristicCiFlowsToDeref[M, C](messages: Set[OAbsMsg], filter: Option[String],
+//                                    abs: AbstractInterpreter[M, C]): Set[InitialQuery]
+//  // heuristic to find dereference of field in a ui callback like onClick
+//  def heuristicDerefNullFinish[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[InitialQuery]
+//  def heuristicDerefNullSynch[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[InitialQuery]
+//  def derefFromField[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry]
+//  def derefFromCallin[M,C](callins: Set[OAbsMsg], filter:Option[String], abs:AbstractInterpreter[M,C]):Set[InitialQuery]
+//
+//  def allDeref[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry]
+//  def nullValueMayFlowTo[M,C](sources: Iterable[AppLoc],
+//                         cfRes: ControlFlowResolver[M, C]): Set[AppLoc]
+//
+//  def matchesCI(i: Invoke, cbMsg:Iterable[OAbsMsg])(implicit ch:ClassHierarchyConstraints): Set[OAbsMsg]
+//}
 object FrameworkExtensions{
   private val urlPos = List("FrameworkExtensions.txt",
     "/Resources/FrameworkExtensions.txt",
@@ -75,14 +77,103 @@ object FrameworkExtensions{
   val extensionRegex: Regex = extensionStrings.mkString("|").r
 }
 
-class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
+case class FilterResolver[M,C](component:Option[Seq[String]]){
+  private val (componentPos, componentNeg) = component match{
+    case Some(filters) =>
+      val spl = filters.groupBy(_.startsWith("!"))
+      (spl.getOrElse(false, Nil).map(_.r), spl.getOrElse(true, Nil).map(_.tail).map(_.r))
+    case None => (List(".*".r), List())
+  }
+
+  def callbackInComponent(loc: Loc): Boolean = loc match {
+    case CallbackMethodReturn(_, methodLoc, _) =>
+      val className = methodLoc.classType
+      val pos = componentPos.exists(p => p.matches(className))
+      val neg = componentNeg.forall(n => !n.matches(className))
+      pos && neg
+    case _ => throw new IllegalStateException("callbackInComponent should only be called on callback returns")
+  }
+  def computeFieldsLookup(ir:IRWrapper[M,C]):FieldsLookup = {
+    val resolver = ir.getAppCodeResolver
+    val staticFields = mutable.Map[(String, String), TypeSet]()
+    val dynamicFields = mutable.Map[String, Set[(TypeSet, TypeSet)]]()
+    resolver.appMethods.foreach { appMethod =>
+      if (ir.appCallSites(appMethod).nonEmpty || ir.getAppCodeResolver.getCallbacks(appMethod)) { //TODO: should ensure method can be called
+        ir.findInMethod(appMethod.classType, appMethod.simpleName, {
+          case AssignCmd(StaticFieldReference(declaringClass, fieldName, _), source, loc) =>
+            val sourcePts = ir.pointsToSet(appMethod, source)
+            val staticFieldsKey = (declaringClass, fieldName)
+            val oldStaticFieldsPt = staticFields.getOrElse(staticFieldsKey, EmptyTypeSet)
+            val newStaticFieldsPt = oldStaticFieldsPt.union(sourcePts)
+            staticFields.put(staticFieldsKey, newStaticFieldsPt)
+            false
+          case AssignCmd(FieldReference(base, _, _, name), tgt, _) =>
+            //if(name == "media" || name == "callback"){
+            //println()
+            //}
+            val basePts = ir.pointsToSet(appMethod, base)
+            val tgtPts = ir.pointsToSet(appMethod, tgt)
+            val oldFieldPtsList: Set[(TypeSet, TypeSet)] = dynamicFields.getOrElse(name, Set.empty)
+            if (!oldFieldPtsList.exists { case (pt1, pt2) => pt1.contains(basePts) && pt2.contains(tgtPts) }) {
+              val toAdd: (TypeSet, TypeSet) = (basePts, tgtPts)
+              dynamicFields.put(name, oldFieldPtsList + toAdd)
+            }
+            false
+          case _ => false
+        }, emptyOk = true)
+      }
+    }
+    FieldsLookup(staticFields.toMap, dynamicFields.toMap)
+  }
+  val fieldsLookupCache = mutable.Map[IRWrapper[M,C], FieldsLookup]()
+  def fieldsLookup(ir:IRWrapper[M,C]): FieldsLookup = {
+    if(!fieldsLookupCache.contains(ir)){
+      val fl = computeFieldsLookup(ir)
+      fieldsLookupCache.put(ir,fl)
+    }
+    fieldsLookupCache(ir)
+  }
+
+  case class FieldsLookup(staticFields:Map[(String,String), TypeSet], dynamicFields:Map[String,Set[(TypeSet,TypeSet)]])
+  def cellMayBeWritten(ir:IRWrapper[M,C],edge: HeapPtEdge, state:State):Boolean = edge match{
+    case FieldPtEdge(base, fieldName) =>
+      val baseTypeSet = state.sf.typeConstraints.getOrElse(base, TopTypeSet)
+      fieldsLookup(ir).dynamicFields.get(fieldName).exists{writes =>
+        writes.exists{case (ts1, _) => baseTypeSet.intersectNonEmpty(ts1)}}
+    case StaticPtEdge(clazz, name) =>
+      fieldsLookup(ir).staticFields.contains((clazz,name))
+  }
+
+  def fieldMayBeWritten(ir:IRWrapper[M,C],field: (HeapPtEdge, PureExpr), state:State):Boolean = field match {
+    case (FieldPtEdge(base, fieldName), tgt: PureVar) =>
+      val baseTypeSet = state.sf.typeConstraints.getOrElse(base, TopTypeSet)
+      val tgtTypeSet = state.sf.typeConstraints.getOrElse(tgt, TopTypeSet)
+      !fieldsLookup(ir).dynamicFields.getOrElse(fieldName, Set()).exists { case (otherBase, otherTgt) =>
+        baseTypeSet.intersectNonEmpty(otherBase) && tgtTypeSet.intersectNonEmpty(otherTgt)
+      }
+    case (StaticPtEdge(clazz, name), tgt: PureVar) =>
+      val tgtTypes = state.sf.typeConstraints.getOrElse(tgt, TopTypeSet)
+      val intersected = fieldsLookup(ir).staticFields.getOrElse((clazz, name), TopTypeSet).intersect(tgtTypes)
+      intersected.isEmpty
+    case _ => false
+  }
+}
+/**
+ *
+ * @param ir
+ * @param component limit analysis to packages matching expressions in here, use ! to say "not this component"
+ * @tparam M
+ * @tparam C
+ */
+class AppCodeResolver[M,C] (ir: IRWrapper[M,C]) {
 
   protected val excludedClasses = "dummyMainClass".r
+
 
   var appMethods: Set[MethodLoc] = ir.getAllMethods.filter(m => !isFrameworkClass(m.classType)).toSet
   private def iGetCallbacks():Set[MethodLoc] = appMethods.filter(resolveCallbackEntry(_).isDefined)
   private var callbacks:Set[MethodLoc] = null
-  override def getCallbacks:Set[MethodLoc] = {
+  def getCallbacks:Set[MethodLoc] = {
     iGetCallbacks() // Some kind of race condition here prevents finding all the callbacks, call twice in the hopes that its better
     if(callbacks == null) {
       callbacks = iGetCallbacks()
@@ -95,7 +186,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     callbacks = null //iGetCallbacks()
   }
 
-  override def heuristicCiFlowsToDeref[M,C](messages:Set[OAbsMsg], filter:Option[String],
+  def heuristicCiFlowsToDeref[M,C](messages:Set[OAbsMsg], filter:Option[String],
                                             abs:AbstractInterpreter[M,C]):Set[InitialQuery] = {
 
     val swappedMessages = messages.flatMap{
@@ -131,7 +222,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     }
   }
 
-  override def heuristicDerefNullFinish[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[InitialQuery] = {
+  def heuristicDerefNullFinish[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[InitialQuery] = {
     // look for finish use somewhere in the app
     val filteredAppMethods: Set[MethodLoc] = filtereAppMethods(filter)
     val cfRes = abs.controlFlowResolver
@@ -152,7 +243,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
       methodIsMatchingCb(finishSensitiveCbs, method))
   }
 
-  override def heuristicDerefNullSynch[M, C](filter: Option[String], abs: AbstractInterpreter[M, C]): Set[InitialQuery] = {
+  def heuristicDerefNullSynch[M, C](filter: Option[String], abs: AbstractInterpreter[M, C]): Set[InitialQuery] = {
     implicit val ch = abs.getClassHierarchy
     val syncCallbacks = List(SpecSignatures.RxJava_call_entry, SAsyncTask.postExecuteI,
       SJavaThreading.runnableI, SJavaThreading.callableI)
@@ -226,7 +317,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
    * @param abs abstract interpreter class
    * @return queries for dereferences that may crash
    */
-  override def derefFromField[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry] = {
+  def derefFromField[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry] = {
     val derefToFilter = allDeref(filter, abs)
     def callbackEntryWithNullField(qry:Qry):Boolean = {
       qry.state.callStack.isEmpty && {
@@ -255,7 +346,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
    * @param abs abstract interpreter class
    * @return query locations that may crash if callin returns null
    */
-  override def derefFromCallin[M,C](callins: Set[OAbsMsg], filter:Option[String],
+  def derefFromCallin[M,C](callins: Set[OAbsMsg], filter:Option[String],
                                     abs:AbstractInterpreter[M,C]):Set[InitialQuery] = {
     // Add callins to matcher space of spec so they show up in abstract states
     val absCallinAdded =
@@ -288,7 +379,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
       ReceiverNonNull(qry.loc.containingMethod.get.getSignature, appLoc.line.lineNumber,derefNameOf(appLoc, ir))}
   }
 
-  override def allDeref[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry] = {
+  def allDeref[M,C](filter:Option[String], abs:AbstractInterpreter[M,C]):Set[Qry] = {
     val appClasses = appMethods.map(m => m.classType)
     val filtered = appClasses.filter(c => filter.forall(c.startsWith))
     val initialQueries = filtered.map(c => AllReceiversNonNull(c))
@@ -304,7 +395,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
    * @param cfRes Control flow resolver
    * @return
    */
-  override def nullValueMayFlowTo[M,C](sources:Iterable[AppLoc],
+  def nullValueMayFlowTo[M,C](sources:Iterable[AppLoc],
                                          cfRes:ControlFlowResolver[M,C]):Set[AppLoc] = {
 
     //TODO: this is meant to be a interprocedural version of "findFirstDerefFor", only complete if needed
@@ -382,7 +473,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
 
   }
 
-  override def matchesCI(i: Invoke, cbMsg:Iterable[OAbsMsg])(implicit ch:ClassHierarchyConstraints): Set[OAbsMsg] = {
+  def matchesCI(i: Invoke, cbMsg:Iterable[OAbsMsg])(implicit ch:ClassHierarchyConstraints): Set[OAbsMsg] = {
     val sig = i.targetSignature
     cbMsg.filter { oMsg =>
       List(CIEnter, CIExit).exists { mt => oMsg.contains(mt, sig) }
@@ -511,7 +602,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
   }
 
 
-  override def resolveCallLocation(tgt: UnresolvedMethodTarget): Set[Loc] = {
+  def resolveCallLocation(tgt: UnresolvedMethodTarget): Set[Loc] = {
     tgt.loc.map{m =>
       val classType = m.classType
       if(isFrameworkClass(classType)){
@@ -523,7 +614,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
   }
 
   private val CLINIT = "void <clinit>()"
-  override def resolveCallbackExit(method: MethodLoc, retCmdLoc: Option[LineLoc]): Option[Loc] = {
+  def resolveCallbackExit(method: MethodLoc, retCmdLoc: Option[LineLoc]): Option[Loc] = {
 //    if(method.simpleName == CLINIT){
 //      return Some(CallbackMethodReturn(method.classType, CLINIT,method, retCmdLoc))
 //    }
@@ -538,7 +629,7 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
     } else None
 
   }
-  override def resolveCallbackEntry(method:MethodLoc):Option[Loc] = {
+  def resolveCallbackEntry(method:MethodLoc):Option[Loc] = {
 //    if(method.simpleName == "void <clinit>()"){
 //      // <clinit> considered a callback
 //      return Some(CallbackMethodInvoke("java.lang.Object", "void <clinit>()", method))
@@ -560,61 +651,5 @@ class DefaultAppCodeResolver[M,C] (ir: IRWrapper[M,C]) extends AppCodeResolver {
 //      Some(CallbackMethodInvoke(leastPrecise.classType, leastPrecise.simpleName, method))
       Some(CallbackMethodInvoke(Signature(method.classType, leastPrecise.simpleName), method))
     } else None
-  }
-
-
-  case class FieldsLookup(staticFields:Map[(String,String), TypeSet], dynamicFields:Map[String,Set[(TypeSet,TypeSet)]])
-  lazy val fieldsLookup:FieldsLookup = {
-    val staticFields = mutable.Map[(String,String), TypeSet]()
-    val dynamicFields = mutable.Map[String, Set[(TypeSet,TypeSet)]]()
-    appMethods.foreach{appMethod =>
-      if(ir.appCallSites(appMethod, this).nonEmpty || getCallbacks(appMethod)) { //TODO: should ensure method can be called
-        ir.findInMethod(appMethod.classType, appMethod.simpleName, {
-          case AssignCmd(StaticFieldReference(declaringClass, fieldName, _), source, loc) =>
-            val sourcePts = ir.pointsToSet(appMethod, source)
-            val staticFieldsKey = (declaringClass, fieldName)
-            val oldStaticFieldsPt = staticFields.getOrElse(staticFieldsKey, EmptyTypeSet)
-            val newStaticFieldsPt = oldStaticFieldsPt.union(sourcePts)
-            staticFields.put(staticFieldsKey, newStaticFieldsPt)
-            false
-          case AssignCmd(FieldReference(base, _, _, name), tgt, _) =>
-            //if(name == "media" || name == "callback"){
-              //println()
-            //}
-            val basePts = ir.pointsToSet(appMethod, base)
-            val tgtPts = ir.pointsToSet(appMethod, tgt)
-            val oldFieldPtsList: Set[(TypeSet, TypeSet)] = dynamicFields.getOrElse(name, Set.empty)
-            if (!oldFieldPtsList.exists { case (pt1, pt2) => pt1.contains(basePts) && pt2.contains(tgtPts) }) {
-              val toAdd: (TypeSet, TypeSet) = (basePts, tgtPts)
-              dynamicFields.put(name, oldFieldPtsList + toAdd)
-            }
-            false
-          case _ => false
-        }, emptyOk = true)
-      }
-    }
-    FieldsLookup(staticFields.toMap, dynamicFields.toMap)
-  }
-  def cellMayBeWritten(edge: HeapPtEdge, state:State):Boolean = edge match{
-    case FieldPtEdge(base, fieldName) =>
-      val baseTypeSet = state.sf.typeConstraints.getOrElse(base, TopTypeSet)
-      fieldsLookup.dynamicFields.get(fieldName).exists{writes =>
-        writes.exists{case (ts1, _) => baseTypeSet.intersectNonEmpty(ts1)}}
-    case StaticPtEdge(clazz, name) =>
-      fieldsLookup.staticFields.contains((clazz,name))
-  }
-
-  def fieldMayBeWritten(field: (HeapPtEdge, PureExpr), state:State):Boolean = field match {
-    case (FieldPtEdge(base, fieldName), tgt: PureVar) =>
-      val baseTypeSet = state.sf.typeConstraints.getOrElse(base, TopTypeSet)
-      val tgtTypeSet = state.sf.typeConstraints.getOrElse(tgt, TopTypeSet)
-      !fieldsLookup.dynamicFields.getOrElse(fieldName, Set()).exists { case (otherBase, otherTgt) =>
-        baseTypeSet.intersectNonEmpty(otherBase) && tgtTypeSet.intersectNonEmpty(otherTgt)
-      }
-    case (StaticPtEdge(clazz, name), tgt: PureVar) =>
-      val tgtTypes = state.sf.typeConstraints.getOrElse(tgt, TopTypeSet)
-      val intersected = fieldsLookup.staticFields.getOrElse((clazz, name), TopTypeSet).intersect(tgtTypes)
-      intersected.isEmpty
-    case _ => false
   }
 }

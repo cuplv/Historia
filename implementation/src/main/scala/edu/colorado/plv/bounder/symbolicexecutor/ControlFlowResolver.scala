@@ -44,19 +44,16 @@ case object NotRelevantMethod extends RelevanceRelation {
  * Functions to resolve control flow edges while maintaining context sensitivity.
  */
 class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
-                               resolver: AppCodeResolver,
                                cha: ClassHierarchyConstraints,
-                               component: Option[List[String]], config:ExecutorConfig[M,C]) {
+                               component: Option[Seq[String]],
+                               config:ExecutorConfig[M,C]) {
+  val filterResolver: FilterResolver[M, C] = FilterResolver(component)
   private implicit val ch = cha
 //  private val componentR: Option[List[Regex]] = component.map(_.map(_.r))
-  private val (componentPos, componentNeg) = component match{
-    case Some(filters) =>
-      val spl = filters.groupBy(_.startsWith("!"))
-      (spl.getOrElse(false, Nil).map(_.r), spl.getOrElse(true, Nil).map(_.tail).map(_.r))
-    case None => (List(".*".r), List())
-  }
+
   private val specSpace: SpecSpace = config.specSpace
-  def getAppCodeResolver:AppCodeResolver = resolver
+  private val resolver = wrapper.getAppCodeResolver
+  def getAppCodeResolver = wrapper.getAppCodeResolver
 
   //private val messageToCallback:Map[OAbsMsg, ]
 
@@ -104,21 +101,6 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     }
   }
 
-  def callbackInComponent(loc: Loc): Boolean = loc match {
-    case CallbackMethodReturn(_, methodLoc, _) =>
-      val className = methodLoc.classType
-      val pos = componentPos.exists(p => p.matches(className))
-      val neg = componentNeg.forall(n => !n.matches(className))
-      pos && neg
-      //componentR.forall(_.exists(r => r.matches(className)))
-//      componentR match {
-//        case Some(rList) =>
-//          rList.exists(r => r.matches(className))
-//        case None => true
-//      }
-
-    case _ => throw new IllegalStateException("callbackInComponent should only be called on callback returns")
-  }
 
   def getWrapper = wrapper
 
@@ -669,7 +651,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     case l@AppLoc(_,_,false) =>
       val cmd:CmdWrapper = wrapper.cmdAtLocation(l)
       cmd match{
-        case ReturnCmd(_,loc) => wrapper.appCallSites(loc.method,resolver)
+        case ReturnCmd(_,loc) => wrapper.appCallSites(loc.method)
         case _ => wrapper.commandNext(cmd)
       }
 
@@ -704,7 +686,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 
   def allFieldsMayBeWritten(state:State):Boolean = {
     // find heap cells that cannot be allocated anywhere
-    val res = state.sf.heapConstraints.find{f => resolver.fieldMayBeWritten(f, state)}
+    val res = state.sf.heapConstraints.find{f => filterResolver.fieldMayBeWritten(wrapper ,f, state)}
     if(res.nonEmpty){
       println(s"Field ${res.head} cannot be written anywhere, dropping containing state ${state}.")
       res.head._2 match {
@@ -799,7 +781,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
           val locCb = wrapper.makeMethodRetuns(callback)
           locCb.flatMap { case AppLoc(method, line, _) => resolver.resolveCallbackExit(method, Some(line)) }
         }).toList
-        val componentFiltered = res.filter(callbackInComponent)
+        val componentFiltered = res.filter(filterResolver.callbackInComponent)
         // filter for callbacks that may affect current state
         val res2 = componentFiltered.filter { m =>
           relevantMethod(m, state) match {
@@ -816,12 +798,12 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       val m: Iterable[MethodLoc] = wrapper.findMethodLoc(sig)
       assert(m.toList.size < 2, "Wrong number of methods found")
       m.flatMap(m2 =>
-        wrapper.appCallSites(m2,resolver).map(v => v.copy(isPre = true)))
+        wrapper.appCallSites(m2).map(v => v.copy(isPre = true)))
     case (GroupedCallinMethodInvoke(fmwClazzs, fmwName),Nil) =>
       val m: Iterable[MethodLoc] = fmwClazzs.flatMap(c => wrapper.findMethodLoc(Signature(c, fmwName)))
       assert(m.toList.size < 2, "Wrong number of methods found")
       m.flatMap(m2 =>
-        wrapper.appCallSites(m2,resolver).map(v => v.copy(isPre = true)))
+        wrapper.appCallSites(m2).map(v => v.copy(isPre = true)))
     case (InternalMethodReturn(_,_,loc), _) =>
       wrapper.makeMethodRetuns(loc)
     case (InternalMethodInvoke(_, _, _), CallStackFrame(_,Some(returnLoc:AppLoc),_)::_) => List(returnLoc)
@@ -831,7 +813,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
         val containingMethod = cb.loc
         allCallsAppTransitive(containingMethod)
       }
-      val locations = wrapper.appCallSites(loc, resolver)
+      val locations = wrapper.appCallSites(loc)
         .filter{loc =>
           lazy val notFwk = !resolver.isFrameworkClass(loc.containingMethod.get.classType)
           val cbCanCall = callsFromCurrentCB.forall(_.contains(loc.method))

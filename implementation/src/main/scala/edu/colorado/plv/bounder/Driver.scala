@@ -341,7 +341,7 @@ object Driver {
       case Action(Info, Some(out), Some(apk), cfg, _, _, _, _) =>
         info(cfg, out, apk)
       case act@Action(ExportPossibleMessages, _,_,cfg, _,_,_, _) =>
-        outputMessages(cfg, act.filter, act.getOutFolder, act.getApkPath)
+        outputMessages(act.getOutFolder, act.getApkPath)
       case v => throw new IllegalArgumentException(s"Invalid action: $v")
     }
   }
@@ -351,7 +351,6 @@ object Driver {
       cfgIn.copy(timeLimit = 14400 * 2, truncateOut = false)
     } else cfgIn
     val cfg = if (filter.isDefined) cfgWithTime.copy(componentFilter = Some(filter.get.split(':'))) else cfgWithTime
-    val componentFilter = cfg.componentFilter
     val apkPath = act.getApkPath
     val outFolder: String = act.getOutFolder
     // Create output directory if not exists
@@ -377,7 +376,7 @@ object Driver {
     act.mode match {
       case Verify => {
         val res: List[LocResult] =
-          runAnalysis(cfg, apkPath, componentFilter, pathMode, stepLimit, initialQuery, Some(outFolder), dbg)
+          runAnalysis(cfg, apkPath, pathMode, stepLimit, initialQuery, Some(outFolder), dbg)
         res.zipWithIndex.foreach { case (iq, ind) =>
           val resFile = File(outFolder) / s"result_${ind}.txt"
           resFile.overwrite(write(iq))
@@ -387,12 +386,15 @@ object Driver {
         val specSet = cfg.specSet
         val specSpace = specSet.getSpecSpace()
 
-        val w = new SootWrapper(apkPath, specSet.getSpecSet().flatMap{s => s.pred.allMsg + s.target}.union(specSet.getDisallowSpecSet().flatMap{s => s.pred.allMsg + s.target}).union(specSpace.getMatcherSpace))
+        val w = new SootWrapper(apkPath,
+          specSet.getSpecSet().flatMap{s => s.pred.allMsg + s.target}
+            .union(specSet.getDisallowSpecSet().flatMap{s => s.pred.allMsg + s.target})
+            .union(specSpace.getMatcherSpace))
         assert(initialQuery.size == 1, "must have exactly one initial query for synthesis")
         val initialQueryS = initialQuery.head
         val reachable:Set[InitialQuery] = Set() //TODO: get this out of config somehow
         val config = ExecutorConfig(
-          stepLimit = stepLimit, w, specSet.getSpecSpace(), component = componentFilter, outputMode = pathMode,
+          stepLimit = stepLimit, w, specSet.getSpecSpace(), component = cfg.componentFilter, outputMode = pathMode,
           timeLimit = cfg.timeLimit, printAAProgress = dbg)
         val gen = new EnumModelGenerator(
           initialQueryS,
@@ -449,12 +451,12 @@ object Driver {
     stdout.exists(v => v.contains("a.a.a."))
   }
 
-  def outputMessages(cfg:RunConfig, filter:Option[String], out:String, apkPath:String):Unit = {
+  def outputMessages(out:String, apkPath:String):Unit = {
     //TODO: finish at some point
     val outFile = File(out)
     val w = new SootWrapper(apkPath, Set())
     val config = ExecutorConfig(
-      stepLimit = 0, w, new SpecSpace(Set()), component = None)
+      stepLimit = 0, w, new SpecSpace(Set()))
     val interpreter = config.getAbstractInterpreter
     val resolver = interpreter.appCodeResolver
     val cfRes = interpreter.controlFlowResolver
@@ -505,7 +507,7 @@ object Driver {
     val callGraph = SparkCallGraph
     val w = new SootWrapper(apkPath, Set(), callGraph)
     val config = ExecutorConfig(
-      stepLimit = 0, w, new SpecSpace(Set()), component = None)
+      stepLimit = 0, w, new SpecSpace(Set()))
     val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
     val appClasses = symbolicExecutor.appCodeResolver.appMethods.map(m => m.classType)
     val filtered = appClasses.filter(c => filter.forall(c.startsWith))
@@ -642,7 +644,7 @@ object Driver {
     val callGraph = SparkCallGraph
     val w = new SootWrapper(apkPath, Set(), callGraph)
     val config = ExecutorConfig(
-      stepLimit = n, w, new SpecSpace(Set()), component = None)
+      stepLimit = n, w, new SpecSpace(Set()), component = cfg.componentFilter)
     val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
 
 //    val queries = (0 until n).map{_ =>
@@ -673,23 +675,14 @@ object Driver {
     f.write(write(writeCFG))
   }
 
-  def dotMethod(apkPath:String, matches:Regex) = {
-    val callGraph = SparkCallGraph
-    //      val callGraph = FlowdroidCallGraph // flowdroid call graph immediately fails with "unreachable"
-    val w = new SootWrapper(apkPath, Set(),callGraph)
-    val config = ExecutorConfig(
-      stepLimit = 0, w, new SpecSpace(Set()), component = None)
-    val symbolicExecutor: AbstractInterpreter[SootMethod, soot.Unit] = config.getAbstractInterpreter
-    //TODO:
-  }
-  def runAnalysis(cfg:RunConfig, apkPath: String, componentFilter:Option[Seq[String]], mode:OutputMode, stepLimit:Int,
+  def runAnalysis(cfg:RunConfig, apkPath: String, mode:OutputMode, stepLimit:Int,
                   initialQueries: List[InitialQuery], outDir:Option[String], dbg:Boolean): List[LocResult] = {
     val specSet = cfg.specSet
     val startTime = System.nanoTime()
     try {
       val w = new SootWrapper(apkPath, specSet.getSpecSet().union(specSet.getDisallowSpecSet()))
       val config = ExecutorConfig(
-        stepLimit = stepLimit, w, specSet.getSpecSpace(), component = componentFilter, outputMode = mode,
+        stepLimit = stepLimit, w, specSet.getSpecSpace(), component = cfg.componentFilter, outputMode = mode,
         timeLimit = cfg.timeLimit, printAAProgress = dbg, approxMode = cfg.approxMode,
         z3Timeout = cfg.z3TimeoutBehavior.getOrElse(Z3TimeoutBehavior()))
       initialQueries.flatMap{ initialQuery =>

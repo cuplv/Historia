@@ -48,7 +48,7 @@ case class SerializedIR(transitions: Map[AppLoc, Set[SerializedTransition]]) ext
 
   override def getOverrideChain(method: MethodLoc): Seq[MethodLoc] = ???
 
-  override def appCallSites(method: MethodLoc, resolver: AppCodeResolver): Seq[AppLoc] = ???
+  override def appCallSites(method: MethodLoc): Seq[AppLoc] = ???
 
   override def makeMethodRetuns(method: MethodLoc): List[AppLoc] = ???
 
@@ -81,6 +81,9 @@ case class SerializedIR(transitions: Map[AppLoc, Set[SerializedTransition]]) ext
   override def dumpDebug(classFilter: String): String = ???
 
   override def allMethodLocations(m: MethodLoc): Set[AppLoc] = ???
+
+  override def getAppCodeResolver: AppCodeResolver[String, CmdWrapper] = ???
+
 }
 
 /**

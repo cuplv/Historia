@@ -76,8 +76,8 @@ object TransferFunctions{
 }
 
 class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
-                             classHierarchyConstraints: ClassHierarchyConstraints, canWeaken:Boolean) { //TODO:======= need to handle canWeaken
-  private val resolver = new DefaultAppCodeResolver(w)
+                             classHierarchyConstraints: ClassHierarchyConstraints, canWeaken:Boolean,
+                             filterResolver: FilterResolver[M,C]) {
   private implicit val ch = classHierarchyConstraints
   private implicit val irWrapper = w
   def defineVarsAs(state: State, comb: List[(Option[RVal], Option[PureExpr])]):State =
@@ -360,7 +360,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       // Possible stack frames for source of call being a callback or internal method call
       val out = if (stateWithRecTypeCst.callStack.size == 1) {
         val newStackFrames: List[CallStackFrame] =
-          BounderUtil.resolveMethodReturnForAppLoc(resolver, al).map(mr => CallStackFrame(mr, None, Map()))
+          BounderUtil.resolveMethodReturnForAppLoc(w.getAppCodeResolver, al).map(mr => CallStackFrame(mr, None, Map()))
         val newStacks = newStackFrames.map{frame =>
           frame :: (if (stateWithRecTypeCst.callStack.isEmpty) Nil else stateWithRecTypeCst.callStack.tail)}
         val nextStates = newStacks.map(newStack =>
@@ -379,7 +379,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       // Possible stack frames for source of call being a callback or internal method call
       val out = if (postState.callStack.size == 1) {
         val newStackFrames: List[CallStackFrame] =
-          BounderUtil.resolveMethodReturnForAppLoc(resolver, al).map(mr => CallStackFrame(mr, None, Map()))
+          BounderUtil.resolveMethodReturnForAppLoc(w.getAppCodeResolver, al).map(mr => CallStackFrame(mr, None, Map()))
         val newStacks = newStackFrames.map { frame =>
           frame :: (if (postState.callStack.isEmpty) Nil else postState.callStack.tail)
         }
@@ -693,7 +693,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       // x = y.f
       val (yval, stateWithY) = state.getOrDefine(base,Some(l.method))
       val mayWrite =
-        resolver.cellMayBeWritten(FieldPtEdge(yval.asInstanceOf[PureVar],fieldName), stateWithY)
+        filterResolver.cellMayBeWritten(w,FieldPtEdge(yval.asInstanceOf[PureVar],fieldName), stateWithY)
       if(mayWrite) {
         state.get(lhs) match { //TODO: some kind of imprecision here or in the simplification shown by "Test dynamic dispatch 2"
           case Some(lhsV) => {
@@ -844,7 +844,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       }
       cmdTransfer(AssignCmd(l,local,cmdloc),state1)
     case AssignCmd(l:LocalWrapper, ref@StaticFieldReference(declaringClass, fname, containedType), _) =>
-      if(resolver.cellMayBeWritten(StaticPtEdge(declaringClass,fname), state)) {
+      if(filterResolver.cellMayBeWritten(w,StaticPtEdge(declaringClass,fname), state)) {
         if (fname.contains("R$id")) {
           Set(state.clearLVal(l)) // Don't care about this always just set to integer
         } else {

@@ -44,7 +44,7 @@ class TransferFunctionsTest extends AnyFunSuite {
   implicit def set2SigMat(s:Set[Signature]):SignatureMatcher = SetSignatureMatcher(s)
 
   val tr = (ir:SerializedIR, cha:ClassHierarchyConstraints) =>
-    new TransferFunctions(ir, new SpecSpace(Set()),cha, true)
+    new TransferFunctions(ir, new SpecSpace(Set()),cha, true,FilterResolver(None))
   def testCmdTransfer(cmd:AppLoc => CmdWrapper, post:State, testIRMethod: SerializedIRMethodLoc):Set[State] = {
     val preloc = AppLoc(testIRMethod,SerializedIRLineLoc(1), isPre=true)
     val postloc = AppLoc(testIRMethod,SerializedIRLineLoc(1), isPre=false)
@@ -199,7 +199,7 @@ class TransferFunctionsTest extends AnyFunSuite {
     val spec = LSSpec(a::Nil, Nil,
       lhs,
       iFooA)
-    val tr = new TransferFunctions(ir, new SpecSpace(Set(spec)),miniCha, true)
+    val tr = new TransferFunctions(ir, new SpecSpace(Set(spec)),miniCha, true,FilterResolver(None))
 //    val otheri = AbstractTrace(Once(CBExit, Set(("a","a")), "b"::Nil), Nil, Map())
     val otheri = ???
     val post = State(StateFormula(

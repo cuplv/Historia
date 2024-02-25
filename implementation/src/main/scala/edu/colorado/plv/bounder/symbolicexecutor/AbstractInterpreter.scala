@@ -401,8 +401,7 @@ case class ExecutorConfig[M,C](stepLimit: Int = -1,
                                approxMode:ApproxMode =  LimitMaterializationApproxMode(),
                                z3InstanceLimit:Int = -1,
                                z3ShouldRetryOnTimeout:Boolean = true
-                               //PreciseApproxMode(true) //default is to allow dropping of constraints and no widen //TODO: === make thresher version that drops things == make under approx version that drops states
-                                      ){
+                              ){
   def getAbstractInterpreter =
     new AbstractInterpreter[M, C](this)
 }
@@ -505,12 +504,13 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
 
 
   def getClassHierarchy = cha
-  val transfer = new TransferFunctions[M, C](w, config.specSpace, cha, config.approxMode.canWeaken)
 
-  implicit val appCodeResolver = new DefaultAppCodeResolver[M,C](config.w)
+  implicit val appCodeResolver = w.getAppCodeResolver
   def getAppCodeResolver = appCodeResolver
   implicit val controlFlowResolver =
-    new ControlFlowResolver[M,C](config.w,appCodeResolver, cha, config.component.map(_.toList), config)
+    new ControlFlowResolver[M,C](config.w, cha, config.component, config)
+  val transfer = new TransferFunctions[M, C](w, config.specSpace, cha, config.approxMode.canWeaken,
+    controlFlowResolver.filterResolver)
   def writeIR():Unit = {
     val callbacks = appCodeResolver.getCallbacks
     config.outputMode match {

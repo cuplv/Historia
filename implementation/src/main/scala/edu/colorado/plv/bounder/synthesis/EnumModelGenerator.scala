@@ -6,7 +6,7 @@ import edu.colorado.plv.bounder.lifestate.LSPredAnyOrder.SpecSpaceAnyOrder
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, AnyAbsMsg, Exists, Forall, LSAnyPred, LSAtom, LSBinOp, LSConstraint, LSFalse, LSImplies, LSPred, LSSpec, LSTrue, LSUnOp, NS, Not, OAbsMsg, Or}
 import edu.colorado.plv.bounder.lifestate.{LSPredAnyOrder, LifeState, SpecAssignment, SpecSpace}
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools, Z3StateSolver}
-import edu.colorado.plv.bounder.symbolicexecutor.{ApproxMode, ControlFlowResolver, DefaultAppCodeResolver, ExecutorConfig, LimitMaterializationApproxMode, PreciseApproxMode, QueryFinished}
+import edu.colorado.plv.bounder.symbolicexecutor.{ApproxMode, ControlFlowResolver, ExecutorConfig, LimitMaterializationApproxMode, PreciseApproxMode, QueryFinished}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, AllReceiversNonNull, BoolVal, CallinReturnNonNull, DirectInitialQuery, DisallowedCallin, IPathNode, InitialQuery, IntVal, MemoryOutputMode, NPureVar, NamedPureVar, NullVal, OutputMode, PrettyPrinting, PureExpr, PureVal, PureVar, Reachable, ReceiverNonNull, State, TopVal}
 import edu.colorado.plv.bounder.synthesis.EnumModelGenerator.{NoStep, StepResult, StepSuccessM, StepSuccessP, approxSpec, isTerminal}
 
@@ -137,7 +137,7 @@ class EnumModelGenerator[M,C](target:InitialQuery,reachable:Set[InitialQuery], i
   private val cha = cfg.w.getClassHierarchyConstraints
   private val controlFlowResolver = {
     val msgGraphStartTime = System.nanoTime()
-    val out = new ControlFlowResolver[M,C](cfg.w, new DefaultAppCodeResolver(cfg.w), cha,
+    val out = new ControlFlowResolver[M,C](cfg.w, cha,
       Some(reachPkgFilter ++ unreachPkgFilter),cfg)
     msgGraphTime = System.nanoTime() - msgGraphStartTime
     out

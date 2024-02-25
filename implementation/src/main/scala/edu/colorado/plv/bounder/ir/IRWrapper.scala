@@ -16,6 +16,7 @@ import scala.collection.BitSet
  * @tparam C Command type for the underlying representation
  */
 trait IRWrapper[M,C]{
+  def getAppCodeResolver:AppCodeResolver[M,C]
   def allMethodLocations(m: MethodLoc): Set[AppLoc]
 
   def dumpDebug(classFilter:String):String
@@ -53,7 +54,7 @@ trait IRWrapper[M,C]{
   def isMethodEntry(cmdWrapper: CmdWrapper): Boolean
   def cmdAtLocation(loc:AppLoc) :CmdWrapper
   def makeInvokeTargets(invoke:AppLoc):UnresolvedMethodTarget
-  def appCallSites(method : MethodLoc, resolver:AppCodeResolver): Seq[AppLoc]
+  def appCallSites(method : MethodLoc): Seq[AppLoc]
   def makeMethodRetuns(method: MethodLoc) : List[AppLoc]
 
   def getClassHierarchyConstraints:ClassHierarchyConstraints

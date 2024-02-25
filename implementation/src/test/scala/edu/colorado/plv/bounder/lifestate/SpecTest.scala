@@ -4,7 +4,7 @@ import edu.colorado.plv.bounder.BounderSetupApplication
 import edu.colorado.plv.bounder.ir.{CIEnter, CIExit, SootWrapper}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, Signature, SubClassMatcher}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, DefaultAppCodeResolver, SparkCallGraph, ExecutorConfig, TransferFunctions}
+import edu.colorado.plv.bounder.symbolicexecutor.{CHACallGraph, AppCodeResolver, SparkCallGraph, ExecutorConfig, TransferFunctions}
 import org.scalatest.funsuite.AnyFunSuite
 import soot.{Scene, SootMethod}
 
@@ -119,7 +119,7 @@ class SpecTest extends AnyFunSuite {
     assert(apk != null)
     BounderSetupApplication.loadApk(apk)
     val w = new SootWrapper(apk, Set())
-    val a = new DefaultAppCodeResolver[SootMethod, soot.Unit](w)
+    val a = new AppCodeResolver[SootMethod, soot.Unit](w)
     val frameworkMethods = Scene.v().getClasses.asScala.flatMap{clazz =>
       val clazzname = SootWrapper.stringNameOfClass(clazz)
       if(a.isFrameworkClass(clazzname))

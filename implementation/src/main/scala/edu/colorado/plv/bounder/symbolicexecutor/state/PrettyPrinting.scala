@@ -5,7 +5,7 @@ import better.files.File
 import edu.colorado.plv.bounder.{BounderUtil, PickleSpec}
 import edu.colorado.plv.bounder.ir.{AppLoc, CallbackMethodInvoke, CallbackMethodReturn, CallinMethodInvoke, CallinMethodReturn, CmdWrapper, GroupedCallinMethodInvoke, GroupedCallinMethodReturn, IRWrapper, InternalMethodInvoke, InternalMethodReturn, LineLoc, Loc, SkippedInternalMethodInvoke, SkippedInternalMethodReturn}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
-import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver, DefaultAppCodeResolver, ExecutorConfig}
+import edu.colorado.plv.bounder.symbolicexecutor.{ControlFlowResolver}
 import org.apache.log4j.{EnhancedPatternLayout, PatternLayout}
 import soot.JastAddJ.JastAddJavaParser.Terminals
 
