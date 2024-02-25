@@ -1404,7 +1404,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val specSpace = new SpecSpace(specs)
       val config = ExecutorConfig(
         stepLimit = 300, w, specSpace,
-        component = Some(List("com.example.createdestroy.MyFragment.*")), approxMode = f.approxMode)
+        component = Some(List("com.example.createdestroy.*MyFragment.*")), approxMode = f.approxMode)
       val symbolicExecutor = config.getAbstractInterpreter
       val query = ReceiverNonNull(
         Signature("com.example.createdestroy.MyFragment",
@@ -1491,7 +1491,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val specSpace = new SpecSpace(specs)
       val config = ExecutorConfig(
         stepLimit = 300, w, specSpace,
-        component = Some(List("com.example.createdestroy.MyFragment.*")), approxMode = f.approxMode,
+        component = Some(List("com.example.createdestroy.*MyFragment.*")), approxMode = f.approxMode,
         printAAProgress = false)
       val symbolicExecutor = config.getAbstractInterpreter
       val query = CallinReturnNonNull(

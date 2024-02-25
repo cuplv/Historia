@@ -80,7 +80,7 @@ object FrameworkExtensions{
 case class FilterResolver[M,C](component:Option[Seq[String]]){
   private val METHODPOSIDENT = "method:"
   private val methodFilterPos = {
-    val applicable = component.flatMap(_.filter{c => c.startsWith(METHODPOSIDENT)})
+    val applicable = component.getOrElse(Seq()).filter{c => c.startsWith(METHODPOSIDENT)}
     if(applicable.isEmpty) Seq(".*".r) else{
       applicable.map{a => a.drop(METHODPOSIDENT.size).r}
     }
@@ -144,7 +144,8 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
             case _ => false
           }, emptyOk = true)
         }
-      case _ =>
+      case exclude =>
+        println(exclude)
     }
     FieldsLookup(staticFields.toMap, dynamicFields.toMap)
   }
