@@ -78,6 +78,13 @@ object FrameworkExtensions{
 }
 
 case class FilterResolver[M,C](component:Option[Seq[String]]){
+  private val METHODPOSIDENT = "method:"
+  private val methodFilterPos = {
+    val applicable = component.flatMap(_.filter{c => c.startsWith(METHODPOSIDENT)})
+    if(applicable.isEmpty) Seq(".*".r) else{
+      applicable.map{a => a.drop(METHODPOSIDENT.size).r}
+    }
+  }
   private val (componentPos, componentNeg) = component match{
     case Some(filters) =>
       val spl = filters.groupBy(_.startsWith("!"))
@@ -85,43 +92,59 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
     case None => (List(".*".r), List())
   }
 
-  def callbackInComponent(loc: Loc): Boolean = loc match {
-    case CallbackMethodReturn(_, methodLoc, _) =>
-      val className = methodLoc.classType
-      val pos = componentPos.exists(p => p.matches(className))
-      val neg = componentNeg.forall(n => !n.matches(className))
-      pos && neg
+  def methodLocInComponent(methodLoc:MethodLoc):Boolean = {
+    val className = methodLoc.classType
+    val mName = methodLoc.simpleName
+    lazy val pos = componentPos.exists(p => p.matches(className))
+    lazy val neg = componentNeg.forall(n => !n.matches(className))
+    lazy val name = methodFilterPos.exists{m => m.matches(mName) }
+    pos && neg && name
+  }
+  def locInComponent(loc: Loc): Boolean = loc match {
+    case CallbackMethodInvoke(_, methodLoc) => methodLocInComponent(methodLoc)
+    case CallbackMethodReturn(_, methodLoc, _) => methodLocInComponent(methodLoc)
+    case InternalMethodReturn(_,_,methodLoc) => methodLocInComponent(methodLoc)
+    case InternalMethodReturn(_, _, methodLoc) =>  methodLocInComponent(methodLoc)
+    case AppLoc(methodLoc, _,_) => methodLocInComponent(methodLoc)
+    case CallinMethodInvoke(_) => false
+    case CallinMethodReturn(_) => false
+    case GroupedCallinMethodInvoke(_, _) => false
+    case GroupedCallinMethodReturn(_, _) => false
+    case SkippedInternalMethodInvoke(_, _, loc) => methodLocInComponent(loc)
+    case SkippedInternalMethodReturn(_, _, _, loc) => methodLocInComponent(loc)
     case _ => throw new IllegalStateException("callbackInComponent should only be called on callback returns")
   }
   def computeFieldsLookup(ir:IRWrapper[M,C]):FieldsLookup = {
     val resolver = ir.getAppCodeResolver
     val staticFields = mutable.Map[(String, String), TypeSet]()
     val dynamicFields = mutable.Map[String, Set[(TypeSet, TypeSet)]]()
-    resolver.appMethods.foreach { appMethod =>
-      if (ir.appCallSites(appMethod).nonEmpty || ir.getAppCodeResolver.getCallbacks(appMethod)) { //TODO: should ensure method can be called
-        ir.findInMethod(appMethod.classType, appMethod.simpleName, {
-          case AssignCmd(StaticFieldReference(declaringClass, fieldName, _), source, loc) =>
-            val sourcePts = ir.pointsToSet(appMethod, source)
-            val staticFieldsKey = (declaringClass, fieldName)
-            val oldStaticFieldsPt = staticFields.getOrElse(staticFieldsKey, EmptyTypeSet)
-            val newStaticFieldsPt = oldStaticFieldsPt.union(sourcePts)
-            staticFields.put(staticFieldsKey, newStaticFieldsPt)
-            false
-          case AssignCmd(FieldReference(base, _, _, name), tgt, _) =>
-            //if(name == "media" || name == "callback"){
-            //println()
-            //}
-            val basePts = ir.pointsToSet(appMethod, base)
-            val tgtPts = ir.pointsToSet(appMethod, tgt)
-            val oldFieldPtsList: Set[(TypeSet, TypeSet)] = dynamicFields.getOrElse(name, Set.empty)
-            if (!oldFieldPtsList.exists { case (pt1, pt2) => pt1.contains(basePts) && pt2.contains(tgtPts) }) {
-              val toAdd: (TypeSet, TypeSet) = (basePts, tgtPts)
-              dynamicFields.put(name, oldFieldPtsList + toAdd)
-            }
-            false
-          case _ => false
-        }, emptyOk = true)
-      }
+    resolver.appMethods.foreach {
+      case appMethod if methodLocInComponent(appMethod)=>
+        if (ir.appCallSites(appMethod).nonEmpty || ir.getAppCodeResolver.getCallbacks(appMethod)) {
+          ir.findInMethod(appMethod.classType, appMethod.simpleName, {
+            case AssignCmd(StaticFieldReference(declaringClass, fieldName, _), source, loc) =>
+              val sourcePts = ir.pointsToSet(appMethod, source)
+              val staticFieldsKey = (declaringClass, fieldName)
+              val oldStaticFieldsPt = staticFields.getOrElse(staticFieldsKey, EmptyTypeSet)
+              val newStaticFieldsPt = oldStaticFieldsPt.union(sourcePts)
+              staticFields.put(staticFieldsKey, newStaticFieldsPt)
+              false
+            case AssignCmd(FieldReference(base, _, _, name), tgt, _) =>
+              //if(name == "media" || name == "callback"){
+              //println()
+              //}
+              val basePts = ir.pointsToSet(appMethod, base)
+              val tgtPts = ir.pointsToSet(appMethod, tgt)
+              val oldFieldPtsList: Set[(TypeSet, TypeSet)] = dynamicFields.getOrElse(name, Set.empty)
+              if (!oldFieldPtsList.exists { case (pt1, pt2) => pt1.contains(basePts) && pt2.contains(tgtPts) }) {
+                val toAdd: (TypeSet, TypeSet) = (basePts, tgtPts)
+                dynamicFields.put(name, oldFieldPtsList + toAdd)
+              }
+              false
+            case _ => false
+          }, emptyOk = true)
+        }
+      case _ =>
     }
     FieldsLookup(staticFields.toMap, dynamicFields.toMap)
   }

@@ -565,9 +565,11 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       case InternalMethodReturn(_,name, _) if name.contains("$jacocoInit") =>
         //println(s"Skipping synthetic jacoco state: ${state}")
         NotRelevantMethod
-      case InternalMethodReturn(_, _, m) =>
+      case InternalMethodReturn(_, _, m) if filterResolver.methodLocInComponent(m) =>
         relevantMethodBody(m, state).join(
         isRelevantI(transitiveCallinMessage.getOrElse(m,Set.empty), relevantI, state))
+      case _:InternalMethodReturn =>
+        NotRelevantMethod
       case _: CallinMethodReturn => RelevantMethod
       case CallbackMethodReturn(_, rloc, Some(retLine)) => {
         val relevantCB = isRelevantI(callbackMessage(rloc), relevantI, state)
@@ -781,7 +783,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
           val locCb = wrapper.makeMethodRetuns(callback)
           locCb.flatMap { case AppLoc(method, line, _) => resolver.resolveCallbackExit(method, Some(line)) }
         }).toList
-        val componentFiltered = res.filter(filterResolver.callbackInComponent)
+        val componentFiltered = res.filter(filterResolver.locInComponent)
         // filter for callbacks that may affect current state
         val res2 = componentFiltered.filter { m =>
           relevantMethod(m, state) match {
