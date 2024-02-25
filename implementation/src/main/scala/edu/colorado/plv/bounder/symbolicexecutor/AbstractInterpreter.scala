@@ -97,7 +97,7 @@ object DropQryPolicy{
 }
 
 case class DumpTraceAtLocationPolicy(appMethod:Option[SignatureMatcher], findLine:Option[Int],
-                                     outputFolder:String) extends DropQryPolicy{
+                                     outputFolder:String, dumpAtCallbacks:Boolean = false) extends DropQryPolicy{
   val outputFolderF = File(outputFolder)
 
   override def shouldDrop(qry: IPathNode)(implicit db: OutputMode): Boolean = {
@@ -112,7 +112,7 @@ case class DumpTraceAtLocationPolicy(appMethod:Option[SignatureMatcher], findLin
         }
       case inv@CallbackMethodInvoke(sig, loc) if appMethod.isDefined && findLine.isEmpty =>
         val matcher = appMethod.get
-        if(matcher.matches(sig)(null)){
+        if(dumpAtCallbacks || matcher.matches(sig)(null)){
           val trace: Seq[String] = PrettyPrinting.witnessToTrace(List(qry),false)
           val traceFile = (outputFolderF / "dbg_appmethod_traces.txt")
           traceFile.append(s"\n=== ${inv} ====\n")
@@ -120,7 +120,7 @@ case class DumpTraceAtLocationPolicy(appMethod:Option[SignatureMatcher], findLin
         }
       case inv@CallbackMethodReturn(sig, loc, line) if appMethod.isDefined && findLine.isEmpty =>
         val matcher = appMethod.get
-        if(matcher.matches(sig)(null)){
+        if(dumpAtCallbacks || matcher.matches(sig)(null)){
           val trace: Seq[String] = PrettyPrinting.witnessToTrace(List(qry),false)
           val traceFile = (outputFolderF / "dbg_appmethod_traces.txt")
           traceFile.append(s"\n=== ${inv} ====\n")
