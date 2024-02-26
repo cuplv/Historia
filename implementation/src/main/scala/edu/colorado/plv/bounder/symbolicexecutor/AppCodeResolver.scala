@@ -92,6 +92,7 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
     case None => (List(".*".r), List())
   }
 
+  private val visitedMethodLoc = mutable.Set[MethodLoc]()
   val methodLocInComponent:((MethodLoc, IRWrapper[M,C])) => Boolean =
     Memo.mutableHashMapMemo {arg:(MethodLoc,IRWrapper[M,C]) =>
       val methodLoc = arg._1
@@ -101,9 +102,11 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
           true
         }else{
           val callers = ir.appCallSites(methodLoc)
+            .filter{caller => !visitedMethodLoc.contains(caller.method)} // ignore recursion
           callers.exists{caller => methodLocInComponent(caller.method,ir)}
         }
       }
+      visitedMethodLoc.add(methodLoc)
       val className = methodLoc.classType
       val mName = methodLoc.simpleName
       lazy val pos = componentPos.exists(p => p.matches(className))
