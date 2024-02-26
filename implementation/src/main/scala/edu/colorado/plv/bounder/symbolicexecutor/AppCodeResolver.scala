@@ -103,10 +103,10 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
         }else{
           val callers = ir.appCallSites(methodLoc)
             .filter{caller => !visitedMethodLoc.contains(caller.method)} // ignore recursion
+          visitedMethodLoc.add(methodLoc)
           callers.exists{caller => methodLocInComponent(caller.method,ir)}
         }
       }
-      visitedMethodLoc.add(methodLoc)
       val className = methodLoc.classType
       val mName = methodLoc.simpleName
       lazy val pos = componentPos.exists(p => p.matches(className))
