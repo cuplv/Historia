@@ -92,26 +92,37 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
     case None => (List(".*".r), List())
   }
 
-  def methodLocInComponent(methodLoc:MethodLoc):Boolean = {
-    val className = methodLoc.classType
-    val mName = methodLoc.simpleName
-    lazy val pos = componentPos.exists(p => p.matches(className))
-    lazy val neg = componentNeg.forall(n => !n.matches(className))
-    lazy val name = methodFilterPos.exists{m => m.matches(mName) }
-    pos && neg && name
+  val methodLocInComponent:((MethodLoc, IRWrapper[M,C])) => Boolean =
+    Memo.mutableHashMapMemo {arg:(MethodLoc,IRWrapper[M,C]) =>
+      val methodLoc = arg._1
+      val ir = arg._2
+      val inCg = {
+        if(ir.getAppCodeResolver.getCallbacks.contains(methodLoc)){
+          true
+        }else{
+          val callers = ir.appCallSites(methodLoc)
+          callers.exists{caller => methodLocInComponent(caller.method,ir)}
+        }
+      }
+      val className = methodLoc.classType
+      val mName = methodLoc.simpleName
+      lazy val pos = componentPos.exists(p => p.matches(className))
+      lazy val neg = componentNeg.forall(n => !n.matches(className))
+      lazy val name = methodFilterPos.exists{m => m.matches(mName) }
+      inCg && pos && neg && name
   }
-  def locInComponent(loc: Loc): Boolean = loc match {
-    case CallbackMethodInvoke(_, methodLoc) => methodLocInComponent(methodLoc)
-    case CallbackMethodReturn(_, methodLoc, _) => methodLocInComponent(methodLoc)
-    case InternalMethodReturn(_,_,methodLoc) => methodLocInComponent(methodLoc)
-    case InternalMethodReturn(_, _, methodLoc) =>  methodLocInComponent(methodLoc)
-    case AppLoc(methodLoc, _,_) => methodLocInComponent(methodLoc)
+  def locInComponent(loc: Loc, ir:IRWrapper[M,C]): Boolean = loc match {
+    case CallbackMethodInvoke(_, methodLoc) => methodLocInComponent(methodLoc,ir)
+    case CallbackMethodReturn(_, methodLoc, _) => methodLocInComponent(methodLoc,ir)
+    case InternalMethodReturn(_,_,methodLoc) => methodLocInComponent(methodLoc,ir)
+    case InternalMethodReturn(_, _, methodLoc) =>  methodLocInComponent(methodLoc,ir)
+    case AppLoc(methodLoc, _,_) => methodLocInComponent(methodLoc,ir)
     case CallinMethodInvoke(_) => false
     case CallinMethodReturn(_) => false
     case GroupedCallinMethodInvoke(_, _) => false
     case GroupedCallinMethodReturn(_, _) => false
-    case SkippedInternalMethodInvoke(_, _, loc) => methodLocInComponent(loc)
-    case SkippedInternalMethodReturn(_, _, _, loc) => methodLocInComponent(loc)
+    case SkippedInternalMethodInvoke(_, _, loc) => methodLocInComponent(loc,ir)
+    case SkippedInternalMethodReturn(_, _, _, loc) => methodLocInComponent(loc,ir)
     case _ => throw new IllegalStateException("callbackInComponent should only be called on callback returns")
   }
   def computeFieldsLookup(ir:IRWrapper[M,C]):FieldsLookup = {
@@ -119,8 +130,7 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
     val staticFields = mutable.Map[(String, String), TypeSet]()
     val dynamicFields = mutable.Map[String, Set[(TypeSet, TypeSet)]]()
     resolver.appMethods.foreach {
-      case appMethod if methodLocInComponent(appMethod)=>
-        if (ir.appCallSites(appMethod).nonEmpty || ir.getAppCodeResolver.getCallbacks(appMethod)) {
+      case appMethod if methodLocInComponent(appMethod,ir)=>
           ir.findInMethod(appMethod.classType, appMethod.simpleName, {
             case AssignCmd(StaticFieldReference(declaringClass, fieldName, _), source, loc) =>
               val sourcePts = ir.pointsToSet(appMethod, source)
@@ -143,7 +153,6 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
               false
             case _ => false
           }, emptyOk = true)
-        }
       case exclude =>
         println(exclude)
     }
