@@ -2906,7 +2906,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
 
       val config = ExecutorConfig(
         stepLimit = 120, w, specs,
-        component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode)
+        component = Some(List("com.example.createdestroy.*MyActivity.*")), approxMode = f.approxMode)
       val symbolicExecutor = config.getAbstractInterpreter
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
       val runMethodReachable = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity$1",

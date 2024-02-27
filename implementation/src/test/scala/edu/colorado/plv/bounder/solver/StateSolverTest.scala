@@ -538,6 +538,11 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val init = f.stateSolver.witnessed(state,spec)
     assert(init.isDefined)
   }
+  test("Abstract state heap cell pointing to null should include initial"){ f =>
+    val state = State.topState.copy(sf = State.topState.sf.copy(heapConstraints = Map(FieldPtEdge(a,"foo") -> NullVal)))
+    val init = f.stateSolver.witnessed(state, new SpecSpace(Set()))
+    assert(init.isDefined)
+  }
   ignore("Trace abstraction NI(a.bar(),a.baz()) |> I(b.baz()) |> I(c.bar()) (<=> true) ") { f =>
     //TODO: |>
     val stateSolver = f.stateSolver
