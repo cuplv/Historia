@@ -62,7 +62,7 @@ case object SubsumptionModeBatch extends SubsumptionMode
 case object SubsumptionModeTest extends SubsumptionMode
 
 sealed trait ApproxMode {
-  def shouldDropState(qry:IPathNode)(implicit db:OutputMode):Boolean
+  def shouldDropState(qry:IPathNode)(implicit db:OutputMode):Option[IPathNode]
   /**
    * Called at loop heads to widen or discard states depending on over or under approx.
    * Widening is applied for over approx.
@@ -88,19 +88,36 @@ object ApproxMode{
 }
 
 sealed trait DropQryPolicy{
-  def shouldDrop(qry:IPathNode)(implicit db:OutputMode) : Boolean
+  def shouldDropOrModify(qry:IPathNode)(implicit db:OutputMode) : Option[IPathNode]
 }
 object DropQryPolicy{
   implicit var rw:RW[DropQryPolicy] = RW.merge(LimitMsgCountDropStatePolicy.rw, LimitLocationVisitDropStatePolicy.rw,
     LimitCallStringDropStatePolicy.rw, LimitMaterializedFieldsDropStatePolicy.rw, LimitAppRecursionDropStatePolicy.rw,
-    DumpTraceAtLocationPolicy.rw)
+    DumpTraceAtLocationPolicy.rw, DropMaterializedFieldsPolicy.rw)
+}
+
+case class DropMaterializedFieldsPolicy(fieldName:String) extends DropQryPolicy{
+
+  override def shouldDropOrModify(qry: IPathNode)(implicit db: OutputMode): Option[IPathNode] = {
+    val cQry = qry.qry
+    val newHeap = cQry.state.heapConstraints.filter{
+      case (FieldPtEdge(base, name), _) => name != fieldName
+      case (StaticPtEdge(clazz,name),_) => name != fieldName
+      case _ => true
+    }
+    Some(qry.copyWithNewQry(cQry.copy(state = cQry.state.copy(sf = cQry.state.sf.copy(heapConstraints = newHeap)))))
+  }
+}
+
+object DropMaterializedFieldsPolicy{
+  implicit var rw:RW[DropMaterializedFieldsPolicy] = macroRW
 }
 
 case class DumpTraceAtLocationPolicy(appMethod:Option[SignatureMatcher], findLine:Option[Int],
                                      outputFolder:String, dumpAtCallbacks:Boolean = false) extends DropQryPolicy{
   val outputFolderF = File(outputFolder)
 
-  override def shouldDrop(qry: IPathNode)(implicit db: OutputMode): Boolean = {
+  override def shouldDropOrModify(qry: IPathNode)(implicit db: OutputMode): Option[IPathNode] = {
     qry.qry.loc match {
       case inv@InternalMethodInvoke(clazz, name, loc) if appMethod.isDefined && findLine.isEmpty =>
         val matcher = appMethod.get
@@ -141,7 +158,7 @@ case class DumpTraceAtLocationPolicy(appMethod:Option[SignatureMatcher], findLin
         }
       case _ =>
     } //.containingMethod.exists(m => matcher.matches(m.getSignature)(null))
-    false
+    Some(qry)
   }
 }
 object DumpTraceAtLocationPolicy{
@@ -150,7 +167,7 @@ object DumpTraceAtLocationPolicy{
 
 case class LimitMsgCountDropStatePolicy(count:Int) extends DropQryPolicy{
 
-  def shouldDrop(qry:IPathNode)(implicit db:OutputMode) : Boolean = {
+  def shouldDropOrModify(qry:IPathNode)(implicit db:OutputMode) : Option[IPathNode] = {
     val shouldDrop = qry.state.sf.traceAbstraction.rightOfArrow.filter{
         case OAbsMsg(CBEnter, _,_,_) => true
         case _ => false
@@ -159,7 +176,7 @@ case class LimitMsgCountDropStatePolicy(count:Int) extends DropQryPolicy{
       case (_, msgs) => msgs.size > count
     }
     if(shouldDrop) println(s"LimitMsgCountDropStatePolicy -- dropping state : ${qry.state} at location ${qry.qry.loc}")
-    shouldDrop
+    if(shouldDrop) None else Some(qry)
   }
 }
 object  LimitMsgCountDropStatePolicy{
@@ -202,9 +219,12 @@ case class LimitMaterializedFieldsDropStatePolicy(nameCount:Map[String,Int]) ext
     shouldDrop
   }
 
-  override def shouldDrop(qry: IPathNode)(implicit db: OutputMode): Boolean = byAny match {
-    case Some(limit) => shouldDropByAny(qry,limit)
-    case None => shouldDropByName(qry)
+  override def shouldDropOrModify(qry: IPathNode)(implicit db: OutputMode): Option[IPathNode] = {
+    val shouldDrop = byAny match {
+      case Some(limit) => shouldDropByAny(qry,limit)
+      case None => shouldDropByName(qry)
+    }
+    if(shouldDrop) None else Some(qry)
   }
 }
 
@@ -214,7 +234,7 @@ object LimitMaterializedFieldsDropStatePolicy{
 
 case class LimitAppRecursionDropStatePolicy(calls:Int) extends DropQryPolicy{
 
-  override def shouldDrop(qry: IPathNode)(implicit db: OutputMode): Boolean = {
+  override def shouldDropOrModify(qry: IPathNode)(implicit db: OutputMode): Option[IPathNode] = {
     val stack = qry.state.sf.callStack.flatMap{
       case m:MaterializedCallStackFrame => Some(m)
       case _ => None
@@ -222,9 +242,10 @@ case class LimitAppRecursionDropStatePolicy(calls:Int) extends DropQryPolicy{
         case MaterializedCallStackFrame(exitLoc, _, _) => exitLoc
       }
     val shouldDrop = stack.exists{case (loc, frames) => frames.size > calls}
-    if(shouldDrop)
+    if(shouldDrop) {
       println(s"LimitAppRecursionDropStatePolicy -- dropping state : ${qry.state} at location ${qry.qry.loc}")
-    shouldDrop
+      None
+    }else Some(qry)
   }
 }
 
@@ -234,11 +255,12 @@ object LimitAppRecursionDropStatePolicy{
 
 case class LimitCallStringDropStatePolicy(calls:Int) extends DropQryPolicy{
 
-  override def shouldDrop(qry: IPathNode)(implicit db: OutputMode): Boolean = {
+  override def shouldDropOrModify(qry: IPathNode)(implicit db: OutputMode): Option[IPathNode] = {
     val shouldDrop = qry.state.sf.callStack.size > calls
-    if(shouldDrop)
+    if(shouldDrop) {
       println(s"LimitLocationVisitDropStatePolicy -- dropping state : ${qry.state} at location ${qry.qry.loc}")
-    shouldDrop
+      None
+    }else Some(qry)
   }
 }
 
@@ -247,24 +269,25 @@ object LimitCallStringDropStatePolicy{
 }
 
 case class LimitLocationVisitDropStatePolicy(limit:Int) extends DropQryPolicy{
-  def shouldDrop(qry:IPathNode)(implicit db:OutputMode):Boolean = {
+  def shouldDropOrModify(qry:IPathNode)(implicit db:OutputMode): Option[IPathNode] = {
     val currentLoc = qry.qry.loc
     currentLoc match {
       case AppLoc(method, line, isPre) =>
         val count = qry.locCount.getOrElse(currentLoc,0)
         val shouldDrop = count > limit
         if(shouldDrop) println(s"LimitLocationVisitDropStatePolicy -- dropping state : ${qry.state} at location ${qry.qry.loc}")
-        shouldDrop
-      case CallinMethodReturn(sig) => false
-      case CallinMethodInvoke(sig) => false
-      case GroupedCallinMethodInvoke(targetClasses, fmwName) => false
-      case GroupedCallinMethodReturn(targetClasses, fmwName) => false
-      case CallbackMethodInvoke(sig, loc) => false
-      case CallbackMethodReturn(sig, loc, line) => false
-      case InternalMethodInvoke(clazz, name, loc) => false
-      case InternalMethodReturn(clazz, name, loc) => false
-      case SkippedInternalMethodInvoke(clazz, name, loc) => false
-      case SkippedInternalMethodReturn(clazz, name, rel, loc) => false
+        None
+      case _ => Some(qry)
+//      case CallinMethodReturn(sig) => false
+//      case CallinMethodInvoke(sig) => false
+//      case GroupedCallinMethodInvoke(targetClasses, fmwName) => false
+//      case GroupedCallinMethodReturn(targetClasses, fmwName) => false
+//      case CallbackMethodInvoke(sig, loc) => false
+//      case CallbackMethodReturn(sig, loc, line) => false
+//      case InternalMethodInvoke(clazz, name, loc) => false
+//      case InternalMethodReturn(clazz, name, loc) => false
+//      case SkippedInternalMethodInvoke(clazz, name, loc) => false
+//      case SkippedInternalMethodReturn(clazz, name, rel, loc) => false
     }
   }
 }
@@ -288,8 +311,11 @@ case class PreciseApproxMode(canWeaken:Boolean, dropStatePolicy:List[DropQryPoli
                      stateSolver: Z3StateSolver)(implicit w: ControlFlowResolver[M, C]): Option[IPathNode] =
     Some(newState)
 
-  override def shouldDropState(qry: IPathNode)(implicit db:OutputMode): Boolean =
-    dropStatePolicy.exists{_.shouldDrop(qry)}
+  override def shouldDropState(qry: IPathNode)(implicit db:OutputMode): Option[IPathNode] =
+    dropStatePolicy.foldLeft(Some(qry):Option[IPathNode]){
+      case (Some(qry), policy) => policy.shouldDropOrModify(qry)(db)
+      case (None, _) => None
+    } // .exists{_.shouldDropOrModify(qry)}
 }
 
 object PreciseApproxMode {
@@ -362,7 +388,7 @@ case class LimitMaterializationApproxMode(materializedFieldLimit:Int = 2) extend
 
   }
 
-  override def shouldDropState(state: IPathNode)(implicit db:OutputMode): Boolean = false
+  override def shouldDropState(state: IPathNode)(implicit db:OutputMode): Option[IPathNode] = Some(state)
 }
 
 object LimitMaterializationApproxMode {
@@ -715,10 +741,17 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
         val liveNodes = nodes.getOrElse(true, Set.empty).flatMap { p2 =>
           try {
             val resPreFilt = executeStep(p2.qry).map(q => PathNode(q, List(p2), None))
-            val res = resPreFilt.filter{qry =>
-              val drop = !config.approxMode.shouldDropState(qry) && controlFlowResolver.allFieldsMayBeWritten(qry.state)
-              if(drop) qry.setSubsumed(Set())
-              drop
+            val res = resPreFilt.flatMap{qry =>
+              // drop state if we can't write a field (will never witness)
+              val canWriteFields = controlFlowResolver.allFieldsMayBeWritten(qry.state)
+              val mapped = if(canWriteFields) {
+                // apply custom drop policies for under approx
+                config.approxMode.shouldDropState(qry)
+              } else {
+                None
+              }
+              if(mapped.isEmpty) qry.setSubsumed(Set())
+              mapped
             }
             if (res.isEmpty)
               noPred.addOne(p2)
@@ -997,11 +1030,14 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
                       ze.printStackTrace()
                       throw QueryInterruptedException(refutedSubsumedOrWitnessed + p2, ze.getMessage)
                   }
-                  val nextQry = nextQryPreFilt.filter{qry =>
-                    val drop = !config.approxMode.shouldDropState(qry) &&
-                      controlFlowResolver.allFieldsMayBeWritten(qry.state)
-                    if(drop) qry.setSubsumed(Set())
-                    drop
+                  val nextQry = nextQryPreFilt.flatMap{qry =>
+                    val canWriteFields = controlFlowResolver.allFieldsMayBeWritten(qry.state)
+                    val mapped = config.approxMode.shouldDropState(qry)
+                    if(!canWriteFields || mapped.isEmpty) {
+                      qry.setSubsumed(Set())
+                      None
+                    }else
+                      mapped
                   }
                   qrySet.addAll(nextQry)
                   val addIfPredEmpty = if (nextQry.isEmpty && config.outputMode != NoOutputMode)
