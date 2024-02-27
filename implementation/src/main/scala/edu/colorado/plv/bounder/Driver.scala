@@ -461,12 +461,13 @@ object Driver {
     val resolver = interpreter.appCodeResolver
     val cfRes = interpreter.controlFlowResolver
     val allMethods: Set[MethodLoc] = resolver.appMethods.filter{m => ???}
-    val callins:Set[Signature] = allMethods.flatMap{appMethod => cfRes.directCallsGraph(appMethod).flatMap {
-      case CallinMethodReturn(sig) => Some(sig)
-      case CallinMethodInvoke(sig) => Some(sig)
-      case GroupedCallinMethodInvoke(_, _) => throw new IllegalStateException("should not group here")
-      case GroupedCallinMethodReturn(_, _) => throw new IllegalStateException("should not group here")
-      case _ => None
+    val callins:Set[Signature] = allMethods.flatMap{appMethod => cfRes.filterResolver
+      .directCallsGraph(cfRes.getWrapper,appMethod).flatMap {
+        case CallinMethodReturn(sig) => Some(sig)
+        case CallinMethodInvoke(sig) => Some(sig)
+        case GroupedCallinMethodInvoke(_, _) => throw new IllegalStateException("should not group here")
+        case GroupedCallinMethodReturn(_, _) => throw new IllegalStateException("should not group here")
+        case _ => None
     }}
 
     val callbacks: Set[Signature] = resolver.getCallbacks.map{cb => cb.getSignature}

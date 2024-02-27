@@ -12,7 +12,7 @@ import scalaz.Memo
 
 import scala.annotation.tailrec
 import scala.collection.mutable
-import scala.collection.parallel.CollectionConverters.ImmutableIterableIsParallelizable
+import scala.collection.parallel.CollectionConverters.{ImmutableIterableIsParallelizable, IterableIsParallelizable}
 import scala.util.matching.Regex
 import scala.util.Random
 
@@ -92,28 +92,116 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
     case None => (List(".*".r), List())
   }
 
-  private val visitedMethodLoc = mutable.Set[MethodLoc]()
-  val methodLocInComponent:((MethodLoc, IRWrapper[M,C])) => Boolean =
-    Memo.mutableHashMapMemo {arg:(MethodLoc,IRWrapper[M,C]) =>
-      val methodLoc = arg._1
-      val ir = arg._2
-      val inCg = {
-        if(ir.getAppCodeResolver.getCallbacks.contains(methodLoc)){
-          true
-        }else{
-          val callers = ir.appCallSites(methodLoc)
-            .filter{caller => !visitedMethodLoc.contains(caller.method)} // ignore recursion
-          visitedMethodLoc.add(methodLoc)
-          callers.exists{caller => methodLocInComponent(caller.method,ir)}
-        }
-      }
-      val className = methodLoc.classType
-      val mName = methodLoc.simpleName
-      lazy val pos = componentPos.exists(p => p.matches(className))
-      lazy val neg = componentNeg.forall(n => !n.matches(className))
-      lazy val name = methodFilterPos.exists{m => m.matches(mName) }
-      inCg && pos && neg && name
+
+  private def iDirectCallsGraph(ir:IRWrapper[M,C],loc:MethodLoc):Set[Loc] = {
+    val unresolvedTargets = ir.makeMethodTargets(loc).map(callee =>
+      UnresolvedMethodTarget(callee.classType, callee.simpleName, Set(callee)))
+    unresolvedTargets.flatMap(target => ir.getAppCodeResolver.resolveCallLocation(target))
   }
+  def directCallsGraph = Memo.mutableHashMapMemo((v:(IRWrapper[M,C],MethodLoc) )=> iDirectCallsGraph(v._1, v._2))
+  /**
+   *
+   * @param loc calling method
+   * @param includeCallin should result include callins
+   * @return methods that may be called by loc
+   */
+  def callsToRetLoc(ir:IRWrapper[M,C], loc: MethodLoc, includeCallin: Boolean): Set[MethodLoc] = {
+    val directCalls = directCallsGraph(ir, loc)
+    val internalCalls = directCalls.flatMap {
+      case InternalMethodReturn(_, _, oloc) =>
+        // We only care about direct calls, calls through framework are considered callbacks
+        if (!ir.getAppCodeResolver.isFrameworkClass(oloc.classType))
+          Some(oloc)
+        else if (includeCallin) Some(oloc) else None
+      case CallinMethodReturn(sig) if includeCallin =>
+        val res = ir.findMethodLoc(sig)
+        res
+      case _ =>
+        None
+    }
+    internalCalls
+  }
+
+  def computeAllCalls___(ir:IRWrapper[M,C], loc: MethodLoc, includeCallin: Boolean = false): Set[MethodLoc] = {
+    val empty = Set[MethodLoc]()
+    val out = BounderUtil.graphFixpoint[MethodLoc, Set[MethodLoc]](Set(loc),
+      empty,
+      empty,
+      next = c => callsToRetLoc(ir,c, includeCallin),
+      comp = (_, v) => callsToRetLoc(ir,v, includeCallin),
+      join = (a, b) => a.union(b)
+    )
+    out.flatMap {
+      case (k, v) => v
+    }.toSet
+  }
+  def computeAllCalls(ir:IRWrapper[M,C],loc:MethodLoc, includeCallin:Boolean = false):Set[MethodLoc] = {
+    callsToRetLoc(ir,loc, includeCallin)
+  }
+
+  /**
+   * Direct calls of method
+   * @return
+   */
+  def allCallsApp: ((IRWrapper[M,C],MethodLoc)) => Set[MethodLoc] =
+    Memo.mutableHashMapMemo((c: (IRWrapper[M,C],MethodLoc)) => computeAllCalls(c._1,c._2))
+
+  def mayRecurse(ir:IRWrapper[M,C],m:MethodLoc):Boolean = {
+    allCallsAppTransitive(ir,m).contains(m)
+  }
+
+  def computeAllCallsTransitive(v:(IRWrapper[M,C],MethodLoc)):Set[MethodLoc] = {
+    val ir = v._1
+    val loc = v._2
+    val calls = mutable.Set[MethodLoc]()
+    calls.addAll(allCallsApp(ir,loc))
+    var added = true
+    while(added){
+      val newCalls = calls.par.flatMap{called => allCallsApp(ir,called)}
+      added = newCalls.exists{newCall => !calls.contains(newCall)}
+      calls.addAll(newCalls)
+    }
+    calls.toSet
+  }
+
+  def allCallsAppTransitive:((IRWrapper[M,C],MethodLoc)) => Set[MethodLoc] =
+    Memo.mutableHashMapMemo(computeAllCallsTransitive)
+
+  private val irCache = mutable.Map[IRWrapper[M,C], Set[MethodLoc]]()
+  def methodLocInComponent(loc:MethodLoc,ir:IRWrapper[M,C]):Boolean = {
+    irCache.get(ir) match {
+      case Some(value) => value.contains(loc)
+      case None =>
+        val resolver = ir.getAppCodeResolver
+        val callbacks = resolver.getCallbacks
+        val outMethods = callbacks ++ callbacks.flatMap{cb => allCallsAppTransitive(ir,cb)}
+        irCache.put(ir,outMethods)
+        outMethods.contains(loc)
+    }
+  }
+
+  //  private val visitedMethodLoc = mutable.Set[MethodLoc]()
+//  val methodLocInComponent:((MethodLoc, IRWrapper[M,C])) => Boolean =
+//    Memo.mutableHashMapMemo {arg:(MethodLoc,IRWrapper[M,C]) =>
+//      val methodLoc = arg._1
+//      val ir = arg._2
+//      val inCg = {
+//        if(ir.getAppCodeResolver.getCallbacks.contains(methodLoc)){
+//          true
+//        }else{
+//          val callers = ir.appCallSites(methodLoc)
+//            .filter{caller => !visitedMethodLoc.contains(caller.method)} // ignore recursion
+//          visitedMethodLoc.add(methodLoc)
+//          callers.exists{caller => methodLocInComponent(caller.method,ir)}
+//        }
+//      }
+//      val className = methodLoc.classType
+//      val mName = methodLoc.simpleName
+//      lazy val pos = componentPos.exists(p => p.matches(className))
+//      lazy val neg = componentNeg.forall(n => !n.matches(className))
+//      lazy val name = methodFilterPos.exists{m => m.matches(mName) }
+//      inCg && pos && neg && name
+//  }
   def locInComponent(loc: Loc, ir:IRWrapper[M,C]): Boolean = loc match {
     case CallbackMethodInvoke(_, methodLoc) => methodLocInComponent(methodLoc,ir)
     case CallbackMethodReturn(_, methodLoc, _) => methodLocInComponent(methodLoc,ir)
@@ -130,17 +218,21 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
   }
   def computeFieldsLookup(ir:IRWrapper[M,C]):FieldsLookup = {
     val resolver = ir.getAppCodeResolver
-    val staticFields = mutable.Map[(String, String), TypeSet]()
-    val dynamicFields = mutable.Map[String, Set[(TypeSet, TypeSet)]]()
+    val staticFields = mutable.Map[(String, String), (TypeSet, Set[MethodLoc])]()
+    val excludeStaticFields = mutable.Map[(String, String), (TypeSet, Set[MethodLoc])]()
+    val dynamicFields = mutable.Map[String, Set[(TypeSet, TypeSet, Set[MethodLoc])]]()
+    val excludeDynamicFields = mutable.Map[String, Set[(TypeSet, TypeSet, Set[MethodLoc])]]()
+
     resolver.appMethods.foreach {
       case appMethod if methodLocInComponent(appMethod,ir)=>
           ir.findInMethod(appMethod.classType, appMethod.simpleName, {
             case AssignCmd(StaticFieldReference(declaringClass, fieldName, _), source, loc) =>
               val sourcePts = ir.pointsToSet(appMethod, source)
               val staticFieldsKey = (declaringClass, fieldName)
-              val oldStaticFieldsPt = staticFields.getOrElse(staticFieldsKey, EmptyTypeSet)
+              val (oldStaticFieldsPt,oldSet:Set[MethodLoc]) = staticFields.getOrElse(staticFieldsKey, (EmptyTypeSet, Set.empty))
               val newStaticFieldsPt = oldStaticFieldsPt.union(sourcePts)
-              staticFields.put(staticFieldsKey, newStaticFieldsPt)
+              val newSet:Set[MethodLoc] = oldSet + appMethod
+              staticFields.put(staticFieldsKey, (newStaticFieldsPt,newSet))
               false
             case AssignCmd(FieldReference(base, _, _, name), tgt, _) =>
               //if(name == "media" || name == "callback"){
@@ -148,18 +240,51 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
               //}
               val basePts = ir.pointsToSet(appMethod, base)
               val tgtPts = ir.pointsToSet(appMethod, tgt)
-              val oldFieldPtsList: Set[(TypeSet, TypeSet)] = dynamicFields.getOrElse(name, Set.empty)
-              if (!oldFieldPtsList.exists { case (pt1, pt2) => pt1.contains(basePts) && pt2.contains(tgtPts) }) {
-                val toAdd: (TypeSet, TypeSet) = (basePts, tgtPts)
-                dynamicFields.put(name, oldFieldPtsList + toAdd)
+              val oldFieldPtsList = dynamicFields.getOrElse(name, Set.empty)
+              val applicable = oldFieldPtsList.find { case (pt1, pt2, _) => pt1.contains(basePts) && pt2.contains(tgtPts)}
+              applicable match{
+                case None =>
+                  val toAdd: (TypeSet, TypeSet, Set[MethodLoc]) = (basePts, tgtPts, Set(appMethod))
+                  dynamicFields.put(name, oldFieldPtsList + toAdd)
+                case Some((ots1,ots2, omSet)) =>
+                  val toAdd = (ots1,ots2,omSet + appMethod)
+                  dynamicFields.put(name,oldFieldPtsList + toAdd)
               }
               false
             case _ => false
           }, emptyOk = true)
       case exclude =>
-        println(exclude)
+        ir.findInMethod(exclude.classType, exclude.simpleName, {
+          case AssignCmd(StaticFieldReference(declaringClass, fieldName, _), source, loc) =>
+            val sourcePts = ir.pointsToSet(exclude, source)
+            val staticFieldsKey = (declaringClass, fieldName)
+            val (oldStaticFieldsPt,oldSet) = excludeStaticFields.getOrElse(staticFieldsKey, (EmptyTypeSet, Set[MethodLoc]()))
+            val newStaticFieldsPt = oldStaticFieldsPt.union(sourcePts)
+            val newSet = oldSet + exclude
+            excludeStaticFields.put(staticFieldsKey, (newStaticFieldsPt,newSet))
+            false
+          case AssignCmd(FieldReference(base, _, _, name), tgt, _) =>
+            //if(name == "media" || name == "callback"){
+            //println()
+            //}
+            val basePts = ir.pointsToSet(exclude, base)
+            val tgtPts = ir.pointsToSet(exclude, tgt)
+            val oldFieldPtsList = excludeDynamicFields.getOrElse(name, Set.empty)
+            val applicable = oldFieldPtsList.find { case (pt1, pt2, _) => pt1.contains(basePts) && pt2.contains(tgtPts)}
+            applicable match{
+              case None =>
+                val toAdd: (TypeSet, TypeSet, Set[MethodLoc]) = (basePts, tgtPts, Set(exclude))
+                excludeDynamicFields.put(name, oldFieldPtsList + toAdd)
+              case Some((ots1,ots2, omSet)) =>
+                val toAdd = (ots1,ots2,omSet + exclude)
+                excludeDynamicFields.put(name, oldFieldPtsList + toAdd)
+            }
+            false
+          case _ => false
+        }, emptyOk = true)
+        println(s"ecluded method: ${exclude}")
     }
-    FieldsLookup(staticFields.toMap, dynamicFields.toMap)
+    FieldsLookup(staticFields.toMap, dynamicFields.toMap, excludeStaticFields.toMap, excludeDynamicFields.toMap)
   }
   val fieldsLookupCache = mutable.Map[IRWrapper[M,C], FieldsLookup]()
   def fieldsLookup(ir:IRWrapper[M,C]): FieldsLookup = {
@@ -170,27 +295,51 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
     fieldsLookupCache(ir)
   }
 
-  case class FieldsLookup(staticFields:Map[(String,String), TypeSet], dynamicFields:Map[String,Set[(TypeSet,TypeSet)]])
+  case class FieldsLookup(staticFields:Map[(String,String), (TypeSet, Set[MethodLoc])],
+                          dynamicFields:Map[String,Set[(TypeSet,TypeSet, Set[MethodLoc])]],
+                          excludedStaticFeilds:Map[(String,String), (TypeSet, Set[MethodLoc])],
+                          excludedDynamicFields:Map[String,Set[(TypeSet,TypeSet, Set[MethodLoc])]]
+                         )
   def cellMayBeWritten(ir:IRWrapper[M,C],edge: HeapPtEdge, state:State):Boolean = edge match{
     case FieldPtEdge(base, fieldName) =>
       val baseTypeSet = state.sf.typeConstraints.getOrElse(base, TopTypeSet)
       fieldsLookup(ir).dynamicFields.get(fieldName).exists{writes =>
-        writes.exists{case (ts1, _) => baseTypeSet.intersectNonEmpty(ts1)}}
+        writes.exists{case (ts1, _,_) => baseTypeSet.intersectNonEmpty(ts1)}}
     case StaticPtEdge(clazz, name) =>
       fieldsLookup(ir).staticFields.contains((clazz,name))
   }
-
-  def fieldMayBeWritten(ir:IRWrapper[M,C],field: (HeapPtEdge, PureExpr), state:State):Boolean = field match {
+  val PRINT_WRITELOC_OUTSIDE_FILTER = true
+  def fieldMayNotBeWritten(ir:IRWrapper[M,C], field: (HeapPtEdge, PureExpr), state:State):Boolean = field match {
+    case (cell@FieldPtEdge(base, fieldName), NullVal) =>
+      !cellMayBeWritten(ir, cell, state)
+    case (cell@StaticPtEdge(clazz, name), NullVal) =>
+      !cellMayBeWritten(ir,cell,state)
     case (FieldPtEdge(base, fieldName), tgt: PureVar) =>
       val baseTypeSet = state.sf.typeConstraints.getOrElse(base, TopTypeSet)
       val tgtTypeSet = state.sf.typeConstraints.getOrElse(tgt, TopTypeSet)
-      !fieldsLookup(ir).dynamicFields.getOrElse(fieldName, Set()).exists { case (otherBase, otherTgt) =>
+      val lookup = fieldsLookup(ir)
+      val notWritten = !lookup.dynamicFields.getOrElse(fieldName, Set()).exists { case (otherBase, otherTgt,_) =>
         baseTypeSet.intersectNonEmpty(otherBase) && tgtTypeSet.intersectNonEmpty(otherTgt)
       }
+      if(PRINT_WRITELOC_OUTSIDE_FILTER  && notWritten){
+        val found = lookup.excludedDynamicFields.getOrElse(fieldName,Set()).find{ case  (otherBase, otherTgt, methods) =>
+          baseTypeSet.intersectNonEmpty(otherBase) && tgtTypeSet.intersectNonEmpty(otherTgt)
+        }
+        if(found.nonEmpty)
+          println(s"Field ${field} -> ${tgt} not written but found write in excluded method: ${found.get}")
+      }
+      notWritten
     case (StaticPtEdge(clazz, name), tgt: PureVar) =>
       val tgtTypes = state.sf.typeConstraints.getOrElse(tgt, TopTypeSet)
-      val intersected = fieldsLookup(ir).staticFields.getOrElse((clazz, name), TopTypeSet).intersect(tgtTypes)
-      intersected.isEmpty
+      val lookup = fieldsLookup(ir)
+      val intersected = lookup.staticFields.getOrElse((clazz, name), (TopTypeSet, None))._1.intersect(tgtTypes)
+      val notWritten = intersected.isEmpty
+      if(PRINT_WRITELOC_OUTSIDE_FILTER  && notWritten){
+        val found = lookup.excludedStaticFeilds.getOrElse((clazz, name), (EmptyTypeSet, Set[MethodLoc]()))
+        if(found._1.intersectNonEmpty(tgtTypes))
+          println(s"Field ${field} -> ${tgt} not written but found write in excluded methods: ${found._2.take(1)}")
+      }
+      notWritten
     case _ => false
   }
 }
@@ -264,7 +413,7 @@ class AppCodeResolver[M,C] (ir: IRWrapper[M,C]) {
     val cfRes = abs.controlFlowResolver
     implicit val ch = abs.getClassHierarchy
     val finishExists = filteredAppMethods.exists{ m =>
-      cfRes.directCallsGraph(m).exists {
+      abs.controlFlowResolver.filterResolver.directCallsGraph(abs.w,m).exists {
         case CallinMethodReturn(sig) => SpecSignatures.Activity_finish.matches(sig)
         case CallinMethodInvoke(sig) => SpecSignatures.Activity_finish.matches(sig)
         case GroupedCallinMethodInvoke(_, _) =>throw new IllegalStateException("should not group here")

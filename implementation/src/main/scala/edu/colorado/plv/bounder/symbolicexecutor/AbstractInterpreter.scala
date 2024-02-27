@@ -550,7 +550,7 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
       case db:DBOutputMode =>
         appCodeResolver.appMethods.foreach{m =>
           db.writeMethod(m,callbacks.contains(m))
-          val directCalls = controlFlowResolver.directCallsGraph(m).map{
+          val directCalls = controlFlowResolver.filterResolver.directCallsGraph(controlFlowResolver.getWrapper,m).map{
             case InternalMethodReturn(clazz,name,m) => (name,clazz,false)
             case CallinMethodReturn(sig) => (sig.methodSignature,sig.base,true)
             case _ => throw new IllegalStateException()

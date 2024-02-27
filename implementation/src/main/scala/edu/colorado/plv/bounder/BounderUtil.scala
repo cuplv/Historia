@@ -30,7 +30,7 @@ object BounderUtil {
       val calleePossibilities: Set[MethodLoc] = resolver.getAppCodeResolver.appMethods.filter{ mloc => callee.matches(mloc.getSignature)(cha)}
       val callerPossibilities: Set[MethodLoc] = resolver.getAppCodeResolver.appMethods.filter{ mloc => caller.matches(mloc.getSignature)(cha)}
       val currentCallMayExist = callerPossibilities.exists{(m:MethodLoc) =>
-        val methods = resolver.callsToRetLoc(m,false)
+        val methods = resolver.filterResolver.callsToRetLoc(resolver.getWrapper,m,false)
         methods.exists{call => calleePossibilities.contains(call)}
       }
       if(!currentCallMayExist) {

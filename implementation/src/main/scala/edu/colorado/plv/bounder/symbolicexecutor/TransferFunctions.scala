@@ -694,7 +694,8 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
       val (yval, stateWithY) = state.getOrDefine(base,Some(l.method))
       val mayWrite = yval match{
         case v:PureVar => filterResolver.cellMayBeWritten(w,FieldPtEdge(v,fieldName), stateWithY)
-        case _ => false  // cannot be written if base must be null
+        case _ =>
+          false  // cannot be written if base must be null
       }
       if(mayWrite) {
         state.get(lhs) match { //TODO: some kind of imprecision here or in the simplification shown by "Test dynamic dispatch 2"

@@ -141,13 +141,13 @@ object SwapLoc {
     case a@AppLoc(_,_,true) => {
       r.getWrapper.cmdAtLocation(a) match {
         case InvokeCmd(_, _) =>
-          codeLocationIfRecurse(pathNode, r, a)
+          codeLocationIfRecurse(r, a)
           //None
         case AssignCmd(_,i:Invoke, _) =>
-          codeLocationIfRecurse(pathNode, r, a)
+          codeLocationIfRecurse(r, a)
           //None
         case ReturnCmd(returnVar, loc) =>
-          codeLocationIfRecurse(pathNode, r, loc)
+          codeLocationIfRecurse(r, loc)
         case AssignCmd(target, source, loc) => None
         case NopCmd(loc) => None
         case SwitchCmd(key, targets, loc) => None
@@ -166,9 +166,9 @@ object SwapLoc {
     case _: SkippedInternalMethodInvoke => None
   }
 
-  private def codeLocationIfRecurse[C, M](pathNode: IPathNode, r: ControlFlowResolver[M, C], a: AppLoc) = {
+  private def codeLocationIfRecurse[C, M](r: ControlFlowResolver[M, C], a: AppLoc) = {
     val method = a.method
-    if (r.mayRecurse(method)) {
+    if (r.filterResolver.mayRecurse(r.getWrapper,method)) {
       Some(CodeLocation(a))
     } else None
   }

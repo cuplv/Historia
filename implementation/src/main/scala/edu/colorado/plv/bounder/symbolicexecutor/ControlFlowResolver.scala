@@ -84,7 +84,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       // Get pts to regions for args of cb empty if static
       val argPts = cb.getArgs.map(_.map(wrapper.pointsToSet(cb, _)).getOrElse(EmptyTypeSet))
 
-      val allMethodsCalled = allCallsApp(cb) + cb
+      val allMethodsCalled = filterResolver.allCallsApp(wrapper,cb) + cb
 //      val allMethodsCalledFilt = allMethodsCalled.filter{ci => // only compute pts for callins in abs msg set
 //        msgs.exists{absMsg => absMsg.contains(CIExit, ci.getSignature)}
 //      }
@@ -104,14 +104,6 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 
   def getWrapper = wrapper
 
-  private def iDirectCallsGraph(loc:MethodLoc):Set[Loc] = {
-    val unresolvedTargets = wrapper.makeMethodTargets(loc).map(callee =>
-      UnresolvedMethodTarget(callee.classType, callee.simpleName, Set(callee)))
-    unresolvedTargets.flatMap(target => resolver.resolveCallLocation(target))
-  }
-  def directCallsGraph = Memo.mutableHashMapMemo(loc => iDirectCallsGraph(loc))
-
-
   var printCacheCache = mutable.Set[String]()
 
   /**
@@ -126,65 +118,9 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     }
   }
 
-  /**
-   *
-   * @param loc calling method
-   * @param includeCallin should result include callins
-   * @return methods that may be called by loc
-   */
-  def callsToRetLoc(loc: MethodLoc, includeCallin: Boolean): Set[MethodLoc] = {
-    val directCalls = directCallsGraph(loc)
-    val internalCalls = directCalls.flatMap {
-      case InternalMethodReturn(_, _, oloc) =>
-        // We only care about direct calls, calls through framework are considered callbacks
-        if (!resolver.isFrameworkClass(oloc.classType))
-          Some(oloc)
-        else if (includeCallin) Some(oloc) else None
-      case CallinMethodReturn(sig) if includeCallin =>
-        val res = wrapper.findMethodLoc(sig)
-        res
-      case _ =>
-        None
-    }
-    internalCalls
-  }
-
-  def computeAllCalls___(loc: MethodLoc, includeCallin: Boolean = false): Set[MethodLoc] = {
-    val empty = Set[MethodLoc]()
-    val out = BounderUtil.graphFixpoint[MethodLoc, Set[MethodLoc]](Set(loc),
-      empty,
-      empty,
-      next = c => callsToRetLoc(c, includeCallin),
-      comp = (_, v) => callsToRetLoc(v, includeCallin),
-      join = (a, b) => a.union(b)
-    )
-    out.flatMap {
-      case (k, v) => v
-    }.toSet
-  }
-  def computeAllCalls(loc:MethodLoc, includeCallin:Boolean = false):Set[MethodLoc] = {
-     callsToRetLoc(loc, includeCallin)
-  }
-  def allCallsApp: MethodLoc => Set[MethodLoc] = Memo.mutableHashMapMemo(c => computeAllCalls(c))
-
-  def mayRecurse(m:MethodLoc):Boolean = {
-    allCallsAppTransitive(m).contains(m)
-  }
-
-  def computeAllCallsTransitive(loc:MethodLoc):Set[MethodLoc] = {
-    val calls = mutable.Set[MethodLoc]()
-    calls.addAll(allCallsApp(loc))
-    var added = true
-    while(added){
-      val newCalls = calls.par.flatMap{called => allCallsApp(called)}
-      added = newCalls.exists{newCall => !calls.contains(newCall)}
-      calls.addAll(newCalls)
-    }
-    calls.toSet
-  }
 
 
-  def allCallsAppTransitive:MethodLoc => Set[MethodLoc] = Memo.mutableHashMapMemo(computeAllCallsTransitive)
+
 
   //  val memoizedallCalls: MethodLoc => Set[MethodLoc]= allCalls
   def upperBoundOfInvoke(i: Invoke): Option[String] = i match {
@@ -446,7 +382,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       return NotRelevantMethod // body can only be relevant to app heap or trace if method is in the app
     }
 
-    val currentCalls = allCallsAppTransitive(m) + m
+    val currentCalls = filterResolver.allCallsAppTransitive(wrapper,m) + m
     val heapRelevantCallees = currentCalls.filter { callee =>
       val hn: Set[String] = heapNamesWritten(callee)
       fnSet.exists { fn =>
@@ -529,7 +465,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     }.toMap
     directCalls.map{
       case (method, absMsgs) =>
-        val allCalls = allCallsAppTransitive(method)
+        val allCalls = filterResolver.allCallsAppTransitive(wrapper,method)
         (method,allCalls.foldLeft(absMsgs){case (acc,v) =>
           acc ++ directCalls.getOrElse(v, Set.empty)
         })
@@ -688,7 +624,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 
   def allFieldsMayBeWritten(state:State):Boolean = {
     // find heap cells that cannot be allocated anywhere
-    val res = state.sf.heapConstraints.find{f => filterResolver.fieldMayBeWritten(wrapper ,f, state)}
+    val res = state.sf.heapConstraints.find{f => filterResolver.fieldMayNotBeWritten(wrapper ,f, state)}
     if(res.nonEmpty){
       println(s"Field ${res.head} cannot be written anywhere, dropping containing state ${state}.")
       res.head._2 match {
@@ -813,7 +749,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     case (InternalMethodInvoke(_, _, loc), _) =>
       val callsFromCurrentCB: Option[Set[MethodLoc]] = state.currentCallback.map { cb =>
         val containingMethod = cb.loc
-        allCallsAppTransitive(containingMethod)
+        filterResolver.allCallsAppTransitive(wrapper,containingMethod)
       }
       val locations = wrapper.appCallSites(loc)
         .filter{loc =>

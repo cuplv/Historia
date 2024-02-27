@@ -4,7 +4,7 @@ import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{DepthResult, MultiCallback, Proven, ResultSummary, SingleCallbackMultiMethod, SingleMethod, Timeout, Unreachable, Witnessed, interpretResult}
 import edu.colorado.plv.bounder.ir.{CBEnter, CIExit, OverApprox, SootWrapper}
-import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, AnyAbsMsg, Exists, LSAnyPred, LSConstraint, LSSpec, LSTrue, NS, Not, Or, Signature, SubClassMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, AnyAbsMsg, ExactClassMatcher, Exists, LSAnyPred, LSConstraint, LSSpec, LSTrue, NS, Not, Or, Signature, SubClassMatcher}
 import edu.colorado.plv.bounder.lifestate.LifecycleSpec.viewAttached2
 import edu.colorado.plv.bounder.lifestate.SAsyncTask.executeI
 import edu.colorado.plv.bounder.lifestate.SpecSignatures.{Activity_onPause_entry, Activity_onResume_entry, Button_init}
@@ -2907,6 +2907,8 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val config = ExecutorConfig(
         stepLimit = 120, w, specs,
         component = Some(List("com.example.createdestroy.*MyActivity.*")), approxMode = f.approxMode)
+//          PreciseApproxMode(true,
+//        List(DumpTraceAtLocationPolicy(Some(ExactClassMatcher(".*",".*method.*","Method")),None,"/Users/shawnmeier/Desktop/bounder_debug_data",true))))// f.approxMode)
       val symbolicExecutor = config.getAbstractInterpreter
       val line = BounderUtil.lineForRegex(".*query1.*".r, src)
       val runMethodReachable = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity$1",
@@ -2914,7 +2916,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
 
       val resultRunMethodReachable = symbolicExecutor.run(runMethodReachable)
         .flatMap(a => a.terminals)
-      //      prettyPrinting.dumpDebugInfo(resultRunMethodReachable, "RunnableInHandler")
+      //PrettyPrinting.dumpDebugInfo(resultRunMethodReachable, "RunnableInHandler")
       assert(resultRunMethodReachable.nonEmpty)
       BounderUtil.throwIfStackTrace(resultRunMethodReachable)
       assert(BounderUtil.interpretResult(resultRunMethodReachable, QueryFinished) == Witnessed)
