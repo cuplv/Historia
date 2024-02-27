@@ -275,8 +275,10 @@ case class LimitLocationVisitDropStatePolicy(limit:Int) extends DropQryPolicy{
       case AppLoc(method, line, isPre) =>
         val count = qry.locCount.getOrElse(currentLoc,0)
         val shouldDrop = count > limit
-        if(shouldDrop) println(s"LimitLocationVisitDropStatePolicy -- dropping state : ${qry.state} at location ${qry.qry.loc}")
-        None
+        if(shouldDrop) {
+          println(s"LimitLocationVisitDropStatePolicy -- dropping state : ${qry.state} at location ${qry.qry.loc}")
+          None
+        } else Some(qry)
       case _ => Some(qry)
 //      case CallinMethodReturn(sig) => false
 //      case CallinMethodInvoke(sig) => false
