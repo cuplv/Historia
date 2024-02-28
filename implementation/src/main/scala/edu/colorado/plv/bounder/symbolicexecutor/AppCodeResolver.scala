@@ -326,7 +326,7 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
     case StaticPtEdge(clazz, name) =>
       fieldsLookup(ir).staticFields.contains((clazz,name))
   }
-  val PRINT_WRITELOC_OUTSIDE_FILTER = false
+  val PRINT_WRITELOC_OUTSIDE_FILTER = true
   def fieldMayNotBeWritten(ir:IRWrapper[M,C], field: (HeapPtEdge, PureExpr), state:State):Boolean = field match {
 //    case (cell@FieldPtEdge(base, fieldName), NullVal) => //TODO:==== does this affect Button enable/disable test?
 //      !cellMayBeWritten(ir, cell, state)
