@@ -82,7 +82,7 @@ case class SerializedIR(transitions: Map[AppLoc, Set[SerializedTransition]]) ext
 
   override def allMethodLocations(m: MethodLoc): Set[AppLoc] = ???
 
-  override def getAppCodeResolver: AppCodeResolver[String, CmdWrapper] = ???
+  override def getAppCodeResolver: AppCodeResolver[String, CmdWrapper] = new AppCodeResolver[String,CmdWrapper](this);
 
 }
 
