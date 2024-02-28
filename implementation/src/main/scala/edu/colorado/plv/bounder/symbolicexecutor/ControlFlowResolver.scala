@@ -672,6 +672,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
             case v => throw new IllegalStateException(s"$v")
           }}
           val out = mergeEquivalentCallins(resolvedSkipIrrelevant.seq.toSet, state)
+          if(out.isEmpty) println(s"ControlFlowResolver: invocation ${l} has no targets.")
           out
         }
         case AssignCmd(tgt:LocalWrapper, _:Invoke,loc) => {
@@ -693,6 +694,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
             case v => throw new IllegalStateException(s"$v")
           }}
           val out: Set[Loc] = mergeEquivalentCallins(resolvedSkipIrrelevant.seq.toSet, state)
+          if(out.isEmpty) println(s"ControlFlowResolver: invocation ${l} has no targets.")
           out
         }
         case AssignCmd(tgt, inv:Invoke,_) =>
