@@ -717,19 +717,20 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     case (_:CallbackMethodInvoke, _) =>
       val callbacks = resolver.getCallbacks
 //      if(hardReqSatisfiable(state)) { //TODO: This seems like a good idea but seems to do nothing
-        val res: Seq[Loc] = callbacks.flatMap(callback => {
-          val locCb = wrapper.makeMethodRetuns(callback)
-          locCb.flatMap { case AppLoc(method, line, _) => resolver.resolveCallbackExit(method, Some(line)) }
-        }).toList
-        val componentFiltered = res.filter(v => filterResolver.locInComponent(v,wrapper))
-        // filter for callbacks that may affect current state
-        val res2 = componentFiltered.filter { m =>
-          relevantMethod(m, state) match {
-            case RelevantMethod => true
-            case NotRelevantMethod => false
-          }
+      val res: Seq[Loc] = callbacks.flatMap(callback => {
+        val locCb = wrapper.makeMethodRetuns(callback)
+        locCb.flatMap { case AppLoc(method, line, _) => resolver.resolveCallbackExit(method, Some(line)) }
+      }).toList
+      val componentFiltered = res.filter(v => filterResolver.locInComponent(v,wrapper))
+      // filter for callbacks that may affect current state
+      val res2 = componentFiltered.filter { m =>
+        relevantMethod(m, state) match {
+          case RelevantMethod => true
+          case NotRelevantMethod => false
         }
-        res2
+      }
+      if(res2.isEmpty) println(s"sControlFlowResolver: callback ${loc} has no predecessors with state ${state}")
+      res2
 //      }else List.empty
     case (CallbackMethodReturn(_, loc, Some(line)),_) =>
       AppLoc(loc, line, isPre = false)::Nil
