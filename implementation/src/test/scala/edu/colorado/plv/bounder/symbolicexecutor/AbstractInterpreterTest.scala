@@ -1835,12 +1835,13 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
 
   test("Button enable/disable") { f =>
     List(
+      ("", f.expectReachable, "noDisable"),
       ("button.setEnabled(true);", f.expectReachable, "badDisable"),
       ("button.setEnabled(false);", f.expectUnreachable, "disable"),
       ("button.setOnClickListener(null);", f.expectUnreachable, "clickSetNull"),
-      ("", f.expectReachable, "noDisable")
     ).foreach{
       { case (cancelLine, expectedResult,fileSuffix) =>
+        println(s"=== running file suffix ${fileSuffix}")
         val src =
           s"""
              |package com.example.createdestroy;

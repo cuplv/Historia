@@ -7,7 +7,7 @@ import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CBExit, CIEnter,
 import edu.colorado.plv.bounder.lifestate.LifeState.{OAbsMsg, Signature}
 import edu.colorado.plv.bounder.lifestate.{LifecycleSpec, RxJavaSpec, SAsyncTask, SJavaThreading, SpecSignatures, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, DirectInitialQuery, FieldPtEdge, HeapPtEdge, InitialQuery, NullVal, PureExpr, PureVar, Qry, ReceiverNonNull, State, StaticPtEdge}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, ConcreteVal, DirectInitialQuery, FieldPtEdge, HeapPtEdge, InitialQuery, NullVal, PureExpr, PureVar, Qry, ReceiverNonNull, State, StaticPtEdge}
 import scalaz.Memo
 
 import scala.annotation.tailrec
@@ -308,12 +308,12 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
     case StaticPtEdge(clazz, name) =>
       fieldsLookup(ir).staticFields.contains((clazz,name))
   }
-  val PRINT_WRITELOC_OUTSIDE_FILTER = true
+  val PRINT_WRITELOC_OUTSIDE_FILTER = false
   def fieldMayNotBeWritten(ir:IRWrapper[M,C], field: (HeapPtEdge, PureExpr), state:State):Boolean = field match {
-    case (cell@FieldPtEdge(base, fieldName), NullVal) =>
-      !cellMayBeWritten(ir, cell, state)
-    case (cell@StaticPtEdge(clazz, name), NullVal) =>
-      !cellMayBeWritten(ir,cell,state)
+//    case (cell@FieldPtEdge(base, fieldName), NullVal) => //TODO:==== does this affect Button enable/disable test?
+//      !cellMayBeWritten(ir, cell, state)
+//    case (cell@StaticPtEdge(clazz, name), NullVal) =>
+//      !cellMayBeWritten(ir,cell,state)
     case (FieldPtEdge(base, fieldName), tgt: PureVar) =>
       val baseTypeSet = state.sf.typeConstraints.getOrElse(base, TopTypeSet)
       val tgtTypeSet = state.sf.typeConstraints.getOrElse(tgt, TopTypeSet)
