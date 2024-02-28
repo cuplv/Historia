@@ -337,6 +337,77 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
 
     makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
   }
+  test("Test ArrayList field") { f =>
+    // This test is just to check if we terminate properly on a foreach.
+    // TODO: we may want to specify the behavior of the list iterator and test it here
+    val src =
+      """package com.example.createdestroy;
+        |import androidx.appcompat.app.AppCompatActivity;
+        |import android.os.Bundle;
+        |import android.util.Log;
+        |import java.util.List;
+        |import java.util.ArrayList;
+        |
+        |import rx.Single;
+        |import rx.Subscription;
+        |import rx.android.schedulers.AndroidSchedulers;
+        |import rx.schedulers.Schedulers;
+        |
+        |
+        |public class MyActivity extends AppCompatActivity {
+        |    String o = "hi";
+        |    Boolean o2 = null;
+        |    Subscription subscription;
+        |    public final List<Object> disconnected = new ArrayList<>();
+        |    @Override
+        |    protected void onResume() {
+        |        String o = null;
+        |        synchronized(disconnected){
+        |         disconnected.add("hi there");
+        |         disconnected.add("bye there");
+        |         disconnected.remove("hi there");
+        |        }
+        |    }
+        |
+        |    @Override
+        |    protected void onPause() {
+        |       synchronized(disconnected){
+        |         if(!disconnected.isEmpty() && disconnected.contains("bye there")){
+        |              o.toString(); //query1
+        |         }
+        |       }
+        |    }
+        |}""".stripMargin
+
+    val test: String => Unit = apk => {
+      assert(apk != null)
+      val specs:Set[LSSpec] = Set()
+      val w = new SootWrapper(apk, specs)
+      val config = ExecutorConfig(
+        stepLimit = 200, w, new SpecSpace(specs),
+        component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode, outputMode = om)
+      val symbolicExecutor = config.getAbstractInterpreter
+
+
+      // Dereference in loop should witness since we do not have a spec for the list
+      val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
+        "void onPause()"), BounderUtil.lineForRegex(".*query1.*".r,src), Some(".*toString.*"))
+
+      // prettyPrinting.dotMethod( query.head.loc, symbolicExecutor.controlFlowResolver, "onPauseCond.dot")
+
+      val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
+      //prettyPrinting.dumpDebugInfo(result, "forEach")
+
+      if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) {
+        assert(result.nonEmpty)
+      }
+      BounderUtil.throwIfStackTrace(result)
+      f.expectReachable(BounderUtil.interpretResult(result,QueryFinished))
+
+    }
+
+    makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
+  }
   test("Test for each loop") { f =>
     // This test is just to check if we terminate properly on a foreach.
     // TODO: we may want to specify the behavior of the list iterator and test it here
