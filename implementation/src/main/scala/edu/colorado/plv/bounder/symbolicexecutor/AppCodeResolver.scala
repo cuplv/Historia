@@ -123,8 +123,9 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
     internalCalls
   }
 
-  //TODO: at some point figure out if this does anything different
-  def computeAllCalls___(ir:IRWrapper[M,C], loc: MethodLoc, includeCallin: Boolean = false): Set[MethodLoc] = {
+  //TODO: Warning untested method!!!
+  def computeAllCallsIncludeCallin(ir:IRWrapper[M,C], loc: MethodLoc): Set[MethodLoc] = {
+    val includeCallin = true
     val empty = Set[MethodLoc]()
     val out = BounderUtil.graphFixpoint[MethodLoc, Set[MethodLoc]](Set(loc),
       empty,
@@ -137,8 +138,8 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
       case (k, v) => v
     }.toSet
   }
-  def computeAllCalls(ir:IRWrapper[M,C],loc:MethodLoc, includeCallin:Boolean = false):Set[MethodLoc] = {
-    callsToRetLoc(ir,loc, includeCallin)
+  def computeAllCalls(ir:IRWrapper[M,C],loc:MethodLoc):Set[MethodLoc] = {
+    callsToRetLoc(ir,loc, false)
   }
 
   /**

@@ -622,21 +622,21 @@ class SootWrapper(apkPath : String,
       val strm = m.classType
       mFilter(strm)
     }
-    val allcalls = cb.flatMap(cfResolver.filterResolver.computeAllCalls___(this,_,true))
-    val callins: Set[MethodLoc] = allcalls.filter(c => resolver.isFrameworkClass(c.classType))
-    val callinsNoToSTR = callins.filter(c => !c.simpleName.contains("toString()"))
+//    val allcalls = cb.flatMap(cfResolver.filterResolver.computeAllCallsIncludeCallin(this,_,true))
+//    val callins: Set[MethodLoc] = allcalls.filter(c => resolver.isFrameworkClass(c.classType))
+    //val callinsNoToSTR = callins.filter(c => !c.simpleName.contains("toString()"))
     val allI = spec.allI
-    val matchedCallins = callins.filter(c => allI.exists(i => i.contains(CIExit, Signature(c.classType, c.simpleName))(ch)))
+//    val matchedCallins = callins.filter(c => allI.exists(i => i.contains(CIExit, Signature(c.classType, c.simpleName))(ch)))
     val matchedCallbacks = cb.flatMap(c =>
       allI.flatMap(i =>
         List(CBEnter,CBExit).flatMap{d =>
           if(i.contains(d,Signature(c.classType,c.simpleName))(ch)) Some((d,c)) else None
         }
       ))
-    val cbsimp = cb.map(c => c.simpleName)
-    val callinssimp = callins.map(c => c.simpleName)
-    val matchedCallinssimp = matchedCallins.map(c => c.simpleName)
-    val matchedCallbackssimp = matchedCallbacks.map(c => (c._1, c._2.simpleName))
+//    val cbsimp = cb.map(c => c.simpleName)
+//    val callinssimp = callins.map(c => c.simpleName)
+//    val matchedCallinssimp = matchedCallins.map(c => c.simpleName)
+//    val matchedCallbackssimp = matchedCallbacks.map(c => (c._1, c._2.simpleName))
 
     val gottenAppMethods = getAppMethods(resolver)
     val syntCallinSites = gottenAppMethods.flatMap {
