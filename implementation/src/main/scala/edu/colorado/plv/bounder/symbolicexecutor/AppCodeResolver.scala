@@ -344,7 +344,7 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
           baseTypeSet.intersectNonEmpty(otherBase) && tgtTypeSet.intersectNonEmpty(otherTgt)
         }
         if(found.nonEmpty)
-          println(s"Field ${field} -> ${tgt} not written but found write in excluded method: ${found.get}")
+          println(s"AppCodeResolver: Field ${field} -> ${tgt} not written but found write in excluded method: ${found.get}")
       }
       notWritten
     case (StaticPtEdge(clazz, name), tgt: PureVar) =>
@@ -355,7 +355,7 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
       if(PRINT_WRITELOC_OUTSIDE_FILTER  && notWritten){
         val found = lookup.excludedStaticFeilds.getOrElse((clazz, name), (EmptyTypeSet, Set[MethodLoc]()))
         if(found._1.intersectNonEmpty(tgtTypes))
-          println(s"Field ${field} -> ${tgt} not written but found write in excluded methods: ${found._2.take(1)}")
+          println(s"AppCodeResolver: Field ${field} -> ${tgt} not written but found write in excluded methods: ${found._2.take(1)}")
       }
       notWritten
     case _ => false
