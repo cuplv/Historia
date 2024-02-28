@@ -93,7 +93,7 @@ sealed trait DropQryPolicy{
 object DropQryPolicy{
   implicit var rw:RW[DropQryPolicy] = RW.merge(LimitMsgCountDropStatePolicy.rw, LimitLocationVisitDropStatePolicy.rw,
     LimitCallStringDropStatePolicy.rw, LimitMaterializedFieldsDropStatePolicy.rw, LimitAppRecursionDropStatePolicy.rw,
-    DumpTraceAtLocationPolicy.rw, DropMaterializedFieldsPolicy.rw)
+    DumpTraceAtLocationPolicy.rw, DropMaterializedFieldsPolicy.rw, LimitCallbackRepetitionDropStatePolicy.rw)
 }
 
 case class DropMaterializedFieldsPolicy(fieldName:String) extends DropQryPolicy{
@@ -268,6 +268,24 @@ object LimitCallStringDropStatePolicy{
   implicit val rw:RW[LimitCallStringDropStatePolicy] = macroRW
 }
 
+case class LimitCallbackRepetitionDropStatePolicy(limit:Int) extends DropQryPolicy{
+  override def shouldDropOrModify(qry: IPathNode)(implicit db: OutputMode): Option[IPathNode] ={
+    val currentLoc = qry.qry.loc
+    currentLoc match {
+      case CallbackMethodInvoke(sig, loc) =>
+        val count = qry.locCount.getOrElse(currentLoc,0)
+        val shouldDrop = count > limit
+        if(shouldDrop) {
+          println(s"LimitCallbackRepetitionDropStatePolicy -- dropping state : ${qry.state} at location ${qry.qry.loc}")
+          None
+        } else Some(qry)
+      case _ => Some(qry)
+    }
+  }
+}
+object LimitCallbackRepetitionDropStatePolicy{
+  implicit val rw:RW[LimitCallbackRepetitionDropStatePolicy] = macroRW
+}
 case class LimitLocationVisitDropStatePolicy(limit:Int) extends DropQryPolicy{
   def shouldDropOrModify(qry:IPathNode)(implicit db:OutputMode): Option[IPathNode] = {
     val currentLoc = qry.qry.loc
