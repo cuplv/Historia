@@ -147,34 +147,52 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
     Memo.mutableHashMapMemo((c: (IRWrapper[M,C],MethodLoc)) => computeAllCalls(c._1,c._2))
 
   def mayRecurse(ir:IRWrapper[M,C],m:MethodLoc):Boolean = {
-    allCallsAppTransitive(ir,m).contains(m)
+    allCallsAppTransitive(ir,m, false).contains(m)
   }
 
-  def computeAllCallsTransitive(v:(IRWrapper[M,C],MethodLoc)):Set[MethodLoc] = {
+  /**
+   *
+   * @param v (ir, method, shouldFilter)
+   * @return set of methods in the app
+   */
+  def computeAllCallsTransitive(v:(IRWrapper[M,C],MethodLoc,Boolean)):Set[MethodLoc] = {
     val ir = v._1
     val loc = v._2
+    val shouldFilter = v._3
     val calls = mutable.Set[MethodLoc]()
-    calls.addAll(allCallsApp(ir,loc))
+    calls.addAll(allCallsApp(ir,loc).filter{c => !shouldFilter || methodLocMatchesComponent(c)})
     var added = true
     while(added){
-      val newCalls = calls.par.flatMap{called => allCallsApp(ir,called)}
+      val newCalls =
+        calls.par.flatMap{called => allCallsApp(ir,called)}.filter{
+          c => !shouldFilter || methodLocMatchesComponent(c)
+        }
       added = newCalls.exists{newCall => !calls.contains(newCall)}
       calls.addAll(newCalls)
     }
     calls.toSet
   }
 
-  def allCallsAppTransitive:((IRWrapper[M,C],MethodLoc)) => Set[MethodLoc] =
-    Memo.mutableHashMapMemo(computeAllCallsTransitive)
+  def allCallsAppTransitive:((IRWrapper[M,C],MethodLoc, Boolean)) => Set[MethodLoc] =
+    Memo.mutableHashMapMemo{case (ir,m, shouldFilter) => computeAllCallsTransitive((ir,m,shouldFilter))}
 
   private val irCache = mutable.Map[IRWrapper[M,C], Set[MethodLoc]]()
+  def methodLocMatchesComponent(methodLoc:MethodLoc):Boolean = {
+    val className = methodLoc.classType
+    val mName = methodLoc.simpleName
+    lazy val pos = componentPos.exists(p => p.matches(className))
+    lazy val neg = componentNeg.forall(n => !n.matches(className))
+    lazy val name = methodFilterPos.exists { m => m.matches(mName) }
+    pos && neg && name
+  }
   def methodLocInComponent(loc:MethodLoc,ir:IRWrapper[M,C]):Boolean = {
     irCache.get(ir) match {
       case Some(value) => value.contains(loc)
       case None =>
         val resolver = ir.getAppCodeResolver
-        val callbacks = resolver.getCallbacks
-        val outMethods = callbacks ++ callbacks.flatMap{cb => allCallsAppTransitive(ir,cb)}
+        val callbacks = resolver.getCallbacks.filter{methodLocMatchesComponent}
+        val called: Set[MethodLoc] = callbacks.flatMap{ cb => allCallsAppTransitive(ir, cb, true) }.filter{methodLocMatchesComponent}
+        val outMethods = callbacks ++ called
         irCache.put(ir,outMethods)
         outMethods.contains(loc)
     }

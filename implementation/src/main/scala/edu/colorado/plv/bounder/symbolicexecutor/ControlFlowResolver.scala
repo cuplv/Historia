@@ -382,7 +382,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       return NotRelevantMethod // body can only be relevant to app heap or trace if method is in the app
     }
 
-    val currentCalls = filterResolver.allCallsAppTransitive(wrapper,m) + m
+    val currentCalls = filterResolver.allCallsAppTransitive(wrapper,m, false) + m
     val heapRelevantCallees = currentCalls.filter { callee =>
       val hn: Set[String] = heapNamesWritten(callee)
       fnSet.exists { fn =>
@@ -465,7 +465,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     }.toMap
     directCalls.map{
       case (method, absMsgs) =>
-        val allCalls = filterResolver.allCallsAppTransitive(wrapper,method)
+        val allCalls = filterResolver.allCallsAppTransitive(wrapper,method,false)
         (method,allCalls.foldLeft(absMsgs){case (acc,v) =>
           acc ++ directCalls.getOrElse(v, Set.empty)
         })
@@ -749,7 +749,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     case (InternalMethodInvoke(_, _, loc), _) =>
       val callsFromCurrentCB: Option[Set[MethodLoc]] = state.currentCallback.map { cb =>
         val containingMethod = cb.loc
-        filterResolver.allCallsAppTransitive(wrapper,containingMethod)
+        filterResolver.allCallsAppTransitive(wrapper,containingMethod,false)
       }
       val locations = wrapper.appCallSites(loc)
         .filter{loc =>
