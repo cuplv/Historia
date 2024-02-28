@@ -79,6 +79,7 @@ object FrameworkExtensions{
 
 case class FilterResolver[M,C](component:Option[Seq[String]]){
   private val METHODPOSIDENT = "method:"
+  private val useMethod = component.exists(_.exists(s => s.startsWith(METHODPOSIDENT)))
   private val methodFilterPos = {
     val applicable = component.getOrElse(Seq()).filter{c => c.startsWith(METHODPOSIDENT)}
     if(applicable.isEmpty) Seq(".*".r) else{
@@ -122,6 +123,7 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
     internalCalls
   }
 
+  //TODO: at some point figure out if this does anything different
   def computeAllCalls___(ir:IRWrapper[M,C], loc: MethodLoc, includeCallin: Boolean = false): Set[MethodLoc] = {
     val empty = Set[MethodLoc]()
     val out = BounderUtil.graphFixpoint[MethodLoc, Set[MethodLoc]](Set(loc),
@@ -192,9 +194,26 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
         val resolver = ir.getAppCodeResolver
         val callbacks = resolver.getCallbacks.filter{methodLocMatchesComponent}
         val called: Set[MethodLoc] = callbacks.flatMap{ cb => allCallsAppTransitive(ir, cb, true) }.filter{methodLocMatchesComponent}
-        val outMethods = callbacks ++ called
-        irCache.put(ir,outMethods)
-        outMethods.contains(loc)
+        val reachableMethodsInComponent = callbacks ++ called
+        irCache.put(ir,reachableMethodsInComponent)
+
+        if(useMethod){
+          // print dbg callgraph
+          ir.getAppCodeResolver.appMethods.filter(methodLocMatchesComponent).foreach{m =>
+            if(!callbacks.contains(m)){
+              val allCallSites = ir.appCallSites(m).map{ c => c.method}.toSet
+              val callSitesInPkg =allCallSites.intersect(reachableMethodsInComponent)
+              if(allCallSites.size > callSitesInPkg.size) {
+                println(s"method: ${m} has filtered call sites including:")
+                allCallSites.removedAll(callSitesInPkg).take(10).foreach{ callSite =>
+                  println(s"    ${callSite}")
+                }
+              }
+            }
+          }
+
+        }
+        reachableMethodsInComponent.contains(loc)
     }
   }
 
@@ -328,7 +347,7 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
   }
   val PRINT_WRITELOC_OUTSIDE_FILTER = false
   def fieldMayNotBeWritten(ir:IRWrapper[M,C], field: (HeapPtEdge, PureExpr), state:State):Boolean = field match {
-//    case (cell@FieldPtEdge(base, fieldName), NullVal) => //TODO:==== does this affect Button enable/disable test?
+//    case (cell@FieldPtEdge(base, fieldName), NullVal) =>
 //      !cellMayBeWritten(ir, cell, state)
 //    case (cell@StaticPtEdge(clazz, name), NullVal) =>
 //      !cellMayBeWritten(ir,cell,state)
