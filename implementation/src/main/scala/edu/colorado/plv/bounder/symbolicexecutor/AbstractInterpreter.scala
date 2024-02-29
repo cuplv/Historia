@@ -722,6 +722,9 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
 //      mutInvarMap.addAll(invarMap)
 
       def processNode(qry:IPathNode) = {
+        if(qry.qry.isWitnessed){
+          (Set[QueryInterruptedException](), Set[IPathNode](qry))
+        }
         val queue = new GrouperQ
         queue.addAll(Set(qry))
         try {
