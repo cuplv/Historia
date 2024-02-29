@@ -1,0 +1,58 @@
+User:
+Give me an example Android application demonstrating an activity leak.
+
+ChatGPT:
+
+An activity leak in Android occurs when an object holds a reference to an activity beyond its lifecycle, preventing the garbage collector from reclaiming the activity's memory. This situation often leads to memory leaks, potentially causing the application to run out of memory and crash. Common sources of activity leaks include static fields, long-running threads, or incorrect use of context.
+
+Below is a simple example demonstrating an activity leak. The example intentionally creates a leak by using a static reference to hold the activity context. This is a common mistake and should be avoided in real applications.
+MainActivity.java
+
+java
+
+package com.example.leakdemo;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.widget.TextView;
+
+public class MainActivity extends Activity {
+
+    // Static field causing the leak
+    private static TextView leakyTextView;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        // This static reference will cause the Activity to leak
+        leakyTextView = findViewById(R.id.textView);
+        leakyTextView.setText("This is a leaky TextView!");
+    }
+}
+
+activity_main.xml
+
+xml
+
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Hello World!"
+        android:layout_centerInParent="true"/>
+</RelativeLayout>
+
+Explanation and Solution
+
+    Leak Cause: The activity creates a static reference to a TextView (leakyTextView). Since static fields are part of the class object, which is loaded once and lives as long as the application stays in memory, the referenced TextView (and implicitly the entire Activity) cannot be garbage collected as long as this static reference exists.
+    Why It's Bad: Holding the activity context (or any view, which indirectly holds a reference to the context) in a static field prevents the activity from being garbage collected, leading to a memory leak. This is especially harmful if the activity is recreated multiple times (for example, during configuration changes like screen rotations), as each instance of the activity will be leaked.
+    Solution: Avoid static references to Context, Activity, or any views. If you need to retain some data across configuration changes, consider using the ViewModel pattern, onSaveInstanceState, or other lifecycle-aware components designed for this purpose. For long-running operations or listeners that need a context, use the application context or properly manage your references by clearing them when they are no longer needed.
+
+Remember, this example intentionally introduces a memory leak for educational purposes. Always strive to write leak-free code in your applications by understanding and respecting the Android lifecycle.
