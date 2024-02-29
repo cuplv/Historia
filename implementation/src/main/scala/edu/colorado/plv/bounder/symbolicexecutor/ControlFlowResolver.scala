@@ -84,7 +84,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       // Get pts to regions for args of cb empty if static
       val argPts = cb.getArgs.map(_.map(wrapper.pointsToSet(cb, _)).getOrElse(EmptyTypeSet))
 
-      val allMethodsCalled = filterResolver.allCallsApp(wrapper,cb) + cb
+      val allMethodsCalled = filterResolver.allCallsAppTransitive(wrapper,cb,true) + cb
 //      val allMethodsCalledFilt = allMethodsCalled.filter{ci => // only compute pts for callins in abs msg set
 //        msgs.exists{absMsg => absMsg.contains(CIExit, ci.getSignature)}
 //      }
@@ -382,7 +382,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       return NotRelevantMethod // body can only be relevant to app heap or trace if method is in the app
     }
 
-    val currentCalls = filterResolver.allCallsAppTransitive(wrapper,m, false) + m
+    val currentCalls = filterResolver.allCallsAppTransitive(wrapper,m, true) + m
     val heapRelevantCallees = currentCalls.filter { callee =>
       val hn: Set[String] = heapNamesWritten(callee)
       fnSet.exists { fn =>
@@ -465,7 +465,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     }.toMap
     directCalls.map{
       case (method, absMsgs) =>
-        val allCalls = filterResolver.allCallsAppTransitive(wrapper,method,false)
+        val allCalls = filterResolver.allCallsAppTransitive(wrapper,method,true)
         (method,allCalls.foldLeft(absMsgs){case (acc,v) =>
           acc ++ directCalls.getOrElse(v, Set.empty)
         })
@@ -752,7 +752,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     case (InternalMethodInvoke(_, _, loc), _) =>
       val callsFromCurrentCB: Option[Set[MethodLoc]] = state.currentCallback.map { cb =>
         val containingMethod = cb.loc
-        filterResolver.allCallsAppTransitive(wrapper,containingMethod,false)
+        filterResolver.allCallsAppTransitive(wrapper,containingMethod,true)
       }
       val locations = wrapper.appCallSites(loc)
         .filter{loc =>

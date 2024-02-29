@@ -158,7 +158,7 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
    * @param v (ir, method, shouldFilter)
    * @return set of methods in the app
    */
-  def computeAllCallsTransitive(v:(IRWrapper[M,C],MethodLoc,Boolean)):Set[MethodLoc] = {
+  private def computeAllCallsTransitive(v:(IRWrapper[M,C],MethodLoc,Boolean)):Set[MethodLoc] = {
     val ir = v._1
     val loc = v._2
     val shouldFilter = v._3
