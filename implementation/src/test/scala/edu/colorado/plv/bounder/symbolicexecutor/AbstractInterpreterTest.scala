@@ -352,6 +352,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         |import rx.Subscription;
         |import rx.android.schedulers.AndroidSchedulers;
         |import rx.schedulers.Schedulers;
+        |import java.lang.Exception;
         |
         |
         |public class MyActivity extends AppCompatActivity {
@@ -372,6 +373,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         |    @Override
         |    protected void onPause() {
         |       synchronized(disconnected){
+        |         Log.e("foo","bar", new Exception());
         |         if(!disconnected.isEmpty() && disconnected.contains("bye there")){
         |              o.toString(); //query1
         |         }
