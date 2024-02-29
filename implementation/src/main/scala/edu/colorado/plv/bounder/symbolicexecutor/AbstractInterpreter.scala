@@ -647,6 +647,8 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
           // print stack trace to stderr and continue
           t.printStackTrace(System.err)
           QueryData(id, loc, Set(), Instant.now.getEpochSecond - startTime, QueryInterrupted(t.getClass.toString))
+      }finally{
+        foundWitness.set(false)
       }
     }.toSet
     isRunning = false
@@ -969,13 +971,8 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
                             invarMap:scala.collection.concurrent.TrieMap[SubsumableLocation, Set[IPathNode]]
                            ):Set[IPathNode] = {
     checkDeadline(deadline,qrySet, refutedSubsumedOrWitnessed)
-    if(qrySet.isEmpty || foundWitness.get()){
-      var out = refutedSubsumedOrWitnessed
-      while( !qrySet.isEmpty) { // if we found a witness on another thread, add all live nodes and return immediately
-        val next = qrySet.nextWithGrouping()
-        out = out + next
-      }
-      return out
+    if(qrySet.isEmpty || foundWitness.get()) {
+      return refutedSubsumedOrWitnessed
     }
 
     val current: IPathNode = qrySet.nextWithGrouping()
@@ -1059,24 +1056,30 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
                   }
                   if(nextQryPreFilt.exists{n => n.qry.isWitnessed}) {
                     println("!!!Found witness, terminating other processes.")
+                    var out = refutedSubsumedOrWitnessed
+                    while( !qrySet.isEmpty) { // if we found a witness on another thread, add all live nodes and return immediately
+                      val next = qrySet.nextWithGrouping()
+                      out = out + next
+                    }
                     foundWitness.set(true)
-                    return refutedSubsumedOrWitnessed ++ nextQryPreFilt
-                  }
+                    out ++ nextQryPreFilt
+                  } else {
 
-                  val nextQry = nextQryPreFilt.flatMap{qry =>
-                    val canWriteFields = controlFlowResolver.allFieldsMayBeWritten(qry.state)
-                    val mapped = config.approxMode.shouldDropState(qry)
-                    if(!canWriteFields || mapped.isEmpty) {
-                      qry.setSubsumed(Set())
-                      None
-                    }else
-                      mapped
+                    val nextQry = nextQryPreFilt.flatMap { qry =>
+                      val canWriteFields = controlFlowResolver.allFieldsMayBeWritten(qry.state)
+                      val mapped = config.approxMode.shouldDropState(qry)
+                      if (!canWriteFields || mapped.isEmpty) {
+                        qry.setSubsumed(Set())
+                        None
+                      } else
+                        mapped
+                    }
+                    qrySet.addAll(nextQry)
+                    val addIfPredEmpty = if (nextQry.isEmpty && config.outputMode != NoOutputMode)
+                      Some(p2.copyWithNewQry(p2.qry.copy(searchState = BottomQry))) else None
+                    executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed ++ addIfPredEmpty,
+                      stopExplorationAt, invarMap)
                   }
-                  qrySet.addAll(nextQry)
-                  val addIfPredEmpty = if (nextQry.isEmpty && config.outputMode != NoOutputMode)
-                    Some(p2.copyWithNewQry(p2.qry.copy(searchState = BottomQry))) else None
-                  executeBackward(qrySet, limit, deadline, refutedSubsumedOrWitnessed ++ addIfPredEmpty,
-                    stopExplorationAt, invarMap)
                 }
               case None =>
                 // approx mode indicates this state should be dropped (under approx)

@@ -2512,9 +2512,9 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         //PrettyPrinting.dumpDebugInfo(nullUnreachRes, "clickNullUnreachable")
         println("Witness Null")
         // prettyPrinting.printWitness(nullUnreachRes)
+        BounderUtil.throwIfStackTrace(nullUnreachRes)
         assert(nullUnreachRes.nonEmpty)
         //PrettyPrinting.printWitness(nullUnreachRes)
-        BounderUtil.throwIfStackTrace(nullUnreachRes)
         f.expectUnreachable(BounderUtil.interpretResult(nullUnreachRes, QueryFinished))
       }
 
