@@ -373,9 +373,14 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         |    @Override
         |    protected void onPause() {
         |       synchronized(disconnected){
+        |         try{
+        |           Log.d("bar","baz");
+        |         }catch (Exception e){
+        |             Log.e("foo","bar", e);
+        |         }
         |         Log.e("foo","bar", new Exception());
         |         if(!disconnected.isEmpty() && disconnected.contains("bye there")){
-        |              o.toString(); //query1
+        |             o.toString(); //query1
         |         }
         |       }
         |    }
