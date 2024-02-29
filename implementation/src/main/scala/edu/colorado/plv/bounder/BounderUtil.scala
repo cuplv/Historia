@@ -7,6 +7,7 @@ import edu.colorado.plv.bounder.lifestate.LifeState.SignatureMatcher
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.{AppCodeResolver, ControlFlowResolver, ExecutorConfig, QueryFinished, QueryInterrupted, QueryResult}
 import edu.colorado.plv.bounder.symbolicexecutor.state.{BottomQry, CallStackFrame, IPathNode, InitialQuery, Live, MaterializedCallStackFrame, NoOutputMode, OutputMode, PathNode, Qry, WitnessedQry}
+import scalaz.Memo
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -195,39 +196,31 @@ object BounderUtil {
   }
 
   def countCb(terminal:List[IPathNode])(implicit mode:OutputMode):Int = {
-    val terminalsInd = terminal.map{t => (Some(t), 0)}
-    @tailrec
-    def iCbCount(terminalsInd: List[(Option[IPathNode], Int)]): List[(Option[IPathNode], Int)] = {
-      val upd = terminalsInd.map{
-        case (Some(n), ind) => n.qry.loc match{
-          case CallbackMethodInvoke(_,_) => (Some(n), ind+1)
-          case _ => (Some(n),ind)
-        }
-        case (None, ind) => (None, ind)
-      }
-      val succ = upd.flatMap{
-        case (Some(n),ind) if n.succ.nonEmpty => n.succ.map(s=> (Some(s),ind))
-        case (Some(n),ind)  => List((None, ind)) //if n.succ.isEmpty
-        case (None,ind) => List((None,ind))
-      }
-      if(succ == terminalsInd)
-        succ
-      else
-        iCbCount(succ)
-    }
-    iCbCount(terminalsInd).map{
-      case (None,i) => i
-      case v => println(v); throw new IllegalStateException("bad logic in countcb")
-    }.min
-//    if(terminal.isEmpty)
-//      return 0
-//    val countContrib = terminal.map { n =>
-//      n.qry.loc match {
-//        case CallbackMethodInvoke(tgtClazz, fmwName, loc) => 1 + countCb(n.succ)
-//        case _ => countCb(n.succ)
+    terminal.map{t => t.getCbCount}.min
+//    val terminalsInd = terminal.map{t => (Some(t), 0)} //TODO: delete this method after testing path node caching
+//    @tailrec
+//    def iCbCount(terminalsInd: List[(Option[IPathNode], Int)]): List[(Option[IPathNode], Int)] = {
+//      val upd = terminalsInd.map{
+//        case (Some(n), ind) => n.qry.loc match{
+//          case CallbackMethodInvoke(_,_) => (Some(n), ind+1)
+//          case _ => (Some(n),ind)
+//        }
+//        case (None, ind) => (None, ind)
 //      }
+//      val succ = upd.flatMap{
+//        case (Some(n),ind) if n.succ.nonEmpty => n.succ.map(s=> (Some(s),ind))
+//        case (Some(n),ind)  => List((None, ind)) //if n.succ.isEmpty
+//        case (None,ind) => List((None,ind))
+//      }
+//      if(succ == terminalsInd)
+//        succ
+//      else
+//        iCbCount(succ)
 //    }
-//    countContrib.min
+//    iCbCount(terminalsInd).map{
+//      case (None,i) => i
+//      case v => println(v); throw new IllegalStateException("bad logic in countcb")
+//    }.min
   }
 
   def computeDepthOfWitOrLive(terminals: Set[IPathNode], queryResult: QueryResult)(implicit mode: OutputMode):DepthResult = {

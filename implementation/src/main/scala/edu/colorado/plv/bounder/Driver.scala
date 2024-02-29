@@ -705,7 +705,6 @@ object Driver {
                 pathNode.qry.isLive && pathNode.subsumed(mode).isEmpty
               }
             }
-            val depthChar: BounderUtil.DepthResult = BounderUtil.computeDepthOfWitOrLive(finalLiveNodes, QueryFinished)(mode)
             //val depth = if(finalLiveNodes.nonEmpty) Some(finalLiveNodes.map{n => n.depth}.min) else None
             //val ordDepth = if(finalLiveNodes.nonEmpty) Some(finalLiveNodes.map{_.ordDepth}.min) else None
             val pp = PrettyPrinting
@@ -742,6 +741,8 @@ object Driver {
               }
             }
 
+            val depthChar: BounderUtil.DepthResult =
+              BounderUtil.computeDepthOfWitOrLive(finalLiveNodes, QueryFinished)(mode)
 
             LocResult(initialQuery, id, loc, res, characterizedMaxPath, finalTime,
               depthChar, witnesses = live ++ witnessed, traceWitnesses.map(_._2).toList)

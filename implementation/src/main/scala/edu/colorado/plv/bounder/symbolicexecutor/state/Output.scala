@@ -647,6 +647,7 @@ sealed trait IPathNode {
   }
 
 
+  def getCbCount:Int
   def depth:Int
   def ordDepth:Int
   def qry:Qry
@@ -709,6 +710,22 @@ case class MemoryPathNode(qry: Qry, succV : List[IPathNode], subsumedV: Set[IPat
     old + (qry.loc -> thisLocCount)
   }
   override def locCount(implicit db:OutputMode): Map[Loc, Int] = iLocCount
+
+
+  private val cbCount = {
+    if(succV.nonEmpty) {
+      val minOfPrevCBCount = succV.map {
+        _.getCbCount
+      }.min
+      qry.loc match {
+        case CallbackMethodInvoke(sig, loc) =>
+          minOfPrevCBCount + 1
+        case _ =>
+          minOfPrevCBCount
+      }
+    }else 0
+  }
+  override def getCbCount: Int = cbCount
 }
 
 case class DBPathNode(qry:Qry, thisID:Int,
@@ -768,6 +785,8 @@ case class DBPathNode(qry:Qry, thisID:Int,
 //  def setLocCount(newLocCount: Map[Loc, Int]) = {
 //    iLocCount = Some(newLocCount)
 //  }
+
+  override def getCbCount: Int = -1 // note: not calculating this for db mode because it's slow
 }
 object DBPathNode{
   var iLocCount = mutable.Map[Int,Map[Loc,Int]]()
