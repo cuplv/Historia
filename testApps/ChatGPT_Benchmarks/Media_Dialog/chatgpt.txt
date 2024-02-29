@@ -1,0 +1,91 @@
+You:
+An example Android app that shows  an AlertDIalog while ExoPlayer plays something and dismisses on completion
+ChatGPT
+
+ChatGPT4
+To fulfill your request, we will outline an example of how to create a simple Android application that utilizes ExoPlayer to play media and shows an AlertDialog while the media is playing, which will be dismissed upon completion of the media playback. This example assumes you have a basic understanding of Android development and are familiar with Kotlin.
+Step 1: Add ExoPlayer Dependency
+
+First, ensure you have ExoPlayer added to your project's build.gradle file:
+
+groovy
+
+dependencies {
+    implementation 'com.google.android.exoplayer:exoplayer:2.X.X' // Use the latest version
+}
+
+Step 2: Implement ExoPlayer in Your Activity
+
+In your activity, initialize ExoPlayer, prepare it with a media source, and set up a listener to know when the playback is complete.
+
+kotlin
+
+import android.net.Uri
+import android.os.Bundle
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import com.google.android.exoplayer2.ExoPlayer
+import com.google.android.exoplayer2.MediaItem
+import com.google.android.exoplayer2.Player
+
+class MainActivity : AppCompatActivity() {
+    private lateinit var player: ExoPlayer
+    private lateinit var alertDialog: AlertDialog
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        // Initialize player
+        player = ExoPlayer.Builder(this).build()
+
+        // Prepare media item
+        val mediaItem = MediaItem.fromUri(Uri.parse("Your Media URL Here"))
+        player.setMediaItem(mediaItem)
+        player.prepare()
+
+        // Show AlertDialog
+        showAlertDialog()
+
+        // Listen for playback completion
+        player.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(state: Int) {
+                if (state == Player.STATE_ENDED) {
+                    // Dismiss AlertDialog
+                    alertDialog.dismiss()
+                }
+            }
+        })
+
+        // Start playback
+        player.play()
+    }
+
+    private fun showAlertDialog() {
+        alertDialog = AlertDialog.Builder(this)
+            .setTitle("Playback in Progress")
+            .setMessage("Media is currently playing.")
+            .setPositiveButton("OK", null)
+            .create()
+        alertDialog.show()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        player.release() // Don't forget to release the player
+    }
+}
+
+Explanation
+
+    ExoPlayer Initialization: We initialize ExoPlayer and prepare it with a media source, which is the URL of the media you want to play. Replace "Your Media URL Here" with the actual URL of your media.
+
+    AlertDialog Display: An AlertDialog is displayed using the showAlertDialog method, which is called right before we start the media playback. This dialog provides a simple message to the user indicating that playback is in progress.
+
+    Playback Completion Listener: We add a listener to the ExoPlayer to monitor changes in playback state. When the playback state changes to Player.STATE_ENDED, indicating that the media has finished playing, the AlertDialog is dismissed.
+
+    Release Resources: In the onDestroy method of the activity, we release the ExoPlayer resources. This is an important step to avoid leaking resources.
+
+This example provides a basic implementation. Depending on your application's requirements, you might need to handle other states, such as buffering or error states, and adjust the user interface accordingly.
+
+notes: this one does not actually have a bug.  exoplayer stops when the activity dies
