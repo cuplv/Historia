@@ -93,9 +93,26 @@ sealed trait DropQryPolicy{
 object DropQryPolicy{
   implicit var rw:RW[DropQryPolicy] = RW.merge(LimitMsgCountDropStatePolicy.rw, LimitLocationVisitDropStatePolicy.rw,
     LimitCallStringDropStatePolicy.rw, LimitMaterializedFieldsDropStatePolicy.rw, LimitAppRecursionDropStatePolicy.rw,
-    DumpTraceAtLocationPolicy.rw, DropMaterializedFieldsPolicy.rw, LimitCallbackRepetitionDropStatePolicy.rw)
+    DumpTraceAtLocationPolicy.rw, DropMaterializedFieldsPolicy.rw, LimitCallbackRepetitionDropStatePolicy.rw,
+    WhitelistMaterializedFieldsPolicy.rw)
 }
 
+case class WhitelistMaterializedFieldsPolicy(fields:Set[String]) extends DropQryPolicy{
+
+  override def shouldDropOrModify(qry: IPathNode)(implicit db: OutputMode): Option[IPathNode] = {
+    val cQry = qry.qry
+    val newHeap = cQry.state.heapConstraints.filter{
+      case (FieldPtEdge(base, name), _) => fields.contains(name)
+      case (StaticPtEdge(clazz,name),_) => fields.contains(name)
+      case _ => true
+    }
+    Some(qry.copyWithNewQry(cQry.copy(state = cQry.state.copy(sf = cQry.state.sf.copy(heapConstraints = newHeap)))))
+  }
+}
+
+object WhitelistMaterializedFieldsPolicy{
+  implicit val rw:RW[WhitelistMaterializedFieldsPolicy] = macroRW
+}
 case class DropMaterializedFieldsPolicy(fieldName:String) extends DropQryPolicy{
 
   override def shouldDropOrModify(qry: IPathNode)(implicit db: OutputMode): Option[IPathNode] = {
