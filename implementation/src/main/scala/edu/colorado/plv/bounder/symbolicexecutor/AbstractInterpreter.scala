@@ -537,6 +537,8 @@ case class QueryInterrupted(reason:String) extends QueryResult
 
 case class QueryInterruptedException(terminals:Set[IPathNode], reason:String) extends Exception
 class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
+  // Since we use concurrency heavily, this synchronizes everything to stop searching once one thread finds a witness.
+  val foundWitness = new AtomicBoolean(false)
 
   def updateSpec(newSpec:SpecSpace):AbstractInterpreter[M,C] = {
     //TODO: be smarter about updating spec so we can use this in synthesis later and avoid recomputing
@@ -967,8 +969,13 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
                             invarMap:scala.collection.concurrent.TrieMap[SubsumableLocation, Set[IPathNode]]
                            ):Set[IPathNode] = {
     checkDeadline(deadline,qrySet, refutedSubsumedOrWitnessed)
-    if(qrySet.isEmpty){
-      return refutedSubsumedOrWitnessed
+    if(qrySet.isEmpty || foundWitness.get()){
+      var out = refutedSubsumedOrWitnessed
+      while( !qrySet.isEmpty) { // if we found a witness on another thread, add all live nodes and return immediately
+        val next = qrySet.nextWithGrouping()
+        out = out + next
+      }
+      return out
     }
 
     val current: IPathNode = qrySet.nextWithGrouping()
@@ -1050,6 +1057,12 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
                       ze.printStackTrace()
                       throw QueryInterruptedException(refutedSubsumedOrWitnessed + p2, ze.getMessage)
                   }
+                  if(nextQryPreFilt.exists{n => n.qry.isWitnessed}) {
+                    println("!!!Found witness, terminating other processes.")
+                    foundWitness.set(true)
+                    return refutedSubsumedOrWitnessed ++ nextQryPreFilt
+                  }
+
                   val nextQry = nextQryPreFilt.flatMap{qry =>
                     val canWriteFields = controlFlowResolver.allFieldsMayBeWritten(qry.state)
                     val mapped = config.approxMode.shouldDropState(qry)
