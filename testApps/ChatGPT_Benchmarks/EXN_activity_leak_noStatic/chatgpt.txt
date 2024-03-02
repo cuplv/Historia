@@ -87,3 +87,6 @@ public class LeakActivity extends Activity {
 }
 
 This corrected version uses a WeakReference to hold the Activity context, which does not prevent garbage collection of the Activity when it's no longer needed or in use.
+
+
+Notes: Pulse claims to handle resource leaks which look similar [] check if pulse finds this.
