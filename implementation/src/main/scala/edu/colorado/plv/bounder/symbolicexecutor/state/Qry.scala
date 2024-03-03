@@ -2,7 +2,7 @@ package edu.colorado.plv.bounder.symbolicexecutor.state
 
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.ir._
-import edu.colorado.plv.bounder.lifestate.LifeState.{ExactClassMatcher, LSSpec, Signature, SignatureMatcher}
+import edu.colorado.plv.bounder.lifestate.LifeState.{ExactClassMatcher, LSPred, LSSpec, Signature, SignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.{AbstractInterpreter, MustExecutor, TransferFunctions}
 import ujson.Value
@@ -167,6 +167,17 @@ object InitialQuery{
   }
   implicit val rw:RW[InitialQuery] = upickle.default.readwriter[ujson.Value].bimap[InitialQuery](
     {
+      case MemoryLeak(leakedType, sig, line, pred, targetVarInPred) =>
+        val m = Map(
+          "t" -> "MemoryLeak",
+          "className" -> sig.base,
+          "methodName" -> sig.methodSignature,
+          "line" -> line,
+          "pred" -> write[LSPred](pred),
+          "targetVarInPred" -> write[PureVar](targetVarInPred),
+          "leakedType" -> leakedType
+        ).map(vToJ)
+        ujson.Obj.from(m)
       case Reachable(sig, line) =>
         val m = Map(
           "t" -> "Reachable",
@@ -218,8 +229,12 @@ object InitialQuery{
         ujson.Obj.from(m)
     },
     json => json.obj("t").str match{
+      case "MemoryLeak" =>
+        MemoryLeak(json.obj("leakedType").str,Signature(json.obj("className").str, json.obj("methodName").str),
+          json.obj("line").num.toInt, read[LSPred](json.obj("pred").str), read[PureVar](json.obj("targetVarInPred")))
       case "InitialQueryWithStackTrace" =>
-        InitialQueryWithStackTrace(read[List[SignatureMatcher]](json.obj("trace").str), read[InitialQuery](json.obj("internalQry").str)(InitialQuery.rw))
+        InitialQueryWithStackTrace(read[List[SignatureMatcher]](json.obj("trace").str),
+          read[InitialQuery](json.obj("internalQry").str)(InitialQuery.rw))
       case "Reachable" =>
         Reachable(Signature(json.obj("className").str, json.obj("methodName").str),json.obj("line").num.toInt)
       case "ReceiverNonNull" =>
@@ -312,6 +327,19 @@ case class DirectInitialQuery(qry:Qry) extends InitialQuery{
   override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] = Set(qry)
 }
 
+case class MemoryLeak(leakedType:String, sig:Signature, line:Int, leakedPred:LSPred,
+                      targetVarInPred:PureVar) extends InitialQuery {
+
+  override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] = {
+    val reachable: Set[Qry] = Reachable(sig,line).make(sym)
+    ??? //TODO:=== you were here
+  }
+
+  override def fileName: String = s"MemoryLeak_at_${sig}_type_${leakedType}"
+}
+object MemoryLeak{
+  implicit val rw:RW[MemoryLeak] = macroRW
+}
 case class ReceiverNonNull(sig:Signature, line:Integer,
                            receiverMatcher:Option[String]) extends InitialQuery {
   override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] = {
