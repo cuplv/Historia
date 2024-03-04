@@ -495,7 +495,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     }
   }
   def relevantMethod(loc: Loc, state: State): RelevanceRelation = {
-    val relevantI = EncodingTools.rhsToPred(state.sf.traceAbstraction.rightOfArrow, config.specSpace)
+    val relevantI = EncodingTools.rhsToPred(state.sf.traceAbstraction, config.specSpace)
       .flatMap { a => allPosI(a) }
     loc match {
       case InternalMethodReturn(_,name, _) if name.contains("$jacocoInit") =>
@@ -520,7 +520,7 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
 
   private val hardReqSatCount = new AtomicInteger(0)
   def hardReqSatisfiable(state: State):Boolean = {
-    val mustOnceList = EncodingTools.rhsToPred(state.sf.traceAbstraction.rightOfArrow, specSpace)
+    val mustOnceList = EncodingTools.rhsToPred(state.sf.traceAbstraction, specSpace)
       .flatMap(EncodingTools.mustISet)
     // drop states where any one positive i requirement cannot be satisfied by any callback
     val out = mustOnceList.forall{

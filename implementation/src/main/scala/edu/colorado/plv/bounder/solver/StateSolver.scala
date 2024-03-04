@@ -487,7 +487,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     abs.rightOfArrow.flatMap {
       case i: AbsMsg => Some(i)
       case _ => None
-    }.toSet
+    }.toSet ++ EncodingTools.msgList(abs.extraPred)
   }
 
   private case class TraceAndSuffixEnc(trace: Option[T] = None) {
@@ -532,14 +532,15 @@ trait StateSolver[T, C <: SolverCtx[T]] {
                              specSpace: SpecSpace,
                              shouldEncodeRef:Boolean = true,
                              definedPvMap:Map[PureVar, T],
-                             debug: Boolean = false, includeSynth:Boolean = false)(implicit zCtx: C): TraceAndSuffixEnc = {
+                             debug: Boolean = false,
+                             includeSynth:Boolean = false)(implicit zCtx: C): TraceAndSuffixEnc = {
     val typeToSolverConst = messageTranslator.getTypeToSolverConst
-    val rhs: Seq[LSSingle] = abs.rightOfArrow
     val pvMap:Map[PureExpr,T] = (definedPvMap ++ messageTranslator.constMap).toMap
 
     // Instantiate and update specifications for each ▷m̂
     // only include the disallow if it is the last one in the chain
-    val rulePreds: Set[LSPred] = EncodingTools.rhsToPred(rhs, specSpace, includeSynth=includeSynth).map(EncodingTools.simplifyPred)
+    val rulePreds: Set[LSPred] =
+      EncodingTools.rhsToPred(abs, specSpace, includeSynth=includeSynth).map(EncodingTools.simplifyPred)
 
     //Encode that each preceding |> constraint cannot be equal to an allocation
     def encodeRefV(rhs: Seq[LSSingle], previous:Set[PureVar] = Set()):Option[(LSPred, Set[FreshRef])] = rhs match {
@@ -557,7 +558,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       case Nil => None
       case h::t => encodeRefV(t, previous ++ h.lsVar )
     }
-    val refVPred: Option[(LSPred, Set[FreshRef])] = if(shouldEncodeRef) encodeRefV(rhs) else None
+    val refVPred: Option[(LSPred, Set[FreshRef])] = if(shouldEncodeRef) encodeRefV(abs.rightOfArrow) else None
     val preds = refVPred.map(_._1) ++ rulePreds
 
     val traceAndSuffixEnc:TraceAndSuffixEnc = TraceAndSuffixEnc()
@@ -1116,8 +1117,8 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
   private def canSubsumeUnifyPred(t1:AbstractTrace, t2:AbstractTrace, specSpace: SpecSpace,
                                   p1map:Map[PureVar, PureVar]):Set[Map[PureVar,PureVar]] = {
-    val pred1 = EncodingTools.rhsToPred(t1.rightOfArrow, specSpace).map(EncodingTools.simplifyPred)
-    val pred2: Set[LSPred] = EncodingTools.rhsToPred(t2.rightOfArrow, specSpace).map(EncodingTools.simplifyPred)
+    val pred1 = EncodingTools.rhsToPred(t1, specSpace).map(EncodingTools.simplifyPred)
+    val pred2: Set[LSPred] = EncodingTools.rhsToPred(t2, specSpace).map(EncodingTools.simplifyPred)
     if(pred2.isEmpty)
       return Set(p1map)
     ???
@@ -1283,7 +1284,7 @@ trait StateSolver[T, C <: SolverCtx[T]] {
           println(s"  s2: ${s2}")
           println(s"  s2 ɸ_lhs: " +
             s"${
-              EncodingTools.rhsToPred(s2.traceAbstraction.rightOfArrow, specSpace)
+              EncodingTools.rhsToPred(s2.traceAbstraction, specSpace)
                 .map(pred => pred.toString)
                 .mkString("  &&  ")
             }")
@@ -1600,14 +1601,14 @@ trait StateSolver[T, C <: SolverCtx[T]] {
           println(s"  s1: ${s1}")
           println(s"  s1 ɸ_lhs: " +
             s"${
-              EncodingTools.rhsToPred(s1.traceAbstraction.rightOfArrow, specSpace)
+              EncodingTools.rhsToPred(s1.traceAbstraction, specSpace)
                 .map(pred => pred.toString)
                 .mkString("  &&  ")
             }")
           println(s"  s2: ${s2}")
           println(s"  s2 ɸ_lhs: " +
             s"${
-              EncodingTools.rhsToPred(s2.traceAbstraction.rightOfArrow, specSpace)
+              EncodingTools.rhsToPred(s2.traceAbstraction, specSpace)
                 .map(pred => pred.toString)
                 .mkString("  &&  ")
             }")

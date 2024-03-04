@@ -24,17 +24,13 @@ object Qry {
    * @param typeToReach Typically an Activity or other UI object
    * @tparam M
    * @tparam C
-   * @return
+   * @return state target pair
    */
-  def localReachesType[M,C](sym: AbstractInterpreter[M, C],qry:Qry, typeToReach:String):Set[Qry] = {
+  def thisReachesType[M,C](sym: AbstractInterpreter[M, C], qry:Qry, typeToReach:String):Set[(PureVar,Qry)] = {
     val location = qry.loc
     val state = qry.state
     location match{
       case l@AppLoc(method, line, isPre) =>
-        val containingMethod = location.containingMethod
-        val returnLoc =
-          BounderUtil.resolveMethodReturnForAppLoc(sym.w.getAppCodeResolver, location.asInstanceOf[AppLoc])
-        val locals = method.getLocals()
         val thisWrapper = LocalWrapper("@this", "_")
         val (thisPt, stateWithThis) = state.getOrDefine(thisWrapper, Some(method))(sym.w)
         val fieldRefs = sym.w.getClassFields(method.classType)
@@ -44,7 +40,7 @@ object Qry {
             val sf = nextState.sf
             val heapCell = (FieldPtEdge(thisPt.asInstanceOf[PureVar], name), npv)
             val newSf = sf.copy(heapConstraints = sf.heapConstraints + heapCell, pureFormula = sf.pureFormula + PureConstraint(npv, NotEquals, NullVal))
-            Some(qry.copy(state = stateWithThis.copy(sf = newSf)))
+            Some((npv.asInstanceOf[PureVar],qry.copy(state = stateWithThis.copy(sf = newSf))))
           case FieldReference(base, containsType, declType, name)if sym.w.getClassHierarchyConstraints.getSupertypesOf(containsType).contains(typeToReach) =>
             println(s"Unimplemented static field ${base} ${name}")
             ???
@@ -370,7 +366,15 @@ case class MemoryLeak(leakedType:String, sig:Signature, line:Int, leakedPred:LSP
 
   override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] = {
     val reachable: Set[Qry] = Qry.makeReach(sym, sig, line)
-    reachable.flatMap{q => Qry.localReachesType(sym,q,leakedType)}
+    val pairs = reachable.flatMap{q => Qry.thisReachesType(sym,q,leakedType)}
+    pairs.map{
+      case (pv,qry) =>
+        val sf = qry.state.sf
+        val newSf = sf.copy(traceAbstraction = sf.traceAbstraction
+          .copy(extraPred = leakedPred.swap(Map(targetVarInPred -> pv))))
+        qry.copy(state = qry.state.copy(sf = newSf))
+    }
+
   }
 
   override def fileName: String = s"MemoryLeak_at_${sig}_type_${leakedType}"

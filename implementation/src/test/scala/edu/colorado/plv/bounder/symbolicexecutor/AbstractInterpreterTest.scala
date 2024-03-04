@@ -3,16 +3,16 @@ package edu.colorado.plv.bounder.symbolicexecutor
 import better.files.File
 import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.BounderUtil.{DepthResult, MultiCallback, Proven, ResultSummary, SingleCallbackMultiMethod, SingleMethod, Timeout, Unreachable, Witnessed, interpretResult}
-import edu.colorado.plv.bounder.ir.{CBEnter, CIExit, OverApprox, SootWrapper}
+import edu.colorado.plv.bounder.ir.{AppMethod, BitTypeSet, CBEnter, CBExit, CIExit, OverApprox, SootWrapper, TMessage, TNew, Trace, TraceElement, WitnessExplanation}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, AnyAbsMsg, ExactClassMatcher, Exists, LSAnyPred, LSConstraint, LSSpec, LSTrue, NS, Not, Or, Signature, SubClassMatcher}
 import edu.colorado.plv.bounder.lifestate.LifecycleSpec.viewAttached2
 import edu.colorado.plv.bounder.lifestate.SAsyncTask.executeI
 import edu.colorado.plv.bounder.lifestate.SpecSignatures.{Activity_onPause_entry, Activity_onResume_entry, Button_init}
 import edu.colorado.plv.bounder.lifestate.ViewSpec.{a, b, b2, l, onClick, onClickI, setEnabled, setOnClickListener, setOnClickListenerI, setOnClickListenerINull, v}
-import edu.colorado.plv.bounder.lifestate.{Dummy, FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSignatures, SpecSpace, ViewSpec}
+import edu.colorado.plv.bounder.lifestate.{Dummy, FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SJavaThreading, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.{row1Specs, row4Specs}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BoolVal, BottomQry, CallinReturnNonNull, DBOutputMode, DisallowedCallin, FieldPtEdge, IPathNode, MemoryLeak, MemoryOutputMode, NamedPureVar, NoOutputMode, NotEquals, OutputMode, PrettyPrinting, Qry, Reachable, ReceiverNonNull, TopVal}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BoolVal, BottomQry, CallinReturnNonNull, ConcreteAddr, DBOutputMode, DisallowedCallin, FieldPtEdge, IPathNode, MemoryLeak, MemoryOutputMode, NPureVar, NamedPureVar, NoOutputMode, NotEquals, OutputMode, PrettyPrinting, Qry, Reachable, ReceiverNonNull, TopVal}
 import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{onClickCanHappenNoPrev, onClickCanHappenWithPrev, onClickReach, queryOnClickTwiceAfterReg, srcReach}
 import edu.colorado.plv.bounder.synthesis.{EnumModelGenerator, EnumModelGeneratorTest}
 import edu.colorado.plv.bounder.testutils.MkApk
@@ -21,6 +21,7 @@ import org.scalatest.funsuite.{AnyFunSuite, FixtureAnyFunSuite}
 import soot.{Scene, SootMethod}
 import upickle.default.write
 
+import scala.collection.BitSet
 import scala.jdk.CollectionConverters._
 
 class AbstractInterpreterTest extends FixtureAnyFunSuite  {
@@ -355,7 +356,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         |
         |public class MyActivity extends AppCompatActivity {
         |    @Override
-        |    protected void onResume() {
+        |    protected void onCreate(Bundle bundle) {
         |        Runnable tmp = new Runnable() {
         |            @Override
         |            public void run() {
@@ -369,15 +370,17 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         |
         |    @Override
         |    protected void onDestroy() {
+        |       super.onDestroy();
         |    }
         |}""".stripMargin
 
     val test: String => Unit = apk => {
       assert(apk != null)
-      val specs:Set[LSSpec] = Set()
+      val specs:Set[LSSpec] = Set(LifecycleSpec.Activity_onDestroy_last)
       val w = new SootWrapper(apk, specs)
       val config = ExecutorConfig(
-        stepLimit = 200, w, new SpecSpace(specs),
+        stepLimit = 200, w, new SpecSpace(specs, matcherSpace = Set(SpecSignatures.Activity_onDestroy_exit,
+          SJavaThreading.runnableI )),
         component = Some(List("com.example.createdestroy.MyActivity.*")), approxMode = f.approxMode, outputMode = om)
       val symbolicExecutor = config.getAbstractInterpreter
 
@@ -391,7 +394,17 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       // prettyPrinting.dotMethod( query.head.loc, symbolicExecutor.controlFlowResolver, "onPauseCond.dot")
 
       val result: Set[IPathNode] = symbolicExecutor.run(query).flatMap(a => a.terminals)
-      //prettyPrinting.dumpDebugInfo(result, "forEach")
+      //PrettyPrinting.dumpDebugInfo(result, "Activity leak")
+      val wit = PrettyPrinting.getWitness(result)
+      val expected = List[TraceElement](
+        TMessage(CBEnter, AppMethod(Signature("android.app.Activity", "void onCreate(android.os.Bundle)"), None), TopVal :: ConcreteAddr(1) :: Nil),
+        TNew(NPureVar(0), BitTypeSet(BitSet(1))), //TODO: fixt pts here
+        TMessage(CBEnter, AppMethod(Signature("android.app.Activity", "void onDestroy()"), None), TopVal :: ConcreteAddr(1) :: Nil),
+        TMessage(CBExit, AppMethod(Signature("android.app.Activity", "void onDestroy()"), None), TopVal :: ConcreteAddr(1) :: Nil),
+        TMessage(CBEnter, AppMethod(Signature("java.lang.Runnable", "run()"), None), TopVal :: ConcreteAddr(3) :: Nil)
+      )
+      assert(wit.exists(p => Trace.compareTraces(expected, p.futureTrace)))
+
 
       if(om == MemoryOutputMode || om.isInstanceOf[DBOutputMode]) {
         assert(result.nonEmpty)

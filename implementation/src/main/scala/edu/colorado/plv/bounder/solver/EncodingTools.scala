@@ -3,7 +3,7 @@ package edu.colorado.plv.bounder.solver
 import edu.colorado.plv.bounder.ir.{MessageType, TMessage, TraceElement}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, And, AnyAbsMsg, CLInit, Exists, Forall, FreshRef, HNOE, LSAnyPred, LSAtom, LSBexp, LSConstraint, LSFalse, LSImplies, LSPred, LSSingle, LSSpec, LSTrue, NS, Not, OAbsMsg, Or, SignatureMatcher}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{ArrayPtEdge, CallStackFrame, ConcreteVal, Equals, FieldPtEdge, HeapPtEdge, MaterializedCallStackFrame, NPureVar, NamedPureVar, NotEquals, PureConstraint, PureExpr, PureVal, PureVar, State, StaticPtEdge, TopVal}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, ArrayPtEdge, CallStackFrame, ConcreteVal, Equals, FieldPtEdge, HeapPtEdge, MaterializedCallStackFrame, NPureVar, NamedPureVar, NotEquals, PureConstraint, PureExpr, PureVal, PureVar, State, StaticPtEdge, TopVal}
 
 import scala.collection.mutable
 
@@ -123,11 +123,13 @@ object EncodingTools {
    * @param post preds to update in addition to current encode
    * @return
    */
-  def rhsToPred(rhs: Seq[LSSingle], specSpace: SpecSpace, post:Set[LSPred] = Set(),
+  def rhsToPred(abstractTrace: AbstractTrace, specSpace: SpecSpace, post:Set[LSPred] = Set(),
                 includeSynth:Boolean = false): Set[LSPred] = {
-    //TODO: limit currently disabled, figure out if we want to try again
+    val rhs = abstractTrace.rightOfArrow
     var instCount = specSpace.getSpecs.map{s =>(s,-1)}.toMap
-    rhs.foldRight((post, true)) {
+    val postGivenHist = post + abstractTrace.extraPred
+
+    val preds = rhs.foldRight((postGivenHist, true)) {
       case (OAbsMsg(_,_,_,true), (acc,includeDis)) if !includeSynth => (acc,includeDis) // normally skip synth msg
       case (v, (acc, includeDis)) =>
         val updated = acc.map(lsPred => updArrowPhi(v, lsPred))
@@ -135,6 +137,7 @@ object EncodingTools {
         instCount = instCountP
         (updated + instantiated, false)
     }._1.filter(p => p != LSTrue)
+    preds
   }
 
   /**
@@ -331,7 +334,7 @@ object EncodingTools {
   }
 
   def mustPredSet(s:State, specSpace: SpecSpace):Set[String] = {
-    val pred = rhsToPred(s.traceAbstraction.rightOfArrow, specSpace)
+    val pred = rhsToPred(s.traceAbstraction, specSpace)
     def mustI(lsPred: LSPred):Set[String] = lsPred match {
       case LSConstraint(v1, op, v2) => Set()
       case Forall(vars, p) => mustI(p)
@@ -349,7 +352,7 @@ object EncodingTools {
     pred.flatMap(mustI)
   }
   def mayPredSet(s:State, specSpace: SpecSpace):Set[String] = {
-    val pred = rhsToPred(s.traceAbstraction.rightOfArrow, specSpace)
+    val pred = rhsToPred(s.traceAbstraction, specSpace)
     def mayI(lsPred: LSPred):Set[String] = lsPred match {
       case LSConstraint(v1, op, v2) => Set()
       case Forall(_, p) => mayI(p)

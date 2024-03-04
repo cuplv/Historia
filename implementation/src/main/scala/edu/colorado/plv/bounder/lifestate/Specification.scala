@@ -117,6 +117,7 @@ object SpecSignatures {
   val Activity_onDestroy: SignatureMatcher =
     SubClassMatcher(Activity, "void onDestroy\\(\\)", "Activity_onDestroy")
   val Activity_onDestroy_exit: OAbsMsg = AbsMsg(CBExit, Activity_onDestroy, List(TopVal,a))
+  val Activity_onDestroy_entry: OAbsMsg = AbsMsg(CBEnter, Activity_onDestroy, List(TopVal,a))
 
 //  val Activity_init_entry: I = Activity_init_exit.copy(mt = CBEnter)
 
@@ -269,6 +270,7 @@ object LifecycleSpec {
   val paused:LSPred =
     Or(Not(SpecSignatures.Activity_onResume_entry),
       NS(SpecSignatures.Activity_onPause_exit, SpecSignatures.Activity_onResume_entry))
+  val Activity_onDestroy_last:LSSpec = LSSpec(a::Nil, Nil, created, SpecSignatures.Activity_onDestroy_entry)
   val Activity_onResume_first_orAfter_onPause: LSSpec = LSSpec(a::Nil, Nil, Or(
     NS(SpecSignatures.Activity_onPause_exit, SpecSignatures.Activity_onResume_entry),
     And(Not(SpecSignatures.Activity_onPause_exit),Not(SpecSignatures.Activity_onResume_entry)))

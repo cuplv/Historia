@@ -32,9 +32,9 @@ object State {
 // pureFormula is a conjunction of constraints
 // callStack is the call string from thresher paper
 //sealed trait TraceAbstractionArrow
-case class AbstractTrace(rightOfArrow:List[LSSingle]) extends AnyVal{
+case class AbstractTrace(rightOfArrow:List[LSSingle], extraPred:LSPred = LSTrue) {
 
-  def modelVars:Set[PureVar] = rightOfArrow.flatMap{pred => pred.lsVar}.toSet
+  def modelVars:Set[PureVar] = rightOfArrow.flatMap{pred => pred.lsVar}.toSet ++ extraPred.lsVar
 
   override def toString:String = {
 //    val generated = modelVars.filter{case (k,_) => LifeState.LSGenerated.matches(k) }
@@ -105,7 +105,7 @@ case class StateFormula(callStack: List[CallStackFrame], //TODO: cache z3 ast co
   private val hashableCache = TrieMap[SpecSpace, HashableStateFormula]()
   def makeHashable(specSpace: SpecSpace):HashableStateFormula = {
     if(!hashableCache.contains(specSpace)) {
-      val pred = EncodingTools.rhsToPred(traceAbstraction.rightOfArrow, specSpace).map{EncodingTools.simplifyPred}
+      val pred = EncodingTools.rhsToPred(traceAbstraction, specSpace).map{EncodingTools.simplifyPred}
       hashableCache.addOne(specSpace,
         HashableStateFormula(callStack, heapConstraints, pureFormula, typeConstraints, pred))
     }
@@ -119,7 +119,7 @@ case class StateFormula(callStack: List[CallStackFrame], //TODO: cache z3 ast co
    * @return
    */
   def clearFreshRef(freshRef: FreshRef):StateFormula = {
-    val newTraceAbstraction = AbstractTrace(traceAbstraction.rightOfArrow.filter(_ != freshRef))
+    val newTraceAbstraction = traceAbstraction.copy(rightOfArrow = traceAbstraction.rightOfArrow.filter(_ != freshRef))
     this.copy(traceAbstraction = newTraceAbstraction)
   }
 
@@ -130,7 +130,7 @@ case class StateFormula(callStack: List[CallStackFrame], //TODO: cache z3 ast co
 
   private val allIRef = Memo.mutableHashMapMemo {
     (spec: SpecSpace) =>
-      EncodingTools.rhsToPred(traceAbstraction.rightOfArrow, spec)
+      EncodingTools.rhsToPred(traceAbstraction, spec)
         .flatMap(p => SpecSpace.allI(p))
   }
   def swapPv(oldPv : PureVar, newPv: PureExpr):StateFormula = {
@@ -194,7 +194,8 @@ case class StateFormula(callStack: List[CallStackFrame], //TODO: cache z3 ast co
 //      case (k,v) => (k,pureExprSwap(oldPv, newPv, v))
 //    }
 //    tr.copy(modelVars = nmv)
-    tr.copy(rightOfArrow = tr.rightOfArrow.map(single => single.swap(Map(oldPv->newPv)).asInstanceOf[LSSingle]))
+    tr.copy(rightOfArrow = tr.rightOfArrow.map(single => single.swap(Map(oldPv->newPv)).asInstanceOf[LSSingle]),
+      extraPred = tr.extraPred.swap(Map(oldPv->newPv)))
   }
 
   /**
@@ -206,7 +207,7 @@ case class StateFormula(callStack: List[CallStackFrame], //TODO: cache z3 ast co
     this.copy(traceAbstraction = AbstractTrace(traceAbstraction.rightOfArrow.filter {
       case FreshRef(v) if v == pv => false
       case _ => true
-      }),
+      }, traceAbstraction.extraPred),
       pureFormula = pureFormula.filter{
         case PureConstraint(lhs, _, rhs) => lhs != pv && rhs!=pv
       },
@@ -322,6 +323,7 @@ case class State(sf:StateFormula,
         case FreshRef(_) => Set.empty
         case msg: AbsMsg => pVals(msg.lsVars)
       } ++
+      pVals(EncodingTools.msgList(sf.traceAbstraction.extraPred).flatMap(m => m.lsVars)) ++
       sf.pureFormula.flatMap{
         case PureConstraint(lhs, _, rhs) => pVals(List(lhs,rhs))
       }

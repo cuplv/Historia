@@ -261,8 +261,8 @@ class StateSolverTest extends FixtureAnyFunSuite {
             count = count + 1
             res
           }
-          val s1P = EncodingTools.rhsToPred(s1.sf.traceAbstraction.rightOfArrow, spec).map(EncodingTools.simplifyPred).map(toCnfTest)
-          val s2P = EncodingTools.rhsToPred(s2.sf.traceAbstraction.rightOfArrow, spec).map(EncodingTools.simplifyPred).map(toCnfTest)
+          val s1P = EncodingTools.rhsToPred(s1.sf.traceAbstraction, spec).map(EncodingTools.simplifyPred).map(toCnfTest)
+          val s2P = EncodingTools.rhsToPred(s2.sf.traceAbstraction, spec).map(EncodingTools.simplifyPred).map(toCnfTest)
 
           //TODO==== test code
           val ex1P = s1P.find(p => p.isInstanceOf[Exists])
@@ -2168,7 +2168,7 @@ class StateSolverTest extends FixtureAnyFunSuite {
 
 
 
-    val enc = EncodingTools.rhsToPred(absTr, specs)
+    val enc = EncodingTools.rhsToPred(AbstractTrace(absTr), specs)
     val s = State.topState.copy(sf = State.topState.sf.copy(
       traceAbstraction = AbstractTrace(absTr)))
       .addPureConstraint(PureConstraint(pv10, NotEquals, pv6))

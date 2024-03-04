@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.BounderUtil
 import edu.colorado.plv.bounder.lifestate.LifeState.{And, LSPred, LSTrue, OAbsMsg, Signature}
 import edu.colorado.plv.bounder.lifestate.SpecSpace
 import edu.colorado.plv.bounder.solver.{ClassHierarchyConstraints, EncodingTools}
-import edu.colorado.plv.bounder.symbolicexecutor.state.PureExpr
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AbstractTrace, PureExpr}
 import upickle.default.{macroRW, ReadWriter => RW}
 
 import scala.annotation.tailrec
@@ -15,6 +15,16 @@ case class Trace(t:List[TMessage]) extends AnyVal{
   def size:Int = t.size
 }
 object Trace {
+  def compareTraces(t1:List[TraceElement], t2:List[TraceElement]) =
+    t1.zip(t2).forall{
+      case (TNew(v1,_),TNew(v2,_)) => v1 == v2
+      case (TMessage(mt1, method1, args1,_), TMessage(mt2,method2,args2, _)) =>
+        mt1 == mt2 && method1 == method2 && args1 == args2
+      case (TCLInit(cl1), TCLInit(cl)) => cl1 == cl
+      case other =>
+        print(other)
+        false
+    }
   def empty = Trace(Nil)
 }
 
@@ -77,7 +87,7 @@ case class ConcGraph(tgt:CNode,init:Set[CNode], edges:Map[CNode,Set[CNode]]){
         assert(matchedMsgs.size < 2, "At most one message should match")
         matchedMsgs.headOption match {
           case Some(m) =>
-            val out = EncodingTools.rhsToPred(m::Nil, space, Set(pred))
+            val out = EncodingTools.rhsToPred(AbstractTrace(m::Nil), space, Set(pred))
             out.reduceOption(And).getOrElse(LSTrue)
           case None => pred
         }
