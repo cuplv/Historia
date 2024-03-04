@@ -43,7 +43,7 @@ object Qry {
             val (npv, nextState) = stateWithThis.nextPv()
             val sf = nextState.sf
             val heapCell = (FieldPtEdge(thisPt.asInstanceOf[PureVar], name), npv)
-            val newSf = sf.copy(heapConstraints = sf.heapConstraints + heapCell)
+            val newSf = sf.copy(heapConstraints = sf.heapConstraints + heapCell, pureFormula = sf.pureFormula + PureConstraint(npv, NotEquals, NullVal))
             Some(qry.copy(state = stateWithThis.copy(sf = newSf)))
           case FieldReference(base, containsType, declType, name)if sym.w.getClassHierarchyConstraints.getSupertypesOf(containsType).contains(typeToReach) =>
             println(s"Unimplemented static field ${base} ${name}")
