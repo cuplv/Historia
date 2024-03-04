@@ -773,7 +773,7 @@ case class State(sf:StateFormula,
    * @return
    */
   def getOrDefine[M,C](l : RVal, method:Option[MethodLoc])
-                      (implicit ch: ClassHierarchyConstraints, w:IRWrapper[M,C]): (PureExpr,State) = l match{
+                      (implicit w:IRWrapper[M,C]): (PureExpr,State) = l match{
     case lw@LocalWrapper(name,localType) =>
       val cshead = sf.callStack.headOption match {
         case Some(value:MaterializedCallStackFrame) => value
@@ -815,7 +815,7 @@ case class State(sf:StateFormula,
           }
           val state = this.copy(sf = sf.copy(callStack = newStack,typeConstraints = sf.typeConstraints ++ combinedTs),
             nextAddr = nextAddr + 1)
-          val st2 = state.constrainUpperType(newident, localType, ch)
+          val st2 = state.constrainUpperType(newident, localType, w.getClassHierarchyConstraints)
           (newident, st2)
       }
     case NullConst =>

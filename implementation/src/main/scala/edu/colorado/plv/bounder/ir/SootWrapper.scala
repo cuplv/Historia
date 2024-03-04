@@ -5,7 +5,7 @@ import edu.colorado.plv.bounder.BounderSetupApplication.{ApkSource, SourceType}
 
 import java.util
 import java.util.{Collections, Objects}
-import edu.colorado.plv.bounder.ir.SootWrapper.{cgEntryPointName, findUnitFromIndex, findUnitIndex, getUnitGraph}
+import edu.colorado.plv.bounder.ir.SootWrapper.{cgEntryPointName, findUnitFromIndex, findUnitIndex, getUnitGraph, stringNameOfType}
 import edu.colorado.plv.bounder.lifestate.LifeState.{AbsMsg, LSSpec, OAbsMsg, SetSignatureMatcher, Signature, SignatureMatcher, SubClassMatcher}
 import edu.colorado.plv.bounder.lifestate.{LifeState, SpecSpace}
 import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
@@ -1952,6 +1952,22 @@ class SootWrapper(apkPath : String,
         }
       }else Set.empty
     case _ => throw new IllegalArgumentException()
+  }
+
+  /**
+   * Returns set of
+   */
+  override def getClassFields(clazz: String): Set[LVal] = {
+    val sootClazz = Scene.v().getSootClass(clazz)
+    sootClazz.getFields.asScala.map{ f =>
+      val typeInField = stringNameOfType(f.getType)
+      if(f.isStatic) {
+        println(f)
+        StaticFieldReference(clazz, f.getName, typeInField)
+      } else {
+        FieldReference(LocalWrapper("@this", clazz), typeInField, typeInField, f.getName )
+      }
+    }.toSet
   }
 }
 

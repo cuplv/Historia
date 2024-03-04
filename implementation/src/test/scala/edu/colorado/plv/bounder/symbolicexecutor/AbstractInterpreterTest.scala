@@ -12,7 +12,7 @@ import edu.colorado.plv.bounder.lifestate.ViewSpec.{a, b, b2, l, onClick, onClic
 import edu.colorado.plv.bounder.lifestate.{Dummy, FragmentGetActivityNullSpec, LifeState, LifecycleSpec, RxJavaSpec, SAsyncTask, SDialog, SpecSignatures, SpecSpace, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.ExperimentSpecs.{row1Specs, row4Specs}
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BoolVal, BottomQry, CallinReturnNonNull, DBOutputMode, DisallowedCallin, FieldPtEdge, IPathNode, MemoryOutputMode, NamedPureVar, NoOutputMode, NotEquals, OutputMode, PrettyPrinting, Qry, Reachable, ReceiverNonNull, TopVal}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, BoolVal, BottomQry, CallinReturnNonNull, DBOutputMode, DisallowedCallin, FieldPtEdge, IPathNode, MemoryLeak, MemoryOutputMode, NamedPureVar, NoOutputMode, NotEquals, OutputMode, PrettyPrinting, Qry, Reachable, ReceiverNonNull, TopVal}
 import edu.colorado.plv.bounder.synthesis.EnumModelGeneratorTest.{onClickCanHappenNoPrev, onClickCanHappenWithPrev, onClickReach, queryOnClickTwiceAfterReg, srcReach}
 import edu.colorado.plv.bounder.synthesis.{EnumModelGenerator, EnumModelGeneratorTest}
 import edu.colorado.plv.bounder.testutils.MkApk
@@ -338,8 +338,6 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
     makeApkWithSources(Map("MyActivity.java" -> src), MkApk.RXBase, test)
   }
   test("Detect activity leak test") { f =>
-    // This test is just to check if we terminate properly on a foreach.
-    // TODO: we may want to specify the behavior of the list iterator and test it here
     val src =
       """package com.example.createdestroy;
         |import androidx.appcompat.app.AppCompatActivity;
@@ -362,7 +360,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
         |            @Override
         |            public void run() {
         |                // Simulate long-running task
-        |                dumpFields(this, this.getClass());
+        |                this.toString(); //query1
         |            }
         |        };
         |        Thread tmp2 = new Thread(tmp);
@@ -385,8 +383,10 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
 
 
       // Dereference in loop should witness since we do not have a spec for the list
-      val query = ReceiverNonNull(Signature("com.example.createdestroy.MyActivity",
-        "void onPause()"), BounderUtil.lineForRegex(".*query1.*".r,src), Some(".*toString.*"))
+      val query = MemoryLeak("androidx.appcompat.app.AppCompatActivity",
+        Signature("com.example.createdestroy.MyActivity$1",
+        "void run()"), BounderUtil.lineForRegex(".*query1.*".r,src), SpecSignatures.Activity_onDestroy_exit,
+        NamedPureVar("a"))
 
       // prettyPrinting.dotMethod( query.head.loc, symbolicExecutor.controlFlowResolver, "onPauseCond.dot")
 

@@ -17,6 +17,44 @@ object Qry {
 
   implicit val rw:RW[Qry] = macroRW
 
+  /**
+   * Map an initial query to restrict state such that some local has a field reaching a type.
+   * @param sym
+   * @param qry Initial query, probably made by "makeReach" or something
+   * @param typeToReach Typically an Activity or other UI object
+   * @tparam M
+   * @tparam C
+   * @return
+   */
+  def localReachesType[M,C](sym: AbstractInterpreter[M, C],qry:Qry, typeToReach:String):Set[Qry] = {
+    val location = qry.loc
+    val state = qry.state
+    location match{
+      case l@AppLoc(method, line, isPre) =>
+        val containingMethod = location.containingMethod
+        val returnLoc =
+          BounderUtil.resolveMethodReturnForAppLoc(sym.w.getAppCodeResolver, location.asInstanceOf[AppLoc])
+        val locals = method.getLocals()
+        val thisWrapper = LocalWrapper("@this", "_")
+        val (thisPt, stateWithThis) = state.getOrDefine(thisWrapper, Some(method))(sym.w)
+        val fieldRefs = sym.w.getClassFields(method.classType)
+        fieldRefs.flatMap{
+          case FieldReference(_, containsType, _, name) if sym.w.getClassHierarchyConstraints.getSupertypesOf(containsType).contains(typeToReach) =>
+            val (npv, nextState) = stateWithThis.nextPv()
+            val sf = nextState.sf
+            val heapCell = (FieldPtEdge(thisPt.asInstanceOf[PureVar], name), npv)
+            val newSf = sf.copy(heapConstraints = sf.heapConstraints + heapCell)
+            Some(qry.copy(state = stateWithThis.copy(sf = newSf)))
+          case FieldReference(base, containsType, declType, name)if sym.w.getClassHierarchyConstraints.getSupertypesOf(containsType).contains(typeToReach) =>
+            println(s"Unimplemented static field ${base} ${name}")
+            ???
+          case _ => None
+        }
+      case otherLoc =>
+        println(s"unimplemented ${otherLoc} localReachesType")
+        ???
+    }
+  }
   def makeReach[M,C](ex: AbstractInterpreter[M,C],
                      sig:Signature, line:Int):Set[Qry] = {
     val locs = ex.w.findLineInMethod(sig,line)
@@ -331,8 +369,8 @@ case class MemoryLeak(leakedType:String, sig:Signature, line:Int, leakedPred:LSP
                       targetVarInPred:PureVar) extends InitialQuery {
 
   override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] = {
-    val reachable: Set[Qry] = Reachable(sig,line).make(sym)
-    ??? //TODO:=== you were here
+    val reachable: Set[Qry] = Qry.makeReach(sym, sig, line)
+    reachable.flatMap{q => Qry.localReachesType(sym,q,leakedType)}
   }
 
   override def fileName: String = s"MemoryLeak_at_${sig}_type_${leakedType}"

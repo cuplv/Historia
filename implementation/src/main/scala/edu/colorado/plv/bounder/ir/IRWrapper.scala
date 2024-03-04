@@ -17,6 +17,10 @@ import scala.collection.BitSet
  */
 trait IRWrapper[M,C]{
   def getAppCodeResolver:AppCodeResolver[M,C]
+  /**
+   * Returns set of
+   */
+  def getClassFields(clazz:String):Set[LVal]
   def allMethodLocations(m: MethodLoc): Set[AppLoc]
 
   def dumpDebug(classFilter:String):String

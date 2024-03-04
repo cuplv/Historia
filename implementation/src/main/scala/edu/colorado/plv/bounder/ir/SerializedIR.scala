@@ -84,6 +84,10 @@ case class SerializedIR(transitions: Map[AppLoc, Set[SerializedTransition]]) ext
 
   override def getAppCodeResolver: AppCodeResolver[String, CmdWrapper] = new AppCodeResolver[String,CmdWrapper](this);
 
+  /**
+   * Returns set of
+   */
+  override def getClassFields(clazz: String): Set[LVal] = ???
 }
 
 /**
