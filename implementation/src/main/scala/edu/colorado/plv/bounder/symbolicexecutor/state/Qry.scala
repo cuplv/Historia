@@ -201,10 +201,10 @@ object InitialQuery{
   }
   implicit val rw:RW[InitialQuery] = upickle.default.readwriter[ujson.Value].bimap[InitialQuery](
     {
-      case m@MemoryLeak(leakedType, sig, line, pred, targetVarInPred) =>
+      case qry@MemoryLeak(leakedType, sig, line, pred, targetVarInPred) =>
         val m = Map(
           "t" -> "MemoryLeak",
-          "v" -> write[MemoryLeak](m)
+          "v" -> write[MemoryLeak](qry)
 //          "className" -> sig.base,
 //          "methodName" -> sig.methodSignature,
 //          "line" -> line,
