@@ -1,0 +1,77 @@
+--------- beginning of main
+--------- beginning of system
+2024-03-05 16:35:34.506 19724-19724 bitmapmishandl          com.example.bitmapmishandle          I  Late-enabling -Xcheck:jni
+2024-03-05 16:35:34.565 19724-19724 bitmapmishandl          com.example.bitmapmishandle          E  Unknown bits set in runtime_flags: 0x8000
+2024-03-05 16:35:34.566 19724-19724 bitmapmishandl          com.example.bitmapmishandle          W  Unexpected CPU variant for X86 using defaults: x86
+2024-03-05 16:35:34.718 19724-19724 RenderThread            com.example.bitmapmishandle          W  type=1400 audit(0.0:281): avc: denied { write } for name="property_service" dev="tmpfs" ino=6808 scontext=u:r:untrusted_app:s0:c176,c256,c512,c768 tcontext=u:object_r:property_socket:s0 tclass=sock_file permissive=0 app=com.example.bitmapmishandle
+2024-03-05 16:35:34.731 19724-19754 libEGL                  com.example.bitmapmishandle          D  Emulator has host GPU support, qemu.gles is set to 1.
+2024-03-05 16:35:34.731 19724-19754 libc                    com.example.bitmapmishandle          W  Unable to set property "qemu.gles" to "1": connection failed; errno=13 (Permission denied)
+2024-03-05 16:35:34.732 19724-19724 histInstrumentation     com.example.bitmapmishandle          I   156302263 = new ArrayList 
+2024-03-05 16:35:34.732 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  ci 156302263 ArrayList.add 2130837507
+2024-03-05 16:35:34.732 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  ci 156302263 ArrayList.add 2130837508
+2024-03-05 16:35:34.732 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  ci 156302263 ArrayList.add 2130837509
+2024-03-05 16:35:34.732 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  ci 156302263 ArrayList.add 2130837510
+2024-03-05 16:35:34.732 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  ci 156302263 ArrayList.add 2130837511
+2024-03-05 16:35:34.744 19724-19754 libEGL                  com.example.bitmapmishandle          D  loaded /vendor/lib/egl/libEGL_emulation.so
+2024-03-05 16:35:34.745 19724-19754 libEGL                  com.example.bitmapmishandle          D  loaded /vendor/lib/egl/libGLESv1_CM_emulation.so
+2024-03-05 16:35:34.769 19724-19754 libEGL                  com.example.bitmapmishandle          D  loaded /vendor/lib/egl/libGLESv2_emulation.so
+2024-03-05 16:35:34.771 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  cb 242975810 onCreate 0
+2024-03-05 16:35:34.793 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  ci 242975810 setContentView 2130968576
+2024-03-05 16:35:34.794 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  238639514 = ci 242975810 findViewById 2130903040
+2024-03-05 16:35:34.794 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  cb 248791755 <init> 242975810
+2024-03-05 16:35:34.794 19724-19724 histInstrumentation     com.example.bitmapmishandle          I   248791755 = new ImageAdapter 242975810
+2024-03-05 16:35:34.794 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  cb 248791755 getCount 
+2024-03-05 16:35:34.794 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  cb 248791755 getCount 
+2024-03-05 16:35:34.794 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  cb 248791755 getItemId 0
+2024-03-05 16:35:34.794 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  cb 248791755 getItemId 0
+2024-03-05 16:35:34.795 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  ci 238639514 setAdapter 248791755
+2024-03-05 16:35:34.839 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  cb 248791755 getCount 
+2024-03-05 16:35:34.839 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  cb 248791755 getView 0 0 238639514
+2024-03-05 16:35:34.839 19724-19724 histInstrumentation     com.example.bitmapmishandle          I   174211239 = new ImageView 242975810
+2024-03-05 16:35:34.839 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  ci 174211239 setLayoutParams 62036308
+2024-03-05 16:35:34.839 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  ci 174211239 setScaleType 146477309
+2024-03-05 16:35:34.839 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  2130837507 = ci 156302263 ArrayList.get 0
+2024-03-05 16:35:34.842 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  ci 174211239 setScaleType 182992963
+2024-03-05 16:35:34.851 19724-19752 HostConnection          com.example.bitmapmishandle          D  HostConnection::get() New Host Connection established 0xdb460050, tid 19752
+2024-03-05 16:35:34.851 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  cb 248791755 getCount 
+2024-03-05 16:35:34.851 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  cb 248791755 getView 0 174211239 238639514
+2024-03-05 16:35:34.851 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  2130837507 = ci 156302263 ArrayList.get 0
+2024-03-05 16:35:34.853 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  ci 174211239 setScaleType 182992963
+2024-03-05 16:35:34.853 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  cb 248791755 getView 0 174211239 238639514
+2024-03-05 16:35:34.853 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  2130837507 = ci 156302263 ArrayList.get 0
+2024-03-05 16:35:34.853 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  ci 174211239 setScaleType 182992963
+2024-03-05 16:35:34.854 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  cb 248791755 getView 1 0 238639514
+2024-03-05 16:35:34.854 19724-19724 histInstrumentation     com.example.bitmapmishandle          I   256505536 = new ImageView 242975810
+2024-03-05 16:35:34.854 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  ci 256505536 setLayoutParams 70041593
+2024-03-05 16:35:34.854 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  ci 256505536 setScaleType 146477309
+2024-03-05 16:35:34.854 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  2130837508 = ci 156302263 ArrayList.get 1
+2024-03-05 16:35:34.855 19724-19752 HostConnection          com.example.bitmapmishandle          D  HostComposition ext ANDROID_EMU_CHECKSUM_HELPER_v1 ANDROID_EMU_native_sync_v2 ANDROID_EMU_native_sync_v3 ANDROID_EMU_native_sync_v4 ANDROID_EMU_dma_v1 ANDROID_EMU_direct_mem ANDROID_EMU_host_composition_v1 ANDROID_EMU_host_composition_v2 ANDROID_EMU_YUV_Cache ANDROID_EMU_sync_buffer_data GL_OES_EGL_image_external_essl3 GL_OES_vertex_array_object GL_KHR_texture_compression_astc_ldr ANDROID_EMU_host_side_tracing ANDROID_EMU_gles_max_version_3_0 
+2024-03-05 16:35:34.859 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  ci 256505536 setScaleType 54828447
+2024-03-05 16:35:34.859 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  cb 248791755 getView 2 0 238639514
+2024-03-05 16:35:34.859 19724-19724 histInstrumentation     com.example.bitmapmishandle          I   70762220 = new ImageView 242975810
+2024-03-05 16:35:34.859 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  ci 70762220 setLayoutParams 242246325
+2024-03-05 16:35:34.859 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  ci 70762220 setScaleType 146477309
+2024-03-05 16:35:34.859 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  2130837509 = ci 156302263 ArrayList.get 2
+2024-03-05 16:35:34.860 19724-19752 OpenGLRenderer          com.example.bitmapmishandle          W  Failed to choose config with EGL_SWAP_BEHAVIOR_PRESERVED, retrying without...
+2024-03-05 16:35:34.860 19724-19752 EGL_emulation           com.example.bitmapmishandle          D  eglCreateContext: 0xdb41a120: maj 3 min 0 rcv 3
+2024-03-05 16:35:34.861 19724-19752 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xdb41a120: ver 3 0 (tinfo 0xdb40f360)
+2024-03-05 16:35:34.862 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  ci 70762220 setScaleType 199193787
+2024-03-05 16:35:34.862 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  cb 248791755 getView 3 0 238639514
+2024-03-05 16:35:34.862 19724-19724 histInstrumentation     com.example.bitmapmishandle          I   123198936 = new ImageView 242975810
+2024-03-05 16:35:34.862 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  ci 123198936 setLayoutParams 51475761
+2024-03-05 16:35:34.862 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  ci 123198936 setScaleType 146477309
+2024-03-05 16:35:34.862 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  2130837510 = ci 156302263 ArrayList.get 3
+2024-03-05 16:35:34.865 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  ci 123198936 setScaleType 25600407
+2024-03-05 16:35:34.865 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  cb 248791755 getView 4 0 238639514
+2024-03-05 16:35:34.865 19724-19724 histInstrumentation     com.example.bitmapmishandle          I   223936388 = new ImageView 242975810
+2024-03-05 16:35:34.865 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  ci 223936388 setLayoutParams 14103405
+2024-03-05 16:35:34.865 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  ci 223936388 setScaleType 146477309
+2024-03-05 16:35:34.865 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  2130837511 = ci 156302263 ArrayList.get 4
+2024-03-05 16:35:34.871 19724-19724 histInstrumentation     com.example.bitmapmishandle          I  ci 223936388 setScaleType 101302323
+2024-03-05 16:35:34.872 19724-19752 Gralloc3                com.example.bitmapmishandle          W  mapper 3.x is not supported
+2024-03-05 16:35:34.874 19724-19752 HostConnection          com.example.bitmapmishandle          D  createUnique: call
+2024-03-05 16:35:34.874 19724-19752 HostConnection          com.example.bitmapmishandle          D  HostConnection::get() New Host Connection established 0xdb4601e0, tid 19752
+2024-03-05 16:35:34.874 19724-19752 HostConnection          com.example.bitmapmishandle          D  HostComposition ext ANDROID_EMU_CHECKSUM_HELPER_v1 ANDROID_EMU_native_sync_v2 ANDROID_EMU_native_sync_v3 ANDROID_EMU_native_sync_v4 ANDROID_EMU_dma_v1 ANDROID_EMU_direct_mem ANDROID_EMU_host_composition_v1 ANDROID_EMU_host_composition_v2 ANDROID_EMU_YUV_Cache ANDROID_EMU_sync_buffer_data GL_OES_EGL_image_external_essl3 GL_OES_vertex_array_object GL_KHR_texture_compression_astc_ldr ANDROID_EMU_host_side_tracing ANDROID_EMU_gles_max_version_3_0 
+2024-03-05 16:35:34.875 19724-19752 eglCodecCommon          com.example.bitmapmishandle          D  allocate: Ask for block of size 0x1000
+2024-03-05 16:35:34.875 19724-19752 eglCodecCommon          com.example.bitmapmishandle          D  allocate: ioctl allocate returned offset 0x3ffff6000 size 0x2000
+2024-03-05 16:35:34.879 19724-19752 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xdb41a120: ver 3 0 (tinfo 0xdb40f360)
