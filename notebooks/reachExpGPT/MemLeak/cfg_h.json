@@ -1,0 +1,42 @@
+{
+  "apkPath": "/Users/shawnmeier/Documents/source/historia/Historia/testApps//ChatGPT_Benchmarks/EXN_activity_leak_noStatic/app_bug/app/build/intermediates/apk/debug/app-debug.apk",
+  "outFolder": [
+    "/Users/shawnmeier/Documents/source/historia/Historia/notebooks/reachExpGPT/MemLeak"
+  ],
+  "specSet": "{\"specs\":[{\"univQuant\":[{\"$type\":\"edu.colorado.plv.bounder.symbolicexecutor.state.NamedPureVar\",\"n\":\"a\"}],\"existQuant\":[],\"pred\":{\"$type\":\"edu.colorado.plv.bounder.lifestate.LifeState.NS\",\"i1\":{\"$type\":\"edu.colorado.plv.bounder.lifestate.LifeState.OAbsMsg\",\"mt\":{\"$type\":\"edu.colorado.plv.bounder.ir.CBEnter\"},\"signatures\":{\"$type\":\"edu.colorado.plv.bounder.lifestate.LifeState.SubClassMatcher\",\"baseSubtypeOf\":[\"android.app.Activity\",\"androidx.fragment.app.FragmentActivity\"],\"signatureMatcher\":\"void onCreate\\\\(android.os.Bundle\\\\)\",\"ident\":\"Activity_onCreate\"},\"lsVars\":[{\"$type\":\"edu.colorado.plv.bounder.symbolicexecutor.state.TopVal\"},{\"$type\":\"edu.colorado.plv.bounder.symbolicexecutor.state.NamedPureVar\",\"n\":\"a\"}]},\"i2\":{\"$type\":\"edu.colorado.plv.bounder.lifestate.LifeState.OAbsMsg\",\"mt\":{\"$type\":\"edu.colorado.plv.bounder.ir.CBExit\"},\"signatures\":{\"$type\":\"edu.colorado.plv.bounder.lifestate.LifeState.SubClassMatcher\",\"baseSubtypeOf\":[\"android.app.Activity\",\"androidx.fragment.app.FragmentActivity\"],\"signatureMatcher\":\"void onDestroy\\\\(\\\\)\",\"ident\":\"Activity_onDestroy\"},\"lsVars\":[{\"$type\":\"edu.colorado.plv.bounder.symbolicexecutor.state.TopVal\"},{\"$type\":\"edu.colorado.plv.bounder.symbolicexecutor.state.NamedPureVar\",\"n\":\"a\"}]}},\"target\":{\"$type\":\"edu.colorado.plv.bounder.lifestate.LifeState.OAbsMsg\",\"mt\":{\"$type\":\"edu.colorado.plv.bounder.ir.CBEnter\"},\"signatures\":{\"$type\":\"edu.colorado.plv.bounder.lifestate.LifeState.SubClassMatcher\",\"baseSubtypeOf\":[\"android.app.Activity\",\"androidx.fragment.app.FragmentActivity\"],\"signatureMatcher\":\"void onDestroy\\\\(\\\\)\",\"ident\":\"Activity_onDestroy\"},\"lsVars\":[{\"$type\":\"edu.colorado.plv.bounder.symbolicexecutor.state.TopVal\"},{\"$type\":\"edu.colorado.plv.bounder.symbolicexecutor.state.NamedPureVar\",\"n\":\"a\"}]}}],\"matcherSpace\":[{\"$type\":\"edu.colorado.plv.bounder.lifestate.LifeState.OAbsMsg\",\"mt\":{\"$type\":\"edu.colorado.plv.bounder.ir.CBEnter\"},\"signatures\":{\"$type\":\"edu.colorado.plv.bounder.lifestate.LifeState.SubClassMatcher\",\"baseSubtypeOf\":[\"java.lang.Runnable\"],\"signatureMatcher\":\".*run\\\\(.*\\\\)\",\"ident\":\"Runnable_run\"},\"lsVars\":[{\"$type\":\"edu.colorado.plv.bounder.symbolicexecutor.state.TopVal\"},{\"$type\":\"edu.colorado.plv.bounder.symbolicexecutor.state.NamedPureVar\",\"n\":\"r\"}]}]}",
+  "initialQuery": [
+    {
+      "t": "MemoryLeak",
+      "v": "{\"$type\":\"edu.colorado.plv.bounder.symbolicexecutor.state.MemoryLeak\",\"leakedType\":\"android.app.Activity\",\"sig\":{\"base\":\"com.example.activityleak.LeakActivity$1\",\"methodSignature\":\"void run()\"},\"line\":39,\"leakedPred\":{\"$type\":\"edu.colorado.plv.bounder.lifestate.LifeState.OAbsMsg\",\"mt\":{\"$type\":\"edu.colorado.plv.bounder.ir.CBExit\"},\"signatures\":{\"$type\":\"edu.colorado.plv.bounder.lifestate.LifeState.SubClassMatcher\",\"baseSubtypeOf\":[\"android.app.Activity\",\"androidx.fragment.app.FragmentActivity\"],\"signatureMatcher\":\"void onDestroy\\\\(\\\\)\",\"ident\":\"Activity_onDestroy\"},\"lsVars\":[{\"$type\":\"edu.colorado.plv.bounder.symbolicexecutor.state.TopVal\"},{\"$type\":\"edu.colorado.plv.bounder.symbolicexecutor.state.NamedPureVar\",\"n\":\"a\"}]},\"targetVarInPred\":{\"$type\":\"edu.colorado.plv.bounder.symbolicexecutor.state.NamedPureVar\",\"n\":\"a\"}}"
+    }
+  ],
+  "timeLimit": 2147483647,
+  "truncateOut": false,
+  "approxMode": {
+    "$type": "edu.colorado.plv.bounder.symbolicexecutor.PreciseApproxMode",
+    "canWeaken": true,
+    "dropStatePolicy": [
+      {
+        "$type": "edu.colorado.plv.bounder.symbolicexecutor.LimitLocationVisitDropStatePolicy",
+        "limit": 3
+      },
+      {
+        "$type": "edu.colorado.plv.bounder.symbolicexecutor.LimitAppRecursionDropStatePolicy",
+        "calls": 3
+      },
+      {
+        "$type": "edu.colorado.plv.bounder.symbolicexecutor.LimitMaterializedFieldsDropStatePolicy",
+        "nameCount": {
+          "*": 2
+        }
+      }
+    ]
+  },
+  "z3TimeoutBehavior": [
+    {
+      "subsumeTryTimeLimit": [
+        200000
+      ]
+    }
+  ]
+}

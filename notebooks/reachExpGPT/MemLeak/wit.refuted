@@ -1,0 +1,5 @@
+refuted
+    REFUTED: InternalMethodInvoke(com.example.activityleak.LeakActivity$1,void run(),JimpleMethodLoc(<com.example.activityleak.LeakActivity$1: void run()>))
+       state: ( locals: @this -> p-0         heap: p-0.this$0->p-1          pure: p-1  !=  NULL && p-0  !=  NULL         types: List(p-0:{1140})    trace: )
+    pre-line: -1 r0 := @this: com.example.activityleak.LeakActivity$1
+       state: ( locals: @this -> p-0         heap: p-0.this$0->p-1          pure: p-1  !=  NULL && p-0  !=  NULL         types: List(p-0:{1140})    trace: )
