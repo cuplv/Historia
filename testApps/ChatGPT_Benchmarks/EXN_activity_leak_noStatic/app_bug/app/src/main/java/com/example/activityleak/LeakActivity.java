@@ -46,7 +46,7 @@ public class LeakActivity extends Activity {
         };
         Log.i("histInstrumentation"," " + System.identityHashCode(tmp) + " = new Runnable$1 " + System.identityHashCode(this));
         Thread tmp2 = new Thread(tmp);
-        Log.i("histInstrumentation"," " + System.identityHashCode(this) + " = new Thread " + System.identityHashCode(tmp2));
+        Log.i("histInstrumentation"," " + System.identityHashCode(tmp2) + " = new Thread " + System.identityHashCode(this));
         tmp2.start();
         Log.i("histInstrumentation","cb " + System.identityHashCode(tmp2) + " start");
     }

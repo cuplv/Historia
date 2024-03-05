@@ -5,7 +5,7 @@
 2024-03-02 12:39:00.283  9358-9358  histInstrumentation     com.example.activityleak             I  cb 146907790 onCreate
 2024-03-02 12:39:00.294  9358-9393  libEGL                  com.example.activityleak             D  loaded /vendor/lib/egl/libGLESv1_CM_emulation.so
 2024-03-02 12:39:00.298  9358-9358  histInstrumentation     com.example.activityleak             I   30255791 = new Runnable$1 146907790
-2024-03-02 12:39:00.298  9358-9358  histInstrumentation     com.example.activityleak             I   146907790 = new Thread 15543996
+2024-03-02 12:39:00.298  9358-9358  histInstrumentation     com.example.activityleak             I   15543996 = new Thread 146907790 
 2024-03-02 12:39:00.300  9358-9393  libEGL                  com.example.activityleak             D  loaded /vendor/lib/egl/libGLESv2_emulation.so
 2024-03-02 12:39:00.300  9358-9358  histInstrumentation     com.example.activityleak             I  cb 15543996 start
 2024-03-02 12:39:00.346  9358-9391  HostConnection          com.example.activityleak             D  HostConnection::get() New Host Connection established 0xd8028300, tid 9391
