@@ -3,7 +3,7 @@
 2024-03-04 17:02:00.073 13517-13517 histInstrumentation     com.example.activityleak             I  cb 88959629 onCreate
 2024-03-04 17:02:00.073 13517-13517 histInstrumentation     com.example.activityleak             I   242975810 = new Runnable$1 88959629
 2024-03-04 17:02:00.073 13517-13517 histInstrumentation     com.example.activityleak             I   88959629 = new Thread 166698067
-2024-03-04 17:02:00.075 13517-13517 histInstrumentation     com.example.activityleak             I  cb 166698067 start
+2024-03-04 17:02:00.075 13517-13517 histInstrumentation     com.example.activityleak             I  ci 166698067 start
 2024-03-04 17:02:00.107 13517-13549 libEGL                  com.example.activityleak             D  loaded /vendor/lib/egl/libEGL_emulation.so
 2024-03-04 17:02:00.109 13517-13549 libEGL                  com.example.activityleak             D  loaded /vendor/lib/egl/libGLESv1_CM_emulation.so
 2024-03-04 17:02:00.114 13517-13549 libEGL                  com.example.activityleak             D  loaded /vendor/lib/egl/libGLESv2_emulation.so
