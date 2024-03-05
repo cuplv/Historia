@@ -747,7 +747,7 @@ class Z3StateSolver(persistentConstraints: ClassHierarchyConstraints,
     val trace = rightOfArrow.map {
       case CLInit(sig) => TCLInit(sig)
       case FreshRef(v) =>
-        TNew(v, state.sf.typeConstraints(v))
+        TNew(pmv(v), state.sf.typeConstraints(v))
       case OAbsMsg(CBEnter, sig, vars,_) =>
         TMessage(CBEnter, AppMethod(sig.example(), None), vars.map(v => pmv(v)))
       case OAbsMsg(CBExit, sig, vars,_) =>
