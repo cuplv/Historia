@@ -201,15 +201,16 @@ object InitialQuery{
   }
   implicit val rw:RW[InitialQuery] = upickle.default.readwriter[ujson.Value].bimap[InitialQuery](
     {
-      case MemoryLeak(leakedType, sig, line, pred, targetVarInPred) =>
+      case m@MemoryLeak(leakedType, sig, line, pred, targetVarInPred) =>
         val m = Map(
           "t" -> "MemoryLeak",
-          "className" -> sig.base,
-          "methodName" -> sig.methodSignature,
-          "line" -> line,
-          "pred" -> write[LSPred](pred),
-          "targetVarInPred" -> write[PureVar](targetVarInPred),
-          "leakedType" -> leakedType
+          "v" -> write[MemoryLeak](m)
+//          "className" -> sig.base,
+//          "methodName" -> sig.methodSignature,
+//          "line" -> line,
+//          "pred" -> write[LSPred](pred),
+//          "targetVarInPred" -> write[PureVar](targetVarInPred),
+//          "leakedType" -> leakedType
         ).map(vToJ)
         ujson.Obj.from(m)
       case Reachable(sig, line) =>
@@ -264,8 +265,9 @@ object InitialQuery{
     },
     json => json.obj("t").str match{
       case "MemoryLeak" =>
-        MemoryLeak(json.obj("leakedType").str,Signature(json.obj("className").str, json.obj("methodName").str),
-          json.obj("line").num.toInt, read[LSPred](json.obj("pred").str), read[PureVar](json.obj("targetVarInPred")))
+        read[MemoryLeak](json.obj("v").str)
+//        MemoryLeak(json.obj("leakedType").str,Signature(json.obj("className").str, json.obj("methodName").str),
+//          json.obj("line").num.toInt, read[LSPred](json.obj("pred").str), read[PureVar](json.obj("targetVarInPred")))
       case "InitialQueryWithStackTrace" =>
         InitialQueryWithStackTrace(read[List[SignatureMatcher]](json.obj("trace").str),
           read[InitialQuery](json.obj("internalQry").str)(InitialQuery.rw))
