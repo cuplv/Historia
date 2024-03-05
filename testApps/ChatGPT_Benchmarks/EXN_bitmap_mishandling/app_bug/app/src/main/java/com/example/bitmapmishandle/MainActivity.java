@@ -39,7 +39,6 @@ public class MainActivity extends Activity {
     private ArrayList<Integer> imageIDs = new ArrayList<Integer>();
 
     {
-
         Log.i("histInstrumentation"," " + System.identityHashCode(imageIDs) + " = new ArrayList ");
         imageIDs.add(R.drawable.image1);
         Log.i("histInstrumentation","ci " + System.identityHashCode(imageIDs) + " ArrayList.add " + R.drawable.image1);
@@ -59,18 +58,21 @@ public class MainActivity extends Activity {
         Log.i("histInstrumentation","cb " + System.identityHashCode(this) + " onCreate " + System.identityHashCode(savedInstanceState));
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         Log.i("histInstrumentation","ci " + System.identityHashCode(this) + " setContentView " + R.layout.activity_main);
 
         GridView gridView = findViewById(R.id.gridView);
-        gridView.setAdapter(new ImageAdapter(this));
+        Log.i("histInstrumentation",System.identityHashCode(gridView) + " = ci " + System.identityHashCode(this) + " findViewById " + R.id.gridView);
+        ImageAdapter tmp1 = new ImageAdapter(this);
+        Log.i("histInstrumentation"," " + System.identityHashCode(tmp1) + " = new ImageAdapter " + System.identityHashCode(this));
+        gridView.setAdapter(tmp1);
+        Log.i("histInstrumentation","ci " + System.identityHashCode(gridView) + " setAdapter " + System.identityHashCode(tmp1));
     }
 
     public class ImageAdapter extends BaseAdapter {
         private Context context;
 
         public ImageAdapter(Context c) {
-            Log.i("histInstrumentation","cb " + System.identityHashCode(this) + " <init> ");
+            Log.i("histInstrumentation","cb " + System.identityHashCode(this) + " <init> " + System.identityHashCode(c));
             context = c;
         }
 
@@ -95,6 +97,7 @@ public class MainActivity extends Activity {
             ImageView imageView;
             if (convertView == null) {
                 imageView = new ImageView(context);
+                Log.i("histInstrumentation"," " + System.identityHashCode(imageView) + " = new ImageView " + System.identityHashCode(context));
                 ViewGroup.LayoutParams tmp1 = new ViewGroup.LayoutParams(350, 350);
                 imageView.setLayoutParams(tmp1);
                 Log.i("histInstrumentation","ci " + System.identityHashCode(imageView) + " setLayoutParams " + System.identityHashCode(tmp1));
@@ -106,7 +109,7 @@ public class MainActivity extends Activity {
             }
 
             Integer tmp2 = imageIDs.get(position);
-            Log.i("histInstrumentation",tmp2 + "= ci " + System.identityHashCode(imageIDs) + " ArrayList.get " + position);
+            Log.i("histInstrumentation",tmp2 + " = ci " + System.identityHashCode(imageIDs) + " ArrayList.get " + position);
             imageView.setImageResource(tmp2); // Loading the full-sized image
             Log.i("histInstrumentation","ci " + System.identityHashCode(imageView) + " setScaleType " + System.identityHashCode(tmp2));
             return imageView;
