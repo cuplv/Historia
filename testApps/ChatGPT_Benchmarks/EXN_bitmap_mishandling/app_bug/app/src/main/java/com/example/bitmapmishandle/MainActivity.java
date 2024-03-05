@@ -111,7 +111,7 @@ public class MainActivity extends Activity {
             Integer tmp2 = imageIDs.get(position);
             Log.i("histInstrumentation",tmp2 + " = ci " + System.identityHashCode(imageIDs) + " ArrayList.get " + position);
             imageView.setImageResource(tmp2); // Loading the full-sized image
-            Log.i("histInstrumentation","ci " + System.identityHashCode(imageView) + " setScaleType " + System.identityHashCode(tmp2));
+            Log.i("histInstrumentation","ci " + System.identityHashCode(imageView) + " setImageResource " + tmp2);
             return imageView;
         }
     }
