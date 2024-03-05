@@ -1,8 +1,10 @@
-(    heap:           pure: p-2  !=  NULL && p-0  !=  NULL && p-1  !=  NULL         types: List(p-0:{1140}, p-2:{1134}, p-1:{1134})    trace: O(CBEnter I_CBEnter_ActivityonCreate ( _T_,p-1 );p-0;O(CBEnter I_CBEnter_ActivityonDestroy ( _T_,p-2 );O(CBExit I_CBExit_ActivityonDestroy ( _T_,p-2 );O(CBEnter I_CBEnter_Runnablerun ( _T_,p-0 )) 
+(    heap:           pure: p-2  !=  NULL && p-3  !=  NULL && p-0  !=  NULL && p-1  !=  NULL         types: List(p-0:{1140}, p-1:{1134}, p-3:{1142}, p-2:{1134})    trace: O(CBEnter I_CBEnter_ActivityonCreate ( _T_,p-1 );p-0;p-3;O(CIExit I_CIExit_Threadstart ( _T_,p-3 );O(CBEnter I_CBEnter_ActivityonDestroy ( _T_,p-2 );O(CBExit I_CBExit_ActivityonDestroy ( _T_,p-2 );O(CBEnter I_CBEnter_Runnablerun ( _T_,p-0 )) 
 ===========
 Future trace:
- CBEnter void onCreate(android.os.Bundle)( _T_,@1 )
-TNew(p-0,{1})
-CBEnter void onDestroy()( _T_,@1 )
-CBExit void onDestroy()( _T_,@1 )
-CBEnter run()( _T_,@3 )
+ CBEnter void onCreate(android.os.Bundle)( _T_,@2 )
+TNew(@4,{1})
+TNew(@3,{2})
+CIExit void start()( _T_,@3 )
+CBEnter void onDestroy()( _T_,@2 )
+CBExit void onDestroy()( _T_,@2 )
+CBEnter run()( _T_,@4 )
