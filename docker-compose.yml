@@ -16,6 +16,7 @@ services:
       - expnet
     volumes:
       - ${PWD}/implementation:/home/bounder
+      - ${PWD}/testApps:/home/testApps
       - ${PWD}/notebooks:/home/notebooks
       - ${PWD}/historia_generalizability:/home/historia_generalizability
       - ${PWD}/table2results:/home/table2results
