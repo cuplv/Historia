@@ -41,3 +41,5 @@
 2024-03-02 12:39:13.936  9358-9402  histInstrumentation     com.example.activityleak             I  field this$0 54828447
 2024-03-02 12:39:15.135  9358-9405  histInstrumentation     com.example.activityleak             I  cb 101302323 run
 2024-03-02 12:39:15.135  9358-9405  histInstrumentation     com.example.activityleak             I  field this$0 10111906
+
+WITNESS
