@@ -1624,9 +1624,20 @@ class SootWrapper(apkPath : String,
     withoutClInit
   }
 
+  private lazy val threadClass = Scene.v().getSootClass("java.lang.Thread")
+  private lazy val threadStartMethod = threadClass.getMethod("void start()")
   override def makeInvokeTargets(appLoc: AppLoc): UnresolvedMethodTarget = {
     val line = appLoc.line.asInstanceOf[JimpleLineLoc]
-    val edgesOut = cg.edgesOutOf(line.cmd)
+    val edgesOutSrc = cg.edgesOutOf(line.cmd)
+
+    // Soot makes Thread.run a call target of Thread.start to hack around the indirect control flow of threads.
+    // This is imprecise in the context of Historia so we undo this hack.
+    // TODO: there are probably other hacks like this in soot to be aware of.
+    val edgesOut = appLoc match {
+      case AppLoc(_, JimpleLineLoc(cmd:JInvokeStmt, _, _), _) if cmd.getInvokeExpr.getMethod.getDeclaringClass == threadClass && cmd.getInvokeExpr.getMethod == threadStartMethod  =>
+        edgesOutSrc.filter{tgt => !tgt.getName.contains("run")}
+      case _ => edgesOutSrc
+    }
 
     //TODO: why is shared preferences dummy not getting to call site?
     val dbg = false // TODO: switch to false for exp run

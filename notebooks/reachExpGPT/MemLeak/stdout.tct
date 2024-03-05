@@ -13,42 +13,53 @@ remaining tasks: 0 / 2
     Method  : Some(JimpleMethodLoc(<com.example.activityleak.LeakActivity$1: void run()>))
 remaining tasks: 1 / 2
     ord depth: 2
+    depth: 7
 remaining tasks: 0 / 2
     ord depth: 2
-    depth: 7
     depth: 7
     State: ( locals:          heap: p-0.this$0->p-1          pure: p-1  !=  NULL && p-0  !=  NULL         types: List(p-0:{1140})    trace: O(CBEnter I_CBEnter_Runnablerun ( _T_,p-0 ))
     State: ( locals: @this -> p-2         heap: p-0.this$0->p-1          pure: p-1  !=  NULL && p-0  !=  NULL         types: List(p-0:{1140}, p-2:{1134})    trace: O(CBExit I_CBExit_ActivityonDestroy ( _T_,p-2 );O(CBEnter I_CBEnter_Runnablerun ( _T_,p-0 ))
     Loc  : post-line: 52 return
-    Method  : Some(JimpleMethodLoc(<com.example.activityleak.LeakActivity: void onCreate(android.os.Bundle)>))
     Loc  : post-line: 57 return
     Method  : Some(JimpleMethodLoc(<com.example.activityleak.LeakActivity: void onDestroy()>))
-remaining tasks: 2 / 3
+    Method  : Some(JimpleMethodLoc(<com.example.activityleak.LeakActivity: void onCreate(android.os.Bundle)>))
+remaining tasks: 3 / 4
+remaining tasks: 0 / 4
+    ord depth: 4
+    depth: 47
+remaining tasks: 1 / 4
+    ord depth: 4
+    depth: 47
+remaining tasks: 2 / 4
     ord depth: 4
     depth: 183
-remaining tasks: 0 / 3
     ord depth: 4
-    depth: 47
-remaining tasks: 1 / 3
-    ord depth: 4
-    depth: 47
+    depth: 183
+    State: ( locals: @this -> p-3         heap: p-0.this$0->p-1          pure: p-1  !=  NULL && p-0  !=  NULL && p-2  !=  NULL         types: List(p-0:{1140}, p-2:{1134}, p-3:{1134})    trace: O(CBExit I_CBExit_ActivityonDestroy ( _T_,p-3 );O(CBEnter I_CBEnter_ActivityonDestroy ( _T_,p-2 );O(CBExit I_CBExit_ActivityonDestroy ( _T_,p-2 );O(CBEnter I_CBEnter_Runnablerun ( _T_,p-0 ))
+    Loc  : post-line: 57 return
+    Method  : Some(JimpleMethodLoc(<com.example.activityleak.LeakActivity: void onDestroy()>))
+    State: ( locals: @this -> p-3         heap:           pure: p-2  !=  NULL && p-0  !=  NULL && p-1  !=  NULL         types: List(p-0:{1140}, p-2:{1142}, p-1:{1134}, p-3:{1134})    trace: O(CBExit I_CBExit_ActivityonDestroy ( _T_,p-3 );O(CBEnter I_CBEnter_ActivityonCreate ( _T_,p-1 );p-0;p-2;O(CIExit I_CIExit_Threadstart ( _T_,p-2 );O(CBEnter I_CBEnter_Runnablerun ( _T_,p-0 ))
+    Loc  : post-line: 57 return
     State: ( locals: @this -> p-2         heap:           pure: p-1  !=  NULL && p-0  !=  NULL         types: List(p-0:{1140}, p-1:{1134}, p-2:{1134})    trace: O(CBExit I_CBExit_ActivityonDestroy ( _T_,p-2 );O(CBEnter I_CBEnter_ActivityonCreate ( _T_,p-1 );p-0;O(CBEnter I_CBEnter_Runnablerun ( _T_,p-0 ))
+    Method  : Some(JimpleMethodLoc(<com.example.activityleak.LeakActivity: void onDestroy()>))
     Loc  : post-line: 57 return
     Method  : Some(JimpleMethodLoc(<com.example.activityleak.LeakActivity: void onDestroy()>))
     State: ( locals:          heap: p-0.this$0->p-1          pure: p-1  !=  NULL && p-0  !=  NULL && p-2  !=  NULL         types: List(p-0:{1140}, p-2:{1134})    trace: O(CBEnter I_CBEnter_ActivityonDestroy ( _T_,p-2 );O(CBExit I_CBExit_ActivityonDestroy ( _T_,p-2 );O(CBEnter I_CBEnter_Runnablerun ( _T_,p-0 ))
     Loc  : post-line: 52 return
     Method  : Some(JimpleMethodLoc(<com.example.activityleak.LeakActivity: void onCreate(android.os.Bundle)>))
-    State: ( locals: @this -> p-3         heap: p-0.this$0->p-1          pure: p-1  !=  NULL && p-0  !=  NULL && p-2  !=  NULL         types: List(p-0:{1140}, p-2:{1134}, p-3:{1134})    trace: O(CBExit I_CBExit_ActivityonDestroy ( _T_,p-3 );O(CBEnter I_CBEnter_ActivityonDestroy ( _T_,p-2 );O(CBExit I_CBExit_ActivityonDestroy ( _T_,p-2 );O(CBEnter I_CBEnter_Runnablerun ( _T_,p-0 ))
-    Loc  : post-line: 57 return
-    Method  : Some(JimpleMethodLoc(<com.example.activityleak.LeakActivity: void onDestroy()>))
 !!!Found witness, terminating other processes.
 Writing trace 0 / 1, length: 221
 Writing trace 0 / 1, length: 5
-Writing trace 0 / 2, length: 85
-Writing trace 1 / 2, length: 181
-Writing trace 0 / 3, length: 220
-Writing trace 1 / 3, length: 222
-Writing trace 2 / 3, length: 222
+Writing trace 0 / 3, length: 85
+Writing trace 1 / 3, length: 181
+Writing trace 2 / 3, length: 181
+Writing trace 0 / 7, length: 220
+Writing trace 1 / 7, length: 220
+Writing trace 2 / 7, length: 220
+Writing trace 3 / 7, length: 222
+Writing trace 4 / 7, length: 222
+Writing trace 5 / 7, length: 222
+Writing trace 6 / 7, length: 222
 witness: 
  (    heap:           pure: p-2  !=  NULL && p-0  !=  NULL && p-1  !=  NULL         types: List(p-0:{1140}, p-2:{1134}, p-1:{1134})    trace: O(CBEnter I_CBEnter_ActivityonCreate ( _T_,p-1 );p-0;O(CBEnter I_CBEnter_ActivityonDestroy ( _T_,p-2 );O(CBExit I_CBExit_ActivityonDestroy ( _T_,p-2 );O(CBEnter I_CBEnter_Runnablerun ( _T_,p-0 ))
 last state: 
@@ -59,4 +70,4 @@ CBEnter void onDestroy()( _T_,@1 )
 CBExit void onDestroy()( _T_,@1 )
 CBEnter run()( _T_,@3 )
 
-analysis time(ms): 9999546054
+analysis time(ms): 15701972730
