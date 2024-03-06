@@ -2,6 +2,7 @@ package com.example.bitmapmishandle;
 
 import android.app.Activity;
 import android.content.Context;
+import android.fake.IntArrayList;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -30,25 +31,25 @@ public class MainActivity extends Activity {
 
     }
 
-    // Note: chatgpt originall stored these in an array but I changed to an ArrayList since
+    // Note: chatgpt originall stored these in an array but I changed to an IntArrayList since
     //   wistoria does not handle arrays in the under approximation
 //    private Integer[] imageIDs = {
 //            R.drawable.image1, R.drawable.image2, R.drawable.image3,
 //            R.drawable.image4, R.drawable.image5, // Assume these are large bitmap resources
 //    };
-    private ArrayList<Integer> imageIDs = new ArrayList<Integer>();
+    private IntArrayList imageIDs = new IntArrayList(5);
 
     {
         Log.i("histInstrumentation"," " + System.identityHashCode(imageIDs) + " = new ArrayList ");
-        imageIDs.add(R.drawable.image1);
+        imageIDs.add(R.drawable.image1,0);
         Log.i("histInstrumentation","ci " + System.identityHashCode(imageIDs) + " ArrayList.add " + R.drawable.image1);
-        imageIDs.add(R.drawable.image2);
+        imageIDs.add(R.drawable.image2,1);
         Log.i("histInstrumentation","ci " + System.identityHashCode(imageIDs) + " ArrayList.add " + R.drawable.image2);
-        imageIDs.add(R.drawable.image3);
+        imageIDs.add(R.drawable.image3,2);
         Log.i("histInstrumentation","ci " + System.identityHashCode(imageIDs) + " ArrayList.add " + R.drawable.image3);
-        imageIDs.add(R.drawable.image4);
+        imageIDs.add(R.drawable.image4,3);
         Log.i("histInstrumentation","ci " + System.identityHashCode(imageIDs) + " ArrayList.add " + R.drawable.image4);
-        imageIDs.add(R.drawable.image5);
+        imageIDs.add(R.drawable.image5,4);
         Log.i("histInstrumentation","ci " + System.identityHashCode(imageIDs) + " ArrayList.add " + R.drawable.image5);
         // Assume these are large bitmap resources
     }
