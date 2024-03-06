@@ -799,6 +799,9 @@ class AppCodeResolver[M,C] (ir: IRWrapper[M,C]) {
 
   var isFwkMemo:mutable.Map[String,Boolean] = null
   def isFrameworkClass(fullClassName:String):Boolean = {
+//    if(fullClassName == "java.lang.Integer"){
+//      return false
+//    }
     if(isFwkMemo == null){ // initialize here because constructor isn't executed nicely
       isFwkMemo = mutable.Map[String,Boolean]()
     }

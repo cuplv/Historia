@@ -4,6 +4,7 @@ import better.files.File
 import edu.colorado.plv.bounder.lifestate.LifeState.Signature
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor.AppCodeResolver
+import edu.colorado.plv.bounder.symbolicexecutor.state.{BoolVal, BotVal, ClassVal, ConcreteAddr, ConcreteVal, IntVal, NullVal, PureVal, StringVal, TopVal}
 import soot.Scene
 import upickle.default.{macroRW, ReadWriter => RW}
 
@@ -72,6 +73,7 @@ sealed case class UnresolvedMethodTarget(clazz: String, methodName:String, loc:S
 
 
 sealed abstract class TypeSet{
+  def mayContainConst(const:PureVal): Boolean
   def union(other:TypeSet):TypeSet
   def intersect(other:TypeSet):TypeSet
   def intersectNonEmpty(other:TypeSet):Boolean
@@ -133,6 +135,8 @@ case object TopTypeSet extends TypeSet {
   override def contains(i: Int): Boolean = true
 
   override def union(other: TypeSet): TypeSet = TopTypeSet
+
+  override def mayContainConst(const: PureVal): Boolean = true
 }
 case object EmptyTypeSet extends TypeSet{
   override def hashCode(): Int = -2
@@ -154,12 +158,35 @@ case object EmptyTypeSet extends TypeSet{
   override def contains(i: Int): Boolean = false
 
   override def union(other: TypeSet): TypeSet = other
+
+  override def mayContainConst(const: PureVal): Boolean = false
 }
 
 case object PrimTypeSet{
   implicit var rw:RW[PrimTypeSet] = macroRW
 }
 case class PrimTypeSet(name:String) extends TypeSet {
+
+  lazy val isStringy:Boolean = name.contains("String")
+  lazy val isInty = name.contains("int")
+  lazy val isBooly = name.contains("bool")
+  override def mayContainConst(const: PureVal): Boolean = const match {
+    case NullVal => isStringy
+    case ConcreteAddr(_) => false
+    case IntVal(_) => isInty
+    case BoolVal(_) => isBooly
+    case StringVal(_) => isStringy
+    case ClassVal(name) =>
+      if(isStringy || isBooly || isInty){
+        false
+      }else {
+        println("can we ever get a prim type of class value?")
+        println(name)
+        ???
+      }
+    case TopVal => true
+    case BotVal => false
+  }
   override def intersect(other: TypeSet): TypeSet = if(contains(other)) this else EmptyTypeSet
 
   override def union(other:TypeSet):TypeSet = other match {
@@ -197,6 +224,7 @@ case class PrimTypeSet(name:String) extends TypeSet {
   override def intersectNonEmpty(other: TypeSet): Boolean = !intersect(other).isEmpty
 
   override def contains(i: Int): Boolean = false
+
 }
 object BitTypeSet{
   implicit var rw:RW[BitTypeSet] = upickle.default.readwriter[String].bimap[BitTypeSet](
@@ -210,6 +238,8 @@ object BitTypeSet{
   )
 }
 case class BitTypeSet(s:BitSet, optInfo: () => Map[Int, AllocSiteInfo] = () => Map.empty) extends TypeSet {
+  //TODO: could potentially make this more precise with alloc site info
+  override def mayContainConst(const: PureVal): Boolean = true
   override def toString: String = s"{${s.take(5).mkString(",")}${if(s.size > 5) " ..." else ""}}"
   def stringRep(ch:ClassHierarchyConstraints):String =
     "{" + s.take(3).map(ch.intToString).mkString(",") + "}"
@@ -261,6 +291,7 @@ case class BitTypeSet(s:BitSet, optInfo: () => Map[Int, AllocSiteInfo] = () => M
     }
     )
   }
+
 }
 
 

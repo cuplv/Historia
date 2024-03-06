@@ -720,17 +720,20 @@ trait StateSolver[T, C <: SolverCtx[T]] {
     val pureVars: Map[PureVar,T] = statePV.map{pv => pv -> mkFreshPv(pv)}.toMap
 
     //mkConstDistinct asserts that each address is not equal to each primitive
-    // TODO: potential problem here that if we get a constant pure val
-    // TODO: mkConstDistinct refutes because const is equal and not equal to value
+    // TODO: does the current impl have a constfunction?
     val res = if(exposePv){
       assert(!negate, "cannot negate and expose pv")
-      mkAnd(withPVMap(pureVars),messageTranslator.mkConstDistinct(pureVars, state.pureVars()))
+      val stateEncoding = withPVMap(pureVars)
+      mkAnd(stateEncoding,messageTranslator.mkConstDistinct(pureVars, state.pureVars(),
+        state.typeConstraints))
     }else if(negate) {
       mkForallAddr(pureVars, (m:Map[PureVar,T]) =>
-        mkImplies(messageTranslator.mkConstDistinct(m, state.pureVars()),mkNot(withPVMap(m))))
+        mkImplies(messageTranslator.mkConstDistinct(m, state.pureVars(), state.typeConstraints),mkNot(withPVMap(m))))
     }else {
-      mkExistsAddr(pureVars, (m:Map[PureVar,T]) => mkAnd(withPVMap(m),
-        messageTranslator.mkConstDistinct(m, state.pureVars())))
+      mkExistsAddr(pureVars, (m:Map[PureVar,T]) => {
+        val stateEncoding = withPVMap(m)
+        mkAnd(stateEncoding, messageTranslator.mkConstDistinct(m, state.pureVars(), state.typeConstraints))
+      })
     }
     (res,pureVars)
   }
@@ -828,11 +831,24 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
     // Constants
     private val constMap1 = mkConstConstraintsMap(pureValSet)
-    val constMap = constMap1 +
+    val constMap: Map[PureVal, T] = constMap1 +
       (BoolVal(true)-> constMap1(IntVal(1))) + (BoolVal(false) -> constMap1(IntVal(0)))
     private val constSymb = constMap.values.toSet
-
-    def mkConstDistinct(pvMap:Map[PureVar, T], pvSet:Set[PureVar]):T =
+    def mkConstDistinct(pvMap:Map[PureVar, T], pvSet:Set[PureVar], typeConstraints:Map[PureVar,TypeSet]):T = {
+      val out = pvSet.foldLeft(mkBoolVal(true)){case (acc,pv) =>
+        val tc = typeConstraints.getOrElse(pv, TopTypeSet)
+        mkAnd(acc::constMap.flatMap{
+          case (const, z3ConstRep) =>
+            if(!tc.mayContainConst(const)) {
+              Some(mkNot(mkEq(pvMap(pv),z3ConstRep)))
+            }else {
+              None
+            }
+        }.toList
+        )}
+      out
+    }
+    def mkConstDistinctold(pvMap:Map[PureVar, T], pvSet:Set[PureVar], typeConstraints:Map[PureVar,TypeSet]):T =
       pvSet.foldLeft(mkBoolVal(true)){case (acc,pv) =>
         mkAnd(acc::constSymb.map(const => mkNot(mkEq(pvMap(pv),const))).toList )}
 

@@ -37,19 +37,19 @@ public class MainActivity extends Activity {
 //            R.drawable.image1, R.drawable.image2, R.drawable.image3,
 //            R.drawable.image4, R.drawable.image5, // Assume these are large bitmap resources
 //    };
-    private IntArrayList imageIDs = new IntArrayList(5);
+    private ArrayList<Integer> imageIDs = new ArrayList<Integer>();
 
     {
         Log.i("histInstrumentation"," " + System.identityHashCode(imageIDs) + " = new ArrayList ");
-        imageIDs.add(R.drawable.image1,0);
+        imageIDs.add(R.drawable.image1);
         Log.i("histInstrumentation","ci " + System.identityHashCode(imageIDs) + " ArrayList.add " + R.drawable.image1);
-        imageIDs.add(R.drawable.image2,1);
+        imageIDs.add(R.drawable.image2);
         Log.i("histInstrumentation","ci " + System.identityHashCode(imageIDs) + " ArrayList.add " + R.drawable.image2);
-        imageIDs.add(R.drawable.image3,2);
+        imageIDs.add(R.drawable.image3);
         Log.i("histInstrumentation","ci " + System.identityHashCode(imageIDs) + " ArrayList.add " + R.drawable.image3);
-        imageIDs.add(R.drawable.image4,3);
+        imageIDs.add(R.drawable.image4);
         Log.i("histInstrumentation","ci " + System.identityHashCode(imageIDs) + " ArrayList.add " + R.drawable.image4);
-        imageIDs.add(R.drawable.image5,4);
+        imageIDs.add(R.drawable.image5);
         Log.i("histInstrumentation","ci " + System.identityHashCode(imageIDs) + " ArrayList.add " + R.drawable.image5);
         // Assume these are large bitmap resources
     }
@@ -109,7 +109,7 @@ public class MainActivity extends Activity {
                 imageView = (ImageView) convertView;
             }
 
-            Integer tmp2 = imageIDs.get(position);
+            int tmp2 = imageIDs.get(position);
             Log.i("histInstrumentation",tmp2 + " = ci " + System.identityHashCode(imageIDs) + " ArrayList.get " + position);
             imageView.setImageResource(tmp2); // Loading the full-sized image
             Log.i("histInstrumentation","ci " + System.identityHashCode(imageView) + " setImageResource " + tmp2);
