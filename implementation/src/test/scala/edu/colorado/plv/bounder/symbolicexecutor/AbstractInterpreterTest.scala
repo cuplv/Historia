@@ -398,7 +398,7 @@ class AbstractInterpreterTest extends FixtureAnyFunSuite  {
       val wit = PrettyPrinting.getWitness(result)
       val expected = List[TraceElement](
         TMessage(CBEnter, AppMethod(Signature("android.app.Activity", "void onCreate(android.os.Bundle)"), None), TopVal :: ConcreteAddr(1) :: Nil),
-        TNew(NPureVar(0), BitTypeSet(BitSet(1))), //TODO: fixt pts here
+        TNew(ConcreteAddr(3), BitTypeSet(BitSet(1))), //TODO: fixt pts here
         TMessage(CBEnter, AppMethod(Signature("android.app.Activity", "void onDestroy()"), None), TopVal :: ConcreteAddr(1) :: Nil),
         TMessage(CBExit, AppMethod(Signature("android.app.Activity", "void onDestroy()"), None), TopVal :: ConcreteAddr(1) :: Nil),
         TMessage(CBEnter, AppMethod(Signature("java.lang.Runnable", "run()"), None), TopVal :: ConcreteAddr(3) :: Nil)

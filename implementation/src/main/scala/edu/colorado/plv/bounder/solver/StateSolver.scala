@@ -779,8 +779,18 @@ trait StateSolver[T, C <: SolverCtx[T]] {
       }.toSet
     }
     def apply(states:Iterable[State], specs:Iterable[SpecSpace])(implicit ctx:C):MessageTranslator = {
+//      val statesL = states.toList
+//      val specsL = specs.toList
+//
+//      val possiblyRequiredMsg = statesL.zip(specsL).flatMap{
+//        case (st:State, sp:SpecSpace) =>
+//          val pred = EncodingTools.rhsToPred(st.sf.traceAbstraction, sp)
+//          pred.flatMap(SpecSpace.allI)
+//      }
+//      val extraPureVal = possiblyRequiredMsg.flatMap{m => m.lsVal}
+      val extraPureVal = specs.flatMap{s => s.getPureVals} //TODO: probably more efficient to do this based on instantiation
       MessageTranslator(states.toList,
-        getAllI(states,specs), dynFieldSet(states), pureValSet(states), typeValSet(states),
+        getAllI(states,specs), dynFieldSet(states), pureValSet(states) ++ extraPureVal, typeValSet(states),
         localSet(states))
     }
     def apply(preds:Iterable[LSPred])(implicit ctx:C):MessageTranslator = {

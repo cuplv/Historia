@@ -1317,6 +1317,11 @@ class SpecSpace(enableSpecs: Set[LSSpec], disallowSpecs:Set[LSSpec] = Set(),
                 createMissingI:Boolean = false
                ) {
 
+  private val cachedPureVals = {
+    (enableSpecs ++ disallowSpecs).flatMap{l => SpecSpace.allI(l)}.flatMap{m => m.lsVal} ++
+      matcherSpace.flatMap{m => m.lsVal}
+  }
+  def getPureVals:Set[PureVal] = cachedPureVals
   def getSearchSteps:BigInt = {
     assert(searchSteps.isDefined, "search steps must be defined")
     searchSteps.get
