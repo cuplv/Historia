@@ -282,7 +282,6 @@ class StateSolverTest extends FixtureAnyFunSuite {
     }
   }
   test("value not value") { f =>
-    println(s"fixture param: $f")
     val stateSolver = f.stateSolver
 
     val v2 = PureVar(2)
@@ -301,7 +300,29 @@ class StateSolverTest extends FixtureAnyFunSuite {
     val refutableState3 = refutableState.copy(sf = refutableState.sf.copy(pureFormula = constraints3))
     val simplifyResult3 = stateSolver.simplify(refutableState3,esp)
     assert(simplifyResult3.isDefined)
+  }
 
+  ignore("How to handle pure val that is equal to a constant?"){ f =>
+    // issue 1 in tracker
+    //TODO: figure out why large value in dbg makes state infeas
+    val stateSolver = f.stateSolver
+    val v0 = PureVar(0)
+    val st = State.topState.addTypeConstraint(v0, PrimTypeSet("int"))
+//      .addPureConstraint(PureConstraint(v0,Equals,IntVal(778))) //2130837509
+    //val res = stateSolver.simplify(st, esp)  //TODO: uncomment ====
+//    assert(res.isDefined)
+
+    //TODO: make spec like O a(3) -[]-> a(4) and swap for exp
+    val msg = AbsMsg(CBExit, SubClassMatcher("a", "a\\(", "a"), a :: Nil)
+    val msgTr = msg.copy(lsVars = v0::Nil)
+    val aSpec = LSSpec(Nil, Nil, msg.copy(lsVars = IntVal(777)::Nil), msg.copy(lsVars = IntVal(778)::Nil))
+    val exitLoc = GroupedCallinMethodReturn(Set("foo", "bar"), "int intValue()")
+    val stWFrame = st.copy(sf = st.sf.copy(callStack = List(
+      CallStackFrame(exitLoc, None, Map())
+    ), traceAbstraction = AbstractTrace(msgTr :: Nil)
+    ))
+    val res2 = stateSolver.simplify(stWFrame,new SpecSpace(Set(aSpec)))
+    assert(res2.isDefined)
   }
   test("alias") { f =>
     val stateSolver = f.stateSolver

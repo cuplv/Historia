@@ -719,6 +719,9 @@ trait StateSolver[T, C <: SolverCtx[T]] {
 
     val pureVars: Map[PureVar,T] = statePV.map{pv => pv -> mkFreshPv(pv)}.toMap
 
+    //mkConstDistinct asserts that each address is not equal to each primitive
+    // TODO: potential problem here that if we get a constant pure val
+    // TODO: mkConstDistinct refutes because const is equal and not equal to value
     val res = if(exposePv){
       assert(!negate, "cannot negate and expose pv")
       mkAnd(withPVMap(pureVars),messageTranslator.mkConstDistinct(pureVars, state.pureVars()))
