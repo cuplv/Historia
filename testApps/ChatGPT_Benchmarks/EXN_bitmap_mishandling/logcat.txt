@@ -70,3 +70,5 @@
 2024-03-05 16:45:44.214 20446-20474 eglCodecCommon          com.example.bitmapmishandle          D  allocate: Ask for block of size 0x1000
 2024-03-05 16:45:44.214 20446-20474 eglCodecCommon          com.example.bitmapmishandle          D  allocate: ioctl allocate returned offset 0x3ffff6000 size 0x2000
 2024-03-05 16:45:44.220 20446-20474 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xe35aa5c0: ver 3 0 (tinfo 0xe3636960)
+
+WITNESSED
