@@ -1,0 +1,41 @@
+--------- beginning of main
+2024-03-07 16:21:26.362 22563-22563 bitmapmishandl          com.example.bitmapmishandle          I  Late-enabling -Xcheck:jni
+2024-03-07 16:21:26.431 22563-22563 bitmapmishandl          com.example.bitmapmishandle          E  Unknown bits set in runtime_flags: 0x8000
+2024-03-07 16:21:26.432 22563-22563 bitmapmishandl          com.example.bitmapmishandle          W  Unexpected CPU variant for X86 using defaults: x86
+2024-03-07 16:21:26.546 22563-22563 RenderThread            com.example.bitmapmishandle          W  type=1400 audit(0.0:292): avc: denied { write } for name="property_service" dev="tmpfs" ino=6808 scontext=u:r:untrusted_app:s0:c176,c256,c512,c768 tcontext=u:object_r:property_socket:s0 tclass=sock_file permissive=0 app=com.example.bitmapmishandle
+2024-03-07 16:21:26.549 22563-22593 libEGL                  com.example.bitmapmishandle          D  Emulator has host GPU support, qemu.gles is set to 1.
+2024-03-07 16:21:26.552 22563-22593 libc                    com.example.bitmapmishandle          W  Unable to set property "qemu.gles" to "1": connection failed; errno=13 (Permission denied)
+2024-03-07 16:21:26.562 22563-22563 histInstrumentation     com.example.bitmapmishandle          I  cb 88959629 onCreate 0
+2024-03-07 16:21:26.567 22563-22593 libEGL                  com.example.bitmapmishandle          D  loaded /vendor/lib/egl/libEGL_emulation.so
+2024-03-07 16:21:26.577 22563-22593 libEGL                  com.example.bitmapmishandle          D  loaded /vendor/lib/egl/libGLESv1_CM_emulation.so
+2024-03-07 16:21:26.587 22563-22593 libEGL                  com.example.bitmapmishandle          D  loaded /vendor/lib/egl/libGLESv2_emulation.so
+2024-03-07 16:21:26.592 22563-22563 histInstrumentation     com.example.bitmapmishandle          I  ci 88959629 setContentView 178413125
+2024-03-07 16:21:26.593 22563-22563 histInstrumentation     com.example.bitmapmishandle          I   238639514 = new ProgressDialog 88959629
+2024-03-07 16:21:26.593 22563-22563 histInstrumentation     com.example.bitmapmishandle          I  ci 238639514 setMessage248791755
+2024-03-07 16:21:26.649 22563-22563 histInstrumentation     com.example.bitmapmishandle          I  ci 238639514 show 
+2024-03-07 16:21:26.650 22563-22563 histInstrumentation     com.example.bitmapmishandle          I   88284195 = new MainActivity$1 88959629
+2024-03-07 16:21:26.650 22563-22563 histInstrumentation     com.example.bitmapmishandle          I   104322336 = new Thread 88284195
+2024-03-07 16:21:26.650 22563-22563 histInstrumentation     com.example.bitmapmishandle          I  ci 104322336 start 
+2024-03-07 16:21:26.652 22563-22599 histInstrumentation     com.example.bitmapmishandle          I  cb 88284195 run 
+2024-03-07 16:21:26.682 22563-22591 HostConnection          com.example.bitmapmishandle          D  HostConnection::get() New Host Connection established 0xd8027040, tid 22591
+2024-03-07 16:21:26.718 22563-22591 HostConnection          com.example.bitmapmishandle          D  HostComposition ext ANDROID_EMU_CHECKSUM_HELPER_v1 ANDROID_EMU_native_sync_v2 ANDROID_EMU_native_sync_v3 ANDROID_EMU_native_sync_v4 ANDROID_EMU_dma_v1 ANDROID_EMU_direct_mem ANDROID_EMU_host_composition_v1 ANDROID_EMU_host_composition_v2 ANDROID_EMU_YUV_Cache ANDROID_EMU_sync_buffer_data GL_OES_EGL_image_external_essl3 GL_OES_vertex_array_object GL_KHR_texture_compression_astc_ldr ANDROID_EMU_host_side_tracing ANDROID_EMU_gles_max_version_3_0 
+2024-03-07 16:21:26.721 22563-22591 OpenGLRenderer          com.example.bitmapmishandle          W  Failed to choose config with EGL_SWAP_BEHAVIOR_PRESERVED, retrying without...
+2024-03-07 16:21:26.722 22563-22591 EGL_emulation           com.example.bitmapmishandle          D  eglCreateContext: 0xee87f5e0: maj 3 min 0 rcv 3
+2024-03-07 16:21:26.722 22563-22591 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xee87f5e0: ver 3 0 (tinfo 0xe3636ac0)
+2024-03-07 16:21:26.734 22563-22591 Gralloc3                com.example.bitmapmishandle          W  mapper 3.x is not supported
+2024-03-07 16:21:26.736 22563-22591 HostConnection          com.example.bitmapmishandle          D  createUnique: call
+2024-03-07 16:21:26.736 22563-22591 HostConnection          com.example.bitmapmishandle          D  HostConnection::get() New Host Connection established 0xd80289e0, tid 22591
+2024-03-07 16:21:26.741 22563-22591 HostConnection          com.example.bitmapmishandle          D  HostComposition ext ANDROID_EMU_CHECKSUM_HELPER_v1 ANDROID_EMU_native_sync_v2 ANDROID_EMU_native_sync_v3 ANDROID_EMU_native_sync_v4 ANDROID_EMU_dma_v1 ANDROID_EMU_direct_mem ANDROID_EMU_host_composition_v1 ANDROID_EMU_host_composition_v2 ANDROID_EMU_YUV_Cache ANDROID_EMU_sync_buffer_data GL_OES_EGL_image_external_essl3 GL_OES_vertex_array_object GL_KHR_texture_compression_astc_ldr ANDROID_EMU_host_side_tracing ANDROID_EMU_gles_max_version_3_0 
+2024-03-07 16:21:26.742 22563-22591 eglCodecCommon          com.example.bitmapmishandle          D  allocate: Ask for block of size 0x1000
+2024-03-07 16:21:26.742 22563-22591 eglCodecCommon          com.example.bitmapmishandle          D  allocate: ioctl allocate returned offset 0x3ffff6000 size 0x2000
+2024-03-07 16:21:26.758 22563-22591 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xee87f5e0: ver 3 0 (tinfo 0xe3636ac0)
+2024-03-07 16:21:26.897 22563-22591 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xee87f5e0: ver 3 0 (tinfo 0xe3636ac0)
+2024-03-07 16:21:26.921 22563-22591 chatty                  com.example.bitmapmishandle          I  uid=10176(com.example.bitmapmishandle) RenderThread identical 2 lines
+2024-03-07 16:21:26.927 22563-22591 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xee87f5e0: ver 3 0 (tinfo 0xe3636ac0)
+2024-03-07 16:21:28.284 22563-22591 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xee87f5e0: ver 3 0 (tinfo 0xe3636ac0)
+2024-03-07 16:21:28.551 22563-22591 chatty                  com.example.bitmapmishandle          I  uid=10176(com.example.bitmapmishandle) RenderThread identical 22 lines
+2024-03-07 16:21:28.565 22563-22591 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xee87f5e0: ver 3 0 (tinfo 0xe3636ac0)
+2024-03-07 16:21:36.656 22563-22591 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xee87f5e0: ver 3 0 (tinfo 0xe3636ac0)
+2024-03-07 16:21:36.664  2016-2415  InputDispatcher         system_server                        E  Window handle Window{12dabd u0 com.example.bitmapmishandle/com.example.bitmapmishandle.MainActivity} has no registered input channel
+2024-03-07 16:21:36.680  2016-2499  InputDispatcher         system_server                        E  Window handle Window{12dabd u0 com.example.bitmapmishandle/com.example.bitmapmishandle.MainActivity} has no registered input channel
+
