@@ -110,10 +110,11 @@ object SpecSignatures {
   val Activity_onPause_entry: OAbsMsg = AbsMsg(CBEnter, Activity_onPause, List(TopVal, a))
   val Activity_onPause_exit: OAbsMsg =
     AbsMsg(CBExit, Activity_onPause, List(TopVal, a))
-//  val Activity_init: SignatureMatcher =
-//    SubClassMatcher(Activity, "void \\<init\\>.*", "Activity_init")
-//  val Activity_init_exit: I =
-//    I(CBExit,Activity_init, List("_", "a"))
+  val Activity_init: SignatureMatcher =
+    SubClassMatcher(Activity, "void \\<init\\>.*", "Activity_init")
+  val Activity_init_exit =
+    AbsMsg(CBExit,Activity_init,  TopVal::a::Nil)
+  val Activity_init_entry = AbsMsg(CBEnter, Activity_init, TopVal::a::Nil)
   val Activity_onDestroy: SignatureMatcher =
     SubClassMatcher(Activity, "void onDestroy\\(\\)", "Activity_onDestroy")
   val Activity_onDestroy_exit: OAbsMsg = AbsMsg(CBExit, Activity_onDestroy, List(TopVal,a))
