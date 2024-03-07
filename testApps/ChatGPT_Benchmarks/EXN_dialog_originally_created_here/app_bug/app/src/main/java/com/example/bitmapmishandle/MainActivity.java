@@ -35,19 +35,26 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.i("histInstrumentation","cb " + System.identityHashCode(this) + " onCreate " + System.identityHashCode(savedInstanceState));
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        Log.i("histInstrumentation","ci " + System.identityHashCode(this) + " setContentView " + System.identityHashCode(R.layout.activity_main));
 
         // Showing a ProgressDialog
         progressDialog = new ProgressDialog(MainActivity.this);
-        progressDialog.setMessage("Loading...");
+        Log.i("histInstrumentation"," " + System.identityHashCode(progressDialog) + " = new ProgressDialog " + System.identityHashCode(this));
+        String tmp3 = "Loading...";
+        progressDialog.setMessage(tmp3);
+        Log.i("histInstrumentation","ci " + System.identityHashCode(progressDialog) + " setMessage" + System.identityHashCode(tmp3));
         progressDialog.show();
+        Log.i("histInstrumentation","ci " + System.identityHashCode(progressDialog) + " show ");
 
         // Simulate some operation that finishes after the activity has been destroyed
         // In a real app, this could be a network request or a long computation
-        new Thread(new Runnable() {
+        Runnable tmp2 = new Runnable() {
             @Override
             public void run() {
+                Log.i("histInstrumentation","cb " + System.identityHashCode(this) + " run ");
                 try {
                     Thread.sleep(10000); // 10 seconds
                     progressDialog.dismiss(); // Attempt to dismiss after activity is possibly destroyed
@@ -55,7 +62,12 @@ public class MainActivity extends Activity {
                     e.printStackTrace();
                 }
             }
-        }).start();
+        };
+        Log.i("histInstrumentation"," " + System.identityHashCode(tmp2) + " = new MainActivity$1 " + System.identityHashCode(this));
+        Thread tmp = new Thread(tmp2);
+        Log.i("histInstrumentation"," " + System.identityHashCode(tmp) + " = new Thread " + System.identityHashCode(tmp2));
+        tmp.start();
+        Log.i("histInstrumentation","ci " + System.identityHashCode(tmp) + " start ");
     }
     // Note: chatgpt originall stored these in an array but I changed to an IntArrayList since
     //   wistoria does not handle arrays in the under approximation
