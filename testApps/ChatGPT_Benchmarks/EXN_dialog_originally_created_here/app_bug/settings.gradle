@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "BitmapMishandle"
+rootProject.name = "DialogOrigin"
 include ':app'
