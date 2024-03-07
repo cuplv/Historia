@@ -7,7 +7,7 @@ import edu.colorado.plv.bounder.ir.{AppLoc, AssignCmd, CBEnter, CBExit, CIEnter,
 import edu.colorado.plv.bounder.lifestate.LifeState.{OAbsMsg, Signature}
 import edu.colorado.plv.bounder.lifestate.{LifecycleSpec, RxJavaSpec, SAsyncTask, SJavaThreading, SpecSignatures, ViewSpec}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
-import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, ConcreteVal, DirectInitialQuery, FieldPtEdge, HeapPtEdge, InitialQuery, NullVal, PureExpr, PureVar, Qry, ReceiverNonNull, State, StaticPtEdge}
+import edu.colorado.plv.bounder.symbolicexecutor.state.{AllReceiversNonNull, ConcreteVal, DirectInitialQuery, FieldPtEdge, HeapPtEdge, InitialQuery, NullVal, PureExpr, PureVal, PureVar, Qry, ReceiverNonNull, State, StaticPtEdge}
 import scalaz.Memo
 
 import scala.annotation.tailrec
@@ -260,11 +260,15 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
     val excludeStaticFields = mutable.Map[(String, String), (TypeSet, Set[MethodLoc])]()
     val dynamicFields = mutable.Map[String, Set[(TypeSet, TypeSet, Set[MethodLoc])]]()
     val excludeDynamicFields = mutable.Map[String, Set[(TypeSet, TypeSet, Set[MethodLoc])]]()
+    val constStaticFields = mutable.Map[(String,String), PureVal]()
 
     resolver.appMethods.foreach {
       case appMethod if methodLocInComponent(appMethod,ir)=>
           ir.findInMethod(appMethod.classType, appMethod.simpleName, {
-            case AssignCmd(StaticFieldReference(declaringClass, fieldName, _), source, loc) =>
+            case AssignCmd(_, StaticFieldReference(declaringClass, fieldName, _, Some(v)), loc) =>
+              constStaticFields.addOne((declaringClass,fieldName), v)
+              false
+            case AssignCmd(StaticFieldReference(declaringClass, fieldName, _,_), source, loc) =>
               val sourcePts = ir.pointsToSet(appMethod, source)
               val staticFieldsKey = (declaringClass, fieldName)
               val (oldStaticFieldsPt,oldSet:Set[MethodLoc]) = staticFields.getOrElse(staticFieldsKey, (EmptyTypeSet, Set.empty))
@@ -293,7 +297,7 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
           }, emptyOk = true)
       case exclude =>
         ir.findInMethod(exclude.classType, exclude.simpleName, {
-          case AssignCmd(StaticFieldReference(declaringClass, fieldName, _), source, loc) =>
+          case AssignCmd(StaticFieldReference(declaringClass, fieldName, _,_), source, loc) =>
             val sourcePts = ir.pointsToSet(exclude, source)
             val staticFieldsKey = (declaringClass, fieldName)
             val (oldStaticFieldsPt,oldSet) = excludeStaticFields.getOrElse(staticFieldsKey, (EmptyTypeSet, Set[MethodLoc]()))
@@ -322,7 +326,8 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
         }, emptyOk = true)
         println(s"ecluded method: ${exclude}")
     }
-    FieldsLookup(staticFields.toMap, dynamicFields.toMap, excludeStaticFields.toMap, excludeDynamicFields.toMap)
+    FieldsLookup(staticFields.toMap, dynamicFields.toMap, excludeStaticFields.toMap, excludeDynamicFields.toMap,
+      constStaticFields.toMap)
   }
   val fieldsLookupCache = mutable.Map[IRWrapper[M,C], FieldsLookup]()
   def fieldsLookup(ir:IRWrapper[M,C]): FieldsLookup = {
@@ -336,8 +341,13 @@ case class FilterResolver[M,C](component:Option[Seq[String]]){
   case class FieldsLookup(staticFields:Map[(String,String), (TypeSet, Set[MethodLoc])],
                           dynamicFields:Map[String,Set[(TypeSet,TypeSet, Set[MethodLoc])]],
                           excludedStaticFeilds:Map[(String,String), (TypeSet, Set[MethodLoc])],
-                          excludedDynamicFields:Map[String,Set[(TypeSet,TypeSet, Set[MethodLoc])]]
+                          excludedDynamicFields:Map[String,Set[(TypeSet,TypeSet, Set[MethodLoc])]],
+                         constStaticFields:Map[(String,String), PureVal]
                          )
+  def staticFieldConstValue(ir:IRWrapper[M,C], field:StaticFieldReference):Option[PureVal] ={
+    val lookup = fieldsLookup(ir)
+    lookup.constStaticFields.get((field.declaringClass, field.fieldName))
+  }
   def cellMayBeWritten(ir:IRWrapper[M,C],edge: HeapPtEdge, state:State):Boolean = edge match{
     case FieldPtEdge(base, fieldName) =>
       val baseTypeSet = state.sf.typeConstraints.getOrElse(base, TopTypeSet)
@@ -394,7 +404,8 @@ class AppCodeResolver[M,C] (ir: IRWrapper[M,C]) {
 
 
   var appMethods: Set[MethodLoc] = ir.getAllMethods.filter(m => !isFrameworkClass(m.classType)).toSet
-  private def iGetCallbacks():Set[MethodLoc] = appMethods.filter(resolveCallbackEntry(_).isDefined)
+  private def iGetCallbacks():Set[MethodLoc] =
+    appMethods.filter(resolveCallbackEntry(_).isDefined)
   private var callbacks:Set[MethodLoc] = null
   def getCallbacks:Set[MethodLoc] = {
     iGetCallbacks() // Some kind of race condition here prevents finding all the callbacks, call twice in the hopes that its better
@@ -509,9 +520,9 @@ class AppCodeResolver[M,C] (ir: IRWrapper[M,C]) {
           case (f:FieldReference, pts) if f.name == name => basePts.intersectNonEmpty(pts)
           case _ => false
         }
-      case AssignCmd(_:LocalWrapper, StaticFieldReference(declaringClass,name,_),_) =>
+      case AssignCmd(_:LocalWrapper, StaticFieldReference(declaringClass,name,_,_),_) =>
         fieldNames.getOrElse(name, Set.empty).exists{
-          case (StaticFieldReference(fDeclaringClass, fName, _), _) =>
+          case (StaticFieldReference(fDeclaringClass, fName, _,_), _) =>
             fName == name && declaringClass == fDeclaringClass
           case _ => false
         }

@@ -846,7 +846,20 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         case None => state
       }
       cmdTransfer(AssignCmd(l,local,cmdloc),state1)
-    case AssignCmd(l:LocalWrapper, ref@StaticFieldReference(declaringClass, fname, containedType), _) =>
+    case AssignCmd(l:LocalWrapper, ref@StaticFieldReference(declaringClass, fname, containedType, Some(v)), _) =>
+      state.get(l) match {
+        case Some(value:PureVar) =>
+          val constrained = state.addPureConstraint(PureConstraint(value, Equals, v))
+          Set(constrained.clearLVal(l))
+        case Some(value:PureVal) =>
+          if(value == v){
+            Set(state.clearLVal(l))
+          }else
+            Set()
+        case None =>
+          Set(state)
+      }
+    case AssignCmd(l:LocalWrapper, ref@StaticFieldReference(declaringClass, fname, containedType, None), _) =>
       if(filterResolver.cellMayBeWritten(w,StaticPtEdge(declaringClass,fname), state)) {
         if (fname.contains("R$id")) {
           Set(state.clearLVal(l)) // Don't care about this always just set to integer
@@ -863,7 +876,10 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
         println(s"not materializing static field ${declaringClass} ${fname} because it cannot be written. Method: ${state.sf.callStack.headOption}")
         Set(state.clearLVal(l))
       }
-    case AssignCmd(StaticFieldReference(declaringClass,fieldName,_), l,_) =>
+
+    case cmd@AssignCmd(StaticFieldReference(declaringClass,fieldName,_,Some(v)), l,_) =>
+      throw new IllegalArgumentException(s"assign to constant field??? ${cmd} field should only hold ${v}")
+    case AssignCmd(StaticFieldReference(declaringClass,fieldName,_,None), l,_) =>
       val edge = StaticPtEdge(declaringClass, fieldName)
       if(state.heapConstraints.contains(edge)){
         val v = state.heapConstraints(edge)

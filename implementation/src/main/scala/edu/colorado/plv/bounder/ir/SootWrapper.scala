@@ -12,6 +12,7 @@ import edu.colorado.plv.bounder.lifestate.SpecSpace.allI
 import edu.colorado.plv.bounder.{BounderSetupApplication, BounderUtil}
 import edu.colorado.plv.bounder.solver.ClassHierarchyConstraints
 import edu.colorado.plv.bounder.symbolicexecutor._
+import edu.colorado.plv.bounder.symbolicexecutor.state.{IntVal, StringVal, TopVal}
 import edu.colorado.plv.fixedsoot.{EnhancedUnitGraphFixed, SparkTransformerDBG}
 import scalaz.Memo
 import soot.jimple.internal._
@@ -35,6 +36,9 @@ import scala.collection.{BitSet, MapView, mutable}
 import scala.jdk.CollectionConverters._
 import scala.util.matching.Regex
 import edu.colorado.plv.fixedsoot.EHNopStmt
+import soot.tagkit.{ConstantValueTag, IntegerConstantValueTag, SignatureTag, StringConstantValueTag, Tag}
+
+import java.lang.reflect.Field
 
 object SootWrapper{
   val cgEntryPointName:String = "CgEntryPoint___________a____b"
@@ -158,7 +162,27 @@ object SootWrapper{
       val declaringClass = SootWrapper.stringNameOfClass(staticRef.getFieldRef.declaringClass())
       val fieldName = staticRef.getFieldRef.name()
       val containedType = SootWrapper.stringNameOfType(staticRef.getFieldRef.`type`())
-      StaticFieldReference(declaringClass, fieldName, containedType)
+      val fieldClass = staticRef.getFieldRef.declaringClass()
+      val classFields: List[SootField] = fieldClass.getFields.asScala.toList
+      val foundField = classFields.find{of => staticRef.getField == of}
+
+      // Sometimes static field will be on super class in framework or something weird.
+      val tags = foundField.map{_.getTags.asScala.toList}.getOrElse(List[Tag]()) //.getOrElse(throw new IllegalStateException(s"Could not find field ${staticRef} in class ${fieldClass}")).getTags
+
+      val values = tags.flatMap{
+        case i:IntegerConstantValueTag =>
+          Some(IntVal(i.getIntValue))
+        case i:StringConstantValueTag =>
+          Some(StringVal(i.getStringValue))
+        case o:ConstantValueTag =>
+          println(s"other constant: ${o}")
+          Some(TopVal)
+        case _ => // Ignore non const value tags
+          None
+      }
+      val constVal = values.headOption
+
+      StaticFieldReference(declaringClass, fieldName, containedType,constVal)
 
     case const: RealConstant=>
       ConstVal(const.toString) // Not doing anything special with real values for now
@@ -1562,10 +1586,6 @@ class SootWrapper(apkPath : String,
     }
   }
 
-  protected def makeRVal(box:Value):RVal = SootWrapper.makeRVal(box)
-
-  protected def makeVal(box: Value):RVal = SootWrapper.makeVal(box)
-
   override def isMethodEntry(cmdWrapper: CmdWrapper): Boolean = cmdWrapper.getLoc match {
 //    case AppLoc(_, JimpleLineLoc(cmd,method),true) => {
 //      val unitBoxes = method.retrieveActiveBody().getUnits
@@ -1974,7 +1994,7 @@ class SootWrapper(apkPath : String,
       val typeInField = stringNameOfType(f.getType)
       if(f.isStatic) {
         println(f)
-        StaticFieldReference(clazz, f.getName, typeInField)
+        StaticFieldReference(clazz, f.getName, typeInField, ???)
       } else {
         FieldReference(LocalWrapper("@this", clazz), typeInField, typeInField, f.getName )
       }

@@ -860,7 +860,11 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
           }else {
             nodes.find(p => {
               checkTimeout()
-              stateSolver.canSubsume(p.state, pathNode.state, config.specSpace)
+              if(foundWitness.get()){
+                false  // don't keep calling can subsume if another thread found a witness
+              }else {
+                stateSolver.canSubsume(p.state, pathNode.state, config.specSpace)
+              }
             }).toSet
           }
         case SubsumptionModeBatch =>
@@ -1051,7 +1055,8 @@ class AbstractInterpreter[M,C](config: ExecutorConfig[M,C]) {
                     val nodeSetAtLoc: Set[IPathNode] = invarMap.getOrElse(v, Set.empty)
                     // remove all states that may be subsumed by new state:
                     val filtNodeSet =
-                      nodeSetAtLoc.par.filter{n => !stateSolver.canSubsume(p2.state, n.state, config.specSpace)}
+                      nodeSetAtLoc.par.filter{n => foundWitness.get() || //don't bother continuing to filter if another thread found a witness
+                          !stateSolver.canSubsume(p2.state, n.state, config.specSpace)}
                         .seq.toSet
 
                     if(config.printAAProgress) {

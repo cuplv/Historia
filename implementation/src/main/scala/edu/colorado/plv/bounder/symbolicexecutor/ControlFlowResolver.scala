@@ -158,11 +158,11 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
       case AssignCmd(fr: FieldReference, tgt, _) =>
         fieldCanPt(fr, m, state, Some(tgt))
       case AssignCmd(src, fr: FieldReference, _) => fieldCanPt(fr, m, state, Some(src))
-      case AssignCmd(StaticFieldReference(clazz, name, _), _, _) =>
+      case AssignCmd(StaticFieldReference(clazz, name, _,_), _, _) =>
         val out = state.heapConstraints.contains(StaticPtEdge(clazz, name))
         out //&& !manuallyExcludedStaticField(name) //TODO: remove dbg code
 
-      case AssignCmd(_, StaticFieldReference(clazz, name, _), _) =>
+      case AssignCmd(_, StaticFieldReference(clazz, name, _, _), _) =>
         val out = state.heapConstraints.contains(StaticPtEdge(clazz, name))
         out //&& !manuallyExcludedStaticField(name)
       case _: AssignCmd => false
@@ -232,8 +232,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     def modifiedNames(c: CmdWrapper): Option[String] = c match {
       case AssignCmd(fr: FieldReference, _, _) => Some(fr.name)
       case AssignCmd(_, fr: FieldReference, _) => None
-      case AssignCmd(StaticFieldReference(_, name, _), _, _) => Some(name)
-      case AssignCmd(_, StaticFieldReference(_, name, _), _) => None
+      case AssignCmd(StaticFieldReference(_, name, _,_), _, _) => Some(name)
+      case AssignCmd(_, StaticFieldReference(_, name, _,_), _) => None
       case _: AssignCmd => None
       case _: ReturnCmd => None
       case _: InvokeCmd => None
@@ -261,8 +261,8 @@ class ControlFlowResolver[M,C](wrapper:IRWrapper[M,C],
     def modifiedNames(c: CmdWrapper): Option[String] = c match {
       case AssignCmd(fr: FieldReference, _, _) => Some(fr.name)
       case AssignCmd(_, fr: FieldReference, _) => Some(fr.name)
-      case AssignCmd(StaticFieldReference(_, name, _), _, _) => Some(name)
-      case AssignCmd(_, StaticFieldReference(_, name, _), _) => Some(name)
+      case AssignCmd(StaticFieldReference(_, name, _,_), _, _) => Some(name)
+      case AssignCmd(_, StaticFieldReference(_, name, _,_), _) => Some(name)
       case _: AssignCmd => None
       case _: ReturnCmd => None
       case _: InvokeCmd => None

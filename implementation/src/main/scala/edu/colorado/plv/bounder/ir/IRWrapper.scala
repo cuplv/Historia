@@ -592,7 +592,7 @@ object FieldReference{
 }
 
 case class StaticFieldReference(declaringClass: String,
-                                fieldName: String, containedType:String) extends LVal {
+                                fieldName: String, containedType:String, optionalConst:Option[PureVal]) extends LVal {
   override def isConst: Boolean = false
 
   override def primName: Option[String] = None
