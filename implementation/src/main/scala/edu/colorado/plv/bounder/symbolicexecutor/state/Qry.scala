@@ -481,7 +481,12 @@ case class DisallowedCallin(className:String, methodName:String, s:LSSpec) exten
             case AppLoc(method, line, _) =>  AppLoc(method,line,true)
             case _ => ???
           }
-          ???
+          if(s.target.signatures.matches(preLoc.containingMethod.get.getSignature)(sym.w.getClassHierarchyConstraints)){
+            val thisInSpec = s.target.lsVars.drop(1).head
+            ???
+          }else{
+            Set.empty
+          }
         }
       } else Set.empty
     }.toSet
