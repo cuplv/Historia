@@ -69,6 +69,12 @@ public class MainActivity extends Activity {
         tmp.start();
         Log.i("histInstrumentation","ci " + System.identityHashCode(tmp) + " start ");
     }
+
+    @Override
+    protected void onDestroy(){
+        super.onDestroy();
+        Log.i("histInstrumentation","cb " + System.identityHashCode(this) + " onDestroy ");
+    }
     // Note: chatgpt originall stored these in an array but I changed to an IntArrayList since
     //   wistoria does not handle arrays in the under approximation
 //    private Integer[] imageIDs = {
