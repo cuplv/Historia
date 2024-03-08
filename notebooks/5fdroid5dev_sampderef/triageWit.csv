@@ -1,4 +1,0 @@
-,id,jobid,resultdata,clazz,?column?
-0,4076,1417,493,org.andstatus.app.util.DialogFactory$3,"[""org.andstatus.app.util.DialogFactory$3"",""android.content.DialogInterface"",""int""]"
-1,4097,1421,497,org.andstatus.app.account.MyAccount$Builder,"[""org.andstatus.app.account.MyAccount$Builder"",""android.accounts.Account""]"
-2,4117,1425,501,org.andstatus.app.notification.Notifier,"[""void"",""org.andstatus.app.notification.NotificationData""]"

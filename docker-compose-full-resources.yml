@@ -1,0 +1,31 @@
+services:
+  db:
+    image: "historia_postgres"
+    networks:
+      - expnet
+    ports:
+      - 5433:5432
+    environment:
+      POSTGRES_PASSWORD: heykxbgdgsvbiq
+  host:
+    image: "historia"
+    ports:
+      - "8888:8888"
+    command: bash -c "socat tcp-l:5432,fork,reuseaddr tcp:db:5432 & /home/jupyterStart.sh"
+    networks:
+      - expnet
+    volumes:
+      - ${PWD}/notebooks:/home/notebooks
+      - ${PWD}/historia_generalizability:/home/historia_generalizability
+      - ${PWD}/table2results:/home/table2results
+    depends_on:
+      - db
+  worker:
+    image: "historia"
+    command: bash -c "socat tcp-l:5432,fork,reuseaddr tcp:db:5432 & java -jar /home/bounder/target/scala-2.13/soot_hopper-assembly-0.1.jar --mode expLoop"
+    networks:
+      - expnet
+    depends_on:
+      - db
+networks:
+  expnet:

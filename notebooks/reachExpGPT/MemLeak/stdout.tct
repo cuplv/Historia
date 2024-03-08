@@ -1,0 +1,64 @@
+java.library.path set to: /usr/lib/:/usr/java/packages/lib:/usr/lib/x86_64-linux-gnu/jni:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/usr/lib/jni:/lib:/usr/lib
+remaining tasks: 1 / 2
+remaining tasks: 0 / 2
+    ord depth: 0
+    depth: 0
+    ord depth: 0
+    depth: 0
+    State: ( locals: @this -> p-0         heap: p-0.this$0->p-1          pure: p-1  !=  NULL         types: List(p-0:{1140})    trace: )
+    State: ( locals: @this -> p-0         heap: p-0.this$0->p-1          pure: p-1  !=  NULL         types: List(p-0:{1140})    trace: )
+    Loc  : pre-line: 39 staticinvoke <java.lang.Thread: void sleep(long)>(5000L)
+    Loc  : pre-line: 39 staticinvoke <java.lang.Thread: void sleep(long)>(5000L)
+    Method  : Some(JimpleMethodLoc(<com.example.activityleak.LeakActivity$1: void run()>))
+    Method  : Some(JimpleMethodLoc(<com.example.activityleak.LeakActivity$1: void run()>))
+remaining tasks: 1 / 2
+    ord depth: 2
+    depth: 7
+remaining tasks: 0 / 2
+    ord depth: 2
+    depth: 7
+    State: ( locals:          heap: p-0.this$0->p-1          pure: p-1  !=  NULL && p-0  !=  NULL         types: List(p-0:{1140})    trace: O(CBEnter I_CBEnter_Runnablerun ( _T_,p-0 ))
+    Loc  : post-line: 52 return
+    Method  : Some(JimpleMethodLoc(<com.example.activityleak.LeakActivity: void onCreate(android.os.Bundle)>))
+    State: ( locals: @this -> p-2         heap: p-0.this$0->p-1          pure: p-1  !=  NULL && p-0  !=  NULL         types: List(p-0:{1140}, p-2:{1134})    trace: O(CBExit I_CBExit_ActivityonDestroy ( _T_,p-2 );O(CBEnter I_CBEnter_Runnablerun ( _T_,p-0 ))
+    Loc  : post-line: 57 return
+    Method  : Some(JimpleMethodLoc(<com.example.activityleak.LeakActivity: void onDestroy()>))
+remaining tasks: 2 / 3
+    ord depth: 4
+    depth: 183
+remaining tasks: 0 / 3
+    ord depth: 4
+    depth: 47
+remaining tasks: 1 / 3
+    ord depth: 4
+    depth: 47
+    State: ( locals: @this -> p-3         heap:           pure: p-2  !=  NULL && p-0  !=  NULL && p-1  !=  NULL         types: List(p-0:{1140}, p-2:{1142}, p-1:{1134}, p-3:{1134})    trace: O(CBExit I_CBExit_ActivityonDestroy ( _T_,p-3 );O(CBEnter I_CBEnter_ActivityonCreate ( _T_,p-1 );p-0;p-2;O(CIExit I_CIExit_Threadstart ( _T_,p-2 );O(CBEnter I_CBEnter_Runnablerun ( _T_,p-0 ))
+    Loc  : post-line: 57 return
+    State: ( locals:          heap: p-0.this$0->p-1          pure: p-1  !=  NULL && p-0  !=  NULL && p-2  !=  NULL         types: List(p-0:{1140}, p-2:{1134})    trace: O(CBEnter I_CBEnter_ActivityonDestroy ( _T_,p-2 );O(CBExit I_CBExit_ActivityonDestroy ( _T_,p-2 );O(CBEnter I_CBEnter_Runnablerun ( _T_,p-0 ))
+    Loc  : post-line: 52 return
+    Method  : Some(JimpleMethodLoc(<com.example.activityleak.LeakActivity: void onDestroy()>))
+    State: ( locals: @this -> p-3         heap: p-0.this$0->p-1          pure: p-1  !=  NULL && p-0  !=  NULL && p-2  !=  NULL         types: List(p-0:{1140}, p-2:{1134}, p-3:{1134})    trace: O(CBExit I_CBExit_ActivityonDestroy ( _T_,p-3 );O(CBEnter I_CBEnter_ActivityonDestroy ( _T_,p-2 );O(CBExit I_CBExit_ActivityonDestroy ( _T_,p-2 );O(CBEnter I_CBEnter_Runnablerun ( _T_,p-0 ))
+    Loc  : post-line: 57 return
+    Method  : Some(JimpleMethodLoc(<com.example.activityleak.LeakActivity: void onCreate(android.os.Bundle)>))
+    Method  : Some(JimpleMethodLoc(<com.example.activityleak.LeakActivity: void onDestroy()>))
+!!!Found witness, terminating other processes.
+Writing trace 0 / 1, length: 221
+Writing trace 0 / 1, length: 5
+Writing trace 0 / 2, length: 85
+Writing trace 1 / 2, length: 181
+Writing trace 0 / 3, length: 220
+Writing trace 1 / 3, length: 222
+Writing trace 2 / 3, length: 222
+witness: 
+ (    heap:           pure: p-2  !=  NULL && p-3  !=  NULL && p-0  !=  NULL && p-1  !=  NULL         types: List(p-0:{1140}, p-1:{1134}, p-3:{1142}, p-2:{1134})    trace: O(CBEnter I_CBEnter_ActivityonCreate ( _T_,p-1 );p-0;p-3;O(CIExit I_CIExit_Threadstart ( _T_,p-3 );O(CBEnter I_CBEnter_ActivityonDestroy ( _T_,p-2 );O(CBExit I_CBExit_ActivityonDestroy ( _T_,p-2 );O(CBEnter I_CBEnter_Runnablerun ( _T_,p-0 ))
+last state: 
+ Future trace:
+ CBEnter void onCreate(android.os.Bundle)( _T_,@2 )
+TNew(@4,{1})
+TNew(@3,{2})
+CIExit void start()( _T_,@3 )
+CBEnter void onDestroy()( _T_,@2 )
+CBExit void onDestroy()( _T_,@2 )
+CBEnter run()( _T_,@4 )
+
+analysis time(ms): 22639368556

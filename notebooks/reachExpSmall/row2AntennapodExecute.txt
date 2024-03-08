@@ -1,0 +1,130 @@
+WITSTORIA cb:3 ci:4 tot:8
+ CBEnter void onCreate(android.os.Bundle)( _T_,@3 )
+TNew(p-0,{2})
+CIExit findViewById(( @1,@3 )
+CIExit setOnClickListener(( _T_,@1,@3 )
+CBEnter onClick(( _T_,@3 )
+CIExit AsyncTask execute()( _T_,@4 )
+CBEnter onClick(( _T_,@3 )
+CIEnter AsyncTask execute()( _T_,@4 )
+
+RUN1 - crash cb:5 ci:5 tot:12
+2024-02-05 12:08:39.743  7603-7603  traceinst               com.example.row2antennapodexecute    W  cb 246988052 RemoverActivity.onCreate 264030653
+2024-02-05 12:08:39.809  7603-7603  traceinst               com.example.row2antennapodexecute    W  new  FeedRemover 35362057 //note: not ci_because app class
+2024-02-05 12:08:39.809  7603-7603  traceinst               com.example.row2antennapodexecute    W  186475278 = ci 246988052 findViewById 2131230808
+2024-02-05 12:08:39.810  7603-7603  traceinst               com.example.row2antennapodexecute    W  ci 186475278 setOnClickListener 246988052
+2024-02-05 12:08:39.810  7603-7603  traceinst               com.example.row2antennapodexecute    W  cbret 246988052 RemoverActivity.onCreate 264030653
+2024-02-05 12:08:42.504  7603-7603  traceinst               com.example.row2antennapodexecute    W  cb 32054581 RemoverActivity.onCreate 52807114
+2024-02-05 12:08:42.555  7603-7603  traceinst               com.example.row2antennapodexecute    W  new  FeedRemover 36495776
+2024-02-05 12:08:42.555  7603-7603  traceinst               com.example.row2antennapodexecute    W  194707801 = ci 32054581 findViewById 2131230808
+2024-02-05 12:08:42.555  7603-7603  traceinst               com.example.row2antennapodexecute    W  ci 194707801 setOnClickListener 32054581
+2024-02-05 12:08:42.557  7603-7603  traceinst               com.example.row2antennapodexecute    W  cbret 32054581 RemoverActivity.onCreate 52807114
+2024-02-05 12:09:37.898  7603-7603  traceinst               com.example.row2antennapodexecute    W  cb 32054581 RemoverActivity.onClick 194707801
+2024-02-05 12:09:37.908  7603-7603  traceinst               com.example.row2antennapodexecute    W  ci 36495776 execute
+2024-02-05 12:09:37.908  7603-7603  traceinst               com.example.row2antennapodexecute    W  cbret 32054581 RemoverActivity.onClick 194707801
+2024-02-05 12:09:37.924  7603-7656  traceinst               com.example.row2antennapodexecute    W  cb 36495776 FeedRemover.doInBackground 
+2024-02-05 12:09:38.040  7603-7603  traceinst               com.example.row2antennapodexecute    W  cb 32054581 RemoverActivity.onClick 194707801
+2024-02-05 12:09:38.045  7603-7603  AndroidRuntime          com.example.row2antennapodexecute    E  FATAL EXCEPTION: main
+                                                                                                    Process: com.example.row2antennapodexecute, PID: 7603
+                                                                                                    java.lang.IllegalStateException: Cannot execute task: the task is already running.
+                                                                                                    	at android.os.AsyncTask.executeOnExecutor(AsyncTask.java:697)
+                                                                                                    	at android.os.AsyncTask.execute(AsyncTask.java:655)
+                                                                                                    	at com.example.row2antennapodexecute.RemoverActivity.onClick(RemoverActivity.java:34)
+                                                                                                    	at android.view.View.performClick(View.java:7125)
+                                                                                                    	at android.view.View.performClickInternal(View.java:7102)
+                                                                                                    	at android.view.View.access$3500(View.java:801)
+                                                                                                    	at android.view.View$PerformClick.run(View.java:27336)
+                                                                                                    	at android.os.Handler.handleCallback(Handler.java:883)
+                                                                                                    	at android.os.Handler.dispatchMessage(Handler.java:100)
+                                                                                                    	at android.os.Looper.loop(Looper.java:214)
+                                                                                                    	at android.app.ActivityThread.main(ActivityThread.java:7356)
+                                                                                                    	at java.lang.reflect.Method.invoke(Native Method)
+                                                                                                    	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:492)
+                                                                                                    	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:930)
+                                                                                                        
+RUN2 - crash cb:3 ci:4 tot:8
+2024-02-06 10:20:04.262  5929-5929  traceinst               com.example.row2antennapodexecute    W  cb 131664272 RemoverActivity.onCreate 0
+2024-02-06 10:20:04.311  5929-5929  traceinst               com.example.row2antennapodexecute    W  new  FeedRemover 101277589 
+2024-02-06 10:20:04.311  5929-5929  traceinst               com.example.row2antennapodexecute    W  257640618 = ci 131664272 findViewById 2131230808
+2024-02-06 10:20:04.311  5929-5929  traceinst               com.example.row2antennapodexecute    W  ci 257640618 setOnClickListener 131664272
+2024-02-06 10:20:04.311  5929-5929  traceinst               com.example.row2antennapodexecute    W  cbret 131664272 RemoverActivity.onCreate 0
+2024-02-06 10:20:06.251  5929-5929  traceinst               com.example.row2antennapodexecute    W  cb 131664272 RemoverActivity.onClick 257640618
+2024-02-06 10:20:06.251  5929-5929  traceinst               com.example.row2antennapodexecute    W  ci 101277589 execute
+2024-02-06 10:20:06.251  5929-5929  traceinst               com.example.row2antennapodexecute    W  cbret 131664272 RemoverActivity.onClick 257640618
+2024-02-06 10:20:06.253  5929-5965  traceinst               com.example.row2antennapodexecute    W  cb 101277589 FeedRemover.doInBackground 
+2024-02-06 10:20:06.377  5929-5929  traceinst               com.example.row2antennapodexecute    W  cb 131664272 RemoverActivity.onClick 257640618
+--------- beginning of crash
+2024-02-06 10:20:06.377  5929-5929  AndroidRuntime          com.example.row2antennapodexecute    D  Shutting down VM
+2024-02-06 10:20:06.380  5929-5929  AndroidRuntime          com.example.row2antennapodexecute    E  FATAL EXCEPTION: main
+                                                                                                    Process: com.example.row2antennapodexecute, PID: 5929
+                                                                                                    java.lang.IllegalStateException: Cannot execute task: the task is already running.
+                                                                                                    	at android.os.AsyncTask.executeOnExecutor(AsyncTask.java:697)
+                                                                                                    	at android.os.AsyncTask.execute(AsyncTask.java:655)
+                                                                                                    	at com.example.row2antennapodexecute.RemoverActivity.onClick(RemoverActivity.java:34)
+                                                                                                    	at android.view.View.performClick(View.java:7125)
+                                                                                                    	at android.view.View.performClickInternal(View.java:7102)
+                                                                                                    	at android.view.View.access$3500(View.java:801)
+                                                                                                    	at android.view.View$PerformClick.run(View.java:27336)
+                                                                                                    	at android.os.Handler.handleCallback(Handler.java:883)
+                                                                                                    	at android.os.Handler.dispatchMessage(Handler.java:100)
+                                                                                                    	at android.os.Looper.loop(Looper.java:214)
+                                                                                                    	at android.app.ActivityThread.main(ActivityThread.java:7356)
+                                                                                                    	at java.lang.reflect.Method.invoke(Native Method)
+                                                                                                    	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:492)
+                                                                                                    	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:930)
+
+
+
+
+RUN3 - no crash
+2024-02-06 11:10:29.941  6390-6390  traceinst               com.example.row2antennapodexecute    W  cb 131664272 RemoverActivity.onCreate 0
+2024-02-06 11:10:29.980  6390-6390  traceinst               com.example.row2antennapodexecute    W  new  FeedRemover 101277589 
+2024-02-06 11:10:29.980  6390-6390  traceinst               com.example.row2antennapodexecute    W  257640618 = ci 131664272 findViewById 2131230808
+2024-02-06 11:10:29.980  6390-6390  traceinst               com.example.row2antennapodexecute    W  ci 257640618 setOnClickListener 131664272
+2024-02-06 11:10:29.980  6390-6390  traceinst               com.example.row2antennapodexecute    W  cbret 131664272 RemoverActivity.onCreate 0
+2024-02-06 11:10:31.230  6390-6390  traceinst               com.example.row2antennapodexecute    W  cb 131664272 RemoverActivity.onClick 257640618
+2024-02-06 11:10:31.230  6390-6390  traceinst               com.example.row2antennapodexecute    W  ci 101277589 execute
+2024-02-06 11:10:31.230  6390-6390  traceinst               com.example.row2antennapodexecute    W  cbret 131664272 RemoverActivity.onClick 257640618
+2024-02-06 11:10:31.230  6390-6438  traceinst               com.example.row2antennapodexecute    W  cb 101277589 FeedRemover.doInBackground 
+2024-02-06 11:10:31.736  6390-6438  traceinst               com.example.row2antennapodexecute    W  cbret 101277589 FeedRemover.doInBackground 
+2024-02-06 11:10:31.737  6390-6390  traceinst               com.example.row2antennapodexecute    W  cb 101277589 FeedRemover.onPostExecute 
+2024-02-06 11:10:31.737  6390-6390  traceinst               com.example.row2antennapodexecute    W  ci 131664272 finish 
+2024-02-06 11:10:31.741  6390-6390  traceinst               com.example.row2antennapodexecute    W  cbret 101277589 FeedRemover.onPostExecute 
+
+RUN4 - crash cb:6 ci:7 tot: 15
+2024-02-06 11:12:23.313  7073-7073  traceinst               com.example.row2antennapodexecute    W  cb 131664272 RemoverActivity.onCreate 0
+2024-02-06 11:12:23.354  7073-7073  traceinst               com.example.row2antennapodexecute    W  new  FeedRemover 101277589 
+2024-02-06 11:12:23.354  7073-7073  traceinst               com.example.row2antennapodexecute    W  257640618 = ci 131664272 findViewById 2131230808
+2024-02-06 11:12:23.354  7073-7073  traceinst               com.example.row2antennapodexecute    W  ci 257640618 setOnClickListener 131664272
+2024-02-06 11:12:23.354  7073-7073  traceinst               com.example.row2antennapodexecute    W  cbret 131664272 RemoverActivity.onCreate 0
+2024-02-06 11:12:25.328  7073-7073  traceinst               com.example.row2antennapodexecute    W  cb 169634919 RemoverActivity.onCreate 97237524
+2024-02-06 11:12:25.343  7073-7073  traceinst               com.example.row2antennapodexecute    W  new  FeedRemover 176636688
+2024-02-06 11:12:25.343  7073-7073  traceinst               com.example.row2antennapodexecute    W  6725129 = ci 169634919 findViewById 2131230808
+2024-02-06 11:12:25.343  7073-7073  traceinst               com.example.row2antennapodexecute    W  ci 6725129 setOnClickListener 169634919
+2024-02-06 11:12:25.343  7073-7073  traceinst               com.example.row2antennapodexecute    W  cbret 169634919 RemoverActivity.onCreate 97237524
+2024-02-06 11:12:28.071  7073-7073  traceinst               com.example.row2antennapodexecute    W  cb 113733740 RemoverActivity.onCreate 112457269
+2024-02-06 11:12:28.090  7073-7073  traceinst               com.example.row2antennapodexecute    W  new  FeedRemover 200338339
+2024-02-06 11:12:28.090  7073-7073  traceinst               com.example.row2antennapodexecute    W  7483040 = ci 113733740 findViewById 2131230808
+2024-02-06 11:12:28.090  7073-7073  traceinst               com.example.row2antennapodexecute    W  ci 7483040 setOnClickListener 113733740
+2024-02-06 11:12:28.091  7073-7073  traceinst               com.example.row2antennapodexecute    W  cbret 113733740 RemoverActivity.onCreate 112457269
+2024-02-06 11:12:34.318  7073-7073  traceinst               com.example.row2antennapodexecute    W  cb 113733740 RemoverActivity.onClick 7483040
+2024-02-06 11:12:34.318  7073-7073  traceinst               com.example.row2antennapodexecute    W  ci 200338339 execute
+2024-02-06 11:12:34.318  7073-7073  traceinst               com.example.row2antennapodexecute    W  cbret 113733740 RemoverActivity.onClick 7483040
+2024-02-06 11:12:34.339  7073-7129  traceinst               com.example.row2antennapodexecute    W  cb 200338339 FeedRemover.doInBackground 
+2024-02-06 11:12:34.404  7073-7073  traceinst               com.example.row2antennapodexecute    W  cb 113733740 RemoverActivity.onClick 7483040
+
+RUN5 - no crash 
+2024-02-06 11:13:59.822  7184-7184  traceinst               com.example.row2antennapodexecute    W  cb 131664272 RemoverActivity.onCreate 0
+2024-02-06 11:13:59.860  7184-7184  traceinst               com.example.row2antennapodexecute    W  new  FeedRemover 101277589 
+2024-02-06 11:13:59.860  7184-7184  traceinst               com.example.row2antennapodexecute    W  257640618 = ci 131664272 findViewById 2131230808
+2024-02-06 11:13:59.860  7184-7184  traceinst               com.example.row2antennapodexecute    W  ci 257640618 setOnClickListener 131664272
+2024-02-06 11:13:59.860  7184-7184  traceinst               com.example.row2antennapodexecute    W  cbret 131664272 RemoverActivity.onCreate 0
+2024-02-06 11:14:02.473  7184-7184  traceinst               com.example.row2antennapodexecute    W  cb 131664272 RemoverActivity.onClick 257640618
+2024-02-06 11:14:02.473  7184-7184  traceinst               com.example.row2antennapodexecute    W  ci 101277589 execute
+2024-02-06 11:14:02.473  7184-7184  traceinst               com.example.row2antennapodexecute    W  cbret 131664272 RemoverActivity.onClick 257640618
+2024-02-06 11:14:02.474  7184-7224  traceinst               com.example.row2antennapodexecute    W  cb 101277589 FeedRemover.doInBackground 
+2024-02-06 11:14:03.013  7184-7224  traceinst               com.example.row2antennapodexecute    W  cbret 101277589 FeedRemover.doInBackground 
+2024-02-06 11:14:03.014  7184-7184  traceinst               com.example.row2antennapodexecute    W  cb 101277589 FeedRemover.onPostExecute 
+2024-02-06 11:14:03.014  7184-7184  traceinst               com.example.row2antennapodexecute    W  ci 131664272 finish 
+2024-02-06 11:14:03.020  7184-7184  traceinst               com.example.row2antennapodexecute    W  cbret 101277589 FeedRemover.onPostExecute 
+

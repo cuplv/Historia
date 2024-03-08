@@ -1,0 +1,99 @@
+2024-03-07 16:22:38.524 22660-22692 libEGL                  com.example.bitmapmishandle          D  Emulator has host GPU support, qemu.gles is set to 1.
+2024-03-07 16:22:38.524 22660-22692 libc                    com.example.bitmapmishandle          W  Unable to set property "qemu.gles" to "1": connection failed; errno=13 (Permission denied)
+2024-03-07 16:22:38.533 22660-22692 libEGL                  com.example.bitmapmishandle          D  loaded /vendor/lib/egl/libEGL_emulation.so
+2024-03-07 16:22:38.537 22660-22660 histInstrumentation     com.example.bitmapmishandle          I  cb 88959629 onCreate 0
+2024-03-07 16:22:38.539 22660-22692 libEGL                  com.example.bitmapmishandle          D  loaded /vendor/lib/egl/libGLESv1_CM_emulation.so
+2024-03-07 16:22:38.516 22660-22660 RenderThread            com.example.bitmapmishandle          W  type=1400 audit(0.0:295): avc: denied { write } for name="property_service" dev="tmpfs" ino=6808 scontext=u:r:untrusted_app:s0:c176,c256,c512,c768 tcontext=u:object_r:property_socket:s0 tclass=sock_file permissive=0 app=com.example.bitmapmishandle
+2024-03-07 16:22:38.549 22660-22660 histInstrumentation     com.example.bitmapmishandle          I  ci 88959629 setContentView 178413125
+2024-03-07 16:22:38.551 22660-22660 histInstrumentation     com.example.bitmapmishandle          I   238639514 = new ProgressDialog 88959629
+2024-03-07 16:22:38.551 22660-22660 histInstrumentation     com.example.bitmapmishandle          I  ci 238639514 setMessage248791755
+2024-03-07 16:22:38.541 22660-22692 libEGL                  com.example.bitmapmishandle          D  loaded /vendor/lib/egl/libGLESv2_emulation.so
+2024-03-07 16:22:38.591 22660-22660 histInstrumentation     com.example.bitmapmishandle          I  ci 238639514 show 
+2024-03-07 16:22:38.591 22660-22660 histInstrumentation     com.example.bitmapmishandle          I   88284195 = new MainActivity$1 88959629
+2024-03-07 16:22:38.592 22660-22660 histInstrumentation     com.example.bitmapmishandle          I   104322336 = new Thread 88284195
+2024-03-07 16:22:38.592 22660-22660 histInstrumentation     com.example.bitmapmishandle          I  ci 104322336 start 
+2024-03-07 16:22:38.593 22660-22660 histInstrumentation     com.example.bitmapmishandle          I  cb 88959629 onDestroy
+2024-03-07 16:22:38.595 22660-22696 histInstrumentation     com.example.bitmapmishandle          I  cb 88284195 run 
+2024-03-07 16:22:38.629 22660-22690 HostConnection          com.example.bitmapmishandle          D  HostConnection::get() New Host Connection established 0xd8026be0, tid 22690
+2024-03-07 16:22:38.656 22660-22690 HostConnection          com.example.bitmapmishandle          D  HostComposition ext ANDROID_EMU_CHECKSUM_HELPER_v1 ANDROID_EMU_native_sync_v2 ANDROID_EMU_native_sync_v3 ANDROID_EMU_native_sync_v4 ANDROID_EMU_dma_v1 ANDROID_EMU_direct_mem ANDROID_EMU_host_composition_v1 ANDROID_EMU_host_composition_v2 ANDROID_EMU_YUV_Cache ANDROID_EMU_sync_buffer_data GL_OES_EGL_image_external_essl3 GL_OES_vertex_array_object GL_KHR_texture_compression_astc_ldr ANDROID_EMU_host_side_tracing ANDROID_EMU_gles_max_version_3_0 
+2024-03-07 16:22:38.669 22660-22690 OpenGLRenderer          com.example.bitmapmishandle          W  Failed to choose config with EGL_SWAP_BEHAVIOR_PRESERVED, retrying without...
+2024-03-07 16:22:38.670 22660-22690 EGL_emulation           com.example.bitmapmishandle          D  eglCreateContext: 0xee87fa00: maj 3 min 0 rcv 3
+2024-03-07 16:22:38.670 22660-22690 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xee87fa00: ver 3 0 (tinfo 0xe3636a10)
+2024-03-07 16:22:38.684 22660-22690 Gralloc3                com.example.bitmapmishandle          W  mapper 3.x is not supported
+2024-03-07 16:22:38.686 22660-22690 HostConnection          com.example.bitmapmishandle          D  createUnique: call
+2024-03-07 16:22:38.690 22660-22690 HostConnection          com.example.bitmapmishandle          D  HostConnection::get() New Host Connection established 0xd80286c0, tid 22690
+2024-03-07 16:22:38.691 22660-22690 HostConnection          com.example.bitmapmishandle          D  HostComposition ext ANDROID_EMU_CHECKSUM_HELPER_v1 ANDROID_EMU_native_sync_v2 ANDROID_EMU_native_sync_v3 ANDROID_EMU_native_sync_v4 ANDROID_EMU_dma_v1 ANDROID_EMU_direct_mem ANDROID_EMU_host_composition_v1 ANDROID_EMU_host_composition_v2 ANDROID_EMU_YUV_Cache ANDROID_EMU_sync_buffer_data GL_OES_EGL_image_external_essl3 GL_OES_vertex_array_object GL_KHR_texture_compression_astc_ldr ANDROID_EMU_host_side_tracing ANDROID_EMU_gles_max_version_3_0 
+2024-03-07 16:22:38.692 22660-22690 eglCodecCommon          com.example.bitmapmishandle          D  allocate: Ask for block of size 0x1000
+2024-03-07 16:22:38.692 22660-22690 eglCodecCommon          com.example.bitmapmishandle          D  allocate: ioctl allocate returned offset 0x3ffff6000 size 0x2000
+2024-03-07 16:22:38.699 22660-22690 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xee87fa00: ver 3 0 (tinfo 0xe3636a10)
+2024-03-07 16:22:38.815 22660-22690 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xee87fa00: ver 3 0 (tinfo 0xe3636a10)
+2024-03-07 16:22:38.832 22660-22690 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xee87fa00: ver 3 0 (tinfo 0xe3636a10)
+2024-03-07 16:22:38.841 22660-22690 chatty                  com.example.bitmapmishandle          I  uid=10176(com.example.bitmapmishandle) RenderThread identical 3 lines
+2024-03-07 16:22:38.852 22660-22690 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xee87fa00: ver 3 0 (tinfo 0xe3636a10)
+2024-03-07 16:22:40.213 22660-22690 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xee87fa00: ver 3 0 (tinfo 0xe3636a10)
+2024-03-07 16:22:40.463 22660-22690 chatty                  com.example.bitmapmishandle          I  uid=10176(com.example.bitmapmishandle) RenderThread identical 30 lines
+2024-03-07 16:22:40.467 22660-22690 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xee87fa00: ver 3 0 (tinfo 0xe3636a10)
+2024-03-07 16:22:42.001 22660-22690 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xee87fa00: ver 3 0 (tinfo 0xe3636a10)
+2024-03-07 16:22:42.007 22660-22660 WindowManager           com.example.bitmapmishandle          E  
+                                                                                                    android.view.WindowLeaked: Activity com.example.bitmapmishandle.MainActivity has leaked window DecorView@c435413[MainActivity] that was originally added here
+                                                                                                    	at android.view.ViewRootImpl.<init>(ViewRootImpl.java:597)
+                                                                                                    	at android.view.WindowManagerGlobal.addView(WindowManagerGlobal.java:377)
+                                                                                                    	at android.view.WindowManagerImpl.addView(WindowManagerImpl.java:95)
+                                                                                                    	at android.app.Dialog.show(Dialog.java:342)
+                                                                                                    	at com.example.bitmapmishandle.MainActivity.onCreate(MainActivity.java:49)
+                                                                                                    	at android.app.Activity.performCreate(Activity.java:7802)
+                                                                                                    	at android.app.Activity.performCreate(Activity.java:7791)
+                                                                                                    	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1299)
+                                                                                                    	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:3245)
+                                                                                                    	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:3409)
+                                                                                                    	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:83)
+                                                                                                    	at android.app.servertransaction.TransactionExecutor.executeCallbacks(TransactionExecutor.java:135)
+                                                                                                    	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:95)
+                                                                                                    	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2016)
+                                                                                                    	at android.os.Handler.dispatchMessage(Handler.java:107)
+                                                                                                    	at android.os.Looper.loop(Looper.java:214)
+                                                                                                    	at android.app.ActivityThread.main(ActivityThread.java:7356)
+                                                                                                    	at java.lang.reflect.Method.invoke(Native Method)
+                                                                                                    	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:492)
+                                                                                                    	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:930)
+2024-03-07 16:22:42.019 22660-22660 histInstrumentation     com.example.bitmapmishandle          I  cb 101908553 onCreate 27495758
+2024-03-07 16:22:42.022 22660-22660 histInstrumentation     com.example.bitmapmishandle          I  ci 101908553 setContentView 161478694
+2024-03-07 16:22:42.023 22660-22660 histInstrumentation     com.example.bitmapmishandle          I   169634919 = new ProgressDialog 101908553
+2024-03-07 16:22:42.023 22660-22660 histInstrumentation     com.example.bitmapmishandle          I  ci 169634919 setMessage248791755
+2024-03-07 16:22:42.048 22660-22660 histInstrumentation     com.example.bitmapmishandle          I  ci 169634919 show 
+2024-03-07 16:22:42.048 22660-22660 histInstrumentation     com.example.bitmapmishandle          I   7224158 = new MainActivity$1 101908553
+2024-03-07 16:22:42.048 22660-22660 histInstrumentation     com.example.bitmapmishandle          I   230300479 = new Thread 7224158
+2024-03-07 16:22:42.048 22660-22660 histInstrumentation     com.example.bitmapmishandle          I  ci 230300479 start 
+2024-03-07 16:22:42.050 22660-22705 histInstrumentation     com.example.bitmapmishandle          I  cb 7224158 run 
+2024-03-07 16:22:42.071 22660-22690 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xee87fa00: ver 3 0 (tinfo 0xe3636a10)
+2024-03-07 16:22:42.093 22660-22660 eglCodecCommon          com.example.bitmapmishandle          D  allocate: Ask for block of size 0x226000
+2024-03-07 16:22:42.093 22660-22660 eglCodecCommon          com.example.bitmapmishandle          D  allocate: ioctl allocate returned offset 0x3ff3e6000 size 0x227000
+2024-03-07 16:22:42.122 22660-22690 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xee87fa00: ver 3 0 (tinfo 0xe3636a10)
+2024-03-07 16:22:42.131 22660-22690 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xee87fa00: ver 3 0 (tinfo 0xe3636a10)
+2024-03-07 16:22:42.139 22660-22690 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xee87fa00: ver 3 0 (tinfo 0xe3636a10)
+2024-03-07 16:22:42.147 22660-22690 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xee87fa00: ver 3 0 (tinfo 0xe3636a10)
+2024-03-07 16:22:42.151 22660-22690 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xee87fa00: ver 3 0 (tinfo 0xe3636a10)
+2024-03-07 16:22:42.165 22660-22690 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xee87fa00: ver 3 0 (tinfo 0xe3636a10)
+2024-03-07 16:22:43.664 22660-22690 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xee87fa00: ver 3 0 (tinfo 0xe3636a10)
+2024-03-07 16:22:43.930 22660-22690 chatty                  com.example.bitmapmishandle          I  uid=10176(com.example.bitmapmishandle) RenderThread identical 30 lines
+2024-03-07 16:22:43.934 22660-22690 EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0xee87fa00: ver 3 0 (tinfo 0xe3636a10)
+2024-03-07 16:22:48.597 22660-22660 AndroidRuntime          com.example.bitmapmishandle          D  Shutting down VM
+2024-03-07 16:22:48.598 22660-22660 AndroidRuntime          com.example.bitmapmishandle          E  FATAL EXCEPTION: main
+                                                                                                    Process: com.example.bitmapmishandle, PID: 22660
+                                                                                                    java.lang.IllegalArgumentException: View=DecorView@c435413[MainActivity] not attached to window manager
+                                                                                                    	at android.view.WindowManagerGlobal.findViewLocked(WindowManagerGlobal.java:517)
+                                                                                                    	at android.view.WindowManagerGlobal.removeView(WindowManagerGlobal.java:426)
+                                                                                                    	at android.view.WindowManagerImpl.removeViewImmediate(WindowManagerImpl.java:126)
+                                                                                                    	at android.app.Dialog.dismissDialog(Dialog.java:389)
+                                                                                                    	at android.app.-$$Lambda$oslF4K8Uk6v-6nTRoaEpCmfAptE.run(Unknown Source:2)
+                                                                                                    	at android.os.Handler.handleCallback(Handler.java:883)
+                                                                                                    	at android.os.Handler.dispatchMessage(Handler.java:100)
+                                                                                                    	at android.os.Looper.loop(Looper.java:214)
+                                                                                                    	at android.app.ActivityThread.main(ActivityThread.java:7356)
+                                                                                                    	at java.lang.reflect.Method.invoke(Native Method)
+                                                                                                    	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:492)
+                                                                                                    	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:930)
+2024-03-07 16:22:48.607 22660-22660 Process                 com.example.bitmapmishandle          I  Sending signal. PID: 22660 SIG: 9
+2024-03-07 16:22:48.651  2016-2116  InputDispatcher         system_server                        E  channel '1ea85b3 com.example.bitmapmishandle/com.example.bitmapmishandle.MainActivity (server)' ~ Channel is unrecoverably broken and will be disposed!
+
+WITNESS

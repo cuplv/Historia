@@ -1,9 +1,0 @@
-refuted
-    REFUTED: pre-line: 559 $r11 = new com.nutomic.syncthingandroid.activities.SettingsActivity$SettingsFragment$TestRootTask
-       state: ( locals:          heap:           pure: p-0  !=  NULL         types: List(p-0:{9192})    trace: p-0;O(CIEnter I_CIEnter_AsyncTaskexecute ( _T_,p-0 ))
-    pre-line: 559 specialinvoke $r11.<com.nutomic.syncthingandroid.activities.SettingsActivity$SettingsFragment$TestRootTask: void <init>(com.nutomic.syncthingandroid.activities.SettingsActivity$SettingsFragment)>(r0)
-       state: ( locals: $r11 -> p-0         heap:           pure: p-0  !=  NULL         types: List(p-0:{9192})    trace: O(CIEnter I_CIEnter_AsyncTaskexecute ( _T_,p-0 ))
-    SkippedInternalMethodInvoke(com.nutomic.syncthingandroid.activities.SettingsActivity$SettingsFragment$TestRootTask,void <init>(com.nutomic.syncthingandroid.activities.SettingsActivity$SettingsFragment),JimpleMethodLoc(<com.nutomic.syncthingandroid.activities.SettingsActivity$SettingsFragment$TestRootTask: void <init>(com.nutomic.syncthingandroid.activities.SettingsActivity$SettingsFragment)>))
-       state: ( locals:       locals: $r11 -> p-0         heap:           pure:          types: List(p-0:{9192})    trace: O(CIEnter I_CIEnter_AsyncTaskexecute ( _T_,p-0 ))
-    SkippedInternalMethodReturn(com.nutomic.syncthingandroid.activities.SettingsActivity$SettingsFragment$TestRootTask,void <init>(com.nutomic.syncthingandroid.activities.SettingsActivity$SettingsFragment),NotRelevantMethod,JimpleMethodLoc(<com.nutomic.syncthingandroid.activities.SettingsActivity$SettingsFragment$TestRootTask: void <init>(com.nutomic.syncthingandroid.activities.SettingsActivity$SettingsFragment)>))
-       state: ( locals:       locals: $r11 -> p-0         heap:           pure:          types: List(p-0:{9192})    trace: O(CIEnter I_CIEnter_AsyncTaskexecute ( _T_,p-0 ))
