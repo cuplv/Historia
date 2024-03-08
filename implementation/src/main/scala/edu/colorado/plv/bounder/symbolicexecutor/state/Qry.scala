@@ -482,8 +482,14 @@ case class DisallowedCallin(className:String, methodName:String, s:LSSpec) exten
             case _ => ???
           }
           if(s.target.signatures.matches(preLoc.containingMethod.get.getSignature)(sym.w.getClassHierarchyConstraints)){
+            assert(s.target.lsVars.head == TopVal, "Currently no support for return")
+            assert(s.target.lsVars.tail.drop(1).isEmpty, "Currently no support for args")
             val thisInSpec = s.target.lsVars.drop(1).head
-            ???
+            val (thisInState, outState) = q.state.getOrDefine(LocalWrapper("@this","_"), Some(preLoc.method))(sym.w)
+            val traceAbstraction = outState.traceAbstraction.copy(extraPred =
+              s.pred.swap(Map(thisInSpec.asInstanceOf[PureVar] -> thisInState.asInstanceOf[PureVar])))
+            val out = Set(q.copy(state = outState.copy(sf = outState.sf.copy(traceAbstraction = traceAbstraction))))
+            out
           }else{
             Set.empty
           }
