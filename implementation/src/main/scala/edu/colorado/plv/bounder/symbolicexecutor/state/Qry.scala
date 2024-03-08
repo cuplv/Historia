@@ -424,7 +424,8 @@ object DisallowedCallin{
   }
 }
 case class DisallowedCallin(className:String, methodName:String, s:LSSpec) extends InitialQuery{
-  assert(s.target.mt == CIEnter, s"Disallow must be callin entry. found: ${s.target}")
+  assert(s.target.mt == CIEnter || s.target.mt == CBExit,
+    s"Disallow must be callin entry or callback return. found: ${s.target}")
   def fileName:String = BounderUtil.sanitizeString(s"${this.className}__${this.methodName}__" +
     s"disallow_${this.s.target.identitySignature}") + ".cfg"
   private def invokeMatches(i:Invoke)(implicit ch:ClassHierarchyConstraints):Option[Signature] = {
@@ -439,13 +440,12 @@ case class DisallowedCallin(className:String, methodName:String, s:LSSpec) exten
     case InvokeCmd(method, _) => invokeMatches(method)
     case _ => None
   }
-  override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] = {
-    //TODO: Bug where this is empty
+  def makeCi[M,C](sym:AbstractInterpreter[M,C]):Set[Qry] = {
     implicit val ch = sym.w.getClassHierarchyConstraints
     val locations: Set[AppLoc] = sym.w.findInMethod(className, methodName, cmd => getMatchingCallin(cmd).isDefined).toSet
     assert(locations.nonEmpty, s"Empty target locations matching disallow: $s")
-//    val containingMethodPos =
-//      locations.flatMap(location => BounderUtil.resolveMethodReturnForAppLoc(sym.getAppCodeResolver, location))
+    //    val containingMethodPos =
+    //      locations.flatMap(location => BounderUtil.resolveMethodReturnForAppLoc(sym.getAppCodeResolver, location))
     assert(sym.getConfig.specSpace.getDisallowSpecs.contains(s), "Spec space must contain disallow")
     locations.map { location =>
       val cmd = sym.w.cmdAtLocation(location)
@@ -459,12 +459,44 @@ case class DisallowedCallin(className:String, methodName:String, s:LSSpec) exten
       if(stateWithDisallow.head.sf.traceAbstraction.rightOfArrow.isEmpty){
         val msg = s"Failed to match disallowed callin ${s.target} " +
           s"in method ${location.method.classType} ${location.method.simpleName}\n" +
-           "method body: \n" + location.method.bodyToString
+          "method body: \n" + location.method.bodyToString
         println(msg)
         throw new IllegalArgumentException(msg)
       }
       Qry(stateWithDisallow.head, location.copy(isPre = true), Live)
     }
+  }
+
+  def makeCb[M,C](sym:AbstractInterpreter[M,C]):Set[Qry] = {
+    val sig = Signature(className, methodName)
+    val method = sym.w.findMethodLoc(sig)
+    assert(method.nonEmpty, s"Could not find method ${className} ${methodName}")
+    val returns = sym.w.makeMethodRetuns(method.head)
+    returns.flatMap{ret =>
+      val lineNo = ret.line.lineNumber
+      if(lineNo != -1) {
+        val reachQry = Qry.makeReach(sym, sig,lineNo)
+        reachQry.flatMap{q =>
+          val preLoc = q.loc match {
+            case AppLoc(method, line, _) =>  AppLoc(method,line,true)
+            case _ => ???
+          }
+          ???
+        }
+      } else Set.empty
+    }.toSet
+  }
+
+  override def make[M, C](sym: AbstractInterpreter[M, C]): Set[Qry] = {
+    s.target.mt match {
+      case CIEnter =>
+        makeCi(sym)
+      case CBExit =>
+        makeCb(sym)
+      case _ =>
+        throw new IllegalArgumentException("must be CIEnter or CBExit for disallow")
+    }
+
   }
 }
 
