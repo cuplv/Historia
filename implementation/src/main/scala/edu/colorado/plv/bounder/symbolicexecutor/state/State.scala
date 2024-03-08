@@ -828,6 +828,10 @@ case class State(sf:StateFormula,
       val (pv, newState) = nextPv()
       val stateWithPC = newState.addPureConstraint(PureConstraint(pv, Equals, IntVal(v)))
       (pv,stateWithPC)
+    case StringConst(v) =>
+      val (pv, newState) = nextPv()
+      val stateWithPC = newState.addPureConstraint(PureConstraint(pv, Equals, NullVal))
+      (pv,stateWithPC)
     case v =>
       ??? //TODO: should probably restrict this function to only take locals
   }
