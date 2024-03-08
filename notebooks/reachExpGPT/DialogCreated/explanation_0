@@ -1,0 +1,11 @@
+(    heap:           pure: p-2  !=  NULL && p-3  !=  NULL && p-0  !=  NULL && p-1  !=  NULL         types: List(p-0:{1199}, p-1:{1213}, p-3:{1199}, p-2:{1207})    trace: O(CBEnter I_CBEnter_ActivityonCreate ( _T_,p-3 );p-2;O(CIExit I_CIExit_Dialoginit ( _T_,p-2,p-3 );O(CIExit I_CIExit_DialogsetMessage ( _T_,p-2,NULL );O(CIExit I_CIExit_Dialogshow ( _T_,_T_ );p-1;O(CIExit I_CIExit_Threadstart ( _T_,p-1 );O(CBEnter I_CBEnter_ActivityonDestroy ( _T_,p-0 )) 
+===========
+Future trace:
+ CBEnter void onCreate(android.os.Bundle)( _T_,@7 )
+TNew(@2,{1})
+CIExit  <init>(( _T_,@2,@7 )
+CIExit  setMessage(( _T_,@2,NULL )
+CIExit show(( _T_,_T_ )
+TNew(@4,{2})
+CIExit void start(( _T_,@4 )
+CBEnter void onDestroy()( _T_,@5 )
