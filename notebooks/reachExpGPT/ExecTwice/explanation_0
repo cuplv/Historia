@@ -1,0 +1,10 @@
+(    heap:           pure: p-3  !=  NULL && p-6  !=  NULL && p-8  !=  NULL && p-7  !=  NULL         types: List(p-0:{3806}, p-1:{962,969,991,1608,1647 ...}, p-3:{3806}, p-4:{962,969,991,1608,1647 ...}, p-2:{3807}, p-6:{3807}, p-8:{3787}, p-7:{1729,1730,1731,1753,1767 ...}, p-5:{3807})    trace: O(CBEnter I_CBEnter_ActivityonCreate ( _T_,p-8 );p-6;O(CIExit I_CIExit_ViewsetOnClickListener ( _T_,p-7,p-6 );O(CBEnter I_CBEnter_ViewOnClickListeneronClick ( _T_,p-5,p-4 );O(CIExit I_CIExit_AsyncTaskexecute ( _T_,p-3 );O(CBEnter I_CBEnter_ViewOnClickListeneronClick ( _T_,p-2,p-1 );O(CIEnter I_CIEnter_AsyncTaskexecute ( _T_,p-0 )) 
+===========
+Future trace:
+ CBEnter void onCreate(android.os.Bundle)( _T_,@7 )
+TNew(@0,{4})
+CIExit setOnClickListener(( _T_,@5,@0 )
+CBEnter onClick(( _T_,@0,@2 )
+CIExit AsyncTask execute()( _T_,@9 )
+CBEnter onClick(( _T_,@0,@8 )
+CIEnter AsyncTask execute()( _T_,@9 )
