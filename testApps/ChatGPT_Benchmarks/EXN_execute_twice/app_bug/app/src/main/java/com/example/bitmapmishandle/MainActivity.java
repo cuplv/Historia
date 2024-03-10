@@ -47,7 +47,7 @@ public class MainActivity extends Activity {
         downloadTask = new DownloadTask();
         Log.i("histInstrumentation"," " + System.identityHashCode(downloadTask) + " = new MainActivity$DownloadTask ");
         startDownloadButton = findViewById(R.id.startDownloadButton);
-        Log.i("histInstrumentation",System.identityHashCode(startDownloadButton) + " = ci " + System.identityHashCode(this) + " setContentView " + R.id.startDownloadButton);
+        Log.i("histInstrumentation",System.identityHashCode(startDownloadButton) + " = ci " + System.identityHashCode(this) + " findViewById " + R.id.startDownloadButton);
 
         View.OnClickListener tmp2 = new View.OnClickListener() {
             @Override
@@ -58,9 +58,12 @@ public class MainActivity extends Activity {
                 Log.i("histInstrumentation",System.identityHashCode(tmp3) + " = ci " + System.identityHashCode(downloadTask) + " getStatus ");
                 if (tmp3 != AsyncTask.Status.RUNNING) {
                     // If not running, execute a new task
-                    downloadTask.execute("http://example.com/file.zip");
+                    String tmp4 = "http://example.com/file.zip";
+                    downloadTask.execute(tmp4);
+                    Log.i("histInstrumentation", "ci " + System.identityHashCode(downloadTask) + " execute " + System.identityHashCode(tmp4));
                 } else {
                     Toast.makeText(MainActivity.this, "Download already in progress", Toast.LENGTH_SHORT).show();
+                    Log.i("histInstrumentation", "ci " + " makeText ");
                 }
 
                 // Attempt to reuse the same AsyncTask instance for a new download
@@ -70,11 +73,13 @@ public class MainActivity extends Activity {
         };
 
         startDownloadButton.setOnClickListener(tmp2);
+        Log.i("histInstrumentation","ci " + System.identityHashCode(startDownloadButton) + " setOnClickListener " + System.identityHashCode(tmp2));
     }
 
     private static class DownloadTask extends AsyncTask<String, Integer, String> {
         @Override
         protected String doInBackground(String... urls) {
+            Log.i("histInstrumentation","cb " + System.identityHashCode(this) + " doInBackground ");
             // Simulate a download operation
             try {
                 Thread.sleep(5000); // Simulate time delay of download
@@ -86,6 +91,7 @@ public class MainActivity extends Activity {
 
         @Override
         protected void onPostExecute(String result) {
+            Log.i("histInstrumentation","cb " + System.identityHashCode(this) + " onPostExecute " + System.identityHashCode(result));
             super.onPostExecute(result);
             // Show download result (simplified for demonstration)
             System.out.println(result);
