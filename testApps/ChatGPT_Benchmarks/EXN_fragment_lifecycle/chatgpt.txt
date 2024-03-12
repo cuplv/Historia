@@ -75,6 +75,11 @@ public class ArticlesFragment extends Fragment {
         // Not properly nullifying the rootView can lead to memory leaks
         // rootView = null; // Uncommenting this line is necessary to avoid leaks
     }
+
+    @Override
+    public void onDestroy(){ //skm: added cb with no effects  // add enable void a.onDestroy() -[]> O(void a.onDestroyView())
+        super.onDestroy(); //skm: mem leak O(ci v = a.inflate()) /\ O( void a.onDestroyView()) leak type: View var: v
+    }
 }
 
 Issues Demonstrated
