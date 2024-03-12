@@ -1,0 +1,22 @@
+java.library.path set to: /usr/lib/:/usr/java/packages/lib:/usr/lib/x86_64-linux-gnu/jni:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/usr/lib/jni:/lib:/usr/lib
+remaining tasks: 1 / 2
+remaining tasks: 0 / 2
+    ord depth: 0
+    ord depth: 0
+    depth: 0
+    depth: 0
+    State: ( locals:          heap:           pure:          types: List()    trace: )
+    State: ( locals:          heap:           pure:          types: List()    trace: )
+    Loc  : pre-line: 42 specialinvoke r0.<androidx.fragment.app.Fragment: void onDestroyView()>()
+    Loc  : pre-line: 42 specialinvoke r0.<androidx.fragment.app.Fragment: void onDestroyView()>()
+    Method  : Some(JimpleMethodLoc(<com.example.fragmentlifecycle.ArticlesFragment: void onDestroyView()>))
+    Method  : Some(JimpleMethodLoc(<com.example.fragmentlifecycle.ArticlesFragment: void onDestroyView()>))
+remaining tasks: 0 / 1
+    ord depth: 2
+    depth: 5
+    State: ( locals: @this -> p-1         heap:           pure:          types: List(p-0:{5002,5030}, p-1:{5002,5030})    trace: O(CBExit I_CBExit_onDestroyView ( _T_,p-1 );O(CBEnter I_CBEnter_onDestroyView ( _T_,p-0 ))
+    Loc  : post-line: 46 return
+    Method  : Some(JimpleMethodLoc(<com.example.fragmentlifecycle.ArticlesFragment: void onDestroyView()>))
+Writing trace 0 / 1, length: 3
+Writing trace 0 / 1, length: 43
+analysis time(ms): 21668023003

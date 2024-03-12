@@ -1,0 +1,4 @@
+(    heap:           pure:          types: List(p-0:{5002,5030})    trace: O(CBEnter I_CBEnter_onDestroyView ( _T_,p-0 )) 
+===========
+Future trace:
+ CBEnter void onDestroyView()( _T_,@0 )

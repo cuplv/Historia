@@ -1,0 +1,3 @@
+refuted
+    REFUTED: InternalMethodInvoke(com.example.fragmentlifecycle.ArticlesFragment,void onDestroyView(),JimpleMethodLoc(<com.example.fragmentlifecycle.ArticlesFragment: void onDestroyView()>))
+       state: ( locals:          heap:           pure:          types: List()    trace: )
