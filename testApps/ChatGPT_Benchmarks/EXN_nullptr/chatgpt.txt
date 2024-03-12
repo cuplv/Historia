@@ -125,3 +125,71 @@ A more robust solution involves properly managing the lifecycle of asynchronous 
     WeakReference: Use WeakReference for contexts in long-running tasks to ensure they do not keep a reference to the Activity or Fragment if it gets destroyed. However, this approach requires you to check if the reference is still valid (not null) before accessing it.
 
 Properly managing asynchronous operations according to the lifecycle of Activities and Fragments is crucial to preventing NullPointerExceptions and ensuring a smooth user experience.
+
+//skm regenerated because previous example did not actually have null pointer exception
+
+User:
+Give me source code in java for an android application that exhibits a non-trivial null pointer exception.
+ChatGPT:
+
+To demonstrate a non-trivial null pointer exception (NPE) in an Android application using Java, I will provide an example where the NPE occurs due to a logical oversight rather than a straightforward mistake like directly dereferencing a null object. This example involves the use of a Bundle for passing data between activities, where the data retrieval is mishandled, leading to an NPE.
+Scenario Description
+
+Consider an Android application with two activities: MainActivity and SecondActivity. MainActivity is supposed to pass a string to SecondActivity via an Intent. SecondActivity attempts to use this string without checking if it is null, leading to a non-trivial NPE if the string is not properly passed or retrieved.
+MainActivity.java
+
+java
+
+package com.example.myapp;
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.view.View;
+import androidx.appcompat.app.AppCompatActivity;
+
+public class MainActivity extends AppCompatActivity {
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+    }
+
+    // Method to launch SecondActivity
+    public void launchSecondActivity(View view) {
+        Intent intent = new Intent(this, SecondActivity.class);
+        intent.putExtra("extra_data", "Hello, SecondActivity!");
+        startActivity(intent);
+    }
+}
+
+SecondActivity.java
+
+java
+
+package com.example.myapp;
+
+import android.os.Bundle;
+import android.widget.TextView;
+import androidx.appcompat.app.AppCompatActivity;
+
+public class SecondActivity extends AppCompatActivity {
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_second);
+
+        // Attempting to retrieve the extra data and display it
+        String data = getIntent().getStringExtra("wrong_key"); // This key is incorrect
+        TextView textView = findViewById(R.id.text_view);
+        textView.setText(data.toUpperCase()); // This line can throw a NPE if data is null
+    }
+}
+
+Explanation
+
+In SecondActivity, the string extra is attempted to be retrieved with the key "wrong_key", which does not match the key used when putting the extra into the Intent in MainActivity ("extra_data"). This results in data being null. The attempt to call toUpperCase() on data then leads to a NullPointerException.
+Mitigation
+
+To mitigate this issue, ensure that the correct keys are used when passing and retrieving extras. Furthermore, it's a good practice to check for null before dereferencing objects that may potentially be null. For example, before calling toUpperCase(), you could check if data is not null or use Java's Optional pattern or similar null-safe operations.
