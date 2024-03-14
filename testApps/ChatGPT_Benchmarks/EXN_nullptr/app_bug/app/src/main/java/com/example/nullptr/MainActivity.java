@@ -44,7 +44,7 @@ public class MainActivity extends Activity {
     public void launchSecondActivity() {
         Intent intent = new Intent(this, SecondActivity.class);
         Log.i("histInstrumentation"," " + System.identityHashCode(intent) + " = new Intent " + System.identityHashCode(this) + " " + System.identityHashCode(SecondActivity.class));
-        String key = "extra_data";
+        String key = new String("extra_data");
         String val = "Hello, SecondActivity!";
         intent.putExtra(key,val);
         Log.i("histInstrumentation","ci " + System.identityHashCode(intent) + " putExtra " + System.identityHashCode(key) + " " + System.identityHashCode(val));
