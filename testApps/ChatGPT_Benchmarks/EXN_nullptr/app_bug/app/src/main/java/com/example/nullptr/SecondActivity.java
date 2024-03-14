@@ -16,7 +16,7 @@ public class SecondActivity extends Activity {
         // Attempting to retrieve the extra data and display it
         Intent tmp1 = getIntent();
         Log.i("histInstrumentation",System.identityHashCode(tmp1) + " = ci " + System.identityHashCode(this) + " getIntent " );
-        String key = "extra_data";
+        String key = new String("extra_data");
         String data = tmp1.getStringExtra(key); // This key is incorrect
         Log.i("histInstrumentation",System.identityHashCode(data) + " = ci " + System.identityHashCode(tmp1) + " getStringExtra " + System.identityHashCode(key) );
         TextView textView = findViewById(R.id.textView);
