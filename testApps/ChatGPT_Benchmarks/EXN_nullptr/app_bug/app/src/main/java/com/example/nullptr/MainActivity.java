@@ -34,15 +34,22 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.i("histInstrumentation","cb " + System.identityHashCode(this) + " onCreate");
         setContentView(R.layout.activity_main);
+        Log.i("histInstrumentation","ci " + System.identityHashCode(this) + " setContentView " + R.layout.activity_main);
         launchSecondActivity();
     }
 
     // Method to launch SecondActivity
     public void launchSecondActivity() {
         Intent intent = new Intent(this, SecondActivity.class);
-        intent.putExtra("extra_data", "Hello, SecondActivity!");
+        Log.i("histInstrumentation"," " + System.identityHashCode(intent) + " = new Intent " + System.identityHashCode(this) + " " + System.identityHashCode(SecondActivity.class));
+        String key = "extra_data";
+        String val = "Hello, SecondActivity!";
+        intent.putExtra(key,val);
+        Log.i("histInstrumentation","ci " + System.identityHashCode(intent) + " putExtra " + System.identityHashCode(key) + " " + System.identityHashCode(val));
         startActivity(intent);
+        Log.i("histInstrumentation","ci " + System.identityHashCode(this) + " startActivity " + System.identityHashCode(intent));
     }
 
 }
