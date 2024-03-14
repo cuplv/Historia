@@ -1,32 +1,20 @@
-2024-03-13 12:40:10.033  5953-5964  System                  com.example.nullptr                  W  A resource failed to call close. 
-2024-03-13 12:41:15.778  6027-6027  example.nullptr         com.example.nullptr                  W  Redefining intrinsic method java.lang.Thread java.lang.Thread.currentThread(). This may cause the unexpected use of the original definition of java.lang.Thread java.lang.Thread.currentThread()in methods that have already been compiled.
-2024-03-13 12:41:15.778  6027-6027  example.nullptr         com.example.nullptr                  W  Redefining intrinsic method boolean java.lang.Thread.interrupted(). This may cause the unexpected use of the original definition of boolean java.lang.Thread.interrupted()in methods that have already been compiled.
-2024-03-13 12:41:15.783  6027-6027  Compatibil...geReporter com.example.nullptr                  D  Compat change id reported: 171979766; UID 10160; state: ENABLED
-2024-03-13 12:41:15.799  6027-6027  ziparchive              com.example.nullptr                  W  Unable to open '/data/data/com.example.nullptr/code_cache/.overlay/base.apk/classes3.dm': No such file or directory
-2024-03-13 12:41:15.799  6027-6027  ziparchive              com.example.nullptr                  W  Unable to open '/data/app/~~nhTR1B6wuLaK5wjwSE771A==/com.example.nullptr-SHKoNQaXwn30AdJ-pEWC9w==/base.dm': No such file or directory
-2024-03-13 12:41:15.799  6027-6027  ziparchive              com.example.nullptr                  W  Unable to open '/data/app/~~nhTR1B6wuLaK5wjwSE771A==/com.example.nullptr-SHKoNQaXwn30AdJ-pEWC9w==/base.dm': No such file or directory
-2024-03-13 12:41:15.874  6027-6027  GraphicsEnvironment     com.example.nullptr                  V  ANGLE Developer option for 'com.example.nullptr' set to: 'default'
-2024-03-13 12:41:15.875  6027-6027  GraphicsEnvironment     com.example.nullptr                  V  ANGLE GameManagerService for com.example.nullptr: false
-2024-03-13 12:41:15.875  6027-6027  GraphicsEnvironment     com.example.nullptr                  V  Neither updatable production driver nor prerelease driver is supported.
-2024-03-13 12:41:15.924  6027-6027  NetworkSecurityConfig   com.example.nullptr                  D  No Network Security Config specified, using platform default
-2024-03-13 12:41:15.926  6027-6027  NetworkSecurityConfig   com.example.nullptr                  D  No Network Security Config specified, using platform default
-2024-03-13 12:41:15.982  6027-6048  libEGL                  com.example.nullptr                  D  loaded /vendor/lib64/egl/libEGL_emulation.so
-2024-03-13 12:41:15.991  6027-6048  libEGL                  com.example.nullptr                  D  loaded /vendor/lib64/egl/libGLESv1_CM_emulation.so
-2024-03-13 12:41:15.995  6027-6048  libEGL                  com.example.nullptr                  D  loaded /vendor/lib64/egl/libGLESv2_emulation.so
-2024-03-13 12:41:16.003  6027-6027  histInstrumentation     com.example.nullptr                  I  cb 164158807 onCreate
-2024-03-13 12:41:16.105  6027-6027  Compatibil...geReporter com.example.nullptr                  D  Compat change id reported: 210923482; UID 10160; state: ENABLED
-2024-03-13 12:41:16.107  6027-6027  histInstrumentation     com.example.nullptr                  I  ci 164158807 setContentView 2131361820
-2024-03-13 12:41:16.107  6027-6027  histInstrumentation     com.example.nullptr                  I   220388581 = new ArticlesFragment 164158807 88343482
-2024-03-13 12:41:16.107  6027-6027  histInstrumentation     com.example.nullptr                  I  ci 220388581 putExtra 49574507 112427464
-2024-03-13 12:41:16.112  6027-6027  histInstrumentation     com.example.nullptr                  I  ci 164158807 startActivity 220388581
-2024-03-13 12:41:16.170  6027-6027  histInstrumentation     com.example.nullptr                  I  cb 87432204 onCreate
-2024-03-13 12:41:16.178  6027-6027  histInstrumentation     com.example.nullptr                  I  ci 87432204 setContentView 2131361832
-2024-03-13 12:41:16.178  6027-6027  histInstrumentation     com.example.nullptr                  I  98689188 = ci 87432204 getIntent 
-2024-03-13 12:41:16.178  6027-6027  histInstrumentation     com.example.nullptr                  I  0 = ci 98689188 getStringExtra 108449293
-2024-03-13 12:41:16.178  6027-6027  histInstrumentation     com.example.nullptr                  I  241951170 = ci 87432204 findViewById 2131165484
-2024-03-13 12:41:16.178  6027-6027  AndroidRuntime          com.example.nullptr                  D  Shutting down VM
-2024-03-13 12:41:16.180  6027-6027  AndroidRuntime          com.example.nullptr                  E  FATAL EXCEPTION: main
-                                                                                                    Process: com.example.nullptr, PID: 6027
+2024-03-14 12:57:27.098  2012-2012  histInstrumentation     com.example.nullptr                  I  cb 2538402 onCreate
+2024-03-14 12:57:27.232  2012-2012  Compatibil...geReporter com.example.nullptr                  D  Compat change id reported: 210923482; UID 10160; state: ENABLED
+2024-03-14 12:57:27.234  2012-2012  histInstrumentation     com.example.nullptr                  I  ci 2538402 setContentView 2131361820
+2024-03-14 12:57:27.235  2012-2012  histInstrumentation     com.example.nullptr                  I   36855048 = new Intent 2538402 66731169
+2024-03-14 12:57:27.235  2012-2012  histInstrumentation     com.example.nullptr                  I   92999366 = new String 232377991
+2024-03-14 12:57:27.235  2012-2012  histInstrumentation     com.example.nullptr                  I   101990836 = new String 131924445
+2024-03-14 12:57:27.235  2012-2012  histInstrumentation     com.example.nullptr                  I  ci 36855048 putExtra 92999366 101990836
+2024-03-14 12:57:27.336  2012-2012  histInstrumentation     com.example.nullptr                  I  ci 2538402 startActivity 36855048
+2024-03-14 12:57:27.422  2012-2012  histInstrumentation     com.example.nullptr                  I  cb 39489553 onCreate
+2024-03-14 12:57:27.431  2012-2012  histInstrumentation     com.example.nullptr                  I  ci 39489553 setContentView 2131361821
+2024-03-14 12:57:27.431  2012-2012  histInstrumentation     com.example.nullptr                  I  200683593 = ci 39489553 getIntent 
+2024-03-14 12:57:27.431  2012-2012  histInstrumentation     com.example.nullptr                  I   201260366 = new String 85184111
+2024-03-14 12:57:27.432  2012-2012  histInstrumentation     com.example.nullptr                  I  0 = ci 200683593 getStringExtra 201260366
+2024-03-14 12:57:27.432  2012-2012  histInstrumentation     com.example.nullptr                  I  187623292 = ci 39489553 findViewById 2131165460
+2024-03-14 12:57:27.433  2012-2012  AndroidRuntime          com.example.nullptr                  D  Shutting down VM
+2024-03-14 12:57:27.434  2012-2012  AndroidRuntime          com.example.nullptr                  E  FATAL EXCEPTION: main
+                                                                                                    Process: com.example.nullptr, PID: 2012
                                                                                                     java.lang.RuntimeException: Unable to start activity ComponentInfo{com.example.nullptr/com.example.nullptr.SecondActivity}: java.lang.NullPointerException: Attempt to invoke virtual method 'java.lang.String java.lang.String.toUpperCase()' on a null object reference
                                                                                                     	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:3676)
                                                                                                     	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:3813)
@@ -42,7 +30,7 @@
                                                                                                     	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:548)
                                                                                                     	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:936)
                                                                                                     Caused by: java.lang.NullPointerException: Attempt to invoke virtual method 'java.lang.String java.lang.String.toUpperCase()' on a null object reference
-                                                                                                    	at com.example.nullptr.SecondActivity.onCreate(SecondActivity.java:24)
+                                                                                                    	at com.example.nullptr.SecondActivity.onCreate(SecondActivity.java:25)
                                                                                                     	at android.app.Activity.performCreate(Activity.java:8290)
                                                                                                     	at android.app.Activity.performCreate(Activity.java:8269)
                                                                                                     	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1384)
@@ -59,6 +47,5 @@
                                                                                                     	at java.lang.reflect.Method.invoke(Native Method) 
                                                                                                     	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:548) 
                                                                                                     	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:936) 
-2024-03-13 12:41:16.209  6027-6027  Process                 com.example.nullptr                  I  Sending signal. PID: 6027 SIG: 9
 
 WITNESSED
