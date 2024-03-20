@@ -34,35 +34,57 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.i("histInstrumentation","cb " + System.identityHashCode(this) + " onCreate");
         setContentView(R.layout.activity_main);
+        Log.i("histInstrumentation","ci " + System.identityHashCode(this) + " setContentView " + R.layout.activity_main);
         textView = findViewById(R.id.textView);
+        Log.i("histInstrumentation",System.identityHashCode(textView) + " = ci " + System.identityHashCode(this) + " findViewById " + R.id.textView);
 
         fetchUserData();
     }
 
+    class MyErrorListener implements Response.ErrorListener {
+        MyErrorListener(){
+            //stub
+        }
+        @Override
+        public void onErrorResponse(VolleyError error) {
+            Log.i("histInstrumentation", "cb " + System.identityHashCode(this) + " onErrorResponse " + System.identityHashCode(error));
+            // Here should be the error handling code, but it's missing.
+            // In a real-world scenario, you would handle the error appropriately.
+        }
+    }
     private void fetchUserData() {
-        String url = "https://nonexistantlink.io";
-
+        String url = new String("https://nonexistantlink.io");
+        Log.i("histInstrumentation"," " + System.identityHashCode(url) + " = new String " + System.identityHashCode("https://nonexistantlink.io"));
         // Instantiate the RequestQueue.
         RequestQueue queue = Volley.newRequestQueue(this);
+        Log.i("histInstrumentation", " ci " + System.identityHashCode(Volley.class) + " new RequestQueue " + System.identityHashCode(this));
 
-        // Request a string response from the provided URL.
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        // Display the first 500 characters of the response string.
-                        textView.setText("Response is: " + response.substring(0, 500));
-                    }
-                }, new Response.ErrorListener() {
+        Response.ErrorListener errorListener = new MyErrorListener();
+        Log.i("histInstrumentation"," "+System.identityHashCode(errorListener)+" = new MyErrorListener ");
+
+        Response.Listener<String> responseListener = new Response.Listener<String>() {
             @Override
-            public void onErrorResponse(VolleyError error) {
-                // Here should be the error handling code, but it's missing.
-                // In a real-world scenario, you would handle the error appropriately.
+            public void onResponse(String response) {
+                Log.i("histInstrumentation", "cb " + System.identityHashCode(this) + " onResponse " + System.identityHashCode(response));
+                // Display the first 500 characters of the response string.
+                String text = response.substring(0, 500);
+                Log.i("histInstrumentation", System.identityHashCode(text) + " = ci " + System.identityHashCode(response) + " substring " + 0 + " " + 500);
+                textView.setText(text);
+                Log.i("histInstrumentation", " ci " + System.identityHashCode(textView) + " setText " + System.identityHashCode(text));
             }
-        });
+        };
+        //Log.i("histInstrumentation"," "+System.identityHashCode(responseListener)+" = new MyListener ");
+            // Request a string response from the provided URL.
+            StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
+                    responseListener, errorListener);
+        Log.i("histInstrumentation"," "+System.identityHashCode(stringRequest)+" = new StringRequest "+
+                    System.identityHashCode(Request.Method.GET)+" "+System.identityHashCode(url)+" "+
+                    System.identityHashCode(responseListener)+" "+System.identityHashCode(errorListener));
 
-        // Add the request to the RequestQueue.
+            // Add the request to the RequestQueue.
         queue.add(stringRequest);
-    }
+        Log.i("histInstrumentation"," ci "+System.identityHashCode(queue)+" add "+System.identityHashCode(stringRequest));
+        };
 }
