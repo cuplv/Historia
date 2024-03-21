@@ -35,13 +35,23 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.i("histInstrumentation","cb " + System.identityHashCode(this) + " onCreate");
         setContentView(R.layout.activity_main);
+        Log.i("histInstrumentation","ci " + System.identityHashCode(this) + " setContentView " + R.layout.activity_main);
 
         usernameInput = findViewById(R.id.usernameInput);
+        Log.i("histInstrumentation",System.identityHashCode(usernameInput) + " = ci " + System.identityHashCode(this) + " findViewById " + R.id.usernameInput);
         emailInput = findViewById(R.id.emailInput);
+        Log.i("histInstrumentation",System.identityHashCode(emailInput) + " = ci " + System.identityHashCode(this) + " findViewById " + R.id.emailInput);
         // Initialize other fields here
 
         // No handling of savedInstanceState to restore state
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        Log.i("histInstrumentation","cb " + System.identityHashCode(this) + " onDestroy");
     }
 
 }

@@ -1,0 +1,32 @@
+java.library.path set to: /usr/lib/:/usr/java/packages/lib:/usr/lib/x86_64-linux-gnu/jni:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/usr/lib/jni:/lib:/usr/lib
+remaining tasks: 1 / 2
+    ord depth: 0
+remaining tasks: 0 / 2
+    ord depth: 0
+    depth: 0
+    depth: 0
+    State: ( locals: @this -> p-0         heap:           pure:          types: List(p-0:{3963})    trace: )
+    State: ( locals: @this -> p-0         heap:           pure:          types: List(p-0:{3963})    trace: )
+    Loc  : pre-line: 55 return
+    Loc  : pre-line: 55 return
+    Method  : Some(JimpleMethodLoc(<com.example.configchange.MainActivity: void onDestroy()>))
+    Method  : Some(JimpleMethodLoc(<com.example.configchange.MainActivity: void onDestroy()>))
+remaining tasks: 0 / 1
+    ord depth: 2
+    depth: 39
+    State: ( locals: @this -> p-1         heap:           pure: p-0  !=  NULL         types: List(p-0:{3963}, p-1:{3963})    trace: O(CBExit I_CBExit_ActivityonCreate ( _T_,p-1 );O(CBEnter I_CBEnter_ActivityonDestroy ( _T_,p-0 ))
+    Loc  : post-line: 49 return
+    Method  : Some(JimpleMethodLoc(<com.example.configchange.MainActivity: void onCreate(android.os.Bundle)>))
+ecluded method: JimpleMethodLoc(<com.example.configchange.MainActivity: void dumpFields(java.lang.Object,java.lang.Class)>)
+!!!Found witness, terminating other processes.
+Writing trace 0 / 1, length: 233
+Writing trace 0 / 1, length: 37
+witness: 
+ (    heap:           pure: p-0  !=  NULL && p-1  !=  NULL         types: List(p-0:{3963}, p-1:{3963})    trace: O(CBEnter I_CBEnter_ActivityonCreate ( _T_,p-1 );O(CBExit I_CBExit_ActivityonCreate ( _T_,p-1 );O(CBEnter I_CBEnter_ActivityonDestroy ( _T_,p-0 ))
+last state: 
+ Future trace:
+ CBEnter void onCreate(android.os.Bundle)( _T_,@2 )
+CBExit void onCreate(android.os.Bundle)( _T_,@2 )
+CBEnter void onDestroy()( _T_,@2 )
+
+analysis time(ms): 19346983059

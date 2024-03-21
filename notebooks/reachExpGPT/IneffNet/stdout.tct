@@ -1,0 +1,50 @@
+java.library.path set to: /usr/lib/:/usr/java/packages/lib:/usr/lib/x86_64-linux-gnu/jni:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/usr/lib/jni:/lib:/usr/lib
+remaining tasks: 0 / 1
+    ord depth: 0
+    depth: 0
+    State: ( locals: r0 -> p-0         heap:           pure:          types: List(p-0:{3964})    trace: O(CIEnter I_CIEnter_fetcharticles ( _T_,_T_,p-0 ))
+    Loc  : pre-line: 70 $r6 = staticinvoke <com.android.volley.toolbox.Volley: com.android.volley.RequestQueue newRequestQueue(android.content.Context)>(r0)
+    Method  : Some(JimpleMethodLoc(<com.example.inefficientnetwork.MainActivity: void fetchArticles()>))
+ecluded method: JimpleMethodLoc(<com.example.inefficientnetwork.MainActivity: void dumpFields(java.lang.Object,java.lang.Class)>)
+remaining tasks: 1 / 4
+    ord depth: 2
+    depth: 221
+remaining tasks: 0 / 4
+    ord depth: 2
+    depth: 221
+remaining tasks: 2 / 4
+    ord depth: 2
+    depth: 93
+remaining tasks: 3 / 4
+    ord depth: 2
+    depth: 93
+    State: ( locals:          heap:           pure: p-0  !=  NULL         types: List(p-0:{3964}, p-1:{978,985,1007,1624,1663 ...}, p-2:{978,985,1007,1624,1663 ...})    trace: O(CBEnter I_CBEnter_ActivityonCreate ( _T_,p-0 );O(CIExit I_CIExit_findViewById ( p-2,p-0 );O(CIExit I_CIExit_findViewById ( p-1,p-0 );O(CIEnter I_CIEnter_fetcharticles ( _T_,_T_,p-0 ))
+    State: ( locals:          heap:           pure: p-0  !=  NULL         types: List(p-0:{3964})    trace: O(CBEnter I_CBEnter_ActivityonResume ( _T_,p-0 );O(CIEnter I_CIEnter_fetcharticles ( _T_,_T_,p-0 ))
+    State: ( locals:          heap:           pure: p-0  !=  NULL         types: List(p-0:{3964}, p-1:{978,985,1007,1624,1663 ...}, p-2:{978,985,1007,1624,1663 ...})    trace: O(CBEnter I_CBEnter_ActivityonCreate ( _T_,p-0 );O(CIExit I_CIExit_findViewById ( p-2,p-0 );O(CIExit I_CIExit_findViewById ( p-1,p-0 );O(CIEnter I_CIEnter_fetcharticles ( _T_,_T_,p-0 ))
+    Loc  : post-line: 57 return
+    State: ( locals:          heap:           pure: p-0  !=  NULL         types: List(p-0:{3964})    trace: O(CBEnter I_CBEnter_ActivityonResume ( _T_,p-0 );O(CIEnter I_CIEnter_fetcharticles ( _T_,_T_,p-0 ))
+    Loc  : post-line: 57 return
+    Method  : Some(JimpleMethodLoc(<com.example.inefficientnetwork.MainActivity: void onCreate(android.os.Bundle)>))
+    Loc  : post-line: 64 return
+    Loc  : post-line: 64 return
+    Method  : Some(JimpleMethodLoc(<com.example.inefficientnetwork.MainActivity: void onResume()>))
+    Method  : Some(JimpleMethodLoc(<com.example.inefficientnetwork.MainActivity: void onCreate(android.os.Bundle)>))
+    Method  : Some(JimpleMethodLoc(<com.example.inefficientnetwork.MainActivity: void onResume()>))
+#
+# A fatal error has been detected by the Java Runtime Environment:
+#
+#  SIGSEGV (0xb) at pc=0x00000003c2282ee0, pid=3970, tid=3970
+#
+# JRE version: OpenJDK Runtime Environment (11.0.21+9) (build 11.0.21+9-post-Ubuntu-0ubuntu120.04)
+# Java VM: OpenJDK 64-Bit Server VM (11.0.21+9-post-Ubuntu-0ubuntu120.04, mixed mode, sharing, tiered, compressed oops, g1 gc, linux-amd64)
+# Problematic frame:
+# C  0x00000003c2282ee0
+#
+# Core dump will be written. Default location: Core dumps may be processed with "/lib/systemd/systemd-coredump %P %u %g %s %t 9223372036854775808 %h" (or dumping to /home/notebooks/reachExpGPT/core.3970)
+#
+# An error report file with more information is saved as:
+# /home/notebooks/reachExpGPT/hs_err_pid3970.log
+#
+# If you would like to submit a bug report, please visit:
+#   https://bugs.launchpad.net/ubuntu/+source/openjdk-lts
+#

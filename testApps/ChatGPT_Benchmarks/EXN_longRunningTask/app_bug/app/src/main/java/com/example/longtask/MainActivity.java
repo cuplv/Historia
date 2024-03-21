@@ -5,13 +5,14 @@ import android.os.Bundle;
 import android.util.Log;
 import android.widget.TextView;
 
-import com.example.longtask.R;
-
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.concurrent.Callable;
+import io.reactivex.functions.Consumer;
 
 import io.reactivex.Observable;
 import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.Disposable;
 
 public class MainActivity extends Activity {
     static void dumpFields(Object o, Class clazz){
@@ -32,21 +33,40 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.i("histInstrumentation","cb " + System.identityHashCode(this) + " onCreate");
         setContentView(R.layout.activity_main);
+        Log.i("histInstrumentation","ci " + System.identityHashCode(this) + " setContentView " + R.layout.activity_main);
 
         textView = findViewById(R.id.textView);
+        Log.i("histInstrumentation",System.identityHashCode(textView) + " = ci " + System.identityHashCode(this) + " findViewById " + R.id.textView);
 
         // Incorrectly starting data processing on the main thread with RxJava
         processDataRxIncorrectly();
     }
 
     private void processDataRxIncorrectly() {
-        Observable.fromCallable(() -> processLargeDataSet(loadLargeDataSet()))
-                .observeOn(AndroidSchedulers.mainThread()) // Observing on the main thread
-                .subscribeOn(AndroidSchedulers.mainThread()) // Incorrect: Subscribing on the main thread
-                .subscribe(result -> textView.setText("Data processed successfully!"),
-                        error -> textView.setText("Error processing data"));
+        Callable tmp1 = new Callable() {
+            @Override
+            public Object call() {
+                Log.i("histInstrumentation","cb " + System.identityHashCode(this) + " call");
+                processLargeDataSet(loadLargeDataSet());
+                return null;
+            }
+        };
+        Observable tmp2 = Observable.fromCallable(tmp1);
+        Log.i("histInstrumentation",System.identityHashCode(tmp2) + " = ci " + System.identityHashCode(Observable.class) + " fromCallable " + System.identityHashCode(tmp1));
+
+        Observable tmp3 = tmp2.observeOn(AndroidSchedulers.mainThread());
+        Log.i("histInstrumentation",System.identityHashCode(tmp3) + " = ci " + System.identityHashCode(tmp2) + " observeOn " + System.identityHashCode(AndroidSchedulers.mainThread()));
+        Observable tmp4 = tmp3.subscribeOn(AndroidSchedulers.mainThread());
+        Log.i("histInstrumentation",System.identityHashCode(tmp4) + " = ci " + System.identityHashCode(tmp3) + " subscribeOn " + System.identityHashCode(AndroidSchedulers.mainThread()));
+        Consumer after = result -> textView.setText("Data processed successfully!");
+        Consumer err = error -> textView.setText("Error processing data");
+        Disposable tmp5 = tmp4.subscribe(after,err);
+        Log.i("histInstrumentation",System.identityHashCode(tmp5) + " = ci " + System.identityHashCode(tmp4) + " subscribe " + System.identityHashCode(after) + " " + System.identityHashCode(err));
     }
+
+
 
     // Mock method to simulate data processing
     private String processLargeDataSet(ArrayList<String> largeDataSet) {

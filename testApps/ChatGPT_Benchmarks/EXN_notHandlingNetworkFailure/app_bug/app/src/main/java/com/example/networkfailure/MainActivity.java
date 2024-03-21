@@ -15,6 +15,7 @@ import com.android.volley.toolbox.Volley;
 
 import java.lang.reflect.Field;
 
+
 public class MainActivity extends Activity {
     static void dumpFields(Object o, Class clazz){
         Field[] fields = clazz.getDeclaredFields();
@@ -41,18 +42,6 @@ public class MainActivity extends Activity {
         Log.i("histInstrumentation",System.identityHashCode(textView) + " = ci " + System.identityHashCode(this) + " findViewById " + R.id.textView);
 
         fetchUserData();
-    }
-
-    class MyErrorListener implements Response.ErrorListener {
-        MyErrorListener(){
-            //stub
-        }
-        @Override
-        public void onErrorResponse(VolleyError error) {
-            Log.i("histInstrumentation", "cb " + System.identityHashCode(this) + " onErrorResponse " + System.identityHashCode(error));
-            // Here should be the error handling code, but it's missing.
-            // In a real-world scenario, you would handle the error appropriately.
-        }
     }
     private void fetchUserData() {
         String url = new String("https://nonexistantlink.io");
