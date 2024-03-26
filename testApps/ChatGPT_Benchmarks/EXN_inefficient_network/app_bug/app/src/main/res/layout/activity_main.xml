@@ -18,7 +18,8 @@
         android:layout_width="409dp"
         android:layout_height="340dp"
         tools:layout_editor_absoluteX="1dp"
-        tools:layout_editor_absoluteY="1dp" />
+        tools:layout_editor_absoluteY="1dp"
+        tools:ignore="MissingConstraints" />
 
     <TextView
         android:id="@+id/textView"
@@ -26,5 +27,6 @@
         android:layout_height="wrap_content"
         android:text="TextView"
         tools:layout_editor_absoluteX="150dp"
-        tools:layout_editor_absoluteY="511dp" />
+        tools:layout_editor_absoluteY="511dp"
+        tools:ignore="MissingConstraints" />
 </androidx.constraintlayout.widget.ConstraintLayout>

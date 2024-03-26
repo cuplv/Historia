@@ -28,7 +28,8 @@
         android:layout_height="wrap_content"
         android:text="TextView"
         tools:layout_editor_absoluteX="162dp"
-        tools:layout_editor_absoluteY="557dp" />
+        tools:layout_editor_absoluteY="557dp"
+        tools:ignore="MissingConstraints" />
 
     <EditText
         android:id="@+id/usernameInput"
@@ -59,7 +60,6 @@
         android:text="Name"
         app:layout_constraintBottom_toTopOf="@+id/startDownloadButton"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/editTextText" />
+        app:layout_constraintStart_toStartOf="parent"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
