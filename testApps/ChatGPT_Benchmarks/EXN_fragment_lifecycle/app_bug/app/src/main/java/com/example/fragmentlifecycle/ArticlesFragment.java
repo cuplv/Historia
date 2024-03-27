@@ -11,7 +11,7 @@ import android.view.ViewGroup;
 
 public class ArticlesFragment extends Fragment {
 
-    private View rootView;
+    private View rootView = null;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
