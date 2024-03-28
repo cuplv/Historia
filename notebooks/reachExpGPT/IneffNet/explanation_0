@@ -1,0 +1,11 @@
+(    heap:           pure: p-0  !=  NULL && p-3  !=  NULL         types: List(p-0:{3964}, p-1:{978,985,1007,1624,1663 ...}, p-3:{3964}, p-4:{978,985,1007,1624,1663 ...}, p-2:{978,985,1007,1624,1663 ...}, p-5:{978,985,1007,1624,1663 ...})    trace: O(CBEnter I_CBEnter_ActivityonCreate ( _T_,p-3 );O(CIExit I_CIExit_findViewById ( p-5,p-3 );O(CIExit I_CIExit_findViewById ( p-4,p-3 );O(CIExit I_CIExit_fetcharticles ( _T_,_T_,p-3 );O(CBEnter I_CBEnter_ActivityonCreate ( _T_,p-0 );O(CIExit I_CIExit_findViewById ( p-2,p-0 );O(CIExit I_CIExit_findViewById ( p-1,p-0 );O(CIEnter I_CIEnter_fetcharticles ( _T_,_T_,p-0 )) 
+===========
+Future trace:
+ CBEnter void onCreate(android.os.Bundle)( _T_,@4 )
+CIExit  findViewById(( @7,@4 )
+CIExit  findViewById(( @0,@4 )
+CIExit newRequestQueue(( _T_,_T_,@4 )
+CBEnter void onCreate(android.os.Bundle)( _T_,@4 )
+CIExit  findViewById(( @8,@4 )
+CIExit  findViewById(( @6,@4 )
+CIEnter newRequestQueue(( _T_,_T_,@4 )

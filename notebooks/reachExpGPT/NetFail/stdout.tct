@@ -1,0 +1,35 @@
+java.library.path set to: /usr/lib/:/usr/java/packages/lib:/usr/lib/x86_64-linux-gnu/jni:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/usr/lib/jni:/lib:/usr/lib
+remaining tasks: 1 / 2
+    ord depth: 0
+    depth: 0
+remaining tasks: 0 / 2
+    ord depth: 0
+    depth: 0
+    State: ( locals:          heap:           pure:          types: List()    trace: )
+    State: ( locals:          heap:           pure:          types: List()    trace: )
+    Loc  : pre-line: 14 $r2 = new java.lang.StringBuilder
+    Loc  : pre-line: 14 $r2 = new java.lang.StringBuilder
+    Method  : Some(JimpleMethodLoc(<com.example.networkfailure.MyErrorListener: void onErrorResponse(com.android.volley.VolleyError)>))
+    Method  : Some(JimpleMethodLoc(<com.example.networkfailure.MyErrorListener: void onErrorResponse(com.android.volley.VolleyError)>))
+remaining tasks: 0 / 1
+    ord depth: 2
+    depth: 7
+    State: ( locals:          heap:           pure:          types: List(p-0:{3989})    trace: O(CBEnter I_CBEnter_onErrorResponse ( _T_,p-0 ))
+    Loc  : post-line: 45 return
+    Method  : Some(JimpleMethodLoc(<com.example.networkfailure.MainActivity: void onCreate(android.os.Bundle)>))
+ecluded method: JimpleMethodLoc(<com.example.networkfailure.MainActivity: void dumpFields(java.lang.Object,java.lang.Class)>)
+!!!Found witness, terminating other processes.
+Writing trace 0 / 1, length: 407
+Writing trace 0 / 1, length: 5
+witness: 
+ (    heap:           pure: p-2  !=  NULL && p-4  !=  NULL && p-3  !=  NULL && p-1  !=  NULL         types: List(p-0:{3989}, p-1:{3965}, p-3:{3108,3119}, p-4:{3989}, p-2:{3992})    trace: O(CBEnter I_CBEnter_ActivityonCreate ( _T_,p-1 );p-4;p-2;O(CIExit I_CIExit_consRequest ( _T_,p-2,_T_,_T_,_T_,p-4 );O(CIExit I_CIExit_queueAdd ( _T_,p-3,p-2 );O(CBEnter I_CBEnter_onErrorResponse ( _T_,p-0 ))
+last state: 
+ Future trace:
+ CBEnter void onCreate(android.os.Bundle)( _T_,@5 )
+TNew(@7,{2})
+TNew(@2,{3})
+CIExit <init>(( _T_,@2,_T_,_T_,_T_,@7 )
+CIExit  add()( _T_,@4,@2 )
+CBEnter void onErrorResponse()( _T_,@7 )
+
+analysis time(ms): 41941860699

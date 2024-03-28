@@ -1,0 +1,51 @@
+2024-03-14 12:57:27.098  2012-2012  histInstrumentation     com.example.nullptr                  I  cb 2538402 onCreate
+2024-03-14 12:57:27.232  2012-2012  Compatibil...geReporter com.example.nullptr                  D  Compat change id reported: 210923482; UID 10160; state: ENABLED
+2024-03-14 12:57:27.234  2012-2012  histInstrumentation     com.example.nullptr                  I  ci 2538402 setContentView 2131361820
+2024-03-14 12:57:27.235  2012-2012  histInstrumentation     com.example.nullptr                  I   36855048 = new Intent 2538402 66731169
+2024-03-14 12:57:27.235  2012-2012  histInstrumentation     com.example.nullptr                  I   92999366 = new String 232377991
+2024-03-14 12:57:27.235  2012-2012  histInstrumentation     com.example.nullptr                  I   101990836 = new String 131924445
+2024-03-14 12:57:27.235  2012-2012  histInstrumentation     com.example.nullptr                  I  ci 36855048 putExtra 92999366 101990836
+2024-03-14 12:57:27.336  2012-2012  histInstrumentation     com.example.nullptr                  I  ci 2538402 startActivity 36855048
+2024-03-14 12:57:27.422  2012-2012  histInstrumentation     com.example.nullptr                  I  cb 39489553 onCreate
+2024-03-14 12:57:27.431  2012-2012  histInstrumentation     com.example.nullptr                  I  ci 39489553 setContentView 2131361821
+2024-03-14 12:57:27.431  2012-2012  histInstrumentation     com.example.nullptr                  I  200683593 = ci 39489553 getIntent 
+2024-03-14 12:57:27.431  2012-2012  histInstrumentation     com.example.nullptr                  I   201260366 = new String 85184111
+2024-03-14 12:57:27.432  2012-2012  histInstrumentation     com.example.nullptr                  I  0 = ci 200683593 getStringExtra 201260366
+2024-03-14 12:57:27.432  2012-2012  histInstrumentation     com.example.nullptr                  I  187623292 = ci 39489553 findViewById 2131165460
+2024-03-14 12:57:27.433  2012-2012  AndroidRuntime          com.example.nullptr                  D  Shutting down VM
+2024-03-14 12:57:27.434  2012-2012  AndroidRuntime          com.example.nullptr                  E  FATAL EXCEPTION: main
+                                                                                                    Process: com.example.nullptr, PID: 2012
+                                                                                                    java.lang.RuntimeException: Unable to start activity ComponentInfo{com.example.nullptr/com.example.nullptr.SecondActivity}: java.lang.NullPointerException: Attempt to invoke virtual method 'java.lang.String java.lang.String.toUpperCase()' on a null object reference
+                                                                                                    	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:3676)
+                                                                                                    	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:3813)
+                                                                                                    	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:101)
+                                                                                                    	at android.app.servertransaction.TransactionExecutor.executeCallbacks(TransactionExecutor.java:135)
+                                                                                                    	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:95)
+                                                                                                    	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2308)
+                                                                                                    	at android.os.Handler.dispatchMessage(Handler.java:106)
+                                                                                                    	at android.os.Looper.loopOnce(Looper.java:201)
+                                                                                                    	at android.os.Looper.loop(Looper.java:288)
+                                                                                                    	at android.app.ActivityThread.main(ActivityThread.java:7898)
+                                                                                                    	at java.lang.reflect.Method.invoke(Native Method)
+                                                                                                    	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:548)
+                                                                                                    	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:936)
+                                                                                                    Caused by: java.lang.NullPointerException: Attempt to invoke virtual method 'java.lang.String java.lang.String.toUpperCase()' on a null object reference
+                                                                                                    	at com.example.nullptr.SecondActivity.onCreate(SecondActivity.java:25)
+                                                                                                    	at android.app.Activity.performCreate(Activity.java:8290)
+                                                                                                    	at android.app.Activity.performCreate(Activity.java:8269)
+                                                                                                    	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1384)
+                                                                                                    	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:3657)
+                                                                                                    	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:3813) 
+                                                                                                    	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:101) 
+                                                                                                    	at android.app.servertransaction.TransactionExecutor.executeCallbacks(TransactionExecutor.java:135) 
+                                                                                                    	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:95) 
+                                                                                                    	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2308) 
+                                                                                                    	at android.os.Handler.dispatchMessage(Handler.java:106) 
+                                                                                                    	at android.os.Looper.loopOnce(Looper.java:201) 
+                                                                                                    	at android.os.Looper.loop(Looper.java:288) 
+                                                                                                    	at android.app.ActivityThread.main(ActivityThread.java:7898) 
+                                                                                                    	at java.lang.reflect.Method.invoke(Native Method) 
+                                                                                                    	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:548) 
+                                                                                                    	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:936) 
+
+WITNESSED

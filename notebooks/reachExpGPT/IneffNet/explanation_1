@@ -1,0 +1,7 @@
+(    heap:           pure: p-0  !=  NULL && p-1  !=  NULL         types: List(p-0:{3964}, p-1:{3964})    trace: O(CBEnter I_CBEnter_ActivityonResume ( _T_,p-1 );O(CIExit I_CIExit_fetcharticles ( _T_,_T_,p-1 );O(CBEnter I_CBEnter_ActivityonResume ( _T_,p-0 );O(CIEnter I_CIEnter_fetcharticles ( _T_,_T_,p-0 )) 
+===========
+Future trace:
+ CBEnter void onResume()( _T_,@2 )
+CIExit newRequestQueue(( _T_,_T_,@2 )
+CBEnter void onResume()( _T_,@2 )
+CIEnter newRequestQueue(( _T_,_T_,@2 )

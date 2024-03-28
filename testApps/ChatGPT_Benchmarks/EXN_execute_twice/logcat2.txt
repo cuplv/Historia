@@ -1,0 +1,45 @@
+2024-03-10 14:11:44.360  7848-7848  Process                 com.example.bitmapmishandle          I  Sending signal. PID: 7848 SIG: 9
+2024-03-10 14:11:58.277  7925-7925  ziparchive              com.example.bitmapmishandle          W  Unable to open '/data/data/com.example.bitmapmishandle/code_cache/.overlay/base.apk/classes3.dm': No such file or directory
+2024-03-10 14:11:58.278  7925-7925  ziparchive              com.example.bitmapmishandle          W  Unable to open '/data/app/~~expM5ivqvYhq5SI3-da9yw==/com.example.bitmapmishandle-rW1QJE0IEknkY1vJCcP1iA==/base.dm': No such file or directory
+2024-03-10 14:11:58.278  7925-7925  ziparchive              com.example.bitmapmishandle          W  Unable to open '/data/app/~~expM5ivqvYhq5SI3-da9yw==/com.example.bitmapmishandle-rW1QJE0IEknkY1vJCcP1iA==/base.dm': No such file or directory
+2024-03-10 14:11:58.342  7925-7925  GraphicsEnvironment     com.example.bitmapmishandle          V  ANGLE Developer option for 'com.example.bitmapmishandle' set to: 'default'
+2024-03-10 14:11:58.343  7925-7925  GraphicsEnvironment     com.example.bitmapmishandle          V  ANGLE GameManagerService for com.example.bitmapmishandle: false
+2024-03-10 14:11:58.343  7925-7925  GraphicsEnvironment     com.example.bitmapmishandle          V  Neither updatable production driver nor prerelease driver is supported.
+2024-03-10 14:11:58.347  7925-7925  NetworkSecurityConfig   com.example.bitmapmishandle          D  No Network Security Config specified, using platform default
+2024-03-10 14:11:58.347  7925-7925  NetworkSecurityConfig   com.example.bitmapmishandle          D  No Network Security Config specified, using platform default
+2024-03-10 14:11:58.358  7925-7944  libEGL                  com.example.bitmapmishandle          D  loaded /vendor/lib64/egl/libEGL_emulation.so
+2024-03-10 14:11:58.360  7925-7944  libEGL                  com.example.bitmapmishandle          D  loaded /vendor/lib64/egl/libGLESv1_CM_emulation.so
+2024-03-10 14:11:58.363  7925-7925  histInstrumentation     com.example.bitmapmishandle          I  cb 16978004 onCreate
+2024-03-10 14:11:58.365  7925-7944  libEGL                  com.example.bitmapmishandle          D  loaded /vendor/lib64/egl/libGLESv2_emulation.so
+2024-03-10 14:11:58.398  7925-7925  Compatibil...geReporter com.example.bitmapmishandle          D  Compat change id reported: 210923482; UID 10158; state: ENABLED
+2024-03-10 14:11:58.399  7925-7925  histInstrumentation     com.example.bitmapmishandle          I  ci 16978004 setContentView 2131361820
+2024-03-10 14:11:58.399  7925-7925  histInstrumentation     com.example.bitmapmishandle          I   166603391 = new MainActivity$DownloadTask 
+2024-03-10 14:11:58.399  7925-7925  histInstrumentation     com.example.bitmapmishandle          I  143981132 = ci 16978004 findViewById 2131165438
+2024-03-10 14:11:58.400  7925-7925  histInstrumentation     com.example.bitmapmishandle          I  ci 143981132 setOnClickListener 242870933
+2024-03-10 14:11:58.433  7925-7942  HostConnection          com.example.bitmapmishandle          D  createUnique: call
+2024-03-10 14:11:58.433  7925-7942  HostConnection          com.example.bitmapmishandle          D  HostConnection::get() New Host Connection established 0x7541c78e18d0, tid 7942
+2024-03-10 14:11:58.445  7925-7942  HostConnection          com.example.bitmapmishandle          D  HostComposition ext ANDROID_EMU_CHECKSUM_HELPER_v1 ANDROID_EMU_native_sync_v2 ANDROID_EMU_native_sync_v3 ANDROID_EMU_native_sync_v4 ANDROID_EMU_dma_v1 ANDROID_EMU_direct_mem ANDROID_EMU_host_composition_v1 ANDROID_EMU_host_composition_v2 ANDROID_EMU_vulkan ANDROID_EMU_deferred_vulkan_commands ANDROID_EMU_vulkan_null_optional_strings ANDROID_EMU_vulkan_create_resources_with_requirements ANDROID_EMU_YUV_Cache ANDROID_EMU_vulkan_ignored_handles ANDROID_EMU_has_shared_slots_host_memory_allocator ANDROID_EMU_vulkan_free_memory_sync ANDROID_EMU_vulkan_shader_float16_int8 ANDROID_EMU_vulkan_async_queue_submit ANDROID_EMU_vulkan_queue_submit_with_commands ANDROID_EMU_sync_buffer_data ANDROID_EMU_read_color_buffer_dma ANDROID_EMU_hwc_multi_configs GL_OES_EGL_image_external_essl3 GL_OES_vertex_array_object GL_KHR_texture_compression_astc_ldr ANDROID_EMU_host_side_tracing ANDROID_EMU_gles_max_version_3_1 
+2024-03-10 14:11:58.447  7925-7942  OpenGLRenderer          com.example.bitmapmishandle          W  Failed to choose config with EGL_SWAP_BEHAVIOR_PRESERVED, retrying without...
+2024-03-10 14:11:58.447  7925-7942  OpenGLRenderer          com.example.bitmapmishandle          W  Failed to initialize 101010-2 format, error = EGL_SUCCESS
+2024-03-10 14:11:58.448  7925-7942  EGL_emulation           com.example.bitmapmishandle          D  eglCreateContext: 0x7541c78e0b50: maj 3 min 1 rcv 4
+2024-03-10 14:11:58.449  7925-7942  EGL_emulation           com.example.bitmapmishandle          D  eglMakeCurrent: 0x7541c78e0b50: ver 3 1 (tinfo 0x7543e082e080) (first time)
+2024-03-10 14:11:58.460  7925-7942  Gralloc4                com.example.bitmapmishandle          I  mapper 4.x is not supported
+2024-03-10 14:11:58.461  7925-7942  HostConnection          com.example.bitmapmishandle          D  createUnique: call
+2024-03-10 14:11:58.461  7925-7942  HostConnection          com.example.bitmapmishandle          D  HostConnection::get() New Host Connection established 0x7541c78dfa10, tid 7942
+2024-03-10 14:11:58.461  7925-7942  goldfish-address-space  com.example.bitmapmishandle          D  allocate: Ask for block of size 0x100
+2024-03-10 14:11:58.461  7925-7942  goldfish-address-space  com.example.bitmapmishandle          D  allocate: ioctl allocate returned offset 0x3f3ffe000 size 0x2000
+2024-03-10 14:11:58.485  7925-7942  Gralloc4                com.example.bitmapmishandle          W  allocator 4.x is not supported
+2024-03-10 14:11:58.514  7925-7942  HostConnection          com.example.bitmapmishandle          D  HostComposition ext ANDROID_EMU_CHECKSUM_HELPER_v1 ANDROID_EMU_native_sync_v2 ANDROID_EMU_native_sync_v3 ANDROID_EMU_native_sync_v4 ANDROID_EMU_dma_v1 ANDROID_EMU_direct_mem ANDROID_EMU_host_composition_v1 ANDROID_EMU_host_composition_v2 ANDROID_EMU_vulkan ANDROID_EMU_deferred_vulkan_commands ANDROID_EMU_vulkan_null_optional_strings ANDROID_EMU_vulkan_create_resources_with_requirements ANDROID_EMU_YUV_Cache ANDROID_EMU_vulkan_ignored_handles ANDROID_EMU_has_shared_slots_host_memory_allocator ANDROID_EMU_vulkan_free_memory_sync ANDROID_EMU_vulkan_shader_float16_int8 ANDROID_EMU_vulkan_async_queue_submit ANDROID_EMU_vulkan_queue_submit_with_commands ANDROID_EMU_sync_buffer_data ANDROID_EMU_read_color_buffer_dma ANDROID_EMU_hwc_multi_configs GL_OES_EGL_image_external_essl3 GL_OES_vertex_array_object GL_KHR_texture_compression_astc_ldr ANDROID_EMU_host_side_tracing ANDROID_EMU_gles_max_version_3_1 
+2024-03-10 14:11:58.587  7925-7942  Parcel                  com.example.bitmapmishandle          W  Expecting binder but got null!
+2024-03-10 14:12:03.863  7925-7942  EGL_emulation           com.example.bitmapmishandle          D  app_time_stats: avg=472.04ms min=4.17ms max=5092.00ms count=11
+2024-03-10 14:12:03.926  7925-7925  histInstrumentation     com.example.bitmapmishandle          I  cb 242870933 onClick 143981132
+2024-03-10 14:12:03.926  7925-7925  histInstrumentation     com.example.bitmapmishandle          I  176625256 = ci 166603391 getStatus 
+2024-03-10 14:12:03.927  7925-7925  histInstrumentation     com.example.bitmapmishandle          I  ci 166603391 execute 110024486
+2024-03-10 14:12:03.928  7925-7949  histInstrumentation     com.example.bitmapmishandle          I  cb 166603391 doInBackground 
+2024-03-10 14:12:04.490  7925-7925  histInstrumentation     com.example.bitmapmishandle          I  cb 242870933 onClick 143981132
+2024-03-10 14:12:04.490  7925-7925  histInstrumentation     com.example.bitmapmishandle          I  227552701 = ci 166603391 getStatus 
+2024-03-10 14:12:04.491  7925-7925  Compatibil...geReporter com.example.bitmapmishandle          D  Compat change id reported: 147798919; UID 10158; state: ENABLED
+2024-03-10 14:12:04.496  7925-7925  histInstrumentation     com.example.bitmapmishandle          I  ci  makeText 
+2024-03-10 14:12:04.874  7925-7942  EGL_emulation           com.example.bitmapmishandle          D  app_time_stats: avg=15.32ms min=2.83ms max=31.62ms count=60
+2024-03-10 14:12:08.929  7925-7925  histInstrumentation     com.example.bitmapmishandle          I  cb 166603391 onPostExecute 186419971
+2024-03-10 14:12:08.930  7925-7925  System.out              com.example.bitmapmishandle          I  Downloaded from: http://example.com/file.zip

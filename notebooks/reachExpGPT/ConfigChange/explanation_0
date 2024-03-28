@@ -1,0 +1,6 @@
+(    heap:           pure: p-0  !=  NULL && p-1  !=  NULL         types: List(p-0:{3963}, p-1:{3963})    trace: O(CBEnter I_CBEnter_ActivityonCreate ( _T_,p-1 );O(CBExit I_CBExit_ActivityonCreate ( _T_,p-1 );O(CBEnter I_CBEnter_ActivityonDestroy ( _T_,p-0 )) 
+===========
+Future trace:
+ CBEnter void onCreate(android.os.Bundle)( _T_,@2 )
+CBExit void onCreate(android.os.Bundle)( _T_,@2 )
+CBEnter void onDestroy()( _T_,@2 )

@@ -1,0 +1,3 @@
+refuted
+    REFUTED: InternalMethodInvoke(com.example.networkfailure.MyErrorListener,void onErrorResponse(com.android.volley.VolleyError),JimpleMethodLoc(<com.example.networkfailure.MyErrorListener: void onErrorResponse(com.android.volley.VolleyError)>))
+       state: ( locals:          heap:           pure:          types: List()    trace: )
