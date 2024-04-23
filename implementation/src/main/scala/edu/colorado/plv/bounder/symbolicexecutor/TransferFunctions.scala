@@ -793,7 +793,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
               PureConstraint(tgtVal, Equals, rhsPureExpr) +
               PureConstraint(heapPv, NotEquals, NullVal)) ++ // Base must be non null for normal control flow
               possibleHeapCells.removed(pte).flatMap{ // ensure we don't lose disaliasing info
-                case (FieldPtEdge(otherHeapPv, fieldName),_) if true => //TODO: switch on canWeaken
+                case (FieldPtEdge(otherHeapPv, fieldName),_) if !canWeaken =>
                   Some(PureConstraint(otherHeapPv, NotEquals, heapPv))
                 case (_,_) if canWeaken => None
               }

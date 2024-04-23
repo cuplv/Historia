@@ -1,0 +1,45 @@
+2024-03-02 12:39:00.259  9358-9393  libEGL                  com.example.activityleak             D  Emulator has host GPU support, qemu.gles is set to 1.
+2024-03-02 12:39:00.262  9358-9393  libc                    com.example.activityleak             W  Unable to set property "qemu.gles" to "1": connection failed; errno=13 (Permission denied)
+2024-03-02 12:39:00.251  9358-9358  RenderThread            com.example.activityleak             W  type=1400 audit(0.0:240): avc: denied { write } for name="property_service" dev="tmpfs" ino=6808 scontext=u:r:untrusted_app:s0:c175,c256,c512,c768 tcontext=u:object_r:property_socket:s0 tclass=sock_file permissive=0 app=com.example.activityleak
+2024-03-02 12:39:00.279  9358-9393  libEGL                  com.example.activityleak             D  loaded /vendor/lib/egl/libEGL_emulation.so
+2024-03-02 12:39:00.283  9358-9358  histInstrumentation     com.example.activityleak             I  cb 146907790 onCreate
+2024-03-02 12:39:00.294  9358-9393  libEGL                  com.example.activityleak             D  loaded /vendor/lib/egl/libGLESv1_CM_emulation.so
+2024-03-02 12:39:00.298  9358-9358  histInstrumentation     com.example.activityleak             I   30255791 = new Runnable$1 146907790
+2024-03-02 12:39:00.298  9358-9358  histInstrumentation     com.example.activityleak             I   15543996 = new Thread 146907790 
+2024-03-02 12:39:00.300  9358-9393  libEGL                  com.example.activityleak             D  loaded /vendor/lib/egl/libGLESv2_emulation.so
+2024-03-02 12:39:00.300  9358-9358  histInstrumentation     com.example.activityleak             I  ci 15543996 start
+2024-03-02 12:39:00.346  9358-9391  HostConnection          com.example.activityleak             D  HostConnection::get() New Host Connection established 0xd8028300, tid 9391
+2024-03-02 12:39:00.348  9358-9391  HostConnection          com.example.activityleak             D  HostComposition ext ANDROID_EMU_CHECKSUM_HELPER_v1 ANDROID_EMU_native_sync_v2 ANDROID_EMU_native_sync_v3 ANDROID_EMU_native_sync_v4 ANDROID_EMU_dma_v1 ANDROID_EMU_direct_mem ANDROID_EMU_host_composition_v1 ANDROID_EMU_host_composition_v2 ANDROID_EMU_YUV_Cache ANDROID_EMU_sync_buffer_data GL_OES_EGL_image_external_essl3 GL_OES_vertex_array_object GL_KHR_texture_compression_astc_ldr ANDROID_EMU_host_side_tracing ANDROID_EMU_gles_max_version_3_0 
+2024-03-02 12:39:00.350  9358-9391  OpenGLRenderer          com.example.activityleak             W  Failed to choose config with EGL_SWAP_BEHAVIOR_PRESERVED, retrying without...
+2024-03-02 12:39:00.352  9358-9391  EGL_emulation           com.example.activityleak             D  eglCreateContext: 0xe35db680: maj 3 min 0 rcv 3
+2024-03-02 12:39:00.355  9358-9391  EGL_emulation           com.example.activityleak             D  eglMakeCurrent: 0xe35db680: ver 3 0 (tinfo 0xe3636a40)
+2024-03-02 12:39:00.364  9358-9391  Gralloc3                com.example.activityleak             W  mapper 3.x is not supported
+2024-03-02 12:39:00.366  9358-9391  HostConnection          com.example.activityleak             D  createUnique: call
+2024-03-02 12:39:00.366  9358-9391  HostConnection          com.example.activityleak             D  HostConnection::get() New Host Connection established 0xd8028440, tid 9391
+2024-03-02 12:39:00.367  9358-9391  HostConnection          com.example.activityleak             D  HostComposition ext ANDROID_EMU_CHECKSUM_HELPER_v1 ANDROID_EMU_native_sync_v2 ANDROID_EMU_native_sync_v3 ANDROID_EMU_native_sync_v4 ANDROID_EMU_dma_v1 ANDROID_EMU_direct_mem ANDROID_EMU_host_composition_v1 ANDROID_EMU_host_composition_v2 ANDROID_EMU_YUV_Cache ANDROID_EMU_sync_buffer_data GL_OES_EGL_image_external_essl3 GL_OES_vertex_array_object GL_KHR_texture_compression_astc_ldr ANDROID_EMU_host_side_tracing ANDROID_EMU_gles_max_version_3_0 
+2024-03-02 12:39:00.367  9358-9391  eglCodecCommon          com.example.activityleak             D  allocate: Ask for block of size 0x1000
+2024-03-02 12:39:00.368  9358-9391  eglCodecCommon          com.example.activityleak             D  allocate: ioctl allocate returned offset 0x3ff60b000 size 0x2000
+2024-03-02 12:39:00.373  9358-9391  EGL_emulation           com.example.activityleak             D  eglMakeCurrent: 0xe35db680: ver 3 0 (tinfo 0xe3636a40)
+2024-03-02 12:39:05.303  9358-9394  histInstrumentation     com.example.activityleak             I  cb 30255791 run
+2024-03-02 12:39:05.304  9358-9394  histInstrumentation     com.example.activityleak             I  field this$0 146907790
+2024-03-02 12:39:05.748  9358-9398  ProfileInstaller        com.example.activityleak             D  Installing profile for com.example.activityleak
+2024-03-02 12:39:08.908  9358-9391  EGL_emulation           com.example.activityleak             D  eglMakeCurrent: 0xe35db680: ver 3 0 (tinfo 0xe3636a40)
+2024-03-02 12:39:08.910  9358-9358  histInstrumentation     com.example.activityleak             I  cb 146907790onDestroy
+2024-03-02 12:39:08.932  9358-9358  histInstrumentation     com.example.activityleak             I  cb 54828447 onCreate
+2024-03-02 12:39:08.932  9358-9358  histInstrumentation     com.example.activityleak             I   70762220 = new Runnable$1 54828447
+2024-03-02 12:39:08.932  9358-9358  histInstrumentation     com.example.activityleak             I   54828447 = new Thread 242246325
+2024-03-02 12:39:08.933  9358-9358  histInstrumentation     com.example.activityleak             I  ci 242246325 start
+2024-03-02 12:39:08.959  9358-9391  EGL_emulation           com.example.activityleak             D  eglMakeCurrent: 0xe35db680: ver 3 0 (tinfo 0xe3636a40)
+2024-03-02 12:39:10.105  9358-9391  EGL_emulation           com.example.activityleak             D  eglMakeCurrent: 0xe35db680: ver 3 0 (tinfo 0xe3636a40)
+2024-03-02 12:39:10.106  9358-9358  histInstrumentation     com.example.activityleak             I  cb 54828447onDestroy
+2024-03-02 12:39:10.128  9358-9358  histInstrumentation     com.example.activityleak             I  cb 10111906 onCreate
+2024-03-02 12:39:10.128  9358-9358  histInstrumentation     com.example.activityleak             I   101302323 = new Runnable$1 10111906
+2024-03-02 12:39:10.128  9358-9358  histInstrumentation     com.example.activityleak             I   10111906 = new Thread 86544368
+2024-03-02 12:39:10.128  9358-9358  histInstrumentation     com.example.activityleak             I  ci 86544368 start
+2024-03-02 12:39:10.155  9358-9391  EGL_emulation           com.example.activityleak             D  eglMakeCurrent: 0xe35db680: ver 3 0 (tinfo 0xe3636a40)
+2024-03-02 12:39:13.936  9358-9402  histInstrumentation     com.example.activityleak             I  cb 70762220 run
+2024-03-02 12:39:13.936  9358-9402  histInstrumentation     com.example.activityleak             I  field this$0 54828447
+2024-03-02 12:39:15.135  9358-9405  histInstrumentation     com.example.activityleak             I  cb 101302323 run
+2024-03-02 12:39:15.135  9358-9405  histInstrumentation     com.example.activityleak             I  field this$0 10111906
+
+WITNESS

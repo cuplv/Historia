@@ -1,0 +1,364 @@
+[29846][      debug] Loading models took 28.625ms
+[29849][      debug] Sqlite write daemon: starting up
+[29849][      debug] Sqlite write daemon: set up complete, waiting for connections
+[29846][environment] CWD = /Users/shawnmeier/Documents/source/historia/Historia/testApps/ChatGPT_Benchmarks/EXN_fragment_lifecycle/app_bug
+[29846][environment] No .inferconfig file found
+[29846][environment] Project root = /Users/shawnmeier/Documents/source/historia/Historia/testApps/ChatGPT_Benchmarks/EXN_fragment_lifecycle/app_bug
+[29846][environment] INFER_ARGS =   @/var/folders/3c/k88cs2396n1bz5645s69bcg80000gn/T/args.tmp.2f047d
+[29846][environment] command line arguments:   infer run --pulse-only -- ./gradlew assembleDebug
+[29846][environment] Could not retrieve available memory (possibly not on Linux)
+[29846][environment] Active checkers: pulse (C/C++/ObjC, Java)
+[29846][environment] Scheduler: file
+[29846][environment] Cores used: 8
+[29846][environment] Infer version v1.1.0
+[29846][environment] Copyright 2009 - present Facebook. All Rights Reserved.
+[29846][environment] 
+[29846][   progress] Capturing in gradle mode...
+[29846][   progress] javac-stderr: javac 17.0.9
+[29846][environment] openjdk version "17.0.9" 2023-10-17
+OpenJDK Runtime Environment Homebrew (build 17.0.9+0)
+OpenJDK 64-Bit Server VM Homebrew (build 17.0.9+0, mixed mode, sharing)
+  
+------------------------------------------------------------
+Gradle 8.2
+------------------------------------------------------------
+
+Build time:   2023-06-30 18:02:30 UTC
+Revision:     5f4a070a62a31a17438ac998c2b849f4f6892877
+
+Kotlin:       1.8.20
+Groovy:       3.0.17
+Ant:          Apache Ant(TM) version 1.10.13 compiled on January 4 2023
+JVM:          17.0.9 (Homebrew 17.0.9+0)
+OS:           Mac OS X 13.6.1 x86_64
+
+
+[29846][environment] 
+[29846][   progress] [GRADLE] ./gradlew --debug assembleDebug >'/Users/shawnmeier/Documents/source/historia/Historia/testApps/ChatGPT_Benchmarks/EXN_fragment_lifecycle/app_bug/infer-out/tmp/gradle_output.tmp.0134d5.log'
+[29846][   progress] [GRADLE] running gradle took 3.173s
+[29846][   progress] 
+[29846][environment] openjdk version "17.0.9" 2023-10-17
+OpenJDK Runtime Environment Homebrew (build 17.0.9+0)
+OpenJDK 64-Bit Server VM Homebrew (build 17.0.9+0, mixed mode, sharing)
+  
+------------------------------------------------------------
+Gradle 8.2
+------------------------------------------------------------
+
+Build time:   2023-06-30 18:02:30 UTC
+Revision:     5f4a070a62a31a17438ac998c2b849f4f6892877
+
+Kotlin:       1.8.20
+Groovy:       3.0.17
+Ant:          Apache Ant(TM) version 1.10.13 compiled on January 4 2023
+JVM:          17.0.9 (Homebrew 17.0.9+0)
+OS:           Mac OS X 13.6.1 x86_64
+
+
+[29846][environment] 
+[29846][   progress] [GRADLE] ./gradlew --debug assembleDebug >'/Users/shawnmeier/Documents/source/historia/Historia/testApps/ChatGPT_Benchmarks/EXN_fragment_lifecycle/app_bug/infer-out/tmp/gradle_output.tmp.0134d5.log'
+[29846][   progress] [GRADLE] running gradle took 3.173s
+[29846][   progress] 
+[29846][environment] openjdk version "17.0.9" 2023-10-17
+OpenJDK Runtime Environment Homebrew (build 17.0.9+0)
+OpenJDK 64-Bit Server VM Homebrew (build 17.0.9+0, mixed mode, sharing)
+  
+------------------------------------------------------------
+Gradle 8.2
+------------------------------------------------------------
+
+Build time:   2023-06-30 18:02:30 UTC
+Revision:     5f4a070a62a31a17438ac998c2b849f4f6892877
+
+Kotlin:       1.8.20
+Groovy:       3.0.17
+Ant:          Apache Ant(TM) version 1.10.13 compiled on January 4 2023
+JVM:          17.0.9 (Homebrew 17.0.9+0)
+OS:           Mac OS X 13.6.1 x86_64
+
+
+[29846][environment] 
+[29846][   progress] [GRADLE] ./gradlew --debug assembleDebug >'/Users/shawnmeier/Documents/source/historia/Historia/testApps/ChatGPT_Benchmarks/EXN_fragment_lifecycle/app_bug/infer-out/tmp/gradle_output.tmp.0134d5.log'
+[29846][   progress] [GRADLE] running gradle took 3.173s
+[29846][   progress] 
+[29846][environment] openjdk version "17.0.9" 2023-10-17
+OpenJDK Runtime Environment Homebrew (build 17.0.9+0)
+OpenJDK 64-Bit Server VM Homebrew (build 17.0.9+0, mixed mode, sharing)
+  
+------------------------------------------------------------
+Gradle 8.2
+------------------------------------------------------------
+
+Build time:   2023-06-30 18:02:30 UTC
+Revision:     5f4a070a62a31a17438ac998c2b849f4f6892877
+
+Kotlin:       1.8.20
+Groovy:       3.0.17
+Ant:          Apache Ant(TM) version 1.10.13 compiled on January 4 2023
+JVM:          17.0.9 (Homebrew 17.0.9+0)
+OS:           Mac OS X 13.6.1 x86_64
+
+
+[29846][environment] 
+[29846][   progress] [GRADLE] ./gradlew --debug assembleDebug >'/Users/shawnmeier/Documents/source/historia/Historia/testApps/ChatGPT_Benchmarks/EXN_fragment_lifecycle/app_bug/infer-out/tmp/gradle_output.tmp.0134d5.log'
+[29846][   progress] [GRADLE] running gradle took 3.173s
+[29846][   progress] 
+[29846][environment] openjdk version "17.0.9" 2023-10-17
+OpenJDK Runtime Environment Homebrew (build 17.0.9+0)
+OpenJDK 64-Bit Server VM Homebrew (build 17.0.9+0, mixed mode, sharing)
+  
+------------------------------------------------------------
+Gradle 8.2
+------------------------------------------------------------
+
+Build time:   2023-06-30 18:02:30 UTC
+Revision:     5f4a070a62a31a17438ac998c2b849f4f6892877
+
+Kotlin:       1.8.20
+Groovy:       3.0.17
+Ant:          Apache Ant(TM) version 1.10.13 compiled on January 4 2023
+JVM:          17.0.9 (Homebrew 17.0.9+0)
+OS:           Mac OS X 13.6.1 x86_64
+
+
+[29846][environment] 
+[29846][   progress] [GRADLE] ./gradlew --debug assembleDebug >'/Users/shawnmeier/Documents/source/historia/Historia/testApps/ChatGPT_Benchmarks/EXN_fragment_lifecycle/app_bug/infer-out/tmp/gradle_output.tmp.0134d5.log'
+[29846][   progress] [GRADLE] running gradle took 3.173s
+[29846][   progress] 
+[29846][environment] openjdk version "17.0.9" 2023-10-17
+OpenJDK Runtime Environment Homebrew (build 17.0.9+0)
+OpenJDK 64-Bit Server VM Homebrew (build 17.0.9+0, mixed mode, sharing)
+  
+------------------------------------------------------------
+Gradle 8.2
+------------------------------------------------------------
+
+Build time:   2023-06-30 18:02:30 UTC
+Revision:     5f4a070a62a31a17438ac998c2b849f4f6892877
+
+Kotlin:       1.8.20
+Groovy:       3.0.17
+Ant:          Apache Ant(TM) version 1.10.13 compiled on January 4 2023
+JVM:          17.0.9 (Homebrew 17.0.9+0)
+OS:           Mac OS X 13.6.1 x86_64
+
+
+[29846][environment] 
+[29846][   progress] [GRADLE] ./gradlew --debug assembleDebug >'/Users/shawnmeier/Documents/source/historia/Historia/testApps/ChatGPT_Benchmarks/EXN_fragment_lifecycle/app_bug/infer-out/tmp/gradle_output.tmp.0134d5.log'
+[29846][   progress] [GRADLE] running gradle took 3.173s
+[29846][   progress] 
+[29846][environment] openjdk version "17.0.9" 2023-10-17
+OpenJDK Runtime Environment Homebrew (build 17.0.9+0)
+OpenJDK 64-Bit Server VM Homebrew (build 17.0.9+0, mixed mode, sharing)
+  
+------------------------------------------------------------
+Gradle 8.2
+------------------------------------------------------------
+
+Build time:   2023-06-30 18:02:30 UTC
+Revision:     5f4a070a62a31a17438ac998c2b849f4f6892877
+
+Kotlin:       1.8.20
+Groovy:       3.0.17
+Ant:          Apache Ant(TM) version 1.10.13 compiled on January 4 2023
+JVM:          17.0.9 (Homebrew 17.0.9+0)
+OS:           Mac OS X 13.6.1 x86_64
+
+
+[29846][environment] 
+[29846][   progress] [GRADLE] ./gradlew --debug assembleDebug >'/Users/shawnmeier/Documents/source/historia/Historia/testApps/ChatGPT_Benchmarks/EXN_fragment_lifecycle/app_bug/infer-out/tmp/gradle_output.tmp.0134d5.log'
+[29846][   progress] [GRADLE] running gradle took 3.173s
+[29846][   progress] 
+[29846][environment] openjdk version "17.0.9" 2023-10-17
+OpenJDK Runtime Environment Homebrew (build 17.0.9+0)
+OpenJDK 64-Bit Server VM Homebrew (build 17.0.9+0, mixed mode, sharing)
+  
+------------------------------------------------------------
+Gradle 8.2
+------------------------------------------------------------
+
+Build time:   2023-06-30 18:02:30 UTC
+Revision:     5f4a070a62a31a17438ac998c2b849f4f6892877
+
+Kotlin:       1.8.20
+Groovy:       3.0.17
+Ant:          Apache Ant(TM) version 1.10.13 compiled on January 4 2023
+JVM:          17.0.9 (Homebrew 17.0.9+0)
+OS:           Mac OS X 13.6.1 x86_64
+
+
+[29846][environment] 
+[29846][   progress] [GRADLE] ./gradlew --debug assembleDebug >'/Users/shawnmeier/Documents/source/historia/Historia/testApps/ChatGPT_Benchmarks/EXN_fragment_lifecycle/app_bug/infer-out/tmp/gradle_output.tmp.0134d5.log'
+[29846][   progress] [GRADLE] running gradle took 3.173s
+[29846][   progress] 
+[29846][environment] openjdk version "17.0.9" 2023-10-17
+OpenJDK Runtime Environment Homebrew (build 17.0.9+0)
+OpenJDK 64-Bit Server VM Homebrew (build 17.0.9+0, mixed mode, sharing)
+  
+------------------------------------------------------------
+Gradle 8.2
+------------------------------------------------------------
+
+Build time:   2023-06-30 18:02:30 UTC
+Revision:     5f4a070a62a31a17438ac998c2b849f4f6892877
+
+Kotlin:       1.8.20
+Groovy:       3.0.17
+Ant:          Apache Ant(TM) version 1.10.13 compiled on January 4 2023
+JVM:          17.0.9 (Homebrew 17.0.9+0)
+OS:           Mac OS X 13.6.1 x86_64
+
+
+[29846][environment] 
+[29846][   progress] [GRADLE] ./gradlew --debug assembleDebug >'/Users/shawnmeier/Documents/source/historia/Historia/testApps/ChatGPT_Benchmarks/EXN_fragment_lifecycle/app_bug/infer-out/tmp/gradle_output.tmp.0134d5.log'
+[29846][   progress] [GRADLE] running gradle took 3.173s
+[29846][   progress] 
+[30020][      debug] Loading models took 28.308ms
+[30020][environment] CWD = /Users/shawnmeier/Documents/source/historia/Historia/testApps/ChatGPT_Benchmarks/EXN_fragment_lifecycle/app_bug
+[30020][environment] No .inferconfig file found
+[30020][environment] Project root = /Users/shawnmeier/Documents/source/historia/Historia/testApps/ChatGPT_Benchmarks/EXN_fragment_lifecycle/app_bug
+[30020][environment] INFER_ARGS =   @/var/folders/3c/k88cs2396n1bz5645s69bcg80000gn/T/args.tmp.26d991
+[30020][environment] command line arguments:   /usr/local/Cellar/infer/1.1.0_1/lib/infer/infer/bin/infer
+[30020][environment]                           capture -j 1 -o
+[30020][environment]                           /Users/shawnmeier/Documents/source/historia/Historia/testApps/ChatGPT_Benchmarks/EXN_fragment_lifecycle/app_bug/infer-out/tmp/capture_target.tmp.bQLl3L
+[30020][environment]                           -- javac
+[30020][environment]                           @/Users/shawnmeier/Documents/source/historia/Historia/testApps/ChatGPT_Benchmarks/EXN_fragment_lifecycle/app_bug/infer-out/tmp/gradle_files.tmp.3f25af
+[30020][environment]                           -source 1.8 -target 1.8 -d
+[30020][environment]                           /Users/shawnmeier/Documents/source/historia/Historia/testApps/ChatGPT_Benchmarks/EXN_fragment_lifecycle/app_bug/app/build/intermediates/javac/debug/classes
+[30020][environment]                           -encoding UTF-8 -bootclasspath
+[30020][environment]                           /Users/shawnmeier/Library/Android/sdk/platforms/android-34/android.jar:/Users/shawnmeier/Library/Android/sdk/build-tools/34.0.0/core-lambda-stubs.jar
+[30020][environment]                           -g -sourcepath "" -proc:none -s
+[30020][environment]                           /Users/shawnmeier/Documents/source/historia/Historia/testApps/ChatGPT_Benchmarks/EXN_fragment_lifecycle/app_bug/app/build/generated/ap_generated_sources/debug/out
+[30020][environment]                           -XDuseUnsharedTable=true -classpath
+[30020][environment]                           /Users/shawnmeier/Documents/source/historia/Historia/testApps/ChatGPT_Benchmarks/EXN_fragment_lifecycle/app_bug/app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debug/R.jar:/Users/shawnmeier/.gradle/caches/transforms-3/76d230d0492d8cea9f838fbaeaa5646e/transformed/constraintlayout-2.1.4-api.jar:/Users/shawnmeier/.gradle/caches/transforms-3/b92e87725cf049fc112b8b1899def5fd/transformed/fragment-1.4.1-api.jar:/Users/shawnmeier/.gradle/caches/transforms-3/06c49799c5840cb94430300b9a1d7608/transformed/core-ktx-1.2.0-api.jar:/Users/shawnmeier/.gradle/caches/transforms-3/38a7ddb0bd8c1c0e1178a4957be5e79c/transformed/viewpager-1.0.0-api.jar:/Users/shawnmeier/.gradle/caches/transforms-3/b3e545b03d8e61fd194029e8d7870843/transformed/loader-1.0.0-api.jar:/Users/shawnmeier/.gradle/caches/transforms-3/f0b328dec2c3d7cb910bbdc0faf78368/transformed/activity-1.2.4-api.jar:/Users/shawnmeier/.gradle/caches/transforms-3/d4ab3b94e1ca5b95ec4c54cec540d97c/transformed/customview-1.0.0-api.jar:/Users/shawnmeier/.gradle/caches/transforms-3/492ced5578d170a7a5b669a8338008a7/transformed/core-1.3.2-api.jar:/Users/shawnmeier/.gradle/caches/transforms-3/28f4e29a76afbaad213685c3718b79ca/transformed/versionedparcelable-1.1.0-api.jar:/Users/shawnmeier/.gradle/caches/modules-2/files-2.1/androidx.collection/collection/1.1.0/1f27220b47669781457de0d600849a5de0e89909/collection-1.1.0.jar:/Users/shawnmeier/.gradle/caches/transforms-3/0511a05a486911f8aea18d82e44574fc/transformed/lifecycle-viewmodel-savedstate-2.3.1-api.jar:/Users/shawnmeier/.gradle/caches/transforms-3/0a2ba0ce58792435a829504ca527059c/transformed/lifecycle-viewmodel-2.3.1-api.jar:/Users/shawnmeier/.gradle/caches/transforms-3/43f77cd76a4f6d8b6dea0f21ad302b43/transformed/savedstate-1.1.0-api.jar:/Users/shawnmeier/.gradle/caches/transforms-3/17bb6ee3c2a0c2b32dc7a56803695dd5/transformed/lifecycle-runtime-2.3.1-api.jar:/Users/shawnmeier/.gradle/caches/transforms-3/a188a060c0b861a2002426240f0eca77/transformed/lifecycle-livedata-2.0.0-api.jar:/Users/shawnmeier/.gradle/caches/transforms-3/24e75a2f334d5e9bf223aba3edcb4fe1/transformed/lifecycle-livedata-core-2.3.1-api.jar:/Users/shawnmeier/.gradle/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-common/2.3.1/fc466261d52f4433863642fb40d12441ae274a98/lifecycle-common-2.3.1.jar:/Users/shawnmeier/.gradle/caches/transforms-3/914b9fce610f4cf06b58c9f374d14745/transformed/core-runtime-2.1.0-api.jar:/Users/shawnmeier/.gradle/caches/modules-2/files-2.1/androidx.arch.core/core-common/2.1.0/b3152fc64428c9354344bd89848ecddc09b6f07e/core-common-2.1.0.jar:/Users/shawnmeier/.gradle/caches/modules-2/files-2.1/androidx.annotation/annotation/1.1.0/e3a6fb2f40e3a3842e6b7472628ba4ce416ea4c8/annotation-1.1.0.jar:/Users/shawnmeier/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib/1.5.31/6628d61d0f5603568e72d2d5915d2c034b4f1c55/kotlin-stdlib-1.5.31.jar:/Users/shawnmeier/.gradle/caches/modules-2/files-2.1/org.jetbrains/annotations/13.0/919f0dfe192fb4e063e7dacadee7f8bb9a2672a9/annotations-13.0.jar:/Users/shawnmeier/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib-common/1.5.31/43331609c7de811fed085e0dfd150874b157c32/kotlin-stdlib-common-1.5.31.jar:/Users/shawnmeier/.gradle/caches/transforms-3/19217ae8e2881fcee01187883bcd8f86/transformed/annotation-experimental-1.0.0-api.jar
+[30020][environment] Could not retrieve available memory (possibly not on Linux)
+[30020][environment] Active checkers: pulse (C/C++/ObjC, Java)
+[30020][      debug] Current working directory: '/Users/shawnmeier/Documents/source/historia/Historia/testApps/ChatGPT_Benchmarks/EXN_fragment_lifecycle/app_bug'
+[30020][      debug] Trying to execute: javac '-J-Duser.language=en' '@/Users/shawnmeier/Documents/source/historia/Historia/testApps/ChatGPT_Benchmarks/EXN_fragment_lifecycle/app_bug/infer-out/tmp/gradle_files.tmp.3f25af' '@/Users/shawnmeier/Documents/source/historia/Historia/testApps/ChatGPT_Benchmarks/EXN_fragment_lifecycle/app_bug/infer-out/tmp/capture_target.tmp.bQLl3L/tmp/javac_args.tmp.c2c54d' 2>'/Users/shawnmeier/Documents/source/historia/Historia/testApps/ChatGPT_Benchmarks/EXN_fragment_lifecycle/app_bug/infer-out/tmp/capture_target.tmp.bQLl3L/tmp/javac.tmp.0b83c7.out'
+[30020][      debug] *** Success. Logs:
+[30020][      debug] Translating 3 source files (3 classes)
+[30020][      debug] done capturing all files
+[30020][      debug] GC stats for capture:
+[30020][      debug]   minor_words: 3.56187e+07
+[30020][      debug]   promoted_words: 4.42884e+06
+[30020][      debug]   major_words: 7.95143e+06
+[30020][      debug]   minor_collections: 53
+[30020][      debug]   major_collections: 5
+[30020][      debug]   compactions: 0
+[30020][      debug]   top_heap_words: 5392896
+[30020][      debug]   
+[30020][      debug] GC stats for main_process_full:
+[30020][      debug]   minor_words: 3.74348e+07
+[30020][      debug]   promoted_words: 4.59128e+06
+[30020][      debug]   major_words: 8.67855e+06
+[30020][      debug]   minor_collections: 58
+[30020][      debug]   major_collections: 7
+[30020][      debug]   compactions: 1
+[30020][      debug]   top_heap_words: 5392896
+[30020][      debug]   
+[30020][environment] Scheduler: file
+[30020][environment] Cores used: 1
+[30020][environment] 
+[29846][      debug] [GRADLE] infer processed 1 lines in 1.709s
+[29846][      debug] GC stats for capture:
+[29846][      debug]   minor_words: 1.89311e+06
+[29846][      debug]   promoted_words: 327117
+[29846][      debug]   major_words: 362504
+[29846][      debug]   minor_collections: 3
+[29846][      debug]   major_collections: 2
+[29846][      debug]   compactions: 1
+[29846][      debug]   top_heap_words: 1157632
+[29846][      debug]   
+[29846][   progress] Merging captured Buck targets...
+[29846][   progress] Merging type environments took 47.995ms, of which 45.166ms were spent storing the global tenv
+[29846][   progress] Merging 1 captured Buck targets took 81.09ms
+[29846][   progress] 
+[29846][environment] Parallel jobs: 8
+[29846][   progress] Found 3 source files to analyze in /Users/shawnmeier/Documents/source/historia/Historia/testApps/ChatGPT_Benchmarks/EXN_fragment_lifecycle/app_bug/infer-out
+[30092][   progress] app/src/main/java/com/example/fragmentlifecycle/ArticlesFragment.java starting
+[30094][   progress] app/src/main/java/com/example/fragmentlifecycle/MainActivity.java starting
+[30093][   progress] app/src/main/java/android/fake/IntArrayList.java starting
+[30093][   progress] app/src/main/java/android/fake/IntArrayList.java DONE
+[30092][   progress] app/src/main/java/com/example/fragmentlifecycle/ArticlesFragment.java DONE
+[30094][   progress] app/src/main/java/com/example/fragmentlifecycle/MainActivity.java DONE
+[29846][      debug] Backend stats:
+[29846][      debug]   summary_file_try_load= 166
+[29846][      debug]   summary_read_from_disk= 1
+[29846][      debug]   summary_cache_hits= 6 (3%)
+[29846][      debug]   summary_cache_misses= 166
+[29846][      debug]   ondemand_procs_analyzed= 12
+[29846][      debug]   ondemand_local_cache_hits= 71 (65%)
+[29846][      debug]   ondemand_local_cache_misses= 37
+[29846][      debug]   proc_locker_lock_time_user= 0.00000000
+[29846][      debug]   proc_locker_lock_time_sys= 0.00000000
+[29846][      debug]   proc_locker_lock_time_wall= 0.00000000
+[29846][      debug]   proc_locker_unlock_time_user= 0.00000000
+[29846][      debug]   proc_locker_unlock_time_sys= 0.00000000
+[29846][      debug]   proc_locker_unlock_time_wall= 0.00000000
+[29846][      debug]   restart_scheduler_useful_time_user= 0.00000000
+[29846][      debug]   restart_scheduler_useful_time_sys= 0.00000000
+[29846][      debug]   restart_scheduler_useful_time_wall= 0.00000000
+[29846][      debug]   restart_scheduler_total_time_user= 0.00000000
+[29846][      debug]   restart_scheduler_total_time_sys= 0.00000000
+[29846][      debug]   restart_scheduler_total_time_wall= 0.00000000
+[29846][      debug]   
+[29846][      debug] GC stats for backend_stats.gc_stats_add.:
+[29846][      debug]   minor_words: 3.50984e+06
+[29846][      debug]   promoted_words: 120065
+[29846][      debug]   major_words: 177589
+[29846][      debug]   minor_collections: 3
+[29846][      debug]   major_collections: 0
+[29846][      debug]   compactions: 0
+[29846][      debug]   top_heap_words: 11186176
+[29846][      debug]   
+[29846][      debug] GC stats for backend_stats.gc_stats_max.:
+[29846][      debug]   minor_words: 2.26167e+06
+[29846][      debug]   promoted_words: 68130
+[29846][      debug]   major_words: 103457
+[29846][      debug]   minor_collections: 2
+[29846][      debug]   major_collections: 0
+[29846][      debug]   compactions: 0
+[29846][      debug]   top_heap_words: 1398272
+[29846][      debug]   
+[29846][      debug] Average over 8 processes
+[29846][      debug] GC stats for backend_stats.gc_stats_average.:
+[29846][      debug]   minor_words: 438730
+[29846][      debug]   promoted_words: 15008.1
+[29846][      debug]   major_words: 22198.6
+[29846][      debug]   minor_collections: 0
+[29846][      debug]   major_collections: 0
+[29846][      debug]   compactions: 0
+[29846][      debug]   top_heap_words: 1398272
+[29846][      debug]   
+[29846][      debug] Analysis phase finished in 61.35ms
+[29846][      debug] backend_stats.scheduler_process_analysis_time_user= 0.02110500
+[29846][      debug] backend_stats.scheduler_process_analysis_time_sys= 0.01392200
+[29846][      debug] backend_stats.scheduler_process_analysis_time_wall= 0.06134970
+[29846][      debug] GC stats for analysis_scheduler:
+[29846][      debug]   minor_words: 490333
+[29846][      debug]   promoted_words: 28610
+[29846][      debug]   major_words: 37316
+[29846][      debug]   minor_collections: 1
+[29846][      debug]   major_collections: 2
+[29846][      debug]   compactions: 1
+[29846][      debug]   top_heap_words: 1398272
+[29846][      debug]   
+[29846][      debug] GC stats for report:
+[29846][      debug]   minor_words: 4747
+[29846][      debug]   promoted_words: 0
+[29846][      debug]   major_words: 0
+[29846][      debug]   minor_collections: 0
+[29846][      debug]   major_collections: 0
+[29846][      debug]   compactions: 0
+[29846][      debug]   top_heap_words: 1398272
+[29846][      debug]   
+[29846][      debug] GC stats for main_process_full:
+[29846][      debug]   minor_words: 4.6598e+06
+[29846][      debug]   promoted_words: 644443
+[29846][      debug]   major_words: 1.60683e+06
+[29846][      debug]   minor_collections: 10
+[29846][      debug]   major_collections: 6
+[29846][      debug]   compactions: 3
+[29846][      debug]   top_heap_words: 1398272
+[29846][      debug]   
+[29849][      debug] Sqlite write daemon: terminating

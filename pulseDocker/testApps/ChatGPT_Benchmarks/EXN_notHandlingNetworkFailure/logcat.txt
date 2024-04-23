@@ -1,0 +1,61 @@
+   V  ANGLE Developer option for 'com.example.networkfailure' set to: 'default'
+2024-03-14 15:27:53.225  4809-4809  GraphicsEnvironment     com.example.networkfailure           V  ANGLE GameManagerService for com.example.networkfailure: false
+2024-03-14 15:27:53.226  4809-4809  GraphicsEnvironment     com.example.networkfailure           V  Neither updatable production driver nor prerelease driver is supported.
+2024-03-14 15:27:53.230  4809-4809  NetworkSecurityConfig   com.example.networkfailure           D  No Network Security Config specified, using platform default
+2024-03-14 15:27:53.232  4809-4809  NetworkSecurityConfig   com.example.networkfailure           D  No Network Security Config specified, using platform default
+2024-03-14 15:27:53.293  4809-4809  histInstrumentation     com.example.networkfailure           I  cb 102443281 onCreate
+2024-03-14 15:27:53.325  4809-4844  libEGL                  com.example.networkfailure           D  loaded /vendor/lib64/egl/libEGL_emulation.so
+2024-03-14 15:27:53.331  4809-4844  libEGL                  com.example.networkfailure           D  loaded /vendor/lib64/egl/libGLESv1_CM_emulation.so
+2024-03-14 15:27:53.343  4809-4844  libEGL                  com.example.networkfailure           D  loaded /vendor/lib64/egl/libGLESv2_emulation.so
+2024-03-14 15:27:53.412  4809-4809  Compatibil...geReporter com.example.networkfailure           D  Compat change id reported: 210923482; UID 10164; state: ENABLED
+2024-03-14 15:27:53.472  4809-4809  histInstrumentation     com.example.networkfailure           I  ci 102443281 setContentView 2131361820
+2024-03-14 15:27:53.472  4809-4809  histInstrumentation     com.example.networkfailure           I  210199125 = ci 102443281 findViewById 2131165461
+2024-03-14 15:27:53.472  4809-4809  histInstrumentation     com.example.networkfailure           I   140047466 = new String 206867803
+2024-03-14 15:27:53.486  4809-4809  histInstrumentation     com.example.networkfailure           I   ci 41163256 new RequestQueue 102443281
+2024-03-14 15:27:53.486  4809-4809  histInstrumentation     com.example.networkfailure           I   153669329 = new MyErrorListener 
+2024-03-14 15:27:53.486  4809-4809  histInstrumentation     com.example.networkfailure           I   201977142 = new MyListener 
+2024-03-14 15:27:53.488  4809-4809  histInstrumentation     com.example.networkfailure           I   71607351 = new StringRequest 80534948 140047466 201977142 153669329
+2024-03-14 15:27:53.488  4809-4809  histInstrumentation     com.example.networkfailure           I   ci 127567629 add 71607351
+2024-03-14 15:27:53.706  4809-4842  HostConnection          com.example.networkfailure           D  createUnique: call
+2024-03-14 15:27:53.706  4809-4842  HostConnection          com.example.networkfailure           D  HostConnection::get() New Host Connection established 0x7e3937f05f10, tid 4842
+2024-03-14 15:27:53.724  4809-4842  HostConnection          com.example.networkfailure           D  HostComposition ext ANDROID_EMU_CHECKSUM_HELPER_v1 ANDROID_EMU_native_sync_v2 ANDROID_EMU_native_sync_v3 ANDROID_EMU_native_sync_v4 ANDROID_EMU_dma_v1 ANDROID_EMU_direct_mem ANDROID_EMU_host_composition_v1 ANDROID_EMU_host_composition_v2 ANDROID_EMU_vulkan ANDROID_EMU_deferred_vulkan_commands ANDROID_EMU_vulkan_null_optional_strings ANDROID_EMU_vulkan_create_resources_with_requirements ANDROID_EMU_YUV_Cache ANDROID_EMU_vulkan_ignored_handles ANDROID_EMU_has_shared_slots_host_memory_allocator ANDROID_EMU_vulkan_free_memory_sync ANDROID_EMU_vulkan_shader_float16_int8 ANDROID_EMU_vulkan_async_queue_submit ANDROID_EMU_vulkan_queue_submit_with_commands ANDROID_EMU_sync_buffer_data ANDROID_EMU_read_color_buffer_dma ANDROID_EMU_hwc_multi_configs GL_OES_EGL_image_external_essl3 GL_OES_vertex_array_object GL_KHR_texture_compression_astc_ldr ANDROID_EMU_host_side_tracing ANDROID_EMU_gles_max_version_3_1 
+2024-03-14 15:27:53.729  4809-4842  OpenGLRenderer          com.example.networkfailure           W  Failed to choose config with EGL_SWAP_BEHAVIOR_PRESERVED, retrying without...
+2024-03-14 15:27:53.729  4809-4842  OpenGLRenderer          com.example.networkfailure           W  Failed to initialize 101010-2 format, error = EGL_SUCCESS
+2024-03-14 15:27:53.730  4809-4842  EGL_emulation           com.example.networkfailure           D  eglCreateContext: 0x7e3937f06c90: maj 3 min 1 rcv 4
+2024-03-14 15:27:53.734  4809-4842  EGL_emulation           com.example.networkfailure           D  eglMakeCurrent: 0x7e3937f06c90: ver 3 1 (tinfo 0x7e3b56d94080) (first time)
+2024-03-14 15:27:53.759  4809-4842  Gralloc4                com.example.networkfailure           I  mapper 4.x is not supported
+2024-03-14 15:27:53.760  4809-4842  HostConnection          com.example.networkfailure           D  createUnique: call
+2024-03-14 15:27:53.760  4809-4842  HostConnection          com.example.networkfailure           D  HostConnection::get() New Host Connection established 0x7e3937f071d0, tid 4842
+2024-03-14 15:27:53.761  4809-4842  goldfish-address-space  com.example.networkfailure           D  allocate: Ask for block of size 0x100
+2024-03-14 15:27:53.761  4809-4842  goldfish-address-space  com.example.networkfailure           D  allocate: ioctl allocate returned offset 0x3f3ffe000 size 0x2000
+2024-03-14 15:27:53.801  4809-4842  Gralloc4                com.example.networkfailure           W  allocator 4.x is not supported
+2024-03-14 15:27:53.821  4809-4842  HostConnection          com.example.networkfailure           D  HostComposition ext ANDROID_EMU_CHECKSUM_HELPER_v1 ANDROID_EMU_native_sync_v2 ANDROID_EMU_native_sync_v3 ANDROID_EMU_native_sync_v4 ANDROID_EMU_dma_v1 ANDROID_EMU_direct_mem ANDROID_EMU_host_composition_v1 ANDROID_EMU_host_composition_v2 ANDROID_EMU_vulkan ANDROID_EMU_deferred_vulkan_commands ANDROID_EMU_vulkan_null_optional_strings ANDROID_EMU_vulkan_create_resources_with_requirements ANDROID_EMU_YUV_Cache ANDROID_EMU_vulkan_ignored_handles ANDROID_EMU_has_shared_slots_host_memory_allocator ANDROID_EMU_vulkan_free_memory_sync ANDROID_EMU_vulkan_shader_float16_int8 ANDROID_EMU_vulkan_async_queue_submit ANDROID_EMU_vulkan_queue_submit_with_commands ANDROID_EMU_sync_buffer_data ANDROID_EMU_read_color_buffer_dma ANDROID_EMU_hwc_multi_configs GL_OES_EGL_image_external_essl3 GL_OES_vertex_array_object GL_KHR_texture_compression_astc_ldr ANDROID_EMU_host_side_tracing ANDROID_EMU_gles_max_version_3_1 
+2024-03-14 15:27:54.586  4809-4842  Parcel                  com.example.networkfailure           W  Expecting binder but got null!
+2024-03-14 15:27:54.589  4809-4809  Choreographer           com.example.networkfailure           I  Skipped 60 frames!  The application may be doing too much work on its main thread.
+2024-03-14 15:27:54.595  4809-4809  histInstrumentation     com.example.networkfailure           I  cb 153669329 onErrorResponse 84884969
+2024-03-14 15:27:54.599  4809-4836  OpenGLRenderer          com.example.networkfailure           I  Davey! duration=1039ms; Flags=1, FrameTimelineVsyncId=12489, IntendedVsync=4597431784255, Vsync=4597448450921, InputEventId=0, HandleInputStart=4597449968007, AnimationStart=4597449972265, PerformTraversalsStart=4597449974511, DrawStart=4597710031592, FrameDeadline=4597448450921, FrameInterval=4597449926287, FrameStartTime=16666666, SyncQueued=4597720606550, SyncStart=4597730350064, IssueDrawCommandsStart=4597731343676, SwapBuffers=4598433889757, FrameCompleted=4598481077999, DequeueBufferDuration=10839, QueueBufferDuration=356049, GpuCompleted=4598481077999, SwapBuffersCompleted=4598464383376, DisplayPresentTime=0, CommandSubmissionCompleted=4598433889757, 
+2024-03-14 15:27:54.619  4809-4836  OpenGLRenderer          com.example.networkfailure           I  Davey! duration=1016ms; Flags=0, FrameTimelineVsyncId=12526, IntendedVsync=4597465117587, Vsync=4598465117547, InputEventId=0, HandleInputStart=4598476672266, AnimationStart=4598476675183, PerformTraversalsStart=4598477183505, DrawStart=4598477611890, FrameDeadline=4597498450919, FrameInterval=4598476461174, FrameStartTime=16666666, SyncQueued=4598478039116, SyncStart=4598478091847, IssueDrawCommandsStart=4598478130895, SwapBuffers=4598480287778, FrameCompleted=4598481192268, DequeueBufferDuration=10340, QueueBufferDuration=163223, GpuCompleted=4598481098386, SwapBuffersCompleted=4598481192268, DisplayPresentTime=0, CommandSubmissionCompleted=4598480287778, 
+2024-03-14 15:29:30.668  4915-4915  ziparchive              com.example.networkfailure           W  Unable to open '/data/app/~~znWxt9ZYXvSmbueBD0Sh_A==/com.example.networkfailure-VJz6YEP1V4niguMFXBcpcw==/base.dm': No such file or directory
+2024-03-14 15:29:30.668  4915-4915  ziparchive              com.example.networkfailure           W  Unable to open '/data/app/~~znWxt9ZYXvSmbueBD0Sh_A==/com.example.networkfailure-VJz6YEP1V4niguMFXBcpcw==/base.dm': No such file or directory
+2024-03-14 15:29:30.740  4915-4915  GraphicsEnvironment     com.example.networkfailure           V  ANGLE Developer option for 'com.example.networkfailure' set to: 'default'
+2024-03-14 15:29:30.740  4915-4915  GraphicsEnvironment     com.example.networkfailure           V  ANGLE GameManagerService for com.example.networkfailure: false
+2024-03-14 15:29:30.740  4915-4915  GraphicsEnvironment     com.example.networkfailure           V  Neither updatable production driver nor prerelease driver is supported.
+2024-03-14 15:29:30.743  4915-4915  NetworkSecurityConfig   com.example.networkfailure           D  No Network Security Config specified, using platform default
+2024-03-14 15:29:30.744  4915-4915  NetworkSecurityConfig   com.example.networkfailure           D  No Network Security Config specified, using platform default
+2024-03-14 15:29:30.754  4915-4935  libEGL                  com.example.networkfailure           D  loaded /vendor/lib64/egl/libEGL_emulation.so
+2024-03-14 15:29:30.755  4915-4935  libEGL                  com.example.networkfailure           D  loaded /vendor/lib64/egl/libGLESv1_CM_emulation.so
+2024-03-14 15:29:30.758  4915-4935  libEGL                  com.example.networkfailure           D  loaded /vendor/lib64/egl/libGLESv2_emulation.so
+2024-03-14 15:29:30.759  4915-4915  histInstrumentation     com.example.networkfailure           I  cb 128822500 onCreate
+2024-03-14 15:29:30.790  4915-4915  Compatibil...geReporter com.example.networkfailure           D  Compat change id reported: 210923482; UID 10164; state: ENABLED
+2024-03-14 15:29:30.807  4915-4915  histInstrumentation     com.example.networkfailure           I  ci 128822500 setContentView 2131361820
+2024-03-14 15:29:30.807  4915-4915  histInstrumentation     com.example.networkfailure           I  41163256 = ci 128822500 findViewById 2131165461
+2024-03-14 15:29:30.807  4915-4915  histInstrumentation     com.example.networkfailure           I   153669329 = new String 201977142
+2024-03-14 15:29:30.813  4915-4915  histInstrumentation     com.example.networkfailure           I   ci 71607351 new RequestQueue 128822500
+2024-03-14 15:29:30.813  4915-4915  histInstrumentation     com.example.networkfailure           I   80534948 = new MyErrorListener 
+2024-03-14 15:29:30.813  4915-4915  histInstrumentation     com.example.networkfailure           I   127567629 = new MyListener 
+2024-03-14 15:29:30.815  4915-4915  histInstrumentation     com.example.networkfailure           I   129322195 = new StringRequest 63713296 153669329 127567629 80534948
+2024-03-14 15:29:30.815  4915-4915  histInstrumentation     com.example.networkfailure           I   ci 16090889 add 129322195
+2024-03-14 15:29:30.830  4915-4915  histInstrumentation     com.example.networkfailure           I  cb 80534948 onErrorResponse 102625576
+2024-03-14 15:29:30.852  4915-4933  HostConnection          com.example.networkfailure           D  createUnique: call
+
+WITNESSED

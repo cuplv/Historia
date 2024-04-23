@@ -1,0 +1,11 @@
+Done:
+https://www.codementor.io/android/tutorial/most-common-android-errors-how-to-fix-them
+https://www.toptal.com/android/top-10-most-common-android-development-mistakes
+https://www.linkedin.com/pulse/common-errors-android-app-development-weenggs-technology-n4bzf/?trk=articles_directory
+
+Should we use other exns from here?
+Connectbot issue tracker
+Antennapod issue tracker
+
+
+16 total runtime issues (merging and dropping compile time issues or other advice) 15 involve callbacks in some way or another and I believe 14 of them are things we can encode in wistoria
