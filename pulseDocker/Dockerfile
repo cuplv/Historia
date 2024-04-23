@@ -51,6 +51,6 @@ RUN cd /root/android-sdk-linux/cmdline-tools/bin \
 RUN  cd /root/android-sdk-linux/cmdline-tools/bin \
     && ./sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-29"
 COPY testApps/ChatGPT_Benchmarks/ testApps/ChatGPT_Benchmarks/
-RUN rm -rf testApps/ChatGPT_Benchmarks/EXN_nullptr/app_bug/infer-out/ #buggy folder why does it exist?
 RUN apt-get install -y python3
 COPY runPulse.py .
+RUN python3 runPulse.py #force docker to cache gradle installation
