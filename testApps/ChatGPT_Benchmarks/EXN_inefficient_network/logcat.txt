@@ -1,3 +1,4 @@
+2024-03-18 14:13:38.451  4748-4748  histInstrumentation     com.example.inefficientnetwork       I  cb 36503278 onCreate
 2024-03-18 14:13:38.435  4748-4748  histInstrumentation     com.example.inefficientnetwork       I  83857799 = ci 36503278 findViewById 2131165362
 2024-03-18 14:13:38.435  4748-4748  histInstrumentation     com.example.inefficientnetwork       I   76695732 = new String 61340893
 2024-03-18 14:13:38.447  4748-4748  histInstrumentation     com.example.inefficientnetwork       I  263831331 = ci 40188960 newRequestQueue 36503278
@@ -35,6 +36,5 @@
 2024-03-18 14:14:43.601  4748-4748  histInstrumentation     com.example.inefficientnetwork       I  131465281 = ci 40188960 newRequestQueue 36503278
 2024-03-18 14:14:43.601  4748-4748  histInstrumentation     com.example.inefficientnetwork       I   225974758 = new StringRequest 207563391 52063016 32197415 155128276
 2024-03-18 14:14:43.601  4748-4748  histInstrumentation     com.example.inefficientnetwork       I  ci 131465281 add 225974758
-2024-03-18 14:14:43.656  4748-4748  histInstrumentation     com.example.inefficientnetwork       I  cb 32197415 onResponse 230064062
 2024-03-18 14:14:45.274  4748-4767  EGL_emulation           com.example.inefficientnetwork       D  app_time_stats: avg=401.53ms min=5.53ms max=1565.99ms count=4
 WITNESSED
