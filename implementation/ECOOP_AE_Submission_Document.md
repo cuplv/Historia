@@ -21,8 +21,6 @@ ECOOP submission number for the paper: **303**
 
 Please describe how reviewers can check the artifact's integrity and basic functionality.
 
-TODO####!!!!!: test these on a different machine before submitting artifact.
-
 There are two docker containers, one for Wistoria and another for the Infer/Pulse comparison. 
 Separation of these containers was done to avoid dependency conflicts.
 Please test that both are working using the following instructions:
@@ -48,8 +46,20 @@ TODO####!!!!  add instructions here once c has script
 Please list for each distinct component of your artifact:
 
 * type of artifact (data, code, proof, etc.)
+  * Wistoria: Source code for Wistoria (based on the Historia implementation) 
+  * Benchmarks: Data in the form of the source code for the 9 benchmarks from the paper.
+  * CBCFTL specification: Data in the form of CBCFTL specifications used for the experiments.
+  * Recorded Traces: Data in the form of recorded runtime traces for each app.
 * format (e.g., CSV, source code, binary, etc.)
+  * Wistoria: Scala code
+  * Benchmarks: Java code, Android project config files, 
+  * CBCFTL specifications: Defined directly using the CBCFTL AST case classes in Scala code (no human-readable parser).
+  * Recorded Traces: text log files.
 * location in the container/VM
+  * Wistoria: `/home/bounder/`
+  * Benchmarks: `/home/testApps/ChatGPT_Benchmarks`. Each benchmark is in own directory corresponding to the names. The implementation is in `app_bug` subdirectory)
+  * CBCFTL: `/home/notebooks/reachExpGPT/ReachExpGPT.ipynb` and `/home/bounder/src/main/scala/edu/colorado/plv/bounder/lifestate/Specification.scala`
+  * Recorded Traces: May be found in the corresponding benchmark directory and are named `logcat.txt` or `logcat[n].txt` where n is some number.
 
 ## For authors claiming an available badge
 
@@ -69,6 +79,14 @@ For **all** experimental claims made in the paper, please:
 For example: “The data in table 1 can be obtained by running script ‘generate_table1.sh’”
 
 Please note: we highly advise authors to provide a push-button evaluation (cf. call for artifacts).
+
+* Table 1:
+  * This is data that was obtained by manually counting and inspecting the applications in the Benchmarks directories mentioned earlier.
+* Table 2:
+  * This is a summary of the error condition in `ReachExpGPT.ipynb` and may be found as the variable `query` for each benchmark.
+* Table 3:
+  * After running the `ReachExpGPT.ipynb` notebook with  `Kernel -> Restart Kernel and Run All Cells...`
+  * Table 3 will be displayed under the header "Table 3 Producing Realistic Execution Histories"
 
 ## For authors claiming a reusable badge
 
