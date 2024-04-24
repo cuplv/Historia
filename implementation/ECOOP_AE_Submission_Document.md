@@ -72,10 +72,9 @@ Please list for each distinct component of your artifact:
 We offer to publish the artifact on [DARTS](https://drops.dagstuhl.de/opus/institut_darts.php), in which case the available badge will be issued automatically.
 If you agree to publishing your artifact under a Creative Commons license, please indicate this here.
 
-**We agree to publish the full artifact under a creative commons license.**
-The source code will be published to a public Github repository under the Apache 2 license (we have redacted Git files for anonymity).
+**We agree to publish the full artifact under a creative commons license and publish to DARTS.**
+Additionally, the source code will be published to a public Github repository under a compatible open-source license (we have redacted Git files for anonymity).
 
-In case you would like to publish your artifact under different licensing conditions on Zenodo, please state under which license will the artifact be published?
 
 ## For authors claiming a functional or reusable badge
 
