@@ -10,12 +10,17 @@ ECOOP submission number for the paper: **303**
 
 ## Metadata to provide during artifact submission in HotCRP
 
-**No need to provide them again in the submission**
-
 - OS and resource (CPU, memory, disk, GPU) used by the authors to run the artifact
+  - MacOS: (x86 only, no M1/M2 support even in Docker!) or Linux
+  - CPU: - core i7 or core i9 from the last 5 years (or equivalent AMD)
+  - memory: 
+    - With the low memory configuration, this will run if the docker container has access to 8GB of ram (reruns all but 2 benchmarks)
+    - With the high memory configuration (set `val rerunHighMem = true` at the top of the jupyter notebook), 32GB of ram is needed
 - Estimation of the required hardware resources for evaluation. In case the evaluation takes multiple days or requires huge resources, please provide a scaled-down evaluation.
 - Known compatibility issues of the container/VM.
+  - This container is known to not run on M1 or M2 (Arm based) macs.
 - Which badges do you claim for your artifact? Functional? Reusable? Available?
+  - We claim all 3: Functional, Reusable, and Available
 
 ## Quick-start guide (Kick-the-tires phase)
 
@@ -32,8 +37,8 @@ Run the docker container using `docker run -p 8888:8888 -it wistoria_docker bash
 Open a web browser to http://localhost:8888/lab/tree/reachExpGPT which should show Jupyter lab.
 Open the notebook `ReachExpGPT.ipynb` and select the kernel menu at the top of the page then select restart and run all cells.
 That is `Kernel -> Restart Kernel and Run All Cells...`.
-This runs the experiments and should take less than 5 minutes to run.
-Near the bottom, there is a header "Table 3 Producing Realistic Execution Histories" and underneath should be table 3 from the paper.
+This runs the experiments and as long as the cell titled "Memory Leak" completes showing a grey box with "EXN_activity_leak_noStatic" on the left side, then the container is likely working.
+If left to run for around 5 minutes, the header "Table 3 Producing Realistic Execution Histories" should show table 3 from the paper.
 
 ### Infer Comparison
 
@@ -67,19 +72,18 @@ Please list for each distinct component of your artifact:
 We offer to publish the artifact on [DARTS](https://drops.dagstuhl.de/opus/institut_darts.php), in which case the available badge will be issued automatically.
 If you agree to publishing your artifact under a Creative Commons license, please indicate this here.
 
-**We agree to publish the artifact under a creative commons license.**
+**We agree to publish the full artifact under a creative commons license.**
+The source code will be published to a public Github repository under the Apache 2 license (we have redacted Git files for anonymity).
 
 In case you would like to publish your artifact under different licensing conditions on Zenodo, please state under which license will the artifact be published?
 
 ## For authors claiming a functional or reusable badge
 
-For **all** experimental claims made in the paper, please:
-* Quote/reference the experimental claim
-* Explain how this claim can be reproduced with the artifact
+We provide two versions of the artifact, one for high memory systems (32+ GB of RAM) and low memory (8GB available to the container).
+Rerunning all computable results can be done by running all the cells in the `ReachExpGPT.ipynb`.
+By default, it will run the low memory version, but you can change the line `val rerunHighMem = false` to `val rerunHighMem = true` to run all benchmarks.
+The low memory version will not run "Bitmap Mishandling" and "NullPointerException" but rather read our results from earlier.
 
-For example: “The data in table 1 can be obtained by running script ‘generate_table1.sh’”
-
-Please note: we highly advise authors to provide a push-button evaluation (cf. call for artifacts).
 
 * Table 1:
   * This is data that was obtained by manually counting and inspecting the applications in the Benchmarks directories mentioned earlier.
@@ -112,4 +116,13 @@ That is, given some sound framework model, we should always be able to find witn
 A use case for this is to build confidence in a library of CBCFTL framework model based on a large number of collected reachable locations.
 Such reachable locations may be obtained using a sampling profiler, bug reports, or generated with Large Language Models as we have done for the evaluation of this paper.
 The Wistoria implementation is integrated with the Historia implementation (switching between the two is a configuration option).
-Another possible extension would be to handle a larger set of language features such as arrays, numeric properties, and more.
+Another possible extension would be to handle a larger set of language features such as arrays, numeric properties, and more by extending the abstract state and SMT encoding.
+
+Further notes on reuse:
+
+The notebook `ReachExpGPT.ipynb` is heavily commented and explains each step for running our benchmarks.
+The source code of each benchmark in `/home/testApps/ChatGPT_Benchmarks` may be modified, compiled with `./gradlew assembleDebug` and re-run.
+For example, try adding a boolean flag so that if `execute` has been called, it won't be called again.  
+Wistoria will no longer find a history.
+An additional notebook `HistoriaExampleAndExplanation.ipynb` gives background on writing CBCFTL for Historia and is still useful for Wistoria.
+
