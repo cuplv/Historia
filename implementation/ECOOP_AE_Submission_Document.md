@@ -11,7 +11,10 @@ ECOOP submission number for the paper: **303**
 ## Metadata to provide during artifact submission in HotCRP
 
 - OS and resource (CPU, memory, disk, GPU) used by the authors to run the artifact
-  - MacOS: (x86 only, no M1/M2 support even in Docker!) or Linux
+  - OS:
+    - MacOS: (x86 only, no M1/M2 support even in Docker!)
+    - Linux
+    - Windows
   - CPU: - core i7 or core i9 from the last 5 years (or equivalent AMD)
   - memory: 
     - With the low memory configuration, this will run if the docker container has access to 8GB of ram (reruns all but 2 benchmarks)
@@ -26,14 +29,15 @@ ECOOP submission number for the paper: **303**
 
 Please describe how reviewers can check the artifact's integrity and basic functionality.
 
+First, please install the appropriate docker version for your platform (https://docs.docker.com/).
 There are two docker containers, one for Wistoria and another for the Infer/Pulse comparison. 
 Separation of these containers was done to avoid dependency conflicts.
 Please test that both are working using the following instructions:
 
 ### Wistoria
 
-In order to test the artifact, load the docker containers using the commands `docker load < wistoria_docker.tgz`. 
-Run the docker container using `docker run --rm -p 8888:8888 -it wistoria_docker bash`.
+In order to test the artifact, load the docker containers using the commands `docker load < wistoria_docker.tgz` (use `docker load -i` for Windows). 
+Run the docker container using `docker run --rm -p 8888:8888 -it wistoria_docker bash -c "/home/jupyterStart.sh"`.
 Open a web browser to http://localhost:8888/lab/tree/reachExpGPT which should show Jupyter lab.
 Open the notebook `ReachExpGPT.ipynb` and select the kernel menu at the top of the page then select restart and run all cells.
 That is `Kernel -> Restart Kernel and Run All Cells...`.
