@@ -538,7 +538,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
           case None => (postState,TopVal)
         }
         val iWithRet = i.copyMsg(lsVars = assignTo::Nil)
-        val (newState,newI) = allVars.tail.foldLeft((stateAfterAssign, iWithRet)){
+        val (newState,newI) = if (allVars.nonEmpty) allVars.tail.foldLeft((stateAfterAssign, iWithRet)){
           case ((acc,i), (None, _)) =>
             (acc,i.copyMsg(lsVars = i.lsVars.appended(TopVal)))
           case ((acc,i), (_, TopVal)) =>
@@ -552,7 +552,7 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
             println(v1)
             println(v2)
             ???
-        }
+        } else (stateAfterAssign, iWithRet)
 //        val c = newModelVars.traceAbstraction.filter(t => t.a.isEmpty)
         val oldAbs = newState.traceAbstraction
         val newAbs = oldAbs.copy(rightOfArrow = newI::oldAbs.rightOfArrow)
