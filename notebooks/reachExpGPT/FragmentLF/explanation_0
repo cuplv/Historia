@@ -1,0 +1,6 @@
+(    heap: p-0.rootView->NULL          pure: p-1  !=  NULL && p-0  !=  NULL && p-2  !=  NULL         types: List(p-0:{5005,5030}, p-1:{1072,1079,1101,1723,1775 ...}, p-2:{168,1090,4515,5002})    trace: O(CBEnter I_CBEnter_onCreateView ( _T_,p-0,p-2 );O(CIExit I_CIExit_inflate ( p-1,p-2 );O(CBEnter I_CBEnter_onDestroyView ( _T_,p-0 )) 
+===========
+Future trace:
+ CBEnter android.view.View onCreateView()( _T_,@4,@1 )
+CIExit android.view.View inflate()( @3,@1 )
+CBEnter void onDestroyView()( _T_,@4 )

@@ -1,0 +1,7 @@
+(    heap:           pure:          types: List(p-1:{5359})    trace: O(CBEnter I_CBEnter_ActivityonCreate ( _T_,p-1 );O(CIExit I_CIExit_fromCallable ( _T_ );O(CIExit I_CIExit_observeOn ( _T_ );O(CIEnter I_CIEnter_subscribeOn ( _T_ )) 
+===========
+Future trace:
+ CBEnter void onCreate(android.os.Bundle)( _T_,@1 )
+CIExit  fromCallable(( _T_ )
+CIExit  observeOn(( _T_ )
+CIEnter  subscribeOn(( _T_ )

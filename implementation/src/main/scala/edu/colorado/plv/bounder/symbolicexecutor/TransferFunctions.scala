@@ -789,9 +789,14 @@ class TransferFunctions[M,C](w:IRWrapper[M,C], specSpace: SpecSpace,
           val withPureConstraint = state3.addPureConstraint(PureConstraint(basev, Equals, heapPv))
           val swapped = withPureConstraint.copy(sf = withPureConstraint.sf.copy(
             heapConstraints = withPureConstraint.heapConstraints - pte,
-            pureFormula = withPureConstraint.pureFormula +
+            pureFormula = (withPureConstraint.pureFormula +
               PureConstraint(tgtVal, Equals, rhsPureExpr) +
-              PureConstraint(heapPv, NotEquals, NullVal) // Base must be non null for normal control flow
+              PureConstraint(heapPv, NotEquals, NullVal)) ++ // Base must be non null for normal control flow
+              possibleHeapCells.removed(pte).flatMap{ // ensure we don't lose disaliasing info
+                case (FieldPtEdge(otherHeapPv, fieldName),_) if !canWeaken =>
+                  Some(PureConstraint(otherHeapPv, NotEquals, heapPv))
+                case (_,_) if canWeaken => None
+              }
           ))
           swapped
         case v =>

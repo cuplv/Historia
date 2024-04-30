@@ -1,0 +1,15 @@
+No Network Security Config specified, using platform default
+No Network Security Config specified, using platform default
+loaded /vendor/lib64/egl/libEGL_emulation.so
+loaded /vendor/lib64/egl/libGLESv1_CM_emulation.so
+loaded /vendor/lib64/egl/libGLESv2_emulation.so
+4748-4748  histInstrumentation     com.example.longtask       I  cb 45378472 onCreate
+Compat change id reported: 210923482; UID 10163; state: ENABLED
+4748-4748  histInstrumentation     com.example.longtask       I ci 45378472 setContentView 2131361820
+4748-4748  histInstrumentation     com.example.longtask       I 12341539 = ci 45378472 findViewById 2131165460
+4748-4748  histInstrumentation     com.example.longtask       I 83453472 = ci 135162841 fromCallable 97925534
+4748-4748  histInstrumentation     com.example.longtask       I 267967615 = ci 83453472 observeOn 157205580
+4748-4748  histInstrumentation     com.example.longtask       I 200338581 = ci 267967615 subscribeOn 157205580
+4748-4748  histInstrumentation     com.example.longtask       I 233329066 = ci 200338581 subscribe 138985883 182049080
+4748-4748  histInstrumentation     com.example.longtask       I cb 97925534 call
+WITNESSED
